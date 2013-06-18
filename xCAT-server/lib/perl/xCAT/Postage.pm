@@ -272,14 +272,28 @@ sub makescript {
   # get the net', 'mask', 'gateway' from networks table
   my $nets = getNetworks(); 
 
+  # get attributes(routename,net,mask,gateway,ifname) from the routes table
+  #  The values will be used in the "foreach my $n (@$nodes ) { .." loop 
+  my $routes = getRoutes(); 
+
+
+  #check it the vlan plugin exists or not
+  #the default doesn't exist.
+  my $vlan_exists = 0; 
+  my $module_name="xCAT_plugin::vlan";
+  eval("use $module_name;");
+  if (!$@) {
+      $vlan_exists = 1; 
+  }	
+
   # For AIX, get the password and cryptmethod for system root
   my $aixrootpasswdvars = getAIXPasswdVars();
 
-  #%image_hash is used to store the attributes in linuximage and osimage tabs
+  #%image_hash is used to store the attributes in linuximage and nimimage tabs
   my %image_hash;
-  getLinuximage(\%image_hash);
+  getImage(\%image_hash);
 
-  # get postscript and postscript
+  # get postscript and postscript from postscripts and osimage tabs
   my $script_hash = xCAT::Postage::getScripts($nodes, \%image_hash);
 
   my $tftpdir = xCAT::TableUtils::getTftpDir();
@@ -306,6 +320,12 @@ sub makescript {
     }
   }
 
+  #Some of the strings are same to all the nodes.
+  #So move the string substitutions outside the loop
+  $t_inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg;
+  $t_inc =~ s/#AIX_ROOT_PW_VARS_EXPORT#/$aixrootpasswdvars/eg; 
+  $t_inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
+ 
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
@@ -334,21 +354,19 @@ sub makescript {
       {
   	my $rn=$noderesent->{'routenames'};
   	my @rn_a=split(',', $rn);
-	my $routestab = xCAT::Table->new('routes');
-	if ((@rn_a > 0) && ($routestab)) {
+	if ((@rn_a > 0) && defined($routes) ) {
 	    $route_vars .= "NODEROUTENAMES=$rn\n";
 	    $route_vars .= "export NODEROUTENAMES\n";
 	    foreach my $route_name (@rn_a) {
-		my $routesent = $routestab->getAttribs({routename => $route_name}, 'net', 'mask', 'gateway', 'ifname');
-		if ($routesent and defined($routesent->{net}) and defined($routesent->{mask})) {
-		    my $val="ROUTE_$route_name=" . $routesent->{net} . "," . $routesent->{mask};
+		if ($routes and defined($routes->{net}) and defined($routes->{mask})) {
+		    my $val="ROUTE_$route_name=" . $routes->{net} . "," . $routes->{mask};
 		    $val .= ",";
-		    if (defined($routesent->{gateway})) {
-			$val .= $routesent->{gateway};
+		    if (defined($routes->{gateway})) {
+			$val .= $routes->{gateway};
 		    }
 		    $val .= ",";
-		    if (defined($routesent->{ifname})) {
-			$val .= $routesent->{ifname};
+		    if (defined($routes->{ifname})) {
+			$val .= $routes->{ifname};
 		    }
 		    $route_vars .=  "$val\n";
 		    $route_vars .= "export ROUTE_$route_name\n";
@@ -362,7 +380,7 @@ sub makescript {
     ### vlan related item
     #  for #VLAN_VARS_EXPORT#
     my $vlan_vars;
-    $vlan_vars = getVlanItems($node);
+    $vlan_vars = getVlanItems($node, $module_name, $vlan_exists);
 
     ## get monitoring server and other configuration data for monitoring setup on nodes
     # for #MONITORING_VARS_EXPORT#
@@ -396,7 +414,7 @@ sub makescript {
     #
     my $diskless_net_vars;
     my $setbootfromnet = 0;
-    $diskless_net_vars = getDisklessNet($nets, \$setbootfromnet, $image_hash{$osimgname}{provmethod}); 
+    $diskless_net_vars = getDisklessNet($nets, \$setbootfromnet, $osimgname, \%image_hash); 
     
     ## postscripts
     # for #INCLUDE_POSTSCRIPTS_LIST# 
@@ -419,12 +437,10 @@ sub makescript {
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#NODE#/$node/eg;
   $inc =~ s/\$NODE/$node/eg;
-  $inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg; 
   #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/xCAT::Template::tabdb($1,$2,$3)/eg; 
   $inc =~ s/#ROUTES_VARS_EXPORT#/$route_vars/eg; 
   $inc =~ s/#VLAN_VARS_EXPORT#/$vlan_vars/eg; 
-  $inc =~ s/#AIX_ROOT_PW_VARS_EXPORT#/$aixrootpasswdvars/eg; 
   $inc =~ s/#MONITORING_VARS_EXPORT#/$mon_vars/eg; 
   $inc =~ s/#OSIMAGE_VARS_EXPORT#/$osimage_vars/eg; 
   $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
@@ -433,7 +449,6 @@ sub makescript {
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/\$NTYPE/$nodetype/eg;
-  $inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
 
   # we will create a file in /tftboot/mypostscript/mypostscript_<nodename> 
@@ -455,7 +470,9 @@ sub makescript {
          return 1;
       }
       $script_fp{$node}=$script;
-      `/bin/chmod ugo+x $scriptfile`;  
+      #use the chmod perl function instead of forking the cmd
+      #`/bin/chmod ugo+x $scriptfile`;  
+      chmod 0755, $scriptfile;
       print $script $inc;    
       close($script_fp{$node});
     # TODO remove the blank lines
@@ -588,92 +605,6 @@ sub getNodeType
     return $result;
 }
 
-
-sub getVlanItems_t
-{
-
-    my $node = shift;
-    my $result;
-
-    #get vlan related items
-    my $vlan;
-    my $swtab = xCAT::Table->new("switch", -create => 0);
-    if ($swtab) {
-	my $tmp = $swtab->getNodeAttribs($node, ['vlan'],prefetchcache=>1);
-	if (defined($tmp) && ($tmp) && $tmp->{vlan})
-	{
-	    $vlan = $tmp->{vlan};
-	    $result .= "VLANID='" . $vlan . "'\n";
-	    $result .= "export VLANID\n";
-	} else {
-	    my $vmtab = xCAT::Table->new("vm", -create => 0);
-	    if ($vmtab) {
-		my $tmp1 = $vmtab->getNodeAttribs($node, ['nics'],prefetchcache=>1);
-		if (defined($tmp1) && ($tmp1) && $tmp1->{nics})
-		{
-		    $result .= "VMNODE='YES'\n";
-		    $result .= "export VMNODE\n";
-		    
-		    my @nics=split(',', $tmp1->{nics});
-		    foreach my $nic (@nics) {
-			if ($nic =~ /^vl([\d]+)$/) {
-			    $vlan = $1;
-			    $result .= "VLANID='" . $vlan . "'\n";
-			    $result .= "export VLANID\n";
-			    last;
-			}
-		    }
-		}
-	    }
-	}
-	
-	if ($vlan) {
-	    my $nwtab=xCAT::Table->new("networks", -create =>0);
-	    if ($nwtab) {
-		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
-		my $subnet;
-		my $netmask;
-		if ($sent and ($sent->{net})) {
-		    $subnet=$sent->{net};
-		    $netmask=$sent->{mask};
-		} 
-		if (($subnet) && ($netmask)) {
-		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
-		    if ($hoststab) {
-			my $tmp = $hoststab->getNodeAttribs($node, ['otherinterfaces'],prefetchcache=>1);
-			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
-			{
-			    my $otherinterfaces = $tmp->{otherinterfaces};
-			    my @itf_pairs=split(/,/, $otherinterfaces);
-			    foreach (@itf_pairs) {
-				my ($name,$ip)=split(/:/, $_);
-				if(xCAT::NetworkUtils->ishostinsubnet($ip, $netmask, $subnet)) {
-				    if ($name =~ /^-/ ) {
-					$name = $node.$name;
-				    }
-				    $result .= "VLANHOSTNAME='" . $name . "'\n";
-				    $result .= "export VLANHOSTNAME\n";
-				    $result .= "VLANIP='" . $ip . "'\n";
-				    $result .= "export VLANIP\n";
-				    $result .= "VLANSUBNET='" . $subnet . "'\n";
-				    $result .= "export VLANSUBNET\n";
-				    $result .= "VLANNETMASK='" . $netmask . "'\n";
-				    $result .= "export VLANNETMASK\n";
-				    last;
-				}
-			    }	    
-			}
-		    }
-		}
-	    }
-	}
-    }
-
-
-
-   return $result;
-}
-
 sub getAIXPasswdVars
 {
      my $result;
@@ -699,13 +630,13 @@ sub getAIXPasswdVars
 sub getVlanItems
 {
 
-    my $node = shift;
+    my $node         = shift;
+    my $module_name  = shift;
+    my $vlan_exists  = shift;
     my $result;
 
     #get vlan related items
-    my $module_name="xCAT_plugin::vlan";
-    eval("use $module_name;");
-    if (!$@) {
+    if ( $vlan_exists ) {
 	no strict  "refs";
 	if (defined(${$module_name."::"}{getNodeVlanConfData})) {
 	    my @tmp_scriptd=${$module_name."::"}{getNodeVlanConfData}->($node);
@@ -715,7 +646,6 @@ sub getVlanItems
 	    }
 	}  
     }
-
 
    return $result;
 }
@@ -740,23 +670,41 @@ sub getMonItems
     return $result;
 }
 
-sub getLinuximage
+sub getImage
 {
    
     my $image_hash  = shift;
-    my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);   
 
-    my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir' );
-    if( @et2 ) {
-          foreach my $tmp_et2 (@et2) {
-               my $imagename= $tmp_et2->{imagename};
-               $image_hash->{$imagename}->{pkglist}= $tmp_et2->{pkglist};
-               $image_hash->{$imagename}->{pkgdir} = $tmp_et2->{pkgdir}; 
-               $image_hash->{$imagename}->{otherpkglist} = $tmp_et2->{otherpkglist}; 
-               $image_hash->{$imagename}->{otherpkgdir} = $tmp_et2->{otherpkgdir}; 
-          }
+    #For linux, get the attributes for imagename
+    if ($^O =~ /^linux/i) {
+        my $linuximagetab = xCAT::Table->new('linuximage', -create => 1);   
+
+        my @et2 = $linuximagetab->getAllAttribs('imagename', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir' );
+        if( @et2 ) {
+              foreach my $tmp_et2 (@et2) {
+                  my $imagename= $tmp_et2->{imagename};
+                  $image_hash->{$imagename}->{pkglist}= $tmp_et2->{pkglist};
+                  $image_hash->{$imagename}->{pkgdir} = $tmp_et2->{pkgdir}; 
+                  $image_hash->{$imagename}->{otherpkglist} = $tmp_et2->{otherpkglist}; 
+                  $image_hash->{$imagename}->{otherpkgdir} = $tmp_et2->{otherpkgdir}; 
+             }
+        }
     }
 
+    #For AIX, get the nimtype value for each imagename
+    if ($^O =~ /^aix/i) {
+       my $nimtype;
+       my $nimimagetab = xCAT::Table->new('nimimage', -create => 1);
+       if ($nimimagetab)
+       { 
+           my @et1 = $nimimagetab->getAllAttribs('imagename', 'nimtype');
+           foreach my $tmp_et1 (@et1) {
+               my $imagename= $tmp_et1->{imagename};
+               $image_hash->{$imagename}->{nimtype}= $tmp_et1->{nimtype};
+           }
+       }
+
+    }
 
 }
 
@@ -972,13 +920,41 @@ sub getNetworks
     return \@nets;
 }
 
+# get attributes(routename,net,mask,gateway,ifname) from the routes table
+sub getRoutes
+{
+    my %routes = ();
+    my $routestab = xCAT::Table->new('routes');
+    unless ($routestab) { 
+        xCAT::MsgUtils->message("E", "Unable to open routes table");
+        return undef 
+    }
+    my @rts = $routestab->getAllAttribs('routename','net', 'mask', 'gateway', 'ifname');
+
+    foreach my $r ( @rts ) {
+       my $rtname = $r->{'routename'};
+       $routes{ $rtname }{'net'}     = $r->{'net'};
+       $routes{ $rtname }{'mask'}    = $r->{'mask'};
+       $routes{ $rtname }{'gateway'} = $r->{'gateway'};
+       $routes{ $rtname }{'ifname'}  = $r->{'ifname'};
+    }
+       
+    return \%routes;
+}
+
+
 
 sub getDisklessNet()
 {
     my $nets = shift;
     my $setbootfromnet = shift;
-    my $provmethod = shift;
-   
+    my $osimgname = shift;
+    my $imagehash = shift;
+    my $provmethod; 
+    if( defined($osimgname) && defined($imagehash) && defined($imagehash->{$osimgname}) ) {
+        $provmethod = $imagehash->{$osimgname}->{provmethod};
+    }
+ 
     my $result;
     my $isdiskless     = 0;
     my $bootfromnet = 0;
@@ -1001,17 +977,10 @@ sub getDisklessNet()
             && ($provmethod ne "statelite"))
         {
             my $nimtype;
-            my $nimimagetab = xCAT::Table->new('nimimage', -create => 1);
-            if ($nimimagetab)
-            {
-                (my $ref) =
-                  $nimimagetab->getAttribs({imagename => $provmethod},
-                                           'nimtype');
-                if ($ref)
-                {
-                    $nimtype = $ref->{'nimtype'};
-                }
+            if( defined($osimgname) && defined($imagehash) && defined($imagehash->{$osimgname})) {
+                $nimtype = $imagehash->{$osimgname}->{nimtype};
             }
+
             if ($nimtype eq 'diskless')
             {
                 $isdiskless = 1;
@@ -1343,7 +1312,7 @@ sub includefile
 sub getnodesetstate
 {
     my $node = shift;
-    return xCAT::SvrUtils->get_nodeset_state($node,prefetchcache=>1);
+    return xCAT::SvrUtils->get_nodeset_state($node,prefetchcache=>1, "global_tab_hash"=>\%::GLOBAL_TAB_HASH);
 }
 
 sub net_parms
