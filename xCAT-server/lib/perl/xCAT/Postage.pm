@@ -348,6 +348,7 @@ sub makescript {
       my $nodetype = getNodeType($node);
 
       #print Dumper($noderesent);
+      #print Dumper($routes);
       #routes 
       my $route_vars;
       if ($noderesent and defined($noderesent->{'routenames'}))
@@ -355,20 +356,21 @@ sub makescript {
   	my $rn=$noderesent->{'routenames'};
   	my @rn_a=split(',', $rn);
 	if ((@rn_a > 0) && defined($routes) ) {
-	    $route_vars .= "NODEROUTENAMES=$rn\n";
-	    $route_vars .= "export NODEROUTENAMES\n";
+	    #$route_vars .= "NODEROUTENAMES=$rn\n";
+	    #$route_vars .= "export NODEROUTENAMES\n";
 	    foreach my $route_name (@rn_a) {
-		if ($routes and defined($routes->{net}) and defined($routes->{mask})) {
-		    my $val="ROUTE_$route_name=" . $routes->{net} . "," . $routes->{mask};
+	        my $rt = $routes->{$route_name};
+		if ($rt and defined($rt->{net}) and defined($rt->{mask})) {
+		    my $val="ROUTE_$route_name='" . $rt->{net} . "," . $rt->{mask};
 		    $val .= ",";
-		    if (defined($routes->{gateway})) {
-			$val .= $routes->{gateway};
+		    if (defined($rt->{gateway})) {
+			$val .= $rt->{gateway};
 		    }
 		    $val .= ",";
-		    if (defined($routes->{ifname})) {
-			$val .= $routes->{ifname};
+		    if (defined($rt->{ifname})) {
+			$val .= $rt->{ifname};
 		    }
-		    $route_vars .=  "$val\n";
+		    $route_vars .=  "$val'\n";
 		    $route_vars .= "export ROUTE_$route_name\n";
 		}
 	    }
