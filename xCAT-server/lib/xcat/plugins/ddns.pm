@@ -286,25 +286,36 @@ sub process_request {
 
 	my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
 
-    if ($request->{node}) { #we have a noderange to process
-        @nodes = @{$request->{node}};
-    } elsif ($allnodes) {
+#    if ($request->{node}) { #we have a noderange to process
+#        @nodes = @{$request->{node}};
+    #} elsif ($allnodes) {
+    if ($allnodes) {
         #read all nodelist specified nodes
     } else { 
-	if ($deletemode) {
+	if (not $request->{node} and $deletemode) {
 		#when this was permitted, it really ruined peoples' days
 		xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
         umask($oldmask);
 		return;
 	}
-        #legacy behavior, read from /etc/hosts
-        my $hostsfile;
-        open($hostsfile,"<","/etc/hosts");
-        flock($hostsfile,LOCK_SH);
-        my @contents = <$hostsfile>;
-        flock($hostsfile,LOCK_UN);
-        close($hostsfile);
+	my @contents;
 		my $domain;
+	if ($request->{node}) { #leverage makehosts code to flesh out the options
+		require xCAT_plugin::hosts;
+                my @content1;
+                my @content2;
+		xCAT_plugin::hosts::add_hosts_content(nodelist=>$request->{node},callback=>$callback,hostsref=>\@content1);
+		xCAT_plugin::hosts::donics(nodes=>$request->{node},callback=>$callback,hostsref=>\@content2);
+                @contents = (@content1, @content2);
+	} else {
+	        #legacy behavior, read from /etc/hosts
+	        my $hostsfile;
+	        open($hostsfile,"<","/etc/hosts");
+	        flock($hostsfile,LOCK_SH);
+	        @contents = <$hostsfile>;
+	        flock($hostsfile,LOCK_UN);
+	        close($hostsfile);
+	}
         my $addr;
         my $name;
         my $canonical;
