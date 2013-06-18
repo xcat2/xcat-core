@@ -1946,6 +1946,9 @@ sub configure_hosted_elements {
         my $pass = $passwordmap{$cmm}->{password};
 	foreach $immdata (values %{$flexchassismap{$uuid}}) {
 		$slot=$immdata->{attributes}->{slot}->[0];
+        if (defined $immdata->{attributes}->{'chassis-sub-slot'}) {
+            $slot .= ":".$immdata->{attributes}->{'chassis-sub-slot'}->[0];
+        }
 		if ($node = $nodebymp{$cmm}->{$slot}) {
 			my $addr = $immdata->{peername}; #todo, use sockaddr and remove the 427 port from it instead?
 			if ($addr =~ /^fe80/) { #Link local address requires scope index
