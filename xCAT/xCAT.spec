@@ -34,11 +34,9 @@ Requires: /usr/sbin/dhcpd
 Requires: /usr/bin/ssh
 %ifnarch s390x
 Requires: /etc/xinetd.d/tftp
+Requires: xCAT-buildkit
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 #Requires: yaboot-xcat
-%endif
-%ifarch ppc64
-Requires: perl-IO-Stty
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
