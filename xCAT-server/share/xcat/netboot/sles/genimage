@@ -1422,11 +1422,11 @@ BEGIN {
 }
 
 EOMS
-
-
-	chmod(0755,"/tmp/xcatinitrd.$$/init");
-	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
-        chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
+      
+   close($inifile);
+   chmod(0755,"/tmp/xcatinitrd.$$/init");
+   chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+   chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
 
    @filestoadd=();
    foreach (@ndrivers) {
