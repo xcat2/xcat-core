@@ -208,7 +208,7 @@ sub getNic {
     Arguments   :   User (root or non-root)
                     Node
     Returns     : Network names
-    Example     : my $lans = xCAT::zvmCPUtils->getNetworkNames($node);
+    Example     : my $lans = xCAT::zvmCPUtils->getNetworkNames($user, $node);
     
 =cut
 
@@ -260,7 +260,7 @@ sub getNetworkNames {
     Arguments   :   User (root or non-root)
                     Node
     Returns     : Array of networks names
-    Example     : my @networks = xCAT::zvmCPUtils->getNetworkNamesArray($node);
+    Example     : my @networks = xCAT::zvmCPUtils->getNetworkNamesArray($user, $node);
     
 =cut
 
