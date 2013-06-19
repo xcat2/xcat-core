@@ -63,7 +63,7 @@ cat >/tmp/foo.sh <<EOF
 if [ \$# -eq 0 ]; then
     xcatdhost="#XCATVAR:XCATMASTER#"
     xcatdport="#TABLE:site:key=xcatiport:value#"
-    NODESTATUS="NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#"
+    NODESTATUS="#TABLEBLANKOKAY:site:key=nodestatus:value#"
 
 
     /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh install_monitor &
