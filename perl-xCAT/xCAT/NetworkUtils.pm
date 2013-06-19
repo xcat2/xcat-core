@@ -2253,6 +2253,26 @@ sub int_to_ip
 
 #-------------------------------------------------------------------------------
 
+=head3 getBroadcast
+      Description : Get the broadcast ips
+      Arguments   : ipstr - the IPv4 string ip.
+                    netmask - the subnet mask of network
+      Returns     : bcipint - the IPv4 string of broadcast ip.
+=cut
+
+#-------------------------------------------------------------------------------
+sub getBroadcast
+{
+    my ($class, $ipstr, $netmask) = @_;
+    my $ipint = xCAT::NetworkUtils->ip_to_int($ipstr);
+    my $maskint = xCAT::NetworkUtils->ip_to_int($netmask);
+    my $tmp = sprintf("%d", ~$maskint);
+    my $bcnum = sprintf("%d", ($ipint | $tmp) & hex('0x00000000FFFFFFFF'));
+    return xCAT::NetworkUtils->int_to_ip($bcnum);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 get_allips_in_range
       Description : Get all IPs in a IP range, return in a list.
       Arguments   : $startip - start IP address
