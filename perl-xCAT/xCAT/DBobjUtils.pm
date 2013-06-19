@@ -57,7 +57,7 @@ sub getObjectsOfType
 
     # The database may be changed between getObjectsOfType calls
     # do not use cache %::saveObjList  if --nocache is specified
-    if ($::saveObjList{$type} && !$::opt_c)
+    if ($::saveObjList{$type} && !$::opt_nc)
     {
         @objlist = @{$::saveObjList{$type}};
     }
@@ -606,7 +606,7 @@ sub getDBtable
 
 	# save this table info - in case this subr gets called multiple times
     # --nocache flag specifies not to use cahe
-    if (grep(/^$table$/, @::foundTableList) && !$::opt_c)
+    if (grep(/^$table$/, @::foundTableList) && !$::opt_nc)
     {
 
         # already have this
