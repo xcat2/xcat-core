@@ -864,6 +864,8 @@ sub getNodeID {
   return undef;
 }
 
+
+
 #--------------------------------------------------------------------------------
 =head3   getLocalNodeID
     This function goes to RMC and gets the nodeid for the local host.
@@ -1415,34 +1417,53 @@ sub getDescription {
     node monitoring.  These data-value pairs will be used as environmental variables 
     on the given node.
     Arguments:
-        node  
-        pointer to a hash that will take the data.
+        pointet to a arry of nodes 
     Returns:
-        none
+        pointer to a 2-level hash. For format will as following:
+        {
+           'node1'=>{'NODEID'=>'123',
+                     'MS_NODEID'=>'456'},
+           'node2'=>{'NODEID'=>'789',
+                     ''MS_NODEID'=>'0AB'}
+        }
+
 =cut
 #--------------------------------------------------------------------------------
 sub getNodeConfData {
+  my $ref_ret;
   #check if rsct is installed or not
   if (! -e "/usr/bin/lsrsrc") {
-    return;
+    return $ref_ret;
   }
 
-  my $node=shift;
-  if ($node =~ /xCAT_monitoring::rmcmon/) {
-    $node=shift;
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_monitoring::rmcmon/) {
+    $noderef=shift;
   }
-  my $ref_ret=shift;
+  my $tab=xCAT::Table->new("mac", -create =>0);
+  my $machash=$tab->getNodesAttribs($noderef, ['mac']);
+  $tab->close();
 
-  #get node ids for RMC monitoring
-  my $nodeid=xCAT_monitoring::rmcmon->getNodeID($node);
-  if (defined($nodeid)) {
-    $ref_ret->{NODEID}=$nodeid;
-  }
   my $ms_nodeid=xCAT_monitoring::rmcmon->getLocalNodeID();
-  if (defined($ms_nodeid)) {
-    $ref_ret->{MS_NODEID}=$ms_nodeid;
+
+  foreach my $node (@$noderef) {
+      #get node ids for RMC monitoring
+      if ($machash && defined($machash->{$node}) && defined($machash->{$node}->[0])) {
+	  my $mac=$machash->{$node}->[0]->{'mac'};
+	  if ($mac) {
+	      $mac =~ s/\|.*//g; #use the first mac
+	      $mac =~ s/\!.*//g; #remove the hostname
+	      $mac =~ s/://g;    #remove :
+	      $mac = "EA" . $mac . "EA";
+	      $ref_ret->{$node}->{NODEID}=$mac;
+	  }
+      }
+
+      if (defined($ms_nodeid)) {
+	  $ref_ret->{$node}->{MS_NODEID}=$ms_nodeid;
+      }
   }
-  return;
+  return $ref_ret;
 }
 
 #--------------------------------------------------------------------------------

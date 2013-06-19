@@ -325,6 +325,9 @@ sub makescript {
   $t_inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg;
   $t_inc =~ s/#AIX_ROOT_PW_VARS_EXPORT#/$aixrootpasswdvars/eg; 
   $t_inc =~ s/tabdump\(([\w]+)\)/tabdump($1)/eg;
+
+  my $monhash=getMonItems($nodes);
+  #print "getMonItems get called " . Dumper($monhash) . "\n";
  
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -387,8 +390,13 @@ sub makescript {
     ## get monitoring server and other configuration data for monitoring setup on nodes
     # for #MONITORING_VARS_EXPORT#
     my $mon_vars;
-    $mon_vars = getMonItems($node);    
-
+    if ($monhash && exists($monhash->{$node})) {
+	my $mon_conf=$monhash->{$node};
+	foreach (keys(%$mon_conf))  {
+	    $mon_vars .= "$_='" . $mon_conf->{$_} . "'\n";
+	    $mon_vars .= "export $_\n";
+	}
+    }
 
     #print "nodesetstate:$nodesetstate\n";
     ## OSPKGDIR export
@@ -655,21 +663,15 @@ sub getVlanItems
 
 sub getMonItems
 {
-
-    my $node = shift;
-    my $result;
+    my $nodes = shift;
 
     #get monitoring server and other configuration data for monitoring setup on nodes
-    my %mon_conf = xCAT_monitoring::monitorctrl->getNodeConfData($node);
-    foreach (keys(%mon_conf))
-    {
-        $result .= "$_='" . $mon_conf{$_} . "'\n";
-        $result .= "export $_\n";
+    my $mon_conf = xCAT_monitoring::monitorctrl->getNodeConfData($nodes);
+
+    if(ref($mon_conf) eq "ARRAY") {
+	$mon_conf={};
     }
-
-
-
-    return $result;
+    return $mon_conf;
 }
 
 sub getImage
