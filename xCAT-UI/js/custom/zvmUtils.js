@@ -80,7 +80,7 @@ function loadHcpInfo(data) {
     if (userEntry[0].indexOf('Failed') < 0) {
         if (hcp) {
             // If there is no cookie for the disk pool names
-            if (!$.cookie(hcp + 'diskpools')) {
+            if (!$.cookie(hcp + 'diskpools') || $.cookie(hcp + 'diskpools') === null) {
                 // Get disk pools
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -97,7 +97,7 @@ function loadHcpInfo(data) {
             }
             
             // If there is no cookie for the zFCP pool names
-            if (!$.cookie(hcp + 'zfcppools')) {
+            if (!$.cookie(hcp + 'zfcppools') || $.cookie(hcp + 'zfcppools') === null) {
                 // Get disk pools
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -114,7 +114,7 @@ function loadHcpInfo(data) {
             }
         
             // If there is no cookie for the network names
-            if (!$.cookie(hcp + 'networks')) {
+            if (!$.cookie(hcp + 'networks') || $.cookie(hcp + 'networks') === null) {
                 // Get network names
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -955,7 +955,8 @@ function getZResources(data) {
         for (var key in hcpHash) {
             // Get the short host name
             hcp = key.split('.')[0];
-            hcps.push(hcp);
+            if (jQuery.inArray(hcp, hcps) == -1)
+                hcps.push(hcp);
         }
 
         // Set hardware control point cookie
@@ -1159,7 +1160,7 @@ function openAddProcDialog(node) {
     procType.append(typeSelect);
     addProcForm.append(procType);
     
-	// Generate tooltips
+    // Generate tooltips
     addProcForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1248,7 +1249,7 @@ function openAddDiskDialog(node, hcp) {
     var cookie = $.cookie(hcp + 'diskpools');
     var pools = new Array();
     if (cookie) {
-    	pools = cookie.split(',');
+        pools = cookie.split(',');
     }
     
     // Create form to add disk
@@ -1288,7 +1289,7 @@ function openAddDiskDialog(node, hcp) {
 
     addDiskForm.append('<div><label>Disk password:</label><input type="password" id="diskPassword" name="diskPassword" title="Optional. Defines the read, write, and multi password that will be used for accessing the disk."/></div>');
 
-	// Generate tooltips
+    // Generate tooltips
     addDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1411,7 +1412,7 @@ function openAddZfcpDialog(node, hcp, zvm) {
     var cookie = $.cookie(hcp + 'zfcppools');
     var pools = new Array();
     if (cookie) {
-    	pools = cookie.split(',');
+        pools = cookie.split(',');
     }
     
     // Create form to add disk
@@ -1452,7 +1453,7 @@ function openAddZfcpDialog(node, hcp, zvm) {
         advanced.toggle();
     });
     
-	// Generate tooltips
+    // Generate tooltips
     addZfcpForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1492,9 +1493,9 @@ function openAddZfcpDialog(node, hcp, zvm) {
                 var loaddev = $(this).find('input[name=diskLoaddev]');
                 var size = $(this).find('input[name=diskSize]').val();
                 var pool = $(this).find('select[name=diskPool]').val();
-                var tag = $(this).find('select[name=diskTag]').val();
-                var portName = $(this).find('select[name=diskPortName]').val();
-                var unitNo = $(this).find('select[name=diskUnitNo]').val();
+                var tag = $(this).find('input[name=diskTag]').val();
+                var portName = $(this).find('input[name=diskPortName]').val();
+                var unitNo = $(this).find('input[name=diskUnitNo]').val();
                 
                 // If inputs are not complete, show warning message
                 if (!node || !address || !size || !pool) {
@@ -1511,10 +1512,12 @@ function openAddZfcpDialog(node, hcp, zvm) {
                     
                     if (tag && tag != "null") {
                         args += '||' + tag;
-                    } if (portName && tag != "null") {
-                        args += '||' + portName;
-                    } if (unitNo && tag != "null") {
-                        args += '||' + unitNo;
+                    } else {
+                    	args += '|| ""';
+                    }
+                    
+                    if ((portName && portName != "null") && (unitNo && unitNo != "null")) {
+                        args += '||' + portName + '||' + unitNo;
                     }
                     
                     // Add zFCP device
@@ -1572,7 +1575,7 @@ function openDedicateDeviceDialog(node, hcp) {
             '<option value="1">Read-only</option>' +
         '</select>');
     
-	// Generate tooltips
+    // Generate tooltips
     dedicateForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1675,7 +1678,7 @@ function openAddEckd2SystemDialog(hcp) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     
     // Create info bar
@@ -1685,7 +1688,7 @@ function openAddEckd2SystemDialog(hcp) {
     addE2SForm.append(system);    
     addE2SForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The disk device number"/></div>');
 
-	// Generate tooltips
+    // Generate tooltips
     addE2SForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1727,10 +1730,10 @@ function openAddEckd2SystemDialog(hcp) {
                 var args = new Array('select[name=system]', 'input[name=devNum]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -1787,7 +1790,7 @@ function openAddPageSpoolDialog(hcp) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     
     // Create info bar
@@ -1805,7 +1808,7 @@ function openAddPageSpoolDialog(hcp) {
     diskAttr.append('<div><label>Volume label:</label><input type="text" name="volLabel" value="" maxlength="6" title="The name to be associated with the newly formatted volume"/></div>');
     diskAttr.append('<div><label>Volume use:</label><select name="volUse" title="Specifies that the volume is to be formatted and used as a page or spool volume"><option value="PAGE">Page</option><option value="SPOOL">Spool</option></select></div>');
     
-	// Generate tooltips
+    // Generate tooltips
     addPageSpoolForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1849,10 +1852,10 @@ function openAddPageSpoolDialog(hcp) {
                 var args = new Array('select[name=system]', 'input[name=volAddr]', 'input[name=volLabel]', 'select[name=volUse]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -1905,7 +1908,7 @@ function openShareDiskDialog(disks2share) {
     var tgtVol = args[1];
     
     if (!tgtVol || tgtVol == "undefined")
-    	tgtVol = "";
+        tgtVol = "";
     
     // Create info bar
     var info = createInfoBar('Indicate a full-pack minidisk is to be shared by the users of many real and virtual systems.');
@@ -1917,7 +1920,7 @@ function openShareDiskDialog(disks2share) {
     var shareEnable = $('<div><label>Share enable:</label><select name="shareEnable" title="Turns sharing of the specified full-pack minidisk on or off"><option value="ON">On</option><option value="OFF">Off</option></select></div>');
     shareDiskForm.append(node, volAddr, shareEnable);
         
-	// Generate tooltips
+    // Generate tooltips
     shareDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -1961,10 +1964,10 @@ function openShareDiskDialog(disks2share) {
                 var args = new Array('input[name=node]', 'input[name=volAddr]', 'select[name=shareEnable]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -2027,7 +2030,7 @@ function openAddScsi2SystemDialog(hcp) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
         
     var devNo = $('<div><label>Device number:</label><input type="text" name="devNo" maxlength="4" title="The SCSI disk device number"/></div>');
@@ -2109,7 +2112,7 @@ function openAddScsi2SystemDialog(hcp) {
 
         devPathBody.append(devPathRow);
         
-    	// Generate tooltips
+        // Generate tooltips
         addS2SForm.find('div input[title],select[title]').tooltip({
             position: "center right",
             offset: [-2, 10],
@@ -2138,17 +2141,17 @@ function openAddScsi2SystemDialog(hcp) {
     devPathDiv.append(devPathTable);
     
     var option = $('<div><label>Option:</label><select name="option" title="The action to perform">' +
-    		'<option selected value="1">Add a new SCSI disk</option>' +
-    		'<option value="2">Add new paths to an existing SCSI disk</option>' +
-    		'<option value="3">Delete paths from an existing SCSI disk</option>' +
-    	'</select></div>');
+            '<option selected value="1">Add a new SCSI disk</option>' +
+            '<option value="2">Add new paths to an existing SCSI disk</option>' +
+            '<option value="3">Delete paths from an existing SCSI disk</option>' +
+        '</select></div>');
     var persist = $('<div><label>Persist:</label><select name="persist" title="Specifies that the SCSI device is to be updated on the active system configuration or both the active and permanent system configurations">' +
-    		'<option selected value="no">No</option>' +
-    		'<option value="yes">Yes</option>' +
-		'</select></div>');
+            '<option selected value="no">No</option>' +
+            '<option value="yes">Yes</option>' +
+        '</select></div>');
     addS2SForm.append(system, devNo, devPathDiv, option, persist);
     
-	// Generate tooltips
+    // Generate tooltips
     addS2SForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -2212,10 +2215,10 @@ function openAddScsi2SystemDialog(hcp) {
                 var args = new Array('select[name=system]', 'input[name=devNum]', 'select[name=option]', 'select[name=persist]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -2261,7 +2264,7 @@ function openRemoveScsiDialog(hcp) {
     // Create form to add disk
     var removeScsiForm = $('<div id="' + dialogId + '" class="form"></div>');
     
-	// Obtain mapping for zHCP to zVM system
+    // Obtain mapping for zHCP to zVM system
     var hcp2zvm = new Object();
     hcp2zvm = getHcpZvmHash();
     
@@ -2272,7 +2275,7 @@ function openRemoveScsiDialog(hcp) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     
     // Create info bar
@@ -2280,11 +2283,11 @@ function openRemoveScsiDialog(hcp) {
     removeScsiForm.append(info, system);
     removeScsiForm.append('<div><label>Device number:</label><input type="text" name="devNum" value="" maxlength="4" title="The SCSI disk device number"/></div>');
     removeScsiForm.append('<div><label>Persist:</label><select name="persist" title="Specifies that the SCSI device is to be updated on the active system configuration or both the active and permanent system configurations">' +
-    		'<option value="NO">No</option>' +
-    		'<option value="YES>Yes</option>' +
-    	'</select></div>');
+            '<option value="NO">No</option>' +
+            '<option value="YES>Yes</option>' +
+        '</select></div>');
     
-	// Generate tooltips
+    // Generate tooltips
     removeScsiForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -2328,10 +2331,10 @@ function openRemoveScsiDialog(hcp) {
                 var args = new Array('select[name=system]', 'input[name=devNum]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -2375,10 +2378,10 @@ function openRemoveScsiDialog(hcp) {
  */
 function openAddNicDialog(node, hcp) {
     // Get network names
-	var cookie = $.cookie(hcp + 'networks');
+    var cookie = $.cookie(hcp + 'networks');
     var networks = new Array();
     if (cookie) {
-    	networks = cookie.split(',');
+        networks = cookie.split(',');
     }
         
     // Create form to add NIC
@@ -2512,7 +2515,7 @@ function openAddNicDialog(node, hcp) {
         }
     });
     
-	// Generate tooltips
+    // Generate tooltips
     addNicForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -2648,7 +2651,7 @@ function openAddVswitchVlanDialog(hcp) {
     // Create form to add disk
     var addVswitchForm = $('<div id="' + dialogId + '" class="form"></div>');
     
-	// Create info bar
+    // Create info bar
     var info = createInfoBar('Create a virtual switch or virtual network LAN.');
     
     var netFS = $('<fieldset></fieldset>');
@@ -2666,10 +2669,10 @@ function openAddVswitchVlanDialog(hcp) {
     
     var networkTypeDiv = $('<div><label>Network Type:</label>');
     var networkType = $('<select name="networkType">' +
-    		'<option></option>' +
-    		'<option value="vswitch">vSwitch</option>' +
-    		'<option value="vlan">VLAN</option>' +
-		'</select></div>');
+            '<option></option>' +
+            '<option value="vswitch">vSwitch</option>' +
+            '<option value="vlan">VLAN</option>' +
+        '</select></div>');
     networkTypeDiv.append(networkType)
     netAttr.append(networkTypeDiv);
     
@@ -2683,7 +2686,7 @@ function openAddVswitchVlanDialog(hcp) {
     hcp2zvm = getHcpZvmHash();
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
 
     var typeAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
@@ -2708,38 +2711,38 @@ function openAddVswitchVlanDialog(hcp) {
     });
     
     advanced.append($('<div><label>Connection:</label><select name="connection" title="The real device connection">' + 
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">Activate real device connection</option>' +
-    		'<option value="2">Do not activate real device connection</option>' +
-    	'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">Activate real device connection</option>' +
+            '<option value="2">Do not activate real device connection</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>QDIO buffer size:</label><input type="text" name="queueMemoryLimit" maxlength="1" value="8" title="A number between 1 and 8 specifying the QDIO buffer size in megabytes. If unspecified, the default is 8."/></div>'));
     advanced.append($('<div><label>Routing:</label><select name="routingValue" title="Specifies whether the OSA-Express QDIO device will act as a router to the virtual switch">' +
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">NONROUTER</option>' +
-    		'<option value="2">PRIROUTER</option>' +
-		'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">NONROUTER</option>' +
+            '<option value="2">PRIROUTER</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>Transport:</label><select name="transportType" title="Specifies the transport mechanism to be used for the virtual switch">' +
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">IP</option>' +
-    		'<option value="2">ETHERNET</option>' +
-		'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">IP</option>' +
+            '<option value="2">ETHERNET</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>VLAN ID:</label><input type="text" name="vlanId" value="-1" title="Specifies the VLAN ID"/></div>'));
     advanced.append($('<div><label>Port type:</label><select name="portType" title="Specifies the port type">' +
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">ACCESS</option>' +
-    		'<option value="2">TRUNK</option>' +
-		'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">ACCESS</option>' +
+            '<option value="2">TRUNK</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>Update sysconfig:</label><select name="updateSysConfig" title="Specifies whether to add the virtual switch definition to the system configuration file">' +
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">Create virtual switch</option>' +
-    		'<option value="2">Create virtual switch and add definition to system configuration</option>' +
-    		'<option value="3">Add virtual switch definition to system configuration</option>' +
-    	'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">Create virtual switch</option>' +
+            '<option value="2">Create virtual switch and add definition to system configuration</option>' +
+            '<option value="3">Add virtual switch definition to system configuration</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>GVRP:</label><select name="gvrp" title="GVRP will run only on 802.1Q trunk ports and is used primarily to prune traffic from VLANs that does not need to be passed between trunking switches">' +
-    		'<option value="0">Unspecified</option>' +
-    		'<option value="1">GVRP</option>' +
-    		'<option value="2">NOGVRP</option>' +
-		'</select></div>'));
+            '<option value="0">Unspecified</option>' +
+            '<option value="1">GVRP</option>' +
+            '<option value="2">NOGVRP</option>' +
+        '</select></div>'));
     advanced.append($('<div><label>Native VLAN ID:</label><input type="text" name="nativeVlanId" value="-1" title="The native VLAN ID"/></div>'));
     
     // Create VLAN parameters
@@ -2763,24 +2766,24 @@ function openAddVswitchVlanDialog(hcp) {
     typeAttr.append(vswitchOptions, vlanOptions);
           
     networkType.change(function() {
-    	typeFS.show();
+        typeFS.show();
         if ($(this).val() == "vswitch") {
-        	typeFS.find("legend").text("vSwitch");
-        	vswitchOptions.show();
-        	vlanOptions.hide();
+            typeFS.find("legend").text("vSwitch");
+            vswitchOptions.show();
+            vlanOptions.hide();
         } else if ($(this).val() == "vlan") {
-        	typeFS.find("legend").text("VLAN");
-        	vswitchOptions.hide();
-        	vlanOptions.show();
+            typeFS.find("legend").text("VLAN");
+            vswitchOptions.hide();
+            vlanOptions.show();
         } else {
-        	typeFS.find("legend").text("");
-        	vswitchOptions.hide();
-        	vlanOptions.hide();
-        	typeFS.hide();
+            typeFS.find("legend").text("");
+            vswitchOptions.hide();
+            vlanOptions.hide();
+            typeFS.hide();
         }          
     });
     
-	// Generate tooltips
+    // Generate tooltips
     addVswitchForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -2837,10 +2840,10 @@ function openAddVswitchVlanDialog(hcp) {
                     var args = new Array('select[name=system]', 'input[name=switchName]', 'input[name=deviceAddress]', 'input[name=controllerName]');
                     for (var i in args) {
                         if (!$(this).find(args[i]).val()) {
-                        	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                            $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                             ready = false;
                         } else {
-                        	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                            $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                         }
                     }
                     
@@ -2911,10 +2914,10 @@ function openAddVswitchVlanDialog(hcp) {
                     var args = new Array('select[name=system]', 'input[name=vlanName]', 'input[name=vlanOwner]', 'select[name=vlanType]', 'select[name=vlanTransport]');
                     for (var i in args) {
                         if (!$(this).find(args[i]).val()) {
-                        	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                            $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                             ready = false;
                         } else {
-                        	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                            $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                         }
                     }
                     
@@ -3014,7 +3017,7 @@ function openRemoveVswitchVlanDialog(networkList) {
                                     infoMsg = data.rsp;
                                 }
                                 
-                            	openDialog("info", infoMsg);
+                                openDialog("info", infoMsg);
                             }
                         });
                     } else if (type.indexOf("LAN") != -1) {
@@ -3029,7 +3032,7 @@ function openRemoveVswitchVlanDialog(networkList) {
                             },
                             
                             success: function(data) {
-                            	var infoMsg;
+                                var infoMsg;
 
                                 // Create info message
                                 if (jQuery.isArray(data.rsp)) {
@@ -3041,7 +3044,7 @@ function openRemoveVswitchVlanDialog(networkList) {
                                     infoMsg = data.rsp;
                                 }
                                 
-                            	openDialog("info", infoMsg);
+                                openDialog("info", infoMsg);
                             }
                         });
                     }   
@@ -3234,8 +3237,8 @@ function getDiskPool(data) {
             } // End of if
         } // End of for
     } else {
-    	// Load empty table
-    	loadDiskPoolTable();
+        // Load empty table
+        loadDiskPoolTable();
     }
 }
 
@@ -3321,25 +3324,25 @@ function loadDiskPoolTable(data) {
     var hcp2zvm = new Object();
     var args, hcp, pool, stat, tmp;
     if (data) {
-	    // Do not continue if the call failed
-	    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
-	        return;
-	    }
-	    
-	    // Obtain mapping for zHCP to zVM system	    
-	    hcp2zvm = getHcpZvmHash();
-	    
-	    args = data.msg.split(';');
-	    hcp = args[0].replace('hcp=', '');
-	    pool = args[1].replace('pool=', '');
-	    stat = args[2].replace('stat=', '');
-	    tmp = data.rsp[0].split(hcp + ': ');
+        // Do not continue if the call failed
+        if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+            return;
+        }
+        
+        // Obtain mapping for zHCP to zVM system        
+        hcp2zvm = getHcpZvmHash();
+        
+        args = data.msg.split(';');
+        hcp = args[0].replace('hcp=', '');
+        pool = args[1].replace('pool=', '');
+        stat = args[2].replace('stat=', '');
+        tmp = data.rsp[0].split(hcp + ': ');
     } else {
-    	// Provide empty values so the table will be generated
-    	hcp = '';
-    	pool = '';
-    	stat = '';
-    	tmp = new Array();
+        // Provide empty values so the table will be generated
+        hcp = '';
+        pool = '';
+        stat = '';
+        tmp = new Array();
     }
 
     // Resource tab ID    
@@ -3515,23 +3518,23 @@ function loadZfcpPoolTable(data) {
     var hcp2zvm = new Object();
     var args, hcp, pool, tmp;
     if (data) {
-	    // Do not continue if the call failed
-	    if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
-	        return;
-	    }
-	    
-	    // Obtain mapping for zHCP to zVM system	    
-	    hcp2zvm = getHcpZvmHash();
-	    	    
-	    args = data.msg.split(';');
-	    hcp = args[0].replace('hcp=', '');
-	    pool = args[1].replace('pool=', '');
-	    tmp = data.rsp[0].split(hcp + ': ');
+        // Do not continue if the call failed
+        if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
+            return;
+        }
+        
+        // Obtain mapping for zHCP to zVM system        
+        hcp2zvm = getHcpZvmHash();
+                
+        args = data.msg.split(';');
+        hcp = args[0].replace('hcp=', '');
+        pool = args[1].replace('pool=', '');
+        tmp = data.rsp[0].split(hcp + ': ');
     } else {
-    	// Provide empty values so the table will be generated
-    	hcp = '';
-    	pool = ''
-    	tmp = new Array();
+        // Provide empty values so the table will be generated
+        hcp = '';
+        pool = ''
+        tmp = new Array();
     }
 
     // Resource tab ID    
@@ -3573,7 +3576,7 @@ function loadZfcpPoolTable(data) {
 
     if (data) {
         // Skip index 0 and 1 because it contains nothing
-    	var key = "";
+        var key = "";
         for ( var i = 2; i < tmp.length; i++) {
             tmp[i] = jQuery.trim(tmp[i]);
             var diskAttrs = tmp[i].split(',');
@@ -3671,26 +3674,26 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     var dialogId = 'zvmDeleteDiskFromPool';
     var deleteDiskForm = $('<div id="' + dialogId + '" class="form"></div>');
     
-	// Obtain mapping for zHCP to zVM system
+    // Obtain mapping for zHCP to zVM system
     var hcp2zvm = new Object();
     hcp2zvm = getHcpZvmHash();
     
     var disks = new Array();
     if (disks2remove.indexOf(',') > -1)
-    	disks = disks2remove.split(',');
+        disks = disks2remove.split(',');
     else
-    	disks.push(disks2remove);
+        disks.push(disks2remove);
     
     // Pick the last zHCP and pool it finds
     var args, tgtHcp = "", tgtPool = "", tgtVol = "";
     for (var i in disks) {
-    	args = disks[i].split('-');
+        args = disks[i].split('-');
         tgtHcp = args[0];
         tgtPool = args[1];
         tgtVol += args[2] + ',';
     }
     
-	// Strip out last comma
+    // Strip out last comma
     tgtVol = tgtVol.slice(0, -1);
         
     // Create info bar
@@ -3718,7 +3721,7 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     systemSelect.val(tgtHcp);
             
@@ -3736,7 +3739,7 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
         }        
     });
     
-	// Generate tooltips
+    // Generate tooltips
     deleteDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -3781,10 +3784,10 @@ function openRemoveDiskFromPoolDialog(disks2remove) {
                 var args = new Array('select[name=system]', 'select[name=action]', 'input[name=region]', 'input[name=group]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -3860,10 +3863,10 @@ function openAddDisk2PoolDialog() {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     
-	// Generate tooltips
+    // Generate tooltips
     addDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -3908,10 +3911,10 @@ function openAddDisk2PoolDialog() {
                 var args = new Array('select[name=system]', 'select[name=action]', 'input[name=volume]', 'input[name=group]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -4005,11 +4008,11 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
     // Append options for hardware control points
     systemSelect.append($('<option value=""></option>'));
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
     systemSelect.val(tgtHcp);
 
-	// Generate tooltips
+    // Generate tooltips
     deleteDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -4053,10 +4056,10 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                 var args = new Array('select[name=system]', 'input[name=zfcpPool]', 'input[name=zfcpUnitNo]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -4074,7 +4077,7 @@ function openRemoveZfcpFromPoolDialog(devices2remove) {
                 
                 var args = '--removezfcpfrompool;' + pool + ';' + unitNo;
                 if (portName) {
-                	args += ';' + portName;
+                    args += ';' + portName;
                 }
                 $.ajax({
                     url : 'lib/cmd.php',
@@ -4130,10 +4133,10 @@ function openAddZfcp2PoolDialog() {
     systemSelect.append($('<option value=""></option>'));    
     // Append options for hardware control points
     for (var hcp in hcp2zvm) {
-    	systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
+        systemSelect.append($('<option value="' + hcp2zvm[hcp] + '">' + hcp2zvm[hcp] + '</option>'));
     }
         
-	// Generate tooltips
+    // Generate tooltips
     addDiskForm.find('div input[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -4186,10 +4189,10 @@ function openAddZfcp2PoolDialog() {
                 var args = new Array('select[name=system]', 'input[name=zfcpPool]', 'select[name=zfcpStatus]', 'input[name=zfcpPortName]', 'input[name=zfcpUnitNo]');
                 for (var i in args) {
                     if (!$(this).find(args[i]).val()) {
-                    	$(this).find(args[i]).css('border', 'solid #FF0000 1px');
+                        $(this).find(args[i]).css('border', 'solid #FF0000 1px');
                         ready = false;
                     } else {
-                    	$(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
+                        $(this).find(args[i]).css('border', 'solid #BDBDBD 1px');
                     }
                 }
                 
@@ -4205,13 +4208,21 @@ function openAddZfcp2PoolDialog() {
                     'Close': function() {$(this).dialog("close");}
                 });
                 
+                // zFCP range and owner are optional
+                var args = '--addzfcp2pool||' + tgtPool + '||' + tgtStatus + '||"' + tgtPortName + '"||' + tgtUnitNo + '||' + tgtSize;
+                if (tgtRange) {
+                	args += '||' + tgtRange;
+                } if (tgtOwner) {
+                	args += '||' + tgtOwner;
+                }
+                
                 $.ajax( {
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
                         cmd : 'chhypervisor',
                         tgt : tgtSystem,
-                        args : '--addzfcp2pool||' + tgtPool + '||' + tgtStatus + '||"' + tgtPortName + '"||' + tgtUnitNo + '||' + tgtSize + '||' + tgtRange + '||' + tgtOwner,
+                        args : args,
                         msg : dialogId
                     },
 
@@ -4326,10 +4337,10 @@ function loadNetworkTable(data) {
         zvm = args[0].toLowerCase();
         
         if (args[1].indexOf('.') != -1) {
-        	tmp = args[1].split('.');
-        	iHcp = tmp[0];
+            tmp = args[1].split('.');
+            iHcp = tmp[0];
         } else {
-        	iHcp = args[1];
+            iHcp = args[1];
         }
         
         hcp2zvm[iHcp] = zvm;
@@ -4395,7 +4406,7 @@ function loadNetworkTable(data) {
     // Determine the OSI layer
     var layer = "3";
     if (details.indexOf("ETHERNET") != -1) {
-    	layer = "2";
+        layer = "2";
     }
     
     // Find the vSwitch/VLAN owner
@@ -4409,7 +4420,7 @@ function loadNetworkTable(data) {
     var controllers = "";
     match = "";
     while (match = regex.exec(details)) {
-    	controllers += match[1] + ",";
+        controllers += match[1] + ",";
     }
     controllers = controllers.substring(0, controllers.length - 1);  // Delete last two characters
         
@@ -5271,11 +5282,11 @@ function createZProvisionNew(inst) {
         var thisUserId = $('#' + thisTabId + ' input[name=userId]:visible');
         var pos = thisUserEntry.val().indexOf('USER ' + thisUserId.val().toUpperCase());
         if (pos < 0) {
-        	
-        	pos = thisUserEntry.val().indexOf('IDENTITY ' + thisUserId.val().toUpperCase());
+            
+            pos = thisUserEntry.val().indexOf('IDENTITY ' + thisUserId.val().toUpperCase());
             if (pos < 0) {
-            	errMsg = errMsg + 'The directory entry does not contain the correct user/identity ID.<br>';
-            	ready = false;
+                errMsg = errMsg + 'The directory entry does not contain the correct user/identity ID.<br>';
+                ready = false;
             }
         }
 
@@ -5713,7 +5724,7 @@ function setGoldenImagesCookies(data) {
         var tmp = data.rsp[0].split(",");
         for ( var i = 0; i < tmp.length; i++) {
             if (tmp[i] != null && tmp[i] != "") {
-            	copies.push(tmp[i]);
+                copies.push(tmp[i]);
             }
         }
         
@@ -5761,6 +5772,20 @@ function setZfcpPoolCookies(data) {
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
         $.cookie(node + 'zfcppools', pools, { expires: exDate });
+    }
+}
+
+/**
+ * Set a cookie for zHCP host names
+ * 
+ * @param zhcps List of zHCPs known
+ */
+function setzHcpCookies(zhcps) {
+    if (zhcps.length) {
+        // Set cookie to expire in 60 minutes
+        var exDate = new Date();
+        exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+        $.cookie('zhcps', zhcps, { expires: exDate });
     }
 }
 
@@ -5887,7 +5912,7 @@ function configProfilePanel(panelId) {
     deleteLnk.click(function() {
         var profiles = getNodesChecked(tableId);
         if (profiles) {
-        	deleteProfileDialog(profiles);
+            deleteProfileDialog(profiles);
         }
     });
     
@@ -6054,7 +6079,7 @@ function profileDialog() {
     profileForm.append('<div><label>Disk size (ECKD):</label><input type="text" name="disk_size_eckd" title="The default size of the disk, which can be given as G, M, or number of cylinders."/></div>');
     profileForm.append('<div><label style="vertical-align: top;">Directory entry:</label><textarea name="directory_entry" title="The default directory entry for a node. The default user ID must be set to LXUSR."/></div>');
     
-	// Generate tooltips
+    // Generate tooltips
     profileForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -6235,7 +6260,7 @@ function editProfileDialog(profile, pool, size, entry) {
     profileForm.find('input[name=disk_size_eckd]').val(size);
     profileForm.find('textarea[name=directory_entry]').val(entry);
     
-	// Generate tooltips
+    // Generate tooltips
     profileForm.find('div input[title],textarea[title],select[title]').tooltip({
         position: "center right",
         offset: [-2, 10],
@@ -6336,7 +6361,7 @@ function editProfileDialog(profile, pool, size, entry) {
  * @returns Hash map containing the zHCP to z/VM system mapping
  */
 function getHcpZvmHash() {
-	// Get zVM host names
+    // Get zVM host names
     if (!$.cookie('zvms')) {
         $.ajax({
             url : 'lib/cmd.php',
@@ -6363,10 +6388,10 @@ function getHcpZvmHash() {
         zvm = args[0].toLowerCase();
         
         if (args[1].indexOf('.') != -1) {
-        	tmp = args[1].split('.');
-        	iHcp = tmp[0];
+            tmp = args[1].split('.');
+            iHcp = tmp[0];
         } else {
-        	iHcp = args[1];
+            iHcp = args[1];
         }
         
         hcp2zvm[iHcp] = zvm;

@@ -328,8 +328,6 @@ function openCreateUserDialog(data) {
                     args += ' policy.name=' + usrName;
                 } if (host) {
                     args += " policy.host='" + host + "'";
-                } if (commands) {
-                    args += " policy.commands='" + commands + "'";
                 } if (parameters) {
                     args += " policy.parameters='" + parameters + "'";
                 } if (nodeRange) {
@@ -345,6 +343,13 @@ function openCreateUserDialog(data) {
                     args += " policy.comments='" + comments + "'";
                 } else {
                 	args += " policy.comments=''";
+                }
+                
+                // Handle cases where there are commands and no commands
+                if (commands) {
+                    args += " policy.commands='" + commands + "'";
+                } else {
+                	args += " policy.commands=''";
                 }
                 
                 // Trim any extra spaces
@@ -396,21 +401,30 @@ function openCreateUserDialog(data) {
     // Change comments if access checkbox is checked
     typeSelect.change(function() {
     	var comments = createUserForm.find('input[name=comments]').val();
-    	var tag = "privilege:root";
-    	comments = jQuery.trim(comments);  
+    	var cmds = createUserForm.find('input[name=commands]').val();
+    	comments = jQuery.trim(comments);
+    	cmds = jQuery.trim(cmds);
     	
-    	// Append tag to comments
+    	var tag = "privilege:root";
+    	
+    	// The list of every command used by the self-service page
+    	// Every command must be separated by a comma
+    	var authorizedCmds = "authcheck,lsdef,nodestat,tabdump,rinv,rpower,rmvm,webportal,webrun";
+    	
+    	// Append tag to commands and comments
     	if (typeSelect.val().indexOf("admin") > -1) {  		
     		if (comments && comments.charAt(comments.length - 1) != ";") {
     			comments += ";";
     		}
     		
     		comments += tag;
-    		createUserForm.find('input[name=comments]').val(comments);
+    		createUserForm.find('input[name=comments]').val(comments);    		
+    		createUserForm.find('input[name=commands]').val("");
     	} else {
     		comments = comments.replace(tag, "");
     		comments = comments.replace(";;", ";");
-    		createUserForm.find('input[name=comments]').val(comments);
+    		createUserForm.find('input[name=comments]').val(comments);    		
+    		createUserForm.find('input[name=commands]').val(authorizedCmds);
     	}
     	
     	// Strip off leading semi-colon
@@ -453,6 +467,9 @@ function openCreateUserDialog(data) {
         if (comments.indexOf("privilege:root") > -1) {
         	typeSelect.val("admin");
         }
+    } else {
+    	// Default user type to guest
+    	typeSelect.val("guest").change();
     }
 }
 /**

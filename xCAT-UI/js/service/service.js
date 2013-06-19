@@ -536,7 +536,7 @@ function loadNodesTable(data) {
         }
     });
     
-    // Power softoff
+	// Power softoff
     var powerSoftoffLnk = $('<a>Shutdown</a>');
     powerSoftoffLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesDTId);

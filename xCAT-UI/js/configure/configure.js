@@ -75,7 +75,7 @@ function loadConfigPage() {
     tab.add('discoverTab', 'Discover', '', false);
     
     // Add the self-service tab
-    tab.add('serviceTab', 'Service', '', false);    
+    tab.add('serviceTab', 'Service', '', false);
 
     // Get list of tables and their descriptions
     $.ajax({
@@ -98,7 +98,7 @@ function loadConfigPage() {
     		return;
     	}
     	
-        if (ui.index == 1) {        	
+        if (ui.index == 1) {
         	loadUpdatePage();
         } else if (ui.index == 2) {
         	loadUserPage();
