@@ -52,14 +52,21 @@ sub get_allocable_staticips_innet
     my $netentry = ($networkstab->getAllAttribsWhere("netname = '$netname'", 'ALL'))[0];
     my ($startip, $endip) =  split('-', $netentry->{'staticrange'});
     my $incremental = $netentry->{'staticrangeincrement'};
+    my $netmask = $netentry->{'mask'};
+    my $gateway = $netentry->{'gateway'};
     my $validipsref;
     if ($incremental and $startip and $endip){
         $validipsref = xCAT::NetworkUtils->get_allips_in_range($startip, $endip, $incremental);
     }
+    
+    my $broadcastip = xCAT::NetworkUtils->getBroadcast($startip, $netmask);
     foreach (@$validipsref){
-        if (! exists($iphash{$_})){
-            push @allocableips, $_;
+        #Remove ip which is broadcast ip, exclude ip, ips ended with 0, gateway ip
+        if (exists($iphash{$_}) or $_ eq $broadcastip or $_ eq $gateway 
+            or $_ =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(0)$/){
+            next;
         }
+        push @allocableips, $_;
     }
     return \@allocableips;
 }
