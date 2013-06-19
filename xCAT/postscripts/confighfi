@@ -99,15 +99,16 @@ ONBOOT=yes
     x=0
     while [ $x -le $i ]; do
         ip link set dev hf${x} down
+        sleep 2
         echo +hf${x} > /sys/class/net/bond0/bonding/slaves
         x=$((x+1))
     done
 
-    bond-mld > m.out 2>&1 &
     ip link set dev bond0 mtu 65536
 
     ifdown bond0
     ifup bond0
+    bond-mld > m.out 2>&1 &
 
 else
     # Configurartion for AIX
