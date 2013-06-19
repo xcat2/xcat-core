@@ -131,6 +131,8 @@ my %resources = (
     accounts      => \&accountsHandler,
     objects       => \&objectsHandler,
     vms           => \&vmsHandler,
+    debug         => \&debugHandler,
+    hypervisor    => \&hypervisorHandler,
     version       => \&versionHandler);
 
 #if no resource was specified
@@ -150,10 +152,28 @@ sub doesResourceExist {
 if ($DEBUGGING) {
     if (defined $q->param('PUTDATA')) {
         addPageContent("put data " . $q->p($q->param('PUTDATA') . "\n"));
+    } elsif (isPut()) {
+        my $entries = JSON::decode_json($q->param('PUTDATA'));
+        if (scalar(@$entries) >= 1) {
+            addPageContent("put data \n");
+            foreach (@$entries) {
+                addPageContent("$_\n");
+            }
+        }
     }
+    
     if (defined $q->param('POSTDATA')) {
         addPageContent("post data " . $q->p($q->param('POSTDATA') . "\n"));
+    } elsif (isPost()) {
+        my $entries = JSON::decode_json($q->param('POSTDATA'));
+        if (scalar(@$entries) >= 1) {
+            addPageContent("post data \n");
+            foreach (@$entries) {
+                addPageContent("$_\n");
+            }
+        }
     }
+
     addPageContent($q->p("Parameters "));
     my @params = $q->param;
     foreach (@params) {
@@ -359,6 +379,11 @@ sub imagesHandler {
             push @args, '-i';
             push @args, join(',', $q->param('field'));
         }
+        if (defined($q->param('criteria'))) {
+            foreach ($q->param('criteria')) {
+                push @args, '-w', "$_";
+            }
+        }
     }
     elsif (isPost()) {
         my $operationname = $image;
@@ -405,7 +430,67 @@ sub imagesHandler {
                 push @args, '-n';
                 push @args, $entryhash{'netdriver'};
             }
+            if (defined($entryhash{'device'})) {
+                push @args, '-d';
+                push @args, $entryhash{'device'};
+            }
         }
+        elsif ($operationname eq 'export') {             
+            $request->{command} = 'imgexport';           
+            if (defined($entryhash{'osimage'})) {        
+                push @args, $entryhash{'osimage'};       
+            }                                            
+            else {                                       
+                addPageContent('No image specified');   
+                sendResponseMsg($STATUS_BAD_REQUEST);    
+            }
+                                                          
+            if (defined($entryhash{'destination'})) {   
+                push @args, $entryhash{'destination'};  
+            }
+            if (defined($entryhash{'postscripts'})) {    
+                push @args, '-p';                        
+                push @args, $entryhash{'postscripts'};   
+            }
+            if (defined($entryhash{'extra'})) {         
+                push @args, '-e';                       
+                push @args, $entryhash{'extra'};        
+            }
+            if (defined($entryhash{'remotehost'})) {        
+                push @args, '-R';                        
+                push @args, $entryhash{'remotehost'};       
+            }
+            if (defined($entryhash{'verbose'})) {   
+                push @args, '-v';                        
+            }  
+        }                                            
+        elsif ($operationname eq 'import') {            
+            $request->{command} = 'imgimport';          
+            if (defined($entryhash{'osimage'})) {       
+                push @args, $entryhash{'osimage'};      
+            }                                           
+            else {                                      
+                addPageContent('No image specified');  
+                sendResponseMsg($STATUS_BAD_REQUEST);   
+            }
+                                                     
+            if (defined($entryhash{'profile'})) {        
+                push @args, '-f';                        
+                push @args, $entryhash{'profile'};       
+            }
+            if (defined($entryhash{'remotehost'})) {        
+                push @args, '-R';                        
+                push @args, $entryhash{'remotehost'};       
+            }
+            if (defined($entryhash{'postscripts'})) {   
+                push @args, '-p';                       
+                push @args, $entryhash{'postscripts'};  
+            }
+            
+            if (defined($entryhash{'verbose'})) {   
+                push @args, '-v';                        
+            }                                           
+        }            
     }
     elsif (isPut()) {
 
@@ -668,40 +753,51 @@ sub networksHandler {
     }
     elsif (isPut() || isPost()) {
         my $entries;
+        my $iscommand = 0;
         if (isPut()) {
             $request->{command} = 'chdef';
+            if (defined($path[1])) {
+                if ($path[1] eq "makehosts" || $path[1] eq "makedns") {
+                    # Issue makehost/makedns directly
+                    $request->{command} = $path[1];
+                    $iscommand = 1;
+                }
+            }
         }
         else {
             $request->{command} = 'mkdef';
         }
 
-        if (defined $path[1]) {
-            $netname = $path[1];
-        }
+        if (!$iscommand) {
+            if (defined $path[1]) {
+                $netname = $path[1];
+            }
 
-        if ($netname eq '') {
-            addPageContent('A network name must be specified.');
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
+            if ($netname eq '') {
+                addPageContent('A network name must be specified.');
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+        
+            push @{$request->{arg}}, '-t', 'network', '-o', $netname;
+        
+            if (defined($q->param('PUTDATA'))) {
+                $entries = JSON::decode_json($q->param('PUTDATA'));
+            }
+            elsif (defined($q->param('POSTDATA'))) {
+                $entries = JSON::decode_json($q->param('POSTDATA'));
+            }
+            else {
+                addPageContent("No Field and Value map was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
 
-        push @{$request->{arg}}, '-t', 'network', '-o', $netname;
-        if (defined($q->param('PUTDATA'))) {
-            $entries = JSON::decode_json($q->param('PUTDATA'));
-        }
-        elsif (defined($q->param('POSTDATA'))) {
-            $entries = JSON::decode_json($q->param('PUTDATA'));
-        }
-        else {
-            addPageContent("No Field and Value map was supplied.");
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
-
-        if (scalar($entries) < 1) {
-            addPageContent("No Field and Value map was supplied.");
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
-        foreach (@$entries) {
-            push @{$request->{arg}}, $_;
+            if (scalar($entries) < 1) {
+                addPageContent("No Field and Value map was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            foreach (@$entries) {
+                push @{$request->{arg}}, $_;
+            }
         }
     }
     elsif (isDelete()) {
@@ -729,6 +825,7 @@ sub nodesHandler {
     my @responses;
     my @args;
     my $noderange;
+    my @envs;
 
     if (defined $path[1]) {
         $noderange = $path[1];
@@ -781,6 +878,12 @@ sub nodesHandler {
                     push @args, 'all';
                 }
             }
+            elsif ($subResource eq "scan") {
+                $request->{command} = 'rscan';
+                if (defined $q->param('field')) {
+                    push @args, $q->param('field');
+                }
+            }
             else {
                 addPageContent("Unspported operation on nodes object.");
                 sendResponseMsg($STATUS_BAD_REQUEST);
@@ -806,52 +909,67 @@ sub nodesHandler {
     elsif (isPut()) {
         my $subResource;
         my @entries;
+        my $entrydata;
+        
+        unless (defined($noderange)) {
+	    addPageContent("Invalid nodes and/or groups in noderange");
+	    sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        $request->{noderange} = $noderange;
+		
+        unless ($q->param('PUTDATA')) {
+            #temporary allowance for the put data to be contained in the queryString
+            unless ($queryhash{'putData'}) {
+                addPageContent("No set attribute was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            else {
+                foreach my $put (@{$queryhash{'putData'}}) {
+                    my ($key, $value) = split(/=/, $put, 2);
+                    if ($key eq 'field' && $value) {
+                        push @entries, $value;
+                    }
+                }
+            }
+        }
+        else {
+            @entries = JSON::decode_json($q->param('PUTDATA'));
+            if (scalar(@entries) < 1) {
+                addPageContent("No set attribute was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+        }
+		
         if (defined $path[2]) {
             $subResource = $path[2];
 
-            unless (defined($noderange)) {
-                addPageContent("Invalid nodes and/or groups in noderange");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-            $request->{noderange} = $noderange;
-
-            unless ($q->param('PUTDATA')) {
-                #temporary allowance for the put data to be contained in the queryString
-                unless ($queryhash{'putData'}) {
-                    addPageContent("No set attribute was supplied.");
-                    sendResponseMsg($STATUS_BAD_REQUEST);
-                }
-                else {
-                    foreach my $put (@{$queryhash{'putData'}}) {
-                        my ($key, $value) = split(/=/, $put, 2);
-                        if ($key eq 'field' && $value) {
-                            push @entries, $value;
-                        }
-                    }
-                }
-
-                    
-            }
-            else {
-                @entries = JSON::decode_json($q->param('PUTDATA'));
-                if (scalar(@entries) < 1) {
-                    addPageContent("No set attribute was supplied.");
-                    sendResponseMsg($STATUS_BAD_REQUEST);
-                }
-            }
-
             if (($subResource ne "dsh") && ($subResource ne "dcp")) {
+                # For any function other than "dsh" or "dcp",
+                # move all operands to the argument list.
                 foreach (@entries) {
-                    push @args, $_;
+                    if (ref($_) eq 'ARRAY') {
+                        foreach (@$_) {
+                            push @args, $_;
+                        }
+                    } else {
+                        push @args, $_;
+                    }
                 }
             }
             if ($subResource eq "power") {
                 $request->{command} = "rpower";
+                my %elements;
+                extractData(\%elements, @entries);
+                
+                unless (scalar(%elements)) {
+                    addPageContent("No power operands were supplied.");
+                    sendResponseMsg($STATUS_BAD_REQUEST);
+                }
             }
             elsif ($subResource eq "energy") {
                 $request->{command} = "renergy";
             }
-            elsif ($subResource eq "bootstat") {
+            elsif ($subResource eq "bootstate") {
                 $request->{command} = "nodeset";
             }
             elsif ($subResource eq "bootseq") {
@@ -859,6 +977,9 @@ sub nodesHandler {
             }
             elsif ($subResource eq "setboot") {
                 $request->{command} = "rsetboot";
+            }
+            elsif ($subResource eq "migrate") {
+                $request->{command} = "rmigrate";
             }
             elsif ($subResource eq "dsh") {
                 $request->{command} = "xdsh";
@@ -926,6 +1047,11 @@ sub nodesHandler {
                 if (defined($elements{'command'})) {
                     push @args, $elements{'command'};
                 }
+                if (defined($elements{'remotepasswd'})) {
+                    push @envs, 'DSH_REMOTE_PASSWORD=' . $elements{'remotepasswd'};
+                    push @envs, 'DSH_FROM_USERID=root';
+                    push @envs, 'DSH_TO_USERID=root';
+                }
             }
             elsif ($subResource eq "dcp") {
                 $request->{command} = "xdcp";
@@ -976,8 +1102,17 @@ sub nodesHandler {
             }
         }
         else {
-            #sendErrorMessage($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
-            sendResponseMsg($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
+            my %elements;
+            my $name;
+            my $val;
+
+            $request->{command} = "tabch";
+            push @args, "node=" . $request->{noderange};
+
+            extractData(\%elements, @entries);
+            while (($name, $val) = each (%elements)) {
+            	push @args, $name . "=" . $val;
+            }
         }
     }
     elsif (isPost()) {
@@ -1019,6 +1154,9 @@ sub nodesHandler {
     }
 
     push @{$request->{arg}}, @args;
+    if (@envs) {
+        push @{$request->{env}}, @envs;
+    }
     my $req = genRequest();
     @responses = sendRequest($req);
 
@@ -1307,24 +1445,36 @@ sub tablesHandler {
     elsif (isPut() || isPatch()) {
         my $condition = $q->param('condition');
         my @vals;
+        my $entries;
         if (!defined $condition) {
-            foreach my $put (@{$queryhash{'putData'}}) {
-                my ($key, $value) = split(/=/, $put, 2);
-                if ($key eq 'condition' && $value) {
-                    $condition = $value;
+            unless ($q->param('PUTDATA')) {
+                foreach my $put (@{$queryhash{'putData'}}) {
+                    my ($key, $value) = split(/=/, $put, 2);
+                    if ($key eq 'condition' && $value) {
+                        $condition = $value;
+                    }
+                }
+                foreach my $put (@{$queryhash{'putData'}}) {
+                    my ($key, $value) = split(/=/, $put, 2);
+                    if ($key eq 'value') {
+                        push(@vals, $value);
+                    }
+	            }
+            }
+            else {
+                $entries = JSON::decode_json($q->param('PUTDATA'));
+                if (scalar(@$entries) < 1) {
+                    addPageContent("No set attribute was supplied.");
+                    sendResponseMsg($STATUS_BAD_REQUEST);
                 }
             }
-            foreach my $put (@{$queryhash{'putData'}}) {
-                my ($key, $value) = split(/=/, $put, 2);
-                if ($key eq 'value') {
-                    push(@vals, $value);
-                }
-	     }
         }
 
         if (!defined $table || !defined $condition) {
-            addPageContent("The table and condition must be specified when adding, changing or deleting an entry");
-            sendResponseMsg($STATUS_BAD_REQUEST);
+            if (scalar(@$entries) < 1) {
+                addPageContent("The table and condition must be specified when adding, changing or deleting an entry");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
         }
         $request->{command} = 'tabch';
         my $del;
@@ -1342,7 +1492,7 @@ sub tablesHandler {
             push @args, $condition;
             push @args, $table;
         }
-        else {
+        elsif (defined $condition) {
             push @args, $condition;
             if ($q->param('value')) {
                 for ($q->param('value')) {
@@ -1351,6 +1501,11 @@ sub tablesHandler {
             }
             else {
                 @args = (@args, @vals);
+            }
+        }
+        else {
+            foreach (@$entries) {
+                push @args, split(/ /,$_);
             }
         }
     }
@@ -1669,6 +1824,7 @@ sub objectsHandler {
 sub vmsHandler {
     my @args;
     my $noderange;
+    my $subResource;
     if (defined $path[1]) {
         $noderange = $path[1];
         $request->{noderange} = $noderange;
@@ -1683,6 +1839,25 @@ sub vmsHandler {
         if (defined $q->param('all')) {
             push @args, '-a';
         }
+        
+        # for z/VM
+        if (defined $q->param('networknames')) {
+            push @args, '--getnetworknames';
+        }
+	        
+        if (defined $q->param('network')) {
+            push @args, '--getnetwork';
+            push @args, $q->param('getnetwork');
+        }
+	        
+        if (defined $q->param('diskpoolnames')) {
+            push @args, '--diskpoolnames';
+        }
+	        
+        if (defined $q->param('diskpool')) {
+            push @args, '--diskpool';
+            push @args, $q->param('diskpool');
+        }
     }
     elsif (isPost()) {
         my $entries;
@@ -1695,7 +1870,7 @@ sub vmsHandler {
         }
 
         #collect all parameters from the postdata
-        my $entries = JSON::decode_json($q->param('PUTDATA'));
+        my $entries = JSON::decode_json($q->param('POSTDATA'));
         if (scalar(@$entries) < 1) {
             addPageContent("No set attribute was supplied.");
             sendResponseMsg($STATUS_BAD_REQUEST);
@@ -1752,6 +1927,37 @@ sub vmsHandler {
         if (defined $entryhash{'force'}) {
             push @args, '-f';
         }
+        
+        # for z/VM
+        if (defined $entryhash{'userid'}) {
+            push @args, '--userid';
+            push @args, $entryhash{'userid'};
+        }
+	
+        if (defined $entryhash{'size'}) {
+            push @args, '--size';
+            push @args, $entryhash{'size'};
+        }
+	        
+        if (defined $entryhash{'password'}) {
+            push @args, '--password';
+            push @args, $entryhash{'password'};
+        }
+	        
+        if (defined $entryhash{'privilege'}) {
+            push @args, '--privilege';
+            push @args, $entryhash{'privilege'};
+        }
+	        
+        if (defined $entryhash{'diskpool'}) {
+            push @args, '--diskpool';
+            push @args, $entryhash{'diskpool'};
+        }
+	        
+        if (defined $entryhash{'diskvdev'}) {
+            push @args, '--diskVdev';
+            push @args, $entryhash{'diskvdev'};
+        }
     }
     elsif (isPut()) {
         $request->{command} = 'chvm';
@@ -1762,7 +1968,8 @@ sub vmsHandler {
                 sendResponseMsg($STATUS_BAD_REQUEST);
             }
             foreach (@$entries) {
-                push @args, $_;
+                # Handle blank delimited parameters
+                push @args, split(/ /,$_);
             }
         }
         else {
@@ -1800,6 +2007,67 @@ sub versionHandler {
 sub jobsHandler {
 
 }
+
+sub hypervisorHandler {                                                
+    my @responses;                                             
+    my @args;                                                  
+    if (isPut()) {                                             
+        my %entryhash;                                         
+        if (defined $path[1]) {                                
+            $request->{noderange} = $path[1];                  
+        }                                                      
+        else {                                                 
+            addPageContent("Invalid nodes and/or groups in node in noderange");
+            sendResponseMsg($STATUS_BAD_REQUEST);              
+        }                                                      
+                                                               
+        if (defined $path[2]) {                                
+            $request->{command} = $path[2];                    
+        }                                                      
+        else {                                                 
+            $request->{command} = 'chhypervisor';              
+        }                                                      
+        my $entries = JSON::decode_json( $q->param('PUTDATA') );
+        if (scalar(@$entries) < 1) {                           
+            addPageContent("No set attribute was supplied.");  
+            sendResponseMsg($STATUS_BAD_REQUEST);              
+        }                                                      
+                                                               
+        foreach (@$entries) {
+            push @args, split(/ /,$_);
+        }                  
+                                                               
+        push @{$request->{arg}}, @args;                        
+        my $req = genRequest();                                
+        @responses = sendRequest($req);                        
+        return @responses;                                     
+    }                                                          
+}
+
+sub debugHandler {                                             
+    my @responses;                                             
+    my @args;                                                  
+    if (isPut()) {                                             
+        my %entryhash;                                         
+        $request->{command} = 'xcatclientnnr xcatdebug';       
+                                                               
+        #push @args, 'xcatdebug';                              
+        my $entries = JSON::decode_json( $q->param('PUTDATA') );
+        if (scalar(@$entries) < 1) {                           
+            addPageContent("No set attribute was supplied.");  
+            sendResponseMsg($STATUS_BAD_REQUEST);              
+        }                                                      
+                                                               
+        foreach (@$entries) {
+            push @{$request->{arg}}, $_;
+        }                                                      
+                                                               
+        push @{$request->{arg}}, @args;                        
+        my $req = genRequest();                                
+        @responses = sendRequest($req);                        
+        return @responses;                                     
+    }                                                          
+}                   
 
 #all data wrapping and writing is funneled through here
 sub wrapData {
@@ -2108,5 +2376,3 @@ sub isAuthenticUser {
     addPageContent($responses[0]->{error}[0]);
     sendResponseMsg($STATUS_UNAUTH);
 }
-
-
