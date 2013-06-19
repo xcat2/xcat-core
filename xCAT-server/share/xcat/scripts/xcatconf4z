@@ -2,7 +2,7 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 ### BEGIN INIT INFO
-# Provides: xcatconfinit
+# Provides: xcatconf4z
 # Default-Start: 2 3 5
 # Default-stop: 0 1 4 6
 # Required-Start: $syslog
@@ -80,7 +80,7 @@ function onlineDevice {
     fi
     rc=$(/sbin/chccwdev -e $device > /dev/null; echo $?)
     if (( rc != 0 )); then
-      echo "xcatconfinit $funcName (Error) Could not activate the virtual reader"
+      echo "xcatconf4z $funcName (Error) Could not activate the virtual reader"
       return 1
     fi
   fi
@@ -163,7 +163,7 @@ function pullReader {
     fi
     
     if (( rc != 0 )); then
-      echo "xcatconfinit funcName (Error) Failed to download record $spoolid"
+      echo "xcatconf4z funcName (Error) Failed to download record $spoolid"
     fi
   done
   return 0
@@ -248,22 +248,22 @@ function setupDisk {
     echo "Creating a file system node, source: $xcat_srcFile, target: $xcat_tgtFile"
     
     if [[ ! -n $xcat_srcFile ]]; then
-      echo "xcatconfinit $funcName (Error) Source file for creating a file system node was not specified"
+      echo "xcatconf4z $funcName (Error) Source file for creating a file system node was not specified"
       return
     fi
     
     if [[ ! -n $xcat_tgtFile ]]; then
-      echo "xcatconfinit $funcName (Error) Target file for creating a file system node was not specified"
+      echo "xcatconf4z $funcName (Error) Target file for creating a file system node was not specified"
       return
     fi
     if [[ -e $xcat_tgtFile ]]; then
-      echo "xcatconfinit $funcName (Error) Target file for creating a file system node already exists"
+      echo "xcatconf4z $funcName (Error) Target file for creating a file system node already exists"
       return
     fi
     
     out=`stat -L --printf=%t:%T $xcat_srcFile`
     if (( $? != 0 )); then
-      echo "xcatconfinit $funcName (Error) Unable to stat the source file: $xcat_srcFile"
+      echo "xcatconf4z $funcName (Error) Unable to stat the source file: $xcat_srcFile"
       return
     fi
     
@@ -283,7 +283,7 @@ function setupDisk {
   elif [[ $xcat_action == "removefilesysnode" ]]; then
     echo "Removing a file system node, target: $xcat_tgtFile"
     if [[ ! -n $xcat_tgtFile ]]; then
-      echo "xcatconfinit $funcName (Error) Target file for creating a file system node was not specified"
+      echo "xcatconf4z $funcName (Error) Target file for creating a file system node was not specified"
       return
     fi
     
@@ -303,19 +303,19 @@ function setupDisk {
     
     # Validate the input
     if [[ ! -n $xcat_fcpAddr ]]; then
-      echo "xcatconfinit $funcName (Error) FCP address was not specified"
+      echo "xcatconf4z $funcName (Error) FCP address was not specified"
       return
     fi
     xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
     
     if [[ ! -n $xcat_wwpn ]]; then
-      echo "xcatconfinit $funcName (Error) WWPN was not specified"
+      echo "xcatconf4z $funcName (Error) WWPN was not specified"
       return
     fi
     xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
     
     if [[ ! -n $xcat_lun ]]; then
-      echo "xcatconfinit $funcName (Error) LUN was not specified"
+      echo "xcatconf4z $funcName (Error) LUN was not specified"
       return
     fi
     xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
@@ -405,19 +405,19 @@ function setupDisk {
     
     # Validate the input
     if [[ ! -n $xcat_fcpAddr ]]; then
-      echo "xcatconfinit $funcName (Error) FCP address was not specified"
+      echo "xcatconf4z $funcName (Error) FCP address was not specified"
       return
     fi
     xcat_fcpAddr=`echo $xcat_fcpAddr | tr '[A-Z]' '[a-z]'`
     
     if [[ ! -n $xcat_wwpn ]]; then
-      echo "xcatconfinit $funcName (Error) WWPN was not specified"
+      echo "xcatconf4z $funcName (Error) WWPN was not specified"
       return
     fi
     xcat_wwpn=`echo $xcat_wwpn | tr '[A-Z]' '[a-z]'`
     
     if [[ ! -n $xcat_lun ]]; then
-      echo "xcatconfinit $funcName (Error) LUN was not specified"
+      echo "xcatconf4z $funcName (Error) LUN was not specified"
       return
     fi
     xcat_lun=`echo $xcat_lun | tr '[A-Z]' '[a-z]'`
@@ -463,9 +463,9 @@ function setupDisk {
 case "$1" in  
   start) 
     if [[ -z "$authorizedSenders" ]]; then
-      echo "xcatconfinit is disabled.  There are no authorized senders of configuration files."
+      echo "xcatconf4z is disabled.  There are no authorized senders of configuration files."
     else
-      echo "xcatconfinit is starting"
+      echo "xcatconf4z is starting"
       transportdir="/var/opt/xcat/transport"
       rm -Rf $transportdir
       /bin/mkdir -p $transportdir
