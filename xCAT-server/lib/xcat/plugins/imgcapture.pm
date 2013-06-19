@@ -46,10 +46,11 @@ sub process_request {
     @ARGV = @{$request->{arg}} if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage: imgcapture <node> -t|--type diskless [-p | --profile <profile>] [-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] [-V | --verbose] \n imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
+    my $usage = "Usage: imgcapture <node> -t|--type diskless [-p | --profile <profile>] [-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] [-d | --device <devicesToCapture>] [-V | --verbose] \n imgcapture <node> -t|--type sysclone -o|--osimage <osimage> [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
 
     my $os;
     my $arch;
+    my $device;
     my $profile;
     my $bootif;
     my $netdriver;
@@ -63,6 +64,7 @@ sub process_request {
         "i=s" => \$bootif,
         'n=s' => \$netdriver,
         'osimage|o=s' => \$osimg,
+        "device|d=s" => \$device,
         "help|h" => \$help,
         "version|v" => \$version,
         "verbose|V" => \$verbose,
@@ -76,6 +78,7 @@ sub process_request {
         xCAT::MsgUtils->message("D", $rsp, $callback);
         return 0;
     }
+    
     if($version) {
         my $version = xCAT::Utils->Version();
         my $rsp = {};
@@ -105,9 +108,25 @@ sub process_request {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;    
     }
+    
+    my $nodetypetab = xCAT::Table->new("nodetype");
+    my $ref_nodetype = $nodetypetab->getNodeAttribs($node, ['os','arch','profile']);
+    $os = $ref_nodetype->{os};
+    $arch = $ref_nodetype->{arch};
+    unless($profile) {
+        $profile = $ref_nodetype->{profile};
+    }
+    
     # sysclone
     unless($type =~ /diskless/)
     {
+    	# Handle image capture separately for s390x 
+    	if ($arch eq 's390x') {
+            eval { require xCAT_plugin::zvm; };  # Load z/VM plugin dynamically
+            xCAT_plugin::zvm->imageCapture($callback, $node, $os, $arch, $profile, $osimg, $device);
+            return;
+        }
+    
         my $shortname = xCAT::InstUtils->myxCATname();
 
         my $rc;
@@ -143,24 +162,14 @@ sub process_request {
             return 1;
         }
 
-
-        
         return;
     }
-    my $nodetypetab = xCAT::Table->new("nodetype");
-    my $ref_nodetype = $nodetypetab->getNodeAttribs($node, ['os','arch','profile']);
-    $os = $ref_nodetype->{os};
-    $arch = $ref_nodetype->{arch};
-    unless($profile) {
-        $profile = $ref_nodetype->{profile};
-    }
-
+    
     # -i flag is required with sles genimage
     if (!$bootif && $os =~ /^sles/) {
         $bootif = "eth0";
     }
     
-
     # check whether the osimage exists or not
     if($osimg) {
         my $osimgtab=xCAT::Table->new('osimage', -create=>1);
