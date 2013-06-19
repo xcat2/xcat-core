@@ -105,11 +105,11 @@ sub provzlinux {
     }
     
     # Check the max # of virtual machines allowed
-    my $out = `tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
+    my $out = `/opt/xcat/sbin/tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
     my @tmp = split( /\n/, $out );
     my $usrVM = scalar(@tmp) - 1;
     
-    $out = `webportal getmaxvm $owner`;
+    $out = `/opt/xcat/bin/webportal getmaxvm $owner`;
     $out =~ s/Max allowed: //g;
     my $maxVM = int($out);
     
@@ -230,15 +230,15 @@ sub provzlinux {
     # Set node definitions
     # Also put node into all group
     if ($group eq 'all') {
-        $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+        $out = `/opt/xcat/bin/mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
     } else {
         # Put node in all group
-        $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+        $out = `/opt/xcat/bin/mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
     }    
     println( $callback, "$out" );
     
     # Set nodetype definitions
-    $out = `chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+    $out = `/opt/xcat/sbin/chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
     # Create user directory entry replacing LXUSR with user ID
     # Use /opt/zhcp/conf/default.direct on zHCP as the template
@@ -246,7 +246,7 @@ sub provzlinux {
     #    INCLUDE LNXDFLT
     #    COMMAND SET VSWITCH VSW2 GRANT LXUSR
     $out = `sed $default_direct -e s/LXUSR/$userid/g > /tmp/$node-direct.txt`;
-    $out = `mkvm $node /tmp/$node-direct.txt`;
+    $out = `/opt/xcat/bin/mkvm $node /tmp/$node-direct.txt`;
     `rm -rf /tmp/$node-direct.txt`;
     println( $callback, "$out" );
     if ( $out =~ m/Error/i ) {
@@ -286,7 +286,7 @@ sub provzlinux {
             foreach (@$type) {
                 # Add ECKD disk
                 if ( $_ =~ m/dasd_eckd_mod/i ) {
-                    $out = `chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
+                    $out = `/opt/xcat/bin/chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
                     println( $callback, "$out" );
                     if ( $out =~ m/Error/i ) {
                         return;
@@ -317,7 +317,7 @@ sub provzlinux {
         
         # Add ECKD disk for each device found
         for $dev ( keys %devices ) {
-            $out = `chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
+            $out = `/opt/xcat/bin/chvm $node --add3390 $disk_pool $virt_addr $eckd_size MR`;
             println( $callback, "$out" );
             if ( $out =~ m/Error/i ) {
                 return;
@@ -328,36 +328,35 @@ sub provzlinux {
         }
     }
     
-    # Update hosts table and DNS
-    `makehosts`;
-    `makedns`;
+    # Update hosts table
+    `/opt/xcat/sbin/makehosts`;
 
     # Update DHCP
     `makedhcp -a`;
 
     # Toggle node power so COMMAND SET will get executed
-    `rpower $node on`;
-    `rpower $node off`;
+    `/opt/xcat/bin/rpower $node on`;
+    `/opt/xcat/bin/rpower $node off`;
 
     # Punch kernel, initrd, and ramdisk to node reader
-    $out = `nodeset $node install`;
+    $out = `/opt/xcat/sbin/nodeset $node install`;
     println( $callback, "$out" );
     if ( $out =~ m/Error/i ) {
         return;
     }
 
     # IPL reader and begin installation
-    $out = `rnetboot $node ipl=00C`;
+    $out = `/opt/xcat/bin/rnetboot $node ipl=00C`;
     println( $callback, "$out" );
     if ( $out =~ m/Error/i ) {
         return;
     }
     
     # Configure Ganglia monitoring
-    $out = `moncfg gangliamon $node -r`;
+    $out = `/opt/xcat/bin/moncfg gangliamon $node -r`;
     
     # Show node information, e.g. IP, hostname, and root password
-    $out = `lsdef $node -i ip,hostnames | egrep "ip=|hostnames="`;
+    $out = `/opt/xcat/bin/lsdef $node -i ip,hostnames | egrep "ip=|hostnames="`;
     my $rootpw = getsysrootpw();
     println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon using VNC ($node:1). Below is your VM attributes." );
     println( $callback, "$out" );
@@ -569,7 +568,7 @@ sub gennodename {
     }
                 
     # Check xCAT tables, /etc/hosts, and ping to see if hostname is already used
-    while (`nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
+    while (`/opt/xcat/bin/nodels $hostname` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
         # Base digit invalid if over 254
         if ($base_digit > $range_high) {
             last;
@@ -603,11 +602,11 @@ sub clonezlinux {
     my $owner = $request->{arg}->[3];
     
     # Check the max # of virtual machines allowed
-    my $out = `tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
+    my $out = `/opt/xcat/sbin/tabdump nodetype -w nodetype.comments=~"owner:$owner"`;
     my @tmp = split( /\n/, $out );
     my $usrVM = scalar(@tmp) - 1;
     
-    $out = `webportal getmaxvm $owner`;
+    $out = `/opt/xcat/bin/webportal getmaxvm $owner`;
     $out =~ s/Max allowed: //g;
     my $maxVM = int($out);
     
@@ -688,34 +687,34 @@ sub clonezlinux {
     my $userid = $node;
         
     # Set node definitions
-    $out = `mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
+    $out = `/opt/xcat/bin/mkdef -t node -o $node userid=$userid hcp=$hcp mgt=zvm groups=$group`;
     println( $callback, "$out" );
 
     # Set nodetype definitions
-    $out = `chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
+    $out = `/opt/xcat/sbin/chtab node=$node hosts.ip=$ip hosts.hostnames=$hostname noderes.netboot=zvm nodetype.nodetype=osi nodetype.provmethod=install nodetype.os=$os nodetype.arch=$arch nodetype.profile=$profile nodetype.comments="owner:$owner"`;
 
-    # Update hosts table and DNS
+    # Update hosts table
     sleep(5); # Time needed to update /etc/hosts
-    `makehosts`;
-    `makedns`;
+    `/opt/xcat/sbin/makehosts`;
+    `/opt/xcat/sbin/makedns`;
 
     # Update DHCP
-    `makedhcp -a`;
+    `/opt/xcat/sbin/makedhcp -a`;
     println( $callback, "hosts table, DHCP, and DNS updated" );
 
     # Clone virtual machine    
     sleep(5); # Time needed to update /etc/hosts
-    $out = `mkvm $node $src_node pool=$disk_pool`;
+    $out = `/opt/xcat/bin/mkvm $node $src_node pool=$disk_pool`;
     println( $callback, "$out" );
     if ( $out =~ m/Error/i || $out =~ m/Failed/i ) {
         return;
     }
-    
+        
     # Configure Ganglia monitoring
-    $out = `moncfg gangliamon $node -r`;
+    $out = `/opt/xcat/bin/moncfg gangliamon $node -r`;
     
     # Show node information, e.g. IP, hostname, and root password
-    $out = `lsdef $node | egrep "ip=|hostnames="`;
+    $out = `/opt/xcat/bin/lsdef $node | egrep "ip=|hostnames="`;
     my $rootpw = getsysrootpw();
     println( $callback, "Your virtual machine is ready. It may take a few minutes before you can logon. Below is your VM attributes." );
     println( $callback, "$out" );
@@ -864,7 +863,7 @@ sub findfreenode {
     	if ($node && $ipaddr && $hostname) {
     		
     		# Check against xCAT tables, /etc/hosts, and ping to see if hostname is already used
-		    if (`nodels $node` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
+		    if (`/opt/xcat/bin/nodels $node` || `cat /etc/hosts | grep "$ipaddr "` || !(`ping -c 4 $ipaddr` =~ m/100% packet loss/)) {        
 		        next;
 		    } else {
 		    	$found = 1;

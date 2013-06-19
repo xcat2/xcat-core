@@ -419,7 +419,7 @@ sub web_unlock {
     my $password = $request->{arg}->[2];
 
     # Unlock a node by setting up the SSH keys
-    my $out = `DSH_REMOTE_PASSWORD=$password xdsh $node -K`;
+    my $out = `DSH_REMOTE_PASSWORD=$password /opt/xcat/bin/xdsh $node -K`;
 
     $callback->( { data => $out } );
 }
@@ -429,7 +429,7 @@ sub web_gangliastatus {
 
     # Get node range
     my $nr  = $request->{arg}->[1];
-    my $out = `xdsh $nr "service gmond status"`;
+    my $out = `/opt/xcat/bin/xdsh $nr "service gmond status"`;
 
     # Parse output, and use $callback to send back to the web interface
     # Output looks like:
@@ -466,21 +466,21 @@ sub web_gangliaconf() {
     my $output;
 
     # Add gangliamon to the monitoring table (if not already)
-    $output = `monadd gangliamon`;
+    $output = `/opt/xcat/bin/monadd gangliamon`;
 
     # Run the ganglia configuration script on node
     if ($nr) {
-        $output = `moncfg gangliamon $nr -r`;
+        $output = `/opt/xcat/bin/moncfg gangliamon $nr -r`;
     }
     else {
 
         # If no node range is given, then assume all nodes
 
         # Handle localhost (this needs to be 1st)
-        $output = `moncfg gangliamon`;
+        $output = `/opt/xcat/bin/moncfg gangliamon`;
 
         # Handle remote nodes
-        $output .= `moncfg gangliamon -r`;
+        $output .= `/opt/xcat/bin/moncfg gangliamon -r`;
     }
 
     my @lines = split( '\n', $output );
@@ -504,28 +504,28 @@ sub web_gangliastart() {
     my $output;
 
     # Add gangliamon to the monitoring table (if not already)
-    $output = `monadd gangliamon`;
+    $output = `/opt/xcat/bin/monadd gangliamon`;
 
     # Start the gmond daemon on node
     if ($nr) {
-        $output = `moncfg gangliamon $nr -r`;
-        $output .= `monstart gangliamon $nr -r`;
+        $output = `/opt/xcat/bin/moncfg gangliamon $nr -r`;
+        $output .= `/opt/xcat/bin/monstart gangliamon $nr -r`;
     }
     else {
 
         # If no node range is given, then assume all nodes
 
         # Handle localhost (this needs to be 1st)
-        $output = `moncfg gangliamon`;
+        $output = `/opt/xcat/bin/moncfg gangliamon`;
 
         # Handle remote nodes
-        $output .= `moncfg gangliamon -r`;
+        $output .= `/opt/xcat/bin/moncfg gangliamon -r`;
 
         # Handle localhost (this needs to be 1st)
-        $output .= `monstart gangliamon`;
+        $output .= `/opt/xcat/bin/monstart gangliamon`;
 
         # Handle remote nodes
-        $output .= `monstart gangliamon -r`;
+        $output .= `/opt/xcat/bin/monstart gangliamon -r`;
     }
 
     my @lines = split( '\n', $output );
@@ -550,17 +550,17 @@ sub web_gangliastop() {
 
     # Stop the gmond daemon on node
     if ($nr) {
-        $output = `monstop gangliamon $nr -r`;
+        $output = `/opt/xcat/bin/monstop gangliamon $nr -r`;
     }
     else {
 
         # If no node range is given, then assume all nodes
 
         # Handle localhost (this needs to be 1st)
-        $output = `monstop gangliamon`;
+        $output = `/opt/xcat/bin/monstop gangliamon`;
 
         # Handle remote nodes
-        $output .= `monstop gangliamon -r`;
+        $output .= `/opt/xcat/bin/monstop gangliamon -r`;
     }
 
     my @lines = split( '\n', $output );
@@ -585,7 +585,7 @@ sub web_gangliacheck() {
 
     # Check if ganglia RPMs are installed
     my $info;
-    my $info = `xdsh $nr "rpm -q ganglia-gmond libganglia libconfuse"`;
+    my $info = `/opt/xcat/bin/xdsh $nr "rpm -q ganglia-gmond libganglia libconfuse"`;
     $callback->( { info => $info } );
     return;
 }
@@ -686,7 +686,7 @@ sub web_installganglia() {
 
         # Install Ganglia RPMs using updatenode
         $callback->( { info => "$_: Installing Ganglia..." } );
-        $info = `updatenode $_ -S`;
+        $info = `/opt/xcat/bin/updatenode $_ -S`;
         $callback->( { info => "$info" } );
     }
 
@@ -2032,9 +2032,9 @@ sub web_addnode {
         }
         
         if ( 'hmc' eq $nodetype ) {
-            `chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype ip=$ip groups=all`;
+            `/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=hmc nodetype=$nodetype ip=$ip groups=all`;
         } else {
-            `chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`;
+            `/opt/xcat/bin/chdef -t node -o $hcpname username=$username password=$passwd mgt=blade mpa=$hcpname nodetype=$nodetype id=0 groups=mm,all`;
         }
         return;
     }
@@ -2052,7 +2052,7 @@ sub web_addnode {
         $temphash{ $tempArray[$i] } = $tempArray[ $i + 1 ];
     }
     
-    `rscan $hcpname -z > /tmp/rscanall.tmp`;
+    `/opt/xcat/bin/rscan $hcpname -z > /tmp/rscanall.tmp`;
 
     unless ( -e '/tmp/rscanall.tmp' ) {
         return;
@@ -2292,7 +2292,7 @@ sub web_passwd() {
     my $encrypted = `perl -e "print crypt($password, $random)"`;
 
     # Save in xCAT passwd table
-    `chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
+    `/opt/xcat/sbin/chtab username=$user passwd.key=xcat passwd.password=$encrypted`;
 
     my $info = "User password successfully updated";
     $callback->( { info => $info } );
@@ -2307,7 +2307,7 @@ sub web_policy() {
     my $args = $request->{arg}->[2];
 
     # Save in xCAT passwd and policy tables
-    my $out = `chtab priority=$priority $args`;
+    my $out = `/opt/xcat/sbin/chtab priority=$priority $args`;
 
     my $info = "User policy successfully updated";
     $callback->( { info => $info } );
@@ -2323,8 +2323,8 @@ sub web_deleteuser() {
 
     # Delete user from xCAT passwd and policy tables
     foreach (@users) {
-        `chtab -d username=$_ passwd`;
-        `chtab -d name=$_ policy`;
+        `/opt/xcat/sbin/chtab -d username=$_ passwd`;
+        `/opt/xcat/sbin/chtab -d name=$_ policy`;
     }
 
     my $info = "User successfully deleted";
@@ -2467,8 +2467,8 @@ sub web_updateosimage() {
     my $provMethod = $request->{arg}->[7];
     my $comments   = $request->{arg}->[8];
 
-    `chtab -d imagename=$name osimage`;
-    `chtab osimage.imagename=$name osimage.imagetype=$type osimage.osarch=$arch osimage.osname=$osName osimage.osvers=$osVersion osimage.profile=$profile osimage.provmethod=$provMethod osimage.comments=$comments`;
+    `/opt/xcat/sbin/chtab -d imagename=$name osimage`;
+    `/opt/xcat/sbin/chtab osimage.imagename=$name osimage.imagetype=$type osimage.osarch=$arch osimage.osname=$osName osimage.osvers=$osVersion osimage.profile=$profile osimage.provmethod=$provMethod osimage.comments=$comments`;
     my $info = "Image successfully updated";
     $callback->( { info => $info } );
 }
@@ -2483,7 +2483,7 @@ sub web_rmosimage() {
 
     # Delete user from xCAT passwd and policy tables
     foreach (@names) {
-        `chtab -d imagename=$_ osimage`;
+        `/opt/xcat/sbin/chtab -d imagename=$_ osimage`;
     }
 
     my $info = "Image successfully deleted";
@@ -2505,8 +2505,8 @@ sub web_updategroup() {
     my $comments = $request->{arg}->[4];
     $comments =~ s/'//g;
 
-    `chtab -d node=$name hosts`;
-`chtab node=$name hosts.ip="$ip" hosts.hostnames="$hostnames" hosts.comments="$comments"`;
+    `/opt/xcat/sbin/chtab -d node=$name hosts`;
+    `/opt/xcat/sbin/chtab node=$name hosts.ip="$ip" hosts.hostnames="$hostnames" hosts.comments="$comments"`;
 
     my $info = "Group successfully updated";
     $callback->( { info => $info } );
@@ -2522,7 +2522,7 @@ sub web_rmgroup() {
 
     # Delete user from xCAT passwd and policy tables
     foreach (@names) {
-        `chtab -d node=$_ hosts`;
+        `/opt/xcat/sbin/chtab -d node=$_ hosts`;
         `rm -rf /var/opt/xcat/ippool/$_.pool`;
     }
 

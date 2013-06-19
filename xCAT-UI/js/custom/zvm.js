@@ -2085,12 +2085,12 @@ zvmPlugin.prototype.addNode = function() {
                             var args = "";
                             if (type == 'host') {
                                 args = node + ';zvm.hcp=' + hcp
-                                    + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
+                                    + ';nodehm.mgt=zvm;nodetype.arch=s390x;hypervisor.type=zvm;groups=' + group
                                     + ';nodetype.os=' + os;
                             } else {
                                 args = node + ';zvm.hcp=' + hcp
                                     + ';zvm.userid=' + userId
-                                    + ';nodehm.mgt=zvm' + ';groups=' + group;
+                                    + ';nodehm.mgt=zvm' + ';nodetype.arch=s390x' + ';groups=' + group;
                             }                            
                             
                             if (ipRange != "" && ipRange != null) {
@@ -2164,12 +2164,12 @@ zvmPlugin.prototype.addNode = function() {
                         var args = "";
                         if (type == 'host') {
                             args = nodeRange + ';zvm.hcp=' + hcp
-                                + ';nodehm.mgt=zvm;hypervisor.type=zvm;groups=' + group
+                                + ';nodehm.mgt=zvm;nodetype.arch=s390x;hypervisor.type=zvm;groups=' + group
                                 + ';nodetype.os=' + os;
                         } else {
                             args = nodeRange + ';zvm.hcp=' + hcp
                                 + ';zvm.userid=' + userIdRange
-                                + ';nodehm.mgt=zvm' + ';groups=' + group;
+                                + ';nodehm.mgt=zvm' + ';nodetype.arch=s390x' + ';groups=' + group;
                         } 
                         
                         if (ipRange)

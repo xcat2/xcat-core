@@ -418,31 +418,31 @@ function mkAddNodeLink() {
                     
                     var plugin;
                     switch(mgt) {
-	                    case "kvm":
-	                        plugin = new kvmPlugin();
-	                        break;
-	                    case "esx":
-	                        plugin = new esxPlugin();
-	                        break;
-	                    case "blade":
-	                        plugin = new bladePlugin();
-	                        break;
-	                    case "hmc":
-	                        plugin = new hmcPlugin();
-	                        break;
-	                    case "ipmi":
-	                        plugin = new ipmiPlugin();
-	                        break;
-	                    case "zvm":
-	                        plugin = new zvmPlugin();
-	                        break;
+                        case "kvm":
+                            plugin = new kvmPlugin();
+                            break;
+                        case "esx":
+                            plugin = new esxPlugin();
+                            break;
+                        case "blade":
+                            plugin = new bladePlugin();
+                            break;
+                        case "hmc":
+                            plugin = new hmcPlugin();
+                            break;
+                        case "ipmi":
+                            plugin = new ipmiPlugin();
+                            break;
+                        case "zvm":
+                            plugin = new zvmPlugin();
+                            break;
                     }
                     
                     $(this).dialog('destroy').remove();
                     plugin.addNode();
                 },
                 'Cancel': function(){
-                	$(this).dialog('destroy').remove();
+                    $(this).dialog('destroy').remove();
                 }
             }
         });
@@ -695,15 +695,15 @@ function loadNodes(data) {
             // Create an instance of the plugin
             var plugin;
             switch(mgt) {
-	            case "kvm":
-	                plugin = new kvmPlugin();
-	                break;
-	            case "esx":
-	                plugin = new esxPlugin();
-	                break;
-	            case "zvm":
-	                plugin = new zvmPlugin();
-	                break;
+                case "kvm":
+                    plugin = new kvmPlugin();
+                    break;
+                case "esx":
+                    plugin = new esxPlugin();
+                    break;
+                case "zvm":
+                    plugin = new zvmPlugin();
+                    break;
             }
             
             plugin.loadClonePage(tgtNodes[i]);
@@ -732,7 +732,7 @@ function loadNodes(data) {
     var scriptLnk = $('<a>Run script</a>');
     scriptLnk.click(function() {
         var tgtNodes = getNodesChecked(nodesTableId);
-        if (tgtNodes) {
+        if (tgtNodes) {            
             loadScriptPage(tgtNodes);
         }
     });
@@ -740,21 +740,21 @@ function loadNodes(data) {
     // Migrate VM
     var migrateLnk = $('<a>Migrate</a>');
     migrateLnk.click(function() {
-    	var tgtNodes = getNodesChecked(nodesTableId).split(',');
-    	var mgt = "", tmp = "";
+        var tgtNodes = getNodesChecked(nodesTableId).split(',');
+        var mgt = "", tmp = "";
         for (var i in tgtNodes) {
-        	tmp = getNodeAttr(tgtNodes[i], 'mgt');
+            tmp = getNodeAttr(tgtNodes[i], 'mgt');
             if (!mgt) {
-            	mgt = tmp
+                mgt = tmp
             } else {
-            	if (tmp != mgt) {
-            		openDialog('warn', "You can pick only one type (mgt) of node to migrate!");
-            		return;
-            	}
+                if (tmp != mgt) {
+                    openDialog('warn', "You can pick only one type (mgt) of node to migrate!");
+                    return;
+                }
             }
         }
         
-	    // Create an instance of the plugin
+        // Create an instance of the plugin
         var plugin;
         switch(mgt) {
             // Only hypervisors support migration
@@ -855,24 +855,24 @@ function loadNodes(data) {
             // Create an instance of the plugin
             var plugin;
             switch(mgt) {
-	            case "kvm":
-	                plugin = new kvmPlugin();
-	                break;
-	            case "esx":
-	                plugin = new esxPlugin();
-	                break;
-	            case "blade":
-	                plugin = new bladePlugin();
-	                break;
-	            case "hmc":
-	                plugin = new hmcPlugin();
-	                break;
-	            case "ipmi":
-	                plugin = new ipmiPlugin();
-	                break;
-	            case "zvm":
-	                plugin = new zvmPlugin();
-	                break;
+                case "kvm":
+                    plugin = new kvmPlugin();
+                    break;
+                case "esx":
+                    plugin = new esxPlugin();
+                    break;
+                case "blade":
+                    plugin = new bladePlugin();
+                    break;
+                case "hmc":
+                    plugin = new hmcPlugin();
+                    break;
+                case "ipmi":
+                    plugin = new ipmiPlugin();
+                    break;
+                case "zvm":
+                    plugin = new zvmPlugin();
+                    break;
             }
             
             plugin.loadLogPage(tgtNodes[i]);
@@ -1636,24 +1636,24 @@ function loadNode(e) {
     // Create an instance of the plugin
     var plugin;
     switch(mgt) {
-	    case "kvm":
-	        plugin = new kvmPlugin();
-	        break;
-	    case "esx":
-	        plugin = new esxPlugin();
-	        break;
-	    case "blade":
-	        plugin = new bladePlugin();
-	        break;
-	    case "hmc":
-	        plugin = new hmcPlugin();
-	        break;
-	    case "ipmi":
-	        plugin = new ipmiPlugin();
-	        break;
-	    case "zvm":
-	        plugin = new zvmPlugin();
-	        break;
+        case "kvm":
+            plugin = new kvmPlugin();
+            break;
+        case "esx":
+            plugin = new esxPlugin();
+            break;
+        case "blade":
+            plugin = new bladePlugin();
+            break;
+        case "hmc":
+            plugin = new hmcPlugin();
+            break;
+        case "ipmi":
+            plugin = new ipmiPlugin();
+            break;
+        case "zvm":
+            plugin = new zvmPlugin();
+            break;
     }
 
     // Get tab area where a new tab will be inserted
@@ -1758,13 +1758,13 @@ function loadUnlockPage(tgtNodes) {
      */
     var unlockBtn = createButton('Unlock');
     unlockBtn.css({
-    	'width': '80px',
-    	'display': 'block'
+        'width': '80px',
+        'display': 'block'
     });
     unlockBtn.click(function() {
-    	// Remove any warning messages
-    	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-    	
+        // Remove any warning messages
+        $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+        
         // If a password is given
         var password = $('#' + newTabId + ' input[name=password]').css('border', 'solid #BDBDBD 1px');
         if (password.val()) {
@@ -1822,7 +1822,7 @@ function loadScriptPage(tgtNodes) {
     // Create remote script form
     var scriptForm = $('<div class="form"></div>');
     
-	// Create status bar
+    // Create status bar
     var barId = 'scriptStatusBar' + inst;
     var statBar = createStatusBar(barId);
     statBar.hide();
@@ -1896,12 +1896,12 @@ function loadScriptPage(tgtNodes) {
      */
     var runBtn = createButton('Run');
     runBtn.css({
-    	'width': '80px'
+        'width': '80px'
     });
     runBtn.click(function() { 
-    	// Remove any warning messages
-    	$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
-    	
+        // Remove any warning messages
+        $(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+        
         // Get script to run
         var textarea = $('#' + newTabId + ' textarea').css('border', 'solid #BDBDBD 1px');
         
@@ -2010,7 +2010,7 @@ function loadDeletePage(tgtNodes) {
     // Create delete form
     var deleteForm = $('<div class="form"></div>');
     
-	// Create status bar, hide on load
+    // Create status bar, hide on load
     var statBarId = 'deleteStatusBar' + inst;
     var statBar = createStatusBar(statBarId).hide();
 
@@ -2041,12 +2041,12 @@ function loadDeletePage(tgtNodes) {
      */
     var deleteBtn = createButton('Delete');
     deleteBtn.click(function() {
-    	var cmd = "rmvm";
-    	// Only delete entries in database if checked
-    	if ($("#" + newTabId + " input[name='db-only']").attr('checked')) {
-    		cmd = "noderm";
-    	}
-    	
+        var cmd = "rmvm";
+        // Only delete entries in database if checked
+        if ($("#" + newTabId + " input[name='db-only']").attr('checked')) {
+            cmd = "noderm";
+        }
+        
         // Delete the virtual server
         $.ajax( {
             url : 'lib/cmd.php',
@@ -2164,7 +2164,7 @@ function updateStatusBar(data) {
  */
 function updatePowerStatus(data) {
     // Hide power loader
-	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+    var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
     powerCol.find('img').hide();
 
     // Get datatable
@@ -2218,8 +2218,8 @@ function runScript(inst) {
     
     var statBarId = 'scriptStatusBar' + inst;
     $('#' + statBarId).show();                    // Show status bar
-    $('#' + statBarId + ' img').show();            // Show loader
-    $('#' + statBarId + ' p').remove();            // Clear status bar
+    $('#' + statBarId + ' img').show();           // Show loader
+    $('#' + statBarId + ' p').remove();           // Clear status bar
 
     // Disable all fields
     $('#' + tabId + ' input').attr('disabled', 'true');
@@ -3250,14 +3250,16 @@ function advancedLoad(group){
     }
 
     var args;
+    var shortzHcps = new Array();
     for (var h in hcps) {
         // Get node without domain name
         args = h.split('.');
+        shortzHcps.push(args[0]);
         
         // If there are no disk pools or network names cookie for this hcp
         if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
             // Check if SMAPI is online
-            $.ajax( {
+            $.ajax({
                 url : 'lib/cmd.php',
                 dataType : 'json',
                 data : {
@@ -3270,9 +3272,12 @@ function advancedLoad(group){
                 // Load hardware control point specific info
                 // Get disk pools and network names
                 success : loadHcpInfo
-            });     
+            });
         }
     } // End of for
+    
+    // Save zHCPs as a cookie
+    setzHcpCookies(shortzHcps);
     
     // Retrieve z/VM hypervisors and their zHCPs
     if (!$.cookie('zvms')) {
