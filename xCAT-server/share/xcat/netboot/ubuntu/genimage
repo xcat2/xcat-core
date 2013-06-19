@@ -1337,30 +1337,26 @@ EOF
    open($inifile, ">","/tmp/xcatinitrd.$$/tmp/updateflag");
 
    print $inifile <<EOMS;
-#!/usr/bin/awk -f
-BEGIN {
+#!/bin/sh
+if [ \$# -eq 3 ]; then
+   echo \$3 > /tmp/ncarg
+   nc  \$1 \$2 -w 60 -e /tmp/updateflag
+else
+   retrytimes=0
+   cmd=""
+   while [ "\$cmd" != "done" ]; do
+         retrytimes=`expr \$retrytimes + 1`
+         if [ \$retrytimes -eq 60 ]; then
+            break;
+         fi
+         read -t 60 cmd
+         if [ "\$cmd" == "ready" ]; then
+             head -n 1 /tmp/ncarg
+             rm -rf /tmp/ncarg
+         fi
+   done
 
-        xcatdhost = ARGV[1]
-        xcatiport = ARGV[2]
-
-
-        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
-        print "xCAT_xcatd" |& ns
-
-        while(1) {
-                ns |& getline
-
-                if(\$0 == "ready")
-                        print ARGV[3] |& ns
-                if(\$0 == "done")
-                        break
-        }
-
-        close(ns)
-
-        exit 0
-}
-
+fi
 EOMS
    close($inifile);
 
