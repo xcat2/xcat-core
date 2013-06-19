@@ -63,8 +63,17 @@ cat >/tmp/foo.sh <<EOF
 if [ \$# -eq 0 ]; then
     xcatdhost="#XCATVAR:XCATMASTER#"
     xcatdport="#TABLE:site:key=xcatiport:value#"
+    NODESTATUS="NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#"
+
 
     /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh install_monitor &
+
+    if [ -z "\$NODESTATUS" ] || [ "\$NODESTATUS" != "0" -a   "\$NODESTATUS" != "N"  -a  "\$NODESTATUS" != "n" ];
+ then
+
+        /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh installstatus installing &
+
+    fi
 
     while true; do
         /usr/bin/nc -l -p 3001 -e /tmp/foo.sh serve_client
@@ -91,6 +100,26 @@ if [ "\$1" = "install_monitor" ]; then
 
     exit 0
 fi
+
+#
+#  If the script was called with the "installstatus" argument, stdin and stdout are
+#  connected to an xCAT daemon on the master.  
+#  Write the "installstatus xx" request to the daemon to update thenode installation status.
+if [ "\$1" = "installstatus" ]; then
+    cmd=""
+    while [ "\$cmd" != "done" ]; do
+        read cmd remainder
+    
+        if [ "\$cmd" == "ready" ]; then
+            echo "installstatus \$2"
+        fi
+    done
+
+    exit 0
+fi
+
+
+
 
 #
 #  When execution reaches here, script called with "serve_client" argument, which means

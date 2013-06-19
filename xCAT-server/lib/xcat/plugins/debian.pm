@@ -889,6 +889,8 @@ sub mknetboot
     my $installroot;
     $installroot = "/install";
     my $xcatdport = "3001";
+    my $xcatiport = "3002";
+    my $nodestatus = "y";
 
     if ($sitetab)
     {
@@ -902,10 +904,20 @@ sub mknetboot
         {
             $xcatdport = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $xcatiport = $ref->{value};
+        }
         ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
         if ($ref and $ref->{value})
         {
             $globaltftpdir = $ref->{value};
+        }
+        ($ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $nodestatus = $ref->{value};
         }
     }
     my %donetftp=();
@@ -1307,6 +1319,9 @@ sub mknetboot
                 $kcmdline =  "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+            $kcmdline .= " nonodestatus ";
+        }
 
 
         # add support for subVars in the value of "statemnt"

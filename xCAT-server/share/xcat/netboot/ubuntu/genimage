@@ -959,6 +959,8 @@ grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
 # TODO: does "anaconda.busybox sh" support "set " ?
 
 PRINIC=$prinic
+NODESTATUS='y'
+XCATIPORT="3002"
 
 for i in `cat /proc/cmdline`; do
     KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -971,7 +973,17 @@ for i in `cat /proc/cmdline`; do
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:3001
         XCATSERVER=\$VALUE
+    elif [ "\$KEY" == 'XCATIPORT' ]; then
+        VALUE=`echo \$i |awk -F= '{print \$2}'`
+        # format: XCAT=xcatmaster:3001
+        XCATIPORT=\$VALUE
     fi
+    
+    #if "nonodestatus" specified,do not update the nodestatus 
+    if [ \$i == 'nonodestatus' ]; then
+       NODESTATUS='n'
+    fi
+
 done
 
 if [ -z "\$IFACE" ]; then
@@ -998,6 +1010,16 @@ while ! ifconfig | grep 'inet addr'; do
 done
 ifconfig lo 127.0.0.1
 ifconfig lo up
+
+
+XCATMASTER=`echo \$XCATSERVER|awk -F: '{print \$1}'`
+
+
+#update nodelist.nodestatus to "netbooting"
+if [ \$NODESTATUS != 'n' ]; then
+    /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
+fi
+
 cd /
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
