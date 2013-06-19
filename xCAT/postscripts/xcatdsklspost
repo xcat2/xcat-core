@@ -13,6 +13,9 @@
 #      statelite mode   --> xcatdsklspost 4
 #      update security  --> xcatdsklspost 5 -m/-M ...
 #      node reboot - xcatpostinit1  --> xcatdsklspost 6 
+# This script has a debug mode,  if XCATDEBUG env variable is set, then
+#   /xcatpost becomes /xcatpost.<nodename>.  This allow running multiple 
+#   instances of the script to simulate many node on one physical node
 #
 #####################################################
 
@@ -50,7 +53,7 @@ download_postscripts()
     rc=1  # this is a fail return 
     while [ 0 -eq 0 ]; do
 	
-       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /xcatpost 2> /tmp/wget.log
+       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
          rc=$?
          if [ $rc -eq 0 ]; then   
            # return from wget was 0 but some OS do not return errors, so we
@@ -97,11 +100,11 @@ download_mypostscript()
  
 
     while [ 0 -eq 0 ]; do
-        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /xcatpost 2>> /tmp/wget.log
+        wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /$xcatpost 2>> /tmp/wget.log
         rc=$?
         # if no error and the file  was downloaded
-        if [ $rc -eq 0 ] && [ -f /xcatpost/mypostscript.$node ]; then
-                mv /xcatpost/mypostscript.$node /xcatpost/mypostscript
+        if [ $rc -eq 0 ] && [ -f /$xcatpost/mypostscript.$node ]; then
+                mv /$xcatpost/mypostscript.$node /$xcatpost/mypostscript
 	        return 0;
         fi
 
@@ -175,38 +178,46 @@ else
   esac
 fi
 
+# set the default path for the xcatpost directory
+xcatpost="/xcatpost"
+# Check for debug mode and you have nodename available you can change the path for debug
+
+if [ -n "$XCATDEBUG" ]; then
+  if [ -n "$NODE" ]; then
+     xcatpost="/xcatpost.$NODE"
+  fi
+fi
+#echo "xcatpost = $xcatpost"
  
 # If on AIX node
 if [ ! `uname` = Linux ]; then
    #Get a new copy of xcataixpost on the node
-   mkdir -p  /xcatpost;
+   mkdir -p  /$xcatpost;
    mkdir -p  /xcatmnt;
    if [ "$NFSV4" = "yes" ]; then
          mount -o vers=4 $P_SIP:$INSTALLDIR/postscripts /xcatmnt
    else
          mount $P_SIP:$INSTALLDIR/postscripts /xcatmnt 
    fi
-   cp /xcatmnt/xcataixpost /xcatpost
+   cp /xcatmnt/xcataixpost /$xcatpost
    umount /xcatmnt
    rmdir /xcatmnt
   logger -t xCAT -p local4.err "Running xcataixpost $*"
-  echo "/xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
-  #exec /xcatpost/xcataixpost $1 $2 $3 "'"$4"'" $5 $6 $7 $8 $9 ${10} ${11}
-  exec /xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11}
+  echo "/$xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
+  exec /$xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11}
   exit
 fi
 
 #SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 #sleep $SLI
 
-if [ ! -d /xcatpost ]; then
-    mkdir -p /xcatpost; 
+if [ ! -d /$xcatpost ]; then
+    mkdir -p /$xcatpost; 
 fi
 
 if [ ! -d /tmp/postage ]; then
     mkdir -p /tmp/postage
 fi
-#rm -R -f /xcatpost/*
 rm -R -f /tmp/postage/*
 
 #here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
@@ -373,7 +384,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
 fi # finish the postscripts download
 
 # remove the current mypostscript file
-rm -rf /xcatpost/mypostscript
+rm -rf /$xcatpost/mypostscript
 
 # if NODE is exported ( updatenode call or from kernel parameter)
 # use it as the nodename to get the mypostscript file. 
@@ -441,10 +452,10 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
 fi
 
 
-chmod +x /xcatpost/*; 
+chmod +x /$xcatpost/*; 
 
-cd /xcatpost; 
-PATH=/xcatpost:$PATH
+cd /$xcatpost; 
+PATH=/$xcatpost:$PATH
 export PATH
 
 if [ -x /usr/bin/openssl ]; then
@@ -458,9 +469,9 @@ fi
 # probably  the /tftpboot/mypostcript/mypostscript.<nodename> does not exist.
 # We need to call getpostscript.awk .
 
-if [ ! -x /xcatpost/mypostscript ]; then
-  /xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
- MYCONT=`grep MASTER /xcatpost/mypostscript`
+if [ ! -x /$xcatpost/mypostscript ]; then
+  /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+ MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
  RETRY=0
  while [ -z "$MYCONT" ]; do
@@ -473,8 +484,8 @@ if [ ! -x /xcatpost/mypostscript ]; then
     SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
     SLI=$((10 + $SLI))
     sleep $SLI
-    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /xcatpost/mypostscript;
-    MYCONT=`grep MASTER /xcatpost/mypostscript`
+    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+    MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
     fi
@@ -484,7 +495,7 @@ fi
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
-    new_ms=`grep '^MASTER' /xcatpost/mypostscript |cut -d= -f2`
+    new_ms=`grep '^MASTER' /$xcatpost/mypostscript |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
     if [ ! -f /opt/xcat/xcatinfo ]; then
@@ -506,8 +517,8 @@ fi
 #modify the UPDATENODE flag to 1 
 # put NODE in /opt/xcat/xcatinfo
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
-  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /xcatpost/mypostscript`;
-  echo "$TMP" > /xcatpost/mypostscript;
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /$xcatpost/mypostscript`;
+  echo "$TMP" > /$xcatpost/mypostscript;
   if [ ! -f /opt/xcat/xcatinfo ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
@@ -521,33 +532,33 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
 #echo "xcatdsklspost:my nodename in the database is $NODE"
 fi
 if [ "$MODE" = "5" ]; then
-  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /xcatpost/mypostscript`;
-  echo "$TMP" > /xcatpost/mypostscript;
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /$xcatpost/mypostscript`;
+  echo "$TMP" > /$xcatpost/mypostscript;
 fi
 
 #when a diskfull reboot mode 
 if [ "$MODE" = "6" ]; then
   # remove the post scripts so that they are not run on reboot
-  TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-  echo "$TMP" > /xcatpost/mypostscript
+  TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+  echo "$TMP" > /$xcatpost/mypostscript
   # get the RUNBOOTSCRIPTS site variable
-  if [ -f /xcatpost/mypostscript ]; then
-    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript |cut -d= -f2`
+  if [ -f /$xcatpost/mypostscript ]; then
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /$xcatpost/mypostscript |cut -d= -f2`
   fi
 
   # if admin did not requested running of post boot scripts - then remove PBS
   if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
   #remove all the postscripts
-  TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-  echo "$TMP" > /xcatpost/mypostscript
+  TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+  echo "$TMP" > /$xcatpost/mypostscript
  
-  #TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript.post`
-  #echo "$TMP" > /xcatpost/mypostscript.post
+  #TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /$xcatpost/mypostscript.post`
+  #echo "$TMP" > /$xcatpost/mypostscript.post
   fi
 fi
 
 # postscript name is specified with the updatenode
-#cp /xcatpost/mypostscript /xcatpost/mypostscript.backup
+#cp /$xcatpost/mypostscript /$xcatpost/mypostscript.backup
 # if the list has a postscript named *start-here* then we must rebuild the
 # mypostscript file with only the matching *start-here stanza. 
 
@@ -555,63 +566,63 @@ fi
 if ( pmatch $POSTSCRIPTS  "*start-here*" ); then
   if ( pmatch $POSTSCRIPTS  "*osimage-postbootscripts-start-here" ); then
   # remove all sections but the osimage-postbootscripts section
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
   if ( pmatch $POSTSCRIPTS  "*postscripts-start-here" ); then
     #remove all the postbootscripts 
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
   if ( pmatch $POSTSCRIPTS  "*postbootscripts-start-here" ); then
     #remove all the postscripts 
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
     
   fi
   if ( pmatch $POSTSCRIPTS  "*defaults-postscripts-start-here" ); then
   # remove all sections but the defaults-postscripts section
-    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# node-postscripts-start-here/,/# node-postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# node-postscripts-start-here/,/# node-postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
   
   if ( pmatch $POSTSCRIPTS  "*node-postscripts-start-here" ); then
   # remove all sections but the node-postscripts section
-    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# defaults-postscripts-start-here/,/# defaults-postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# osimage-postscripts-start-here/,/# osimage-postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# defaults-postscripts-start-here/,/# defaults-postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
 
   if ( pmatch $POSTSCRIPTS  "*defaults-postbootscripts-start-here" ); then
   # remove all sections but the defaults-postbootscripts section
-    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# node-postbootscripts-start-here/,/# node-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
   
   
   if ( pmatch $POSTSCRIPTS  "*node-postbootscripts-start-here" ); then
   # remove all sections but the node-postbootscripts section
-    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# osimage-postbootscripts-start-here/,/# osimage-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# defaults-postbootscripts-start-here/,/# defaults-postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
   fi
    
    
@@ -620,31 +631,30 @@ if ( pmatch $POSTSCRIPTS  "*start-here*" ); then
 else
    if [ -n "$POSTSCRIPTS" ]; then
     #remove all the postbootscripts, and replace with list provided 
-    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
+    TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
     #remove all the postscripts
-    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /xcatpost/mypostscript`
-    echo "$TMP" > /xcatpost/mypostscript
-    echo "# postscripts-start-here" >> /xcatpost/mypostscript
+    TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ d" /$xcatpost/mypostscript`
+    echo "$TMP" > /$xcatpost/mypostscript
+    echo "# postscripts-start-here" >> /$xcatpost/mypostscript
     #add requested postscripts in
-    echo "$POSTSCRIPTS" | tr "," "\n" >> /xcatpost/mypostscript
-    echo "# postscripts-end-here" >> /xcatpost/mypostscript
+    echo "$POSTSCRIPTS" | tr "," "\n" >> /$xcatpost/mypostscript
+    echo "# postscripts-end-here" >> /$xcatpost/mypostscript
   
   fi
 fi
 
-#cp /xcatpost/mypostscript /xcatpost/mypostscript.backup2
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
 #if [[ "$ADDSITEYUM" = "1" ]]; then
-#  TMP=`sed "/postscripts-start-here/ a addsiteyum" /xcatpost/mypostscript`
-#  echo "$TMP" > /xcatpost/mypostscript
+#  TMP=`sed "/postscripts-start-here/ a addsiteyum" /$xcatpost/mypostscript`
+#  echo "$TMP" > /$xcatpost/mypostscript
 #fi
 
-#MYCONT=`cat /xcatpost/mypostscript`
+#MYCONT=`cat /$xcatpost/mypostscript`
 #echo "$MYCONT"
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
@@ -674,49 +684,48 @@ run_ps () {
 }
 # subroutine end
 
-" > /xcatpost/mypostscript
-echo "$TMP" >> /xcatpost/mypostscript
-TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
-echo "$TMP" > /xcatpost/mypostscript 
+" > /$xcatpost/mypostscript
+echo "$TMP" >> /$xcatpost/mypostscript
+TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
+echo "$TMP" > /$xcatpost/mypostscript 
 
 if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
   #notify the server that we are done with netbooting
-  CNS=`grep NODESTATUS= /xcatpost/mypostscript |awk -F = '{print $2}'`
+  CNS=`grep NODESTATUS= /$xcatpost/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
-# TMP=`sed "/postscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /xcatpost/mypostscript`
-#       echo "$TMP"> /xcatpost/mypostscript
+# TMP=`sed "/postscripts-start-here/ i\updateflag.awk \\$MASTER 3002 \\"installstatus configuring\\"" /$xcatpost/mypostscript`
+#       echo "$TMP"> /$xcatpost/mypostscript
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
    updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
    updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
-        " >> /xcatpost/mypostscript
+        " >> /$xcatpost/mypostscript
   fi
 fi
 
-DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript`
-echo "$DHCP_TMP" > /xcatpost/mypostscript
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /$xcatpost/mypostscript`
+echo "$DHCP_TMP" > /$xcatpost/mypostscript
 
-CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /xcatpost/mypostscript |awk -F = '{print $2}'` 
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /$xcatpost/mypostscript |awk -F = '{print $2}'` 
 if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
-  echo "cd /" >> /xcatpost/mypostscript
+  echo "cd /" >> /$xcatpost/mypostscript
   # /xcatpost might be read-only for statelite nodes
-  echo "rm -rf /xcatpost/*" >> /xcatpost/mypostscript
+  echo "rm -rf /$xcatpost/*" >> /$xcatpost/mypostscript
 fi
 
 
 
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
-  echo "exit \$return_value" >> /xcatpost/mypostscript
+  echo "exit \$return_value" >> /$xcatpost/mypostscript
 fi
 
-chmod +x /xcatpost/mypostscript
-if [ -x /xcatpost/mypostscript ];then
-   /xcatpost/mypostscript
+chmod +x /$xcatpost/mypostscript
+if [ -x /$xcatpost/mypostscript ];then
+   /$xcatpost/mypostscript
    VRET_POST=$?   
 fi
-#rm -f /xcatpost/mypostscript
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
