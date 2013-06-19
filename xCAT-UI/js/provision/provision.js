@@ -79,12 +79,12 @@ function loadProvisionPage() {
 
     // Create radio buttons for platforms
     var hwList = $('<ol>Platforms available:</ol>');
-    var esx = $('<li><input type="radio" name="hw" value="esx" disabled/>ESX</li>');
-    var kvm = $('<li><input type="radio" name="hw" value="kvm" disabled/>KVM</li>');
-    var zvm = $('<li><input type="radio" name="hw" value="zvm" checked/>z\/VM</li>');
-    var ipmi = $('<li><input type="radio" name="hw" value="ipmi" disabled/>iDataPlex</li>');
-    var blade = $('<li><input type="radio" name="hw" value="blade" disabled/>BladeCenter</li>');
-    var hmc = $('<li><input type="radio" name="hw" value="hmc" disabled/>System p</li>');
+    var esx = $('<li><input type="radio" name="hw" value="esx" checked/>ESX</li>');
+    var kvm = $('<li><input type="radio" name="hw" value="kvm"/>KVM</li>');
+    var zvm = $('<li><input type="radio" name="hw" value="zvm"/>z\/VM</li>');
+    var ipmi = $('<li><input type="radio" name="hw" value="ipmi"/>iDataPlex</li>');
+    var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
+    var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
     
     hwList.append(esx);
     hwList.append(kvm);
@@ -156,12 +156,12 @@ function loadProvisionPage() {
 
     // Create radio buttons for platforms
     var rsrcHwList = $('<ol>Platforms available:</ol>');
-    esx = $('<li><input type="radio" name="rsrcHw" value="esx" disabled/>ESX</li>');
-    kvm = $('<li><input type="radio" name="rsrcHw" value="kvm" disabled/>KVM</li>');
-    zvm = $('<li><input type="radio" name="rsrcHw" value="zvm" checked/>z\/VM</li>');
-    ipmi = $('<li><input type="radio" name="rsrcHw" value="ipmi" disabled/>iDataPlex</li>');
-    blade = $('<li><input type="radio" name="rsrcHw" value="blade" disabled/>BladeCenter</li>');
-    hmc = $('<li><input type="radio" name="rsrcHw" value="hmc" disabled/>System p</li>');
+    esx = $('<li><input type="radio" name="rsrcHw" value="esx" checked/>ESX</li>');
+    kvm = $('<li><input type="radio" name="rsrcHw" value="kvm"/>KVM</li>');
+    zvm = $('<li><input type="radio" name="rsrcHw" value="zvm"/>z\/VM</li>');
+    ipmi = $('<li><input type="radio" name="rsrcHw" value="ipmi"/>iDataPlex</li>');
+    blade = $('<li><input type="radio" name="rsrcHw" value="blade"/>BladeCenter</li>');
+    hmc = $('<li><input type="radio" name="rsrcHw" value="hmc"/>System p</li>');
     
     rsrcHwList.append(esx);
     rsrcHwList.append(kvm);
