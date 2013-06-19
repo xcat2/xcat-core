@@ -234,6 +234,7 @@ sub subvars {
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
   $inc =~ s/#WINNETCFG#/windows_net_cfg()/eg;
   $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
+  $inc =~ s/#WINPOSTSCRIPTS#/windows_postscripts()/eg;
   $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
   $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
   $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
@@ -408,6 +409,24 @@ sub windows_dns_cfg {
 	}
 	$componentxml .= "</DNSServerSearchOrder>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
 	return $componentxml;
+}
+#this will lay out the data from postscripts table in a manner that is appropriate for windows consumption in Microsoft-Windows-Deployment
+#component under specialize pass
+sub windows_postscripts {
+	my $posttab = xCAT::Table->new('postscripts',-create=>0);
+	unless ($posttab) { return ""; }
+	my $psent = $posttab->getNodeAttribs($node,['postscripts'],prefetchcache=>1);
+	unless ($psent and $psent->{postscripts}) { return ""; }
+	my @cmds = split /,/,$psent->{postscripts};
+	my $order = 1;
+	my $xml;
+	my $pscript;
+	foreach $pscripts (@cmds) {
+		unless ($pscript =~ /\\/) { 
+			$pscript = "C:\\xcatpost\\".$pscript;
+		}
+		$xml .= "<RunSynchronousCommand wcm:action=\"add\">\r\n<Order>$order</Order>\r\n<Path>$pscript</Path>\r\n</RunSynchronousCommand>\r\n";
+	}
 }
 #this will examine table data, decide *if* a Microsoft-Windows-UnattendedJoin is warranted
 #there are two variants in how to proceed:
