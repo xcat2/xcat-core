@@ -95,6 +95,7 @@ sub start {
   elsif (defined($pid)) { #child process
   my $progname = \$0;
   $$progname = "xcatd: monitoring";
+
     my $localhostname=hostname();
     
     if ($isMonServer) { #only start monitoring on monservers.
@@ -1365,60 +1366,88 @@ sub deconfig {
     These data-value pairs will be used as environmental variables 
     on the given node.
     Arguments:
-        node  
+        noderef -- a pointer to an array of nodes. 
     Returns:
-        ret a hash with enviromental variable name as the key.
+        ret: pointer to a 2-level hash like this:
+        {
+           'node1'=>{'env1'=>'value1',
+                     'env2'=>'value2'},
+           'node2'=>{'env1'=>'value3',
+                     'env2'=>'value4'}
+        }
+     
+        or a pointer to array if there is an error. [error code, error message]
+        
 =cut
 #--------------------------------------------------------------------------------
 sub  getNodeConfData {
-  my $node=shift;
-  if ($node =~ /xCAT_monitoring::monitorctrl/) {
-    $node=shift;
-  }
-
-  my %ret=();
-  #get monitoring server
-  my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$node], 0);
-  if (ref($pHash) eq 'ARRAY') { 
-      xCAT::MsgUtils->message('S', "[mon]: getPostScripts: " . $pHash->[1]);
-      return %ret;   
-  }
-
-  my @pair_array=split(':', $pHash->{$node});
-  my $monserver=$pair_array[0];
-  if ($monserver eq 'noservicenode') { $monserver=hostname(); }
-  $ret{MONSERVER}=$monserver;
-  $ret{MONMASTER}=$pair_array[1];
-
-  #get all the module names from monitoring table
-  my %names=();   
-  my $table=xCAT::Table->new("monitoring", -create =>1);
-  if ($table) {
-    my $tmp1=$table->getAllEntries("all");
-    if (defined($tmp1) && (@$tmp1 > 0)) {
-      foreach(@$tmp1) { $names{$_->{name}}=1; }
+    my $noderef=shift;
+    if ($noderef =~ /xCAT_monitoring::monitorctrl/) {
+	$noderef=shift;
     }
-  } else {
-    xCAT::MsgUtils->message('S', "[mon]: getPostScripts for node $node: cannot open monitoring table.\n");
-    return %ret; 
-  }
 
-
-  #get node conf data from each plug-in module
-  foreach my $pname (keys(%names)) {
-    my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
-    my $module_name="xCAT_monitoring::$pname";
-    #load the module in memory
-    eval {require($file_name)};
-    if (!$@) {   
-      no strict  "refs";
-      if (defined(${$module_name."::"}{getNodeConfData})) {
-        ${$module_name."::"}{getNodeConfData}->($node, \%ret);
-      }  
+    my $nodes;
+    if(ref($noderef) eq "ARRAY") {
+	$nodes=$noderef;
+    } else {
+	$nodes=[$noderef];
     }
-  } 
+	
 
-  return %ret;
+    my $ret;
+    #get monitoring server
+    my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair($nodes, 0);
+    if (ref($pHash) eq 'ARRAY') { 
+	xCAT::MsgUtils->message('S', "[mon]: getPostScripts: " . $pHash->[1]);
+	return [1, $pHash->[1]];   
+    }
+
+    my $hostname=hostname();
+    foreach my $node (@$nodes) {
+	my @pair_array=split(':', $pHash->{$node});
+	my $monserver=$pair_array[0];
+	if ($monserver eq 'noservicenode') { $monserver=$hostname; }
+	$ret->{$node}->{MONSERVER}=$monserver;
+	$ret->{$node}->{MONMASTER}=$pair_array[1];
+    }
+
+    #get all the module names from monitoring table
+    my %names=();   
+    my $table=xCAT::Table->new("monitoring", -create =>1);
+    if ($table) {
+	my $tmp1=$table->getAllEntries("all");
+	if (defined($tmp1) && (@$tmp1 > 0)) {
+	    foreach(@$tmp1) { $names{$_->{name}}=1; }
+	}
+    } else {
+	xCAT::MsgUtils->message('S', "[mon]: getPostScripts. Cannot open monitoring table.\n");
+	return [1, "Cannot open monitoring table."]; 
+    }
+
+
+    #get node conf data from each plug-in module
+    foreach my $pname (keys(%names)) {
+	my $file_name="$::XCATROOT/lib/perl/xCAT_monitoring/$pname.pm";
+	my $module_name="xCAT_monitoring::$pname";
+	#load the module in memory
+	eval {require($file_name)};
+	if (!$@) {   
+	    no strict  "refs";
+	    if (defined(${$module_name."::"}{getNodeConfData})) {
+		my $ref_ret=${$module_name."::"}{getNodeConfData}->($nodes);
+		if ($ref_ret) {
+		    foreach my $node (keys %$ref_ret) {
+                        my $data=$ref_ret->{$node};
+			my $olddata=$ret->{$node};
+                        my %newhash=(%$olddata,%$data);
+			$ret->{$node}=\%newhash;
+		    }
+		}
+	    }  
+	}
+    } 
+    
+    return $ret;
 }
 
 #--------------------------------------------------------------------------------

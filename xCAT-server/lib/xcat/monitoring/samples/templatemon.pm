@@ -437,22 +437,29 @@ sub getPostscripts {
      the postscripts are invoked. It gets a list of environmental variables for 
      the postscripts.  
     Arguments:
-        node  the node being deployed/installed. 
-        pointer to a hash that will take the data.
+        pointet to a arry of nodes being deployed.
     Returns:
-        none
+        ret: pointer to a 2-level hash like this:
+        {
+           'node1'=>{'env1'=>'value1',
+                     'env2'=>'value2'},
+           'node2'=>{'env1'=>'value3',
+                     'env2'=>'value4'}
+        }
+                
 =cut
 #--------------------------------------------------------------------------------
 sub getNodeConfData {
-  my $node=shift;
-  if ($node =~ /xCAT_monitoring::templatemon/) {
-    $node=shift;
-  }
-  my $ref_ret=shift;
-
-  #sample
-  $ref_ret->{MY_ENV1}="abcde";
-  $ref_ret->{MY_ENV2}="abcde2";
-
-  return;
+    my $noderef=shift;
+    if ($noderef =~ /xCAT_monitoring::templatemon/) {
+	$noderef=shift;
+    }
+    
+    #sample
+    my $ref_ret;
+    foreach my $node (@$noderef) {  
+	$ref_ret->{$node}->{MY_ENV1}="abcde";
+	$ref_ret->{$node}->{MY_ENV2}="abcde2";
+    }
+    return $ref_ret;
 }
