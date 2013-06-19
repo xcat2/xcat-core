@@ -1319,9 +1319,7 @@ sub mknetboot
                 $kcmdline =  "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
-        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
-            $kcmdline .= " nonodestatus ";
-        }
+
 
 
         # add support for subVars in the value of "statemnt"
@@ -1373,6 +1371,10 @@ sub mknetboot
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
+        # if site.nodestatus='n', add "nonodestatus" to kcmdline to inform the node not to update nodestatus during provision
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+            $kcmdline .= " nonodestatus ";
+        }
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
         # the redhat5.x os will ignore it
