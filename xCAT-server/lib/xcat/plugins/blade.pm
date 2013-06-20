@@ -50,6 +50,8 @@ my $indiscover=0;
 my $CALLBACK = undef;
 my $verbose_cmd = undef;
 my $vitals_info = undef; #used by 'rvitals <node> all' to show lcds info for Firebird blade
+my %x222_info = (); #used to collect x222 infomations
+my $has_x222 = undef;
 
 sub handled_commands {
   return {
@@ -1524,6 +1526,23 @@ sub rscan {
       my $mpalength  = length($mpa);
       $mpamax = ($mpalength > $mpamax) ? $mpalength : $mpamax;
     }
+  }
+
+
+  if (defined($has_x222)) {
+      foreach (sort (keys %x222_info)) {
+          my $name = $x222_info{$_}{node_name};
+          my $namelength = length($name);
+          my $type = $x222_info{$_}{type};
+          my $mtm = $x222_info{$_}{mtm};
+          my $serial = $x222_info{$_}{serial};
+          my $slotid = $x222_info{$_}{slotid};
+          my $ip = (defined($x222_info{$_}{'0'})) ? ($x222_info{$_}{'0'}{'ip'}) : ($x222_info{$_}{'1'}{'ip'});
+          $namemax = ($namemax > $namelength) ? $namemax : $namelength;
+          if (defined $type) {
+              push @values, join(",",$type,$name,$slotid,$mtm,$serial,$mpa,$ip);
+          }
+      }
   }
   my $format = sprintf "%%-%ds",($namemax+2);
   $rscan_header[1][1] = $format;
@@ -4756,6 +4775,85 @@ sub solcfg {
   return ([$rc, @output]); 
 }
 
+sub load_x222_info {
+    my $t = shift;
+    my $id_flag = undef;
+    my $id_start;
+    my $id_sub;
+    my @id_array = ();
+    my @data = $t->cmd("list -l 3");
+    ## find out the x222 nodes
+    foreach (@data) {
+        if (/^(\s*)(bladegroup\[\d+\])\s*/) {
+            $id_flag = $1;
+            $id_start = $2;
+            $id_sub = undef;
+        } elsif (/^(\s*)(blade\[\d+\])\s*/) {
+            if (defined($id_flag) and $id_flag ne $1) {
+                $id_sub = $id_start.":$2";
+            } else {
+                $id_flag = undef;
+                $id_sub = undef;
+                next;
+            }
+        } else {
+            next;
+        }
+        if (defined($id_sub)) {
+            push @id_array, $id_sub;
+        }
+    }
+    foreach (@id_array) {
+        my $node = $_;
+        @data = $t->cmd("info -T system:$node");
+        my $node_name = $node;
+        foreach (@data) {
+            if (/^Name:\s/) {
+                if (/^Name:\s*(.*)\s\(\s*(.*)\s\).*$/) {
+                    if (grep (/ /, $2)) {
+                        $node_name = $1;
+                    } else {
+                        $node_name = $2;
+                    }
+                } elsif (/^Name:\s*(.*)\s*$/) {
+                    $node_name = $1;
+                }
+                $node_name =~ s/ /_/;
+                $node_name =~ tr/A-Z/a-z/;
+                $x222_info{$node}{node_name}=$node_name;
+            } elsif (/^Mach type\/model: (\w+)/) {
+                $x222_info{$node}{mtm} = $1;
+            } elsif (/^Mach serial number: (\w+)/) {
+                $x222_info{$node}{serial} = $1;
+            } elsif (/(Product Name: IBM Flex System p)|(Mach type\/model:.*PPC)|(Mach type\/model: pITE)|(Mach type\/model: IBM Flex System p)|(Firebird)/) {
+                $x222_info{$node}{type} = "ppcblade";
+            } elsif (/(Product Name: IBM Flex System x)|(Device Description: HX)/) {
+                $x222_info{$node}{type} = "xblade";
+            } elsif (/^MAC Address (\d+):\s*(\w+:\w+:\w+:\w+:\w+:\w+)/) {
+                my $macid = "mac$1";
+                my $mac = $2;
+                $mac =~ tr/A-Z/a-z/;
+                $x222_info{$node}{$macid} = $mac;
+            } elsif (/^Slots: (\d+:\d+|\d+)/) {
+                $x222_info{$node}{slotid} = $1;
+            }
+        }
+        @data = $t->cmd("ifconfig -T system:$node");
+        my $side = undef;
+        foreach (@data) {
+            if (/eth(\d+)/) {
+                $side = $1;
+            }
+            if (defined($side) && /-i (\d+.\d+.\d+.\d+)/) {
+                $x222_info{$node}{$side}{side} = $side;
+                $x222_info{$node}{$side}{ip} = $1;
+            }
+        }
+        $has_x222 = '1';        
+    }
+    return ;
+}
+
 # Scan the fsp for the NGP ppc nodes
 sub rscanfsp {
   my $t = shift;
@@ -4766,6 +4864,9 @@ sub rscanfsp {
   my @blade;
   # Get the component list
   my @data = $t->cmd("list -l 2");
+  if (grep /bladegroup/, @data) {
+      &load_x222_info($t);
+  }
   foreach (@data) {
     if (/^\s*(blade\[\d+\])\s+/) {
       push @blade, $1;
