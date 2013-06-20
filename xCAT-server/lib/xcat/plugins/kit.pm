@@ -4312,7 +4312,9 @@ sub check_framework
     }
 
     if (!$kitcompat) {
-        print "Warning: Could not determine the kit compatible framework values for \'$kitbasename\' from the kit.conf file. Continuing for now.\n";
+        my %rsp;
+        push @{ $rsp{data} }, "Could not determine the kit compatible framework values for \'$kitbasename\' from the kit.conf file. Continuing for now.";
+        xCAT::MsgUtils->message( "I", \%rsp, $::CALLBACK );
         return 0;
     }
 
@@ -4329,6 +4331,9 @@ sub check_framework
             }
         }
     }
-    print "Error: The kit named \'$kitbasename\' is not compatible with this version of the addkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the addkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'\n";
+
+    my %rsp;
+    push @{ $rsp{data} }, "The kit named \'$kitbasename\' is not compatible with this version of the buildkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the buildkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'";
+    xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
     return 1;
 }
