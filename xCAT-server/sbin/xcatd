@@ -1516,7 +1516,7 @@ sub dispatch_request {
             #flock($dlock,LOCK_UN);
             if ($errstr) {
 	            if ($numdests == 1) {
-                    dispatch_callback({error=>["Unable to dispatch hierarchical sub-command to ".$ENV{XCATHOST}.".  This service node may be down or its xcatd daemon may not be responding."],errorcode=>[1]}); 
+                    dispatch_callback({error=>["Unable to dispatch hierarchical sub-command to ".$ENV{XCATHOST}.".  Error: $errstr."],errorcode=>[1]}); 
 	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
                 } else {
 	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.", trying other service nodes: ".$errstr);
