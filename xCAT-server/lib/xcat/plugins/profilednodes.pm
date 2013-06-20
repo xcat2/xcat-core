@@ -1728,10 +1728,29 @@ sub gen_new_hostinfo_string{
             }
         }
         
-        $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+        # get the chain attribute from hardwareprofile and insert it to node.
+        my $chaintab = xCAT::Table->new('chain');
+        my $hardwareprofile = $args_dict{'hardwareprofile'};
+        my $chain = $chaintab->getNodeAttribs($hardwareprofile, ['chain']);
+
+        if (exists $chain->{'chain'}) {
+           my $hardwareprofile_chain = $chain->{'chain'};
+           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod;
+        }
+
+        else {
+           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+        }
+
+
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
-            $hostinfo_dict{$item}{"chain"} = "runcmd=bmcsetup,osimage=$provmethod:reboot4deploy";
+            if (index($hostinfo_dict{$item}{"chain"}, "runcmd=bmcsetup") == -1){
+                $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,'.$hostinfo_dict{$item}{"chain"}.':reboot4deploy';
+            }
+            else{
+                $hostinfo_dict{$item}{"chain"} = $hostinfo_dict{$item}{"chain"}.':reboot4deploy';
+            }
 
             if (exists $ipshash{"bmc"}){
                 $hostinfo_dict{$item}{"bmc"} = $ipshash{"bmc"};
