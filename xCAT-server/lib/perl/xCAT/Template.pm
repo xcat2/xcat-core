@@ -421,7 +421,7 @@ sub windows_postscripts {
 	my $order = 1;
 	my $xml;
 	my $pscript;
-	foreach $pscripts (@cmds) {
+	foreach $pscript (@cmds) {
 		unless ($pscript =~ /\\/) { 
 			$pscript = "C:\\xcatpost\\".$pscript;
 		}
