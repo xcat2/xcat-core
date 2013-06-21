@@ -1444,6 +1444,8 @@ sub updatenodesyncfiles
         $rsp->{data}->[0] =
           "There were no syncfiles defined to process. File synchronization has completed.";
         $callback->($rsp);
+        my $stat="synced";
+        xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
 
     }
 
@@ -1546,7 +1548,7 @@ sub updatenodesoftware
     my $rsp;
     $CALLBACK = $callback;
     push @{$rsp->{data}},
-      "Performing software maintenance operations. This could take a while.\n";
+      "Performing software maintenance operations. This could take a while, if there are packages to install.\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     my ($rc, $AIXnodes_nd, $Linuxnodes_nd) =
