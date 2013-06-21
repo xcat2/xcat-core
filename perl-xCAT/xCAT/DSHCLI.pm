@@ -4688,21 +4688,42 @@ sub parse_and_run_dcp
     my $ranpostscripts;
     my $ranappendscripts;
     my $ranmergescripts;
+
+    # if we were called with runxcmd, like by updatenode
+    # need to save the runxcmd buffer 
+    # $::xcmd_outref
+    my $save_xcmd_outref;
+    if ($::xcmd_outref) { # this means we were called with runxcmd
+     $save_xcmd_outref = $::xcmd_outref;
+    }
+
     if ((@::postscripts) && ($::SYNCSN == 0)) {
-       @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
+       @results2 = &run_rsync_postscripts(\@results,$synfiledir,\%options); 
        $ranpostscripts=1;
     }
     if ((@::alwayspostscripts) && ($::SYNCSN == 0)) {
-       @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir); 
+       @results3 = &run_always_rsync_postscripts(\@nodelist,$synfiledir,\%options); 
     }
     if (($::appendscript) && ($::SYNCSN == 0)) {
-       @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
+       @results4 = &bld_and_run_append(\@nodelist,\@results,$synfiledir,$nodesyncfiledir,\%options); 
        $ranappendscripts=1;
     }
     if (($::mergescript) && ($::SYNCSN == 0)) {
-       @results5 = &bld_and_run_merge(\@nodelist,\@results,$synfiledir,$nodesyncfiledir); 
+       @results5 = &bld_and_run_merge(\@nodelist,\@results,$synfiledir,$nodesyncfiledir,\%options); 
        $ranmergescripts=1;
     }
+    # restore the runxcmd buffer
+    if ($save_xcmd_outref) { # this means we were called with runxcmd
+     $::xcmd_outref = $save_xcmd_outref;
+    }
+    # TODO, will we ever need to merge
+    # if we ran a postscript and we were run
+    # using runxcmd, and there was previous output in the 
+    # runxcmd buffer and we have output from the postscript
+    # then we have to merge the outputs
+    #if (($ranaps == 1) && ($save_xcmd_outref) && ($::xcmd_outref) ) {
+    #  &mergeoutput($save_xcmd_outref);
+    #}
     my @newresults;
     if (@results2) {
       @newresults = (@results2);
@@ -4717,9 +4738,14 @@ sub parse_and_run_dcp
       @newresults = (@newresults,@results3,@results4,@results5);
     }
     if (@newresults) {
+      if ($save_xcmd_outref) { # this means we were called with runxcmd
+        foreach my $line (@newresults) {
+         push @$::xcmd_outref,$line;
+        }
+      }
       return (@newresults);
     } else {
-      # don't report results for postscripts,appendscripts,mergescripts because
+      # don't report other results for postscripts,appendscripts,mergescripts because
       # you get all the rsync returned lines
       if (($ranpostscripts == 0 ) && ($ranappendscripts == 0) 
          && ($ranmergescripts == 0)) { 
@@ -5594,7 +5620,7 @@ sub parse_rsync_input_file_on_SN
 
 sub run_rsync_postscripts 
 {
-    my ($rsyncoutput,$syncdir) = @_;
+    my ($rsyncoutput,$syncdir,$options) = @_;
     my @rsync_output   = @$rsyncoutput;
     my @newoutput= (); 
     my $dshparms; 
@@ -5637,27 +5663,26 @@ sub run_rsync_postscripts
     # now if we have postscripts to run, run xdsh
     my $out;
 
-    # if we were called with runxcmd, like by updatenode
-    # need to save the runxcmd buffer 
-    # $::xcmd_outref
-    my $save_xcmd_outref;
-    if ($::xcmd_outref) { # this means we were called with runxcmd
-     $save_xcmd_outref = $::xcmd_outref;
-    }
     # my $ranaps=0;   # did we run a postscript
 
     foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
         my @nodes;
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+        my @args=();
+        if ($$options{'nodestatus'}) {
+          push @args,"--nodestatus" ;
+        }
+        push @args,"-e";
         # if on the service node need to add the $syncdir directory 
         # to the path
         if (xCAT::Utils->isServiceNode()) {
          my $tmpp=$syncdir . $ps;
          $ps=$tmpp;
         }
-         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+        push @args,$ps;
+        $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
-                                    arg     => [ "-e", $ps ]
+                                    arg     => \@args, 
                              }, $::SUBREQ, 0,1);
         foreach my $r (@$out){
                 push(@newoutput, $r);
@@ -5665,18 +5690,6 @@ sub run_rsync_postscripts
         }
         #     $ranaps=1;
     }
-    # restore the runxcmd buffer
-    if ($save_xcmd_outref) { # this means we were called with runxcmd
-     $::xcmd_outref = $save_xcmd_outref;
-    }
-    # TODO, will we ever need to merge
-    # if we ran a postscript and we were run
-    # using runxcmd, and there was previous output in the 
-    # runxcmd buffer and we have output from the postscript
-    # then we have to merge the outputs
-    #if (($ranaps == 1) && ($save_xcmd_outref) && ($::xcmd_outref) ) {
-    #  &mergeoutput($save_xcmd_outref);
-    #}
     return @newoutput;
 }
 #-------------------------------------------------------------------------------
@@ -5714,7 +5727,7 @@ sub run_rsync_postscripts
 
 sub bld_and_run_append
 {
-    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir) = @_;
+    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir,$options) = @_;
     my @hosts   = @$hostnames;
     my @rsync_output   = @$rsyncoutput;
     my @newoutput= (); 
@@ -5786,10 +5799,16 @@ sub bld_and_run_append
        foreach  my $ps ( keys %{$$dshparms{'appendscripts'}}) {
          my @nodes;
          push (@nodes, @{$$dshparms{'appendscripts'}{$ps}}); 
+         my @args=();
+         if ($$options{'nodestatus'}) {
+           push @args,"--nodestatus" ;
+         }
+         push @args,$ps;
+         push @args,$::xdcpappendparms;
          
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
-                                    arg     => [ $ps , $::xdcpappendparms ]
+                                    arg     => \@args, 
                              }, $::SUBREQ, 0,1);
          foreach my $r (@$out){
                 push(@newoutput, $r);
@@ -5836,7 +5855,7 @@ sub bld_and_run_append
 
 sub bld_and_run_merge
 {
-    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir) = @_;
+    my ($hostnames,$rsyncoutput,$syncdir,$nodesyncfiledir,$options) = @_;
     my @hosts   = @$hostnames;
     my @rsync_output   = @$rsyncoutput;
     my @newoutput= (); 
@@ -5918,9 +5937,17 @@ sub bld_and_run_merge
          my @nodes;
          push (@nodes, @{$$dshparms{'mergescripts'}{$ps}}); 
          
+         # build the argument list
+         my @args=();
+   
+         if ($$options{'nodestatus'}) {
+            push @args,"--nodestatus" ;
+         }
+         push @args, $ps;
+         push @args, $::xdcpmergeparms;
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
-                                    arg     => [ $ps , $::xdcpmergeparms ]
+                                    arg     => \@args, 
                              }, $::SUBREQ, 0,1);
          foreach my $r (@$out){
                 push(@newoutput, $r);
@@ -5946,7 +5973,7 @@ sub bld_and_run_merge
 
 sub run_always_rsync_postscripts 
 {
-    my ($hostnames,$syncdir) = @_;
+    my ($hostnames,$syncdir,$options) = @_;
     my @hosts   = @$hostnames;
     my @newoutput= (); 
     my $dshparms; 
@@ -5968,26 +5995,28 @@ sub run_always_rsync_postscripts
     # now if we have postscripts to run, run xdsh
     my $out;
 
-    # if we were called with runxcmd, like by updatenode
-    # need to save the runxcmd buffer 
-    # $::xcmd_outref
-    my $save_xcmd_outref;
-    if ($::xcmd_outref) { # this means we were called with runxcmd
-     $save_xcmd_outref = $::xcmd_outref;
-    }
+
     foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
         my @nodes;
-        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+        # build the argument list
+        my @args=();
+        if ($$options{'nodestatus'}) {
+          push @args,"--nodestatus" ;
+        }
+        push @args,"-e";
         # if on the service node need to add the $syncdir directory 
         # to the path
         if (xCAT::Utils->isServiceNode()) {
          my $tmpp=$syncdir . $ps;
          $ps=$tmpp;
         }
+        push @args, $ps;
+
+        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
          
-         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+        $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
-                                    arg     => [ "-e", $ps ]
+                                    arg     => \@args, 
                              }, $::SUBREQ, 0,1);
         foreach my $r (@$out){
                 push(@newoutput, $r);
@@ -5995,10 +6024,6 @@ sub run_always_rsync_postscripts
         }
 
 
-    }
-    # restore the runxcmd buffer
-    if ($save_xcmd_outref) { # this means we were called with runxcmd
-     $::xcmd_outref = $save_xcmd_outref;
     }
     return @newoutput;
 }
