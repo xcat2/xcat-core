@@ -863,9 +863,10 @@ sub kit_cleanrepo
               print "Contents of $::base_repodir has been successfully removed. \n";
           }
     } else {
+        my $got_one = 0;
         foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}}) {
           if ($repoid eq $kr->{kitrepoid}) {
-            my $repodir = $::base_repodir.'/'.$kr->{kitreponame}; 
+            my $repodir = $::base_repodir.'/'.$kr->{kitreponame};
             if ( -d $repodir ){
               if ( system("rm -Rf $repodir ") ) {
                   print "Error removing directory $repodir \n";
@@ -876,8 +877,12 @@ sub kit_cleanrepo
             } else {
               print "Kit repository $kr->{kitrepoid} directory $repodir does not exist.  Nothing to remove for this repository. \n";
             }
-            last; 
+            $got_one = 1;
+            last;
           }
+        }
+        if ( !$got_one ) {
+            print "Kit repository $repoid does not exist.\n";
         }
     }
     if ( -d "$::workdir/rpmbuild" ) {
