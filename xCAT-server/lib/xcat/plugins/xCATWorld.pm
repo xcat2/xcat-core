@@ -20,6 +20,7 @@ use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
+use strict;
 1;
 
 #-------------------------------------------------------
@@ -51,7 +52,8 @@ sub preprocess_request
 {
     my $req = shift;
     my $callback  = shift;
-    my %sn;
+    my $subreq = shift;
+     $::CALLBACK = $callback;
     #if already preprocessed, go straight to request
     if (($req->{_xcatpreprocessed}) and ($req->{_xcatpreprocessed}->[0] == 1) ) { return [$req]; }
     my $nodes    = $req->{node};
@@ -60,8 +62,8 @@ sub preprocess_request
     # find service nodes for requested nodes
     # build an individual request for each service node
     if ($nodes) {
-     $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
-
+     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode($nodes, $service, "MN");
+     my @requests;
       # build each request for each service node
 
       foreach my $snkey (keys %$sn)
@@ -93,7 +95,8 @@ sub process_request
 {
 
     my $request  = shift;
-    $::CALLBACK = shift;
+    my $callback = shift;
+    my $subreq    = shift;
     my $nodes    = $request->{node};
     my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
@@ -101,6 +104,7 @@ sub process_request
     my %rsp;
     my @nodes=@$nodes; 
     @ARGV = @{$args};    # get arguments
+    $::CALLBACK=$callback; 
     # do your processing here
     # return info
     Getopt::Long::Configure("posix_default");
@@ -130,19 +134,28 @@ if (
         #$version .= "\n";
         my $rsp={};
         $rsp->{data}->[0] = $version;        
-        xCAT::MsgUtils->message("I",$rsp,$::CALLBACK, 0);
+        xCAT::MsgUtils->message("I",$rsp,$callback, 0);
         exit 0;
     }
- 
+    # Here you call plugin to plugin
+    # call another plugin
+    # save your callback function
+
+   my $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                    node    => \@nodes,
+                                    arg     => [ "-v","ls /tmp" ]
+                             }, $subreq, 0,1);
+
+
     my $host=hostname();
     my $rsp={};
     $rsp->{data}->[0] = "Hello World from $host! I can process the following nodes:";
-    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-    foreach $node (@nodes)
+    xCAT::MsgUtils->message("I", $rsp, $callback, 0);
+    foreach my $node (@nodes)
     {
         $rsp->{data}->[0] .= "$node\n";
     }
-    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
+    xCAT::MsgUtils->message("I", $rsp, $callback, 0);
     return;
 
 }
@@ -178,4 +191,4 @@ sub usage
         $rsp->{data}->[0] = $usagemsg;
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
   return;
-} 
+}
