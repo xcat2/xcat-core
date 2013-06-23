@@ -1307,6 +1307,10 @@ sub runxcmd_output
     {
         push @$::xcmd_outref, @{$resp->{data}};
     }
+    if (defined($resp->{status}))
+    {
+        push @$::xcmd_outref, @{$resp->{status}};
+    }
     if (defined($resp->{node}))
     {
         my $node = $resp->{node}->[0];
@@ -1377,6 +1381,10 @@ sub runxcmd_output2
     if (defined($resp->{data}))
     {
         push  @{$::xcmd_outref_hash->{data}},  @{$resp->{data}};
+    }
+    if (defined($resp->{status}))
+    {
+        push  @{$::xcmd_outref_hash->{status}},  @{$resp->{status}};
     }
     if (defined($resp->{node}))
     {
