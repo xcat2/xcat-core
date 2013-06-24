@@ -36,7 +36,7 @@ case "$1" in
 	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
     #SHA1 has been get rid of after Squeeze released. Its functionality is also provided by Digest::SHA (which is in core).
     #but ipmi.pm need SHA1.pm, so create this link
-    shalocate=`find /usr -name "SHA.pm"`
+    shalocate=`find /usr/lib/perl -name "SHA.pm"`
     shalocate=${shalocate%SHA.pm}
     cd $shalocate
     if [ ! -e SHA1.pm ];then
