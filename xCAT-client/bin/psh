@@ -127,11 +127,8 @@ if ($timeout) { alarm($timeout); }
 foreach (@nodes) {
   my $node=$_;
   while ($children >= $pshmaxp) { processoutput($inputs); }
-  my $child;
   $children++;
-  sshnode(\$child,$node,$username,@ARGV[1 .. $#ARGV]);
-  $inputs->add($child);
-  $nodehdl{$child} = $node;
+  sshnode($inputs,\%nodehdl,$node,$username,@ARGV[1 .. $#ARGV]);
 }
 while ($inputs->count) {
   processoutput($inputs);
@@ -187,14 +184,18 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
   return $rc;
 }
 sub sshnode {
-  my $out = shift;
+  my $inputs = shift;
+  my $nodehdl = shift;
   my $node = shift;
   my $username = shift;
+  my $out;
   if (length($username)) { $username = "-l $username"; }
   my $in;
   my $args = join(" ",@_);
   #print "ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
-  my $pid = open($$out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  my $pid = open($out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  $inputs->add($out);
+  $nodehdl->{$out} = $node;
   $pids{$pid} = $node;
 }
 
