@@ -1676,9 +1676,15 @@ sub gen_new_hostinfo_string{
                 $freeipsref = $freeipshash{$netname};
             }
             
+            # Not generate other nic's ip if it is defined in file
             if (exists $allothernics{$item}->{$_}) {
                 next;
             }
+            # Not generate install nic ip if it is defined in file
+            if ($_ eq $installnic and exists $hostinfo_dict{$item}{"ip"}){
+                next;
+            }
+            
             # If generated IP is already used, re-generate free ip 
             my $nextip = shift @$freeipsref;
             while (exists $allips{$nextip}){
@@ -1692,7 +1698,7 @@ sub gen_new_hostinfo_string{
                 $allips{$nextip} = 0;
             }    
         }
-        # Generate IP address if no IP specified.
+        # Apply generated install nic ip to node if it is not defined in file.
         if (! exists $hostinfo_dict{$item}{"ip"}) {
             if (exists $ipshash{$installnic}){
                 $hostinfo_dict{$item}{"ip"} = $ipshash{$installnic};
