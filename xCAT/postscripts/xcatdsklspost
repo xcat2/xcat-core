@@ -667,14 +667,12 @@ run_ps () {
  
  if [ -f \$1 ]; then 
   echo \"\`date\` Running postscript: \$@\" | tee -a \$logfile
-  #./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  #cat /tmp/tmp4xcatlog | tee -a \$logfile
   ./\$@ 2>&1 | tee -a \$logfile
   ret_local=\${PIPESTATUS[0]}
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"Postscript: \$@ exited with code \$ret_local\"
+  echo \"Postscript: \$@ exited with code \$ret_local\" | tee -a \$logfile
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" | tee -a \$logfile
   return_value=-1
