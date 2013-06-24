@@ -264,7 +264,7 @@ virtsd => {
 },
 
 storage => {
-    cols => [qw(node osvolume size state storagepool fcprange volumetag comments disable)],
+    cols => [qw(node osvolume size state storagepool hypervisor fcprange volumetag comments disable)],
     keys => [qw(node)],
     table_descr => 'Node storage resources',
     descriptions => {
@@ -276,6 +276,7 @@ storage => {
         size => 'Size of the volume. Examples include: 10G, 1024M.',
         state => 'State of the volume. The valid values are: free, used, and allocated',
         storagepool => 'Name of storage pool where the volume is assigned.',
+        hypervisor => 'Name of the hypervisor where the volume is configured.',
         fcprange => 'A range of acceptable fibre channels that the volume can use. Examples include: 3B00-3C00;4B00-4C00.',
         volumetag => 'A specific tag used to identify the volume in the autoyast or kickstart template.',
         comments => 'Any user-written notes.',
