@@ -955,7 +955,7 @@ function groupDialog() {
                                 
                 // Check that group attributes are provided before continuing
                 var ready = 1;
-                var inputs = new Array(group, ip, hostnames);
+                var inputs = new Array(group);
                 for (var i in inputs) {
                     if (!inputs[i].val()) {
                         inputs[i].css('border-color', 'red');
