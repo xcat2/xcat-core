@@ -24,7 +24,7 @@ case "$1" in
         if [ -f "/proc/cmdline" ]; then
             . /etc/profile.d/xcat.sh
             tarch=`uname -m`
-            mknb ${tarch}
+            mknb $tarch
         fi
     fi
     ;;
