@@ -6,7 +6,7 @@
 ## end of all attributes from the site table
 
 
-ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE#
+ENABLESSHBETWEENNODES=$ENABLESSHBETWEENNODES
 export ENABLESSHBETWEENNODES
 
 ## tabdump(<TABLENAME>) is used to get all the information 
@@ -65,7 +65,7 @@ export PATH
 ## There may be no information.
 #AIX_ROOT_PW_VARS_EXPORT#
 
-NODESETSTATE=#Subroutine:xCAT::Postage::getnodesetstate:$NODE#
+NODESETSTATE=$NSETSTATE
 export NODESETSTATE
 
 UPDATENODE=0

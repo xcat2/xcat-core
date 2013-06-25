@@ -329,6 +329,12 @@ sub makescript {
   my $monhash=getMonItems($nodes);
   #print "getMonItems get called " . Dumper($monhash) . "\n";
  
+  # it will get the site.sshbetweennodes, and then parse the noderange if needed. 
+  my $groups_hash = getsshbetweennodes();
+
+  # get all the nodes' setstate   
+  my $nodes_setstate_hash = getNodesSetState($nodes); 
+ 
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
@@ -401,7 +407,7 @@ sub makescript {
     #print "nodesetstate:$nodesetstate\n";
     ## OSPKGDIR export
     #  for #OSIMAGE_VARS_EXPORT# 
-    if (!$nodesetstate) { $nodesetstate = getnodesetstate($node); }
+    if (!$nodesetstate) { $nodesetstate = $nodes_setstate_hash->{$node}; }
     #print "nodesetstate:$nodesetstate\n";
    
     #my $et = $typehash->{$node};
@@ -439,7 +445,7 @@ sub makescript {
     my $postbootscripts;
     $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
 
-
+    my $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
 
 
   #ok, now do everything else..
@@ -457,8 +463,13 @@ sub makescript {
   $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
   
+  $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
+  $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
+  
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/\$NTYPE/$nodetype/eg;
+
+  # This line only is used to compatible with the old code
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
 
   # we will create a file in /tftboot/mypostscript/mypostscript_<nodename> 
@@ -614,6 +625,90 @@ sub getNodeType
 
     return $result;
 }
+
+#
+# It will get the value of site.sshbetweennodes, and then put the groups and groups' nodes in one hash 
+#
+sub getsshbetweennodes
+{
+
+    my %groups;
+    my $values;
+    my @vals = xCAT::TableUtils->get_site_attribute("sshbetweennodes");
+    $values = $vals[0];
+    if ($values) {
+         my @gs = split(/,/, $values);
+         %groups = map { $_ => 1 } @gs;
+         if( $groups{ALLGROUPS} !=1 || $groups{NOGROUPS} !=1  )  {
+             my @m;
+             foreach my $group (@gs) {
+                   my @ns=xCAT::Utils->list_nodes_in_nodegroups($group);
+                   my %nodes = map { $_ => 1 } @ns;
+                   %groups = (%groups, %nodes); 
+             }
+         }
+
+    } 
+    return \%groups;      
+
+}
+
+
+
+#-------------------------------------------------------------------------------
+
+=head3  enableSSHbetweennodes 
+    Description:
+        The function is same as Template::enablesshbetweennodes() above. 
+        The performance of template::enablesshbetweennodes() is bad is scaling environment.
+        We plan to use ""ENABLESSHBETWEENNODES=$""ENABLESSHBETWEENNODES" instead of  the 
+        syntax "ENABLESSHBETWEENNODES=#Subroutine:xCAT::Template::enablesshbetweennodes:$NODE# " in mypostscript.tmpl.
+        To compatible to the old mypostscript.tmpl, so the  Template::enablesshbetweennodes() is left there.
+    Arguments:
+        $node  --  node name
+        $sn_hash -- if the node is one sn, key is the node name, and value is 1. 
+                    if the node is not a sn, the key isn't in this hash
+        $groups_hash -- there are two keys:
+                     1.  Each group in the value of site.sshbetweennodes could be the key
+                     2.  Each node in the groups from the value of site.sshbetweennodes , if the 
+                         value isn't ALLGROUPS or NOGROUPS.
+          
+    Returns:
+       1 = enable ssh
+       0 = do not enable ssh 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $enable = xCAT::TableUtils->enableSSH($node);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub enableSSHbetweennodes
+{
+
+    my $node   = shift;
+    my $sn_hash   = shift;
+    my $groups_hash   = shift;
+    my $result;
+  
+    my $enablessh=xCAT::TableUtils->enableSSH($node, $sn_hash, $groups_hash);
+    if ($enablessh == 1) {
+       $result = "'YES'";
+    } else {
+       $result = "'NO'";
+    }
+ 
+    return $result;
+}
+
+
+
+
 
 sub getAIXPasswdVars
 {
@@ -1309,7 +1404,7 @@ sub includefile
 
 =head3   getnodesetstate
 
-        Determine the nodeset stat.
+        Determine the nodeset stat. This is used to be compatible to the old mypostscript.tmpl
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1318,6 +1413,31 @@ sub getnodesetstate
     my $node = shift;
     return xCAT::SvrUtils->get_nodeset_state($node,prefetchcache=>1, "global_tab_hash"=>\%::GLOBAL_TAB_HASH);
 }
+
+#----------------------------------------------------------------------------
+
+=head3   getNodesSetState
+
+        Determine the nodeset stat for noderange.
+=cut
+
+#-----------------------------------------------------------------------------
+sub getNodesSetState
+{
+    my $nodes = shift;
+    my $nsh={};
+    my %res;
+    my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates($nodes, $nsh);
+    foreach my $state (keys %$nsh) {
+        my $ns = $nsh->{$state};
+        %res = map {$_ => $state} @$ns;
+    }
+    return \%res;
+}
+
+
+
+
 
 sub net_parms
 {
