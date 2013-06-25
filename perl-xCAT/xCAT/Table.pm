@@ -159,7 +159,7 @@ sub init_dbworker {
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
         $0 = "xcatd: DB Access";
         use File::Path;
-        mkpath('/tmp/xcat/');
+        mkpath('/var/run/xcat/');
         use IO::Socket;
         $SIG{TERM} = $SIG{INT} = sub {
             $exitdbthread=1;
