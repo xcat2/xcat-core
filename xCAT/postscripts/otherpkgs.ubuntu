@@ -316,20 +316,20 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y remove $repo_pkgs_preremove"
             result=`yum -y remove $repo_pkgs_preremove 2>&1`
-            logger -t xcat  -p local4.info "$result"
-            if [ $? -ne 0 ]; then 
-		RETURNVAL=$?
-	        logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
             fi
+	    logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper remove -y $repo_pkgs_preremove"
 	    result=`zypper remove -y $repo_pkgs_preremove 2>&1`
-            logger -t xcat  -p local4.info "$result"
-	    if [ $? -ne 0 ]; then 
-		RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
 	    fi
+	    logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         fi
     fi 
@@ -337,11 +337,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_preremove" != "" ]; then 
         echo "$sremovecommand $plain_pkgs_preremove" 
         result=`$sremovecommand $plain_pkgs_preremove 2>&1`
-        logger -t xcat  -p local4.info "$result"
-        if [ $? -ne 0 ]; then 
-	    RETURNVAL=$?
-	    logger -t xcat  -p local4.info "otherpkgs $result"
+        R=$?
+        if [ $R -ne 0 ]; then
+               RETURNVAL=$R
         fi
+	logger -t xcat  -p local4.info "otherpkgs $result"
         echo "$result"
     fi
 
@@ -351,20 +351,20 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y install $repo_pkgs"
             result=`yum -y install $repo_pkgs 2>&1`
-	    logger -t xcat  -p local4.info "$result"
-            if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
             fi
+            logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper install -y $repo_pkgs"
 	    result=`zypper install -y $repo_pkgs 2>&1`
-            logger -t xcat  -p local4.info "$result"
-	    if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
 	    fi
+            logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
             #remove the repos
             #old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
@@ -375,11 +375,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	elif [ $hasapt -eq 1 ]; then
 	    echo "apt-get -q -y --force-yes install $repo_pkgs"
 	    result=`apt-get -q -y --force-yes install $repo_pkgs 2>&1`
-	    logger -t xcat  -p local4.info "$result"
-	    if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
 	    fi
+            logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         fi
     fi 
@@ -427,29 +427,29 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $hasyum -eq 1 ]; then 
             echo "yum -y remove $repo_pkgs_postremove"
             result=`yum -y remove $repo_pkgs_postremove 2>&1`
-            logger -t xcat  -p local4.info "$result"
-            if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info  "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
             fi
+            logger -t xcat  -p local4.info  "otherpkgs: $result"
             echo "$result"
         elif [ $haszypper -eq 1 ]; then
             echo "zypper remove -y $repo_pkgs_postremove"
 	    result=`zypper remove -y $repo_pkgs_postremove 2>&1`
-            logger -t xcat  -p local4.info  "$result"
-	    if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
     	    fi
+            logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         elif [ $hasapt -eq 1 ]; then 
             echo "apt-get -y remove $repo_pkgs_postremove"
             result=`apt-get -y remove $repo_pkgs_postremove 2>&1`
-            logger -t xcat  -p local4.info "$result"
-            if [ $? -ne 0 ]; then 
-	        RETURNVAL=$?
-                logger -t xcat  -p local4.info "otherpkgs: $result"
+            R=$?
+            if [ $R -ne 0 ]; then
+               RETURNVAL=$R
             fi
+            logger -t xcat  -p local4.info "otherpkgs: $result"
             echo "$result"
         fi
     fi 
@@ -457,11 +457,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     if [ "$plain_pkgs_postremove" != "" ]; then 
         echo "$sremovecommand $plain_pkgs_postremove" 
         result=`$sremovecommand $plain_pkgs_postremove 2>&1`
-        logger -t xcat  -p local4.info "$result"
-        if [ $? -ne 0 ]; then 
-	    RETURNVAL=$?
-       	    logger -t xcat  -p local4.info "otherpkgs $result"
+        R=$?
+        if [ $R -ne 0 ]; then
+               RETURNVAL=$R
         fi
+       	logger -t xcat  -p local4.info "otherpkgs $result"
         echo "$result"
     fi
 
