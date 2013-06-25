@@ -1498,19 +1498,10 @@ sub enablessh
     my ($class, $node) = @_;
     my $enablessh=1;
     
-    if( %::GLOBAL_SN_HASH ) {
-        if ($::GLOBAL_SN_HASH{$node} == 1) {
+    if( xCAT::Utils->isSN($node) ) {
             $enablessh=1;   # service nodes always enabled
-
-        } 
+       
     } else { 
-        if (xCAT::Utils->isSN($node)) 
-        {
-            $enablessh=1;   # service nodes always enabled
-        }
-        else
-       {
-
         # if not a service node we need to check, before enabling
         my $values;
         my @vals = xCAT::TableUtils->get_site_attribute("sshbetweennodes");
@@ -1554,11 +1545,92 @@ sub enablessh
             $enablessh=1;
 
          }
-       }
     }
     return $enablessh;
 
 }
+
+#-------------------------------------------------------------------------------
+
+=head3  enableSSH 
+    Description:
+        The function is same as enablessh() above. Before using this function,
+        the $sn_hash for noderange, and $groups_hash for site.sshbetweennodes should be
+        got.  This is performance improvement.
+    Arguments:
+        $node  --  node name
+        $sn_hash -- if the node is one sn, key is the node name, and value is 1. 
+                    if the node is not a sn, the key isn't in this hash
+        $groups_hash -- there are two keys:
+                     1.  Each group in the value of site.sshbetweennodes could be the key
+                     2.  Each node in the groups from the value of site.sshbetweennodes , if the 
+                         value isn't ALLGROUPS or NOGROUPS.
+          
+    Returns:
+       1 = enable ssh
+       0 = do not enable ssh 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $enable = xCAT::TableUtils->enableSSH($node);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub enableSSH
+{
+
+    my ($class, $node, $sn_hash, $groups_hash) = @_;
+    my $enablessh=1;
+    
+    if( defined($sn_hash) && defined($sn_hash->{node}) && $sn_hash->{$node} == 1 ) {
+            $enablessh=1;   # service nodes always enabled
+       
+    } else { 
+        # if not a service node we need to check, before enabling
+        if (defined($groups_hash)) {
+            if ($groups_hash->{ALLGROUPS} == 1)
+            {
+              $enablessh=1;
+            }
+            else
+            {
+                if ($groups_hash->{NOGROUPS} == 1)
+                {
+                      $enablessh=0;
+                }
+                else
+                {    # check to see if the node is a member of a group
+                    my $ismember = 0;
+                    $ismember = $groups_hash->{$node};
+
+                    if ($ismember == 1)
+                    {
+                        $enablessh=1;
+                    }
+                    else
+                    {
+                        $enablessh=0;
+                    }
+                }
+            }
+         }
+         else
+         {    # does not exist, set default
+            $enablessh=1;
+
+         }
+    }
+    return $enablessh;
+
+}
+
+
+
 
 
 #-----------------------------------------------------------------------------
