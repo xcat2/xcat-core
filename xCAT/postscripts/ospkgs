@@ -423,8 +423,9 @@ if ( pmatch "$OSVER" "sles10*" ); then
     fi
 
     result=`rug update -y --agree-to-third-party-licences`
-    if [ $? -ne 0 ]; then 
-        RETURNVAL=$?
+    R=$?
+    if [ $R -ne 0 ]; then
+        RETURNVAL=$R
 	logger -t xcat -p local4.info "rug update -y --agree-to-third-party-licences\n    $result"
         echo "ospkgs: rug update -y --agree-to-third-party-licences"
 	echo "    $result"
@@ -440,8 +441,9 @@ if ( pmatch "$OSVER" "sles10*" ); then
     if [ -n "$groups" ]; then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences -t pattern $groups"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -457,8 +459,9 @@ if ( pmatch "$OSVER" "sles10*" ); then
     if [ -n "$pkgs" ]; then
 	cmd="$ENVLIST rug install -y --agree-to-third-party-licences $pkgs"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -474,8 +477,9 @@ if ( pmatch "$OSVER" "sles10*" ); then
     if [ -n "$pkgs_d" ]; then
 	cmd="$ENVLIST rug remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -571,8 +575,9 @@ elif ( pmatch "$OSVER" "sles11*" ); then
 
     #upgrade the all existing rpms
     result=`zypper --non-interactive update --auto-agree-with-licenses`
-    if [ $? -ne 0 ]; then 
-        RETURNVAL=$?
+    R=$?
+    if [ $R -ne 0 ]; then
+        RETURNVAL=$R
 	logger -t xcat -p local4.info  "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
 	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
 	echo "    $result"
@@ -587,8 +592,9 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     if [ -n "$groups" ]; then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses -t pattern $groups"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -604,8 +610,9 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     if [ -n "$pkgs" ]; then
 	cmd="$ENVLIST zypper install -y --auto-agree-with-licenses $pkgs"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -621,8 +628,9 @@ elif ( pmatch "$OSVER" "sles11*" ); then
     if [ -n "$pkgs_d" ]; then
 	cmd="$ENVLIST zypper remove -y $pkgs_d"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -656,8 +664,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	command="apt-get -y upgrade"
 	echo "=== $command"
 	eval $command
-        if [ $? -ne 0 ]; then
-           RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
         fi
 
 	# install groups (NOTE: It's not clear rpm-like "groups" are supported by dpkg/apt,
@@ -667,8 +676,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -q -y --force-yes install $groups"
 		echo "=== $command"
 		eval $command
-                if [ $? -ne 0 ]; then
-                   RETURNVAL=$?
+                R=$?
+                if [ $R -ne 0 ]; then
+                   RETURNVAL=$R
                 fi
 	fi
 
@@ -677,8 +687,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -q -y --force-yes install $pkgs"
 		echo "=== $command"
 		eval $command
-                if [ $? -ne 0 ]; then
-                   RETURNVAL=$?
+                R=$?
+                if [ $R -ne 0 ]; then
+                   RETURNVAL=$R
                 fi
 	fi
 
@@ -687,8 +698,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		command="$ENVLIST apt-get -y remove $pkgs_d"
 		echo "=== $command"
 		eval $command
-                if [ $? -ne 0 ]; then
-                   RETURNVAL=$?
+                R=$?
+                if [ $R -ne 0 ]; then
+                   RETURNVAL=$R
                 fi
 	fi
 else 
@@ -743,8 +755,9 @@ else
 
     #upgrade the existing rpms
     result=`yum -y upgrade 2>&1`
-    if [ $? -ne 0 ]; then 
-        RETURNVAL=$?
+    R=$?
+    if [ $R -ne 0 ]; then
+       RETURNVAL=$R
 	logger -t xcat -p local4.info "ospkgs: yum -y upgrade\n    $result"
 	echo "ospkgs: yum -y upgrade"
 	echo "    $result"
@@ -759,8 +772,9 @@ else
     if [ -n "$groups" ]; then
 	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+           RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -776,8 +790,9 @@ else
     if [ -n "$pkgs" ]; then
 	cmd="$ENVLIST yum -y install $pkgs"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+           RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
@@ -793,8 +808,9 @@ else
     if [ -n "$pkgs_d" ]; then
 	cmd="$ENVLIST yum -y remove $pkgs_d"
 	result=`eval $cmd 2>&1`
-	if [ $? -ne 0 ]; then 
-            RETURNVAL=$?
+        R=$?
+        if [ $R -ne 0 ]; then
+           RETURNVAL=$R
 	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
 	    echo $result
