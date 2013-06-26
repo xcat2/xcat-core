@@ -10,10 +10,10 @@
 
 # set -x
 
-# Make one of the following rpms: perl-xCAT, xCAT-server, xCAT-client, xCAT-IBMhpc, xCAT-rmc, xCAT-UI, xCAT-test
+# Make one of the following rpms: perl-xCAT, xCAT-server, xCAT-client, xCAT-IBMhpc, xCAT-rmc, xCAT-UI, xCAT-test, xCAT-OpenStack
 function makenoarch {
 	RPMNAME=$1
-	if [ "$OSNAME" = "AIX" ]; then
+	if [ "$OSNAME" = "AIX" -a "$RPMNAME" != "xCAT-OpenStack" ]; then
 		echo '.svn' > /tmp/xcat-excludes
 		tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/$RPMNAME-$VER.tar $RPMNAME
 		gzip -f $RPMROOT/SOURCES/$RPMNAME-$VER.tar
