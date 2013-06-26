@@ -1,7 +1,7 @@
 Source: xcat-test
 Section: admin
 Priority: extra
-Maintainer: Leonardo Tonetto <tonetto@linux.vnet.ibm.com>
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 
