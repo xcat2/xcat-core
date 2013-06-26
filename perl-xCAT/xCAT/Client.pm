@@ -263,7 +263,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     $msg=$request;
     print $client $msg;
   }
-  $SIG{TERM} =  $SIG{INT} = sub { send_request({abortcommand=>1},$client,$encode); exit 0; };
+  $SIG{TERM} =  $SIG{INT} = sub { send_request({abortcommand=>[1]},$client,$encode); exit 0; };
   my $response;
   my $rsp;
   my $cleanexit=0;
