@@ -4789,15 +4789,18 @@ sub vitals {
 	}
 
     $sessdata->{sensorstoread} = [];
+    my %usedkeys;
 	foreach(keys %sensor_filters) {
 		my $filter = $_;
         if ($filter eq "energy" or $filter eq "leds") { next; }
 
 		foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
+            if ($usedkeys{$key}) { next; } #avoid duplicate requests for sensor data
 			my $sdr = $sdr_hash{$key};
 			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
                 push @{$sessdata->{sensorstoread}},$sdr;
+                $usedkeys{$key}=1;
             }
 		}
 	}
