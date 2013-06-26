@@ -1436,6 +1436,19 @@ discoverydata => {
        disable => "Set to 'yes' or '1' to comment out this row.",
    },
 },
+cfgmgt => {
+   cols => [qw(node cfgmgr cfgserver roles comments disable)],
+   keys => [qw(node)],
+   table_desc => 'Configuration management data for nodes used by non-xCAT osimage management services to install and configure software on a node.  ',
+   descriptions => {
+       node => 'The node being managed by the cfgmgr service',
+       cfgmgr => 'The name of the configuration manager service.  Currently \'chef\' and \'puppet\' are supported services.',
+       cfgserver => 'The xCAT node name of the chef server or puppet master',
+       roles => 'The roles associated with this node as recognized by the cfgmgr for the software that is to be installed and configured.  These role names map to chef recipes or puppet manifest classes that should be used for this node.  For example, chef OpenStack cookbooks have roles such as mysql-master,keystone, glance, nova-controller, nova-conductor, cinder-all.  ',
+       comments => 'Any user-written notes.',
+       disable => "Set to 'yes' or '1' to comment out this row.",
+   },
+},
 
 ); # end of tabspec definition
 
@@ -2337,6 +2350,21 @@ my @nodeattrs = (
                  tabentry => 'prescripts.end',
                  access_tabentry => 'prescripts.node=attr:node',
 			},
+#################
+# cfgmgt table  #
+#################
+        {attr_name => 'cfgmgr',
+                 tabentry => 'cfgmgt.cfgmgr',
+                 access_tabentry => 'cfgmgt.node=attr:node',
+        },
+        {attr_name => 'cfgserver',
+                 tabentry => 'cfgmgt.cfgserver',
+                 access_tabentry => 'cfgmgt.node=attr:node',
+        },
+        {attr_name => 'cfgmgtroles',
+                 tabentry => 'cfgmgt.roles',
+                 access_tabentry => 'cfgmgt.node=attr:node',
+        },
   );	# end of @nodeattrs that applies to both nodes and groups
 
 
