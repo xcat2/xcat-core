@@ -407,7 +407,7 @@ sub makescript {
     #print "nodesetstate:$nodesetstate\n";
     ## OSPKGDIR export
     #  for #OSIMAGE_VARS_EXPORT# 
-    if (!$nodesetstate) { $nodesetstate = $nodes_setstate_hash->{$node}; }
+    if (!$nodesetstate || ( defined($nodes_setstate_hash) && $nodes_setstate_hash->{$node}) ) { $nodesetstate = $nodes_setstate_hash->{$node}; }
     #print "nodesetstate:$nodesetstate\n";
    
     #my $et = $typehash->{$node};
@@ -1430,7 +1430,8 @@ sub getNodesSetState
     my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates($nodes, $nsh);
     foreach my $state (keys %$nsh) {
         my $ns = $nsh->{$state};
-        %res = map {$_ => $state} @$ns;
+        my %result = map {$_ => $state} @$ns;
+        %res = (%result, %res);
     }
     return \%res;
 }
