@@ -128,69 +128,72 @@ then
         REL=`basename $t`
     fi
 
-    #get the version
-    echo "svn --quiet update Version"
-    svn --quiet up Version
-    ver=`cat Version`
-    short_ver=`cat Version|cut -d. -f 1,2`
-    short_short_ver=`cat Version|cut -d. -f 1`
+    if [ "$PROMOTE" != 1 ]; then
+        #get the version
+        echo "svn --quiet update Version"
+        svn --quiet up Version
+        ver=`cat Version`
+        short_ver=`cat Version|cut -d. -f 1,2`
+        short_short_ver=`cat Version|cut -d. -f 1`
 
-    #TODO: define the core path and tarball name
-    tarball_name="core-debs-snap.tar.bz2"
+        #TODO: define the core path and tarball name
+        tarball_name="core-debs-snap.tar.bz2"
 
-    #update the code from svn
-    svn_up_log="../coresvnup"
-    echo "svn update > $svn_up_log"
-    svn update > $svn_up_log
+        #update the code from svn
+        svn_up_log="../coresvnup"
+        echo "svn update > $svn_up_log"
+        svn update > $svn_up_log
 
-    #makesure the code change status
-    code_change=0
-    if ! grep -q 'At revision' $svn_up_log;then
-        code_change=1
-    fi
-
-    if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
-        echo "Nothing new detected"
-        exit 0
-    fi
-    echo "###############################"
-    echo "# Building xcat-core packages #"
-    echo "###############################"
-
-    #the package type:  local | snap | alpha
-    #the build introduce stirng
-    pkg_type="snap"
-    build_string="Snap_Build"
-    cur_date=`date +%Y%m%d`
-    pkg_version="${short_ver}-${pkg_type}${cur_date}"
-    
-    if [ ! -d ../../debs ];then
-        mkdir -p "../../debs"
-    fi
-    packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test"
-
-    for file in `echo $packages`
-    do
-        file_low=`echo $file | tr '[A-Z]' '[a-z]'`
-        if grep -q $file $svn_up_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
-            rm -f ../../debs/${file_low}_*.deb
-            #only for genesis package
-            rm -f ../../debs/${file_low}-amd64_*.deb
-            cd $file
-            dch -v $pkg_version -b -c debian/changelog $build_string
-            dpkg-buildpackage -uc -us
-            rc=$?
-            if [ $rc -gt 0 ]; then
-                echo "Error: $file build package failed exit code $rc"
-            fi
-            cd -
-            find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
-            find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
-            mv ${file_low}* ../../debs/
+        #makesure the code change status
+        code_change=0
+        if ! grep -q 'At revision' $svn_up_log;then
+            code_change=1
         fi
-    done
 
-    find ../../debs/* ! -name *.deb | xargs rm -f
+        if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
+            echo "Nothing new detected"
+            exit 0
+        fi
+
+        echo "###############################"
+        echo "# Building xcat-core packages #"
+        echo "###############################"
+
+        #the package type:  local | snap | alpha
+        #the build introduce stirng
+        pkg_type="snap"
+        build_string="Snap_Build"
+        cur_date=`date +%Y%m%d`
+        pkg_version="${short_ver}-${pkg_type}${cur_date}"
+    
+        if [ ! -d ../../debs ];then
+            mkdir -p "../../debs"
+        fi
+        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test"
+
+        for file in `echo $packages`
+        do
+            file_low=`echo $file | tr '[A-Z]' '[a-z]'`
+            if grep -q $file $svn_up_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
+                rm -f ../../debs/${file_low}_*.deb
+                #only for genesis package
+                rm -f ../../debs/${file_low}-amd64_*.deb
+                cd $file
+                dch -v $pkg_version -b -c debian/changelog $build_string
+                dpkg-buildpackage -uc -us
+                rc=$?
+                if [ $rc -gt 0 ]; then
+                    echo "Error: $file build package failed exit code $rc"
+                fi
+                cd -
+                find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
+                find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
+                mv ${file_low}* ../../debs/
+            fi
+        done
+
+        find ../../debs/* ! -name *.deb | xargs rm -f
+    fi
 
     echo "#################################"
     echo "# Creating xcat-core repository #"
@@ -276,7 +279,10 @@ __EOF__
 
     #upload the tar ball
     if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
-        echo "";
+        i=0
+        echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
+        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        do : ; done
     else
         i=0
         echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
