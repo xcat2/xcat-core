@@ -31,6 +31,7 @@ require xCAT::ProfiledNodeUtils;
 my %allhostnames;
 my %allbmcips;
 my %allmacs;
+my %allmacsupper;
 my %allips;
 my %allinstallips;
 my %allnicips;
@@ -373,7 +374,7 @@ Usage:
     $recordsref = xCAT::ProfiledNodeUtils->get_db_switchports();
     %all_switchports = %$recordsref;
 
-    # MAC records looks like: "01:02:03:04:05:0E!node5│01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
+    # MAC records looks like: "01:02:03:04:05:0E!node5.01:02:03:05:0F!node6-eth1". We want to get the real mac addres.
     foreach (keys %allmacs){
         my @hostentries = split(/\|/, $_);
         foreach my $hostandmac ( @hostentries){
@@ -381,6 +382,10 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
+    foreach (keys %allmacs){
+            $allmacsupper{uc($_)} = 0;
+    }
+
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
     %allinstallips = %$recordsref;
     $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
@@ -1099,7 +1104,10 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
-    if (exists $allmacs{$args_dict{"mac"}}){
+    foreach (keys %allmacs){
+        $allmacsupper{uc($_)} = 0;
+    }
+    if (exists $allmacsupper{uc($args_dict{"mac"})}){
         setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
         return;
     } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})){
@@ -1497,6 +1505,9 @@ sub findme{
             $allmacs{$macstr} = 0;
         }
     }
+    foreach (keys %allmacs){
+        $allmacsupper{uc($_)} = 0;
+    }
     $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('hosts', 'ip');
     %allinstallips = %$recordsref;
     $recordsref = xCAT::NetworkUtils->get_all_nicips(1);
@@ -1534,7 +1545,7 @@ sub findme{
         return;
     }
     xCAT::MsgUtils->message('S', "Profiled nodes discover: mac is $mac.\n");
-    if ( exists $allmacs{$mac}){
+    if ( exists $allmacsupper{uc($mac)}){
         setrsp_errormsg("Discovered MAC $mac already exists in database.");
         return;
     }
@@ -1747,7 +1758,6 @@ sub gen_new_hostinfo_string{
         else {
            $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
         }
-
 
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
@@ -2033,7 +2043,7 @@ sub validate_node_entry{
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
-            if (exists $allmacs{$node_entry{$_}}){
+            if (exists $allmacsupper{uc($node_entry{$_})}){
                 $errmsg .= "MAC address $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new MAC address.\n";
             }elsif(! xCAT::NetworkUtils->isValidMAC($node_entry{$_})){
                 $errmsg .= "MAC address $node_entry{$_} is invalid. You must use a valid MAC address.\n";
@@ -2143,7 +2153,7 @@ sub validate_node_entry{
                         $allips{$nic_ip} = 0;
                     }
                 }
-            }    
+            } 
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";
         }
