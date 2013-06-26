@@ -9,7 +9,7 @@ Packager: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-BuildArch: noarch
+#BuildArch: noarch
 Source:  xCAT-OpenStack-%(cat Version).tar.gz
 
 Provides: xCAT-OpenStack = %{version}
