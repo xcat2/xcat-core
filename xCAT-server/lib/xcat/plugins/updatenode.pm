@@ -566,22 +566,87 @@ sub preprocess_updatenode
 
     # Get the MN names
     my @MNip = xCAT::NetworkUtils->determinehostname;
+    my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
+    my $MNnodename   = pop @MNnodeinfo;                  # hostname
+    my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
+
+    # if no service nodes, or I am on a Service Node, then no hierarchy to deal with
+
     my @sns  = ();
-    foreach my $s (keys %$sn)
-    {
-        my @tmp_a = split(',', $s);
-        foreach my $s1 (@tmp_a)
-        {
-            if (!grep (/^$s1$/, @MNip))
-            {
-                push @sns, $s1;
-            }
-        }
+    if (! (xCAT::Utils->isServiceNode())) {  # not on a servicenode
+       if ($sn)
+       {
+         foreach my $snkey (keys %$sn)
+         {
+           if (!grep(/$snkey/, @MNnodeipaddr))  # don't put the MN in the array
+           {     # if not the MN
+                    push @sns, $snkey;
+
+           }
+         }
+       }
     }
 
-    # build each request for each node
-    foreach my $snkey (keys %$sn)
-    {
+    
+#    my @sns  = ();
+#    foreach my $s (keys %$sn)
+#    {
+#        my @tmp_a = split(',', $s);
+#        foreach my $s1 (@tmp_a)
+#        {
+#            if (!grep (/^$s1$/, @MNip))
+#            {
+#                push @sns, $s1;
+#            }
+#        }
+#    }
+     if (defined($::SWMAINTENANCE))
+     {
+            $request->{swmaintenance}->[0] = "yes";
+
+            # send along the update info and osimage defs
+            if ($imagedef)
+            {
+                xCAT::InstUtils->taghash($imagedef);
+                $request->{imagedef} = [$imagedef];
+            }
+            if ($updateinfo)
+            {
+                xCAT::InstUtils->taghash($updateinfo);
+                $request->{updateinfo} = [$updateinfo];
+            }
+     }
+     if (defined($::RERUNPS))
+     {
+            $request->{rerunps}->[0] = "yes";
+            $request->{postscripts} = [$postscripts];
+            if (defined($::SECURITY))
+            {
+                $request->{rerunps4security}->[0] = "yes";
+            }
+     }
+
+     if (defined($::SECURITY))
+     {
+            $request->{security}->[0] = "yes";
+     }
+
+     #
+     # Handle updating OS
+     #
+     if (defined($::OS))
+     {
+            $request->{os}->[0] = "yes";
+     }
+
+
+    #
+    # if hierarchy,  then split the request  -F must run on the MN and -P -S on the service nodes
+    #
+    if (@sns)  {  # if servicenodes
+      # build each request for each servicenode 
+      foreach my $snkey (keys %$sn)
+      {
 
 
         # build request
@@ -591,46 +656,13 @@ sub preprocess_updatenode
         $reqcopy->{'_xcatdest'}            = $snkey;
         $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
-        if (defined($::SWMAINTENANCE))
-        {
-            $reqcopy->{swmaintenance}->[0] = "yes";
-
-            # send along the update info and osimage defs
-            if ($imagedef)
-            {
-                xCAT::InstUtils->taghash($imagedef);
-                $reqcopy->{imagedef} = [$imagedef];
-            }
-            if ($updateinfo)
-            {
-                xCAT::InstUtils->taghash($updateinfo);
-                $reqcopy->{updateinfo} = [$updateinfo];
-            }
-        }
-        if (defined($::RERUNPS))
-        {
-            $reqcopy->{rerunps}->[0] = "yes";
-            $reqcopy->{postscripts} = [$postscripts];
-            if (defined($::SECURITY))
-            {
-                $reqcopy->{rerunps4security}->[0] = "yes";
-            }
-        }
-
-        if (defined($::SECURITY))
-        {
-            $reqcopy->{security}->[0] = "yes";
-        }
-
-        #
-        # Handle updating OS
-        #
-        if (defined($::OS))
-        {
-            $reqcopy->{os}->[0] = "yes";
-        }
-
         push @requests, $reqcopy;
+
+      }
+    } else { # no hierarchy, process it right now , here on the MN
+        $request->{_xcatpreprocessed}->[0] = 1;
+        &updatenode($request, $callback, $subreq);
+        return;
 
     }
     return \@requests;
