@@ -1,7 +1,7 @@
 Source: xcat-client
 Section: admin
 Priority: extra
-Maintainer: Isaac Freeman <ifreeman@us.ibm.com>, Arif Ali <aali@ocf.co.uk>
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 

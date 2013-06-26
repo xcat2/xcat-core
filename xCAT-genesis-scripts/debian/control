@@ -1,7 +1,7 @@
 Source: xcat-genesis-scripts-amd64
 Section: admin
 Priority: extra
-Maintainer: root <root@unknown>
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.2
 

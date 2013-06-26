@@ -1,7 +1,7 @@
 Source: perl-xcat
 Section: libs
 Priority: extra
-Maintainer: Arif Ali <aali@ocf.co.uk>
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 5), libsoap-lite-perl, libdbi-perl
 Standards-Version: 3.7.2
 
