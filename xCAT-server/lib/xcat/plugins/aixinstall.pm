@@ -4200,12 +4200,6 @@ sub mk_spot
             chomp $currentimage;
             $cpcosi_cmd .= "-c $currentimage ";
 
-            # do we want verbose output?
-            if ($::VERBOSE)
-            {
-                $cpcosi_cmd .= "-v ";
-            }
-
             # where to put it - the default is /install
 			my $spotloc;
             if ($::opt_l)
@@ -4239,6 +4233,7 @@ sub mk_spot
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
+			    push @{$rsp->{data}}, " The cpcosi command failed. \n$output\n";
                 push @{$rsp->{data}},
                   "Could not create a NIM definition for \'$spot_name\'.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
