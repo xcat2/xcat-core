@@ -326,26 +326,37 @@ function openCreateUserDialog(data) {
                 var args = "";
                 if (usrName) {
                     args += ' policy.name=' + usrName;
-                } if (host) {
-                    args += " policy.host='" + host + "'";
-                } if (parameters) {
-                    args += " policy.parameters='" + parameters + "'";
-                } if (nodeRange) {
-                    args += " policy.noderange='" + nodeRange + "'";
                 } if (rule) {
                     args += ' policy.rule=' + rule;
                 } if (disable) {
                     args += ' policy.disable=' + disable;
-                } 
+                }
                 
-                // Handle cases where there are comments and no comments
+                // Handle cases where there are value or no value
+                if (host) {
+                    args += " policy.host='" + host + "'";
+                } else {
+                	args += " policy.host=''";
+                }
+                
+                if (parameters) {
+                    args += " policy.parameters='" + parameters + "'";
+                } else {
+                	args += " policy.parameters=''";
+                }
+                
+                if (nodeRange) {
+                    args += " policy.noderange='" + nodeRange + "'";
+                } else {
+                	args += " policy.noderange=''";
+                }
+
                 if (comments) {
                     args += " policy.comments='" + comments + "'";
                 } else {
                 	args += " policy.comments=''";
                 }
                 
-                // Handle cases where there are commands and no commands
                 if (commands) {
                     args += " policy.commands='" + commands + "'";
                 } else {
