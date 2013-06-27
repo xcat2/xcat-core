@@ -241,17 +241,19 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
-for rpmname in xCAT xCATsn; do
+for rpmname in xCAT xCATsn xCAT-OpenStack; do
 	#if [ "$EMBED" = "zvm" ]; then break; fi
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		if [ "$OSNAME" = "AIX" ]; then
+			if [ "$rpmname" = "xCAT-OpenStack" ]; then continue; fi 		# do not bld openstack on aix
 			./makerpm $rpmname "$EMBED"
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
 		else
 			for arch in x86_64 ppc64 s390x; do
+				if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ]; then continue; fi 		# only bld openstack for x86_64 for now
 				./makerpm $rpmname $arch "$EMBED"
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done

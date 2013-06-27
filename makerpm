@@ -10,10 +10,10 @@
 
 # set -x
 
-# Make one of the following rpms: perl-xCAT, xCAT-server, xCAT-client, xCAT-IBMhpc, xCAT-rmc, xCAT-UI, xCAT-test, xCAT-OpenStack
+# Make one of the following rpms: perl-xCAT, xCAT-server, xCAT-client, xCAT-IBMhpc, xCAT-rmc, xCAT-UI, xCAT-test
 function makenoarch {
 	RPMNAME=$1
-	if [ "$OSNAME" = "AIX" -a "$RPMNAME" != "xCAT-OpenStack" ]; then
+	if [ "$OSNAME" = "AIX" ]; then
 		echo '.svn' > /tmp/xcat-excludes
 		tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/$RPMNAME-$VER.tar $RPMNAME
 		gzip -f $RPMROOT/SOURCES/$RPMNAME-$VER.tar
@@ -32,7 +32,7 @@ function makenoarch {
 
 
 
-# Make one of the following rpms: xCAT, xCATsn, xCAT-buildkit
+# Make one of the following rpms: xCAT, xCATsn, xCAT-buildkit, xCAT-OpenStack
 function makexcat {
 	if [ "$OSNAME" != "AIX" -a "$1" != "xCAT-buildkit" -a -z "$2" ]; then
 		echo 'Usage: makerpm <RPMname> <arch> [<embedded-system>]'
@@ -88,6 +88,8 @@ function makexcat {
 			ARCH="noarch"
 			TARGET=""
 			tar --exclude .svn --exclude xCAT-buildkit.spec -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
+		elif [ "$RPMNAME" = "xCAT-OpenStack" ]; then
+			tar --exclude .svn --exclude xCAT-OpenStack.spec -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		else	# do not recognize rpm
 			echo "Unrecognized rpm: $RPMNAME"
 			exit 2
@@ -201,7 +203,7 @@ else	# linux
 fi
 
 
-if [ "$1" = "xCAT" -o "$1" = "xCATsn" -o "$1" = "xCAT-buildkit" ]; then
+if [ "$1" = "xCAT" -o "$1" = "xCATsn" -o "$1" = "xCAT-buildkit" -o "$1" = "xCAT-OpenStack" ]; then
 	exportEmbed $3
 	makexcat $1 $2
 elif [ "$1" = "xCAT-nbroot" -o "$1" = "xCAT-nbroot-core" ]; then
