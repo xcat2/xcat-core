@@ -345,6 +345,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   $massresponse="";
   unless ($cleanexit) {
      print STDERR "ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely\n";
+     $xCAT::Client::EXITCODE = 1;
   }
 
 sub validateXML {
