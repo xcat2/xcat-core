@@ -639,16 +639,17 @@ sub getsshbetweennodes
     if ($values) {
          my @gs = split(/,/, $values);
          %groups = map { $_ => 1 } @gs;
-         if( $groups{ALLGROUPS} !=1 || $groups{NOGROUPS} !=1  )  {
+         if( $groups{ALLGROUPS} !=1 && $groups{NOGROUPS} !=1  )  {
              my @m;
              foreach my $group (@gs) {
                    my @ns=xCAT::Utils->list_nodes_in_nodegroups($group);
-                   my %nodes = map { $_ => 1 } @ns;
-                   %groups = (%groups, %nodes); 
+                   foreach my $n (@ns) {
+                       $groups{$n}=1;
+                   }
              }
          }
 
-    } 
+    }
     return \%groups;      
 
 }
@@ -1430,8 +1431,9 @@ sub getNodesSetState
     my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates($nodes, $nsh);
     foreach my $state (keys %$nsh) {
         my $ns = $nsh->{$state};
-        my %result = map {$_ => $state} @$ns;
-        %res = (%result, %res);
+        foreach my $n (@$ns) {
+            $res{$n}=$state;
+        }
     }
     return \%res;
 }
