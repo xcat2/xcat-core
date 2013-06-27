@@ -208,7 +208,7 @@ B<rspconfig> I<noderange> B<--resetnet>
 B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the B<=>, it displays the current value.
 
-For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
+For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to contact IBM service to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
 
 =head1 OPTIONS
 
