@@ -18,7 +18,8 @@ Note:
 
 This command does not run through xcatd like most xCAT commands do.
 This means you must either run it on the management node, or have a network connection between
-your machine and the nodes.
+your machine and the nodes. It does not support hierarchy, use xdsh to run remote command from the
+management node to the compute node via a service node. 
 
 B<psh> arguments need to precede noderange, otherwise, you will get unexpected errors.
 

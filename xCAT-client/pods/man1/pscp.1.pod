@@ -15,7 +15,8 @@ directories  to  a  single or range of nodes and/or groups in parallel.
 
 B<pscp> is a front-end to the remote copy B<scp>.
 
-Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node.
+Note:  this command does not support the xcatd client/server communication and therefore must be run on the management node. It does not support hierarchy, use xdcp to run remote command from the
+management node to the compute node via a service node.
 
 B<pscp> is NOT multicast, but is parallel unicasts.
 
