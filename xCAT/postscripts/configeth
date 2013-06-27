@@ -322,6 +322,34 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
             close FILE;
             runcmd("ifup $nic");
         }
+        elsif ( -f "/etc/debian_version" ) {
+            preParse_Debian();
+            if ($i == 0) {
+                if (!open(FILE, ">/etc/network/interfaces.d/$nic")){
+                    system("logger -t xcat -p local4.err 'configeth: cannot open /etc/network/interfaces.d/$nic for appending ip alias info'");
+                    exit 1;
+                }
+                
+                print FILE "auto $nic\n";
+                print FILE "iface $nic inet static\n";
+                print FILE "  address $nic_ips4[$i]\n";
+                print FILE "  netmask $netmask\n";
+                print FILE "  network $subnet\n";
+            }
+            else {
+                if (!open(FILE, ">>/etc/network/interfaces.d/$nic")){
+                    system("logger -t xcat -p local4.err 'configeth: cannot open /etc/network/interfaces.d/$nic for appending ip alias info'"); 
+                    exit 1;
+                }
+
+                print FILE "auto $nic:$i\n";
+                print FILE "iface $nic:$i inet static\n";
+                print FILE "  address $nic_ips4[$i]\n";
+                print FILE "  netmask $netmask\n";
+                print FILE "  network $subnet\n";
+            }
+            close FILE;
+        }
         else {
             # Write the info to the ifcfg file for redhat 
             my $dir = "/etc/sysconfig/network-scripts";
@@ -422,7 +450,39 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
                 }
             }
             runcmd("ifup $nic");
-        } else {
+        } 
+        elsif ( -f "/etc/debian_version" ){
+            if (!$ipv4nic && !$configured){
+                if (!open(FILE, ">/etc/network/interfaces.d/$nic")) {
+                    system("logger -t xcat -p local4.err 'configeth: cannot open /etc/network/interface.d/$nic.'");
+                    exit 1;
+                }
+                print FILE "auto $nic\n";
+            }
+            else {
+                if (!open(FILE, ">>/etc/network/interfaces.d/$nic")) {
+                    system("logger -t xcat -p local4.err 'configeth: cannot open /etc/network/interface.d/$nic.'");
+                    exit 1;
+                }
+            }
+            
+            if (!$configured){
+                print FILE "pre-up modprobe ipv6\n";
+                print FILE "iface $nic inet6 static\n";
+                print FILE "  address $ip6addr\n";
+                print FILE "  netmask $prefixlen\n";
+                if ( $ipv6gateway && $ipv6gateway !~ /xcatmaster/ ){
+                    print FILE "  gateway $ipv6gateway\n";
+                }
+                $configured = 1;
+            }
+            else {
+                print FILE "  post-up /sbin/ifconfig $nic inet6 add $ip6addr/$prefixlen\n";
+                print FILE "  pre-down /sbin/ifconfig $nic inet6 del $ip6addr/$prefixlen\n";
+            }
+            close FILE;
+        }
+        else {
             # Ubuntu TODO
             my $dir = "/etc/sysconfig/network-scripts";
             # If there are only ipv6 addresses on this nic,
@@ -456,6 +516,17 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
             }
             close FILE;
             runcmd("$dir/ifup-ipv6 $nic");
+        }
+    }
+
+    #debian/ubuntu up the nic after all ips are configured
+    if ( -f "/etc/debian_version" ){
+        my $ret = `ip addr show dev $nic | grep $nic | grep -i ,up`;
+        if ($ret) {
+            runcmd("ifdown $nic;ifup $nic");
+        }
+        else {
+            runcmd("ifup $nic");
         }
     }
 }
@@ -609,4 +680,69 @@ sub get_current_nics {
     return \%nics;
 }
 
+#before modify the configuration on ubuntu/debian, should preparse the interface file
+#By default, All nics configuration are saved into /etc/network/interfaces, it is difficult for xcat to configure nic
+#So only use source /etc/network/interfaces.d/* in "/etc/network/interfaces"
+#create files under /etc/network/interfaces.d/ for each nic, then it is similar with the readhat and sles
+sub preParse_Debian{
+    my $configfile;
 
+    open(FH, "<", "/etc/network/interfaces");
+    my @lines = <FH>;
+    close(FH);
+
+    if ($lines[0] =~ /XCAT_CONFIG/i){
+        return;
+    }
+
+    unless ( -e "/etc/network/interfaces.bak" ){
+        copy ("/etc/network/interfaces", "/etc/network/interfaces.bak");
+    }
+
+    unless ( -d "/etc/network/interfaces.d" ){
+        mkpath( "/etc/network/interfaces.d" );
+    }
+
+    open(FH, ">", "/etc/network/interfaces");
+    print FH "#XCAT_CONFIG\n";
+    print FH "source /etc/network/interfaces.d/* \n";
+    close(FH);
+
+    foreach my $line ( @lines ){
+        if ( $line =~ /^\s*$/){
+            next;
+        }
+
+        if ( $line =~ /^#.*/ ){
+            next;
+        }
+
+        my @attr = split /\s+/, $line;
+        if ( $attr[0] =~ /auto|allow-hotplug/){
+            my $i = 1;
+            while ( $i < @attr ){
+                open(SFH, ">", "/etc/network/interfaces.d/$attr[$i]");
+                print SFH "$attr[0] $attr[$i]\n";
+                close(SFH);
+                print FH "source /etc/network/interfaces.d/$attr[$i] \n";
+                $i = $i + 1;
+            }
+        }
+        elsif ($attr[0] =~ /mapping|iface/){
+            $configfile = "/etc/network/interfaces.d/$attr[1]";
+            open(SFH, ">>", $configfile);
+            unless ( -e $configfile){
+                print SFH "auto $attr[1] \n";
+            }
+            print SFH $line;
+            close(SFH);
+        }
+        else{
+            open(SFH, ">>", $configfile);
+            print SFH $line;
+            close(SFH);
+        }
+    }
+
+    return;
+}
