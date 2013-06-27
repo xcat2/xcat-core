@@ -969,7 +969,7 @@ sub nodesHandler {
             elsif ($subResource eq "energy") {
                 $request->{command} = "renergy";
             }
-            elsif ($subResource eq "bootstate") {
+            elsif ($subResource eq "bootstat" or $subResource eq "bootstate") {
                 $request->{command} = "nodeset";
             }
             elsif ($subResource eq "bootseq") {
