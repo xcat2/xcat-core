@@ -165,6 +165,13 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
     @nic_nets4 = ();
     @nic_nets6 = ();
 
+    #get current ips on this nic
+    my $str_ret = `ip addr show dev $nic | grep inet | grep -v link | awk '{print \$2}'`;
+    my %hash_oldips;
+    foreach (split /\n/, $str_ret){
+        $hash_oldips{$_} = 1;
+    }
+
     # get network or networks for this nic from NICNETWORKS: 
     # eth0:1_0_0_0-255_255_0_0|network2,eth1:1_1_0_0
     # create array of networks for this nic
@@ -268,6 +275,28 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
         if ( !(length($subnet) > 0) || !(length($netmask) > 0) ) {
             system("logger -t xcat -p local4.err  'configeth: network subnet or netmask not set.'");
             exit 1;
+        }
+
+        my $num_masklength = 32;
+        if ($netmask =~ /\d+\.\d+\.\d+\.\d+/){
+            my $maskn = unpack("N", inet_aton($netmask));
+            my $bin = unpack ("B32", pack("N", $maskn));
+            my @dup = ( $bin =~ /(1{1})0*/g);
+            $num_masklength = scalar ( @dup );
+        }
+        else {
+            $num_masklength = $netmask
+        }
+
+        my $str_ipmask = $nic_ips4[$i] . "/" . $num_masklength;
+        if ($hash_oldips{$str_ipmask}) {
+            delete $hash_oldips{$str_ipmask};
+        }
+
+        #should delete the old alias configure ( like ifcfg-eth0:1 )before new configure
+        #only do this operation on redaht/sl/centos
+        if ( -f "/etc/sysconfig/network-scripts/ifcfg-$nic:1" ){
+            `rm -f /etc/sysconfig/network-scripts/ifcfg-$nic:*`;
         }
 
         if ($^O =~ /^aix/i) {
@@ -408,6 +437,11 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
             next;
         }
 
+        my $str_ipmask = $ip6addr . '/' . $prefixlen;
+        if ($hash_oldips{$str_ipmask}){
+            delete $hash_oldips{$str_ipmask};
+        }
+
         if ($^O =~ /^aix/i) {
             if (!$configured)
             {
@@ -519,14 +553,17 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
         }
     }
 
-    #debian/ubuntu up the nic after all ips are configured
-    if ( -f "/etc/debian_version" ){
+    #still contains old ips, should ifdown the nic and then ifup
+    if ($^O =~ /linux/i){
         my $ret = `ip addr show dev $nic | grep $nic | grep -i ,up`;
         if ($ret) {
-            runcmd("ifdown $nic;ifup $nic");
+            my $num_oldnums = scalar(keys %hash_oldips);
+            if ($num_oldnums > 0){
+                `ifdown $nic;ifup $nic`;
+            }
         }
-        else {
-            runcmd("ifup $nic");
+        elsif ( -f "/etc/debian_version" ) {
+            `ifup $nic`;
         }
     }
 }
