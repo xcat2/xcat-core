@@ -166,10 +166,14 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
     @nic_nets6 = ();
 
     #get current ips on this nic
-    my $str_ret = `ip addr show dev $nic | grep inet | grep -v link | awk '{print \$2}'`;
+    my $str_ret = `ip addr show dev $nic 2>/dev/null | grep inet | grep -v link | awk '{print \$2}'`;
+    my $bool_config_flag = 0;
     my %hash_oldips;
-    foreach (split /\n/, $str_ret){
-        $hash_oldips{$_} = 1;
+    if ($str_ret) {
+        foreach (split /\n/, $str_ret){
+            $hash_oldips{$_} = 1;
+        }
+        $bool_config_flag = 1;
     }
 
     # get network or networks for this nic from NICNETWORKS: 
@@ -277,22 +281,23 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
             exit 1;
         }
 
-        my $num_masklength = 32;
-        if ($netmask =~ /\d+\.\d+\.\d+\.\d+/){
-            my $maskn = unpack("N", inet_aton($netmask));
-            my $bin = unpack ("B32", pack("N", $maskn));
-            my @dup = ( $bin =~ /(1{1})0*/g);
-            $num_masklength = scalar ( @dup );
-        }
-        else {
-            $num_masklength = $netmask
-        }
+        if ($bool_config_flag) {
+            my $num_masklength = 32;
+            if ($netmask =~ /\d+\.\d+\.\d+\.\d+/){
+                my $maskn = unpack("N", inet_aton($netmask));
+                my $bin = unpack ("B32", pack("N", $maskn));
+                my @dup = ( $bin =~ /(1{1})0*/g);
+                $num_masklength = scalar ( @dup );
+            }
+            else {
+                $num_masklength = $netmask
+            }
 
-        my $str_ipmask = $nic_ips4[$i] . "/" . $num_masklength;
-        if ($hash_oldips{$str_ipmask}) {
-            delete $hash_oldips{$str_ipmask};
+            my $str_ipmask = $nic_ips4[$i] . "/" . $num_masklength;
+            if ($hash_oldips{$str_ipmask}) {
+                delete $hash_oldips{$str_ipmask};
+            }
         }
-
         #should delete the old alias configure ( like ifcfg-eth0:1 )before new configure
         #only do this operation on redaht/sl/centos
         if ( -f "/etc/sysconfig/network-scripts/ifcfg-$nic:1" ){
@@ -437,9 +442,11 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
             next;
         }
 
-        my $str_ipmask = $ip6addr . '/' . $prefixlen;
-        if ($hash_oldips{$str_ipmask}){
-            delete $hash_oldips{$str_ipmask};
+        if ($bool_config_flag) {
+            my $str_ipmask = $ip6addr . '/' . $prefixlen;
+            if ($hash_oldips{$str_ipmask}){
+                delete $hash_oldips{$str_ipmask};
+            }
         }
 
         if ($^O =~ /^aix/i) {
@@ -558,11 +565,18 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
         my $ret = `ip addr show dev $nic | grep $nic | grep -i ,up`;
         if ($ret) {
             my $num_oldnums = scalar(keys %hash_oldips);
-            if ($num_oldnums > 0){
+            #need delete the ip address or first time configure
+            if (($num_oldnums > 0) || ($bool_config_flag == 0) ){
                 `ifdown $nic;ifup $nic`;
             }
+            elsif ( -f "/etc/debian_version"){
+                `ifdown $nic;ifup $nic`;
+            }
+            else {
+                `ifup $nic`;
+            }
         }
-        elsif ( -f "/etc/debian_version" ) {
+        else {
             `ifup $nic`;
         }
     }
