@@ -13,7 +13,6 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Table;
 use xCAT::NetworkUtils;
-use File::Copy;
 use File::Basename;
 use strict;
 use warnings;
