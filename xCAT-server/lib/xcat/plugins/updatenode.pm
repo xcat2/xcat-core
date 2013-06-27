@@ -493,15 +493,11 @@ sub preprocess_updatenode
     #	hierarchical scenario inside
     if ($::FILESYNC)
     {
-        my $reqcopy = {%$request};
-        $reqcopy->{FileSyncing}->[0] = "yes";
-        push @requests, $reqcopy;
+        $request->{FileSyncing}->[0] = "yes";
     }
     if ($::SNFILESYNC)    # either sync service node
     {
-        my $reqcopy = {%$request};
-        $reqcopy->{SNFileSyncing}->[0] = "yes";
-        push @requests, $reqcopy;
+        $request->{SNFileSyncing}->[0] = "yes";
     }
 
     # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
@@ -529,10 +525,12 @@ sub preprocess_updatenode
         }
     }
 
-    # if  not -S or -P or --security
+    # if  not -S or -P or --security, only -F which is always run on the MN
     unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
     {
-        return \@requests;
+        $request->{_xcatpreprocessed}->[0] = 1;
+        &updatenode($request, $callback, $subreq);
+        return;
     }
 
     #  - need to consider the mixed cluster case
@@ -588,18 +586,6 @@ sub preprocess_updatenode
     }
 
     
-#    my @sns  = ();
-#    foreach my $s (keys %$sn)
-#    {
-#        my @tmp_a = split(',', $s);
-#        foreach my $s1 (@tmp_a)
-#        {
-#            if (!grep (/^$s1$/, @MNip))
-#            {
-#                push @sns, $s1;
-#            }
-#        }
-#    }
      if (defined($::SWMAINTENANCE))
      {
             $request->{swmaintenance}->[0] = "yes";
@@ -1179,13 +1165,6 @@ sub updatenode
         $callback->($rsp); 
        }
       
-       my $numberofgoodnodes = 0;
-       my $numberofbadnodes = 0;
-       $numberofgoodnodes = @::SUCCESSFULLNODES;
-       $numberofbadnodes = @::FAILEDNODES;
-       my $rsp = {};
-        $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes, SUCCEEDED: $numberofgoodnodes, FAILED: $numberofbadnodes";
-        $callback->($rsp); 
     
     }
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
