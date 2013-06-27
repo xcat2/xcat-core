@@ -278,10 +278,12 @@ __EOF__
     fi
 
     #upload the tar ball
+    #for the GA build, upload to https://sourceforge.net/projects/xcat/files/xcat/<version>.x_Ubuntu/
+    #for other scenario, upload to https://sourceforge.net/projects/xcat/files/ubuntu/<version>
     if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
         i=0
-        echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        echo "Uploading $tar_name to ${sf_dir}/xcat/${REL}.x_Ubuntu/ ..."
+        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat/${REL}.x_Ubuntu/
         do : ; done
     else
         i=0
