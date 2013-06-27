@@ -34,7 +34,7 @@ function makenoarch {
 
 # Make one of the following rpms: xCAT, xCATsn, xCAT-buildkit, xCAT-OpenStack
 function makexcat {
-	if [ "$OSNAME" != "AIX" -a "$1" != "xCAT-buildkit" -a "$1" != "xCAT-OpenStack" -a -z "$2" ]; then
+	if [ "$OSNAME" != "AIX" -a "$1" != "xCAT-buildkit" -a -z "$2" ]; then
 		echo 'Usage: makerpm <RPMname> <arch> [<embedded-system>]'
 		exit 1
 	fi
