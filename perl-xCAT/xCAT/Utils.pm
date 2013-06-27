@@ -3289,4 +3289,61 @@ sub filter_nodes{
     return 0;
 }
 
+#-------------------------------------------------------------------------------
+=head3   filter_nostatusupdate() 
+     
+    filter out the nodes which support provision status feedback from the status-nodes hash
+    Returns:
+       returns the filtered status-nodes hash
+    Globals:
+        none
+    Error:
+        none
+    Input:
+      the ref of status-nodes hash to filter
+    Example:
+    my $mn=xCAT::Utils->filter_nostatusupdate(\%statusnodehash);
+    Comments:
+=cut
+#-------------------------------------------------------------------------------
+sub filter_nostatusupdate{
+
+    my ($class,$inref)=@_;
+    my $nttabdata;
+    my @allnodes=();
+    #read "nodetype" table to get the "os" attribs for all the nodes with status "installing" or "netbooting" 
+    if(exists $inref->{$::STATUS_INSTALLING}){
+      push @allnodes, @{$inref->{$::STATUS_INSTALLING}};
+    }
+    if(exists $inref->{$::STATUS_NETBOOTING}){
+      push @allnodes, @{$inref->{$::STATUS_NETBOOTING}};
+    }
+
+    my $nodetypetab = xCAT::Table->new('nodetype');
+    if ($nodetypetab) {
+           $nttabdata     = $nodetypetab->getNodesAttribs(\@allnodes, ['node', 'os']);
+           $nodetypetab->close();
+    }    
+    
+    #filter out the nodes which support the node provision status feedback
+    my @nodesfiltered=();
+    if(exists $inref->{$::STATUS_INSTALLING}){
+      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_INSTALLING}};
+      delete $inref->{$::STATUS_INSTALLING};
+      if(@nodesfiltered){
+        ($inref->{$::STATUS_INSTALLING})=@nodesfiltered;
+      }
+    }
+    
+    @nodesfiltered=();
+    if(exists $inref->{$::STATUS_NETBOOTING}){
+      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
+      delete $inref->{$::STATUS_NETBOOTING};
+      if(@nodesfiltered){
+        ($inref->{$::STATUS_NETBOOTING})=@nodesfiltered;
+      }
+    }
+     
+}    
+
 1;
