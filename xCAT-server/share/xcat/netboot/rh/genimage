@@ -259,7 +259,7 @@ unless ($onlyinitrd) {
    my %pkg_hash=imgutils::get_package_names($pkglist);
    my $index=1;
    my $pass;
-    foreach $pass (sort (keys(%pkg_hash))) {
+    foreach $pass (sort {$a <=> $b} (keys(%pkg_hash))) {
         my $pkgnames = "";
         foreach (keys(%{$pkg_hash{$pass}})) {
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
@@ -326,7 +326,7 @@ unless ($onlyinitrd) {
     if (keys(%extra_hash) > 0) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
-      foreach $pass (sort (keys(%extra_hash))) {
+      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
             print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
@@ -346,7 +346,7 @@ unless ($onlyinitrd) {
 #          $yumcmd .= "--enablerepo=otherpkgs$_ ";
 #      } 
 
-      foreach $pass (sort (keys(%extra_hash))) {
+      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
           $yumcmd = $yumcmd_base;
           foreach my $repo_index ( keys %{$repohash{$pass}} ) {
               $yumcmd .= "--enablerepo=otherpkgs$repo_index ";
