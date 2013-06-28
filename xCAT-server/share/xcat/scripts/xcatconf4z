@@ -16,7 +16,7 @@
 
 ###############################################################################
 # Authorized senders of configuration files listed here.  Specify a list a
-# blank delimitted list of userids with each userid in uppercase
+# blank delimited list of userids with each userid in uppercase
 # (e.g. "ZHCP" or "ZHCP ZHCP2"), or '*' to indicate all are authorized.
 # If nothing is specified then this function will not process any
 # configuration files in the reader.
@@ -77,6 +77,7 @@ function onlineDevice {
   if (( rc != 0 )); then
     if [[ -e /sbin/cio_ignore ]]; then
       rc=$(/sbin/cio_ignore -r 0.0.$device > /dev/null; echo $?)
+      which udevadm &> /dev/null && udevadm settle || udevsettle
     fi
     rc=$(/sbin/chccwdev -e $device > /dev/null; echo $?)
     if (( rc != 0 )); then
@@ -84,6 +85,7 @@ function onlineDevice {
       return 1
     fi
   fi
+  which udevadm &> /dev/null && udevadm settle || udevsettle
   return 0
 }
 
