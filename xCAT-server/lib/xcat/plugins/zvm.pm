@@ -6800,8 +6800,8 @@ sub changeHypervisor {
         my $tgtSize;
         if ($useWwpnLun) {
         	my $tgtDiskRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $tgtWwpn, $tgtLun);
-	        my %tgtDisk = %$tgtDiskRef;
-	        if (!defined($tgtDisk{'lun'}) && !$tgtDisk{'lun'}) {
+            my %tgtDisk = %$tgtDiskRef;
+            if (!defined($tgtDisk{'lun'}) && !$tgtDisk{'lun'}) {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) Target zFCP device $tgtWwpn/$tgtLun does not exists" );
                 return;
             }
@@ -6910,12 +6910,12 @@ sub changeHypervisor {
         my %criteria = (
             'status' => $srcDisk{'status'},
             'wwpn' => $srcDisk{'wwpn'},
-	        'lun' => $srcDisk{'lun'},
-	        'size' => $srcDisk{'size'},
-	        'range' => $srcDisk{'range'},
-	        'owner' => $srcDisk{'owner'},
-	        'fcp' => $srcDisk{'fcp'},
-	        'tag' => $srcDisk{'tag'}
+            'lun' => $srcDisk{'lun'},
+            'size' => $srcDisk{'size'},
+            'range' => $srcDisk{'range'},
+            'owner' => $srcDisk{'owner'},
+            'fcp' => $srcDisk{'fcp'},
+            'tag' => $srcDisk{'tag'}
         );
         my $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
         my %results = %$resultsRef;       
@@ -7380,12 +7380,12 @@ sub changeHypervisor {
         
         # Go through each LUN
         foreach (@luns) {    
-        	my %criteria = (
-        	   'status' => 'free',
-        	   'wwpn' => $wwpn,
-        	   'lun' => $_
-        	);
-        	
+            my %criteria = (
+               'status' => 'free',
+               'wwpn' => $wwpn,
+               'lun' => $_
+            );
+        
             my $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
             my %results = %$resultsRef;
             if ($results{'rc'} == 0) {
