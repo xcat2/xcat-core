@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+# generate the image for mic 
+# Since the root file system for mic is generated on the host by
+# micctrl command, this script only help to generate the /etc/hosts,
+# /root/.ssh from the management node to the root file system.
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+use strict;
+use File::Path;
+use File::Basename;
+use File::Copy;
+use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $pkglist;
+my $srcdir;
+GetOptions(
+   'pkglist=s' => \$pkglist,
+   'srcdir=s' => \$srcdir,
+);
+
+my $fsdir = "$srcdir/opt/intel/mic/filesystem";
+my $systemdir = "$fsdir/overlay/system";
+mkpath ($systemdir);
+
+# this is the file list which includes the files which should be copied 
+# from MN to the root file system
+my @sysfilelist = (
+  "/etc/hosts", 
+  "/etc/group", 
+  "/etc/passwd", 
+  "/etc/shadow",
+  "/etc/resolv.conf", 
+  "/etc/nsswitch.conf",
+  "/etc/ssh/ssh_host_rsa_key",
+  "/etc/ssh/ssh_config",
+  "/etc/ssh/ssh_host_key",
+  "/etc/ssh/sshd_config",
+  "/etc/ssh/ssh_host_dsa_key",
+  "/etc/ssh/ssh_host_key.pub",
+  "/root/.ssh/id_rsa",
+  "/root/.ssh/id_rsa.pub",
+  "/root/.ssh/authorized_keys",);
+
+# do the copy
+foreach my $file (@sysfilelist) {
+    my $dirname = dirname("$systemdir/$file");
+    unless (-d $dirname) {
+        mkpath ($dirname);
+    }
+    copy ($file, "$systemdir/$file");
+}
+
+#Change the /bin/bash to /bin/sh in the /etc/passwd since base file system of mic only has sh.
+my $cmd = "sed \"s/\\/bin\\/bash/\\/bin\\/sh/\" $systemdir/etc/passwd > /tmp/passwd.mic; mv /tmp/passwd.mic $systemdir/etc/passwd;";
+system ($cmd);
+
+# Create emtpy common dir and common.filelist for later using
+mkpath ("$fsdir/common");
+system ("touch $fsdir/common.filelist");
+
+
+print "Genimage for mic has been done.\n";
+
+1;
