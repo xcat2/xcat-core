@@ -1449,6 +1449,22 @@ cfgmgt => {
        disable => "Set to 'yes' or '1' to comment out this row.",
    },
 },
+mic => {
+    cols => [qw(node host id nodetype bridge onboot vlog comments disable)],
+    keys => [qw(node)],
+    table_desc => 'The host, slot id and configuraton of the mic (Many Integrated Core).',
+    descriptions => {
+        node => 'The node name or group name.',
+        host => 'The host node which the mic card installed on.',
+        id => 'The device id of the mic node.',
+        nodetype => 'The hardware type of the mic node. Generally, it is mic.',
+        bridge => 'The virtual bridge on the host node which the mic connected to.',
+        onboot => 'Set mic to autoboot when mpss start. Valid values: yes|no. Default is yes.',
+        vlog => 'Set the Verbose Log to console. Valid values: yes|no. Default is no.',
+        comments => 'Any user-provided notes.',
+        disable => "Do not use.  tabprune will not work if set to yes or 1",
+    },
+},
 
 ); # end of tabspec definition
 
@@ -2365,6 +2381,40 @@ my @nodeattrs = (
                  tabentry => 'cfgmgt.roles',
                  access_tabentry => 'cfgmgt.node=attr:node',
         },
+#####################
+##   mic   table    #
+#####################
+	{attr_name => 'michost',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.host',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'micid',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.id',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'hwtype',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.nodetype',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'micbridge',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.bridge',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'miconboot',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.onboot',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'micvlog',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.vlog',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	
   );	# end of @nodeattrs that applies to both nodes and groups
 
 
