@@ -60,7 +60,8 @@ sub handled_commands {
     reventlog => 'nodehm:mgt',
     ripmi => 'ipmi',
 #    rfrurewrite => 'nodehm:mgt', #deferred, doesn't even work on several models, no one asks about it, keeping it commented for future requests
-    getrvidparms => 'nodehm:mgt' #done
+    getrvidparms => 'nodehm:mgt', #done
+    rscan => 'nodehm:mgt', # used to scan the mic cards installed on the target node
   }
 }
 
@@ -6169,11 +6170,138 @@ sub got_channel_auth_cap_foripmicons {
 }
 
 
+# scan subroutine is used to scan the hardware devices which installed on the host node
+# In current implementation, only the mic cards will be scanned.
+# scan
+# scan -u/-w/-z
+my @rscan_header = (
+  ["type",          "%-8s" ],
+  ["name",          "" ],
+  ["id",            "%-8s" ],
+  ["host",           "" ]);
+
+sub scan {
+    my $request = shift;
+    my $subreq = shift;
+    my $nodes = shift;
+    my $args = shift;
+
+    my $usage_string = "rscan [-u][-w][-z]";
+
+    my ($update, $write, $stanza);
+    foreach (@$args) {
+        if (/-w/) {
+            $write= 1;
+        } elsif (/-u/) {
+            $update = 1;
+        } elsif (/-z/) {
+            $stanza = 1;
+        } else {
+            $callback->({error=>[$usage_string]});
+            return;
+        }
+    }
+
+    my $output = xCAT::Utils->runxcmd({ command => ['xdsh'], 
+                                       node => $nodes,
+                                       arg => ['/opt/intel/mic/bin/micinfo', '-listDevices'] }, $subreq, 0, 1);
+
+    # parse the output from 'xdsh micinfo -listDevices'
+    my %host2mic;
+    my $maxhostname = 0;
+    foreach (@$output) {
+        foreach (split /\n/, $_) {
+            if (/([^:]*):\s+(\d+)\s*\|/) {
+                my $host = $1;
+                my $deviceid = $2;
+                push @{$host2mic{$host}}, $deviceid;
+                if (length($host) > $maxhostname) {
+                    $maxhostname = length($host);
+                }
+            }
+        }
+    }
+
+    # generate the display message
+    my @displaymsg;
+    my $format = sprintf "%%-%ds",($maxhostname+10);
+    $rscan_header[1][1] = $format;
+    $format = sprintf "%%-%ds",($maxhostname+2);
+    $rscan_header[3][1] = $format;
+    if ($stanza) {
+        # generate the stanza for each mic
+        foreach (keys %host2mic) {
+            my $host = $_;
+            foreach (@{$host2mic{$host}}) {
+                my $micid = $_;
+                push @displaymsg, "$host-mic$micid:";
+                push @displaymsg, "\tobjtype=node";
+                push @displaymsg, "\tmichost=$host";
+                push @displaymsg, "\tmicid=$micid";
+                push @displaymsg, "\thwtype=mic";
+                push @displaymsg, "\tmgt=mic";
+            }
+        }
+    } else {
+        # generate the headers for scan message
+        my $header;
+        foreach ( @rscan_header ) {
+            $header .= sprintf @$_[1],@$_[0];
+        }
+        push @displaymsg, $header;
+
+        # generate every entries
+        foreach (keys %host2mic) {
+            my $host = $_;
+            foreach (@{$host2mic{$host}}) {
+                my $micid = $_;
+                my @data = ("mic", "$host-mic$micid", "$micid", "$host");
+                my $i = 0;
+                my $entry;
+                foreach ( @rscan_header ) {
+                    $entry .= sprintf @$_[1],$data[$i++];
+                }
+                push @displaymsg, $entry;
+            }
+        }
+    }
+
+    $callback->({data=>\@displaymsg});
+
+    unless ($update || $write) {
+        return;
+    }
+
+    # for -u / -w, write or update the mic node in the xCAT DB
+    my $nltab = xCAT::Table->new('nodelist');
+    my $mictab = xCAT::Table->new('mic');
+    my $nhmtab = xCAT::Table->new('nodehm');
+    if (!$nltab || !$mictab || !$nhmtab) {
+        $callback->({error=>["Open database table failed."], errorcode=>1});
+        return;
+    }
+
+    # update the node to the database
+    foreach (keys %host2mic) {
+        my $host = $_;
+        foreach (@{$host2mic{$host}}) {
+            my $micid = $_;
+            my $micname = "$host-mic$micid";
+            # update the nodelist table
+            $nltab->setAttribs({node=>$micname}, {groups=>"all,mic"});
+            # update the mic table
+            $mictab->setAttribs({node=>$micname}, {host=>$host, id=>$micid, nodetype=>'mic'});
+            # update the nodehm table
+            $nhmtab->setAttribs({node=>$micname}, {mgt=>'mic',cons=>'mic'});
+        }
+    }
+}
 
    
 sub process_request {
   my $request = shift;
   $callback = shift;
+  my $subreq = shift;
   my $noderange = $request->{node}; #Should be arrayref
   my $command = $request->{command}->[0];
   my $extrargs = $request->{arg};
@@ -6250,6 +6378,12 @@ sub process_request {
                 return;
             }
         }
+    }
+
+    # handle the rscan to scan the mic on the target node
+    if ($request->{command}->[0] eq "rscan") {
+        scan ($request, $subreq, $noderange, $extrargs);
+        return;
     }
 
   #get new node status
