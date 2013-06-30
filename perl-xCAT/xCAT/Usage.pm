@@ -41,6 +41,8 @@ my %usage = (
        rpower <noderange> [cycle|softoff] [-V|--verbose]
      zVM specific:
        rpower noderange [on|off|reset|stat|softoff]
+     MIC specific:
+       rpower noderange [stat|state|on|off|reset|boot]
 ",
     "rbeacon" => 
 "Usage: rbeacon <noderange> [on|off|stat] [-V|--verbose]
@@ -58,7 +60,9 @@ my %usage = (
   Blade specific:
       rvitals noderange {temp|wattage|fanspeed|leds|summary|all}
   BMC specific:
-      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}",
+      rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|lcds|summary|all}
+  MIC specific:
+      rvitals noderange {thermal|all}",
     "reventlog" => 
 "Usage: reventlog <noderange> [all [-s]|clear|<number of entries to retrieve> [-s]] [-V|--verbose]
        reventlog [-h|--help|-v|--version]",
@@ -83,7 +87,9 @@ my %usage = (
     VMware specific:
        rinv <noderange>
     zVM specific:
-       rinv noderange [all|config]",
+       rinv noderange [all|config]
+    MIC specific:
+       rinv noderange [system|ver|board|core|gddr|all]",
     "rsetboot" => 
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
        rsetboot [-h|--help|-v|--version]",
