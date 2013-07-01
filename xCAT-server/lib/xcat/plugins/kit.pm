@@ -834,6 +834,150 @@ sub assign_to_osimage
 
 #-------------------------------------------------------
 
+=head3 check_kit_config
+
+  Check if this kit is suitable to add
+
+=cut
+
+#-------------------------------------------------------
+
+sub check_kit_config
+{
+
+    my $tabs = shift;
+    my $kithash = shift;
+    my $kitrepohash = shift;
+    my $kitcomphash = shift;
+
+    #TODO:  add check to see the the attributes name are acceptable by xCAT DB.
+    #TODO: need to check if the files are existing or not, like exlist,
+
+    unless (keys %kithash) {
+        my %rsp;
+        push@{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
+        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+    if ( $::INSPECTION ) {
+        my %rsp;
+        push@{ $rsp{data} }, "kitname=$kithash{kitname}";
+        push@{ $rsp{data} }, "    description=$kithash{description}";
+        push@{ $rsp{data} }, "    version=$kithash{version}";
+        push@{ $rsp{data} }, "    ostype=$kithash{ostype}";
+        xCAT::MsgUtils->message( "I", \%rsp, $::CALLBACK );
+        next;
+    }
+
+    (my $ref1) = $tabs->{kit}->getAttribs({kitname => $kithash{kitname}}, 'basename');
+    if ( $ref1 and $ref1->{'basename'}){
+        my %rsp;
+        push@{ $rsp{data} }, "Failed to add kit $kithash{kitname} because it is already existing";
+        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+
+    # Check if the kitcomponent is existing
+    my @kitcomps = $tabs->{kitcomponent}->getAllAttribs( 'kitcompname' );
+    foreach my $kitcomp (@kitcomps) {
+        if ( $kitcomp->{kitcompname} ) {
+            foreach my $kitcompid (keys %kitcomphash) {
+                if ( $kitcomphash{$kitcompid}{kitcompname} and $kitcomphash{$kitcompid}{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
+                    my %rsp;
+                    push@{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
+                    xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+                    return 1;
+                }
+            }
+        }
+    }
+
+}
+
+
+#-------------------------------------------------------
+
+=head3 read_kit_config
+
+  Read kit configuration file
+
+=cut
+
+#-------------------------------------------------------
+
+sub read_kit_config
+{
+
+    my $fn = shift;
+    my @lines = @$fn;
+
+    my $sec;
+    my $kitname;
+    my $kitreponame;
+    my $kitcompname;
+    my $scripts;
+    my $kitrepoid = 0;
+    my $kitcompid = 0;
+    foreach my $line (@lines) {
+        # Read through each line of kit.conf.
+        my $key, $value;
+        chomp $line;
+        next if ($line =~ /^$/);
+        next if ($line =~ /^\s*#/);
+
+        # Split the kit.conf to different parts: kit, kitrepo, kitcomponent.
+        if ($line =~ /kit:/) {
+            $sec = "KIT";
+            next;
+        } elsif ($line =~ /kitrepo:/) {
+            $sec = "KITREPO";
+            $kitrepoid = $kitrepoid + 1;
+            next;
+        } elsif ($line =~ /kitcomponent:/) {
+            $sec = "KITCOMPONENT";
+            $kitcompid = $kitcompid + 1;
+            next;
+        } else {
+            if ( $line =~ /kitcompdeps/ ) {
+                $key = $line;
+                $value = $line;
+                $key =~ s/\s+(\w+)\s+=.*$/$1/;
+                $key =~ s/\s+//g;
+                $value =~ s/$key\s+=(.*)$/$1/;
+                $key =~ s/\s+//g;
+                $value =~ s/\s+//g;
+            } else {
+                ($key,$value) = split /=/, $line;
+            }
+        }
+
+        # Remove spaces in each lines.
+        $key =~s/^\s+|\s+$//g;
+        $value =~s/^\s+|\s+$//g;
+
+        # Add each attribute to different hash.
+        if ( $sec =~ /KIT$/) {
+            $kithash{$key} = $value;
+        } elsif ( $sec =~ /KITREPO$/ ) {
+            $kitrepohash{$kitrepoid}{$key} = $value;
+        } elsif ( $sec =~ /KITCOMPONENT$/ ) {
+            if ( $key =~ /postbootscripts/ or $key =~ /genimage_postinstall/ ) {
+                $scripts = $scripts . ',' . $value;
+                $kitcomphash{$kitcompid}{$key} = $value;
+            } else {
+                $kitcomphash{$kitcompid}{$key} = $value;
+            }
+        }
+    }
+
+    return([%kithash,%kitrepohash,%kitcomphash]);
+
+}
+
+#-------------------------------------------------------
+
 =head3 addkit 
 
   Add Kits into xCAT
@@ -872,7 +1016,7 @@ sub addkit
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
-            'i|inspection' => \$inspection,
+            'i|inspection' => \$::INSPECTION,
             'p|path=s' => \$path,
     );
 
@@ -904,9 +1048,13 @@ sub addkit
 
         my $kitdir = '';
         my $kittmpdir = '';
-        my %kithash;
-        my %kitrepohash;
-        my %kitcomphash;
+
+        if ( $kit =~ /NEED_PRODUCT_PKGS/ ) {
+            my %rsp;
+            push@{ $rsp{data} }, "Not allowed to add partial kit $kit";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
+        }
 
         # extract the Kit to kitdir
         my $installdir = xCAT::TableUtils->getInstallDir();
@@ -945,9 +1093,9 @@ sub addkit
                 my %rsp;
                 push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
                 xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
+                $rc = system("tar jxvf $kit -C /tmp/tmpkit/ */kit.conf");
             } else {
-                $rc = system("tar jxf $kit -C /tmp/tmpkit/");
+                $rc = system("tar jxf $kit -C /tmp/tmpkit/ */kit.conf");
             }
 
             opendir($dir,"/tmp/tmpkit/");
@@ -961,7 +1109,7 @@ sub addkit
 
             if ( !$kittmpdir ) {
                 my %rsp;
-                push@{ $rsp{data} }, "Could not find extracted kit in /tmp/tmpkit";
+                push@{ $rsp{data} }, "Could not find extracted kit.conf in /tmp/tmpkit";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
@@ -970,10 +1118,11 @@ sub addkit
 
         if($rc){
             my %rsp;
-            push@{ $rsp{data} }, "Failed to extract Kit $kit, (Maybe there was no space left?)";
+            push@{ $rsp{data} }, "Failed to extract kit.conf from $kit, (Maybe there was no space left?)";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
+
 
         # Read kit info from kit.conf
         my @lines;
@@ -1000,98 +1149,47 @@ sub addkit
             return 1;
         }
 
-        my $sec;
-        my $kitname;
-        my $kitreponame;
-        my $kitcompname;
-        my $scripts;
-        my $kitrepoid = 0;
-        my $kitcompid = 0;
-        foreach my $line (@lines) {
-            # Read through each line of kit.conf.
-            my $key, $value;
-            chomp $line;
-            next if ($line =~ /^$/);
-            next if ($line =~ /^\s*#/);
+        # Read kit configuration file
+        my ($kithash,$kitrepohash,$kitcomphash) = read_kit_config(\@lines);
 
-            # Split the kit.conf to different parts: kit, kitrepo, kitcomponent.
-            if ($line =~ /kit:/) {
-                $sec = "KIT";
-                next;
-            } elsif ($line =~ /kitrepo:/) {
-                $sec = "KITREPO";
-                $kitrepoid = $kitrepoid + 1;
-                next;
-            } elsif ($line =~ /kitcomponent:/) {
-                $sec = "KITCOMPONENT";
-                $kitcompid = $kitcompid + 1;
-                next;
+        # Check if this kit is allowed to add.
+        if ( &check_kit_config(\%tabs,\$kithash,\$kitrepohash,\$kitcomphash) ) {
+            return 1;
+        }
+
+
+        if( !-d "$kit") {
+            # should be a tar.bz2 file
+
+            system("rm -rf /tmp/tmpkit/");
+            mkpath("/tmp/tmpkit/");
+
+            if($::VERBOSE){
+                my %rsp;
+                push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
             } else {
-                ($key,$value) = split /=/, $line;
+                $rc = system("tar jxf $kit -C /tmp/tmpkit/");
             }
 
-            # Remove spaces in each lines.
-            $key =~s/^\s+|\s+$//g;
-            $value =~s/^\s+|\s+$//g;
+            opendir($dir,"/tmp/tmpkit/");
+            my @files = readdir($dir);
 
-            # Add each attribute to different hash.
-            if ( $sec =~ /KIT$/) {
-                $kithash{$key} = $value;
-            } elsif ( $sec =~ /KITREPO$/ ) {    
-                $kitrepohash{$kitrepoid}{$key} = $value;
-            } elsif ( $sec =~ /KITCOMPONENT$/ ) {
-                if ( $key =~ /postbootscripts/ or $key =~ /genimage_postinstall/ ) {
-                    $scripts = $scripts . ',' . $value;
-                    $kitcomphash{$kitcompid}{$key} = $value;
-                } else {
-                    $kitcomphash{$kitcompid}{$key} = $value;
-                }
+            foreach my $file ( @files ) {
+                next if ( $file eq '.' || $file eq '..' );
+                $kittmpdir = "/tmp/tmpkit/$file";
+                last;
+            }
+
+            if ( !$kittmpdir ) {
+                my %rsp;
+                push@{ $rsp{data} }, "Could not find extracted kit in /tmp/tmpkit";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
             }
         }
 
-        #TODO:  add check to see the the attributes name are acceptable by xCAT DB.
-        #TODO: need to check if the files are existing or not, like exlist,
-
-        unless (keys %kithash) {
-            my %rsp;
-            push@{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-            return 1;
-        }
-
-        if ( $inspection ) {
-            my %rsp;
-            push@{ $rsp{data} }, "kitname=$kithash{kitname}";
-            push@{ $rsp{data} }, "    description=$kithash{description}";
-            push@{ $rsp{data} }, "    version=$kithash{version}";
-            push@{ $rsp{data} }, "    ostype=$kithash{ostype}";
-            xCAT::MsgUtils->message( "I", \%rsp, $callback );
-            next;
-        }
-
-        (my $ref1) = $tabs{kit}->getAttribs({kitname => $kithash{kitname}}, 'basename');
-        if ( $ref1 and $ref1->{'basename'}){
-            my %rsp;
-            push@{ $rsp{data} }, "Failed to add kit $kithash{kitname} because it is already existing";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-            return 1;
-        }
-
-
-        # Check if the kitcomponent is existing
-        my @kitcomps = $tabs{kitcomponent}->getAllAttribs( 'kitcompname' );
-        foreach my $kitcomp (@kitcomps) {
-            if ( $kitcomp->{kitcompname} ) {
-                foreach my $kitcompid (keys %kitcomphash) {
-                    if ( $kitcomphash{$kitcompid}{kitcompname} and $kitcomphash{$kitcompid}{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
-                        my %rsp;
-                        push@{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
-                        xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                        return 1;
-                    }
-                }
-            }
-        }
 
         my %rsp;
         push@{ $rsp{data} }, "Adding Kit $kithash{kitname}";
@@ -1220,7 +1318,7 @@ sub addkit
         push @kitnames, $kithash{kitname};
     }
 
-    unless ( $inspection ) {
+    unless ( $::INSPECTION ) {
         my $kitlist = join ',', @kitnames;
         my %rsp;
         push@{ $rsp{data} }, "Kit $kitlist was successfully added.";
@@ -1498,6 +1596,94 @@ sub rmkit
 
 #-------------------------------------------------------
 
+=head3 validate_os
+
+  Validate if the input OS fit to the osimage or not.
+
+=cut
+
+#-----------------------------------------------------
+
+sub validate_os{
+
+    my $os = shift;
+    my $osimage = shift;
+    my $kitcomp = shift;
+
+    # Validate each attribute in kitcomp.
+    my $catched = 0;
+    my @osbasename = split ',', $kitcomp->{osbasename};
+    foreach (@osbasename) {
+        if ( $osimage->{basename} eq $_ ) {
+            $catched = 1;
+        }
+    }
+
+    unless ( $catched ) {
+#        my %rsp;
+#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute OS";
+#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+    if ( $osimage->{majorversion} ne $kitcomp->{osmajorversion} ) {
+#        my %rsp;
+#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute majorversion";
+#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+    if ( $kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion}) ) {
+#        my %rsp;
+#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute minorversion";
+#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+    if ( $osimage->{arch} ne $kitcomp->{osarch} ) {
+#        my %rsp;
+#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute arch";
+#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+
+    if ( $osimage->{type} ne $kitcomp->{ostype} ) {
+#        my %rsp;
+#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute type";
+#        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+        return 1;
+    }
+    if ( $osimage->{serverrole} ) {
+        my $match = 0;
+        my @os_serverroles = split /,/, $osimage->{serverrole};
+        my @kitcomp_serverroles = split /,/, $kitcomp->{serverroles};
+        foreach my $os_serverrole (@os_serverroles) {
+            foreach my $kitcomp_serverrole (@kitcomp_serverroles) {
+                if ( $os_serverrole eq $kitcomp_serverrole ) {
+                    $match = 1;
+                    last;
+                }
+            }
+
+            if ( $match ) {
+                last;
+            }
+        }
+        if ( !$match ) {
+#            my %rsp;
+#            push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute serverrole";
+#            xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
+            return 1;
+        }
+    }
+
+
+    return 0;
+}
+
+
+#-------------------------------------------------------
+
 =head3 addkitcomp
 
   Assign Kit component to osimage 
@@ -1764,8 +1950,9 @@ sub addkitcomp
 
             if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
                 my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
-                foreach my $kitcompdep ( @kitcompdeps ) {
-                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                foreach my $kitcompdependency ( @kitcompdeps ) {
+                    my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
+                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
                     unless (@entries) {
                         my %rsp;
                         push@{ $rsp{data} }, "Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep";
@@ -1773,11 +1960,103 @@ sub addkitcomp
                         return 1;
                     }
 
-                    my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
+                    my $highest;
+                    if ( $vers ) {
+                        my @valid_kitcomp;
+                        my $tmpkitcomp;
+                        my ($vers, $rel) = split /-/, $vers;
+                        $tmpkitcomp->{version} = $vers;
+                        $tmpkitcomp->{release} = $rel;
+                        foreach my $entry ( @entries ) {
+                            my $rc = &compare_version($entry, $tmpkitcomp, 'kitcompname', 'version', 'release'); 
+                            if ( ($rc == -1 and $kitcompdependency =~ />/ )
+                                || ($rc == 1 and $kitcompdependency =~ /</)
+                                || ($rc == 0 and $kitcompdependency =~ /=/) ) {
 
-                    if ( $adddeps ) {
-                        if ( !$kitcomps{$highest}{name} ) {
-                            $kitcomps{$highest}{name} = $highest;
+
+                                # Check if this kitcomp fits to the osimage
+                                (my $krtable) = $tabs{kitrepo}->getAttribs({kitreponame => $entry->{'kitreponame'}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+                                if ($krtable->{compat_osbasenames}) {
+                                    $entry->{osbasename} = lc($krtable->{osbasename}) . ',' . lc($krtable->{compat_osbasenames});
+                                } else {
+                                    $entry->{osbasename} = lc($krtable->{osbasename});
+                                }
+
+                                $entry->{osmajorversion} = lc($krtable->{osmajorversion});
+                                $entry->{osminorversion} = lc($krtable->{osminorversion});
+                                $entry->{osarch} = lc($krtable->{osarch});
+
+                                (my $ktable) = $tabs{kit}->getAttribs({kitname => $entry->{'kitname'}}, 'ostype');
+                                $entry->{ostype} = lc($ktable->{ostype});
+
+                                unless ( &validate_os($osimage, $os{$osimage}, $entry) ) {
+                                    push @valid_kitcomp, $entry;
+                                }
+
+                            }
+                        }
+
+                        if ( scalar(@valid_kitcomp) ) {
+                            $highest = get_highest_version('kitcompname', 'version', 'release', @valid_kitcomp);
+                        } else {
+                            my %rsp;
+                            push@{ $rsp{data} }, "Cannot find any kit component could match for kit component $kitcomp dependency $kitcompdep";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                        }
+                        
+                    } else { 
+                        my @valid_kitcomp;
+
+                        foreach my $entry ( @entries ) {
+                            # Check if this kitcomp fits to the osimage
+                            (my $krtable) = $tabs{kitrepo}->getAttribs({kitreponame => $entry->{'kitreponame'}}, 'osbasename', 'osmajorversion', 'osminorversion', 'osarch', 'compat_osbasenames');
+                            if ($krtable->{compat_osbasenames}) {
+                                $entry->{osbasename} = lc($krtable->{osbasename}) . ',' . lc($krtable->{compat_osbasenames});
+                            } else {
+                                $entry->{osbasename} = lc($krtable->{osbasename});
+                            }
+
+                            $entry->{osmajorversion} = lc($krtable->{osmajorversion});
+                            $entry->{osminorversion} = lc($krtable->{osminorversion});
+                            $entry->{osarch} = lc($krtable->{osarch});
+
+                            (my $ktable) = $tabs{kit}->getAttribs({kitname => $entry->{'kitname'}}, 'ostype');
+                            $entry->{ostype} = lc($ktable->{ostype});
+
+
+                            unless ( &validate_os($osimage, $os{$osimage}, $entry) ) {
+                                push @valid_kitcomp, $entry;
+                            }
+                        }
+                        $highest = get_highest_version('kitcompname', 'version', 'release', @valid_kitcomp);
+
+                    }
+
+                    if ( $adddeps and $highest ) {
+                        my $catched = 0;
+                        if ( $osimagetable and $osimagetable->{'kitcomponents'}) {
+                            my @oskitcomps = split ',', $osimagetable->{'kitcomponents'};
+                            foreach my $oskitcomp ( @oskitcomps ) {
+                                if ( $highest eq $oskitcomp ) {
+                                    $catched =  1;
+                                    last;
+                                }
+                            }
+                        }
+
+
+                        if ( !$catched ) {
+
+                            # Add dependencies recursive 
+                            my $ret = xCAT::Utils->runxcmd({ command => ['addkitcomp'], arg => ['-a','-i',$osimage, $highest] }, $request_command, 0, 1);
+                            if ( $::RUNCMD_RC ) {
+                                my %rsp;
+                                push@{ $rsp{data} }, "Failed to add dependency $highest to osimage $osimage";
+                                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                                return 1;
+                            }
+
+                            
                         }
                     } else {
 
@@ -2075,8 +2354,9 @@ sub rmkitcomp
             if ( $kitcomptable and $kitcomptable->{'kitcompdeps'} ) {
 
                 my @kitcompdeps = split(',', $kitcomptable->{'kitcompdeps'});
-                foreach my $kitcompdep (@kitcompdeps) {
+                foreach my $kitcompdependency (@kitcompdeps) {
 
+                    my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
                     # Get the kit component full name from basename.
                     my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
                     unless (@entries) {
@@ -2963,11 +3243,14 @@ sub chkkitcomp
         }
 
         # Check if this kit component's dependencies are in the kitcomponent list.
-        if ( $kitcomps{$kitcomp}{kitcompdeps} and !exists( $kitcompbasename{ $kitcomps{$kitcomp}{kitcompdeps} } ) ) {
-            my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't exist";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-            return 1;
+        if ( $kitcomps{$kitcomp}{kitcompdeps}  ) {
+            my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcomps{$kitcomp}{kitcompdeps};
+            if ( !exists( $kitcompbasename{ $kitcompdep } ) ) {
+                my %rsp;
+                push@{ $rsp{data} }, "kit component $kitcomp dependency $kitcomps{$kitcomp}{kitcompdeps} doesn't exist";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
         }
 
         push @kitcompnames, $kitcomp;
