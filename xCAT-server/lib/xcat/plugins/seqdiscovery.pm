@@ -1060,8 +1060,12 @@ Usage:
         $request->{node} = [$node];
         $request->{discoverymethod} = ['manual'];
         $request->{updateswitch} = ['yes'];
-        $subreq->($request);
-        xCAT::MsgUtils->message("I", {data=>["Defined [$uuid] to node $node."]}, $callback);
+        my $rsp = $subreq->($request);
+        if (defined ($rsp->{errorcode}->[0])) {
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        } else {
+            xCAT::MsgUtils->message("I", {data=>["Defined [$uuid] to node $node."]}, $callback);
+        }
     } else {
         $usage->($callback);
         return;
