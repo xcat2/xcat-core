@@ -972,7 +972,7 @@ sub read_kit_config
         }
     }
 
-    return([%kithash,%kitrepohash,%kitcomphash]);
+    return(\%kithash,\%kitrepohash,\%kitcomphash,$scripts);
 
 }
 
@@ -1150,7 +1150,7 @@ sub addkit
         }
 
         # Read kit configuration file
-        my ($kithash,$kitrepohash,$kitcomphash) = read_kit_config(\@lines);
+        my ($kithash,$kitrepohash,$kitcomphash, $scripts) = read_kit_config(\@lines);
 
         # Check if this kit is allowed to add.
         if ( &check_kit_config(\%tabs,\$kithash,\$kitrepohash,\$kitcomphash) ) {
@@ -1234,6 +1234,7 @@ sub addkit
             push@{ $rsp{data} }, "Copying kit scripts from $kitdir/other_files/ to $installdir/postscripts";
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
+
         my @script = split ',', $scripts;
         foreach (@script) {
             next unless ($_);
