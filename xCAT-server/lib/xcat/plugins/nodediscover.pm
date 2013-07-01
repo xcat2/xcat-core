@@ -324,6 +324,12 @@ sub process_request {
             }
         }
     }
+
+    # make sure the node has the correct ip configured
+    unless ($clientip) {
+        $callback->({error=> ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode=>["1"]});
+        return;
+    }
     
     my $restartstring = "restart";
     if (scalar @forcenics > 0) {
