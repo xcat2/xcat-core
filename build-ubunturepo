@@ -169,7 +169,7 @@ then
         if [ ! -d ../../debs ];then
             mkdir -p "../../debs"
         fi
-        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test"
+        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack"
 
         for file in `echo $packages`
         do
