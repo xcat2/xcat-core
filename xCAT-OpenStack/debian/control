@@ -1,0 +1,14 @@
+Source: xcat-openstack
+Section: admin
+Priority: extra
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.2
+#Vcs-Git: git://git.debian.org/collab-maint/xcat-openstack.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/xcat-openstack.git;a=summary
+
+Package: xcat-openstack
+Architecture: all
+Depends: xcat
+Description: Meta-Metapackage for a common, default xCAT management node setup with OpenStack
+ xCAT-OpenStack is an xCAT management node package intended for at-scale management with OpenStack, including hardware management and software management.
