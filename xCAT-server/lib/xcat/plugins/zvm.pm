@@ -7940,6 +7940,28 @@ sub inventoryHypervisor {
         xCAT::zvmUtils->printSyslog("smcli System_Disk_Accessibility -T $hcpUserId -k $devNo");
     }
     
+    # userprofilenames
+    elsif ( $args->[0] eq "--userprofilenames" ) {
+        my $argsSize = @{$args};
+        if ($argsSize != 1) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
+            return;
+        }
+        
+        # Use Directory_Manager_Search_DM to find user profiles
+        my $tmp = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Directory_Manager_Search_DM -T $hcpUserId -s PROFILE"`;
+        my @profiles = split('\n', $tmp);
+        foreach (@profiles) {
+            # Extract user profile
+            if ($_) {
+                $_ =~ /([a-zA-Z]*):*/;
+                $str .= "$1\n";
+            }
+        }
+        
+        xCAT::zvmUtils->printSyslog("smcli Directory_Manager_Search_DM -T $hcpUserId -s PROFILE");
+    }
+    
     # vlanstats [vlan_id] [user_id] [device] [version]
     elsif ( $args->[0] eq "--vlanstats" ) {
         # This is not completed!
