@@ -3331,7 +3331,7 @@ sub filter_nostatusupdate{
       map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_INSTALLING}};
       delete $inref->{$::STATUS_INSTALLING};
       if(@nodesfiltered){
-        ($inref->{$::STATUS_INSTALLING})=@nodesfiltered;
+        @{$inref->{$::STATUS_INSTALLING}}=@nodesfiltered;
       }
     }
     
@@ -3340,7 +3340,7 @@ sub filter_nostatusupdate{
       map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
       delete $inref->{$::STATUS_NETBOOTING};
       if(@nodesfiltered){
-        ($inref->{$::STATUS_NETBOOTING})=@nodesfiltered;
+        @{$inref->{$::STATUS_NETBOOTING}}=@nodesfiltered;
       }
     }
      
