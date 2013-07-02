@@ -159,10 +159,6 @@ sub process_request {
         log_cmd_return($retref);
 
         setrsp_progress("Update DHCP entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-        # we should restart dhcp so that the node's records in /var/lib/dhcpd/dhcpd.lease can be clean up and re-generate.
-        system("/etc/init.d/dhcpd restart");
         $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
         log_cmd_return($retref);
 
