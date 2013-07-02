@@ -2839,6 +2839,12 @@ sub listVM {
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Query -T $userId -k $vdasd"`;
         xCAT::zvmUtils->printSyslog("smcli Image_Disk_Query -T $userId -k $vdasd");
     }
+    
+    # Get user profile names
+    elsif ( $args->[0] eq "--userprofilenames" ) {
+        # This is no longer supported in lsvm. Using inventoryHypervisor instead.
+        inventoryHypervisor( $callback, $node, $args );
+    }
 
     # Get zFCP disk pool configuration
     elsif ( $args->[0] eq "--zfcppool" ) {
