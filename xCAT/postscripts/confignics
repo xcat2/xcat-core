@@ -402,23 +402,14 @@ sub get_install_nic {
         $i_p_nic = $primarynic;
     }
 
-    if ($i_p_nic eq "mac") {
-        # determine nic from mac. Get all NICs and their mac addresses from ifconfig
-        # and compare that with MACADDR.
-        my @ifcfg_info = split(/\n/,`ifconfig -a | grep HWaddr | awk '{print \$1,\$5;}'`);
-        foreach my $nic_mac (@ifcfg_info) {
-            my @nicmac = split(/ /,$nic_mac);
-            if (uc($nicmac[1]) eq uc($MAC)) {
-                $inst_nic = $nicmac[0];
-                last;
-            }
-        }
-    } else { # INSTALLNIC not set or is not known
-        
+    if (!$i_p_nic) {
+        system("logger -t xcat -p local4.info 'confignics $thisnode: installnic and primarynic are not defined', use 'mac' by default.");
+        $i_p_nic = "mac";
     }
-    if ($installnic =~ /(e(n|th)\d+)$/ ) {
+    
+    if ($i_p_nic =~ /(e(n|th)\d+)$/ ) {
          $inst_nic = $1;
-    } elsif ($installnic eq "mac") {
+    } elsif ($i_p_nic eq "mac") {
         # determine nic from mac. Get all NICs and their mac addresses from ifconfig
         # and compare that with MACADDR.
         my @ifcfg_info = split(/\n/,`ifconfig -a | grep HWaddr | awk '{print \$1,\$5;}'`);
