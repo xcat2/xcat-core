@@ -1513,7 +1513,7 @@ function openAddZfcpDialog(node, hcp, zvm) {
                     if (tag && tag != "null") {
                         args += '||' + tag;
                     } else {
-                    	args += '|| ""';
+                        args += '|| ""';
                     }
                     
                     if ((portName && portName != "null") && (unitNo && unitNo != "null")) {
@@ -4211,9 +4211,9 @@ function openAddZfcp2PoolDialog() {
                 // zFCP range and owner are optional
                 var args = '--addzfcp2pool||' + tgtPool + '||' + tgtStatus + '||"' + tgtPortName + '"||' + tgtUnitNo + '||' + tgtSize;
                 if (tgtRange) {
-                	args += '||' + tgtRange;
+                    args += '||' + tgtRange;
                 } if (tgtOwner) {
-                	args += '||' + tgtOwner;
+                    args += '||' + tgtOwner;
                 }
                 
                 $.ajax( {
@@ -4806,9 +4806,14 @@ function createZProvisionNew(inst) {
     hwFS.append(hwLegend);
     provNew.append(hwFS);
     
-    var hwAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
+    var hwAttr = $('<div style="display: inline-table; vertical-align: middle; width: 850px;"></div>');
     hwFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/hardware.png"></img></div>'));
     hwFS.append(hwAttr);
+    
+    // Create tabs for basic and advanced hardware configuration
+    var hwTab = new Tab('hwConfig' + inst);
+    hwTab.init();
+    hwAttr.append(hwTab.object());
         
     var osAttr = $('<div style="display: inline-table; vertical-align: middle;"></div>');
     osFS.append($('<div style="display: inline-table; vertical-align: middle;"><img src="images/provision/operating_system.png"></img></div>'));
@@ -4853,7 +4858,7 @@ function createZProvisionNew(inst) {
             var args = $(this).val().split('.');
             if (!$.cookie(args[0] + 'diskpools')) {
                 // Get disk pools
-                $.ajax( {
+                $.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
@@ -4869,7 +4874,7 @@ function createZProvisionNew(inst) {
             
             if (!$.cookie(args[0] + 'zfcppools')) {
                 // Get zFCP pools
-                $.ajax( {
+                $.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
@@ -4882,6 +4887,80 @@ function createZProvisionNew(inst) {
                     success : setZfcpPoolCookies
                 });
             }
+            
+            if (!$.cookie(args[0] + 'userprofiles')) {
+                // Get zFCP pools
+                $.ajax({
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    async: false,
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : args[0],
+                        args : '--userprofilenames',
+                        msg : args[0]
+                    },
+    
+                    success : setUserProfilesCookies
+                });
+            }
+            
+            if (!$.cookie(args[0] + 'networks') || $.cookie(args[0] + 'networks') === null) {
+                // Get network names
+                $.ajax( {
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    async: false,
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : args[0],
+                        args : '--getnetworknames',
+                        msg : args[0]
+                    },
+            
+                    success : setNetworkCookies
+                });
+            }
+            
+            // Reset user profile and network drop down box
+            var thisTabId = $(this).parents('.tab').attr('id');
+            var thisUserProfile = $('#' + thisTabId + ' select[name=userProfile]');
+            thisUserProfile.children().remove();
+            
+            var definedUserProfiles = $.cookie(args[0] + 'userprofiles').split(',');
+            for (var i in definedUserProfiles) {
+                thisUserProfile.append('<option value="' + definedUserProfiles[i] + '">' + definedUserProfiles[i] + '</option>');
+            }
+            
+            var thisNetwork = $('#' + thisTabId + ' select[name=network]');
+            thisNetwork.children().remove();
+            var definedNetworks = $.cookie(args[0] + 'networks').split(',');
+            for (var i in definedNetworks) {
+            	var directoryEntry, interfaceName;
+            	
+            	// Generate directory entry statement for vSwitch, hipersocket, and guest LAN
+            	if (definedNetworks[i].indexOf('VSWITCH ') != -1) {
+            		interfaceName = jQuery.trim(definedNetworks[i].replace('VSWITCH ', ''));
+            		directoryEntry = "TYPE QDIO LAN " + interfaceName;
+            	} else if (definedNetworks[i].indexOf('LAN:HIPERS ') != -1) {
+            		interfaceName = jQuery.trim(definedNetworks[i].replace('LAN:HIPERS ', ''));
+            		directoryEntry = "TYPE HIPERSOCKETS LAN " + interfaceName;
+            	} else {
+            		interfaceName = jQuery.trim(definedNetworks[i].replace('LAN:QDIO ', ''));
+            		directoryEntry = "TYPE QDIO LAN " + interfaceName;
+            	}
+            	
+                thisNetwork.append('<option value="' + directoryEntry + '">' + definedNetworks[i] + '</option>');
+            }
+            
+            // Update user entry on change
+            thisNetwork.change(function() {
+            	updateUserEntry(thisTabId);
+            });
+            
+            thisUserProfile.change(function() {
+            	updateUserEntry(thisTabId);
+            });
         }
     });
     hcpDiv.append(hcpLabel);
@@ -4927,9 +5006,9 @@ function createZProvisionNew(inst) {
     var defaultChkbox = $('<input type="checkbox" name="userEntry" value="default"/>').click(function() {
         // Remove any warning messages
         $(this).parents('.form').find('.ui-state-error').remove();
-        
-        // Get tab ID
-        var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
+
+        // Get tab Id
+        var thisTabId = $(this).parents('.ui-tabs-panel').parents('.ui-tabs-panel').attr('id');
         
         // Get objects for HCP, user ID, and OS
         var userId = $('#' + thisTabId + ' input[name=userId]');
@@ -4989,11 +5068,73 @@ function createZProvisionNew(inst) {
     });
     var userEntry = $('<div><label style="vertical-align: top;">Directory entry:</label><textarea title="The directory entry to be defined for the virtual machine"/></textarea></div>');
     userEntry.append($('<span></span>').append(defaultChkbox, 'Use default'));
-    hwAttr.append(userEntry);
+    
+    // Add division on basic tab for specifying: memory, # of CPUs, privilege, user profile, and network.    
+    var basicConfig = $('<div></div>');
+    var userProfile = $('<div><label>z/VM profile:</label><select name="userProfile" title="The profile containing the desired attributes of the virtual machine">' +
+            '<option value="">Select a hardware control point</option>' +
+        '</select></div>');
+    var cpuSelect = $('<select name="cpuCount" title="The number of CPUs assigned to the virtual machine">' +
+            '<option value="1">1</option>' +
+            '<option value="2">2</option>' +
+            '<option value="3">3</option>' +
+            '<option value="4">4</option>' +
+            '<option value="5">5</option>' +
+            '<option value="6">6</option>' +
+            '<option value="7">7</option>' +
+            '<option value="8">8</option>' +
+        '</select>').change(function() {
+        	updateUserEntry('zvmProvisionTab' + inst);
+    });
+    var cpuCount = $('<div><label>CPU count:</label></div>').append(cpuSelect);
+    var memorySlider = $('<div style="width:400px; display:inline-table; vertical-align:middle; margin-right: 10px;"></div>');
+    var memorySize = $('<input type="text" style="width: 80px; border-width: 0px;" name="memory" readonly="readonly" title="The memory size of the virtual machine"></input>');
+    var memory = $('<div><label>Memory size:</label></div>').append(memorySlider, memorySize);
+    var acceptableMemorySize = ['512M', '1024M', '2G', '3G', '4G', '5G', '6G', '7G', '8G'];
+    memorySlider.slider({
+        value: 0,
+        min: 0,
+        max: 8,
+        step: 1,
+        slide: function(event, ui) {
+            $('#basicConfig' + inst + ' input[name=memory]').val(acceptableMemorySize[ui.value]);
+            
+            // Update user entry on change
+        	updateUserEntry('zvmProvisionTab' + inst);
+        }
+    });
+    
+    // Initialize storage size
+    memorySize.val(acceptableMemorySize[0]);
+    
+    var privilege = $('<div><label style="vertical-align: top;">Privileges:</label>' +
+            '<div style="display:inline-block;">' +
+                '<span><input type="checkbox" name="privilege" value="A"/> A - Primary system operator</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="B"/> B - System resource operator</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="C"/> C - System programmer</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="D"/> D - Spooling operator</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="E"/> E - System analyst</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="F"/> F - IBM service representative</span><br/>' + 
+                '<span><input type="checkbox" name="privilege" value="G" checked/> G - General user</span><br/>' + 
+            '</div>' +
+        '</div>');
+    privilege.find('input').change(function() {    	
+    	updateUserEntry('zvmProvisionTab' + inst);
+    });
+    
+    var network = $('<div><label>Network interface:</label><select name="network" title="The profile containing the desired attributes of the virtual machine">' +
+            '<option value="">Select a hardware control point</option>' +
+        '</select></div>');
+    
+    basicConfig.append(userProfile, cpuCount, memory, privilege, network);
+    hwTab.add('basicConfig' + inst, 'Basic', basicConfig, false);
+    
+    // Add division on advanced tab for specifying user directory entry
+    hwTab.add('advancedConfig' + inst, 'Advanced', userEntry, false);
 
     // Create disk table
     var diskDiv = $('<div class="provision"></div>');
-    var diskLabel = $('<label>Disks:</label>');
+    var diskLabel = $('<label style="width: 60px;">Disks:</label>');
     var diskTable = $('<table></table>');
     var diskHeader = $('<thead class="ui-widget-header"> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> </thead>');
     // Adjust header width
@@ -5106,14 +5247,14 @@ function createZProvisionNew(inst) {
     
     // Create zFCP table
     var zfcpDiv = $('<div class="provision"></div>');
-    var zfcpLabel = $('<label>zFCP:</label>');
+    var zfcpLabel = $('<label style="width: 60px;">zFCP:</label>');
     var zfcpTable = $('<table></table>');
     var zfcpHeader = $('<thead class="ui-widget-header"> <th><th>Address</th> <th>Size</th> <th>Pool</th> <th>Tag</th> <th>Port Name</th> <th>Unit #</th> <th>LOADDEV</th></thead>');
     // Adjust header width
-    zfcpHeader.find('th').css( {
+    zfcpHeader.find('th').css({
         'width' : '80px'
     });
-    zfcpHeader.find('th').eq(0).css( {
+    zfcpHeader.find('th').eq(0).css({
         'width' : '20px'
     });
     var zfcpBody = $('<tbody></tbody>');
@@ -5235,13 +5376,21 @@ function createZProvisionNew(inst) {
         var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
         // Get provision tab instance
         var inst = thisTabId.replace('zvmProvisionTab', '');
-
+        
+        // Get the selected hardware configuration tab
+        // Basic tab index = 0 & advanced tab index = 1
+        var hwTabIndex = $("#hwConfig" + inst).tabs('option', 'selected');
+        
         // Check node name, userId, hardware control point, and group
         // Check disks and zFCP devices
         var inputs = $('#' + thisTabId + ' input:visible');
-        for ( var i = 0; i < inputs.length; i++) {
+        for (var i = 0; i < inputs.length; i++) {
             // Do not check some inputs
-            if (!inputs.eq(i).val() 
+            if (inputs.eq(i).attr('name') == 'memory') {
+                // There should always be a value for memory
+                // Do not change the border
+                continue;
+            } else if (!inputs.eq(i).val() 
                 && inputs.eq(i).attr('type') != 'password'
                 && inputs.eq(i).attr('name') != 'zfcpTag'
                 && inputs.eq(i).attr('name') != 'zfcpPortName'
@@ -5254,42 +5403,44 @@ function createZProvisionNew(inst) {
         }
         
         var selects = $('#' + thisTabId + ' select:visible');
-        for ( var i = 0; i < selects.length; i++) {
-            if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os') {
+        for (var i = 0; i < selects.length; i++) {
+            if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os' && selects.eq(i).attr('name') != 'userProfile') {
                 selects.eq(i).css('border', 'solid #FF0000 1px');
                 ready = false;
             } else {
                 selects.eq(i).css('border', 'solid #BDBDBD 1px');
             }
         }
+        
+        if (hwTabIndex == 1) {
+            // Check user entry
+            var thisUserEntry = $('#' + thisTabId + ' textarea:visible');
+            thisUserEntry.val(thisUserEntry.val().toUpperCase());
+            if (!thisUserEntry.val()) {
+                thisUserEntry.css('border', 'solid #FF0000 1px');
+                ready = false;
+            } else {
+                thisUserEntry.css('border', 'solid #BDBDBD 1px');
+            }
 
-        // Check user entry
-        var thisUserEntry = $('#' + thisTabId + ' textarea:visible');
-        thisUserEntry.val(thisUserEntry.val().toUpperCase());
-        if (!thisUserEntry.val()) {
-            thisUserEntry.css('border', 'solid #FF0000 1px');
-            ready = false;
-        } else {
-            thisUserEntry.css('border', 'solid #BDBDBD 1px');
+            // Check if user entry contains user ID
+            var thisUserId = $('#' + thisTabId + ' input[name=userId]:visible');
+            var pos = thisUserEntry.val().indexOf('USER ' + thisUserId.val().toUpperCase());
+            if (pos < 0) {
+                
+                pos = thisUserEntry.val().indexOf('IDENTITY ' + thisUserId.val().toUpperCase());
+                if (pos < 0) {
+                    errMsg = errMsg + 'The directory entry does not contain the correct user/identity ID.<br/>';
+                    ready = false;
+                }
+            }
         }
         
         // Show error message for missing inputs
         if (!ready) {
-            errMsg = errMsg + 'Please provide a value for each missing field.<br>';
+            errMsg = errMsg + 'Please provide a value for each missing field.<br/>';
         }
-
-        // Check if user entry contains user ID
-        var thisUserId = $('#' + thisTabId + ' input[name=userId]:visible');
-        var pos = thisUserEntry.val().indexOf('USER ' + thisUserId.val().toUpperCase());
-        if (pos < 0) {
-            
-            pos = thisUserEntry.val().indexOf('IDENTITY ' + thisUserId.val().toUpperCase());
-            if (pos < 0) {
-                errMsg = errMsg + 'The directory entry does not contain the correct user/identity ID.<br>';
-                ready = false;
-            }
-        }
-
+        
         // If no operating system is specified, create only user entry
         os = $('#' + thisTabId + ' select[name=os]:visible');
         
@@ -5297,12 +5448,17 @@ function createZProvisionNew(inst) {
         var diskRows = $('#' + thisTabId + ' table tr');
         // If an OS is given, disks are needed
         if (os.val() && (diskRows.length < 1)) {
-            errMsg = errMsg + 'You need to add at some disks.<br>';
+            errMsg = errMsg + 'You need to add at some disks.<br/>';
             ready = false;
         }
         
         // If inputs are valid, ready to provision
         if (ready) {
+            // Generate user directory entry if basic tab is selected
+        	if (hwTabIndex == 0) {
+        		updateUserEntry(thisTabId);
+        	}
+            
             if (!os.val()) {
                 // If no OS is given, create a virtual server
                 var msg = '';
@@ -5786,6 +5942,26 @@ function setzHcpCookies(zhcps) {
         var exDate = new Date();
         exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
         $.cookie('zhcps', zhcps, { expires: exDate });
+    }
+}
+
+/**
+ * Set a cookie for z/VM user profile names of a given node
+ * 
+ * @param data Data from HTTP request
+ */
+function setUserProfilesCookies(data) {
+    if (data.rsp[0].length) {
+        var node = data.msg;
+        var profiles = data.rsp[0].split(node + ': ');
+        for (var i in profiles) {
+            profiles[i] = jQuery.trim(profiles[i]);
+        }
+        
+        // Set cookie to expire in 60 minutes
+        var exDate = new Date();
+        exDate.setTime(exDate.getTime() + (240 * 60 * 1000));
+        $.cookie(node + 'userprofiles', profiles, { expires: exDate });
     }
 }
 
@@ -6398,4 +6574,66 @@ function getHcpZvmHash() {
     }
     
     return hcp2zvm;
+}
+
+/**
+ * Update the user entry text area on a given tab
+ * 
+ * @param tabId Tab Id where user entry text area is contained
+ */
+function updateUserEntry(tabId) {
+	var userId = $('#' + tabId + ' input[name=userId]').val().toUpperCase();
+    var profile = $('#' + tabId + ' select[name=userProfile]').val();
+    var cpuCount = parseInt($('#' + tabId + ' select[name=cpuCount]').val());
+    var memory = $('#' + tabId + ' input[name=memory]').val();
+    var network = $('#' + tabId + ' select[name=network]').val();
+        
+    var privilege = [];
+    $('#' + tabId + ' input[name=privilege]:checked').each(function () {
+        privilege.push($(this).val());
+    });
+    privilege = privilege.join('');
+
+    var userDirectoryEntry = generateUserEntry(userId, "XCAT", memory, privilege, profile, cpuCount, network);
+    $('#' + tabId + ' textarea').val(userDirectoryEntry);
+}
+
+/**
+ * Generate a user directory entry
+ * 
+ * @param userId User Id
+ * @param password User password
+ * @param memory Memory to assign to virtual machine
+ * @param privilege User privilege class
+ * @param profile User profile
+ * @param cpuCount Number of CPU to assign to virtual machine
+ * @param network Network interface used by virtual machine 
+ * 
+ * @returns User directory entry
+ */
+function generateUserEntry(userId, password, memory, privilege, profile, cpuCount, network) {
+	var userDirectoryEntry = "USER " + userId + " XCAT " + memory + " " + memory + " " + privilege + "\n";
+    
+	// Include user profile if there is one
+    if (profile) {
+    	userDirectoryEntry += "INCLUDE " + profile + "\n";
+    }
+    
+    // Only up to 8 CPU can be assigned
+    for (var i = 0; i < cpuCount; i++) {
+    	userDirectoryEntry += "CPU 0" + i + "\n";
+    }
+    
+    userDirectoryEntry += "CONSOLE 0009 3215 T\n";
+    
+    // Include network interface if given
+    if (network) {
+    	userDirectoryEntry += "NICDEF 0A00 " + network + "\n";
+    }
+    
+    userDirectoryEntry += "SPOOL 000C 2540 READER *\n";
+    userDirectoryEntry += "SPOOL 000D 2540 PUNCH A\n";
+    userDirectoryEntry += "SPOOL 000E 1403 A\n";
+    
+    return userDirectoryEntry;
 }
