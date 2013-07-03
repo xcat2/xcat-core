@@ -210,7 +210,7 @@ fi
 
 #check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
 mounted=0;
-result=`mount |grep /install |grep $NFSSERVER`
+result=`mount |grep " $INSTALLDIR " |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
     NFSSERVER="/install"
     mounted=1 
