@@ -111,8 +111,9 @@ if [ $OS != "AIX" ]; then
             mount --bind  /sys $installroot/sys
             mount --bind /proc $installroot/proc
             chroot $installroot rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null 
+            chroot $installroot rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
             #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
-            chroot $installroot perl -x /tmp/ofed_install/mlnxofedinstall $mlnxofed_options
+            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall $mlnxofed_options
             rm -rf $installroot/tmp/ofed_install
             umount $installroot/dev/
             umount $installroot/sys
@@ -120,8 +121,9 @@ if [ $OS != "AIX" ]; then
         else
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR/ $installroot/tmp/ofed_install/ 
+            chroot $installroot rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
             #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
-            chroot $installroot perl -x /tmp/ofed_install/mlnxofedinstall $mlnxofed_options
+            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall $mlnxofed_options
             rm -rf $installroot/tmp/ofed_install
         fi
 
