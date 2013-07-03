@@ -2144,7 +2144,7 @@ sub validate_node_entry{
                 if($nic_ips =~ /!/ and $nic_ips !~ /!$/) {
                     @nic_and_ips = split(/!/, $nic_ips);
                     $nic_ip = $nic_and_ips[1];
-                    if (exists $allips{$node_entry{$_}}){
+                    if (exists $allips{$nic_ip}){
                         $errmsg .= "IP address $nic_ip already exists in the database or in the nodeinfo file.\n";
                     }elsif((xCAT::NetworkUtils->validate_ip($nic_ip))[0]->[0] ){
                         $errmsg .= "IP address $nic_ip is invalid. You must use a valid IP address.\n";
