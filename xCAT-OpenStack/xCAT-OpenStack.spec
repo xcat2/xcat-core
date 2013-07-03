@@ -42,3 +42,13 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 
 
+%post
+%ifos linux
+  if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
+    if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
+      /etc/init.d/xcatd reload
+    fi
+  fi
+%endif
+exit 0
+
