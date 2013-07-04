@@ -728,6 +728,15 @@ sub assign_to_osimage
         my @lines = ();
 
         my @kitpkgdeps = split ',', $kitcomptable->{kitpkgdeps}; 
+
+        # Remove prerequisite from KIT_RMPKGS.otherpkg.pkglist
+        if ( $kitcomptable and $kitcomptable->{prerequisite} ) {
+            my @kitpreps = split /,/, $kitcomptable->{prerequisite};
+            foreach my $kitprep ( @kitpreps ) {
+                push @kitpkgdeps, $kitprep;
+            }
+        }
+            
         push @kitpkgdeps, $basename;
 
         my @l = ();
@@ -2739,30 +2748,18 @@ sub rmkitcomp
                     @kitpkgdeps = split ',', $kitcomps{$kitcomponent}{kitpkgdeps};
                 }
 
+                #  Add prerequisite to  KIT_RMPKGS.otherpkg.pkglist
+                if ( $kitcomps{$kitcomponent}{prerequisite} ) {
+                    my @kitpreps = split /,/, $kitcomps{$kitcomponent}{prerequisite};
+                    foreach my $kitprep ( @kitpreps ) {
+                        push @kitpkgdeps, $kitprep;
+                    } 
+                }
+
                 push @kitpkgdeps, $basename;
 
                 my $update = 0;
 
-                #check if prerequisite rpm is already added to RMPKGS.otherpkgs.pkglist.
-                my $matched = 0;
-                foreach my $line ( @lines ) {
-                    chomp $line;
-                    if ( $line =~ /^-prep_$basename$/ ) {
-                        $matched = 1;
-                        last;
-                    }
-                }
-                unless ( $matched ) {
-                    # add the prerequisite rpm to #NEW_INSTALL_LIST# session
-                    # so they can be removed in a seperate command
-                    if ( $kitcomps{$kitcomponent}{prerequisite} ) {
-                        push @l, "#NEW_INSTALL_LIST#\n";
-                        push @l, "-prep_$basename\n";
-                    }
-                    $update = 1;
-                }
-
-                my $added_mark = 0;
                 foreach my $kitpkgdep ( @kitpkgdeps ) {
                     next if ( $kitpkgdep =~ /^$/ );
                     my $matched = 0;
@@ -2775,17 +2772,7 @@ sub rmkitcomp
                     }
 
                     unless ( $matched ) {
-                        # add the prerequisite rpm to #NEW_INSTALL_LIST# session 
-                        # so they can be removed in a seperate command
-                        if ( $kitcomps{$kitcomponent}{prerequisite} ) {
-                            if (!$added_mark) { 
-                                push @l, "#NEW_INSTALL_LIST#\n";
-                                $added_mark = 1;
-                            }
-                            push @l, "-$kitpkgdep\n";
-                        } else {
-                            unshift @l, "-$kitpkgdep\n";
-                        }
+                        unshift @l, "-$kitpkgdep\n";
                         $update = 1;
                     }
 
