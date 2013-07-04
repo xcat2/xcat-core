@@ -912,9 +912,12 @@ sub mkinstall
     my $callback = shift;
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
+    my $noupdateinitrd = $request->{'noupdateinitrd'};
+
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
+    my $osdistrouptab;
     my %img_hash=();
 
     my $installroot;
@@ -993,6 +996,7 @@ sub mkinstall
         my $partfile;
         my $netdrivers;
         my $driverupdatesrc;
+        my $osupdir;
 
         my $ient = $rents{$node}->[0];
         if ($ient and $ient->{xcatmaster})
@@ -1016,7 +1020,7 @@ sub mkinstall
 		if (!$osimagetab) {
 		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
 		}
-		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod', 'osupdatename');
 		if ($ref) {
 		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
 		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
@@ -1072,6 +1076,32 @@ sub mkinstall
 			    $img_hash{$imagename}->{pkglist}=$pkglistfile;
 			}
 		    }
+
+                # get the path list of the osdistroupdate
+                if ($ref->{'osupdatename'}) {
+                    my $osdisupdir;
+                    my @osupdatenames = split (/,/, $ref->{'osupdatename'});
+                    
+                    unless ($osdistrouptab) {
+                        $osdistrouptab=xCAT::Table->new('osdistroupdate', -create=>1);
+                        unless ($osdistrouptab) {
+                            $callback->({ error => ["Cannot open the table osdistroupdate."], errorcode => [1] });
+                            next;
+                        }
+                    }
+                    my @osdup = $osdistrouptab->getAllAttribs("osupdatename", "dirpath");
+                    foreach my $upname (@osupdatenames) {
+                        foreach my $upref (@osdup) {
+                            if ($upref->{'osupdatename'} eq $upname) {
+                                $osdisupdir .= ",$upref->{'dirpath'}";
+                                last;
+                            }
+                        }
+                    }
+
+                    $osdisupdir =~ s/^,//;
+                    $img_hash{$imagename}->{'osupdir'} = $osdisupdir;
+                }
 		} else {
 		    $callback->(
 			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
@@ -1087,7 +1117,7 @@ sub mkinstall
 	    $platform=xCAT_plugin::anaconda::getplatform($os);
 	
 	    $tmplfile=$ph->{template};
-          $pkgdir=$ph->{pkgdir};
+	    $pkgdir=$ph->{pkgdir};
 	    if (!$pkgdir) {
 		$pkgdir="$installroot/$os/$arch";
 	    }
@@ -1095,6 +1125,7 @@ sub mkinstall
 
 	    $netdrivers = $ph->{netdrivers};
 	    $driverupdatesrc = $ph->{driverupdatesrc};
+	    $osupdir = $ph->{'osupdir'};
 	}
 	else {
 	    $os = $ent->{os};
@@ -1293,8 +1324,10 @@ sub mkinstall
                     copyesxiboot($pkgdir, "$tftppath", osver=>$os);		
                 }else{
                     copy($kernpath,"$tftppath");
-                    copy($initrdpath,"$tftppath/initrd.img");
-                    &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers);
+                    unless ($noupdateinitrd) {
+                        copy($initrdpath,"$tftppath/initrd.img");
+                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers, $osupdir);
+                    }
                 }
             }
 
@@ -2358,6 +2391,7 @@ sub insert_dd {
     my $img = shift;
     my $driverupdatesrc = shift;
     my $drivers = shift;
+    my $osupdirlist = shift;
 
     my $install_dir = xCAT::TableUtils->getInstallDir();
 
@@ -2373,6 +2407,21 @@ sub insert_dd {
 
     my @rpm_drivers;
 
+    # since the all rpms for drivers searching will be extracted to one dir, the newer rpm should be
+    # extracted later so that the newer drivers will overwirte the older one if certain drvier is included 
+    # in multiple rpms
+    # 
+    # The order of rpm list in the @rpm_list should be: osdistroupdate1, osdistroupdate2, driverupdatesrc
+    #
+    # get the kernel-*.rpm from the dirpath of osdistroupdate
+    if ($osupdirlist) {
+        my @osupdirs = split (/,/, $osupdirlist);
+        foreach my $osupdir (@osupdirs) {
+            # find all the rpms start with kernel.*
+            my @kernel_rpms = `find $osupdir -name kernel-*.rpm`;
+            push @rpm_list, @kernel_rpms;
+        }
+    }
     # Parse the parameters to the the source of Driver update disk and Driver rpm, and driver list as well
     if ($driverupdatesrc) {
         my @srcs = split(',', $driverupdatesrc);
@@ -2493,25 +2542,26 @@ sub insert_dd {
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
-            }
-
-            # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
-            # Change it back to xxx.ko here
-            $driver_name = "\*ko.new";
-            @all_real_path = ();
-            find(\&get_all_path, <$dd_dir/rpm/*>);
-            foreach my $file (@all_real_path) {
-print "$file\n";
-                my $newname = $file;
-                $newname =~ s/\.new$//;
-                $cmd = "mv -f $file $newname";
-                xCAT::Utils->runcmd($cmd, -1);
-                if ($::RUNCMD_RC != 0) {
-                    my $rsp;
-                    push @{$rsp->{data}}, "Handle the driver update failed. Could not move $file.";
-                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                
+                # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+                # Change it back to xxx.ko here
+                $driver_name = "\*ko.new";
+                @all_real_path = ();
+                find(\&get_all_path, <$dd_dir/rpm/*>);
+                foreach my $file (@all_real_path) {
+                    my $newname = $file;
+                    $newname =~ s/\.new$//;
+                    $cmd = "mv -f $file $newname";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $file.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
                 }
             }
+
+            
         }
     
         # The rh6 has different initrd format with old version (rh 5.x)
@@ -2527,10 +2577,10 @@ print "$file\n";
             if (@rpm_list && ($Injectalldriver || @driver_list)) {
                 # Copy the firmware to the rootimage
                 if (-d "$dd_dir/rpm/lib/firmware") {
-                    if (! -d "$dd_dir/initrd_img/lib") {
-                        mkpath "$dd_dir/initrd_img/lib";
+                    if (! -d "$dd_dir/initrd_img/lib/firmware") {
+                        mkpath "$dd_dir/initrd_img/lib/firmware";
                     }
-                    $cmd = "cp -rf $dd_dir/rpm/lib/firmware $dd_dir/initrd_img/lib";
+                    $cmd = "/bin/cp -rf $dd_dir/rpm/lib/firmware/* $dd_dir/initrd_img/lib/firmware";
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
@@ -2550,30 +2600,35 @@ print "$file\n";
                 }
 
                 foreach my $kernelver (@kernelvers) {
+                  unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                      next;
+                  }
                   if (@driver_list) {
                     foreach my $driver (@driver_list) {
                       $driver_name = $driver;
-                      $real_path = "";
-                      find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                      if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
-                          if (! -d "$dd_dir/initrd_img$1") {
-                              mkpath "$dd_dir/initrd_img$1";
-                          }
-                          $cmd = "cp -rf $real_path $dd_dir/initrd_img$1";
-                          xCAT::Utils->runcmd($cmd, -1);
-                          if ($::RUNCMD_RC != 0) {
-                              my $rsp;
-                              push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $driver to the initrd.";
-                              xCAT::MsgUtils->message("I", $rsp, $callback);
-                          } else {
-                              push @rpm_drivers, $driver;
+                      @all_real_path = ();
+                      find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                      foreach my $real_path (@all_real_path) {
+                          if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                              if (! -d "$dd_dir/initrd_img$1") {
+                                  mkpath "$dd_dir/initrd_img$1";
+                              }
+                              $cmd = "/bin/cp -rf $real_path $dd_dir/initrd_img$1";
+                              xCAT::Utils->runcmd($cmd, -1);
+                              if ($::RUNCMD_RC != 0) {
+                                  my $rsp;
+                                  push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $driver to the initrd.";
+                                  xCAT::MsgUtils->message("I", $rsp, $callback);
+                              } else {
+                                  push @rpm_drivers, $driver;
+                              }
                           }
                       }
                     }
                   } else {
                     # copy all the drviers to the rootimage
                     if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
-                        $cmd = "cp -rf $dd_dir/rpm/lib/modules/$kernelver $dd_dir/initrd_img/lib/modules/";
+                        $cmd = "/bin/cp -rf $dd_dir/rpm/lib/modules/$kernelver $dd_dir/initrd_img/lib/modules/";
                         xCAT::Utils->runcmd($cmd, -1);
                         if ($::RUNCMD_RC != 0) {
                             my $rsp;
@@ -2641,12 +2696,12 @@ print "$file\n";
                 }
         
                 # Copy all the driver files out
-                $cmd = "cp -rf $dd_dir/dd_modules/* $dd_dir/modules";
+                $cmd = "/bin/cp -rf $dd_dir/dd_modules/* $dd_dir/modules";
                 xCAT::Utils->runcmd($cmd, -1);
         
                 # Copy the firmware into the initrd
                 mkpath "$dd_dir/initrd_img/firmware";
-                $cmd = "cp -rf $dd_dir/dd_modules/firmware/* $dd_dir/initrd_img/firmware";
+                $cmd = "/bin/cp -rf $dd_dir/dd_modules/firmware/* $dd_dir/initrd_img/firmware";
                 xCAT::Utils->runcmd($cmd, -1);
        
                 my $drivername; 
@@ -2718,7 +2773,7 @@ print "$file\n";
                     if (! -d "$dd_dir/initrd_img/lib") {
                         mkpath "$dd_dir/initrd_img/lib";
                     }
-                    $cmd = "cp -rf $dd_dir/rpm/lib/firmware $dd_dir/initrd_img";
+                    $cmd = "/bin/cp -rf $dd_dir/rpm/lib/firmware $dd_dir/initrd_img";
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
@@ -2736,6 +2791,9 @@ print "$file\n";
                 }
 
                foreach my $kernelver (@kernelvers) {
+                  unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                      next;
+                  }
                   # find the $kernelver/$arch dir in the $dd_dir/modules
                   my $arch4modules;
                   foreach (<$dd_dir/modules/$kernelver/*>) {
@@ -2753,11 +2811,10 @@ print "$file\n";
                     # copy all the specific drviers to the initrd
                     foreach my $driver (@driver_list) {
                       $driver_name = $driver;
-                      $real_path = "";
-                      find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                      if ($real_path ) {
-    
-                          $cmd = "cp -rf $real_path $dd_dir/modules/$kernelver/$arch4modules/";
+                      @all_real_path = ();
+                      find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+                      foreach my $real_path (@all_real_path) {
+                          $cmd = "/bin/cp -rf $real_path $dd_dir/modules/$kernelver/$arch4modules/";
                           xCAT::Utils->runcmd($cmd, -1);
                           if ($::RUNCMD_RC != 0) {
                               my $rsp;
@@ -2771,9 +2828,11 @@ print "$file\n";
                   } elsif ($Injectalldriver) {
                     # copy all the drviers to the initrd
                     if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                        $driver_name = "\*\.ko";
+                        @all_real_path = ();
                         find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
                         foreach my $driverpath (@all_real_path) {
-                            $cmd = "cp -rf $driverpath $dd_dir/modules/$kernelver/$arch4modules/";
+                            $cmd = "/bin/cp -rf $driverpath $dd_dir/modules/$kernelver/$arch4modules/";
                             xCAT::Utils->runcmd($cmd, -1);
                             if ($::RUNCMD_RC != 0) {
                                 my $rsp;
@@ -2809,7 +2868,7 @@ print "$file\n";
               $ma = <$dd_dir/modules/$mk/*>;
               if (-d $ma) {
                 mkpath "$dd_dir/depmod/lib/modules/$mk";
-                xCAT::Utils->runcmd("cp -rf $ma/* $dd_dir/depmod/lib/modules/$mk", -1);
+                xCAT::Utils->runcmd("/bin/cp -rf $ma/* $dd_dir/depmod/lib/modules/$mk", -1);
                 $cmd = "depmod -b $dd_dir/depmod/";
                 xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0) {
@@ -2920,7 +2979,7 @@ print "$file\n";
 		mkpath("$dd_dir/tmpddmnt");
 		foreach my $dd (@dd_list) {
 			xCAT::Utils->runcmd("mount -o loop $dd $dd_dir/tmpddmnt",-1);
-			xCAT::Utils->runcmd("cp -a $dd_dir/tmpddmnt/* $dd_dir/newddimg",-1);
+			xCAT::Utils->runcmd("/bin/cp -a $dd_dir/tmpddmnt/* $dd_dir/newddimg",-1);
 			xCAT::Utils->runcmd("umount $dd_dir/tmpddmnt",-1);
 		}
 		foreach my $repodir (<$dd_dir/newddimg/*/*/repodata>) {
