@@ -14,6 +14,7 @@ use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
 use xCAT_monitoring::monitorctrl;
+use Getopt::Long;
 use strict;
 
 my $request;
@@ -89,7 +90,12 @@ sub setdestiny {
     
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
-    my $state = $req->{arg}->[0];
+
+    @ARGV = @{$request->{arg}};
+    my $noupdateinitrd;
+    GetOptions('noupdateinitrd' => \$noupdateinitrd,);
+    
+    my $state = $ARGV[0];
     my $reststates;
 
     # to support the case that the state could be runimage=xxx,runimage=yyy,osimage=xxx
@@ -297,7 +303,8 @@ sub setdestiny {
 	    #print "state=$tempstate nodes=@$samestatenodes\n";	
 	    $errored=0;
 	    $subreq->({command=>["mk$tempstate"],
-		       node=>$samestatenodes}, \&relay_response);
+		       node=>$samestatenodes, 
+		       noupdateinitrd=>$noupdateinitrd}, \&relay_response);
 	    if ($errored) { 
 		$callback->({error=>"Some nodes failed to set up $state resources, aborting"});
 		return; 
