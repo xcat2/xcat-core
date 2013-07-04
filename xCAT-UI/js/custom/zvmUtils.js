@@ -420,7 +420,7 @@ function updateZProvisionNewStatus(data) {
             var diskRows = $('#' + tabId + ' table:eq(0):visible tbody tr');
             $.cookie('disks2add' + out2Id, diskRows.length);
             if (diskRows.length > 0) {
-                for ( var i = 0; i < diskRows.length; i++) {
+                for (var i = 0; i < diskRows.length; i++) {
                     var diskArgs = diskRows.eq(i).find('td');
                     var type = diskArgs.eq(1).find('select').val();
                     var address = diskArgs.eq(2).find('input').val();
@@ -4934,8 +4934,12 @@ function createZProvisionNew(inst) {
             
             var thisNetwork = $('#' + thisTabId + ' select[name=network]');
             thisNetwork.children().remove();
+            thisNetwork.append('<option value=""></option>');  // No profile option            
             var definedNetworks = $.cookie(args[0] + 'networks').split(',');
             for (var i in definedNetworks) {
+            	if (!jQuery.trim(definedNetworks[i]))
+            		continue;
+            	
             	var directoryEntry, interfaceName;
             	
             	// Generate directory entry statement for vSwitch, hipersocket, and guest LAN
@@ -5075,6 +5079,7 @@ function createZProvisionNew(inst) {
             '<option value="">Select a hardware control point</option>' +
         '</select></div>');
     var cpuSelect = $('<select name="cpuCount" title="The number of CPUs assigned to the virtual machine">' +
+    		'<option value=""></option>' +
             '<option value="1">1</option>' +
             '<option value="2">2</option>' +
             '<option value="3">3</option>' +
@@ -5134,9 +5139,9 @@ function createZProvisionNew(inst) {
 
     // Create disk table
     var diskDiv = $('<div class="provision"></div>');
-    var diskLabel = $('<label style="width: 60px;">Disks:</label>');
-    var diskTable = $('<table></table>');
-    var diskHeader = $('<thead class="ui-widget-header"> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> </thead>');
+    var diskLabel = $('<label style="width: 50px;">Disks:</label>');
+    var diskTable = $('<table style="width: 750px;"></table>');
+    var diskHeader = $('<thead class="ui-widget-header"> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> <th>IPL</th></thead>');
     // Adjust header width
     diskHeader.find('th').css( {
         'width' : '80px'
@@ -5216,6 +5221,13 @@ function createZProvisionNew(inst) {
         // Create disk password input
         var diskPw = $('<td><input type="password" title="Optional. The read, write, and multi password that will be used for accessing the disk."/></td>');
         diskRow.append(diskPw);
+        
+        // Create IPL checkbox
+        var diskIpl = $('<td><input type="radio" name="ipl" title="Optional. Set the ECKD/FBA disk as the device to be IPL"/></td>');
+        diskRow.append(diskIpl);        
+        diskIpl.find('input').change(function() {    	
+        	updateUserEntry(thisTabId);
+        });
 
         diskBody.append(diskRow);
         
@@ -5247,8 +5259,8 @@ function createZProvisionNew(inst) {
     
     // Create zFCP table
     var zfcpDiv = $('<div class="provision"></div>');
-    var zfcpLabel = $('<label style="width: 60px;">zFCP:</label>');
-    var zfcpTable = $('<table></table>');
+    var zfcpLabel = $('<label style="width: 50px;">zFCP:</label>');
+    var zfcpTable = $('<table style="width: 750px;"></table>');
     var zfcpHeader = $('<thead class="ui-widget-header"> <th><th>Address</th> <th>Size</th> <th>Pool</th> <th>Tag</th> <th>Port Name</th> <th>Unit #</th> <th>LOADDEV</th></thead>');
     // Adjust header width
     zfcpHeader.find('th').css({
@@ -5404,7 +5416,7 @@ function createZProvisionNew(inst) {
         
         var selects = $('#' + thisTabId + ' select:visible');
         for (var i = 0; i < selects.length; i++) {
-            if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os' && selects.eq(i).attr('name') != 'userProfile') {
+            if (!selects.eq(i).val() && selects.eq(i).attr('name') != 'os' && selects.eq(i).attr('name') != 'userProfile' && selects.eq(i).attr('name') != 'network') {
                 selects.eq(i).css('border', 'solid #FF0000 1px');
                 ready = false;
             } else {
@@ -6593,9 +6605,26 @@ function updateUserEntry(tabId) {
         privilege.push($(this).val());
     });
     privilege = privilege.join('');
-
-    var userDirectoryEntry = generateUserEntry(userId, "XCAT", memory, privilege, profile, cpuCount, network);
-    $('#' + tabId + ' textarea').val(userDirectoryEntry);
+    
+    // Find device to be IPL
+    var diskRows = $('#' + tabId + ' table:eq(0):visible tbody tr');
+    var ipl;
+    for (var i = 0; i < diskRows.length; i++) {
+    	var diskArgs = diskRows.eq(i).find('td');
+        var address = diskArgs.eq(2).find('input').val();
+        if (diskArgs.eq(7).find('input').attr("checked") === true) {
+        	ipl = address;
+        	break;
+        }
+    }
+    
+    // Only update directory entry if the basic tab is selected
+    var inst = tabId.replace('zvmProvisionTab', '');
+    var hwTabIndex = $("#hwConfig" + inst).tabs('option', 'selected');
+    if (hwTabIndex == 0) {
+    	var userDirectoryEntry = generateUserEntry(userId, "XCAT", memory, privilege, profile, cpuCount, network, ipl);
+        $('#' + tabId + ' textarea').val(userDirectoryEntry);
+    }
 }
 
 /**
@@ -6607,11 +6636,12 @@ function updateUserEntry(tabId) {
  * @param privilege User privilege class
  * @param profile User profile
  * @param cpuCount Number of CPU to assign to virtual machine
- * @param network Network interface used by virtual machine 
+ * @param network Network interface used by virtual machine
+ * @param ipl The device to be IPL
  * 
  * @returns User directory entry
  */
-function generateUserEntry(userId, password, memory, privilege, profile, cpuCount, network) {
+function generateUserEntry(userId, password, memory, privilege, profile, cpuCount, network, ipl) {
 	var userDirectoryEntry = "USER " + userId + " XCAT " + memory + " " + memory + " " + privilege + "\n";
     
 	// Include user profile if there is one
@@ -6624,6 +6654,12 @@ function generateUserEntry(userId, password, memory, privilege, profile, cpuCoun
     	userDirectoryEntry += "CPU 0" + i + "\n";
     }
     
+    // Set device IPL
+    if (ipl) {
+    	userDirectoryEntry += "IPL " + ipl + "\n";
+    }
+    
+    userDirectoryEntry += "MACHINE ESA\n";  // Simulate s390 architecture
     userDirectoryEntry += "CONSOLE 0009 3215 T\n";
     
     // Include network interface if given
@@ -6634,6 +6670,6 @@ function generateUserEntry(userId, password, memory, privilege, profile, cpuCoun
     userDirectoryEntry += "SPOOL 000C 2540 READER *\n";
     userDirectoryEntry += "SPOOL 000D 2540 PUNCH A\n";
     userDirectoryEntry += "SPOOL 000E 1403 A\n";
-    
+        
     return userDirectoryEntry;
 }
