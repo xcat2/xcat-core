@@ -504,7 +504,7 @@ sub process_request {
     $sub_req->({command=>['setdestiny'],
 		node=>\@nodes,
 		inittime=>[$inittime],
-		arg=>[$args[0]]},\&pass_along);
+		arg=>\@args},\&pass_along);
   }
   if ($errored) { return; }
 
