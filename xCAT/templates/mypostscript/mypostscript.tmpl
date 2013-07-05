@@ -77,6 +77,7 @@ export NTYPE
 MACADDRESS=#TABLE:mac:$NODE:mac#
 export MACADDRESS
 
+
 ## vlan related items. vlan may not be configured. 
 #VLAN_VARS_EXPORT#
 
@@ -113,6 +114,9 @@ export NICCUSTOMSCRIPTS
 
 NICNETWORKS=#TABLE:nics:$NODE:nicnetworks#
 export NICNETWORKS
+
+CFGMGR=#TABLE:cfgmgt:$NODE:cfgmgr#
+export CFGMGR
 
 CFGSERVER=#TABLE:cfgmgt:$NODE:cfgserver#
 export CFGSERVER
