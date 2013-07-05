@@ -172,7 +172,7 @@ sub process_request {
         my $imageprofile = parse_str_arg($request->{arg}->[0]);
 
         my $kitdata = $request->{kitdata};
-        if (! defined($kitdata)) {
+        if (! defined($kitdata) && !($command eq "kitimagepostdelete")) {
             $kitdata = xCAT::KitPluginUtils->get_kits_used_by_image_profiles([$imageprofile]);
             $request->{kitdata} = $kitdata;
         }
