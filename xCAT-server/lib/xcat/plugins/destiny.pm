@@ -91,7 +91,7 @@ sub setdestiny {
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
 
-    @ARGV = @{$request->{arg}};
+    @ARGV = @{$req->{arg}};
     my $noupdateinitrd;
     GetOptions('noupdateinitrd' => \$noupdateinitrd,);
     
