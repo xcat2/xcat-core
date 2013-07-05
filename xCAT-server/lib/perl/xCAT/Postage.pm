@@ -697,7 +697,7 @@ sub enableSSHbetweennodes
     my $groups_hash   = shift;
     my $result;
   
-    my $enablessh=xCAT::TableUtils->enableSSH($node, $sn_hash, $groups_hash);
+    my $enablessh=xCAT::TableUtils->enablessh($node, $sn_hash, $groups_hash);
     if ($enablessh == 1) {
        $result = "'YES'";
     } else {
