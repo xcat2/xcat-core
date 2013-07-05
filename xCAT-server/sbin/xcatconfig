@@ -1096,6 +1096,10 @@ sub initDB
         elsif ( is_lsb_ubuntu() || is_debian() )
         {
             $tz = discover_timezone_ubuntu;
+            if (!$tz){
+                $tz = `cat /etc/timezone`;
+                chomp $tz;
+            }
         }
         else
         {
