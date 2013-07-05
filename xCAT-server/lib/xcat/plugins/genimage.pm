@@ -296,7 +296,7 @@ sub process_request {
    
    if ($srcdir) { $cmd .= " --srcdir $srcdir";}
    if ($pkglist) { $cmd .= " --pkglist $pkglist";}
-   if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir $srcdir_otherpkgs"; }
+   if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir \"$srcdir_otherpkgs\""; }
    if ($otherpkglist) { $cmd .= " --otherpkglist $otherpkglist"; }  
    if ($postinstall_filename)  { $cmd .= " --postinstall $postinstall_filename"; }
    if ($destdir) { $cmd .= " --rootimgdir $destdir"; } 
