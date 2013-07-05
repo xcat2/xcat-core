@@ -53,9 +53,10 @@ fi
 
 if [ -z "$chefserver" ]
 then
-    if [ -n "$CFGSERVER" ]
-    then
-        chefserver=$CFGSERVER
+    if [ -n "$CFGSERVER" -a -n "$CFGMGR" ]; then
+        if [ $CFGMGR = "chef" ]; then
+            chefserver=$CFGSERVER
+        fi
     fi
     if [ -z "$chefserver" ]
     then

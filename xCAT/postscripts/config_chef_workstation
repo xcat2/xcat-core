@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
@@ -24,9 +24,10 @@ fi
 
 if [ -z "$chefserver" ]
 then
-    if [ -n "$CFGSERVER" ]
-    then
-        chefserver=$CFGSERVER
+    if [ -n "$CFGSERVER" -a -n "$CFGMGR" ]; then
+        if [ $CFGMGR = "chef" ]; then
+            chefserver=$CFGSERVER
+        fi
     fi
     if [ -z "$chefserver" ]
     then
