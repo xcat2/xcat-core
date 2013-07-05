@@ -52,7 +52,11 @@ fi
 
 if [ -z "$chefserver" ]
 then
-    if [ -n "$CHEFSERVER" ]
+    if [ -n "$CFGSERVER" ]
+    then
+        chefserver=$CFGSERVER
+    fi
+    if [ -z "$chefserver" ]
     then
         chefserver=$CHEFSERVER
     fi
