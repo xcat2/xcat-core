@@ -20,7 +20,11 @@ if [ $ARGNUM -gt 1 ]; then
 fi
 
 if [ -z "$chef_server" ]; then
-    if [ -n "$CHEFSERVER" ]; then
+    if [ -n "$CFGSERVER" ]; then
+        chef_server=$CFGSERVER
+    fi
+    if [ -z "$chef_server" ]
+    then
         chef_server=$CHEFSERVER
     fi
     if [ -z "$chef_server" ]; then
