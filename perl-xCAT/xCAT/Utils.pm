@@ -3328,7 +3328,7 @@ sub filter_nostatusupdate{
     #filter out the nodes which support the node provision status feedback
     my @nodesfiltered=();
     if(exists $inref->{$::STATUS_INSTALLING}){
-      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_INSTALLING}};
+      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_INSTALLING}};
       delete $inref->{$::STATUS_INSTALLING};
       if(@nodesfiltered){
         @{$inref->{$::STATUS_INSTALLING}}=@nodesfiltered;
@@ -3337,7 +3337,7 @@ sub filter_nostatusupdate{
     
     @nodesfiltered=();
     if(exists $inref->{$::STATUS_NETBOOTING}){
-      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
+      map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
       delete $inref->{$::STATUS_NETBOOTING};
       if(@nodesfiltered){
         @{$inref->{$::STATUS_NETBOOTING}}=@nodesfiltered;
