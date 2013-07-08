@@ -120,6 +120,7 @@ then
         REL=`basename $t`
     fi
 
+    ver=`cat Version`
     if [ "$PROMOTE" != 1 ]; then
         #get the version
         echo "svn --quiet update Version"
