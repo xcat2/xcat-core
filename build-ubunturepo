@@ -91,14 +91,6 @@ local_dep_repo_path="$curdir/../../../xcat-dep/xcat-dep"
 sf_repo_url="https://sourceforge.net/projects/xcat/files/ubuntu"
 sf_dir="/home/frs/project/x/xc/xcat"
 
-if [ "$PROMOTE" = 1 ]; then
-    upload_dir="xcat-core"
-    tar_name="xcat-core-$ver.tar.bz2"
-else
-    upload_dir="core-snap"
-    tar_name="core-debs-snap.tar.bz2"
-fi
-
 #use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
 exec 8>/var/lock/xcatbld.lock
@@ -128,6 +120,7 @@ then
         REL=`basename $t`
     fi
 
+    ver=`cat Version`
     if [ "$PROMOTE" != 1 ]; then
         #get the version
         echo "svn --quiet update Version"
@@ -193,6 +186,14 @@ then
         done
 
         find ../../debs/* ! -name *.deb | xargs rm -f
+    fi
+
+    if [ "$PROMOTE" = 1 ]; then
+        upload_dir="xcat-core"
+        tar_name="xcat-core-$ver.tar.bz2"
+    else
+        upload_dir="core-snap"
+        tar_name="core-debs-snap.tar.bz2"
     fi
 
     echo "#################################"
