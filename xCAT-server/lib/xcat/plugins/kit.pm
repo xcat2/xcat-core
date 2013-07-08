@@ -2168,7 +2168,7 @@ sub addkitcomp
                         my %rsp;
                         push@{ $rsp{data} }, "Upgrading kit component $oskitcomp to $kitcomp";
                         xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$osimage, $oskitcomp] }, $request_command, -2, 1);
+                        my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-i',$osimage, $oskitcomp] }, $request_command, -2, 1);
                         if ( !$ret ) {
                             my %rsp;
                             push@{ $rsp{data} }, "Failed to remove kit component $kitcomp from $osimage";
