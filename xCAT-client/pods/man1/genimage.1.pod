@@ -55,7 +55,7 @@ Becides prompting for the input for some paramters, the B<genimage> command take
 
 If B<--onlyinitrd> is specified, only regenerates the initrd for a stateless image to be used for a diskless install.
 
-The B<genimage> command must be run on a system that is the same architecture and same distro with same majar release version as the nodes it will be
+The B<genimage> command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be
 used on.  If the management node is not the same architecture or same distro level, copy the contents of
 /opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
 the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
