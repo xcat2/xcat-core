@@ -5373,6 +5373,24 @@ function createZProvisionNew(inst) {
         }
     });
     
+    // Disable IPL column if advanced tab is selected
+    hwTab.object().tabs({
+    	select: function(event, ui) {
+    		// Get provision tab instance
+    		var thisTabId = $(this).parents('.ui-tabs-panel').attr('id');
+    		var inst = thisTabId.replace('zvmProvisionTab', '');
+    		
+    		// Disable and de-select IPL device
+    		if (ui.index == 1) {
+	            $('#' + thisTabId + ' table:eq(0):visible tbody tr td:nth-child(8) input').attr('disabled','disabled');
+    		} else {
+    			$('#' + thisTabId + ' table:eq(0):visible tbody tr td:nth-child(8) input').removeAttr('disabled');
+    		}
+    		
+    		$('#' + thisTabId + ' table:eq(0):visible tbody tr td:nth-child(8) input').removeAttr('checked');
+    	}
+    });
+    
     /**
      * Provision new
      */
