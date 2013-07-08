@@ -166,7 +166,7 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
     @nic_nets6 = ();
 
     #get current ips on this nic
-    my $str_ret = `ip addr show dev $nic 2>/dev/null | grep inet | grep -v link | awk '{print \$2}'`;
+    my $str_ret = `ip addr show dev $nic 2>/dev/null | grep inet | grep -v link | grep -v dynamic | awk '{print \$2}'`;
     my $bool_config_flag = 0;
     my %hash_oldips;
     if ($str_ret) {
