@@ -133,7 +133,7 @@ unless ($pidfile) {
 #start syslog if it is not up
 if (xCAT::Utils->isLinux()) {
   my $init_file="/etc/init.d/syslog";
-  if ((-f "/etc/fedora-release") || (-f "/etc/redhat-release")) {
+  if ((-f "/etc/fedora-release") || (-f "/etc/redhat-release") || (-f "/etc/lsb-release")) {
     $init_file="/etc/init.d/rsyslog"; 
   }
   if ( -x $init_file ) {
