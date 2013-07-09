@@ -477,65 +477,12 @@ sub preprocess_updatenode
     }
     
     if (scalar(@sns) && $::SECURITY) {
-            
-        $::CALLBACK = $callback;
-        $::NODEOUT = ();
-
-        # setup the ssh keys
-        my $req_sshkey = {%$request}; 
-        $req_sshkey->{node} = \@sns;
-        $req_sshkey->{security}->[0] = "yes";
-        if ($::USER) {
-            $req_sshkey->{user}->[0] = $::USER;
-        }
-        if ($::DEVICETYPE) {
-            $req_sshkey->{devicetype}->[0] = $::DEVICETYPE;
-        }
-
-        updatenode($req_sshkey, \&updatenode_cb, $subreq);
-
-        # run the postscripts: remoteshell, servicenode
-        if ($postscripts eq "allkeys44444444security") {
-            my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes(\@sns);
-
-            my $req_rs = {%$request};
-            my $ps;
-            if (scalar(@{$AIXnodes})) {
-                $ps = "aixremoteshell,servicenode";
-                $req_rs->{rerunps}->[0] = "yes";
-                $req_rs->{rerunps4security}->[0] = "yes";
-                $req_rs->{node} = $AIXnodes;
-                $req_rs->{postscripts} = [$ps];
-                updatenode($req_rs, \&updatenode_cb, $subreq);
-            }
-        
-            if (scalar(@{$Linuxnodes})) {
-                $ps = "remoteshell,servicenode";
-                $req_rs->{rerunps}->[0] = "yes";
-                $req_rs->{rerunps4security}->[0] = "yes";
-                $req_rs->{node} = $Linuxnodes;
-                $req_rs->{postscripts} = [$ps];
-                updatenode($req_rs, \&updatenode_cb, $subreq);
-            }
-        }
-        
-        # parse the output of update security for sns
-        foreach my $sn (keys %{$::NODEOUT}) {
-            if (!grep /^$sn$/, @sns) {
-                next;
-            }
-            if ( (grep /ps ok/, @{$::NODEOUT->{$sn}})
-             &&  (grep /ssh ok/, @{$::NODEOUT->{$sn}}) ) {
-                push @good_sns, $sn;
-            }
-        }
-
-        if ($::VERBOSE) {
-            my $rsp;
-            push @{$rsp->{data}}, "Update security for following service nodes: @sns.";
-            push @{$rsp->{data}}, "  Following service nodes have been updated successfully: @good_sns";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
+       # cannot use updatenode  -k to compute nodes, whose master is a service node
+       my $rsp;
+       push @{$rsp->{data}}, "updatenode -k is not supported to compute nodes in a hierarchical cluster.";
+       push @{$rsp->{data}}, " To update ssh keys on compute nodes , use xdsh -K";
+       xCAT::MsgUtils->message("E", $rsp, $callback,1);
+       return 1;
     }
     
     # build each request for each service node
