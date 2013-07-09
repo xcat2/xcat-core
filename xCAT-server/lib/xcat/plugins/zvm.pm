@@ -1240,9 +1240,9 @@ sub changeVM {
         my $sourceId = $propVals->{'userid'};
         
         # Assume flashcopy is supported (via SMAPI)
-        xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying $sourceId disk ($srcAddr) to $tgtUserId disk ($tgtAddr) using FLASHCOPY" );
+        xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying $sourceId disk ($srcAddr) to $tgtUserId disk ($srcAddr) using FLASHCOPY" );
         if (xCAT::zvmUtils->smapi4xcat($::SUDOER, $hcp)) {
-             $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $tgtAddr);
+             $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $srcAddr);
              xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
              
              # Exit if flashcopy completed successfully
