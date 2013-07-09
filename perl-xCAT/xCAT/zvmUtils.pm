@@ -13,7 +13,6 @@ use xCAT::MsgUtils;
 use xCAT::Utils;
 use xCAT::Table;
 use xCAT::NetworkUtils;
-use File::Copy;
 use File::Basename;
 use strict;
 use warnings;
@@ -2851,4 +2850,131 @@ sub findzFcpDeviceAttr {
     );
     
     return \%attrs;
+}
+
+#-------------------------------------------------------
+
+=head3   findUsablezHcpNetwork
+
+    Description : Find a useable NIC shared with the zHCP for a given user Id
+    Arguments   :   User (root or non-root)
+                    zHCP
+                    User Id to find a useable NIC on
+                    DHCP is used or not (0 or 1)
+    Returns     : NIC, device channel, and layer (2 or 3)
+    Example     : my ($nic, $channel, $layer) = xCAT::zvmUtils->findUsablezHcpNetwork($user, $hcp, $userId, $dhcp);
+    
+=cut
+
+#-------------------------------------------------------
+sub findUsablezHcpNetwork {
+	# Get inputs
+    my ( $class, $user, $hcp, $userId, $dhcp ) = @_;
+    
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    my $nic = '';  # Usuable NIC on zHCP
+    my $channel = '';  # Device channel where NIC is attached
+    my $layer;
+    my $i;
+    my @words;
+    
+    # Get the networks used by the zHCP
+    my @hcpNetworks = xCAT::zvmCPUtils->getNetworkNamesArray($user, $hcp);        
+
+    # Search directory entry for network name
+    my $userEntry = `ssh $user\@$hcp "$sudo $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;    
+    xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() smcli Image_Query_DM -T $userId");
+    xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() $userEntry");
+    
+    my $out = `echo "$userEntry" | grep "NICDEF"`;
+    my @lines = split('\n', $out);
+        
+    # Go through each line
+    for ($i = 0; $i < @lines; $i++) {
+        # Go through each network device attached to zHCP
+        foreach (@hcpNetworks) {
+                
+            # If network device is found
+            if ($lines[$i] =~ m/ $_/i) {
+                # Get network layer
+                $layer = xCAT::zvmCPUtils->getNetworkLayer($user, $hcp, $_);
+                xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() NIC:$_ layer:$layer");
+                    
+                # If template using DHCP, layer must be 2
+                if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
+                    # Save network name
+                    $nic = $_;
+                        
+                    # Get network virtual address
+                    @words = split(' ',  $lines[$i]);
+                        
+                    # Get virtual address (channel)
+                    # Convert subchannel to decimal
+                    $channel = sprintf('%d', hex($words[1]));
+                    
+                    xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() Candidate found NIC:$nic channel:$channel layer:$layer"); 
+                    return ($nic, $channel, $layer);
+                } else {
+                    # Go to next network available
+                    $nic = '';
+                }
+            }
+        }
+    }
+
+    # If network device is not found
+    if (!$nic) {
+        # Check for user profile
+        my $profileName = `echo "$userEntry" | grep "INCLUDE"`;
+        if ($profileName) {
+            @words = split(' ', xCAT::zvmUtils->trimStr($profileName));
+                
+            # Get user profile
+            my $userProfile = xCAT::zvmUtils->getUserProfile($user, $hcp, $words[1]);
+            xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() $userProfile");
+                
+            # Get the NICDEF statement containing the HCP network
+            $out = `echo "$userProfile" | grep "NICDEF"`;
+            @lines = split('\n', $out);
+                
+            # Go through each line
+            for ($i = 0; $i < @lines; $i++) {
+                # Go through each network device attached to zHCP
+                foreach (@hcpNetworks) {
+                        
+                    # If network device is found
+                    if ($lines[$i] =~ m/ $_/i) {
+                        # Get network layer
+                        $layer = xCAT::zvmCPUtils->getNetworkLayer($user, $hcp, $_);
+                        xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() NIC:$_ layer:$layer");
+                    
+                        # If template using DHCP, layer must be 2
+                        if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
+                            # Save network name
+                            $nic = $_;
+                                
+                            # Get network virtual address
+                            @words = split(' ',  $lines[$i]);
+                            
+                            # Get virtual address (channel)
+                            # Convert subchannel to decimal
+                            $channel = sprintf('%d', hex($words[1]));
+                            
+                            xCAT::zvmUtils->printSyslog("findUsablezHcpNetwork() Candidate found NIC:$nic channel:$channel layer:$layer");
+                            return ($nic, $channel, $layer);
+                        } else {
+                            # Go to next network available
+                            $nic = '';
+                        }
+                    }
+                } # End of foreach
+            } # End of for
+        } # End of if
+    }
+    
+    return;
 }

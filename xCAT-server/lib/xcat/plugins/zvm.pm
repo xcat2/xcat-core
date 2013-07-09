@@ -4797,148 +4797,105 @@ sub nodeSet {
             }
         }
         
-        # Get the networks used by the zHCP
-        my @hcpNets = xCAT::zvmCPUtils->getNetworkNamesArray($::SUDOER, $hcp);
-        
-        my $hcpNetName = '';
-        my $channel;
+        # Get the noderes.primarynic
+        my $channel = '';
         my $layer;
         my $i;
         
-        # Search directory entry for network name
-        my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
-        xCAT::zvmUtils->printSyslog("smcli Image_Query_DM -T $userId | sed '\$d'");
-        $out = `echo "$userEntry" | grep "NICDEF"`;
-        my @lines = split( '\n', $out );
+        @propNames = ( 'primarynic', 'nfsserver', 'xcatmaster' );
+        $propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
         
-        # Go through each line
-        for ( $i = 0 ; $i < @lines ; $i++ ) {
-            # Go through each network device attached to zHCP
-            foreach (@hcpNets) {
-                
-                # If network device is found
-                if ( $lines[$i] =~ m/ $_/i ) {                    
-                    # Get network layer
-                    $layer = xCAT::zvmCPUtils->getNetworkLayer($::SUDOER, $hcp, $_);
-                    
-                    # If template using DHCP, layer must be 2
-                    if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
-                        # Save network name
-                        $hcpNetName = $_;
-                        
-                        # Get network virtual address
-                        @words = split( ' ',  $lines[$i] );
-                        
-                        # Get virtual address (channel)
-                        # Convert subchannel to decimal
-                        $channel = sprintf('%d', hex($words[1]));
-                        
-                        last;
-                    } else {
-                        # Go to next network available
-                        $hcpNetName = ''
-                    }
+        my $repo = $propVals->{'nfsserver'};  # Repository containing Linux ISO
+        my $xcatmaster = $propVals->{'xcatmaster'};        
+        my $primaryNic = $propVals->{'primarynic'};  # NIC to use for OS installation
+        
+        # If noderes.primarynic is not specified, find an acceptable NIC shared with the zHCP
+        if ($primaryNic) {
+            $layer = xCAT::zvmCPUtils->getNetworkLayer($::SUDOER, $hcp, $primaryNic);
+                   
+            # If DHCP is used and the NIC is not layer 2, then exit
+            if ($dhcp && $layer != 2) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) The template selected uses DHCP. A layer 2 VSWITCH or GLAN is required. None were found." );
+                xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Modify the template to use <bootproto>static</bootproto> or --bootproto=static, or change the network device attached to virtual machine" );
+                return;
+            }
+           
+            # Find device channel of NIC
+            my $userEntry = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Query_DM -T $userId" | sed '\$d'`;
+            $out = `echo "$userEntry" | grep "NICDEF" | grep "$primaryNic"`;
+           
+            # Check user profile for device channel
+            if (!$out) {
+                my $profileName = `echo "$userEntry" | grep "INCLUDE"`;            
+                if ($profileName) {
+                    @words = split(' ', xCAT::zvmUtils->trimStr($profileName));
+                       
+                    # Get user profile
+                    my $userProfile = xCAT::zvmUtils->getUserProfile($::SUDOER, $hcp, $words[1]);
+                   
+                    # Get the NICDEF statement containing the HCP network
+                    $out = `echo "$userProfile" | grep "NICDEF" | grep "$primaryNic"`;
                 }
             }
-        }
+           
+            # Grab the device channel from the NICDEF statement
+            my @lines = split('\n', $out);
+            @words = split(' ',  $lines[0]);
+            $channel = sprintf('%d', hex($words[1]));
+        } else {
+        	xCAT::zvmUtils->printLn( $callback, "$node: Searching for acceptable network device");
+            ($primaryNic, $channel, $layer) = xCAT::zvmUtils->findUsablezHcpNetwork($::SUDOER, $hcp, $userId, $dhcp);
         
-        # If network device is not found
-        if (!$hcpNetName) {
-            
-            # Check for user profile
-            my $profileName = `echo "$userEntry" | grep "INCLUDE"`;
-            if ($profileName) {
-                @words = split( ' ', xCAT::zvmUtils->trimStr($profileName) );
-                
-                # Get user profile
-                my $userProfile = xCAT::zvmUtils->getUserProfile($::SUDOER, $hcp, $words[1]);
-                
-                # Get the NICDEF statement containing the HCP network
-                $out = `echo "$userProfile" | grep "NICDEF"`;
-                @lines = split( '\n', $out );
-                
-                # Go through each line
-                for ( $i = 0 ; $i < @lines ; $i++ ) {
-                    # Go through each network device attached to zHCP
-                    foreach (@hcpNets) {
-                        
-                        # If network device is found
-                        if ( $lines[$i] =~ m/ $_/i ) {
-                            # Get network layer
-                            $layer = xCAT::zvmCPUtils->getNetworkLayer($::SUDOER, $hcp, $_);
-                    
-                            # If template using DHCP, layer must be 2
-                            if ((!$dhcp && $layer != 2) || (!$dhcp && $layer == 2) || ($dhcp && $layer == 2)) {
-                                # Save network name
-                                $hcpNetName = $_;
-                                
-                                # Get network virtual address
-                                @words = split( ' ',  $lines[$i] );
-                                
-                                # Get virtual address (channel)
-                                # Convert subchannel to decimal
-                                $channel = sprintf('%d', hex($words[1]));
-                                
-                                last;
-                            } else {
-                                # Go to next network available
-                                $hcpNetName = '';
-                            }
-                        }
-                    } # End of foreach
-                } # End of for
-            } # End of if
+	        # If DHCP is used and not layer 2
+	        if ($dhcp && $layer != 2) {
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Error) The template selected uses DHCP. A layer 2 VSWITCH or GLAN is required. None were found." );
+	            xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Modify the template to use <bootproto>static</bootproto> or change the network device attached to virtual machine" );
+	            return;
+	        }
         }
-        
+                
         # Exit if no suitable network found
-        if (!$hcpNetName) {
-            if ($dhcp) {
-                xCAT::zvmUtils->printLn( $callback, "$node: (Error) The template selected uses DHCP. A layer 2 VSWITCH or GLAN is required. None were found." );
-                xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Modify the template to use <bootproto>static</bootproto> or change the network device attached to virtual machine" );
-            } else {
-                xCAT::zvmUtils->printLn( $callback, "$node: (Error) No suitable network device found in user directory entry" );
-                xCAT::zvmUtils->printLn( $callback, "$node: (Solution) Verify that the node has one of the following network devices: @hcpNets" );    
-            }
-            
+        if (!$primaryNic || !$channel || !$layer) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) No suitable network device found in user directory entry" );            
             return;
         }
         
-        xCAT::zvmUtils->printLn( $callback, "$node: Setting up networking on $hcpNetName (layer:$layer | DHCP:$dhcp)" );
+        xCAT::zvmUtils->printLn( $callback, "$node: Setting up networking on $primaryNic (layer:$layer | DHCP:$dhcp)" );
         
         # Generate read, write, and data channels
-        my $readChannel = "0.0." . ( sprintf('%X', $channel + 0) );
-        if ( length($readChannel) < 8 ) {
+        my $readChannel = "0.0." . (sprintf('%X', $channel + 0));
+        if (length($readChannel) < 8) {
             # Prepend a zero
-            $readChannel = "0.0.0" . ( sprintf('%X', $channel + 0) );
+            $readChannel = "0.0.0" . (sprintf('%X', $channel + 0));
         }
 
-        my $writeChannel = "0.0." . ( sprintf('%X', $channel + 1) );
-        if ( length($writeChannel) < 8 ) {
+        my $writeChannel = "0.0." . (sprintf('%X', $channel + 1));
+        if (length($writeChannel) < 8) {
             # Prepend a zero
-            $writeChannel = "0.0.0" . ( sprintf('%X', $channel + 1) );
+            $writeChannel = "0.0.0" . (sprintf('%X', $channel + 1));
         }
 
-        my $dataChannel = "0.0." . ( sprintf('%X', $channel + 2) );
-        if ( length($dataChannel) < 8 ) {
+        my $dataChannel = "0.0." . (sprintf('%X', $channel + 2));
+        if (length($dataChannel) < 8) {
             # Prepend a zero
-            $dataChannel = "0.0.0" . ( sprintf('%X', $channel + 2) );
+            $dataChannel = "0.0.0" . (sprintf('%X', $channel + 2));
         }
 
         # Get MAC address (Only for layer 2)
         my $mac = "";
         my @propNames;
         my $propVals;
-        if ( $layer == 2 ) {
+        if ($layer == 2) {
 
             # Search 'mac' table for node
             @propNames = ('mac');
-            $propVals  = xCAT::zvmUtils->getTabPropsByKey( 'mac', 'node', $node, @propNames );
+            $propVals  = xCAT::zvmUtils->getTabPropsByKey('mac', 'node', $node, @propNames);
             $mac       = $propVals->{'mac'};
 
             # If no MAC address is found, exit
             # MAC address should have been assigned to the node upon creation
-            if ( !$mac ) {
-                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing MAC address of node" );
+            if (!$mac) {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) Missing MAC address of node");
                 return;
             }
         }
