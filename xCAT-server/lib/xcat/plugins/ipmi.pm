@@ -73,7 +73,12 @@ use IO::Socket;
 use IO::Select;
 use Class::Struct;
 use Digest::MD5 qw(md5);
-use Digest::SHA1 qw(sha1);
+if ( -f "/etc/debian_verion" ){
+    use Digest::SHA qw(sha1);
+}
+else{
+    use Digest::SHA1 qw(sha1);
+}
 use POSIX qw(WNOHANG mkfifo strftime);
 use Fcntl qw(:flock);
 
