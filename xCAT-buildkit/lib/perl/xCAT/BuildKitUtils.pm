@@ -19,10 +19,20 @@ use File::Path;
 use Socket;
 use strict;
 use Symbol;
-my $sha1support = eval {
+my $sha1support;
+if ( -f "/etc/debian_version" ) {
+    $sha1support = eval {
+        require Digest::SHA;
+        1;
+    };
+}
+else {
+
+    $sha1support = eval {
 	require Digest::SHA1;
 	1;
-};
+    };
+}
 use IPC::Open3;
 use IO::Select;
 use warnings "all";
