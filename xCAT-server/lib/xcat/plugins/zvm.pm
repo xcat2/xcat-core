@@ -4179,9 +4179,9 @@ sub clone {
         if ($tgtDiskType eq '3390') {
             
             # Use SMAPI FLASHCOPY
-            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr) using FLASHCOPY" );
+            xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($srcAddr) using FLASHCOPY" );
             if (xCAT::zvmUtils->smapi4xcat($::SUDOER, $hcp)) {
-                 $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $tgtAddr);
+                 $out = xCAT::zvmCPUtils->smapiFlashCopy($::SUDOER, $hcp, $sourceId, $srcAddr, $tgtUserId, $srcAddr);
                  xCAT::zvmUtils->printSyslog("smapiFlashCopy: $out");
                  
                  # Exit if flashcopy completed successfully
