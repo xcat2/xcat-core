@@ -57,6 +57,7 @@ convert_netmask_to_cidr() {
 }
  
 
+#if $NIC_IBNICS is not defined, all ib nics' configuration files will be deleted.
 if [ -z "$NIC_IBNICS" ]; then
     echo "nothing to do."
 fi
@@ -136,12 +137,9 @@ then
     else
          dir="/etc/sysconfig/network-scripts"
     fi
-    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
-    do     
-    `rm -f $dir/ifcfg-$nic` 2>&1 1>/dev/null
+    #`rm -f $dir/ifcfg-$nic` 2>&1 1>/dev/null
     # nic aliases
-    `rm -f $dir/ifcfg-$nic:*` 2>&1 1>/dev/null
-    done
+    `rm -f $dir/ifcfg-ib*` 2>&1 1>/dev/null
 else
     loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
     num=0
