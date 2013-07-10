@@ -719,8 +719,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then 
-        echo "yum -y upgrade"
-        result=`yum -y upgrade 2>&1`
+        echo "$envlist yum -y upgrade"
+        result=`eval $envlist yum -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
@@ -728,8 +728,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         logger -p local4.info -t xcat "$result"
         echo "$result"
     elif [ $haszypper -eq 1 ]; then
-        echo "zypper --non-interactive update --auto-agree-with-license"
-	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
+        echo "$envlist zypper --non-interactive update --auto-agree-with-license"
+	result=`eval $envlist zypper --non-interactive update --auto-agree-with-license 2>&1`
        
         R=$?
         if [ $R -ne 0 ]; then
@@ -739,8 +739,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         echo "$result"
     elif [ $hasapt -eq 1 ]; then
 	apt_get_update_if_repos_changed $REPOFILE
-	echo "apt-get -y upgrade"
-	result=`apt-get -y upgrade 2>&1`
+	echo "$envlist  apt-get -y upgrade"
+	result=`eval $envlist  apt-get -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
