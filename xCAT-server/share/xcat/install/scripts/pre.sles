@@ -182,7 +182,7 @@ if [ -r "/tmp/partitionfile" ]; then
     sed -e 's!xcattempspace! !g' /tmp/profile/modified1.xml > /tmp/profile/modified.xml
 fi
 
-export nextserver=`cat /proc/cmdline | grep http | head -n 1 | cut -d / -f 3 | cut -d : -f 1`
+export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
 sed -e 's!<software>!<add-on><add_on_products config:type="list">#INSTALL_SOURCES_IN_PRE#</add_on_products></add-on><software>!'  /tmp/profile/modified1.xml > /tmp/profile/modified.xml
 ]]>
