@@ -104,7 +104,7 @@ if ($rm_nics) {
             # update or remove config file.
             my $dir = "/etc/sysconfig/network";
             # just move nic file to file.old
-            `mv $dir/ifcfg-$nics_rm[$i] $dir/ifcfg-$nics_rm[$i].old`;
+            `mv $dir/ifcfg-$nics_rm[$i] $dir/ifcfg-$nics_rm[$i].old >/dev/null 2>&1`;
 
         }
         else {
