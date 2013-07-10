@@ -237,6 +237,10 @@ elif [ "bridgeprereq" = "$1" ]; then
         debianpreconf
         nwdir="/etc/network/interfaces.d"
         isDebian=1
+        getcap /usr/bin/qemu-system-x86_64 | grep cap_net_admin
+        if [ $? ne 0 ];then
+            setcap cap_net_admin=ei /usr/bin/qemu-system-x86_64
+        fi
     else 
         nwdir="/etc/sysconfig/network-scripts"
     fi 
