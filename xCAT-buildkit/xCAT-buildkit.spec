@@ -25,7 +25,7 @@ BuildArch: noarch
 
 # No dependencies on any other xCAT rpms
 # so that this rpm can be installed in a separate build server
-Requires: /usr/bin/rpmbuild createrepo
+Requires: /usr/bin/rpmbuild
 
 Provides: xCAT-buildkit = %{epoch}:%{version}
 
