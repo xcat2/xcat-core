@@ -626,6 +626,15 @@ sub kit_buildrepo
 
     my $rc = 0;
     my $repoid = $::KIT_BUILDREPO;
+
+    if ( !$debianflag ){
+
+        # Check if createrepo bin exists or not.  Fail at the beginning.
+        if (! (-e "/usr/bin/createrepo") ) {
+            print "Error: /usr/bin/createrepo does not exist, install createrepo first\n";
+            return 1;
+        }
+    }
     $repoid =~ s/\s+//g;
     $repoid =~ tr/A-Z/a-z/;   # convert to lowercase
     if ( $repoid ne 'all' ) { 
