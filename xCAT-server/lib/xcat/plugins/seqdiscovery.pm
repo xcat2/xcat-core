@@ -960,7 +960,7 @@ Usage:
                 }
 
                 # remove entries which have method att been set
-                foreach my $_ (keys %methodlist) {
+                foreach (keys %methodlist) {
                     $distab->delEntries({method => $_});
                 }
                 $distab->commit();
