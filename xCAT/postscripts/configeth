@@ -109,6 +109,13 @@ if ($rm_nics) {
             `mv $dir/ifcfg-$nics_rm[$i] $dir/ifcfg-$nics_rm[$i].old >/dev/null 2>&1`;
 
         }
+        elsif ( -f "/etc/debian_version" ){
+            runcmd("ifdown --force $nics_rm[$i]");
+            if ( -e  "/etc/network/interfaces.d/$nics_rm[$i]" ){
+                runcmd("rm -f /etc/network/interfaces.d/${nics_rm[$i]}");
+                runcmd("rm -f /etc/network/interfaces.d/${nics_rm[$i]}:*");
+            }
+        }
         else {
             # OS is redhat.
             # Note that the ifdown command will fail if the configuration file does not exist
@@ -568,10 +575,10 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
         if ($ret) {
             my $num_oldnums = scalar(keys %hash_oldips);
             #need delete the ip address or first time configure
-            if (($num_oldnums > 0) || ($bool_config_flag == 0) ){
-                `ifdown $nic;ifup $nic`;
+            if ( -f "/etc/debian_version"){
+                `ifdown --forece $nic;ifup $nic`;
             }
-            elsif ( -f "/etc/debian_version"){
+            elsif (($num_oldnums > 0) || ($bool_config_flag == 0) ){
                 `ifdown $nic;ifup $nic`;
             }
             else {
