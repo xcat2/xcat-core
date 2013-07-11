@@ -119,6 +119,10 @@ if ($rc) {
     runsyscmd ($cmd);
     $cmd = "mount -a";
     runsyscmd ($cmd);
+} else {
+    # run mount -a anyway
+    $cmd = "mount -a";
+    runsyscmd ($cmd);
 }
 
 # make sure the remote files are accessable 
@@ -273,7 +277,7 @@ foreach my $micid (keys %miccfg) {
 }
 
 # start the mpss service after the configuration
-$cmd = "service mpss start >/dev/null 2>&1";
+$cmd = "service mpss start >/dev/null 2>&1 </dev/null";
 system($cmd);
 
 $i = 5;
@@ -296,15 +300,6 @@ print LOG "mpss has been started\n";
 print LOG "\nFinish the mic configuratoin: ".`date`."====================================================\n";
 
 close (LOG);
-
-# since the start of mpss service created a new process and for some reason the process caused the hang of
-# sshd root@notty on the host (that means the xdsh cannot get connection closed from host), a work around 
-# is to kill the sshd connection by force
-$cmd = "ps -ef | grep sshd | grep notty |awk -F\' \' \'{print \$2}\'";
-($rc, $output) = runsyscmd ($cmd);
-foreach (@$output) {
-    kill 15, $_;
-}
 
 exit 0;
 
