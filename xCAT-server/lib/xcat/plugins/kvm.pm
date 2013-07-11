@@ -1046,69 +1046,80 @@ sub xhrm_satisfy {
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
         my $nic=$_;
-	my $vlanip;
-	my $netmask;
-	my $subnet;
+        my $vlanip;
+        my $netmask;
+        my $subnet;
         my $vlan;
         my $interface;
-	if ($nic =~ /^vl([\d]+)$/) {
-	    $vlan=$1;
-	    my $nwtab=xCAT::Table->new("networks", -create =>0);
-	    if ($nwtab) {
-		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
-		if ($sent and ($sent->{net})) {
-		    $subnet=$sent->{net};
-		    $netmask=$sent->{mask};
-		} 
-		if (($subnet) && ($netmask)) {
-		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
-		    if ($hoststab) {
-			my $tmp = $hoststab->getNodeAttribs($hyp, ['otherinterfaces']);
-			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
-			{
-			    my $otherinterfaces = $tmp->{otherinterfaces};
-			    my @itf_pairs=split(/,/, $otherinterfaces);
-			    foreach (@itf_pairs) {
-				my ($name,$vip)=split(/:/, $_);
-				if(xCAT::NetworkUtils->ishostinsubnet($vip, $netmask, $subnet)) {
-				    $vlanip=$vip;
-				    last;
-				}
-			    }
-			}
-		    }
-		}
-	    }
-	}
+        if ($nic =~ /^vl([\d]+)$/) {
+            $vlan=$1;
+            my $nwtab=xCAT::Table->new("networks", -create =>0);
+            if ($nwtab) {
+                my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
+                if ($sent and ($sent->{net})) {
+                    $subnet=$sent->{net};
+                    $netmask=$sent->{mask};
+                } 
+                if (($subnet) && ($netmask)) {
+                    my $hoststab = xCAT::Table->new("hosts", -create => 0);
+                    if ($hoststab) {
+                        my $tmp = $hoststab->getNodeAttribs($hyp, ['otherinterfaces']);
+                        if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
+                        {
+                            my $otherinterfaces = $tmp->{otherinterfaces};
+                            my @itf_pairs=split(/,/, $otherinterfaces);
+                            foreach (@itf_pairs) {
+                                my ($name,$vip)=split(/:/, $_);
+                                if(xCAT::NetworkUtils->ishostinsubnet($vip, $netmask, $subnet)) {
+                                    $vlanip=$vip;
+                                    last;
+                                }
+                            }
+                        }
+                    }
+                    #get the vlan ip from nics table
+                    unless ($vlanip) {
+                        my $nicstable = xCAT::Table->new("nics", -create => 0);
+                        if ($nicstable) {
+                            my $tmp = $nicstable->getNodeAttribs($hyp, ['nicips']);
+                            if ($tmp && $tmp->{nicips}){
+                                $tmp =~ /vl${vlanid}nic!([^,]*)/;
+                                $vlanip = $1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         #get the nic that vlan tagged 
         my $swtab = xCAT::Table->new("switch", -create => 0);
         if ($swtab) {
-	    my $tmp_switch = $swtab->getNodesAttribs([$hyp], ['vlan','interface']);
-	    if (defined($tmp_switch) && (exists($tmp_switch->{$hyp}))) { 
-	        my $tmp_node_array=$tmp_switch->{$hyp};
-	        foreach my $tmp (@$tmp_node_array) {
-		    if (exists($tmp->{vlan})) {
-		        my $vlans = $tmp->{vlan};
-		        foreach my $vlan_tmp (split(',',$vlans)) {
-			    if ($vlan_tmp == $vlan) {
-		                if (exists($tmp->{interface})) {
-			            $interface=$tmp->{interface};
-		                }
-                                last;
+            my $tmp_switch = $swtab->getNodesAttribs([$hyp], ['vlan','interface']);
+            if (defined($tmp_switch) && (exists($tmp_switch->{$hyp}))) { 
+                my $tmp_node_array=$tmp_switch->{$hyp};
+                foreach my $tmp (@$tmp_node_array) {
+                    if (exists($tmp->{vlan})) {
+                        my $vlans = $tmp->{vlan};
+                        foreach my $vlan_tmp (split(',',$vlans)) {
+                            if ($vlan_tmp == $vlan) {
+                                if (exists($tmp->{interface})) {
+                                    $interface=$tmp->{interface};
+                                }
+                            last;
                             }
-		        }
-		    }
-	        }
-	    }
+                        }
+                    }
+                }
+            }
         }
         
         if (($interface) || ($interface =~ /primary/)) {
             $interface =~ s/primary(:)?//g;
         }
-	#print "interface=$interface nic=$nic vlanip=$vlanip netmask=$netmask\n";
+        #print "interface=$interface nic=$nic vlanip=$vlanip netmask=$netmask\n";
         if ($interface) {
-	    $rc |=system("ssh $hyp xHRM bridgeprereq $interface:$nic $vlanip $netmask");
+            $rc |=system("ssh $hyp xHRM bridgeprereq $interface:$nic $vlanip $netmask");
         } else {
             $rc |=system("ssh $hyp xHRM bridgeprereq $nic $vlanip $netmask");
         }
