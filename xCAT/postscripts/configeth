@@ -17,6 +17,7 @@
 
 use strict;
 use Socket;
+use File::Copy;
 
 #process arguments. Currently supported arguments are:
 # -c nics_to_configure,
