@@ -126,7 +126,7 @@ cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 cp share/xcat/image_data/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
 cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
-ln -sf share/xcat/cons/kvm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/mic
+ln -sf kvm $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/mic
 cp -r share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 cp share/xcat/ib/netboot/sles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 cp share/xcat/ib/netboot/rh/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/rh
