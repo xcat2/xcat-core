@@ -855,6 +855,7 @@ sub check_kit_config
 {
 
     my $tabs = shift;
+    my $kit = shift;
     my $kithash = shift;
     my $kitrepohash = shift;
     my $kitcomphash = shift;
@@ -862,7 +863,7 @@ sub check_kit_config
     #TODO:  add check to see the the attributes name are acceptable by xCAT DB.
     #TODO: need to check if the files are existing or not, like exlist,
 
-    unless (keys %kithash) {
+    unless (keys %{$kithash}) {
         my %rsp;
         push@{ $rsp{data} }, "Failed to add kit $kit because kit.conf is invalid";
         xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
@@ -871,18 +872,18 @@ sub check_kit_config
 
     if ( $::INSPECTION ) {
         my %rsp;
-        push@{ $rsp{data} }, "kitname=$kithash{kitname}";
-        push@{ $rsp{data} }, "    description=$kithash{description}";
-        push@{ $rsp{data} }, "    version=$kithash{version}";
-        push@{ $rsp{data} }, "    ostype=$kithash{ostype}";
+        push@{ $rsp{data} }, "kitname=$kithash->{kitname}";
+        push@{ $rsp{data} }, "    description=$kithash->{description}";
+        push@{ $rsp{data} }, "    version=$kithash->{version}";
+        push@{ $rsp{data} }, "    ostype=$kithash->{ostype}";
         xCAT::MsgUtils->message( "I", \%rsp, $::CALLBACK );
         next;
     }
 
-    (my $ref1) = $tabs->{kit}->getAttribs({kitname => $kithash{kitname}}, 'basename');
+    (my $ref1) = $tabs->{kit}->getAttribs({kitname => $kithash->{kitname}}, 'basename');
     if ( $ref1 and $ref1->{'basename'}){
         my %rsp;
-        push@{ $rsp{data} }, "Failed to add kit $kithash{kitname} because it is already existing";
+        push@{ $rsp{data} }, "Failed to add kit $kithash->{kitname} because it is already existing";
         xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
@@ -892,8 +893,8 @@ sub check_kit_config
     my @kitcomps = $tabs->{kitcomponent}->getAllAttribs( 'kitcompname' );
     foreach my $kitcomp (@kitcomps) {
         if ( $kitcomp->{kitcompname} ) {
-            foreach my $kitcompid (keys %kitcomphash) {
-                if ( $kitcomphash{$kitcompid}{kitcompname} and $kitcomphash{$kitcompid}{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
+            foreach my $kitcompid (keys %{$kitcomphash}) {
+                if ( $kitcomphash->{$kitcompid}->{kitcompname} and $kitcomphash->{$kitcompid}->{kitcompname} =~ /$kitcomp->{kitcompname}/ ) {
                     my %rsp;
                     push@{ $rsp{data} }, "Failed to add kitcomponent $kitcomp->{kitcompname} because it is already existing";
                     xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
@@ -929,6 +930,11 @@ sub read_kit_config
     my $scripts;
     my $kitrepoid = 0;
     my $kitcompid = 0;
+
+    my %kithash;
+    my %kitrepohash;
+    my %kitcomphash;
+
     foreach my $line (@lines) {
         # Read through each line of kit.conf.
         my $key, $value;
@@ -1162,7 +1168,7 @@ sub addkit
         my ($kithash,$kitrepohash,$kitcomphash, $scripts) = read_kit_config(\@lines);
 
         # Check if this kit is allowed to add.
-        if ( &check_kit_config(\%tabs,\$kithash,\$kitrepohash,\$kitcomphash) ) {
+        if ( &check_kit_config(\%tabs,$kit,$kithash,$kitrepohash,$kitcomphash) ) {
             return 1;
         }
 
@@ -1201,7 +1207,7 @@ sub addkit
 
 
         my %rsp;
-        push@{ $rsp{data} }, "Adding Kit $kithash{kitname}";
+        push@{ $rsp{data} }, "Adding Kit $kithash->{kitname}";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         # Moving kits from tmp directory to kitdir
@@ -1212,7 +1218,7 @@ sub addkit
         }
 
         $kitdir =~ s/\/$//;
-        $kitdir = $kitdir . "/" . $kithash{kitname};
+        $kitdir = $kitdir . "/" . $kithash->{kitname};
 
         if($::VERBOSE){
             my %rsp;
@@ -1222,10 +1228,10 @@ sub addkit
         mkpath($kitdir);
 
         # Set kitdir and kitrepodir
-        $kithash{kitdir} = $kitdir;
+        $kithash->{kitdir} = $kitdir;
 
-        foreach my $kitrepoid ( keys %kitrepohash ) {
-            $kitrepohash{$kitrepoid}{kitrepodir} = $kitdir."/repos/".$kitrepohash{$kitrepoid}{kitreponame};
+        foreach my $kitrepoid ( keys %{$kitrepohash} ) {
+            $kitrepohash->{$kitrepoid}->{kitrepodir} = $kitdir."/repos/".$kitrepohash->{$kitrepoid}->{kitreponame};
         }
 
         if($::VERBOSE){
@@ -1297,7 +1303,7 @@ sub addkit
             xCAT::MsgUtils->message( "I", \%rsp, $callback );
         }
 
-        $rc = $tabs{kit}->setAttribs({kitname => $kithash{kitname} }, \%kithash );
+        $rc = $tabs{kit}->setAttribs({kitname => $kithash->{kitname} }, $kithash );
         if($rc){
             my %rsp;
             push@{ $rsp{data} }, "Failed to write kit object into xCAT DB";
@@ -1305,27 +1311,27 @@ sub addkit
             return 1;
         }
 
-        foreach my $kitrepoid (keys %kitrepohash) {
-            $rc = $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash{$kitrepoid}{kitreponame} }, \%{$kitrepohash{$kitrepoid}} );
+        foreach my $kitrepoid (keys %{$kitrepohash}) {
+            $rc = $tabs{kitrepo}->setAttribs({kitreponame => $kitrepohash->{$kitrepoid}->{kitreponame} }, \%{$kitrepohash->{$kitrepoid}} );
             if($rc){
                 my %rsp;
-                push@{ $rsp{data} }, "Failed to write kitrepo $kitrepohash{$kitrepoid}{kitreponame} into xCAT DB";
+                push@{ $rsp{data} }, "Failed to write kitrepo $kitrepohash->{$kitrepoid}->{kitreponame} into xCAT DB";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
         }
 
-        foreach my $kitcompid (keys %kitcomphash) {
-            $rc = $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash{$kitcompid}{kitcompname} }, \%{$kitcomphash{$kitcompid}} );
+        foreach my $kitcompid (keys %{$kitcomphash}) {
+            $rc = $tabs{kitcomponent}->setAttribs({kitcompname => $kitcomphash->{$kitcompid}->{kitcompname} }, \%{$kitcomphash->{$kitcompid}} );
             if($rc){
                 my %rsp;
-                push@{ $rsp{data} }, "Failed to write kitcomponent $kitcomphash{$kitcompid}{kitcompname} xCAT DB";
+                push@{ $rsp{data} }, "Failed to write kitcomponent $kitcomphash->{$kitcompid}->{kitcompname} xCAT DB";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
         }
 
-        push @kitnames, $kithash{kitname};
+        push @kitnames, $kithash->{kitname};
     }
 
     unless ( $::INSPECTION ) {
@@ -1481,7 +1487,7 @@ sub rmkit
                             }
 
                             # Remove this component from osimage.kitcomponents. Mark here.
-                            my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-u','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
+                            my $ret = xCAT::Utils->runxcmd({ command => ['rmkitcomp'], arg => ['-f','-i',$entry->{imagename}, $kitcompname] }, $request_command, 0, 1);
                             if ( $::RUNCMD_RC ) {
                                 my %rsp;
                                 push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent from $entry->{imagename}";
