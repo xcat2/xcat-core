@@ -396,7 +396,7 @@ sub copytar {
     my $cmd = "tar xvf $file -C $tmpdir";
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message("E", "Error when run [$cmd], @output");
+        xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
         return 1;
     }
 
@@ -404,7 +404,7 @@ sub copytar {
     my @micgpl = <$tmpdir/*/intel-mic-gpl*>;
     my @micflash = <$tmpdir/*/intel-mic-flash*>;
     unless (-r $micgpl[0] && -r $micflash[0]) {
-        xCAT::MsgUtils->message("E", "Error: Cannot get the rpm files intel-mic-gpl or intel-mic-flash from the tar file.");
+        xCAT::MsgUtils->message("E", {error=>["Error: Cannot get the rpm files intel-mic-gpl or intel-mic-flash from the tar file."], errorcode=>["1"]}, $callback);
         return 1;
     }
 
@@ -412,14 +412,14 @@ sub copytar {
     $cmd = "cd $destdir; rpm2cpio $micgpl[0] | cpio -idum; rpm2cpio $micflash[0] | cpio -idum";
     @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message("E", "Error when run [$cmd], @output");
+        xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
         return 1;
     }
 
     # generate the image objects
     my $oitab = xCAT::Table->new('osimage');
     unless ($oitab) {
-        xCAT::MsgUtils->message("E", "Error: Cannot open table osimage.");
+        xCAT::MsgUtils->message("E", {error=>["Error: Cannot open table osimage."], errorcode=>["1"]}, $callback);
         return 1;
     }
 
@@ -438,7 +438,7 @@ sub copytar {
 
     my $litab = xCAT::Table->new('linuximage');
     unless ($litab) {
-        xCAT::MsgUtils->message("E", "Error: Cannot open table linuximage.");
+        xCAT::MsgUtils->message("E", {error=>["Error: Cannot open table linuximage."], errorcode=>["1"]}, $callback);
         return 1;
     }
     
@@ -446,7 +446,7 @@ sub copytar {
     my $pkglist = "$::XCATROOT/share/xcat/netboot/mic/compute.pkglist";
     $litab->setAttribs({'imagename' => $imagename}, {'pkgdir' => $destdir, 'pkglist' => $pkglist});
 
-    xCAT::MsgUtils->message("I", "The image $imagename has been created.");
+    xCAT::MsgUtils->message("I", {data=>["The image $imagename has been created."]}, $callback);
     rmtree ($tmpdir);
 }
 
@@ -792,7 +792,6 @@ sub michost_cb {
         my @newop;
         foreach my $output (@{$response->{$type}})
         {
-            xCAT::MsgUtils->message("S", "cb: $type, $output\n");
             # since the remote run of mic configuration will be closed by force in the configmic
             # script, remove the error message from xdsh
             if ($type eq "error" && $output =~ /(remote shell had error code|remote Command had return code)/) {
@@ -812,7 +811,6 @@ sub michost_cb {
         $rsp->{$type} = \@newop;
     }
     $CALLBACK->($rsp);
-xCAT::MsgUtils->message("S", "cb: finish\n");
 }
 
 1;
