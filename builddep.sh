@@ -149,6 +149,13 @@ cd $OSVER
 # The only interdependency between the dep rpms so far is that net-snmp requires bash, and
 # pyodbc requires unixODBC.  (The bash dependency is taken care of automatically because it
 # comes earlier in the alphabet.)
+
+# first run /usr/sbin/updtvpkg to make sure any installp software is
+# registered with RPM.
+echo "Running updtvpkg. This could take a few minutes."
+/usr/sbin/updtvpkg
+echo "updtvpkg has completed."
+
 rpm -Uvh unixODBC*
 for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^perl-DBD-DB2Lite'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
