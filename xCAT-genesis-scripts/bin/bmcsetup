@@ -300,29 +300,37 @@ if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
     echo -n "Enabling IPMI v 2.0 LAN access: "
-    #two goals here, make sure cipher suite 0 does not work as it is insecure
-    #mae sure cipher suite 3 does work because we will use it
-    #leave every thing else alone.
-    ACCESS=`ipmitool raw 0xc 2 1 24 0 0 `
+    #the following goals:
+    #disable cipher suite 0 (if present, avoid password bypass)
+    #disable cipher suite 1 (if present, to avoid weaking Kg if used)
+    #enable cipher suite 2 (scenarios without perl Rijndael)
+    #enable cipher suite 3
+    #ignore the rest
+    ZEROIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '%0$'|sed -e 's/:.*//')
+    ONEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^1$'|sed -e 's/:.*//')
+    TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
+    THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
+    ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
     NEWACCESS=""
-    i=0
+    i=1
     for elem in $ACCESS; do
-	if [ $i = 2 ]; then
-		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem&0xf0))`
-	elif [ $i = 3 ]; then
-		NEWACCESS=`printf "$NEWACCESS 0x%02x" $((0x$elem|0x44))`
-	elif [ $i != 0 ]; then
-		NEWACCESS="$NEWACCESS 0x$elem"
-	fi
-	i=$((i+1))
+        if [ $i = "$ZEROIDX" -o $i = "$ONEIDX" ]; then
+            NEWACCESS="$NEWACCESS"X
+        elif [ $i = "$TWOIDX" -o $i = "$THREEIDX" ]; then
+            #do not *downgrade* from OEM priv
+            if [ "$elem" != "O" ]; then NEWACCESS="$NEWACCESS"a; else NEWACCESS="$NEWACCESS"$elem; fi
+        else
+            NEWACCESS="$NEWACCESS"$elem
+        fi
+	    i=$((i+1))
     done
-    if ipmitool raw 0xc 1 1 24 $NEWACCESS > /dev/null; then
+    if ipmitool lan set $LANCHAN cipher_privs $NEWACCESS > /dev/null; then
 		echo OK
     else
 		echo ERROR
     fi
-	
-	
+
+
     TRIES=0
 
     echo -n "Enabling SOL for channel $LANCHAN:"
