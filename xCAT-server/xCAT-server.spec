@@ -76,6 +76,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/mic
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
