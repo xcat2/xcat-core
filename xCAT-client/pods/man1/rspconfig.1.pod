@@ -426,6 +426,8 @@ Set the blade or MPA textid. When using '*', the textid used is the node name sp
 
 Change the password of the userid B<USERID> for CMM in NGP environment. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
 
+If value B<*> is specified for USERID and the object node is I<NGP System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
+
 =item B<--resetnet>
 
 Reset the network interfaces of the specified nodes.
