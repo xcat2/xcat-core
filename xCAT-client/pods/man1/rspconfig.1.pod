@@ -94,7 +94,7 @@ B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
-=head2 NGP Blade Server Specific:
+=head2 Flex system Specific:
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
@@ -329,7 +329,7 @@ The subnet mask.
 
 For MPA:  get or set the MPA network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
-For FSP of NGP blade server: set the network parameters. If '*' is specified, all parameters are read from the xCAT database.
+For FSP of Flex system P node: set the network parameters. If '*' is specified, all parameters are read from the xCAT database.
 
 =item B<initnetwork>={[I<ip>],[I<host>],[I<gateway>],[I<netmask>]|*}
 
@@ -424,9 +424,9 @@ Set the blade or MPA textid. When using '*', the textid used is the node name sp
 
 =item B<USERID>={I<newpasswd>} B<updateBMC>={I<y|n>}
 
-Change the password of the userid B<USERID> for CMM in NGP environment. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
+Change the password of the userid B<USERID> for CMM in Flex system cluster. The option I<updateBMC> can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
 
-If value B<*> is specified for USERID and the object node is I<NGP System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
+If value B<*> is specified for USERID and the object node is I<Flex System X node>, the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid B<USERID> of the CMM in the same cluster.  
 
 =item B<--resetnet>
 
