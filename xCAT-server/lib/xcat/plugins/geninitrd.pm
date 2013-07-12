@@ -84,8 +84,8 @@ sub geninitrd {
     }
 
     my $lient = $linuximagetab->getAttribs({imagename => $osimage}, 'pkgdir',  'driverupdatesrc',  'netdrivers');
-    unless ($lient && $lient->{'pkgdir'} && $lient->{'netdrivers'}) {
-        xCAT::MsgUtils->message("E", {error=>["The osimage [$osimage] was not defined or [pkgdir, netdrivers] attribute was not set."], errorcode=>["1"]}, $callback);
+    unless ($lient && $lient->{'pkgdir'}) {
+        xCAT::MsgUtils->message("E", {error=>["The osimage [$osimage] was not defined or [pkgdir] attribute was not set."], errorcode=>["1"]}, $callback);
         return;
     }
     $pkgdir = $lient->{'pkgdir'};
