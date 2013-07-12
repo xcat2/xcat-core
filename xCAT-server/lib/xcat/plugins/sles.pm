@@ -1025,23 +1025,23 @@ sub mkinstall
                 mkpath("$tftppath");
                 if ($arch =~ /x86_64/)
                 {
-                    copy("$pkgdir/1/boot/$arch/loader/linux", "$tftppath");
                     unless ($noupdateinitrd) {
+                        copy("$pkgdir/1/boot/$arch/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/$arch/loader/initrd", "$tftppath");
-                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", $driverupdatesrc, $netdrivers, $osupdir);
+                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir);
                     }
                 } elsif ($arch =~ /x86/) {
-                    copy("$pkgdir/1/boot/i386/loader/linux", "$tftppath");
                     unless ($noupdateinitrd) {
+                        copy("$pkgdir/1/boot/i386/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/i386/loader/initrd", "$tftppath");
-                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", $driverupdatesrc, $netdrivers, $osupdir);
+                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir);
                     }
                 }
                 elsif ($arch =~ /ppc/)
                 {
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/suseboot/inst64", "$tftppath");
-                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", $driverupdatesrc, $netdrivers, $osupdir);
+                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", undef, $driverupdatesrc, $netdrivers, $osupdir);
                     }
                 }
             }
@@ -1670,9 +1670,13 @@ sub get_all_path ()
 
 sub insert_dd () {
     my $callback = shift;
+    if ($callback eq "xCAT_plugin::sles") {
+        $callback = shift;
+    }
     my $os = shift;
     my $arch = shift;
     my $img = shift;
+    my $kernelpath = shift;
     my $driverupdatesrc = shift;
     my $drivers = shift;
     my $osupdirlist = shift;
@@ -1781,6 +1785,7 @@ sub insert_dd () {
         if (@rpm_list && ($Injectalldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
+            my $new_kernel_ver;
             foreach my $rpm (@rpm_list) {
                 if (-r $rpm) {
                     $cmd = "cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum";
@@ -1794,6 +1799,21 @@ sub insert_dd () {
                     my $rsp;
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
+                # get the new kernel if it exists in the update distro
+                my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
+                foreach my $new_kernel (@new_kernels) {
+                if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64))$/) {
+                    $new_kernel_ver = $1;
+                    $cmd = "/bin/mv -f $new_kernel $dd_dir/rpm/newkernel";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $dd_dir/rpm/newkernel.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
                 }
 
                 # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
@@ -1826,6 +1846,11 @@ sub insert_dd () {
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not copy firmware to the initrd.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
+            }
+
+            # if the new kernel from update distro is not existed in initrd, create the path for it
+            if (! -r "$dd_dir/initrd_img/lib/modules/$new_kernel_ver/") {
+                mkpath ("$dd_dir/initrd_img/lib/modules/$new_kernel_ver/");
             }
             
             # Copy the drivers to the rootimage
@@ -1932,9 +1957,14 @@ sub insert_dd () {
 
     if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || @driver_list))) {
         if ($arch =~/ppc/) {
-            # make sure the src kernel existed
-            $cmd = "gunzip -c $pkgdir/1/suseboot/linux64.gz > $dd_dir/kernel";
-            xCAT::Utils->runcmd($cmd, -1);
+            if (-r "$dd_dir/rpm/newkernel") {
+                # if there's new kernel from update distro, then use it
+                copy ("$dd_dir/rpm/newkernel", "$dd_dir/kernel");
+            } else {
+                # make sure the src kernel existed
+                $cmd = "gunzip -c $pkgdir/1/suseboot/linux64.gz > $dd_dir/kernel";
+                xCAT::Utils->runcmd($cmd, -1);
+            }
             
             # create the zimage
             $cmd = "env -u POSIXLY_CORRECT /lib/lilo/scripts/make_zimage_chrp.sh --vmlinux $dd_dir/kernel --initrd $dd_dir/initrd.gz --output $img";
@@ -1946,6 +1976,10 @@ sub insert_dd () {
                 return ();
             }
         } elsif ($arch =~/x86/) {
+            if (-r "$dd_dir/rpm/newkernel") {
+                # if there's new kernel from update distro, then use it
+                copy ("$dd_dir/rpm/newkernel", $kernelpath);
+            }
             copy ("$dd_dir/initrd.gz", "$img");
         }
     } elsif ($arch =~ /x86/) {
