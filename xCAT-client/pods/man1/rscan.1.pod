@@ -15,7 +15,7 @@ I<rscan [-V|--verbose] noderange [-u][-w][-x|-z]>
 
 The rscan command lists hardware information for each node managed by the hardware control points specified in noderange.
 
-For the management module of blade, if the blade server is a NGP power blade, the fsp belongs to the blade server also will be scanned.
+For the management module of blade, if the blade server is a Flex system P node, the fsp belongs to the blade server also will be scanned.
 
 Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database. 
 
@@ -31,7 +31,7 @@ B<-V>          Verbose output.
 
 B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.  
 
-For the NGP blade server, both the blade server and fsp object of xCAT will be updated if the mpa and slot id are matched to the object which has been defined in the xCAT database.
+For the Flex system manager, both the blade server and fsp object of xCAT will be updated if the mpa and slot id are matched to the object which has been defined in the xCAT database.
 
 Note: only the matched object will be updated.
 
@@ -201,7 +201,7 @@ Output is similar to:
     groups=all
     mgt=zvm
 
-6. To scan the NGP blade center:
+6. To scan the Flex system cluster:
 
 I<rscan cmm01>
 
@@ -213,7 +213,7 @@ Output is similar to:
   xblade  SN#YL10JH184068       2       789542X     10F652A        cmm01      12.0.0.10
   blade   SN#YL10JH184079       3       789542X     10F697A        cmm01      12.0.0.11
 
-7. To update the NGP blade server:
+7. To update the Flex system cluster:
 
 I<rscan cmm01 -u>
 
