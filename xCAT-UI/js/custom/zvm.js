@@ -1854,7 +1854,6 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
  */
 zvmPlugin.prototype.loadResources = function() {    
     // Reset resource table
-    setDiskDataTable('');
     setNetworkDataTable('');
     
     // Get hardware control points

@@ -1,45 +1,9 @@
 /**
  * Global variables
  */
-var diskDatatable; // zVM datatable containing disks
-var zfcpDatatable; // zVM datatable containing zFCP devices
 var networkDatatable; // zVM datatable containing networks
-
-/**
- * Get the disk datatable
- * 
- * @return Data table object
- */
-function getDiskDataTable() {
-    return diskDatatable;
-}
-
-/**
- * Set the disk datatable
- * 
- * @param table Data table object
- */
-function setDiskDataTable(table) {
-    diskDatatable = table;
-}
-
-/**
- * Get the zFCP datatable
- * 
- * @return Data table object
- */
-function getZfcpDataTable() {
-    return zfcpDatatable;
-}
-
-/**
- * Set the zFCP datatable
- * 
- * @param table Data table object
- */
-function setZfcpDataTable(table) {
-    zfcpDatatable = table;
-}
+var diskSpace;  // Hash containing the disk pool space
+var zfcpSpace;  // Hash containing the zFcp pool space
 
 /**
  * Get the network datatable
@@ -965,76 +929,160 @@ function getZResources(data) {
         // Delete loader
         $('#' + tabId).find('img[src="images/loader.gif"]').remove();
         
+        // Obtain mapping for zHCP to zVM system
+        var hcp2zvm = new Object();
+        hcp2zvm = getHcpZvmHash();
+        
         // Create accordion panel for disk
+        diskSpace = new Object();
         var resourcesAccordion = $('<div id="zvmResourceAccordion"></div>');
         var diskSection = $('<div id="zvmDiskResource"></div>');
         var diskLnk = $('<h3><a href="#">Disks</a></h3>').click(function () {
             // Do not load panel again if it is already loaded
-            if ($('#zvmDiskResource').children().length)
+            if ($('#zvmDiskResource').children().length) {
                 return;
-            else
-                $('#zvmDiskResource').append(createLoader(''));
-                    
+            }
+            
             // Resize accordion
             $('#zvmResourceAccordion').accordion('resize');
             
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
+            if ($.cookie('hcp').indexOf(',') > -1) {
                 hcps = $.cookie('hcp').split(',');
-            else
+            } else {
                 hcps.push($.cookie('hcp'));
+            }
             
-            // Query the disk pools for each
+            // Create info bar
+            var info = createInfoBar('Below are disks that are defined in the EXTENT CONTROL file.');
+            $('#zvmDiskResource').append(info);
+            
+            // Create a tab for each zVM LPAR
+        	var zvmDiskTab = new Tab();
+        	zvmDiskTab.init();
+        	$('#zvmDiskResource').append(zvmDiskTab.object());
             for (var i in hcps) {
-                $.ajax( {
+            	var tabId = hcps[i] + 'Disks';
+            	var diskPanel = $('<div></div>').append(createLoader(''));
+            	zvmDiskTab.add(tabId, hcp2zvm[hcps[i]], diskPanel, false);
+            	
+            	diskSpace[hcps[i]] = new Object();  // Create a hash to contain zVM pool
+            }
+            
+            // Query disk pool on-select
+            $('#zvmDiskResource').bind('tabsselect', function(event, ui) {
+            	var hcp = $(ui.panel).attr('id').replace('Disks', '');
+            	
+            	// If disk pool is already loaded, do not load again
+            	if ($('#' + hcp2zvm[hcp] + 'DiskDataTable').length) {
+            		return;
+            	}
+            	
+            	$.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
                         cmd : 'lsvm',
-                        tgt : hcps[i],
+                        tgt : hcp,
                         args : '--diskpoolnames',
-                        msg : hcps[i]
+                        msg : hcp
                     },
 
                     success : getDiskPool
                 });
-            }            
+            });
+            
+            // Select the 1st tab
+            if (!$('#' + hcp2zvm[hcps[0]] + 'DiskDataTable').length) {
+            	$.ajax({
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : hcps[0],
+                        args : '--diskpoolnames',
+                        msg : hcps[0]
+                    },
+
+                    success : getDiskPool
+                });  
+            }
         });
         
         // Create accordion panel for zFCP devices
-        var zfcpSection = $('<div id="zfcpResource"></div>');
+        zfcpSpace = new Object();
+        var zfcpSection = $('<div id="zFcpResource"></div>');
         var zfcpLnk = $('<h3><a href="#">zFCP</a></h3>').click(function () {
             // Do not load panel again if it is already loaded
-            if ($('#zfcpResource').children().length)
+            if ($('#zFcpResource').children().length) {
                 return;
-            else
-                $('#zfcpResource').append(createLoader(''));
+            }
             
             // Resize accordion
             $('#zvmResourceAccordion').accordion('resize');
             
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
+            if ($.cookie('hcp').indexOf(',') > -1) {
                 hcps = $.cookie('hcp').split(',');
-            else
+            } else {
                 hcps.push($.cookie('hcp'));
+            }
             
-            for ( var i in hcps) {
-                // Gather networks from hardware control points
-                $.ajax( {
+            // Resource tab ID    
+            var info = createInfoBar('Below are devices that are defined internally in the zFCP pools.');
+            $('#zFcpResource').append(info);
+            
+            // Create a tab for each zVM LPAR
+        	var zFcpTab = new Tab();
+        	zFcpTab.init();
+        	$('#zFcpResource').append(zFcpTab.object());
+            for (var i in hcps) {
+            	var tabId = hcps[i] + 'Zfcps';
+            	var zfcpPanel = $('<div></div>').append(createLoader(''));
+            	zFcpTab.add(tabId, hcp2zvm[hcps[i]], zfcpPanel, false);
+            	
+            	zfcpSpace[hcps[i]] = new Object();  // Create a hash to contain zVM pool
+            }
+            
+            // Query zFcp pool on-select
+            $('#zFcpResource').bind('tabsselect', function(event, ui) {
+            	var hcp = $(ui.panel).attr('id').replace('Zfcps', '');
+            	
+            	// If zFcp pool is already loaded, do not load again
+            	if ($('#' + hcp2zvm[hcp] + 'ZfcpDataTable').length) {
+            		return;
+            	}
+            	
+            	$.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
                         cmd : 'lsvm',
-                        tgt : hcps[i],
+                        tgt : hcp,
                         args : '--zfcppoolnames',
-                        msg : hcps[i]
+                        msg : hcp
                     },
 
                     success : getZfcpPool
                 });
+            });
+            
+            // Select the 1st tab
+            if (!$('#' + hcp2zvm[hcps[0]] + 'ZfcpDataTable').length) {
+            	$.ajax({
+                    url : 'lib/cmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : 'lsvm',
+                        tgt : hcps[0],
+                        args : '--zfcppoolnames',
+                        msg : hcps[0]
+                    },
+
+                    success : getZfcpPool
+                });  
             }
         });
         
@@ -1042,22 +1090,24 @@ function getZResources(data) {
         var networkSection = $('<div id="zvmNetworkResource"></div>');
         var networkLnk = $('<h3><a href="#">Networks</a></h3>').click(function () {
             // Do not load panel again if it is already loaded
-            if ($('#zvmNetworkResource').children().length)
+            if ($('#zvmNetworkResource').children().length) {
                 return;
-            else
+            } else {
                 $('#zvmNetworkResource').append(createLoader(''));
+            }
             
             // Resize accordion
             $('#zvmResourceAccordion').accordion('resize');
             
             // Create a array for hardware control points
             var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
+            if ($.cookie('hcp').indexOf(',') > -1) {
                 hcps = $.cookie('hcp').split(',');
-            else
+            } else {
                 hcps.push($.cookie('hcp'));
+            }
             
-            for ( var i in hcps) {
+            for (var i in hcps) {
                 // Gather networks from hardware control points
                 $.ajax( {
                     url : 'lib/cmd.php',
@@ -1078,7 +1128,7 @@ function getZResources(data) {
         
         // Append accordion to tab
         $('#' + tabId).append(resourcesAccordion);
-        resourcesAccordion.accordion();        
+        resourcesAccordion.accordion();      
         networkLnk.trigger('click');
     }
 }
@@ -3181,7 +3231,7 @@ function removeNic(node, nic) {
  * @param data Data from HTTP request
  */
 function setNetworkCookies(data) {
-    if (data.rsp.length) {
+    if (data.rsp.length  && data.rsp[0].indexOf("Failed") == -1) {
         var node = data.msg;
         var networks = data.rsp[0].split(node + ': ');
         
@@ -3203,12 +3253,13 @@ function getDiskPool(data) {
         var pools = data.rsp[0].split(hcp + ': ');
 
         // Get contents of each disk pool
-        for ( var i in pools) {
+        for (var i in pools) {
+        	pools[i] = jQuery.trim(pools[i]);
             if (pools[i]) {
-                pools[i] = jQuery.trim(pools[i]);
-                      
+                diskSpace[hcp][pools[i]] = new Object();  // Create hash to contain free and used space
+                                      
                 // Get used space
-                $.ajax( {
+                $.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
@@ -3222,7 +3273,7 @@ function getDiskPool(data) {
                 });
 
                 // Get free space
-                $.ajax( {
+                $.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
@@ -3238,7 +3289,11 @@ function getDiskPool(data) {
         } // End of for
     } else {
         // Load empty table
-        loadDiskPoolTable();
+    	var data = { 
+    		msg : 'hcp=' + data.msg + ';',
+    		rsp : []
+    	};
+        loadDiskPoolTable(data);
     }
 }
 
@@ -3254,11 +3309,12 @@ function getZfcpPool(data) {
 
         // Get contents of each disk pool
         for (var i in pools) {
+        	pools[i] = jQuery.trim(pools[i]);
             if (pools[i]) {
-                pools[i] = jQuery.trim(pools[i]);
-                      
+            	zfcpSpace[hcp][pools[i]] = new Object();  // Create hash to contain free and used space
+
                 // Query used and free space
-                $.ajax( {
+                $.ajax({
                     url : 'lib/cmd.php',
                     dataType : 'json',
                     data : {
@@ -3274,7 +3330,11 @@ function getZfcpPool(data) {
         } // End of for
     } else {
         // Load empty table
-        loadZfcpPoolTable();
+    	var data = { 
+    		msg : 'hcp=' + data.msg + ';',
+    		rsp : []
+    	};
+        loadZfcpPoolTable(data);
     }
 }
 
@@ -3317,13 +3377,9 @@ function getNetwork(data) {
  * @param data HTTP request data
  */
 function loadDiskPoolTable(data) {
-    // Remove loader
-    var panelId = 'zvmDiskResource';
-    $('#' + panelId).find('img[src="images/loader.gif"]').remove();
-    
     var hcp2zvm = new Object();
     var args, hcp, pool, stat, tmp;
-    if (data) {
+    if (data.rsp.length) {
         // Do not continue if the call failed
         if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
             return;
@@ -3335,36 +3391,36 @@ function loadDiskPoolTable(data) {
         args = data.msg.split(';');
         hcp = args[0].replace('hcp=', '');
         pool = args[1].replace('pool=', '');
-        stat = args[2].replace('stat=', '');
+        stat = jQuery.trim(args[2].replace('stat=', ''));
         tmp = data.rsp[0].split(hcp + ': ');
+        
+        // Initialize free or used space in hash
+        diskSpace[hcp][pool][stat] = 0;
     } else {
-        // Provide empty values so the table will be generated
-        hcp = '';
+    	args = data.msg.split(';');
+    	
+    	// Provide empty values so the table will be generated
+    	hcp = args[0].replace('hcp=', '');    	
         pool = '';
         stat = '';
         tmp = new Array();
     }
-
-    // Resource tab ID    
-    var info = $('#' + panelId).find('.ui-state-highlight');
-    // If there is no info bar
-    if (!info.length) {
-        // Create info bar
-        info = createInfoBar('Below are disks that are defined in the EXTENT CONTROL file.');
-        $('#' + panelId).append(info);
-    }
+    
+    // Remove loader
+    var panelId = hcp + 'Disks';
+    $('#' + panelId).find('img[src="images/loader.gif"]').remove();
 
     // Get datatable
-    var tableId = 'zDiskDataTable';
-    var dTable = getDiskDataTable();
-    if (!dTable) {
+    var tableId = hcp2zvm[hcp] + 'DiskDataTable';
+    var dTable;
+    if (!$('#' + tableId).length) {
         // Create a datatable        
         var table = new DataTable(tableId);
         // Resource headers: volume ID, device type, start address, and size
         table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Pool', 'Status', 'Volume', 'Device type', 'Starting address', 'Size' ]);
 
         // Append datatable to panel
-        $('#' + panelId).append(table.object());
+        $('#' + hcp + 'Disks').append(table.object());
 
         // Turn into datatable
         dTable = $('#' + tableId).dataTable({
@@ -3380,7 +3436,8 @@ function loadDiskPoolTable(data) {
                 }
             }
         });
-        setDiskDataTable(dTable);
+    } else {
+    	dTable = $('#' + tableId).dataTable();
     }
     
     // Skip index 0 and 1 because it contains nothing
@@ -3388,11 +3445,79 @@ function loadDiskPoolTable(data) {
         tmp[i] = jQuery.trim(tmp[i]);
         var diskAttrs = tmp[i].split(' ');
         var key = hcp2zvm[hcp] + "-" + pool + "-" + diskAttrs[0];
-        dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
+        var type = diskAttrs[1];
+        
+        // Calculate disk size
+        var size;
+        if (type.indexOf('3390') != -1) {
+        	size = convertCylinders2Gb(parseInt(diskAttrs[3]));
+        } else if (type.indexOf('9336') != -1) {
+        	size = convertBlocks2Gb(parseInt(diskAttrs[3]))
+        } else {
+        	size = 0;
+        }
+        
+        dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, stat, diskAttrs[0], type, diskAttrs[2], diskAttrs[3] + " (" + size + "G)" ]);
+                
+        // Add up the free or used size
+    	diskSpace[hcp][pool][stat] += size;
+    }
+    
+    // Plot bar chart when all data is gathered
+    var plotBarChart = true;
+    for (var p in diskSpace[hcp]) {
+		if (!('free' in diskSpace[hcp][p]) || !('used' in diskSpace[hcp][p])) {
+			plotBarChart = false;
+		}
+	}
+    
+    if (plotBarChart) {
+    	// Bar chart data points
+        var ticks = new Array();
+        var free = new Array();
+        var used = new Array();
+    	for (var p in diskSpace[hcp]) {
+    		ticks.push(p);
+    		
+	    	free.push(diskSpace[hcp][p]['free']);
+			used.push(diskSpace[hcp][p]['used']);
+    	}
+            
+        // Create bar chart, only when there is data
+    	var plot;
+    	var panelId = hcp + 'Disks';
+		$('#' + panelId).prepend($('<div id="' + hcp + 'DiskChart" style="height:300px; width:500px; margin-left:auto; margin-right:auto;"></div>'));
+    	plot = $.jqplot(hcp + 'DiskChart', [used, free], {
+    		title: '', 
+    	    stackSeries: true,
+    	    seriesDefaults: {
+    	        renderer: $.jqplot.BarRenderer,
+    	        rendererOptions: {barMargin: 25}, 
+    	        pointLabels: {show: true}
+    	    },
+    	    series: [
+	            {label: 'Used'},
+	            {label: 'Free'}
+	        ],
+    	    axes: {
+    	        xaxis: {
+    	        	renderer: $.jqplot.CategoryAxisRenderer,
+                    ticks: ticks
+    	        },
+    	        yaxis: {
+                    tickOptions: {formatString: '%dG'}
+                }
+    	    },
+    	    legend: {
+    	    	show: true,
+    	        placement: 'outsideGrid'
+    	    }  
+    	});
     }
     
     // Create actions menu
-    if (!$('#zvmDiskResourceActions').length) {
+    var menuId = hcp2zvm[hcp] + 'DiskResourceActions';
+    if (!$('#' + menuId).length) {
         // Empty filter area
         $('#' + tableId + '_length').empty();
         
@@ -3411,32 +3536,22 @@ function loadDiskPoolTable(data) {
         
         // Refresh table
         var refreshLnk = $('<a>Refresh</a>');
-        refreshLnk.bind('click', function(event){
-            $('#zvmDiskResource').empty().append(createLoader(''));
-            setDiskDataTable('');
+        refreshLnk.bind('click', function(event) {
+            $('#' + panelId).empty().append(createLoader(''));
             
-            // Create a array for hardware control points
-            var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
-                hcps = $.cookie('hcp').split(',');
-            else
-                hcps.push($.cookie('hcp'));
-            
-            // Query the disk pools for each
-            for (var i in hcps) {
-                $.ajax( {
-                    url : 'lib/cmd.php',
-                    dataType : 'json',
-                    data : {
-                        cmd : 'lsvm',
-                        tgt : hcps[i],
-                        args : '--diskpoolnames',
-                        msg : hcps[i]
-                    },
+            // Query the disk pools
+            $.ajax({
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsvm',
+                    tgt : hcp,
+                    args : '--diskpoolnames',
+                    msg : hcp
+                },
 
-                    success : getDiskPool
-                });
-            }    
+                success : getDiskPool
+            }); 
         });
         
         // Add ECKD to system
@@ -3475,7 +3590,7 @@ function loadDiskPoolTable(data) {
         var advancedMenu = createMenu([addEckdLnk, addPageSpoolLnk, addEdevLnk, removeEdevLnk, shareLnk]);
         
         // Create action bar
-        var actionBar = $('<div id="zvmDiskResourceActions" class="actionBar"></div>').css("width", "450px");
+        var actionBar = $('<div id="' + menuId + '" class="actionBar"></div>').css("width", "450px");
         
         // Create an action menu
         var actionsMenu = createMenu([refreshLnk, addLnk, removeLnk, [advancedLnk, advancedMenu]]);
@@ -3495,7 +3610,7 @@ function loadDiskPoolTable(data) {
         $('#' + tableId + '_length').prepend(menuDiv);
         $('#' + tableId + '_length').css({
             'padding': '0px',
-            'width': '500px'
+            'width': '460px'
         });
         $('#' + tableId + '_filter').css('padding', '10px');
         menuDiv.append(actionBar);
@@ -3510,14 +3625,10 @@ function loadDiskPoolTable(data) {
  * 
  * @param data HTTP request data
  */
-function loadZfcpPoolTable(data) {
-    // Delete loader
-    var panelId = 'zfcpResource';
-    $('#' + panelId).find('img[src="images/loader.gif"]').remove();
-    
+function loadZfcpPoolTable(data) {    
     var hcp2zvm = new Object();
     var args, hcp, pool, tmp;
-    if (data) {
+    if (data.rsp.length) {
         // Do not continue if the call failed
         if (!data.rsp.length && data.rsp[0].indexOf("Failed") > 0) {
             return;
@@ -3530,29 +3641,32 @@ function loadZfcpPoolTable(data) {
         hcp = args[0].replace('hcp=', '');
         pool = args[1].replace('pool=', '');
         tmp = data.rsp[0].split(hcp + ': ');
+        
+        // Initialize free, reserved, and used space in hash
+        zfcpSpace[hcp][pool]['free'] = 0;
+        zfcpSpace[hcp][pool]['used'] = 0;
+        zfcpSpace[hcp][pool]['reserved'] = 0;
     } else {
-        // Provide empty values so the table will be generated
-        hcp = '';
-        pool = ''
+    	args = data.msg.split(';');
+    	
+    	// Provide empty values so the table will be generated
+    	hcp = args[0].replace('hcp=', '');    	
+        pool = '';
         tmp = new Array();
     }
-
-    // Resource tab ID    
-    var info = $('#' + panelId).find('.ui-state-highlight');
-    // If there is no info bar, create info bar
-    if (!info.length) {
-        info = createInfoBar('Below are devices that are defined internally in the zFCP pools.');
-        $('#' + panelId).append(info);
-    }
+    
+    // Remove loader
+    var panelId = hcp + 'Zfcps';
+    $('#' + panelId).find('img[src="images/loader.gif"]').remove();
 
     // Get datatable
-    var tableId = 'zFcpDataTable';
-    var dTable = getZfcpDataTable();
-    if (!dTable) {
-        // Create a datatable        
+    var tableId = hcp2zvm[hcp] + 'ZfcpDataTable';
+    var dTable;
+    if (!$('#' + tableId).length) {    	
+        // Create a datatable
         var table = new DataTable(tableId);
         // Resource headers: status, WWPN, LUN, size, owner, channel, tag
-        table.init( [ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Range', 'Owner', 'Channel', 'Tag' ]);
+        table.init([ '<input type="checkbox" onclick="selectAllDisk(event, $(this))">', 'z/VM', 'Pool', 'Status', 'Port name', 'Unit number', 'Size', 'Range', 'Owner', 'Channel', 'Tag' ]);
 
         // Append datatable to panel
         $('#' + panelId).append(table.object());
@@ -3571,22 +3685,74 @@ function loadZfcpPoolTable(data) {
                 }
             }
         });
-        setZfcpDataTable(dTable);
+    } else {
+    	dTable = $('#' + tableId).dataTable();
     }
 
-    if (data) {
+    if (data.rsp.length) {   	
         // Skip index 0 and 1 because it contains nothing
         var key = "";
-        for ( var i = 2; i < tmp.length; i++) {
+        for (var i = 2; i < tmp.length; i++) {
             tmp[i] = jQuery.trim(tmp[i]);
             var diskAttrs = tmp[i].split(',');
+            diskAttrs[0] = diskAttrs[0].toLowerCase();
             var key = hcp2zvm[hcp] + '-' + pool + '-' + diskAttrs[2];
-            dTable.fnAddData( [ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
+            dTable.fnAddData([ '<input type="checkbox" name="' + key + '"/>', hcp2zvm[hcp], pool, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3], diskAttrs[4], diskAttrs[5], diskAttrs[6], diskAttrs[7] ]);
+            
+            // Add up the free or used size
+            zfcpSpace[hcp][pool][diskAttrs[0]] += convertString2Gb(diskAttrs[3]);
+        }
+        
+        // Bar chart data points
+        var ticks = new Array();
+        var free = new Array();
+        var used = new Array();
+        for (var pool in zfcpSpace[hcp]) {
+        	ticks.push(pool);
+        	
+        	free.push(zfcpSpace[hcp][pool]['free']);
+        	if ('reserved' in zfcpSpace[hcp][pool]) {
+        		used.push(zfcpSpace[hcp][pool]['used'] + zfcpSpace[hcp][pool]['reserved']);
+        	} else {
+        		used.push(zfcpSpace[hcp][pool]['used']);
+        	}
+        }
+
+        // Create bar chart, only when there is data
+        if ((used.length || free.length) && ticks.length) {
+        	$('#' + panelId).prepend($('<div id="' + hcp + 'ZfcpChart" style="height:300px; width:500px; margin-left:auto; margin-right:auto;"></div>'));
+        	var plot = $.jqplot(hcp + 'ZfcpChart', [used, free], {
+        		title: '',
+        	    stackSeries: true,
+        	    seriesDefaults: {
+        	        renderer: $.jqplot.BarRenderer,
+        	        rendererOptions: {barMargin: 25}, 
+        	        pointLabels: {show: true}
+        	    },
+        	    series: [
+    	            {label: 'Used'},
+    	            {label: 'Free'}
+    	        ],
+        	    axes: {
+        	        xaxis: {
+        	        	renderer: $.jqplot.CategoryAxisRenderer,
+                        ticks: ticks
+        	        },
+        	        yaxis: {
+                        tickOptions: {formatString: '%dG'}
+                    }
+        	    },
+        	    legend: {
+        	    	show: true,
+        	        placement: 'outsideGrid'
+        	    }  
+        	});
         }
     }
     
     // Create actions menu
-    if (!$('#zFcpResourceActions').length) {
+    var menuId = hcp2zvm[hcp] + 'ZfcpResourceActions';
+    if (!$('#' + menuId).length) {
         // Empty filter area
         $('#' + tableId + '_length').empty();
         
@@ -3606,31 +3772,21 @@ function loadZfcpPoolTable(data) {
         // Refresh table
         var refreshLnk = $('<a>Refresh</a>');
         refreshLnk.bind('click', function(event){
-            $('#zfcpResource').empty().append(createLoader(''));
-            setZfcpDataTable('');
+        	$('#' + panelId).empty().append(createLoader(''));
             
-            // Create a array for hardware control points
-            var hcps = new Array();
-            if ($.cookie('hcp').indexOf(',') > -1)
-                hcps = $.cookie('hcp').split(',');
-            else
-                hcps.push($.cookie('hcp'));
-            
-            // Query the disk pools for each
-            for (var i in hcps) {
-                $.ajax( {
-                    url : 'lib/cmd.php',
-                    dataType : 'json',
-                    data : {
-                        cmd : 'lsvm',
-                        tgt : hcps[i],
-                        args : '--zfcppoolnames',
-                        msg : hcps[i]
-                    },
+            // Query the disk pools
+            $.ajax({
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsvm',
+                    tgt : hcp,
+                    args : '--zfcppoolnames',
+                    msg : hcp
+                },
 
-                    success : getZfcpPool
-                });
-            }    
+                success : getZfcpPool
+            });
         });
                 
         // Create action bar
@@ -3654,7 +3810,7 @@ function loadZfcpPoolTable(data) {
         $('#' + tableId + '_length').prepend(menuDiv);
         $('#' + tableId + '_length').css({
             'padding': '0px',
-            'width': '500px'
+            'width': '460px'
         });
         $('#' + tableId + '_filter').css('padding', '10px');
         menuDiv.append(actionBar);
@@ -5883,7 +6039,7 @@ function loadGoldenImages(col) {
  * @param data Data from HTTP request
  */
 function setzVMCookies(data) {
-    if (data.rsp[0].length) {
+    if (data.rsp[0].length && data.rsp[0].indexOf("Failed") == -1) {
         var zvms = new Array();
         var hosts = data.rsp[0].split("\n");
         for ( var i = 0; i < hosts.length; i++) {
@@ -5905,7 +6061,7 @@ function setzVMCookies(data) {
  * @param data Data from HTTP request
  */
 function setGoldenImagesCookies(data) {
-    if (data.rsp[0].length) {
+    if (data.rsp[0].length && data.rsp[0].indexOf("Failed") == -1) {
         var copies = new Array();
         var tmp = data.rsp[0].split(",");
         for ( var i = 0; i < tmp.length; i++) {
@@ -5927,7 +6083,7 @@ function setGoldenImagesCookies(data) {
  * @param data Data from HTTP request
  */
 function setDiskPoolCookies(data) {
-    if (data.rsp[0].length) {
+    if (data.rsp[0].length && data.rsp[0].indexOf("Failed") == -1) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         for (var i in pools) {
@@ -5947,7 +6103,7 @@ function setDiskPoolCookies(data) {
  * @param data Data from HTTP request
  */
 function setZfcpPoolCookies(data) {
-    if (data.rsp[0].length) {
+    if (data.rsp[0].length && data.rsp[0].indexOf("Failed") == -1) {
         var node = data.msg;
         var pools = data.rsp[0].split(node + ': ');
         for (var i in pools) {
@@ -5981,7 +6137,7 @@ function setzHcpCookies(zhcps) {
  * @param data Data from HTTP request
  */
 function setUserProfilesCookies(data) {
-    if (data.rsp[0].length) {
+    if (data.rsp[0].length && data.rsp[0].indexOf("Failed") == -1) {
         var node = data.msg;
         var profiles = data.rsp[0].split(node + ': ');
         for (var i in profiles) {
@@ -6690,4 +6846,48 @@ function generateUserEntry(userId, password, memory, privilege, profile, cpuCoun
     userDirectoryEntry += "SPOOL 000E 1403 A\n";
         
     return userDirectoryEntry;
+}
+
+/**
+ * Convert a string (e.g. 1024M) into GB
+ * 
+ * @param size The string containing the size
+ * @return Size in GB
+ */
+function convertString2Gb(size) {
+	var sizeGb = 0;
+	if (size.indexOf('G') != -1) {
+		sizeGb = parseInt(size);
+	} else if (size.indexOf('M') != -1) {
+		sizeGb = parseInt(size)*1024;
+	}
+	
+	return sizeGb;
+}
+
+/**
+ * Convert a given number of cylinders into GB
+ * 
+ * @param cylinders Number of cylinders
+ * @return Size in GB
+ */
+function convertCylinders2Gb(cylinders) {
+	var bytes = cylinders * 737280;
+	var sizeGb = bytes/(1024*1024*1024);
+	sizeGb = Math.round(sizeGb * 10)/10;  // Round to 1 decimal place
+	
+	return sizeGb;
+}
+
+/**
+ * Convert a given number of blocks into GB
+ * 
+ * @param blocks Number of blocks
+ * @return Size in GB
+ */
+function convertBlocks2Gb(blocks) {
+	var sizeGb = blocks/(2048*1024);
+	sizeGb = Math.round(sizeGb * 10)/10;  // Round to 1 decimal place
+	
+	return sizeGb;
 }

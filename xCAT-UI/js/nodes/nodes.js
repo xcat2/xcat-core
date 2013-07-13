@@ -1363,8 +1363,8 @@ function addNodes2Table(data) {
     // Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
     $('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
         function(value, settings) {            
-             //if users did not do changes, return the value directly
-            //jeditable save the old value in this.revert
+            // If users did not do changes, return the value directly
+            // jeditable save the old value in this.revert
             if ($(this).attr('revert') == value){
                 return value;
             }
