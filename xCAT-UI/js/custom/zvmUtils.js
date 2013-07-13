@@ -3486,7 +3486,7 @@ function loadDiskPoolTable(data) {
         // Create bar chart, only when there is data
     	var plot;
     	var panelId = hcp + 'Disks';
-		$('#' + panelId).prepend($('<div id="' + hcp + 'DiskChart" style="height:300px; width:500px; margin-left:auto; margin-right:auto;"></div>'));
+		$('#' + panelId).prepend($('<div id="' + hcp + 'DiskChart" style="height:300px; width:600px; margin-left:auto; margin-right:auto;"></div>'));
     	plot = $.jqplot(hcp + 'DiskChart', [used, free], {
     		title: '', 
     	    stackSeries: true,
@@ -3720,7 +3720,7 @@ function loadZfcpPoolTable(data) {
 
         // Create bar chart, only when there is data
         if ((used.length || free.length) && ticks.length) {
-        	$('#' + panelId).prepend($('<div id="' + hcp + 'ZfcpChart" style="height:300px; width:500px; margin-left:auto; margin-right:auto;"></div>'));
+        	$('#' + panelId).prepend($('<div id="' + hcp + 'ZfcpChart" style="height:300px; width:600px; margin-left:auto; margin-right:auto;"></div>'));
         	var plot = $.jqplot(hcp + 'ZfcpChart', [used, free], {
         		title: '',
         	    stackSeries: true,
