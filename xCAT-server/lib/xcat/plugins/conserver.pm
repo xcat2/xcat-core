@@ -180,6 +180,7 @@ sub process_request {
   }
 }
 
+# Add the initial/global entries to the beginning of the file
 sub docfheaders {
 # Put in standard headers common to all conserver.cf files
   my $content = shift;
@@ -279,9 +280,9 @@ sub docfheaders {
 
   push @newheaders,"}\n";
   unshift @$content,@newheaders;
-
-
 }
+
+# Read the file, get db info, update the file contents, and then write the file
 sub makeconservercf {
   my $req = shift;
   %termservers = (); #clear hash of existing entries
@@ -317,11 +318,12 @@ sub makeconservercf {
 
   #print "process_request nodes=@$nodes\n";
 
+  # Get db info for the nodes related to console
   my $hmtab = xCAT::Table->new('nodehm');
   my @cfgents1;# = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
       @cfgents1 = $hmtab->getNodesAttribs($nodes,['node','cons','serialport','mgt','conserver','termserver','termport']);
-#to make the result consistent to getAllNodeAttribs
+      # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
       my @tmpcfgents1;
       foreach my $ent (@cfgents1)
       {
@@ -337,12 +339,16 @@ sub makeconservercf {
   }
 
 
-#cfgents should now have all the nodes, so we can fill in our hashes one at a time.
-
-  # skip the one that does not have 'cons' defined, unless a serialport setting suggests otherwise
+  #cfgents1 should now have all the nodes, so we can fill in the cfgents array and cfgenthash one at a time.
+  # skip the nodes that do not have 'cons' defined, unless a serialport setting suggests otherwise
   my @cfgents=();
+  my %cfgenthash;
   foreach (@cfgents1) {
-    if ($_->{cons} or defined($_->{'serialport'})) { push @cfgents, $_; }
+    if ($_->{cons} or defined($_->{'serialport'})) {
+      unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
+      push @cfgents, $_;
+      $cfgenthash{$_->{node}} = $_;     # also put the ref to the entry in a hash for quick look up
+    }
   }
 
   if ($::DEBUG) {
@@ -350,42 +356,21 @@ sub makeconservercf {
       $rsp->{data}->[0] = "In makeconservercf, cfgents is " . Dumper(@cfgents);
       xCAT::MsgUtils->message("I", $rsp, $cb);
   }
-  # get the teminal servers and terminal port when cons is mrv or cyclades
-  foreach (@cfgents) {
-     unless ($_->{cons}) {$_->{cons} = $_->{mgt};} #populate with fallback
-    #my $cmeth=$_->{cons};
-    #if (grep(/^$cmeth$/,@cservers)) { #terminal server, more attribs needed
-    #  my $node = $_->{node};
-    #  my $tent = $hmtab->getNodeAttribs($node,["termserver","termport"]);
-    #  $_->{termserver} = $tent->{termserver};
-    #  $termservers{$tent->{termserver}} = 1;
-    #  $_->{termport}= $tent->{termport};
-    #}
-  }
 
-  # nodes defined, it is either on the service node or mkconserver is call with noderange on mn
+  # if nodes defined, it is either on the service node or makeconserver was called with noderange on mn
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
-    # strip all xCAT configured stuff from config if the original command was for all nodes
+    # strip all xCAT configured nodes from config if the original command was for all nodes
     if (($req->{_allnodes}) && ($req->{_allnodes}->[0]==1)) {zapcfg(\@filecontent);}
-    foreach (@$nodes) {
-      my $node = $_;
-      foreach (@cfgents) {
-        if ($_->{node} eq $node) {
-          if ($_->{termserver} and not $termservers{$_->{termserver}}) {
-            dotsent($_,\@filecontent);
-            $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
-          }
-          if (donodeent($_,\@filecontent,$delmode) eq "BADCFG") {
-              $cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
-
-          }
-        }
-      }
+    # call donodeent to add all node entries into the file.  It will return the 1st node in error.
+    my $node;
+    if ($node=donodeent(\%cfgenthash,\@filecontent,$delmode)) {
+      #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
+      xCAT::SvrUtils::sendmsg([1,"Bad configuration, check attributes under the nodehm category"],$cb,$node);
     }
   } else { #no nodes specified, do em all up
-    zapcfg(\@filecontent); # strip all xCAT configured stuff from config
+    zapcfg(\@filecontent); # strip all xCAT configured nodes from config
 
-    # filter out node types without console support
+    # get nodetype so we can filter out node types without console support
     my $typetab = xCAT::Table->new('nodetype');
     my %type;
 
@@ -395,6 +380,7 @@ sub makeconservercf {
         $type{$_->{node}}=$_->{nodetype};
       }
     }
+    # remove nodes that arent for this SN or type of node doesnt have console
     foreach (@cfgents) {
       my $keepdoing=0;
       if ($isSN && $_->{conserver} && exists($iphash{$_->{conserver}}))  {
@@ -403,17 +389,27 @@ sub makeconservercf {
       if (!$isSN) { $keepdoing=1;} #handle all for MN
       if ($keepdoing) {
         if ($_->{termserver} and not $termservers{$_->{termserver}}) {
+          # add a terminal server entry to file
           dotsent($_,\@filecontent);
-          $termservers{$_->{termserver}}=1; #prevent needless cycles being burned
+          $termservers{$_->{termserver}}=1; # dont add this one again
         }
-        if ( $type{$_->{node}} !~ /fsp|bpa|hmc|ivm/ ) {
-          if (donodeent($_,\@filecontent) eq "BADCFG") {
-              $cb->({node=>[{name=>$_->{node},error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
-          }
+        if ( $type{$_->{node}} =~ /fsp|bpa|hmc|ivm/ ) {
+          $keepdoing=0;   # these types dont have consoles
         }
       }
+      if (!$keepdoing) { delete $cfgenthash{$_->{node}}; }    # remove this node from the hash so we dont process it later
+    }
+
+    # Now add into the file all the node entries that we kept
+    my $node;
+    if ($node=donodeent(\%cfgenthash,\@filecontent)) {
+      # donodeent will return the 1st node in error
+      #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
+      xCAT::SvrUtils::sendmsg([1,"Bad configuration, check attributes under the nodehm category"],$cb,$node);
     }
   }
+
+  # Write out the file contents
   open $cfile,'>','/etc/conserver.cf';
   if ($::VERBOSE) {
       my $rsp;
@@ -425,7 +421,7 @@ sub makeconservercf {
   }
   close $cfile;
 
-
+  # restart conserver
   if (!$svboot) {
     #restart conserver daemon
     my $cmd;
@@ -443,6 +439,7 @@ sub makeconservercf {
   }
 }
 
+# Put a terminal server entry in the file - not used much any more
 sub dotsent {
   my $cfgent = shift;
   my $tserv = $cfgent->{termserver};
@@ -476,9 +473,11 @@ sub dotsent {
 
 }
 
+# Add entries in the file for each node.  This function used to do 1 node at a time, but was changed to do
+# all nodes at once for performance reasons.  If there is a problem with a nodes config, this
+# function will return that node name as the one in error.
 sub donodeent {
-  my $cfgent = shift;
-  my $node = $cfgent->{node};
+  my $cfgenthash = shift;
   my $content = shift;
   my $delmode = shift;
   my $idx=0;
@@ -486,14 +485,20 @@ sub donodeent {
   my $skip = 0;
   my $skipnext = 0;
 
+  # Delete all the previous stanzas of the nodes specified
   my $isSN=xCAT::Utils->isServiceNode();
-
+  my $curnode;
+  # Loop till find the start of a node stanza and remove lines till get to the end of the stanza
   while ($idx <= $#$content) { # Go through and delete that which would match my entry
-    if ($content->[$idx] =~ /^#xCAT BEGIN $node CONS/) {
-      $toidx=$idx; #TODO put it back right where I found it
-      $skip = 1;
-      $skipnext=1;
-    } elsif ($content->[$idx] =~ /^#xCAT END $node CONS/) {
+    my ($begorend, $node) = $content->[$idx] =~ /^#xCAT (\S+) (\S+) CONS/;
+    if ($begorend eq 'BEGIN') {
+      if ($cfgenthash->{$node}) {
+        $toidx=$idx; #TODO put it back right where I found it
+        $skip = 1;    # delete this line
+        $skipnext=1;  # put us in skip mode until we find the end of the stanza
+        $curnode = $node;
+      }
+    } elsif ($begorend eq 'END' && $node eq $curnode) {
       $skipnext = 0;
     }
     if ($skip) {
@@ -503,17 +508,21 @@ sub donodeent {
     }
     $skip = $skipnext;
   }
-  if ($delmode) {
+if ($delmode) {
+      # dont need to add node entries, so we are done
       return;
   }
+
+# Go thru all nodes specified to add them to the file
+foreach my $node (sort keys %$cfgenthash) {
+  my $cfgent = $cfgenthash->{$node};
   my $cmeth=$cfgent->{cons};
   if (not $cmeth or (grep(/^$cmeth$/,@cservers) and (not $cfgent->{termserver} or not $cfgent->{termport}))) {
-      return "BADCFG";
+      # either there is no console method (shouldnt happen) or not one of the supported terminal servers
+      return $node;
   }
   push @$content,"#xCAT BEGIN $node CONS\n";
   push @$content,"console $node {\n";
-  #if ($cfgent->{cons}
-  #print $cmeth."\n";
   if (grep(/^$cmeth$/,@cservers)) {
     push @$content," include ".$cfgent->{termserver}.";\n";
     push @$content," port ".$cfgent->{termport}.";\n";
@@ -532,7 +541,10 @@ sub donodeent {
   push @$content,"}\n";
   push @$content,"#xCAT END $node CONS\n";
 }
+return 0;
+}
 
+# Delete any xcat added node entries from the file
 sub zapcfg {
   my $content = shift;
   my $idx=0;
@@ -558,11 +570,3 @@ sub zapcfg {
 
 
 1;
-
-
-
-
-
-
-
-
