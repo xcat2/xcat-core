@@ -1,11 +1,8 @@
 /**
  * Tab constructor
  * 
- * @param tabId
- *            Tab ID
- * @param tabName
- *            Tab name
- * @return Nothing
+ * @param tabId Tab ID
+ * @param tabName Tab name
  */
 var Tab = function(tabId) {
     this.tabId = tabId;
@@ -163,7 +160,7 @@ Table.prototype.init = function(headers) {
     var headRow = $('<tr></tr>');
 
     // Append headers
-    for ( var i in headers) {
+    for (var i in headers) {
         headRow.append('<th>' + headers[i] + '</th>');
     }
 
@@ -195,7 +192,7 @@ Table.prototype.add = function(rowCont) {
 
     // Create a column for each content
     var tableCol;
-    for ( var i in rowCont) {
+    for (var i in rowCont) {
         tableCol = $('<td></td>');
         tableCol.append(rowCont[i]);
         tableRow.append(tableCol);
@@ -249,7 +246,7 @@ DataTable.prototype.init = function(headers) {
     var headRow = $('<tr></tr>');
 
     // Append headers
-    for ( var i in headers) {
+    for (var i in headers) {
         headRow.append('<th>' + headers[i] + '</th>');
     }
 
@@ -281,7 +278,7 @@ DataTable.prototype.add = function(rowCont) {
 
     // Create a column for each content
     var tableCol;
-    for ( var i in rowCont) {
+    for (var i in rowCont) {
         tableCol = $('<td></td>');
         tableCol.append(rowCont[i]);
         tableRow.append(tableCol);
@@ -470,11 +467,11 @@ function initPage() {
     // Load jQuery stylesheets
     includeCss("css/jquery.dataTables.css");
     includeCss("css/superfish.css");
-    includeCss("css/jstree.css");
+    // includeCss("css/jstree.css");
     includeCss("css/jquery.jqplot.css");
     
     // Load custom stylesheet
-    includeCss("css/style.css");    
+    includeCss("css/style.css");
     
     // JQuery plugins
     includeJs("js/jquery/jquery.dataTables.min.js");
@@ -483,11 +480,14 @@ function initPage() {
     includeJs("js/jquery/jquery.contextmenu.min.js");
     includeJs("js/jquery/superfish.min.js");
     includeJs("js/jquery/hoverIntent.min.js");
-    includeJs("js/jquery/jquery.jstree.min.js");
+    // includeJs("js/jquery/jquery.jstree.min.js");
     includeJs("js/jquery/tooltip.min.js");
     includeJs("js/jquery/jquery.serverBrowser.min.js");
     includeJs("js/jquery/jquery.jqplot.min.js");
     includeJs("js/jquery/jqplot.pieRenderer.min.js");
+    includeJs("js/jquery/jqplot.barRenderer.min.js");
+    includeJs("js/jquery/jqplot.pointLabels.min.js");
+    includeJs("js/jquery/jqplot.categoryAxisRenderer.min.js");
     includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
     includeJs("js/jquery/jquery.topzindex.min.js");
     
