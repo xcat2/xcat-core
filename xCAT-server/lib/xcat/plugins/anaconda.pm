@@ -1323,10 +1323,10 @@ sub mkinstall
                 if($esxi){
                     copyesxiboot($pkgdir, "$tftppath", osver=>$os);		
                 }else{
-                    copy($kernpath,"$tftppath");
                     unless ($noupdateinitrd) {
+                        copy($kernpath,"$tftppath");
                         copy($initrdpath,"$tftppath/initrd.img");
-                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", $driverupdatesrc, $netdrivers, $osupdir);
+                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir);
                     }
                 }
             }
@@ -2386,9 +2386,13 @@ sub get_all_path ()
 
 sub insert_dd {
     my $callback = shift;
+    if ($callback eq "xCAT_plugin::anaconda") {
+        $callback = shift;
+    }
     my $os = shift;
     my $arch = shift;
     my $img = shift;
+    my $kernelpath = shift;
     my $driverupdatesrc = shift;
     my $drivers = shift;
     my $osupdirlist = shift;
@@ -2524,6 +2528,7 @@ sub insert_dd {
             return ();
         }
 
+        my $new_kernel_ver;
         if (@rpm_list && ($Injectalldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
@@ -2542,6 +2547,22 @@ sub insert_dd {
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
+
+                # get the new kernel if it exists in the update distro
+                # and copy it to the /tftpboot
+                my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
+                foreach my $new_kernel (@new_kernels) {
+                if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64))$/) {
+                    $new_kernel_ver = $1;
+                    $cmd = "/bin/mv -f $new_kernel $kernelpath";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $kernelpath.";
+                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    }
+                }
+                }
                 
                 # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
                 # Change it back to xxx.ko here
@@ -2551,7 +2572,7 @@ sub insert_dd {
                 foreach my $file (@all_real_path) {
                     my $newname = $file;
                     $newname =~ s/\.new$//;
-                    $cmd = "mv -f $file $newname";
+                    $cmd = "/bin/mv -f $file $newname";
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
@@ -2560,8 +2581,6 @@ sub insert_dd {
                     }
                 }
             }
-
-            
         }
     
         # The rh6 has different initrd format with old version (rh 5.x)
@@ -2585,7 +2604,18 @@ sub insert_dd {
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
                         push @{$rsp->{data}}, "Handle the driver update failed. Could not copy firmware to the initrd.";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
+                }
+
+                # if the new kernel from update distro is not existed in initrd, copy all the modules for the new kernel to initrd
+                if ((! -r "$dd_dir/initrd_img/lib/modules/$new_kernel_ver") && (-r "$dd_dir/rpm/lib/modules/$new_kernel_ver")) {
+                    $cmd = "/bin/cp -rf $dd_dir/rpm/lib/modules/$new_kernel_ver $dd_dir/initrd_img/lib/modules/";
+                    xCAT::Utils->runcmd($cmd, -1);
+                    if ($::RUNCMD_RC != 0) {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not copy $dd_dir/rpm/lib/modules/$new_kernel_ver to $dd_dir/initrd_img/lib/modules.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
                     }
                 }
                 
@@ -2780,6 +2810,11 @@ sub insert_dd {
                         push @{$rsp->{data}}, "Handle the driver update failed. Could not copy firmware to the initrd.";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
+                }
+
+                # if the new kernel from update distro is not existed in initrd, create the path for it
+                if (! -r "$dd_dir/modules/$new_kernel_ver/$arch/") {
+                    mkpath ("$dd_dir/modules/$new_kernel_ver/$arch/");
                 }
 
                 # Copy the drivers to the initrd
