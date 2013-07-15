@@ -50,6 +50,7 @@ done
 	
 	
 #time to make our packet...
+while [ ! -r /restart ]; do
 MTM=unknown
 SERIAL=unknown
 ARCH=unknown
@@ -192,7 +193,6 @@ mv /tmp/discopacket.new /tmp/discopacket
 
 rm -f /tmp/discopacket.gz
 gzip -9 /tmp/discopacket
-while [ ! -r /restart ]; do
 	if [ ! -z "$XCATMASTER" ]; then
 		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
