@@ -2555,6 +2555,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.kitcomponents',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
+ {attr_name => 'osimageusercomment',
+                 tabentry => 'osimage.comments',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
 ####################
 # linuximage table#
 ####################
