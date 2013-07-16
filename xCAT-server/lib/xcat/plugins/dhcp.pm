@@ -1920,19 +1920,23 @@ sub addnet6
     my $netdomain = $netcfgs{$net}->{domain};
     unless ($netdomain) { $netdomain = $site_domain; }
     push @netent, "    option domain-name \"".$netdomain."\";\n";
-	#  add domain-search
-	# We want something like "option domain-search "foo.com", "bar.com";"
-	my $domainstring = qq~"$netcfgs{$net}->{domain}"~;
-	foreach my $dom (@alldomains) {
-		chomp $dom;
-		if ($dom ne $netcfgs{$net}->{domain}){
-			$domainstring .= qq~, "$dom"~;
-		}
-	}
 
-	if ($netcfgs{$net}->{domain}) {
-		push @netent, "    option domain-search  $domainstring;\n";
-	}
+	#  add domain-search if not sles10 or rh5
+    my $osv = xCAT::Utils->osver();
+    unless ( ($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/) ) {
+	    # We want something like "option domain-search "foo.com", "bar.com";"
+	    my $domainstring = qq~"$netcfgs{$net}->{domain}"~;
+	    foreach my $dom (@alldomains) {
+		    chomp $dom;
+		    if ($dom ne $netcfgs{$net}->{domain}){
+			    $domainstring .= qq~, "$dom"~;
+		    }
+	    }
+
+	    if ($netcfgs{$net}->{domain}) {
+		    push @netent, "    option domain-search  $domainstring;\n";
+	    }
+    }
 
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
@@ -2208,18 +2212,21 @@ sub addnet
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
 
-		#  add domain-search
-		# We want something like "option domain-search "foo.com", "bar.com";"
-		my $domainstring = qq~"$domain"~;
-		foreach my $dom (@alldomains) {
-			chomp $dom;
-			if ($dom ne $domain){
-				$domainstring .= qq~, "$dom"~;
-			}
-		}
+        #  add domain-search if not sles10 or rh5
+        my $osv = xCAT::Utils->osver();
+        unless ( ($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/) ) {
+		    # want something like "option domain-search "foo.com", "bar.com";"
+		    my $domainstring = qq~"$domain"~;
+		    foreach my $dom (@alldomains) {
+			    chomp $dom;
+			    if ($dom ne $domain){
+				    $domainstring .= qq~, "$dom"~;
+			   }
+		    }
 
-		if ($domain) {
-			push @netent, "    option domain-search  $domainstring;\n";
+		    if ($domain) {
+			    push @netent, "    option domain-search  $domainstring;\n";
+            }
 		}
 
         my $ddnserver = $nameservers;
