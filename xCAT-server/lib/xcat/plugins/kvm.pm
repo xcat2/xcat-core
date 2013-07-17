@@ -1083,7 +1083,7 @@ sub xhrm_satisfy {
                         if ($nicstable) {
                             my $tmp = $nicstable->getNodeAttribs($hyp, ['nicips']);
                             if ($tmp && $tmp->{nicips}){
-                                $tmp =~ /vl${vlanid}nic!([^,]*)/;
+                                $tmp =~ /vl${vlan}nic!([^,]*)/;
                                 $vlanip = $1;
                             }
                         }
