@@ -1714,6 +1714,7 @@ sub dispatch_request {
     }
     if ($onlyone and not ($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
+        "" =~ m/()/; #clear $1 that we may have sitting around
 	if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
         ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         return;
