@@ -1267,6 +1267,7 @@ sub updatenoderunps
             # Note order of parameters to xcatdsklspost 
             #is important and cannot be changed
             my $runpscmd;
+            
             if ($::SETSERVER){
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
@@ -1274,6 +1275,11 @@ sub updatenoderunps
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
             }
+            # add verbose flag
+            if ($::VERBOSE){
+               $runpscmd .= " -V";
+            }
+
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
              push @$args1,"-f" ;
@@ -1595,6 +1601,10 @@ sub updatenodesoftware
             {
                 $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
+            }
+            # add verbose flag
+            if ($::VERBOSE){
+               $cmd .= " -V";
             }
     
             # build xdsh command

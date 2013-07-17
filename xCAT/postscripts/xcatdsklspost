@@ -3,8 +3,8 @@
 #####################################################
 #
 #   Generic xCAT post script for diskless nodes
-#   The syntax of this script
-#      xcatdsklspost {mode} {-m|-M} [postscripts]
+#   The syntax of this script:
+#      xcatdsklspost {mode} {-m|-M} [postscripts] --tftp /tftpboot --installdir /install --nfsv4 no -c -V
 #   This script is called in the following different places:
 #      updatenode -P ... --> xcatdsklspost 1 -m/-M ...
 #      updatenode -S --> xcatdsklspost 2 -m/-M otherpkgs
@@ -169,15 +169,19 @@ else
         fi 
       fi
       if [ $ARGNUM -gt 10 ]; then
-        if [ $11 = "-c" ]; then
+        if [ ${11} = "-c" ]; then
           CFLAG=${11}
+        fi 
+      fi
+      if [ $ARGNUM -gt 11 ]; then
+        if [ ${12} = "-V" ]; then
+         export VERBOSE=1 
         fi 
       fi
       ;;
     3|4|6) MODE=$1;;
   esac
 fi
-
 # set the default path for the xcatpost directory
 xcatpost="/xcatpost"
 # Check for debug mode and you have nodename available you can change the path for debug
@@ -203,8 +207,8 @@ if [ ! `uname` = Linux ]; then
    umount /xcatmnt
    rmdir /xcatmnt
   logger -t xCAT -p local4.err "Running xcataixpost $*"
-  echo "/$xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
-  exec /$xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11}
+  echo "/$xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11} ${12}"
+  exec /$xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11} ${12}
   exit
 fi
 
