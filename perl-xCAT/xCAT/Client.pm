@@ -324,7 +324,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   } else { #storable encode
     my $rsp;
     eval { $rsp = fd_retrieve($client); };
-    while ($rsp) {
+    SERVERINPUT: while ($rsp) {
      my @rsps;
      if (ref $rsp eq 'ARRAY') {
         @rsps = @$rsp;
@@ -335,7 +335,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
      $callback->($_);
      if ($_->{serverdone}) {
          $cleanexit=1;
-         last;
+         last SERVERINPUT;
       }
      }
      $rsp = undef;
