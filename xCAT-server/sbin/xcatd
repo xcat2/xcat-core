@@ -1209,8 +1209,8 @@ sub plugin_command {
     xCAT::NodeRange::retain_cache(0); #if the request has a 'noderange' element, take the performance hit for the sake of freshness
     @nodes = noderange($req->{noderange}->[0]);
     if (nodesmissed) {
-      my $rsp = {errorcode=>1,error=>"Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)};
-     $rsp->{serverdone} = {};
+      my $rsp = {errorcode=>['1'],error=>["Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)]};
+     $rsp->{serverdone} = [ undef ];
       if ($sock) {
         send_response($rsp,$sock);
       }
@@ -1569,7 +1569,7 @@ sub plugin_command {
   $SIG{CHLD} = $old_sig_chld;
 
   my %done;
-  $done{serverdone} = {};
+  $done{serverdone} = [ undef ];
   if ($req->{transid}) {
     $done{transid}=$req->{transid}->[0];
   }
@@ -1841,7 +1841,7 @@ sub do_request {
      if (nodesmissed) {
        $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
      }
-     $resp{serverdone} = {};
+     $resp{serverdone} = [ undef ];
      @{$resp{node}}=@nodes;
      if ($req->{transid}) {
        $resp{transid}=$req->{transid}->[0];
@@ -1853,7 +1853,7 @@ sub do_request {
      }
   } else {
      my %resp=(error=>"Unsupported request");
-     $resp{serverdone} = {};
+     $resp{serverdone} = [ undef ];
      if ($req->{transid}) {
        $resp{transid}=$req->{transid}->[0];
      }
@@ -2071,7 +2071,7 @@ sub service_connection {
                                  $req->{becomeuser}->[0]->{password}->[0]);
             unless (defined $peername) {
                 my $resp={error=>["Authentication failure"],errorcode=>[1]};
-                $resp->{serverdone}={};
+                $resp->{serverdone}=[ undef ] ;
                 send_response($resp,$sock);
                 return;
             }
@@ -2102,7 +2102,7 @@ sub service_connection {
               } else {
                   $resp->{data}=["Unauthenticated"];
               }
-              $resp->{serverdone}={};
+              $resp->{serverdone}=[ undef ];
               send_response($resp,$sock);
           } elsif ($cmd_handlers{$req->{command}->[0]}) {
             plugin_command($req,$sock,\&convey_response);
@@ -2113,7 +2113,7 @@ sub service_connection {
             if (nodesmissed) {
               $resp{warning}="Invalid nodes in noderange:".join ',',nodesmissed;
             }
-            $resp{serverdone} = {};
+            $resp{serverdone} = [ undef ];
             @{$resp{node}}=@nodes;
             if ($req->{transid}) {
               $resp{transid}=$req->{transid}->[0];
@@ -2127,12 +2127,12 @@ sub service_connection {
                 $subgroups=1;
             }
             my %resp=%{extnoderange($req->{noderange}->[0],{intersectinggroups=>$subgroups})};
-            $resp{serverdone}={};
+            $resp{serverdone}=[ undef ];
             send_response(\%resp,$sock);
             next;
           } else {
             my %resp=(error=>"Unsupported request");
-            $resp{serverdone} = {};
+            $resp{serverdone} = [ undef ];
             if ($req->{transid}) {
               $resp{transid}=$req->{transid}->[0];
             }
@@ -2142,7 +2142,7 @@ sub service_connection {
           }
         } else { 
           my %resp=(error=>"Permission denied for request");
-          $resp{serverdone} = {};
+          $resp{serverdone} = [ undef ];
           if ($req->{transid}) {
             $resp{transid}=$req->{transid}->[0];
           }
