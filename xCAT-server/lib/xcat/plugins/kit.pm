@@ -383,7 +383,7 @@ sub assign_to_osimage
                     }
 
                     if ( !$match ) {
-                        $osimagetable->{postbootscripts} = $osimagetable->{postbootscripts} . ",KIT_$osimage.postbootscripts";
+                        $osimagetable->{postbootscripts} = "KIT_$osimage.postbootscripts," . $osimagetable->{postbootscripts};
                         $osimagetable->{postbootscripts} =~ s/^,//;
                     }
 
