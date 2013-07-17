@@ -166,7 +166,9 @@ array_get_element ()
 RETURNVAL=0
 
 debug=0
-
+if [ $VERBOSE == "1" ]; then
+  debug=1
+fi
 OS_TYPE=`uname -s`
 
 if [ "$OS_TYPE" != "Linux" ]; then
