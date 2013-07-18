@@ -1145,7 +1145,12 @@ sub handle_response {
 #print "printing node\n";
     my $node;
     foreach $node (@$nodes) {
-      my $desc=$node->{name}->[0];
+      my $desc;
+      if (ref($node->{name}) eq 'ARRAY') {
+      $desc=$node->{name}->[0];
+      } else {
+      $desc=$node->{name};
+      }
       if ($node->{errorcode}) {
         if (ref($node->{errorcode}) eq 'ARRAY') {
           foreach my $ecode (@{$node->{errorcode}}) {
@@ -1165,7 +1170,24 @@ sub handle_response {
 		 $errflg=1;
       }
       if ($node->{data}) {
-         if (ref(\($node->{data}->[0])) eq 'SCALAR') {
+         if (ref(\($node->{data})) eq 'SCALAR') {
+            $desc=$desc.": ".$node->{data};
+         } elsif (ref($node->{data}) eq 'HASH') {
+            if ($node->{data}->{desc}) {
+             if (ref($node->{data}->{desc}) eq 'ARRAY') {
+              $desc=$desc.": ".$node->{data}->{desc}->[0];
+              } else {
+              $desc=$desc.": ".$node->{data}->{desc};
+              }
+            }
+            if ($node->{data}->{contents}) {
+                if (ref($node->{data}->{contents}) eq 'ARRAY') {
+        $desc="$desc: ".$node->{data}->{contents}->[0];
+                } else {
+        $desc="$desc: ".$node->{data}->{contents};
+                }
+            }
+         } elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
             $desc=$desc.": ".$node->{data}->[0];
          } else {
             if ($node->{data}->[0]->{desc}) {
