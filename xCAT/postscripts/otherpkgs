@@ -560,8 +560,12 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         do
             result=`zypper sd $x`
         done
-	zypper --non-interactive refresh
-        repo_base="/tmp"
+	result=`zypper --non-interactive refresh 2>&1`
+    if [ $VERBOSE  ]; then
+	   echo "otherpkgs: zypper --non-interactive refresh"
+	   echo "    $result"
+	fi
+    repo_base="/tmp"
     elif [ $hasapt -eq 1 ] ; then
         mkdir -p /etc/apt/sources.list.d
 	result=`rm /etc/apt/sources.list.d/xCAT-otherpkgs*.list 2>&1`
@@ -654,7 +658,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                     yum clean all
                 fi
                 if [ $haszypper -eq 1 ]; then
-                    zypper --non-interactive refresh
+	                     result=`zypper --non-interactive refresh 2>&1`
+                         if [ $VERBOSE  ]; then
+	                       echo "otherpkgs: zypper --non-interactive refresh"
+	                       echo "    $result"
+	                     fi
                 fi
 		elif [ $hasapt -eq 1 ] ; then
 		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
