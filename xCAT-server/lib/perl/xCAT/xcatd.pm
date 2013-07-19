@@ -75,7 +75,7 @@ sub validate {
   # check to see if peerhost is trusted
   foreach $rule (@sortedpolicies) {
      
-    if (($rule->{name} and (($rule->{name} eq $peerhost) || ($rule->{name} eq $peerhostorg)))  && ($rule->{rule}=~ /trusted/i)) {
+    if (($rule->{name} and $rule->{name} eq $peername)  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
