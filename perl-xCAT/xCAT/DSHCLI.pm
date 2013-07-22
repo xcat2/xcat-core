@@ -1024,8 +1024,13 @@ sub fork_fanout_dsh
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
         my $user_target       = shift @$targets_waiting;
-        # now add export NODE=nodename to the pre-command;
-        my $exportnode="export NODE=$user_target; ";
+        # now add export NODE=nodename to the pre-command, if not a device;
+        my $exportnode;
+        if (($$options{'devicetype'})) {
+            $exportnode="";
+        } else{
+         $exportnode="export NODE=$user_target; ";
+        }
         my $target_properties = $$resolved_targets{$user_target};
         my @commands;
         my $localShell        =
