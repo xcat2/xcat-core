@@ -179,14 +179,17 @@ sub parse_args{
         }
 
         # translate the profile names into real group names in db.
-        if($argarray[0] eq "networkprofile"){
-            $args_dict{$argarray[0]} = "__NetworkProfile_".$argarray[1];
-        } elsif ($argarray[0] eq "imageprofile"){
-            $args_dict{$argarray[0]} = "__ImageProfile_".$argarray[1];
-        } elsif ($argarray[0] eq "hardwareprofile"){
-            $args_dict{$argarray[0]} = "__HardwareProfile_".$argarray[1];
-        } else{
-            $args_dict{$argarray[0]} = $argarray[1];
+        if($argarray[1])
+        {
+            if($argarray[0] eq "networkprofile"){
+                $args_dict{$argarray[0]} = "__NetworkProfile_".$argarray[1];
+            } elsif ($argarray[0] eq "imageprofile"){
+                $args_dict{$argarray[0]} = "__ImageProfile_".$argarray[1];
+            } elsif ($argarray[0] eq "hardwareprofile"){
+                $args_dict{$argarray[0]} = "__HardwareProfile_".$argarray[1];
+            } else{
+                $args_dict{$argarray[0]} = $argarray[1];
+            }
         }
     }
     return undef;
