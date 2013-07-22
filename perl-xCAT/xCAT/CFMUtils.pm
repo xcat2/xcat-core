@@ -191,7 +191,12 @@ sub updateUserInfo {
         {
             for my $record (@diff)
             {
-               print $fp "$record\n";
+                # skip to add ROOT relative records into MERGE file
+                if ($record =~ /^root/)
+                {
+                    next;
+                }
+                print $fp "$record\n";
             }
         }
         close ($fp);
