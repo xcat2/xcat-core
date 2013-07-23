@@ -538,6 +538,13 @@ if (-d "$rootimg_dir/usr/share/dracut") {
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
 
+#-- for centos, disable the internet repository
+if( -e "$rootimg_dir/etc/yum.repos.d/CentOS-Base.repo" ) {
+    my $repo_content=`sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`;
+    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo");
+}
+#
+
 #-- run postinstall script
 unless ($imagename) {
     $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
