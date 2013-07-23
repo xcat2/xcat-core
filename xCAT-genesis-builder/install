@@ -4,7 +4,7 @@ dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modpro
 dracut_install netstat # broadcom update requires
 dracut_install uniq # mellanox update requires
 dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
-dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 mkfs.btrfs
+dracut_install mount.nfs sshd vi reboot lspci parted screen mkfs mkfs.ext4 #mkfs.btrfs removed
 dracut_install efibootmgr
 #dracut_install libvirtd /usr/share/libvirt/cpu_map.xml /usr/bin/qemu-img /usr/libexec/qemu-kvm
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen scp clear dhclient lldpad

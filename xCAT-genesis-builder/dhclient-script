@@ -43,7 +43,8 @@ elif [ $reason = "BOUND" ]; then
         for ls in $new_log_servers; do
 		echo *.* @$ls >> /etc/rsyslog.conf
 	done
-	kill -1 `cat /var/run/syslogd.pid`
+	kill `cat /var/run/syslogd.pid`
+	( sleep 3;/sbin/rsyslogd -c4 ) &
 
 	if [ ! -z "$new_tcode" -a -r "/usr/share/zoneinfo/posix/$new_tcode" ]; then
 		cp "/usr/share/zoneinfo/posix/$new_tcode" /etc/localtime

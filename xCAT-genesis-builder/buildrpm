@@ -17,8 +17,14 @@ if [ "$HOSTOS" = "mcp" ]; then
 	sed -i 's/mkfs.btrfs//' $DRACUTMODDIR/install
 	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
 	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
-	#mv -f $DRACUTMODDIR/install.$HOSTOS $DRACUTMODDIR/install
-	#mv -f $DRACUTMODDIR/installkernel.$HOSTOS $DRACUTMODDIR/installkernel
+
+	# these are needed for sysclone, but are not yet in mcp
+	sed -i 's/ bc//' $DRACUTMODDIR/install
+	sed -i 's/ mkdosfs//' $DRACUTMODDIR/install
+	sed -i 's/ rsync//' $DRACUTMODDIR/install
+	sed -i 's/ kexec//' $DRACUTMODDIR/install
+	sed -i 's/ klogd//' $DRACUTMODDIR/install
+	sed -i 's/ mdadm//' $DRACUTMODDIR/install
 fi
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 
