@@ -2345,10 +2345,14 @@ sub config_dsh
 	    }
 	}
 	else
+
 	{
+          # if not Mellanox, it does not need a config file
+          if (!($$options{'devicetype'}  =~ /Mellanox/i)) {
             my $rsp = {};
-            $rsp->{error}->[0] = "EMsgMISSING_DEV_CFG";
-            xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+            $rsp->{error}->[0] = "The config file: $devicepath is missing";
+             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+          }
 	}
     }
 
