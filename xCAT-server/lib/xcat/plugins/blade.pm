@@ -1738,7 +1738,7 @@ sub rscan_stanza {
         $objname =~ tr/A-Z/a-z/;
     } else {
         $objname = $data[1];
-    } 
+    }
     $result .= "$objname:\n\tobjtype=node\n";
 
     foreach ( @rscan_attribs ) {
@@ -4471,7 +4471,7 @@ sub clicmds {
 
   my $reset;
   foreach (keys %handled) {
-    if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
+    if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm,$node); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
     elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid); }
     elsif (/^initnetwork$/) { $result = network($t,$handled{$_},$mpa,$mm,$node,$nodeid,1); $reset=1; }
@@ -4981,6 +4981,7 @@ sub snmpcfg {
   my $uid = shift;
   my $pass = shift;
   my $mm = shift;
+  my $node = shift;
 
   if ($value !~ /^enable|disable$/i) {
     return([1,"Invalid argument '$value' (enable|disable)"]); 
@@ -5018,10 +5019,11 @@ sub snmpcfg {
   }
 
   my $cmd;
+  my $ipfn = xCAT::Utils->my_ip_facing($node);
   if ($mptype =~ /^[a]?mm$/) {
     $cmd= "users -$id -ap sha -at write -ppw $pass -pp $pp -T system:$mm";
   } elsif ($mptype eq "cmm"){
-    $cmd= "users -n $uid  -ap sha -at set -ppw $pass -pp $pp -T system:$mm";
+    $cmd= "users -n $uid  -ap sha -at set -ppw $pass -pp $pp -T system:$mm -i $ipfn";
   }
   @data = $t->cmd($cmd);
 
