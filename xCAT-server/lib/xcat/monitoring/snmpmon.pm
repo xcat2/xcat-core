@@ -13,9 +13,18 @@ use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT_monitoring::monitorctrl;
 use Sys::Hostname;
+use File::Path qw/mkpath/;
 
 #print "xCAT_monitoring::snmpmon loaded\n";
 1;
+
+
+my $confdir;
+if(xCAT::Utils->isAIX()){
+  $::snmpconfdir = "/opt/freeware/etc";
+} else {
+  $::snmpconfdir = "/usr/share/snmp";
+}
 
 
 
@@ -62,7 +71,11 @@ sub start {
     `/bin/kill -9 $pid`;
   }
   # start it up again!
-  system("/usr/sbin/snmptrapd -m ALL");
+  if(xCAT::Utils->isAIX()){
+    system("/opt/freeware/sbin/snmptrapd -m ALL");
+  } else {
+    system("/usr/sbin/snmptrapd -m ALL");
+  }
 
   # get the PID of the currently running snmpd if it is running.
   # if it's running then we just leave.  Otherwise, if we don't get A PID, then we
@@ -265,7 +278,7 @@ sub config {
     }
     return (1, "net-snmp is not installed")
   } else {
-    my ($ret, $err)=configSNMP();
+    my ($ret, $err)=configSNMP(2, $noderef, $callback);
     if ($ret != 0) { return ($ret, $err);}
   }
 
@@ -323,19 +336,19 @@ sub deconfig {
   my $callback=shift;
   my $localhostname=hostname();
 
-  if (-f "/usr/share/snmp/snmptrapd.conf.orig"){
+  if (-f "$::snmpconfdir/snmptrapd.conf.orig"){
     # copy back the old one
-    `mv -f /usr/share/snmp/snmptrapd.conf.orig /usr/share/snmp/snmptrapd.conf`;
+    `mv -f $::snmpconfdir/snmptrapd.conf.orig $::snmpconfdir/snmptrapd.conf`;
   } else {
-    if (-f "/usr/share/snmp/snmptrapd.conf"){ 
+    if (-f "$::snmpconfdir/snmptrapd.conf"){ 
 
       # if the file exists, delete all entries that have xcat_traphandler
-      my $cmd = "grep -v  xcat_traphandler /usr/share/snmp/snmptrapd.conf "; 
-      $cmd .= "> /usr/share/snmp/snmptrapd.conf.unconfig ";         
+      my $cmd = "grep -v  xcat_traphandler $::snmpconfdir/snmptrapd.conf "; 
+      $cmd .= "> $::snmpconfdir/snmptrapd.conf.unconfig ";         
       `$cmd`;     
 
       # move it back to the snmptrapd.conf file.                     
-      `mv -f /usr/share/snmp/snmptrapd.conf.unconfig /usr/share/snmp/snmptrapd.conf`; 
+      `mv -f $::snmpconfdir/snmptrapd.conf.unconfig $::snmpconfdir/snmptrapd.conf`; 
     }
   }
 
@@ -837,45 +850,54 @@ sub configSwitch {
 =cut
 #--------------------------------------------------------------------------------
 sub configSNMP {
+  my $action=shift;
+  my $noderef=shift;
+  my $callback=shift;
+
+  my $ret_val=0;
+  my $ret_text="";
+
     print "configSNMP called \n";
   my $isSN=xCAT::Utils->isServiceNode();
   my $master=xCAT::Utils->get_site_Master();
   my $cmd;
-  # now move /usr/share/snmp/snmptrapd.conf to /usr/share/snmp/snmptrapd.conf.orig
+
+  # now move $::snmpconfdir/snmptrapd.conf to $::snmpconfdir/snmptrapd.conf.orig
   # if it exists.
-  if (-f "/usr/share/snmp/snmptrapd.conf"){
-  
+  mkpath("$::snmpconfdir");
+  if (-f "$::snmpconfdir/snmptrapd.conf"){
+
     # if the file exists and has references to xcat_traphandler in mn or 'forward' in sn
     # then there is nothing that needs to be done.
     if ($isSN) {
-      `/bin/grep "forward default $master" /usr/share/snmp/snmptrapd.conf > /dev/null`;
+      `/bin/grep "forward default $master" $::snmpconfdir/snmptrapd.conf > /dev/null`;
     } else {
-      `/bin/grep  xcat_traphandler /usr/share/snmp/snmptrapd.conf > /dev/null`;
+      `/bin/grep  xcat_traphandler $::snmpconfdir/snmptrapd.conf > /dev/null`;
     }
 
     # if the return code is 1, then there is no xcat_traphandler, or 'forward'
     # references and we need to put them in.
     if($? >> 8){     
       # back up the original file.
-      `/bin/cp -f /usr/share/snmp/snmptrapd.conf /usr/share/snmp/snmptrapd.conf.orig`;
+      `/bin/cp -f $::snmpconfdir/snmptrapd.conf $::snmpconfdir/snmptrapd.conf.orig`;
 
       # if the file exists and does not have  "authCommunity execute,net public" then add it.
-      open(FILE1, "</usr/share/snmp/snmptrapd.conf");
-      open(FILE, ">/usr/share/snmp/snmptrapd.conf.tmp");
+      open(FILE1, "<$::snmpconfdir/snmptrapd.conf");
+      open(FILE, ">$::snmpconfdir/snmptrapd.conf.tmp");
       my $found=0;
       my $forward_handled=0;
       while (readline(FILE1)) {
-	if (/\s*authCommunity.*public/) {
-	  $found=1;
+        if (/\s*authCommunity.*public/) {
+          $found=1;
           if (!/\s*authCommunity\s*.*execute.*public/) {
             s/authCommunity\s*(.*)\s* public/authCommunity $1,execute public/;  #modify it to have 'execute' if found
-	  }
+          }
           if (!/\s*authCommunity\s*.*net.*public/) {
             s/authCommunity\s*(.*)\s* public/authCommunity $1,net public/;  #modify it to have 'net' if found
-	  }
+          }
         } elsif (/\s*forward\s*default/) {
-	  if (($isSN) && (!/$master/)) {
-	    s/\s*forward/\#forward/; #comment out the old one
+          if (($isSN) && (!/$master/)) {
+            s/\s*forward/\#forward/; #comment out the old one
             if (!$forward_handled) {
               print FILE "forward default $master\n"; 
               $forward_handled=1;
@@ -891,7 +913,7 @@ sub configSNMP {
       if (!$found) { #add new one if not found
         print FILE "authCommunity log,execute,net public\n"; 
       }
- 
+
       # now add the new traphandle commands:
       if (!$isSN) {
         print FILE "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
@@ -899,13 +921,13 @@ sub configSNMP {
 
       close(FILE1);
       close(FILE);
-      `mv -f /usr/share/snmp/snmptrapd.conf.tmp /usr/share/snmp/snmptrapd.conf`;
+      `mv -f $::snmpconfdir/snmptrapd.conf.tmp $::snmpconfdir/snmptrapd.conf`;
     }
   }
   else {     # The snmptrapd.conf file does not exists
     # create the file:
     my $handle = new IO::File;
-    open($handle, ">/usr/share/snmp/snmptrapd.conf");
+    open($handle, ">$::snmpconfdir/snmptrapd.conf");
     print $handle "authCommunity log,execute,net public\n";
     if ($isSN) {
       print $handle "forward default $master\n"; #forward the trap from sn to mn
@@ -914,6 +936,146 @@ sub configSNMP {
     }
     close($handle);
   }
+
+
+  # Configure SNMPv3 on AIX
+  if(xCAT::Utils->isAIX()){
+    #the identification of this node
+    my @hostinfo=xCAT::Utils->determinehostname();
+    my $isSV=xCAT::Utils->isServiceNode();
+    my %iphash=();
+    foreach(@hostinfo) {$iphash{$_}=1;}
+    if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+    my $all=0;
+    my %nodehash=();
+    if ((!$noderef) || (@$noderef==0)) {$all=1;}
+    else {
+      foreach(@$noderef) { $nodehash{$_}=1;}
+    }
+
+    my %mpa_hash=();
+    my %masterhash=();
+    my @node_a=();
+    my $table=xCAT::Table->new("mp");
+    if ($table) {
+      my @tmp1=$table->getAllNodeAttribs(['node','mpa']);
+      if (@tmp1 > 0) {
+        foreach(@tmp1) {
+          my $node=$_->{node};
+          my $mpa=$_->{mpa};
+          if ((!$all) && (!exists($nodehash{$node})) && (!exists($nodehash{$mpa}))) {next;}
+  
+          if ($mpa_hash{$mpa}) { next;} #already handled
+
+          $mpa_hash{$mpa}=1;
+
+          my $pHash=xCAT_monitoring::monitorctrl->getNodeMonServerPair([$mpa], 0);
+          if (ref($pHash) eq 'ARRAY') {
+            if ($callback) {
+                my $rsp={};
+                if ($ret_val) {
+                    $rsp->{data}->[0]=$pHash->[1];
+                }
+                $callback->($rsp);
+            } else {
+                xCAT::MsgUtils->message('S', "[mon]: " . $pHash->[1]);
+            }
+            return (0, "");
+          }
+
+          my $pairs=$pHash->{$mpa};
+          my @a_temp=split(':',$pairs);
+          my $monserver=$a_temp[0];
+          my $master=$a_temp[1];
+  
+          if ($monserver) {
+            if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
+          } else {
+            if ($isSV) { next; } #skip if does not have sn but localhost is a sn
+          }
+
+          push(@node_a, $mpa);
+
+          # find the master node and add the node in the hash
+          if(exists($masterhash{$master})) {
+            my $ref=$masterhash{$master};
+            push(@$ref, $mpa);
+          } else { $masterhash{$master}=[$mpa]; }
+        } #foreach
+      }
+      $table->close();
+    }
+
+    if (@node_a==0){ return ($ret_val, $ret_text);} #nothing to handle
+
+    # Read username, password, and mac from DB.
+    foreach my $mpa ( @node_a ) {
+      my $mac;
+      my $user;
+      my $password;
+
+      my $mpatable=xCAT::Table->new("mpa");
+      if ($mpatable) {
+        my $mpa_a = $mpatable->getAttribs({mpa => $mpa}, 'username', 'password');
+        if ( $mpa_a and $mpa_a->{username} and $mpa_a->{password} ) {
+          $user = $mpa_a->{username};
+          $password = $mpa_a->{password};
+        } else {
+          xCAT::MsgUtils->message('E', "No username or password found for $mpa");
+        }
+      }
+
+      my $mactable=xCAT::Table->new("mac");
+      if ( $mactable ) {
+        my $mac_a = $mactable->getAttribs({node=> $mpa}, 'mac');
+        if ( $mac_a and $mac_a->{mac} ) {
+          $mac = $mac_a->{mac};
+        } else {
+          xCAT::MsgUtils->message('E', "No mac found for $mpa");
+        }
+      }
+
+      my $found1=0;
+      my $found2=0;
+      if ( $mac and $user and $password ) {
+        #write configuration file
+        open(FILE1, "<$::snmpconfdir/snmptrapd.conf");
+        open(FILE, ">$::snmpconfdir/snmptrapd.conf.tmp");
+        while (readline(FILE1)) {
+          if (/\s*authUser.*$user/) {
+            $found1=1;
+            if (!/\s*authUser\s*.*execute.*$user/) {
+              s/authUser\s*(.*)\s* $user/authUser $1,execute $user/;  #modify it to have 'execute' if found
+            }
+          }
+          if (!/\s*authUser\s*.*net.*$user/) {
+            s/authUser\s*(.*)\s* $user/authUser $1,net $user/;  #modify it to have 'net' if found
+          }
+
+          if (/\s*createUser.*$mac.*$user.*$password/) {
+            $found2=1;
+          }
+
+          print FILE $_;
+        }
+
+      }
+     
+      if (!$found1) { #add new one if not found
+        print FILE "authUser log,execute,net $user\n";
+      }
+
+      if (!$found2) {
+        print FILE "createUser -e 0x8000045001$mac $user SHA $password DES\n";
+      }
+      
+      close(FILE1);
+      close(FILE);
+      `mv -f $::snmpconfdir/snmptrapd.conf.tmp $::snmpconfdir/snmptrapd.conf`;
+    }
+  }
+
 
   # TODO: put the mib files to /usr/share/snmp/mibs
   return (0, "");
