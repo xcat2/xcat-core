@@ -2024,7 +2024,8 @@ sub get_request {
         }
         return eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
     } elsif ($encode eq "storable") {
-        return fd_retrieve($sock);
+        my $return = eval { fd_retrieve($sock); }; # suppres end of stream err
+        return $return;
     }
 }
 
