@@ -1603,7 +1603,7 @@ sub setAttribs
            # delimit the columns of the table
 	   my $delimitedcol = &delimitcol($col);	
            $cols = $cols . $delimitedcol . " = ?,";
-           push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
+           push @bind, (($$elems{$col} eq "NULL") ? undef: $$elems{$col});
         }
         chop($cols);
         my $cmd ;
@@ -1786,7 +1786,7 @@ sub setAttribsWhere
       # delimit the columns of the table
       my $delimitedcol = &delimitcol($col);	
       $cols = $cols . $delimitedcol . " = ?,";
-      push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
+      push @bind, (($$elems{$col} eq "NULL") ? undef: $$elems{$col});
     }
     chop($cols);
     my $cmd = "UPDATE " . $self->{tabname} . " set $cols where " . $where_clause;
