@@ -1774,68 +1774,8 @@ sub got_fpga_buildid {
         $sessdata->{fpgabuildid} = $res{data};
 	get_imm_property(property=>"/v2/fpga/build_version",callback=>\&got_fpga_version,sessdata=>$sessdata);
    } else {
-    	get_imm_property(property=>"/v2/ibmc/dm/fw/bios/backup_build_id",callback=>\&got_backup_bios_buildid,sessdata=>$sessdata);
+        initfru_with_mprom($sessdata);
    }
-}
-sub got_backup_bios_buildid {
-    my %res = @_;
-    my $sessdata = $res{sessdata};
-    if ($res{data}) {
-        $sessdata->{backupbiosbuild} = $res{data};
-    	get_imm_property(property=>"/v2/ibmc/dm/fw/bios/backup_build_version",callback=>\&got_backup_bios_version,sessdata=>$sessdata);
-    } else {
-        initfru_with_mprom($sessdata);
-    }
-}
-
-sub got_backup_bios_version {
-    my %res = @_;
-    my $sessdata = $res{sessdata};
-    if ($res{data}) {
-        $sessdata->{backupbiosversion} = $res{data};
-	    my $fru = FRU->new();
-    	$fru->rec_type("bios,uefi,firmware");
-    	$fru->desc("Backup UEFI Version");
-    	$fru->value($sessdata->{backupbiosversion}." (".$sessdata->{backupbiosbuild}.")");
-    	$sessdata->{fru_hash}->{backupuefi} = $fru;
-       	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_id",callback=>\&got_backup_imm_buildid,sessdata=>$sessdata);
-    } else {
-        initfru_with_mprom($sessdata);
-    }
-}
-
-sub got_backup_imm_buildid {
-    my %res = @_;
-    my $sessdata = $res{sessdata};
-    if ($res{data}) {
-        $sessdata->{backupimmbuild} = $res{data};
-    	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_version",callback=>\&got_backup_imm_version,sessdata=>$sessdata);
-    } else {
-        initfru_with_mprom($sessdata);
-    }
-}
-sub got_backup_imm_version {
-    my %res = @_;
-    my $sessdata = $res{sessdata};
-    if ($res{data}) {
-        $sessdata->{backupimmversion} = $res{data};
-    	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_date",callback=>\&got_backup_imm_builddate,sessdata=>$sessdata);
-    } else {
-        initfru_with_mprom($sessdata);
-    }
-}
-sub got_backup_imm_builddate {
-    my %res = @_;
-    my $sessdata = $res{sessdata};
-    if ($res{data}) {
-        $sessdata->{backupimmdate} = $res{data};
-	my $fru = FRU->new();
-	$fru->rec_type("bios,uefi,firmware");
-	$fru->desc("Backup IMM Version");
-	$fru->value($sessdata->{backupimmversion}." (".$sessdata->{backupimmbuild}." ".$sessdata->{backupimmdate}.")");
-	$sessdata->{fru_hash}->{backupimm} = $fru;
-    }
-        initfru_with_mprom($sessdata);
 }
 sub got_fpga_version {
    my %res = @_;
