@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 BEGIN
 {
@@ -107,15 +106,20 @@ foreach my $a (@ARGV)
     push(@{$cmdref->{arg}}, $a);
 }
 
-# Set the noderange value  - needed for policy table noderange to work
-# strip off all options
-# use getopt instead of getopts to let long options pass through
-getopt('ismot');
-# check the operands for a noderange
-while (my $a = shift(@ARGV)) {
-	if (!($a =~ /=/) && !($a =~ /^-/)) {
-		$cmdref->{noderange}->[0]=$a;
-		last;
+# For some commands we need to set the noderange value
+# - don't want to depend on the order of args so need to pick
+#   the operand that doesn't have an "=" sign ( ie. attr=val format)
+my @checkcmds = ("nimnodeset", "mkdsklsnode", "rmdsklsnode", "xcat2nim", "nimnodecust");
+if (grep(/^$bname$/, @checkcmds) ) { 
+	# strip off all options
+	# use getopt instead of getopts to let long options pass through
+	getopt('ismot');
+	# check the operands for a noderange
+	while (my $a = shift(@ARGV)) {
+		if (!($a =~ /=/) && !($a =~ /^-/)) {
+			$cmdref->{noderange}->[0]=$a;
+			last;
+		}
 	}
 }
 
