@@ -166,7 +166,7 @@ array_get_element ()
 RETURNVAL=0
 
 debug=0
-if [ $VERBOSE == "1" ]; then
+if [ $VERBOSE ]; then
   debug=1
 fi
 OS_TYPE=`uname -s`
