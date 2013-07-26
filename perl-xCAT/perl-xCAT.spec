@@ -25,7 +25,6 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
-%define svninfo %(svn info | grep Revision | awk '{print $2}')
 
 %prep
 %setup -q -n perl-xCAT
@@ -37,7 +36,7 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 %if %fsm
 %else
 # Modify the Version() function in xCAT/Utils.pm to automatically have the correct version
-./modifyUtils %{version} %{svninfo}
+./modifyUtils %{version}
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.
