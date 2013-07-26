@@ -194,7 +194,7 @@ sub makescript {
     
   unless ( -r "$tmpl") {
          my $rsp;
-         $rsp->{data}->[0]= "site.precreatemypostscripts is set to 1 or yes. No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl.\n";
+         $rsp->{data}->[0]= "No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl.\n";
          xCAT::MsgUtils->message("SE", $rsp, $callback,1);
          return ;
   }
