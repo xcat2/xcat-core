@@ -1036,8 +1036,8 @@ Usage:
         setrsp_errormsg("The specified device name $args_dict{'hostname'} already exists. You must use a different device name.");
         return;
     }
-    if (! xCAT::NetworkUtils->isValidFQDN($args_dict{'hostname'})){
-        setrsp_errormsg("The specified device name $args_dict{'hostname'} is invalid. You must use a valid device name.");
+    if (! xCAT::NetworkUtils->isValidHostname($args_dict{'hostname'})){
+        setrsp_errormsg("The specified device name $args_dict{'hostname'} is invalid. You must use a valid device name composed of 'a-z' '0-9'.");
         return;
     }
 
