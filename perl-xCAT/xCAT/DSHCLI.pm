@@ -1024,7 +1024,7 @@ sub fork_fanout_dsh
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
         my $user_target       = shift @$targets_waiting;
-        # now add export NODE=nodename to the pre-command if not a device;
+        # now add export NODE=nodename to the pre-command, if not a device;
         my $exportnode;
         if (($$options{'devicetype'})) {
             $exportnode="";
@@ -2345,10 +2345,14 @@ sub config_dsh
 	    }
 	}
 	else
+
 	{
+          # if not Mellanox, it does not need a config file
+          if (!($$options{'devicetype'}  =~ /Mellanox/i)) {
             my $rsp = {};
-            $rsp->{error}->[0] = "EMsgMISSING_DEV_CFG";
-            xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+            $rsp->{error}->[0] = "The config file: $devicepath is missing";
+             xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
+          }
 	}
     }
 
@@ -5782,8 +5786,10 @@ sub bld_and_run_append
             # that were rsyn'd to at least one node
             if ($tmpappendfile eq $ps) { 
                my $parm="$appendfile:$filetoappend ";
-
-               $::xdcpappendparms .= $parm;
+               # check to see if the parameter is already in the list
+               if (!($::xdcpappendparms =~ /$parm/)) {
+                  $::xdcpappendparms .= $parm;
+               }
                $processappend=1;
 
             }
@@ -5919,8 +5925,10 @@ sub bld_and_run_merge
             # that were rsyn'd to at least one node
             if ($tmpmergefile eq $ps) { 
                my $parm="$mergefile:$filetomerge ";
-
-               $::xdcpmergeparms .= $parm;
+               # check to see if the parameter is already in the list
+               if (!($::xdcpmergeparms =~ /$parm/)) {
+                 $::xdcpmergeparms .= $parm;
+               }
                $processmerge=1;
 
             }
