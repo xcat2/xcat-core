@@ -5786,8 +5786,10 @@ sub bld_and_run_append
             # that were rsyn'd to at least one node
             if ($tmpappendfile eq $ps) { 
                my $parm="$appendfile:$filetoappend ";
-
-               $::xdcpappendparms .= $parm;
+               # check to see if the parameter is already in the list
+               if (!($::xdcpappendparms =~ /$parm/)) {
+                  $::xdcpappendparms .= $parm;
+               }
                $processappend=1;
 
             }
@@ -5923,8 +5925,10 @@ sub bld_and_run_merge
             # that were rsyn'd to at least one node
             if ($tmpmergefile eq $ps) { 
                my $parm="$mergefile:$filetomerge ";
-
-               $::xdcpmergeparms .= $parm;
+               # check to see if the parameter is already in the list
+               if (!($::xdcpmergeparms =~ /$parm/)) {
+                 $::xdcpmergeparms .= $parm;
+               }
                $processmerge=1;
 
             }
