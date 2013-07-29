@@ -18,8 +18,8 @@
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
-# Usage:  buildcore.sh BRANCH=<branch> [attr=value attr=value ...]
-#       BRANCH=<branch> - the branch within the git repo that should be built.  This arg is required for git.
+# Usage:  buildcore.sh [attr=value attr=value ...]
+#       Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
 #					actually build xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
 #					If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
@@ -69,10 +69,6 @@ if [ -z "$REL" ]; then
 	curdir=`pwd`
 	D=${curdir%/src/xcat-core}
 	REL=`basename $D`
-fi
-if [ "$REL" = "xcat-core" -a -z "$BRANCH" ]; then			# using git but they didnt specify BRANCH
-	echo "Error: must specify BRANCH=<branch> when building a git repository.  Exiting...."
-	exit 1
 fi
 OSNAME=$(uname)
 
@@ -155,11 +151,10 @@ else
 	#echo "source=$source"
 fi
 
-# for the git case, set the current branch and also set REL (changing master to devel if necessary)
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-	git checkout $BRANCH
-	#REL=`git rev-parse --abbrev-ref HEAD`
-	REL=$BRANCH
+	#git checkout $BRANCH
+	REL=`git rev-parse --abbrev-ref HEAD`
 	if [ "$REL" = "master" ]; then
 		REL="devel"
 	fi
