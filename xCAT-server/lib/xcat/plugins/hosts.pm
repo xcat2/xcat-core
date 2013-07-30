@@ -4,7 +4,9 @@ use strict;
 use warnings;
 use xCAT::Table;
 use xCAT::TableUtils;
+use xCAT::Utils;
 use xCAT::NetworkUtils;
+require xCAT::MsgUtils;
 use Data::Dumper;
 use File::Copy;
 use Getopt::Long;
@@ -19,10 +21,6 @@ my $MACTOLINKLOCAL;
 
 #############   TODO - add return code checking !!!!!
 
-my %usage =
-  (makehosts =>
-    "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o] [-m]\n       makehosts -h",
-    );
 
 sub handled_commands
 {
@@ -276,9 +274,12 @@ sub process_request
     my %extraargs = @_;
 
     my $HELP;
+    my $VERSION;
     my $REMOVE;
 	my $DELNODE;
 
+    my $usagemsg =
+    "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o] [-m]\n       makehosts -h\n       makehosts -v";
     # parse the options
     if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
     else { @ARGV = (); }
@@ -293,18 +294,52 @@ sub process_request
                     'a|adddomaintohostnames' => \$ADDNAMES,
                     'm|mactolinklocal'       => \$MACTOLINKLOCAL,
                     'l|longnamefirst'        => \$LONGNAME,
+                    'v|version'              => \$VERSION,
         )
       )
     {
-        $callback->({data => $usage{makehosts}});
-        return;
+       if ($callback)
+       {
+          my $rsp = {};
+          $rsp->{data}->[0] = $usagemsg;
+          xCAT::MsgUtils->message("I", $rsp, $callback);
+       }
+       else
+       {
+        xCAT::MsgUtils->message("I", $usagemsg . "\n");
+       }
+       return;
     }
 
     # display the usage if -h
     if ($HELP)
     {
-        $callback->({data => $usage{makehosts}});
-        return;
+       if ($callback)
+       {
+          my $rsp = {};
+          $rsp->{data}->[0] = $usagemsg;
+          xCAT::MsgUtils->message("I", $rsp, $callback);
+       }
+       else
+       {
+        xCAT::MsgUtils->message("I", $usagemsg . "\n");
+       }
+       return;
+    }
+    if ($VERSION)
+    {
+       my $version = xCAT::Utils->Version();
+       if ($callback)
+       {
+          my $rsp = {};
+          $rsp->{data}->[0] = $version;
+          xCAT::MsgUtils->message("I", $rsp, $callback);
+       }
+       else
+       {
+        xCAT::MsgUtils->message("I", $version . "\n");
+       }
+       return;
     }
 
 	# get site domain for backward compatibility
