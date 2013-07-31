@@ -1,1 +1,14 @@
-../rh/compute.exlist
+./usr/share/man/*
+./usr/share/locale/*
+./usr/share/i18n*
+./var/cache/yum*
+./usr/share/doc*
+./usr/share/gnome*
+./usr/share/zoneinfo*
+./usr/share/cracklib*
+./usr/share/info*
+./usr/share/omf*
+./usr/lib/locale*
+./usr/lib/perl5*
+./usr/share/backgrounds*
+./boot*
