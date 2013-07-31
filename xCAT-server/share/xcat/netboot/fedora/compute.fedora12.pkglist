@@ -1,14 +1,1 @@
-bash 
-dracut-network
-nfs-utils
-openssl
-dhclient 
-kernel 
-openssh-server 
-openssh-clients
-wget
-vim-minimal
-ntp
-rpm
-rsync
-rsyslog
+compute.fedora13.pkglist

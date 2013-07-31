@@ -1,3 +1,1 @@
-#!/bin/sh
-[ "$1" = "-d" ] && echo network
-exit 0
+../../rh/dracut/check
