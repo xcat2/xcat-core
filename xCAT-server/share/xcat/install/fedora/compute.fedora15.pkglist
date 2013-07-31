@@ -1,8 +1,1 @@
-#Please make sure there is a space between @ and group name
-ntp
-nfs-utils
-net-snmp
-rsync
-yp-tools
-openssh-server
-util-linux-ng
+compute.fedora14.pkglist
