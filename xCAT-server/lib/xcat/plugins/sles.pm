@@ -1783,9 +1783,9 @@ sub insert_dd () {
                 }
 
                 # get the new kernel if it exists in the update distro
-                my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
+                my @new_kernels = <$dd_dir/rpm/boot/vmlinu*>;
                 foreach my $new_kernel (@new_kernels) {
-                if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64))$/) {
+                if (-r $new_kernel && $new_kernel =~ /\/vmlinu[zx]-(.*(x86_64|ppc64|default))$/) {
                     $new_kernel_ver = $1;
                     $cmd = "/bin/mv -f $new_kernel $dd_dir/rpm/newkernel";
                     xCAT::Utils->runcmd($cmd, -1);
@@ -1909,34 +1909,32 @@ sub insert_dd () {
             }
           }
         } # end of loading drivers from rpm packages 
-    }
     
-    # Create the dir for driver update disk
-    mkpath("$dd_dir/initrd_img/cus_driverdisk");
+        # Create the dir for driver update disk
+        mkpath("$dd_dir/initrd_img/cus_driverdisk");
 
-    # insert the driver update disk into the cus_driverdisk dir
-    foreach my $dd (@dd_list) {
-        copy($dd, "$dd_dir/initrd_img/cus_driverdisk");
-    }
+        # insert the driver update disk into the cus_driverdisk dir
+        foreach my $dd (@dd_list) {
+            copy($dd, "$dd_dir/initrd_img/cus_driverdisk");
+        }
     
-    # Repack the initrd
-    # In order to avoid the runcmd add the '2>&1' at end of the cpio
-    # cmd, the echo cmd is added at the end
-    $cmd = "cd $dd_dir/initrd_img; find . -print | cpio -H newc -o > $dd_dir/initrd | echo";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        my $rsp;
-        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return ();
-    }
+        # Repack the initrd
+        # In order to avoid the runcmd add the '2>&1' at end of the cpio
+        # cmd, the echo cmd is added at the end
+        $cmd = "cd $dd_dir/initrd_img; find . -print | cpio -H newc -o > $dd_dir/initrd | echo";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return ();
+        }
 
-    # zip the initrd
-    #move ("$dd_dir/initrd.new", "$dd_dir/initrd");
-    $cmd = "gzip -f $dd_dir/initrd";
-    xCAT::Utils->runcmd($cmd, -1);
+        # zip the initrd
+        #move ("$dd_dir/initrd.new", "$dd_dir/initrd");
+        $cmd = "gzip -f $dd_dir/initrd";
+        xCAT::Utils->runcmd($cmd, -1);
 
-    if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || @driver_list))) {
         if ($arch =~/ppc/) {
             if (-r "$dd_dir/rpm/newkernel") {
                 # if there's new kernel from update distro, then use it
@@ -1980,12 +1978,21 @@ sub insert_dd () {
 
     my $rsp;
     if (@dd_list) {
-        push @{$rsp->{data}}, "Inserted the driver update disk:".join(',', sort(@dd_list)).".";
+        push @{$rsp->{data}}, "The driver update disk:".join(',',@dd_list)." have been injected to initrd.";
     }
-    if (@driver_list) {
-        push @{$rsp->{data}}, "Inserted the drivers:".join(',', sort(@rpm_drivers))." from driver packages.";
-    } elsif (@rpm_list && ($Injectalldriver || @driver_list)) {
-         push @{$rsp->{data}}, "Inserted the drivers from driver packages:".join(',', sort(@rpm_list)).".";
+    # remove the duplicated names
+    my %dnhash;
+    foreach (@rpm_drivers) {
+        $dnhash{$_} = 1;
+    }
+    @rpm_drivers = keys %dnhash;
+
+    if (@rpm_list) {
+        if (@driver_list) {
+            push @{$rsp->{data}}, "The drivers:".join(',', sort(@rpm_drivers))." from ".join(',', sort(@rpm_list))." have been injected to initrd.";
+        } elsif ($Injectalldriver) {
+            push @{$rsp->{data}}, "All the drivers from :".join(',', sort(@rpm_list))." have been injected to initrd.";
+        }
     }
     xCAT::MsgUtils->message("I", $rsp, $callback);
 

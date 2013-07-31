@@ -2492,19 +2492,26 @@ sub insert_dd {
         } elsif ( grep (/LZMA compressed data/, @format)) {
             $initrdfmt = "lzma";
         } else {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not handle the format of the initrd.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return ();
+            # check whether it can be handled by xz
+            $cmd = "xz -t $img";
+            xCAT::Utils->runcmd($cmd, -1);
+            if ($::RUNCMD_RC != 0) {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not handle the format of the initrd.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return ();
+            } else {
+                $initrdfmt = "lzma";
+            }
         }
         
 
         if ($initrdfmt eq "gzip") {
             $cmd = "gunzip -c $img > $dd_dir/initrd";
         } elsif ($initrdfmt eq "lzma") {
-            if (! -x "/usr/bin/lzma") {
+            if (! -x "/usr/bin/xz") {
                 my $rsp;
-                push @{$rsp->{data}}, "The format of initrd for the target node is \'lzma\', but this management node has not lzma command.";
+                push @{$rsp->{data}}, "The format of initrd for the target node is \'lzma\', but this management node has not xz command.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return ();
             }
@@ -2678,7 +2685,7 @@ sub insert_dd {
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the depdency for the drivers in the initrd.";
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the drivers depdency for $kernelver in the initrd.";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
                 }
@@ -2984,7 +2991,7 @@ sub insert_dd {
         if ($initrdfmt eq "gzip") {
             $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|gzip -9 -c - > $dd_dir/initrd.img";
         } elsif ($initrdfmt eq "lzma") {
-            $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|lzma -C crc32 -9 > $dd_dir/initrd.img";
+            $cmd = "cd $dd_dir/initrd_img; find .|cpio -H newc -o|xz --format=lzma -C crc32 -9 > $dd_dir/initrd.img";
         }
         
         xCAT::Utils->runcmd($cmd, -1);
@@ -3052,13 +3059,23 @@ sub insert_dd {
         
     my $rsp;
     if (@dd_list) {
-        push @{$rsp->{data}}, "Inserted the driver update disk:".join(',',@inserted_dd).".";
+        push @{$rsp->{data}}, "The driver update disk:".join(',',@inserted_dd)." have been injected to initrd.";
     }
-    if (@driver_list) {
-        push @{$rsp->{data}}, "Inserted the drivers:".join(',', sort(@rpm_drivers))." from driver packages.";
-    } elsif (@rpm_list && ($Injectalldriver || @driver_list)) {
-         push @{$rsp->{data}}, "Inserted the drivers from driver packages:".join(',', sort(@rpm_list)).".";
+    # remove the duplicated names
+    my %dnhash;
+    foreach (@rpm_drivers) {
+        $dnhash{$_} = 1;
     }
+    @rpm_drivers = keys %dnhash;
+        
+    if (@rpm_list) {
+        if (@driver_list) {
+            push @{$rsp->{data}}, "The drivers:".join(',', sort(@rpm_drivers))." from ".join(',', sort(@rpm_list))." have been injected to initrd.";
+        } elsif ($Injectalldriver) {
+            push @{$rsp->{data}}, "All the drivers from :".join(',', sort(@rpm_list))." have been injected to initrd.";
+        }
+    }
+    
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     return @inserted_dd;

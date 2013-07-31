@@ -7,6 +7,7 @@ BEGIN
 
 use strict;
 use lib "$::XCATROOT/lib/perl";
+use File::Path;
 use File::Copy;
 use xCAT::MsgUtils;
 use xCAT::TableUtils;
@@ -127,6 +128,9 @@ sub geninitrd {
         $tftpdir = $t_entry;
     }
     my $tftppath = "$tftpdir/xcat/osimage/$osimage";
+    unless (-d $tftppath) {
+        mkpath $tftppath;
+    }
     if ($arch =~ /x86/) {
         if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
