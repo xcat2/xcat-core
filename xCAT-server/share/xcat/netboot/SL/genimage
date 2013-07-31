@@ -1,1 +1,2081 @@
-../rh/genimage
+#!/usr/bin/env perl
+
+# The possible files which getting from local OS that may affect he genimage cross distor level 
+#    /proc/self/oom_adj
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
+use File::Basename;
+use File::Path;
+use File::Copy qw/copy cp mv move/;
+use File::Find;
+use Getopt::Long;
+use Cwd qw(realpath);
+use File::Temp qw/mkdtemp/;
+use FindBin;
+use lib "$FindBin::Bin/../imgutils";
+use imgutils;
+
+#use strict;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $dracutmode; #Indicate whether this is a dracut style initrd
+my $dracutdir = "dracut";  # The default directory name of dracut
+my $prinic; #TODO be flexible on node primary nic
+my $othernics; #TODO be flexible on node primary nic
+my $netdriver;
+my @yumdirs;
+my $arch;
+my %libhash;
+my @filestoadd;
+my $profile;
+my $osver;
+my $pathtofiles=dirname($0);
+my $fullpath=realpath($pathtofiles);
+my $name = basename($0);
+my $onlyinitrd=0;
+#that this method of calling genimage is no longer used
+if ($name =~ /geninitrd/) {
+   $onlyinitrd=1;
+}
+my $rootlimit;
+my $tmplimit;
+my $installroot = "/install";
+my $kerneldir;
+my $kernelver = ""; #`uname -r`;
+my $krpmver;
+my $basekernelver; # = $kernelver;
+my $customdir=$fullpath;
+$customdir =~ s/.*share\/xcat/$installroot\/custom/;
+my $imagename;
+my $pkglist;
+my $srcdir;
+my $destdir;
+my $srcdir_otherpkgs;
+my $otherpkglist;
+my $postinstall_filename;
+my $rootimg_dir;
+my $permission; # the permission works only for statelite mode currently
+my $tempfile;
+my $prompt;
+my $ignorekernelchk;
+
+
+sub xdie {
+   system("rm -rf /tmp/xcatinitrd.$$");
+   die @_;
+}
+
+#check whether a dir is NFS mounted
+sub isNFSdir{
+   my $dir=shift;
+   my $out=qx(df -T -P $dir|tail -n 1|awk '{print \$2}');
+
+   if($out =~ /nfs/i)
+     {
+        return 1;
+     }
+
+   return 0;
+}
+
+
+$SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
+GetOptions(
+   'a=s' => \$arch,
+   'p=s' => \$profile,
+   'o=s' => \$osver,
+   'n=s' => \$netdriver,
+   'i=s' => \$prinic,
+   'r=s' => \$othernics,
+   'l=s' => \$rootlimit,
+   't=s' => \$tmplimit,
+   'k=s' => \$kernelver,
+   'g=s' => \$krpmver,
+   'permission=s' => \$permission,
+   'kerneldir=s' => \$kerneldir,   
+   'tempfile=s' =>\$tempfile, #internal flag
+   'pkglist=s' => \$pkglist,   #internal flag
+   'srcdir=s' => \$srcdir,   #internal flag
+   'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
+   'otherpkglist=s' => \$otherpkglist,      #internal flag
+   'postinstall=s' => \$postinstall_filename,  #internal flag
+   'rootimgdir=s' => \$destdir,   #internal flag
+   'driverupdatesrc=s' => \$driverupdatesrc, #internal flag
+   'interactive' =>\$prompt, 
+   'onlyinitrd' =>\$onlyinitrd, 
+   'ignorekernelchk' => \$ignorekernelchk,
+);
+
+if (@ARGV > 0) {
+    $imagename=$ARGV[0];
+}
+
+my %updates_os = (); # the hash for updating osimage table
+my %updates = (); # the hash for updating linuximage table
+
+
+$permission = "755" unless ($permission);
+$updates{'permission'} = $permission if ( $tempfile );
+
+unless ($arch) {
+    $arch = `uname -m`;
+    chomp($arch);
+	$arch = "x86" if ($arch =~ /i.86$/);
+}
+
+$srcdir="$installroot/$osver/$arch" unless ($srcdir);
+$updates{'pkgdir'} = $srcdir if ($tempfile);
+
+$srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($tempfile);
+
+$destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
+$updates{'rootimgdir'} = $destdir if ($tempfile);
+
+$rootimg_dir="$destdir/rootimg";
+
+$kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
+#$updates{'kerneldir'} = $kerneldir if ($tempfile);
+
+# Get the subchannels of the given interface
+my $subchn;
+my $readChn;
+my @chn;
+if ($arch eq "s390x") {
+	$subchn = `cat /etc/sysconfig/network-scripts/ifcfg-$prinic | grep "SUBCHANNELS"`;
+ 	
+ 	if (!$subchn) {
+ 		print "SUBCHANNELS need to be given in /etc/sysconfig/network-scripts/ifcfg-$prinic";
+ 		exit 1;
+ 	} else {
+ 		# Trim right
+		$subchn =~ s/\s*$//;
+
+		# Trim left
+		$subchn =~ s/^\s*//;
+		
+		# Extract subchannels
+ 		$subchn =~ s/SUBCHANNELS=//g;
+ 		
+ 		# Extract read channel
+ 		@chn = split( ",", $subchn );
+ 		$readChn = @chn[0];
+ 	}
+}
+
+unless ($osver and $profile) {
+   usage();
+   exit 1;
+}
+
+my @ndrivers;
+if ($netdriver) {
+    foreach (split /,/,$netdriver) {
+        if (/^allupdate$/) {
+            next;
+        }
+       unless (/\.ko$/) {
+          s/$/.ko/;
+       }
+       next if (/^$/);
+       push @ndrivers, $_;
+    }
+    
+    if ( ($updates{'netdrivers'} ne $netdriver) and ($tempfile) ) {
+        $updates{'netdrivers'} = $netdriver;
+    }
+}
+
+# Add the default driver list
+if ($arch eq 'x86' or $arch eq 'x86_64') {
+    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net/;
+} elsif ($arch eq 'ppc64') {
+    push @ndrivers, qw/e1000 e1000e igb ibmveth ehea/;
+} elsif ($arch eq 's390x') {   
+    push @ndrivers, qw/qdio ccwgroup/;
+}
+
+foreach (@ndrivers) {
+   unless (/\.ko$/) {
+      s/$/.ko/;
+   }
+}
+
+unless ($onlyinitrd) {
+   @yumdirs=();
+
+   my @pkgdirs = split(",", $srcdir); 
+   my $dir;
+   foreach $dir (@pkgdirs) {
+       find(\&isyumdir, <$dir/>);
+       if (!grep /$dir/, @yumdirs) {
+           print "The repository for $dir should be created before running the genimge. Try to run [createrepo $dir].\n";
+       }
+   }
+
+   # Add the dir for kernel rpm to be installed
+   if ($kernelver) {
+      find(\&isyumdir, <$kerneldir/>);
+      if (!grep /$kerneldir/, @yumdirs) {
+         print "The repository for $kerneldir should be created before running the genimge. Try to run [createrepo $kerneldir].\n";
+      }
+   }
+   unless (scalar(@yumdirs)) {
+      print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
+      exit 1;
+   }
+
+
+   mkpath "$rootimg_dir";
+   my $yumconfig;
+   open($yumconfig,">","/tmp/genimage.$$.yum.conf");
+
+   #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+   if(isNFSdir("$rootimg_dir")){
+      print $yumconfig "[main]\ndiskspacecheck=0\n\n";
+   }
+
+   my $repnum=0;
+   foreach $srcdir (@yumdirs) {
+      print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
+      $repnum += 1;
+   }
+   $repnum-=1;
+   close($yumconfig);
+   mkpath "$rootimg_dir/etc";
+   
+
+   my $fd;
+   open($fd,">>","$rootimg_dir/etc/fstab");
+   print $fd "#Dummy fstab for rpm postscripts to see\n";
+   close($fd);
+
+   my $non_interactive;
+   if (!$prompt) { $non_interactive="-y"; }
+
+   my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+
+   foreach (0..$repnum) {
+      $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
+   }
+   
+   mkpath("$rootimg_dir/var/lib/yum");
+
+   unless ($imagename) {
+       $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
+       unless ($pkglist) {
+           $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist");
+       }
+   }
+
+   if ($pkglist) {
+       $updates{'pkglist'} = $pkglist if ($tempfile);
+   } else {
+       print "Unable to find package list for $profile!";
+       exit 1;
+   }
+
+   my %pkg_hash=imgutils::get_package_names($pkglist);
+
+   my $index=1;
+   my $pass;
+    foreach $pass (sort {$a <=> $b} (keys(%pkg_hash))) {
+        my $pkgnames = "";
+        foreach (keys(%{$pkg_hash{$pass}})) {
+            if($_ eq "INCLUDEBAD")  {
+               print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
+               exit 1;
+            }
+
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
+            my $pa=$pkg_hash{$pass}{$_};
+            my @npa = ();
+            # replace the kernel package with the name has the specific version
+            foreach my $p (@$pa) {
+                if ($p =~ /^kernel$/ && $kernelver) {
+                    my $kernelname;
+                    if ($krpmver) {
+                        $kernelname = "kernel-".$krpmver;
+                    } else {
+                        $kernelname = "kernel-".$kernelver;
+                    }
+                    my $searchkern = $yumcmd . " list $kernelname -q";
+                    my @kernpkgs = `$searchkern`;
+                    my $found = 0;
+                    foreach my $k (@kernpkgs) {
+                        if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
+                            my $version = $1;
+                            if ($kernelver =~ /$version/) {
+                                $found++;
+                            }
+                        }
+                    }
+                    if ($found eq 0) {
+                        print "Cannot find the kernel with version $kernelver.\n";
+                        exit 1;
+                    }
+                    push @npa, $kernelname;
+                }
+                elsif ($p =~ /^@/) {
+                    push @npa, "\"$p\"";
+                }
+                else {
+                    push @npa, $p;
+                }
+            }
+            $pkgnames .= " " . join(' ', @npa);
+        }
+        my $envlist;
+        if(exists $pkg_hash{$pass}{ENVLIST}){
+            $envlist = join(' ', @{$pkg_hash{$pass}{ENVLIST}});
+        }
+
+        print "$envlist $yumcmd install $pkgnames\n";
+        my $rc = system("$envlist $yumcmd install $pkgnames");
+        if ($rc) { 
+            print "yum invocation failed\n";
+            exit 1;
+        }
+    }
+
+   #Now let's handle extra packages
+    unless ($imagename) {
+        $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
+        unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
+    }
+    my %extra_hash=();
+    if ($otherpkglist) {
+        $updates{'otherpkglist'} = $otherpkglist if ($tempfile);
+        %extra_hash = imgutils::get_package_names($otherpkglist);
+    }
+    my %extrapkgnames; 
+
+    my %repohash;
+    if (keys(%extra_hash) > 0) {
+      open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
+      my $index=1;
+      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
+        foreach (keys(%{$extra_hash{$pass}})) {
+
+            if($_ eq "INCLUDEBAD")  {
+               print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+               exit 1;
+            }
+            
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
+            print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+            $repohash{$pass}{$index} = 1;
+            $index++;
+            my $pa=$extra_hash{$pass}{$_};
+            $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+        }
+      }
+      close($yumconfig);
+      $index--;
+      my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+
+      #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+      if(isNFSdir("$rootimg_dir")){
+         $yumcmd_base .= "--setopt=diskspacecheck=0 ";
+       }  
+
+      foreach (0..$repnum) {
+          $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
+       }
+#      for (1..$index) {
+#          $yumcmd .= "--enablerepo=otherpkgs$_ ";
+#      } 
+
+      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
+          $yumcmd = $yumcmd_base;
+          foreach my $repo_index ( keys %{$repohash{$pass}} ) {
+              $yumcmd .= "--enablerepo=otherpkgs$repo_index ";
+          }
+
+          system("$yumcmd clean all");
+
+          my $envlist;
+          if(exists($extra_hash{$pass}{ENVLIST})){
+              $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
+          }
+          # remove the packages that are specified in the otherpkgs.list files with leading '-'
+          my $yumcmd_remove= "$yumcmd erase ";
+          if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
+              my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
+              my $rm_packges= join(' ', @$pa);
+              if ($rm_packges) {
+                  print "$envlist $yumcmd_remove $rm_packges\n";
+                  $rc = system("$envlist $yumcmd_remove $rm_packges");
+              }
+          }
+
+#          # mount /proc file system since several packages need it.
+#          print "mount /proc file system\nchroot $rootimg_dir /bin/mount -t proc proc /proc\n";
+#          system("chroot $rootimg_dir /bin/mount -t proc proc /proc");
+
+          # install extra packages
+          my $yumcmd_base = $yumcmd;
+          $yumcmd .= "install ";
+          # append extra pkg names to yum command 
+          if ($extrapkgnames{$pass}) {
+              $yumcmd .= " $extrapkgnames{$pass} ";
+	      $yumcmd =~ s/ $/\n/;
+    
+	      # debug
+	      #print "yumcmd=$yumcmd\n";
+	      #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+	      #print "repo=$repo";
+	      
+	      print "$envlist $yumcmd\n"; 
+	      my $rc = system("$envlist $yumcmd");
+	      if ($rc) { 
+		  print "yum invocation failed\n";
+		  exit 1;
+	      }
+          } else {
+	      print "No Packages marked for install\n";
+          }
+
+#          # umount /proc file system that just mounted
+#          print "umount /proc file system\nchroot $rootimg_dir /bin/umount /proc\n";
+#          system("chroot $rootimg_dir /bin/umount /proc");
+	
+          # remove the packages that are specified in the otherpkgs.list files with leading '--'
+          if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
+              my $pa=$extra_hash{$pass}{'POST_REMOVE'};
+              my $rm_packges= join(' ', @$pa);
+              if ($rm_packges) {
+                  print "$envlist $yumcmd_remove $rm_packges\n";
+                  $rc = system("$envlist $yumcmd_remove $rm_packges");
+              }
+          }
+          $yumcmd = $yumcmd_base;
+
+          # run yum update to update any installed rpms
+          # needed when running genimage again after updating software in repositories
+          my $yumcmd_update = $yumcmd_base . " update  ";
+          $rc = system("$yumcmd_update");
+
+      }
+   }
+
+   # ignore any return code
+
+   postscripts(); #run 'postscripts'
+}
+
+#get the rpm version, if the rpm version is different then the db verison may change.
+my $mnrpmver = `rpm --version | awk  '{print \$3}'`;
+my $cnrpmver = `chroot $rootimg_dir rpm --version | awk '{print \$3}'`;
+if ( $mnrpmver ne $cnrpmver ){
+    #fine all db file witch should be rebuided
+    my $filelist = `file $rootimg_dir/var/lib/rpm/* | grep 'Berkeley DB' | awk -F : '{print \$1}'`;
+
+    my @files = split '\n', $filelist;
+
+    system("rm -rf $rootimg_dir/var/lib/rpm/__db*");
+    foreach  my $file ( @files ){
+        my $filename = basename($file);
+        #dump the db file to a normal test file with the db_dump on the mn
+        system("db_dump $file > $rootimg_dir/tmp/$filename.dbtmp9");
+        unlink("$rootimg_dir/var/lib/rpm/$filename");
+        #chroot to the rootimage and run db_load
+        system(" chroot $rootimg_dir db_load -f /tmp/$filename.dbtmp9 /var/lib/rpm/$filename");
+    }
+    system("rm -rf $rootimg_dir/tmp/*.dbtmp9");
+    #rebuild rpm db file in rootimage for cn
+    system(" chroot $rootimg_dir rpm --rebuilddb");
+}
+
+# Default to the first kernel found in the install image if nothing specified explicitly.
+# A more accurate guess than whatever the image build server happens to be running
+# If specified, that takes precedence.
+# if image has one, that is used
+# if all else fails, resort to uname -r like this script did before
+
+# Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
+my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+foreach (@KVERS) {
+    s/vmlinuz-//;
+}
+
+@KVERS= <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
+
+$basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
+
+$basekernelver = `uname -r` unless ($basekernelver);
+
+$kernelver = $basekernelver unless ($kernelver);
+chomp($kernelver);
+
+#$updates{'kernelver'} = $kernelver if ($tempfile);
+
+# copy the kernel to $destdir
+if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
+    cp("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/vmlinuz-$kernelver") {
+    cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/image-$kernelver") {
+    cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} else {
+    xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
+}
+
+# Load driver update disk, and copy them to the root image
+my @dd_drivers = &load_dd();
+
+# Push the drivers into the @ndrivers base on the order
+my @new_order = ();
+foreach my $dd (@dd_drivers) {
+    unless (grep { $_ eq $dd} @ndrivers) {
+        push @new_order, $dd;
+    }
+    print "Added driver $dd from driver update disk or driver rpm\n";
+}
+
+if (@new_order) {
+    @ndrivers = (@new_order, @ndrivers);
+}
+
+open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
+my @moddeps = <$moddeps>;
+my @checkdeps = @ndrivers;
+while (scalar @checkdeps) {
+    my $driver = pop @checkdeps;
+    my @lines = grep /\/$driver:/,@moddeps;
+    foreach (@lines) {
+        chomp;
+        s/.*://;
+        s/^\s*//;
+        my @deps = split /\s+/,$_;
+        my $dep;
+        foreach $dep (@deps) {
+            $dep =~ s/.*\///;
+            unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+                print "Added $dep as an autodetected depedency\n";
+            }
+            unshift (@checkdeps,$dep); #recursively check dependencies
+            unshift (@ndrivers,$dep);
+        }
+    }
+}
+close($moddeps);
+
+#remove the duplicated drivers
+my @fulldrivers;
+foreach my $dn (@ndrivers) {
+    unless (grep {$_ eq $dn} @fulldrivers) {
+        push @fulldrivers, $dn;
+    }
+}
+@ndrivers = @fulldrivers;
+
+unlink "/tmp/genimage.$$.yum.conf";
+if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") ) {
+    $dracutmode = 1;
+    # get dracut version
+    my $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
+    chomp($dracutver);
+    if ($dracutver =~ /^\d\d\d$/) {
+        if ($dracutver >= "033") {
+            $dracutdir = "dracut_033";
+        } else {
+            $dracutdir = "dracut";  # The default directory
+        }
+    }
+    print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
+}
+
+
+#-- for centos, disable the internet repository
+if( -e "$rootimg_dir/etc/yum.repos.d/CentOS-Base.repo" ) {
+    my $repo_content=`sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`;
+    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo");
+}
+#
+
+#-- run postinstall script
+unless ($imagename) {
+    $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
+    unless ($postinstall_filename) {
+        $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
+    }
+} 
+
+if ( $postinstall_filename ) {
+
+    #For Mellonax IB script. In diskless image, the uname -r not returning the rootimg level, 
+    #because the "uname -r" only returns the version of the kernel in use
+    #create a temporary uname script. for every flag except for -r, it should just call the real 
+    #uname with the same flags and return that info.
+    if(!( -e "$rootimg_dir/bin/orig_uname")) {
+        system("mv $rootimg_dir/bin/uname $rootimg_dir/bin/orig_uname");
+    }
+    my $tmpuname;
+    open($tmpuname,">","$rootimg_dir/bin/uname");
+    print $tmpuname <<EOS_UNAME;
+#!/bin/sh
+
+if [[ \$\# -eq 1 && \$1 == "-r" ]]; then
+    echo $kernelver
+    exit 0
+fi
+
+res=`/bin/orig_uname \$\*`
+echo \$res
+
+EOS_UNAME
+
+    close($tmpuname);
+    system("chmod +x $rootimg_dir/bin/uname");
+
+
+    $updates{'postinstall'} = $postinstall_filename if ($tempfile);
+
+    foreach my $postinstall ( split /,/, $postinstall_filename ) {
+        if ( !-x $postinstall ) {
+            print "postinstall script $postinstall is not executable\n";
+            exit 1;
+        }
+        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
+        if($rc) {
+            print "postinstall script $postinstall failed\n";
+            exit 1;
+        }
+    }
+    # restore the orig uname
+    system("mv $rootimg_dir/bin/orig_uname $rootimg_dir/bin/uname");
+
+}
+
+# all the attributes have been gathered
+# now, update the linuximage and osimage tables
+# TODO: do statelite and stateless share the same attributes?
+#BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
+if ($tempfile) {
+    open(FILE, ">>$tempfile");
+    if ($imagename) {
+	if (keys(%updates) > 0) {
+	    print FILE "The output for table updates starts here\n";
+	    print FILE "table::linuximage\n";
+	    print FILE "imagename::$imagename\n";
+	    my @a=%updates;
+	    print FILE join('::',@a) . "\n";
+	    print FILE "The output for table updates ends here\n";
+	}
+    } else {
+	$updates_os{'profile'} = $profile;
+	$updates_os{'imagetype'} = 'linux';
+	$updates_os{'provmethod'} = 'netboot';
+	$updates_os{'osname'} = 'Linux';
+	$updates_os{'osvers'} = $osver;
+	$updates_os{'osarch'} = $arch;
+	# update the imagename for stateless 
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::osimage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates_os;
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
+	
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::linuximage\n";
+	print FILE "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates;
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
+	
+	# update the imagename for statelite   
+	$updates_os{'provmethod'} = 'statelite';
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::osimage\n";
+	print FILE "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates_os;
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
+	
+	print FILE "The output for table updates starts here\n";
+	print FILE "table::linuximage\n";
+	print FILE "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates;
+	print FILE join('::',@a) . "\n";
+	print FILE "The output for table updates ends here\n";
+    }
+    close FILE;
+}
+#END
+
+
+# statelite .statelite directory added here.
+# this is where tmpfs will be created.
+
+mkpath "$rootimg_dir/.statelite";  # create place for NFS mounts.	
+mkpath "$rootimg_dir/.sllocal/localmnt";  # create place for localdisk mount
+mkpath "$rootimg_dir/.sllocal/log";  # create place for localdisk log
+
+# this script will get the directories.	
+# TODO: the file is re-copied in liteimg.pm
+my $cwd = $FindBin::Bin;
+unless (-f "$cwd/../add-on/statelite/rc.statelite") {
+	print "Can't find $cwd/../add-on/statelite/rc.statelite!\n";
+	exit 1;
+}
+
+system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+system("cp $cwd/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
+# also need to add this file:
+# may have already been made into a symbolic link, if so ignore it
+
+unless ($dracutmode) { #in dracut mode, we delegate all this activity
+    unless (-l "$rootimg_dir/var/lib/dhclient" ) {
+    	mkpath "$rootimg_dir/var/lib/dhclient/";
+    	system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
+    }
+    
+    unless (-l "$rootimg_dir/var/lib/dhcp" ) {
+    	mkpath "$rootimg_dir/var/lib/dhcp/";
+    	system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
+    }
+}
+
+#if ($dracutmode) {
+    # modify etc/rc.sysinit, prevent remounting
+    # TODO: need to find one way to prevent remounting
+    if (-f "$rootimg_dir/etc/rc.sysinit") {
+        my $SYSINITFILE;
+        my $TMPSYSINITFILE;
+        # backup etc/rc.sysinit file before modifing it
+        system("cp -a $rootimg_dir/etc/rc.sysinit $rootimg_dir/etc/rc.sysinit.backup");
+        open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
+        open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
+        # find the following lines,
+        # if remount_needed ; then
+        #   action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
+        # fi
+        # and change "if remount_needed ; then" to "if false; then"
+        while(<$SYSINITFILE>) {
+            if ($_ eq "if remount_needed ; then\n") {
+                $_ = "if false; then\n";
+            }
+            print $TMPSYSINITFILE $_;
+        }
+        close($SYSINITFILE);
+        close($TMPSYSINITFILE);
+        cp("/tmp/rc.sysinit.tmp", "$rootimg_dir/etc/rc.sysinit");
+    }
+#}
+
+# before mkinitrd, run depmod to generate modules.dep 
+system("chroot $rootimg_dir depmod $kernelver");
+
+# for the genimage-enchement, need to create two initial ramdisks,
+# one is for stateless
+# the other one is for statelite
+
+if ($dracutmode) {
+    mkinitrd_dracut("stateless");
+    mkinitrd_dracut("statelite");
+} else {
+    mkinitrd("statelite");
+    mkinitrd("stateless");
+}
+
+sub getlibs {
+    my $file = shift;
+    my $liblist = `chroot $rootimg_dir ldd $file`;
+    if ($liblist =~ /not a dynamic executable/) {
+        return;
+    }
+    my @libs = split/\n/,$liblist;
+    my @return;
+    foreach (@libs) {
+        unless (/=>/) {
+            (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+            $lib =~ s/^\///;
+            $libhash{$lib}=1;
+            next;
+        }
+        (my $temp1,my $temp2) = split />/,$_,2;
+        (my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+        unless ($temp1 =~ /\//) {
+            next;
+        }
+        $temp1 =~ s/^\///;
+        $libhash{$temp1}=1;
+   }
+}
+
+sub mkinitrd_dracut {
+    my ($mode) = @_; # the mode is for statelite or stateless
+
+    my $dracutmoduledir="$rootimg_dir/usr/share/dracut/modules.d/";
+    if ( (! -d $dracutmoduledir) and (-d "$rootimg_dir/usr/lib/dracut/modules.d/"))   
+    {
+       $dracutmoduledir="$rootimg_dir/usr/lib/dracut/modules.d/";
+    }
+
+    my $dracutmpath = $dracutmoduledir."97xcat/";
+    mkpath($dracutmpath);
+
+    my $perm = (stat("$fullpath/$dracutdir/check"))[2];
+    cp("$fullpath/$dracutdir/check", $dracutmpath);
+    chmod($perm&07777, "$dracutmpath/check");
+
+    foreach (@ndrivers) { s/\.ko$//; }
+    # Add drivers to support local disk
+    push @ndrivers, "ext3";
+    push @ndrivers, "ext4";
+    #remove the duplicated drivers
+    my @fulldrivers;
+    foreach my $dn (@ndrivers) {
+        unless (grep {$_ eq $dn} @fulldrivers) {
+            push @fulldrivers, $dn;
+        }
+    }
+    @ndrivers = @fulldrivers;
+
+    my $add_drivers = join(' ', @ndrivers);
+    print "Try to load drivers: $add_drivers to initrd.\n";
+    my $DRACUTCONF;
+
+    if ($mode eq "statelite") {
+        # for statelite
+        cp("$fullpath/$dracutdir/install.statelite","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+
+        cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
+
+        cp("$fullpath/$dracutdir/xcat-premount.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-premount.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-premount.sh");
+  
+        #update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        print $DRACUTCONF qq{filesystems+="nfs"\n};
+        close $DRACUTCONF;
+    } elsif ($mode eq "stateless") {
+        cp("$fullpath/$dracutdir/install.netboot","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.netboot"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/$dracutdir/xcat-cmdline.sh","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
+
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+
+        if ($prinic) {
+            my $optspec;
+            open($optspec,'>>',"$dracutmpath/xcat-cmdline.sh");
+            print $optspec "PRINIC=$prinic\n";
+            close $optspec;
+        }
+
+        cp("$fullpath/$dracutdir/xcatroot","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcatroot"))[2];
+        chmod($perm&07777, "$dracutmpath/xcatroot");
+
+        cp("$fullpath/$dracutdir/installkernel", "$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
+        chmod($perm&07777, "$dracutmpath/installkernel");
+
+        # update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        close $DRACUTCONF;
+    } else {
+        xdie "the mode: $mode is not supported by genimage";
+    }
+
+    my $additional_options=undef;
+    if($rootlimit)
+    {
+	open(my $ETC_CMDLINE,">","$rootimg_dir/tmp/cmdline");
+	print $ETC_CMDLINE qq{rootlimit=$rootlimit\n};
+	close $ETC_CMDLINE;
+	$additional_options= qq{--include /tmp/cmdline /etc/cmdline};
+    }
+
+    # force the dracut run in non-hostonly mode for dracut higher than version 033
+    if ($dracutver > "033") {
+        $additional_options .= " -N";
+    }
+    system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver");
+    print "the initial ramdisk for $mode is generated successfully.\n";
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz"); 
+}
+
+sub mkinitrd {
+    my ($mode) = @_; # statelite or stateless
+
+    if($mode eq "statelite") {
+        push @ndrivers, "nfs.ko";
+
+        open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
+        my @moddeps = <$moddeps>;
+        my @checkdeps = ("nfs.ko");
+        while (scalar @checkdeps) {
+            my $driver = pop @checkdeps;
+            my @lines = grep /\/$driver:/,@moddeps;
+            foreach (@lines) {
+                chomp;
+                s/.*://;
+                s/^\s*//;
+                my @deps = split /\s+/,$_;
+                my $dep;
+                foreach $dep (@deps) {
+                    $dep =~ s/.*\///;
+                    unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+                        unshift (@checkdeps,$dep); #recursively check dependencies
+                        unshift (@ndrivers,$dep);
+                        print "Added $dep as an autodetected depedency\n";
+                    }
+                }
+            }
+        }
+    
+        # Additional modules needed on s390x
+        if ($arch eq "s390x") {
+            # The network drivers need to be loaded in this order
+            unshift @ndrivers, "ccwgroup.ko";
+            unshift @ndrivers, "qdio.ko";
+        }
+    }
+    
+	mkpath("/tmp/xcatinitrd.$$/bin");
+	
+    symlink("bin","/tmp/xcatinitrd.$$/sbin");
+	mkpath("/tmp/xcatinitrd.$$/usr/bin");
+	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
+	mkpath("/tmp/xcatinitrd.$$/usr/lib");
+	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
+	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
+	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
+	mkpath("/tmp/xcatinitrd.$$/proc");
+	mkpath("/tmp/xcatinitrd.$$/sys");
+	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
+	mkpath("/tmp/xcatinitrd.$$/sysroot");
+	mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
+	mkpath("/tmp/xcatinitrd.$$/var/lib/dhclient");
+	my $inifile;
+
+# start writing to the init script.
+	open($inifile,">","/tmp/xcatinitrd.$$/init");
+	print $inifile "#!/sbin/busybox.anaconda sh\n";
+	
+# add some functions
+ 	print $inifile <<EOS1; 	
+NEWROOT="/sysroot"
+SHELL="/bin/sh"
+RWDIR=".statelite"
+
+
+# Define some colors
+RESET="\033[0m"
+RED="\033[31m"
+CYAN="\033[36m"
+YELLOW="\033[33m\033[1m"
+GREEN="\033[32m"
+PINK="\033[35m\033[1m"
+MAGENTA="\033[35m"
+BROWN="\033[33m"
+NORMAL=\$RESET
+
+# This function is used to mount files/directories from the .statelite directory 
+#  over the root directory.
+# This function is stolen from redhat
+shell() {
+        echo ''
+        echo -e "\$YELLOW Entering rescue/debug init shell."
+        echo -e " Exit shell to continue booting.\$RESET"
+        \$SHELL
+}
+
+fancydisplay () {
+        clear
+        echo -e "\$CYAN"
+echo '
+             ..                                               :iiii,
+           :tLL;                                             .,:...,.
+          .j;:tLt.   :.                               .;j:   ij::::;.
+        :tt;:::,ii:.jEEGi                           :tDEEG:.ti,::::;t:
+       .,,,,,,,,,,,tLEEEEj:                        tDEEEEDtj;,,,::::::
+        .:,,::::::,;fDEEEEEL,.                .,ijDEDDDEEGt,,,,:,ijj;
+          ....   ..:;jDDLGDEEEGGGfjjjjjjfffLGDEEDEEDLjfGDt,:..
+                     .iftffGDLLDEEEDDDEEDDDDEDEEGLfLjjtti:
+                       ,fii;jGDGffLjifLGLjtfffffGDEDGfji
+                        ;DEEGffDDDjiii;;ii;,tGDEGjfEEEEf.
+                       ,GEGGftiGEEEDt:,;,;;LEEDGjLEEEEEEG
+                      ;DEDGjtjfitjGGjfDGj;jLLiitfGDEGjEEDj
+                      fGjjtfLfji;itjfGDjLDfjjjji;tGGLDEEDj
+                      fEDGffjti;ittjjjjtjjjjt:,,iiGGGGjtf.
+                      :fGGLfLLfLGf;i;ijffj,,tjLGDDGLfjtf,
+                    :;tLfjiiffLGDDDGLGEEEEjfGDDGGLfjfff:
+             .. ,;tLLLLLL,;tijfLGGGjfDEEEEDLLGGGLLLjtjLLfi,.
+         .jffLLLLGGLfjj;:  :,;ijLGLfjGEDDEGtfGGLfjj:.,jjLGGLti;,,;fj,
+         ,fGGGGGGLj,.          ;jGGGGLLjffftjLj;..     .,tfGGGGGGGGGGi
+          ,jGDDDj,.              :tLGLGGLGDLjt,           :iLGGDDDDGLif
+          ,LDDDL,                 .;LDDDDGfff,              ,;iGDDj;,..
+          ;fGGGf,                    ,;;;;,:                 tf;jL,
+           ;.:::,               Powered by xCAT               ,j.:;
+'
+        echo -e "\$RESET"
+        echo -e "\$YELLOW"
+echo '
+                            _________     ________________
+                     ___  __\\_   ___ \\   /  _  \\__    ___/
+                     \\  \\/  /    \\  \\/  /  /_\\  \\|    |   
+                      >    <\\     \\____/    |    \\    |   
+                     /__/\\_ \\\\______  /\\____|__  /____|   
+                           \\/       \\/         \\/         
+'
+        echo -e "\$RESET"
+}
+
+EOS1
+
+
+   print $inifile "busybox.anaconda mount -t proc /proc /proc\n";
+   print $inifile "busybox.anaconda --install\n";
+   print $inifile "mount -t sysfs /sys /sys\n";
+   print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
+   print $inifile "mkdir /dev/pts\n";
+   print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
+   print $inifile "mkdir /dev/shm\n";
+   print $inifile "mkdir /dev/mapper\n";
+   print $inifile "mknod /dev/null c 1 3\n";
+   print $inifile "mknod /dev/zero c 1 5\n";
+   print $inifile "mknod /dev/systty c 4 0\n";
+   print $inifile "mknod /dev/tty c 5 0\n";
+   print $inifile "mknod /dev/console c 5 1\n";
+   print $inifile "mknod /dev/ptmx c 5 2\n";
+   print $inifile "mknod /dev/rtc c 10 135\n";
+   print $inifile "mknod /dev/tty0 c 4 0\n";
+   print $inifile "mknod /dev/tty1 c 4 1\n";
+   print $inifile "mknod /dev/tty2 c 4 2\n";
+   print $inifile "mknod /dev/tty3 c 4 3\n";
+   print $inifile "mknod /dev/tty4 c 4 4\n";
+   print $inifile "mknod /dev/tty5 c 4 5\n";
+   print $inifile "mknod /dev/tty6 c 4 6\n";
+   print $inifile "mknod /dev/tty7 c 4 7\n";
+   print $inifile "mknod /dev/tty8 c 4 8\n";
+   print $inifile "mknod /dev/tty9 c 4 9\n";
+   print $inifile "mknod /dev/tty10 c 4 10\n";
+   print $inifile "mknod /dev/tty11 c 4 11\n";
+   print $inifile "mknod /dev/tty12 c 4 12\n";
+   print $inifile "mknod /dev/ttyS0 c 4 64\n";
+   print $inifile "mknod /dev/ttyS1 c 4 65\n";
+   print $inifile "mknod /dev/ttyS2 c 4 66\n";
+   print $inifile "mknod /dev/ttyS3 c 4 67\n";
+
+   foreach (@ndrivers) {
+		print $inifile "insmod /lib/$_\n";
+   }
+      
+      
+# Start udev on s390x
+if ($arch eq "s390x") {
+	print $inifile <<EOMS;
+# Start udev to find devices attached to node
+echo `/sbin/udevd --daemon`
+echo `/sbin/udevtrigger`
+echo `/sbin/udevsettle`
+sleep 1
+echo `/sbin/depmod`
+
+# Setup network scripts
+echo "NETWORKING=yes" > /etc/sysconfig/network
+
+echo "ONBOOT=yes" > /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "BOOTPROTO=dhcp" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "DEVICE=$prinic" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo 'OPTIONS="layer2=1"' >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "SUBCHANNELS=$subchn" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+
+# Turn on network devices
+echo $subchn > /sys/bus/ccwgroup/drivers/qeth/group
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/layer2
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/online
+echo "alias $prinic qeth" >> /etc/modprobe.conf
+echo `ifup $prinic`
+sleep 4
+EOMS
+}
+
+   print $inifile <<EOMS;
+# check and see if debug is specified on command line
+grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
+
+# check the kernel parameter at first
+
+# if one parameter for the booting device is there, we will use it
+# TODO
+# ( netdevice is recognized by SLES, )
+# ( Dracut has one "network" module to handle the booting network devices, which use "ifname" )
+# ( What should the other redhat versions use ?  netdev=<eth0> and BOOTIF=<mac address> )
+
+# besides this action, the following code is also used to get the XCAT= value, which is for XCAT server
+# TODO: does "anaconda.busybox sh" support "set " ?
+
+PRINIC=$prinic
+NODESTATUS='y'
+
+for i in `cat /proc/cmdline`; do
+    KEY=`echo \$i |awk -F= '{print \$1}'`
+    if [ "\$KEY" == 'netdev' ]; then
+        NETDEV=`echo \$i |awk -F= '{print \$2}'`
+    elif [ "\$KEY" == 'BOOTIF' ]; then
+        VALUE=`echo \$i |awk -F= '{print \$2}'|sed -e s/^01-// -e s/-/:/g`
+        #BOOTIF=`ifconfig -a|grep -i "hwaddr \$VALUE"|awk '{print \$1}'`
+        BOOTIF=\`ip  -oneline link show |grep -i \$VALUE|awk -F ':' '{print \$2}'|grep -o \"[^ ]\+\( \+[^ ]\+\)*\"\`
+    elif [ "\$KEY" == 'XCAT' ]; then
+        VALUE=`echo \$i |awk -F= '{print \$2}'`
+        # format: XCAT=xcatmaster:3001
+        XCATSERVER=\$VALUE
+    elif [ "\$KEY" == 'XCATIPORT' ]; then
+        VALUE=`echo \$i |awk -F= '{print \$2}'`
+        # format: XCAT=xcatmaster:3001
+        XCATIPORT=\$VALUE
+    fi
+    #if "nonodestatus" specified,do not update the nodestatus 
+    if [ \$i == 'nonodestatus' ]; then
+       NODESTATUS='n'
+    fi
+done
+
+if [ -z "\$IFACE" ]; then
+    if [ ! -z "\$NETDEV" ]; then
+        IFACE=\$NETDEV
+    elif [ ! -z "\$BOOTIF" ]; then
+        IFACE=\$BOOTIF
+    elif [ ! -z "\$PRINIC" ]; then
+        IFACE=\$PRINIC
+    else
+        echo "\${RED}Couldn't find the proper booting device, switch to shell...\${RESET}"
+        shell
+        exit
+    fi
+fi
+
+export IFACE=\$IFACE
+echo network --device \$IFACE --bootproto dhcp >> /bin/netstart
+
+netstart \$IFACE
+while ! ifconfig | grep inet; do
+    echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
+    sleep 5
+    netstart \$IFACE
+done
+ifconfig lo 127.0.0.1
+ifconfig lo up
+
+XCATMASTER=`echo \$XCATSERVER|awk -F: '{print \$1}'`
+
+if [ -z \$XCATIPORT ]; then
+     XCATIPORT="3002"
+fi
+
+#update nodelist.nodestatus to "netbooting"
+if [ \$NODESTATUS != 'n' ]; then
+    /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
+fi
+
+cd /
+for i in `cat /proc/cmdline`; do
+   KEY=`echo \$i |awk -F= '{print \$1}'`
+   if [ "\$KEY" == 'imgurl' ]; then
+      VALUE=`echo \$i |awk -F= '{print \$2}'`
+      if [ "http" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        #NOTE needs FT retry code to scale
+        #NOTE: should prob have max count
+        FILENAME=`echo \$VALUE|awk -F/ '{print \$NF}'`
+        while [ ! -r "\$FILENAME" ]; do
+          echo Getting \$VALUE...
+          if ! wget \$VALUE; then
+            ST=`expr \$RANDOM % 5`
+            sleep \$ST
+            rm -f \$FILENAME
+          fi
+        done
+      fi
+      if [ "nfs" == "`echo \$VALUE|awk -F: '{print \$1}'`" ]; then
+        NFS=1
+        SERVER=`echo \$VALUE|awk -F/ '{print \$3}'`
+        ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=4;i<=NF;i++) printf "/%s",\$i}'`
+      fi
+   # for NFS root 
+   elif [ "\$KEY" == 'NFSROOT' ]; then
+	NFSROOT=1
+	VALUE=`echo \$i |awk -F= '{print \$2}'`
+	SERVER=`echo \$VALUE|awk -F: '{print \$1}'`
+	ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+   elif [ "\$KEY" == 'STATEMNT' ]; then
+	STATELITE=1
+	VALUE=`echo \$i |awk -F= '{print \$2}'`
+        # the VALUE may be null
+        if [ ! -z \$VALUE ]; then
+            SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
+            SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+            # may be that there is not server and just a directory.
+            if [ -z \$SNAPSHOTROOT ]
+            then
+                SNAPSHOTROOT=\$SNAPSHOTSERVER
+                SNAPSHOTSERVER=
+            fi
+       fi
+   elif [ "\$KEY" == 'NODE' ]; then
+        NODENAME=`echo \$i |awk -F= '{print \$2}'`
+   fi
+done
+
+
+
+
+
+# show xCAT logo
+fancydisplay
+
+
+echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
+
+# STATELITE code here:
+if [ "\$STATELITE" = "1" ]; then
+    echo Setting up Statelite
+    # for loop back mouting capability!
+    mknod /dev/loop0 b 7 0
+    mkdir -p \$NEWROOT
+    MAXTRIES=5
+    ITER=0
+    ME=`hostname`
+    if [ ! -z "\$NODENAME" ]; then
+        ME=\$NODENAME
+    fi
+    if [ "\$NFSROOT" = "1" ]; then
+        while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14; do
+            ITER=\$(expr \$ITER + 1)
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "You are dead. rpower \$ME boot to play again."
+                echo "Possible problems:
+1. This initrd wasn't craeted for the statelite node?
+2. Is DNS set up? Maybe that's why I can't mount \${SERVER}.
+3. The nfs modules aren't set right in this initfs?"
+                shell
+                exit
+            fi
+            echo -e "\${RED}Could not mount \$SERVER:\$ROOTDIR on \$NEWROOT \$RESET"
+            RS=`expr \$RANDOM % 30`
+            echo -e "Trying again in \$RS seconds"
+            sleep \$RS
+        done
+    elif [ "\$NFS" = "1" ]; then
+        echo -e "\${RED}The \"imgurl=\" value should not be nfs-type if statelite mode is enabled \$RESET"
+        shell
+        exit
+    else
+        # for statelite mode on top of the ramdisk
+EOMS
+    print $inifile "if [ -r /rootimg-statelite.gz ]; then\n";
+    print $inifile "echo Setting up RAM-root tmpfs.\n";
+    if ($rootlimit) {
+        print $inifile "    mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT \n";
+    } else {
+        print $inifile "    mount -o mode=755 -t tmpfs rootfs \$NEWROOT\n";
+    }
+    print $inifile <<EOMS;
+            modprobe nfs
+            cd \$NEWROOT
+            echo -n "Extracting root file system:"
+            if [ -x /bin/cpio ]; then
+                gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
+            else
+                gzip -cd /rootimg-statelite.gz |cpio -idum
+            fi
+            echo Done
+        else
+            echo -e "\${RED} Couldnot find rootimg-statelite.gz for statelite on top of ramdisk \$RESET"
+            shell
+            exit
+        fi
+
+    fi
+    # now we need to mount the rest of the system. 
+    if [ ! -e "\$NEWROOT/\$RWDIR" ]; then
+        echo ""
+        echo -e "\${RED}Hmmm... this NFS root directories doesn't have a /\$RWDIR directory for me to mount a rw filesystem. You'd better to create it... \${NORMAL}"
+        echo ""
+        shell
+        exit
+    fi
+
+    while [ ! -e "\$NEWROOT/etc/init.d/statelite" ]; do
+        echo ""
+        echo -e "\${RED}Hmmm... \$NEWROOT/etc/init.d/statelite doesn't exist. Perhaps you didn't run liteimg for the current osimage"
+        echo ""
+        shell
+        exit
+    done
+
+    mount -t tmpfs rw -o mode=$permission \$NEWROOT/\$RWDIR
+    mkdir -p \$NEWROOT/\$RWDIR/tmpfs
+
+    # mount the SNAPSHOT directory here for persistent use.
+    if [ ! -z \$SNAPSHOTSERVER ]; then
+        mkdir -p \$NEWROOT/\$RWDIR/persistent
+        MAXTRIES=5
+        ITER=0
+        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT \$NEWROOT/\$RWDIR/persistent -o nolock,rsize=32768; do
+            ITER=\$(expr \$ITER + 1 )
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "You're dead. rpower \$ME boot to play again."
+                echo "Possible problems:
+1.  \$SNAPSHOTSERVER is not exporting \$SNAPSHOTROOT ?
+2.  IS DNS set up? Maybe that's why I can't mount \$SNAPSHOTSERVER.";
+                shell
+                exit
+            fi
+            echo -e "\${RED}Hmmm... Can't mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT. \${NORMAL}"
+            RS=\$(expr \$RANDOM % 20 )
+            echo -e "Trying again in \$RS seconds"
+            sleep \$RS
+        done
+
+        # create directory which is named after my node name
+        mkdir -p \$NEWROOT/\$RWDIR/persistent/\$ME
+        ITER=0
+        # umount current persistent mount
+        while ! umount -l \$NEWROOT/\$RWDIR/persistent; do
+            ITER=\$(( ITER + 1 ))
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "Your are dead, rpower \$ME boot to play again."
+                echo "Cannot umount \$NEWROOT/\$RWDIR/persistent."
+                /bin/sh
+                exit
+            fi
+            RS= \$(( \$RANDOM % 20 ))
+            echo "Trying again in \$RS seconds..."
+            sleep \$RS
+        done
+
+        # mount persistent to server:/rootpath/nodename
+        ITER=0
+        while ! mount \$SNAPSHOTSERVER:/\$SNAPSHOTROOT/\$ME  \$NEWROOT/\$RWDIR/persistent -o nolock,rsize=32768; do
+            ITER=\$(( ITER + 1 ))
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "Your are dead, rpower \$ME boot to play again."
+                echo "Possible problems: cannot mount to \$SNAPSHOTSERVER:/\$SNAPSHOTROOT/\$ME."
+                /bin/sh
+                exit
+            fi
+            RS= \$(( \$RANDOM % 20 ))
+            echo "Trying again in \$RS seconds..."
+            sleep \$RS
+        done
+    fi
+
+    # have to preserve the initial DHCP request.
+    if [ ! -d \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhclient ]; then
+        mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhclient
+    fi
+
+    if [ ! -d \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp ]; then
+        mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp
+    fi
+
+    cp -fp /var/lib/dhclient/dhclient.leases \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhclient/dhclient-\$IFACE.leases
+    cp -fp /var/lib/dhclient/dhclient.leases \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp/dhclient-\$IFACE.leases
+
+    [ -e /etc/ntp.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/ntp.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
+    [ -e /etc/ntp/step-kickers ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc/ntp && cp /etc/ntp/step-kickers \$NEWROOT/\$RWDIR/tmpfs/etc/ntp
+    [ -e /etc/resolv.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/resolv.conf \$NEWROOT/\$RWDIR/tmpfs/etc/
+
+    while [ ! -e \$NEWROOT/etc/init.d/statelite ]; do
+        echo -e "\${RED} \$NEWROOT/etc/init.d/statelite doesn't exist in the osimge! \${NORMAL}"
+        shell
+    done
+
+    # do all the mounts
+    \$NEWROOT/etc/init.d/statelite
+
+    # give the debug shell just before we go if specified!
+    grep '\(shell\)' /proc/cmdline >/dev/null && shell
+
+    echo 0x100 > /proc/sys/kernel/real-root-dev
+    export keep_old_ip=yes
+    mount -n --bind /dev/ \$NEWROOT/dev
+
+    umount /sys
+    umount /proc
+
+    if ! exec /sbin/switch_root -c /dev/console \$NEWROOT /sbin/init; then
+        echo ""
+        echo -e "\${RED}Couldn't switch_root. Something must be wrong with the root image.\${RESET}"
+        shell
+    fi
+
+fi
+# END NFSROOT/Statelite code
+
+if [ -r /rootimg.sfs ]; then
+  echo Setting up squashfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  mount -t squashfs /rootimg.sfs /ro
+  mount -t tmpfs rw /rw
+  mount -t aufs -o dirs=/rw:/ro mergedroot \$NEWROOT
+  mkdir -p \$NEWROOT/ro
+  mkdir -p \$NEWROOT/rw
+  mount --move /ro \$NEWROOT/ro
+  mount --move /rw \$NEWROOT/rw
+EOMS
+   print $inifile "elif [ -r /rootimg.gz ]; then\n";
+   print $inifile "echo Setting up RAM-root tmpfs.\n";
+   if ($rootlimit) {
+      print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
+   } else {
+      print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+   }
+   print $inifile "  cd \$NEWROOT\n";
+   print $inifile "  echo -n \"Extracting root filesystem:\"\n";
+   print $inifile "  if [ -x /bin/cpio ]; then\n";
+   print $inifile "  zcat /rootimg.gz |/bin/cpio -idum\n";
+   print $inifile "  else\n";
+   print $inifile "  zcat /rootimg.gz |cpio -idum\n";
+   print $inifile "  fi\n";
+   print $inifile "  echo Done\n";
+   print $inifile "else\n";
+   print $inifile "  echo -n Failed to download image, panicing in 5...\n";
+   print $inifile "  for i in 4 3 2 1 0; do\n";
+   print $inifile "    /bin/sleep 5\n";
+   print $inifile "    echo -n \$i...\n";
+   print $inifile "  done\n";
+   print $inifile "  echo\n";
+ print $inifile <<EOMS;
+  echo "You're dead.  rpower nodename reset to play again.
+
+* Did you packimage with -m cpio, -m squashfs, or -m nfs?
+* If using -m squashfs did you include aufs.ko with geninitrd?
+  e.g.:  -n tg3,squashfs,aufs,loop
+* If using -m nfs did you export NFS and sync rootimg?  And
+  did you include the aufs and nfs modules in the proper order:
+  e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
+
+"
+  sleep 5
+EOMS
+   print $inifile "  exit\n";
+   print $inifile "fi\n";
+   print $inifile "cd /\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/dev/.dhclient-\$IFACE.leases\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/var/lib/dhclient/dhclient-\$IFACE.leases\n";
+   print $inifile 'if [ -z "$SNAPSHOTSERVER" ]; then cp /etc/resolv.conf $NEWROOT/etc/resolv.conf; fi'."\n";
+   print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
+   print $inifile "exec switch_root -c /dev/console \$NEWROOT /sbin/init\n";
+   close($inifile);
+
+   open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
+   print $inifile "#!/sbin/nash\n";
+   close($inifile);
+
+   #/tmp/updateflag: a script to feedback node provision status to xcatd
+   system("mkdir -p /tmp/xcatinitrd.$$/tmp/");   
+   open($inifile, ">","/tmp/xcatinitrd.$$/tmp/updateflag");
+
+   print $inifile <<EOMS;
+#!/bin/sh
+if [ \$# -eq 3 ]; then                                                           
+   echo \$3 > /tmp/ncarg                                                         
+   nc  \$1 \$2 -w 60 -e /tmp/updateflag                                           
+else                                                                            
+   retrytimes=0                                                                 
+   cmd=""                                                                       
+   while [ "\$cmd" != "done" ]; do                                               
+         retrytimes=`expr \$retrytimes + 1`                                      
+         if [ \$retrytimes -eq 60 ]; then                                        
+            break;                                                              
+         fi                                                                     
+         read -t 60 cmd                                                         
+         if [ "\$cmd" == "ready" ]; then                                         
+             head -n 1 /tmp/ncarg                                               
+             rm -rf /tmp/ncarg                                                  
+         fi                                                                     
+   done                                                                         
+                                                                                
+fi
+EOMS
+   close($inifile);
+
+   chmod(0755,"/tmp/xcatinitrd.$$/init");
+   chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+   chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
+   @filestoadd=();
+   foreach (@ndrivers) {
+     if (-f "$customdir/$_") {
+        push @filestoadd,[$_,"lib/$_"];
+     } elsif (-f "$pathtofiles/$_") {
+        push @filestoadd,[$_,"lib/$_"];
+     }
+   }
+   # add rsync for statelite
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc") {
+      getlibs($_);
+      push @filestoadd,$_;
+   }
+   
+    # Additional binaries needed for udev on s390x
+    if ($arch eq "s390x") {
+        foreach ("sbin/udevsettle", "sbin/udevtrigger", "sbin/udevd", "sbin/depmod") {
+            getlibs($_);
+            push @filestoadd,$_;
+        }
+    }
+   
+   if ($arch =~ /x86_64/) {
+      push @filestoadd,"lib64/libnss_dns.so.2";
+      push @filestoadd,"lib64/libresolv.so.2";
+   } else {
+      push @filestoadd,"lib/libnss_dns.so.2";
+      push @filestoadd,"lib/libresolv.so.2";
+   }
+   push @filestoadd,keys %libhash;
+
+   find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
+   my $pathonrootimage = "$rootimg_dir/tmpfiles";
+   my $pathinrootimage = "/tmpfiles";
+   mkpath($pathonrootimage);
+   foreach (@filestoadd) {
+      if (ref($_)) {
+         #print "$_->[0], $_->[1]\n";
+         my $srcfile = $_->[0];
+         system("chroot $rootimg_dir cp $srcfile $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_->[0]);
+         if (-f "$customdir/".$_->[0]) {
+            $srcpath="$customdir/".$_->[0];
+         } elsif (-f "$pathtofiles/".$_->[0]) {
+            $srcpath="$pathtofiles/".$_->[0];
+         }
+         mkpath(dirname("/tmp/xcatinitrd.$$/".$_->[1]));
+         copy($srcpath,"/tmp/xcatinitrd.$$/".$_->[1]);
+         chmod 0755,"/tmp/xcatinitrd.$$/".$_->[1];
+      } else {
+         #print "$_\n";
+         system("chroot $rootimg_dir cp $_ $pathinrootimage");
+         my $srcpath = "$pathonrootimage/".basename($_);
+         if (-f "$customdir/$_") {
+            $srcpath = "$customdir/$_";
+         } elsif (-f "$pathtofiles/$_") {
+            $srcpath = "$pathtofiles/$_";
+         }
+         mkpath(dirname("/tmp/xcatinitrd.$$/$_"));
+         copy("$srcpath","/tmp/xcatinitrd.$$/$_");
+         chmod 0755,"/tmp/xcatinitrd.$$/".$_;
+      }
+   }
+   rmtree($pathonrootimage);
+
+   # Copy udev and network scripts into initrd for s390x, which also works for other platforms
+   # udev
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+   system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+   system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+   system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
+   system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
+   
+   # Network related scripts
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/sysconfig");
+   system("cp -r $rootimg_dir/etc/sysconfig/* /tmp/xcatinitrd.$$/etc/sysconfig");
+   system("mkdir -p /tmp/xcatinitrd.$$/sbin");
+   system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
+   system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
+   system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
+   system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
+   system("mkdir -p /tmp/xcatinitrd.$$/lib64");
+   system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
+   system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
+	
+   #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
+   system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");
+   system("rm -rf /tmp/xcatinitrd.$$");
+
+}
+
+sub isyumdir {
+   if ($File::Find::name =~ /\/repodata$/) {
+      my $location = $File::Find::name;
+      $location =~ s/\/repodata$//;
+      push @yumdirs,$location;
+   }
+}
+
+sub isnetdriver {
+   foreach (@ndrivers) {
+      if ($File::Find::name =~ /\/$_/) {
+         my $filetoadd = $File::Find::name;
+         $filetoadd =~ s!$rootimg_dir/!!;
+         push @filestoadd,[$filetoadd,"lib/$_"];
+         print "Added driver $_ to initrd\n";
+      }
+   }
+}
+
+sub postscripts {
+   generic_post();
+
+   # TODO: workaround for kdump on RHEL6
+   # add one fake command: fsck.nfs
+   unless ( -x "$rootimg_dir/sbin/fsck.nfs" ) {
+        system("echo true > $rootimg_dir/sbin/fsck.nfs; chmod a+x $rootimg_dir/sbin/fsck.nfs");
+   }
+   
+
+   if( ! -d "$rootimg_dir/opt/xcat/") {
+       mkdir "$rootimg_dir/opt/xcat/";
+   }
+   copy ("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/");
+   chmod '0755', "$rootimg_dir/opt/xcat/xcatdsklspost";
+}
+
+
+sub using_systemd {
+    my $os = shift;
+    if ($os =~ /fedora(\d+)/) {
+        if ($1 >= 15) {
+            return 1;
+        }
+    }elsif ($os =~ /rhels(\d+)/) {
+        if ($1 >= 7) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+sub generic_post { #This function is meant to leave the image in a state approximating a normal install
+   my $cfgfile;
+   unlink("$rootimg_dir/dev/null");
+   system("mknod $rootimg_dir/dev/null c 1 3");
+   open($cfgfile,">","$rootimg_dir/etc/fstab");
+   print $cfgfile "devpts  /dev/pts devpts   gid=5,mode=620 0 0\n";
+   print $cfgfile "tmpfs   /dev/shm tmpfs    defaults       0 0\n";
+   print $cfgfile "proc    /proc    proc     defaults       0 0\n";
+   print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
+
+   if (!&using_systemd($osver)) {
+      if ($tmplimit) {
+         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+      } else {
+         print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
+         print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
+      }
+   }
+
+   my $rootfs_name=$profile."_".$arch;
+   print $cfgfile "$rootfs_name    /   tmpfs   rw  0 1\n";
+
+   close($cfgfile);
+   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network");
+   print $cfgfile "NETWORKING=yes\n";
+   close($cfgfile);
+   open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
+   print $cfgfile "#Dummy resolv.conf to make boot cleaner";
+   close($cfgfile);
+
+   # Create the ifcfg-x file for diskless node. But keep the ONBOOT=no
+   # to skip the break of nfs-based boot
+   if ($prinic) {
+     open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
+     print $cfgfile "ONBOOT=no\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+     close($cfgfile);
+   }
+   foreach (split /,/,$othernics) {
+      if (/^$/) { next; }
+      open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$_");
+      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
+      close($cfgfile);
+   }
+   
+   # securetty not needed on s390x
+   if ($arch ne "s390x") {
+      open($cfgfile,">>","$rootimg_dir/etc/securetty");
+      print $cfgfile "ttyS0\n";
+      print $cfgfile "ttyS1\n";
+      close($cfgfile);
+   }
+	
+   my @passwd;
+   open($cfgfile,"<","$rootimg_dir/etc/passwd");
+   @passwd = <$cfgfile>;
+   close($cfgfile);
+   open($cfgfile,">","$rootimg_dir/etc/passwd");
+   foreach (@passwd) {
+      if (/^root:/) {
+         s/^root:\*/root:x/
+      }
+      print $cfgfile $_;
+   }
+   close($cfgfile);
+   foreach (<$rootimg_dir/etc/skel/.*>) {
+      if (basename($_) eq '.' or basename($_) eq '..') {
+         next;
+      }
+      copy $_,"$rootimg_dir/root/";
+   }
+   unless (  -r <$rootimg_dir/etc/rc3.d/S??network>) {
+       symlink  "/etc/init.d/network","$rootimg_dir/etc/rc3.d/S10network";
+   }
+   
+   # gettyset is not found on s390x
+   if ($arch ne "s390x") {
+      if (!&using_systemd($osver)) {
+         open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
+         print $cfgfile "#!/bin/bash\n"; 
+         print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
+         print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
+         print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
+         print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
+         print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+         print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+         print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+         print $cfgfile "        FLOWFLAG=\"-h\"\n";
+         print $cfgfile "     fi\n";
+         print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
+                                 # The syntax of next line is not correct, that means it does NOthing. (rh6 and higher)
+                                 # And it should NOT work for rh6 and higher, otherwise it will cauase multiple agetty for ttySx
+         print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
+         print $cfgfile "     else\n";
+         print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+         print $cfgfile "        init q\n";
+         print $cfgfile "     fi\n";
+         print $cfgfile "  fi\n";
+         print $cfgfile "done\n";
+
+         close($cfgfile);
+
+         chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
+         system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/gettyset S60gettyset");
+      }
+		
+      copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+      chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+      system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
+   }
+} 
+
+
+my $driver_name;
+my $real_path;
+sub get_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        $real_path = $File::Find::name;
+    }
+}
+
+my @all_real_path;
+sub get_all_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        push @all_real_path, $File::Find::name;
+    }
+}
+
+# Load driver disk and driver rpm to the initrd
+# Get the driver disk or driver rpm from the osimage.driverupdatesrc
+# The valid value: dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm, if missing the tag: 'dud'/'rpm'
+# the 'rpm' is default.
+#
+# If cannot find the driver disk from osimage.driverupdatesrc, will try to search driver disk 
+# from /install/driverdisk/<os>/<arch>
+#
+# For driver rpm, the driver list will be gotten from osimage.netdrivers. If not set, copy all the drivers from driver 
+# rpm to the initrd.
+#
+# Return the driver names by loading order
+
+sub load_dd ()
+{
+    my @dd_list;
+    my @rpm_list;
+    my @driver_list;
+
+    my $Injectalldriver;
+    my @rpm_drivers;
+
+    # Parse the parameters to the the source of Driver update disk and Driver rpm, and driver list as well
+    if ($driverupdatesrc) {
+        my @srcs = split(',', $driverupdatesrc);
+        foreach my $src (@srcs) {
+            if ($src =~ /dud:(.*)/i) {
+                push @dd_list, $1;
+            } elsif ($src =~ /rpm:(.*)/i) {
+                push @rpm_list, $1;
+            } else {
+                push @rpm_list, $src;
+            }
+        }
+    }
+    if (! @dd_list) {
+        # get Driver update disk from the default path if not specified in osimage
+        # check the Driver Update Disk images, it can be .img or .iso
+        if (-d "$installroot/driverdisk/$osver/$arch") {
+            @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
+        }
+    }
+
+    foreach (split /,/,$netdriver) {
+        if (/^allupdate$/) {
+            $Injectalldriver = 1;
+            next;
+        }
+        unless (/\.ko$/) {
+            s/$/.ko/;
+        }
+        push @driver_list, $_;
+    }
+
+
+    chomp(@dd_list);
+    chomp(@rpm_list);
+
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
+        return ();
+    }
+
+    # Create the work space for initrd hack
+    my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
+    mkpath "$dd_dir/mnt";
+    mkpath "$dd_dir/mods";
+    
+    my @dd_drivers = ();    #driver name
+    
+    # Loading drivers from each Driver Disk
+    foreach my $dd (@dd_list) {
+        my $rc = system ("mount -o loop $dd $dd_dir/mnt");
+        if ($rc) {
+            print "mount the Driver Disk $dd failed.\n";
+            next;
+        }
+    
+        if (! (-f "$dd_dir/mnt/rhdd" || -f "$dd_dir/mnt/modinfo"
+                || -f "$dd_dir/mnt/modules.dep" || -f "$dd_dir/mnt/modules.cgz")) {
+            print "The Driver Disk $dd has not correct format.\n";
+            system ("umount -f $dd_dir/mnt");
+            next;
+        }
+    
+        # Load the modinfo
+        open($modinfo, "<", "$dd_dir/mnt/modinfo");
+        my @modinfo_lines = <$modinfo>;
+        my $mod_ver = shift @modinfo_lines;
+        chomp($mod_ver);
+        if ($mod_ver !~ /^Version 0/) {
+            print "The Driver Disk $dd has unknown version.\n";
+            system ("umount -f $dd_dir/mnt");
+            next;
+        }
+    
+        foreach my $line (@modinfo_lines) {
+            if ($line !~ /^Version/ && $line =~ /^(\w+)/) {
+                chomp($line);
+                if ($line =~ /^\s*$/) { next; }
+                $line =~ s/$/\.ko/;
+                push @dd_drivers, $line;
+            }
+        }
+        close($modinfo);
+   
+        # Copy the firmware 
+        if (-d "$dd_dir/mnt/firmware") {
+            system ("cp -rf $dd_dir/mnt/firmware $rootimg_dir/lib/firmware");
+        } 
+
+        # Load the modules.cgz
+        system ("cd $dd_dir/mods; gunzip -c $dd_dir/mnt/modules.cgz |cpio -id");
+        if (! -d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk") {
+            mkpath "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk";
+        }
+
+        # Copy the drivers to the root image
+        my @drivers = `find $dd_dir/mods/$kernelver/$arch/ -type f`;
+
+        foreach my $d (@drivers) {
+            chomp($d);
+            $driver_name = $d;
+            $driver_name =~ s/.*\///;
+            $real_path = "";
+            find (\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+            if ($real_path eq "") {
+                system ("cp $d $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+            } else {
+                system ("cp $d $real_path");
+            }
+        }
+
+        rmtree "$dd_dir/mods/*";
+    
+        my $rc = system ("umount -f $dd_dir/mnt");
+        if ($rc) {
+            print "umount the directory $dd_dir/mnt failed\n";
+            exit 1;
+        }
+    }
+
+    # Loading the drivers from rpm packages
+    if (@rpm_list && ($Injectalldriver || @driver_list)) {
+        # Extract the files from rpm to the tmp dir
+        mkpath "$dd_dir/rpm";
+        foreach my $rpm (@rpm_list) {
+            if (-r $rpm) {
+                if (system ("cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum")) {
+                    print "Error: Cannot extract the files from the rpm $rpm.\n";
+                }
+            } else {
+                print "Error: Cannot read the rpm $rpm.\n";
+            }
+        }
+
+        # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+        # Change it back to xxx.ko here
+        $driver_name = "\*ko.new";
+        @all_real_path = ();
+        find(\&get_all_path, <$dd_dir/rpm/*>);
+        foreach my $file (@all_real_path) {
+            my $newname = $file;
+            $newname =~ s/\.new$//;
+            if (system ("mv -f $file $newname")) {
+                print "Error: Could not rename $file\n";
+
+            }
+        }
+
+        # Copy the firmware to the rootimage
+        if (-d "$dd_dir/rpm/lib/firmware") {
+            system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
+        }
+
+        # if $ignorekernelchk is specified, copy all driver files to target kernel dir
+        if ($ignorekernelchk) {
+            my @kernelpath4vrpm = <$dd_dir/rpm/lib/modules/*>;
+            foreach my $path (@kernelpath4vrpm) {
+                if ($path eq "$dd_dir/rpm/lib/modules/$kernelver") {
+                    next;
+                }
+                
+                unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                    mkpath "$dd_dir/rpm/lib/modules/$kernelver";
+                }
+                system ("/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver");
+            }
+        }
+
+        # Copy the drivers to the rootimage
+        if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+          if (@driver_list) {
+            foreach my $driver (@driver_list) {
+              $driver_name = $driver;
+              $real_path = "";
+              find(\&get_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+              if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                  # remove the old one if existing
+                  @all_real_path = ();
+                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                  foreach (@all_real_path) {
+                      if (-r $_) {
+                          unlink ($_);
+                      }
+                  }
+                  
+                  if (! -d "$rootimg_dir$1") {
+                      mkpath "$rootimg_dir$1";
+                  }
+                  system ("cp -rf $real_path $rootimg_dir$1");
+                  push @rpm_drivers, $driver;
+              } else {
+                  print "Warning: cannot find the driver $driver from the driver rpms\n";
+              }
+            }
+          } elsif ($Injectalldriver) {
+            # copy all the drviers to the rootimage
+            $driver_name = "\*\.ko";
+            @all_real_path = ();
+            find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
+            my @all_drivers = @all_real_path;
+            foreach my $new_driver (@all_drivers) {
+              if (basename($new_driver) =~ /\.ko$/) {
+                  # remove the old one if existing
+                  $driver_name = basename($new_driver);
+                  @all_real_path = ();
+                  find(\&get_all_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                  foreach my $old_driver (@all_real_path) {
+                      if (-r $old_driver) {
+                          unlink ($old_driver);
+                      }
+                  }
+                  push @rpm_drivers, basename($new_driver);
+              }
+            }
+            
+            system ("cp -rf $dd_dir/rpm/lib/modules/$kernelver $rootimg_dir/lib/modules/");
+          }
+        } else {
+          print "Warning: cannot find the kernel $kernelver from drvier rpms\n";
+        }
+
+        push @dd_drivers, @rpm_drivers;
+    }
+
+    # Generate the dependency relationship
+    system ("chroot '$rootimg_dir' depmod $kernelver");
+
+    # Clean the env
+    rmtree "$dd_dir";
+
+    return @dd_drivers;
+}
+
+sub usage {
+    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <osver> -p <profile> -k <kernelver> [--permission <permission>] [--interactive]'."\n";
+   print "       --permission only works with statelite mode\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute \n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute --interactive\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
+
+    return 0;
+}
+
+

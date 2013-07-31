@@ -1,1 +1,15 @@
-../rh/compute.rhels6.pkglist
+bash 
+dracut-network
+nfs-utils
+openssl
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+wget
+vim-minimal
+ntp
+rpm
+rsync
+rsyslog
+e2fsprogs

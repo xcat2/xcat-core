@@ -217,7 +217,17 @@ sub is_me
     #my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
     # get all the possible IPs for the node I'm running on
-    my $ipcmd = "ip addr | grep 'inet'";
+    # this is a common subroutine for both AIX and Linux,
+    # AIX does not have ip command
+    my $ipcmd;
+    if ( -f "/sbin/ip" )
+    {
+        $ipcmd = "ip addr | grep 'inet'";
+    }
+    else
+    {
+        $ipcmd = "ifconfig -a | grep 'inet'";
+    }
     my $result = xCAT::Utils->runcmd($ipcmd, -1, 1);
     if ($::RUNCMD_RC != 0)
     {
