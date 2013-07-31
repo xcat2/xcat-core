@@ -1,1 +1,2 @@
-../../rh/dracut/installkernel
+#!/bin/bash
+instmods nfs sunrpc

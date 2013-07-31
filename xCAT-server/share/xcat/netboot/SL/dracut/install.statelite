@@ -1,1 +1,9 @@
-../../rh/dracut/install.statelite
+#!/bin/sh
+echo $drivers
+dracut_install wget cpio gzip dash  modprobe wc touch echo cut
+dracut_install -o ctorrent
+dracut_install grep ifconfig hostname awk egrep grep dirname expr
+dracut_install parted mke2fs bc mkswap swapon chmod
+inst "$moddir/xcat-updateflag" "/tmp/updateflag"
+inst_hook pre-mount 5 "$moddir/xcat-premount.sh"
+inst_hook pre-pivot 5 "$moddir/xcat-prepivot.sh"
