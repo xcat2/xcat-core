@@ -21,6 +21,8 @@ if [ "$(uname -s)" = "AIX" ]; then
 	logger -t xcat -p local4.info "Install: On AIX , remoteshell calling aixremoteshell -d "
    exit 0
 fi
+master=$MASTER
+
 if [ -r /etc/ssh/sshd_config ]
 then
 	logger -t xcat -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
@@ -69,13 +71,11 @@ if [ ! -x /usr/bin/openssl ]; then
 fi
 allowcred.awk &
 CREDPID=$!
-sleep 1
-if [ "$(uname -s)" = "AIX" ]; then
- AIX=1
- export AIX 
-  logger -t xcat -p local4.info "remoteshell setting up AIX"
-fi
 
+
+#first contact daemon  xcatflowrequest <server> 3001
+logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+/$xcatpost/xcatflowrequest $master 3001
 getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
 
 #check the message is an error or not
@@ -86,9 +86,9 @@ if [ $? -ne 0 ]; then
 	logger -t xCAT -p local4.info ssh_dsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         while [ -z "$MYCONT" ]; do
-                let SLI=$RANDOM%10
-                let SLI=SLI+10
-                sleep $SLI
+                #first contact daemon  xcatflowrequest <server> 3001
+                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                /$xcatpost/xcatflowrequest $master 3001
                 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         done
@@ -107,6 +107,9 @@ else
 fi
 rm /tmp/ssh_dsa_hostkey
 
+# first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+/$xcatpost/xcatflowrequest $master 3001
 getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
 
 #check whether the message is an error or not
@@ -117,9 +120,10 @@ if [ $? -ne 0 ]; then
 	logger -t xCAT -p local4.info ssh_rsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	while [ -z "$MYCONT" ]; do
-    		let SLI=$RANDOM%10
-    		let SLI=SLI+10
-    		sleep $SLI
+                # first contact daemon  xcatflowrequest <server> 3001
+                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                /$xcatpost/xcatflowrequest $master 3001
+
     		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
     		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	done
@@ -150,6 +154,9 @@ mkdir -p /root/.ssh/
 sleep 1
 if [ $ENABLESSHBETWEENNODES = "YES" ];
 then 
+ #first contact daemon  xcatflowrequest <server> 3001
+ logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+ /$xcatpost/xcatflowrequest $master 3001
   getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
   #check whether the message is an error or not
@@ -160,9 +167,9 @@ then
 	logger -t xCAT -p local4.info ssh_root_key
 	MYCONT=`cat /root/.ssh/id_rsa`
 	while [ -z "$MYCONT" ]; do
-		let SLI=$RANDOM%10
-		let SLI=SLI+10
-		sleep $SLI
+                # first contact daemon  xcatflowrequest <server> 3001
+                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                /$xcatpost/xcatflowrequest $master 3001
 		getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 		MYCONT=`cat /root/.ssh/id_rsa`
 	done

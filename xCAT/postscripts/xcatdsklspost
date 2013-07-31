@@ -474,6 +474,9 @@ fi
 # We need to call getpostscript.awk .
 
 if [ ! -x /$xcatpost/mypostscript ]; then
+  # first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $SIP 3001"
+/$xcatpost/xcatflowrequest $SIP 3001
   /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
@@ -485,9 +488,10 @@ if [ ! -x /$xcatpost/mypostscript ]; then
         break
     fi
 
-    SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
-    SLI=$((10 + $SLI))
-    sleep $SLI
+    # contact daemon  xcatflowrequest <server> 3001
+    logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $SIP 3001"
+    /$xcatpost/xcatflowrequest $SIP 3001
+
     /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
