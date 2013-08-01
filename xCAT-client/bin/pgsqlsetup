@@ -1331,7 +1331,7 @@ sub restorexcatdb
     # restore the database
     xCAT::MsgUtils->message(
         "I",
-        "Restoring the xCat Database with $::backupdir to PostgreSQL database.\nThis could take several minutes."
+        "Restoring the xCAT Database with $::backupdir to PostgreSQL database.\nThis could take several minutes."
         );
     if (!(-d $::backupdir))
     {    # does not exist, error
