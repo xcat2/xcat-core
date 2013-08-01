@@ -558,6 +558,7 @@ sub tabdump
     my $OPTW;
     my $VERSION;
     my $FILENAME;
+    my $NUMBERENTRIES;
 
     my $tabdump_usage = sub {
         my $exitcode = shift @_;
@@ -565,6 +566,7 @@ sub tabdump
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump      [table]";
         push @{$rsp{data}}, "       tabdump [-f <filename>]  [table]";
+        push @{$rsp{data}}, "       tabdump [-n <# of records>]  [auditlog | eventlog]";
         push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [table]";
         push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [-f <filename>] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
@@ -578,10 +580,15 @@ sub tabdump
     if ($args) {
         @ARGV = @{$args};
     }
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+
 
     if (!GetOptions(
           'h|?|help' => \$HELP,
           'v|version' => \$VERSION,
+          'n|lines=i' => \$NUMBERENTRIES,
           'd' => \$DESC,
           'f=s' => \$FILENAME,
           'w=s@' => \$OPTW,
@@ -598,9 +605,23 @@ sub tabdump
         return;
     }
     if ($FILENAME and $FILENAME !~ /^\//) { $FILENAME =~ s/^/$request->{cwd}->[0]\//; }
-
+    
 
     if ($HELP) { $tabdump_usage->(0); return; }
+    
+    if (($NUMBERENTRIES) && ($DESC)) {
+          $cb->({error => "You  cannot use the -n and -d flag together. ",errorcode=>1});
+          return 1;
+    }
+    
+    if (($NUMBERENTRIES) && ($OPTW)) {
+          $cb->({error => "You  cannot use the -n and -w flag together. ",errorcode=>1});
+          return 1;
+    }
+    if (($NUMBERENTRIES) && ($FILENAME)) {
+          $cb->({error => "You  cannot use the -n and -f flag together. ",errorcode=>1});
+          return 1;
+    }
     if (scalar(@ARGV)>1) { $tabdump_usage->(1); return; }
 
     my %rsp;
@@ -626,9 +647,18 @@ sub tabdump
     }
     # get the table name
     $table = $ARGV[0];
+    
+    # if -n  can only be the auditlog or eventlog
+    if ($NUMBERENTRIES) {
+      if (!( $table =~ /^auditlog/ ) && (!($table =~ /^eventlog/))){
+        $cb->({error => "$table table is not supported in tabdump -n. You may only use this option on the auditlog or the eventlog.",errorcode=>1});
+        return 1;
+      }  
+    }  
+    
     # do not allow teal tables
     if ( $table =~ /^x_teal/ ) {
-        $cb->({error => "$table is not supported in tabdump. Use Teal maintenance commands. ",errorcode=>1});
+        $cb->({error => "$table table is not supported in tabdump. Use Teal maintenance commands. ",errorcode=>1});
         return 1;
     }
     if ($DESC) {     # only show the attribute descriptions, not the values
@@ -665,6 +695,14 @@ sub tabdump
         $cb->({error => "No such table: $table",errorcode=>1});
         return 1;
     }
+    #
+    # if tabdump -n <number of recs> auditlog|eventlog
+    #
+    if (defined $NUMBERENTRIES ) {
+     my $rc=tabdump_numberentries($table,$cb,$NUMBERENTRIES);
+     return $rc;
+    }
+
     my $recs;
     my @ents;
     my @attrarray;
@@ -717,6 +755,82 @@ sub tabdump
       }
     }
 }
+#
+#  display input number of records for the table requested tabdump -n
+#
+sub tabdump_numberentries {
+  my $table = shift;
+  my $cb  = shift;
+  my $numberentries  = shift; # either number of records to display  
+  my $attrrecid="recid";
+
+  my $VERBOSE  = shift;
+  my $rc=0;
+  my $tab        = xCAT::Table->new($table);
+  unless ($tab) {
+       $cb->({error => "Unable to open $table",errorcode=>4});
+       return 1;
+  }
+  my $DBname = xCAT::Utils->get_DBName;
+  my @attribs = ($attrrecid);
+  my @ents=$tab->getAllAttribs(@attribs);
+  if (@ents) {    # anything to process 
+    # find smallest and largest  recid, note table is not ordered by recid after
+    # a while
+    my $smallrid;
+    my $largerid;
+    foreach my $rid (@ents) {
+      if (!(defined $smallrid)) {
+         $smallrid=$rid;
+      }
+      if (!(defined $largerid)) {
+         $largerid=$rid;
+      }
+      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
+         $smallrid=$rid;
+      }
+      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
+         $largerid=$rid;
+      }
+    }
+    my $RECID;
+    #determine recid to show all records after 
+    $RECID= $largerid->{$attrrecid} - $numberentries ; 
+    $rc=tabdump_recid($table,$cb,$RECID, $attrrecid); 
+  } else {
+      my %rsp;
+      push @{$rsp{data}}, "Nothing to display from $table.";
+      $rsp{errorcode} = $rc; 
+      $cb->(\%rsp);
+  }
+  return $rc;
+}
+#  Display requested recored 
+#  if rec id  does not exist error 
+sub tabdump_recid {
+   my $table = shift;
+   my $cb  = shift;
+   my $recid  = shift;
+   my $rc=0;
+   # check which database so can build the correct Where clause
+   my $tab        = xCAT::Table->new($table);
+   unless ($tab) {
+        $cb->({error => "Unable to open $table",errorcode=>4});
+        return 1;
+   }
+   my $DBname = xCAT::Utils->get_DBName;
+   my @recs;
+   my  $attrrecid="recid";
+   # display the output 
+   if ($DBname =~ /^DB2/) {
+      @recs=$tab->getAllAttribsWhere("\"$attrrecid\">$recid", 'ALL');
+   } else {
+      @recs=$tab->getAllAttribsWhere("$attrrecid>$recid", 'ALL');
+   }  
+   output_table($table,$cb,$tab,\@recs); 
+   return $rc;
+}
+
 # Display information from the daemon.
 #  
 sub lsxcatd 
@@ -853,7 +967,7 @@ sub tabprune
         push @{$rsp{data}}, "       tabprune <tablename> [-V] -d <# of days>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
-        push @{$rsp{data}}, "       tables supported:eventlog,auditlog,isnm_perf,isnm_perf_sum";
+        push @{$rsp{data}}, "       tables supported:eventlog,auditlog";
         push @{$rsp{data}}, "       -d option only supported for eventlog,auditlog";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
@@ -952,7 +1066,7 @@ sub tabprune
     if (($table eq "eventlog") || ($table eq "auditlog")) {
       $attrrecid="recid";
     } else {
-      if ($table eq "isnm_perf") {  # if ISNM
+      if ($table eq "isnm_perf") {  # if ISNM   These tables are really not supported in 2.8 or later
         $attrrecid="perfid";
       } else {
         $attrrecid="period";   # isnm_perf_sum table
