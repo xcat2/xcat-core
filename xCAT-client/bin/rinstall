@@ -19,8 +19,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use File::Basename;
 use Getopt::Long;
+use xCAT::MsgUtils;
 use xCAT::Table;
 use xCAT::NodeRange;
+
 
 sub usage {
     print basename($0)." usage:\n";
@@ -83,7 +85,10 @@ if($OSIMAGE){
 
    &checkoption("[-O|--osimage] $OSIMAGE");   
    $rc=system("nodeset $noderange osimage=$OSIMAGE");
-   if ($rc) { die "nodeset failure" };
+   if ($rc) { 
+      xCAT::MsgUtils->message("E","nodeset failure");
+      exit 1;
+   };
 }else
 {
 
@@ -161,7 +166,8 @@ if($OSIMAGE){
 }
 
 if($rc){
-  die "nodeset failure";
+      xCAT::MsgUtils->message("E","nodeset failure");
+      exit 1;
 }
 
 # call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes,for others, assume user has set the correct boot order before "rinstall"
@@ -169,7 +175,10 @@ system("rsetboot $noderange net");
 
 # call "rpower" to start the node provision process
 $rc=system("rpower $noderange boot");
-if ($rc) { die "rpower failure" };
+if ($rc) {
+    xCAT::MsgUtils->message("E","rpower failure");
+    exit 1;
+};
 
 
 if (basename($0) =~ /rinstall/) {
@@ -177,7 +186,8 @@ if (basename($0) =~ /rinstall/) {
 # for rinstall, the -c|--console option can provide the remote console for only 1 node
     if ($CONSOLE) {
         if(scalar @allnodes ne 1){
-	   die "rinstall [-c|--console] will only work if there is only one node in the noderange. See winstall(8) for consoles on multiple systems";
+	    xCAT::MsgUtils->message("rinstall [-c|--console] will only work if there is only one node in the noderange. See winstall(8) for consoles on multiple systems");
+            exit 1;
         }
         exec("rcons $noderange");
     }
