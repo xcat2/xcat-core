@@ -1,532 +1,209 @@
-#!/usr/bin/perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#!/bin/bash
 
-# confignics postscript for configuring additional ethernet and ib NIC adapters. 
-# This module parses NIC environment variables containing data from the nics table
-# for the specific node i.e.:
-# NICNODE             - the node name
-# NICIPS              - comma separated list of ips per NIC
-# NICHOSTNAMESUFFIXES - comma spearated list of hostname suffixes per NIC
-# NICTYPES            - ethernet or infiniband
-# NICCUSTOMSCRIPTS    - script to configure nic, i.e. configeth or configib
-# NICNETWORKS         - network and subnetmask for the adapter.
+str_dir_name=`dirname $0`
+. $str_dir_name/xcatlib.sh
 
-use strict;
-use Socket;
-use Data::Dumper;
-
-# Only three args are supported for confignics:
-# "-s" to allow the install nic to be configured. If not set
-#      then the install nic will not be configured.
-# "--ibaports=x" to specify the number of ports for an ib adapter.
-#                This value will set in an environment variable
-#                prior to calling configib.
-# "-r" unconfigure/remove existing configured nics. This flag will
-#      compare existing configured nics with nics in the nics table
-#      if nic doesn't exist in nics table then ifdown and remove
-#      config file (ifcfg-*)
-
-
-my $ibaports = 1;       # default to one port per ib adapter.
-my $cfg_inst_nic = '';
-my $rem_eth_nics = '';   # ethernet nics to remove if -r is set
-my $rem_ib_nics = '';    # ib nics to remove if -r is set
-my $rem_nics = 0;
-my $arg ='';
-while ($arg = shift(@ARGV)) {
-    if ( $arg eq "-s" ) {
-        $cfg_inst_nic = 1;
-    } elsif ( $arg =~ /--ibaports=(\d)$/) {
-        $ibaports = $1;
-    } elsif ( $arg eq "-r" ) {
-        $rem_nics = 1;
-    }
-}
-
-my $ibnics = '';
-my $ethnics = '';
-my $bridgednics = '';
-my $nicips = $ENV{NICIPS};
-my $niccustomscripts = $ENV{NICCUSTOMSCRIPTS};
-my $nictypes = $ENV{NICTYPES};
-my $xcatpostdir = "/xcatpost";
-my %cust_script_nics = (); # hash to save nics specified in niccustomscripts
-my $type = '';
-my $nic = '';
-my $MAC = $ENV{MACADDRESS};
-my $inst_nic = '';
-my $thisnode = $ENV{NODE};
-
-# After discussing with Bruce, getting install nic in following order:
-# 1) get NODE env var, resolve to ip and get related nic info, if not found:
-# 2) Check if INSTALLNIC is set to specific nic then use that nic, if set to "mac"
-#    then use mac to get nic. If still not set then:
-# 3) check PRIMARYNIC in similar manor as INSTALLNIC.
-# If still not found then exit with error.
-
-my $cfg_nic_ref_hash = {};    # set from get_install_nic
-my $nic_to_cfg_ref_hash = {}; # set from env variables in mypostscript
-
-$cfg_nic_ref_hash = get_current_nics();
-
-$inst_nic = get_install_nic();
-$bridgednics = get_bridged_nics();
-
-
-
-# niccustomscripts specifies which NICS need to be configured. 
-# and which script to use to configure it.
-# Strip NIC and customscript and then call the custom script with the NIC
-# it is up to the custom script to verify information passed in NIC env vars.
-# i.e. if customscript is "eth1:configeth eth1, eth2:configeth2"
-# then first get eth1 for the nic and "configeth eth1" for the command to run"
-# the do the same for eth2.
-
-if ( defined $niccustomscripts && length $niccustomscripts > 0 ) {
-    system("logger -t xcat -p local4.info 'confignics $thisnode: processing custom scripts: $niccustomscripts '");
-
-    foreach my $customscript (split(/,/,$niccustomscripts)) {
-
-        my @script = ();
-        if ( $customscript =~ /!/ ) {
-            @script = split(/!/,$customscript);
-        } else {
-            @script = split(/:/,$customscript);
-        }
-        $cust_script_nics{$script[0]} = 1;
-        my @s = split(/ /,$script[1]);
-
-        # if installnic then verify that "-s" flag was passed in.
-        if (($inst_nic ne $script[0]) || (($inst_nic eq $script[0]) && $cfg_inst_nic)) {
-            runcmd("$script[1]");
-            system("logger -t xcat -p local4.info 'confignics $thisnode: executed custom script: $script[1] '");
-        }
-    }
-}
-
-# Get nic from nicips. If nic is in cust_script_nics hash then ignore this nic.
-# otherwise, get nictype if set or determine type from nic name, eth* or en* 
-# implies ethernet, ib* implies infiniband.
-# 
-# configib prefers to have ib adapters configured in one call for performance
-# reasons. So add ib nics to a list and call configib outside the loop.
-foreach my $nic_ips (split(/,/,$nicips)) {
-    $type = '';
-    my $type_found = 0;
-    $nic = '';
-    my @nic_and_ips = ();
-    if ( $nic_ips =~ /!/ ) {
-        @nic_and_ips = split(/!/,$nic_ips);
-    } else {
-        @nic_and_ips = split(/:/,$nic_ips);
-    }
-    $nic = $nic_and_ips[0];
-    # do not configure if nic is in the customscript hash
-    if ($cust_script_nics{$nic_and_ips[0]} == 1 ) {
-        system("logger -t xcat -p local4.info 'confignics $thisnode: nic $nic_and_ips[0] already configured through custom script '");
+#the nics' information contain: 
+#1. ip address
+#2. nic network
+#3. nic type
+#4. custom scripts
+#all of them are saved by different variable
+#this function can split the varable for each nic, and svae the information for each nic
+#into an hash, the key is nic name, the value are all information, which joined by ','
+function splitconfig(){
+    if [ ! "$1" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_conf_temp=($1)
+    IFS=$old_ifs
+    for i in ${array_conf_temp[@]}
+    do
+        D=
+        if [ `echo $i | grep "!"` ];then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo $i | cut -d"$D" -f 1`
+        str_temp_value=`echo $i | cut -d"$D" -f 2`
         
-    }
-    else {
-        # Find matching type for this nic
-        foreach my $nic_type (split(/,/,$nictypes)) {
-            my @nic_and_type = ();
-            if ( $nic_type =~ /!/ ) {
-                @nic_and_type = split(/!/,$nic_type);
-            } else {
-                @nic_and_type = split(/:/,$nic_type);
-            }
-            if ($nic_and_type[0] eq $nic ) {
-                $type = $nic_and_type[1];
-                # verify type is "ethernet" or "infiniband"
-                if ($type =~ /ethernet|infiniband/i ) {
-                    $type_found = 1;
-                }
-                last;
-            }    
-        }
-        # if no matching nic type then derive nic type from nic
-        if ( !$type_found ) {
-            if ( $nic =~ /(eth|en)\d+/i ) {
-                $type = "ethernet";
-            } elsif ($nic =~ /ib\d+/i ) {
-                $type = "infiniband";
-            }
-        }
-
-        if ("ethernet" eq lc($type)) {
-            # Ensure to only configure the install nic if the "-s" flag was set.
-            if (($inst_nic ne $nic) || (($inst_nic eq $nic) && $cfg_inst_nic)) {
-                if ($ethnics) {
-                    $ethnics = $ethnics . "," . $nic;
-                } else {
-                    $ethnics = $nic;
-                }
-            }
-            else {
-                system("logger -t xcat -p local4.info 'confignics $thisnode: Not configuring install nic $nic '");
-            }
-        } elsif ("infiniband" eq lc($type)) {
-            if ($ibnics) {
-                $ibnics = $ibnics . "," . $nic;
-            } else {
-                $ibnics = $nic;
-            }
-        } else {
-            system("logger -t xcat -p local4.info 'confignics $thisnode: unknown type $type for NIC: $nic '");
-        }
-    }
+        str_temp=$(hashget hash_defined_nics $key)
+        if [ -n "$str_temp" ];then
+           str_temp=$str_temp",${str_temp_value}"
+        else
+           str_temp="$str_temp_value"
+           str_all_nics=$str_all_nics"$key "
+        fi
+        hashset hash_defined_nics $key $str_temp
+    done
 }
 
-# set_nics_to_remove will compare $rem_nics for install nic, and bonded or bridged nics
-# and set $rem_nics to only those $nics that should be unconfigured.
-if ( $rem_nics ) {
-    set_nics_to_remove();
-}
+bool_cfg_inst_nic=0
+str_inst_nic=''
+str_ib_nics=''
+str_os_type=`uname | tr 'A-Z' 'a-z'`
+bool_remove=0
+num_iba_ports=
+str_all_nics=''
+for arg in "$@"
+do
+    if [ "$arg" = "-s" ];then
+        bool_cfg_inst_nic=1
+    elif [ "$arg" = "-r" ];then
+        bool_remove=1
+    elif [ "${arg:0:10}" = "--ibaports" ];then
+        num_iba_ports=${arg#--ibaports=}
+    fi
+done
 
-my $cmd = '';
+logger -t xcat -p local4.info "confignics is called: config install nic:$bool_cfg_inst_nic, remove: $bool_remove, iba ports: $num_iba_ports"
+echo "confignics on $NODE: config install nic:$bool_cfg_inst_nic, remove: $bool_remove, iba ports: $num_iba_ports"
 
-# Call configeth now to configure all ethernet adapters in one call.
-if ($ethnics) {
-    $cmd = "configeth -c $ethnics";
-}
-if ( $rem_eth_nics) {
-    if ($cmd) {
-        $cmd = $cmd . " -u $rem_eth_nics";
-    }
-    else {
-        $cmd = "configeth -u $rem_eth_nics";
-    }
-}
-if ($cmd) {
-    runcmd("$cmd");
-    system("logger -t xcat -p local4.info 'confignics $thisnode: executed $cmd '");
-}
-else {
-    system("logger -t xcat -p local4.info 'confignics $thisnode : no ethernet nics to configure'");
-}
+str_temp=''
+if [ ! $INSTALLNIC ];then
+    str_temp="mac"
+else
+    str_temp=$INSTALLNIC
+fi
 
-# Call configib now to configure all ib adapters in one call.
-if ($ibnics) {
-    runcmd("NIC_IBNICS=$ibnics NIC_IBAPORTS=$ibaports configib");
-    system("logger -t xcat -p local4.info 'confignics $thisnode: executed script: configib for nics $ibnics '");
-}
-
-exit 0;
-
-sub runcmd {
-	my $cmd = shift @_;
-	$cmd .= ' 2>&1';
-	my @output = `$cmd`;
-	my $rc = $? >> 8;
-	if ($rc) {
-		system("logger -t xcat -p local4.err 'confignics $thisnode: command $cmd failed with rc $rc: " . join('',@output) . "'");
-		my $errout= "confignics $thisnode: command $cmd failed with rc $rc.\n";
-                print $errout;
-		exit $rc;
-	}
-	print join("\n",@output),"\n";
-}
-
-
-sub get_current_nics {
-    my @ip_addr_array = `ip addr show`;
-
-    my $nic_name;
-    my $nic_type;
-    my $nic_state;
-    my $nic_slave;
-    my $nic_mac;
-    my $a_len = scalar(@ip_addr_array);
-
-    my %nics;
-
-    my $i = 0;
-    while ( $i < scalar(@ip_addr_array)) {
-        #print "array index $i:  @ip_addr_array[$i]\n";
-        # check if line starts with "number: text:"
-        # if so then it is the start of a nic stanza which looks like:
-        # 3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP qlen 1000
-        #     link/ether 5c:f3:fc:a8:bb:93 brd ff:ff:ff:ff:ff:ff
-        #     inet 9.114.34.232/24 brd 9.114.34.255 scope global eth1
-        #     inet6 fd55:faaf:e1ab:336:5ef3:fcff:fea8:bb93/64 scope global dynamic
-        #        valid_lft 2591627sec preferred_lft 604427sec
-        #     inet6 fd56::214:5eff:fe15:849b/64 scope global
-        #        valid_lft forever preferred_lft forever
-        #     inet6 fe80::5ef3:fcff:fea8:bb93/64 scope link
-        #        valid_lft forever preferred_lft forever
-
-        if ( $ip_addr_array[$i] =~ /^(\d+): / ) {
-            # get nic name
-            $ip_addr_array[$i] =~ /^\d+: ([^:].*):/;
-            $nic_name = $1;
-
-            # get state of nic either "UP" if different, such as DOWN, not configured
-            # then assume state is DOWN.
-            if ($ip_addr_array[$i] =~ /,UP/ ) {
-                $nic_state = "UP";
-            }
-            else {
-                $nic_state = "DOWN";
-            }
-
-            # Check if this nic is part of a bridge or bonded interface. If bonded on 
-            # redhat then "SLAVE" or "MASTER" will be in the first line of stanza 
-            # inside <>. 
-            #
-            # A bridged interface is a little different. The command, "brctl show", is used
-            # to show information about bridged interfaces. The subroutine get_bridged_nics()
-            # writes out $bridgednics which is a comma separated strings of bridged nics. 
-            # If $nic_name matches a bridgednic then set nic_slave=1 for now to lump them
-            # with bonded nics for now since we will not unconfigure bridged or bonded nics.
-            #  
-            $nic_slave = 0;  # default to 0
-            if ($ip_addr_array[$i] =~ /SLAVE/ ) {
-                $nic_slave = 1;
-            }
-            if ($ip_addr_array[$i] =~ /MASTER/ ) {
-                $nic_slave = 1;
-            }
-            if ($nic_name =~ /$bridgednics/) {
-                $nic_slave = 1;
-            }
-
-            # example output shows type is "link/ether" for ethernet or
-            # "link/infiniband" for ib. Look ahead to next line for this.
-            $ip_addr_array[$i+1] =~ /^\s+link\/([a-z]+) /;
-            $nic_type = $1;
-
-            $i++;
-
-            # CHECK: it looks like there could be a usb nic ethernet adapter. Need to investigate
-            #        if more needs to be done for that such as it is handled differently.
-            # If value is not "ether" or "infiniband" then continue on to next stanza
-            if ($nic_type ne "ether" && $nic_type ne "infiniband") {
-                next;
-            }
-
-            my @line = split(' ', $ip_addr_array[$i]);
-            $nic_mac = $line[1];
-
-            # move on to next line and loop through all lines for additional information or
-            # and until the line is the start of a new stanza.
-            # This is where things get dicey and may need enhancements:
-            #   inet 70.0.0.182/24 brd 70.0.0.255 scope global eth5
-            # indicates an ipv4 address with a netmask of /24,  a broadcast address,
-            # scope global nicname (eth5). If this was an aliased ip then nicname would be eth5:1 or such.
-            #   inet6 fd55:faaf:e1ab:336:3640:b5ff:fe89:66c4/64 scope global dynamic
-            # it appears that valid ips have "scope global"
-
-            $i++;
-            # print "NIC: $nic_name, TYPE: $nic_type, MAC: $nic_mac  SLAVE: $nic_slave, STATE: $nic_state \n";
-            $nics{$nic_name}          = {};
-            $nics{$nic_name}->{state} = $nic_state;
-            $nics{$nic_name}->{mac}   = $nic_mac;
-            $nics{$nic_name}->{slave} = $nic_slave;
-            $nics{$nic_name}->{type} =  $nic_type;
-            $nics{$nic_name}->{ips}     = [];
-
-            while ($i < scalar(@ip_addr_array) && !($ip_addr_array[$i] =~ /^(\d+): / ) ) {
-                # $ip_proto - is either inet or inet6
-                # $ip_mask is "ipaddr or ipv6addr"/netmask and possibly "brd broadcastip"
-                # $scope has the scope (global, link, site, host) if global or site then
-                #      only data after scope is the nic "label", i.e. eth0, eth5:1.
-                #            note that "tentative" may appear but is not a label.
-                # On RH for an ip alias with same netmask/subnet then line will be:
-                #    inet 11.0.0.80/16 brd 11.0.255.255 scope global secondary eth2:1
-
-                my ($ip_proto, $ip_mask, $scope) =
-                        $ip_addr_array[$i]=~/\s+(inet|inet6)\s+(.+)\s+scope\s+(.+)$/;
-
-                if ( $ip_proto =~ /inet/ ) {  # line contains inet or inet6. Process info
-                    my ($nic_ip_mask, $junk) = split(' ', $ip_mask);
-                    my ($nic_ip, $nic_mask) = split('\/', $nic_ip_mask);
-                    my ($sc, $label, $more_label) = split(' ', $scope);
-                    if ( $sc ne "link" ) {   # this is a valid one to keep
-
-                        if ($label eq "secondary") {
-                            $label = $more_label;
-                        }
-                        #print "\tPROTO: $ip_proto, IP: $nic_ip, MASK: $nic_mask, SCOPE: $sc, LABEL:$label\n";
-                        push @{$nics{$nic_name}->{ips}},{ip => $nic_ip, netmask => $nic_mask, label => $label };
-                    }
-                }
-                $i++;
-            }
-            next;  # next nic stanza or end of file.
-        }
-        $i++;
-    }
-    return \%nics;
-}
-
-sub get_install_nic {
-    # get "NODE" from env, resolve to ip and determine which nic it belongs
-    # to. This should be the "base" nic, i.e. eth0, eth1 - not eth1:1
-    # To do: Need to find equivalent methods for an ipv6 address.
-
-    my $node = $ENV{NODE};
-    my $installnic = $ENV{INSTALLNIC};
-    my $primarynic = $ENV{PRIMARYNIC};
-    my $i_p_nic = ''; # variable to hold installnic or primarynic value
-    my @ip_info;
-    my $inst_ip;
-    my @addr_info;
-    my %hash = $cfg_nic_ref_hash;
-
-    @addr_info = gethostbyname($node);
-    @ip_info = unpack("C4", $addr_info[4]); # Is this only for ipv4 or does this include ipv6 as well?
-    $inst_ip = join(".",@ip_info);
-
-    # get ip output, compare ip_addr and determine nic.
-
-    foreach my $k (keys %$cfg_nic_ref_hash) {
-        my $nic = $cfg_nic_ref_hash->{$k};
-        my $ips = $nic->{'ips'};
-        if (defined($ips)) {
-            foreach my $ip_info (@$ips) {
-                my $ip = $ip_info->{'ip'};
-                # print " IP:$ip";
-                if ($ip eq $inst_ip) {
-                    return $k;
-                }
-            }
-        }
-    }
-
-    # install nic not found from configured nics. Try to get install nic from environment
-    # variables.
-    if ($installnic) {
-        $i_p_nic = $installnic;
-    }
-    elsif ($primarynic) {
-        $i_p_nic = $primarynic;
-    }
-
-    if (!$i_p_nic) {
-        system("logger -t xcat -p local4.info 'confignics $thisnode: installnic and primarynic are not defined', use 'mac' by default.");
-        $i_p_nic = "mac";
-    }
-    
-    if ($i_p_nic =~ /(e(n|th)\d+)$/ ) {
-         $inst_nic = $1;
-    } elsif ($i_p_nic eq "mac") {
-        # determine nic from mac. Get all NICs and their mac addresses from ifconfig
-        # and compare that with MACADDR.
-        my @ifcfg_info = split(/\n/,`ifconfig -a | grep HWaddr | awk '{print \$1,\$5;}'`);
-        foreach my $nic_mac (@ifcfg_info) {
-            my @nicmac = split(/ /,$nic_mac);
-            if (uc($nicmac[1]) eq uc($MAC)) {
-                $inst_nic = $nicmac[0];
-                last;
-            }
-        }
-    } else { # INSTALLNIC not set or is not known
-        system("logger -t xcat -p local4.info 'confignics $thisnode: install nic $inst_nic not known '");
-    }
-    return;
-}
-
-# subroutine compares configured nic hash with defined nics from nics table.
-# If configured nic is not in nics table and it is not the install nic then 
-# set global variables $rem_eth_nics and $rem_ibnics.
-# This subroutine needs to be called after get_current_nics() and after parsing
-# custom scripts and nics to be configured.
-
-sub set_nics_to_remove {
-    my $do_not_remove;
-    my %hash = $cfg_nic_ref_hash;
-    foreach my $nic_key (keys %$cfg_nic_ref_hash) {
-        my $nic = $cfg_nic_ref_hash->{$nic_key};
-        # check if $nic is in $ethnics, $ibnics, $cust_script_nics or is $inst_nic.
-        # if not then add to appropriate list to be removed.
-        if ($nic_key eq $inst_nic) {
-        }
-        elsif ($ethnics =~ /$nic_key/ ) {
-        }
-        elsif ($ibnics =~ /$nic_key/) {
-        }
-        elsif ($cust_script_nics{$nic_key}) {
-        }
-        else {
-            # now check if nic is part of bonded or bridged interface. 
-            #
-            if ( $nic->{slave} ) {
-                system("logger -t xcat -p local4.info 'confignics $thisnode: Not removing $nic_key. It is part of a bonded or bridged interface. '");
-            } 
-            elsif ( $nic_key =~ /@/ ) {
-                # For a vlan interface on redhat the nic name appears as
-                # nic.vlan@nic, i.e. eth0.30@eth0 and in this case the label will be
-                # eth0.30. So verify that there is no "@" in the nic name (should we
-                # also check that the label contains a "."?)
-
-                my ($label, $base) = split(/@/,$nic_key);
-
-                # need to make sure that $base is not added to nics to be removed.
-                # add both the label and base to $do_not_remove.
-                if ($do_not_remove) {
-                    $do_not_remove = $label . "," . $base;
-                }
-                else {
-                    $do_not_remove = $do_not_remove . "," . $label . "," . $base;
-                }
-            }
-            else {
-                # finally have a nic to remove. Determine if it is ib or eth
-                if ($nic->{type} eq "ether") {
-                    if ( $rem_eth_nics ) {
-                        $rem_eth_nics = $rem_eth_nics . "," . $nic_key;
-                    }
-                    else {
-                        $rem_eth_nics = $nic_key;
-                    }
-                }
-                if ($nic->{type} eq "infiniband") {
-                    if ( $rem_ib_nics ) {
-                        $rem_ib_nics = $rem_ib_nics . "," . $nic_key;
-                    }
-                    else {
-                        $rem_ib_nics = $nic_key;
-                    }
-                }
-            }
-        }
-    }
-}
+if [ "$str_temp" = "mac" ];then
+    if [ "$str_os_type" = "aix" ];then
+        old_ifs=$IFS
+        IFS=$' '
+        str_temp=`ifconfig -l`
+        array_nicnames_temp=($str_temp)
+        IFS=$old_ifs
+        for temp_nic in ${array_nicnames_temp[@]}
+        do
+            entstat -t $temp_nic | grep -i "$MACADDRESS"
+            if [ $? -eq 0 ];then
+                str_inst_nic=$temp_nic
+                break
+            fi
+        done
+    else
+        str_inst_nic=`ifconfig -a | grep -i "$MACADDRESS" | awk '{print $1;}'`
+    fi
+elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
+    str_inst_nic=$str_temp
+fi
 
 
-# Bridged interfaces do not show differently than ethernet nics in 
-# the "ip addr show" command. Therefore the command "brctl show" is 
-# used to get the bridged nics.
-# This subroutine will set the global variable $bridgednics.
-# brctl show output is similar to:
-#    bridge name     bridge id               STP enabled     interfaces
-#    virbr0          8000.5254004a3d54       yes             virbr0-nic
-# first line is skipped as it is the heading. The values specified by 
-# bridge name and interfaces show up as nics in the "ip addr show" output. 
-# Therefore need to put both of these # in the $bridgednics string 
-# because we don't want to remove either of those interfaces.
 
-sub get_bridged_nics {
-    # first, ensure that brctl is installed. If not then just exit since there will be no
-    # bridged interfaces.
-    my $i;
-    if ( -e "/usr/sbin/bcrtl" ) {
-        my @bridge_out = `brctl show`;
-        my $lines = scalar(@bridge_out);
-        for ($i=1; $i < $lines ; $i++) {
+splitconfig $NICIPS
+splitconfig $NICTYPES
+splitconfig $NICNETWORKS
+splitconfig $NICCUSTOMSCRIPTS
 
-            # brctl ouput puts half tabs '\cI' and line feed \cJ' chars in
-            # the ouput. Need to convert these to spaces then split. 
-            # Get first and last values for nics.
+#get state of nic in "UP" status
+#If bonded redhat then "SLAVE" or "MASTER" will be in the first line of stanza
+#do not configure the loopback nic
+if [ $bool_remove -eq 1 ];then
+    if [ "$str_os_type" = "aix" ];then
+        str_temp=`ifconfig -a | grep flags | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk -F: {'print $1'}`
+    else
+        str_temp=`ip link show | grep -v link | grep -vi loopback | grep -v SALVE | grep -v MASTER | awk {'print $2'} | sed s/://`
+    fi
+    old_ifs=$IFS
+    IFS=$'\n'
+    array_nics_temp=($str_temp)
+    IFS=$old_ifs
+    for str_temp_nic in ${array_nics_temp[@]}
+    do
+        #the nic type should be ethernet
+        echo $str_temp_nic | grep -E "e(n|th)[0-9]+"
+        if [ $? -ne 0 ];then
+            continue
+        fi
+        if [ "$str_os_type" != "aix" ];then
+            brctl show 2>/dev/null | grep $str_temp_nic
+            #the nic belongs to a bridge, go to next
+            if [ $? -eq 0 ];then
+                continue
+            fi
+        fi
+        #the nic is defined this time
+        str_temp=$(hashget hash_defined_nics $str_temp_nic)
+        if [ -n "$str_temp" ];then
+            continue
+        fi
+        
+        if [ "$str_temp_nic" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+            continue
+        fi
+        
+        #ignore the vlan interface
+        echo $str_temp_nic | grep "\."
+        if [ $? -eq 0 ];then
+            continue
+        fi
 
-            $bridge_out[$i] =~ s/\cI/ /g;
-            my @br = split(/ /,$bridge_out[$i]);
-            if ( $bridgednics ) {
-                $bridgednics = $bridgednics . "," . $br[0] . "," . $br[-1];
-            }
-            else {
-                $bridgednics = $br[0] . "," . $br[-1];
-            }
-        }
-    }
-}
+        logger -t xcat -p local4.info "confignics: remove nic $str_temp_nic"
+        echo "confignics on $NODE: remove nic $str_temp_nic"
+        configeth -r $str_temp_nic
+    done
+fi
+
+old_ifs=$IFS
+IFS=$' '
+array_nics_temp=($str_all_nics)
+IFS=$old_ifs
+for key in ${array_nics_temp[@]}
+do
+    key=`echo $key | sed 's/^ \+//' | sed 's/ \+$//'`
+    str_nic_type=
+    str_value=$(hashget hash_defined_nics $key)
+    if [ "$key" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+        continue
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_temp=($str_value)
+    IFS=$old_ifs
+
+    if [ "${array_temp[3]}" ];then
+        logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[3]} for interface $key" 
+        echo "confignics on $NODE: processing custom scripts: ${array_temp[3]} for interface $key"
+        ${array_temp[3]}
+    else
+        if [ "${array_temp[1]}" ];then
+            str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
+        else
+            if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
+                str_nic_type="ethernet"
+            elif [ `echo $KEY | grep -E 'ib[0-9]+'` ];then
+                str_nic_type="infiniband"
+            fi
+        fi
+
+        if [ $str_nic_type = "ethernet" ];then
+             logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
+             echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
+             configeth $key ${array_temp[0]} ${array_temp[2]}
+        elif [ $str_nic_type = "infiniband" ];then
+            if [ $str_ib_nics ];then
+                str_ib_nics=$str_ib_nics","$key
+            else
+                str_ib_nics=$key
+            fi
+        else
+            logger -t xcat -p local4.info "confignics: unknown type $str_nic_type for NIC: $key"
+            echo "confignics on $NODE: unknown type $str_nic_type for NIC: $key"
+        fi
+    fi
+done
+
+if [ -n "$str_ib_nics" ];then
+    logger -t xcat -p local4.info "confignics: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"
+    echo "confignics on $NODE: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"
+    NIC_IBNICS=$str_ib_nics NIC_IBAPORTS=$num_iba_ports configib
+else
+    if [ $bool_remove -eq 1 ];then
+        logger -t xcat -p local4.info "confignics: executed script: 'configib -u' to remove all ib nics and configuration files"
+        echo "confignics on $NODE: executed script: 'configib -r' to remove all ib nics and configuration files"
+        configib
+    fi
+fi
