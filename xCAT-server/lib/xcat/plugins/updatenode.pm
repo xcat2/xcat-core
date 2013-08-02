@@ -218,6 +218,7 @@ sub preprocess_updatenode
                     'v|version'     => \$::VERSION,
                     'V|verbose'     => \$::VERBOSE,
                     'F|sync'        => \$::FILESYNC,
+                    'g|genmypost'   => \$::GENMYPOST,
                     'l|user:s'      => \$::USER,
                     'f|snsync'      => \$::SNFILESYNC,
                     'S|sw'          => \$::SWMAINTENANCE,
@@ -248,6 +249,38 @@ sub preprocess_updatenode
         $rsp->{data}->[0] = xCAT::Utils->Version();
         $callback->($rsp);
         return;
+    }
+    # Just generate mypostscripts file and get out 
+    if ($::GENMYPOST)
+    {
+        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0] ) {
+          $entries[0] =~ tr/a-z/A-Z/;
+          if ($entries[0] =~ /^(1|YES)$/ ) {
+
+            my $notmpfiles=1;
+            my $nofiles=0;
+            xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+            my $rsp = {};
+            $rsp->{data}->[0] = "Generated new mypostscript files";
+            $callback->($rsp);
+          } else {  # not valid unless precreatemypostscripts enabled
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+          }
+        } else { # not in the site table
+            my $rsp = {};
+            $rsp->{error}->[0] =
+             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+        }
+        return 0;
     }
 
     # -c must work with -S for AIX node
