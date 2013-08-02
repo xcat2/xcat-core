@@ -21,12 +21,7 @@ set -e
 case "$1" in
     configure)
 	. /etc/profile.d/xcat.sh
-    if [ ! -e "/etc/rc0.d/K60xcatd" ];then
-        update-rc.d xcatd start 85 2 3 4 5 . stop 60 0 1 6 .
-        update-rc.d xcatd enable 2
-    else
-	    update-rc.d xcatd enable
-    fi
+        update-rc.d xcatd defaults
 	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
 	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
 		/etc/init.d/xcatd reload
