@@ -573,6 +573,46 @@ sub get_db_switchports
 
 #-------------------------------------------------------------------------------
 
+=head3 get_all_cecs
+      Description : Get all CEC objects name in system.
+      Arguments   : hashref: if not set, return a array ref.
+                             if set, return a hash ref.
+      Returns     : ref for CECs list.
+      Example     : 
+                    my $arrayref = xCAT::ProfiledNodeUtils->get_all_cecs();
+                    my $hashref = xCAT::ProfiledNodeUtils->get_all_cecs(1);
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_all_cecs
+{
+    my $hashref = shift;
+    my %cecshash;
+    my @cecslist;
+
+    my $ppctab = xCAT::Table->new('ppc');
+    my @cecs = $ppctab->getAllAttribsWhere("nodetype = 'cec'", 'node');
+    foreach (@cecs) {
+        if($_->{'node'}) {
+            if ($hashref) {
+                $cecshash{$_->{'node'}} = 1;
+            } else {
+                push @cecslist, $_->{'node'};
+            }
+        }
+    }
+    $ppctab->close();
+
+    # Return the ref accordingly 
+    if ($hashref) {
+        return \%cecshash;
+    } else {
+        return \@cecslist;
+    }
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 is_discover_started
       Description : Judge whether profiled nodes discovering is running or not.
       Arguments   : NA
@@ -731,7 +771,14 @@ sub check_profile_consistent{
     my $mgt = undef;
     $mgt = $mgtentry->{'mgt'} if ($mgtentry->{'mgt'});
     $nodehmtab->close();
-    
+
+    #Get hardwareprofile nodetype
+    my $ppctab = xCAT::Table->new('ppc');
+    my $ntentry = $ppctab->getNodeAttribs($hardwareprofile, ['nodetype']);
+    my $nodetype = undef;
+    $nodetype = $ntentry->{'nodetype'} if ($ntentry->{'nodetype'});
+    $ppctab->close(); 
+ 
     # Check if exists provision network
     if (not ($installnic and exists $netprofile_nicshash{$installnic}{"network"})){
         return 0, "Provisioning network not defined for network profile."
@@ -750,17 +797,18 @@ sub check_profile_consistent{
             return 0, "$nictype networkprofile must use with hardwareprofile.";
         }
     }
-        
-    if (not $nictype and $mgt) { 
-        # define hardwareprofile, not define fsp or bmc networkprofile
+       
+    # For nodetype is lpar node, not need to check the nictype as it is not required for lpar node
+    if (not $nictype and $mgt and $nodetype ne 'lpar' ) { 
+        # define hardwareprofile, not define fsp or bmc networkprofile, and the node type is not lpar
         return 0, "$profile_dict{$mgt} hardwareprofile must use with $profile_dict{$mgt} networkprofile.";
     }
     
-    if ($profile_dict{$mgt} ne $nictype) {
+    if ($profile_dict{$mgt} ne $nictype and $nodetype ne 'lpar') {
         # Networkprofile's nictype is not consistent with hadrwareprofile's mgt
         return 0, "Networkprofile's nictype is not consistent with hardwareprofile's mgt.";
     }
-    
+        
     return 1, "";
 }
 

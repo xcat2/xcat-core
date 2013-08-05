@@ -31,6 +31,7 @@ require xCAT::ProfiledNodeUtils;
 my %allhostnames;
 my %allbmcips;
 my %allmacs;
+my %allcecs;
 my %allmacsupper;
 my %allips;
 my %allinstallips;
@@ -397,6 +398,10 @@ Usage:
 
     # Merge all BMC IPs and install IPs into allips.
     %allips = (%allips, %allbmcips, %allinstallips, %allfspips);
+
+    # Get all CEC names
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_cecs(1);
+    %allcecs = %$recordsref;
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -1750,6 +1755,22 @@ sub gen_new_hostinfo_string{
                 $hostinfo_dict{$item}{"mpa"} = $chassisname;
             }
         }
+
+        # generate CEC-based rack-mount Power nodes' attributes
+        # lparid is optional, if not set, set it to 1
+        if ((exists $hostinfo_dict{$item}{"cec"}) && (! $is_fsp) ){
+            $hostinfo_dict{$item}{"hcp"} = $hostinfo_dict{$item}{"cec"};
+            $hostinfo_dict{$item}{"parent"} = $hostinfo_dict{$item}{"cec"};
+            delete($hostinfo_dict{$item}{"cec"});
+
+            if (exists $hostinfo_dict{$item}{"lparid"}) {
+                $hostinfo_dict{$item}{"id"} = $hostinfo_dict{$item}{"lparid"};
+                delete($hostinfo_dict{$item}{"lparid"});
+            } else {
+                $hostinfo_dict{$item}{"id"} = 1;
+            }
+            $hostinfo_dict{$item}{"mgt"} = "fsp";
+        }
         
         # get the chain attribute from hardwareprofile and insert it to node.
         my $chaintab = xCAT::Table->new('chain');
@@ -2139,6 +2160,15 @@ sub validate_node_entry{
             # Not a valid number.
             if (!($node_entry{$_} =~ /^[1-9]\d*$/)){
                 $errmsg .= "Specified slotid $node_entry{$_} is invalid";
+            }
+        }elsif ($_ eq "lparid"){
+            if (not exists $node_entry{"cec"}){
+                $errmsg .= "The lparid option must be used with the cec option.\n";
+            }
+        }elsif ($_ eq "cec"){
+            # Check the specified CEC is existing
+            if (! exists $allcecs{$node_entry{$_}}){
+                $errmsg .= "The CEC name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
             }
         }elsif ($_ eq "nicips"){
             # Check Multi-Nic's ip
