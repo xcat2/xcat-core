@@ -106,8 +106,9 @@ sub process_request {
     
     # Stage1:  pre-run     
     if ($command eq 'kitnoderefresh') {
-        # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands.
-        push @commandslist, ['kitnoderemove', ''];
+        # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands. If not, old records can't be removed.
+        push @commandslist, ['makedns', '-d'];
+        push @commandslist, ['makehosts', '-d'];
     }
     
     # Stage2: run xcat commands
