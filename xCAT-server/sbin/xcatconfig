@@ -1888,13 +1888,15 @@ sub mknb
         xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base-x86_64 ...");
     }
     #my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    system($cmd);
-    if ($? != 0) {
-        my $rc = $? >> 8;
-        xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
-    }
-    else {
-      xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
+    if ($cmd) {
+        system($cmd);
+        if ($? != 0) {
+            my $rc = $? >> 8;
+            xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
+        }
+        else {
+          xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
+        }
     }
 }
 
