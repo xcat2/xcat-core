@@ -28,6 +28,8 @@ done >>/etc/resolv.conf
 #change the soft link /bin/sh to /bin/bash
 ln -sf /bin/bash /bin/sh
 #
+#delete the useless apt repo
+sed -i 's/^deb.*updates.*$/#&/g' /etc/apt/sources.list
 # Run xCAT post install
 #
 export MASTER_IP="#XCATVAR:XCATMASTER#"
