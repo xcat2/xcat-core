@@ -385,6 +385,7 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
             $allmacsupper{uc($_)} = 0;
     }
@@ -1107,6 +1108,7 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
         $allmacsupper{uc($_)} = 0;
     }
@@ -1508,6 +1510,7 @@ sub findme{
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
         $allmacsupper{uc($_)} = 0;
     }
