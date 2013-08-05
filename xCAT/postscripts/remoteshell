@@ -23,21 +23,28 @@ if [ "$(uname -s)" = "AIX" ]; then
 fi
 if [ -r /etc/ssh/sshd_config ]
 then
-	logger -t xcat -p local4.info "Install:  setup /etc/ssh/sshd_config"
+	logger -t xcat -p local4.info "remoteshell:  setup /etc/ssh/sshd_config and ssh_config"
 	cp /etc/ssh/sshd_config /etc/ssh/sshd_config.ORIG
-	sed -i 's/^X11Forwarding .*$/X11Forwarding yes/' /etc/ssh/sshd_config
-	sed -i 's/^KeyRegenerationInterval .*$/KeyRegenerationInterval 0/' /etc/ssh/sshd_config
-	sed -i 's/\(.*MaxStartups.*\)/#\1/' /etc/ssh/sshd_config
-	echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+        #delete all occurance of the attribute and then add xCAT settings
+        sed -i '/X11Forwarding /'d /etc/ssh/sshd_config
+        echo "X11Forwarding yes" >>/etc/ssh/sshd_config
+        sed -i '/KeyRegenerationInterval /'d /etc/ssh/sshd_config
+        echo "KeyRegenerationInterval 0" >>/etc/ssh/sshd_config
+        sed -i '/MaxStartups /'d /etc/ssh/sshd_config
+        echo "MaxStartups 1024" >>/etc/ssh/sshd_config
+ 
     if [ "$SETUPFORPCM" = "1" ];then
-	 sed -i 's/\(.*PasswordAuthentication.*\)/#\1/' /etc/ssh/sshd_config
-     echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+         sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
+         echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+
     fi
 fi
 
 if [ -r /etc/ssh/sshd_config ]
 then
-   echo "   StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+   sed -i '/StrictHostKeyChecking /'d /etc/ssh/ssh_config
+   echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+
 fi
 
 if [ -d /xcatpost/_ssh ]
