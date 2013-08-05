@@ -2552,6 +2552,12 @@ sub check_deployment_monitoring_settings()
            ($attr, $val) = split /=~/,$m,2;
            $val =~ s/^\///;
            $val =~ s/\/$//;
+        } elsif ($m =~ /^[^=]*!=/) {
+           ($attr, $val) = split /!=/,$m,2;
+        } elsif ($m =~ /^[^=]*!~/) {
+           ($attr, $val) = split /!~/,$m,2;
+           $val =~ s/^\///;
+           $val =~ s/\/$//;
         } else {
            my $rsp={};
            $rsp->{data}->[0] = "Invalid string \"$m\" specified with -m flag";
