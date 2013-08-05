@@ -41,6 +41,13 @@ printusage()
 # For the purpose of getting the distribution name
 . /etc/lsb-release
 
+# Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
+for i in $*; do
+        # upper case the variable name
+        varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
+        export $varstring
+done
+
 # Supported distributions
 dists="maverick natty oneiric precise"
 
@@ -122,26 +129,46 @@ then
 
     ver=`cat Version`
     if [ "$PROMOTE" != 1 ]; then
+        code_change=0
+        update_log=''
         #get the version
-        echo "svn --quiet update Version"
-        svn --quiet up Version
+        if [ "$REL" = "xcat-core" ];then
+            git_flag=1
+            REL=`git rev-parse --abbrev-ref HEAD`
+            if [ "$REL" = "master" ]; then
+                REL="devel"
+            fi
+            if [ -z "$GITUP" ];then
+                update_log=../coregitup
+                echo "git pull > $update_log"
+                git pull > $update_log
+            else
+                update_log=$GITUP
+            fi
+
+            if ! grep -q  'Already up-to-date' $update_log; then
+                code_change=1
+            fi
+        else
+            git_flag=0
+            if [ -z "$SVNUP" ];	then
+                update_log=../coresvnup
+                echo "svn up > $update_log"
+                svn up > $update_log
+            else
+                update_log=$SVNUP
+            fi
+
+            if ! grep -q 'At revision' $update_log;then
+                code_change=1
+            fi
+        fi
         ver=`cat Version`
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
 
         #TODO: define the core path and tarball name
         tarball_name="core-debs-snap.tar.bz2"
-
-        #update the code from svn
-        svn_up_log="../coresvnup"
-        echo "svn update > $svn_up_log"
-        svn update > $svn_up_log
-
-        #makesure the code change status
-        code_change=0
-        if ! grep -q 'At revision' $svn_up_log;then
-            code_change=1
-        fi
 
         if [ $code_change == 0 -a "$UP" != 1 -a "$BUILDALL" != 1 ]; then
             echo "Nothing new detected"
@@ -167,7 +194,7 @@ then
         for file in `echo $packages`
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
-            if grep -q $file $svn_up_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
+            if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
                 rm -f ../../debs/${file_low}_*.deb
                 #only for genesis package
                 rm -f ../../debs/${file_low}-amd64_*.deb
