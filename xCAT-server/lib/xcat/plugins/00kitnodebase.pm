@@ -75,28 +75,65 @@ sub process_request {
     my $nodelist = $request->{node};
     my $retref;
     my $rsp;
-
-    if($command eq 'kitnodeadd')
-    {
-        setrsp_progress("Updating hosts entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating DNS entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        if($macflag)
-        {
-            setrsp_progress("Update DHCP entries");
-            $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
-            log_cmd_return($retref);
+    
+    # Get nodes profile 
+    my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles($nodelist);
+    my %profilehash = %$profileref;
+    
+    # Check whetehr we need to run makeconservercf
+    # If one node has hardwareprofile, we need to run makeconservercf
+    my $runconservercmd = 0;
+    foreach (keys %profilehash) {
+        if (exists $profilehash{$_}{'HardwareProfile'}) {
+            $runconservercmd = 1;
+            last;
         }
-
-        setrsp_progress("Update known hosts");
-        $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
+    }
+    
+    my @commandslist;
+    my %argslist;
+    my %msghash = ( "makehosts"         => "Updating hosts entries",
+                    "makedns"           => "Updating DNS entries",
+                    "makedhcp"          => "Update DHCP entries",
+                    "makeknownhosts"    => "Update known hosts",
+                    "makeconservercf"   => "Updating conserver configuration files",
+                    "kitnoderemove"     => "Remove nodes entries from system configuration files first.",
+                    "nodeset"           => "Update nodes' boot settings",
+                    "rspconfig"         => "Updating FSP's IP address",
+                    "rscan"             => "Update node's some attributes through 'rscan -u'",
+                    "mkhwconn"          => "Sets up connections for nodes to FSP",
+                  );
+    
+    # Stage1:  pre-run     
+    if ($command eq 'kitnoderefresh') {
+        # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands. If not, old records can't be removed.
+        push @commandslist, ['makedns', '-d'];
+        push @commandslist, ['makehosts', '-d'];
+    }
+    
+    # Stage2: run xcat commands
+    if ($command eq 'kitnodeadd' or $command eq 'kitnodeupdate' or $command eq 'kitnoderefresh') {
+        push @commandslist, ['makehosts', ''];
+        push @commandslist, ['makedns', ''];
+        if ($macflag) {
+            push @commandslist, ['makedhcp', ''];
+        }
+        push @commandslist, ['makeknownhosts', ''];
+        if ($runconservercmd) {
+            push @commandslist, ['makeconservercf', ''];
+        }
+    }elsif ($command eq 'kitnoderemove') {
+        if ($runconservercmd) {
+            push @commandslist, ['makeconservercf', '-d'];
+        }
+        push @commandslist, ['makeknownhosts', '-r'];
+        if ($macflag) {
+            push @commandslist, ['makedhcp', '-d'];
+        }
+    }
+    
+    # Stage3: post-run
+    if ($command eq 'kitnodeadd') {
         my $firstnode = (@$nodelist)[0];
         my $chaintab = xCAT::Table->new("chain");
         my $chainref = $chaintab->getNodeAttribs($firstnode, ['chain']);
@@ -106,107 +143,37 @@ sub process_request {
         if($macflag)
         {
             if ($chainarray[0]){
-                setrsp_progress("Update nodes' boot settings");
-                $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>[$chainarray[0]]}, $request_command, 0, 2);
-                log_cmd_return($retref);
+                push @commandslist, ['nodeset', $chainarray[0]];
             }
         }
         my $isfsp = xCAT::ProfiledNodeUtils->is_fsp_node([$firstnode]);
         if ($isfsp) {
-            setrsp_progress("Updating FSP's IP address");
-            $retref = xCAT::Utils->runxcmd({command=>["rspconfig"], node=>$nodelist, arg=>['network=*']}, $request_command, 0, 2);
-            log_cmd_return($retref);
-
             my $cmmref = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
             my @cmmchassis = keys %$cmmref;
-            setrsp_progress("Update node's some attributes through 'rscan -u'");
-            $retref = xCAT::Utils->runxcmd({command=>["rscan"], node=>\@cmmchassis, arg=>['-u']}, $request_command, 0, 2);
-            log_cmd_return($retref);
-
-            setrsp_progress("Sets up connections for nodes to FSP");
-            $retref = xCAT::Utils->runxcmd({command=>["mkhwconn"], node=>$nodelist, arg=>['-t']}, $request_command, 0, 2);
-            log_cmd_return($retref);
+            
+            push @commandslist, ['rspconfig', 'network=*'];
+            push @commandslist, ['rscan', '-u'];
+            push @commandslist, ['mkhwconn', '-t'];
         }
-        
-        setrsp_progress("Updating conserver configuration files");
-        $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-    }
-    elsif ($command eq 'kitnoderemove'){
-        setrsp_progress("Updating conserver configuration files");
-        $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update nodes' boot settings");
-        $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['offline']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update known hosts");
-        $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist, arg=>['-r']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update DHCP entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist, arg=>['-d']}, $request_command, 0, 2);
-        log_cmd_return($retref);
-    }
-    elsif ($command eq 'kitnodeupdate'){
-        setrsp_progress("Updating hosts entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating DNS entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update DHCP entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update known hosts");
-        $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
+    }elsif ($command eq 'kitnoderemove') {
+        push @commandslist, ['nodeset', 'offline'];
+    }elsif ($command eq 'kitnodeupdate') {
         my $firstnode = (@$nodelist)[0];
-        my $profileref = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode]);
-        my %profilehash = %$profileref;
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
-            setrsp_progress("Update nodes' boot settings");
-            $retref = xCAT::Utils->runxcmd({command=>["nodeset"], node=>$nodelist, arg=>['osimage='.$profilehash{$firstnode}{"ImageProfile"}]}, $request_command, 0, 2);
-            log_cmd_return($retref);
+            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"};
+            push @commandslist, ['nodeset', $osimage];
         }
-
-        setrsp_progress("Updating conserver configuration files");
-        $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"], node=>$nodelist}, $request_command, 0, 2);
+    }
+    
+    # Run commands
+    foreach (@commandslist) {
+        my $current_cmd = $_->[0];
+        my $current_args = $_->[1];
+        setrsp_progress($msghash{$current_cmd});
+        my $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
         log_cmd_return($retref);
     }
-    elsif ($command eq 'kitnoderefresh'){
-        # This is due to once update nicips table, we need remove node's records first and then re-create by run make* commands.
-        setrsp_progress("Remove nodes entries from system configuration files first.");
-        $retref = xCAT::Utils->runxcmd({command=>["kitnoderemove"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating hosts entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating DNS entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update DHCP entries");
-        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Update known hosts");
-        $retref = xCAT::Utils->runxcmd({command=>["makeknownhosts"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-
-        setrsp_progress("Updating conserver configuration files");
-        $retref = xCAT::Utils->runxcmd({command=>["makeconservercf"], node=>$nodelist}, $request_command, 0, 2);
-        log_cmd_return($retref);
-    }
-    else
-    {
-    }
+    
 }
 
 #-------------------------------------------------------
