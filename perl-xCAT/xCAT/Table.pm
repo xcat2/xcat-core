@@ -323,6 +323,8 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->getAllNodeAttribs(@args);
     } elsif ($functionname eq 'getAllEntries') {
          return $opentables{$tablename}->{$autocommit}->getAllEntries(@args);
+    } elsif ($functionname eq 'getMAXMINEntries') {
+         return $opentables{$tablename}->{$autocommit}->getMAXMINEntries(@args);
     } elsif ($functionname eq 'writeAllEntries') {
          return $opentables{$tablename}->{$autocommit}->writeAllEntries(@args);
     } elsif ($functionname eq 'getAllAttribsWhere') {
@@ -3988,5 +3990,97 @@ sub output_table {
    print $fh "\n";
    return 0;
 }
+#--------------------------------------------------------------------------
+
+=head3 getMAXMINEntries
+
+    Description: Select the rows in  the Table which has the MAX and the row with the 
+                 Min value for the input attribute.
+                 Currently only the auditlog and evenlog are setup to have such an attribute (recid). 
+
+    Arguments:
+           Table handle
+           attribute name ( e.g. recid)
+
+    Returns:
+        HASH 
+            max=>  max value
+            min=>  min value 
+    Globals:
+
+    Error:
+
+    Example:
+
+	 my $tabh = xCAT::Table->new($table);
+         my $recs=$tabh->getMAXMINEntries("recid"); 
+
+    Comments:
+        none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub getMAXMINEntries
+{
+    my $self = shift;
+    my $attr = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'getMAXMINEntries',@_);
+    }
+    my $rets;
+    my $query;
+    my $xcatcfg=get_xcatcfg();
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    my $qstring;
+    if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+       $qstring = "SELECT MAX (\"$attr\") FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+    } else {
+       $qstring = "SELECT MAX($attr) FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+    }
+    $query = $self->{dbh}->prepare($qstring);
+
+    $query->execute();
+    while (my $data = $query->fetchrow_hashref())
+    {
+        foreach (keys %$data)
+        {
+            if ($data->{$_} =~ /^$/)
+            {
+                $rets->{"max"} = undef;
+            } else {
+                $rets->{"max"} = $data->{$_};
+
+            }
+            last;   # better only be one value for max
+            
+        }
+    }
+    $query->finish();
+    if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+       $qstring = "SELECT MIN (\"$attr\") FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+    } else {
+    $qstring = "SELECT MIN($attr) FROM " . $self->{tabname} . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+    }
+    $query = $self->{dbh}->prepare($qstring);
+
+    $query->execute();
+    while (my $data = $query->fetchrow_hashref())
+    {
+        foreach (keys %$data)
+        {
+            if ($data->{$_} =~ /^$/)
+            {
+                $rets->{"min"} = undef;
+            } else {
+                $rets->{"min"} = $data->{$_};
+            }
+            last;   # better be only one value  for min
+        }
+    }
+    return $rets;
+}
+
 1;
 
