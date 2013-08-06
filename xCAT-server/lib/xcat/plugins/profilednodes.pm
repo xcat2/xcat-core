@@ -385,6 +385,7 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
             $allmacsupper{uc($_)} = 0;
     }
@@ -957,13 +958,13 @@ Usage:
         $chaintab->close();
         
         # Remove all nodes information
-        push(@kitcommands, "kitnoderemove");
+        push(@kitcommands, "removenodes");
         # Add all nodes information back
         push(@kitcommands, "kitnodeadd");  
         
     } elsif ( $fsp_flag ) {
         # Remove all nodes information
-        push(@kitcommands, "kitnoderemove");
+        push(@kitcommands, "removenodes");
         # Add all nodes information back
         push(@kitcommands, "kitnodeadd");
     } else {
@@ -972,7 +973,17 @@ Usage:
 
     #10. Call plugins.   
     foreach my $command (@kitcommands) {
-        my $retref = xCAT::Utils->runxcmd({command=>[$command], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+        my $retref;
+        if ($command eq 'removenodes'){
+            # Not run makedns -d as it costs too much time
+            #setrsp_progress("Updating DNS entries");
+            #$retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+
+            #setrsp_progress("Updating hosts entries");
+            $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+            next;
+        }
+        $retref = xCAT::Utils->runxcmd({command=>[$command], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
         my $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
             setrsp_progress("Warning: failed to call kit commands.");
@@ -1107,6 +1118,7 @@ Usage:
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
         $allmacsupper{uc($_)} = 0;
     }
@@ -1508,6 +1520,7 @@ sub findme{
             $allmacs{$macstr} = 0;
         }
     }
+    %allmacsupper = ();
     foreach (keys %allmacs){
         $allmacsupper{uc($_)} = 0;
     }

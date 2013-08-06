@@ -10,6 +10,8 @@ B<tabdump> [I<table>]
 
 B<tabdump> [I<-f> I<filename>] [I<table>]
 
+B<tabdump> [I<-n> I<# of records>] [I<auditlog | eventlog>]
+
 B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<table>]
 
 B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<-f> I<filename>] [I<table>]
@@ -38,6 +40,15 @@ Display usage message.
 
 Show descriptions of the tables, instead of the contents of the tables.  If a table name is also specified, descriptions of the columns (attributes) of the table will be displayed.  Otherwise, a summary of each table will be displayed.
 
+=item B<-n>
+
+Shows the most recent number of entries as supplied on the -n flag from the auditlog or eventlog table.  
+
+=item B<-f>
+
+File name or path to file in which to dump the table. Without this the table is dumped
+to stdout.  Using the -f flag allows the table to be dumped one record at a time. If tables are very large, dumping to stdout can cause problems such as running out of memory. 
+
 =item B<-w> I<'attr==val'> B<-w> I<'attr=~val'> ...
 
 Use one or multiple -w flags to specify the selection string that can be used to select particular rows of the table. See examples.
@@ -53,11 +64,6 @@ Operator descriptions:
         =~        Select nodes where the attribute value matches the SQL LIKE value.
         !~        Select nodes where the attribute value matches the SQL NOT LIKE value.
 
-
-=item B<-f>
-
-File name or path to file in which to dump the table. Without this the table is dumped
-to stdout.  Using the -f flag allows the table to be dumped one record at a time. If tables are very large, dumping to stdout can cause problems such as running out of memory. 
 
 =back
 
@@ -108,6 +114,12 @@ B<tabdump>   B<-w 'audittime==2011-04-18 11:30:00'> B<auditlog>
 To display the records of the auditlog starting on 2011-04-18:
 
 tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
+
+=item *
+
+To display the 10 most recent entries in the auditlog:
+
+tabdump -n 10 auditlog
 
 =item *
 
