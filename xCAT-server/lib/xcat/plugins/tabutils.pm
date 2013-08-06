@@ -757,12 +757,12 @@ sub tabdump
 }
 #
 #  display input number of records for the table requested tabdump -n
+#  note currently only supports auditlog and eventlog
 #
 sub tabdump_numberentries {
   my $table = shift;
   my $cb  = shift;
   my $numberentries  = shift; # either number of records to display  
-  my $attrrecid="recid";
 
   my $VERBOSE  = shift;
   my $rc=0;
@@ -771,38 +771,21 @@ sub tabdump_numberentries {
        $cb->({error => "Unable to open $table",errorcode=>4});
        return 1;
   }
-  my $DBname = xCAT::Utils->get_DBName;
-  my @attribs = ($attrrecid);
-  my @ents=$tab->getAllAttribs(@attribs);
-  if (@ents) {    # anything to process 
-    # find smallest and largest  recid, note table is not ordered by recid after
-    # a while
-    my $smallrid;
-    my $largerid;
-    foreach my $rid (@ents) {
-      if (!(defined $smallrid)) {
-         $smallrid=$rid;
-      }
-      if (!(defined $largerid)) {
-         $largerid=$rid;
-      }
-      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
-         $smallrid=$rid;
-      }
-      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
-         $largerid=$rid;
-      }
-    }
-    my $RECID;
-    #determine recid to show all records after 
-    $RECID= $largerid->{$attrrecid} - $numberentries ; 
-    $rc=tabdump_recid($table,$cb,$RECID, $attrrecid); 
-  } else {
+ #determine recid to show all records after 
+ my $RECID;
+ my $attrrecid="recid";
+ my $values = $tab->getMAXMINEntries($attrrecid);
+ my $max=$values->{"max"};
+ if (defined($values->{"max"})){
+      $RECID= $values->{"max"} - $numberentries ;
+      $rc=tabdump_recid($table,$cb,$RECID, $attrrecid); 
+   
+ } else {
       my %rsp;
       push @{$rsp{data}}, "Nothing to display from $table.";
       $rsp{errorcode} = $rc; 
       $cb->(\%rsp);
-  }
+ }
   return $rc;
 }
 #  Display requested recored 
@@ -1134,51 +1117,34 @@ sub tabprune_numberentries {
        $cb->({error => "Unable to open $table",errorcode=>4});
        return 1;
   }
-  my $DBname = xCAT::Utils->get_DBName;
-  my @attribs = ("$attrrecid");
-  my @ents=$tab->getAllAttribs(@attribs);
-  if (@ents) {    # anything to process 
-    # find smallest and largest  recid, note table is not ordered by recid after
-    # a while
-    my $smallrid;
-    my $largerid;
-    foreach my $rid (@ents) {
-      if (!(defined $smallrid)) {
-         $smallrid=$rid;
-      }
-      if (!(defined $largerid)) {
-         $largerid=$rid;
-      }
-      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
-         $smallrid=$rid;
-      }
-      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
-         $largerid=$rid;
-      }
-    }
-    my $RECID;
+  my $RECID;
+  my $values = $tab->getMAXMINEntries($attrrecid);
+  if ((defined($values->{"max"})) && (defined($values->{"min"}))) {
+    my  $largerid = $values->{"max"};
+    my  $smallrid = $values->{"min"};
     if ($flag eq "n") {  # deleting number of records
-      #determine recid to delete all entries that come before like the -i flag
-      $RECID= $smallrid->{$attrrecid} + $numberentries ; 
+      #get the smalled recid and add number to delete, that is where to start removing
+      $RECID= $smallrid + $numberentries ; 
     } else {  # flag must be percentage
        #take largest and smallest recid and percentage and determine the recid
        # that will remove the requested percentage.   If some are missing in the
        # middle due to tabedit,  we are not worried about it.
      
-       my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
+       my $totalnumberrids = $largerid - $smallrid +1;
        my $percent = $numberentries / 100;
        my $percentage=$totalnumberrids * $percent ;
        my $cnt=sprintf( "%d", $percentage ); # round to whole number
-       $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+       $RECID=$smallrid + $cnt; # get recid to remove all before
     }
+    # Now prune starting at $RECID
     $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
-  } else {
+ } else {
       my %rsp;
       push @{$rsp{data}}, "Nothing to prune from $table.";
       $rsp{errorcode} = $rc; 
       $cb->(\%rsp);
-  }
-  return $rc;
+ }
+ return $rc;
 }
 
 #  prune all entries up to the record id input 
