@@ -296,7 +296,8 @@ sub setstate {
       my $pname = "yaboot.conf-" . $tmp;
       unlink($tftpdir."/".$pname);
       link($tftpdir."/etc/".$node,$tftpdir."/".$pname); 
-  }      
+  }
+  return;      
 }
   
 
