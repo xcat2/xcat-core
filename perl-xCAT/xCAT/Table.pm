@@ -4024,10 +4024,10 @@ sub output_table {
 sub getMAXMINEntries
 {
     my $self = shift;
-    my $attr = shift;
     if ($dbworkerpid) {
         return dbc_call($self,'getMAXMINEntries',@_);
     }
+    my $attr = shift;
     my $rets;
     my $query;
     my $xcatcfg=get_xcatcfg();
