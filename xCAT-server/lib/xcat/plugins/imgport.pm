@@ -438,7 +438,7 @@ sub get_files{
                 my @files;
                 my $dir = "$installroot/netboot/$osvers/s390x/$profile";
                 opendir(DIR, $dir) or $callback->({error=>["Could not open image files in directory $dir"], errorcode=>[1]});
-
+		
                 while (my $file = readdir(DIR)) {
                     # We only want files in the directory that end with .img
                     next unless (-f "$dir/$file");
@@ -449,7 +449,7 @@ sub get_files{
                 if (@files) {
                     $attrs->{rawimagefiles}->{files} = [@files];
                 }
-                               
+		
                 closedir(DIR);
             }
             else {
@@ -465,37 +465,51 @@ sub get_files{
                         $attrs->{linuximage}->{pkglist} = $temp;
                     }
                 }
-        
+		
                 @arr = ("$installroot/netboot");
-    
-                # look for ramdisk
-                my $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);
-                unless($ramdisk){
-                    $callback->({error=>["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"],errorcode=>[1]});
-                    $errors++;
-                }else{
-                    $attrs->{ramdisk} = $ramdisk;
-                }
-        
-                # look for kernel
-                my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
-                unless($kernel){
-                    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
-                    $errors++;
-                }else{
-                    $attrs->{kernel} = $kernel;
-                }
-        
-                # look for rootimg.gz
-                my $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
-                unless($rootimg){
-                    $callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
-                    $errors++;
-                }else{
-                    $attrs->{rootimg} = $rootimg;
-                }
-            }
-	    } elsif ($provmethod =~ /statelite/) {
+		my $rootimgdir=$attrs->{linuximage}->{rootimgdir};
+		my $ramdisk;
+                my $kernel;
+		my $rootimg;
+                # look for ramdisk, kernel and rootimg.gz
+		if($rootimgdir) {
+	            if (-f "$rootimgdir/initrd-stateless.gz") {
+			$ramdisk="$rootimgdir/initrd-stateless.gz";
+		    } 
+	            if (-f "$rootimgdir/kernel") {
+			$kernel="$rootimgdir/kernel";
+		    } 
+	            if (-f "$rootimgdir/rootimg.gz") {
+			$rootimg="$rootimgdir/rootimg.gz";
+		    } 
+                    	    
+		} else {
+		    $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);
+		    $kernel = look_for_file('kernel', $callback, $attrs, @arr);
+		    $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
+		}
+		unless($ramdisk){
+		    $callback->({error=>["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{ramdisk} = $ramdisk;
+		}
+		    
+		unless($kernel){
+		    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{kernel} = $kernel;
+		}
+		    
+		unless($rootimg){
+		    $callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{rootimg} = $rootimg;
+		}
+	    }
+	} elsif ($provmethod =~ /statelite/) {
             @arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
             #get .pkglist file
             if (! $attrs->{linuximage}->{pkglist})  {
@@ -510,25 +524,36 @@ sub get_files{
             }
         
             @arr = ("$installroot/netboot");
-        
-            # look for kernel
-            my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
-            unless($kernel){
-                $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
-                $errors++;
-            }else{
-                $attrs->{kernel} = $kernel;
-            }
+	    my $rootimgdir=$attrs->{linuximage}->{rootimgdir};
+	    my $kernel;
+            my $ramdisk;
+            #look for kernel and ramdisk
+	    if($rootimgdir) {
+		if (-f "$rootimgdir/kernel") {
+		    $kernel="$rootimgdir/kernel";
+		} 		
+		if (-f "$rootimgdir/initrd-statelite.gz") {
+		    $ramdisk="$rootimgdir/initrd-statelite.gz";
+		} 
+	    } else {
+		$kernel = look_for_file('kernel', $callback, $attrs, @arr);
+		$ramdisk = look_for_file('initrd-statelite.gz', $callback, $attrs, @arr);
+	    }
+	    
+	    unless($kernel){
+		$callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+		$errors++;
+	    }else{
+		$attrs->{kernel} = $kernel;
+	    }
 
-            # look for ramdisk
-            my $ramdisk = look_for_file('initrd-statelite.gz', $callback, $attrs, @arr);
-            unless($ramdisk){
-                $callback->({error=>["Couldn't find ramdisk (initrd-statelite.gz) for  $imagename"],errorcode=>[1]});
-                $errors++;
-            }else{
-                $attrs->{ramdisk} = $ramdisk;
-            }
-        } 
+	    unless($ramdisk){
+		$callback->({error=>["Couldn't find ramdisk (initrd-statelite.gz) for  $imagename"],errorcode=>[1]});
+		$errors++;
+	    }else{
+		$attrs->{ramdisk} = $ramdisk;
+	    }
+	}
     }
     
     if (( $provmethod =~ /raw/ ) and ( $arch =~ /s390x/ )) {    
