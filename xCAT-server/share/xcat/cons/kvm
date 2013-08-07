@@ -51,9 +51,9 @@ import File::Basename;
 my $scriptname = $0;
 
 my $cmdref={
-    command=>"getcons",
-    arg=>"text",
-    noderange=>$ARGV[0]
+    command=>["getcons"],
+    arg=>["text"],
+    noderange=>[$ARGV[0]]
 };
 use Data::Dumper;
 my $dsthost;
