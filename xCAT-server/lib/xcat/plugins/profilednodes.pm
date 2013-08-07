@@ -370,7 +370,7 @@ Usage:
     my %allfspips = %$recordsref;
 
     # Get all switches name
-    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('switches', 'switch');
+    $recordsref = xCAT::ProfiledNodeUtils->get_db_switches();
     %allswitches = %$recordsref;
 
     # Get all switches_switchport
