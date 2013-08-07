@@ -171,6 +171,12 @@ sub process_request {
         # Do the check 
         my $imageprofile = parse_str_arg($request->{arg}->[0]);
 
+        if (! exists($request->{kitdata}))
+        {
+            $rsp->{data}->[0] = "Skipped running \"$command\" plugin command for \"$PLUGIN_KITNAME\" kit.";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+            return;
+        }
         my $kitdata = $request->{kitdata};
         if (! defined($kitdata) && !($command eq "kitimagepostdelete")) {
             $kitdata = xCAT::KitPluginUtils->get_kits_used_by_image_profiles([$imageprofile]);
