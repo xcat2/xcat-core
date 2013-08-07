@@ -1832,6 +1832,15 @@ sub insert_dd () {
             # if the new kernel from update distro is not existed in initrd, create the path for it
             if (! -r "$dd_dir/initrd_img/lib/modules/$new_kernel_ver/") {
                 mkpath ("$dd_dir/initrd_img/lib/modules/$new_kernel_ver/");
+                # link the /modules to this new kernel dir
+                unlink "$dd_dir/initrd_img/modules";
+                $cmd = "/bin/ln -sf lib/modules/$new_kernel_ver/initrd $dd_dir/initrd_img/modules";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not create link to the new kernel dir.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
             }
             
             # Copy the drivers to the rootimage
