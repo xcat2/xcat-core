@@ -254,6 +254,12 @@ sub add_hosts_content {
                     {
                         addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
                     }
+                    else
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}}, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                    }
                     if (defined($ref->{otherinterfaces}))
                     {
                         addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;

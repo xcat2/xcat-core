@@ -21,12 +21,7 @@ set -e
 case "$1" in
     configure)
 	. /etc/profile.d/xcat.sh
-    if [ ! -e "/etc/rc0.d/K60xcatd" ];then
-        update-rc.d xcatd start 85 2 3 4 5 . stop 60 0 1 6 .
-        update-rc.d xcatd enable 2
-    else
-	    update-rc.d xcatd enable
-    fi
+        update-rc.d xcatd defaults
 	if [ -f /tmp/xCAT-server_upgrade.tmp ]; then
 	    if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
 		/etc/init.d/xcatd reload
@@ -36,12 +31,6 @@ case "$1" in
 	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
     #SHA1 has been get rid of after Squeeze released. Its functionality is also provided by Digest::SHA (which is in core).
     #but ipmi.pm need SHA1.pm, so create this link
-    shalocate=`find /usr/lib/perl -name "SHA.pm"`
-    shalocate=${shalocate%SHA.pm}
-    cd $shalocate
-    if [ ! -e SHA1.pm ];then
-        ln -s SHA.pm SHA1.pm
-    fi
     cd -
     ;;
 
