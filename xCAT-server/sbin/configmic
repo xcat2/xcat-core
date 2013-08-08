@@ -35,28 +35,43 @@ unless ($master && $cfgpath) {
 }
 
 # get the correct host name for the host
-my $nodename;
+my ($nodename, $nodename_short);
 my $masterip = `getent hosts $master | awk {'print \$1'}`;
-chomp($masterip);
-my $myip = `ip route get $masterip| head -n 1 | sed 's/^.*src//g' | awk {'print \$1'}`;
-my $myipinfo =`getent hosts $myip`;
-if ($myipinfo =~ /([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
-    my $n1 = $2;
-    my $n2 = $3;
-    if (length($n1) > length($n2)) {
-        $nodename = $n2;
-    } else {
-        $nodename = $n1;
+if ($masterip) {
+    chomp($masterip);
+    my $myip = `ip route get $masterip| head -n 1 | sed 's/^.*src//g' | awk {'print \$1'}`;
+    if ($myip) {
+        my $myipinfo =`getent hosts $myip`;
+
+        if ($myipinfo && $myipinfo =~ /([^\s]+)\s+([^\s]+)\s+([^\s]+)/) {
+            my $n1 = $2;
+            my $n2 = $3;
+            if (length($n1) > length($n2)) {
+                $nodename_short = $n2;
+            } else {
+                $nodename = $n1;
+            }
+        } elsif ($myipinfo && $myipinfo =~ /([^\s]+)\s+([^\s]+)/) {
+            $nodename_short = $2;
+        }
     }
-} elsif ($myipinfo =~ /([^\s]+)\s+([^\s]+)/) {
-    $nodename = $2;
-} else {
-    outputmsg("Error: cannot get the hostname of the host node\n", 2);
+}
+unless ($nodename) {
+    $nodename = `hostname`;
+    chomp($nodename);
+}
+unless ($nodename_short) {
+    $nodename_short = `hostname -s`;
+    chomp($nodename_short);
 }
 
 # download the mic configuration file from master
-my $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename  -P $tmppath";
-my ($rc, $output) = runsyscmd ($cmd, "Error: failed to download mic configuration file from $master\n", 3);
+my $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename_short -P $tmppath";
+my ($rc, $output) = runsyscmd ($cmd);
+if ($rc) {
+    $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename -P $tmppath";
+    runsyscmd ($cmd, "Error: failed to download mic configuration file from $master\n", 3);
+}
 
 unless (-r "$tmppath/miccfg.$nodename") {
     runsyscmd ("Error: cannot get the mic configuration file from http://$master/$cfgpath/miccfg.$nodename\n", 4);

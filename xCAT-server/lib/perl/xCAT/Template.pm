@@ -178,7 +178,7 @@ sub subvars {
       my $source_in_pre;
       my $c = 0; 
       foreach my $pkgdir(@pkgdirs) {
-          if( $platform =~ /^(rh|SL)$/ ) {
+          if( $platform =~ /^(rh|SL|centos)$/ ) {
               if ( $c == 0 ) {
                   # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                   # the rhels5.9 will not be installed successfully. So put in kickstart directly.
