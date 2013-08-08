@@ -343,7 +343,7 @@ my %usage = (
       renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
   "updatenode" =>
 "Usage:
-    updatenode [-h|--help|-v|--version]
+    updatenode [-h|--help|-v|--version | -g|--genmypost]
     or
     updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn]
     or
@@ -367,6 +367,9 @@ Options:
 
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
+
+    [-g|--genmypost] Will generate a new mypostscript file for the  
+        the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
     [-l|--user] User name to run the updatenode command.  It overrides the
         current user which is the default.

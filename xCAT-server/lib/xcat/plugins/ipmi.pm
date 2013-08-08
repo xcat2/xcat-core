@@ -73,7 +73,6 @@ use IO::Socket;
 use IO::Select;
 use Class::Struct;
 use Digest::MD5 qw(md5);
-use Digest::SHA1 qw(sha1);
 use POSIX qw(WNOHANG mkfifo strftime);
 use Fcntl qw(:flock);
 
@@ -3906,8 +3905,8 @@ sub getaddsensorevent {
 				0x0f => "Enabling docking station",
 				0x10 => "Docking staion ejection",
 				0x11 => "Disable docking station",
-				0x12 => "Calling operation system wake-up vector",
-				0x13 => "Starting operation system boot process, call init 19h",
+				0x12 => "Calling operating system wake-up vector",
+				0x13 => "Starting operating system boot process, call init 19h",
 				0x14 => "Baseboard or motherboard initialization",
 				0x16 => "Floppy initialization",
 				0x17 => "Keyboard test",

@@ -69,15 +69,18 @@ sub validate {
   $policytable->close;
   my $rule;
   my $peerstatus="untrusted";
+  # This sorts the policy table  rows based on the level of the priority field in the row.
+  # note the lower the number in the policy table the higher the priority
+  my @sortedpolicies = sort { $a->{priority} <=> $b->{priority} } (@$policies);
   # check to see if peerhost is trusted
-  foreach $rule (@$policies) {
+  foreach $rule (@sortedpolicies) {
      
     if (($rule->{name} and $rule->{name} eq $peername)  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
   }
-  RULE: foreach $rule (@$policies) {
+  RULE: foreach $rule (@sortedpolicies) {
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});

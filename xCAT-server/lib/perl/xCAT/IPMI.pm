@@ -46,13 +46,24 @@ use Digest::MD5 qw/md5/;
 my $pendingpackets=0;
 my %tabooseq; #TODO: this is a global which means one taboo in the whole set causes unrelated session objects to consider it taboo unnecessarily
 my $maxpending; #determined dynamically based on rcvbuf detection
-my $ipmi2support = eval {
-    require Digest::SHA1;
-    Digest::SHA1->import(qw/sha1/);
-    require Digest::HMAC_SHA1;
-    Digest::HMAC_SHA1->import(qw/hmac_sha1/);
-    1;
-};
+if ( -f "/etc/debian_release" ){
+    $ipmi2support = eval {
+        require Digest::SHA;
+        Digest::SHA->import(qw/sha1/);
+        require Digest::HMAC_SHA1;
+        Digest::HMAC_SHA1->import(qw/hmac_sha1/);
+        1;
+    };
+}
+else {
+    $ipmi2support = eval {
+        require Digest::SHA1;
+        Digest::SHA1->import(qw/sha1/);
+        require Digest::HMAC_SHA1;
+        Digest::HMAC_SHA1->import(qw/hmac_sha1/);
+        1;
+    };
+}
 my $aessupport;
 if ($ipmi2support) {
     $aessupport = eval {

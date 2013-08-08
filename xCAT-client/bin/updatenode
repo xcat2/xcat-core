@@ -88,6 +88,7 @@ if (
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,
                 'F|sync'           => \$::FILESYNC,
+                'g|genmypost'   => \$::GENMYPOST,
                 'f|snsync'         => \$::SNFILESYNC,
                 'l|user:s'         => \$::USER,
                 'S|sw'             => \$::SWMAINTENANCE,
