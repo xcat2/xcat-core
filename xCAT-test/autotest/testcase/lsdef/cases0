@@ -196,3 +196,14 @@ cmd:lsdef -t node -h -i status
 check:rc==0
 check:output=~status
 end
+
+start:lsdef_nics
+description:lsdef --nics
+cmd:mkdef -t node -o testnode1 groups=all mgt=ipmi nicips.eth0=1.1.1.1
+check:rc==0
+cmd:lsdef testnode1 --nics
+check:rc==0
+check:output=~1.1.1.1
+cmd:rmdef testnode1
+check:rc==0
+end
