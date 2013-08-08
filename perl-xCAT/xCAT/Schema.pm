@@ -191,7 +191,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node mgr host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
+    cols => [qw(node mgr host migrationdest storage storagemodel storagecache storageformat cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => 'Virtualization parameters',
@@ -230,6 +230,8 @@ vm => {
 	'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
 	'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
 	'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
+    'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
+    'storageformat' => "Select disk format to use by default (e.g. raw versus qcow2)",
     }
 },
 hypervisor => {
@@ -2234,6 +2236,14 @@ my @nodeattrs = (
                 },
                 {attr_name => 'vmstoragemodel',
                  tabentry => 'vm.storagemodel',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'vmstoragecache',
+                 tabentry => 'vm.storagecache',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'vmstorageformat',
+                 tabentry => 'vm.storageformat',
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmcfgstore',
