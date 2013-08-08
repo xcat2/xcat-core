@@ -206,4 +206,6 @@ check:rc==0
 check:output=~1.1.1.1
 cmd:rmdef testnode1
 check:rc==0
+cmd:lsdef testnode1
+check:output=~Could not find
 end
