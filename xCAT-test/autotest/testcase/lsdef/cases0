@@ -189,3 +189,10 @@ cmd:lsdef -t wrongtype -o test
 check:rc!=0
 check:output=~Error
 end
+
+start:lsdef_t_h_i
+description:lsdef -t node -h -i status
+cmd:lsdef -t node -h -i status
+check:rc==0
+check:output=~status
+end
