@@ -260,6 +260,7 @@ sub add_hosts_content {
                         push @{$rsp->{data}}, "Invalid IP Addr \'$ref->{ip}\' for node \'$ref->{node}\'.";
                         xCAT::MsgUtils->message("E", $rsp, $callback);
                     }
+    
                     if (defined($ref->{otherinterfaces}))
                     {
                         addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;
@@ -451,6 +452,13 @@ sub process_request
             {
                 addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
             }
+            else
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+
             if (defined($_->{otherinterfaces}))
             {
                 addotherinterfaces $callback, $_->{node}, $_->{otherinterfaces}, $domain;
