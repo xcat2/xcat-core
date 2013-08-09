@@ -278,7 +278,9 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     my $create = $args{create};
     my $force = $args{force};
     my $format = $args{format};
+    my $sparse = 1;
     if ($url =~ /^lvm:/) {
+    $sparse = 0;
 	$format = 'raw';
     }
     unless ($format) {
@@ -327,7 +329,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
             #  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
         } else {
 	    my $vol;
-	    if ($format eq 'raw') { #skip allocation specification for now
+	    unless  ($sparse) { #skip allocation specification for now
 	       #currently, LV can have reduced allocation, but *cannot* grow.....
                $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity></volume>");
 	    } else {
