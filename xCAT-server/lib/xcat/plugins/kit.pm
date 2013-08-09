@@ -303,6 +303,47 @@ sub comp_word
 
 }
 
+
+#-------------------------------------------------------
+
+=head3 check_newinstall
+
+  Check if the given kitcomp list are in NEW_INSTALL_LIST
+  or not.  If so, set $::noupgrade all other kitcomp
+  depending on this list will be put into NEW_INSTALL_LIST
+  also
+
+=cut
+
+#-------------------------------------------------------
+sub check_newinstall 
+{
+    my $kitcomponents = shift;
+    my @lines = @_;
+
+    my @kitcomps = split /,/, $kitcomponents;
+
+    foreach my $kitcomp ( @kitcomps ) {
+        last if ( $::noupgrade );
+
+        my $match_newinstall = 0;
+        foreach my $line ( @lines ) {
+            chomp($line);
+            if ( $line =~ /^#NEW_INSTALL_LIST#$/ ) {
+                $match_newinstall = 1;
+            }
+            if ( $line =~ /\/$kitcomp$/ ) {
+                if ( $match_newinstall ) {
+                    $::noupgrade = 1;
+                }
+                last;
+            }
+        }
+    }
+
+}
+
+
 #-------------------------------------------------------
 
 =head3 assign_to_osimage
@@ -319,7 +360,7 @@ sub assign_to_osimage
     my $callback = shift;
     my $tabs = shift;
 
-    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
+    (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitcompdeps', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
     (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents');
     (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
 
@@ -688,6 +729,13 @@ sub assign_to_osimage
                     push @lines, "$kitreponame/$kitcomptable->{prerequisite}\n";
                     $::noupgrade = 1;
                 }
+
+                # Check if this kitcomponent's kitcompdeps are in NEW_INSTALL_LIST or not.
+                # If so, set $::noupgrade to put this kitcomp in a new NEW_INSTALL_LIST
+                if ( $kitcomptable and $kitcomptable->{kitcompdeps} ) {
+                    check_newinstall($kitcomptable->{kitcompdeps}, @lines);
+                }
+
                 if ( $::noupgrade ) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
                     foreach my $kitdeployparam ( @kitdeployparams ) {
@@ -2141,7 +2189,7 @@ sub addkitcomp
             if ( $kitcomp eq $oskitcomp ) {
                 my %rsp;
                 push@{ $rsp{data} }, "$kitcomp kit component is already in osimage $osimage";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                xCAT::MsgUtils->message( "I", \%rsp, $callback );
                 $catched = 1;
             }
         }
@@ -2491,19 +2539,36 @@ sub rmkitcomp
 
     # Remove symlink from osimage.otherpkgdir.
 
+    # Read all the kitcomponents assigned to all the osimage to make sure the repo used by other osimage
+    # will not be deleted.
+
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
+
     (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
     if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
         foreach my $kitcomponent (keys %kitcomps) {
 
+            my %newosikitcomponents;
+            foreach my $allosikitcomp (@allosikitcomps) {
+                if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
+                    foreach my $allkitcomp ( @allkitcomps ) {
+                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                            $newosikitcomponents{$allkitcomp} = 1;
+                        } 
+                    }
+                }
+            }
+    
             if ( $kitcomps{$kitcomponent}{kitreponame} ) {
                 if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
 
                     # Check if this repo is used by other kitcomponent before removing the link
                     my $match = 0;
-                    foreach my $osikitcomp ( @osikitcomps ) {
-                        next if ( $osikitcomp =~ /$kitcomponent/ );
+                    foreach my $osikitcomp ( keys %newosikitcomponents ) {
+
                         my $depkitrepodir;
                         (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
                         if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
