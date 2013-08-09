@@ -19,6 +19,7 @@ use File::Path;
 use Socket;
 use strict;
 use Symbol;
+my $sha1support;
 if ( -f "/etc/debian_version" ) {
     $sha1support = eval {
         require Digest::SHA;
