@@ -10,7 +10,7 @@ if ($^O =~ /^aix/i) {
 }
 
 use strict;
-use Sys::Syslog qw (:DEFAULT setlogsock);
+use Sys::Syslog;
 use xCAT::Utils;
 #use locale;
 use Socket;
@@ -456,7 +456,7 @@ sub message
 
         # If they want this msg to also go to syslog, do that now
         eval {
-            openlog("xCAT", '', 'local4');
+            openlog("xCAT", "nofatal,pid", "local4");
             if ($sev eq 'SE') {
               syslog("err", $rsp);
             } else {
@@ -502,7 +502,7 @@ sub message
             {
                 print $stdouterrf "Unable to open auditlog\n";
                 eval {
-                    openlog("xCAT", '', 'local4');
+                    openlog("xCAT", "nofatal,pid", "local4");
                     syslog("err", "Unable to write to auditlog");
                     closelog();
                 };
@@ -519,7 +519,7 @@ sub message
         {    # error
             print $stdouterrf "Unable to open auditlog\n";
             eval {
-                openlog("xCAT", '', 'local4');
+                openlog("xCAT", "nofatal,pid", "local4");
                 syslog("err", "Unable to open auditlog");
                 closelog();
             };
