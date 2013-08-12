@@ -1576,7 +1576,8 @@ sub mksysclone
        }
     }
 
-    # copy postscripts
+    # copy postscripts, the xCAT scripts may update, but the image is captured long time ago
+    # should update the scripts at each nodeset
     my $script1 = "configefi";
     my $script2 = "updatenetwork";
     my $pspath = "$installroot/sysclone/scripts/post-install/";
