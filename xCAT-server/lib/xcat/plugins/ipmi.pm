@@ -2895,6 +2895,7 @@ sub parseprod {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+        if ($currsize < 0) { last }
     }
     return \%info;
 
@@ -2967,6 +2968,7 @@ sub parseboard {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+        if ($currsize < 0) { last }
     }
     if ($global_sessdata->{isanimm}) { #we can understand more specifically some of the extra fields...
 	$boardinf{frunum}=$boardinf{extra}->[0]->{value};
@@ -3031,6 +3033,7 @@ sub parsechassis {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
+        if ($currsize < 0) { last }
     }
     return \%chassisinf;
 }
@@ -3042,7 +3045,7 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $data;
     if ($idx >= scalar @$area)  {
         xCAT::SvrUtils::sendmsg([1,"Error parsing FRU data from BMC"],$callback);
-        return 1,undef,undef;
+        return -1,undef,undef;
     }
     my $size = $area->[$idx] & 0b00111111;
     my $encoding = ($area->[$idx] & 0b11000000)>>6;

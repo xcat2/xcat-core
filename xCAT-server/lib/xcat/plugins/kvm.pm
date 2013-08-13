@@ -278,7 +278,9 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     my $create = $args{create};
     my $force = $args{force};
     my $format = $args{format};
+    my $sparse = 1;
     if ($url =~ /^lvm:/) {
+    $sparse = 0;
 	$format = 'raw';
     }
     unless ($format) {
@@ -327,7 +329,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
             #  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
         } else {
 	    my $vol;
-	    if ($format eq 'raw') { #skip allocation specification for now
+	    unless  ($sparse) { #skip allocation specification for now
 	       #currently, LV can have reduced allocation, but *cannot* grow.....
                $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity></volume>");
 	    } else {
@@ -488,6 +490,10 @@ sub build_diskstruct {
       $cdhash->{target}->{dev}='hdc';
       push @returns,$cdhash;
     }
+    my $cachemethod = "none";
+    if ( $confdata->{vm}->{$node}->[0]->{storagecache}) {
+        $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
+    }
 
 
     if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
@@ -530,8 +536,7 @@ sub build_diskstruct {
                     $tdiskhash->{device}='disk';
                     $tdiskhash->{driver}->{name}='qemu';
                     $tdiskhash->{driver}->{type}=$disks{$_}->{format};
-                    $tdiskhash->{driver}->{cache}="none"; #in this scenario, making a brand new vm, there is not much the hypervisor cache can do for us that the 
-								#guest cannot do for itself
+                    $tdiskhash->{driver}->{cache}=$cachemethod;
                     $tdiskhash->{source}->{file}=$_;
                     $tdiskhash->{target}->{dev} = $disks{$_}->{device};
                     if ($disks{$_} =~ /^vd/) {
@@ -1209,12 +1214,16 @@ sub createstorage {
     #my $diskstruct = shift;
     my $node = $cfginfo->{node};
     my @flags = split /,/,$cfginfo->{virtflags};
+    my $format;
     foreach (@flags) {
         if (/^imageformat=(.*)\z/) {
-            $imgfmt=$1;
+            $format=$1;
         } elsif (/^clonemethod=(.*)\z/) {
             $clonemethod=$1;
         }
+    }
+    if ($cfginfo->{storageformat}) {
+        $format = $cfginfo->{storageformat};
     }
     my $mountpath;
     my $pathappend;
@@ -1242,7 +1251,7 @@ sub createstorage {
     if ($filename =~ /^nfs:/ or $filename =~ /^dir:/ or $filename =~ /^lvm:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/,$size;
         foreach (@sizes) {
-            get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_, force=>$force);
+            get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_, force=>$force, format=>$format);
         }
     }else{
         oldCreateStorage($filename, $mastername, $size, $cfginfo, $force);
@@ -1653,6 +1662,15 @@ sub chvm {
                 $suffix=$1;
                 $format='raw';
             }
+            if ($confdata->{vm}->{$node}->[0]->{storageformat}) {
+                $format = $confdata->{vm}->{$node}->[0]->{storageformat};
+            }
+    	    #when creating a new disk not cloned from anything, disable cache as copy on write content similarity is a lost cause...
+            my $cachemode = 'none';
+            #unless user knows better
+            if ($confdata->{vm}->{$node}->[0]->{storagecache}) {
+                $cachemode = $confdata->{vm}->{$node}->[0]->{storagecache};
+            }
             my $bus;
             if ($suffix =~ /^sd/) {
                 $bus='scsi';
@@ -1661,8 +1679,7 @@ sub chvm {
             } elsif ($suffix =~ /vd/) {
                 $bus='virtio';
             }
-	    #when creating a new disk not cloned from anything, disable cache as copy on write content similarity is a lost cause...
-            my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format' cache='none'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
+            my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format' cache='$cachemode'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
             if ($currstate eq 'on') { #attempt live attach
               eval {
               $dom->attach_device($xml);

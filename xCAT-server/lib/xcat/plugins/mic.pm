@@ -596,7 +596,7 @@ sub nodeset {
     my $subreq = shift;
     my $host2mic = shift;
 
-    my $usage_string = "nodeset noderange [osimage=imagename]";
+    my $usage_string = "nodeset noderange osimage[=imagename]";
 
     my $nodes = $request->{'node'};
     my $args = $request->{arg};
@@ -604,9 +604,6 @@ sub nodeset {
     foreach (@$args) {
         if (/osimage=(.*)/) {
             $setosimg = $1;
-        } else {
-            xCAT::MsgUtils->message("E", {error=>[$usage_string], errorcode=>["1"]}, $callback);
-            return;
         }
     }
     
@@ -625,11 +622,12 @@ sub nodeset {
         }
         $nttab->setNodesAttribs(\%setpmethod);
     }
-    
+
+    # get the provision method from nodetype table
     my $nthash = $nttab->getNodesAttribs($nodes,['provmethod']);
     foreach my $node (@$nodes) {
         unless (defined ($nthash->{$node}->[0]->{'provmethod'})) {
-            xCAT::MsgUtils->message("E", {error=>["The provmethod for the node $node must be set before the nodeset."], errorcode=>["1"]}, $callback);
+            xCAT::MsgUtils->message("E", {error=>["The provmethod for the node $node must be set by [nodeset <node> osimage=<image name>] or set in the provmethod attribute of the node."], errorcode=>["1"]}, $callback);
             return;
         }
     }
