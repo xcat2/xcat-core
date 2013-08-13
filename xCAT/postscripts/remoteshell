@@ -48,7 +48,7 @@ then
    echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
 
 fi
-
+xcatpost="xcatpost"
 if [ -d /xcatpost/_ssh ]
 then
 	logger -p local4.info -t xcat "Install: setup root .ssh"
@@ -74,7 +74,7 @@ CREDPID=$!
 
 
 #first contact daemon  xcatflowrequest <server> 3001
-logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
 /$xcatpost/xcatflowrequest $master 3001
 getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
 
@@ -87,7 +87,7 @@ if [ $? -ne 0 ]; then
 	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         while [ -z "$MYCONT" ]; do
                 #first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
                 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
@@ -108,7 +108,7 @@ fi
 rm /tmp/ssh_dsa_hostkey
 
 # first contact daemon  xcatflowrequest <server> 3001
-  logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+  logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
 /$xcatpost/xcatflowrequest $master 3001
 getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
 
@@ -121,7 +121,7 @@ if [ $? -ne 0 ]; then
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	while [ -z "$MYCONT" ]; do
                 # first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
 
     		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
@@ -155,7 +155,7 @@ sleep 1
 if [ $ENABLESSHBETWEENNODES = "YES" ];
 then 
  #first contact daemon  xcatflowrequest <server> 3001
- logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+ logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
  /$xcatpost/xcatflowrequest $master 3001
   getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
@@ -168,7 +168,7 @@ then
 	MYCONT=`cat /root/.ssh/id_rsa`
 	while [ -z "$MYCONT" ]; do
                 # first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $master 3001"
+                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
 		getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 		MYCONT=`cat /root/.ssh/id_rsa`
