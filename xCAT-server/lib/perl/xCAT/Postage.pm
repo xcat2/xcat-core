@@ -186,15 +186,15 @@ sub makescript {
   if($entries[0]) {
        $installroot = $entries[0];
   }
-  my $tmpl="$installroot/postscripts/mypostscript.tmpl";
+  my $tmpl="$installroot/postscripts/mypostscript.tmpl";     #the customized mypostscript template
     
   unless ( -r $tmpl) {
-       $tmpl="$::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl";
+       $tmpl="$::XCATROOT/share/xcat/mypostscript/mypostscript.tmpl";  #the default xcat mypostscript template
   }
     
   unless ( -r "$tmpl") {
          my $rsp;
-         $rsp->{data}->[0]= "No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl.\n";
+         $rsp->{data}->[0]= "No mypostscript template exists in directory /install/postscripts or $::XCATROOT/share/xcat/mypostscript/mypostscript.tmpl.\n";
          xCAT::MsgUtils->message("SE", $rsp, $callback,1);
          return ;
   }
