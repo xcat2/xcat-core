@@ -70,6 +70,20 @@ if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
+function setbranch {
+	#git checkout $BRANCH
+	REL=`git rev-parse --abbrev-ref HEAD`
+	if [ "$REL" = "master" ]; then
+		REL="devel"
+	fi
+}
+
+if [ "$REL" = "xcat-core" ]; then			# using git
+	GIT=1
+	setbranch					# this changes the REL variable
+fi
+
 # this is needed only when we are transitioning the yum over to frs
 if [ "$FRSYUM" != 0 ]; then
 	YUMDIR=$FRS
@@ -84,7 +98,11 @@ if [ -n "$EMBED" ]; then EMBEDDIR="/$EMBED"
 else EMBEDDIR=""; fi
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 
-DESTDIR=../..$EMBEDDIR/$XCATCORE
+if [ "$GIT" = "1" ]; then                      # using git - need to include REL in the path where we put the built rpms
+	DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
+else
+	DESTDIR=../..$EMBEDDIR/$XCATCORE
+fi
 SRCD=core-snap-srpms
 
 # currently aix builds ppc rpms, but someday it should build noarch
@@ -123,20 +141,9 @@ else
 	#echo "source=$source"
 fi
 
-# for the git case, query the current branch and set REL (changing master to devel if necessary)
-function setbranch {
-	#git checkout $BRANCH
-	REL=`git rev-parse --abbrev-ref HEAD`
-	if [ "$REL" = "master" ]; then
-		REL="devel"
-	fi
-}
-
 # If they have not given us a premade update file, do an svn update or git pull and capture the results
 SOMETHINGCHANGED=0
-if [ "$REL" = "xcat-core" ]; then			# using git
-	GIT=1
-	setbranch
+if [ "$GIT" = "1" ]; then			# using git
 	if [ -z "$GITUP" ]; then
 		GITUP=../coregitup
 		echo "git pull > $GITUP"
