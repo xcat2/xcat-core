@@ -19,6 +19,7 @@
 #    directories that are needed.
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
+#       Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
 #					actually build xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
 #					If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
@@ -31,7 +32,7 @@
 #		BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
-#       FRSYUM=0 - put the yum repo and snap builds in the old project web area instead of the FRS area.
+# 		GITUP=<filename> - control which rpms get built by specifying a coregitup file
 #		EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #		VERBOSE=1 - to see lots of verbose output
 
@@ -84,14 +85,22 @@ if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
-# this is needed only when we are transitioning the yum over to frs
-if [ "$FRSYUM" != 0 ]; then
-	YUMDIR=$FRS
-	YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
-else
-	YUMDIR=htdocs
-	YUMREPOURL="http://xcat.sourceforge.net/yum"
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
+function setbranch {
+	#git checkout $BRANCH
+	REL=`git rev-parse --abbrev-ref HEAD`
+	if [ "$REL" = "master" ]; then
+		REL="devel"
+	fi
+}
+
+if [ "$REL" = "xcat-core" ]; then			# using git
+	GIT=1
+	setbranch			# this changes the REL variable
 fi
+
+YUMDIR=$FRS
+YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
 
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
@@ -116,27 +125,12 @@ else
 fi
 
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
-echo "svn --quiet up Version"
-svn --quiet up Version
-VER=`cat Version`
-SHORTVER=`cat Version|cut -d. -f 1,2`
-SHORTSHORTVER=`cat Version|cut -d. -f 1`
-if [ "$PROMOTE" = 1 ]; then
-	CORE="xcat-core"
-	if [ "$OSNAME" = "AIX" ]; then
-		TARNAME=core-aix-$VER.tar.gz
-	else
-		TARNAME=xcat-core-$VER.tar.bz2
-	fi
+
+if [ "$GIT" = "1" ]; then			# using git - need to include REL in the path where we put the built rpms
+	DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
 else
-	CORE="core-snap"
-	if [ "$OSNAME" = "AIX" ]; then
-		TARNAME=core-aix-snap.tar.gz
-	else
-		TARNAME=core-rpms-snap.tar.bz2
-	fi
+	DESTDIR=../..$EMBEDDIR/$XCATCORE
 fi
-DESTDIR=../..$EMBEDDIR/$XCATCORE
 SRCD=core-snap-srpms
 
 # currently aix builds ppc rpms, but someday it should build noarch
@@ -148,6 +142,13 @@ fi
 
 
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
+# we are doing a snap build
+CORE="core-snap"
+if [ "$OSNAME" = "AIX" ]; then
+	TARNAME=core-aix-snap.tar.gz
+else
+	TARNAME=core-rpms-snap.tar.bz2
+fi
 mkdir -p $DESTDIR
 SRCDIR=$DESTDIR/../$SRCD
 mkdir -p $SRCDIR
@@ -168,16 +169,38 @@ else
 	#echo "source=$source"
 fi
 
-# If they have not given us a premade update file, do an svn update and capture the results
-if [ -z "$SVNUP" ]; then
-	SVNUP=../coresvnup
-	echo "svn up > $SVNUP"
-	svn up > $SVNUP
-fi
+# If they have not given us a premade update file, do an svn update or git pull and capture the results
 SOMETHINGCHANGED=0
-if ! $GREP 'At revision' $SVNUP; then
-	SOMETHINGCHANGED=1
+if [ "$GIT" = "1" ]; then			# using git
+	if [ -z "$GITUP" ]; then
+		GITUP=../coregitup
+		echo "git pull > $GITUP"
+		git pull > $GITUP
+	fi
+	if ! $GREP 'Already up-to-date' $GITUP; then
+		SOMETHINGCHANGED=1
+	fi
+else		# using svn
+	GIT=0
+	if [ -z "$SVNUP" ]; then
+		SVNUP=../coresvnup
+		echo "svn up > $SVNUP"
+		svn up > $SVNUP
+	fi
+	if ! $GREP 'At revision' $SVNUP; then
+		SOMETHINGCHANGED=1
+	fi
+	# copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
+	GITUP=$SVNUP
 fi
+
+function setversionvars {
+	VER=`cat Version`
+	SHORTVER=`cat Version|cut -d. -f 1,2`
+	SHORTSHORTVER=`cat Version|cut -d. -f 1`
+}
+
+setversionvars
 
 # Function for making the noarch rpms
 function maker {
@@ -194,7 +217,7 @@ function maker {
 }
 
 # If anything has changed, we should always rebuild perl-xCAT
-if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# Use to be:  $GREP perl-xCAT $SVNUP; then
+if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# Use to be:  $GREP perl-xCAT $GITUP; then
 	if [[ " $EMBEDBUILD " = *\ perl-xCAT\ * ]]; then
 		UPLOAD=1
 		maker perl-xCAT
@@ -210,7 +233,7 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xC
 	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
-	if $GREP $rpmname $SVNUP || [ "$BUILDALL" == 1 ]; then
+	if $GREP $rpmname $GITUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		maker $rpmname
 	fi
@@ -225,7 +248,7 @@ done
 # The mknb cmd combines them at install time.
 if [ "$OSNAME" != "AIX" ]; then
 	if [[ " $EMBEDBUILD " = *\ xCAT-genesis-scripts\ * ]]; then
-		if $GREP xCAT-genesis-scripts $SVNUP || [ "$BUILDALL" == 1 ]; then
+		if $GREP xCAT-genesis-scripts $GITUP || [ "$BUILDALL" == 1 ]; then
 			UPLOAD=1
 			ORIGFAILEDRPMS="$FAILEDRPMS"
 			./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
@@ -244,14 +267,14 @@ fi
 for rpmname in xCAT xCATsn; do
 	#if [ "$EMBED" = "zvm" ]; then break; fi
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
-	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $SVNUP; then
+	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		if [ "$OSNAME" = "AIX" ]; then
 			./makerpm $rpmname "$EMBED"
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
 		else
-			for arch in x86_64 i386 ppc64 s390x; do
+			for arch in x86_64 ppc64 s390x; do
 				./makerpm $rpmname $arch "$EMBED"
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done
@@ -354,7 +377,17 @@ chmod -R g+w $DESTDIR
 chgrp -R xcat $SRCDIR
 chmod -R g+w $SRCDIR
 
-fi		# end of very long if-not-promote
+else		# end of very long if-not-promote
+	# we are only promoting (not building)
+	setversionvars
+	setbranch
+	CORE="xcat-core"
+	if [ "$OSNAME" = "AIX" ]; then
+		TARNAME=core-aix-$VER.tar.gz
+	else
+		TARNAME=xcat-core-$VER.tar.bz2
+	fi
+fi
 
 cd $DESTDIR
 
