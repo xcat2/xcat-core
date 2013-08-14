@@ -64,6 +64,7 @@ if (
                 'k|sshkeys'         => \$::genSSHRootKeys,
                 'm|mgtnode'         => \$::setupMNinDB,
                 's|sshnodehostkeys' => \$::genSSHNodeHostKeys,
+                't|tunables'        => \$::settunables,
                 'c|credentials'     => \$::genCredentials,
                 'd|database'        => \$::initDB,
                 'h|help'            => \$::HELP,
@@ -101,6 +102,7 @@ if ($::FORCE)
         || $::genSSHRootKeys
         || $::genSSHNodeHostKey
         || $::genCredentials
+        || $::settunables
         || $::initDB)
     {
         my $warning =
@@ -233,6 +235,17 @@ if (xCAT::Utils->isMN()) {
   {
       &genSSHNodeHostKey;
   }
+}
+
+#
+# Set tunables 
+#
+#
+if ($::FORCE || $::settunables || $::INITIALINSTALL )
+{
+   if ($::osname eq 'Linux') {
+      &settunables;
+   }
 }
 #
 #  gen root's ssh keys, if needed and copy to appropriate directories to
@@ -628,11 +641,11 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. This command should not be run on an xCAT Service Node, unless you are making it a Management Node.\n"
+        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. Only the -t option should be used on a Service Node.\n"
         );
     xCAT::MsgUtils->message(
         'I',
-        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-m|mgtnode] [-V|--verbose]"
+        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-m|mgtnode] [-t|tunables] [-V|--verbose]"
         );
 }
 
@@ -822,7 +835,24 @@ sub genSSHRootKeys
             );
     }
 }
+#-----------------------------------------------------------------------------
 
+=head3   settunables 
+	
+    Will set the default suggested tunables on the Management Node or service node for Linux 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub settunables 
+
+{
+    xCAT::MsgUtils->message(
+    'I',
+    "The set of tunables that will be initialized is TBD.");
+ 
+}
 #-----------------------------------------------------------------------------
 
 =head3    genSSHNodeHostKey 
