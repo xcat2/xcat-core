@@ -386,7 +386,7 @@ sub getdefaultcredentials {
       last;
     }
   }
-  if (!defined($user) || !defined($pw)) { die "Did not find the ipmi username and password in the xCAT passwd table.\n"; }
+  if (!defined($user) || !defined($pw)) { $user = "USERID"; $pw = "PASSW0RD"; }
   return ($user, $pw);
 }
 
