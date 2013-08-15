@@ -5,6 +5,9 @@ PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 
 echo "Beginning node discovery process"
+for nic in `ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`; do
+    ip link set $nic up
+done
 waitforlink=100
 while [ ! -z "$NICSTOBRINGUP" -a $waitforlink -gt 0 ]; do
 	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`
