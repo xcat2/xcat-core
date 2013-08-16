@@ -6517,6 +6517,9 @@ sub process_request {
 	  }
         }
       }
+
+      #donot update node provision status (installing or netbooting) here
+      xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
       #print "newstatus" . Dumper(\%newnodestatus);
       xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
