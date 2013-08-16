@@ -1689,6 +1689,7 @@ sub insert_dd () {
     my @rpm_list;
     my @driver_list;
     my $Injectalldriver;
+    my $updatealldriver;
 
     my @rpm_drivers;
 
@@ -1734,6 +1735,9 @@ sub insert_dd () {
         if (/^allupdate$/) {
             $Injectalldriver = 1;
             next;
+        } elsif (/^updateonly$/) {
+            $updatealldriver = 1;
+            next;
         }
         unless (/\.ko$/) {
             s/$/.ko/;
@@ -1744,7 +1748,7 @@ sub insert_dd () {
     chomp(@dd_list);
     chomp(@rpm_list);
     
-    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         return ();
     }
 
@@ -1757,7 +1761,7 @@ sub insert_dd () {
     # Unzip the original initrd
     # This only needs to be done for ppc or handling the driver rpm
     # For the driver disk against x86, append the driver disk to initrd directly
-    if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || @driver_list))) {
+    if ($arch =~/ppc/ || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         if ($arch =~ /ppc/) {
             $cmd = "gunzip --quiet -c $pkgdir/1/suseboot/initrd64 > $dd_dir/initrd";
         } elsif ($arch =~ /x86/) {
@@ -1782,7 +1786,7 @@ sub insert_dd () {
         }
 
         # Start to load the drivers from rpm packages
-        if (@rpm_list && ($Injectalldriver || @driver_list)) {
+        if (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
             my $new_kernel_ver;
@@ -1804,16 +1808,16 @@ sub insert_dd () {
                 # get the new kernel if it exists in the update distro
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinu*>;
                 foreach my $new_kernel (@new_kernels) {
-                if (-r $new_kernel && $new_kernel =~ /\/vmlinu[zx]-(.*(x86_64|ppc64|default))$/) {
-                    $new_kernel_ver = $1;
-                    $cmd = "/bin/mv -f $new_kernel $dd_dir/rpm/newkernel";
-                    xCAT::Utils->runcmd($cmd, -1);
-                    if ($::RUNCMD_RC != 0) {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $dd_dir/rpm/newkernel.";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    if (-r $new_kernel && $new_kernel =~ /\/vmlinu[zx]-(.*(x86_64|ppc64|default))$/) {
+                        $new_kernel_ver = $1;
+                        $cmd = "/bin/mv -f $new_kernel $dd_dir/rpm/newkernel";
+                        xCAT::Utils->runcmd($cmd, -1);
+                        if ($::RUNCMD_RC != 0) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $dd_dir/rpm/newkernel.";
+                            xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
                     }
-                }
                 }
 
                 # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
@@ -1861,13 +1865,35 @@ sub insert_dd () {
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
             }
+
+            # get the name list for all drivers in the original initrd if 'netdrivers=updateonly'
+            # then only the drivers in this list will be updated from the drvier rpms
+            if ($updatealldriver) {
+                $driver_name = "\*\.ko";
+                @all_real_path = ();
+                find(\&get_all_path, <$dd_dir/initrd_img/lib/modules/*>);
+                foreach my $real_path (@all_real_path) {
+                    my $driver = basename($real_path);
+                    push @driver_list, $driver;
+                }
+            }
             
             # Copy the drivers to the rootimage
             # Figure out the kernel version
             my @kernelpaths = <$dd_dir/initrd_img/lib/modules/*>;
             my @kernelvers;
+            if ($new_kernel_ver) {
+                push @kernelvers, $new_kernel_ver;
+            }
             foreach (@kernelpaths) {
-                push @kernelvers, basename($_);
+                my $kernelv = basename($_);
+                if ($kernelv =~ /^[\d\.]+/) {
+                    if ($new_kernel_ver) {
+                        rmtree ("$dd_dir/initrd_img/lib/modules/$kernelv");
+                    } else {
+                        push @kernelvers, $kernelv;
+                    }
+                }
             }
                     
             foreach my $kernelver (@kernelvers) {
@@ -1880,7 +1906,6 @@ sub insert_dd () {
                   $driver_name = $driver;
                   @all_real_path = ();
                   find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                  #if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
                   # NOTE: for the initrd of sles that the drivers are put in the /lib/modules/$kernelver/initrd/
                   foreach my $real_path (@all_real_path) { 
                       if ($real_path && $real_path =~ m!$dd_dir/rpm/lib/modules/$kernelver/!) {
@@ -1904,8 +1929,7 @@ sub insert_dd () {
                 $driver_name = "\*\.ko";
                 @all_real_path = ();
                 find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
-                foreach $real_path (@all_real_path) {
-                  #if ($real_path && $real_path =~ m!$dd_dir/rpm(/lib/modules/$kernelver/.*?)[^\/]*$!) {
+                foreach my $real_path (@all_real_path) {
                   # NOTE: for the initrd of sles that the drivers are put in the /lib/modules/$kernelver/initrd/
                   if ($real_path && $real_path =~ m!$dd_dir/rpm/lib/modules/$kernelver/!) {
                       if (! -d "$dd_dir/initrd_img/lib/modules/$kernelver/initrd") {
