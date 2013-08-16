@@ -5,6 +5,22 @@ XCATMASTER=$XCAT
 
 . /lib/dracut-lib.sh
 rootlimit="$(getarg rootlimit=)"
+
+
+getarg nonodestatus
+NODESTATUS=$?
+
+MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
+XCATIPORT="$(getarg XCATIPORT=)"
+if [ $? -ne 0 ]; then
+XCATIPORT="3002"
+fi
+
+
+if [ $NODESTATUS -ne 0 ];then
+/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+fi
+
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
