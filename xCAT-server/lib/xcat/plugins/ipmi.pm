@@ -34,6 +34,7 @@ my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
 my $global_sessdata;
+require xCAT::data::ibmhwtypes;
 
 eval {
     require IBM::EnergyManager;
@@ -1568,6 +1569,11 @@ sub inv {
 sub fru_initted {
     my $sessdata = shift;
 	my $key;
+    my @args = @{$sessdata->{extraargs}}; 
+    my $up_group = undef;
+    if (grep /-t/, @args) {
+        $up_group = '1';
+    }
     my @types = @{$sessdata->{invtypes}};
 	my $format = "%-20s %s";
 
@@ -1576,11 +1582,17 @@ sub fru_initted {
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-			my $bmcifo="";
-			if ($sessdata->{bmcnum} != 1) { 
-				$bmcifo=" on BMC ".$sessdata->{bmcnum};
-			}
-    			xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+			    my $bmcifo="";
+			    if ($sessdata->{bmcnum} != 1) { 
+				    $bmcifo=" on BMC ".$sessdata->{bmcnum};
+			    }
+    		    xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+                if ($up_group and $type eq "model" and $fru->desc =~ /MTM/) {
+                    my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($fru->value);
+                    if (defined($tmp_pre)) {
+                        xCAT::TableUtils->updatenodegroups($sessdata->{node}, $tmp_pre);
+                    } 
+                }
                 last;
             }
         }
@@ -6001,6 +6013,14 @@ sub preprocess_request {
       my (@bmcnodes, @nohandle);
       xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
       $realnoderange = \@bmcnodes;
+  } elsif ($command eq "rinv") {
+      if ($exargs[0] eq "-t" and $#exargs == 0) {
+          unshift @{$request->{arg}}, 'all';
+      } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
+          $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
+          $request = {};
+          return 0;
+      }
   }
 
   if (!$realnoderange) {

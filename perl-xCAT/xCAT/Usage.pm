@@ -72,16 +72,16 @@ my %usage = (
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
     BMC specific:
-       rinv <noderange> [vpd|mprom|deviceid|uuid|guid]
+       rinv <noderange> [mprom|deviceid|uuid|guid|vpd [-t]|all [-t]]
     MPA specific:
-       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm]
+       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm [-t]] 
     PPC specific(with HMC):
-       rinv <noderange> [bus|config|serial|model|firm|all]
+       rinv <noderange> [all|bus|config|serial|model|firm [-t]]
     PPC specific(using Direct FSP Management):
        rinv <noderange> [firm]
        rinv <noderange> [deconfig [-x]]
     Blade specific:
-       rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
+       rinv <noderange> [all|serial|mac|bios|diag|mprom|mparom|firm|mtm [-t]]
     IBM Flex System Compute Node specific:
        rinv <noderange> [firm]
     VMware specific:
