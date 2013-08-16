@@ -1735,4 +1735,51 @@ sub getimagenames()
     $nodetab->close;
     return @imagenames;
 }
+#-----------------------------------------------------------------------------
+
+
+=head3 updatenodegroups
+    Update groups attribute for the specified node
+
+    Arguments:
+      node
+      tabhd: the handler of 'nodelist' table, 
+      groups: the groups attribute need to be merged.
+              Can be an array or string. 
+    Globals:
+        none
+    Error:
+    Example:
+         xCAT::TableUtils->updatenodegroups($node, $tab, $groups);
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub updatenodegroups {
+    my ($class, $node, $tabhd, $groups) = @_;
+    if (!$groups) {
+        $groups = $tabhd;
+        $tabhd = xCAT::Table->new('nodelist');
+        unless ($tabhd)  { 
+           xCAT::MsgUtils->message("E", " Could not read the nodelist table\n");
+           return; 
+        }
+    }
+    my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
+    my @list = qw(all);
+    if (defined($ent) and $ent->{groups}) {
+        push @list, split(/,/,$ent->{groups});
+    }   
+    if (ref($groups) eq 'ARRAY') {
+        push @list, @$groups;
+    } else {
+        push @list, split(/,/,$groups);
+    }
+    my %saw;
+    @saw{@list} = ();
+    @list = keys %saw;
+    $tabhd->setNodeAttribs($node, {groups=>join(",",@list)});
+}
+
 1;

@@ -5,6 +5,8 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::TableUtils;
+require xCAT::data::ibmhwtypes;
 
 
 ##########################################
@@ -59,7 +61,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose) )) { 
+    if ( !GetOptions( \%opt, qw(V|verbose t) )) { 
         return( usage() );
     }
     ####################################
@@ -74,6 +76,9 @@ sub parse_args {
     my ($cmd) = grep(/^$ARGV[0]$/, @rinv );
     if ( !defined( $cmd )) {
         return(usage( "Invalid command: $ARGV[0]" ));
+    }
+    if (exists($opt{t}) and $cmd ne "model") {
+        return(["Option 't' can only work with 'model'."]);
     }
     ####################################
     # Check for an extra argument
@@ -411,6 +416,12 @@ sub vpd {
                 #############################
                 # Output value 
                 #############################
+                if ($_ eq 'model' and exists($request->{opt}->{t})) {
+		            my $tmp_pre = xCAT::data::ibmhwtypes::parse_args($data->{$_});
+		            if (defined($tmp_pre))  {
+			            xCAT::TableUtils->updatenodegroups($name, $tmp_pre);
+		            }
+		        }
                 my $value = "@{$prefix{$_}}[0]: $data->{$_}"; 
                 push @result, [$name,$value,$Rc];   
             }
