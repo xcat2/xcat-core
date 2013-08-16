@@ -897,6 +897,8 @@ sub mknetboot
     my $installroot;
     $installroot = "/install";
     my $xcatdport = "3001";
+    my $xcatiport = "3002";
+    my $nodestatus = "y";
 
     if ($sitetab)
     {
@@ -910,10 +912,20 @@ sub mknetboot
         {
             $xcatdport = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $xcatiport = $ref->{value};
+        }
         ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
         if ($ref and $ref->{value})
         {
             $globaltftpdir = $ref->{value};
+        }
+        ($ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $nodestatus = $ref->{value};
         }
     }
     my %donetftp=();
@@ -1317,6 +1329,7 @@ sub mknetboot
 
 
 
+
         # add support for subVars in the value of "statemnt"
         my $statemnt = "";
 		if (exists($stateHash->{$node})) {
@@ -1366,6 +1379,10 @@ sub mknetboot
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
+        # if site.nodestatus='n', add "nonodestatus" to kcmdline to inform the node not to update nodestatus during provision
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+            $kcmdline .= " nonodestatus ";
+        }
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
         # the redhat5.x os will ignore it
