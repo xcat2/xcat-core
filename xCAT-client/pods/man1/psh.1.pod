@@ -43,6 +43,12 @@ rently  executing  remote shell processes.
 Log into the nodes as the specified username.  The default is to use the same username as you
 are running the psh command as.
 
+=item B<-n|--nonodecheck>
+
+Do not send the noderange to xcatd to expand it into a list of nodes.  Instead, use the noderange exactly as it is specified.
+In this case, the noderange must be a simple list of comma-separated hostnames of the nodes.
+This allows you to run B<psh> even when xcatd is not running.
+
 =item B<noderange>
 
 See L<noderange(3)|noderange.3>.

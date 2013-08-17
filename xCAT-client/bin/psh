@@ -30,7 +30,7 @@ if (!GetOptions(
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   'h|help' => \$help,
   ) || $help || scalar(@ARGV)<2 ) {
-  print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] <noderange> <command>\n";
+  print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] [--nonodecheck] <noderange> <command>\n";
   exit;
 }
 my %nodehdl;
