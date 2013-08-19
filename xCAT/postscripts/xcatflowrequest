@@ -24,8 +24,7 @@ while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 done
 sleeper=$(cat /tmp/sleeperpid.$parpid)
 sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
-kill -TERM $sleeper
 rm /tmp/goahead.$parpid
 rm /tmp/sleeperpid.$parpid
 rm /tmp/killme.$parpid
-
+kill -TERM $sleeper
