@@ -1,1 +1,9 @@
+#!/bin/bash
 /opt/xcat/xcatdsklspost
+
+. /tmp/post-install/variables.txt
+
+if [ -x "/xcatpost/updateflag.awk" ];then
+    /xcatpost/updateflag.awk $IMAGESERVER 3002
+fi
+
