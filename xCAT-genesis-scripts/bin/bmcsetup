@@ -101,7 +101,7 @@ elif [ "$IPMIMFG" == 20301 ] ; then
                     # reverts to dhcp then static, which setting a static ip for is
                     # considered invalid
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
+                    while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
