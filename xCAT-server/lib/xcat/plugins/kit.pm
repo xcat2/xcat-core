@@ -2427,7 +2427,6 @@ sub rmkitcomp
                         my %rsp;
                         push@{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
                         xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                        return 1;
                     }
 
                     my $kitcompdepname = get_highest_version('kitcompname', 'version', 'release', @entries);
@@ -2486,7 +2485,7 @@ sub rmkitcomp
         foreach my $kitcomponent (keys %kitcomps) {
             my @kitcompscripts = split( ',', $kitcomps{$kitcomponent}{postbootscripts} );
             foreach my $kitcompscript ( @kitcompscripts ) {
-                if ( $osimagescript =~ /^$kitcompscript$/ ) {
+                if ( $osimagescript =~ /^$kitcompscript/ ) {
                     $match = 1;
                     last;
                 }
