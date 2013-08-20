@@ -611,19 +611,7 @@ sub noderange {
     %nodes = map { $_ => 1 } noderange($start,$verify,$exsitenode,%options);
     my %innernodes = map { $_ => 1 } noderange($middle,$verify,$exsitenode,%options);
     set_arith(\%nodes,$op,\%innernodes);
-    $op=",";
-    if ($end =~ m/^,-/) {
-        $op = ",-";
-        $end =~ s/^,-//;
-    } elsif ($end =~ m/^@/) {
-        $op = "@";
-        $end =~ s/^@//;
-    } else {
-        $end =~ s/^,//;
-    }
-    my %endnodes = map { $_ => 1 } noderange($end,$verify,$exsitenode,%options);
-    set_arith(\%nodes,$op,\%endnodes);
-    return sort(keys %nodes)
+    $range = $end;
   }
 
   my $op = ",";
@@ -632,7 +620,8 @@ sub noderange {
       @elems = split(/(@(?![^\(]*?\)))/,$range);  # only split on @ when no , are present (inner recursion)
   }
 
-  while (my $atom = shift @elems) {
+  while (defined(my $atom = shift @elems)) {
+    if ($atom eq '') { next; }
     if ($atom eq ',') {
         next;
     }
