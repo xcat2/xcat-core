@@ -7,6 +7,7 @@ use xCAT::Table;
 use Sys::Hostname;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils qw/getipaddr/;
+use xCAT::Utils;
 use Math::BigInt;
 use MIME::Base64;
 use xCAT::SvrUtils;
