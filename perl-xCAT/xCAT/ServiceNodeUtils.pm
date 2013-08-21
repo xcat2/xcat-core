@@ -355,7 +355,7 @@ sub getSNList
     $servicenodetab->close;
     foreach my $node (@nodes)
     {
-        if ($service eq "")     # want all the service nodes
+        if  (! defined ($service) || ($service eq ""))     # want all the service nodes
         {
             push @servicenodes, $node->{node};
         }
