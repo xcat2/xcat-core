@@ -171,7 +171,7 @@ then
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
 
-        package_dir_name=debs$short_short_ver
+        package_dir_name=debs$REL
         #TODO: define the core path and tarball name
         tarball_name="core-debs-snap.tar.bz2"
 
