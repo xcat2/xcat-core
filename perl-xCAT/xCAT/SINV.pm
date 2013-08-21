@@ -202,9 +202,11 @@ sub parse_and_run_sinv
     #
     my @nodelist  = ();
     my @cmdparts  = ();
+    my $devicecommand =0;
     if ($options{'devicetype'}) {  
       # must split different because devices have commands with spaces
       @cmdparts  = split(' ', $cmd,3);
+      $devicecommand =1;
     } else {
       @cmdparts  = split(' ', $cmd);
     }
@@ -503,7 +505,7 @@ sub parse_and_run_sinv
                    );
 
         #  write the results to the tempfile after running through xdshcoll
-        $rc = &storeresults($callback);
+        $rc = &storeresults($callback,$devicecommand);
 
     }
     $processflg = "node";
@@ -534,7 +536,7 @@ sub parse_and_run_sinv
 
 
     #  write the results to the tempfile after running through xdshcoll
-    $rc = &storeresults($callback);
+    $rc = &storeresults($callback,$devicecommand);
 
     #  Build report and write to output file
     #  if file exist and has something in it
@@ -1451,12 +1453,11 @@ sub rinvoutput
 sub storeresults
 {
     my $callback = shift;
-
+    my $devicecommand= shift;
     # open file to write results of xdsh or rinv command
     my $newtempfile = $tempfile;
     $newtempfile .= "temp";
-    open(FILE, ">$newtempfile");
-    if ($? > 0)
+    unless (open(NEWTMPFILE, ">$newtempfile"))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not open $newtempfile\n";
@@ -1465,9 +1466,9 @@ sub storeresults
     }
     foreach my $line (@cmdresult)
     {
-        print FILE $line;
+        print NEWTMPFILE $line;
     }
-    close FILE;
+    close NEWTMPFILE;
     my $outputfile;
     if ($processflg eq "seednode")
     {    # cmd to seednode
@@ -1479,8 +1480,7 @@ sub storeresults
     }
 
     # open  file to put results of xdshcoll
-    open(FILE, ">$outputfile");
-    if ($? > 0)
+    unless (open(NEWOUTFILE, ">$outputfile"))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not open $outputfile\n";
@@ -1489,8 +1489,7 @@ sub storeresults
     }
     my $cmd = " $::XCATROOT/sbin/xdshcoll <$newtempfile |";
 
-    open(XCOLL, "$cmd");
-    if ($? > 0)
+    unless (open(XCOLL, "$cmd"))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Could not call xdshcoll \n";
@@ -1503,18 +1502,37 @@ sub storeresults
     while (<XCOLL>)
     {
         $line = $_;
-        print FILE $line
+        print NEWOUTFILE $line
 
     }
 
     close(XCOLL);
-    close FILE;
+    close NEWOUTFILE;
 
     system("/bin/rm  $newtempfile");
+    # is device command, we get false errors from the Switch, check for  
+    # blank error output lines and remove them.  If there is nothing left
+    # then there really were no errors
+    my @newerrresult=();
+    my $processerrors =1;
+    if ($devicecommand==1) {
+        foreach my $line (@errresult)
+        {
+          my @newline =  (split(/:/, $line));
+          if ($newline[1] !~ /^\s*$/) { # Not blank, then save it 
+            push @newerrresult,$line;  
+          } 
+          
+        } 
+        my $arraysize=@newerrresult;
+        if ($arraysize < 1) {
+            $processerrors =0;
+        }
+    }
 
     # capture errors
     #
-    if (@errresult)
+    if ((@errresult) && ($processerrors ==1))
     {    # if errors
         my $rsp = {};
         my $i   = 0;
