@@ -1,0 +1,10 @@
+openssh-server
+ntp
+gawk
+nfs-common
+snmpd
+qemu-kvm
+libvirt-bin
+bridge-utils
+libcap2-bin
+vlan
