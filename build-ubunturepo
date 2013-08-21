@@ -43,6 +43,10 @@ printusage()
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
+        echo $i | grep '='
+        if [ $? != 0 ];then
+            continue
+        fi
         # upper case the variable name
         varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
         export $varstring
@@ -167,6 +171,7 @@ then
         short_ver=`cat Version|cut -d. -f 1,2`
         short_short_ver=`cat Version|cut -d. -f 1`
 
+        package_dir_name=debs$short_short_ver
         #TODO: define the core path and tarball name
         tarball_name="core-debs-snap.tar.bz2"
 
@@ -186,8 +191,8 @@ then
         cur_date=`date +%Y%m%d`
         pkg_version="${short_ver}-${pkg_type}${cur_date}"
     
-        if [ ! -d ../../debs ];then
-            mkdir -p "../../debs"
+        if [ ! -d ../../$package_dir_name ];then
+            mkdir -p "../../$package_dir_name"
         fi
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack"
 
@@ -195,9 +200,9 @@ then
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
             if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
-                rm -f ../../debs/${file_low}_*.deb
+                rm -f ../../$package_dir_name/${file_low}_*.deb
                 #only for genesis package
-                rm -f ../../debs/${file_low}-amd64_*.deb
+                rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
                 cd $file
                 dch -v $pkg_version -b -c debian/changelog $build_string
                 dpkg-buildpackage -uc -us
@@ -208,11 +213,11 @@ then
                 cd -
                 find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
                 find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
-                mv ${file_low}* ../../debs/
+                mv ${file_low}* ../../$package_dir_name/
             fi
         done
 
-        find ../../debs/* ! -name *.deb | xargs rm -f
+        find ../../$package_dir_name/* ! -name *.deb | xargs rm -f
     fi
 
     if [ "$PROMOTE" = 1 ]; then
@@ -256,7 +261,7 @@ __EOF__
 
     #import the deb packages into the repo
     for dist in $dists; do
-      for file in `ls ../debs/*.deb`; do
+      for file in `ls ../$package_dir_name/*.deb`; do
 	reprepro -b ./ includedeb $dist $file;
       done
     done
