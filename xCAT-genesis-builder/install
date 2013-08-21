@@ -623,4 +623,4 @@ dracut_install /lib64/rsyslog/lmnet.so
 dracut_install /lib64/rsyslog/lmstrmsrv.so
 dracut_install /lib64/rsyslog/imuxsock.so
 dracut_install /usr/lib64/libnfsidmap/nsswitch.so
-dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec lvm mdadm mke2fs pivot_root sshd swapon tune2fs # for sysclone
+dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec klogd lvm mdadm mke2fs pivot_root sshd swapon tune2fs mkreiserfs reiserfstune # for sysclone

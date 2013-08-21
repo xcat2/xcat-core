@@ -4,3 +4,4 @@ instmods e1000 e1000e virtio_net igb ines sfc mlx4_en cxgb3 cxgb4 tg3 bnx2 bnx2x
 instmods macvlan macvtap 8021q bridge bonding vmxnet3 cpufreq_ondemand acpi-cpufreq powernow-k8 cdc_ether
 instmods mptctl #LSI firmware management requires this
 instmods mlx4_ib ib_umad #make the mellanox ib available enough to examine /sys
+instmods reiserfs #reiserfs on sysclone
