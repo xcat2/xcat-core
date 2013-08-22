@@ -602,12 +602,12 @@ sub noderange {
     my $op = ",";
     if ($start =~ m/-$/) { #subtract the parenthetical
        $op .= "-"
-    } elsif ($start =~ m/@$/) {
+    } elsif ($start =~ m/\@$/) {
         $op = "@"
     }
     $start =~ s/,-$//;
     $start =~ s/,$//;
-    $start =~ s/@$//;
+    $start =~ s/\@$//;
     %nodes = map { $_ => 1 } noderange($start,$verify,$exsitenode,%options);
     my %innernodes = map { $_ => 1 } noderange($middle,$verify,$exsitenode,%options);
     set_arith(\%nodes,$op,\%innernodes);
@@ -628,7 +628,11 @@ sub noderange {
     if ($atom =~ /^-/) {           # if this is an exclusion, strip off the minus, but remember it
       $atom = substr($atom,1);
       $op = $op."-";
+    } elsif ($atom =~ /^\@/) {           # if this is an exclusion, strip off the minus, but remember it
+      $atom = substr($atom,1);
+      $op = "@";
     }
+    if ($atom eq '') { next; }
 
     if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
       open(NRF,$1);
