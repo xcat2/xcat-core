@@ -37,7 +37,8 @@ sub handled_commands
             copycd    => "sles",
             mknetboot => "nodetype:os=(sles.*)|(suse.*)",
             mkinstall => "nodetype:os=(sles.*)|(suse.*)",
-            mkstatelite => "nodetype:os=(sles.*)"
+            mkstatelite => "nodetype:os=(sles.*)",
+            mksysclone => "nodetype:os=(sles.*)|(suse.*)"
             };
 }
 
@@ -690,6 +691,10 @@ sub process_request
     {
         return mknetboot($request, $callback, $doreq);
     }
+    elsif ($request->{command}->[0] eq 'mksysclone')
+    {
+        return mksysclone($request, $callback, $doreq);
+    }
 }
 
 sub mkinstall
@@ -1202,6 +1207,250 @@ sub mkinstall
     #{
     #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
     #}
+}
+
+sub mksysclone
+{
+    my $request  = shift;
+    my $callback = shift;
+    my $doreq    = shift;
+    my @nodes    = @{$request->{node}};
+    my $osimagetab;
+    my %img_hash=();
+
+    my $installroot;
+    my $globaltftpdir;
+    $installroot = "/install";
+    $globaltftpdir = "/tftpboot";
+
+    my @ents = xCAT::TableUtils->get_site_attribute("installdir");
+    my $site_ent = $ents[0];
+    if( defined($site_ent) )
+    {
+        $installroot = $site_ent;
+    }
+    @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
+    $site_ent = $ents[0];
+    if( defined($site_ent) )
+    {
+        $globaltftpdir = $site_ent;
+    }
+
+    my $node;
+    my $ostab = xCAT::Table->new('nodetype');
+    my $restab = xCAT::Table->new('noderes');
+    my $bptab  = xCAT::Table->new('bootparams',-create=>1);
+    my $hmtab  = xCAT::Table->new('nodehm');
+    my %osents = %{$ostab->getNodesAttribs(\@nodes, ['os', 'arch', 'provmethod'])};
+    my %rents =
+              %{$restab->getNodesAttribs(\@nodes,
+                                     ['xcatmaster', 'nfsserver', 'tftpdir', 'primarynic', 'installnic'])};
+    my %hents =
+              %{$hmtab->getNodesAttribs(\@nodes,
+                                     ['serialport', 'serialspeed', 'serialflow'])};
+    my $xcatdport="3001";
+    my @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
+    if ( defined($entries[0])) {
+       $xcatdport = $entries[0];
+    }
+
+    my @entries =  xCAT::TableUtils->get_site_attribute("master");
+    my $master_entry = $entries[0];
+
+    require xCAT::Template;
+
+    my $flag_return = 0;
+    # Warning message for nodeset <noderange> install/netboot/statelite
+    foreach my $knode (keys %osents)
+    {
+        my $ent = $osents{$knode}->[0];
+        if ($ent && $ent->{provmethod} && ($ent->{provmethod} eq 'sysclone')){
+            $callback->( { error => ["$knode: The provmethod \"sysclone\" have been deprecated. use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                           errorcode => [1]});
+                # Do not print this warning message multiple times
+                $flag_return = 1;
+            }
+    }
+
+    if ( $flag_return == 1 ){
+        return;
+    }
+
+    # copy postscripts
+    my $pspath = "$installroot/sysclone/scripts/post-install/";
+    my $clusterfile = "$installroot/sysclone/scripts/cluster.txt";
+
+    mkpath("$pspath");
+    copy("$installroot/postscripts/configefi","$pspath/15all.configefi");
+    copy("$installroot/postscripts/updatenetwork","$pspath/16all.updatenetwork");
+    copy("$installroot/postscripts/runxcatpost","$pspath/17all.runxcatpost");
+    copy("$installroot/postscripts/killsyslog","$pspath/17all.killsyslog");
+
+    unless (-r "$pspath/10all.fix_swap_uuids")
+    {
+        mkpath("$pspath");
+        copy("/var/lib/systemimager/scripts/post-install/10all.fix_swap_uuids","$pspath");
+    }
+
+    unless (-r "$pspath/95all.monitord_rebooted")
+    {
+        mkpath("$pspath");
+        copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+    }
+
+    # copy hosts
+    copy("/etc/hosts","$installroot/sysclone/scripts/");
+
+    foreach $node (@nodes)
+    {
+        my $os;
+        my $tftpdir;
+        my $arch;
+        my $imagename; # set it if running of 'nodeset osimage=xxx'
+        my $xcatmaster;
+        my $instserver;
+
+        my $ient = $rents{$node}->[0];
+        if ($ient and $ient->{xcatmaster})
+        {
+            $xcatmaster = $ient->{xcatmaster};
+        } else {
+            $xcatmaster = $master_entry;
+        }
+
+        my $osinst;
+        if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
+                $tftpdir = $rents{$node}->[0]->{tftpdir};
+        } else {
+                $tftpdir = $globaltftpdir;
+        }
+        my $ent = $osents{$node}->[0];
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite') and ($ent->{provmethod} ne 'sysclone')) {
+            $imagename=$ent->{provmethod};
+            #print "imagename=$imagename\n";
+            if (!exists($img_hash{$imagename})) {
+                if (!$osimagetab) {
+                    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+                }
+                (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+                if ($ref) {
+                    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+                } else {
+                    $callback->(
+                        {error     => ["The os image $imagename does not exists on the osimage table for $node"],
+                         errorcode => [1]});
+                    next;
+                }
+            }
+            my $ph=$img_hash{$imagename};
+            $arch  = $ph->{osarch};
+        }
+
+        # copy kernel and initrd from image dir to /tftpboot
+        my $ramdisk_size = 200000;
+
+        if (
+            -r "$tftpdir/xcat/genesis.kernel.$arch"
+            and -r "$tftpdir/xcat/genesis.fs.$arch.gz"
+        )
+        {
+            #We have a shot...
+             my $ent    = $rents{$node}->[0];
+            my $sent = $hents{$node}->[0];
+
+            my $kcmdline = "ramdisk_size=$ramdisk_size";
+            my $ksdev = "";
+            if ($ent->{installnic})
+            {
+                $ksdev = $ent->{installnic};
+            }
+            elsif ($ent->{primarynic})
+            {
+                $ksdev = $ent->{primarynic};
+            }
+            else
+            {
+                $ksdev = "bootif"; #if not specified, fall back to bootif
+            }
+
+            if ($ksdev eq "mac")
+            {
+                my $mactab = xCAT::Table->new("mac");
+                my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                $ksdev = $macref->{mac};
+            }
+
+            unless ( $ksdev eq "bootif" ) {
+                $kcmdline .= " netdevice=" . $ksdev;
+            }
+
+            if ($arch =~ /ppc/) {
+                $kcmdline .= " dhcptimeout=150";
+            }
+
+            if (defined($sent->{serialport}))
+            {
+                unless ($sent->{serialspeed})
+                {
+                    $callback->( { error => [ "serialport defined, but no serialspeed for $node in nodehm table" ],
+                                   errorcode => [1] } );
+                }
+                else {
+                    #go cmdline if serial console is requested, the shiny ansi is just impractical
+                    $kcmdline .= " cmdline console=tty0 console=ttyS"
+                      . $sent->{serialport} . ","
+                      . $sent->{serialspeed};
+                    if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/) {
+                        $kcmdline .= "n8r";
+                    }
+                }
+            }
+            $kcmdline .= " xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+
+            $bptab->setNodeAttribs(
+                $node,
+                {
+                    kernel   => "xcat/genesis.kernel.$arch",
+                    initrd   => "xcat/genesis.fs.$arch.gz",
+                    kcmdline => $kcmdline
+                }
+            );
+        }
+        else
+        {
+            $callback->( { error => ["Kernel and initrd not found in $tftpdir/xcat"],
+                           errorcode => [1] } );
+        }
+
+        # assign nodes to an image
+        if (-r "$clusterfile")
+        {
+            my $cmd = qq{cat $clusterfile | grep "$node"};
+            my $out = xCAT::Utils->runcmd($cmd, -1);
+             if ($::RUNCMD_RC == 0)
+             {
+                my $out = `sed -i /$node./d $clusterfile`;
+             }
+        }
+
+        my $cmd =qq{echo "$node:compute:$imagename:" >> $clusterfile};
+        my $out = xCAT::Utils->runcmd($cmd, -1);
+
+        unless (-r "$installroot/sysclone/images/$imagename/opt/xcat/xcatdsklspost")
+        {
+            mkpath("$installroot/sysclone/images/$imagename/opt/xcat/");
+            copy("$installroot/postscripts/xcatdsklspost","$installroot/sysclone/images/$imagename/opt/xcat/");
+        }
+    }
+
+    # check systemimager-server-rsyncd to make sure it's running.
+    my $out = xCAT::Utils->runcmd("service systemimager-server-rsyncd status", -1);
+    if ($::RUNCMD_RC != 0)  { # not running
+        my $rc = xCAT::Utils->startService("systemimager-server-rsyncd");
+        if ($rc != 0) {
+            return 1;
+        }
+    }
 }
 
 sub copycd
