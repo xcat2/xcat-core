@@ -3231,7 +3231,7 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         access_tabentry => 'firmware.file=attr:cfgfile',
      },
      {attr_name => 'disable',
-        tabentry => 'auditlog.disable',
+        tabentry => 'firmware.disable',
         access_tabentry => 'firmware.file=attr:cfgfile',
      },
 );

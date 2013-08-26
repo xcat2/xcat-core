@@ -3,6 +3,24 @@ NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
 
+. /lib/dracut-lib.sh
+rootlimit="$(getarg rootlimit=)"
+
+
+getarg nonodestatus
+NODESTATUS=$?
+
+MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
+XCATIPORT="$(getarg XCATIPORT=)"
+if [ $? -ne 0 ]; then
+XCATIPORT="3002"
+fi
+
+
+if [ $NODESTATUS -ne 0 ];then
+/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+fi
+
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
@@ -41,7 +59,12 @@ if [ -r /rootimg.sfs ]; then
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.gz ]; then
   echo Setting up RAM-root tmpfs.
-  mount -t tmpfs rootfs $NEWROOT
+  if [ -z $rootlimit ];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
@@ -49,10 +72,17 @@ elif [ -r /rootimg.gz ]; then
   else
     gzip -cd /rootimg.gz |cpio -idum
   fi
+  $NEWROOT/etc/init.d/localdisk
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
-  mount -t tmpfs rootfs $NEWROOT
+ 
+  if [ -z $rootlimit];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
@@ -99,7 +129,8 @@ elif [ -r /rootimg-statelite.gz ]; then
     MAXTRIES=5
     ITER=0
 	if [ -z $MNTOPTS ]; then
-		MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
+                MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
+                
 	else
 		MNT_OPTIONS=$MNTOPTS
 	fi
@@ -119,6 +150,7 @@ elif [ -r /rootimg-statelite.gz ]; then
     done
   fi
 
+  $NEWROOT/etc/init.d/localdisk
   $NEWROOT/etc/init.d/statelite
   fastboot=yes
   export fastboot

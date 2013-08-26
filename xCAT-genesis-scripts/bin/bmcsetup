@@ -54,6 +54,11 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
 	    for p in $BMCPORT; do
             	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
             	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
+                CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
+                    sleep 1
+                    CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                done
 	    	let idev=idev+1
 	    done
         fi
@@ -67,7 +72,12 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
 	    	let idev=0
 		    for p in $BMCPORT; do
 	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-		    	let idev=idev+1
+                    CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                    while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
+                        sleep 1
+                        CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                    done
+		    	    let idev=idev+1
 		    done
             fi
         fi
@@ -84,8 +94,17 @@ elif [ "$IPMIMFG" == 20301 ] ; then
 	    	let idev=0
 		    for p in $BMCPORT; do
 	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-		        NEWPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0|awk '{print $2}'`
-			sleep 10 
+                    # after this change, we need to watch and wait to see that it
+                    # actually takes effect.  On port change, the service processor
+                    # does not migrate the network configuration over
+                    # so we might be halfway through setting up when the net config 
+                    # reverts to dhcp then static, which setting a static ip for is
+                    # considered invalid
+                    CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                    while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
+                        sleep 1
+                        CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                    done
 
 		    	let idev=idev+1
 		    done

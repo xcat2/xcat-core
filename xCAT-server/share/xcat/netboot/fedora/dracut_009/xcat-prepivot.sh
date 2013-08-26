@@ -68,6 +68,8 @@ if [ ! -z $SNAPSHOTSERVER ]; then
 fi
 
 # TODO: handle the dhclient/resolv.conf/ntp, etc
+echo "Get to enable localdisk"
+$NEWROOT/etc/init.d/localdisk
 $NEWROOT/etc/init.d/statelite
 READONLY=yes
 export READONLY

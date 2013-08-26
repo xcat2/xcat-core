@@ -472,7 +472,7 @@ unless ($onlyinitrd) {
        }
    }
 
-   foreach $pass (sort {$a <=> $b}  (keys(%extra_hash))) {
+   foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
 
        my $index=1;
        #remove the old repository for extra packages
@@ -1032,6 +1032,7 @@ EOMS
 # check the kernel parameters firstly
 # if one parameter for the booting device is here, it will be used
 PRINIC=$prinic
+NODESTATUS='y'
 XCATMNTOPTS='nolock,tcp'
 for i in `cat /proc/cmdline`; do
     KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -1049,6 +1050,11 @@ for i in `cat /proc/cmdline`; do
         # format: MNTOPTS='nolock,time=800'
         XCATMNTOPTS=\$VALUE
 
+    fi
+
+
+    if [ \$i == 'nonodestatus' ]; then
+       NODESTATUS='n'
     fi
 done
 
@@ -1083,6 +1089,18 @@ echo "STARTMODE=nfsroot" > /tmp/ifcfg-\$IFACE
 
 ip addr add dev lo 127.0.0.1/8
 ip link set lo up
+
+
+XCATMASTER=`echo \$XCATSERVER|awk -F: '{print \$1}'`
+
+if [ -z \$XCATIPORT ]; then
+     XCATIPORT="3002"
+fi
+
+if [ \$NODESTATUS != 'n' ]; then
+    /tmp/updateflag \$XCATMASTER \$XCATIPORT "installstatus netbooting"
+fi
+
 cd /
 for i in `cat /proc/cmdline`; do
    KEY=`echo \$i |awk -F= '{print \$1}'`
@@ -1373,8 +1391,43 @@ cat /var/lib/dhcpcd/*info | grep HOSTNAME | uniq | awk -F= '{print \$2}'| sed \"
 END
 
    close($inifile);
-	chmod(0755,"/tmp/xcatinitrd.$$/init");
-	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+
+   #if "nonodestatus" specified,do not update the nodestatus 
+   system("mkdir -p /tmp/xcatinitrd.$$/tmp/");
+   open($inifile, ">","/tmp/xcatinitrd.$$/tmp/updateflag");
+
+   print $inifile <<EOMS;
+#!/usr/bin/awk -f
+BEGIN {
+
+        xcatdhost = ARGV[1]
+        xcatiport = ARGV[2]
+
+
+        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
+        print "xCAT_xcatd" |& ns
+
+        while(1) {
+                ns |& getline
+
+                if(\$0 == "ready")
+                        print ARGV[3] |& ns
+                if(\$0 == "done")
+                        break
+        }
+
+        close(ns)
+
+        exit 0
+}
+
+EOMS
+      
+   close($inifile);
+   chmod(0755,"/tmp/xcatinitrd.$$/init");
+   chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
+   chmod(0755,"/tmp/xcatinitrd.$$/tmp/updateflag");
+
    @filestoadd=();
    foreach (@ndrivers) {
      if (-f "$customdir/$_") {

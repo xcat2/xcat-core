@@ -88,7 +88,13 @@ my $sock = IO::Socket::INET->new(Proto => 'udp',
   #LocalAddr => 0,
   LocalAddr => $IP,
   LocalPort => '68',
-  PeerAddr => inet_ntoa(INADDR_BROADCAST)) or die "Create socket error: $@\n";
+  PeerAddr => inet_ntoa(INADDR_BROADCAST));
+
+unless ($sock) {
+  print "Create socket error: $@\n";
+  kill_child();
+  exit 1;
+}
 
 my $timeout = 10;
 if ($::TIMEOUT) {
@@ -104,6 +110,8 @@ while ($end - $start <= $timeout) {
   $end =~ s/(\d.*)\.(\d.*)/$1/;
 }
 
+
+kill_child();
 #kill the child process
 kill 15, $pid;
 my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
@@ -297,4 +305,11 @@ sub packdhcppkg{
   return $package;
 }
 
-
+sub kill_child {
+  kill 15, $pid;
+  my @pidoftcpdump = `ps -ef | grep -E "[0-9]+:[0-9]+:[0-9]+ tcpdump -i $IF" | awk -F' ' '{print \$2}'`;
+  foreach my $cpid (@pidoftcpdump) {
+    kill 15, $cpid;
+    #print "try to kill $cpid\n";
+  }
+}

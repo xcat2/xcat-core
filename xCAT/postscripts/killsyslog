@@ -1,0 +1,7 @@
+if [ -f "/etc/SuSE-release" ];then
+    str_out=`ps -ef | grep -v grep | grep syslog-ng`
+    if [ $? -eq 0 ];then
+        str_id=`echo $str_out | awk '{print $2}'`
+        kill -9 $str_id
+    fi
+fi

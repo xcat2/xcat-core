@@ -180,6 +180,8 @@ sub mknetboot
     my $installroot;
     $installroot = "/install";
     my $xcatdport = "3001";
+    my $xcatiport = "3002";
+    my $nodestatus = "y"; 
 
     #if ($sitetab)
     #{
@@ -190,12 +192,24 @@ sub mknetboot
     {
         $installroot = $site_ent;
     }
+    @ents = xCAT::TableUtils->get_site_attribute("nodestatus");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $nodestatus = $site_ent;
+    }
     #    ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("xcatdport");
     $site_ent = $ents[0];
     if ( defined($site_ent) )
     {
         $xcatdport = $site_ent;
+    }
+    @ents = xCAT::TableUtils->get_site_attribute("xcatiport");
+    $site_ent = $ents[0];
+    if ( defined($site_ent) )
+    {
+        $xcatiport = $site_ent;
     }
     #    ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
@@ -679,8 +693,10 @@ sub mknetboot
                     } else {
                         $xcatmasterip = $xcatmaster;
                     }
-		    $kcmdline .=
-			    "XCAT=$xcatmasterip:$xcatdport ";
+
+                    $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+
+
             if ($rootfstype ne "ramdisk") {
                 # BEGIN service node
                 my $isSV = xCAT::Utils->isServiceNode();
@@ -701,9 +717,14 @@ sub mknetboot
         else {
             $kcmdline =
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
-            $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+              $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
         }
+        #inform statelite/stateless node not to  update the nodestatus during provision 
+        if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
+           $kcmdline .= " nonodestatus ";
+        }
+
 
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
@@ -913,7 +934,6 @@ sub mkinstall
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
     my $noupdateinitrd = $request->{'noupdateinitrd'};
-
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
@@ -2409,6 +2429,7 @@ sub insert_dd {
     my @rpm_list;
     my @driver_list;
     my $Injectalldriver;
+    my $updatealldriver;
 
     my @rpm_drivers;
 
@@ -2453,6 +2474,9 @@ sub insert_dd {
         if (/^allupdate$/) {
             $Injectalldriver = 1;
             next;
+        } elsif (/^updateonly$/) {
+            $updatealldriver = 1;
+            next;
         }
         unless (/\.ko$/) {
             s/$/.ko/;
@@ -2463,7 +2487,7 @@ sub insert_dd {
     chomp(@dd_list);
     chomp(@rpm_list);
     
-    unless (@dd_list || (@rpm_list && ($Injectalldriver || @driver_list))) {
+    unless (@dd_list || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         return ();
     }
 
@@ -2474,7 +2498,7 @@ sub insert_dd {
     # dracut + drvier rpm
     # !dracut + driver rpm
     # !dracut + driver disk
-    if (!<$install_dir/$os/$arch/Packages/dracut*> || (@rpm_list && ($Injectalldriver || @driver_list))) {
+    if (!<$install_dir/$os/$arch/Packages/dracut*> || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
 
         # unzip the initrd image
@@ -2537,13 +2561,12 @@ sub insert_dd {
         }
 
         my $new_kernel_ver;
-        if (@rpm_list && ($Injectalldriver || @driver_list)) {
+        if (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list)) {
             # Extract the files from rpm to the tmp dir
             mkpath "$dd_dir/rpm";
             foreach my $rpm (@rpm_list) {
                 if (-r $rpm) {
                     $cmd = "cd $dd_dir/rpm; rpm2cpio $rpm | cpio -idum";
-                    #$cmd = "rpm -i --quiet --nodeps --force --ignorearch --ignoreos --nosignature --root $dd_dir/rpm $rpm";
                     xCAT::Utils->runcmd($cmd, -1);
                     if ($::RUNCMD_RC != 0) {
                         my $rsp;
@@ -2560,16 +2583,16 @@ sub insert_dd {
                 # and copy it to the /tftpboot
                 my @new_kernels = <$dd_dir/rpm/boot/vmlinuz*>;
                 foreach my $new_kernel (@new_kernels) {
-                if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64))$/) {
-                    $new_kernel_ver = $1;
-                    $cmd = "/bin/mv -f $new_kernel $kernelpath";
-                    xCAT::Utils->runcmd($cmd, -1);
-                    if ($::RUNCMD_RC != 0) {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $kernelpath.";
-                        xCAT::MsgUtils->message("I", $rsp, $callback);
+                    if (-r $new_kernel && $new_kernel =~ /\/vmlinuz-(.*(x86_64|ppc64|el\d+))$/) {
+                        $new_kernel_ver = $1;
+                        $cmd = "/bin/mv -f $new_kernel $kernelpath";
+                        xCAT::Utils->runcmd($cmd, -1);
+                        if ($::RUNCMD_RC != 0) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Handle the driver update failed. Could not move $new_kernel to $kernelpath.";
+                            xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
                     }
-                }
                 }
                 
                 # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
@@ -2601,7 +2624,7 @@ sub insert_dd {
             # For dracut mode, only copy the drivers from rpm packages to the /lib/modules/<kernel>
             # The driver disk will be handled that append the whole disk to the orignial initrd
 
-            if (@rpm_list && ($Injectalldriver || @driver_list)) {
+            if (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list)) {
                 # Copy the firmware to the rootimage
                 if (-d "$dd_dir/rpm/lib/firmware") {
                     if (! -d "$dd_dir/initrd_img/lib/firmware") {
@@ -2616,14 +2639,15 @@ sub insert_dd {
                     }
                 }
 
-                # if the new kernel from update distro is not existed in initrd, copy all the modules for the new kernel to initrd
-                if ((! -r "$dd_dir/initrd_img/lib/modules/$new_kernel_ver") && (-r "$dd_dir/rpm/lib/modules/$new_kernel_ver")) {
-                    $cmd = "/bin/cp -rf $dd_dir/rpm/lib/modules/$new_kernel_ver $dd_dir/initrd_img/lib/modules/";
-                    xCAT::Utils->runcmd($cmd, -1);
-                    if ($::RUNCMD_RC != 0) {
-                        my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not copy $dd_dir/rpm/lib/modules/$new_kernel_ver to $dd_dir/initrd_img/lib/modules.";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                # get the name list for all drivers in the original initrd if 'netdrivers=updateonly'
+                # then only the drivers in this list will be updated from the drvier rpms
+                if ($updatealldriver) {
+                    $driver_name = "\*\.ko";
+                    @all_real_path = ();
+                    find(\&get_all_path, <$dd_dir/initrd_img/lib/modules/*>);
+                    foreach my $real_path (@all_real_path) {
+                        my $driver = basename($real_path);
+                        push @driver_list, $driver;
                     }
                 }
                 
@@ -2631,9 +2655,19 @@ sub insert_dd {
                 # Figure out the kernel version
                 my @kernelpaths = <$dd_dir/initrd_img/lib/modules/*>;
                 my @kernelvers;
+                if ($new_kernel_ver) {
+                    push @kernelvers, $new_kernel_ver;
+                }
+                
+                # if new kernel is used, remove all the original kernel directories
                 foreach (@kernelpaths) {
-                    if (basename($_) =~ /^[\d\.]+/) {
-                        push @kernelvers, basename($_);
+                    my $kernelv = basename($_);
+                    if ($kernelv =~ /^[\d\.]+/) {
+                        if ($new_kernel_ver) {
+                            rmtree ("$dd_dir/initrd_img/lib/modules/$kernelv");
+                        } else {
+                            push @kernelvers, $kernelv;
+                        }
                     }
                 }
 
@@ -2643,6 +2677,7 @@ sub insert_dd {
                   }
                   if (@driver_list) {
                     foreach my $driver (@driver_list) {
+                      $driver =~ s/\.gz$//;
                       $driver_name = $driver;
                       @all_real_path = ();
                       find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
@@ -2805,7 +2840,7 @@ sub insert_dd {
             }
 
             # Merge the drviers from rpm packages to the initrd
-            if (@rpm_list && ($Injectalldriver || @driver_list)) {
+            if (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list)) {
                 # Copy the firmware to the rootimage
                 if (-d "$dd_dir/rpm/lib/firmware") {
                     if (! -d "$dd_dir/initrd_img/lib") {
@@ -2825,17 +2860,43 @@ sub insert_dd {
                     mkpath ("$dd_dir/modules/$new_kernel_ver/$arch/");
                 }
 
+                # get the name list for all drivers in the original initrd if 'netdrivers=updateonly'
+                # then only the drivers in this list will be updated from the drvier rpms
+                if ($updatealldriver) {
+                    $driver_name = "\*\.ko";
+                    @all_real_path = ();
+                    find(\&get_all_path, <$dd_dir/modules/*>);
+                    foreach my $real_path (@all_real_path) {
+                        my $driver = basename($real_path);
+                        push @driver_list, $driver;
+                    }
+                }
+
                 # Copy the drivers to the initrd
                 # Figure out the kernel version
                 my @kernelpaths = <$dd_dir/modules/*>;
                 my @kernelvers;
+                if ($new_kernel_ver) {
+                    push @kernelvers, $new_kernel_ver;
+                }
                 foreach (@kernelpaths) {
-                    push @kernelvers, basename($_);
+                    my $kernelv = basename($_);
+                    if ($kernelv =~ /^[\d\.]+/) {
+                        if ($new_kernel_ver) {
+                            rmtree ("$dd_dir/modules/$kernelv");
+                        } else {
+                            push @kernelvers, $kernelv;
+                        }
+                    }
                 }
 
                foreach my $kernelver (@kernelvers) {
                   unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                       next;
+                  }
+                  # create path for the new kernel in the modules package
+                  unless (-d "$dd_dir/modules/$kernelver") {
+                      mkpath ("$dd_dir/modules/$kernelver/$arch/");
                   }
                   # find the $kernelver/$arch dir in the $dd_dir/modules
                   my $arch4modules;
@@ -2912,13 +2973,23 @@ sub insert_dd {
               if (-d $ma) {
                 mkpath "$dd_dir/depmod/lib/modules/$mk";
                 xCAT::Utils->runcmd("/bin/cp -rf $ma/* $dd_dir/depmod/lib/modules/$mk", -1);
-                $cmd = "depmod -b $dd_dir/depmod/";
+                $cmd = "depmod -b $dd_dir/depmod/ $mk";
+                #$cmd = "depmod -b $dd_dir/depmod/";
                 xCAT::Utils->runcmd($cmd, -1);
                 if ($::RUNCMD_RC != 0) {
                     my $rsp;
                     push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the depdency for the drivers in the initrd.";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
+                # remove the .ko postfix from the driver name for rh5
+                $cmd = "/bin/sed ".'s/\.ko//g'." $dd_dir/depmod/lib/modules/$mk/modules.dep > $dd_dir/depmod/lib/modules/$mk/modules.dep1; mv -f $dd_dir/depmod/lib/modules/$mk/modules.dep1 $dd_dir/depmod/lib/modules/$mk/modules.dep";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not generate the depdency for the drivers in the initrd.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
                 if (-f "$dd_dir/depmod/lib/modules/$mk/modules.dep") {
                     copy ("$dd_dir/depmod/lib/modules/$mk/modules.dep", "$dd_dir/initrd_img/modules/modules.dep");
                 }

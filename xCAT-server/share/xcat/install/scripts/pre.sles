@@ -14,27 +14,29 @@ cat >/tmp/bar.awk <<EOF
 #!$AWK -f
 
 BEGIN {
-	xcatdport = "#TABLE:site:key=xcatiport:value#"
-	xcatdhost = "#XCATVAR:XCATMASTER#"
 
-	ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
+        xcatiport = "#TABLE:site:key=xcatiport:value#"
+        xcatdhost = "#XCATVAR:XCATMASTER#"
 
-	print "xCAT_xcatd" |& ns
+        ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
+        print ARGV[1]
+        print "xCAT_xcatd" |& ns
 
-	while(1) {
-		ns |& getline
+        while(1) {
+                ns |& getline
 
-		if(\$0 == "ready")
-			print "installmonitor" |& ns
-		if(\$0 == "done")
-			break
-	}
+                if(\$0 == "ready")
+                        print ARGV[1] |& ns
+                if(\$0 == "done")
+                        break
+        }
 
-	close(ns)
+        close(ns)
 
-	exit 0
+        exit 0
 }
 EOF
+
 
 if [ ! -c /dev/vcs ]; then
 	mknod /dev/vcs c 7 0
@@ -111,8 +113,17 @@ EOF
 chmod 755 /tmp/foo.awk
 chmod 755 /tmp/bar.awk
 
-/tmp/bar.awk &
+
+/tmp/bar.awk "installmonitor" &
+
+NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#
+
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+   /tmp/bar.awk "installstatus installing" &
+fi
+
 /tmp/foo.awk >/tmp/foo.log 2>&1 &
+
 shopt -s nullglob
 for disk in /dev/vd*[^0-9];do
 	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort

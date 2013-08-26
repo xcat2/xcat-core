@@ -116,7 +116,7 @@ sub geninitrd {
     $netdrivers = $lient->{'netdrivers'};
 
     # if the provmethod equals 'netboot', call the genimage --onlyinitrd directly
-    if ($oient->{'provmethod'} && $oient->{'provmethod'} eq "netboot") {
+    if ($oient->{'provmethod'} && ($oient->{'provmethod'} eq "netboot" || $oient->{'provmethod'} eq "statelite")) {
         if ($lient->{'rootimgdir'}) {
             unless (-d $lient->{'rootimgdir'}."/rootimg/lib/modules") {
                 xCAT::MsgUtils->message("E", {error=>["The genimage should be run before running geninitrd."], errorcode=>["1"]}, $callback);
@@ -132,7 +132,7 @@ sub geninitrd {
         #              arg => [$osimage, '--onlyinitrd'] }, $callback);
         return;
     } elsif (!$oient->{'provmethod'} || $oient->{'provmethod'} ne "install") {
-        xCAT::MsgUtils->message("E", {error=>["The attribute [provmethod] for osimage [$osimage] must be set to install or netboot."], errorcode=>["1"]}, $callback);
+        xCAT::MsgUtils->message("E", {error=>["The attribute [provmethod] for osimage [$osimage] must be set to install, netboot or statelite."], errorcode=>["1"]}, $callback);
         return;
     }
 

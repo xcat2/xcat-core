@@ -27,6 +27,7 @@ use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::DiscoveryUtils;
 use xCAT::NodeRange qw/noderange/;
+require xCAT::data::ibmhwtypes;
 
 use Time::HiRes qw(gettimeofday sleep);
 
@@ -272,7 +273,14 @@ sub findme {
                 $nltab->setNodeAttribs($node, {groups=>"all"});
             }
         }
-
+        # update node groups with pre-defined groups
+        if (defined($param{'mtm'})){
+            my @list = ();
+            my $tmp_group = xCAT::data::ibmhwtypes::parse_group($param{'mtm'});
+            if (defined($tmp_group)) {
+                xCAT::TableUtils->updatenodegroups($node, $nltab, $tmp_group);
+            }
+        }
         # set the mgt for the node
         my $hmtab = xCAT::Table->new('nodehm');
         unless ($hmtab) {

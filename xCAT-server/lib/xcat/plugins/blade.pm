@@ -28,6 +28,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use strict;
 use LWP;
+require xCAT::data::ibmhwtypes;
 
 #use warnings;
 my %mm_comm_pids;
@@ -1773,6 +1774,7 @@ sub rscan_xml {
     my $href = {
         Node => { }
     };
+    my $mtm = undef;
     foreach ( @rscan_attribs ) {
         my $d = $data[$i++];
 
@@ -1789,6 +1791,7 @@ sub rscan_xml {
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
+            $ignore = 1;
         } elsif ( /^mgt$/ ) {
             if ($origtype eq "ppcblade") {
               $d = "fsp";
@@ -1831,13 +1834,23 @@ sub rscan_xml {
             } else {
               $ignore = 1;
             }
+        } elsif (/^mtm$/) {
+            $d =~ /^(\w{4})/;
+            $mtm = $1;
         }
 
         if (!$ignore) {
             $href->{Node}->{$_} = $d;
         }
     }
-    
+    my $tmp_groups = "$type,all";
+    if (defined($mtm)) {
+        my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($mtm);
+        if (defined($tmp_pre)) {
+            $tmp_groups .= ",$tmp_pre";
+        }
+    } 
+    $href->{Node}->{groups} = $tmp_groups;
     $xml.= XMLout($href,NoAttr=>1,KeyAttr=>[],RootName=>undef);
   }
   return( $xml );
@@ -1872,7 +1885,7 @@ sub rscan_stanza {
         $objname = $data[1];
     }
     $result .= "$objname:\n\tobjtype=node\n";
-
+    my $mtm = undef;
     foreach ( @rscan_attribs ) {
         my $d = $data[$i++];
 
@@ -1889,6 +1902,7 @@ sub rscan_stanza {
             }
         } elsif ( /^groups$/ ) {
             $d = "$type,all";
+            $ignore = 1;
         } elsif ( /^mgt$/ ) {
             if ($origtype eq "ppcblade") {
               $d = "fsp";
@@ -1931,12 +1945,23 @@ sub rscan_stanza {
             } else {
               $ignore = 1;
             }
+        } elsif (/^mtm$/) {
+            $d =~ /^(\w{4})/;
+            $mtm = $1;
         }
 
         if (!$ignore) {
             $result .= "\t$_=$d\n";
         }
     }
+    my $tmp_groups = "$type,all";
+    if (defined ($mtm)) {
+        my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($mtm);
+        if (defined ($tmp_pre)) {
+            $tmp_groups .= ",$tmp_pre";
+        }
+    }
+    $result .= "\tgroups=$tmp_groups\n";
   }
   return( $result );
 }
@@ -2245,6 +2270,13 @@ sub inv {
         }
       }
     }
+  }
+  if ($updatetable and $updatehash{mtm}) {
+      #updatenodegroups
+      my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($updatehash{mtm}) ;
+      if (defined($tmp_pre)) {
+          xCAT::TableUtils->updatenodegroups($currnode, $tmp_pre);
+      }
   }
   if ($updatetable and keys %updatehash) {
   	my $vpdtab = xCAT::Table->new('vpd');
@@ -4388,6 +4420,12 @@ sub process_request {
     unless ($node) {
       return 1; #failure
     }
+    if ($request->{mtm} and $request->{mtm} =~ /^(\w{4})/) {
+        my $group = xCAT::data::ibmhwtypes::parse_group($request->{mtm});
+        if (defined($group)) {
+            xCAT::TableUtils->updatenodegroups($node, $group); 
+        }
+    }
     if ($mac) {
        my $mactab = xCAT::Table->new('mac',-create=>1);
        $mactab->setNodeAttribs($macmap{$mac},{mac=>$mac});
@@ -5901,6 +5939,10 @@ sub dompa {
 	  }
         }
       }
+
+
+      #donot update node provision status (installing or netbooting) here
+      xCAT::Utils->filter_nostatusupdate(\%newnodestatus);
       #print "newstatus" . Dumper(\%newnodestatus);
       xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%newnodestatus, 1);
     }
