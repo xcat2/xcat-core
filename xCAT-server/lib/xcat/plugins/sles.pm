@@ -1292,6 +1292,12 @@ sub mksysclone
         copy("/var/lib/systemimager/scripts/post-install/10all.fix_swap_uuids","$pspath");
     }
 
+    unless (-r "$pspath/11all.replace_byid_device")
+    {
+        mkpath("$pspath");
+        copy("/var/lib/systemimager/scripts/post-install/11all.replace_byid_device","$pspath");
+    }
+
     unless (-r "$pspath/95all.monitord_rebooted")
     {
         mkpath("$pspath");
