@@ -1284,7 +1284,7 @@ sub mksysclone
     copy("$installroot/postscripts/configefi","$pspath/15all.configefi");
     copy("$installroot/postscripts/updatenetwork","$pspath/16all.updatenetwork");
     copy("$installroot/postscripts/runxcatpost","$pspath/17all.runxcatpost");
-    copy("$installroot/postscripts/killsyslog","$pspath/17all.killsyslog");
+    copy("$installroot/postscripts/killsyslog","$pspath/99all.killsyslog");
 
     unless (-r "$pspath/10all.fix_swap_uuids")
     {
@@ -1355,10 +1355,9 @@ sub mksysclone
         # copy kernel and initrd from image dir to /tftpboot
         my $ramdisk_size = 200000;
 
-        if (
-            -r "$tftpdir/xcat/genesis.kernel.$arch"
-            and -r "$tftpdir/xcat/genesis.fs.$arch.gz"
-        )
+        if ( -r "$tftpdir/xcat/genesis.kernel.$arch"
+            and ( -r "$tftpdir/xcat/genesis.fs.$arch.gz"
+                  or -r "$tftpdir/xcat/genesis.fs.$arch.lzma" ))
         {
             #We have a shot...
              my $ent    = $rents{$node}->[0];
@@ -1411,13 +1410,17 @@ sub mksysclone
                     }
                 }
             }
-            $kcmdline .= " xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+            $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
 
+            my $i = "xcat/genesis.fs.$arch.gz";
+            if ( -r "$tftpdir/xcat/genesis.fs.$arch.lzma" ){
+                $i = "xcat/genesis.fs.$arch.lzma";
+            }
             $bptab->setNodeAttribs(
                 $node,
                 {
                     kernel   => "xcat/genesis.kernel.$arch",
-                    initrd   => "xcat/genesis.fs.$arch.gz",
+                    initrd   => $i,
                     kcmdline => $kcmdline
                 }
             );

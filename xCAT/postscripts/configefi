@@ -1,6 +1,20 @@
 if [ -d /sys/firmware/efi ]; then
     echo "Setting Boot Manager for the next boot."
-    efibootmgr -c -l \\EFI\\redhat\\grub.efi -L Linux
+    echo "delete all sysclone boot list"
+    str_bootnums=`efibootmgr | grep 'syscloneLinux' | awk '{print $1}' | sed 's/boot//i' | sed 's/*//'`
+    for str_num in $str_bootnums
+    do
+        efibootmgr -b $str_num -B -q
+    done
+
+    if [ -f "/boot/efi/EFI/redhat/grub.efi" ];then
+        efibootmgr -c -l \\EFI\\redhat\\grub.efi -L syscloneLinux
+    elif [ -f "/boot/efi/efi/SuSE/elilo.efi" ];then
+        efibootmgr -c -l \\efi\\SuSE\\elilo.efi -L syscloneLinux
+    else
+        echo "Can not find the boot loader."
+        exit 1
+    fi
 else
     echo "run grub-install to configure the MBR."
     if [ -e /etc/mtab ];then
