@@ -182,6 +182,8 @@ sub mknetboot
     my $xcatdport = "3001";
     my $xcatiport = "3002";
     my $nodestatus = "y"; 
+    my @myself = xCAT::NetworkUtils->determinehostname();
+    my $myname = $myself[(scalar @myself)-1];
 
     #if ($sitetab)
     #{
@@ -446,7 +448,7 @@ sub mknetboot
         if ($statelite) {
             unless ( -r "$rootimgdir/kernel") {
                 $callback->({
-                    error=>[qq{Did you run "genimage" before running "liteimg"? kernel cannot be found...}], 
+                    error=>[qq{Did you run "genimage" before running "liteimg"? kernel cannot be found at $rootimgdir/kernel on $myname}], 
                     errorcode=>[1]
                 });
                 next;
@@ -454,7 +456,7 @@ sub mknetboot
             if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (! -r "$rootimgdir/initrd.gz") {
                     $callback->({
-                        error=>[qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}],
+                        error=>[qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found at $rootimgdir/initrd.gz on $myname}],
                         errorcode=>[1]
             	    });
                     next;
@@ -473,7 +475,7 @@ sub mknetboot
         } else {
             unless ( -r "$rootimgdir/kernel") {
                 $callback->({
-                    error=>[qq{Did you run "genimage" before running "packimage"? kernel cannot be found}],
+                    error=>[qq{Did you run "genimage" before running "packimage"? kernel cannot be found at $rootimgdir/kernel on $myname}],
                     errorcode=>[1]
 			    });
                 next;
@@ -481,7 +483,7 @@ sub mknetboot
 	        if (!-r "$rootimgdir/initrd-stateless.gz") {
                   if (! -r "$rootimgdir/initrd.gz") {
                       $callback->({
-                          error=>[qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}],
+                          error=>[qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found at $rootimgdir/initrd.gz on $myname}],
                           errorcode=>[1]
   				    });
                       next;
@@ -491,7 +493,7 @@ sub mknetboot
               }
 	        unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
                 $callback->({
-                    error=>["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
+                    error=>["No packed image for platform $osver, architecture $arch, and profile $profile found at $rootimgdir/rootimg.gz or $rootimgdir/rootimg.sfs on $myname, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                     errorcode => [1]});
                 next;
             }
