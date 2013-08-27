@@ -1,6 +1,6 @@
 #!/bin/bash
-if [ -f "/opt/xcat/xcatinfo" ];
-    mv -f "/opt/xcat/xcatinfo" "/opt/xcat/xcatinfo.bak"
+if [ -f "/opt/xcat/xcatinfo" ];then
+    rm -f "/opt/xcat/xcatinfo"
 fi
 /opt/xcat/xcatdsklspost
 
