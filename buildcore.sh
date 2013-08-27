@@ -74,7 +74,7 @@ fi
 function setbranch {
 	#git checkout $BRANCH
 	#REL=`git rev-parse --abbrev-ref HEAD`
-	REL='git name-rev --name-only HEAD'
+	REL=`git name-rev --name-only HEAD`
 	if [ "$REL" = "master" ]; then
 		REL="devel"
 	fi
