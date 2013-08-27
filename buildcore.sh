@@ -88,7 +88,8 @@ fi
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
 	#git checkout $BRANCH
-	REL=`git rev-parse --abbrev-ref HEAD`
+	#REL=`git rev-parse --abbrev-ref HEAD`
+	REL=`git name-rev --name-only HEAD`
 	if [ "$REL" = "master" ]; then
 		REL="devel"
 	fi
