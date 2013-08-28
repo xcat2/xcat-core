@@ -41,15 +41,16 @@ package xCAT::RemoteShellExp;
    [-t node list]  test ssh connection to the node 
    [-k] Generates the ssh keys needed , for the user on the MN. 
    [-s node list]  copies the ssh keys to the nodes 
-
+   optional $timeout = timeout value for the expect.  Usually from the xdsh -t flag
+   default timeout is 10 seconds
     exit 0 - good
     exit 1 - abort
     exit 2 - usage error
 
 Examples:
-$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd); 
-$rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,$remoteshellcmd,$nodes); 
-$rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,$remoteshellcmd,$nodes); 
+$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd,$timeout); 
+$rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,$remoteshellcmd,$nodes,$timeout); 
+$rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,$remoteshellcmd,$nodes,$timeout); 
 
 =cut
 
@@ -70,7 +71,7 @@ use strict;
 #-----------------------------------------------------------------------------
 sub remoteshellexp 
 {
-  my ($class, $flag, $callback, $remoteshell, $nodes) = @_;
+  my ($class, $flag, $callback, $remoteshell, $nodes, $timeout) = @_;
   my $rc=0;
   $::CALLBACK = $callback;
   if (!($flag))
@@ -90,7 +91,15 @@ sub remoteshellexp
        return 2;
        
   }
+  my  $expecttimeout=10; # default
+  if (defined($timeout)) {  # value supplied
+     $expecttimeout=$timeout;
+  }
 
+   my $rsp = {};
+   $rsp->{data}->[0] = 
+   "Timeout is $expecttimeout.";
+   xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
   # for -s flag must have nodes and a $to_userid password
   my $to_user_password;
   if ($ENV{'DSH_REMOTE_PASSWORD'}) {
@@ -180,7 +189,7 @@ sub remoteshellexp
   {
      # if the file size of the id_rsa key is 0, tell them to remove it
      # and run the command again
-     $rc=xCAT::RemoteShellExp->gensshkeys;
+     $rc=xCAT::RemoteShellExp->gensshkeys($expecttimeout);
   }
   # send ssh keys to the nodes/devices, to setup passwordless ssh 
   if ($flag eq "s")
@@ -193,15 +202,15 @@ sub remoteshellexp
          return 1;
     }
     if ($ssh_setup_cmd) { # setup ssh on devices
-     $rc=xCAT::RemoteShellExp->senddeviceskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$ssh_setup_cmd,$nodes);
+     $rc=xCAT::RemoteShellExp->senddeviceskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$ssh_setup_cmd,$nodes, $expecttimeout);
     } else {  #setup ssh on nodes
-     $rc=xCAT::RemoteShellExp->sendnodeskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$nodes);
+     $rc=xCAT::RemoteShellExp->sendnodeskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$nodes, $expecttimeout);
     } 
   }
   # test ssh setup on the node
   if ($flag eq "t")
   {
-     $rc=xCAT::RemoteShellExp->testkeys($remoteshell,$to_userid,$nodes);
+     $rc=xCAT::RemoteShellExp->testkeys($remoteshell,$to_userid,$nodes,$expecttimeout);
   }
   return $rc;
 }
@@ -220,9 +229,9 @@ sub remoteshellexp
 sub gensshkeys 
 
 {
-    my ($class) = @_;
+    my ($class, $expecttimeout) = @_;
     my $keygen;
-    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $timeout  = $expecttimeout;    # sets Expect default timeout, 0 accepts immediately
     my $keygen_sent = 0;
     my $prompt1   = 'Generating public/private rsa';
     my $prompt2   = 'Enter file.*:';
@@ -347,9 +356,9 @@ sub gensshkeys
 sub testkeys 
 
 {
-    my ($class,$remoteshell,$to_userid,$nodes) = @_;
+    my ($class,$remoteshell,$to_userid,$nodes, $expecttimeout) = @_;
     my $testkeys;
-    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $timeout  = $expecttimeout;    # sets Expect default timeout
     my $testkeys_sent = 0;
     my $prompt1   = 'Are you sure you want to continue connecting (yes/no)?';
     my $prompt2   = 'ssword:';
@@ -469,9 +478,9 @@ sub testkeys
 sub sendnodeskeys 
 
 {
-   my ($class,$remoteshell,$remotecopy,$to_userid,$to_userpassword,$home,$nodes) = @_;
+   my ($class,$remoteshell,$remotecopy,$to_userid,$to_userpassword,$home,$nodes, $expecttimeout) = @_;
     my $sendkeys;
-    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $timeout  = $expecttimeout;    # sets Expect default timeout, 0 accepts immediately
     my $sendkeys_sent = 0;
     my $prompt1   = 'Are you sure you want to continue connecting (yes/no)?';
     my $prompt2   = 'ssword:';
@@ -759,7 +768,7 @@ sub sendnodeskeys
 
 =head3    senddeviceskeys 
 	
-      Setup the ssh keys on the nodes 
+      Setup the ssh keys on the switches 
 
 =cut
 
@@ -768,9 +777,9 @@ sub sendnodeskeys
 sub senddeviceskeys 
 
 {
-   my ($class,$remoteshell,$remotecopy,$to_userid,$to_userpassword,$home,$ssh_setup_cmd,$nodes) = @_;
+   my ($class,$remoteshell,$remotecopy,$to_userid,$to_userpassword,$home,$ssh_setup_cmd,$nodes, $expecttimeout) = @_;
     my $sendkeys;
-    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $timeout  = $expecttimeout;    # sets Expect default timeout, 0 accepts immediately
     my $sendkeys_sent = 0;
     my $prompt1   = 'Are you sure you want to continue connecting (yes/no)?';
     my $prompt2   = 'ssword:';
