@@ -12,7 +12,7 @@ DIR=`readlink -f $DIR`
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
 # CentOS 7 probably uses /usr/lib/dracut/modules.d also
-if [ -f "/usr/share/dracut/modules.d/97xcat" ]
+if [ -e "/usr/share/dracut/modules.d" ]
 then
     DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
 else
