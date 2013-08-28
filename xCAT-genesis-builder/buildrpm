@@ -77,8 +77,13 @@ if [ "$HOSTOS" = "mcp" ]; then
 else
 	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
 fi
-dracut -m "xcat base" -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 
+# On Fedora 20 ppc64, dracut uses host-only mode by default
+if [ `uname -m` = "ppc64" ]; then
+    dracut -m "xcat base" -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
+else
+    dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
+fi
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
