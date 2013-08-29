@@ -257,6 +257,7 @@ sub bldnonrootSSHFiles
 
         Arguments:
                Array of nodes
+               Timeout for expect call (optional)
         Returns:
 
         Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
@@ -281,7 +282,7 @@ sub bldnonrootSSHFiles
 #--------------------------------------------------------------------------------
 sub setupSSH
 {
-    my ($class, $ref_nodes) = @_;
+    my ($class, $ref_nodes,$expecttimeout) = @_;
     my @nodes    = $ref_nodes;
     my @badnodes = ();
     my $n_str    = $nodes[0];
@@ -350,7 +351,7 @@ sub setupSSH
 
         # generates new keys for root, if they do not already exist
         my $rc=
-     xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL);
+          xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL,$expecttimeout);
        if ($rc != 0) {
             $rsp->{data}->[0] = "remoteshellexp failed generating keys.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -442,7 +443,7 @@ rmdir \"/tmp/$to_userid\" \n";
       if ($enablenodes) {  # node on list to setup nodetonodessh
          chop $enablenodes;  # remove last comma
          $ENV{'DSH_ENABLE_SSH'} = "YES";
-         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes);
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes,$expecttimeout);
          if ($rc != 0)
          {
           $rsp->{data}->[0] = "remoteshellexp failed sending keys to enablenodes.";
@@ -452,7 +453,7 @@ rmdir \"/tmp/$to_userid\" \n";
       }
       if ($disablenodes) {  # node on list to setup nodetonodessh
          chop $disablenodes;  # remove last comma
-         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes);
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes,$expecttimeout);
          if ($rc != 0)
          {
           $rsp->{data}->[0] = "remoteshellexp failed sending keys to disablenodes.";
@@ -462,7 +463,7 @@ rmdir \"/tmp/$to_userid\" \n";
       }
     } else { # from user is not root or it is a device , always send private key
        $ENV{'DSH_ENABLE_SSH'} = "YES";
-       my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$n_str);
+       my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$n_str,$expecttimeout);
        if ($rc != 0)
        {
            $rsp->{data}->[0] = "remoteshellexp failed sending keys.";
@@ -476,7 +477,7 @@ rmdir \"/tmp/$to_userid\" \n";
     foreach my $n (@testnodes)
     {
        my $rc=
-     xCAT::RemoteShellExp->remoteshellexp("t",$::CALLBACK,"/usr/bin/ssh",$n);
+     xCAT::RemoteShellExp->remoteshellexp("t",$::CALLBACK,"/usr/bin/ssh",$n,$expecttimeout);
         if ($rc != 0)
         {
             push @badnodes, $n;
