@@ -53,6 +53,7 @@ sub getNodesetStates
         my @pxenodes    = ();
         my @yabootnodes = ();
         my @xnbanodes= ();
+        my @grub2nodes = ();
         my $tabdata     = $tab->getNodesAttribs(\@nodes, ['node', 'netboot']);
         foreach my $node (@nodes)
         {
@@ -74,6 +75,10 @@ sub getNodesetStates
             elsif ($nb eq "aixinstall")
             {
                 push(@aixnodes, $node);
+            }
+            elsif ($nb eq "grub2")
+            {
+                push(@grub2nodes, $node);
             }
         }
 
@@ -124,6 +129,18 @@ sub getNodesetStates
             require xCAT_plugin::aixinstall;
             @retarray =
               xCAT_plugin::aixinstall::getNodesetStates(\@aixnodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+        if (@grub2nodes > 0)
+        {
+            require xCAT_plugin::grub2;
+            @retarray =
+              xCAT_plugin::grub2::getNodesetStates(\@grub2nodes, $hashref);
             if ($retarray[0])
             {
                 $retcode = $retarray[0];
