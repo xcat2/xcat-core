@@ -350,8 +350,9 @@ sub setupSSH
         }
 
         # generates new keys for root, if they do not already exist
+        # nodes not used on this option but in there to preserve the interface
         my $rc=
-          xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL,$expecttimeout);
+          xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL,$n_str,$expecttimeout);
        if ($rc != 0) {
             $rsp->{data}->[0] = "remoteshellexp failed generating keys.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);

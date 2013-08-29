@@ -48,7 +48,7 @@ package xCAT::RemoteShellExp;
     exit 2 - usage error
 
 Examples:
-$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd,$timeout); 
+$rc=xCAT::RemoteShellExp->remoteshellexp("k",$callback,$remoteshellcmd,$nodes,$timeout); 
 $rc=xCAT::RemoteShellExp->remoteshellexp("s",$callback,$remoteshellcmd,$nodes,$timeout); 
 $rc=xCAT::RemoteShellExp->remoteshellexp("t",$callback,$remoteshellcmd,$nodes,$timeout); 
 
@@ -96,10 +96,6 @@ sub remoteshellexp
      $expecttimeout=$timeout;
   }
 
-   my $rsp = {};
-   $rsp->{data}->[0] = 
-   "Timeout is $expecttimeout.";
-   xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
   # for -s flag must have nodes and a $to_userid password
   my $to_user_password;
   if ($ENV{'DSH_REMOTE_PASSWORD'}) {
