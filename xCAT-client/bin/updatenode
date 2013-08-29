@@ -88,7 +88,7 @@ if (
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,
                 'F|sync'           => \$::FILESYNC,
-                'g|genmypost'   => \$::GENMYPOST,
+                'g|genmypost'      => \$::GENMYPOST,
                 'f|snsync'         => \$::SNFILESYNC,
                 'l|user:s'         => \$::USER,
                 'S|sw'             => \$::SWMAINTENANCE,
@@ -97,6 +97,7 @@ if (
                 'k|security'       => \$::SECURITY,
                 'o|os:s'      	   => \$::OS,
                 'fanout=i'         => \$::fanout,
+                't|timetout=i'     => \$::timeout,
     )
   ) {
     &updatenode_usage();

@@ -227,6 +227,7 @@ sub preprocess_updatenode
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
                     'fanout=i'      => \$::fanout,
+                    't|timetout=i'  => \$::timeout,
 
         )
       )
@@ -832,13 +833,18 @@ sub security_update_sshkeys
 
     # call the xdsh -K to set up the ssh keys
     my @envs = @{$request->{environment}};
-    my @args = ("-K");
+    my $args;
+    push @$args,"-K"; 
+    if (defined($::timeout))  {  # timeout 
+       push @$args,"-t" ;
+       push @$args,$::timeout;
+    }
     my $res  =
       xCAT::Utils->runxcmd(
                            {
                             command => ['xdsh'],
                             node    => \@$nodes,
-                            arg     => \@args,
+                            arg     => $args,
                             env     => \@envs,
                            },
                            $subreq, 0, 1
@@ -849,7 +855,7 @@ sub security_update_sshkeys
         my $rsp = {};
         # not display password in verbose mode.
         $rsp->{data}->[0] =
-          "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = xxxxxx";
+          "  $localhostname: Internal call command: xdsh  @$nodes " . join(' ', @$args);
         $rsp->{data}->[1] =
           "  $localhostname: return messages of last command: @$res";
         $callback->($rsp);
@@ -1006,6 +1012,7 @@ sub updatenode
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
                     'fanout=i'      => \$::fanout,
+                    't|timetout=i'  => \$::timeout,
         )
       )
     {
@@ -1318,6 +1325,10 @@ sub updatenoderunps
              push @$args1,"-f" ;
              push @$args1,$::fanout;
             }
+            if (defined($::timeout))  {  # timeout 
+             push @$args1,"-t" ;
+             push @$args1,$::timeout;
+            }
             if (defined($::USER))  {  # -l contains sudo user
              push @$args1,"--sudo" ;
              push @$args1,"-l" ;
@@ -1449,6 +1460,10 @@ sub updatenodesyncfiles
             if (defined($::fanout))  {  # fanout
              push @$args,"-f" ;
              push @$args,$::fanout;
+            }
+            if (defined($::timeout))  {  # timeout 
+             push @$args,"-t" ;
+             push @$args,$::timeout;
             }
             if (defined($::USER))  {  # -l must sudo
              push @$args,"--sudo" ;
@@ -1645,6 +1660,10 @@ sub updatenodesoftware
             if (defined($::fanout))  {  # fanout
              push @$args1,"-f" ;
              push @$args1,$::fanout;
+            }
+            if (defined($::timeout))  {  # timeout 
+             push @$args1,"-t" ;
+             push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
              push @$args1,"--sudo" ;
@@ -2622,6 +2641,10 @@ sub updateAIXsoftware
 				push @$args1,"-f" ;
 				push @$args1,$::fanout;
 			}
+         if (defined($::timeout))  {  # timeout 
+            push @$args1,"-t" ;
+            push @$args1,$::timeout;
+         }
 			push @$args1,"$installcmd";
 
 			$subreq->(
