@@ -1,0 +1,37 @@
+#!/bin/bash
+
+if [ "$NODESETSTATE" != "sysclone" ];then
+    exit 0
+fi
+#update the exclude configuration file
+#do not sync the following files
+for filename in /etc/fstab /boot/grub /etc/grub.conf /boot/efi /etc/elilo.conf /xcatpost
+do
+    if [ ! -e $filename ];then
+        continue
+    fi
+
+    grep -E "^\s*${filename}\s*$" "/etc/systemimager/updateclient.local.exclude"
+    if [ $? -ne 0 ];then
+        echo "$filename" >> "/etc/systemimager/updateclient.local.exclude"
+    fi
+done
+
+#get the current image server
+str_server_ip=''
+. /opt/xcat/xcatinfo
+if [ -n "$XCATSERVER" ];then
+    str_server_ip=$XCATSERVER
+else
+    str_server_ip=$MASTER
+fi
+
+if [ -z "$str_server_ip" ];then
+    echo "Can not find out the image server."
+    exit 1
+fi
+
+str_server_ip=`echo $str_server_ip | sed "s/'//g"`
+#call system imager command to update the image
+echo "si_updateclient --server $str_server_ip --no-bootloader --yes"
+export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --no-bootloader --yes
