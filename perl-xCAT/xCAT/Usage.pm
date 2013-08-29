@@ -345,9 +345,9 @@ my %usage = (
 "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]
     or
-    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn]
+    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] 
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -383,6 +383,9 @@ Options:
         provided on the command line. (AIX only)
 
     [-s|--sn] Set the server information stored on the nodes.
+
+    [-t|--timeout] Time out in seconds to allow the command to run. Default is no timeout,
+        except for updatenode -k which has a 10 second default timeout.
 
     [-A|--updateallsw] Install or update all software contained in the source 
         directory. (AIX only)
