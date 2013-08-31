@@ -103,9 +103,9 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "Creating repodata directories..."
 	for i in `find -mindepth 2 -maxdepth 2 -type d `; do
 		if [ -n "$VERBOSEMODE" ]; then
-			createrepo $i
+			createrepo --checksum sha $i            # specifying checksum so the repo will work on rhel5
 		else
-			createrepo $i >/dev/null
+			createrepo --checksum sha $i >/dev/null
 		fi
 		rm -f $i/repodata/repomd.xml.asc
 		gpg -a --detach-sign $i/repodata/repomd.xml
