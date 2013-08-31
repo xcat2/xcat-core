@@ -348,8 +348,8 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "Signing RPMs..."
 	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-	createrepo $DESTDIR
-	createrepo $SRCDIR
+	createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
+	createrepo --checksum sha $SRCDIR
 	rm -f $SRCDIR/repodata/repomd.xml.asc
 	rm -f $DESTDIR/repodata/repomd.xml.asc
 	gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
