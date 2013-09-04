@@ -92,6 +92,37 @@ elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
 fi
 
 
+bool_exit_flag=0
+#check the required attributes
+if [ -z "$NICIPS" ];then
+    if [ -n "$NICTYPES" ];then
+        logger -t xcat -p local4.info "confignics: nicips attribute is not defined. so the nictypes attribute can not be defined."
+        echo "confignics on $NODE: nicips attribute is not defined. so the nictypes attribute can not be defined."
+        bool_exit_flag=1
+    fi
+
+    if [ -n "$NICNETWORKS" ];then
+        logger -t xcat -p local4.info "confignics: nicips attribute is not defined. so the nicnetworks attribute can not be defined."
+        echo "confignics on $NODE: nicips attribute is not defined. so the nicnetworks attribute can not be defined."
+        bool_exit_flag=1
+    fi
+else
+    if [ -z "$NICTYPES" ];then
+        logger -t xcat -p local4.info "confignics: nictypes attribute is not defined."
+        echo "confignics on $NODE: nictypes attribute is not defined."
+        bool_exit_flag=1
+    fi
+
+    if [ -z "$NICNETWORKS" ];then
+        logger -t xcat -p local4.info "confignics: nicnetworks attribute is not defined."
+        echo "confignics on $NODE: nicnetworks attribute is not defined."
+        bool_exit_flag=1
+    fi
+fi
+
+if [ $bool_exit_flag -eq 1 ];then
+    exit 0
+fi
 
 splitconfig $NICIPS
 splitconfig $NICTYPES
@@ -169,6 +200,11 @@ do
         echo "confignics on $NODE: processing custom scripts: ${array_temp[3]} for interface $key"
         ${array_temp[3]}
     else
+        if [ -n "${array_temp[2]}" ];then
+            logger -t xcat -p local4.info "confignics: ip address,nic type and network are required. $key: $str_value ."
+            echo "confignics on $NODE: ip address,nic type and network are required. $key: $str_value ."
+            continue
+        fi
         if [ "${array_temp[1]}" ];then
             str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
         else
