@@ -617,9 +617,11 @@ sub process_request {
         $ctx->{resolver} = Net::DNS::Resolver->new(nameservers=>['127.0.0.1']); 
     }
 
-    add_or_delete_records($ctx);
+    my $ret = add_or_delete_records($ctx);
+    unless($ret) {
+        xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
+    }
 
-    xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
     umask($oldmask);
 }
 
@@ -1073,8 +1075,11 @@ sub add_or_delete_records {
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
-		my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
-
+	my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
+        if( !defined $ip) {
+            xCAT::SvrUtils::sendmsg([1,"Please make sure $ctx->{nsmap}->{$zone} exist in /etc/hosts or DNS."], $callback);
+            return 1;
+        }
         my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
         my $entry;
         my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
