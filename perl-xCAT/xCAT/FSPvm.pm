@@ -1499,7 +1499,10 @@ sub query_cec_info_actions {
     foreach my $action (@$action_array) {
 	#$data .= "======> ret info for $action:\n";
         my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $td, $action);
-	chomp(@$values[1]);
+        chomp(@$values[1]);
+        if ($action eq "part_get_partition_cap" and (@$values[1] =~ /Error:/i or @$values[2] ne 0)) {
+            return ([[@$values]]);
+        }
         if (@$values[1] =~ /^$/) {
             next;
         }

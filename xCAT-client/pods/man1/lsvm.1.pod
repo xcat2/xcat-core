@@ -16,6 +16,8 @@ B<lsvm> [B<-a>| B<--all>] I<noderange>
 
 B<lsvm> [B<-l>| B<--long>] I<noderange>
 
+B<lsvm> [B<-p>| B<--part>] I<noderange>
+
 =head2 For zVM:
 
 B<lsvm> I<noderange>
@@ -73,6 +75,9 @@ B<-l>
 
 Show lparnames for lpars.
 
+B<-p|--part>
+
+Show detailed information for lpars, such as processor, memory, physical IO slot, hugepage, BSR, etc.
 
 =head1 RETURN VALUE
 
@@ -190,7 +195,6 @@ Output is similar to:
  Page Size(in GB):                         16
  Maximum huge page memory(in pages):       24
  Requested huge page memory(in pages):     15
-=======
  Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
  Available huge page memory(in pages):     0
  Configurable huge page memory(in pages):  12
@@ -207,6 +211,59 @@ Output is similar to:
  gpok3: USER LNX3 PWD 512M 1G G
  gpok3: INCLUDE LNXDFLT
  gpok3: COMMAND SET VSWITCH VSW2 GRANT LNX3
+
+6. For normal power machine, list out the detailed resource information:
+
+ lsvm cec -p
+
+Output is similar to:
+
+  cec: HYP Configurable Processors: 16, Avail Processors: 16.
+  HYP Configurable Memory:32.00 GB(128 regions).
+  HYP Available Memory:   31.25 GB(125 regions).
+  HYP Memory Region Size: 0.25 GB(256 MB).
+  cec: All Physical I/O info:
+  65535,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0,0,0xffff(Empty Slot)
+  65535,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0,0,0xffff(Empty Slot)
+  65535,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0,0,0xffff(Empty Slot)
+  65535,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0,0,0xffff(Empty Slot)
+  65535,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0,0,0xffff(Empty Slot)
+  65535,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0,0,0xc03(USB Controller)
+  65535,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0,0,0x104(RAID Controller)
+  cec: Huge Page Memory
+  Available huge page memory(in pages):     2
+  Configurable huge page memory(in pages):  2
+  Page Size(in GB):                         16
+  Maximum huge page memory(in pages):       4
+  Requested huge page memory(in pages):     2
+  cec: Barrier Synchronization Register(BSR)
+  Number of BSR arrays: 256
+  Bytes per BSR array:  4096
+  Available BSR array:  256
+
+For partition on normal power machine, list out the detailed information:
+
+  lsvm lpar1 -p
+ 
+Output is similar to:
+
+  lpar1: Lpar Processor Info:
+  Curr Processor Min: 1.
+  Curr Processor Req: 16.
+  Curr Processor Max: 16.
+  lpar1: Lpar Memory Info:
+  Curr Memory Min: 0.25 GB(1 regions).
+  Curr Memory Req: 30.75 GB(123 regions).
+  Curr Memory Max: 32.00 GB(128 regions).
+  lpar1: 1,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0,0,0xffff(Empty Slot)
+  lpar1: 1,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0,0,0xffff(Empty Slot)
+  lpar1: 1,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0,0,0xffff(Empty Slot)
+  lpar1: 1,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0,0,0xffff(Empty Slot)
+  lpar1: 1,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0,0,0xffff(Empty Slot)
+  lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0,0,0xc03(USB Controller)
+  lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0,0,0x104(RAID Controller)
+  lpar1: 1/2/2
+  lpar1: 256.
 
 =head1 FILES
 

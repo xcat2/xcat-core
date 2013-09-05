@@ -15,6 +15,10 @@ I<rmvm [-V| --verbose] noderange [-r] [--service]>
 
 I<rmvm [-p] [-f]>
 
+=head2 PPC (using Direct FSP Management) specific:
+
+I<rmvm noderange> I<-p|--part>
+
 =head1 DESCRIPTION
 
 The rmvm command removes the partitions specified in noderange. If noderange is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
@@ -33,6 +37,8 @@ B<-r>          Retain the data object definitions of the nodes.
 B<--service>   Remove the service partitions of the specified CECs.
 
 B<-p>          Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.  
+
+B<-p|--part>   Remove the specified partiton on normal power machine.
 
 B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested. 
 
@@ -86,6 +92,15 @@ I<rmvm gpok4>
 Output is similar to:
 
  gpok4: Deleting virtual server LNX4... Done
+
+
+6. To remove a partition on normal power machine.
+
+I<rmvm lpar1 -p>
+
+Output is similar to:
+
+ lpar1: Done
 
 =head1 FILES
 
