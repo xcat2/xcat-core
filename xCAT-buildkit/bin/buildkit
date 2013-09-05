@@ -892,6 +892,7 @@ sub kit_cleanrepo
         }
         if ( !$got_one ) {
             print "Kit repository $repoid does not exist.\n";
+            return 1;
         }
     }
     if ( -d "$::workdir/rpmbuild" ) {
