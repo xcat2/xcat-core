@@ -57,6 +57,7 @@ my %modules = (
                        cec    => "xCAT::FSPvm",
                       },
         rmvm      => { hmc    => "xCAT::PPCvm",
+                       hmc    => "xCAT::FSPvm",
                       },
         lsvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
