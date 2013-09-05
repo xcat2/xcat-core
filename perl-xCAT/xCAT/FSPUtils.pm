@@ -368,11 +368,19 @@ sub fsp_api_action {
             } elsif( $parameter !=0 && $action =~ /^(on|reset)$/ ) {
                 #powerinterval for lpars power on
                 $cmd = "$fsp_api -a $action -i $parameter -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            } elsif ($action =~ /^part_set_lpar_def_state$/) {
+                $cmd = "$fsp_api -a $action -T $tooltype -s $parameter -t $type:$fsp_ip:$id:$node_name:";
+            } elsif (exists($request->{opt}->{vios})) {
+                $cmd = "$fsp_api -a $action -T $tooltype -s 1 -t $type:$fsp_ip:$id:$node_name:$parameter";
             } else {
                 $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
             }
         } else {
-            $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            if (exists($request->{opt}->{vios})) {
+                $cmd = "$fsp_api -a $action -T $tooltype -s 1 -t $type:$fsp_ip:$id:$node_name:";
+            } else {
+                $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            }
         }
     }
     xCAT::MsgUtils->verbose_message($request, "fsp_api_action cmd:$cmd.");
