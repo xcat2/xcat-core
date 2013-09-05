@@ -51,6 +51,161 @@ This program module file, is a set of utilities used by xCAT buildkit command
 
 #-------------------------------------------------------------
 
+#--------------------------------------------------------------------------
+=head3    get_latest_version
+
+          Find the latest version in a list of rpms with the same basename
+
+        Arguments:
+                - the repo location
+                - a list of rpms with the same basename
+        Returns:
+                - name of rpm
+                - undef
+        Example:
+                  my $new_d = xCAT::BuildKitUtils->get_latest_version($repodir, \@rpmlist);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub get_latest_version
+{
+    my ($class, $repodir, $rpms) = @_;
+
+    my @rpmlist = @$rpms;
+
+    my %localversions_hash = ();
+    my %file_name_hash     = ();
+
+    my $i = 0;
+    foreach my $rpm (@rpmlist)
+    {
+
+        # include path
+        my $fullrpmpath = "$repodir/$rpm*";
+
+        # get the basename, version, and release for this rpm
+        my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $repodir/$rpm*";
+        my $out  = `$rcmd`;
+
+        my ($rpkg, $VERSION, $RELEASE) = split(' ', $out);
+
+        chomp $VERSION;
+        chomp $RELEASE;
+
+        $localversions_hash{$i}{'VERSION'}  = $VERSION;
+        $localversions_hash{$i}{'RELEASE'}  = $RELEASE;
+
+        $file_name_hash{$VERSION}{$RELEASE} = $rpm;
+        $i++;
+    }
+
+    if ($i == 0)
+    {
+	print "error\n";
+	return undef;
+    }
+
+    my $versionout = "";
+    my $releaseout = "";
+    $i = 0;
+    foreach my $k (keys %localversions_hash)
+    {
+        if ($i == 0)
+        {
+            $versionout = $localversions_hash{$k}{'VERSION'};
+            $releaseout = $localversions_hash{$k}{'RELEASE'};
+        }
+
+        # if this is a newer version/release then set them
+        if ( xCAT::BuildKitUtils->testVersion($localversions_hash{$k}{'VERSION'}, ">", $versionout, $localversions_hash{$k}{'RELEASE'}, $releaseout) ) {
+            $versionout = $localversions_hash{$k}{'VERSION'};
+            $releaseout = $localversions_hash{$k}{'RELEASE'};
+        }
+        $i++;
+    }
+
+    return ($file_name_hash{$versionout}{$releaseout});
+}
+
+#------------------------------------------------------------------------------
+
+
+=head3    testVersion
+
+        Compare version1 and version2 according to the operator and
+        return True or False.
+
+        Arguments:
+                $version1
+                $operator
+                $version2
+                $release1
+                $release2
+        Returns:
+                True or False
+        Example:
+
+        Comments:
+                The return value is generated with the Require query of the
+                rpm command.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub testVersion
+{
+    my ($class, $version1, $operator, $version2, $release1, $release2) = @_;
+
+    my @a1 = split(/\./, $version1);
+    my @a2 = split(/\./, $version2);
+    my $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    $#a1 = $len - 1;  # make the arrays the same length before appending release
+    $#a2 = $len - 1;
+    push @a1, split(/\./, $release1);
+    push @a2, split(/\./, $release2);
+    $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    my $num1 = '';
+    my $num2 = '';
+
+    for (my $i = 0 ; $i < $len ; $i++)
+    {
+        # remove any non-numbers on the end
+        my ($d1) = $a1[$i] =~ /^(\d*)/;  
+        my ($d2) = $a2[$i] =~ /^(\d*)/;
+
+        my $diff = length($d1) - length($d2);
+        if ($diff > 0)       # pad d2
+        {
+            $num1 .= $d1;
+            $num2 .= ('0' x $diff) . $d2;
+        }
+            elsif ($diff < 0)       # pad d1
+        {
+            $num1 .= ('0' x abs($diff)) . $d1;
+            $num2 .= $d2;
+        }
+        else   # they are the same length
+        {
+            $num1 .= $d1;
+            $num2 .= $d2;
+        }
+    }
+
+    # Remove the leading 0s or perl will interpret the numbers as octal
+    $num1 =~ s/^0+//;
+    $num2 =~ s/^0+//;
+
+    # be sure that $num1 is not a "".
+    if (length($num1) == 0) { $num1 = 0; }
+    if (length($num2) == 0) { $num2 = 0; }
+
+    if ($operator eq '=') { $operator = '=='; }
+    my $bool = eval "$num1 $operator $num2";
+
+    return $bool;
+}
+
 
 #-------------------------------------------------------------------------------
 
