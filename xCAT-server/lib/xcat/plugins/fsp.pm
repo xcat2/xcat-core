@@ -28,6 +28,7 @@ sub handled_commands {
       mkvm      => 'nodehm:mgt',
       lsvm      => 'nodehm:mgt',
       chvm      => 'nodehm:mgt',
+      rmvm      => 'nodehm:mgt',
       rscan     => 'nodehm:mgt',
       getfspcon => 'nodehm:cons',
       getmulcon => 'fsp',
