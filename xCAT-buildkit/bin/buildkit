@@ -892,6 +892,7 @@ sub kit_cleanrepo
         }
         if ( !$got_one ) {
             print "Kit repository $repoid does not exist.\n";
+            return 1;
         }
     }
     if ( -d "$::workdir/rpmbuild" ) {
@@ -3080,11 +3081,12 @@ sub kit_addpkgs
     my $kitbfname = basename($kittarfile);
     $kitbfname =~ s/.tar.bz2$//;
     $kitbfname =~ s/.NEED_PRODUCT_PKGS$//;
-    my $tmpdir_base = "/tmp/buildkit_workdir/$kitbfname";
+
+    my $tmpdir_base = "/tmp/$kitbfname";
 
     # Cleanup - should have been removed when last command ran
     #            - but just in case
-    system ("rm -Rf /tmp/buildkit_workdir");
+    system ("rm -Rf $tmpdir_base");
 
     # the tar file may not be in the current dir
     $kittarfile = "$::workdir/$kittarfile";
@@ -3109,7 +3111,7 @@ sub kit_addpkgs
     if ( system("cd $tmpdir_base; tar -jxf $kittarfile ") ) {
          print "Error extracting tarfile $kittarfile \n";
          # Cleanup
-         system ("rm -Rf /tmp/buildkit_workdir");
+         system ("rm -Rf $tmpdir_base");
          return 1;
     }
     my $tmp_kit_conf = `find $tmpdir_base -name kit.conf`;
@@ -3121,7 +3123,7 @@ sub kit_addpkgs
     unless ( open( $CKF, "<", $tmp_kit_conf ) ) {
         print  "The Kit configuration file $tmp_kit_conf could not be read or was not included in the kit tar file. \n";
         # Cleanup
-        system ("rm -Rf /tmp/buildkit_workdir");
+        system ("rm -Rf $tmpdir_base");
         return 1;
     }
     my @lines = <$CKF>;
@@ -3231,7 +3233,7 @@ sub kit_addpkgs
                   if ( system("ls $fromfile > /dev/null") ){
                     print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
                     # Cleanup
-                    system ("rm -Rf /tmp/buildkit_workdir");
+                    system ("rm -Rf $tmpdir_base");
                     return 1;
                   }
                   foreach my $repo (split(/,/, $ext_reponames)) {
@@ -3239,13 +3241,13 @@ sub kit_addpkgs
                     if ( ! -d ($repodir) && (! mkpath($repodir)) ) {
                       print "Error creating repository directory $repodir\n";
                       # Cleanup
-                      system ("rm -Rf /tmp/buildkit_workdir");
+                      system ("rm -Rf $tmpdir_base");
                       return 1;
                     }
                     if (system("cp -fp $fromfile $repodir")) {
                       print "Error copying package file $fromfile to $repodir \n";
                       # Cleanup
-                      system ("rm -Rf /tmp/buildkit_workdir");
+                      system ("rm -Rf $tmpdir_base");
                       return 1;
                     }
                     $create_repodata_list{$repodir}=1;
@@ -3277,7 +3279,7 @@ sub kit_addpkgs
                 if (!-d "$tdir" or !-d "$source_dir") {
                   print "Error open kitcomponent rpm build direcotry $tdir or $tdir/$non_native_kitcompname \n";
                   # Cleanup
-                  system ("rm -Rf /tmp/buildkit_workdir");
+                  system ("rm -Rf $tmpdir_base");
                   return 1;
                 }
 
@@ -3287,13 +3289,13 @@ sub kit_addpkgs
                     my $fromfile = $rpmdir."/".$tepmfilename;
                     if ( system("ls $fromfile > /dev/null") ){
                       print  "The product package file $non_native_filename could not be read from the package directory $rpmdir. \n";
-                      system ("rm -Rf /tmp/buildkit_workdir");
+                      system ("rm -Rf $tmpdir_base");
                       return 1;
                     }
                     if (system("cp -fp $fromfile $tdir/$non_native_kitcompname")) {
                       print "Error copying package file $fromfile to $tdir/$non_native_kitcompname \n";
                       # Cleanup
-                      system ("rm -Rf /tmp/buildkit_workdir");
+                      system ("rm -Rf $tmpdir_base");
                       return 1;
                     }
                 }
@@ -3318,7 +3320,7 @@ sub kit_addpkgs
                     if (!-r "$spec") {
                       print "Error open kitcomponent rpm build spec $tdir/$non_native_kitcompname.spec \n";
                       # Cleanup
-                      system ("rm -Rf /tmp/buildkit_workdir");
+                      system ("rm -Rf $tmpdir_base");
                       return 1;
                     }
                     my $rpmbuild_dir = $tmpdir."/rpmbuild";
@@ -3401,7 +3403,7 @@ sub kit_addpkgs
       if (system( $createrepocmd )) {
         print "Error running $createrepocmd. \n";
         # Cleanup
-        system ("rm -Rf /tmp/buildkit_workdir");
+        system ("rm -Rf $tmpdir_base");
         return 1;
       }
     }
@@ -3411,13 +3413,13 @@ sub kit_addpkgs
     if ( system("cd $tmpdir; cd ..; tar -cjhf $new_tarfile $kitname/*") ) {
          print "Error building tarfile $new_tarfile \n";
          # Cleanup
-         system ("rm -Rf /tmp/buildkit_workdir");
+         system ("rm -Rf $tmpdir_base");
          return 1;
     }
     print "Kit tar file $new_tarfile successfully built \n";
   
     # Cleanup
-    system ("rm -Rf /tmp/buildkit_workdir");
+    system ("rm -Rf $tmpdir_base");
     return 0;
 }
 
@@ -3486,7 +3488,7 @@ sub NEW_kit_addpkgs
            if ( system("ls $fromfile > /dev/null") ){
              print  "The product package file $ext_filename could not be read from the package directory $rpmdir. \n";
              # Cleanup
-             system ("rm -Rf /tmp/buildkit_workdir");
+             system ("rm -Rf $tmpdir_base");
              return 1;
            }
            foreach my $repo (split(/,/, $ext_reponames)) {
@@ -3494,13 +3496,13 @@ sub NEW_kit_addpkgs
              if ( ! -d ($repodir) && (! mkpath($repodir)) ) {
                print "Error creating repository directory $repodir\n";
                # Cleanup
-               system ("rm -Rf /tmp/buildkit_workdir");
+               system ("rm -Rf $tmpdir_base");
                return 1;
              }
              if (system("cp -fp $fromfile $repodir")) {
                print "Error copying package file $fromfile to $repodir \n";
                # Cleanup
-               system ("rm -Rf /tmp/buildkit_workdir");
+               system ("rm -Rf $tmpdir_base");
                return 1;
              }
            }
@@ -3580,7 +3582,7 @@ sub NEW_kit_addpkgs
     my $buildtar_rc = &kit_buildtar;
 
     # clean out the tmp dir
-    system ("rm -Rf /tmp/buildkit_workdir");
+    system ("rm -Rf $tmpdir_base");
 
     if ($buildtar_rc) {
         print "Error building full kit tarfile \n";

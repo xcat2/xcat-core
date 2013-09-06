@@ -1,4 +1,7 @@
 #!/bin/bash
+if [ -f "/opt/xcat/xcatinfo" ];then
+    rm -f "/opt/xcat/xcatinfo"
+fi
 /opt/xcat/xcatdsklspost
 
 . /tmp/post-install/variables.txt

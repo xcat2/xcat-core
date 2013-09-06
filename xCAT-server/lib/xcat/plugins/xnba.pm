@@ -10,7 +10,7 @@ use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::Utils;
 use xCAT::TableUtils;
-
+use xCAT::ServiceNodeUtils;
 my $addkcmdlinehandled;
 my $request;
 my $callback;
@@ -294,6 +294,7 @@ sub preprocess_request {
     my $callback1 = shift;
     my $command  = $req->{command}->[0];
     my $sub_req = shift;
+    my $nodes = $req->{node}; 
     my @args=();
     if (ref($req->{arg})) {
 	@args=@{$req->{arg}};
@@ -345,11 +346,22 @@ sub preprocess_request {
 
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
    #they specify no sharedtftp in site table
-   #my $stab = xCAT::Table->new('site');
-   #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');i
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+      # check for  computenodes and servicenodes from the noderange, if so error out
+       my @SN;
+       my @CN;
+       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+       if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+            xCAT::MsgUtils->message("E", $rsp, $callback1);
+            return;
+
+       }
+
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
           return [$req];
@@ -358,59 +370,6 @@ sub preprocess_request {
    }
    return [$req];
 }
-#sub preprocess_request {
-#   my $req = shift;
-#   $callback = shift;
-#   if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-#   my @requests = ({%$req}); #Start with a straight copy to reflect local instance
-#   my $sitetab = xCAT::Table->new('site');
-#   (my $ent) = $sitetab->getAttribs({key=>'xcatservers'},'value');
-#   $sitetab->close;
-#   if ($ent and $ent->{value}) {
-#      foreach (split /,/,$ent->{value}) {
-#         if (xCAT::NetworkUtils->thishostisnot($_)) {
-#            my $reqcopy = {%$req};
-#            $reqcopy->{'_xcatdest'} = $_;
-#            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-#            push @requests,$reqcopy;
-#         }
-#      }
-#   }
-#   return \@requests;
-#}
-#sub preprocess_request {
-#   my $req = shift;
-#   my $callback = shift;
-#  my %localnodehash;
-#  my %dispatchhash;
-#  my $nrtab = xCAT::Table->new('noderes');
-#  foreach my $node (@{$req->{node}}) {
-#     my $nodeserver;
-#     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
-#     if ($tent) { $nodeserver = $tent->{tftpserver} }
-#     unless ($tent and $tent->{tftpserver}) {
-#        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
-#        if ($tent) { $nodeserver = $tent->{servicenode} }
-#     }
-#     if ($nodeserver) {
-#        $dispatchhash{$nodeserver}->{$node} = 1;
-#     } else {
-#        $localnodehash{$node} = 1;
-#     }
-#  }
-#  my @requests;
-#  my $reqc = {%$req};
-#  $reqc->{node} = [ keys %localnodehash ];
-#  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
-#
-#  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
-#     my $reqcopy = {%$req}; #deep copy
-#     $reqcopy->{'_xcatdest'} = $dtarg;
-#     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
-#     push @requests,$reqcopy;
-#  }
-#  return \@requests;
-#}
 
 sub process_request {
   $request = shift;

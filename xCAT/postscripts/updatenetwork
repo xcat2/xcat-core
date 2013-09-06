@@ -7,29 +7,46 @@ if [ -n "$rule_file" ];then
     rm -f $rule_file
 fi
 
-echo "Updating hostname to $HOSTNAME"
-sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
-
 hostname $HOSTNAME
 
 str_cfg_file=''
 if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat
     str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$DEVICE"
+    sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+    if [ -f $str_cfg_file ];then
+        echo "Old ifcfg-$DEVICE is:"
+        cat $str_cfg_file
+        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
+        sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" $str_cfg_file
+        sed -i "s/UUID=.*//g" $str_cfg_file
+    else
+        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
+        echo "BOOTPROTO=\"dhcp\"" >> $str_cfg_file
+        echo "NM_CONTROLLED=\"yes\"" >> $str_cfg_file
+        echo "ONBOOT=\"yes\"" >> $str_cfg_file
+    fi
 elif [ -d "/etc/sysconfig/network/" ];then
     #suse
     str_cfg_file="/etc/sysconfig/network/ifcfg-$DEVICE"
+    echo "$HOSTNAME" > /etc/HOSTNAME
+    if [ -f $str_cfg_file ];then
+        echo  "Old ifcfg-$DEVICE is:"
+        cat $str_cfg_file
+        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
+        sed -i "s/HWADDR=.*/HWADDR=$HWADDR/g" $str_cfg_file
+        sed -i "s/UUID=.*//g" $str_cfg_file
+    else
+        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
+        echo "BOOTPROTO=dhcp" >> $str_cfg_file
+        echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+    fi
 else
     #ubuntu
-    str_cfg_file="/etc/network/interfaces.d/$DEVICE"
+    echo "Does not support ubuntu."
+    exit 1
 fi
-
-echo "Old ifcfg-$DEVICE is:"
-cat $str_cfg_file
-
-HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
-sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" $str_cfg_file
-sed -i "s/UUID=.*//g" $str_cfg_file
 
 echo "New ifcfg-$DEVICE is:"
 cat $str_cfg_file

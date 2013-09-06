@@ -10,13 +10,18 @@ B<mkvm> [B<-h>| B<--help>]
 
 B<mkvm> [B<-v>| B<--version>]
 
-=head2 For PPC (with HMC):
+=head2 For PPC (with HMC) specific:
 
 B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-i> I<id> B<-l> I<singlenode>
 
 B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-c> I<destcec> B<-p> I<profile>
 
 B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
+
+
+=head2 For PPC (using Direct FSP Management) specific:
+
+B<mkvm> [I<noderange> B<--full> B<--part>]
 
 =head2 For KVM:
 
@@ -34,9 +39,7 @@ B<mkvm> I<noderange> [I<source_virtual_machine>] [B<pool=> I<disk_pool>]
 
 =head1 DESCRIPTION
 
-=head2 For PPC:
-
-For PPC (with HMC) specific:
+=head2 For PPC (with HMC) specific:
 
 The first form of mkvm command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
 
@@ -45,6 +48,12 @@ The second form of this command duplicates all the partitions from the source sp
 Please make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
 
 Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+
+=head2 For PPC (using Direct FSP Management) specific:
+
+With option I<full>, a partition using all the resources on a normal power machine will be created.
+
+With option I<part>, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting' will be created.
 
 =head2 For KVM and Vmware:
 
@@ -77,6 +86,10 @@ The cpu count which will be created for the kvm/vmware virtual machine.
 =item B<--full>          
 
 Request to create a new full system partition for each CEC.
+
+=item B<--part>
+
+Request to create a partition with the specified parameters.
 
 =item B<-f|--force>
 
@@ -220,6 +233,42 @@ Output is similar to:
 7. To create a new kvm/vmware virtual machine with 10G storage, 2048M memory and 2 cpus.
 
  mkvm vm1 -s 10G --mem 2048 --cpus 2
+
+8. To create a full partition on normal power machine.
+
+First, define a node object:
+
+ mkdef -t node -o lpar1 mgt=fsp cons=fsp nodetype=ppc,osi id=1 hcp=cec parent=cec hwtype=lpar groups=lpar,all
+
+Then, create the partion on the specified cec.
+ 
+ mkvm lpar1 --full
+
+The output is similar to:
+ 
+ lpar1: Done
+
+To query the resources allocated to node 'lpar1', please reference L<lsvm(1)|lsvm.1>.
+
+Note: The 'parent' attribute for node 'lpar1' is the object name of physical power machine that the full partition will be created on. 
+
+9. To create a partition using some of the resources on normal power machine.
+
+After a node object is defined, the resources that will be used for the partition shall be specified like this:
+
+ chdef lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
+
+Then, create the partion on the specified cec.
+ 
+ mkvm lpar1 --part
+
+The outout is similar to:
+
+ lpar1: Done
+
+To query the resources allocated to node 'lpar1', please reference L<lsvm(1)|lsvm.1>.
+
+Note: The 'vmplyslots' specify the drc index of the physical slot device. Every drc index shall be delimited with ','. The 'vmothersetting' specify two kinds of resource, bsr(Barrier Synchronization Register) specified the num of BSR arrays, hugepage(Huge Page Memory) specified the num of pages.
 
 =head1 FILES
 

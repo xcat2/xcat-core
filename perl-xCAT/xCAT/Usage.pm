@@ -199,10 +199,12 @@ my %usage = (
 "Usage:
     Common:
        mkvm [-h|--help|-v|--version]
-    For PPC(with HMC):
+    For PPC(with HMC) specific:
        mkvm noderange -i id -l singlenode [-V|--verbose]
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
+    PPC (using Direct FSP Management) specific:
+       mkvm noderange <--full|--part>
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force
     For zVM
@@ -216,7 +218,7 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> [-l|--long]
+       lsvm <noderange> [-l|--long] [-p|--part]
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
@@ -264,7 +266,9 @@ my %usage = (
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version],
-       rmvm [-p] [-f]",
+       rmvm [-p] [-f]
+       PPC (using Direct FSP Management) specific:
+       rmvm <noderange> [-p|--part]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
@@ -345,9 +349,9 @@ my %usage = (
 "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]
     or
-    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn]
+    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] 
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -383,6 +387,9 @@ Options:
         provided on the command line. (AIX only)
 
     [-s|--sn] Set the server information stored on the nodes.
+
+    [-t|--timeout] Time out in seconds to allow the command to run. Default is no timeout,
+        except for updatenode -k which has a 10 second default timeout.
 
     [-A|--updateallsw] Install or update all software contained in the source 
         directory. (AIX only)

@@ -109,7 +109,7 @@ until ($mm and $username and $slot) {
 }
 release_lock(); #done with xcatd, can run with near impunity
 $sleepint=10+int(rand(30)); #Stagger sleep to take it easy on AMM/hosting server
-exec "ssh -t $username"."@"."$mm";
+exec "ssh -t $username"."@"."$mm vsp";
 my $pathtochild= dirname($scriptname). "/";
 #exec $pathtochild."hpblade.expect";
   

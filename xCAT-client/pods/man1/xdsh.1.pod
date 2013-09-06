@@ -565,7 +565,7 @@ To define a BNT Ethernet switch as a node and run a command to create a new vlan
 
 B<chdef> I<myswitch groups=all>
 
-B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd>
+B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd switches.protocol=[ssh|telnet]>
   where I<admin> and I<passw0rd> are the SSH user name and password for the switch. If it is for Telnet, add I<tn:> in front of the user name: I<tn:admin>. 
 
 <xdsh> I<myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'> 

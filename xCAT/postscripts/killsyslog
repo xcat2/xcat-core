@@ -1,7 +1,3 @@
-#!/bin/bash
-
-#only used in sysclone when the image os is sles
-
 if [ -f "/etc/SuSE-release" ];then
     str_out=`ps -ef | grep -v grep | grep syslog-ng`
     if [ $? -eq 0 ];then
