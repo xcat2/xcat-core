@@ -1232,6 +1232,59 @@ sub ripmi_callback {
 	xCAT::SvrUtils::sendmsg($output,$callback,$sessdata->{node},%allerrornodes);
 }
 	
+sub reseat_node {
+    my $sessdata = shift;
+    if (1) { # TODO: FPC path checked for
+        my $mptab = xCAT::Table->new('mp', -create=>0);
+        unless ($mptab) {
+		    xCAT::SvrUtils::sendmsg([1,"mp table must be configured for reseat"],$callback,$sessdata->{node},%allerrornodes);
+            return;
+        }
+        my $mpent = $mptab->getNodeAttribs($sessdata->{node},[qw/mpa id/]);
+        unless ($mpent and $mpent->{mpa} and $mpent->{id}) {
+		    xCAT::SvrUtils::sendmsg([1,"mp table must be configured for reseat"],$callback,$sessdata->{node},%allerrornodes);
+            return;
+        }
+        my $fpc = $mpent->{mpa};
+        my $ipmitab = xCAT::Table->new("ipmi");
+	    my $ipmihash = $ipmitab->getNodesAttribs([$fpc],['bmc','username','password']) ;
+	    my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$fpc],ipmihash=>$ipmihash);
+		my $nodeuser=$authdata->{$fpc}->{username};
+		my $nodepass=$authdata->{$fpc}->{password};
+        $sessdata->{slotnumber} = $mpent->{id};
+        $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc=>$mpent->{mpa},userid=>$nodeuser,password=>$nodepass);
+        $sessdata->{fpcipmisession}->login(callback=>\&fpc_node_reseat,callback_args=>$sessdata);
+    }
+}
+
+sub fpc_node_reseat {
+    my $status = shift;
+    my $sessdata = shift;
+    if ($status =~ /ERROR:/) {
+        xCAT::SvrUtils::sendmsg([1,$status],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    $sessdata->{fpcipmisession}->subcmd(netfn=>0x32, command=>0xa4,
+        data=>[$sessdata->{slotnumber}, 2],
+        callback=>\&fpc_node_reseat_complete, callback_args=>$sessdata);
+}
+
+sub fpc_node_reseat_complete {
+    my $rsp = shift;
+    my $sessdata = shift;
+	if ($rsp->{error}) {
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+		return;
+	}
+	if ($rsp->{code} == 0) {
+        xCAT::SvrUtils::sendmsg("reseat",$callback,$sessdata->{node},%allerrornodes);
+    } elsif ($rsp->{code} == 0xd5) {
+		xCAT::SvrUtils::sendmsg([1,"No node in slot"],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+		xCAT::SvrUtils::sendmsg([1,"Unknown error code ".$rsp->{code}],$callback,$sessdata->{node},%allerrornodes);
+    }
+}
+
 sub power {
 	my $sessdata = shift;
 
@@ -1242,7 +1295,9 @@ sub power {
 	my $rc = 0;
 	my $text;
 	my $code;
-        if (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
+    if ($sessdata->{subcommand} eq "reseat") {
+        reseat_node($sessdata);
+    } elsif (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_with_acpi,callback_args=>$sessdata);
 	} else {
 		$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
@@ -6112,7 +6167,7 @@ sub preprocess_request {
 				return 0;
 
 			}
-      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
+      if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
 	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
