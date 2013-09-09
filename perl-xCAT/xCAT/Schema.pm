@@ -191,7 +191,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node mgr host migrationdest storage storagemodel storagecache storageformat cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
+    cols => [qw(node mgr host migrationdest storage storagemodel storagecache storageformat cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings physlots vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => 'Virtualization parameters',
