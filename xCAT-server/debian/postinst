@@ -29,7 +29,6 @@ case "$1" in
             rm /tmp/xCAT-server_upgrade.tmp
 	fi
 	ln -sf /opt/xcat/sbin/xcatd /usr/sbin/xcatd
-    cd -
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
