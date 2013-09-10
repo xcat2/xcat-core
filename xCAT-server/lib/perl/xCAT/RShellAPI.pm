@@ -90,6 +90,7 @@ sub run_remote_shell_api {
     my $output;
     my $errmsg;
     my $ssh_tried=0;
+    my $nl_tried=0;
 
     if (!$telnet) { 
 	eval {
@@ -209,6 +210,18 @@ sub run_remote_shell_api {
 			$output.="Password is required.\n";
 			return [1, $output];
 		    }
+		} else {
+                    # for some switches like BNT, user has to type an extra new line 
+                    # in order to get the prompt. 
+		    if ($verbose) {
+			print " add a newline\n";
+		    }
+		    $nl_tried=1;
+		    if (! $t->put(String => "\n",
+				  Errmode => "return")) {
+			$output.="Login disconnected\n";
+			return [1, $output];
+		    }
 		}
 		
 		if (!$login_done) {
@@ -228,13 +241,48 @@ sub run_remote_shell_api {
 			$output.="Login failed: bad login name or password\n";
 			return [1, $output];
 		    } else {
-			if ($t->errmsg) {
-			    $output.= $t->errmsg . "\n";
-			    return [1, $output];
-			    
+			if (!$nl_tried) {
+			    # for some switches like BNT, user has to type an extra new line 
+			    # in order to get the prompt. 
+			    if ($verbose) {
+				print " add a newline\n";
+			    }
+			    $nl_tried=1;
+			    if (! $t->put(String => "\n",
+					  Errmode => "return")) {
+				$output.="Login disconnected\n";
+				return [1, $output];
+			    }
+			}
+			else {
+			    if ($t->errmsg) {
+				$output.= $t->errmsg . "\n";
+				return [1, $output];
+				
+			    }
 			}
 		    }
 		}
+
+                #check if the extra newline helps or not
+		if (!$login_done) {
+		    #Wait for command prompt
+		    ($prematch, $match) = $t->waitfor(Match => "/$prompt/",
+						      Errmode => "return");
+		    if ($verbose) {
+			print "4. prematch=$prematch\n match=$match\n";
+		    }
+		    
+		    if ($match =~ /$prompt/) {
+			$login_done=1;
+		    } else {
+			if ($t->errmsg) {
+			    $output.= $t->errmsg . "\n";
+			    return [1, $output];
+			}
+		    }
+		}
+
 	    }
 	}
     }
