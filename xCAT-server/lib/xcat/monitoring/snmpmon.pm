@@ -19,6 +19,7 @@ use File::Path qw/mkpath/;
 #print "xCAT_monitoring::snmpmon loaded\n";
 1;
 
+
 my $confdir;
 if(xCAT::Utils->isAIX()){
   $::snmpconfdir = "/opt/freeware/etc";
@@ -345,12 +346,15 @@ sub deconfig {
       # if the file exists, delete all entries that have xcat_traphandler
       my $cmd = "grep -v  xcat_traphandler $::snmpconfdir/snmptrapd.conf ";
       $cmd .= "> $::snmpconfdir/snmptrapd.conf.unconfig ";
-      `$cmd`;     
+      `$cmd`;
 
       # move it back to the snmptrapd.conf file.                     
       `mv -f $::snmpconfdir/snmptrapd.conf.unconfig $::snmpconfdir/snmptrapd.conf`;
     }
   }
+
+  deconfigSNMP(2,$noderef,$callback);
+
 
   if ($scope) {
     if ($callback) {
@@ -371,7 +375,21 @@ sub deconfig {
   return (0, "");
 }
 
-
+#--------------------------------------------------------------------------------
+=head3    deconfigSNMP
+      This function remove xcat_traphanlder from the snmptrapd.conf file,
+      remove the node configurations from snmptrapd.conf, and
+      restarts the snmptrapd with the new configuration.
+    Arguments:
+      none.
+    Returns:
+      (return code, message)      
+=cut
+=cut
+#--------------------------------------------------------------------------------
+sub deconfigSNMP {
+   return (0, ""); 
+}
 
 #--------------------------------------------------------------------------------
 =head3    configBMC
@@ -850,7 +868,6 @@ sub configSwitch {
 =cut
 #--------------------------------------------------------------------------------
 sub configSNMP {
-
   my $action=shift;
   my $noderef=shift;
   my $callback=shift;
@@ -862,6 +879,7 @@ sub configSNMP {
   my $isSN=xCAT::Utils->isServiceNode();
   my $master=xCAT::TableUtils->get_site_Master();
   my $cmd;
+
   # now move $::snmpconfdir/snmptrapd.conf to $::snmpconfdir/snmptrapd.conf.orig
   # if it exists.
   mkpath("$::snmpconfdir");
@@ -887,17 +905,17 @@ sub configSNMP {
       my $found=0;
       my $forward_handled=0;
       while (readline(FILE1)) {
-	if (/\s*authCommunity.*public/) {
-	  $found=1;
+        if (/\s*authCommunity.*public/) {
+          $found=1;
           if (!/\s*authCommunity\s*.*execute.*public/) {
             s/authCommunity\s*(.*)\s* public/authCommunity $1,execute public/;  #modify it to have 'execute' if found
-	  }
+          }
           if (!/\s*authCommunity\s*.*net.*public/) {
             s/authCommunity\s*(.*)\s* public/authCommunity $1,net public/;  #modify it to have 'net' if found
-	  }
+          }
         } elsif (/\s*forward\s*default/) {
-	  if (($isSN) && (!/$master/)) {
-	    s/\s*forward/\#forward/; #comment out the old one
+          if (($isSN) && (!/$master/)) {
+            s/\s*forward/\#forward/; #comment out the old one
             if (!$forward_handled) {
               print FILE "forward default $master\n"; 
               $forward_handled=1;
@@ -913,7 +931,7 @@ sub configSNMP {
       if (!$found) { #add new one if not found
         print FILE "authCommunity log,execute,net public\n"; 
       }
- 
+
       # now add the new traphandle commands:
       if (!$isSN) {
         print FILE "traphandle default $::XCATROOT/sbin/xcat_traphandler\n";
@@ -937,10 +955,11 @@ sub configSNMP {
     close($handle);
   }
 
+
   # Configure SNMPv3 on AIX
-  if(xCAT::Utils->isAIX()){
+#  if(xCAT::Utils->isAIX()){
     #the identification of this node
-    my @hostinfo=xCAT::Utils->determinehostname();
+    my @hostinfo=xCAT::NetworkUtils->determinehostname();
     my $isSV=xCAT::Utils->isServiceNode();
     my %iphash=();
     foreach(@hostinfo) {$iphash{$_}=1;}
@@ -964,7 +983,7 @@ sub configSNMP {
           my $node=$_->{node};
           my $mpa=$_->{mpa};
           if ((!$all) && (!exists($nodehash{$node})) && (!exists($nodehash{$mpa}))) {next;}
-
+  
           if ($mpa_hash{$mpa}) { next;} #already handled
 
           $mpa_hash{$mpa}=1;
@@ -987,7 +1006,7 @@ sub configSNMP {
           my @a_temp=split(':',$pairs);
           my $monserver=$a_temp[0];
           my $master=$a_temp[1];
-
+  
           if ($monserver) {
             if (!$iphash{$monserver}) { next;} #skip if has sn but not localhost
           } else {
@@ -1044,7 +1063,7 @@ sub configSNMP {
         while (readline(FILE1)) {
           if (/\s*authUser.*$user/) {
             $found1=1;
-           if (!/\s*authUser\s*.*execute.*$user/) {
+            if (!/\s*authUser\s*.*execute.*$user/) {
               s/authUser\s*(.*)\s* $user/authUser $1,execute $user/;  #modify it to have 'execute' if found
             }
           }
@@ -1060,7 +1079,7 @@ sub configSNMP {
         }
 
       }
-
+     
       if (!$found1) { #add new one if not found
         print FILE "authUser log,execute,net $user\n";
       }
@@ -1068,13 +1087,12 @@ sub configSNMP {
       if (!$found2) {
         print FILE "createUser -e 0x8000045001$mac $user SHA $password DES\n";
       }
-
+      
       close(FILE1);
       close(FILE);
       `mv -f $::snmpconfdir/snmptrapd.conf.tmp $::snmpconfdir/snmptrapd.conf`;
     }
-  }
-
+#  }
 
 
   # TODO: put the mib files to /usr/share/snmp/mibs
