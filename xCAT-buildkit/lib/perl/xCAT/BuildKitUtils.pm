@@ -129,8 +129,6 @@ sub get_latest_version
 }
 
 #------------------------------------------------------------------------------
-
-
 =head3    testVersion
 
         Compare version1 and version2 according to the operator and
@@ -205,7 +203,6 @@ sub testVersion
 
     return $bool;
 }
-
 
 #-------------------------------------------------------------------------------
 
@@ -454,6 +451,12 @@ sub osver
         $ver = $lines[0];
         $ver =~ s/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        my $minorver;
+        if (grep /PATCHLEVEL/, $lines[2]) {
+            $minorver = $lines[2];
+            $minorver =~ s/PATCHLEVEL[^0-9]*([0-9]+).*/$1/;
+        }
+        $ver = $ver . ".$minorver" if ( $minorver );
     }
     elsif (-f "/etc/UnitedLinux-release")
     {
