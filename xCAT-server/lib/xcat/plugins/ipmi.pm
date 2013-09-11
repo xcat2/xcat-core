@@ -55,6 +55,7 @@ sub handled_commands {
     rspreset => 'nodehm:mgt', #done
     rvitals => 'nodehm:mgt', #done
     rinv => 'nodehm:mgt', #done
+    rflash => 'nodehm:mgt', #done
     rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
@@ -466,12 +467,16 @@ sub on_bmc_connect {
     }
     #ok, detect some common prereqs here, notably:
     #getdevid
-    if ($command eq "getrvidparms") {
+    if ($command eq "getrvidparms" or $command eq "rflash") {
         unless (defined $sessdata->{device_id}) {
             $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
 	    return;
         }
-        getrvidparms($sessdata);
+        if ($command eq "getrvidparms") {
+            getrvidparms($sessdata);
+        } else {
+            rflash($sessdata);
+        }
     }
     #initsdr
     if ($command eq "rinv" or $command eq "reventlog" or $command eq "rvitals") {
@@ -1209,6 +1214,121 @@ sub ripmi_callback {
 	xCAT::SvrUtils::sendmsg($output,$callback,$sessdata->{node},%allerrornodes);
 }
 	
+sub isfpc {
+    my $sessdata = shift;
+    return 1
+}
+sub rflash {
+    my $sessdata = shift;
+    if (isfpc($sessdata)) {
+        #first, start a fpc firmware transaction
+        $sessdata->{firmpath} = $sessdata->{subcommand};
+        $sessdata->{firmctx} = "init";
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x17,
+                                            data=>[0,0,1,0,0,0,0],
+                                            callback=>\&fpc_firmup_config,
+                                            callback_args=>$sessdata);
+    } else {
+        die "Unimplemented";
+    }
+}
+
+sub fpc_firmup_config {
+    if (check_rsp_errors(@_)) {
+        abort_fpc_update($_[1]);
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($sessdata->{firmupxid}) {
+        $sessdata->{firmupxid} = $rsp->{data}->[0];
+    }
+    my $data;
+    if ($sessdata->{firmctx} eq 'init') {
+        $data =[0, $sessdata->{firmupxid}, 1, 0, 1, 0, 0, 0,
+                length($sessdata->{firmpath}),
+                unpack("C*",$sessdata->{firmpath})];
+        $sessdata->{firmctx} = 'p1';
+    } elsif ($sessdata->{firmctx} eq 'p1') {
+        $data = [0, $sessdata->{firmupxid}, 3, 0, 5];
+        $sessdata->{firmctx} = 'p2';
+    } elsif ($sessdata->{firmctx} eq 'p2') {
+        $data = [0, $sessdata->{firmupxid}, 4, 0, 0xa];
+        $sessdata->{firmctx} = 'p3';
+    } elsif ($sessdata->{firmctx} eq 'p3') {
+        $data = [0, $sessdata->{firmupxid}, 5, 0, 3];
+        $sessdata->{firmctx} = 'p4';
+    } elsif ($sessdata->{firmctx} eq 'p4') {
+        $data = [0, $sessdata->{firmupxid}, 6, 0, 1];
+        $sessdata->{firmctx} = 'xfer';
+		xCAT::SvrUtils::sendmsg("Transferring firmware",$callback,$sessdata->{node},%allerrornodes);
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x19,
+                        data=>[0, $sessdata->{firmupxid}],
+                        callback=>\&fpc_firmxfer_watch,
+                        callback_args=>$sessdata);
+        return;
+
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x18,
+                                data=>$data,
+                                callback=>\&fpc_firmup_config,
+                                callback_args=>$sessdata);
+}
+sub abort_fpc_update {
+    my $sessdata = shift;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x15, data=>[], callback=>\&fpc_update_aborted, callback_args=>$sessdata);
+}
+
+sub fpc_update_aborted {
+    check_rsp_errors(@_);
+    return;
+}
+
+sub fpc_firmxfer_watch {
+    if ($_[0]->{code} == 0x89) {
+	    xCAT::SvrUtils::sendmsg([1,"Transfer failed (wrong url?)"],$callback,$_[1]->{node},%allerrornodes);
+        abort_fpc_update($_[1]);
+        return;
+    }
+    if (check_rsp_errors(@_)) {
+        abort_fpc_update($_[1]);
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $delay=1;
+    my $watch=2;
+    if ($sessdata->{firmctx} eq 'apply') { $delay = 15; $watch = 1;}
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $percent = 0;
+    if ($rsp->{data} and (length(@{$rsp->{data}}) > 0)) {
+        $percent = $rsp->{data}->[0];
+    }
+    #$callback->({sinfo=>"$percent%"});
+    if ($percent == 100) {
+        if ($sessdata->{firmctx} eq 'xfer') {
+		    xCAT::SvrUtils::sendmsg("Applying firmware",$callback,$sessdata->{node},%allerrornodes);
+            $sessdata->{firmctx} = "apply";
+            $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x20,
+                                data=>[0, $sessdata->{firmupxid}],
+                                callback=>\&fpc_firmxfer_watch,
+                                callback_args=>$sessdata);
+            return;
+        } else {
+		    xCAT::SvrUtils::sendmsg("Resetting FPC",$callback,$sessdata->{node},%allerrornodes);
+            resetbmc($sessdata);
+        }
+    } else {
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x12,
+                                data=>[$watch],
+                                delayxmit=>$delay,
+                                callback=>\&fpc_firmxfer_watch,
+                                callback_args=>$sessdata);
+    }
+}
+
 sub reseat_node {
     my $sessdata = shift;
     if (1) { # TODO: FPC path checked for
