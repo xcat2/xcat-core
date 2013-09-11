@@ -8,5 +8,6 @@ fi
 
 if [ -x "/xcatpost/updateflag.awk" ];then
     /xcatpost/updateflag.awk $IMAGESERVER 3002
+    /xcatpost/updateflag.awk $IMAGESERVER 3002 "installstatus failed"
 fi
 
