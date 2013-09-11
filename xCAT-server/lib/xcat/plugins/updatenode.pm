@@ -917,7 +917,7 @@ sub updatenode
     @::FAILEDNODES=();
     #print Dumper($request);
     my $nodes         = $request->{node};
-    # $request->{status}= "yes";  for testing
+    #$request->{status}= "yes";  # for testing
     my $requeststatus;
     if (defined($request->{status})) {
        $requeststatus         = $request->{status};
@@ -1538,12 +1538,20 @@ sub buildnodestatus
 	   if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
 	   {
          my ($node,$info) = split (/:/, $line);
-		   push(@::SUCCESSFULLNODES,$node);
+         if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+		     next; 
+         } else {
+		     push(@::SUCCESSFULLNODES,$node); 
+         }
 	   }
       elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
 	   {
          my ($node,$info)= split (/:/, $line);
-	      push(@::FAILEDNODES,$node);
+         if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
+		     next; 
+         } else {
+	         push(@::FAILEDNODES,$node);
+	      }	
 	   }	
       else  
 	   {
@@ -1746,12 +1754,20 @@ sub getdata
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
             {
               my ($node,$info) = split (/:/, $output);
-              push(@::SUCCESSFULLNODES,$node);
+              if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+		            next; 
+              } else {
+		          push(@::SUCCESSFULLNODES,$node); 
+              }
             }
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
             {
               my ($node,$info) = split (/:/, $output);
-              push(@::FAILEDNODES,$node);
+              if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
+		            next; 
+              } else {
+                 push(@::FAILEDNODES,$node);
+              }
             }
 
 
@@ -1804,7 +1820,11 @@ sub getdata2
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
             {
               my ($node,$info) = split (/:/, $output);
-              push(@::SUCCESSFULLNODES,$node);
+              if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+		          next; 
+              } else {
+		          push(@::SUCCESSFULLNODES,$node); 
+              }
             }
             # check for already installed, this is not an error
             if($output =~ /^\s*(\S+)\s*:\s*already installed/)
@@ -1815,7 +1835,11 @@ sub getdata2
             {
               if ($alreadyinstalled == 0) { # not an already install error 
                 my ($node,$info) = split (/:/, $output);
-                push(@::FAILEDNODES,$node);
+                if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
+		             next; 
+                } else {
+                   push(@::FAILEDNODES,$node);
+                }
               } 
             }
 
