@@ -1471,8 +1471,9 @@ sub parse_part_get_info {
                 #$hash->{logic_drc_phydrc}->{$5}->{$1} = [$2,$3,$4];
             }
         #} elsif ($line =~ /lpar 0:: Curr  Memory::min: 1,cur: (\d+),max:/i) {
-        } elsif ($line =~ /Curr Memory Req[^\(]*\((\d+)\s*regions\)/i) {
+        } elsif ($line =~ /HYP Reserved Memory Regions:(\d+), Min Required Regions:(\d+)/i) {
             $hash->{lpar0_used_mem} = $1;
+            $hash->{phy_min_mem_req} = $2;
             #print "===>lpar0_used_mem:$hash->{lpar0_used_mem}.\n";
         } elsif ($line =~ /Available huge page memory\(in pages\):\s*(\d+)/) {
             $hash->{huge_page_avail} = $1;
@@ -1522,7 +1523,7 @@ sub query_cec_info_actions {
                 if ($action eq "part_get_all_io_bus_info") {
                     my @output = split /\n/, @$values[1];
                     foreach my $line (@output) {
-                        if ($line =~ /$lparid,/) {
+                        if ($line =~ /^$lparid,/) {
                             #$data .= "$line\n";
                             push @array, [$name, $line, 0];
                         }
@@ -1625,42 +1626,31 @@ sub deal_with_avail_mem {
     my $name = shift;
     my $d = shift;
     my $lparhash = shift;
-    my ($before,$after,$res);
-    my @td = @$d;
-    @td[0] = 0;
-    my $values = xCAT::FSPUtils::fsp_api_action($request, $name, \@td, "part_get_lpar_memory");
-    my %tmphash;
-    &parse_part_get_info(\%tmphash, @$values[1]);
-    if (exists($tmphash{lpar0_used_mem})) {
-        $before = $tmphash{lpar0_used_mem};
-    } else {
-        return ([$name, "part_get_lpar_memory failed to get used memory for hypervisor.", 1]);
-    }
-    my $tmp_param = "1/1/".$lparhash->{hyp_config_mem};
-    $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_mem", 0, $tmp_param);
-    if (@$values[2]) {
-        return $values;
-    }    
-    $values = xCAT::FSPUtils::fsp_api_action($request, $name, \@td, "part_get_lpar_memory");
-    &parse_part_get_info(\%tmphash, @$values[1]);
-    if (exists($tmphash{lpar0_used_mem})) {
-        $after = $tmphash{lpar0_used_mem};
-        $res = $after - $before;
-        if ($res < 0) {
-            return([$name, "Parse reserverd regions failed, before $before, after $after.", 1]);
-        } elsif ($lparhash->{hyp_avail_mem} - $res < 0) {
-            return([$name, "Parse reserverd regions failed, no enough memory, availe:$lparhash->{hyp_avail_mem}.", -1]);
+    my $max_required_regions;
+    if ($lparhash->{memory} =~ /(\d+)\/(\d+)\/(\d+)/) {
+        my ($min,$cur,$max);
+        $min = $1;
+        $cur = $2;
+        $max = $3;
+        my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_get_hyp_res_mem_regions", 0, $3);
+        my %tmphash;
+        &parse_part_get_info(\%tmphash, @$values[1]);
+        if (exists($tmphash{lpar0_used_mem}) && exists($tmphash{phy_min_mem_req})) {
+            if ($min < $tmphash{phy_min_mem_req}) {
+                $min = $tmphash{phy_min_mem_req};
+            }
+            if ($lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem} < $min) {
+                return([$name, "Parse reserverd regions failed, no enough memory, availe:$lparhash->{hyp_avail_mem}.", 1]);
+            } 
+            if ($cur > $lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem}) {
+                my $new_cur = $lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem};
+                $lparhash->{memory} = "$min/$new_cur/$max";
+            }
+        } else {
+            return ([$name, "Failed to get hypervisor reserved memory regions.", 1]);
         }
-        my $mem = $lparhash->{memory};
-        $mem =~ /(\d+)\/(\d+)\/(\d+)/; 
-        if ($2 > $lparhash->{hyp_avail_mem} - $res) {
-            my $new_avail_mem = $lparhash->{hyp_avail_mem} - $res;
-            $lparhash->{memory} = "$1/$new_avail_mem/$3";
-        } 
-        return 0;        
-    } else {
-        return ([$name, "part_get_lpar_memory failed to get used memory for hypervisor.", 1]);
     }
+    return 0;
 }
 
 sub create_lpar {
@@ -1685,10 +1675,6 @@ sub create_lpar {
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_shared_pool_util_auth");
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_group_id");
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_avail_priority");
-    $values = &deal_with_avail_mem($request, $name, $d,$lparhash);
-    if (ref($values) eq "ARRAY") {
-        return ([@$values]);
-    }
     #print "======>physlots:$lparhash->{physlots}.\n";
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner_uber", 0, $lparhash->{physlots}); 
     #$values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner", 0, join(",",@phy_io_array)); 
@@ -1724,6 +1710,12 @@ sub create_lpar {
         $values = &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[2]]);
     }
+    $values = &deal_with_avail_mem($request, $name, $d,$lparhash);
+    if (ref($values) eq "ARRAY") {
+        &set_lpar_undefined($request, $name, $d);
+        return ([@$values]);
+    }
+
     #print "======>memory:$lparhash->{memory}.\n";
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_mem", 0, $lparhash->{memory});
     if (@$values[2] ne 0) {
