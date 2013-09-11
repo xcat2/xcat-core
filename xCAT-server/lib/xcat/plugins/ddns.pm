@@ -566,17 +566,56 @@ sub process_request {
         
 	        if ($ctx->{restartneeded}) {
 	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
-	
-	        if (xCAT::Utils->isAIX())
-	        {
-	            system("/usr/bin/stopsrc -s $service");
-	            system("/usr/bin/startsrc -s $service");
-	        }
-	        else
-	        {
-	            system("service $service stop");
-	            system("service $service start");
-	        }
+
+                    if (xCAT::Utils->isAIX())
+                    {
+                        my $cmd = "/usr/bin/stopsrc -s $service";
+                        my @output=xCAT::Utils->runcmd($cmd, 0);
+                        my $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+
+                        $cmd = "/usr/bin/startsrc -s $service";
+                        @output=xCAT::Utils->runcmd($cmd, 0);
+                        $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        my $cmd = "service $service stop";
+                        my @output=xCAT::Utils->runcmd($cmd, 0);
+                        my $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+
+                        $cmd = "service $service start";
+                        @output=xCAT::Utils->runcmd($cmd, 0);
+                        $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+                    }
+
 	            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
 		}
 	        
@@ -594,8 +633,16 @@ sub process_request {
         my @output=xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            system("/usr/bin/startsrc -s $service");
-            xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+            $cmd = "/usr/bin/startsrc -s $service";
+            @output=xCAT::Utils->runcmd($cmd, 0);
+            my $outp = join('', @output);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return;
+            }
         }
     }
     else
@@ -604,8 +651,16 @@ sub process_request {
         my @output=xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            system("service $service start");
-            xCAT::SvrUtils::sendmsg("Starting named complete", $callback);
+            $cmd = "service $service start";
+            @output=xCAT::Utils->runcmd($cmd, 0);
+            my $outp = join('', @output);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return;
+            }
         }
     }
         
@@ -1104,7 +1159,7 @@ sub add_or_delete_records {
                 {
                     if ($reply->header->rcode ne 'NOERROR')
                     {
-                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
                     }
                 }
                 else
@@ -1122,7 +1177,7 @@ sub add_or_delete_records {
                 {
                     if ($reply->header->rcode ne 'NOERROR')
                     {
-                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
                     }
                 }
                 else
