@@ -14,7 +14,8 @@ B<Power 6 server specific :>
 
 B<renergy> I<noderange> [-V] { all | [savingstatus] [cappingstatus] 
 [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] 
-[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] }
+[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
+[syssbpower] [sysIPLtime]}
 
 B<renergy> I<noderange> [-V] { savingstatus={on | off} 
 | cappingstatus={on | off} | cappingwatt=watt 
@@ -158,7 +159,7 @@ Supported attributes:
 
 B<Query>: savingstatus,cappingstatus,cappingmin,cappingmax,
 cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,
-exhausttemp,CPUspeed
+exhausttemp,CPUspeed,syssbpower,sysIPLtime
 
 B<Set>:   savingstatus,cappingstatus,cappingwatt,cappingperc
 
