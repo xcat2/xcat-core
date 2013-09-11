@@ -56,6 +56,13 @@ is_lsb_ubuntu ()
 }
 
 logger -t xcat "Install: Setup NTP"
+#the ntp was set up by xcat, return directly
+grep "xcatsetup" $conf_file
+if [ $? -eq 0 ];then
+    logger -t xcat "NTP was already configured by xCAT."
+    echo "NTP was already configured by xCAT."
+    exit
+fi
 # if master is the sitemaster, then use the ntpservers defined in the site
 # table, if they exist. If they don't exist, do not setup ntp
 # else use the master which should be a service node
@@ -114,44 +121,88 @@ fi
 
 OS_TYPE=`uname`
 if [ $OS_TYPE = Linux ]; then
-  mkdir -p /var/lib/ntp
-  chown ntp /var/lib/ntp
-  echo "driftfile /var/lib/ntp/drift
+    mkdir -p /var/lib/ntp
+    chown ntp /var/lib/ntp
+    echo "driftfile /var/lib/ntp/drift
 disable auth
-restrict 127.0.0.1" >>$conf_file
-# default service for redhat/fedora
-SERVICE=ntpd
-echo $SERVICE
-if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
-  SERVICE=ntp
-fi
+restrict 127.0.0.1
+#xcatsetup" >>$conf_file
+    # default service for redhat/fedora
+    SERVICE=ntpd
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+        SERVICE=ntp
+    fi
 
-#service ntpd restart 
-  service $SERVICE stop 
-#ntpdate program is deprecated on SuSE
-if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
-  logger -t xcat "ntpd -q -g"
-  ntpd -q -g
-  if [ "$?" != "0" ]
-        then
-            echo
-            echo "  ntpd -q -g failed"
-            logger -t xcat "ntpd -q -g failed"
-  fi
-else
-  logger -t xcat "ntpdate -t5 $master "
-  ntpdate -t5 $master 
-  if [ "$?" != "0" ]
-        then
-            echo
-            echo "  ntpdate -t5 $master  failed"
+    #ntpdate/sntp conflict with ntpd, stop the service first
+    service $SERVICE status
+    if [ $? -eq 0 ];then
+        service $SERVICE stop
+    fi
+    #ntpdate program is deprecated on SuSE
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
+        logger -t xcat "sntp -P no -r $master"
+        sntp -P no -r $master
+        if [ "$?" != "0" ];then
+            echo "  sntp -P no -r $master failed"
+            logger -t xcat "sntp -P no -r $master failed"
+        fi
+    else
+        logger -t xcat "ntpdate -t5 $master "
+        ntpdate -t5 $master
+        if [ "$?" != "0" ];then
+            echo "  ntpdate -t5 $master failed"
             logger -t xcat "ntpdate -t5 $master failed"
-  fi
-fi
+        fi
+    fi
 
-  service $SERVICE start 
-  chkconfig --add  $SERVICE >/dev/null 2>&1
-  chkconfig --level 345 $SERVICE on >/dev/null 2>&1
+    #setup the hardware clock
+    hwclock --systohc --utc
+
+    #setup the RTC is UTC format, which will be used by os
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+        sed -i 's/.*HWCLOCK.*/HWCLOCK="-u"/' /etc/sysconfig/clock
+    elif [ -f "/etc/debian_version" ];then
+        sed -i 's/.*UTC.*/UTC=yes/' /etc/default/rcS
+    else
+        grep -i "utc" /etc/sysconfig/clock
+        if [ $? -eq 0 ];then
+            sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock
+        else
+            echo "UTC=yes" >> /etc/sysconfig/clock
+        fi
+    fi
+
+    #update the hardware clock automaticly
+    if [ -f "/etc/sysconfig/ntpd" ];then
+        grep -i "SYNC_HWCLOCK" /etc/sysconfig/ntpd
+        if [ $? -eq 0 ];then
+            sed -i 's/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=yes/' /etc/sysconfig/ntpd
+        else
+            echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd
+        fi
+    else
+        cron_file="/etc/cron.daily/xcatsethwclock"
+        if [ ! -f "$cron_file" ];then
+            echo "#!/bin/sh" > $cron_file
+            echo "/sbin/hwclock --systohc --utc" >> $cron_file
+            chmod a+x $cron_file
+            service cron restart
+        fi
+    fi
+    service $SERVICE start 
+
+    #start ntp and crontab automaticlly
+    if [ -f "/etc/debian_version" ];then
+        update-rc.d cron defaults
+        update-rc.d $SERVICE defaults
+    else
+        chkconfig --add  $SERVICE >/dev/null 2>&1
+        chkconfig --level 345 $SERVICE on >/dev/null 2>&1
+        if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+            chkconfig --add cron >/dev/null 2>&1
+            chkconfig --level 345 cron on >/dev/null 2>&1
+        fi
+    fi
 else
 # stop and start AIX ntp
   echo "driftfile /etc/ntp.drift
@@ -160,15 +211,14 @@ disable auth
 broadcastclient
 restrict 127.0.0.1" >>$conf_file
 
-  stopsrc -s xntpd 
-  logger -t xcat "ntpdate -t5 $master "
-  ntpdate -t5 $master 
-  if [ "$?" != "0" ]
-        then
-            echo
-            echo "  ntpdate -t5 $master  failed "
-            logger -t xcat "ntpdate -t5 $master failed"
-  fi
-  /usr/sbin/chrctcp -S -a xntpd 
+    stopsrc -s xntpd 
+    logger -t xcat "ntpdate -t5 $master "
+    ntpdate -t5 $master 
+    if [ "$?" != "0" ]
+    then
+        echo "  ntpdate -t5 $master  failed "
+        logger -t xcat "ntpdate -t5 $master failed"
+    fi
+    /usr/sbin/chrctcp -S -a xntpd 
 fi
 exit $? 
