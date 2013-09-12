@@ -164,21 +164,20 @@ sub process_request {
     # image profile is using the kit which this plugin belongs to.
 
     if ($PLUGIN_KITNAME eq "TESTMODE") {
-        # Don't do the check in test mode
+    # Don't do the check in test mode
     } elsif ($command eq 'kitimagepregenerate' || $command eq 'kitimageprecopy') {
         # Also, don't do the check if the image profile doesn't yet exist
     } else {
         # Do the check 
         my $imageprofile = parse_str_arg($request->{arg}->[0]);
 
-        if (! exists($request->{kitdata}))
+        my $kitdata = undef;
+        if(exists($request->{kitdata}))
         {
-            $rsp->{data}->[0] = "Skipped running \"$command\" plugin command for \"$PLUGIN_KITNAME\" kit.";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-            return;
+            $kitdata = $request->{kitdata};
         }
-        my $kitdata = $request->{kitdata};
-        if (! defined($kitdata)) {
+
+        if (! defined($kitdata) && ! ($command eq 'kitimagepostdelete')) {
             $kitdata = xCAT::KitPluginUtils->get_kits_used_by_image_profiles([$imageprofile]);
             $request->{kitdata} = $kitdata;
         }
@@ -193,7 +192,7 @@ sub process_request {
 
 
     # Run the command
-    
+
     if($command eq 'kitimagepregenerate') {
         kitimagepregenerate($callback, $args);
     }
