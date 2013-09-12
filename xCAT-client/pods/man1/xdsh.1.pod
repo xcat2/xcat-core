@@ -333,7 +333,8 @@ available  from  any  target in the specified I<timeout>, B<xdsh>
 displays an error and terminates execution for the remote
 targets  that  failed to respond. If I<timeout> is not specified,
 B<xdsh> waits indefinitely to continue processing output  from
-all  remote  targets.  
+all  remote  targets. The exception is the -K flag which defaults
+to 10 seconds. 
 
 =item B<-T>|B<--trace>
 
