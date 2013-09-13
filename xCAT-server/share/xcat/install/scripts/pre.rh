@@ -13,6 +13,8 @@ if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
         cp -f /tmp/updates/etc/pki/tls/certs/ca-bundle.crt /etc/pki/tls/certs/
 fi
 
+
+
 cat >/tmp/baz.py <<EOF
 #!/usr/bin/python
 import socket
@@ -150,7 +152,11 @@ if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a 
 fi
 
 
+
 /tmp/foo.py >/foo.log 2>&1 &
+
+
+
 #time to ascertain fstype and PReP/UEFI/legacy
 #also, find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
@@ -163,6 +169,7 @@ for disk in /dev/vd*[^0-9];do
 		break
 	fi
 done
+
 if [ -z "$instdisk" ]; then
 	for disk in /dev/sd*[^0-9]; do
 		eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
@@ -184,6 +191,7 @@ if [ -z "$instdisk" ]; then
 		esac
 	done
 fi
+
 if [ -z "$instdisk" ]; then
 	if [ ! -z "$firstdirectdisk" ]; then 
 		instdisk=$firstdirectdisk 
@@ -204,6 +212,7 @@ elif grep ext4 /proc/filesystems > /dev/null; then
 else
 	FSTYPE=ext3
 fi
+
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
@@ -218,9 +227,15 @@ echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partit
 	
 #XCA_PARTITION_SCRIPT#
 
+
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 
-export nextserver=`cat /proc/cmdline | grep http | head -n 1 | cut -d / -f 3 | cut -d : -f 1`
+NEXTSERVER=`cat /proc/cmdline | grep http | head -n 1`
+NEXTSERVER=${NEXTSERVER#*http://}
+NEXTSERVER=${NEXTSERVER%%:*}
+
+export nextserver=$NEXTSERVER
 #INSTALL_SOURCES_IN_PRE#
+
 
