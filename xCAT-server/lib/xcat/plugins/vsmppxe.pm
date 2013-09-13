@@ -2,13 +2,15 @@
 package xCAT_plugin::vsmppxe;
 use Data::Dumper;
 use Sys::Syslog;
+use xCAT::Scope;
+use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Socket;
 use File::Copy;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::ServiceNodeUtils;
-
-use xCAT::TableUtils qw(get_site_attribute);
+use xCAT::TableUtils;
 my $addkcmdlinehandled;
 my $request;
 my $callback;
@@ -276,7 +278,9 @@ sub preprocess_request {
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      return xCAT::Scope->get_broadcast_scope($req,@_);
+      if (@CN >0 ) { # if there are compute nodes then broadcast to any servicenodes 
+        return xCAT::Scope->get_broadcast_scope($req,@_);
+      }
    }
    return [$req];
 }

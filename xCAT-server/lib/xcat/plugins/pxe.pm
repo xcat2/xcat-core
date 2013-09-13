@@ -346,7 +346,9 @@ sub preprocess_request {
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      return xCAT::Scope->get_broadcast_scope($req,@_);
+      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes 
+         return xCAT::Scope->get_broadcast_scope($req,@_);
+      }
    }
    return [$req];
 }
