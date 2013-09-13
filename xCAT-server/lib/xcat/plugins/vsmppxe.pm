@@ -2,13 +2,15 @@
 package xCAT_plugin::vsmppxe;
 use Data::Dumper;
 use Sys::Syslog;
+use xCAT::Scope;
+use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Socket;
 use File::Copy;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::ServiceNodeUtils;
-
-use xCAT::TableUtils qw(get_site_attribute);
+use xCAT::TableUtils;
 my $addkcmdlinehandled;
 my $request;
 my $callback;
