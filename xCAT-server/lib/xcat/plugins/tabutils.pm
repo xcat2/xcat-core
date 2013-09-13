@@ -358,7 +358,11 @@ sub noderm
                  
     nodech($nodes, \@tablist, $cb, 0);
 }
-
+#
+# restores the table from the input CSV file.  Default deletes the table rows and
+# replaces with the rows in the file
+# If -a flag is input then it adds the rows from the CSV file to the table.
+#
 sub tabrestore
 {
     # the usage for tabrestore is in the tabrestore client cmd
@@ -367,6 +371,7 @@ sub tabrestore
     my $request    = shift;
     my $cb         = shift;
     my $table      = $request->{table}->[0];
+    my $addrows      = $request->{addrows}->[0];
     # do not allow teal tables
     if ( $table =~ /^x_teal/ ) {
         $cb->({error => "$table is not supported in tabrestore. Use Teal maintenance commands. ",errorcode=>1});
@@ -377,7 +382,9 @@ sub tabrestore
         $cb->({error => "Unable to open $table",errorcode=>4});
         return;
     }
-    $tab->delEntries();    #Yes, delete *all* entries
+    if (!defined($addrows))  {   # this is a replace not add rows
+     $tab->delEntries();    #Yes, delete *all* entries
+    }
     my $header = shift @{$request->{data}};
     unless ($header =~ /^#/) {
         $cb->({error => "Data missing header line starting with #",errorcode=>1});
