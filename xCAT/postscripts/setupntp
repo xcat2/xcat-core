@@ -56,13 +56,6 @@ is_lsb_ubuntu ()
 }
 
 logger -t xcat "Install: Setup NTP"
-#the ntp was set up by xcat, return directly
-grep "xcatsetup" $conf_file
-if [ $? -eq 0 ];then
-    logger -t xcat "NTP was already configured by xCAT."
-    echo "NTP was already configured by xCAT."
-    exit
-fi
 # if master is the sitemaster, then use the ntpservers defined in the site
 # table, if they exist. If they don't exist, do not setup ntp
 # else use the master which should be a service node
@@ -125,8 +118,7 @@ if [ $OS_TYPE = Linux ]; then
     chown ntp /var/lib/ntp
     echo "driftfile /var/lib/ntp/drift
 disable auth
-restrict 127.0.0.1
-#xcatsetup" >>$conf_file
+restrict 127.0.0.1" >>$conf_file
     # default service for redhat/fedora
     SERVICE=ntpd
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
