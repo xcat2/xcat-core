@@ -1,0 +1,10 @@
+#Please make sure there is a space between @ and group name
+yp-tools
+wget
+vim-minimal
+ntpdate
+nfs-utils
+rsync
+net-tools
+openssh-server
+util-linux-ng
