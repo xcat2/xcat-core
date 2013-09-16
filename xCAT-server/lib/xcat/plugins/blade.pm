@@ -19,6 +19,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::ServiceNodeUtils;
+use xCAT::PasswordUtils;
 use xCAT::IMMUtils;
 use xCAT::Usage;
 use IO::Socket;
@@ -5048,6 +5049,7 @@ sub updateBMC {
     my $user = shift;
     my $pass = shift;
     my @nodes = ();
+    my $mphash;
     my $mptab = xCAT::Table->new('mp');
     if ($mptab) {
         my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
@@ -5055,15 +5057,26 @@ sub updateBMC {
             my $node = $_->{node};
             if (defined($_->{mpa}) and ($_->{mpa} eq $mpa) and defined($_->{id}) and ($_->{id} ne '0')) {
                 push @nodes, $node;
+                $mphash->{$node} = [$_]; 
             }
         }
     }
     my $ipmitab = xCAT::Table->new('ipmi');
     if ($ipmitab) {
-        my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['bmc']);
+        my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['bmc','username','password']);
         foreach (@nodes) {
             if (defined($ipmihash->{$_}->[0]) && defined ($ipmihash->{$_}->[0]->{'bmc'})) {
-                xCAT::IMMUtils::setupIMM($_,curraddr=>$ipmihash->{$_}->[0]->{'bmc'},skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
+                my $ipmiuser = $user;
+                my $ipmipass = $pass;
+
+                my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$_],ipmihash=>$ipmihash, mphash=>$mphash);
+                if (exists($authdata->{$_}->{username})) {
+                    $ipmiuser = $authdata->{$_}->{username};
+                }
+                if (exists($authdata->{$_}->{password})) {
+                    $ipmipass = $authdata->{$_}->{password};
+                }
+                xCAT::IMMUtils::setupIMM($_,curraddr=>$ipmihash->{$_}->[0]->{'bmc'},skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$ipmiuser,clipassword=>$ipmipass,callback=>$CALLBACK);
             }  
         }
     }
