@@ -84,8 +84,15 @@ if [ $? -ne 0 ]; then
 	#the message received is the data
 	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
 	logger -t xCAT -p local4.info ssh_dsa_hostkey
+   MAX_RETRIES=10
+   RETRY=0
 	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         while [ -z "$MYCONT" ]; do
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
                 #first contact daemon  xcatflowrequest <server> 3001
                 logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
@@ -119,7 +126,14 @@ if [ $? -ne 0 ]; then
 	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
 	logger -t xCAT -p local4.info ssh_rsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
+   MAX_RETRIES=10
+   RETRY=0
 	while [ -z "$MYCONT" ]; do
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
                 # first contact daemon  xcatflowrequest <server> 3001
                 logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
@@ -166,7 +180,14 @@ then
 	cat /tmp/ssh_root_key | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
 	logger -t xCAT -p local4.info ssh_root_key
 	MYCONT=`cat /root/.ssh/id_rsa`
+   MAX_RETRIES=10
+   RETRY=0
 	while [ -z "$MYCONT" ]; do
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
                 # first contact daemon  xcatflowrequest <server> 3001
                 logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
                 /$xcatpost/xcatflowrequest $master 3001
