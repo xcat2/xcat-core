@@ -5,21 +5,22 @@
 # It is called by xcatdsklspost before calling getpostscripts.awk
 # it is called by remoteshell before calling getcredentials.awk
 #
-exec 13<>/dev/udp/$1/$2
-echo "resourcerequest: xcatd" >&13
+exec {REMOTEFD}<>/dev/udp/$1/$2
+echo "resourcerequest: xcatd" >&$REMOTEFD
 parpid=$$
 touch /tmp/goahead.$parpid
 touch /tmp/killme.$parpid
 exec 2> /dev/null
 while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 	(
-      echo "resourcerequest: xcatd" >&13
-      exec 14<>/proc/self/stat
-      read mystat<&14
+      echo "resourcerequest: xcatd" >&$REMOTEFD
+      exec {LOCALFD}<>/proc/self/stat
+      read mystat<&$LOCALFD
       mypid=$(echo $mystat|cut -d " " -f 4)
 	  (sleep $(((RANDOM%60)+120)).$((RANDOM%50)); if [ -f /tmp/killme.$parpid ]; then kill -TERM $mypid; fi) &
       echo $! > /tmp/sleeperpid.$parpid
-	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&13
+	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&$REMOTEFD
+      exec {LOCALFD}>&-
 	)	
 done
 sleeper=$(cat /tmp/sleeperpid.$parpid)
@@ -27,4 +28,5 @@ sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
 rm /tmp/goahead.$parpid
 rm /tmp/sleeperpid.$parpid
 rm /tmp/killme.$parpid
+exec {REMOTEFD}>&-
 kill -TERM $sleeper
