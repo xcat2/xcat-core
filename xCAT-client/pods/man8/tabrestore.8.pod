@@ -1,18 +1,21 @@
 =head1 NAME
 
-B<tabrestore> - replaces the contents of an xCAT database table with the contents in a csv file.
+B<tabrestore> - replaces with or adds to a xCAT database table the contents in a csv file.
 
 =head1 SYNOPSIS
 
-B<tabrestore> I<table.csv>
+B<tabrestore> [-a] I<table.csv>
 
 B<tabrestore> [I<-?> | I<-h> | I<--help>]
+
+B<tabrestore> [I<v>  | I<--version>]
 
 =head1 DESCRIPTION
 
 The tabrestore command reads the contents of the specified file and puts its data
 in the corresponding table in the xCAT database.  Any existing rows in that table
-are replaced.  The file must be in csv format.  It could be created by tabdump.
+are replaced unless the (-a) flag is used and then the rows in the file are added to the table.
+The file must be in csv format.  It could be created by tabdump.
 Only one table can be specified.
 
 This command can be used to copy the example table entries in /opt/xcat/share/xcat/templates/e1350
@@ -25,6 +28,14 @@ into the xCAT database.
 =item B<-?|-h|--help>
 
 Display usage message.
+
+=item B<-v|--version>
+
+Display version.
+
+=item B<-a|--addrows>
+
+Add rows from the CSV file to the table instead of replacing the table with the CSV file.  
 
 =back
 
@@ -48,9 +59,9 @@ An error has occurred.
 
 =item *
 
-To put rows into the mp table:
+To replace the rows in the mp table with the rows in the mp.csv file:
 
-B<  tabrestore> I<mp.csv>
+B< tabrestore> I<mp.csv>
 
 The file mp.csv could contain something like:
 
@@ -59,9 +70,15 @@ The file mp.csv could contain something like:
 
 =item *
 
+To add the rows in the mp.csv file to the  rows in the mp table:
+
+B< tabrestore> -a I<mp.csv>
+
+=item *
+
 To restore database tables that we dumped with dumpxCATdb:
 
-restorexCATdb -p <restore directory:
+restorexCATdb -p <restore directory>
 
 =back
 

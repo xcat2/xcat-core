@@ -4310,11 +4310,11 @@ sub process_request {
       return;
     }
   }
-  #my $bladeuser = 'USERID';
-  #my $bladepass = 'PASSW0RD';
+  my $bladeuser = 'USERID';
+  my $bladepass = 'PASSW0RD';
   my $blademaxp = 64;
   #my $sitetab = xCAT::Table->new('site');
-  #my $mpatab = xCAT::Table->new('mpa');
+  my $mpatab = xCAT::Table->new('mpa');
   my $mptab = xCAT::Table->new('mp');
   my $tmp;
   my @entries =  xCAT::TableUtils->get_site_attribute("blademaxp");
@@ -4326,19 +4326,19 @@ sub process_request {
   #  ($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
   #  if (defined($tmp)) { $blademaxp=$tmp->{value}; }
   #}
-  #if ($request->{environment}->[0]->{XCAT_BLADEUSER}) {
-  #    $bladeuser=$request->{environment}->[0]->{XCAT_BLADEUSER}->[0];
-  #    $bladepass=$request->{environment}->[0]->{XCAT_BLADEPASS}->[0];
-  #} else {
-  #my $passtab = xCAT::Table->new('passwd');
-  #  if ($passtab) {
-  #      ($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
-  #      if (defined($tmp)) {
-  #        $bladeuser = $tmp->{username};
-  #        $bladepass = $tmp->{password};
-  #      }
-  #    }
-  #}
+  if ($request->{environment}->[0]->{XCAT_BLADEUSER}) {
+      $bladeuser=$request->{environment}->[0]->{XCAT_BLADEUSER}->[0];
+      $bladepass=$request->{environment}->[0]->{XCAT_BLADEPASS}->[0];
+  } else {
+    my $passtab = xCAT::Table->new('passwd');
+    if ($passtab) {
+        ($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
+        if (defined($tmp)) {
+          $bladeuser = $tmp->{username};
+          $bladepass = $tmp->{password};
+        }
+    }
+  }
   if ($request->{command}->[0] eq "findme") {
     my $mptab = xCAT::Table->new("mp");
     unless ($mptab) { return 2; }
@@ -4457,25 +4457,24 @@ sub process_request {
     my @nodes=split(',', $2);
     my @ids=split(',', $3);
     my @mptypes=split(',', $4);
-    #my $user=$bladeuser;
-    #my $pass=$bladepass;
+    my $user=$bladeuser;
+    my $pass=$bladepass;
     my $ent;
-    #if (defined($mpatab)) {
-    #  my @user_array = $mpatab->getNodeAttribs($mpa, qw(username password));
-    #  foreach my $entry (@user_array) {
-    #      if ($entry->{username}) {
-    #          if ($entry->{username} =~ /^USERID$/ or $entry->{username} !~ /^HMC$/) {
-    #              $ent = $entry;
-    #              last;
-    #          }
-    #      }
-    #  } 
-    #  if (defined($ent->{password})) { $pass = $ent->{password}; }
-    #  if (defined($ent->{username})) { $user = $ent->{username}; }
-    #}
-    my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$mpa]);
-    $mpahash{$mpa}->{username} = $authdata->{$mpa}->{username};
-    $mpahash{$mpa}->{password} = $authdata->{$mpa}->{password};
+    if (defined($mpatab)) {
+      my @user_array = $mpatab->getNodeAttribs($mpa, qw(username password));
+      foreach my $entry (@user_array) {
+          if ($entry->{username}) {
+              if ($entry->{username} =~ /^USERID$/) {
+                  $ent = $entry;
+                  last;
+              }
+          }
+      } 
+      if (defined($ent->{password})) { $pass = $ent->{password}; }
+      if (defined($ent->{username})) { $user = $ent->{username}; }
+    }
+    $mpahash{$mpa}->{username} = $user;
+    $mpahash{$mpa}->{password} = $pass;
     my $nodehmtab  = xCAT::Table->new('nodehm');
     my $hmdata = $nodehmtab->getNodesAttribs(\@nodes, ['node', 'mgt']);
     for (my $i=0; $i<@nodes; $i++) {
@@ -5050,6 +5049,7 @@ sub updateBMC {
     my $user = shift;
     my $pass = shift;
     my @nodes = ();
+    my $mphash;
     my $mptab = xCAT::Table->new('mp');
     if ($mptab) {
         my @mpents = $mptab->getAllNodeAttribs(['node','mpa','id']);
@@ -5057,15 +5057,26 @@ sub updateBMC {
             my $node = $_->{node};
             if (defined($_->{mpa}) and ($_->{mpa} eq $mpa) and defined($_->{id}) and ($_->{id} ne '0')) {
                 push @nodes, $node;
+                $mphash->{$node} = [$_]; 
             }
         }
     }
     my $ipmitab = xCAT::Table->new('ipmi');
     if ($ipmitab) {
-        my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['bmc']);
+        my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['bmc','username','password']);
         foreach (@nodes) {
             if (defined($ipmihash->{$_}->[0]) && defined ($ipmihash->{$_}->[0]->{'bmc'})) {
-                xCAT::IMMUtils::setupIMM($_,curraddr=>$ipmihash->{$_}->[0]->{'bmc'},skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$user,clipassword=>$pass,callback=>$CALLBACK);
+                my $ipmiuser = $user;
+                my $ipmipass = $pass;
+
+                my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$_],ipmihash=>$ipmihash, mphash=>$mphash);
+                if (exists($authdata->{$_}->{username})) {
+                    $ipmiuser = $authdata->{$_}->{username};
+                }
+                if (exists($authdata->{$_}->{password})) {
+                    $ipmipass = $authdata->{$_}->{password};
+                }
+                xCAT::IMMUtils::setupIMM($_,curraddr=>$ipmihash->{$_}->[0]->{'bmc'},skipbmcidcheck=>1,skipnetconfig=>1,cliusername=>$ipmiuser,clipassword=>$ipmipass,callback=>$CALLBACK);
             }  
         }
     }

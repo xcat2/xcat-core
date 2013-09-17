@@ -91,6 +91,9 @@ elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
     str_inst_nic=$str_temp
 fi
 
+if [ $bool_cfg_inst_nic -eq 1 ];then
+    configeth -s $str_inst_nic 
+fi
 
 bool_exit_flag=0
 #check the required attributes
@@ -162,7 +165,7 @@ if [ $bool_remove -eq 1 ];then
             continue
         fi
         
-        if [ "$str_temp_nic" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+        if [ "$str_temp_nic" = "$str_inst_nic" ];then
             continue
         fi
         
@@ -187,7 +190,7 @@ do
     key=`echo $key | sed 's/^ \+//' | sed 's/ \+$//'`
     str_nic_type=
     str_value=$(hashget hash_defined_nics $key)
-    if [ "$key" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+    if [ "$key" = "$str_inst_nic" ];then
         continue
     fi
     old_ifs=$IFS

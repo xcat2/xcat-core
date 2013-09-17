@@ -235,24 +235,13 @@ sub setCFMSynclistFile {
     # get the cfmdir and synclists attributes
     my $osimage_t = xCAT::Table->new('osimage');
     my $records = $osimage_t->getAttribs({imagename=>$img}, 'cfmdir', 'synclists');
-    if ($records)
+    if (defined ($records->{'cfmdir'}))
     {
-        if ($records->{'cfmdir'}) {$cfmdir = $records->{'cfmdir'}}
-        if ($records->{'synclists'}) {$synclists = $records->{'synclists'}}
+        $cfmdir = $records->{'cfmdir'};
+        if (defined ($records->{'synclists'})) {$synclists = $records->{'synclists'}}
     } else {
-        if ($::VERBOSE)
-        {
-            my $rsp = {};
-            $rsp->{data}->[0] = "There are no records for cfmdir and synclists attribute in the osimage:$img. There is nothing to process.";
-            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-        }
-        return;
-    }
-
-    # no cfmdir defined, return directly
-    if (!$cfmdir)
-    {
-        return;
+        # no cfmdir defined, return directly
+        return 0;
     }
 
     my $found = 0;

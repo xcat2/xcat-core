@@ -2,12 +2,15 @@
 package xCAT_plugin::vsmppxe;
 use Data::Dumper;
 use Sys::Syslog;
+use xCAT::Scope;
+use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Socket;
 use File::Copy;
 use Getopt::Long;
 use xCAT::MsgUtils;
-
-use xCAT::TableUtils qw(get_site_attribute);
+use xCAT::ServiceNodeUtils;
+use xCAT::TableUtils;
 my $addkcmdlinehandled;
 my $request;
 my $callback;
@@ -210,6 +213,7 @@ sub preprocess_request {
    my $callback1 = shift;
    my $command = $req->{command}->[0];
    my $sub_req = shift;
+   my $nodes = $req->{node};
    my @args=();
    if (ref($req->{arg})) {
        @args=@{$req->{arg}};
@@ -254,15 +258,29 @@ sub preprocess_request {
         return;
     }
 
-   #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+      # check for  computenodes and servicenodes from the noderange, if so error out
+       my @SN;
+       my @CN;
+       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+       if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+            xCAT::MsgUtils->message("E", $rsp, $callback1);
+            return;
+
+       }
+
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      return xCAT::Scope->get_broadcast_scope($req,@_);
+      if (@CN >0 ) { # if there are compute nodes then broadcast to any servicenodes 
+        return xCAT::Scope->get_broadcast_scope($req,@_);
+      }
    }
    return [$req];
 }
