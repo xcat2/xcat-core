@@ -204,7 +204,9 @@ my %usage = (
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
     PPC (using Direct FSP Management) specific:
-       mkvm noderange <--full|--part>
+       mkvm noderange [--full]
+       mkvm noderange [vmcpus=min/req/max] [vmmemory=min/req/max]
+                      [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force
     For zVM
@@ -218,7 +220,8 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> [-l|--long] [-p|--part]
+       lsvm <noderange> [-l|--long] --p775
+       lsvm <noderange>
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
@@ -233,9 +236,11 @@ my %usage = (
        chvm <noderange> [-p profile][-V|--verbose] 
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
-       chvm <noderange> [-p <profile>]
+       chvm <noderange> --p775 [-p <profile>]
+       chvm <noderange> --p775 -i <id> [-m <memory_interleaving>] -r <partition_rule>
        chvm <noderange> [lparname=<*|name>]
-       chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
+       chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
+                        [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:
@@ -268,7 +273,7 @@ my %usage = (
        rmvm [-h|--help|-v|--version],
        rmvm [-p] [-f]
        PPC (using Direct FSP Management) specific:
-       rmvm <noderange> [-p|--part]",
+       rmvm <noderange>",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]

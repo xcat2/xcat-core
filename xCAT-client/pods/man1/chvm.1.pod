@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+B<chvm> - Changes HMC-, DFM-, IVM-, and zVM-managed partition profiles or virtual machines. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
@@ -16,11 +16,14 @@ B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
 =head2 PPC (using Direct FSP Management) specific:
 
-B<chvm> I<noderange> [B<-p> I<profile>]
+B<chvm> I<noderange> I<--p775> [B<-p> I<profile>]
+
+B<chvm> I<noderange> I<--p775> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
 
 B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
 
-B<chvm> I<noderange> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
+B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
+               [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
 
 =head2 VMware/KVM specific:
 
@@ -98,11 +101,17 @@ This command also supports to change specific partition attributes by specifying
 
 =head2 PPC (using Direct FSP Management) specific:
 
+For Power 755(use option I<--p775> to specify):
+
 chvm could be used to change the octant configuration values for generating LPARs. chvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The chvm will only set the pending attributes value. After chvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use chvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots. 
 
 chvm is also designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar. 
 
 The administrator should use lsvm to get the profile content, and then edit the content, and add the node name with ":" manually before the I/O which will be assigned to the node. And then the profile can be piped into the chvm command, or changed with the -p flag.
+
+For normal power machine:
+
+chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options I<vmcpus>, I<vmmemory>, I<vmphyslots> and/or I<vmothersetting>. If nothing specified, nothing will be returned. 
 
 =head2 VMware/KVM specific:
 
@@ -150,17 +159,21 @@ Verbose output.
 
 =over 10
 
+=item B<--p775>
+
+Specify the operation is for Power 775 machines.
+
 =item B<-i>
 
-Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
+Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>. Shall work with option B<--p775>.
 
 =item B<-m>     
 
-memory interleaving. The setting value only could be B<1> or B<2>. B<2> means B<non-interleaved> mode (also 2MC mode), the memory cannot be shared across the processors in an octant. B<1> means B<interleaved> mode (also 8MC mode) , the memory can be shared. The default value is B<1> .
+memory interleaving. The setting value only could be B<1> or B<2>. B<2> means B<non-interleaved> mode (also 2MC mode), the memory cannot be shared across the processors in an octant. B<1> means B<interleaved> mode (also 8MC mode) , the memory can be shared. The default value is B<1>. Shall work with option B<--p775>.
 
 =item B<-r>    
 
-partition rule.
+partition rule. Shall work with option B<--p775>. 
 
 If all the octants configuration value are same in one CEC,  it will be  " B<-r>  B<0-7>:I<value>" .
 
@@ -176,11 +189,15 @@ The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>,
 
 =item B<-p> I<profile>
 
-Name of I/O slots assignment profile.
+Name of I/O slots assignment profile. Shall work with option B<--p775>.
 
 =item B<lparname>={B<*>|B<name>}
 
 Set LPAR name for the specified lpars. If '*' specified, it means to get names from xCAT database and then set them for the specified lpars. If a string is specified, it only supports single node and the string will be set for the specified lpar. The user can use lsvm to check the lparnames for lpars. 
+
+=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value>
+
+To specify the parameters that will be modified.
 
 =back
 
@@ -385,7 +402,7 @@ Output is similar to:
 
 then:
 
- chvm lpar1 -i 1 -m 1 -r 0:1
+ chvm lpar1 --p775 -i 1 -m 1 -r 0:1
 
 Output is similar to:
 
@@ -398,7 +415,7 @@ Output is similar to:
 
 then:
 
- chvm lpar1-lpar8 -i 1 -m 1 -r 0-7:1
+ chvm lpar1-lpar8 --p775 -i 1 -m 1 -r 0-7:1
 
 Output is similar to:
 
@@ -418,7 +435,7 @@ Output is similar to:
 
 then:
 
- chvm lpar1-lpar9 -i 1 -m 1  -r 0:5,1-7:1
+ chvm lpar1-lpar9 --p775 -i 1 -m 1  -r 0:5,1-7:1
 
 Output is similar to: 
 
@@ -441,11 +458,11 @@ Output is similar to:
 
 then run the command:
 
- cat /tmp/lparfile | chvm lpar4
+ cat /tmp/lparfile | chvm lpar4 --p775
 
 5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
 
- chvm lpar1-lpar8 -p /tmp/lparfile
+ chvm lpar1-lpar8 --p775 -p /tmp/lparfile
 
 6. To change the LPAR name, enter:
 
@@ -454,6 +471,52 @@ then run the command:
 Output is similar to:
 
  lpar1: Success
+ 
+7. For Normal Power machine, to modify the resource assigned to a partition:
+
+Before modify, the resource assigned to node 'lpar1' can be shown with:
+ lsvm lpar1
+
+The output is similar to:
+
+ lpar1: Lpar Processor Info:
+ Curr Processor Min: 1.
+ Curr Processor Req: 4.
+ Curr Processor Max: 16.
+ lpar1: Lpar Memory Info:
+ Curr Memory Min: 1.00 GB(4 regions).
+ Curr Memory Req: 4.00 GB(16 regions).
+ Curr Memory Max: 32.00 GB(128 regions).
+ lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+ lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+ lpar1: 1/2/2
+ lpar1: 128.
+
+To modify the resource assignment:
+
+ chvm lpar1 vmcpus=1/2/16 vmmemory=1G/8G/32G vmphyslots=0x21010202
+
+The output is similar to:
+ 
+ lpar1: Success 
+
+The resource information after modification is similar to:
+
+ lpar1: Lpar Processor Info:
+ Curr Processor Min: 1.
+ Curr Processor Req: 2.
+ Curr Processor Max: 16.
+ lpar1: Lpar Memory Info:
+ Curr Memory Min: 1.00 GB(4 regions).
+ Curr Memory Req: 8.00 GB(32 regions).
+ Curr Memory Max: 32.00 GB(128 regions).
+ lpar1: 1,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+ lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+ lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+ lpar1: 1/2/2
+ lpar1: 128.
+
+Note: The physical I/O resources specified with I<vmphyslots> will be appended to the specified partition. The physical I/O resources which are not specified but belonged to the partition will not be removed. For more information about I<vmphyslots>, please refer to L<lsvm(1)|lsvm.1>.  
 
 =head2 VMware/KVM specific:
 
@@ -520,7 +583,7 @@ Output is similar to:
 Output is similar to:
 
   gpok3: Replacing user entry of LNX3... Done
- 
+
 =head1 FILES
 
 /opt/xcat/bin/chvm

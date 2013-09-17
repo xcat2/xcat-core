@@ -51,6 +51,8 @@ sub parse_args {
 sub chvm_parse_extra_options {
 	my $args = shift;
 	my $opt = shift;
+    # Partition used attributes #
+    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting);
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
@@ -71,7 +73,20 @@ sub chvm_parse_extra_options {
 #			if ($value !~ /^\d+\/\d+\/\d+$/) {
 #				return "'$value' invalid";
 #			}
-		} else {
+        } elsif (grep(/^$cmd$/, @support_ops)) {
+            if (exists($opt->{p775})) {
+                return "'$cmd' doesn't work for Power 775 machines.";
+            } elsif ($cmd eq "vmothersetting") {
+                if ($value =~ /hugepage:\s*(\d+)/i) {
+                    $opt->{huge_page} = $1;
+                }
+                if ($value =~ /bsr:\s*(\d+)/i) {
+                    $opt->{bsr} = $1;
+                }
+                next;
+            }
+
+        } else {
 			return "'$cmd' not support";
 		}
 		$opt->{$cmd} = $value;
@@ -109,7 +124,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s p775) )) {
         return( usage() );
     }
     ####################################
@@ -126,8 +141,11 @@ sub chvm_parse_args {
     #        return(usage( "Configuration file or attributes not specified" ));
     #    }
     #}
-    
+    if (exists($opt{p775})) { 
     my @cfgdata ;
+    if ((exists ($opt{p}) || defined($request->{stdin})) && !exists($opt{p775}) ) {
+        return(usage("Profile just work for Power 775"));
+    }
     if ( exists( $opt{p})) {
         
 	if ( exists( $opt{i} ) ||  exists( $opt{r}) || exists( $opt{m} ) ) {
@@ -302,6 +320,7 @@ sub chvm_parse_args {
         $request->{node} = [$other_p]; 
         $request->{noderange} = $other_p;  
     }
+    }
     ####################################
     # Check for an extra argument
     ####################################
@@ -347,21 +366,23 @@ sub mkvm_parse_args {
 #############################################
 # Process command-line arguments
 #############################################
-    if ( !defined( $args )) {
-        return(usage( "No command specified" ));
-    }
+    #if ( !defined( $args )) {
+    #    return(usage( "No command specified" ));
+    #}
 #############################################
 # Checks case in GetOptions, allows opts
 # to be grouped (e.g. -vx), and terminates
 # at the first unrecognized option.
 #############################################
-    @ARGV = @$args;
+    if (defined($args)) {
+        @ARGV = @$args;
+    }
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
-#    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s full) )) {
+#    if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s m=s r=s full) )) {
 #        return( usage() );
 #    }
-    if ( !GetOptions( \%opt, qw(V|verbose i=s m=s r=s full part vios) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose full vios) )) {
         return( usage() );
     }
 ####################################
@@ -370,7 +391,37 @@ sub mkvm_parse_args {
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
     }
+    if (!exists($opt{p775})) {
+        my @unsupport_ops = ();
+        foreach my $tmpop (keys %opt) {
+            if ($tmpop !~ /full|vios|V/) {
+                push @unsupport_ops, $tmpop;
+            }
+        }
+        my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting);
+        if (defined(@ARGV[0]) and defined($opt{full})) {
+            return(usage("Option 'full' shall be used alone."));
+        } elsif (defined(@ARGV[0])) {
+            foreach my $arg (@ARGV) {
+                my ($cmd,$val) = split (/=/,$arg);
+                if (!grep(/^$cmd$/, @support_ops))  {
+                    push @unsupport_ops, $cmd;
+                } elsif (!defined($val)) {
+                    return(usage("The option $cmd need specific parameters."));
+                } else {
+                    $opt{$cmd} = $val;
+                }
+            }
+        }
 
+        if (@unsupport_ops) {
+            my $tmpops = join(",",@unsupport_ops);
+            return(usage( "The options $tmpops can only work(s) with Power 775 machines."));
+        }
+    } else {
+        if (exists($opt{full}) or exists($opt{vios})) {
+            return(usage( "Option 'p775' only works for Power 775 machines."));
+        }
 ####################################
 # Check for non-zero integer 
 ####################################
@@ -408,7 +459,7 @@ sub mkvm_parse_args {
 	} else {
             return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
-    } elsif (!exists($opt{full}) && !exists($opt{part}) && !exists($opt{vios})){
+    } elsif (exists($opt{p775})){
         $opt{m} = 2 ;# non-interleaved, which is the default    
     }
    
@@ -467,10 +518,10 @@ sub mkvm_parse_args {
     } #end of if
     
         
-    if ( (!exists( $opt{i} ) ||  !exists( $opt{r} )) && !exists($opt{full}) && !exists($opt{part}) && !exists($opt{vios})) {
+    if ( (!exists( $opt{i} ) ||  !exists( $opt{r} )) ) {
         return(usage());
     }
-    
+    } 
     $opt{target} = \@{$request->{node}};
     my $ppctab = xCAT::Table->new( 'ppc');
     unless($ppctab) {
@@ -495,7 +546,7 @@ sub mkvm_parse_args {
             return(usage("For Power 775, please make sure the noderange are in one CEC "));
         }
     } 
-    if (!exists($opt{full}) && !exists($opt{part}) &&!exists($opt{vios})) {
+    if (exists($opt{p775})) {
         $request->{node} = [$other_p]; 
         $request->{noderange} = $other_p;  
     }
@@ -541,11 +592,11 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose service r p|part) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose service r p775) )) {
         return( usage() );
     }
 
-    if (!exists($opt{p})) {
+    if (exists($opt{p775})) {
         return(usage( "rmvm doesn't support for Power 775." ));
     }
 
@@ -602,8 +653,11 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose l|long p|part) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose l|long p775) )) {
         return( usage() );
+    }
+    if (exists($opt{l}) && !exists($opt{p775})) {
+        return(usage( "option 'l' only works for Power 775"));
     }
     ####################################
     # Check for "-" with no option
@@ -632,8 +686,9 @@ sub modify {
     my $request = shift;
     my $hash    = shift;
     my $usage_string = xCAT::Usage->getUsage($request->{command});
-    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p} || $request->{stdin}); 
-    return create( $request, $hash) if ( $request->{opt}->{i}); 
+    return modify_by_prof( $request, $hash) if ( exists($request->{opt}->{p775}) and ($request->{opt}->{p} || $request->{stdin})); 
+    return create( $request, $hash) if ( exists($request->{opt}->{p775}) and $request->{opt}->{i}); 
+    return op_extra_cmds ($request, $hash) if (!exists($request->{opt}->{p775}));
     return op_extra_cmds ($request, $hash) if ($request->{opt}->{lparname} || $request->{opt}->{huge_page});
     return ([["Error", "Miss argument\n".$usage_string, 1]]);
 }
@@ -641,26 +696,72 @@ sub do_op_extra_cmds {
     my $request = shift;
     my $hash = shift;
     my @values = ();
-	my $action;
-	my $param;
-	if (exists($request->{opt}->{lparname})) {
-		$action = "set_lpar_name";
-		$param = $request->{opt}->{lparname};
-	} elsif (exists($request->{opt}->{huge_page})) {
-		$action = "set_huge_page";
-		$param = $request->{opt}->{huge_page};
-	}
-    my $lparname_para = $request->{opt}->{lparname};
+
     while (my ($mtms, $h) = each(%$hash)) {
+        my $memhash;
         while (my($name, $d) = each(%$h)) {
-            my $tmp_value = ($param eq '*') ? $name : $param;
-            xCAT::MsgUtils->verbose_message($request, "$request->{command} $action for node:$name, parm:$tmp_value."); 
-            my $value = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $tmp_value);
-            if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
-                return ([[$name, @$value[1], '1']]) ;
-            } else {
-                push @values, [$name, "Success", '0'];
-            } 
+            foreach my $op (keys %{$request->{opt}}) {
+	        my $action;
+	        my $param = $request->{opt}->{$op};
+	        if ($op eq "lparname") {
+		    $action = "set_lpar_name";
+	        } elsif ($op eq "huge_page") {
+		    $action = "set_huge_page";
+	        } elsif ($op eq "vmcpus") {
+                    $action = "part_set_lpar_pending_proc";
+                } elsif ($op eq "vmphyslots") {
+                    $action = "set_io_slot_owner_uber";
+                } elsif ($op eq "vmmemory") {
+                    my @td = @$d;
+                    @td[0] = 0;
+                    $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem"]);
+                    if (!exists($memhash->{run})) {
+                        if ($param =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
+                            my $memsize = $memhash->{mem_region_size};
+                            my $min = $1;
+                            if ($2 == "G" or $2 == '') {
+                                $min = $min * 1024;
+                            } 
+                            $min = $min/$memsize;
+                            my $cur = $3;
+                            if ($4 == "G" or $4 == '') {
+                                $cur = $cur * 1024;
+                            }
+                            $cur = $cur/$memsize;
+                            my $max = $5;
+                            if ($6 == "G" or $6 == '') {
+                                $max = $max * 1024;
+                            }
+                            $max = $max/$memsize;
+                            $request->{opt}->{$op} ="$min/$cur/$max";
+                            $param = $request->{opt}->{$op};
+                        } else {
+                            return([[$name, "The format of param:$param is incorrect.", 1]]);
+                        }
+                        $memhash->{run} = 1;
+                    }
+                    $memhash->{memory} = $param;
+                    $memhash->{lpar_used_regions} = 0;
+                    my $ret = &deal_with_avail_mem($request, $name, $d, $memhash);
+                    if (ref($ret) eq "ARRAY") {
+                        return ([[@$ret]]);
+                    }
+                    $param = $memhash->{memory};
+                    $action = "part_set_lpar_pending_mem";
+                } elsif ($op eq "bsr") {
+                    $action = "set_lpar_bsr";
+                } else {
+                    last;
+                }
+                my $tmp_value = ($param eq '*') ? $name : $param;
+                xCAT::MsgUtils->verbose_message($request, "$request->{command} $action for node:$name, parm:$tmp_value."); 
+                my $value = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $tmp_value);
+                if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
+                    return ([[$name, @$value[1], '1']]) ;
+                } else {
+                    push @values, [$name, "Success", '0'];
+                } 
+            }
         }
     } 
     return \@values;
@@ -1459,7 +1560,7 @@ sub parse_part_get_info {
             $hash->{process_units_avail} = $2;
         } elsif ($line =~ /Authority Lpar id:(\w+)/i) {
             $hash->{service_lparid} = $1;
-        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),[^,]*,[^,]*,\w*\(([\w| |-|_]*)\)/) {
+        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),\w*\(([\w| |-|_]*)\)/) {
             $hash->{bus}->{$3}->{cur_lparid} = $1;
             $hash->{bus}->{$3}->{bus_slot} = $2;
             $hash->{bus}->{$3}->{des} = $4;
@@ -1471,10 +1572,15 @@ sub parse_part_get_info {
                 #$hash->{logic_drc_phydrc}->{$5}->{$1} = [$2,$3,$4];
             }
         #} elsif ($line =~ /lpar 0:: Curr  Memory::min: 1,cur: (\d+),max:/i) {
-        } elsif ($line =~ /HYP Reserved Memory Regions:(\d+), Min Required Regions:(\d+)/i) {
-            $hash->{lpar0_used_mem} = $1;
-            $hash->{phy_min_mem_req} = $2;
+        } elsif ($line =~ /HYP Reserved Memory Regions:([-]?)(\d+), Min Required Regions:(\d+)/i) {
+            if ($1 eq '-') {
+                $hash->{lpar0_used_dec} = 1;
+            }
+            $hash->{lpar0_used_mem} = $2;
+            $hash->{phy_min_mem_req} = $3;
             #print "===>lpar0_used_mem:$hash->{lpar0_used_mem}.\n";
+        } elsif ($line =~ /Curr Memory Req:[^\(]*\((\d+)\s*regions\)/) {
+            $hash->{lpar_used_regions} = $1;
         } elsif ($line =~ /Available huge page memory\(in pages\):\s*(\d+)/) {
             $hash->{huge_page_avail} = $1;
         } elsif ($line =~ /Available BSR array:\s*(\d+)/) {
@@ -1501,7 +1607,8 @@ sub query_cec_info_actions {
 	#$data .= "======> ret info for $action:\n";
         my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $td, $action);
         chomp(@$values[1]);
-        if ($action eq "part_get_partition_cap" and (@$values[1] =~ /Error:/i or @$values[2] ne 0)) {
+        #if ($action eq "part_get_partition_cap" and (@$values[1] =~ /Error:/i or @$values[2] ne 0)) {
+        if (@$values[1] =~ /Error:/i or @$values[2] ne 0) {
             return ([[@$values]]);
         }
         if (@$values[1] =~ /^$/) {
@@ -1629,21 +1736,38 @@ sub deal_with_avail_mem {
     my $max_required_regions;
     if ($lparhash->{memory} =~ /(\d+)\/(\d+)\/(\d+)/) {
         my ($min,$cur,$max);
+        my $used_regions = 0;
+        my $cur_avail = 0;
         $min = $1;
         $cur = $2;
         $max = $3;
-        my $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_get_hyp_res_mem_regions", 0, $3);
         my %tmphash;
+        my $values;
+        if (exists($lparhash->{lpar_used_regions})) {
+            $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_get_lpar_memory");
+            &parse_part_get_info(\%tmphash, @$values[1]);
+            if (exists($tmphash{lpar_used_regions})) {
+                $used_regions = $tmphash{lpar_used_regions};
+            }
+        }
+        $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_get_hyp_res_mem_regions", 0, $3);
         &parse_part_get_info(\%tmphash, @$values[1]);
         if (exists($tmphash{lpar0_used_mem}) && exists($tmphash{phy_min_mem_req})) {
             if ($min < $tmphash{phy_min_mem_req}) {
                 $min = $tmphash{phy_min_mem_req};
             }
-            if ($lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem} < $min) {
-                return([$name, "Parse reserverd regions failed, no enough memory, availe:$lparhash->{hyp_avail_mem}.", 1]);
-            } 
-            if ($cur > $lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem}) {
-                my $new_cur = $lparhash->{hyp_avail_mem} - $tmphash{lpar0_used_mem};
+ 
+            if (exists($lparhash->{lpar0_used_dec})) {
+                $cur_avail = $lparhash->{hyp_avail_mem} + $used_regions + $tmphash{lpar0_used_mem}; 
+            } else {
+                $cur_avail = $lparhash->{hyp_avail_mem} + $used_regions - $tmphash{lpar0_used_mem};
+            }
+            xCAT::MsgUtils->verbose_message($request, "====****====used:$used_regions,avail:$cur_avail,($min:$cur:$max)."); 
+            if ($cur_avail < $min) {
+                return([$name, "Parse reserverd regions failed, no enough memory, available:$lparhash->{hyp_avail_mem}.", 1]);
+            }           
+            if ($cur > $cur_avail) {
+                my $new_cur = $cur_avail;
                 $lparhash->{memory} = "$min/$new_cur/$max";
             }
         } else {
@@ -1669,7 +1793,7 @@ sub create_lpar {
     }
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_lpar_name", 0, $name);
     if (@$values[2] ne 0) {
-        $values = &set_lpar_undefined($request, $name, $d);
+        &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[0]]);
     }
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_shared_pool_util_auth");
@@ -1679,7 +1803,7 @@ sub create_lpar {
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner_uber", 0, $lparhash->{physlots}); 
     #$values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner", 0, join(",",@phy_io_array)); 
     if (@$values[2] ne 0) {
-        $values = &set_lpar_undefined($request, $name, $d);
+        &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[2]]);
     }
     if (exists($lparhash->{phy_hea})) {
@@ -1707,7 +1831,7 @@ sub create_lpar {
     #print "======>cpus:$lparhash->{cpus}.\n";
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_proc", 0, $lparhash->{cpus});
     if (@$values[2] ne 0) {
-        $values = &set_lpar_undefined($request, $name, $d);
+        &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[2]]);
     }
     $values = &deal_with_avail_mem($request, $name, $d,$lparhash);
@@ -1719,7 +1843,7 @@ sub create_lpar {
     #print "======>memory:$lparhash->{memory}.\n";
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_mem", 0, $lparhash->{memory});
     if (@$values[2] ne 0) {
-        $values = &set_lpar_undefined($request, $name, $d);
+        &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[2]]);
     }
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_comp_modes"); 
@@ -1742,6 +1866,7 @@ sub create_lpar {
 sub mkspeclpar {
     my $request = shift;
     my $hash = shift;
+    my $opt = $request->{opt};
     my $values;
     my @result = ();
     my $vmtab = xCAT::Table->new( 'vm');
@@ -1760,25 +1885,37 @@ sub mkspeclpar {
                 $memhash->{run} = 1; 
             }
             my $tmp_ent = $ent->{$name}->[0];
+            if (exists($opt->{vmcpus})) {
+                $tmp_ent->{cpus} = $opt->{vmcpus};
+            } 
+            if (exists($opt->{vmmemory})) {
+                $tmp_ent->{memory} = $opt->{vmmemory};
+            }
+            if (exists($opt->{vmphyslots})) {
+                $tmp_ent->{physlots} = $opt->{vmphyslots};
+            }
+            if (exists($opt->{vmothersetting})) {
+                $tmp_ent->{othersettings} = $opt->{vmothersetting};
+            }
             if (!defined($tmp_ent) ) {
                 return ([[$name, "Not find params", 1]]);
             } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
                 return ([[$name, "The attribute 'vmcpus', 'vmmemory' and 'vmphyslots' are all needed to be specified.", 1]]);
             }
-            if ($tmp_ent->{memory} =~ /(\d+)(G|M)\/(\d+)(G|M)\/(\d+)(G|M)/i) {
+            if ($tmp_ent->{memory} =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
                 my $memsize = $memhash->{mem_region_size};
                 my $min = $1;
-                if ($2 == "G") {
+                if ($2 == "G" or $2 == '') {
                     $min = $min * 1024;
                 }
                 $min = $min/$memsize;
                 my $cur = $3;
-                if ($4 == "G") {
+                if ($4 == "G" or $4 == '') {
                     $cur = $cur * 1024;
                 }
                 $cur = $cur/$memsize;
                 my $max = $5;
-                if ($6 == "G") {
+                if ($6 == "G" or $6 == '') {
                     $max = $max * 1024;
                 }
                 $max = $max/$memsize;
@@ -1858,17 +1995,14 @@ sub mkvm {
     # decide if issuing mkvm with the option '-f'.
     # if yes, mklpar will be invoked to
     # create a full system partition for each CECs managed by the HMC.
-        if ( exists($opt->{full})) {
-                return( mkfulllpar(@_) );
-        } elsif (exists($opt->{part})){
-                return (mkspeclpar(@_));
-        } elsif (exists($opt->{vios})) {
-                return (mkspeclpar(@_));
-        }
-        else {
-        # if no, it will execute the original function.
-    return( create(@_) );
-	}
+    if (exists($opt->{p775})) {
+        return (create(@_));
+    }
+    if (exists($opt->{full})) {
+        return (mkfulllpar(@_));
+    } else {
+        return (mkspeclpar(@_));
+    }
 }
 
 ##########################################################################
@@ -1885,10 +2019,10 @@ sub chvm {
 sub rmvm  {
     my $request = $_[0];
     my $opt = $request->{opt};
-    if (exists($opt->{p})) {
-        return( remove(@_) );
-    } else {
+    if (exists($opt->{p775})) {
         return ([["lpar","rmvm only support Power Partitioning.", 1]]); 
+    } else {
+        return( remove(@_) );
     }
 #    return( remove(@_) );
 }
@@ -1900,10 +2034,10 @@ sub lsvm {
     my $request = shift;
     my $hash    = shift;
     my $args    = $request->{opt};
-    if (exists($args->{p})) {    
-	    return (query_cec_info($request, $hash));
-    } else {
+    if (exists($args->{p775})) {    
         return( list($request, $hash) );
+    } else {
+	return (query_cec_info($request, $hash));
     }
 }
 
