@@ -219,6 +219,7 @@ sub asunode {
   my $passwd = shift;
   my $batchfile = shift;
   my $args;
+  $bmc =~ s/,.*//;
   if ($batchfile) {
     $args = "batch $batchfile";
   } else {
