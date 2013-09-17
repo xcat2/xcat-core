@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkvm> - Creates HMC-, IVM-, and zVM-managed partitions or other virtual machines.
+B<mkvm> - Creates HMC-, DFM-, IVM-, and zVM-managed partitions or other virtual machines.
 
 =head1 SYNOPSIS
 
@@ -18,10 +18,12 @@ B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-c> I<destcec> B<-p> I<profile>
 
 B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
-
 =head2 For PPC (using Direct FSP Management) specific:
 
-B<mkvm> [I<noderange> B<--full> B<--part>]
+B<mkvm> I<noderange> [B<--full>]
+
+B<mkvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
+               [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
 
 =head2 For KVM:
 
@@ -53,7 +55,7 @@ Please note that the mkvm command currently only supports creating standard LPAR
 
 With option I<full>, a partition using all the resources on a normal power machine will be created.
 
-With option I<part>, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting' will be created.
+If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
 
 =head2 For KVM and Vmware:
 
@@ -87,9 +89,9 @@ The cpu count which will be created for the kvm/vmware virtual machine.
 
 Request to create a new full system partition for each CEC.
 
-=item B<--part>
+=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value>
 
-Request to create a partition with the specified parameters.
+To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> and I<vmphyslots> are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.  
 
 =item B<-f|--force>
 
@@ -133,7 +135,7 @@ Verbose output.
 
 =head1 EXAMPLES
 
-1. To create a new partition lpar5 based on the profile/resources of lpar4, enter:
+1. To create a new HMC-managed partition lpar5 based on the profile/resources of lpar4, enter:
 
  mkdef -t node -o lpar5 mgt=hmc groups=all
 
@@ -146,7 +148,7 @@ Output is similar to:
  lpar5: Success
 
 
-2. To create new partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:
+2. To create new HMC-managed partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:
 
  mkdef -t node -o lpar5-lpar8 mgt=hmc groups=all
 
@@ -162,7 +164,7 @@ Output is similar to:
  lpar8: Success
 
 
-3. To duplicate all the partitions associated with cec01 on cec02, first save the lpars from cec01 to a file:
+3. To duplicate all the HMC-managed partitions associated with cec01 on cec02, first save the lpars from cec01 to a file:
 
  lsvm lpar01-lpar04 > /tmp/myprofile
 
@@ -178,7 +180,7 @@ Output is similar to:
  lpar8: Success
 
 
-4. To duplicate all the partitions associated with cec01 on cec02, one is for cec01, the other is for cec02:
+4. To duplicate all the HMC-managed partitions associated with cec01 on cec02, one is for cec01, the other is for cec02:
 
  mkdef -t node -o lpar5,lpar6 mgt=hmc groups=all
  chtab node=lpar5 ppc.parent=cec01
@@ -248,11 +250,36 @@ The output is similar to:
  
  lpar1: Done
 
-To query the resources allocated to node 'lpar1', please reference L<lsvm(1)|lsvm.1>.
+To query the resources allocated to node 'lpar1'
+
+ lsvm lpar1
+
+The output is similar to:
+
+  lpar1: Lpar Processor Info:
+  Curr Processor Min: 1.
+  Curr Processor Req: 16.
+  Curr Processor Max: 16.
+  lpar1: Lpar Memory Info:
+  Curr Memory Min: 0.25 GB(1 regions).
+  Curr Memory Req: 30.75 GB(123 regions).
+  Curr Memory Max: 32.00 GB(128 regions).
+  lpar1: 1,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0xffff(Empty Slot)
+  lpar1: 1,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0xffff(Empty Slot)
+  lpar1: 1,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0xffff(Empty Slot)
+  lpar1: 1,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0xffff(Empty Slot)
+  lpar1: 1,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+  lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+  lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+  lpar1: 1/2/2
+  lpar1: 256.
+
 
 Note: The 'parent' attribute for node 'lpar1' is the object name of physical power machine that the full partition will be created on. 
 
 9. To create a partition using some of the resources on normal power machine.
+
+Option 1:
 
 After a node object is defined, the resources that will be used for the partition shall be specified like this:
 
@@ -260,15 +287,37 @@ After a node object is defined, the resources that will be used for the partitio
 
 Then, create the partion on the specified cec.
  
- mkvm lpar1 --part
+ mkvm lpar1
+
+Option 2:
+
+ mkvm lpar1 vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmothersetting=bsr:128,hugepage:2
 
 The outout is similar to:
 
  lpar1: Done
+ 
+Note: The 'vmplyslots' specify the drc index of the physical slot device. Every drc index shall be delimited with ','. The 'vmothersetting' specify two kinds of resource, bsr(Barrier Synchronization Register) specified the num of BSR arrays, hugepage(Huge Page Memory) specified the num of huge pages.
 
-To query the resources allocated to node 'lpar1', please reference L<lsvm(1)|lsvm.1>.
+To query the resources allocated to node 'lpar1'
 
-Note: The 'vmplyslots' specify the drc index of the physical slot device. Every drc index shall be delimited with ','. The 'vmothersetting' specify two kinds of resource, bsr(Barrier Synchronization Register) specified the num of BSR arrays, hugepage(Huge Page Memory) specified the num of pages.
+ lsvm lpar1
+
+The output is similar to:
+
+ lpar1: Lpar Processor Info:
+ Curr Processor Min: 1.
+ Curr Processor Req: 4.
+ Curr Processor Max: 16.
+ lpar1: Lpar Memory Info:
+ Curr Memory Min: 1.00 GB(4 regions).
+ Curr Memory Req: 4.00 GB(16 regions).
+ Curr Memory Max: 32.00 GB(128 regions).
+ lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+ lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+ lpar1: 1/2/2
+ lpar1: 128.
+
 
 =head1 FILES
 
