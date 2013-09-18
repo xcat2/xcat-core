@@ -1375,7 +1375,12 @@ sub updatenoderunps
                              $subreq, 0, 1
                              );
     }
-
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "Running of postscripts has completed.";
+       $callback->($rsp);
+    }
     return;
 }
 
@@ -1763,6 +1768,12 @@ sub updatenodesoftware
             #		xCAT::MsgUtils->message("E", $rsp, $callback);;
             return 1;
         }
+    }
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "Running of Software maintenance has completed.";
+       $callback->($rsp);
     }
 
     return;
