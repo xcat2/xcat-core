@@ -1172,23 +1172,26 @@ sub updatenode
             waitpid($_, 0);
         }
     }
-
-    # update the node status, this is done when -F -S -P are run
-    # make sure the nodes only appear in one array good or bad 
-    &cleanstatusarrays;  
-	 if(@::SUCCESSFULLNODES)
-	 {
+    # if immediate return of status not requested (PCM), then update the DB here
+    # in one transaction, otherwise it is updated in getdata callback and buildnodestatus
+    if (!(defined($request->{status})) || ($request->{status} ne "yes")) {
+      # update the node status, this is done when -F -S -P are run
+      # make sure the nodes only appear in one array good or bad 
+      &cleanstatusarrays;  
+	   if(@::SUCCESSFULLNODES)
+	   {
 	     
             my $stat="synced";
             xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
                       
-	 }
-	 if(@::FAILEDNODES)
-	 {
+	   }
+	   if(@::FAILEDNODES)
+	   {
 	     
             my $stat="failed";
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
+	   }
 	 }
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
@@ -1541,6 +1544,11 @@ sub buildnodestatus
               my $rsp2 = {};
               $rsp2->{status}->[0] = "$node: SUCCEEDED";
               $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="synced";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
          }
          if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 		     next; 
@@ -1555,6 +1563,11 @@ sub buildnodestatus
               my $rsp2 = {};
               $rsp2->{status}->[0] = "$node: FAILED";
               $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="failed";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
          }
          if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
 		     next; 
@@ -1784,6 +1797,11 @@ sub getdata
                    my $rsp2 = {};
                    $rsp2->{status}->[0] = "$node: SUCCEEDED";
                    $::CALLERCALLBACK->($rsp2); 
+                   # update the nodelist table updatestatus flag for the node
+                   my $stat="synced";
+                   my @nodearray=();
+                   push @nodearray,$node;
+                   xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
               }
               if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 		            next; 
@@ -1805,6 +1823,11 @@ sub getdata
                     my $rsp2 = {};
                     $rsp2->{status}->[0] = "$node: FAILED";
                     $::CALLERCALLBACK->($rsp2); 
+                    # update the nodelist table updatestatus flag for the node
+                    my $stat="failed";
+                    my @nodearray=();
+                    push @nodearray,$node;
+                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
                 }
                 if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
 		            next; 
@@ -1816,6 +1839,11 @@ sub getdata
                       my $rsp2 = {};
                       $rsp2->{status}->[0] = "$node: SUCCEEDED";
                       $::CALLERCALLBACK->($rsp2); 
+                      # update the nodelist table updatestatus flag for the node
+                      my $stat="synced";
+                      my @nodearray=();
+                      push @nodearray,$node;
+                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
                   }
                   if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 	                   next; 
