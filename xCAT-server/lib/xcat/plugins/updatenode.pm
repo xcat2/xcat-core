@@ -1871,10 +1871,11 @@ sub getdata
                     $output =~
                       s/Running of postscripts has completed/Redeliver security files has completed/;
                     push @{$rsp->{$type}}, $output;
-                }
-                elsif ($output !~ /Running postscript|Error loading module/)
-                {
+                } else {
+                   if (($output !~ (/Running postscript/)) && ($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+                   {
                     push @{$rsp->{$type}}, "$output";
+                   }
                 }
             } else{  # for non -k option then get the rest of the output
               if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
