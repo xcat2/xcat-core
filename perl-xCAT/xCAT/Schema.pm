@@ -1049,6 +1049,8 @@ site => {
    " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n".
    "                      begin queueing. This applies to both client command requests\n".
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
+   " xcatmaxbatchconnections:  Number of concurrent xCAT remote protocol requests allowed.\n".
+   "                      Value must be less than xcatmaxconnections. Default is 50.\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
    " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n",
