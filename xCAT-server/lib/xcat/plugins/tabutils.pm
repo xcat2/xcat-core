@@ -532,7 +532,7 @@ sub tabrestore
             next LINE;
         }
 
-        #TODO: check for error from DB and rollback
+        #check for error from DB and rollback
         my @rc = $tab->setAttribs(\%record, \%record);
         if (not defined($rc[0]))
         {
@@ -2340,11 +2340,27 @@ else {
   }
   
   #commit all the changes
+  my $rollback;
   foreach (keys %tables) {
     if (exists($tableupdates{$_})) {
-      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+        my @rc=$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+        if (not defined($rc[0]))
+        {
+            $rollback = 1;
+            $callback->({error => "DB error " . $rc[1] , errorcode=>[4]});
+        }
     }
-    $tables{$_}->commit;
+    if ($rollback)
+    {
+        $tables{$_}->rollback();
+        $tables{$_}->close;
+        undef $tables{$_};
+        return;
+    }
+    else
+    {
+        $tables{$_}->commit;
+    }
   }
  }
 }
