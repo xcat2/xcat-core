@@ -4223,6 +4223,13 @@ sub copycd {
 			$found=1;
 			last;
 		}
+		if (/VMware ESXi 5\.5/) {
+			$darch="x86_64";
+			$arch="x86_64";
+			unless ($distname) { $distname='esxi5.5'; }
+			$found=1;
+			last;
+		}
 	}
      }
 
