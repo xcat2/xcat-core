@@ -1519,6 +1519,12 @@ sub updatenodesyncfiles
         xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
 
     }
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "File synchronization has completed.";
+       $callback->($rsp);
+    }
 
     return;
 }
