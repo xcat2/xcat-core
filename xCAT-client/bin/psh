@@ -14,7 +14,6 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 #use Data::Dumper;
 use IO::Handle;
 use IO::Select;
-use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Thread qw(yield);
@@ -171,9 +170,36 @@ sub sshnode {
   if (length($username)) { $username = "-l $username"; }
   my $in;
   my $args = join(" ",@_);
-  #print "ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |\n";
-  my $pid = open($$out,"ssh -o BatchMode=yes $username $node " . xCAT::Utils->quote($args) . " 2>&1 |");
+  #print "ssh -o BatchMode=yes $username $node " . &quote($args) . " 2>&1 |\n";
+  my $pid = open($$out,"ssh -o BatchMode=yes $username $node " . &quote($args) . " 2>&1 |");
   $pids{$pid} = $node;
+}
+sub quote
+{
+    my  $str = shift;
+
+    # if the value has imbedded double quotes, use single quotes.  If it also has
+    # single quotes, escape the double quotes.
+    if (!($str =~ /\"/))    # no embedded double quotes
+    {
+        $str =~ s/\$/\\\$/sg;    # escape the dollar signs
+        $str =~ s/\`/\\\`/sg;
+        $str = qq("$str");
+    }
+    elsif (!($str =~ /\'/))
+    {
+        $str = qq('$str');
+    }       # no embedded single quotes
+    else    # has both embedded double and single quotes
+    {
+
+        # Escape the double quotes.  (Escaping single quotes does not seem to work
+        # in the shells.)
+        $str =~ s/\"/\\\"/sg;    #" this comment helps formating
+        $str =~ s/\$/\\\$/sg;    # escape the dollar signs
+        $str =~ s/\`/\\\`/sg;
+        $str = qq("$str");
+    }
 }
 
 # vim: set et ts=2 sts=2 sw=2 :
