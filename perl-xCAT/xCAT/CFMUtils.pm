@@ -363,7 +363,8 @@ sub updateCFMSynclistFile {
 
             # recursively list the files under cfm directory 
             my @files = ();
-            find ( sub { push @files, $File::Find::name if (! -d) }, $cfmdir);
+
+            find ( { wanted => sub { push @files, $File::Find::name if -f }, follow => 1 }, $cfmdir);
             if (!@files) # not files under cfm directory, skip to next loop 
             {
                 next;
