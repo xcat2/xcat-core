@@ -808,7 +808,7 @@ sub kit_buildrepo1
 
         # run createrepo
         my $cr_opts = '';
-        if (( $repo->{osbasename} =~  m/rh|RH/ ) &&
+        if (( $repo->{osbasename} =~  m/rh|RH|centos|CentOS/ ) &&
             ( $repo->{osmajorversion} eq '5') ) {
             $cr_opts = '-s md5';
         }
