@@ -208,7 +208,7 @@ do
             echo "confignics on $NODE: ip address,nic type and network are required. $key: $str_value ."
             continue
         fi
-        if [ "${array_temp[1]}" ];then
+        if [ -n "${array_temp[1]}" ];then
             str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
         else
             if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
@@ -218,11 +218,11 @@ do
             fi
         fi
 
-        if [ $str_nic_type = "ethernet" ];then
+        if [ "$str_nic_type" = "ethernet" ];then
              logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
              echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
              configeth $key ${array_temp[0]} ${array_temp[2]}
-        elif [ $str_nic_type = "infiniband" ];then
+        elif [ "$str_nic_type" = "infiniband" ];then
             if [ $str_ib_nics ];then
                 str_ib_nics=$str_ib_nics","$key
             else
