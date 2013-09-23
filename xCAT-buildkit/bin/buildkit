@@ -3557,7 +3557,7 @@ sub NEW_kit_addpkgs
         my $repodir = "$::base_repodir/$kr->{kitreponame}";
         if ( -d $repodir ) {
           my $cr_opts = '';
-          if (( $kr->{osbasename} =~  m/rh|RH/ ) &&
+          if (( $kr->{osbasename} =~  m/rh|RH|centos|CentOS/ ) &&
               ( $kr->{osmajorversion} eq '5') ) {
               $cr_opts = '-s md5';
           }
