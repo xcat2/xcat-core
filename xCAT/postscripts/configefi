@@ -47,8 +47,8 @@ else
     echo "grub-install --no-floppy --recheck $boot_device"
     grub-install --no-floppy --recheck $boot_device
     if [ $? -ne 0 ];then
-        #sles11, run grub install directly
-        grub-install
+        #sles11, run grub-install.unsupported directly
+        grub-install.unsupported --no-floppy --recheck $boot_device
     fi
    
     if [ -e /etc/mtab.bak ];then
