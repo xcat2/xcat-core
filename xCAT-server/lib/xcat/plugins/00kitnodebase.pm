@@ -170,7 +170,8 @@ sub process_request {
         my $current_cmd = $_->[0];
         my $current_args = $_->[1];
         setrsp_progress($msghash{$current_cmd});
-        my $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
+        $retref = "";
+        $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
         log_cmd_return($retref);
     }
     
