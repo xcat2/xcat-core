@@ -127,6 +127,7 @@ To import nodes using a profile, follow the following steps:
   # Node information file begins
   # This entry defines a Power rack-mount node.
   __hostname__:
+     mac=b8:ac:6f:37:59:28
      cec=mycec
   # Node information file ends.
 
