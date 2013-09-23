@@ -241,6 +241,11 @@ if (xCAT::Utils->isMN()) {
 # Set tunables 
 #
 #
+if (($::settunables) && ( $::osname eq 'AIX')) { # not supported on AIX
+     xCAT::MsgUtils->message('E', "Setting tunables (-t) is not supported on AIX.");
+     exit 1;
+}
+
 if ($::FORCE || $::settunables || $::INITIALINSTALL )
 {
    if ($::osname eq 'Linux') {
@@ -848,9 +853,43 @@ sub genSSHRootKeys
 sub settunables 
 
 {
-    xCAT::MsgUtils->message(
-    'I',
-    "The set of tunables that will be initialized is TBD.");
+   # tuning ARP on Linux
+   # set for right now
+   my $cmd = "/bin/echo '1024' >/proc/sys/net/ipv4/neigh/default/gc_thresh1";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   $cmd = "/bin/echo '4096' >/proc/sys/net/ipv4/neigh/default/gc_thresh2";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   $cmd = "/bin/echo '8192' >/proc/sys/net/ipv4/neigh/default/gc_thresh3";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   # set for after reboot
+   if (!( -f "/etc/sysctl.conf.xcatbackup")){  # not already backed up
+      $cmd = "cp /etc/sysctl.conf /etc/sysctl.conf.xcatbackup";
+      my $outref = xCAT::Utils->runcmd("$cmd", 0);
+      if ($::RUNCMD_RC != 0)
+      {
+        xCAT::MsgUtils->message( 'E', "Could not backup /etc/sysctl.conf.");
+        exit 1;
+      }
+   }
+   #delete all occurance of the attribute and then add xCAT settings
+   `sed -i '/net.ipv4.neigh.default.gc_thresh1 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh1 = 1024" >>/etc/sysctl.conf`;
+   `sed -i '/net.ipv4.neigh.default.gc_thresh2 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh2 = 4096" >>/etc/sysctl.conf`;
+   `sed -i '/net.ipv4.neigh.default.gc_thresh3 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh3 = 8192" >>/etc/sysctl.conf`;
  
 }
 #-----------------------------------------------------------------------------
