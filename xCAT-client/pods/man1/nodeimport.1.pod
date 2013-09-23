@@ -123,6 +123,14 @@ To import nodes using a profile, follow the following steps:
      switch=myswitch 
      switchport=9
 
+  Example of a node information file that specifies a CEC-based rack-mounted Power node that uses direct FSP management:
+  # Node information file begins
+  # This entry defines a Power rack-mount node.
+  __hostname__:
+     mac=b8:ac:6f:37:59:28
+     cec=mycec
+  # Node information file ends.
+
 The node information file includes the following items:
 
 B<__hostname__:>  This is a mandatory item.
@@ -144,6 +152,10 @@ Description: Specify switch port that the provisionging node is connected, where
 B<slotid=<slot-id>>  This is a mandatory item while define a PureFlex node.
 
 Description: The node position in the PureFlex Chassis.
+
+B<cec=<cec-name>>  This is a mandatory option for defining Power rack-mounted nodes.
+
+Description: Specifies the name of a Power rack-mount central electronic complex (CEC).
 
 B<ip=<ip-address>> This is an optional item.
 
