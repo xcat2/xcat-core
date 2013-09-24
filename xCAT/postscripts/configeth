@@ -421,7 +421,7 @@ elif [ "$1" = "-s" ];then
     fi
 
     if [ -f "/etc/debian_version" ];then
-        str_conf_file="/etc/sysconfig/network/ifcfg-${str_inst_nic}"
+        str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
         echo "auto ${str_inst_nic}" > $str_conf_file
         echo "iface ${str_inst_nic} inet static" >> $str_conf_file
         echo "  address ${str_inst_ip}" >> $str_conf_file
@@ -433,7 +433,7 @@ elif [ "$1" = "-s" ];then
         hostname $NODE
         echo $NODE > /etc/hostname
     elif [ -f "/etc/SuSE-release" ];then
-        str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
+        str_conf_file="/etc/sysconfig/network/ifcfg-${str_inst_nic}"
         echo "DEVICE=${str_inst_nic}" > $str_conf_file
         echo "BOOTPROTO=static" >> $str_conf_file
         echo "IPADDR=${str_inst_ip}" >> $str_conf_file
