@@ -1551,7 +1551,17 @@ sub buildnodestatus
 	   if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
 	   {
          my ($node,$info) = split (/:/, $line);
-         if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+         if ($::REPORTSTATUS eq "Y" ) { # return status NOW
+           if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+              my $rsp2 = {};  # report failed
+              $rsp2->{status}->[0] = "$node: FAILED";
+              $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="failed";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+           } else {  # completely successful
               my $rsp2 = {};
               $rsp2->{status}->[0] = "$node: SUCCEEDED";
               $::CALLERCALLBACK->($rsp2); 
@@ -1560,6 +1570,7 @@ sub buildnodestatus
               my @nodearray=();
               push @nodearray,$node;
               xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+           }
          }
          if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 		     next; 
@@ -1811,6 +1822,16 @@ sub getdata
             {
               my ($node,$info) = split (/:/, $output);
               if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+               if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+                  my $rsp2 = {};  # report failed
+                  $rsp2->{status}->[0] = "$node: FAILED";
+                  $::CALLERCALLBACK->($rsp2); 
+                  # update the nodelist table updatestatus flag for the node
+                  my $stat="failed";
+                  my @nodearray=();
+                  push @nodearray,$node;
+                  xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+               } else {  # completely successful
                    my $rsp2 = {};
                    $rsp2->{status}->[0] = "$node: SUCCEEDED";
                    $::CALLERCALLBACK->($rsp2); 
@@ -1819,6 +1840,7 @@ sub getdata
                    my @nodearray=();
                    push @nodearray,$node;
                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+               }
               }
               if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 		            next; 
@@ -1853,6 +1875,16 @@ sub getdata
                 }
               } else {   # already installed is ok
                   if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+                    if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+                      my $rsp2 = {};  # report failed
+                      $rsp2->{status}->[0] = "$node: FAILED";
+                      $::CALLERCALLBACK->($rsp2); 
+                      # update the nodelist table updatestatus flag for the node
+                      my $stat="failed";
+                      my @nodearray=();
+                      push @nodearray,$node;
+                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                   } else {  # completely successful
                       my $rsp2 = {};
                       $rsp2->{status}->[0] = "$node: SUCCEEDED";
                       $::CALLERCALLBACK->($rsp2); 
@@ -1861,6 +1893,7 @@ sub getdata
                       my @nodearray=();
                       push @nodearray,$node;
                       xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                   }
                   }
                   if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
 	                   next; 
