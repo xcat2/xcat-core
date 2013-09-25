@@ -127,6 +127,7 @@ sub handled_commands{
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
         clonevm => 'nodehm:mgt',
+        createvcluster => 'esx',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
         rshutdown => "nodetype:os=(esxi.*)",
@@ -144,6 +145,9 @@ sub handled_commands{
 sub preprocess_request {
 	my $request = shift;
 	my $callback = shift;
+    if ($request->{command}->[0] eq 'createvcluster') {
+        return [$request];
+    }
    #if already preprocessed, go straight to request
     if (   (defined($request->{_xcatpreprocessed}))
         && ($request->{_xcatpreprocessed}->[0] == 1))
@@ -174,7 +178,7 @@ sub preprocess_request {
 	my $noderange = $request->{node};  # array ref
 	my $command = $request->{command}->[0];
 	my $extraargs = $request->{arg};
-	my @exargs=($request->{arg});	
+	my @exargs=($request->{arg});
 	my %hyp_hash = ();
     my %cluster_hash=();
 
@@ -337,6 +341,10 @@ sub process_request {
     }
     unless ($vmwaresdkdetect) {
         xCAT::SvrUtils::sendmsg([1,"VMWare SDK required for operation, but not installed"], $output_handler);
+        return;
+    }
+    if ($command eq 'createvcluster') {
+        create_new_cluster($request);
         return;
     }
 
@@ -3341,6 +3349,37 @@ sub populate_vcenter_hostviews {
         }
     }
 }
+
+sub create_new_cluster {
+  my $req = shift;
+  @ARGV = @{$req->{arg}};
+  my $vcenter;
+  my $password;
+  my $user;
+  my $datacenter;
+  GetOptions(
+		'vcenter=s' => \$vcenter,
+        'password=s' => \$password,
+        'datacenter=s' => \$datacenter,
+        'username=s' => \$user,
+    );
+  my $clustername = shift @ARGV;
+  my $conn = Vim->new(service_url=>"https://$vcenter/sdk");
+  $conn->login(user_name=>$user, password=>$password);
+    if ($datacenter) {
+        $datacenter = $conn->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder'],filter=>{name=>$datacenter});
+        unless ($datacenter) {
+            xCAT::SvrUtils::sendmsg([1,": Unable to find requested datacenter"], $output_handler);
+            return;
+        }
+    } else {
+        $datacenter = $conn->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder']);
+    }
+    my $hfolder =  $conn->get_view(mo_ref=>$datacenter->hostFolder);
+    my $cfgspec = ClusterConfigSpecEx->new();
+    $hfolder->CreateClusterEx(name=>$clustername, spec=>$cfgspec);
+}
+
 sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is added correctly to a vCenter instance when an operation requires it
     my $hyp = shift;
     my $depfun = shift;
