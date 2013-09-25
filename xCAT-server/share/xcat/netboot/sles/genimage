@@ -794,7 +794,7 @@ if (@new_order) {
 }
 
 # add drivers for local disk support
-push @ndrivers, ("ext3.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "ibmvscsi.ko", "megaraid_sas.ko", "pcieport.ko", "scsi_mod.ko", "sd_mod.ko");
+push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "ibmvscsi.ko", "ibmvscsic.ko", "megaraid_sas.ko", "pcieport.ko", "sd_mod.ko");
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -811,14 +811,23 @@ while (scalar @checkdeps) {
         foreach $dep (@deps) {
             $dep =~ s/.*\///;
             unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
-                unshift (@checkdeps,$dep); #recursively check dependencies
-                unshift (@ndrivers,$dep);
                 print "Added $dep as an autodetected depedency\n";
             }
+            unshift (@checkdeps,$dep); #recursively check dependencies
+            unshift (@ndrivers,$dep);
         }
     }
 }
 close($moddeps);
+
+#remove the duplicated drivers
+my @fulldrivers;
+foreach my $dn (@ndrivers) {
+    unless (grep {$_ eq $dn} @fulldrivers) {
+        push @fulldrivers, $dn;
+    }
+}
+@ndrivers = @fulldrivers;
 
 # before mkinitrd, run depmod to generate the modules.dep
 system("chroot $rootimg_dir depmod $kernelver");
