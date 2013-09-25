@@ -2298,10 +2298,10 @@ sub insert_dd () {
     @rpm_drivers = keys %dnhash;
 
     if (@rpm_list) {
-        if (@driver_list) {
+        if (@rpm_drivers) {
             push @{$rsp->{data}}, "The drivers:".join(',', sort(@rpm_drivers))." from ".join(',', sort(@rpm_list))." have been injected to initrd.";
-        } elsif ($Injectalldriver) {
-            push @{$rsp->{data}}, "All the drivers from :".join(',', sort(@rpm_list))." have been injected to initrd.";
+        } else {
+            push @{$rsp->{data}}, "No driver was injected to initrd.";
         }
     }
     xCAT::MsgUtils->message("I", $rsp, $callback);
