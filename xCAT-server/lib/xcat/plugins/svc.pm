@@ -75,6 +75,8 @@ sub mkstorage {
         }
         my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
         my $wwns = get_wwns(@nodes);
+        makehosts($wwns, controller=>$controller, cfg=>$storents);
+        bindhosts(\@nodes, $lun, controller=>$controller);
     } else {
         foreach my $node (@nodes) {
             mkstorage_single(node=>$node, size=>$size, pool=>$pool,
@@ -84,21 +86,75 @@ sub mkstorage {
     }
 }
 
+sub bindhosts {
+    my $nodes = shift;
+    my $lun = shift;
+    my %args = @_;
+    my $session = establish_session(%args);
+    foreach my $node (@$nodes) {
+        #TODO: get what failure looks like... somehow...
+        #I guess I could make something with mismatched name and see how it
+        #goes
+        $session->cmd("mkvdiskhostmap -host $node ".$lun->{id});
+    }
+}
+
+sub makehosts {
+    my $wwnmap = shift;
+    my %args = @_;
+    my $session = establish_session(%args);
+    my $stortab = xCAT::Table->new('storage');
+    foreach my $node (keys %$wwnmap) {
+        my $wwnstr = "";
+        foreach my $wwn (@{$wwnmap->{$node}}) {
+            $wwn =~ s/://g;
+            $wwnstr .= $wwn . ":";
+        }
+        chop($wwnstr);
+        #TODO: what if the given wwn exists, but *not* as the nodename we want
+        #the correct action is to look at hosts, see if one exists, and reuse,
+        #create, or warn depending
+        $session->cmd("mkhost -name $node -fcwwpn $wwnstr -force");
+        my @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
+        if ($args{cfg}->{$node}->[0] and $args{cfg}->{$node}->[0]->{controller}) {
+            @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
+        } else {
+            @currentcontrollers = ();
+        }
+        if (grep { $_ eq $args{controller}} @currentcontrollers) {
+            next;
+        }
+        unshift @currentcontrollers, $args{controller};
+        my $ctrstring = join ",", @currentcontrollers;
+        $stortab->setNodeAttribs($node,{controller=>$ctrstring});
+    }
+}
+
+my %wwnmap;
 sub got_wwns {
-    use Data::Dumper;
-    print Dumper(@_);
+    my $rsp = shift;
+    foreach my $ndata (@{$rsp->{node}}) {
+        my $nodename = $ndata->{name}->[0];
+        my @wwns = ();
+        foreach my $data (@{$ndata->{data}}) {
+            push @{$wwnmap{$nodename}}, $data->{contents}->[0];
+        }
+    }
 }
 
 sub get_wwns {
+    %wwnmap = ();
     my @nodes = @_;
+    foreach my $node (@nodes) {
+        $wwnmap{$node} = [];
+    }
     my %request = (
         node => \@nodes,
         command => [ 'rinv' ],
         arg => [ 'wwn' ]
     );
-    use Data::Dumper;
-    print Dumper(\%request);
     $dorequest->(\%request, \&got_wwns);
+    return \%wwnmap;
 }
 
 my $globaluser;
@@ -188,6 +244,37 @@ sub assure_identical_table_values {
 
 sub mkstorage_single {
     my %args = @_;
+    my $size;
+    my $cfg = $args{cfg};
+    my $node = $args{node};
+    my $pool;
+    my $controller;
+    if (defined $args{size}) {
+        $size = $args{size};
+    } elsif ($cfg->{size}) {
+        $size = $cfg->{size};
+    } else {
+        sendmsg([1, "Size not provided via argument or storage.size"],
+            $callback, $node);
+    }
+    if (defined $args{pool}) {
+        $pool = $args{pool};
+    } elsif ($cfg->{storagepool}) {
+        $pool = $cfg->{storagepool};
+    } else {
+        sendmsg([1, "Pool not provided via argument or storage.storagepool"],
+            $callback, $node);
+    }
+    if (defined $args{controller}) {
+        $controller = $args{controller};
+    } elsif ($cfg->{controller}) {
+        $controller = $cfg->{controller};
+        $controller =~ s/.*,//;
+    }
+    my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
+    my $wwns = get_wwns($node);
+    makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    bindhosts([$node], $lun, controller=>$controller);
 }
 
 sub process_request {
