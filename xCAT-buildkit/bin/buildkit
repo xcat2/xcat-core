@@ -3080,9 +3080,6 @@ sub kit_addpkgs
     $kitbfname =~ s/.tar.bz2$//;
     $kitbfname =~ s/.NEED_PRODUCT_PKGS$//;
 
-
-# ndebug
-    # my $tmpdir_base = "/tmp/buildkit_workdir/$kitbfname";
     my $tmpdir_base = "/tmp/$kitbfname";
 
     # Cleanup - should have been removed when last command ran
