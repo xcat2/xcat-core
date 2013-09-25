@@ -23,9 +23,6 @@ BEGIN
 if ($^O =~ /^aix/i) {
         print "ERROR - buildkit is not supported on AIX \n";
         exit 1;
-# if AIX - make sure we include perl 5.8.2 in INC path.
-#       Needed to find perl dependencies shipped in deps tarball.
-#	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -582,6 +579,7 @@ sub kit_create
     }
 
     print "Kit template for $kitname created in $kitdir directory \n";
+    return 0;
 }
 
 #-----------------------------------------------------------------------------
@@ -644,7 +642,7 @@ sub kit_buildrepo
             if ( &kit_buildrepo1($kr->{kitrepoid}) ) { return 1; }
         }
     }
-
+    return $rc;
 }
 
 #-----------------------------------------------------------------------------
@@ -1030,7 +1028,7 @@ sub kit_cleantar
             print "Removed $::workdir/debbuild\n";
         }
     }
-	return;
+	return 0;
 }
 
 #-----------------------------------------------------------------------------
