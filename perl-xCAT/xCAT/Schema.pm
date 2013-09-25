@@ -267,11 +267,14 @@ virtsd => {
 },
 
 storage => {
-    cols => [qw(node osvolume size state storagepool hypervisor fcprange volumetag comments disable)],
+    cols => [qw(node osvolume size state storagepool hypervisor fcprange volumetag type controller comments disable)],
     keys => [qw(node)],
     table_descr => 'Node storage resources',
     descriptions => {
         node => 'The node name',
+        controller => 'The management address to attach/detach new volumes.
+                       In the scenario involving multiple controllers, this data must be
+                       passed as argument rather than by table value',
         osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
                 localdisk (Install to first non-FC attached disk)
                 usbdisk (Install to first USB mass storage device seen)
@@ -281,6 +284,7 @@ storage => {
         storagepool => 'Name of storage pool where the volume is assigned.',
         hypervisor => 'Name of the hypervisor where the volume is configured.',
         fcprange => 'A range of acceptable fibre channels that the volume can use. Examples include: 3B00-3C00;4B00-4C00.',
+        type => 'The plugin used to drive storage configuration (e.g. svc)',
         volumetag => 'A specific tag used to identify the volume in the autoyast or kickstart template.',
         comments => 'Any user-written notes.',
         disable => "Set to 'yes' or '1' to comment out this row.",
@@ -2217,6 +2221,14 @@ my @nodeattrs = (
 ######################
                 {attr_name => 'osvolume',
                  tabentry => 'storage.osvolume',
+                 access_tabentry => 'storage.node=attr:node',
+                },
+                {attr_name => 'storagcontroller',
+                 tabentry => 'storage.controller',
+                 access_tabentry => 'storage.node=attr:node',
+                },
+                {attr_name => 'storagetype',
+                 tabentry => 'storage.type',
                  access_tabentry => 'storage.node=attr:node',
                 },
 ######################

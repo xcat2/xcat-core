@@ -66,14 +66,19 @@ sub new {
 	$self->print($password);
 	my $nextline = $self->getline();
 	chomp($nextline);
-	while ($nextline =~ /^\s*$/) {
+	while ($nextline =~ /^\s*$/ or $nextline =~ /^Last login:/) {
 	    $nextline = $self->get();
 	    chomp($nextline);
 	}
 	if ($nextline =~ /password:/i or $nextline =~ /Permission denied, please try again/ or $nextline =~ /disconnect from/) {
 	    die "Incorrect Password";
-	} elsif ($nextline =~ /$promptex/) {
-	    *$self->{_xcatsshinteract}->{_atprompt}=1;
+	} else {
+        while ($nextline =~ /^Last login:/) {
+	        $nextline = $self->get();
+        }
+        if ($nextline =~ /$promptex/) {
+	        *$self->{_xcatsshinteract}->{_atprompt}=1;
+        }
 	}
     } elsif ($match =~ /$promptex/) {
 	*$self->{_xcatsshinteract}->{_atprompt}=1;
