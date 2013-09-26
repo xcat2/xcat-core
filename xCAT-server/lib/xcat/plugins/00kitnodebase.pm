@@ -143,6 +143,10 @@ sub process_request {
         if($macflag)
         {
             if ($chainarray[0]){
+                if($chainarray[0] =~ m/^osimage=/)
+                {
+                    $chainarray[0] = $chainarray[0] . " --noupdateinitrd";
+                }
                 push @commandslist, ['nodeset', $chainarray[0]];
             }
         }
@@ -160,7 +164,7 @@ sub process_request {
     }elsif ($command eq 'kitnodeupdate') {
         my $firstnode = (@$nodelist)[0];
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
-            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"};
+            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"}.' --noupdateinitrd';
             push @commandslist, ['nodeset', $osimage];
         }
     }
