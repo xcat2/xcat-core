@@ -56,6 +56,7 @@ sub mknetboot
     my $globaltftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
     my @nodes    = @{$req->{node}};
+    my $noupdateinitrd = $req->{'noupdateinitrd'};
     my $ostab    = xCAT::Table->new('nodetype');
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
@@ -405,7 +406,7 @@ sub mknetboot
             }
         }
 
-        if ($docopy) {
+        if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
             copy("$rootimgdir/kernel", "$tftppath");
             if ($statelite) {
