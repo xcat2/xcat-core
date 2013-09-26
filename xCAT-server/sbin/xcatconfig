@@ -1873,20 +1873,20 @@ sub mknb
     # the xCAT-genesis-base.spec file touches /etc/xcat/genesis-base-updated, 
     # so we know to run mknb here.
     my $cmd;
-    if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-scripts-updated') ) {
+    if ((($::arch eq "x86_64") ||($::arch =~ /ppc/)) && (-f '/etc/xcat/genesis-scripts-updated') ) {
       unlink '/etc/xcat/genesis-scripts-updated';
       # Do not print messages or run command twice
       if (-f '/etc/xcat/genesis-base-updated') {
           unlink '/etc/xcat/genesis-base-updated';
       }
       $cmd = "$::XCATROOT/sbin/mknb $::arch";
-      xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...");
+      xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-$::arch ...");
     }
 
-    if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-base-updated')) {
+    if ((($::arch eq "x86_64") ||($::arch =~ /ppc/)) && (-f '/etc/xcat/genesis-base-updated')) {
         unlink '/etc/xcat/genesis-base-updated';
         $cmd = "$::XCATROOT/sbin/mknb $::arch";
-        xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base-x86_64 ...");
+        xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base-$::arch ...");
     }
     #my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($cmd) {
