@@ -41,6 +41,7 @@ if [ -z "$instdisk" ]; then
         fi
 fi
 if [ ! -z "$instdisk" ]; then debconf-set partman-auto/disk "$instdisk"; fi
+debconf-get open-iscsi/targets > /tmp/q
 sleep 0.1
 done &
 
