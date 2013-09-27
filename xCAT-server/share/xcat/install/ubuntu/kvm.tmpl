@@ -5,14 +5,14 @@ d-i localechooser/supported-locales multiselect en_US.UTF-8
 
 # Keyboard Selection
 d-i console-setup/ask_detect boolean false
-d-i console-setup/layoutcode string en
+d-i keyboard-configuration/layoutcode string en
 
 ### Network Configuration
 
 d-i netcfg/get_hostname string unassigned-hostname
 d-i netcfg/get_domain string unassigned-domain
 d-i netcfg/wireless_wep string
-
+d-i netcfg/dhcp_timeout string 120
 ### Mirror settings
 # If you select ftp, the mirror/country string does not need to be set.
 
