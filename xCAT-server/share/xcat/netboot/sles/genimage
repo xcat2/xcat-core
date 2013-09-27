@@ -173,15 +173,13 @@ if ($netdriver) {
     }
 }
 
-# Use the default list if not specified
-unless (@ndrivers) {
-    if ($arch eq 'x86' or $arch eq 'x86_64') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net/;
-    } elsif ($arch eq 'ppc64') {
-        @ndrivers = qw/tg3 e1000 e1000e igb ibmveth ehea be2net/;
-    } elsif ($arch eq "s390x") {
-        @ndrivers = qw/qdio ccwgroup qeth qeth_l2 qeth_l3/;
-    }
+# Add the default driver list
+if ($arch eq 'x86' or $arch eq 'x86_64') {
+    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en be2net/;
+} elsif ($arch eq 'ppc64') {
+    push @ndrivers, qw/tg3 e1000 e1000e igb ibmveth ehea be2net/;
+} elsif ($arch eq "s390x") {
+    push @ndrivers, qw/qdio ccwgroup qeth qeth_l2 qeth_l3/;
 }
 
 foreach (@ndrivers) {
@@ -783,10 +781,6 @@ foreach my $dd (@dd_drivers) {
         push @new_order, $dd;
     }
     print "Added driver $dd from driver update disk or driver rpm\n";
-}
-
-foreach my $driver (@ndrivers) {
-    print "Added driver $driver from root image\n";
 }
 
 if (@new_order) {
@@ -1563,7 +1557,7 @@ EOMS
         print "The initial ramdisk for statelite has been generated successfully!\n";
     } else {
         system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-stateless.gz");
-        print "The initial ramdisk for statelite has been generated successfully!\n";
+        print "The initial ramdisk for stateless has been generated successfully!\n";
     }
    system("rm -rf /tmp/xcatinitrd.$$");
 
@@ -1583,6 +1577,7 @@ sub isnetdriver {
          my $filetoadd = $File::Find::name;
          $filetoadd =~ s!$rootimg_dir!!;
          push @filestoadd,[$filetoadd,"lib/$_"];
+         print "Added driver $_ to initrd\n";
       }
    }
 }
@@ -2001,7 +1996,7 @@ sub load_dd()
                   system ("cp -rf $real_path $rootimg_dir$1");
                   push @rpm_drivers, $driver;
               } else {
-                  print "Error: cannot find the driver $driver from the driver rpms\n";
+                  print "Warning: cannot find the driver $driver from the driver rpms\n";
               }
             }
           } elsif ($Injectalldriver) {
