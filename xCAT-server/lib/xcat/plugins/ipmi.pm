@@ -5489,6 +5489,57 @@ sub sensor_was_read {
             if (@exparts) {
                 $extext = join(",",@exparts);
             }
+        } elsif ($sdr->sensor_type == 0x28) {
+            if ($exdata1 & 1) {
+                push @exparts,"Degraded or unavailable";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Degraded or unavailable";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Offline";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Unavailable";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Failure";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"FRU Failure";
+            }
+        } elsif ($sdr->sensor_type == 0x2b) {
+            if ($exdata1 & 1) {
+                push @exparts,"Change detected";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Firmware change detected";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Hardware incompatibility detected";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Firmware incompatibility detected";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Unsupported hardware version";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Unsupported firmware verion";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"Hardware change successful";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Firmware change successful";
+            }
+    	} elsif ($sdr->sensor_type == 0x1b) {
+            if ($exdata1 & 1) {
+                push @exparts,"Cable connected";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Incorrect cable connection";
+            }
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
         }
