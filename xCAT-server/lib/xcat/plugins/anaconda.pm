@@ -172,6 +172,7 @@ sub mknetboot
     my $nodes    = @{$req->{node}};
     my @args     = @{$req->{arg}} if(exists($req->{arg}));
     my @nodes    = @{$req->{node}};
+    my $noupdateinitrd = $req->{'noupdateinitrd'};
     my $ostab    = xCAT::Table->new('nodetype');
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
@@ -522,7 +523,7 @@ sub mknetboot
             }
         }
         
-        if ($docopy) {
+        if ($docopy && !$noupdateinitrd) {
             mkpath("$tftppath");
             if (-f "$rootimgdir/hypervisor") {
                 copy("$rootimgdir/hypervisor", "$tftppath");

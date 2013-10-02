@@ -10,6 +10,7 @@ use xCAT::SvrUtils;
 use xCAT::Table;
 #use Data::Dumper;
 use File::Path;
+use File::Copy;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -169,6 +170,7 @@ sub process_request {
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
        $destdir = $ref_linuximage_tab->{'rootimgdir'};
+       $rootimg_dir = $ref_linuximage_tab->{'rootimgdir'};
        $driverupdatesrc = $ref_linuximage_tab->{'driverupdatesrc'};
        
        # TODO: how can we do if the user specifies one wrong value to the following attributes?
@@ -363,6 +365,31 @@ sub process_request {
        #   print FILE "\n";
        #}
        #close FILE; 
+
+       # update the generated initrd to /tftpboot/xcat so that don't need to rerun nodeset to update them
+       if (($::RUNCMD_RC == 0) && $imagename) {
+           my $tftpdir  = "/tftpboot";
+           my @siteents = xCAT::TableUtils->get_site_attribute("tftpdir");
+           if ($#siteents >= 0)
+           {
+               $tftpdir = $siteents[0];
+           }
+           my $tftppath = "$tftpdir/xcat/osimage/$imagename";
+
+           my $installdir = "/install";
+           @siteents = xCAT::TableUtils->get_site_attribute("installdir");
+           if ($#siteents >= 0)
+           {
+               $installdir = $siteents[0];
+           }
+
+           unless (-d $tftppath) {
+               mkpath $tftppath;
+           }
+           copy("$rootimg_dir/initrd-stateless.gz", "$tftppath");
+           copy("$rootimg_dir/initrd-statelite.gz", "$tftppath");
+           copy("$rootimg_dir/kernel", "$tftppath");
+       }
        
        #parse the output and save the image data to osimage and linuximage table
        save_image_data($callback, $doreq, $tempfile);

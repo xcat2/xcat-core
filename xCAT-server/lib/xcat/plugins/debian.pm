@@ -770,7 +770,7 @@ sub mkinstall
             #      . $node;
             #} else 
 	    #{
-            my $kcmdline = "quiet auto url=http://"
+            my $kcmdline = "nofb utf8 auto url=http://"
                   . $instserver
                   . "/install/autoinst/"
                   . $node;
@@ -831,7 +831,7 @@ sub mkinstall
             #}
 
             # need to add these in, otherwise aptitude will ask questions
-	        $kcmdline .= " locale=en_US console-setup/layoutcode=us";
+	        $kcmdline .= " locale=en_US";
 	        #$kcmdline .= " netcfg/wireless_wep= netcfg/get_hostname= netcfg/get_domain=";
 	    
             # default answers as much as possible, we don't want any interactiveness :)
@@ -849,10 +849,15 @@ sub mkinstall
 	        #$kcmdline .= " DEBCONF_DEBUG=5";
 
 	        # I don't need the timeout for ubuntu, but for debian there is a problem with getting dhcp in a timely manner
-	        $kcmdline .= " netcfg/dhcp_timeout=120";
 
             # safer way to set hostname, avoid problems with nameservers
             $kcmdline .= " hostname=".$node;
+
+            #from 12.10, the live install changed, so add the live-installer
+             if ( -r "$pkgdir/install/filesystem.squashfs")
+             {
+                 $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
+             }
 
             $bptab->setNodeAttribs(
                                    $node,
