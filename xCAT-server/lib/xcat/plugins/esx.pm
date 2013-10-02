@@ -77,8 +77,8 @@ sub recursion_copy {
                 } else {
                         copy($tempsource,$tempdestination) or die "failed copy from $tempsource to $tempdestination, $!";
                 }
-        } 
-}       
+        }
+}
 sub lockbyname {
 	my $name = shift;
 	my $lckh;
@@ -128,6 +128,7 @@ sub handled_commands{
 		rmvm => 'nodehm:mgt',
         clonevm => 'nodehm:mgt',
         createvcluster => 'esx',
+        lsvcluster => 'esx',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
         rshutdown => "nodetype:os=(esxi.*)",
@@ -145,7 +146,7 @@ sub handled_commands{
 sub preprocess_request {
 	my $request = shift;
 	my $callback = shift;
-    if ($request->{command}->[0] eq 'createvcluster') {
+    if ($request->{command}->[0] eq 'createvcluster' or $request->{command}->[0] eq 'lsvcluster') {
         return [$request];
     }
    #if already preprocessed, go straight to request
@@ -345,6 +346,10 @@ sub process_request {
     }
     if ($command eq 'createvcluster') {
         create_new_cluster($request);
+        return;
+    }
+    if ($command eq 'lsvcluster') {
+        list_clusters($request);
         return;
     }
 
@@ -3378,6 +3383,29 @@ sub create_new_cluster {
     my $hfolder =  $conn->get_view(mo_ref=>$datacenter->hostFolder);
     my $cfgspec = ClusterConfigSpecEx->new();
     $hfolder->CreateClusterEx(name=>$clustername, spec=>$cfgspec);
+}
+sub list_clusters {
+  my $req = shift;
+  @ARGV = @{$req->{arg}};
+  my $vcenter;
+  my $password;
+  my $user;
+  my $datacenter;
+  GetOptions(
+		'vcenter=s' => \$vcenter,
+        'password=s' => \$password,
+        'datacenter=s' => \$datacenter,
+        'username=s' => \$user,
+    );
+  my $clustername = shift @ARGV;
+  my $conn = Vim->new(service_url=>"https://$vcenter/sdk");
+  $conn->login(user_name=>$user, password=>$password);
+  use Data::Dumper;
+  my $clustviews = $conn->find_entity_views(view_type=> 'ClusterComputeResource');
+  foreach (@$clustviews) {
+            xCAT::SvrUtils::sendmsg($_->{name}, $output_handler);
+  }
+  return;
 }
 
 sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is added correctly to a vCenter instance when an operation requires it
