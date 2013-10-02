@@ -5,21 +5,36 @@
 # It is called by xcatdsklspost before calling getpostscripts.awk
 # it is called by remoteshell before calling getcredentials.awk
 #
-exec 50<>/dev/udp/$1/$2
-echo "resourcerequest: xcatd" >&50
+# check bash version, if < 4 then cannot use autodetect of next FD
+bashversion=$BASH_VERSION
+bashversionnum=`echo $bashversion | cut -d. -f1`
+if [[ $bashversionnum > 3 ]]; then
+    exec {REMOTEFD}<>/dev/udp/$1/$2
+else
+    exec 50<>/dev/udp/$1/$2
+    echo "resourcerequest: xcatd" >&50
+    REMOTEFD=50
+fi
+echo "resourcerequest: xcatd" >&$REMOTEFD
 parpid=$$
 touch /tmp/goahead.$parpid
 touch /tmp/killme.$parpid
 exec 2> /dev/null
 while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 	(
-      echo "resourcerequest: xcatd" >&50
-      exec 51<>/proc/self/stat
-      read mystat<&51
+      echo "resourcerequest: xcatd" >&$REMOTEFD
+      if [[ $bashversionnum > 3 ]]; then
+         exec {LOCALFD}<>/proc/self/stat
+      else
+        exec 51<>/proc/self/stat
+        LOCALFD=51
+      fi
+      read mystat<&$LOCALFD
       mypid=$(echo $mystat|cut -d " " -f 4)
 	  (sleep $(((RANDOM%60)+120)).$((RANDOM%50)); if [ -f /tmp/killme.$parpid ]; then kill -TERM $mypid; fi) &
       echo $! > /tmp/sleeperpid.$parpid
-	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&50
+	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&$REMOTEFD
+      exec {LOCALFD}>&-
 	)	
 done
 sleeper=$(cat /tmp/sleeperpid.$parpid)
@@ -27,4 +42,9 @@ sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
 rm /tmp/goahead.$parpid
 rm /tmp/sleeperpid.$parpid
 rm /tmp/killme.$parpid
+if [[ $bashversionnum > 3 ]]; then
+  exec {REMOTEFD}>&-
+else
+  exec 50>&-
+fi
 kill -TERM $sleeper
