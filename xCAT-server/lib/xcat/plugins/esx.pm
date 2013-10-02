@@ -23,6 +23,7 @@ use File::Temp qw/tempdir/;
 use File::Copy;
 use Fcntl qw/:flock/;
 use IO::Socket; #Need name resolution
+use Scalar::Util qw/looks_like_number/;
 #use Data::Dumper;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -2087,11 +2088,16 @@ sub chhypervisor {
     my $maintenance;
 	my $online;
     my $stat;
+    my $vlanaddspec;
+    my $vlanremspec;
     require Getopt::Long;
     GetOptions(
         'maintenance|m' => \$maintenance,
         'online|o' => \$online,
         'show|s' => \$stat,
+        'show|s' => \$stat,
+        'addvlan=s' => \$vlanaddspec,
+        'removevlan=s' => \$vlanremspec,
         );
     my $hyp = $args{hyp};
     $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
@@ -2119,8 +2125,11 @@ sub chhypervisor {
                         xCAT::SvrUtils::sendmsg("hypervisor online", $output_handler,$hyp);
                 }
         }
+    } elsif ($vlanaddspec) {
+        fixup_hostportgroup($vlanaddspec, $hyp);
+    } elsif ($vlanremspec) {
+        fixup_hostportgroup($vlanremspec, $hyp, action=>'remove');
     }
-
     return;
 }
   
@@ -3736,6 +3745,93 @@ sub scan_cluster_networks {
         }
     }
 }
+
+sub fixup_hostportgroup {
+    my $vlanspec = shift;
+    my $hyp = shift;
+    my %args = @_;
+    my $action = 'add';
+    if ($args{action}) { $action = $args{action} }
+    my $hostview = $hyphash{$hyp}->{hostview};
+    my $switchsupport = 0;
+    eval {
+        require xCAT::SwitchHandler;
+        $switchsupport = 1;
+    };
+    my $hypconn = $hyphash{$hyp}->{conn}; #this function can't work in clustered mode anyway, so this is appropriote.
+    my $vldata = $vlanspec;
+    my $switchname = get_default_switch_for_hypervisor($hyp);
+    my $pgname;
+    $vldata =~ s/=.*//; #TODO specify nic model with <blah>=model
+    if ($vldata =~ /:/) { #The config specifies a particular path in some way
+        $vldata =~ s/(.*)://;
+        $switchname = get_switchname_for_portdesc($hyp,$1);
+        $pgname=$switchname."-".$vldata;
+    } else { #Use the default vswitch per table config to connect this through, use the same name we did before to maintain compatibility
+        $pgname=$vldata;
+    }
+    my $netsys;
+    $hyphash{$hyp}->{pgnames}->{$vlanspec}=$pgname;
+    my $policy = HostNetworkPolicy->new();
+    unless ($hyphash{$hyp}->{nets}->{$pgname}) {
+        my $vlanid;
+        if (looks_like_number($vldata)) {
+            $vlanid = $vldata;
+        } elsif ($vldata =~ /trunk/) {
+            $vlanid=4095;
+        } elsif ($vldata =~ /vl(an)?(\d+)$/) {
+            $vlanid=$2;
+        } else {
+            $vlanid = 0;
+        }
+        if ($vlanid > 0 and $vlanid < 4095 and $switchsupport) {
+            my $switchtab = xCAT::Table->new("switch", -create=>0);
+            if ($switchtab) {
+                my $swent = $switchtab->getNodeAttribs($hyp, [qw/switch port/]);
+                if ($swent and $swent->{'switch'}) {
+                    my $swh = new xCAT::SwitchHandler->new($swent->{'switch'});
+                    my @vlids = $swh->get_vlan_ids();
+                    if ($action eq 'add') {
+                        unless (grep {$_ eq $vlanid} @vlids) {
+                            $swh->create_vlan($vlanid);
+                        }
+                        $swh->add_ports_to_vlan($vlanid, $swent->{'port'});
+                    } elsif ($action eq 'remove') {
+                        $swh->remove_ports_from_vlan($vlanid, $swent->{'port'});
+                    }
+                }
+            }
+        }
+        my $hostgroupdef = HostPortGroupSpec->new(
+            name =>$pgname,
+            vlanId=>$vlanid,
+            policy=>$policy,
+            vswitchName=>$switchname
+            );
+        unless ($netsys) {
+            $netsys = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem);
+        }
+        if ($action eq 'remove') {
+            $netsys->RemovePortGroup(pgName=>$pgname);
+            return;
+        } elsif ($action eq 'add') {
+            $netsys->AddPortGroup(portgrp=>$hostgroupdef);
+        }
+        #$hyphash{$hyp}->{nets}->{$netname}=1;
+        while ((not defined $hyphash{$hyp}->{nets}->{$pgname}) and sleep 1) { #we will only sleep if we know something will be waiting for
+            $hostview->update_view_data(); #pull in changes induced by previous activity
+            if (defined $hostview->{network}) { #We load the new object references
+                foreach (@{$hostview->network}) {
+                    my $nvw = $hypconn->get_view(mo_ref=>$_);
+                    if (defined $nvw->name) {
+                        $hyphash{$hyp}->{nets}->{$nvw->name}=$_;
+                    }
+                }
+            }
+        }
+    }
+}
+
 sub validate_network_prereqs {
     my $nodes = shift;
     my $hyp  = shift;
@@ -3761,53 +3857,7 @@ sub validate_network_prereqs {
     foreach $node (@$nodes) {
         my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
         foreach (@networks) {
-            my $switchname = get_default_switch_for_hypervisor($hyp); 
-            my $tabval=$_;
-            my $pgname;
-            s/=.*//; #TODO specify nic model with <blah>=model
-            if (/:/) { #The config specifies a particular path in some way
-                s/(.*)://;
-                $switchname = get_switchname_for_portdesc($hyp,$1);
-                $pgname=$switchname."-".$_;
-            } else { #Use the default vswitch per table config to connect this through, use the same name we did before to maintain compatibility
-                $pgname=$_;
-            }
-            my $netname = $_;
-            my $netsys;
-            $hyphash{$hyp}->{pgnames}->{$tabval}=$pgname;
-            my $policy = HostNetworkPolicy->new();
-            unless ($hyphash{$hyp}->{nets}->{$pgname}) {
-                my $vlanid;
-                if ($netname =~ /trunk/) {
-                    $vlanid=4095;
-                } elsif ($netname =~ /vl(an)?(\d+)$/) {
-                    $vlanid=$2;
-                } else {
-                    $vlanid = 0;
-                }
-                my $hostgroupdef = HostPortGroupSpec->new(
-                    name =>$pgname,
-                    vlanId=>$vlanid,
-                    policy=>$policy,
-                    vswitchName=>$switchname
-                    );
-                unless ($netsys) {
-                    $netsys = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem);
-                }
-                $netsys->AddPortGroup(portgrp=>$hostgroupdef);
-                #$hyphash{$hyp}->{nets}->{$netname}=1;
-                while ((not defined $hyphash{$hyp}->{nets}->{$pgname}) and sleep 1) { #we will only sleep if we know something will be waiting for
-                    $hostview->update_view_data(); #pull in changes induced by previous activity
-                    if (defined $hostview->{network}) { #We load the new object references
-                        foreach (@{$hostview->network}) {
-                            my $nvw = $hypconn->get_view(mo_ref=>$_);
-                            if (defined $nvw->name) {
-                                $hyphash{$hyp}->{nets}->{$nvw->name}=$_;
-                            }
-                        }
-                    }
-                } #end while loop
-            }
+            fixup_hostportgroup($_, $hyp);
         }
     }
     return 1;

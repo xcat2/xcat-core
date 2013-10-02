@@ -21,6 +21,7 @@ sub handled_commands {
     return {
         mkstorage => "storage:type",
         rmstorage => "storage:type",
+        lspool => "storage:type",
     }
 }
 
@@ -86,6 +87,25 @@ sub mkstorage {
     }
 }
 
+sub hashifyoutput {
+    my @svcoutput = @_;
+    my $hdr = shift @svcoutput;
+    my @columns = split /:/, $hdr;
+    my @ret;
+    foreach my $line (@svcoutput) {
+        my $index = 0;
+        my %record = ();
+        my $keyname;
+        foreach my $datum (split /:/, $line) {
+            $keyname = $columns[$index];
+            $record{$keyname} = $datum;
+            $index += 1;
+        }
+        push @ret,\%record;
+    }
+    pop @ret; # discard data from prompt
+    return @ret;
+}
 sub bindhosts {
     my $nodes = shift;
     my $lun = shift;
@@ -283,9 +303,23 @@ sub process_request {
     $dorequest = shift;
     if ($request->{command}->[0] eq 'mkstorage') {
         mkstorage($request);
+    } elsif ($request->{command}->[0] eq 'lspool') {
+        lsmdiskgrp($request);
     }
     foreach (values %controllersessions) {
         $_->close();
+    }
+}
+
+sub lsmdiskgrp {
+    my $req = shift;
+    foreach my $node (@{$req->{node}}) {
+        my $session = establish_session(controller=>$node);
+        my @pools = hashifyoutput($session->cmd("lsmdiskgrp -delim :"));
+        foreach my $pool (@pools) {
+            sendmsg($pool->{name}. " available capacity: ".$pool->{free_capacity},$callback,$node);
+            sendmsg($pool->{name}. " total capacity: ".$pool->{capacity},$callback,$node);
+        }
     }
 }
 
