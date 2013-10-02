@@ -2127,6 +2127,8 @@ sub chhypervisor {
         }
     } elsif ($vlanaddspec) {
         fixup_hostportgroup($vlanaddspec, $hyp);
+    } elsif ($vlanremspec) {
+        fixup_hostportgroup($vlanremspec, $hyp, action=>'remove');
     }
     return;
 }
@@ -3748,6 +3750,8 @@ sub fixup_hostportgroup {
     my $vlanspec = shift;
     my $hyp = shift;
     my %args = @_;
+    my $action = 'add';
+    if ($args{action}) { $action = $args{action} }
     my $hostview = $hyphash{$hyp}->{hostview};
     my $switchsupport = 0;
     eval {
@@ -3787,10 +3791,14 @@ sub fixup_hostportgroup {
                 if ($swent and $swent->{'switch'}) {
                     my $swh = new xCAT::SwitchHandler->new($swent->{'switch'});
                     my @vlids = $swh->get_vlan_ids();
-                    unless (grep {$_ eq $vlanid} @vlids) {
-                        $swh->create_vlan($vlanid);
+                    if ($action eq 'add') {
+                        unless (grep {$_ eq $vlanid} @vlids) {
+                            $swh->create_vlan($vlanid);
+                        }
+                        $swh->add_ports_to_vlan($vlanid, $swent->{'port'});
+                    } elsif ($action eq 'remove') {
+                        $swh->remove_ports_from_vlan($vlanid, $swent->{'port'});
                     }
-                    $swh->add_ports_to_vlan($vlanid, $swent->{'port'});
                 }
             }
         }
@@ -3803,7 +3811,12 @@ sub fixup_hostportgroup {
         unless ($netsys) {
             $netsys = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem);
         }
-        $netsys->AddPortGroup(portgrp=>$hostgroupdef);
+        if ($action eq 'remove') {
+            $netsys->RemovePortGroup(pgName=>$pgname);
+            return;
+        } elsif ($action eq 'add') {
+            $netsys->AddPortGroup(portgrp=>$hostgroupdef);
+        }
         #$hyphash{$hyp}->{nets}->{$netname}=1;
         while ((not defined $hyphash{$hyp}->{nets}->{$pgname}) and sleep 1) { #we will only sleep if we know something will be waiting for
             $hostview->update_view_data(); #pull in changes induced by previous activity
