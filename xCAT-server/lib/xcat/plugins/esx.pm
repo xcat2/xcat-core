@@ -23,6 +23,7 @@ use File::Temp qw/tempdir/;
 use File::Copy;
 use Fcntl qw/:flock/;
 use IO::Socket; #Need name resolution
+use Scalar::Util qw/looks_like_number/;
 #use Data::Dumper;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -3748,9 +3749,13 @@ sub fixup_hostportgroup {
     my $hyp = shift;
     my %args = @_;
     my $hostview = $hyphash{$hyp}->{hostview};
+    my $switchsupport = 0;
+    eval {
+        require xCAT::SwitchHandler;
+        $switchsupport = 1;
+    };
     my $hypconn = $hyphash{$hyp}->{conn}; #this function can't work in clustered mode anyway, so this is appropriote.
     my $vldata = $vlanspec;
-
     my $switchname = get_default_switch_for_hypervisor($hyp);
     my $pgname;
     $vldata =~ s/=.*//; #TODO specify nic model with <blah>=model
@@ -3766,12 +3771,28 @@ sub fixup_hostportgroup {
     my $policy = HostNetworkPolicy->new();
     unless ($hyphash{$hyp}->{nets}->{$pgname}) {
         my $vlanid;
-        if ($vldata =~ /trunk/) {
+        if (looks_like_number($vldata)) {
+            $vlanid = $vldata;
+        } elsif ($vldata =~ /trunk/) {
             $vlanid=4095;
         } elsif ($vldata =~ /vl(an)?(\d+)$/) {
             $vlanid=$2;
         } else {
             $vlanid = 0;
+        }
+        if ($vlanid > 0 and $vlanid < 4095 and $switchsupport) {
+            my $switchtab = xCAT::Table->new("switch", -create=>0);
+            if ($switchtab) {
+                my $swent = $switchtab->getNodeAttribs($hyp, [qw/switch port/]);
+                if ($swent and $swent->{'switch'}) {
+                    my $swh = new xCAT::SwitchHandler->new($swent->{'switch'});
+                    my @vlids = $swh->get_vlan_ids();
+                    unless (grep {$_ eq $vlanid} @vlids) {
+                        $swh->create_vlan($vlanid);
+                    }
+                    $swh->add_ports_to_vlan($vlanid, $swent->{'port'});
+                }
+            }
         }
         my $hostgroupdef = HostPortGroupSpec->new(
             name =>$pgname,
