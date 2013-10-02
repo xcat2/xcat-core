@@ -85,7 +85,7 @@ sub get_latest_version
         my $fullrpmpath = "$repodir/$rpm*";
 
         # get the basename, version, and release for this rpm
-        my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $repodir/$rpm*";
+        my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $repodir/$rpm";
         my $out  = `$rcmd`;
 
         my ($rpkg, $VERSION, $RELEASE) = split(' ', $out);
@@ -125,10 +125,107 @@ sub get_latest_version
         $i++;
     }
 
-    return ($file_name_hash{$versionout}{$releaseout});
+    if ($i == 0)
+    {
+        print "Error: Could not determine the latest version for the following list of rpms: @rpmlist\n";
+        return undef;
+    } else {
+        return ($file_name_hash{$versionout}{$releaseout});
+    }
+}
+
+#--------------------------------------------------------------------------
+=head3    find_latest_pkg
+
+          Find the latest rpm package give the rpm name and a list of 
+                 possible package locations.
+
+        Arguments:
+                - a list of package directories
+                - the name of the rpm
+        Returns:
+                - \@foundrpmlist
+                - undef
+        Example:
+                  my $newrpm = xCAT::BuildKitUtils->find_latest_pkg(\@pkgdirs, $rpmname);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub find_latest_pkg
+{
+    my ($class, $pkgdirs, $rpmname) = @_;
+    my @pkgdirlist = @$pkgdirs;
+
+    my @rpms;
+    my %foundrpm;
+
+    #  need to check each pkgdir for the rpm(s)
+    #  - if more than one match need to pick latest
+    # find all the matches in all the directories
+    foreach my $rpmdir (@pkgdirlist) {
+        my $ffile = $rpmdir."/".$rpmname;
+
+        if ( system("/bin/ls $ffile > /dev/null 2>&1") ){
+            # if not then skip to next dir
+            next;
+        } else {
+            # if so then get the details and add it to the %foundrpm hash
+            my $cmd = "/bin/ls $ffile 2>/dev/null";
+            my $output = `$cmd`;
+            my @rpmlist = split(/\n/, $output);
+
+            if ( scalar(@rpmlist) == 0) {
+                # no rpms to check
+                next;
+            }
+
+            foreach my $r (@rpmlist) {
+                my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $r*";
+                my $out  = `$rcmd`;
+                my ($name, $fromV, $fromR) = split(' ', $out);
+                chomp $fromV;
+                chomp $fromR;
+
+                # ex. {ppe_rte_man}{/tmp/rpm1/ppe_rte_man-1.3.0.5-s005a.x86_64.rpm}{version}=$fromV; 
+                $foundrpm{$name}{$r}{version}=$fromV;
+                $foundrpm{$name}{$r}{release}=$fromR;
+
+#print "name=$name, full=$r, verson= $fromV, release=$fromR\n";
+            }
+        }
+    }
+
+    # for each unique rpm basename
+    foreach my $r (keys %foundrpm ) {
+        # if more than one with same basename then find the latest
+        my $latestmatch="";
+        foreach my $frpm (keys %{$foundrpm{$r}} ) {
+            # if we already found a match in some other dir
+            if ($latestmatch) {
+                # then we need to figure out which is the newest
+                # if the $frpm is newer than use it
+                if ( xCAT::BuildKitUtils->testVersion($foundrpm{$r}{$frpm}{version}, ">", $foundrpm{$r}{$latestmatch}{version}, $foundrpm{$r}{$frpm}{release}, $foundrpm{$r}{$latestmatch}{release}) ) {
+                    $latestmatch = $frpm;
+                }
+
+            } else {
+                $latestmatch = $frpm;
+            }
+        }
+	push(@rpms, $latestmatch);
+    }
+
+    if (scalar(@rpms)) {
+        return \@rpms;
+    } else {
+        return undef;
+    }
 }
 
 #------------------------------------------------------------------------------
+
+
 =head3    testVersion
 
         Compare version1 and version2 according to the operator and
