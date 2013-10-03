@@ -4,7 +4,6 @@
 # ready to process the request
 # It is called by xcatdsklspost before calling getpostscripts.awk
 # it is called by remoteshell before calling getcredentials.awk
-#
 # check bash version, if < 4 then cannot use autodetect of next FD
 bashversion=$BASH_VERSION
 bashversionnum=`echo $bashversion | cut -d. -f1`
