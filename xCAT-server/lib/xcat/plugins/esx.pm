@@ -130,6 +130,7 @@ sub handled_commands{
         clonevm => 'nodehm:mgt',
         createvcluster => 'esx',
         lsvcluster => 'esx',
+        rmvcluster => 'esx',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
         rshutdown => "nodetype:os=(esxi.*)",
@@ -147,7 +148,7 @@ sub handled_commands{
 sub preprocess_request {
 	my $request = shift;
 	my $callback = shift;
-    if ($request->{command}->[0] eq 'createvcluster' or $request->{command}->[0] eq 'lsvcluster') {
+    if ($request->{command}->[0] eq 'createvcluster' or $request->{command}->[0] eq 'lsvcluster' or $request->{command}->[0] eq 'rmvcluster') {
         return [$request];
     }
    #if already preprocessed, go straight to request
@@ -351,6 +352,10 @@ sub process_request {
     }
     if ($command eq 'lsvcluster') {
         list_clusters($request);
+        return;
+    }
+    if ($command eq 'rmvcluster') {
+        remove_cluster($request);
         return;
     }
 
@@ -3393,6 +3398,37 @@ sub create_new_cluster {
     my $cfgspec = ClusterConfigSpecEx->new();
     $hfolder->CreateClusterEx(name=>$clustername, spec=>$cfgspec);
 }
+sub remove_cluster {
+  my $req = shift;
+  @ARGV = @{$req->{arg}};
+  my $vcenter;
+  my $user;
+  my $password;
+  my $clustername;
+  GetOptions(
+		'vcenter=s' => \$vcenter,
+        'password=s' => \$password,
+        'username=s' => \$user,
+    );
+    $clustername = shift @ARGV;
+  my $conn = Vim->new(service_url=>"https://$vcenter/sdk");
+  $conn->login(user_name=>$user, password=>$password);
+#  $clustview = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder'],filter=>{name=>$tablecfg{hypervisor}->{$hyp}->[0]->{datacenter}});
+  #my $conn = Vim->new(service_url=>"https://$vcenter/sdk");
+  $conn->login(user_name=>$user, password=>$password);
+  my $clustview = $conn->find_entity_view(view_type=> 'ClusterComputeResource', filter=>{name=>$clustername});
+  my $task = $clustview->Destroy_Task();
+  my $done = 0;
+  while (not $done) {
+      my $curt = $conn->get_view(mo_ref=>$task);
+      my $state = $curt->info->state->val;
+      unless ($state eq 'running' or $state eq 'queued') {
+        $done = 1;
+      }
+   }
+}
+
+
 sub list_clusters {
   my $req = shift;
   @ARGV = @{$req->{arg}};
