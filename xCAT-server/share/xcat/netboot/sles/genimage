@@ -674,6 +674,8 @@ EOS_UNAME
 
 }
 
+system("rm -rf $rootimg_dir/etc/zypp/repos.d/*");
+
 # output the changed the attributes so that it can be save into db by the caller.
 # all the information has been gathered
 # now, update the linuximage and osimage tables

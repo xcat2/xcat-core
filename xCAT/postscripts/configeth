@@ -388,21 +388,21 @@ elif [ "$1" = "-s" ];then
         exit 0
     elif [ -f "/etc/debian_version" ];then
         str_lease_file="/var/lib/dhcp/dhclient."$str_inst_nic".leases"
-        if [ -e $str_lease_file ];then
+        if [ -e "$str_lease_file" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
         fi
     elif [ -f "/etc/SuSE-release" ];then
        str_lease_file="/var/lib/dhcpcd/dhcpcd-"$str_inst_nic".info"
-       if [ -e $str_lease_file ];then
+       if [ -e "$str_lease_file" ];then
            str_inst_ip=`grep IPADDR $str_lease_file | tail -n 1 | awk -F'=' '{print $2}' | sed "s/'//g"`
            str_inst_mask=`grep NETMASK $str_lease_file | tail -n 1 | awk -F'=' '{print $2}' | sed "s/'//g"`
            str_inst_gateway=`grep GATEWAYS $str_lease_file | tail -n 1 | awk -F'=' '{print $2}' | sed "s/'//g"`
        fi
     else
-        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic*`
-        if [ -e $str_lease_file ];then
+        str_lease_file=`ls /var/lib/dhclient/*$str_inst_nic* | grep leases`
+        if [ -e "$str_lease_file" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
@@ -784,9 +784,13 @@ else
         num_ipv4_index=0
         num_ipv6_index=0
         num_index=0
-        cat $str_his_file | grep $str_nic_name
-        if [ $? -ne 0 ];then
-            echo "${str_nic_name}" >> $str_his_file
+        if [ -e "$str_his_file" ];then
+            grep $str_nic_name $str_his_file
+            if [ $? -ne 0 ];then
+                echo "${str_nic_name}" >> $str_his_file
+            fi
+        else
+            echo "${str_nic_name}" > $str_his_file
         fi
         #delete the old alias configuration files on redhat
         if [ "$str_os_type" = "redhat" ];then
