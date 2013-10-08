@@ -784,9 +784,13 @@ else
         num_ipv4_index=0
         num_ipv6_index=0
         num_index=0
-        cat $str_his_file | grep $str_nic_name
-        if [ $? -ne 0 ];then
-            echo "${str_nic_name}" >> $str_his_file
+        if [ -e "$str_his_file" ];then
+            grep $str_nic_name $str_his_file
+            if [ $? -ne 0 ];then
+                echo "${str_nic_name}" >> $str_his_file
+            fi
+        else
+            echo "${str_nic_name}" > $str_his_file
         fi
         #delete the old alias configuration files on redhat
         if [ "$str_os_type" = "redhat" ];then
