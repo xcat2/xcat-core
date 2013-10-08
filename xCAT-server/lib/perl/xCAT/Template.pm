@@ -875,7 +875,11 @@ sub tabdb
            }
          }
          #$tmplerr="Unable to find requested $field from $table, with $key";
+         my $savekey=$key;
+         $key = '$NODE';  # make sure we use getNodeAttribs when get_replacement
+                          # calls this routine (tabdb) 
          my $rep=get_replacement($table,$key,$field);
+         $key=$savekey;   # restore just in case we rely on the node=$node setting
          if ($rep) {
             return tabdb($rep->[0], $rep->[1], $rep->[2]);
          } else {
