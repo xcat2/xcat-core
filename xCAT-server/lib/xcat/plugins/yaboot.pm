@@ -104,7 +104,7 @@ sub setstate {
                   if (xCAT::InstUtils->is_me($sn)) {
                       my @myself = xCAT::NetworkUtils->determinehostname();
                       my $myname = $myself[(scalar @myself)-1];
-                      $callback->(
+                      $::callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node on service node $sn"
@@ -116,7 +116,7 @@ sub setstate {
                   }
               }
           } else {
-              $callback->(
+              $::callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node"
@@ -408,6 +408,7 @@ sub preprocess_request {
 sub process_request {
   $request = shift;
   $callback = shift;
+  $::callback=$callback;
   $sub_req = shift;
   my $command  = $request->{command}->[0];
   %breaknetbootnodes=();
