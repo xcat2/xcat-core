@@ -129,7 +129,7 @@ sub setstate {
             $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
         } else {
             my $msg =  "Table key of $2 not yet supported by boottarget mini-template";
-            $callback->({
+            $::callback->({
                 error => ["$msg"],
                 errorcode => [1]
             });
@@ -148,7 +148,7 @@ sub setstate {
       unless ($ipfn) {
         my @myself = xCAT::NetworkUtils->determinehostname();
         my $myname = $myself[(scalar @myself)-1];
-         $callback->(
+         $::callback->(
                 {
                  error => [
                      "$myname: Unable to determine or reasonably guess the image server for $node"
@@ -357,6 +357,7 @@ sub process_request {
   $request = shift;
   $callback = shift;
   my $sub_req = shift;
+  $::callback=$callback;
   my @args;
   my @nodes;
   my @rnodes;
