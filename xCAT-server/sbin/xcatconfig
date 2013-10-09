@@ -1243,6 +1243,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;";
 
         if ($::osname eq 'AIX')
         {
