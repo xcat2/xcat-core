@@ -22,6 +22,11 @@ if [ "$(uname -s)" = "AIX" ]; then
    exit 0
 fi
 master=$MASTER
+# are we using xcat flow control
+useflowcontrol=0
+if [ $USEFLOWCONTROL = "YES" ] || [ $USEFLOWCONTROL = "yes" ] || [ $USEFLOWCONTROL = "1" ]; then
+  useflowcontrol=1
+fi    
 
 if [ -r /etc/ssh/sshd_config ]
 then
@@ -71,13 +76,19 @@ if [ ! -x /usr/bin/openssl ]; then
 fi
 allowcred.awk &
 CREDPID=$!
+sleep 1
 
 
-#first contact daemon  xcatflowrequest <server> 3001
-logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
-/$xcatpost/xcatflowrequest $master 3001
+if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+  /$xcatpost/xcatflowrequest $master 3001
+fi
 getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_dsa_hostkey
 
+if [ $useflowcontrol = "1" ]; then
+  logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+fi
 #check the message is an error or not
 grep -E '<error>' /tmp/ssh_dsa_hostkey
 if [ $? -ne 0 ]; then
@@ -88,15 +99,27 @@ if [ $? -ne 0 ]; then
    RETRY=0
 	MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         while [ -z "$MYCONT" ]; do
+              # not using flow control , need to sleep         
+              if [ $useflowcontrol = "0" ]; then
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+              fi
+ 
                 RETRY=$(($RETRY+1))
                 if [ $RETRY -eq $MAX_RETRIES ]
                 then
                   break
                 fi
-                #first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
-                /$xcatpost/xcatflowrequest $master 3001
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                fi
                 getcredentials.awk ssh_dsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_dsa_key
+                if [ $useflowcontrol = "1" ]; then
+                 logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+                fi
                 MYCONT=`cat /etc/ssh/ssh_host_dsa_key`
         done
         chmod 600 /etc/ssh/ssh_host_dsa_key
@@ -115,10 +138,16 @@ fi
 rm /tmp/ssh_dsa_hostkey
 
 # first contact daemon  xcatflowrequest <server> 3001
-  logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
-/$xcatpost/xcatflowrequest $master 3001
+if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+  /$xcatpost/xcatflowrequest $master 3001
+fi
 getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
 
+if [ $useflowcontrol = "1" ]; then
+  logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+fi
 #check whether the message is an error or not
 grep -E '<error>' /tmp/ssh_rsa_hostkey
 if [ $? -ne 0 ]; then
@@ -129,16 +158,28 @@ if [ $? -ne 0 ]; then
    MAX_RETRIES=10
    RETRY=0
 	while [ -z "$MYCONT" ]; do
+              # not using flow control , need to sleep         
+              if [ $useflowcontrol = "0" ]; then
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+              fi
                 RETRY=$(($RETRY+1))
                 if [ $RETRY -eq $MAX_RETRIES ]
                 then
                   break
                 fi
                 # first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
-                /$xcatpost/xcatflowrequest $master 3001
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                fi
 
     		getcredentials.awk ssh_rsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_rsa_key
+                if [ $useflowcontrol = "1" ]; then
+                 logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+                fi
     		MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
 	done
 	chmod 600 /etc/ssh/ssh_host_rsa_key
@@ -169,10 +210,16 @@ sleep 1
 if [ $ENABLESSHBETWEENNODES = "YES" ];
 then 
  #first contact daemon  xcatflowrequest <server> 3001
- logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
- /$xcatpost/xcatflowrequest $master 3001
+ if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+  /$xcatpost/xcatflowrequest $master 3001
+ fi
   getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
+  if [ $useflowcontrol = "1" ]; then
+    logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+  fi
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_root_key
   if [ $? -ne 0 ]; then
@@ -183,16 +230,27 @@ then
    MAX_RETRIES=10
    RETRY=0
 	while [ -z "$MYCONT" ]; do
+                if [ $useflowcontrol = "0" ]; then
+                 let SLI=$RANDOM%10
+                 let SLI=SLI+10
+                 sleep $SLI
+                fi
                 RETRY=$(($RETRY+1))
                 if [ $RETRY -eq $MAX_RETRIES ]
                 then
                   break
                 fi
                 # first contact daemon  xcatflowrequest <server> 3001
-                logger -t xCAT -p local4.info "xcatdsklspost: /$xcatpost/xcatflowrequest $master 3001"
-                /$xcatpost/xcatflowrequest $master 3001
-		getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
-		MYCONT=`cat /root/.ssh/id_rsa`
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "remoteshell: sending /$xcatpost/xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                fi
+		          getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+                if [ $useflowcontrol = "1" ]; then
+                 logger -t xCAT -p local4.info "remoteshell: received response /$xcatpost/xcatflowrequest $master 3001"
+                fi
+		          MYCONT=`cat /root/.ssh/id_rsa`
 	done
   else
 	#This is an error message
