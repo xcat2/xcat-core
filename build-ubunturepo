@@ -218,6 +218,15 @@ then
         done
 
         find ../../$package_dir_name/* ! -name *.deb | xargs rm -f
+    else
+        if [ "$REL" = "xcat-core" ];then
+            git_flag=1
+            REL=`git rev-parse --abbrev-ref HEAD`
+            if [ "$REL" = "master" ]; then
+                REL="devel"
+            fi
+        fi
+        package_dir_name=debs$REL
     fi
 
     if [ "$PROMOTE" = 1 ]; then
