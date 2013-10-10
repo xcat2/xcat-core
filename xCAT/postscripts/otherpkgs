@@ -711,8 +711,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                         if ( pmatch "$OSVER" "sles10*" ); then
                             rc=0
                             array_set_element repo_path $index $path
+                        else
+		            result=`zypper sd xcat-otherpkgs$index`
                         fi
-		        result=`zypper sd xcat-otherpkgs$index`
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
 		    #use apt
