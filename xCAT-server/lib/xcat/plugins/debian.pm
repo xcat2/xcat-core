@@ -22,6 +22,7 @@ use File::Copy;
 use Socket;
 
 #use strict;
+my $useflowcontrol="0";
 my @cpiopid;
 
 ##############################################################################
@@ -129,6 +130,7 @@ sub process_request
     my $distname = undef;
     my $arch     = undef;
     my $path     = undef;
+    if ($::XCATSITEVALS{"useflowcontrol"}) { $useflowcontrol = $::XCATSITEVALS{"useflowcontrol"}; }
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
@@ -1362,6 +1364,8 @@ sub mknetboot
 			"XCAT=$xcatmaster:$xcatdport ";
 		$kcmdline .=
 			"NODE=$node ";
+                # add flow control setting
+                $kcmdline .= "FC=$useflowcontrol ";
         # BEGIN service node
         my $isSV = xCAT::Utils->isServiceNode();
         my $res = xCAT::Utils->runcmd("hostname", 0);
