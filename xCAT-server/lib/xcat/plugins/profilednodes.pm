@@ -2105,7 +2105,7 @@ sub validate_node_entry{
                 $errmsg .= "Specified rack cannot be used with chassis.\n";
             } elsif (exists $node_entry{"height"} and exists $node_entry{"unit"}){
             } else {
-                $errmsg .= "Specified rack must also specify the chassis or the height and unit.\n";
+                $errmsg .= "Specified rack must also specify the height and unit.\n";
             }
         }elsif ($_ eq "chassis"){
             if (! exists $allchassis{$node_entry{$_}}){
