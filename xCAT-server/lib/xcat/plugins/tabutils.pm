@@ -1220,9 +1220,14 @@ sub tabprune_numberdays {
                                         $hour, $min, $sec);
    # delete all records before # days ago
  
-   # display the output 
+   # display the output
+   # get field name for the table
+   my $timeattr="audittime";  # default auditlog, most used
+   if ($table eq "eventlog") {
+     $timeattr="eventtime";
+   } 
    my @attrarray;
-   push  @attrarray, "audittime<$daysago";
+   push  @attrarray, "$timeattr<$daysago";
    my @recs;
    if ($VERBOSE) { # need to get all attributes 
       @recs = $tab->getAllAttribsWhere(\@attrarray, 'ALL');
