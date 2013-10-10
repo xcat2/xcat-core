@@ -113,6 +113,12 @@ else
 	NOARCH=noarch
 fi
 
+function setversionvars {
+	VER=`cat Version`
+	SHORTVER=`cat Version|cut -d. -f 1,2`
+	SHORTSHORTVER=`cat Version|cut -d. -f 1`
+}
+
 
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
 # we are doing a snap build
@@ -166,12 +172,6 @@ else		# using svn
 	# copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
 	GITUP=$SVNUP
 fi
-
-function setversionvars {
-	VER=`cat Version`
-	SHORTVER=`cat Version|cut -d. -f 1,2`
-	SHORTSHORTVER=`cat Version|cut -d. -f 1`
-}
 
 setversionvars
 
