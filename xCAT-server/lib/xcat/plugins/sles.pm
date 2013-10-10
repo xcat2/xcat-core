@@ -23,6 +23,7 @@ use File::Copy;
 use File::Temp qw/mkdtemp/;
 my $httpmethod = "http";
 my $httpport = "80";
+my $useflowcontrol="0";
 use File::Find;
 use File::Basename;
 use Digest::MD5 qw(md5_hex);
@@ -575,6 +576,9 @@ sub mknetboot
         }
 
         $kcmdline .= "NODE=$node ";
+        # add flow control setting
+        $kcmdline .= "FC=$useflowcontrol "; 
+
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";
@@ -679,6 +683,7 @@ sub process_request
     my $path     = undef;
     if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
     if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
+    if ($::XCATSITEVALS{"useflowcontrol"}) { $useflowcontrol = $::XCATSITEVALS{"useflowcontrol"}; }
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);

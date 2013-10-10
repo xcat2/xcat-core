@@ -31,6 +31,7 @@ use strict;
 my @cpiopid;
 my $httpmethod="http";
 my $httpport="80";
+my $useflowcontrol="0";
 
 
 
@@ -117,6 +118,7 @@ sub process_request
     my $path     = undef;
     if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
     if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
+    if ($::XCATSITEVALS{"useflowcontrol"}) { $useflowcontrol = $::XCATSITEVALS{"useflowcontrol"}; }
 
     if ($request->{command}->[0] eq 'copycd')
     {
@@ -722,6 +724,8 @@ sub mknetboot
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
               $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
+            # add flow control setting
+            $kcmdline .= "FC=$useflowcontrol ";
         }
         #inform statelite/stateless node not to  update the nodestatus during provision 
         if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
