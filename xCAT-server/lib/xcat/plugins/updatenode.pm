@@ -1251,6 +1251,12 @@ sub updatenoderunps
       } else {
          $nfsv4 = "no";
       }
+      my $flowcontrol = 0;
+      my @fc =
+      xCAT::TableUtils->get_site_attribute("useflowcontrol");
+      if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
+         $flowcontrol = 1;
+      }
       # if running postscript report status here, if requested.     
       if ((defined($request->{status})) && ($request->{status} eq "yes")) {  
         $::REPORTSTATUS="Y";
@@ -1296,7 +1302,8 @@ sub updatenoderunps
             }
             my $args1;
             # Note order of parameters to xcatdsklspost 
-            #is important and cannot be changed
+            #is important and cannot be changed  and calls in this routine and updatenodesoftware
+            # should be kept the same.
             my $runpscmd;
             
             if ($::SETSERVER){
@@ -1306,6 +1313,11 @@ sub updatenoderunps
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
             }
+            # add flowcontrol flag
+            if ($flowcontrol == 1){
+               $runpscmd .= " -F";
+            }
+
             # add verbose flag
             if ($::VERBOSE){
                $runpscmd .= " -V";
@@ -1663,6 +1675,7 @@ sub updatenodesoftware
     my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my $localhostname = hostname();
     my $rsp;
+    my $nfsv4 = "no";  # AIX only but set to keep the xcatdsklspost call the same for -F and -S
     # Determine when to report status, do not report it here if -P is to run
     if ((defined($request->{status})) && ($request->{status} eq "yes")) { # if status requested 
       if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {  # (-P) running postscripts
@@ -1671,6 +1684,12 @@ sub updatenodesoftware
         $::REPORTSTATUS="Y";
       }   
     }   
+    my $flowcontrol = 0;
+    my @fc =
+    xCAT::TableUtils->get_site_attribute("useflowcontrol");
+    if ($fc[0] && ($fc[0] =~ /1|Yes|yes|YES|Y|y/)) {
+        $flowcontrol = 1;
+    }
 
     # this drives getdata to report status complete for software updatees 
     $::TYPECALL ="S";
@@ -1696,6 +1715,9 @@ sub updatenodesoftware
 
         # it's possible that the nodes could have diff server names
         # do all the nodes for a particular server at once
+        # Note order of parameters to xcatdsklspost 
+        #is important and cannot be changed  and calls in this routine and updatenoderunps
+        # should be kept the same.
         foreach my $snkey (keys %servernodes)
         {
             my $nodestring = join(',', @{$servernodes{$snkey}});
@@ -1704,7 +1726,7 @@ sub updatenodesoftware
             if ($::SETSERVER)
             {
                $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs' --tftp $tftpdir" ;
+                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c" ;
 
 
 
@@ -1712,7 +1734,11 @@ sub updatenodesoftware
             else
             {
                 $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
+                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+            }
+            # add flowcontrol flag
+            if ($flowcontrol == 1){
+               $cmd .= " -F";
             }
             # add verbose flag
             if ($::VERBOSE){
