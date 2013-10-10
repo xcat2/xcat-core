@@ -202,7 +202,11 @@ fi
 #echo "xcatpost = $xcatpost"
 
 useflowcontrol=0
-if [ $USEFLOWCONTROL = "1" ]; then
+if [ "$USEFLOWCONTROL" = "1" ]; then
+  useflowcontrol=1
+fi
+# from install kcmdline
+if [ "$FC" = "1" ] || [ "$FC" = "yes" ] || [ "$FC" = "YES" ]; then
   useflowcontrol=1
 fi
 
