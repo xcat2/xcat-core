@@ -91,7 +91,41 @@ elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
     str_inst_nic=$str_temp
 fi
 
+if [ $bool_cfg_inst_nic -eq 1 ];then
+    configeth -s $str_inst_nic 
+fi
 
+bool_exit_flag=0
+#check the required attributes
+if [ -z "$NICIPS" ];then
+    if [ -n "$NICTYPES" ];then
+        logger -t xcat -p local4.info "confignics: nicips attribute is not defined. so the nictypes attribute can not be defined."
+        echo "confignics on $NODE: nicips attribute is not defined. so the nictypes attribute can not be defined."
+        bool_exit_flag=1
+    fi
+
+    if [ -n "$NICNETWORKS" ];then
+        logger -t xcat -p local4.info "confignics: nicips attribute is not defined. so the nicnetworks attribute can not be defined."
+        echo "confignics on $NODE: nicips attribute is not defined. so the nicnetworks attribute can not be defined."
+        bool_exit_flag=1
+    fi
+else
+    if [ -z "$NICTYPES" ];then
+        logger -t xcat -p local4.info "confignics: nictypes attribute is not defined."
+        echo "confignics on $NODE: nictypes attribute is not defined."
+        bool_exit_flag=1
+    fi
+
+    if [ -z "$NICNETWORKS" ];then
+        logger -t xcat -p local4.info "confignics: nicnetworks attribute is not defined."
+        echo "confignics on $NODE: nicnetworks attribute is not defined."
+        bool_exit_flag=1
+    fi
+fi
+
+if [ $bool_exit_flag -eq 1 ];then
+    exit 0
+fi
 
 splitconfig $NICIPS
 splitconfig $NICTYPES
@@ -131,7 +165,7 @@ if [ $bool_remove -eq 1 ];then
             continue
         fi
         
-        if [ "$str_temp_nic" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+        if [ "$str_temp_nic" = "$str_inst_nic" ];then
             continue
         fi
         
@@ -156,7 +190,7 @@ do
     key=`echo $key | sed 's/^ \+//' | sed 's/ \+$//'`
     str_nic_type=
     str_value=$(hashget hash_defined_nics $key)
-    if [ "$key" = "$str_inst_nic" -a $bool_cfg_inst_nic -eq 0 ];then
+    if [ "$key" = "$str_inst_nic" ];then
         continue
     fi
     old_ifs=$IFS
@@ -169,7 +203,12 @@ do
         echo "confignics on $NODE: processing custom scripts: ${array_temp[3]} for interface $key"
         ${array_temp[3]}
     else
-        if [ "${array_temp[1]}" ];then
+        if [ -z "${array_temp[2]}" ];then
+            logger -t xcat -p local4.info "confignics: ip address,nic type and network are required. $key: $str_value ."
+            echo "confignics on $NODE: ip address,nic type and network are required. $key: $str_value ."
+            continue
+        fi
+        if [ -n "${array_temp[1]}" ];then
             str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
         else
             if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
@@ -179,11 +218,11 @@ do
             fi
         fi
 
-        if [ $str_nic_type = "ethernet" ];then
+        if [ "$str_nic_type" = "ethernet" ];then
              logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
              echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
              configeth $key ${array_temp[0]} ${array_temp[2]}
-        elif [ $str_nic_type = "infiniband" ];then
+        elif [ "$str_nic_type" = "infiniband" ];then
             if [ $str_ib_nics ];then
                 str_ib_nics=$str_ib_nics","$key
             else

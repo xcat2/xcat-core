@@ -218,6 +218,7 @@ sub preprocess_updatenode
                     'v|version'     => \$::VERSION,
                     'V|verbose'     => \$::VERBOSE,
                     'F|sync'        => \$::FILESYNC,
+                    'g|genmypost'   => \$::GENMYPOST,
                     'l|user:s'      => \$::USER,
                     'f|snsync'      => \$::SNFILESYNC,
                     'S|sw'          => \$::SWMAINTENANCE,
@@ -226,6 +227,7 @@ sub preprocess_updatenode
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
                     'fanout=i'      => \$::fanout,
+                    't|timetout=i'  => \$::timeout,
 
         )
       )
@@ -248,6 +250,38 @@ sub preprocess_updatenode
         $rsp->{data}->[0] = xCAT::Utils->Version();
         $callback->($rsp);
         return;
+    }
+    # Just generate mypostscripts file and get out 
+    if ($::GENMYPOST)
+    {
+        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0] ) {
+          $entries[0] =~ tr/a-z/A-Z/;
+          if ($entries[0] =~ /^(1|YES)$/ ) {
+
+            my $notmpfiles=1;
+            my $nofiles=0;
+            xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+            my $rsp = {};
+            $rsp->{data}->[0] = "Generated new mypostscript files";
+            $callback->($rsp);
+          } else {  # not valid unless precreatemypostscripts enabled
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+          }
+        } else { # not in the site table
+            my $rsp = {};
+            $rsp->{error}->[0] =
+             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+        }
+        return 0;
     }
 
     # -c must work with -S for AIX node
@@ -799,13 +833,18 @@ sub security_update_sshkeys
 
     # call the xdsh -K to set up the ssh keys
     my @envs = @{$request->{environment}};
-    my @args = ("-K");
+    my $args;
+    push @$args,"-K"; 
+    if (defined($::timeout))  {  # timeout 
+       push @$args,"-t" ;
+       push @$args,$::timeout;
+    }
     my $res  =
       xCAT::Utils->runxcmd(
                            {
                             command => ['xdsh'],
                             node    => \@$nodes,
-                            arg     => \@args,
+                            arg     => $args,
                             env     => \@envs,
                            },
                            $subreq, 0, 1
@@ -816,7 +855,7 @@ sub security_update_sshkeys
         my $rsp = {};
         # not display password in verbose mode.
         $rsp->{data}->[0] =
-          "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = xxxxxx";
+          "  $localhostname: Internal call command: xdsh  @$nodes " . join(' ', @$args);
         $rsp->{data}->[1] =
           "  $localhostname: return messages of last command: @$res";
         $callback->($rsp);
@@ -878,19 +917,15 @@ sub updatenode
     @::FAILEDNODES=();
     #print Dumper($request);
     my $nodes         = $request->{node};
-    # $request->{status}= "yes";  for testing
-    my $requeststatus;
-    if (defined($request->{status})) {
-       $requeststatus         = $request->{status};
-    }
+    #$request->{status}= "yes";  # for testing
     my $localhostname = hostname();
-    
+    $::CALLERCALLBACK=$callback;
     # if status return requested
     my $numberofnodes;
     # This is an internal call from another plugin requesting status
     # currently this is not displayed is only returned and not displayed
     # by updatenode. 
-    if (defined($requeststatus) && ($requeststatus eq "yes")) {  
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {  
       $numberofnodes = @$nodes;
       my $rsp = {};
       $rsp->{status}->[0] = "TOTAL NODES: $numberofnodes";
@@ -973,6 +1008,7 @@ sub updatenode
                     'k|security'    => \$::SECURITY,
                     'o|os:s'        => \$::OS,
                     'fanout=i'      => \$::fanout,
+                    't|timetout=i'  => \$::timeout,
         )
       )
     {
@@ -1009,6 +1045,8 @@ sub updatenode
      xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
     }
 
+    
+       
     #
     #  handle file synchronization
     #
@@ -1134,39 +1172,27 @@ sub updatenode
             waitpid($_, 0);
         }
     }
-
-    # update the node status, this is done when -F -S -P are run
-    # make sure the nodes only appear in one array good or bad 
-    &cleanstatusarrays;  
-	 if(@::SUCCESSFULLNODES)
-	 {
+    # if immediate return of status not requested (PCM), then update the DB here
+    # in one transaction, otherwise it is updated in getdata callback and buildnodestatus
+    if (!(defined($request->{status})) || ($request->{status} ne "yes")) {
+      # update the node status, this is done when -F -S -P are run
+      # make sure the nodes only appear in one array good or bad 
+      &cleanstatusarrays;  
+	   if(@::SUCCESSFULLNODES)
+	   {
 	     
             my $stat="synced";
             xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
                       
-	 }
-	 if(@::FAILEDNODES)
-	 {
+	   }
+	   if(@::FAILEDNODES)
+	   {
 	     
             my $stat="failed";
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
+	   }
 	 }
-    # internal call request for status, not output to CLI
-    if (defined($requeststatus) && ($requeststatus eq "yes")) {  
-       foreach my $n (@::SUCCESSFULLNODES) {
-        my $rsp = {};
-        $rsp->{status}->[0] = "$n: SUCCEEDED";
-        $callback->($rsp); 
-       }
-       foreach my $n (@::FAILEDNODES) {
-        my $rsp = {};
-        $rsp->{status}->[0] = "$n: FAILED";
-        $callback->($rsp); 
-       }
-      
-    
-    }
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
     # node files in the noderange in  /tftpboot/mypostscripts
@@ -1225,8 +1251,13 @@ sub updatenoderunps
       } else {
          $nfsv4 = "no";
       }
-        
+      # if running postscript report status here, if requested.     
+      if ((defined($request->{status})) && ($request->{status} eq "yes")) {  
+        $::REPORTSTATUS="Y";
+      }
 
+      # this drives getdata to report status complete for postscripts
+      $::TYPECALL ="P";
       if (($request->{postscripts}) && ($request->{postscripts}->[0]))
       {
         $orig_postscripts = $request->{postscripts}->[0];
@@ -1267,6 +1298,7 @@ sub updatenoderunps
             # Note order of parameters to xcatdsklspost 
             #is important and cannot be changed
             my $runpscmd;
+            
             if ($::SETSERVER){
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
@@ -1274,10 +1306,19 @@ sub updatenoderunps
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c"
             }
+            # add verbose flag
+            if ($::VERBOSE){
+               $runpscmd .= " -V";
+            }
+
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
              push @$args1,"-f" ;
              push @$args1,$::fanout;
+            }
+            if (defined($::timeout))  {  # timeout 
+             push @$args1,"-t" ;
+             push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
              push @$args1,"--sudo" ;
@@ -1334,7 +1375,12 @@ sub updatenoderunps
                              $subreq, 0, 1
                              );
     }
-
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "Running of postscripts has completed.";
+       $callback->($rsp);
+    }
     return;
 }
 
@@ -1359,6 +1405,16 @@ sub updatenodesyncfiles
     my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
+    # if running -P or -S do not report  or no status requested
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested 
+      if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||  
+        ($request->{swmaintenance} && $request->{swmaintenance}->[0] eq "yes")){
+          $::REPORTSTATUS="N";
+      } else {   # report at sync time (-F)
+          $::REPORTSTATUS="Y";
+      }   
+    }   
+        
     my $node_syncfile      = xCAT::SvrUtils->getsynclistfile($nodes);
     foreach my $node (@$nodes)
     {
@@ -1411,6 +1467,10 @@ sub updatenodesyncfiles
              push @$args,"-f" ;
              push @$args,$::fanout;
             }
+            if (defined($::timeout))  {  # timeout 
+             push @$args,"-t" ;
+             push @$args,$::timeout;
+            }
             if (defined($::USER))  {  # -l must sudo
              push @$args,"--sudo" ;
              push @$args,"-l" ;
@@ -1459,6 +1519,12 @@ sub updatenodesyncfiles
         xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
 
     }
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "File synchronization has completed.";
+       $callback->($rsp);
+    }
 
     return;
 }
@@ -1468,7 +1534,8 @@ sub updatenodesyncfiles
         and then outputs the remaining user info
 
     Arguments: output,callback
-    Globals @::SUCCESSFULLNODES,  @::FAILEDNODES
+    Globals @::SUCCESSFULLNODES,  @::FAILEDNODE  
+    $::REPORTSTATUS  if "Y" then imediately return status in $::CALLERCALLBACK (PCM)
 
 =cut
 
@@ -1484,12 +1551,51 @@ sub buildnodestatus
 	   if($line =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
 	   {
          my ($node,$info) = split (/:/, $line);
-		   push(@::SUCCESSFULLNODES,$node);
+         if ($::REPORTSTATUS eq "Y" ) { # return status NOW
+           if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+              my $rsp2 = {};  # report failed
+              $rsp2->{status}->[0] = "$node: FAILED";
+              $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="failed";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+           } else {  # completely successful
+              my $rsp2 = {};
+              $rsp2->{status}->[0] = "$node: SUCCEEDED";
+              $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="synced";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+           }
+         }
+         if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+		     next; 
+         } else {
+		     push(@::SUCCESSFULLNODES,$node); 
+         }
 	   }
       elsif($line =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
 	   {
          my ($node,$info)= split (/:/, $line);
-	      push(@::FAILEDNODES,$node);
+         if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+              my $rsp2 = {};
+              $rsp2->{status}->[0] = "$node: FAILED";
+              $::CALLERCALLBACK->($rsp2); 
+              # update the nodelist table updatestatus flag for the node
+              my $stat="failed";
+              my @nodearray=();
+              push @nodearray,$node;
+              xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+         }
+         if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
+		     next; 
+         } else {
+	         push(@::FAILEDNODES,$node);
+	      }	
 	   }	
       else  
 	   {
@@ -1557,6 +1663,18 @@ sub updatenodesoftware
     my $tftpdir       = xCAT::TableUtils->getTftpDir();
     my $localhostname = hostname();
     my $rsp;
+    # Determine when to report status, do not report it here if -P is to run
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) { # if status requested 
+      if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes") {  # (-P) running postscripts
+        $::REPORTSTATUS="N";
+      } else {
+        $::REPORTSTATUS="Y";
+      }   
+    }   
+
+    # this drives getdata to report status complete for software updatees 
+    $::TYPECALL ="S";
+
     $CALLBACK = $callback;
     push @{$rsp->{data}},
       "Performing software maintenance operations. This could take a while, if there are packages to install.\n";
@@ -1596,12 +1714,20 @@ sub updatenodesoftware
                 $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir";
             }
+            # add verbose flag
+            if ($::VERBOSE){
+               $cmd .= " -V";
+            }
     
             # build xdsh command
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
              push @$args1,"-f" ;
              push @$args1,$::fanout;
+            }
+            if (defined($::timeout))  {  # timeout 
+             push @$args1,"-t" ;
+             push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
              push @$args1,"--sudo" ;
@@ -1630,7 +1756,7 @@ sub updatenodesoftware
                        arg               => $args1,
                        _xcatpreprocessed => [1]
                       },
-                      \&getdata2
+                      \&getdata
                       );
 
 
@@ -1660,74 +1786,27 @@ sub updatenodesoftware
             return 1;
         }
     }
+    # report final status PCM
+    if ((defined($request->{status})) && ($request->{status} eq "yes")) {
+       my $rsp = {};
+       $rsp->{status}->[0] = "Running of Software maintenance has completed.";
+       $callback->($rsp);
+    }
 
     return;
 }
 #-------------------------------------------------------------------------------
 
 =head3  getdata  - This is the local callback that handles the response from
-        the xdsh streaming calls when running postscripts
+        the xdsh streaming calls when running postscripts(-P) and software updates (-S)
+        $::TYPECALL = P  from postscripts runs or S from Software updates
+        $::CALLERCALLBACK  = saved callback from calling routine  
+        $::REPORTSTATUS, if Y,  return the good/bad status right away from this
+                         routine  to the $::CALLERCALLBACK ( PCM)
 
 =cut
 #-------------------------------------------------------------------------------
 sub getdata
-{
-    no strict;
-    my $response = shift;
-    my $rsp;
-    foreach my $type (keys %$response)
-    {
-        foreach my $output (@{$response->{$type}})
-        {
-            chomp($output);
-            $output =~ s/\\cM//;
-            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
-            {
-              my ($node,$info) = split (/:/, $output);
-              push(@::SUCCESSFULLNODES,$node);
-            }
-            if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
-            {
-              my ($node,$info) = split (/:/, $output);
-              push(@::FAILEDNODES,$node);
-            }
-
-
-            if ($output =~ /returned from postscript/)
-            {
-                $output =~
-                  s/returned from postscript/Running of postscripts has completed./;
-            }
-            if ($RERUNPS4SECURITY && $RERUNPS4SECURITY eq "yes")
-            {
-                if ($output =~ /Running of postscripts has completed/)
-                {
-                    $output =~
-                      s/Running of postscripts has completed/Redeliver security files has completed/;
-                    push @{$rsp->{$type}}, $output;
-                }
-                elsif ($output !~ /Running postscript|Error loading module/)
-                {
-                    push @{$rsp->{$type}}, "$output";
-                }
-            } else{  # for non -k option then get the rest of the output
-              if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
-              {
-                push @{$rsp->{$type}}, "$output";
-              }
-            }
-        }
-    }
-    $CALLBACK->($rsp);
-}
-#-------------------------------------------------------------------------------
-
-=head3  getdata2  - This is the local callback that handles the response from
-        the xdsh streaming calls when running software updates 
-
-=cut
-#-------------------------------------------------------------------------------
-sub getdata2
 {
     no strict;
     my $response = shift;
@@ -1742,31 +1821,117 @@ sub getdata2
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_successful/)
             {
               my ($node,$info) = split (/:/, $output);
-              push(@::SUCCESSFULLNODES,$node);
+              if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+               if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+                  my $rsp2 = {};  # report failed
+                  $rsp2->{status}->[0] = "$node: FAILED";
+                  $::CALLERCALLBACK->($rsp2); 
+                  # update the nodelist table updatestatus flag for the node
+                  my $stat="failed";
+                  my @nodearray=();
+                  push @nodearray,$node;
+                  xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+               } else {  # completely successful
+                   my $rsp2 = {};
+                   $rsp2->{status}->[0] = "$node: SUCCEEDED";
+                   $::CALLERCALLBACK->($rsp2); 
+                   # update the nodelist table updatestatus flag for the node
+                   my $stat="synced";
+                   my @nodearray=();
+                   push @nodearray,$node;
+                   xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+               }
+              }
+              if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+		            next; 
+              } else {
+		           push(@::SUCCESSFULLNODES,$node); 
+              }
             }
-            # check for already installed, this is not an error
+            # check for already installed on software updates, this is not an error
             if($output =~ /^\s*(\S+)\s*:\s*already installed/)
             {
-              $alreadyinstalled = 1; 
+              $alreadyinstalled = 1;
             }
+
             if($output =~ /^\s*(\S+)\s*:\s*Remote_command_failed/)
             {
-              if ($alreadyinstalled == 0) { # not an already install error 
-                my ($node,$info) = split (/:/, $output);
-                push(@::FAILEDNODES,$node);
-              } 
+              my ($node,$info) = split (/:/, $output);
+              if ($alreadyinstalled == 0) { # not an already install error, then real error 
+                if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+                    my $rsp2 = {};
+                    $rsp2->{status}->[0] = "$node: FAILED";
+                    $::CALLERCALLBACK->($rsp2); 
+                    # update the nodelist table updatestatus flag for the node
+                    my $stat="failed";
+                    my @nodearray=();
+                    push @nodearray,$node;
+                    xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                }
+                if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the buffer
+		            next; 
+                } else {
+                  push(@::FAILEDNODES,$node);
+                }
+              } else {   # already installed is ok
+                  if ($::REPORTSTATUS eq "Y" ) { # return status NOW 
+                    if (grep(/^$node$/, @::FAILEDNODES)) {  # already on the fail buffer
+                      my $rsp2 = {};  # report failed
+                      $rsp2->{status}->[0] = "$node: FAILED";
+                      $::CALLERCALLBACK->($rsp2); 
+                      # update the nodelist table updatestatus flag for the node
+                      my $stat="failed";
+                      my @nodearray=();
+                      push @nodearray,$node;
+                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                   } else {  # completely successful
+                      my $rsp2 = {};
+                      $rsp2->{status}->[0] = "$node: SUCCEEDED";
+                      $::CALLERCALLBACK->($rsp2); 
+                      # update the nodelist table updatestatus flag for the node
+                      my $stat="synced";
+                      my @nodearray=();
+                      push @nodearray,$node;
+                      xCAT::TableUtils->setUpdateStatus(\@nodearray, $stat);
+                   }
+                  }
+                  if (grep(/^$node$/, @::SUCCESSFULLNODES)) {  # already on the buffer
+	                   next; 
+                  } else {
+		               push(@::SUCCESSFULLNODES,$node); 
+                 }
+              }
             }
 
 
             if ($output =~ /returned from postscript/)
             {
+              if ($::TYPECALL eq "P") {  # -P flag
+                $output =~
+                  s/returned from postscript/Running of postscripts has completed./;
+              } else {  # should be -S flag 
                 $output =~
                    s/returned from postscript/Running of Software Maintenance has completed./;
-
+              }
             }
-            if (($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+            if ($RERUNPS4SECURITY && $RERUNPS4SECURITY eq "yes")
             {
+                if ($output =~ /Running of postscripts has completed/)
+                {
+                    $output =~
+                      s/Running of postscripts has completed/Redeliver security files has completed/;
+                    push @{$rsp->{$type}}, $output;
+                } else {
+                   if (($output !~ (/Running postscript/)) && ($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+                   {
+                    push @{$rsp->{$type}}, "$output";
+                   }
+                }
+            } else{  # for non -k option then get the rest of the output
+              if (($output !~ (/Error loading module/)) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_successful/) && ($output !~ /^\s*(\S+)\s*:\s*Remote_command_failed/))
+              {
                 push @{$rsp->{$type}}, "$output";
+              }
             }
         }
     }
@@ -2343,6 +2508,10 @@ sub updateAIXsoftware
         %nodeupdateinfo = %{$updates};
     }
 
+
+    # this drives getdata to report status complete for software updatees 
+    $::TYPECALL ="S";
+
     my %bndloc;
 
     # get the server name for each node - as known by the node
@@ -2579,6 +2748,10 @@ sub updateAIXsoftware
 				push @$args1,"-f" ;
 				push @$args1,$::fanout;
 			}
+         if (defined($::timeout))  {  # timeout 
+            push @$args1,"-t" ;
+            push @$args1,$::timeout;
+         }
 			push @$args1,"$installcmd";
 
 			$subreq->(
@@ -2588,7 +2761,7 @@ sub updateAIXsoftware
 					arg               => $args1,
 					_xcatpreprocessed => [1]
 				},
-				\&getdata2
+				\&getdata
 				);
 
 			# remove pkglist_file from MN - local

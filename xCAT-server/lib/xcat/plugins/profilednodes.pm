@@ -31,6 +31,7 @@ require xCAT::ProfiledNodeUtils;
 my %allhostnames;
 my %allbmcips;
 my %allmacs;
+my %allcecs;
 my %allmacsupper;
 my %allips;
 my %allinstallips;
@@ -370,7 +371,7 @@ Usage:
     my %allfspips = %$recordsref;
 
     # Get all switches name
-    $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('switches', 'switch');
+    $recordsref = xCAT::ProfiledNodeUtils->get_db_switches();
     %allswitches = %$recordsref;
 
     # Get all switches_switchport
@@ -397,6 +398,10 @@ Usage:
 
     # Merge all BMC IPs and install IPs into allips.
     %allips = (%allips, %allbmcips, %allinstallips, %allfspips);
+
+    # Get all CEC names
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_cecs(1);
+    %allcecs = %$recordsref;
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -460,32 +465,26 @@ Usage:
         }
     }
 
-    # Create the real hostinfo string in stanza file format.
+    # Create the full hostinfo dict.
     xCAT::MsgUtils->message('S', "Generating new hostinfo string.");
-    my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string(\%hostinfo_dict);
+    my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_dict(\%hostinfo_dict);
     unless ($retcode_gen){
         setrsp_progress("Failed to validate node information file.");
         setrsp_errormsg($retstr_gen);
         return;
     }
-    # call mkdef to create hosts and then call nodemgmt for node management plugins.
+    # create hosts and then call nodemgmt for node management plugins.
     setrsp_progress("Importing nodes...");
     setrsp_progress("Creating nodes...");
     my $warnstr = "";
-    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 2);
-    my $retstrref = parse_runxcmd_ret($retref);
-    # runxcmd failed.
-    if ($::RUNCMD_RC != 0){
+    if (xCAT::DBobjUtils->setobjdefs(\%hostinfo_dict) != 0){
         $warnstr = "Warning: failed to import some nodes.";
-        setrsp_progress($warnstr); 
-        if ($retstrref->[1]) {
-            $warnstr .= "Details: $retstrref->[1]";
-        }
+        setrsp_progress($warnstr);
     }
-
+    
     setrsp_progress("Configuring nodes...");
-    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
-    $retstrref = parse_runxcmd_ret($retref);
+    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         $warnstr .= "Warning: failed to run command kitnodeadd.";
         if ($retstrref->[1]) {
@@ -542,12 +541,15 @@ Usage:
     }
 
     setrsp_progress("Updating DNS entries");
+    $retref = "";
     $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
 
     setrsp_progress("Updating hosts entries");
+    $retref = "";
     $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
 
     setrsp_progress("Removing nodes...");
+    $retref = "";
     $retref = xCAT::Utils->runxcmd({command=>["noderm"], node=>$nodes}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
@@ -739,6 +741,7 @@ Usage:
     # Call update plugins first.
     if(exists $args_dict{'hardwareprofile'} || exists $args_dict{'imageprofile'}){
         setrsp_progress("Configuring nodes...");
+        $retref = "";
         $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
@@ -749,6 +752,7 @@ Usage:
     # If network profile specified. Need re-generate IPs for all nodess again.
     if(exists $args_dict{'networkprofile'}){
         setrsp_progress("Regenerate IP addresses for nodes...");
+        $retref = "";
         $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
@@ -980,9 +984,11 @@ Usage:
             #$retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
 
             #setrsp_progress("Updating hosts entries");
+            $retref = "";
             $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
             next;
         }
+        $retref = "";
         $retref = xCAT::Utils->runxcmd({command=>[$command], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
         my $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
@@ -1070,6 +1076,7 @@ Usage:
         setrsp_progress("Warning: failed to update /etc/hosts for unmanaged node.");
     }
 
+    $retref = "";
     $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>[$args_dict{"hostname"}]}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
@@ -1601,22 +1608,20 @@ sub findme{
 
     my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
     my %hostinfo_dict = %$hostinfo_dict_ref;
-    # Create the real hostinfo string in stanza file format.
+    # Create the full hostinfo dict
     xCAT::MsgUtils->message('S', "Profiled nodes discover: Generating new hostinfo string.\n");
-    my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_string($hostinfo_dict_ref);
+    my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_dict($hostinfo_dict_ref);
     unless ($retcode_gen){
         setrsp_errormsg($retstr_gen);
         return;
     }
 
-    # call mkdef to create hosts and then call nodemgmt for node management plugins.
-    xCAT::MsgUtils->message('S', "Call mkdef to create nodes.\n");
-    my $retref = xCAT::Utils->runxcmd({command=>["mkdef"], stdin=>[$retstr_gen], arg=>['-z']}, $request_command, 0, 2);
-    my $retstrref = parse_runxcmd_ret($retref);
-    # runxcmd failed.
-    if ($::RUNCMD_RC != 0){
-        setrsp_errormsg($retstr_gen);
-        return;
+    # Create hosts and then call nodemgmt for node management plugins.
+    xCAT::MsgUtils->message('S', "Creating nodes...\n");
+    my $warnstr;
+    if (xCAT::DBobjUtils->setobjdefs(\%hostinfo_dict) != 0){
+        $warnstr = "Warning: failed to import node.";
+        setrsp_progress($warnstr);
     }
 
     my @nodelist = keys %hostinfo_dict;
@@ -1626,10 +1631,11 @@ sub findme{
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
     $request->{discoverymethod} = ['profile'];
-    $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
-    $retstrref = parse_runxcmd_ret($retref);
+    my $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
+    my $retstrref = parse_runxcmd_ret($retref);
 
     xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");
+    $retref = "";
     $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1]}, $request_command, 0, 2);
     $retstrref = parse_runxcmd_ret($retref);
 
@@ -1642,19 +1648,19 @@ sub findme{
 
 #-------------------------------------------------------
 
-=head3  gen_new_hostinfo_string
+=head3  gen_new_hostinfo_dict
 
-    Description : Generate a stanza file format string used for 'mkdef' to create nodes.
+    Description : Generate full hostinfo dict 
     Arguments   : hostinfo_dict_ref - The reference of hostinfo dict.
     Returns     : (returnvalue, returnmsg)
-                  returnvalue - 0, stands for generate new hostinfo string failed.
-                                1, stands for generate new hostinfo string OK.
+                  returnvalue - 0, stands for generate new hostinfo dict failed.
+                                1, stands for generate new hostinfo dict OK.
                   returnnmsg -  error messages if generate failed.
-                             - the new hostinfo string if generate OK.
+                             -  OK for success cases.
 =cut
 
 #-------------------------------------------------------
-sub gen_new_hostinfo_string{
+sub gen_new_hostinfo_dict{
     my $hostinfo_dict_ref = shift;
     my %hostinfo_dict = %$hostinfo_dict_ref;
 
@@ -1683,9 +1689,9 @@ sub gen_new_hostinfo_string{
     # Check whether this is Power env.
     my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
 
-    # compose the stanza string for hostinfo file.
-    my $hostsinfostr = "";
     foreach my $item (sort(keys %hostinfo_dict)){       
+        # Set Nodes's type:
+        $hostinfo_dict{$item}{"objtype"} = 'node';
         # Generate IPs for other interfaces defined in MAC file.
         my %ipshash;
         foreach (keys %netprofileattr){            
@@ -1760,6 +1766,22 @@ sub gen_new_hostinfo_string{
                 $hostinfo_dict{$item}{"mpa"} = $chassisname;
             }
         }
+
+        # generate CEC-based rack-mount Power nodes' attributes
+        # lparid is optional, if not set, set it to 1
+        if ((exists $hostinfo_dict{$item}{"cec"}) && (! $is_fsp) ){
+            $hostinfo_dict{$item}{"hcp"} = $hostinfo_dict{$item}{"cec"};
+            $hostinfo_dict{$item}{"parent"} = $hostinfo_dict{$item}{"cec"};
+            delete($hostinfo_dict{$item}{"cec"});
+
+            if (exists $hostinfo_dict{$item}{"lparid"}) {
+                $hostinfo_dict{$item}{"id"} = $hostinfo_dict{$item}{"lparid"};
+                delete($hostinfo_dict{$item}{"lparid"});
+            } else {
+                $hostinfo_dict{$item}{"id"} = 1;
+            }
+            $hostinfo_dict{$item}{"mgt"} = "fsp";
+        }
         
         # get the chain attribute from hardwareprofile and insert it to node.
         my $chaintab = xCAT::Table->new('chain');
@@ -1800,15 +1822,8 @@ sub gen_new_hostinfo_string{
             }
         }
  
-        # Generate the hostinfo string.
-        $hostsinfostr = "$hostsinfostr$item:\n";
-        my $itemdictref = $hostinfo_dict{$item};
-        my %itemdict = %$itemdictref;
-        foreach (keys %itemdict){
-            $hostsinfostr = "$hostsinfostr  $_=\"$itemdict{$_}\"\n";
-        }
     }
-    return 1, $hostsinfostr;
+    return 1, "OK";
 }
 
 #-------------------------------------------------------
@@ -2149,6 +2164,15 @@ sub validate_node_entry{
             # Not a valid number.
             if (!($node_entry{$_} =~ /^[1-9]\d*$/)){
                 $errmsg .= "Specified slotid $node_entry{$_} is invalid";
+            }
+        }elsif ($_ eq "lparid"){
+            if (not exists $node_entry{"cec"}){
+                $errmsg .= "The lparid option must be used with the cec option.\n";
+            }
+        }elsif ($_ eq "cec"){
+            # Check the specified CEC is existing
+            if (! exists $allcecs{$node_entry{$_}}){
+                $errmsg .= "The CEC name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
             }
         }elsif ($_ eq "nicips"){
             # Check Multi-Nic's ip

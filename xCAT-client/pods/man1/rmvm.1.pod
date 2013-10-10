@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rmvm> - Removes HMC-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
+B<rmvm> - Removes HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 
@@ -8,16 +8,21 @@ I<rmvm [-h| --help]>
 
 I<rmvm [-v| --version]>
 
-
 I<rmvm [-V| --verbose] noderange [-r] [--service]>
 
 =head2 For KVM and Vmware:
 
 I<rmvm [-p] [-f]>
 
+=head2 PPC (using Direct FSP Management) specific:
+
+I<rmvm noderange>
+
 =head1 DESCRIPTION
 
 The rmvm command removes the partitions specified in noderange. If noderange is an CEC, all the partitions associated with that CEC will be removed. Note that removed partitions are automatically removed from the xCAT database. For IVM-managed systems, care must be taken to not remove the VIOS partition, or all the associated partitions will be removed as well.
+
+For DFM-managed (short For Direct FSP Management mode) normal power machines, only partitions can be removed. No options is needed.
 
 =head1 OPTIONS
 
@@ -34,6 +39,8 @@ B<--service>   Remove the service partitions of the specified CECs.
 
 B<-p>          Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.  
 
+B<-p|--part>   Remove the specified partiton on normal power machine.
+
 B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested. 
 
 =head1 RETURN VALUE
@@ -44,7 +51,7 @@ B<-f>          Force remove the VM, even if the VM appears to be online.  This w
 
 =head1 EXAMPLES
 
-1. To remove the partition lpar3, enter:
+1. To remove the HMC-managed partition lpar3, enter:
 
 I<rmvm lpar3>
 
@@ -52,7 +59,7 @@ Output is similar to:
 
 lpar3: Success
 
-2. To remove all the partitions associated with CEC cec01, enter:
+2. To remove all the HMC-managed partitions associated with CEC cec01, enter:
 
 I<rmvm cec01>
 
@@ -62,7 +69,7 @@ Output is similar to:
  lpar2: Success
  lpar3: Success
 
-3. To remove the service partitions of the specified CEC cec01 and cec02, enter:
+3. To remove the HMC-managed service partitions of the specified CEC cec01 and cec02, enter:
 
 I<rmvm cec01,cec02 --service>
 
@@ -71,7 +78,7 @@ Output is similar to:
  cec01: Success
  cec02: Success
 
-4. To remove the partition lpar1, but retain its definition, enter:
+4. To remove the HMC-managed partition lpar1, but retain its definition, enter:
 
 I<rmvm lpar1 -r>
 
@@ -86,6 +93,15 @@ I<rmvm gpok4>
 Output is similar to:
 
  gpok4: Deleting virtual server LNX4... Done
+
+
+6. To remove a DFM-managed partition on normal power machine:
+
+I<rmvm lpar1>
+
+Output is similar to:
+
+ lpar1: Done
 
 =head1 FILES
 

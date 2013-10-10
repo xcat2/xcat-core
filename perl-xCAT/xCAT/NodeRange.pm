@@ -1,5 +1,6 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::NodeRange;
+use Text::Balanced qw/extract_bracketed/;
 require xCAT::Table;
 require Exporter;
 use strict;
@@ -549,6 +550,26 @@ sub abbreviate_noderange {
     return (join ',',keys %targetelems,keys %nodesleft);
 }
 
+sub set_arith {
+    my $operand = shift;
+    my $op = shift;
+    my $newset = shift;
+    if ($op =~ /@/) {       # compute the intersection of the current atom and the node list we have received before this
+      foreach (keys %$operand) {
+        unless ($newset->{$_}) {
+          delete $operand->{$_};
+        }
+      }
+    } elsif ($op =~ /,-/) {        # add the nodes from this atom to the exclude list
+		foreach (keys %$newset) {
+            delete $operand->{$_}
+		}
+	} else {          # add the nodes from this atom to the total node list
+		foreach (keys %$newset) {
+			$operand->{$_}=1;
+		}
+	}
+}
 # Expand the given noderange
 # Input args:
 #  - noderange to expand
@@ -573,20 +594,45 @@ sub noderange {
   }
   my %nodes = ();
   my %delnodes = ();
+  if ($range =~ /\(/) {
+    my ($middle, $end, $start) =
+        extract_bracketed($range, '()', qr/[^()]*/);
+    unless ($middle) { die "Unbalanced parentheses in noderange" }
+    $middle = substr($middle,1,-1);
+    my $op = ",";
+    if ($start =~ m/-$/) { #subtract the parenthetical
+       $op .= "-"
+    } elsif ($start =~ m/\@$/) {
+        $op = "@"
+    }
+    $start =~ s/,-$//;
+    $start =~ s/,$//;
+    $start =~ s/\@$//;
+    %nodes = map { $_ => 1 } noderange($start,$verify,$exsitenode,%options);
+    my %innernodes = map { $_ => 1 } noderange($middle,$verify,$exsitenode,%options);
+    set_arith(\%nodes,$op,\%innernodes);
+    $range = $end;
+  }
+
   my $op = ",";
   my @elems = split(/(,(?![^[]*?])(?![^\(]*?\)))/,$range); # commas outside of [] or ()
   if (scalar(@elems)==1) {
       @elems = split(/(@(?![^\(]*?\)))/,$range);  # only split on @ when no , are present (inner recursion)
   }
 
-  while (my $atom = shift @elems) {
+  while (defined(my $atom = shift @elems)) {
+    if ($atom eq '') { next; }
     if ($atom eq ',') {
         next;
     }
     if ($atom =~ /^-/) {           # if this is an exclusion, strip off the minus, but remember it
       $atom = substr($atom,1);
       $op = $op."-";
+    } elsif ($atom =~ /^\@/) {           # if this is an exclusion, strip off the minus, but remember it
+      $atom = substr($atom,1);
+      $op = "@";
     }
+    if ($atom eq '') { next; }
 
     if ($atom =~ /^\^(.*)$/) {    # get a list of nodes from a file
       open(NRF,$1);

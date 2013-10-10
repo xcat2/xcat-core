@@ -72,16 +72,16 @@ my %usage = (
        rinv <noderange> [all|model|serial] [-V|--verbose]
        rinv [-h|--help|-v|--version]
     BMC specific:
-       rinv <noderange> [vpd|mprom|deviceid|uuid|guid]
+       rinv <noderange> [mprom|deviceid|uuid|guid|vpd [-t]|all [-t]]
     MPA specific:
-       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm]
+       rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm [-t]] 
     PPC specific(with HMC):
-       rinv <noderange> [bus|config|serial|model|firm|all]
+       rinv <noderange> [all|bus|config|serial|model|firm [-t]]
     PPC specific(using Direct FSP Management):
        rinv <noderange> [firm]
        rinv <noderange> [deconfig [-x]]
     Blade specific:
-       rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
+       rinv <noderange> [all|serial|mac|bios|diag|mprom|mparom|firm|mtm [-t]]
     IBM Flex System Compute Node specific:
        rinv <noderange> [firm]
     VMware specific:
@@ -199,10 +199,14 @@ my %usage = (
 "Usage:
     Common:
        mkvm [-h|--help|-v|--version]
-    For PPC(with HMC):
+    For PPC(with HMC) specific:
        mkvm noderange -i id -l singlenode [-V|--verbose]
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
+    PPC (using Direct FSP Management) specific:
+       mkvm noderange [--full]
+       mkvm noderange [vmcpus=min/req/max] [vmmemory=min/req/max]
+                      [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force
     For zVM
@@ -216,7 +220,8 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> [-l|--long]
+       lsvm <noderange> [-l|--long] --p775
+       lsvm <noderange>
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
@@ -231,9 +236,11 @@ my %usage = (
        chvm <noderange> [-p profile][-V|--verbose] 
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
-       chvm <noderange> [-p <profile>]
+       chvm <noderange> --p775 [-p <profile>]
+       chvm <noderange> --p775 -i <id> [-m <memory_interleaving>] -r <partition_rule>
        chvm <noderange> [lparname=<*|name>]
-       chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
+       chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
+                        [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:
@@ -264,7 +271,9 @@ my %usage = (
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version],
-       rmvm [-p] [-f]",
+       rmvm [-p] [-f]
+       PPC (using Direct FSP Management) specific:
+       rmvm <noderange>",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
@@ -343,11 +352,11 @@ my %usage = (
       renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
   "updatenode" =>
 "Usage:
-    updatenode [-h|--help|-v|--version]
+    updatenode [-h|--help|-v|--version | -g|--genmypost]
     or
-    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn]
+    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn] [-t <timeout>]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] 
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-l|--user[username]] [--fanout=[fanout value]] [-S|--sw] [-t <timeout>]
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -368,6 +377,9 @@ Options:
     [-f|--snsync] Performs File Syncing to the service nodes that service 
         the nodes in the noderange.
 
+    [-g|--genmypost] Will generate a new mypostscript file for the  
+        the nodes in the noderange, if site precreatemypostscripts is 1 or YES.
+
     [-l|--user] User name to run the updatenode command.  It overrides the
         current user which is the default.
 
@@ -380,6 +392,9 @@ Options:
         provided on the command line. (AIX only)
 
     [-s|--sn] Set the server information stored on the nodes.
+
+    [-t|--timeout] Time out in seconds to allow the command to run. Default is no timeout,
+        except for updatenode -k which has a 10 second default timeout.
 
     [-A|--updateallsw] Install or update all software contained in the source 
         directory. (AIX only)

@@ -82,7 +82,7 @@ dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/d
 NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
 export NICSTOBRINGUP
 for nic in $NICSTOBRINGUP; do
-	(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; cdhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
+	(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
 	(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf /var/lib/dhclient/dhclient6.leases $nic ) &
 done
 openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &

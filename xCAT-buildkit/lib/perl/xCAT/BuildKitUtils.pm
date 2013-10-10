@@ -13,12 +13,15 @@ if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
+
+
 use lib "$::XCATROOT/lib/perl";
 use POSIX qw(ceil);
 use File::Path;
 use Socket;
 use strict;
 use Symbol;
+my $sha1support;
 if ( -f "/etc/debian_version" ) {
     $sha1support = eval {
         require Digest::SHA;
@@ -50,6 +53,255 @@ This program module file, is a set of utilities used by xCAT buildkit command
 
 #-------------------------------------------------------------
 
+#--------------------------------------------------------------------------
+=head3    get_latest_version
+
+          Find the latest version in a list of rpms with the same basename
+
+        Arguments:
+                - the repo location
+                - a list of rpms with the same basename
+        Returns:
+                - name of rpm
+                - undef
+        Example:
+                  my $new_d = xCAT::BuildKitUtils->get_latest_version($repodir, \@rpmlist);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub get_latest_version
+{
+    my ($class, $repodir, $rpms) = @_;
+
+    my @rpmlist = @$rpms;
+
+    my %localversions_hash = ();
+    my %file_name_hash     = ();
+
+    my $i = 0;
+    foreach my $rpm (@rpmlist)
+    {
+
+        # include path
+        my $fullrpmpath = "$repodir/$rpm*";
+
+        # get the basename, version, and release for this rpm
+        my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $repodir/$rpm";
+        my $out  = `$rcmd`;
+
+        my ($rpkg, $VERSION, $RELEASE) = split(' ', $out);
+
+        chomp $VERSION;
+        chomp $RELEASE;
+
+        $localversions_hash{$i}{'VERSION'}  = $VERSION;
+        $localversions_hash{$i}{'RELEASE'}  = $RELEASE;
+
+        $file_name_hash{$VERSION}{$RELEASE} = $rpm;
+        $i++;
+    }
+
+    if ($i == 0)
+    {
+	print "error\n";
+	return undef;
+    }
+
+    my $versionout = "";
+    my $releaseout = "";
+    $i = 0;
+    foreach my $k (keys %localversions_hash)
+    {
+        if ($i == 0)
+        {
+            $versionout = $localversions_hash{$k}{'VERSION'};
+            $releaseout = $localversions_hash{$k}{'RELEASE'};
+        }
+
+        # if this is a newer version/release then set them
+        if ( xCAT::BuildKitUtils->testVersion($localversions_hash{$k}{'VERSION'}, ">", $versionout, $localversions_hash{$k}{'RELEASE'}, $releaseout) ) {
+            $versionout = $localversions_hash{$k}{'VERSION'};
+            $releaseout = $localversions_hash{$k}{'RELEASE'};
+        }
+        $i++;
+    }
+
+    if ($i == 0)
+    {
+        print "Error: Could not determine the latest version for the following list of rpms: @rpmlist\n";
+        return undef;
+    } else {
+        return ($file_name_hash{$versionout}{$releaseout});
+    }
+}
+
+#--------------------------------------------------------------------------
+=head3    find_latest_pkg
+
+          Find the latest rpm package give the rpm name and a list of 
+                 possible package locations.
+
+        Arguments:
+                - a list of package directories
+                - the name of the rpm
+        Returns:
+                - \@foundrpmlist
+                - undef
+        Example:
+                  my $newrpm = xCAT::BuildKitUtils->find_latest_pkg(\@pkgdirs, $rpmname);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub find_latest_pkg
+{
+    my ($class, $pkgdirs, $rpmname) = @_;
+    my @pkgdirlist = @$pkgdirs;
+
+    my @rpms;
+    my %foundrpm;
+
+    #  need to check each pkgdir for the rpm(s)
+    #  - if more than one match need to pick latest
+    # find all the matches in all the directories
+    foreach my $rpmdir (@pkgdirlist) {
+        my $ffile = $rpmdir."/".$rpmname;
+
+        if ( system("/bin/ls $ffile > /dev/null 2>&1") ){
+            # if not then skip to next dir
+            next;
+        } else {
+            # if so then get the details and add it to the %foundrpm hash
+            my $cmd = "/bin/ls $ffile 2>/dev/null";
+            my $output = `$cmd`;
+            my @rpmlist = split(/\n/, $output);
+
+            if ( scalar(@rpmlist) == 0) {
+                # no rpms to check
+                next;
+            }
+
+            foreach my $r (@rpmlist) {
+                my $rcmd = "rpm -qp --queryformat '%{N} %{V} %{R}\n' $r*";
+                my $out  = `$rcmd`;
+                my ($name, $fromV, $fromR) = split(' ', $out);
+                chomp $fromV;
+                chomp $fromR;
+
+                # ex. {ppe_rte_man}{/tmp/rpm1/ppe_rte_man-1.3.0.5-s005a.x86_64.rpm}{version}=$fromV; 
+                $foundrpm{$name}{$r}{version}=$fromV;
+                $foundrpm{$name}{$r}{release}=$fromR;
+
+#print "name=$name, full=$r, verson= $fromV, release=$fromR\n";
+            }
+        }
+    }
+
+    # for each unique rpm basename
+    foreach my $r (keys %foundrpm ) {
+        # if more than one with same basename then find the latest
+        my $latestmatch="";
+        foreach my $frpm (keys %{$foundrpm{$r}} ) {
+            # if we already found a match in some other dir
+            if ($latestmatch) {
+                # then we need to figure out which is the newest
+                # if the $frpm is newer than use it
+                if ( xCAT::BuildKitUtils->testVersion($foundrpm{$r}{$frpm}{version}, ">", $foundrpm{$r}{$latestmatch}{version}, $foundrpm{$r}{$frpm}{release}, $foundrpm{$r}{$latestmatch}{release}) ) {
+                    $latestmatch = $frpm;
+                }
+
+            } else {
+                $latestmatch = $frpm;
+            }
+        }
+	push(@rpms, $latestmatch);
+    }
+
+    if (scalar(@rpms)) {
+        return \@rpms;
+    } else {
+        return undef;
+    }
+}
+
+#------------------------------------------------------------------------------
+
+
+=head3    testVersion
+
+        Compare version1 and version2 according to the operator and
+        return True or False.
+
+        Arguments:
+                $version1
+                $operator
+                $version2
+                $release1
+                $release2
+        Returns:
+                True or False
+        Example:
+
+        Comments:
+                The return value is generated with the Require query of the
+                rpm command.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub testVersion
+{
+    my ($class, $version1, $operator, $version2, $release1, $release2) = @_;
+
+    my @a1 = split(/\./, $version1);
+    my @a2 = split(/\./, $version2);
+    my $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    $#a1 = $len - 1;  # make the arrays the same length before appending release
+    $#a2 = $len - 1;
+    push @a1, split(/\./, $release1);
+    push @a2, split(/\./, $release2);
+    $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
+    my $num1 = '';
+    my $num2 = '';
+
+    for (my $i = 0 ; $i < $len ; $i++)
+    {
+        # remove any non-numbers on the end
+        my ($d1) = $a1[$i] =~ /^(\d*)/;  
+        my ($d2) = $a2[$i] =~ /^(\d*)/;
+
+        my $diff = length($d1) - length($d2);
+        if ($diff > 0)       # pad d2
+        {
+            $num1 .= $d1;
+            $num2 .= ('0' x $diff) . $d2;
+        }
+            elsif ($diff < 0)       # pad d1
+        {
+            $num1 .= ('0' x abs($diff)) . $d1;
+            $num2 .= $d2;
+        }
+        else   # they are the same length
+        {
+            $num1 .= $d1;
+            $num2 .= $d2;
+        }
+    }
+
+    # Remove the leading 0s or perl will interpret the numbers as octal
+    $num1 =~ s/^0+//;
+    $num2 =~ s/^0+//;
+
+    # be sure that $num1 is not a "".
+    if (length($num1) == 0) { $num1 = 0; }
+    if (length($num2) == 0) { $num2 = 0; }
+
+    if ($operator eq '=') { $operator = '=='; }
+    my $bool = eval "$num1 $operator $num2";
+
+    return $bool;
+}
 
 #-------------------------------------------------------------------------------
 
@@ -110,95 +362,6 @@ sub get_OS_VRMF
 	}
 	return (length($version) ? $version : undef);
 }
-
-#----------------------------------------------------------------------------
-
-=head3    testversion
-
-        Compare version1 and version2 according to the operator and
-        return True or False.
-
-        Arguments:
-                $version1
-                $operator
-                $version2
-                $release1
-                $release2
-        Returns:
-                True or False
-
-        Example:
-                if (BuildKitUtils->testversion ( $ins_ver,
-												"<",
-                                                $req_ver,
-                                                $ins_rel,
-                                                $req_rel)){ blah; }
-
-        Comments:
-
-=cut
-
-#-------------------------------------------------------------------------------
-sub testversion
-{
-    my ($class, $version1, $operator, $version2, $release1, $release2) = @_;
-
-	my @a1 = split(/\./, $version1);
-    my @a2 = split(/\./, $version2);
-    my $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
-    $#a1 = $len - 1;  # make the arrays the same length before appending release
-    $#a2 = $len - 1;
-    push @a1, split(/\./, $release1);
-    push @a2, split(/\./, $release2);
-    $len = (scalar(@a1) > scalar(@a2) ? scalar(@a1) : scalar(@a2));
-    my $num1 = '';
-    my $num2 = '';
-
-    for (my $i = 0 ; $i < $len ; $i++)
-    {
-        my ($d1) = $a1[$i] =~ /^(\d*)/;    # remove any non-numbers on the end
-        my ($d2) = $a2[$i] =~ /^(\d*)/;
-
-        my $diff = length($d1) - length($d2);
-        if ($diff > 0)                     # pad d2
-        {
-            $num1 .= $d1;
-            $num2 .= ('0' x $diff) . $d2;
-        }
-		elsif ($diff < 0)                  # pad d1
-        {
-            $num1 .= ('0' x abs($diff)) . $d1;
-            $num2 .= $d2;
-        }
-        else   # they are the same length
-        {
-            $num1 .= $d1;
-            $num2 .= $d2;
-        }
-    }
-
-    # Remove the leading 0s or perl will interpret the numbers as octal
-    $num1 =~ s/^0+//;
-    $num2 =~ s/^0+//;
-
-    #SLES Changes ??
-    # if $num1="", the "eval '$num1 $operator $num2'" will fail. 
-	#	So MUST BE be sure that $num1 is not a "".
-    if (length($num1) == 0) { $num1 = 0; }
-    if (length($num2) == 0) { $num2 = 0; }
-	#End of SLES Changes
-
-    if ($operator eq '=') { $operator = '=='; }
-    my $bool = eval "$num1 $operator $num2";
-
-	if (length($@))
-    {
-		# error msg ?
-	}
-
-	return $bool;
-}
-
 
 #-------------------------------------------------------------------------------
 
@@ -387,6 +550,12 @@ sub osver
         $ver = $lines[0];
         $ver =~ s/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
+        my $minorver;
+        if (grep /PATCHLEVEL/, $lines[2]) {
+            $minorver = $lines[2];
+            $minorver =~ s/PATCHLEVEL[^0-9]*([0-9]+).*/$1/;
+        }
+        $ver = $ver . ".$minorver" if ( $minorver );
     }
     elsif (-f "/etc/UnitedLinux-release")
     {

@@ -30,7 +30,6 @@ use strict;
   Example:
     my $retdata = xCAT::ServiceNodeUtils->readSNInfo;
 =cut
-
 #-----------------------------------------------------------------------------
 sub readSNInfo
 {
@@ -102,13 +101,17 @@ sub isServiceReq
     require xCAT::Table;
     my ($class, $servicenodename, $serviceip) = @_;
 
-    # list of all services from service node table
-    # note this must be updated if more services added
-    my @services = (
-                    "nameserver", "dhcpserver", "tftpserver", "nfsserver",
-                    "conserver",  "monserver",  "ldapserver", "ntpserver",
-                    "ftpserver",  "ipforward"
-                    );
+    # get list of all services from service node table ( actually all defined attributes)
+    # read the  schema
+    my $schema = xCAT::Table->getTableSchema("servicenode");
+    my @services; #  list of only the actual service attributes from the servicenode table
+    my @servicesattrs;  # building second copy for call to getAllNodeAttribs, which modifies the array
+    foreach my $c (@{$schema->{cols}}) {
+      if (($c ne "node") && ($c ne "comments") && ($c ne "disable")) {
+       push @servicesattrs,$c;
+       push @services,$c;
+      }
+    }
 
     my @ips = @$serviceip;    # list of service node ip addresses and names
     my $rc  = 0;
@@ -139,10 +142,11 @@ sub isServiceReq
     }
 
     my $servicehash;
-    # read all the nodes from the table, for each service
-    foreach my $service (@services)
+    
+    # read all the nodes from the table, all the service attributes
+    my @snodelist= $servicenodetab->getAllNodeAttribs(\@servicesattrs); 
+    foreach my $service (@services) # check list of services
     {
-        my @snodelist = $servicenodetab->getAllNodeAttribs([$service]);
 
         foreach $serviceip (@ips)    # check the table for this servicenode
         {
@@ -351,7 +355,7 @@ sub getSNList
     $servicenodetab->close;
     foreach my $node (@nodes)
     {
-        if ($service eq "")     # want all the service nodes
+        if  (! defined ($service) || ($service eq ""))     # want all the service nodes
         {
             push @servicenodes, $node->{node};
         }

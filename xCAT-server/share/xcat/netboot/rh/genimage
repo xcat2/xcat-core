@@ -174,15 +174,13 @@ if ($netdriver) {
     }
 }
 
-# Use the default list if not specified
-unless (@ndrivers) {
-    if ($arch eq 'x86' or $arch eq 'x86_64') {
-        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net/;
-    } elsif ($arch eq 'ppc64') {
-        @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
-    } elsif ($arch eq 's390x') {   
-    	@ndrivers = qw/qdio ccwgroup/;
-    }
+# Add the default driver list
+if ($arch eq 'x86' or $arch eq 'x86_64') {
+    push @ndrivers, qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net be2net/;
+} elsif ($arch eq 'ppc64') {
+    push @ndrivers, qw/e1000 e1000e igb ibmveth ehea/;
+} elsif ($arch eq 's390x') {   
+    push @ndrivers, qw/qdio ccwgroup/;
 }
 
 foreach (@ndrivers) {
@@ -491,10 +489,6 @@ foreach my $dd (@dd_drivers) {
     print "Added driver $dd from driver update disk or driver rpm\n";
 }
 
-foreach my $driver (@ndrivers) {
-    print "Added driver $driver from root image\n";
-}
-
 if (@new_order) {
     @ndrivers = (@new_order, @ndrivers);
 }
@@ -514,14 +508,24 @@ while (scalar @checkdeps) {
         foreach $dep (@deps) {
             $dep =~ s/.*\///;
             unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
-                unshift (@checkdeps,$dep); #recursively check dependencies
-                unshift (@ndrivers,$dep);
                 print "Added $dep as an autodetected depedency\n";
             }
+            unshift (@checkdeps,$dep); #recursively check dependencies
+            unshift (@ndrivers,$dep);
         }
     }
 }
 close($moddeps);
+
+#remove the duplicated drivers
+my @fulldrivers;
+foreach my $dn (@ndrivers) {
+    unless (grep {$_ eq $dn} @fulldrivers) {
+        push @fulldrivers, $dn;
+    }
+}
+@ndrivers = @fulldrivers;
+
 unlink "/tmp/genimage.$$.yum.conf";
 if (-d "$rootimg_dir/usr/share/dracut") {
     $dracutmode = 1;
@@ -537,6 +541,14 @@ if (-d "$rootimg_dir/usr/share/dracut") {
     }
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
 }
+
+
+#-- for centos, disable the internet repository
+if( -e "$rootimg_dir/etc/yum.repos.d/CentOS-Base.repo" ) {
+    my $repo_content=`sed -e '/enabled/d' $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo | sed -e '/^gpgkey/i enabled=0'`;
+    system("echo '$repo_content' > $rootimg_dir/etc/yum.repos.d/CentOS-Base.repo");
+}
+#
 
 #-- run postinstall script
 unless ($imagename) {
@@ -762,7 +774,17 @@ sub mkinitrd_dracut {
     # Add drivers to support local disk
     push @ndrivers, "ext3";
     push @ndrivers, "ext4";
+    #remove the duplicated drivers
+    my @fulldrivers;
+    foreach my $dn (@ndrivers) {
+        unless (grep {$_ eq $dn} @fulldrivers) {
+            push @fulldrivers, $dn;
+        }
+    }
+    @ndrivers = @fulldrivers;
+
     my $add_drivers = join(' ', @ndrivers);
+    print "Try to load drivers: $add_drivers to initrd.\n";
     my $DRACUTCONF;
 
     if ($mode eq "statelite") {
@@ -1521,6 +1543,7 @@ sub isnetdriver {
          my $filetoadd = $File::Find::name;
          $filetoadd =~ s!$rootimg_dir/!!;
          push @filestoadd,[$filetoadd,"lib/$_"];
+         print "Added driver $_ to initrd\n";
       }
    }
 }
@@ -1881,7 +1904,7 @@ sub load_dd ()
                   system ("cp -rf $real_path $rootimg_dir$1");
                   push @rpm_drivers, $driver;
               } else {
-                  print "Error: cannot find the driver $driver from the driver rpms\n";
+                  print "Warning: cannot find the driver $driver from the driver rpms\n";
               }
             }
           } elsif ($Injectalldriver) {

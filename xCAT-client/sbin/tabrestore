@@ -7,11 +7,15 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 use lib "$::XCATROOT/lib/perl";
 use File::Basename;
 use xCAT::Client;
+use xCAT::Utils;
+
 use Getopt::Long;
 
 sub usage {
 	print "Usage: tabrestore <tablename>.csv\n";
+	print "       tabrestore -a <tablename>.csv\n";
 	print "       tabrestore [-?|-h|--help]\n";
+	print "       tabrestore [-v|--version]\n";
 	exit $_[0];
 }
 
@@ -21,12 +25,35 @@ $cmdref->{command}->[0] = "tabrestore";
 
 # Get the options
 my $HELP;
-if (!GetOptions('h|?|help'  => \$HELP)) { usage(1); }
+if (
+ !GetOptions(
+ 'h|?|help'  => \$HELP,
+ 'v|version'  => \$VERSION,
+ 'a|addrows'  => \$ADDROWS,
+  ) 
+) 
+{ usage(1); }
+
 my $arg=shift(@ARGV);
 while ($arg =~ /^-/) {
   push (@{$cmdref->{arg}}, $arg);
   $arg=shift(@ARGV);
 }
+if ($VERSION)
+{
+  my $version = xCAT::Utils->Version();
+  print "$version\n";
+  exit 0;
+}
+if ($HELP)
+{
+  usage;
+}
+if ($ADDROWS)
+{
+  $cmdref->{addrows}->[0] = "yes";   
+}
+
 unless ($arg) { usage(2); }         # no filename specified
 
 # Open the specified table file and put its contents in the data key
@@ -40,7 +67,7 @@ while (<$fh>) {
   push @{$cmdref->{data}},$_;
 }
 
-push (@{$cmdref->{arg}}, @ARGV);     # get the rest of the arguments
 
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
+

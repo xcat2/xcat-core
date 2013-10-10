@@ -14,7 +14,7 @@ B<xcatconfig> {B<-i>|B<--initinstall>}  [B<-V>|B<--verbose>]
 
 B<xcatconfig> {B<-u>|B<--updateinstall>}  [B<-V>|B<--verbose>]
 
-B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-m>|B<--mgtnode>]  [B<-V>|B<--verbose>]
+B<xcatconfig> [B<-k>|B<--sshkeys>] [B<-s>|B<--sshnodehostkeys>] [B<-c>|B<--credentials>] [B<-d>|B<--database>] [B<-m>|B<--mgtnode>] [B<-t>|B<--tunables>] [B<-V>|B<--verbose>]
 
 B<xcatconfig> {B<-f>|B<--force>} [B<-V>|B<--verbose>]
 
@@ -73,6 +73,10 @@ Redistribute credentials and ssh keys to the service nodes and ssh keys to the n
 =item B<-m|--mgtnode>
 
 This option will add the Management Node to the database with the correct attributes set to be recognized by xCAT.  This should be run after the hostname of the Management Node is set to the name that  will resolve to the cluster-facing NIC.
+
+=item B<-t|--tunables>
+
+This option will set tunable parameters on the Management and Service nodes recommended for your Linux cluster.  It will only set them during initial install, if you run xcatconfig -f or xcatconfig -t.
 
 =back
 

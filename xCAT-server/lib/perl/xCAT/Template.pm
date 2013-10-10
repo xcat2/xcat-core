@@ -178,7 +178,7 @@ sub subvars {
       my $source_in_pre;
       my $c = 0; 
       foreach my $pkgdir(@pkgdirs) {
-          if( $platform =~ /^(rh|SL)$/ ) {
+          if( $platform =~ /^(rh|SL|centos|fedora)$/ ) {
               if ( $c == 0 ) {
                   # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
                   # the rhels5.9 will not be installed successfully. So put in kickstart directly.
@@ -875,7 +875,11 @@ sub tabdb
            }
          }
          #$tmplerr="Unable to find requested $field from $table, with $key";
+         my $savekey=$key;
+         $key = '$NODE';  # make sure we use getNodeAttribs when get_replacement
+                          # calls this routine (tabdb) 
          my $rep=get_replacement($table,$key,$field);
+         $key=$savekey;   # restore just in case we rely on the node=$node setting
          if ($rep) {
             return tabdb($rep->[0], $rep->[1], $rep->[2]);
          } else {

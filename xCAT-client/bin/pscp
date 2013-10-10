@@ -12,7 +12,6 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use IO::Handle;
 use IO::Select;
 use Thread qw(yield);
-use xCAT::Utils;
 use Getopt::Long qw(:config pass_through require_order);
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;

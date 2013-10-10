@@ -667,6 +667,9 @@ sub decode_spd {
         1066 => 8500,
         1333 => 10600,
         1600 => 12800,
+        1867 => 14900,
+        2133 => 17000,
+        2134 => 17000,
     );
 
     my %ddr3modcap = (
@@ -707,9 +710,20 @@ sub decode_spd {
     }
     $rethash->{product}->{name}=$memtypes{$spd[2]};
     if  ($spd[2] == 11) { #DDR3 spec applies
+        my $ftbdividend = $spd[9] >> 4;
+        my $ftbdivisor = $spd[9] & 0xf;
+        my $ftb = $ftbdividend/$ftbdivisor;
+        my $fineoffset = $spd[34];
+        if ($fineoffset & 0b10000000) {
+            #negative value, twos complement
+            $fineoffset = 0-(($fineoffset ^ 0xff) + 1);
+        }
+        $fineoffset = ($ftb * $fineoffset) * 10**-3;
         my $mtb = $spd[10]/$spd[11];
-        my $speed = $speedfromclock{int(2/($mtb*$spd[12]*10**-3))};
-        $rethash->{product}->{name}="PC3-".$speed;
+        my $clock = int(2/(($mtb*$spd[12]+$fineoffset)*10**-3));
+        my $speed = $speedfromclock{$clock};
+        unless ($speed) { $speed = "UNKNOWN"; }
+        $rethash->{product}->{name}="PC3-".$speed." ($clock MT/s)";
         if ($spd[8]&0b11000) {
             $rethash->{product}->{name} .= " ECC";
         }

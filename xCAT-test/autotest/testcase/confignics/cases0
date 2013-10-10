@@ -1,0 +1,262 @@
+start:confignics_config_one_port_single_value
+description:confignics 
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output=~100.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output=~100.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+check:output=~100.1.0.100
+check:output!~dhcp
+cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi 
+end
+
+start:confignics_config_multiple_ports_single_value
+description:confignics
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 200_1_0_0-255_255_0_0 net=200.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+cmd:chdef $$CN nicips.$$THIRDNIC=200.1.0.100 nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC=200_1_0_0-255_255_0_0
+check:rc==0
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output=~100.1.0.100
+check:output=~200.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output=~100.1.0.0
+check:output=~200.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+check:output=~100.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+check:output=~200.1.0.100
+check:output!~dhcp
+cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 200_1_0_0-255_255_0_0
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:xdsh $$CN ifdown $$THIRDNIC
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+end
+
+start:confignics_config_multiple_ports_multiple_value
+description:confignics
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" 
+check:rc==0
+cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="13_1_0_0-255_255_0_0|14_1_0_0-255_255_0_0" 
+check:rc==0
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output=~11.1.0.100
+check:output=~12.1.0.100
+check:output=~13.1.0.100
+check:output=~14.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output=~11.1.0.0
+check:output=~12.1.0.0
+check:output=~13.1.0.0
+check:output=~14.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+check:output=~11.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+check:output=~12.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+check:output=~13.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+check:output=~14.1.0.100
+check:output!~dhcp
+cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:xdsh $$CN ifdown $$THIRDNIC
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+end
+
+start:confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
+description:confignics
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nichostnamesuffixes.$$SECONDNIC="-$$SECONDNIC-1|-$$SECONDNIC-2"
+check:rc==0
+cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="13_1_0_0-255_255_0_0|14_1_0_0-255_255_0_0" nichostnamesuffixes.$$THIRDNIC="-$$THIRDNIC-1|-$$THIRDNIC-2"
+check:rc==0
+cmd:cp /etc/hosts /etc/hosts.backup
+cmd:rc==0
+cmd:makehosts $$CN
+check:rc==0
+cmd:cat /etc/hosts
+check:output=~$$CN-$$SECONDNIC-1
+check:output=~$$CN-$$SECONDNIC-2
+check:output=~$$CN-$$THIRDNIC-1
+check:output=~$$CN-$$THIRDNIC-2
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output=~11.1.0.100
+check:output=~12.1.0.100
+check:output=~13.1.0.100
+check:output=~14.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output=~11.1.0.0
+check:output=~12.1.0.0
+check:output=~13.1.0.0
+check:output=~14.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+check:output=~11.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+check:output=~12.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+check:output=~13.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+check:output=~14.1.0.100
+check:output!~dhcp
+cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:xdsh $$CN ifdown $$THIRDNIC
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi 
+cmd:cp /etc/hosts.backup /etc/hosts
+end
+
+start:confignics_config_multiple_port_withnicaliases_multiple_value
+description:confignics
+cmd:mkdef -t network -o 11_1_0_0-255_255_0_0 net=11.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 12_1_0_0-255_255_0_0 net=12.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:mkdef -t network -o 13_1_0_0-255_255_0_0 net=13.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:mkdef -t network -o 14_1_0_0-255_255_0_0 net=14.1.0.0 mask=255.255.0.0 mgtifname=$$THIRDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC="11.1.0.100|12.1.0.100" nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC="11_1_0_0-255_255_0_0|12_1_0_0-255_255_0_0" nicaliases.$$SECONDNIC="aliases1-1|aliases1-2" 
+check:rc==0
+cmd:chdef $$CN nicips.$$THIRDNIC="13.1.0.100|14.1.0.100" nictypes.$$THIRDNIC=Ethernet nicnetworks.$$THIRDNIC="13_1_0_0-255_255_0_0|14_1_0_0-255_255_0_0" nicaliases.$$THIRDNIC="aliases2-1|aliases2-2"
+check:rc==0
+cmd:makehosts $$CN
+check:rc==0
+cmd:cat /etc/hosts
+check:output=~aliases1-1
+check:output=~aliases1-2
+check:output=~aliases2-1
+check:output=~aliases2-2
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output=~11.1.0.100
+check:output=~12.1.0.100
+check:output=~13.1.0.100
+check:output=~14.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output=~11.1.0.0
+check:output=~12.1.0.0
+check:output=~13.1.0.0
+check:output=~14.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+check:output=~11.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+check:output=~12.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+check:output=~13.1.0.100
+check:output!~dhcp
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+check:output=~14.1.0.100
+check:output!~dhcp
+cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 12_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
+cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:xdsh $$CN ifdown $$THIRDNIC
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+end
+
+start:confignics_disable_set_to_yes
+description:confignics
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+cmd:chtab node=$$CN nics.disable=yes
+check:rc==0
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output!~100.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output!~100.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC; fi
+check:output!~100.1.0.100
+cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
+cmd:chtab node=$$CN nics.disable=0
+end
+
+start:confignics_disable_set_to_1
+description:confignics
+cmd:xdsh $$CN ifdown $$SECONDNIC
+cmd:mkdef -t network -o 100_1_0_0-255_255_0_0 net=100.1.0.0 mask=255.255.0.0 mgtifname=$$SECONDNIC
+check:rc==0
+cmd:chdef $$CN nicips.$$SECONDNIC=100.1.0.100 nictypes.$$SECONDNIC=Ethernet nicnetworks.$$SECONDNIC=100_1_0_0-255_255_0_0
+check:rc==0
+cmd:chtab node=$$CN nics.disable=1
+check:rc==0
+cmd:updatenode $$CN -P confignics
+check:rc==0
+cmd:xdsh $$CN ifconfig
+check:output!~100.1.0.100
+cmd:xdsh $$CN netstat -rn
+check:output!~100.1.0.0
+cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network-scripts/ifcfg-$$SECONDNIC; fi
+check:output!~100.1.0.100
+cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
+cmd:chtab node=$$CN nics.disable=0
+end
+
+

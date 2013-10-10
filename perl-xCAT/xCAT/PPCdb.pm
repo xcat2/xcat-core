@@ -7,6 +7,7 @@ use xCAT::GlobalDef;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+require xCAT::data::ibmhwtypes;
 
 ###########################################
 # Factory defaults
@@ -168,6 +169,10 @@ sub add_ppc {
             # Update nodelist table
             ###########################
             updategroups( $name, $db{nodelist}, $type );
+            my $tmp_group = xCAT::data::ibmhwtypes::parse_group($model);
+            if (defined($tmp_group)) {
+                updategroups($name, $db{nodelist}, $tmp_group);
+            }
             if ( $type =~ /^(fsp|bpa)$/ )  {
                 $db{nodelist}->setNodeAttribs( $name, {hidden => '1'});
             } else {
@@ -525,6 +530,10 @@ sub update_node_attribs
     if ( $namediff)
     {
         updategroups( $name, $db->{nodelist}, $type );
+        my $tmp_group = xCAT::data::ibmhwtypes::parse_group($model);
+        if (defined($tmp_group)) {
+            updategroups($name, $db->{nodelist}, $tmp_group);
+        }
         $db->{nodelist}->setNodeAttribs( $name, {status=>$nodelisthash->{status},
                                                  appstatus=>$nodelisthash->{appstatus},
                                                  primarysn=>$nodelisthash->{primarysn},

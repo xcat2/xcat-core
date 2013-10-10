@@ -3165,7 +3165,7 @@ sub noderangecontainsMn
   }
  }
  if ($mname) {  # if Management Node defined in the database
-   if (grep(/$mname/, @noderange)) { # if MN in the noderange
+   if (grep(/^$mname$/, @noderange)) { # if MN in the noderange
      return $mname;
     } else {
      return ;

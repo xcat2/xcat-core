@@ -3159,10 +3159,12 @@ sub defls
                         foreach my $imgattr (keys %imgentry)
                         {
                             # Only store the attributes that are not in general node attributes
-                            if(!defined($myhash{$obj}{$imgattr}) && defined($imgentry{$imgattr}))
-                            {
+                            # This is not the right thing to do, list all the osimage attributes instead,
+                            # like the postscripts and postbootscripts attributes,
+                            #if(!defined($myhash{$obj}{$imgattr}) && defined($imgentry{$imgattr}))
+                            #{
                                 $nodeosimagehash{$obj}{$imgattr} = $imgentry{$imgattr};
-                            }
+                            #}
                         }
                     }
                     if (scalar(keys %{$nodeosimagehash{$obj}}) == 0)

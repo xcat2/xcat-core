@@ -117,7 +117,7 @@ A timeout value for remote command execution can be specified with  the
 B<-t>  flag  or  with  the B<DSH_TIMEOUT> environment variable. If any remote
 target does not provide output to either standard  output  or  standard
 error  within  the  timeout  value,  B<xdsh> displays an error message and
-exits.
+exits. 
 
 If streaming mode is specified with the B<-s> flag, output is returned  as
 it  becomes available from each target, instead of waiting for the
@@ -333,7 +333,8 @@ available  from  any  target in the specified I<timeout>, B<xdsh>
 displays an error and terminates execution for the remote
 targets  that  failed to respond. If I<timeout> is not specified,
 B<xdsh> waits indefinitely to continue processing output  from
-all  remote  targets.  
+all  remote  targets. The exception is the -K flag which defaults 
+to  10 seconds. 
 
 =item B<-T>|B<--trace>
 
@@ -565,7 +566,7 @@ To define a BNT Ethernet switch as a node and run a command to create a new vlan
 
 B<chdef> I<myswitch groups=all>
 
-B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd>
+B<tabch> I<switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd switches.protocol=[ssh|telnet]>
   where I<admin> and I<passw0rd> are the SSH user name and password for the switch. If it is for Telnet, add I<tn:> in front of the user name: I<tn:admin>. 
 
 <xdsh> I<myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'> 

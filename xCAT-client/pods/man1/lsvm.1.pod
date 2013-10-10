@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lsvm> - Lists partition profile information for HMC-, IVM-, KVM-, Vmware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+B<lsvm> - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 =head1 SYNOPSIS
 
@@ -14,7 +14,9 @@ B<lsvm> [B<-a>| B<--all>] I<noderange>
 
 =head2 For PPC (using Direct FSP Management):
 
-B<lsvm> [B<-l>| B<--long>] I<noderange>
+B<lsvm> [B<-l>| B<--long>] B<--p775> I<noderange>
+
+B<lsvm> I<noderange>
 
 =head2 For zVM:
 
@@ -26,7 +28,9 @@ The lsvm command lists all partition profiles defined for the partitions specifi
 
 =head2 For PPC (using Direct FSP Management):
 
-For Power 775, lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
+For Power 775(use option I<--p775> to specify), lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information.
+
+For DFM-managed (short for Direct FSP Management mode) normal power machine, lsvm lists the processor, memory, physical I/O slots, hugepage and BSR info for the specified partitions or CEC.
 
 The pump mode value has the valid options:
   1 - Node Pump Mode
@@ -69,10 +73,13 @@ B<-a>
 
 List all the profiles for one partition
 
+B<--p775>
+
+Specify the operation is for Power 775 machines.
+
 B<-l>          
 
-Show lparnames for lpars.
-
+Show lparnames for lpars. It shall work with option B<--p775>.
 
 =head1 RETURN VALUE
 
@@ -102,7 +109,7 @@ g Output is similar to:
 
 3. For Power 775, to list the I/O slot information of lpar1, enter:
  
- lsvm lpar1
+ lsvm lpar1 --p775
 
 Output is similar to:
 
@@ -112,7 +119,7 @@ Output is similar to:
 
 To list the lparname of lpars, enter:
 
- lsvm lpar1 -l
+ lsvm lpar1 -l --p775
 
 Output is similar to:
  lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
@@ -121,7 +128,7 @@ Output is similar to:
 
 4. For Power 775, to list the I/O slot information and octant configuration of cec1, enter:
 
- lsvm cec1
+ lsvm cec1 --p775
 
 Output is similar to:
 
@@ -154,7 +161,7 @@ Output is similar to:
 
 To list the lparname of lpars, enter:
 
- lsvm cec1 -l
+ lsvm cec1 -l --p775
  
 Output is similar to:
 
@@ -190,7 +197,6 @@ Output is similar to:
  Page Size(in GB):                         16
  Maximum huge page memory(in pages):       24
  Requested huge page memory(in pages):     15
-=======
  Number of BSR arrays: 256,Bytes per BSR array: 4096,Available BSR array: 0;
  Available huge page memory(in pages):     0
  Configurable huge page memory(in pages):  12
@@ -208,6 +214,61 @@ Output is similar to:
  gpok3: INCLUDE LNXDFLT
  gpok3: COMMAND SET VSWITCH VSW2 GRANT LNX3
 
+6. For DFM-managed normal power machine, list out the detailed resource information:
+
+ lsvm cec 
+
+Output is similar to:
+
+  cec: HYP Configurable Processors: 16, Avail Processors: 16.
+  HYP Configurable Memory:32.00 GB(128 regions).
+  HYP Available Memory:   31.25 GB(125 regions).
+  HYP Memory Region Size: 0.25 GB(256 MB).
+  cec: All Physical I/O info:
+  65535,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0xffff(Empty Slot)
+  65535,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0xffff(Empty Slot)
+  65535,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0xffff(Empty Slot)
+  65535,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0xffff(Empty Slot)
+  65535,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+  65535,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+  65535,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+  cec: Huge Page Memory
+  Available huge page memory(in pages):     2
+  Configurable huge page memory(in pages):  2
+  Page Size(in GB):                         16
+  Maximum huge page memory(in pages):       4
+  Requested huge page memory(in pages):     2
+  cec: Barrier Synchronization Register(BSR)
+  Number of BSR arrays: 256
+  Bytes per BSR array:  4096
+  Available BSR array:  256
+
+Note: The lines list in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicate a physical I/O resource in normal power machine. 
+
+For DFM-managed partition on normal power machine, list out the detailed information:
+
+  lsvm lpar1 
+ 
+Output is similar to:
+
+  lpar1: Lpar Processor Info:
+  Curr Processor Min: 1.
+  Curr Processor Req: 16.
+  Curr Processor Max: 16.
+  lpar1: Lpar Memory Info:
+  Curr Memory Min: 0.25 GB(1 regions).
+  Curr Memory Req: 30.75 GB(123 regions).
+  Curr Memory Max: 32.00 GB(128 regions).
+  lpar1: 1,519,U78AA.001.WZSGVU7-P1-C7,0x21010207,0xffff(Empty Slot)
+  lpar1: 1,518,U78AA.001.WZSGVU7-P1-C6,0x21010206,0xffff(Empty Slot)
+  lpar1: 1,517,U78AA.001.WZSGVU7-P1-C5,0x21010205,0xffff(Empty Slot)
+  lpar1: 1,516,U78AA.001.WZSGVU7-P1-C4,0x21010204,0xffff(Empty Slot)
+  lpar1: 1,514,U78AA.001.WZSGVU7-P1-C19,0x21010202,0xffff(Empty Slot)
+  lpar1: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+  lpar1: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+  lpar1: 1/2/2
+  lpar1: 256.
+
 =head1 FILES
 
 /opt/xcat/bin/lsvm
@@ -216,6 +277,5 @@ Output is similar to:
 =head1 SEE ALSO
 
 L<mkvm(1)|mkvm.1>, L<chvm(1)|chvm.1>, L<rmvm(1)|rmvm.1>
-
 
 

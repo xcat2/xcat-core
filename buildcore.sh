@@ -85,6 +85,21 @@ if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
 
+# for the git case, query the current branch and set REL (changing master to devel if necessary)
+function setbranch {
+	#git checkout $BRANCH
+	#REL=`git rev-parse --abbrev-ref HEAD`
+	REL=`git name-rev --name-only HEAD`
+	if [ "$REL" = "master" ]; then
+		REL="devel"
+	fi
+}
+
+if [ "$REL" = "xcat-core" ]; then			# using git
+	GIT=1
+	setbranch			# this changes the REL variable
+fi
+
 YUMDIR=$FRS
 YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
 
@@ -112,7 +127,11 @@ fi
 
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 
-DESTDIR=../..$EMBEDDIR/$XCATCORE
+if [ "$GIT" = "1" ]; then			# using git - need to include REL in the path where we put the built rpms
+	DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
+else
+	DESTDIR=../..$EMBEDDIR/$XCATCORE
+fi
 SRCD=core-snap-srpms
 
 # currently aix builds ppc rpms, but someday it should build noarch
@@ -121,6 +140,12 @@ if [ "$OSNAME" = "AIX" ]; then
 else
 	NOARCH=noarch
 fi
+
+function setversionvars {
+	VER=`cat Version`
+	SHORTVER=`cat Version|cut -d. -f 1,2`
+	SHORTSHORTVER=`cat Version|cut -d. -f 1`
+}
 
 
 if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if we are promoting
@@ -151,20 +176,9 @@ else
 	#echo "source=$source"
 fi
 
-# for the git case, query the current branch and set REL (changing master to devel if necessary)
-function setbranch {
-	#git checkout $BRANCH
-	REL=`git rev-parse --abbrev-ref HEAD`
-	if [ "$REL" = "master" ]; then
-		REL="devel"
-	fi
-}
-
 # If they have not given us a premade update file, do an svn update or git pull and capture the results
 SOMETHINGCHANGED=0
-if [ "$REL" = "xcat-core" ]; then			# using git
-	GIT=1
-	setbranch
+if [ "$GIT" = "1" ]; then			# using git
 	if [ -z "$GITUP" ]; then
 		GITUP=../coregitup
 		echo "git pull > $GITUP"
@@ -186,12 +200,6 @@ else		# using svn
 	# copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
 	GITUP=$SVNUP
 fi
-
-function setversionvars {
-	VER=`cat Version`
-	SHORTVER=`cat Version|cut -d. -f 1,2`
-	SHORTSHORTVER=`cat Version|cut -d. -f 1`
-}
 
 setversionvars
 
@@ -342,8 +350,8 @@ if [ "$OSNAME" != "AIX" ]; then
 	echo "Signing RPMs..."
 	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-	createrepo $DESTDIR
-	createrepo $SRCDIR
+	createrepo --checksum sha $DESTDIR			# specifying checksum so the repo will work on rhel5
+	createrepo --checksum sha $SRCDIR
 	rm -f $SRCDIR/repodata/repomd.xml.asc
 	rm -f $DESTDIR/repodata/repomd.xml.asc
 	gpg -a --detach-sign $DESTDIR/repodata/repomd.xml

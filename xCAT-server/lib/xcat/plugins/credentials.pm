@@ -138,7 +138,7 @@ sub process_request
 
        } elsif (/ssh_dsa_hostkey/) {
 	  if (-r "/etc/xcat/hostkeys/$client/ssh_host_dsa_key") {
-	  	$tfilename="/etc/xcat/hostkeys/$client/ssh_host_rsa_key";
+	  	$tfilename="/etc/xcat/hostkeys/$client/ssh_host_dsa_key";
 	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
 	  	$tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
 	  } else {

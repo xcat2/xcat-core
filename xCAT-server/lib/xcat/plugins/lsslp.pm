@@ -20,6 +20,7 @@ use xCAT::MacMap;
 use xCAT::IMMUtils;
 use xCAT_plugin::blade;
 use xCAT::SLP;
+require xCAT::data::ibmhwtypes;
 
 
 my $mpahash;
@@ -1401,11 +1402,18 @@ sub xCATdB {
 
         my $id = ($type =~ /bpa|frame/) ? $frameid:$cageid;
         my $hidden = ($type =~ /bpa|fsp/)? 1:0;
+        my $groups = lc($type).",all";
+        my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($model);
+       
+        if (defined($tmp_pre)) {
+            $groups .= ",$tmp_pre";
+        }
         ########################################
         # Write result to every tables,
         ########################################
         if ( $type =~ /^bpa|fsp|cec|frame$/ ) {
-            $nodelisthash{$hostname} = {groups=>"$type,all", hidden=>$hidden};
+            #$nodelisthash{$hostname} = {groups=>"$type,all", hidden=>$hidden};
+            $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
             $ppchash{$hostname} = {id=>$id, parent=>$parent, hcp=>$hostname, nodetype=>$globalhwtype{$type}};
             $vpdhash{$hostname} = {mtm=>$model, serial=>$serial, side=>$side};
             $nodehmhash{$hostname} = {mgt=>$globalmgt{$type}};
@@ -1416,7 +1424,7 @@ sub xCATdB {
             my @data = ($type, $model, $serial, $side, $ip, $frameid, $cageid, $parent, $mac);
             xCAT::PPCdb::add_systemX( $type, $hostname, \@data );
         } elsif ( $type =~ /^(hmc|ivm)$/ ) {
-            $nodelisthash{$hostname} = {groups=>"$type,all", hidden=>$hidden};
+            $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
             $ppchash{$hostname} = {nodetype=>$globalhwtype{$type}};
             $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
             $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
@@ -1424,7 +1432,7 @@ sub xCATdB {
             $hostshash{$hostname} = {ip=>$ip};
             $machash{$hostname} = {mac=>$mac};
         }elsif ($type =~ /^cmm$/){
-            $nodelisthash{$hostname} = {groups=>"cmm,all", hidden=>$hidden};
+            $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
             $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
             $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
             $nodehmhash{$hostname} = {mgt=>"blade"};
@@ -1474,6 +1482,12 @@ sub format_stanza {
             $ip  = $2;
         }
         my $type = ${$outhash->{$name}}{type};
+        my $groups = "$type,all";
+        my $tmp_pre = xCAT::data::ibmhwtypes::parse_group(${$outhash->{$name}}{mtm});
+        if (defined($tmp_pre)) {
+            $groups .= ",$tmp_pre";
+        }
+	
 
         #################################
         # Node attributes
@@ -1490,7 +1504,8 @@ sub format_stanza {
         if ($type =~ /^fsp|bpa|cmm$/) {
             $result .= "\tside=${$outhash->{$name}}{side}\n";
         }
-        $result .= "\tgroups=$type,all\n";
+        #$result .= "\tgroups=$type,all\n";
+        $result .= "\tgroups=$groups\n";
         $result .= "\tmgt=$globalmgt{$type}\n";
         if ($type =~ /^fsp|bpa|frame|cec$/) {
             $result .= "\tid=${$outhash->{$name}}{$globalid{$type}}\n";

@@ -1,1 +1,13 @@
+#!/bin/bash
+if [ -f "/opt/xcat/xcatinfo" ];then
+    rm -f "/opt/xcat/xcatinfo"
+fi
 /opt/xcat/xcatdsklspost
+
+. /tmp/post-install/variables.txt
+
+if [ -x "/xcatpost/updateflag.awk" ];then
+    /xcatpost/updateflag.awk $IMAGESERVER 3002
+    /xcatpost/updateflag.awk $IMAGESERVER 3002 "installstatus booted"
+fi
+

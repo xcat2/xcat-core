@@ -5,6 +5,7 @@ use Sys::Syslog;
 use xCAT::Scope;
 use xCAT::Utils;
 use xCAT::TableUtils;
+use xCAT::ServiceNodeUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use File::Path;
@@ -103,7 +104,7 @@ sub setstate {
                   if (xCAT::InstUtils->is_me($sn)) {
                       my @myself = xCAT::NetworkUtils->determinehostname();
                       my $myname = $myself[(scalar @myself)-1];
-                      $callback->(
+                      $::callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node on service node $sn"
@@ -115,7 +116,7 @@ sub setstate {
                   }
               }
           } else {
-              $callback->(
+              $::callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node"
@@ -296,7 +297,8 @@ sub setstate {
       my $pname = "yaboot.conf-" . $tmp;
       unlink($tftpdir."/".$pname);
       link($tftpdir."/etc/".$node,$tftpdir."/".$pname); 
-  }      
+  }
+  return;      
 }
   
 
@@ -333,7 +335,7 @@ sub preprocess_request {
 	@args=($req->{arg});
     }
     @ARGV = @args;
-
+    my $nodes = $req->{node};
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
@@ -374,60 +376,39 @@ sub preprocess_request {
 
 
    #Assume shared tftp directory for boring people, but for cool people, help sync up tftpdirectory contents when 
-   #they specify no sharedtftp in site table
-   #my $stab = xCAT::Table->new('site');
-  
-   #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
+   #if they specify no sharedtftp in site table
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    if ( defined($t_entry)  and ($t_entry == 0 or $t_entry =~ /no/i)) {
+      # check for  computenodes and servicenodes from the noderange, if so error out
+       my @SN;
+       my @CN;
+       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+       if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+            my $rsp;
+            $rsp->{data}->[0] = 
+              "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
+            xCAT::MsgUtils->message("E", $rsp, $callback1);       
+            return; 
+           
+       } 
+
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      return xCAT::Scope->get_broadcast_scope($req,@_);
+      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes
+       return xCAT::Scope->get_broadcast_scope($req,@_);
+      }
    }
    return [$req];
 }
-#sub preprocess_request {
-#   my $req = shift;
-#   my $callback = shift;
-#  my %localnodehash;
-#  my %dispatchhash;
-#  my $nrtab = xCAT::Table->new('noderes');
-#  foreach my $node (@{$req->{node}}) {
-#     my $nodeserver;
-#     my $tent = $nrtab->getNodeAttribs($node,['tftpserver']);
-#     if ($tent) { $nodeserver = $tent->{tftpserver} }
-#     unless ($tent and $tent->{tftpserver}) {
-#        $tent = $nrtab->getNodeAttribs($node,['servicenode']);
-#        if ($tent) { $nodeserver = $tent->{servicenode} }
-#     }
-#     if ($nodeserver) {
-#        $dispatchhash{$nodeserver}->{$node} = 1;
-#     } else {
-#        $localnodehash{$node} = 1;
-#     }
-#  }
-#  my @requests;
-#  my $reqc = {%$req};
-#  $reqc->{node} = [ keys %localnodehash ];
-#  if (scalar(@{$reqc->{node}})) { push @requests,$reqc }
-#
-#  foreach my $dtarg (keys %dispatchhash) { #iterate dispatch targets
-#     my $reqcopy = {%$req}; #deep copy
-#     $reqcopy->{'_xcatdest'} = $dtarg;
-#     $reqcopy->{node} = [ keys %{$dispatchhash{$dtarg}}];
-#     push @requests,$reqcopy;
-#  }
-#  return \@requests;
-#}
-#
 
 
 sub process_request {
   $request = shift;
   $callback = shift;
+  $::callback=$callback;
   $sub_req = shift;
   my $command  = $request->{command}->[0];
   %breaknetbootnodes=();

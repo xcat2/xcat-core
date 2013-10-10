@@ -26,8 +26,28 @@ sub preprocess_request
     my $req = shift;
     my $callback = shift;
 
-    unless (defined ($req->{arg}) && $req->{arg}->[0]) {
-        xCAT::MsgUtils->message("E", {error=>["An osimage name needs to be specified."], errorcode=>["1"]}, $callback);
+    my $usage = sub {
+        my $callback = shift;
+        xCAT::MsgUtils->message("I", {data=>["Usage: geninitrd <imagename> [-h | --help]"]}, $callback);
+    };
+
+    my $osimage;
+    if (defined ($req->{arg})) {
+        foreach (@{$req->{arg}}) {
+            if (/^-/) {
+                $usage->($callback);
+                return;
+            }else {
+                $osimage = $_;
+            }
+        }
+    } else {
+        $usage->($callback);
+        return;
+    }
+
+    unless ($osimage) {
+        $usage->($callback);
         return;
     }
  
@@ -46,10 +66,11 @@ sub process_request
 {
     my $req  = shift;
     my $callback = shift;
+    my $doreq = shift;
 
     if ($req->{command}->[0] eq 'geninitrd')
     {
-        return geninitrd($req, $callback);
+        return geninitrd($req, $callback, $doreq);
     }
 
 }
@@ -57,6 +78,7 @@ sub process_request
 sub geninitrd {
     my $req  = shift;
     my $callback = shift;
+    my $doreq = shift;
 
     my $osimage = $req->{arg}->[0];
 
@@ -69,7 +91,7 @@ sub geninitrd {
         return;
     }
 
-    my $oient = $osimagetab->getAttribs({imagename => $osimage}, 'osvers', 'osarch', 'osupdatename');
+    my $oient = $osimagetab->getAttribs({imagename => $osimage}, 'provmethod', 'osvers', 'osarch', 'osupdatename');
     unless ($oient && $oient->{'osvers'} && $oient->{'osarch'} ) {
         xCAT::MsgUtils->message("E", {error=>["The osimage [$osimage] was not defined or [osvers, osarch] attributes were not set."], errorcode=>["1"]}, $callback);
         return;
@@ -84,7 +106,7 @@ sub geninitrd {
         return;
     }
 
-    my $lient = $linuximagetab->getAttribs({imagename => $osimage}, 'pkgdir',  'driverupdatesrc',  'netdrivers');
+    my $lient = $linuximagetab->getAttribs({imagename => $osimage}, 'rootimgdir', 'pkgdir',  'driverupdatesrc',  'netdrivers');
     unless ($lient && $lient->{'pkgdir'}) {
         xCAT::MsgUtils->message("E", {error=>["The osimage [$osimage] was not defined or [pkgdir] attribute was not set."], errorcode=>["1"]}, $callback);
         return;
@@ -92,6 +114,27 @@ sub geninitrd {
     $pkgdir = $lient->{'pkgdir'};
     $driverupdatesrc = $lient->{'driverupdatesrc'};
     $netdrivers = $lient->{'netdrivers'};
+
+    # if the provmethod equals 'netboot', call the genimage --onlyinitrd directly
+    if ($oient->{'provmethod'} && ($oient->{'provmethod'} eq "netboot" || $oient->{'provmethod'} eq "statelite")) {
+        if ($lient->{'rootimgdir'}) {
+            unless (-d $lient->{'rootimgdir'}."/rootimg/lib/modules") {
+                xCAT::MsgUtils->message("E", {error=>["The genimage should be run before running geninitrd."], errorcode=>["1"]}, $callback);
+                return;
+            }
+        } else {
+            xCAT::MsgUtils->message("E", {error=>["The rootimgdir attribute for the osimage should be set."], errorcode=>["1"]}, $callback);
+            return;
+        }
+        my @output = `genimage $osimage --onlyinitrd`;
+        xCAT::MsgUtils->message("I", {data=>\@output}, $callback);
+        #$doreq->({ command => ['genimage'],
+        #              arg => [$osimage, '--onlyinitrd'] }, $callback);
+        return;
+    } elsif (!$oient->{'provmethod'} || $oient->{'provmethod'} ne "install") {
+        xCAT::MsgUtils->message("E", {error=>["The attribute [provmethod] for osimage [$osimage] must be set to install, netboot or statelite."], errorcode=>["1"]}, $callback);
+        return;
+    }
 
     # get the path list of the osdistroupdate
     if ($oient->{'osupdatename'}) {

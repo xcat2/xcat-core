@@ -11,6 +11,10 @@ B<rbootseq> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<rbootseq> I<noderange> {B<hd0>|B<hd1>|B<hd2>|B<hd3>|B<net>|B<iscsi>|B<iscsicrit>|B<cdrom>|B<usbflash>|B<floppy>|B<none>|B<list>|B<stat>}B<,>I<...>
 
+=head2 HP Blade specific:
+
+B<rbootseq> I<noderange> {B<hd>|B<net1>|B<net2>|B<net3>|B<net4>|B<cdrom>|B<usbflash>|B<floppy>|B<none>}B<,>I<...>
+
 =head2 PPC (using Direct FSP Management) specific:
 
 B<rbootseq> I<noderange> B<[hfi|net]>
@@ -52,6 +56,22 @@ The fourth hard disk.
 
 Boot over the ethernet network, using a PXE or BOOTP broadcast.
 
+=item B<n>|B<net>|B<network>|B<net1>|B<nic1> (HP Blade Only)
+
+Boot over the first ethernet network, using a PXE or BOOTP broadcast.
+
+=item B<net2>|B<nic2> (HP Blade Only)
+
+Boot over the second ethernet network, using a PXE or BOOTP broadcast.
+
+=item B<net3>|B<nic3> (HP Blade Only)
+
+Boot over the third ethernet network, using a PXE or BOOTP broadcast.
+
+=item B<net3>|B<nic3> (HP Blade Only)
+
+Boot over the fourth ethernet network, using a PXE or BOOTP broadcast.
+
 =item B<hfi>
 
 Boot p775 nodes over the HFI network, using BOOTP broadcast.
@@ -68,7 +88,7 @@ Boot to an iSCSI disk over the network.
 
 The CD or DVD drive.
 
-=item B<usbflas>|B<usb>|B<flash>
+=item B<usbflash>|B<usb>|B<flash>
 
 A USB flash drive.
 

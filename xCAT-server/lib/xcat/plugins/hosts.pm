@@ -205,6 +205,32 @@ sub addotherinterfaces
     }
 }
 
+sub delotherinterfaces
+{
+    my $node            = shift;
+    my $otherinterfaces = shift;
+    my $domain          = shift;
+
+    my @itf_pairs = split(/,/, $otherinterfaces);
+    foreach (@itf_pairs)
+    {
+		my ($itf, $ip); 
+		if ($_  =~ /!/) {
+			($itf, $ip) = split(/!/, $_);
+		} else {
+        	($itf, $ip) = split(/:/, $_);
+		}
+        if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
+        {
+            if ($itf =~ /^-/)
+            {
+                $itf = $node . $itf;
+            }
+            delnode $itf, $ip, '', $domain;
+        }
+    }
+}
+
 sub add_hosts_content {
 	my %args = @_;
 	my $nodelist = $args{nodelist};
@@ -247,6 +273,10 @@ sub add_hosts_content {
                 if ($DELNODE)
                 {
                     delnode $nodename, $ip, $ref->{hostnames}, $domain;
+                    if (defined($ref->{otherinterfaces}))
+                    {
+                        delotherinterfaces $nodename, $ref->{otherinterfaces}, $domain;
+                    }
                 }
                 else
                 {
@@ -257,9 +287,10 @@ sub add_hosts_content {
                     else
                     {
                         my $rsp;
-                        push @{$rsp->{data}}, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
+                        push @{$rsp->{data}}, "Invalid IP Addr \'$ref->{ip}\' for node \'$ref->{node}\'.";
                         xCAT::MsgUtils->message("E", $rsp, $callback);
                     }
+    
                     if (defined($ref->{otherinterfaces}))
                     {
                         addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;
@@ -451,6 +482,13 @@ sub process_request
             {
                 addnode $callback, $_->{node}, $_->{ip}, $_->{hostnames}, $domain;
             }
+            else
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Invalid IP Addr \'$_->{ip}\' for node \'$_->{node}\'.";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+            }
+
             if (defined($_->{otherinterfaces}))
             {
                 addotherinterfaces $callback, $_->{node}, $_->{otherinterfaces}, $domain;

@@ -191,7 +191,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node mgr host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings vidmodel vidproto vidpassword comments disable)],
+    cols => [qw(node mgr host migrationdest storage storagemodel storagecache storageformat cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter cluster guestostype othersettings physlots vidmodel vidproto vidpassword comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => 'Virtualization parameters',
@@ -222,14 +222,17 @@ vm => {
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-        'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware.",
+        'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware. For partitioning on normal power machines, this option is used to specify the hugepage and/or bsr information, the value is like:'hugepage:1,bsr=2'.",
         'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
         'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
         'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
 	'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
+    'physlots' => "Specify the physical slots drc index that will assigned to the partition, the delimiter is ',', and the drc index must started with '0x'. For more details, please reference to manpage of 'lsvm'.",
 	'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
 	'vidpassword' => "Password to use instead of temporary random tokens for VNC and SPICE access",
+    'storagecache' => "Select caching scheme to employ.  E.g. KVM understands 'none', 'writethrough' and 'writeback'",
+    'storageformat' => "Select disk format to use by default (e.g. raw versus qcow2)",
     }
 },
 hypervisor => {
@@ -1029,6 +1032,8 @@ site => {
    "           virtual network bridge up correctly. See\n".
    "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   " useflowcontrol:  (yes/1 or no/0). If yes, postscripts will use xcatd flow control. If no,\n".
+   "               postscripts use wait and retry. Default is no.\n\n".
    " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
    "               NFSv3 will be used with NIM. Default is no.\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
@@ -1046,6 +1051,8 @@ site => {
    " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n".
    "                      begin queueing. This applies to both client command requests\n".
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
+   " xcatmaxbatchconnections:  Number of concurrent xCAT connections allowed from the nodes.\n".
+   "                      Value must be less than xcatmaxconnections. Default is 50.\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
    " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n",
@@ -2233,8 +2240,24 @@ my @nodeattrs = (
                  tabentry => 'vm.storage',
                  access_tabentry => 'vm.node=attr:node',
                 },
+                {attr_name => 'vmphyslots',
+                 tabentry => 'vm.physlots',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'vmothersetting',
+                 tabentry => 'vm.othersettings',
+                 access_tabentry => 'vm.node=attr:node',
+                },
                 {attr_name => 'vmstoragemodel',
                  tabentry => 'vm.storagemodel',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'vmstoragecache',
+                 tabentry => 'vm.storagecache',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'vmstorageformat',
+                 tabentry => 'vm.storageformat',
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmcfgstore',
@@ -3222,7 +3245,7 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         access_tabentry => 'firmware.file=attr:cfgfile',
      },
      {attr_name => 'disable',
-        tabentry => 'auditlog.disable',
+        tabentry => 'firmware.disable',
         access_tabentry => 'firmware.file=attr:cfgfile',
      },
 );

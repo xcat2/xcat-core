@@ -64,6 +64,7 @@ if (
                 'k|sshkeys'         => \$::genSSHRootKeys,
                 'm|mgtnode'         => \$::setupMNinDB,
                 's|sshnodehostkeys' => \$::genSSHNodeHostKeys,
+                't|tunables'        => \$::settunables,
                 'c|credentials'     => \$::genCredentials,
                 'd|database'        => \$::initDB,
                 'h|help'            => \$::HELP,
@@ -101,6 +102,7 @@ if ($::FORCE)
         || $::genSSHRootKeys
         || $::genSSHNodeHostKey
         || $::genCredentials
+        || $::settunables
         || $::initDB)
     {
         my $warning =
@@ -233,6 +235,22 @@ if (xCAT::Utils->isMN()) {
   {
       &genSSHNodeHostKey;
   }
+}
+
+#
+# Set tunables 
+#
+#
+if (($::settunables) && ( $::osname eq 'AIX')) { # not supported on AIX
+     xCAT::MsgUtils->message('E', "Setting tunables (-t) is not supported on AIX.");
+     exit 1;
+}
+
+if ($::FORCE || $::settunables || $::INITIALINSTALL )
+{
+   if ($::osname eq 'Linux') {
+      &settunables;
+   }
 }
 #
 #  gen root's ssh keys, if needed and copy to appropriate directories to
@@ -628,11 +646,11 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. This command should not be run on an xCAT Service Node, unless you are making it a Management Node.\n"
+        "Usage:\nxcatconfig - Performs basic xCAT setup operations on an xCAT management node. Only the -t option should be used on a Service Node.\n"
         );
     xCAT::MsgUtils->message(
         'I',
-        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-m|mgtnode] [-V|--verbose]"
+        "xcatconfig [-h|--help]\nxcatconfig [-v|--version]\nxcatconfig [-f|--force] [-V|--verbose]\nxcatconfig [-i|--initinstall] [-V|--verbose]\nxcatconfig [-u|--updateinstall] [-V|--verbose]\nxcatconfig [-k|--sshkeys] [-s|--sshnodehostkeys] [-c|--credentials] [-d|database] [-m|mgtnode] [-t|tunables] [-V|--verbose]"
         );
 }
 
@@ -822,7 +840,58 @@ sub genSSHRootKeys
             );
     }
 }
+#-----------------------------------------------------------------------------
 
+=head3   settunables 
+	
+    Will set the default suggested tunables on the Management Node or service node for Linux 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub settunables 
+
+{
+   # tuning ARP on Linux
+   # set for right now
+   my $cmd = "/bin/echo '1024' >/proc/sys/net/ipv4/neigh/default/gc_thresh1";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   $cmd = "/bin/echo '4096' >/proc/sys/net/ipv4/neigh/default/gc_thresh2";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   $cmd = "/bin/echo '8192' >/proc/sys/net/ipv4/neigh/default/gc_thresh3";
+   my $outref = xCAT::Utils->runcmd("$cmd", 0);
+   if ($::RUNCMD_RC != 0)
+   {
+    xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
+   }
+   # set for after reboot
+   if (!( -f "/etc/sysctl.conf.xcatbackup")){  # not already backed up
+      $cmd = "cp /etc/sysctl.conf /etc/sysctl.conf.xcatbackup";
+      my $outref = xCAT::Utils->runcmd("$cmd", 0);
+      if ($::RUNCMD_RC != 0)
+      {
+        xCAT::MsgUtils->message( 'E', "Could not backup /etc/sysctl.conf.");
+        exit 1;
+      }
+   }
+   #delete all occurance of the attribute and then add xCAT settings
+   `sed -i '/net.ipv4.neigh.default.gc_thresh1 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh1 = 1024" >>/etc/sysctl.conf`;
+   `sed -i '/net.ipv4.neigh.default.gc_thresh2 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh2 = 4096" >>/etc/sysctl.conf`;
+   `sed -i '/net.ipv4.neigh.default.gc_thresh3 /'d /etc/sysctl.conf`;
+   `echo "net.ipv4.neigh.default.gc_thresh3 = 8192" >>/etc/sysctl.conf`;
+ 
+}
 #-----------------------------------------------------------------------------
 
 =head3    genSSHNodeHostKey 
@@ -1174,6 +1243,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;";
 
         if ($::osname eq 'AIX')
         {

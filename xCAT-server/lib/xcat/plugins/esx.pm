@@ -97,6 +97,7 @@ my %guestidmap = (
     "rhel.6.*" => "rhel6_",
     "rhel.5.*" => "rhel5_",
     "rhel4.*" => "rhel4_",
+    "centos6.*" => "rhel6_",
     "centos5.*" => "rhel5_",
     "centos4.*" => "rhel4_",
     "sles11.*" => "sles11_",
@@ -4215,6 +4216,13 @@ sub copycd {
 			$darch="x86_64";
 			$arch="x86_64";
 			unless ($distname) { $distname='esxi5.1'; }
+			$found=1;
+			last;
+		}
+		if (/VMware ESXi 5\.5/) {
+			$darch="x86_64";
+			$arch="x86_64";
+			unless ($distname) { $distname='esxi5.5'; }
 			$found=1;
 			last;
 		}

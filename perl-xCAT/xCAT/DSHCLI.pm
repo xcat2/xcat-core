@@ -4185,7 +4185,7 @@ sub parse_and_run_dsh
         #
         # setup ssh keys on the nodes or ib switch
         #
-        my $rc      = xCAT::TableUtils->setupSSH($options{'nodes'});
+        my $rc      = xCAT::TableUtils->setupSSH($options{'nodes'},$options{'timeout'});
         my @results = "return code = $rc";
         return (@results);
     }

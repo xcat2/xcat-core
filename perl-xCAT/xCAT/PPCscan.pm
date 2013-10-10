@@ -11,7 +11,7 @@ use xCAT::PPCdb;
 use xCAT::GlobalDef;
 use xCAT::Usage;
 use xCAT::NetworkUtils;
-
+require xCAT::data::ibmhwtypes;
 
 ##############################################
 # Globals
@@ -545,6 +545,7 @@ sub format_stanza {
         #################################
         # Add each attribute
         #################################
+        my $mtm = undef;
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
@@ -555,7 +556,8 @@ sub format_stanza {
             } elsif ( /^hwtype$/ ) {        
                 $d = $globalhwtype{$type};
             } elsif ( /^groups$/ ) {
-                $d = "$type,all";
+                next;
+                #$d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
             } elsif ( /^cons$/ ) {
@@ -568,7 +570,9 @@ sub format_stanza {
             } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;                    
-                }     
+                } elsif (/^mtm$/) {
+                    $mtm = $d;
+                }
             } elsif (/^side$/) {
                 unless ( $type =~ /^fsp|bpa$/ ) {
                     next;
@@ -576,6 +580,14 @@ sub format_stanza {
             }
             $result .= "\t$_=$d\n";
         }
+        my $tmp_groups = "$type,all";
+        if (defined($mtm)) {
+            my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($mtm);
+            if (defined($tmp_pre)) {
+                $tmp_groups .= ",$tmp_pre";
+            }     
+        }
+        $result .= "\tgroups=$tmp_groups\n";
     }
     return( $result );
 }
@@ -623,6 +635,7 @@ sub format_xml {
         #################################
         # Add each attribute 
         #################################
+        my $mtm = undef; 
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
@@ -631,7 +644,8 @@ sub format_xml {
             } elsif ( /^hwtype$/ ) {        
                 $d = $globalhwtype{$type};
             } elsif ( /^groups$/ ) {
-                $d = "$type,all";
+                next;
+                #$d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $hwtype;
             } elsif ( /^cons$/ ) {
@@ -643,6 +657,8 @@ sub format_xml {
             } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;
+                } elsif (/^mtm$/){
+                    $mtm = $d;
                 }
             } elsif (/^side$/) {
                 unless ( $type =~ /^fsp|bpa$/ ) {
@@ -651,6 +667,14 @@ sub format_xml {
             }
             $href->{Node}->{$_} = $d;
         }
+        my $tmp_groups = "$type,all";
+        if (defined($mtm)) {
+            my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($mtm);
+            if (defined($tmp_pre)) {
+                $tmp_groups .= ",$tmp_pre";
+            }     
+        }
+        $href->{Node}->{groups}=$tmp_groups;
         #################################
         # XML encoding
         #################################

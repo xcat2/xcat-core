@@ -34,6 +34,7 @@ my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
 my $global_sessdata;
+require xCAT::data::ibmhwtypes;
 
 eval {
     require IBM::EnergyManager;
@@ -55,6 +56,7 @@ sub handled_commands {
     rspreset => 'nodehm:mgt', #done
     rvitals => 'nodehm:mgt', #done
     rinv => 'nodehm:mgt', #done
+    rflash => 'nodehm:mgt', #done
     rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
@@ -465,12 +467,16 @@ sub on_bmc_connect {
     }
     #ok, detect some common prereqs here, notably:
     #getdevid
-    if ($command eq "getrvidparms") {
+    if ($command eq "getrvidparms" or $command eq "rflash") {
         unless (defined $sessdata->{device_id}) {
             $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
 	    return;
         }
-        getrvidparms($sessdata);
+        if ($command eq "getrvidparms") {
+            getrvidparms($sessdata);
+        } else {
+            rflash($sessdata);
+        }
     }
     #initsdr
     if ($command eq "rinv" or $command eq "reventlog" or $command eq "rvitals") {
@@ -1208,6 +1214,174 @@ sub ripmi_callback {
 	xCAT::SvrUtils::sendmsg($output,$callback,$sessdata->{node},%allerrornodes);
 }
 	
+sub isfpc {
+    my $sessdata = shift;
+    return 1
+}
+sub rflash {
+    my $sessdata = shift;
+    if (isfpc($sessdata)) {
+        #first, start a fpc firmware transaction
+        $sessdata->{firmpath} = $sessdata->{subcommand};
+        $sessdata->{firmctx} = "init";
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x17,
+                                            data=>[0,0,1,0,0,0,0],
+                                            callback=>\&fpc_firmup_config,
+                                            callback_args=>$sessdata);
+    } else {
+        die "Unimplemented";
+    }
+}
+
+sub fpc_firmup_config {
+    if (check_rsp_errors(@_)) {
+        abort_fpc_update($_[1]);
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    unless ($sessdata->{firmupxid}) {
+        $sessdata->{firmupxid} = $rsp->{data}->[0];
+    }
+    my $data;
+    if ($sessdata->{firmctx} eq 'init') {
+        $data =[0, $sessdata->{firmupxid}, 1, 0, 1, 0, 0, 0,
+                length($sessdata->{firmpath}),
+                unpack("C*",$sessdata->{firmpath})];
+        $sessdata->{firmctx} = 'p1';
+    } elsif ($sessdata->{firmctx} eq 'p1') {
+        $data = [0, $sessdata->{firmupxid}, 3, 0, 5];
+        $sessdata->{firmctx} = 'p2';
+    } elsif ($sessdata->{firmctx} eq 'p2') {
+        $data = [0, $sessdata->{firmupxid}, 4, 0, 0xa];
+        $sessdata->{firmctx} = 'p3';
+    } elsif ($sessdata->{firmctx} eq 'p3') {
+        $data = [0, $sessdata->{firmupxid}, 5, 0, 3];
+        $sessdata->{firmctx} = 'p4';
+    } elsif ($sessdata->{firmctx} eq 'p4') {
+        $data = [0, $sessdata->{firmupxid}, 6, 0, 1];
+        $sessdata->{firmctx} = 'xfer';
+		xCAT::SvrUtils::sendmsg("Transferring firmware",$callback,$sessdata->{node},%allerrornodes);
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x19,
+                        data=>[0, $sessdata->{firmupxid}],
+                        callback=>\&fpc_firmxfer_watch,
+                        callback_args=>$sessdata);
+        return;
+
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x18,
+                                data=>$data,
+                                callback=>\&fpc_firmup_config,
+                                callback_args=>$sessdata);
+}
+sub abort_fpc_update {
+    my $sessdata = shift;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x15, data=>[], callback=>\&fpc_update_aborted, callback_args=>$sessdata);
+}
+
+sub fpc_update_aborted {
+    check_rsp_errors(@_);
+    return;
+}
+
+sub fpc_firmxfer_watch {
+    if ($_[0]->{code} == 0x89) {
+	    xCAT::SvrUtils::sendmsg([1,"Transfer failed (wrong url?)"],$callback,$_[1]->{node},%allerrornodes);
+        abort_fpc_update($_[1]);
+        return;
+    }
+    if (check_rsp_errors(@_)) {
+        abort_fpc_update($_[1]);
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $delay=1;
+    my $watch=2;
+    if ($sessdata->{firmctx} eq 'apply') { $delay = 15; $watch = 1;}
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $percent = 0;
+    if ($rsp->{data} and (length(@{$rsp->{data}}) > 0)) {
+        $percent = $rsp->{data}->[0];
+    }
+    #$callback->({sinfo=>"$percent%"});
+    if ($percent == 100) {
+        if ($sessdata->{firmctx} eq 'xfer') {
+		    xCAT::SvrUtils::sendmsg("Applying firmware",$callback,$sessdata->{node},%allerrornodes);
+            $sessdata->{firmctx} = "apply";
+            $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x20,
+                                data=>[0, $sessdata->{firmupxid}],
+                                callback=>\&fpc_firmxfer_watch,
+                                callback_args=>$sessdata);
+            return;
+        } else {
+		    xCAT::SvrUtils::sendmsg("Resetting FPC",$callback,$sessdata->{node},%allerrornodes);
+            resetbmc($sessdata);
+        }
+    } else {
+        $sessdata->{ipmisession}->subcmd(netfn=>0x8, command=>0x12,
+                                data=>[$watch],
+                                delayxmit=>$delay,
+                                callback=>\&fpc_firmxfer_watch,
+                                callback_args=>$sessdata);
+    }
+}
+
+sub reseat_node {
+    my $sessdata = shift;
+    if (1) { # TODO: FPC path checked for
+        my $mptab = xCAT::Table->new('mp', -create=>0);
+        unless ($mptab) {
+		    xCAT::SvrUtils::sendmsg([1,"mp table must be configured for reseat"],$callback,$sessdata->{node},%allerrornodes);
+            return;
+        }
+        my $mpent = $mptab->getNodeAttribs($sessdata->{node},[qw/mpa id/]);
+        unless ($mpent and $mpent->{mpa} and $mpent->{id}) {
+		    xCAT::SvrUtils::sendmsg([1,"mp table must be configured for reseat"],$callback,$sessdata->{node},%allerrornodes);
+            return;
+        }
+        my $fpc = $mpent->{mpa};
+        my $ipmitab = xCAT::Table->new("ipmi");
+	    my $ipmihash = $ipmitab->getNodesAttribs([$fpc],['bmc','username','password']) ;
+	    my $authdata = xCAT::PasswordUtils::getIPMIAuth(noderange=>[$fpc],ipmihash=>$ipmihash);
+		my $nodeuser=$authdata->{$fpc}->{username};
+		my $nodepass=$authdata->{$fpc}->{password};
+        $sessdata->{slotnumber} = $mpent->{id};
+        $sessdata->{fpcipmisession} = xCAT::IPMI->new(bmc=>$mpent->{mpa},userid=>$nodeuser,password=>$nodepass);
+        $sessdata->{fpcipmisession}->login(callback=>\&fpc_node_reseat,callback_args=>$sessdata);
+    }
+}
+
+sub fpc_node_reseat {
+    my $status = shift;
+    my $sessdata = shift;
+    if ($status =~ /ERROR:/) {
+        xCAT::SvrUtils::sendmsg([1,$status],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    $sessdata->{fpcipmisession}->subcmd(netfn=>0x32, command=>0xa4,
+        data=>[$sessdata->{slotnumber}, 2],
+        callback=>\&fpc_node_reseat_complete, callback_args=>$sessdata);
+}
+
+sub fpc_node_reseat_complete {
+    my $rsp = shift;
+    my $sessdata = shift;
+	if ($rsp->{error}) {
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+		return;
+	}
+	if ($rsp->{code} == 0) {
+        xCAT::SvrUtils::sendmsg("reseat",$callback,$sessdata->{node},%allerrornodes);
+    } elsif ($rsp->{code} == 0xd5) {
+		xCAT::SvrUtils::sendmsg([1,"No node in slot"],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+		xCAT::SvrUtils::sendmsg([1,"Unknown error code ".$rsp->{code}],$callback,$sessdata->{node},%allerrornodes);
+    }
+}
+
 sub power {
 	my $sessdata = shift;
 
@@ -1218,7 +1392,9 @@ sub power {
 	my $rc = 0;
 	my $text;
 	my $code;
-        if (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
+    if ($sessdata->{subcommand} eq "reseat") {
+        reseat_node($sessdata);
+    } elsif (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_with_acpi,callback_args=>$sessdata);
 	} else {
 		$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
@@ -1568,6 +1744,11 @@ sub inv {
 sub fru_initted {
     my $sessdata = shift;
 	my $key;
+    my @args = @{$sessdata->{extraargs}}; 
+    my $up_group = undef;
+    if (grep /-t/, @args) {
+        $up_group = '1';
+    }
     my @types = @{$sessdata->{invtypes}};
 	my $format = "%-20s %s";
 
@@ -1576,11 +1757,17 @@ sub fru_initted {
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-			my $bmcifo="";
-			if ($sessdata->{bmcnum} != 1) { 
-				$bmcifo=" on BMC ".$sessdata->{bmcnum};
-			}
-    			xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+			    my $bmcifo="";
+			    if ($sessdata->{bmcnum} != 1) { 
+				    $bmcifo=" on BMC ".$sessdata->{bmcnum};
+			    }
+    		    xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+                if ($up_group and $type eq "model" and $fru->desc =~ /MTM/) {
+                    my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($fru->value);
+                    if (defined($tmp_pre)) {
+                        xCAT::TableUtils->updatenodegroups($sessdata->{node}, $tmp_pre);
+                    } 
+                }
                 last;
             }
         }
@@ -1773,8 +1960,68 @@ sub got_fpga_buildid {
         $sessdata->{fpgabuildid} = $res{data};
 	get_imm_property(property=>"/v2/fpga/build_version",callback=>\&got_fpga_version,sessdata=>$sessdata);
    } else {
-        initfru_with_mprom($sessdata);
+    	get_imm_property(property=>"/v2/ibmc/dm/fw/bios/backup_build_id",callback=>\&got_backup_bios_buildid,sessdata=>$sessdata);
    }
+}
+sub got_backup_bios_buildid {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+        $sessdata->{backupbiosbuild} = $res{data};
+    	get_imm_property(property=>"/v2/ibmc/dm/fw/bios/backup_build_version",callback=>\&got_backup_bios_version,sessdata=>$sessdata);
+    } else {
+        initfru_with_mprom($sessdata);
+    }
+}
+
+sub got_backup_bios_version {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+        $sessdata->{backupbiosversion} = $res{data};
+	    my $fru = FRU->new();
+    	$fru->rec_type("bios,uefi,firmware");
+    	$fru->desc("Backup UEFI Version");
+    	$fru->value($sessdata->{backupbiosversion}." (".$sessdata->{backupbiosbuild}.")");
+    	$sessdata->{fru_hash}->{backupuefi} = $fru;
+       	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_id",callback=>\&got_backup_imm_buildid,sessdata=>$sessdata);
+    } else {
+        initfru_with_mprom($sessdata);
+    }
+}
+
+sub got_backup_imm_buildid {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+        $sessdata->{backupimmbuild} = $res{data};
+    	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_version",callback=>\&got_backup_imm_version,sessdata=>$sessdata);
+    } else {
+        initfru_with_mprom($sessdata);
+    }
+}
+sub got_backup_imm_version {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+        $sessdata->{backupimmversion} = $res{data};
+    	get_imm_property(property=>"/v2/ibmc/dm/fw/imm2/backup_build_date",callback=>\&got_backup_imm_builddate,sessdata=>$sessdata);
+    } else {
+        initfru_with_mprom($sessdata);
+    }
+}
+sub got_backup_imm_builddate {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+        $sessdata->{backupimmdate} = $res{data};
+	my $fru = FRU->new();
+	$fru->rec_type("bios,uefi,firmware");
+	$fru->desc("Backup IMM Version");
+	$fru->value($sessdata->{backupimmversion}." (".$sessdata->{backupimmbuild}." ".$sessdata->{backupimmdate}.")");
+	$sessdata->{fru_hash}->{backupimm} = $fru;
+    }
+        initfru_with_mprom($sessdata);
 }
 sub got_fpga_version {
    my %res = @_;
@@ -2772,6 +3019,7 @@ sub parseprod {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+        if ($currsize < 0) { last }
     }
     return \%info;
 
@@ -2844,6 +3092,7 @@ sub parseboard {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@area,$idx);
+        if ($currsize < 0) { last }
     }
     if ($global_sessdata->{isanimm}) { #we can understand more specifically some of the extra fields...
 	$boardinf{frunum}=$boardinf{extra}->[0]->{value};
@@ -2908,6 +3157,7 @@ sub parsechassis {
         }
         $idx+=$currsize;
         ($currsize,$currdata,$encode)=extractfield(\@chassarea,$idx);
+        if ($currsize < 0) { last }
     }
     return \%chassisinf;
 }
@@ -2919,7 +3169,7 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $data;
     if ($idx >= scalar @$area)  {
         xCAT::SvrUtils::sendmsg([1,"Error parsing FRU data from BMC"],$callback);
-        return 1,undef,undef;
+        return -1,undef,undef;
     }
     my $size = $area->[$idx] & 0b00111111;
     my $encoding = ($area->[$idx] & 0b11000000)>>6;
@@ -3905,8 +4155,8 @@ sub getaddsensorevent {
 				0x0f => "Enabling docking station",
 				0x10 => "Docking staion ejection",
 				0x11 => "Disable docking station",
-				0x12 => "Calling operation system wake-up vector",
-				0x13 => "Starting operation system boot process, call init 19h",
+				0x12 => "Calling operating system wake-up vector",
+				0x13 => "Starting operating system boot process, call init 19h",
 				0x14 => "Baseboard or motherboard initialization",
 				0x16 => "Floppy initialization",
 				0x17 => "Keyboard test",
@@ -5176,6 +5426,57 @@ sub sensor_was_read {
             if (@exparts) {
                 $extext = join(",",@exparts);
             }
+        } elsif ($sdr->sensor_type == 0x28) {
+            if ($exdata1 & 1) {
+                push @exparts,"Degraded or unavailable";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Degraded or unavailable";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Offline";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Unavailable";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Failure";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"FRU Failure";
+            }
+        } elsif ($sdr->sensor_type == 0x2b) {
+            if ($exdata1 & 1) {
+                push @exparts,"Change detected";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Firmware change detected";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Hardware incompatibility detected";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Firmware incompatibility detected";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Unsupported hardware version";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Unsupported firmware verion";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"Hardware change successful";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Firmware change successful";
+            }
+    	} elsif ($sdr->sensor_type == 0x1b) {
+            if ($exdata1 & 1) {
+                push @exparts,"Cable connected";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Incorrect cable connection";
+            }
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
         }
@@ -5974,7 +6275,7 @@ sub preprocess_request {
 				return 0;
 
 			}
-      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
+      if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
 	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
@@ -5998,6 +6299,14 @@ sub preprocess_request {
       my (@bmcnodes, @nohandle);
       xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
       $realnoderange = \@bmcnodes;
+  } elsif ($command eq "rinv") {
+      if ($exargs[0] eq "-t" and $#exargs == 0) {
+          unshift @{$request->{arg}}, 'all';
+      } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
+          $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
+          $request = {};
+          return 0;
+      }
   }
 
   if (!$realnoderange) {

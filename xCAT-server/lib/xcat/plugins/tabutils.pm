@@ -358,7 +358,11 @@ sub noderm
                  
     nodech($nodes, \@tablist, $cb, 0);
 }
-
+#
+# restores the table from the input CSV file.  Default deletes the table rows and
+# replaces with the rows in the file
+# If -a flag is input then it adds the rows from the CSV file to the table.
+#
 sub tabrestore
 {
     # the usage for tabrestore is in the tabrestore client cmd
@@ -367,6 +371,7 @@ sub tabrestore
     my $request    = shift;
     my $cb         = shift;
     my $table      = $request->{table}->[0];
+    my $addrows      = $request->{addrows}->[0];
     # do not allow teal tables
     if ( $table =~ /^x_teal/ ) {
         $cb->({error => "$table is not supported in tabrestore. Use Teal maintenance commands. ",errorcode=>1});
@@ -377,7 +382,9 @@ sub tabrestore
         $cb->({error => "Unable to open $table",errorcode=>4});
         return;
     }
-    $tab->delEntries();    #Yes, delete *all* entries
+    if (!defined($addrows))  {   # this is a replace not add rows
+     $tab->delEntries();    #Yes, delete *all* entries
+    }
     my $header = shift @{$request->{data}};
     unless ($header =~ /^#/) {
         $cb->({error => "Data missing header line starting with #",errorcode=>1});
@@ -525,7 +532,7 @@ sub tabrestore
             next LINE;
         }
 
-        #TODO: check for error from DB and rollback
+        #check for error from DB and rollback
         my @rc = $tab->setAttribs(\%record, \%record);
         if (not defined($rc[0]))
         {
@@ -580,9 +587,10 @@ sub tabdump
     if ($args) {
         @ARGV = @{$args};
     }
-      Getopt::Long::Configure("posix_default");
-      Getopt::Long::Configure("no_gnu_compat");
-      Getopt::Long::Configure("bundling");
+    Getopt::Long::Configure("posix_default");
+    Getopt::Long::Configure("no_gnu_compat");
+    Getopt::Long::Configure("bundling");
+
 
     if (!GetOptions(
           'h|?|help' => \$HELP,
@@ -604,14 +612,15 @@ sub tabdump
         return;
     }
     if ($FILENAME and $FILENAME !~ /^\//) { $FILENAME =~ s/^/$request->{cwd}->[0]\//; }
-
+    
 
     if ($HELP) { $tabdump_usage->(0); return; }
+    
     if (($NUMBERENTRIES) && ($DESC)) {
           $cb->({error => "You  cannot use the -n and -d flag together. ",errorcode=>1});
           return 1;
     }
-
+    
     if (($NUMBERENTRIES) && ($OPTW)) {
           $cb->({error => "You  cannot use the -n and -w flag together. ",errorcode=>1});
           return 1;
@@ -620,9 +629,7 @@ sub tabdump
           $cb->({error => "You  cannot use the -n and -f flag together. ",errorcode=>1});
           return 1;
     }
-
     if (scalar(@ARGV)>1) { $tabdump_usage->(1); return; }
-
 
     my %rsp;
     # If no arguments given, we display a list of the tables
@@ -647,15 +654,15 @@ sub tabdump
     }
     # get the table name
     $table = $ARGV[0];
-
+    
     # if -n  can only be the auditlog or eventlog
     if ($NUMBERENTRIES) {
       if (!( $table =~ /^auditlog/ ) && (!($table =~ /^eventlog/))){
         $cb->({error => "$table table is not supported in tabdump -n. You may only use this option on the auditlog or the eventlog.",errorcode=>1});
         return 1;
-      }
-    }
-
+      }  
+    }  
+    
     # do not allow teal tables
     if ( $table =~ /^x_teal/ ) {
         $cb->({error => "$table table is not supported in tabdump. Use Teal maintenance commands. ",errorcode=>1});
@@ -702,7 +709,6 @@ sub tabdump
      my $rc=tabdump_numberentries($table,$cb,$NUMBERENTRIES);
      return $rc;
     }
-
 
     my $recs;
     my @ents;
@@ -758,12 +764,12 @@ sub tabdump
 }
 #
 #  display input number of records for the table requested tabdump -n
+#  note currently only supports auditlog and eventlog
 #
 sub tabdump_numberentries {
   my $table = shift;
   my $cb  = shift;
   my $numberentries  = shift; # either number of records to display  
-  my $attrrecid="recid";
 
   my $VERBOSE  = shift;
   my $rc=0;
@@ -772,38 +778,21 @@ sub tabdump_numberentries {
        $cb->({error => "Unable to open $table",errorcode=>4});
        return 1;
   }
-  my $DBname = xCAT::Utils->get_DBName;
-  my @attribs = ($attrrecid);
-  my @ents=$tab->getAllAttribs(@attribs);
-  if (@ents) {    # anything to process 
-    # find smallest and largest  recid, note table is not ordered by recid after
-    # a while
-    my $smallrid;
-    my $largerid;
-    foreach my $rid (@ents) {
-      if (!(defined $smallrid)) {
-         $smallrid=$rid;
-      }
-      if (!(defined $largerid)) {
-         $largerid=$rid;
-      }
-      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
-         $smallrid=$rid;
-      }
-      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
-         $largerid=$rid;
-      }
-    }
-    my $RECID;
-    #determine recid to show all records after 
-    $RECID= $largerid->{$attrrecid} - $numberentries ; 
-    $rc=tabdump_recid($table,$cb,$RECID, $attrrecid); 
-  } else {
+ #determine recid to show all records after 
+ my $RECID;
+ my $attrrecid="recid";
+ my $values = $tab->getMAXMINEntries($attrrecid);
+ my $max=$values->{"max"};
+ if (defined($values->{"max"})){
+      $RECID= $values->{"max"} - $numberentries ;
+      $rc=tabdump_recid($table,$cb,$RECID, $attrrecid); 
+   
+ } else {
       my %rsp;
       push @{$rsp{data}}, "Nothing to display from $table.";
       $rsp{errorcode} = $rc; 
       $cb->(\%rsp);
-  }
+ }
   return $rc;
 }
 #  Display requested recored 
@@ -831,6 +820,7 @@ sub tabdump_recid {
    output_table($table,$cb,$tab,\@recs); 
    return $rc;
 }
+
 # Display information from the daemon.
 #  
 sub lsxcatd 
@@ -1066,7 +1056,7 @@ sub tabprune
     if (($table eq "eventlog") || ($table eq "auditlog")) {
       $attrrecid="recid";
     } else {
-      if ($table eq "isnm_perf") {  # if ISNM  These tables are really not supported in 2.8 or later
+      if ($table eq "isnm_perf") {  # if ISNM   These tables are really not supported in 2.8 or later
         $attrrecid="perfid";
       } else {
         $attrrecid="period";   # isnm_perf_sum table
@@ -1134,51 +1124,34 @@ sub tabprune_numberentries {
        $cb->({error => "Unable to open $table",errorcode=>4});
        return 1;
   }
-  my $DBname = xCAT::Utils->get_DBName;
-  my @attribs = ("$attrrecid");
-  my @ents=$tab->getAllAttribs(@attribs);
-  if (@ents) {    # anything to process 
-    # find smallest and largest  recid, note table is not ordered by recid after
-    # a while
-    my $smallrid;
-    my $largerid;
-    foreach my $rid (@ents) {
-      if (!(defined $smallrid)) {
-         $smallrid=$rid;
-      }
-      if (!(defined $largerid)) {
-         $largerid=$rid;
-      }
-      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
-         $smallrid=$rid;
-      }
-      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
-         $largerid=$rid;
-      }
-    }
-    my $RECID;
+  my $RECID;
+  my $values = $tab->getMAXMINEntries($attrrecid);
+  if ((defined($values->{"max"})) && (defined($values->{"min"}))) {
+    my  $largerid = $values->{"max"};
+    my  $smallrid = $values->{"min"};
     if ($flag eq "n") {  # deleting number of records
-      #determine recid to delete all entries that come before like the -i flag
-      $RECID= $smallrid->{$attrrecid} + $numberentries ; 
+      #get the smalled recid and add number to delete, that is where to start removing
+      $RECID= $smallrid + $numberentries ; 
     } else {  # flag must be percentage
        #take largest and smallest recid and percentage and determine the recid
        # that will remove the requested percentage.   If some are missing in the
        # middle due to tabedit,  we are not worried about it.
      
-       my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
+       my $totalnumberrids = $largerid - $smallrid +1;
        my $percent = $numberentries / 100;
        my $percentage=$totalnumberrids * $percent ;
        my $cnt=sprintf( "%d", $percentage ); # round to whole number
-       $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+       $RECID=$smallrid + $cnt; # get recid to remove all before
     }
+    # Now prune starting at $RECID
     $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
-  } else {
+ } else {
       my %rsp;
       push @{$rsp{data}}, "Nothing to prune from $table.";
       $rsp{errorcode} = $rc; 
       $cb->(\%rsp);
-  }
-  return $rc;
+ }
+ return $rc;
 }
 
 #  prune all entries up to the record id input 
@@ -2367,11 +2340,27 @@ else {
   }
   
   #commit all the changes
+  my $rollback;
   foreach (keys %tables) {
     if (exists($tableupdates{$_})) {
-      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+        my @rc=$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+        if (not defined($rc[0]))
+        {
+            $rollback = 1;
+            $callback->({error => "DB error " . $rc[1] , errorcode=>[4]});
+        }
     }
-    $tables{$_}->commit;
+    if ($rollback)
+    {
+        $tables{$_}->rollback();
+        $tables{$_}->close;
+        undef $tables{$_};
+        return;
+    }
+    else
+    {
+        $tables{$_}->commit;
+    }
   }
  }
 }

@@ -14,7 +14,8 @@ B<Power 6 server specific :>
 
 B<renergy> I<noderange> [-V] { all | [savingstatus] [cappingstatus] 
 [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] 
-[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] }
+[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
+[syssbpower] [sysIPLtime]}
 
 B<renergy> I<noderange> [-V] { savingstatus={on | off} 
 | cappingstatus={on | off} | cappingwatt=watt 
@@ -158,7 +159,7 @@ Supported attributes:
 
 B<Query>: savingstatus,cappingstatus,cappingmin,cappingmax,
 cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,
-exhausttemp,CPUspeed
+exhausttemp,CPUspeed,syssbpower,sysIPLtime
 
 B<Set>:   savingstatus,cappingstatus,cappingwatt,cappingperc
 
@@ -192,7 +193,7 @@ cappingperc
 
 =back
 
-B<9125-F2C>
+B<9125-F2C>, B<9119-FHB>
 
 =over 4
 
@@ -205,6 +206,22 @@ fsavingstatus,ffoMin,ffoVmin,ffoTurbo,ffoNorm,ffovalue
 
 B<Set>:   savingstatus,dsavingstatus,cappingstatus,cappingwatt,
 cappingperc,fsavingstatus,ffovalue
+
+=back
+
+B<Non of Above>
+
+=over 4
+
+For the machine type which is not in the above list, the following 
+attributes can be tried but not guaranteed:
+
+B<Query>: savingstatus,dsavingstatus,cappingstatus,cappingmin,
+cappingmax,,cappingvalue,cappingsoftmin,averageAC,averageDC,
+ambienttemp,exhausttemp,CPUspeed,syssbpower,sysIPLtime
+
+B<Set>:  savingstatus,dsavingstatus,cappingstatus,cappingwatt,
+cappingperc 
 
 =back
 

@@ -1,17 +1,52 @@
 #!/bin/bash
 . /tmp/post-install/variables.txt
 
-echo "Updating hostname to $HOSTNAME"
-sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+#delete the udev rule in the image
+rule_file=`ls /etc/udev/rules.d/*net_persistent_names.rules`
+if [ -n "$rule_file" ];then
+    rm -f $rule_file
+fi
 
 hostname $HOSTNAME
 
-echo "Old ifcfg-$DEVICE is:"
-cat /etc/sysconfig/network-scripts/ifcfg-$DEVICE
-
-HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
-sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" /etc/sysconfig/network-scripts/ifcfg-$DEVICE
-sed -i "s/UUID=.*//g" /etc/sysconfig/network-scripts/ifcfg-$DEVICE
+str_cfg_file=''
+if [ -d "/etc/sysconfig/network-scripts/" ];then
+    #redhat
+    str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$DEVICE"
+    sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+    if [ -f $str_cfg_file ];then
+        echo "Old ifcfg-$DEVICE is:"
+        cat $str_cfg_file
+        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
+        sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" $str_cfg_file
+        sed -i "s/UUID=.*//g" $str_cfg_file
+    else
+        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
+        echo "BOOTPROTO=\"dhcp\"" >> $str_cfg_file
+        echo "NM_CONTROLLED=\"yes\"" >> $str_cfg_file
+        echo "ONBOOT=\"yes\"" >> $str_cfg_file
+    fi
+elif [ -d "/etc/sysconfig/network/" ];then
+    #suse
+    str_cfg_file="/etc/sysconfig/network/ifcfg-$DEVICE"
+    echo "$HOSTNAME" > /etc/HOSTNAME
+    if [ -f $str_cfg_file ];then
+        echo  "Old ifcfg-$DEVICE is:"
+        cat $str_cfg_file
+        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
+        sed -i "s/HWADDR=.*/HWADDR=$HWADDR/g" $str_cfg_file
+        sed -i "s/UUID=.*//g" $str_cfg_file
+    else
+        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
+        echo "BOOTPROTO=dhcp" >> $str_cfg_file
+        echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+    fi
+else
+    #ubuntu
+    echo "Does not support ubuntu."
+    exit 1
+fi
 
 echo "New ifcfg-$DEVICE is:"
-cat /etc/sysconfig/network-scripts/ifcfg-$DEVICE
+cat $str_cfg_file
