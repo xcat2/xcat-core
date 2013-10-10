@@ -177,6 +177,14 @@ else
         if [ ${12} = "-V" ]; then
          export VERBOSE=1 
         fi 
+        if [ ${12} = "-F" ]; then
+         export USEFLOWCONTROL=1 
+        fi 
+      fi
+      if [ $ARGNUM -gt 12 ]; then
+        if [ ${13} = "-V" ]; then
+         export VERBOSE=1 
+        fi 
       fi
       ;;
     3|4|6) MODE=$1;;
@@ -192,6 +200,12 @@ if [ -n "$XCATDEBUG" ]; then
   fi
 fi
 #echo "xcatpost = $xcatpost"
+
+useflowcontrol=0
+if [ $USEFLOWCONTROL = "1" ]; then
+  useflowcontrol=1
+fi
+
  
 # If on AIX node
 if [ ! `uname` = Linux ]; then
@@ -207,6 +221,7 @@ if [ ! `uname` = Linux ]; then
    umount /xcatmnt
    rmdir /xcatmnt
   logger -t xCAT -p local4.err "Running xcataixpost $*"
+  # note not supporting -F or -V on AIX
   echo "/$xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
   exec /$xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11} 
   exit
@@ -474,25 +489,43 @@ fi
 # We need to call getpostscript.awk .
 
 if [ ! -x /$xcatpost/mypostscript ]; then
-  # first contact daemon  xcatflowrequest <server> 3001
-  logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $SIP 3001"
-/$xcatpost/xcatflowrequest $SIP 3001
+  if [ $useflowcontrol = "1" ]; then
+    # first contact daemon  xcatflowrequest <server> 3001
+    logger -t xCAT -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
+   /$xcatpost/xcatflowrequest $SIP 3001
+  fi
   /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+
+  if [ $useflowcontrol = "1" ]; then
+  logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
+  fi
+
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
  RETRY=0
  while [ -z "$MYCONT" ]; do
+    # not using flow control , need to sleep
+    if [ $useflowcontrol = "0" ]; then
+        let SLI=$RANDOM%10
+        let SLI=SLI+10
+        sleep $SLI
+    fi
+
     RETRY=$(($RETRY+1))
     if [ $RETRY -eq $MAX_RETRIES ]
     then
         break
     fi
 
-    # contact daemon  xcatflowrequest <server> 3001
-    logger -t xCAT -p local4.info "xcatdsklspost: xcatflowrequest $SIP 3001"
-    /$xcatpost/xcatflowrequest $SIP 3001
-
+    if [ $useflowcontrol = "1" ]; then
+      # contact daemon  xcatflowrequest <server> 3001
+      logger -t xCAT -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
+      /$xcatpost/xcatflowrequest $SIP 3001
+    fi
     /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+    if [ $useflowcontrol = "1" ]; then
+      logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
+    fi
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
