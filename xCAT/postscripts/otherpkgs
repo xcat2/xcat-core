@@ -699,7 +699,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    if ( pmatch "$OSVER" "sles11*" ); then
 		        result=`zypper ar -c $REPOFILE`
 		    else
-		        result=`zypper sa -c $REPOFILE` 
+		        result=`zypper sa -r $REPOFILE` 
 		    fi	
 		
 		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
@@ -707,6 +707,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		        rc=0
 		        array_set_element repo_path $index $path
 		    else
+                        #on sles10, the $? always 1, even the refresh is success.
+                        if ( pmatch "$OSVER" "sles10*" ); then
+                            rc=0
+                            array_set_element repo_path $index $path
+                        fi
 		        result=`zypper sd xcat-otherpkgs$index`
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
