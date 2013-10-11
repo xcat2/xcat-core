@@ -1032,10 +1032,16 @@ site => {
    "           virtual network bridge up correctly. See\n".
    "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   " useflowcontrol:  (yes/1 or no/0).If yes, postscripts use xcatd to control access to the server.\n".
-   "               If no, postscripts sleep and retry. On a new install, it will be set to yes.\n".
-   "               Works with xcatmaxconnections and xcatmaxbatch connections attributes. Is not supported on AIX.\n".
-   "               See the following documentation for details. https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Hints_and_Tips_for_Large_Scale_Clusters\n\n".
+   " useflowcontrol:  (yes/1 or no/0). If yes, the postscript processing on each node\n".
+   "               contacts xcatd on the MN/SN using a lightweight UDP packet to wait\n".
+   "               until xcatd is ready to handle the requests associated with\n".
+   "               postscripts.  This prevents deploying nodes from flooding xcatd and\n".
+   "               locking out admin interactive use. This value works with the\n".
+   "               xcatmaxconnections and xcatmaxbatch attributes. Is not supported on AIX.\n".
+   "               If the value is no, nodes sleep for a random time before contacting\n".
+   "               xcatd, and retry. On a new install of xcat, this value will be set to yes.\n".
+   "               See the following document for details:\n".
+   "               https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Hints_and_Tips_for_Large_Scale_Clusters\n\n".
    " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
    "               NFSv3 will be used with NIM. Default is no.\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
