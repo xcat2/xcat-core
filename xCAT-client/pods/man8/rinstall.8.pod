@@ -1,15 +1,18 @@
 =head1 Name
 
-B<rinstall> - Begin installation on a noderange
+B<rinstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<rinstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<-c>|I<--console>] [I<noderange>]
+B<rinstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<-O>|I<--osimage>] [I<-c>|I<--console>] [I<noderange>]
 
 =head1 B<Description>
 
-B<rinstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  If -c is specified, it will then become the
-text console of the node.  If wanting consoles on multiple nodes with a similar command, see L<winstall(8)|winstall.8>.
+B<rinstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<rinstall>), and B<rpower> to begin a boot cycle.
+
+If [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
+
+If -c is specified, it will then become the text console of the node.  If wanting consoles on multiple nodes with a similar command, see L<winstall(8)|winstall.8>.
 
 =head1 B<Options>
 
@@ -17,21 +20,24 @@ text console of the node.  If wanting consoles on multiple nodes with a similar 
 
 =item B<-o>|B<--osver>
 
-Specifies which os version to install.  If unspecified, the current table values are used.
+Specifies which os version to provision.  If unspecified, the current table values are used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
 
 =item B<-p>|B<--profile>
 
-Specifies what profile should be used of the operating system.  If not specified the tables are used as is.
+Specifies what profile should be used of the operating system.  If not specified the tables are used as is. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
 
 
 =item B<-a>|B<--arch>
 
-Specifies what architecture of the OS to install.  Typically this is unneeded, but if provisioning betweer x86_64 and x86 frequently, this may be a useful flag.
+Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning betweer x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
+
+=item B<-O>|B<--osimage>
+
+Specifies the osimage to provision. 
 
 =item B<-c>|B<--console>
 
-
-Requests that rinstall become rcons once the install commences.  This will only work if there is only one node in the noderange. See L<winstall(8)|winstall.8> for consoles on multiple systems.
+Requests that rinstall become rcons once the provision commences.  This will only work if there is only one node in the noderange. See L<winstall(8)|winstall.8> for consoles on multiple systems.
 
 =back
 
@@ -40,20 +46,20 @@ Requests that rinstall become rcons once the install commences.  This will only 
 
 B<rinstall> I<node1-node20>
 
-Install nodes 1 through 20, using configuration as is from tables.
+Provison nodes 1 through 20, using configuration as is from tables.
 
 B<rinstall> -o rhels5.1 -p compute I<node1-node20>
 
-Install nodes 1 through 20, forcing rhels5.1 and compute profile.
+Provision nodes 1 through 20, forcing rhels5.1 and compute profile.
+
+B<rinstall> -O rhels6.4-ppc64-netboot-compute I<node1-node20>
+
+Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
 
 B<rinstall> -c I<node1>
 
-Install node1 and start a console to monitor the process
+Provisoon node1 and start a console to monitor the process.
 
-
-=head1 B<Author>
-
-Jarrod B Johnson <jbjohnso@us.ibm.com>
 
 =head1 B<See> B<Also>
 

@@ -1,20 +1,48 @@
 #!/usr/bin/env perl 
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Used as a convience command combined of [nodech]-nodeset-rpower-[rcons/wcons] 
+# to make ease of node OS provision
+
+# To use this, sym link your cmd name to this script.
+
 use strict;
-use Getopt::Long;
+
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+
+use lib "$::XCATROOT/lib/perl";
 use File::Basename;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Table;
+use xCAT::NodeRange;
+
+
 sub usage {
     print basename($0)." usage:\n";
-    print " ".basename($0)." [-o|--osver [-p|--profile] [-a|--arch] [-c|--console] <noderange>\n"
+    print " ".basename($0)." [-o|--osver] [-p|--profile] [-a|--arch] [-O|--osimage] [-c|--console] <noderange>\n"
 }
+
+
 
 my $OSVER;
 my $PROFILE;
 my $ARCH;
 my $CONSOLE;
+my $OSIMAGE;
+
+Getopt::Long::Configure("bundling");
 unless (GetOptions(
     'o|osver=s' => \$OSVER,
     'p|profile=s' => \$PROFILE,
     'a|arch=s' => \$ARCH,
+    'O|osimage=s' => \$OSIMAGE,
     'c|console' => \$CONSOLE
     )) {
     usage;
@@ -31,32 +59,145 @@ if ($arraysize == 0) {
     usage;
     exit 1;
 }
+
 my $noderange=@ARGV[0];
+my $rc=0;
+my %pnhash;
+my @allnodes;
+#use Data::Dumper;
 
-my $nodechline = "";
-if ($OSVER) {
-    $nodechline = "nodetype.os=$OSVER";
-}
-if ($PROFILE) {
-    $nodechline .= " nodetype.profile=$PROFILE";
-}
-if ($ARCH) {
-    $nodechline .= " nodetype.arch=$ARCH";
+# check and complain about the invalid combination of the options,
+# called when -O is specified or nodetype.provmethod=<osimage>,
+# ignore -o,-p and -a options and prompt a warning message 
+sub checkoption{
+    my $optstring=shift;
+    if($OSVER)   {print 'warning: "'.$optstring.'" specified, "[-o|--osver] '.$OSVER."\" ignored\n"};
+    if($PROFILE) {print 'warning: "'.$optstring.'" specified, "[-p|--profile] '.$PROFILE."\" ignored\n"};
+    if($ARCH)    {print 'warning: "'.$optstring.'" specified, "[-a|--arch] '.$OSVER."\" ignored\n"};
 }
 
-my $rc;
-if ($nodechline) {
-    $rc=system("nodech $noderange $nodechline");
+
+@allnodes=noderange($noderange); 
+
+if($OSIMAGE){
+
+# -O|--osimage is specified, ignore any -a,-p,-o options,
+# call "nodeset ... osimage= ..." to set the boot state of the noderange to the specified osimage,
+# "nodeset" will handle the updating of node attributes such as os,arch,profile,provmethod
+
+   &checkoption("[-O|--osimage] $OSIMAGE");   
+   $rc=system("nodeset $noderange osimage=$OSIMAGE");
+   if ($rc) { 
+      xCAT::MsgUtils->message("E","nodeset failure");
+      exit 1;
+   };
+}else
+{
+
+# no osimage specified, update the node attributes specified by -a,-p,-o options thru "nodech",
+# then set the boot state of each node based on the nodetype.provmethod:
+# 1) if nodetype.provmethod = <osimage>, ignore any -p,-o,-a option, then call "nodeset ... osimage" 
+# 2) if nodetype.provmethod = [install/netboot/statelite], update the node attributes specified by -a,-p,-o options thru "nodech", call "nodeset ... [install/netboot/statelite]"
+# 3) if nodetype.provmethod is not set, use 'install' as the default value
+
+# group the nodes according to the nodetype.provmethod
+
+   foreach(@allnodes){
+      my $tab=xCAT::Table->new("nodetype");
+      my $nthash=$tab->getNodeAttribs($_,['provmethod']);
+      $tab->close();
+      if(defined($nthash) and defined($nthash->{'provmethod'}))
+      {
+        push(@{$pnhash{$nthash->{'provmethod'}}},$_);
+      }
+      else
+      {
+        #if nodetype.provmethod is not specified,
+        push(@{$pnhash{'install'}},$_);
+      }
+   }
+
+   
+   foreach  my $key (keys %pnhash)
+   {
+      my $rclocal=0;
+      my $nodes=join(',',@{$pnhash{$key}});
+      if($key =~ /^(install|netboot|statelite)$/)
+      {
+
+         # nodetype.provmethod = [install|netboot|statelite]
+         my $nodechline = "";
+         if ($OSVER) {
+            $nodechline = "nodetype.os=$OSVER";
+         }
+         if ($PROFILE) {
+            $nodechline .= " nodetype.profile=$PROFILE";
+         }
+         if ($ARCH) {
+            $nodechline .= " nodetype.arch=$ARCH";
+         }
+         if ($nodechline) {
+            $rclocal=system("nodech $nodes $nodechline");
+            if ($rclocal) { 
+               print "nodech failure\n";
+               $rc=$rclocal;
+            }
+         }
+
+         unless($rc){ 
+            $rclocal=system("nodeset $nodes $key");
+            if ($rclocal) { 
+               print "nodeset $nodes failure\n";
+               $rc=$rclocal;
+            }
+         }
+      }
+      else
+      {   
+
+         # nodetype.provmethod = <osimage>
+          
+         &checkoption("nodetype.provmethod=$key");   
+         $rclocal=system("nodeset $nodes osimage=$key");
+         if ($rclocal) { 
+            print "nodeset $nodes failure\n";
+            $rc=$rclocal;
+         }
+      }
+      
+   }
 }
-if ($rc) { die "nodech failure" };
-$rc=system("nodeset $noderange install");
-if ($rc) { die "nodeset failure" };
+
+if($rc){
+      xCAT::MsgUtils->message("E","nodeset failure");
+      exit 1;
+}
+
+# call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes,for others, assume user has set the correct boot order before "rinstall"
+system("rsetboot $noderange net");
+
+# call "rpower" to start the node provision process
 $rc=system("rpower $noderange boot");
-if ($rc) { die "rpower failure" };
+if ($rc) {
+    xCAT::MsgUtils->message("E","rpower failure");
+    exit 1;
+};
+
+
 if (basename($0) =~ /rinstall/) {
+
+
+
+# for rinstall, the -c|--console option can provide the remote console for only 1 node
     if ($CONSOLE) {
+        if(scalar @allnodes ne 1){
+	    xCAT::MsgUtils->message("E","rinstall [-c|--console] will only work if there is only one node in the noderange. See winstall(8) for consoles on multiple systems");
+            exit 1;
+        }
         exec("rcons $noderange");
     }
 } elsif (basename($0) =~ /winstall/) {
+# winstall can commence a wcons command to the noderange for monitoring the provision cycle
+
     exec("wcons $noderange");
 }
