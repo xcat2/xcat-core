@@ -1032,8 +1032,10 @@ site => {
    "           virtual network bridge up correctly. See\n".
    "           https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Virtualization_with_KVM#Setting_up_a_network_bridge\n\n".
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   " useflowcontrol:  (yes/1 or no/0). If yes, postscripts will use xcatd flow control. If no,\n".
-   "               postscripts use wait and retry. Default is no.\n\n".
+   " useflowcontrol:  (yes/1 or no/0).If yes, postscripts use xcatd to control access to the server.\n".
+   "               If no, postscripts sleep and retry. On a new install, it will be set to yes.\n".
+   "               Works with xcatmaxconnections and xcatmaxbatch connections attributes.\n".
+   "               See the following documentation for details. https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Hints_and_Tips_for_Large_Scale_Clusters\n\n".
    " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
    "               NFSv3 will be used with NIM. Default is no.\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
@@ -1052,7 +1054,7 @@ site => {
    "                      begin queueing. This applies to both client command requests\n".
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
    " xcatmaxbatchconnections:  Number of concurrent xCAT connections allowed from the nodes.\n".
-   "                      Value must be less than xcatmaxconnections. Default is 50.\n".
+   "                      Value must be less than xcatmaxconnections. Default is 50.\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
    " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n",
