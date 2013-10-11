@@ -706,16 +706,20 @@ sub setnetinfo {
                         }
                         @cmd = (0x01,$channel_number,0x6,@mask);
                 }
-        } elsif ($subcommand =~ m/ip/) {
-                if ($argument =~ /\./) {
-                        my @mask = split /\./, $argument;
-                        foreach (0..3) {
-                                $mask[$_] = $mask[$_] + 0;
-                        }
-                @cmd = (0x01,$channel_number,0x3,@mask);
-        $xCAT::IPMI::bmc_handlers{$argument} = $sessdata->{ipmisession};
+        } elsif ($subcommand =~ m/gateway/) {
+                my $gw = inet_ntoa(inet_aton($argument));
+                my @mask = split /\./, $gw;
+                foreach (0..3) {
+                        $mask[$_] = $mask[$_] + 0;
                 }
-
+                @cmd = (0x01,$channel_number,12,@mask);
+        } elsif ($subcommand =~ m/ip/) {
+                my $mip = inet_ntoa(inet_aton($argument));
+                my @mask = split /\./, $mip;
+                foreach (0..3) {
+                    $mask[$_] = $mask[$_] + 0;
+                }
+                @cmd = (0x01,$channel_number,0x3,@mask);
 	}
 	#elsif($subcommand eq "alert" ) {
 	#    my $action=pop(@input);
