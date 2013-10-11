@@ -261,11 +261,14 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   }
 
   my $msg;
-  my $encode = "storable";
-  my $straightprint=0;
-  if ($ENV{XCATXMLTRACE} or $ENV{XCATXMLWARNING}) { $encode="xml"; }
+  my $encode = "xml";
+  #storable encoding is unsafe, carry on with the unsafe xml scheme
+  #perhaps one day will support faster schemes
+  #my $encode = "storable";
+  #my $straightprint=0;
+  #if ($ENV{XCATXMLTRACE} or $ENV{XCATXMLWARNING}) { $encode="xml"; }
   if (ref($request) eq 'HASH') { # the request is an array, not pure XML
-    print $client "xcatencoding: $encode\n";
+    #print $client "xcatencoding: $encode\n";
     my $encok=<$client>;
     send_request($request,$client,$encode);
   } else { #XML

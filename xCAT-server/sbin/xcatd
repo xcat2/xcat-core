@@ -2055,15 +2055,17 @@ sub service_connection {
     while (1) {
       unless ($clientsel->can_read(15)) { last; } #don't let an unresponsive client hold us up
       my $line = <$sock>; # grab one line, check for mode...
-      if ($line and $line =~ /^xcatencoding: (.*)/) {
-        unless ($supported_encodes{$1}) {
-            print $sock "Unsupported encoding $1\n";
-            last;
-        }
-        print $sock "Encoding accepted\n";
-        $globalencode=$1;
-        $line = "";
-      }
+      #Commenting out, could be a remote exceution path
+      #consider sereal one day
+      #if ($line and $line =~ /^xcatencoding: (.*)/) {
+      #  unless ($supported_encodes{$1}) {
+      #      print $sock "Unsupported encoding $1\n";
+      #      last;
+      #  }
+      #  print $sock "Encoding accepted\n";
+      #  $globalencode=$1;
+      #  $line = "";
+      #}
       $req = get_request($sock,$globalencode,$line);
       unless ($req) { last; }
       { #TODO: find closing brace..
