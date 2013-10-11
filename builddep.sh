@@ -201,7 +201,7 @@ else
 		groupadd xcat
 	fi
 fi
-chgrp -R xcat *
+chgrp -R root *
 chmod -R g+w *
 
 # Build the tarball

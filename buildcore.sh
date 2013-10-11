@@ -375,9 +375,9 @@ else	# linux
 		groupadd xcat
 	fi
 fi
-chgrp -R xcat $DESTDIR
+chgrp -R root $DESTDIR
 chmod -R g+w $DESTDIR
-chgrp -R xcat $SRCDIR
+chgrp -R root $SRCDIR
 chmod -R g+w $SRCDIR
 
 else		# end of very long if-not-promote
@@ -437,7 +437,7 @@ if [ "$OSNAME" = "AIX" ]; then
 else
 	tar $verboseflag -hjcf $TARNAME $XCATCORE
 fi
-chgrp xcat $TARNAME
+chgrp root $TARNAME
 chmod g+w $TARNAME
 
 # Decide whether to upload or not
