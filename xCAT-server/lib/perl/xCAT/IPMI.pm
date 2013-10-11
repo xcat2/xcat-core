@@ -114,7 +114,7 @@ my %rmcp_codes = ( #human friendly translations of rmcp+ code numbers
 my $socket; #global socket for all sessions to share.  Fun fun
 my $select = IO::Select->new();
 
-my %bmc_handlers; #hash from bmc address to a live session management object.  
+our %bmc_handlers; #hash from bmc address to a live session management object.  
 #only one allowed at a time per bmc
 my %sessions_waiting; #track session objects that may want to retry a packet, value is timestamp to 'wake' object for retransmit
 
