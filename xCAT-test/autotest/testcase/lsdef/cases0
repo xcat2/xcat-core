@@ -151,7 +151,7 @@ cmd:tabprune auditlog -a
 check:rc==0
 cmd:lsdef -t auditlog
 check:rc==0
-check:output=~auditlog
+check:output=~auditlog|Could not find any object
 end
 
 start:lsdef_t_eventlog
