@@ -251,12 +251,12 @@ __EOF__
         groupadd xcat
     fi     
 
-    chgrp -R xcat xcat-core
+    chgrp -R root xcat-core
     chmod -R g+w xcat-core
 
     #build the tar ball
     tar -hjcf $tar_name xcat-core
-    chgrp xcat $tar_name
+    chgrp root $tar_name
     chmod g+w $tar_name
 
     if [ ! -e core-snap ]; then
@@ -351,13 +351,13 @@ __EOF__
         groupadd xcat
     fi
 
-    chgrp -R xcat xcat-dep
+    chgrp -R root xcat-dep
     chmod -R g+w xcat-dep
 
     #create the tar ball
     dep_tar_name=xcat-dep-ubuntu.tar.bz
     tar -hjcf $dep_tar_name xcat-dep
-    chgrp xcat $dep_tar_name
+    chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
     if [ -n "$UP" ] && [ "$UP" == 0 ];then
