@@ -1,6 +1,6 @@
 #!/bin/bash
 instmods nfs sunrpc
-instmods e1000 e1000e virtio_net igb ines sfc mlx4_en cxgb3 cxgb4 tg3 bnx2 bnx2x bna ixgb ixgbe qlge mptsas mpt2sas mpt3sas ata_piix megaraid_sas virtio_blk ahci ibmaem xhci-hcd sd_mod pmcraid be2net vfat ext3 ext4 btrfs reiserfs usb_storage scsi_wait_scan kvm kvm-intel kvm-amd ipmi_si ipmi_devintf qlcnic
+instmods e1000 e1000e virtio_net igb ines sfc mlx4_en cxgb3 cxgb4 tg3 bnx2 bnx2x bna ixgb ixgbe qlge mptsas mpt2sas mpt3sas ata_piix megaraid_sas virtio_blk ahci ibmaem xhci-hcd sd_mod pmcraid be2net vfat ext3 ext4 btrfs reiserfs usb_storage scsi_wait_scan kvm kvm-intel kvm-amd ipmi_si ipmi_devintf qlcnic xfs
 instmods macvlan macvtap 8021q bridge bonding vmxnet3 cpufreq_ondemand acpi-cpufreq powernow-k8 cdc_ether
 instmods mptctl #LSI firmware management requires this
 instmods mlx4_ib ib_umad #make the mellanox ib available enough to examine /sys
