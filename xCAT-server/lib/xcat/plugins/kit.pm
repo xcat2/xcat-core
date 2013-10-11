@@ -89,7 +89,6 @@ sub process_request
         $::PID = $$;
     }
 
-
     my $command  = $request->{command}->[0];
     my $rc;
 
@@ -1059,14 +1058,20 @@ sub addkit
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "addkit: add Kits into xCAT from a list of tarball file or directory which have the same structure with tarball file";
-        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "Usage: addkit - Adds product software Kits to an xCAT cluster environment.";
         push@{ $rsp{data} }, "\taddkit [-h|--help]";
+        push@{ $rsp{data} }, "\taddkit [-v|--version]";
         push@{ $rsp{data} }, "\taddkit [-i|--inspection] <kitlist>]";
-        push@{ $rsp{data} }, "\taddkit [-p|--path <path>] <kitlist>] [-V]";
+        push@{ $rsp{data} }, "\taddkit [-V|--verbose] [-p|--path <path>] <kitlist>]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The addkit command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -1075,10 +1080,10 @@ sub addkit
             return;
     }
 
-
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'v|version' => \$vers,
             'i|inspection' => \$::INSPECTION,
             'p|path=s' => \$path,
     );
@@ -1086,6 +1091,12 @@ sub addkit
     if($help){
             $xusage->(0);
             return;
+    }
+
+    # Option -v for version
+    if ( defined($vers) ) {
+        create_version_response('addkit');
+        return 1;    # no usage - just exit
     }
 
     my %tabs = ();
@@ -1415,12 +1426,19 @@ sub rmkit
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "rmkit: remove Kits from xCAT";
-        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
         push@{ $rsp{data} }, "\trmkit [-h|--help]";
-        push@{ $rsp{data} }, "\trmkit [-f|--force] <kitlist>] [-V]";
+        push@{ $rsp{data} }, "\trmkit [-v|--version]";
+        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] <kitlist>] [-V]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The rmkit command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -1433,8 +1451,15 @@ sub rmkit
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'v|version' => \$vers,
             'f|force' => \$force
     );
+
+    # Option -v for version
+    if ( defined($vers) ) {
+        create_version_response('rmkit');
+        return 1;    # no usage - just exit
+    }
 
     if($help){
             $xusage->(0);
@@ -1765,12 +1790,19 @@ sub addkitcomp
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "addkitcomp: assign kit component to osimage";
-        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "Usage: addkitcomp - Add a Kit component to an xCAT osimage.";
         push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\taddkitcomp [-a|--adddeps] [-f|--force] [-n|--noupgrade] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\taddkitcomp [-v|--version]";
+        push@{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] -i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The addkitcomp command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -1779,10 +1811,10 @@ sub addkitcomp
             return;
     }
 
-
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'v|version' => \$vers,
             'a|adddeps' => \$adddeps,
             'f|force' => \$force,
             'n|noupgrade' => \$::noupgrade,
@@ -1792,6 +1824,12 @@ sub addkitcomp
     if($help){
             $xusage->(0);
             return;
+    }
+
+    # Option -v for version
+    if ( defined($vers) ) {
+        create_version_response('addkitcomp');
+        return 1;    # no usage - just exit
     }
 
     my %tabs = ();
@@ -2278,12 +2316,19 @@ sub rmkitcomp
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "rmkitcomp: remove kit component from osimage";
-        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
         push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
-        push@{ $rsp{data} }, "\trmkitcomp [-u|--uninstall] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\trmkitcomp [-v|--version]";
+        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] \n\t\t-i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The rmkitcomp command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -2296,6 +2341,7 @@ sub rmkitcomp
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'v|version' => \$vers,
             'u|uninstall' => \$uninstall,
             'f|force' => \$force,
             'i=s' => \$osimage
@@ -2304,6 +2350,12 @@ sub rmkitcomp
     if($help){
             $xusage->(0);
             return;
+    }
+
+    # Option -v for version
+    if ( defined($vers) ) {
+        create_version_response('rmkitcomp');
+        return 1;    # no usage - just exit
     }
 
     my %tabs = ();
@@ -3062,12 +3114,19 @@ sub chkkitcomp
 
     my $xusage = sub {
         my %rsp;
-        push@{ $rsp{data} }, "chkkitcomp: Check if kit component fits to osimage";
-        push@{ $rsp{data} }, "Usage: ";
+        push@{ $rsp{data} }, "Usage: chkkitcomp - Check if a Kit component is compatible with an xCAT osimage.";
         push@{ $rsp{data} }, "\tchkkitcomp [-h|--help]";
+        push@{ $rsp{data} }, "\tchkkitcomp [-v|--version]";
         push@{ $rsp{data} }, "\tchkkitcomp [-V|--verbose] -i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The chkkitcomp command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
 
     unless(defined($request->{arg})){ $xusage->(1); return; }
     @ARGV = @{$request->{arg}};
@@ -3076,16 +3135,22 @@ sub chkkitcomp
             return;
     }
 
-
     GetOptions(
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
+            'v|version' => \$vers,
             'i=s' => \$osimage
     );
 
     if($help){
             $xusage->(0);
             return;
+    }
+
+    # Option -v for version
+    if ( defined($vers) ) {
+        create_version_response('chkkitcomp');
+        return 1;    # no usage - just exit
     }
 
     my %tabs = ();
@@ -3335,7 +3400,7 @@ sub chkkitcomp
 sub lskit_usage {
     my $rsp;
     push @{ $rsp->{data} },
-      "\nUsage: lskit - List info for one or more kits.\n";
+      "\nUsage: lskit - List infomation for one or more kits.\n";
     push @{ $rsp->{data} },
       "  lskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names] [-R|--repoattr repoattr_names] [-C|--compattr compattr_names] [kit_names]\n ";
     push @{ $rsp->{data} }, "  lskit [-h|--help|-?] \n";
@@ -3358,12 +3423,10 @@ sub lskit_usage {
 sub lskitcomp_usage {
     my $rsp;
     push @{ $rsp->{data} },
-      "\nUsage: lskitcomp - List info for one or more kit components.\n";
-    push @{ $rsp->{data} },
-      "  lskitcomp [-V|--verbose] [-x|--xml|--XML] [-C|--compattr compattr_names] [-O|--osdistro os_distro] [-S|--serverrole server_role] [kitcomp_names]\n ";
-    push @{ $rsp->{data} }, "  lskitcomp [-h|--help|-?] \n";
-    push @{ $rsp->{data} },
-      "  lskitcomp [-v|--version]  \n ";
+      "\nUsage: lskitcomp - List information for one or more Kit components.";
+    push @{ $rsp->{data} }, "\tlskitcomp [-h|--help|-?]";
+    push @{ $rsp->{data} }, "\tlskitcomp [-v|--version]";
+    push @{ $rsp->{data} }, "\tlskitcomp [-V|--verbose] [-x|--xml|--XML] \n\t\t[-C|--compattr compattr_names] [-O|--osdistro os_distro]\n\t\t[-S|--serverrole server_role] [kitcomp_names]\n ";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
 }
@@ -3380,17 +3443,13 @@ sub lskitcomp_usage {
 
 sub lskitdeployparam_usage {
     my $rsp;
-    push @{ $rsp->{data} },
-      "\nUsage: lskitdeployparam - List the kit deployment parameters for either one or more kits, or one or more kit components.\n";
-    push @{ $rsp->{data} },
-      "  lskitdeployparam [-V|--verbose] [-x|--xml|--XML] [-k|--kitname kit_names] [-c|--compname comp_names]\n ";
-    push @{ $rsp->{data} }, "  lskitdeployparam [-h|--help|-?] \n";
-    push @{ $rsp->{data} },
-      "  lskitdeployparam [-v|--version]  \n ";
+    push @{ $rsp->{data} }, "\nUsage: lskitdeployparam - List the kit deployment parameters for full Kits or Kit components.";
+    push @{ $rsp->{data} }, "\tlskitdeployparam [-h|--help|-?]";
+    push @{ $rsp->{data} }, "\tlskitdeployparam [-v|--version]";
+    push @{ $rsp->{data} }, "\tlskitdeployparam [-V|--verbose] [-x|--xml|--XML] \n\t\t[-k|--kitname kit_names] [-c|--compname comp_names]\n";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
 }
-
 
 #----------------------------------------------------------------------------
 
@@ -3401,9 +3460,12 @@ sub lskitdeployparam_usage {
 
 #-----------------------------------------------------------------------------
 sub create_version_response {
+    my $command = shift;
     my $rsp;
     my $version = xCAT::Utils->Version();
-    push @{ $rsp->{data} }, "$::command - $version\n";
+    push @{ $rsp->{data} }, "$command - xCAT $version";
+    push @{ $rsp->{data} }, "\tkitframework = $::KITFRAMEWORK";
+    push @{ $rsp->{data} }, "\tcompatible_frameworks = $::COMPATIBLE_KITFRAMEWORKS\n";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
 }
 
@@ -3468,7 +3530,7 @@ sub lskit_processargs {
 
     # Option -v for version
     if ( defined($::opt_v) ) {
-        create_version_response();
+        create_version_response('lskit');
         return 1;    # no usage - just exit
     }
 
@@ -3568,7 +3630,7 @@ sub lskitcomp_processargs {
 
     # Option -v for version
     if ( defined($::opt_v) ) {
-        create_version_response();
+        create_version_response('lskitcomp');
         return 1;    # no usage - just exit
     }
 
@@ -3660,7 +3722,7 @@ sub lskitdeployparam_processargs {
 
     # Option -v for version
     if ( defined($::opt_v) ) {
-        create_version_response();
+        create_version_response('lskitdeployparam');
         return 1;    # no usage - just exit
     }
 
@@ -3857,12 +3919,20 @@ sub lskit {
 
     # process the command line
     # 0=success, 1=version, 2=help, 3=error
+
     $rc = lskit_processargs(@_);
     if ( $rc != 0 ) {
        if ( $rc != 1) {
            lskit_usage(@_);
        } 
        return ( $rc - 1 );
+    }
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The lskit command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
     }
 
     # Prepare the hash tables to pass to the output routines
@@ -3910,6 +3980,14 @@ sub lskitcomp {
 
     # process the command line
     # 0=success, 1=version, 2=help, 3=error
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The lskitcomp command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+
     $rc = lskitcomp_processargs(@_);
     if ( $rc != 0 ) {
        if ( $rc != 1) {
@@ -4003,6 +4081,14 @@ sub lskitdeployparam {
 
     # process the command line
     # 0=success, 1=version, 2=help, 3=error
+
+    if ($^O ne 'linux') {
+        my $rsp = {};
+        push @{ $rsp->{data}}, "The lskitdeployparam command is only supported on Linux.\n";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 1;
+    }
+
     $rc = lskitdeployparam_processargs(@_);
     if ( $rc != 0 ) {
        if ( $rc != 1) {
