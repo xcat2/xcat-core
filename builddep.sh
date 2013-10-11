@@ -97,7 +97,7 @@ if [ "$OSNAME" != "AIX" ]; then
 
 	# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
 	echo "Signing RPMs..."
-	$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'` | grep -v -E '(was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+	$XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
 
 	# Create the repodata dirs
 	echo "Creating repodata directories..."
