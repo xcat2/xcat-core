@@ -1738,7 +1738,6 @@ sub service_connection {
       my $bytesread;
       do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
       if (length($line)==0) {
-	      if (not defined $bytesread and $! == EAGAIN) { next; } #
               if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
 	      last;
       }
