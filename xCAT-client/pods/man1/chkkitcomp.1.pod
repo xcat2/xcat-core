@@ -1,35 +1,44 @@
 =head1 NAME
 
-B<chkkitcomp> - Check if kit component fits to osimage.
+B<chkkitcomp> - Check if Kit components are compatible with an xCAT osimage.
 
 =head1 SYNOPSIS
 
-B<chkkitcomp> [-h|--help]
+B<chkkitcomp> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<chkkitcomp> [-V|--verbose] -i <osimage> <kitcompname_list>
+B<chkkitcomp> [B<-V>|B<--verbose>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
-The B<chkkitcomp> command will check if the kit components are fitting to the osimage or not.  This command will ignore the current osimage.kitcomponents setting, and just to check if the kitcompname_list in the cmdline is fitting to the osimage by osversion/ostype/osarch/ and kit component dependencies.
+The B<chkkitcomp> command will check if the kit components are compatible with the xCAT osimage.  This command will if the kitcompname_list provided on the command line is compatible with the osimage. 
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
 
-B<-h|--help>
+=over 10
+
+=item B<-h|--help>
 
 Display usage message.
 
-B<-V|--verbose>
+=item B<-V|--verbose>
 
 Verbose mode.
 
-B<-i <osimage>>
+=item B<-v|--version>
 
-osimage name that is used for checking if kit components are fitting to it.
+Command version.
 
-B<kitcompname_list>
+=item B<-i> I<osimage>
+
+The name of the osimage is used for check.
+
+=item B<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be checking to the osimage.
 
+=back
 
 =head1 RETURN VALUE
 

@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lskit> - list info for one or more kits
+B<lskit> - Lists information for one or more Kits.
 
 
 =head1 SYNOPSIS
@@ -17,12 +17,13 @@ B<lskit> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
 =head1 DESCRIPTION
 
-The B<lskit> command is used to list info for one or more kits. A kit is a special kind of package that is used to install a software product on one or more nodes in an xCAT cluster.
+The B<lskit> command is used to list information for one or more kits. A kit is a special kind of package that is used to install a software product on one or more nodes in an xCAT cluster.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 The B<lskit> command outputs the following info for each kit: the kit's basic info, the kit's repositories, and the kit's components.  The command outputs the info in two formats: human-readable format (default), and XML format.  Use the -x option to view the info in XML format.
 
 Input to the command can specify any number or combination of the input options.
-
 
 =head1 OPTIONS
 
@@ -30,12 +31,12 @@ Input to the command can specify any number or combination of the input options.
 
 =item B<-K|--kitattr> I<kitattr_names>
 
-where I<kitattr_names> is a comma-delimited list of kit attribute names. The names correspond to attribute names in the B<kit> table. The B<lskit> command will only display the specified kit attributes.
+Where I<kitattr_names> is a comma-delimited list of kit attribute names. The names correspond to attribute names in the B<kit> table. The B<lskit> command will only display the specified kit attributes.
 
 
 =item B<-R|--repoattr> I<repoattr_names>
 
-where I<repoattr_names> is a comma-delimited list of kit repository attribute names. The names correspond to attribute names in the B<kitrepo> table. The B<lskit> command will only display the specified kit repository attributes.
+Where I<repoattr_names> is a comma-delimited list of kit repository attribute names. The names correspond to attribute names in the B<kitrepo> table. The B<lskit> command will only display the specified kit repository attributes.
 
 
 =item B<-C|--compattr> I<compattr_names>
@@ -99,7 +100,6 @@ Command Version.
 Display usage message.
 
 =back
-
 
 =head1 RETURN VALUE
 

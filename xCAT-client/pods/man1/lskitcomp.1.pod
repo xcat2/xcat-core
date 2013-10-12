@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lskitcomp> - list info for one or more kit components
+B<lskitcomp> - Used to list information for one or more kit components.
 
 
 =head1 SYNOPSIS
@@ -17,37 +17,33 @@ B<lskitcomp> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
 =head1 DESCRIPTION
 
-The B<lskitcomp> command is used to list info for one or more kit components. A kit is made up of one or more kit components. Each kit component is a meta package used to install a software product component on one or more nodes in an xCAT cluster.
+The B<lskitcomp> command is used to list information for one or more kit components. A kit is made up of one or more kit components. Each kit component is a meta package used to install a software product component on one or more nodes in an xCAT cluster.
 
 The B<lskitcomp> command outputs the kit component info in two formats: human-readable format (default), and XML format. Use the -x option to view the info in XML format.
 
 Input to the command can specify any number or combination of the input options.
 
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
 
 =over 10
 
-
 =item B<-C|--compattr> I<compattr_names>
 
 where I<compattr_names> is a comma-delimited list of kit component attribute names. The names correspond to attribute names in the B<kitcomponent> table.  The B<lskitcomp> command will only display the specified kit component attributes.
-
 
 =item B<-O|--osdistro> I<os_distro>
 
 where I<os_distro> is the name of an osdistro in B<osdistro> table. The B<lskitcomp> command will only display the kit components matching the specified osdistro.
 
-
 =item B<-S|--serverrole> I<server_role>
 
 where I<server_role> is the name of a server role. The typical server roles are: mgtnode, servicenode, computenode, loginnode, storagennode. The B<lskitcomp> command will only display the kit components matching the specified server role.
 
-
 =item I<kitcomp_names>
 
 is a comma-delimited list of kit component names. The B<lskitcomp> command will only display the kit components matching the specified names.
-
 
 =item B<-x|--xml|--XML>
 
@@ -94,7 +90,6 @@ Command Version.
 Display usage message.
 
 =back
-
 
 =head1 RETURN VALUE
 

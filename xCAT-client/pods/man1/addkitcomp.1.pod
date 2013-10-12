@@ -1,47 +1,56 @@
 =head1 NAME
 
-B<addkitcomp> - Assign kit components to osimage.
+B<addkitcomp> - Assign Kit components to an xCAT osimage.
 
 =head1 SYNOPSIS
 
-B<addkitcomp> [-h|--help]
+B<addkitcomp> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<addkitcomp> [-a|--adddeps] [-f|--force] [-n|--noupgrade] [-V|--verbose] -i <osimage> <kitcompname_list>
+B<addkitcomp> [B<-V>|B<--verbose>] [B<-a>|B<--adddeps>] [B<-f>|B<--force>] [B<-n>|B<--noupgrade>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
-The B<addkitcomp> command will assign kit components to osimage. The kit component meta rpm, package rpm and deploy parameters will be added to osimage's otherpkg.pkglist and postbootscripts will be added to osimages's postbootscripts attribute.
+The B<addkitcomp> command will assign kit components to an xCAT osimage. The kit component meta rpm, package rpm and deploy parameters will be added to osimage's otherpkg.pkglist and postbootscripts will be added to osimages's postbootscripts attribute.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
+ 
+=over 10
 
-B<-a|--adddeps>
+=item B<-a|--adddeps>
 
 Assign kitcomponent dependencies to the osimage.
 
-B<-h|--help>
+=item B<-h|--help>
 
 Display usage message.
 
-B<-V|--verbose>
+=item B<-V|--verbose>
 
 Verbose mode.
 
-B<-f|--force>
+=item B<-v|--version>
+
+Command version.
+
+=item B<-f|--force>
 
 Add kit component to osimage even if there is a mismatch in OS, version, arch, serverrole, or kitcompdeps
 
-B<-i <osimage>>
+=item B<-i> I<osimage>
 
-osimage name that kit component is assigning to
+The osimage name that the kit component is assigning to.
 
-B<-n|--noupgrade>
+=item B<-n|--noupgrade>
 
 Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade
 
-B<kitcompname_list>
+=item B<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be added to the osimage.
 
+=back
 
 =head1 RETURN VALUE
 
