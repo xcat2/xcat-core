@@ -1,43 +1,52 @@
 =head1 NAME
 
-B<rmkitcomp> - Remove kit components from osimage.
+B<rmkitcomp> - Remove Kit components from an xCAT osimage.
 
 =head1 SYNOPSIS
 
-B<rmkitcomp> [-h|--help]
+B<rmkitcomp> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<rmkitcomp> [-u|--uninstall] [-f|--force] [-V|--verbose] -i <osimage> <kitcompname_list>
+B<rmkitcomp> [B<-V>|B<--verbose>] [B<-u>|B<--uninstall>] [B<-f>|B<--force>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
-The B<rmkitcomp> command removes kit components from osimage.  All the kit component attributes that attached to the osimage will be removed from osimage attributes, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|--uninstall> option.
+The B<rmkitcomp> command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|--uninstall> option.
+
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
 
-B<-u|--uninstall>
+=over 10
 
-all the kit component meta rpm and package rpm in otherpkglist will be uninstalled during genimage for stateless image and updatenode for statefull nodes.
+=item B<-u|--uninstall>
 
-B<-h|--help>
+All the kit component meta rpms and package rpms in otherpkglist will be uninstalled during genimage for stateless image and updatenode for stateful nodes.
+
+=item B<-h|--help>
 
 Display usage message.
 
-B<-V|--verbose>
+=item B<-V|--verbose>
 
 Verbose mode.
 
-B<-f|--force>
+=item B<-v|--version>
+
+Command version.
+
+=item B<-f|--force>
 
 Remove this kit component from osimage no matter it is a dependency of other kit components.
 
-B<-i <osimage>>
+=item B<-i> I<osimage>
 
 osimage name that include this kit component.
 
-B<kitcompname_list>
+=item B<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage.
 
+=back
 
 =head1 RETURN VALUE
 

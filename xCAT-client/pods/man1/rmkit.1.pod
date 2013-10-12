@@ -4,31 +4,41 @@ B<rmkit> - Remove Kits from xCAT
 
 =head1 SYNOPSIS
 
-B<rmkit> [-h|--help]
+B<rmkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<rmkit> [-V|--verbose] [-f|--force] <kitlist>
+B<rmkit> [B<-V>|B<--verbose>] [B<-f>|B<--force>] I<kitlist>
 
 =head1 DESCRIPTION
 
 The B<rmkit> command removes kits on the xCAT management node from kit names.
 
+Note: The xCAT support for Kits is only available for Linux operating systems.
+
 =head1 OPTIONS
 
-B<-h|--help>
+=over 10
+
+=item B<-h|--help>
 
 Display usage message.
 
-B<-V|--verbose>
+=item B<-V|--verbose>
 
 Verbose mode.
 
-B<-f|--force>
+=item B<-v|--version>
+
+Command version.
+
+=item B<-f|--force>
 
 Remove this kit even there is any component in this kit is listed by osimage.kitcomponents.  If this option is not specified, this kit will not be removed if any kit components listed in an osimage.kitcomponents
 
-B<kitlist>
+=item B<kitlist>
 
-a comma delimited list of kits that are to be removed from the xCAT cluster.  Each entry can be a kitname or kit basename. For kit basename, rmkit command will remove all the kits that have that kit basename.
+A comma delimited list of kits that are to be removed from the xCAT cluster.  Each entry can be a kitname or kit basename. For kit basename, rmkit command will remove all the kits that have that kit basename.
+
+=back
 
 =head1 RETURN VALUE
 

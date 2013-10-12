@@ -4,37 +4,47 @@ B<addkit> - Install a kit on the xCAT management node
 
 =head1 SYNOPSIS
 
-B<addkit> [-h|--help]
+B<addkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<addkit> [-i|--inspection] <kitlist>
+B<addkit> [B<-i>|B<--inspection>] I<kitlist>
 
-B<addkit> [-V|--verbose] [-p|--path <path>] <kitlist>
+B<addkit> [B<-V>|B<--verbose>] [B<-p>|B<--path> I<path>] I<kitlist>
 
 =head1 DESCRIPTION
 
 The B<addkit> command install a kit on the xCAT management node from a kit tarfile or directory, creating xCAT database definitions for kit, kitrepo, kitcomponent.
 
+Note: The xCAT support for Kits is only available for Linux operating systems.
+
 =head1 OPTIONS
 
-B<-h|--help>
+=over 10
+
+=item B<-h|--help>
 
 Display usage message.
 
-B<-V|--verbose>
+=item B<-V|--verbose>
 
 Verbose mode.
 
-B<-i|--inspection>
+=item B<-v|--version>
+
+Command version.
+
+=item B<-i|--inspection>
 
 Show the summary of the given kits
 
-B<-p|--path <path>>
+=item B<-p|--path <path>>
 
 The destination directory to which the contents of the kit tarfiles and/or kit deploy dirs will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
 
-B<kitlist>
+=item B<kitlist>
 
 a comma delimited list of kit_tarball_files and kit_deploy_dirs that are to be added to the xCAT cluster.  Each entry can be an absolute or relative path.  For kit_tarball_files, these must be valid kits tarfiles added.  For kit_deploy_dirs, these must be fully populated directory structures that are identical to the contents of an expanded kit_tarball_file.
+
+=back
 
 =head1 RETURN VALUE
 

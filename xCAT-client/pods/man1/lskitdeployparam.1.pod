@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lskitdeployparam> - list the kit deployment parameters for either one or more kits, or one or more kit components
+B<lskitdeployparam> - Lists the deployment parameters for one or more Kits or Kit components
 
 
 =head1 SYNOPSIS
@@ -15,12 +15,13 @@ B<lskitdeployparam> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
 =head1 DESCRIPTION
 
-The B<lskitdeployparam> command is used to list the kit deployment parameters for either one or more kits, or one or more kit components. Kit deployment parameters are used to customize the installation or upgrade of kit components.
+The B<lskitdeployparam> command is used to list the kit deployment parameters for one or more kits, or one or more kit components. Kit deployment parameters are used to customize the installation or upgrade of kit components.
 
-The B<lskitdeployparam> command outputs the kit component info in two formats: human-readable format (default), and XML format.  Use the -x option to view the info in XML format.
+The B<lskitdeployparam> command outputs the kit component information in two formats: human-readable format (default), and XML format.  Use the -x option to view the information in XML format.
 
-Input to the command can specify any number or combination of the input options.
+Input to the command can specify any combination of the input options.
 
+Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
 
@@ -28,13 +29,11 @@ Input to the command can specify any number or combination of the input options.
 
 =item B<-k|--kitname> I<kit_names>
 
-where I<kit_names> is a comma-delimited list of kit names. The B<lskitdeployparam> command will only display the deployment parameters for the kits with the matching names.
-
+Where I<kit_names> is a comma-delimited list of kit names. The B<lskitdeployparam> command will only display the deployment parameters for the kits with the matching names.
 
 =item B<-c|--compname> I<comp_names>
 
-where I<comp_names> is a comma-delimited list of kit component names. The B<lskitdeployparam> command will only display the deployment parameters for the kit components with the matching names.
-
+Where I<comp_names> is a comma-delimited list of kit component names. The B<lskitdeployparam> command will only display the deployment parameters for the kit components with the matching names.
 
 =item B<-x|--xml|--XML>
 
