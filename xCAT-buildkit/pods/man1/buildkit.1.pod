@@ -18,7 +18,7 @@ B<buildkit> [B<-V>|B<--verbose>] I<addpkgs> I<kit_tarfile> [B<-p>|B<--pkgdir> I<
 
 The B<buildkit> command provides a collection of utilities that may be used to package a software product as a Kit tarfile that can be used to install software on the nodes of an xCAT cluster.  A Kit contains the product software packages, configuration and control information, and install and customization scripts.
 
-You will need to run the B<buildkit> command several times with different subcommands to step through the process of building a kit:
+You will need to run the B<buildkit> command several times with different subcommands to step through the process of building a Kit:
 
 By default the B<buildkit> subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "B<-l | --kitloc> I<kit_location>" option.
 
