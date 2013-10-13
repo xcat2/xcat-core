@@ -24,10 +24,10 @@ use File::Path;
 my $kitconf = "kit.conf";
 
 # kit framework version for this xcat.
-$::KITFRAMEWORK ="1";
+$::KITFRAMEWORK ="2";
 
 # this code is compatible with other kits that are at framework 0 or 1.
-$::COMPATIBLE_KITFRAMEWORKS = "0,1";
+$::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
 
 #-------------------------------------------------------
