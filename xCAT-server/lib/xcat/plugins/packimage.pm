@@ -394,7 +394,12 @@ sub process_request {
        } elsif ($arch =~ /ppc/) {
           $flags="-be";
        }
-       if (! -x "/sbin/mksquashfs") {
+
+       if( $osver =~ /rhels/ && $osver !~ /rhels5/) {
+           $flags="";
+       }
+       
+       if (! -x "/sbin/mksquashfs" && ! -x "/usr/bin/mksquashfs" ) {
           $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
           return;
        }
