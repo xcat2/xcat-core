@@ -624,6 +624,11 @@ sub sysclone_getimg{
     my $masterscript = $sysclone_home . "/scripts" . "/$osimage.master";
     my $rc = `sed -i "s/shutdown -r now/reboot -f/g" $masterscript`;
 
+    #on redhat5 and centos5, the fs inode size must be 128
+    my $node_osver = getOsVersion($node);
+    if ( $node_osver =~ /rh.*5.*/ || $node_osver =~ /centos5.*/ ) {
+        `sed -i "s/mke2fs/mke2fs -I 128/g" $masterscript`
+    }
     return 0;
 }
 
@@ -671,6 +676,8 @@ sub sysclone_createosimgdef{
             # only update a few attributes which are meanless for sysclone
             $osimgdef{$osimage}{provmethod} = "sysclone";
             $osimgdef{$osimage}{template} = "";
+            $osimgdef{$osimage}{otherpkglist} = "";
+            $osimgdef{$osimage}{pkglist} = "";
         }
     } else {
         $createnew = 1;
@@ -746,6 +753,19 @@ sub getOsVersion {
         #elsif (-f "/etc/fedora-release") { $os = 'rhfc' }
         $os = $os . $version;
     }
+    elsif (grep (/CentOS/, @lines)) {
+        $os = "centos";
+        $version = $lines[0];
+        $version =~ s/[^0-9]*([0-9.]+).*/$1/;
+        $os = $os . $version;
+    }
+    elsif (grep (/Fedora/, @lines)) {
+        $os = "fedora";
+        $version = $lines[0];
+        $version =~ s/[^0-9]*([0-9.]+).*/$1/;
+        $os = $os . $version;
+    }
+    
 
     return $os;
 }
