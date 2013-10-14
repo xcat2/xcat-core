@@ -1854,11 +1854,11 @@ sub gen_new_hostinfo_dict{
 
         if (exists $chain->{'chain'}) {
            my $hardwareprofile_chain = $chain->{'chain'};
-           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod;
+           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod.":--noupdateinitrd";
         }
 
         else {
-           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod.":--noupdateinitrd";
         }
 
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.

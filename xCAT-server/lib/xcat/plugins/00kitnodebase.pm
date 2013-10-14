@@ -92,6 +92,7 @@ sub process_request {
     
     my @commandslist;
     my %argslist;
+    my $noupdate_flag = 0;
     my %msghash = ( "makehosts"         => "Updating hosts entries",
                     "makedns"           => "Updating DNS entries",
                     "makedhcp"          => "Update DHCP entries",
@@ -145,7 +146,7 @@ sub process_request {
             if ($chainarray[0]){
                 if($chainarray[0] =~ m/^osimage=/)
                 {
-                    $chainarray[0] = $chainarray[0] . " --noupdateinitrd";
+                    $noupdate_flag = 1;
                 }
                 push @commandslist, ['nodeset', $chainarray[0]];
             }
@@ -154,7 +155,7 @@ sub process_request {
         if ($isfsp) {
             my $cmmref = xCAT::ProfiledNodeUtils->get_nodes_cmm($nodelist);
             my @cmmchassis = keys %$cmmref;
-            
+
             push @commandslist, ['rspconfig', 'network=*'];
             push @commandslist, ['rscan', '-u'];
             push @commandslist, ['mkhwconn', '-t'];
@@ -164,18 +165,26 @@ sub process_request {
     }elsif ($command eq 'kitnodeupdate') {
         my $firstnode = (@$nodelist)[0];
         if (exists $profilehash{$firstnode}{"ImageProfile"}){
-            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"}.' --noupdateinitrd';
+            my $osimage = 'osimage='.$profilehash{$firstnode}{"ImageProfile"};
+            $noupdate_flag = 1;
             push @commandslist, ['nodeset', $osimage];
         }
     }
-    
+
     # Run commands
     foreach (@commandslist) {
         my $current_cmd = $_->[0];
         my $current_args = $_->[1];
         setrsp_progress($msghash{$current_cmd});
         $retref = "";
-        $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
+        if(($current_cmd eq "nodeset") && $noupdate_flag)
+        {
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, 0, 2);
+        }
+        else
+        {
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
+        }
         log_cmd_return($retref);
     }
     
