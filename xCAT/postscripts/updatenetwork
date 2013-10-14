@@ -9,44 +9,45 @@ fi
 
 hostname $HOSTNAME
 
+device_name=''
+str_mac=''
+for str_temp in `cat /proc/cmdline`;do
+    echo $str_temp | grep -i 'BOOTIF'
+    if [ $? -eq 0 ];then
+        str_mac=`echo $str_temp | awk -F= '{print $2}' | sed -r 's/^01-//' | tr '-'  ':' | tr 'a-z' 'A-Z'`
+        device_name=`ifconfig -a | grep -i $str_mac | awk '{print $1}' | head -n 1`
+    fi
+
+done
+
+if [ -z "$device_name" ];then
+    device_name=$DEVICE
+    str_mac=`ifconfig $device_name|grep -i HWaddr|awk '{print $5}'`
+fi
 str_cfg_file=''
 if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat
-    str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$DEVICE"
+    rm -f /etc/sysconfig/network-scripts/ifcfg-*
+    str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$device_name"
     sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
-    if [ -f $str_cfg_file ];then
-        echo "Old ifcfg-$DEVICE is:"
-        cat $str_cfg_file
-        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
-        sed -i "s/HWADDR=.*/HWADDR="$HWADDR"/g" $str_cfg_file
-        sed -i "s/UUID=.*//g" $str_cfg_file
-    else
-        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
-        echo "BOOTPROTO=\"dhcp\"" >> $str_cfg_file
-        echo "NM_CONTROLLED=\"yes\"" >> $str_cfg_file
-        echo "ONBOOT=\"yes\"" >> $str_cfg_file
-    fi
+    echo "DEVICE=\"$device_name\"" > $str_cfg_file
+    echo "BOOTPROTO=\"dhcp\"" >> $str_cfg_file
+    echo "NM_CONTROLLED=\"yes\"" >> $str_cfg_file
+    echo "HWADDR=$str_mac" >> $str_cfg_file
+    echo "ONBOOT=\"yes\"" >> $str_cfg_file
 elif [ -d "/etc/sysconfig/network/" ];then
     #suse
-    str_cfg_file="/etc/sysconfig/network/ifcfg-$DEVICE"
+    rm -f /etc/sysconfig/network/ifcfg-*
+    str_cfg_file="/etc/sysconfig/network/ifcfg-$device_name"
     echo "$HOSTNAME" > /etc/HOSTNAME
-    if [ -f $str_cfg_file ];then
-        echo  "Old ifcfg-$DEVICE is:"
-        cat $str_cfg_file
-        HWADDR=`ifconfig $DEVICE|grep HWaddr|awk '{print $5}'`
-        sed -i "s/HWADDR=.*/HWADDR=$HWADDR/g" $str_cfg_file
-        sed -i "s/UUID=.*//g" $str_cfg_file
-    else
-        echo "DEVICE=\"$DEVICE\"" > $str_cfg_file
-        echo "BOOTPROTO=dhcp" >> $str_cfg_file
-        echo "STARTMODE=onboot" >> $str_cfg_file
-        echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
-    fi
+    echo "DEVICE=\"$device_name\"" > $str_cfg_file
+    echo "HWADDR=$str_mac" >> $str_cfg_file
+    echo "BOOTPROTO=dhcp" >> $str_cfg_file
+    echo "STARTMODE=onboot" >> $str_cfg_file
+    echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
 else
     #ubuntu
     echo "Does not support ubuntu."
     exit 1
 fi
 
-echo "New ifcfg-$DEVICE is:"
-cat $str_cfg_file
