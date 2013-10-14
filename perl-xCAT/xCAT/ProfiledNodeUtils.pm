@@ -832,8 +832,14 @@ sub check_profile_consistent{
     }
     
     if ($profile_dict{$mgt} ne $nictype and $nodetype ne 'lpar') {
-        # Networkprofile's nictype is not consistent with hadrwareprofile's mgt
+        # Networkprofile's nictype is not consistent with hadrwareprofile's mgt, and the node type is not lpar
         return 0, "Networkprofile's nictype is not consistent with hardwareprofile's mgt.";
+    }
+
+    if ($nodetype eq 'lpar' and $nictype eq 'FSP') 
+    {
+        # can not associate FSP network if the node type is lpar
+        return 0, "The node with hardware type $nodetype can not use with $nictype networkprofile.";
     }
         
     return 1, "";
