@@ -29,19 +29,22 @@ if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat
     rm -f /etc/sysconfig/network-scripts/ifcfg-*
     str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$device_name"
-    sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
-    echo "DEVICE=\"$device_name\"" > $str_cfg_file
-    echo "BOOTPROTO=\"dhcp\"" >> $str_cfg_file
-    echo "NM_CONTROLLED=\"yes\"" >> $str_cfg_file
-    echo "HWADDR=$str_mac" >> $str_cfg_file
-    echo "ONBOOT=\"yes\"" >> $str_cfg_file
+    grep HOSTNAME /etc/sysconfig/network
+    if [ $? -eq 0 ];then
+        sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+    else
+        echo "HOSTNAME=$HOSTNAME" >> /etc/sysconfig/network
+    fi
+    echo "DEVICE=$device_name" > $str_cfg_file
+    echo "BOOTPROTO=dhcp" >> $str_cfg_file
+    echo "NM_CONTROLLED=yes" >> $str_cfg_file
+    echo "ONBOOT=yes" >> $str_cfg_file
 elif [ -d "/etc/sysconfig/network/" ];then
     #suse
     rm -f /etc/sysconfig/network/ifcfg-*
     str_cfg_file="/etc/sysconfig/network/ifcfg-$device_name"
     echo "$HOSTNAME" > /etc/HOSTNAME
-    echo "DEVICE=\"$device_name\"" > $str_cfg_file
-    echo "HWADDR=$str_mac" >> $str_cfg_file
+    echo "DEVICE=$device_name" > $str_cfg_file
     echo "BOOTPROTO=dhcp" >> $str_cfg_file
     echo "STARTMODE=onboot" >> $str_cfg_file
     echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
