@@ -544,17 +544,31 @@ unless ($onlyinitrd) {
                $rc = system("$envlist $yumcmd_remove $rm_packges");
            }
        }
+
+       # run zypper update to update any installed rpms
+       # needed when running genimage again after updating software in repositories
+       my $yumcmd_update;
+       if ($osver_host == 11) {
+         $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
+       } else {
+         $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
+       }
+       $rc = system("$yumcmd_update");
    }
 
-   # run zypper update to update any installed rpms
-   # needed when running genimage again after updating software in repositories
-   my $yumcmd_update;
+   #remove the old repository for extra packages
    if ($osver_host == 11) {
-     $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
+       my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       if ($result =~ /\S/) {
+           system("zypper -R $rootimg_dir $non_interactive rr $result");
+       }
    } else {
-     $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
+       my $result=`zypper -R $rootimg_dir $non_interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+       if ($result =~ /\S/) {
+           system("zypper -R $rootimg_dir $non_interactive sd $result");
+       }
    }
-   $rc = system("$yumcmd_update");
+
    # ignore any return code
 
    postscripts(); #run 'postscripts'
