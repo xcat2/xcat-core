@@ -408,13 +408,15 @@ unless ($onlyinitrd) {
               }
           }
           $yumcmd = $yumcmd_base;
+
+          # run yum update to update any installed rpms
+          # needed when running genimage again after updating software in repositories
+          my $yumcmd_update = $yumcmd_base . " update  ";
+          $rc = system("$yumcmd_update");
+
       }
    }
 
-   # run yum update to update any installed rpms
-   # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = $yumcmd_base . " update  ";
-   $rc = system("$yumcmd_update");
    # ignore any return code
 
    postscripts(); #run 'postscripts'
