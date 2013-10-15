@@ -2007,7 +2007,14 @@ sub getNetwkInfo
                                         my @nodes = ("$node");
                                         my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes,"xcat","Node");
                                         my $snkey = (keys %{$sn})[0];
-                                        $nethash{$node}{'gateway'} = xCAT::NetworkUtils->getipaddr($snkey);
+                                        my $gw = xCAT::NetworkUtils->getipaddr($snkey);
+                                        # two possible cases when this code is run:
+                                        # 1. flat cluster: ip forwarding is not enabled on MN
+                                        # 2. hw ctrl in hierarchy cluster, in which HCP SN is not set
+                                        # in either case, MN itself should not be the gateway
+                                         if (xCAT::NetworkUtils->thishostisnot($gw)) {
+                                             $nethash{$node}{'gateway'} = $gw;
+                                         }
                                     }
                                 
                                 }
