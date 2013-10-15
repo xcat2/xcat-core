@@ -303,7 +303,9 @@ sub preprocess_updatenode
  flags";
         $callback->($rsp);
         return;
-    } else { 
+    } 
+    # For -s flag just run this one script
+    if ($::SETSERVER) {
        $::RERUNPS            = "setuppostbootscripts";
     }
     # -f or -F not both
