@@ -15,9 +15,9 @@ The B<addkitcomp> command will assign kit components to an xCAT osimage. The kit
 Note: The xCAT support for Kits is only available for Linux operating systems.
 
 =head1 OPTIONS
- 
-=over 10
 
+=over 10
+ 
 =item B<-a|--adddeps>
 
 Assign kitcomponent dependencies to the osimage.
