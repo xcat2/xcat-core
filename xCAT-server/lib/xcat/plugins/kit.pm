@@ -1710,35 +1710,35 @@ sub validate_os{
 
     unless ( $catched ) {
 #        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute OS";
+#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute OS";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
     if ( $osimage->{majorversion} ne $kitcomp->{osmajorversion} ) {
 #        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute majorversion";
+#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute majorversion";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
     if ( $kitcomp->{osminorversion} and ($osimage->{minorversion} ne $kitcomp->{osminorversion}) ) {
 #        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute minorversion";
+#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute minorversion";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
     if ( $osimage->{arch} ne $kitcomp->{osarch} ) {
 #        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute arch";
+#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute arch";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
 
     if ( $osimage->{type} ne $kitcomp->{ostype} ) {
 #        my %rsp;
-#        push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute type";
+#        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute type";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
         return 1;
     }
@@ -1760,7 +1760,7 @@ sub validate_os{
         }
         if ( !$match ) {
 #            my %rsp;
-#            push@{ $rsp{data} }, "osimage $os doesn't fit to kit component $kitcomp->{kitcompname} with attribute serverrole";
+#            push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute serverrole";
 #            xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
             return 1;
         }
@@ -1993,35 +1993,35 @@ sub addkitcomp
 
             unless ( $catched ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute OS";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute OS";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute majorversion";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute majorversion";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute minorversion";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute minorversion";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute arch";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute arch";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
 
             if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute type";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute type";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
@@ -2044,7 +2044,7 @@ sub addkitcomp
                 }
                 if ( !$match ) {
                     my %rsp;
-                    push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
+                    push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
                     xCAT::MsgUtils->message( "E", \%rsp, $callback );
                     return 1;
                 }
@@ -3308,35 +3308,35 @@ sub chkkitcomp
         }
         unless ( $catched ) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute OS";
+            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute OS";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{majorversion} ne $kitcomps{$kitcomp}{osmajorversion} ) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute majorversion";
+            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute majorversion";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $kitcomps{$kitcomp}{osminorversion} and ($os{$osimage}{minorversion} ne $kitcomps{$kitcomp}{osminorversion}) ) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute minorversion";
+            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute minorversion";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute arch";
+            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute arch";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
 
         if ( $os{$osimage}{type} ne $kitcomps{$kitcomp}{ostype} ) {
             my %rsp;
-            push@{ $rsp{data} }, "kit component $kitcomp doesn't fit to osimage $osimage with attribute type";
+            push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute type";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
             return 1;
         }
@@ -3359,7 +3359,7 @@ sub chkkitcomp
             }
             if ( !$match ) {
                 my %rsp;
-                push@{ $rsp{data} }, "osimage $osimage doesn't fit to kit component $kitcomp with attribute serverrole";
+                push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute serverrole";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
@@ -3382,7 +3382,7 @@ sub chkkitcomp
     my $kitcompnamelist = join ',', @kitcompnames;
 
     my %rsp;
-    push@{ $rsp{data} }, "Kit components $kitcompnamelist fit to osimage $osimage";
+    push@{ $rsp{data} }, "Kit components $kitcompnamelist are compatible with osimage $osimage";
     xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     return;
