@@ -10,7 +10,7 @@ B<Sequential Discovery Specific:>
 
 =over 2
 
-B<nodediscoverstart> B<noderange=>I<noderange> [B<hostiprange=>I<imageprofile>] [B<bmciprange=>I<bmciprange>] [B<groups=>I<groups>] [B<rack=>I<rack>] [B<chassis=>I<chassis>] [B<height=>I<height>] [B<unit=>I<unit>] [B<-V|--verbose>]
+B<nodediscoverstart> B<noderange=>I<noderange> [B<hostiprange=>I<imageprofile>] [B<bmciprange=>I<bmciprange>] [B<groups=>I<groups>] [B<rack=>I<rack>] [B<chassis=>I<chassis>] [B<height=>I<height>] [B<unit=>I<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [B<-V|--verbose>]
 
 =back
 
@@ -114,6 +114,18 @@ Sets the start unit value for the node in the rack, for either the Sequential Di
 =item B<rank=>I<rank-num>
 
 Specifies the starting rank number that is used in the node name format, for the Profile Discovery method.  The rank number must be a valid integer between 0 and 254. This option must be specified with nodenameformat option. For example, if your node name format is compute-#RR-#NN. The rack's number is 2 and rank is specified as 5, the node name is generated as follows: compute-02-05, compute-02-06, ..., compute-02-99.
+
+=item B<osimage=>I<osimagename>
+
+Specifies the osimage name that will be associated with the new discovered node, the os provisioning will be started automatically at the end of the discovery process.
+
+=item B<-n|--dns>
+
+Specifies to run makedns <nodename> for any new discovered node. This is useful mainly for non-predefined configuration, before running the "nodediscoverstart -n", the user needs to run makedns -n to initialize the named setup on the management node.  
+
+=item B<-s|--skipbmcsetup>
+
+Specifies to skip the bmcsetup during the sequential discovery process, if the bmciprange is specified with nodediscoverstart command, the BMC will be setup automatically during the discovery process, if the user does not want to run bmcsetup, could specify the "-s|--skipbmcsetup" with nodediscoverstart command to skip the bmcsetup.   
 
 =item B<-V|--verbose>
 
