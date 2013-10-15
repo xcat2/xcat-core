@@ -294,17 +294,18 @@ sub preprocess_updatenode
         return;
     }
 
-    # -s must work with -P or -S or --security
-    if ($::SETSERVER && !($::SWMAINTENANCE || $::RERUNPS || $::SECURITY))
+    # -s must not be with any other flag, this updates xcatinfo and run setuppostbootscripts 
+    if ($::SETSERVER && ($::SWMAINTENANCE || $::RERUNPS || $::SECURITY))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you specify the -s flag you must specify either the -S or -k or -P
+          "If you specify the -s flag you must not specify either the -S or -k or -P
  flags";
         $callback->($rsp);
         return;
+    } else { 
+       $::RERUNPS            = "setuppostbootscripts";
     }
-
     # -f or -F not both
     if (($::FILESYNC) && ($::SNFILESYNC))
     {
@@ -1306,7 +1307,7 @@ sub updatenoderunps
             # should be kept the same.
             my $runpscmd;
             
-            if ($::SETSERVER){
+            if ($::SETSERVER){  # update the xcatinfo file on the node and run setuppostbootscripts
                $runpscmd  =
                     "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
             } else {
@@ -1723,19 +1724,8 @@ sub updatenodesoftware
             my $nodestring = join(',', @{$servernodes{$snkey}});
             my $cmd;
             my $args1;
-            if ($::SETSERVER)
-            {
-               $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -M $snkey 'ospkgs,otherpkgs' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c" ;
-
-
-
-            }
-            else
-            {
-                $cmd =
+            $cmd =
                   "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
-            }
             # add flowcontrol flag
             if ($flowcontrol == 1){
                $cmd .= " -F";
