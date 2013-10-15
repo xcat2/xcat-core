@@ -269,7 +269,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
   #if ($ENV{XCATXMLTRACE} or $ENV{XCATXMLWARNING}) { $encode="xml"; }
   if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     #print $client "xcatencoding: $encode\n";
-    my $encok=<$client>;
+    #my $encok=<$client>;
     send_request($request,$client,$encode);
   } else { #XML
     $straightprint=1;
