@@ -16,7 +16,7 @@ if [ "$NODESETSTATE" = "netboot" -o \
      "$NODESETSTATE" = "statelite" -o \
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ]; then
-    echo "Nothng to do for stateless and statelite node."
+    logger -t xCAT -p local4.info "setuppostbootscripts: Nothing to do for stateless and statelite nodes."
     exit 0
 fi
 
@@ -24,7 +24,20 @@ fi
 if [ ! -d "/opt/xcat" ]; then
     mkdir -p /opt/xcat
 fi
-
+infofile="/opt/xcat/xcatinfo"
+if [ "$RUNBOOTSCRIPTS" = "yes" ] || [ "$RUNBOOTSCRIPTS" = "YES" ]; then
+       RUNBOOTSCRIPTS=YES
+else
+       RUNBOOTSCRIPTS=NO
+fi 
+#  check to see if current setting is already in the file, if so nothing to do
+if [ -f $infofile ]; then
+    value=`grep "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" $infofile`
+    if [[ -n $value ]]; then  # match
+      logger -t xCAT -p local4.info "setuppostbootscripts: xcatinfo uptodate, nothing to do."
+      exit 0
+    fi
+fi
 #copy the necessary files
 rsync /xcatpost/xcatdsklspost /opt/xcat/xcatdsklspost
 rsync /xcatpost/xcatinstallpost /opt/xcat/xcatinstallpost
@@ -42,10 +55,11 @@ if [ ! -f "/etc/rc.d/rc5.d/S84xcatpostinit1" ]; then
 fi
 
 #put correct info in /opt/xcat/xcatinfo
-infofile="/opt/xcat/xcatinfo"
+
 if [ ! -f $infofile ]; then
     echo "XCATSERVER=$MASTER" > $infofile
     echo "REBOOT=TRUE" >> $infofile
+    echo "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" >> $infofile
 else
     value=`grep XCATSERVER $infofile`
     if [[ -n $value ]]; then
@@ -58,6 +72,12 @@ else
         sed -i "s/^REBOOT=.*$/REBOOT=TRUE/" $infofile
     else 
         echo REBOOT=TRUE >> $infofile
+    fi
+    value=`grep RUNBOOTSCRIPTS $infofile`
+    if [[ -n $value ]]; then
+        sed -i "s/^RUNBOOTSCRIPTS=.*$/RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS/" $infofile
+    else 
+        echo "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" >> $infofile
     fi
 fi
 #enable/disable the running of postscripts according to site.runbootscripts

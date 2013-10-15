@@ -555,6 +555,33 @@ if [ -n "$new_ms" ]; then
     fi
 fi
 
+#save the USEFLOWCONTROL into the xcatinfo file  
+#for updatenode case, passwd in with the -f flag 
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
+    useflowcontrol=`grep '^USEFLOWCONTROL' /$xcatpost/mypostscript |cut -d= -f2`
+fi
+if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+	touch /opt/xcat/xcatinfo
+fi
+if [ -n "$useflowcontrol" ]; then
+    # lets just put YES or NO in xcatinfo
+    if [ "$useflowcontrol" = "1" ] || [ "$useflowcontrol" = "yes" ] || [ "$useflowcontrol" = "YES" ]; then
+       new_fc="YES"
+    else 
+       new_fc="NO"
+    fi
+    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    if [ $? -eq 0 ]; then
+	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
+    else
+	echo "USEFLOWCONTROL=$new_fc" >> /opt/xcat/xcatinfo
+    fi
+# no setting means do not use flowcontrol
+else
+    echo "USEFLOWCONTROL=NO" >> /opt/xcat/xcatinfo
+fi
+
 
 # when called by the updatenode command  MODE=1,2
 # the nodename is passed in by xdsh in the NODE environment variable by xdsh.
