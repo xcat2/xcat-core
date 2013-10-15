@@ -77,6 +77,7 @@ sub findme {
     my $mac;
     my $ip = $request->{'_xcat_clientip'};
     if (defined $request->{nodetype} and $request->{nodetype}->[0] eq 'virtual') {
+        xCAT::MsgUtils->message("S", "Sequential discovery does not support virtual machines, exiting...");
         return;
     }
     my $arptable;
@@ -211,6 +212,16 @@ sub findme {
             $req->{command}=['makehosts'];
             $req->{node} = \@newhosts;
             $subreq->($req); 
+
+            # run makedns only when -n flag was specified with nodediscoverstart,
+            # dns=yes in site.__SEQDiscover
+            if (defined($param{'dns'}) && ($param{'dns'} eq 'yes'))
+            {
+                my $req;
+                $req->{command}=['makedns'];
+                $req->{node} = \@newhosts;
+                $subreq->($req);
+            }
         }
 
         # set the specific attributes from parameters
@@ -291,6 +302,65 @@ sub findme {
             $hmtab->setNodeAttribs($node, {mgt=>"ipmi"});
         }
 
+        my $chaintab = xCAT::Table->new('chain');
+        # Could not open chain table, but do not fail the discovery process
+        if (!$chaintab) {
+            xCAT::MsgUtils->message("S", "Error: could not open chain table");
+        } else {
+            my $chainent = $chaintab->getNodeAttribs($node, ['chain']);
+            my $nodechain = '';
+            my $origchain = '';
+            if (defined($chainent->{'chain'})) {
+                $nodechain = $chainent->{'chain'};
+                $origchain = $nodechain;
+            }
+
+            # If the bmciprange=xxx is specified with nodediscoverstart command,
+            # add the runcmd=bmcsetup at the beginning of the chain attribute
+            # the skipbmcsetup could be used to skip the bmcsetup for the node
+            if ($param{'bmciprange'} && !$param{'skipbmcsetup'}) {
+                if (!$nodechain) {
+                    $nodechain = "runcmd=bmcsetup";
+                } else {
+                    # do not add duplicate runcmd=bmcsetup in the chain attribute
+                    if ($nodechain !~ /runcmd=bmcsetup/) {
+                        $nodechain = "runcmd=bmcsetup," . $nodechain;
+                    }
+                }
+            } # end if $param{'bmciprange'}
+
+            # Remove the runcmd=bmcsetup from chain if skipbmcsetup is specified
+            # this is useful for predefined configuration, or attributes inherit from groups
+            if ($param{'skipbmcsetup'}) {
+                if ($nodechain =~ /runcmd=bmcsetup/) {
+                    $nodechain =~ s/runcmd=bmcsetup,//;
+                    $nodechain =~ s/runcmd=bmcsetup//;
+                }
+            }
+
+            # If the osimage=xxx is specified with nodediscoverstart command,
+            # append the osimage=xxx at the end of the chain attribute
+            if ($param{'osimage'}) {
+                if (!$nodechain) {
+                    $nodechain = "osimage=$param{'osimage'}";
+                } else {
+                    # do not add multiple osimage=xxx in the chain attribute
+                    # replace the old one with the new one
+                    if ($nodechain !~ /osimage=/) {
+                        $nodechain = $nodechain . ",osimage=$param{'osimage'}"; 
+                    } else {
+                        $nodechain =~ s/osimage=\w+/osimage=$param{'osimage'}/;
+                    }
+                }
+            } # end if $param{'osimage'}
+
+            # Update the table only when the chain attribute is changed
+            if ($nodechain ne $origchain) {
+                $chaintab->setNodeAttribs($node, {chain => $nodechain});
+            }
+            $chaintab->close();
+        }
+
         # call the discovered command to update the discovery request to a node
         $request->{command}=['discovered'];
         $request->{noderange} = [$node];
@@ -343,7 +413,7 @@ Usage:
     Common:
         nodediscoverstart [-h|--help|-v|--version|-V|--verbose] 
     Sequential Discovery:
-        nodediscoverstart noderange=<noderange> [hostiprange=<imageprofile>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>]
+        nodediscoverstart noderange=<noderange> [hostiprange=<hostiprange>] [bmciprange=<bmciprange>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [-V|--verbose]
     Profile Discovery:
         nodediscoverstart networkprofile=<networkprofile> imageprofile=<imageprofile> hostnameformat=<hostnameformat> [hardwareprofile=<hardwareprofile>] [groups=<groups>] [rack=<rack>] [chassis=<chassis>] [height=<height>] [unit=<unit>] [rank=rank-num]";
         $rsp = ();
@@ -361,6 +431,7 @@ Usage:
         'chassis' => 1,
         'height' => 1,
         'unit' => 1,
+        'osimage' => 1,
     );
 
     if ($args) {    
@@ -370,6 +441,8 @@ Usage:
     if (!GetOptions(
         'h|help' => \$help,
         'V|verbose' => \$::VERBOSE,
+        '-n|dns' => \$::DNS,
+        '-s|skipbmcsetup' => \$::SKIPBMCSETUP,
         'v|version' => \$ver)) {
         $usage->($callback);
         return;
@@ -421,6 +494,20 @@ Usage:
         # keep the valid parameters
         $param{$name} = $orgargs{$name};
         $textparam .= $name.'='.$param{$name}.',';
+    }
+
+    # If the -n flag is specified,
+    # add setupdns=yes into site.__SEQDiscover
+    if ($::DNS)
+    {
+        $textparam .= "dns=yes,";
+    }
+
+    # If the -s flag is specified,
+    # add skipbmcsetup=yes into site.__SEQDiscover
+    if ($::SKIPBMCSETUP)
+    {
+        $textparam .= "skipbmcsetup=yes,";
     }
 
     $textparam =~ s/,\z//;
