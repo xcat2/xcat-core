@@ -101,7 +101,6 @@ sub add_ppc {
             $parent,
             $ips,
             $mac ) = split /,/;
-         
         ###############################
         # Update nodetype table
         ###############################
@@ -241,6 +240,97 @@ sub add_ppc {
     }
     return undef;
 }
+##########################################################################
+# Update lpar information in the xCAT databases
+##########################################################################
+sub update_lpar {
+    my $hwtype = shift;
+    my $values = shift;
+    my $write = shift;
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac); 
+    my %db       = ();
+    my @update_list = ();
+    my @write_list = ();
+    ###################################
+    # Open database needed
+    ###################################
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>0 );
+        if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+    my @vpdlist = $db{vpd}->getAllNodeAttribs(['node','serial','mtm','side']);
+    my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
+                                               'pprofile','parent','nodetype',
+                                               'comments', 'disable']);
+    #      'cec,cec1,,8246-L1D,100A9DA,,cec1,,cec1',
+    #      'lpar,10-0A9DA,1,8246-L1D,100A9DA,,cec1,,cec1'
+    my %ppchash = ();
+    my %vpdhash = ();
+    foreach my $ppcent (@ppclist) {
+        if ($ppcent->{id} and $ppcent->{nodetype} and $ppcent->{nodetype} eq "lpar") {
+            my $key = $ppcent->{node};
+            $ppchash{$key}{id} = $ppcent->{id};
+            $ppchash{$key}{parent} = $ppcent->{parent};
+        }
+    }
+    foreach my $vpdent (@vpdlist)
+    {
+        my $key = $vpdent->{node};
+        $vpdhash{$key}{mtm} = $vpdent->{mtm};
+        $vpdhash{$key}{serial} = $vpdent->{serial};
+    }
+    my @ppc_lpars = keys %ppchash; 
+    foreach my $value ( @$values ) {
+        my ($ttype,
+            $tname,
+            $tid,
+            $tmtm,
+            $tsn,
+            $tside,
+            $server,
+            $pprofile,
+            $parent) = split /,/, $value;
+            if ($ttype ne "lpar") {
+                push @update_list, $value;
+                next;
+            }
+            my $find_node = undef;
+            foreach my $tmp_node (@ppc_lpars) {
+                if ($ppchash{$tmp_node}{id} eq $tid) {
+                    if (exists($ppchash{$tmp_node}{parent}) and $ppchash{$tmp_node}{parent} eq $parent) {
+                        $find_node = $tmp_node;
+                        last;
+                    } elsif ($vpdhash{$tmp_node}{mtm} eq $tmtm and $vpdhash{$tmp_node}{serial} eq $tsn) {
+                        $find_node = $tmp_node;
+                        last;
+                    }
+                }
+            }
+            if (defined($find_node)) {
+                if ( update_node_attribs($hwtype, $ttype, $find_node, $tid, $tmtm, $tsn, $tside,
+                                    $server, $pprofile, $parent, "", \%db, $tname, \@ppclist))
+                {
+                    $value =~ s/^$ttype,$tname,/$ttype,$find_node,/; 
+                    push @update_list, $value;  
+                }
+            } elsif (defined($write)) {
+                push @write_list, $value;
+            }
+    }
+    if (defined($write)) {
+        &add_ppc($hwtype, \@write_list);
+        return ([@update_list,@write_list]);
+    } else {
+        foreach ( @tabs ) {
+            if ( exists( $db{$_}{commit} )) {
+               $db{$_}->commit;
+            }
+        }
+        return \@update_list;
+    }
+}
 
 ##########################################################################
 # Update nodes in the xCAT databases
@@ -283,7 +373,6 @@ sub update_ppc {
             $pprofile,
             $parent,
             $ips ) = split /,/, $value;
- 
         if ( $ttype eq 'cec' )
         {
             my $hostname =  get_host($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
@@ -334,9 +423,7 @@ sub update_ppc {
             $pprofile,
             $parent,
             $ips ) = split /,/, $value;
-         
         next if ( $type ne 'cec' );
-
         my $predefined_node = undef;
         foreach my $vpdent (@vpdlist)
         {
@@ -967,7 +1054,6 @@ sub get_host {
     # get the information of existed nodes to do the migration
 
     read_from_table() unless (%::OLD_DATA_CACHE);
-
     foreach my $oldnode ( keys %::OLD_DATA_CACHE )
     {
         my $tmpmtm    = @{$::OLD_DATA_CACHE{$oldnode}}[0];
