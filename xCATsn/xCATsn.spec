@@ -34,8 +34,7 @@ Requires: /usr/bin/ssh
 Requires: /etc/xinetd.d/tftp
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
 #Requires: yaboot-xcat 
-%endif
-%ifarch ppc64
+# Stty is only needed for rcons on ppc64 nodes, but for mixed clusters require it on both x and p
 Requires: perl-IO-Stty
 %endif
 %endif
