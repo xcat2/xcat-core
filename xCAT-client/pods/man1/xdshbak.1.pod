@@ -1,0 +1,127 @@
+=head1 NAME
+
+B<xdshbak> - Formats the output of the B<xdsh> command.
+
+=head1 B<SYNOPSIS>
+
+B<xdshbak> [B<-c> | B<-x> | B<-h> | B<-q>]
+
+=head1 DESCRIPTION
+
+The  B<xdshbak>  command formats output from the B<xdsh> command. The B<xdshbak>
+command takes, as input, lines in the following format:
+
+ host_name: line of output from remote command
+
+The B<xdshbak> command formats the lines as follows  and  writes  them  to
+standard  output. Assume that the output from node3 and node4
+is identical, and the B<-c> (collapse) flag was specified:
+
+ HOSTS --------------------------------------------------------
+ node1
+ --------------------------------------------------------------
+ .
+ .
+ lines from xdsh for node1 with hostnames stripped off
+ .
+ .
+ HOSTS --------------------------------------------------------
+ node2
+ --------------------------------------------------------------
+ .
+ .
+ lines from xdsh for node2 with hostnames stripped off
+ .
+ .
+ HOSTS --------------------------------------------------------
+ node3, node4
+ --------------------------------------------------------------
+ .
+ .
+ lines from xdsh for node 3 with hostnames stripped off
+ .
+ .
+
+When output is displayed from more than one node in collapsed form, the
+host  names are displayed alphabetically. When output is not collapsed,
+output is displayed sorted alphabetically by host name.
+
+If the B<-q> quiet flag is not set then  B<xdshbak>
+command writes "." for each 1000 lines of output processed (to show progress),
+since it won't display the output until it has processed all of it.
+
+If the B<-x> flag is specified, the extra header lines that xdshbak normally
+displays for each node will be omitted, and the hostname at the beginning
+of each line is not stripped off, but B<xdshbak>  still sorts
+the output by hostname for easier viewing:
+
+ node1: lines from xdsh for node1
+ .
+ .
+ node2: lines from xdsh for node2
+ .
+ .
+
+=head2 Standard Error
+
+When the B<xdshbak> filter is used and standard error messages are generated,
+all error messages on standard error appear before all standard
+output messages. This is true with and without the B<-c> flag.
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<-c>
+
+If the output from multiple nodes is identical it will be collapsed
+and displayed only once.
+
+=item B<-x>
+
+Omit the extra header lines that xdshbak normally displays for
+each node.  This provides
+more  compact  output,  but  xdshbak still sorts the output by
+node name for easier viewing.
+This option should not be used with B<-c>.
+
+=item B<-h>
+
+Displays usage information.
+
+=item B<-q>
+
+Quiet mode, do not display "." for each 1000 lines of output.
+
+=back
+
+=head1 B<EXAMPLES>
+
+=over 3
+
+=item *
+
+To  display the results of a command issued on several nodes, in
+the format used in the Description, enter:
+
+ xdsh node1,node2,node3 cat /etc/passwd | xdshbak
+
+=item *
+
+To display the results of a command issued on several nodes with
+identical output displayed only once, enter:
+
+ xdsh host1,host2,host3 pwd | xdshbak -c
+
+=item *
+
+To display the results of a command issued on several nodes with
+compact output and be sorted alphabetically by host name, enter:
+
+ xdsh host1,host2,host3 date | xdshbak -x
+
+=back
+
+=head1 B<SEE ALSO>
+
+L<xdsh(1)|xdsh.1>, L<xcoll(1)|xcoll.1>
