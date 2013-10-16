@@ -9,45 +9,35 @@ fi
 
 hostname $HOSTNAME
 
-device_name=''
-str_mac=''
-for str_temp in `cat /proc/cmdline`;do
-    echo $str_temp | grep -i 'BOOTIF'
-    if [ $? -eq 0 ];then
-        str_mac=`echo $str_temp | awk -F= '{print $2}' | sed -r 's/^01-//' | tr '-'  ':' | tr 'a-z' 'A-Z'`
-        device_name=`ifconfig -a | grep -i $str_mac | awk '{print $1}' | head -n 1`
-    fi
-
-done
-
-if [ -z "$device_name" ];then
-    device_name=$DEVICE
-    str_mac=`ifconfig $device_name|grep -i HWaddr|awk '{print $5}'`
-fi
+#write the config files, the device name may change after reboot
+#so use the dhcp for all interface
+device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
 str_cfg_file=''
 if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat
-    rm -f /etc/sysconfig/network-scripts/ifcfg-*
-    str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$device_name"
-    grep HOSTNAME /etc/sysconfig/network
+    grep -i HOSTNAME /etc/sysconfig/network
     if [ $? -eq 0 ];then
         sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
     else
         echo "HOSTNAME=$HOSTNAME" >> /etc/sysconfig/network
     fi
-    echo "DEVICE=$device_name" > $str_cfg_file
-    echo "BOOTPROTO=dhcp" >> $str_cfg_file
-    echo "NM_CONTROLLED=yes" >> $str_cfg_file
-    echo "ONBOOT=yes" >> $str_cfg_file
+    for i in $device_names;do
+        str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=dhcp" >> $str_cfg_file
+        echo "NM_CONTROLLED=yes" >> $str_cfg_file
+        echo "ONBOOT=yes" >> $str_cfg_file
+    done
 elif [ -d "/etc/sysconfig/network/" ];then
     #suse
-    rm -f /etc/sysconfig/network/ifcfg-*
-    str_cfg_file="/etc/sysconfig/network/ifcfg-$device_name"
     echo "$HOSTNAME" > /etc/HOSTNAME
-    echo "DEVICE=$device_name" > $str_cfg_file
-    echo "BOOTPROTO=dhcp" >> $str_cfg_file
-    echo "STARTMODE=onboot" >> $str_cfg_file
-    echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+    for i in $device_names;do
+        str_cfg_file="/etc/sysconfig/network/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=dhcp" >> $str_cfg_file
+        echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+    done
 else
     #ubuntu
     echo "Does not support ubuntu."
