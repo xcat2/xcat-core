@@ -1450,10 +1450,10 @@ sub xCATdB {
             $machash{$hostname} = {mac=>$mac};
         }elsif ($type =~ /^cmm$/){
             $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
-            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
+            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial, side=>$side};
             $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
             $nodehmhash{$hostname} = {mgt=>"blade"};
-            $mphash{$hostname} = {nodetype=>$globalhwtype{$type}, mpa=>$hostname, id=>$side};
+            $mphash{$hostname} = {nodetype=>$globalhwtype{$type}, mpa=>$hostname};
             $hostshash{$hostname} = {otherinterfaces=>$otherif};
         }
     }
