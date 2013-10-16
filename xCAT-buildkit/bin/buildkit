@@ -497,7 +497,7 @@ sub usage
     To add packages to an existing Kit.
 
     buildkit [-V│--verbose] addpkgs <kit_tarfile> [-p│--pkgdir <package_direc-
-       tory>] [-k│--kitversion <version>] [-r│--kitrelease <release] 
+       tory_list>] [-k│--kitversion <version>] [-r│--kitrelease <release] 
        [-l│--kitloc <kit location>]
 
     This tool is used to build and manage a Kit package.                          
@@ -505,7 +505,7 @@ sub usage
         -h         - Provide usage info.                                      
         -k         - Kit version.
         -l         - Location of kit files. (Including kit name.)
-        -p         - RPM package directory.
+        -p         - RPM package directory locations.
         -r         - Kit release.
         -v         - Provide the version info.                                
         command    - Several commands are supported. See the list below.      
@@ -912,6 +912,7 @@ sub kit_buildtar
             return 1;
         }
     }
+
     if (&create_kitconf) {
         print "Error creating kit configuration file \n";
         return 1;
@@ -945,7 +946,16 @@ sub kit_buildtar
         $kitfilename =~ s/tar\.bz2\s*$//;
     }
     $kitfilename = $kitfilename.$extpkgs.".tar.bz2";
+
     my $tarfile = $::deploy_dir."/".$kitfilename;
+
+    if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
+        print "Error: Could not copy  building tarfile $tarfile \n";
+        return 1;
+    }
+
+    print "Creating tar file $tarfile.\n";
+
     if ( system("cd $::deploy_dir; cd ..; tar -cjhf $tarfile $kitname/*") ) {
          print "Error building tarfile $tarfile \n";
          return 1;
@@ -2100,6 +2110,7 @@ sub update_kitcomp_kitpkgdeps
         $new_kitpkgdeps =~ s/(\,)*$//;
         $comp->{kitpkgdeps} = $new_kitpkgdeps;
     }
+
     return 0;
 }
 
@@ -3120,12 +3131,15 @@ sub kit_addpkgs
        return 1;
     } 
 
+    print "Extracting tar file $kittarfile.\n";
+
     if ( system("cd $tmpdir_base; tar -jxf $kittarfile ") ) {
          print "Error extracting tarfile $kittarfile \n";
          # Cleanup
          system ("rm -Rf $tmpdir_base");
          return 1;
     }
+
     my $tmp_kit_conf = `find $tmpdir_base -name kit.conf`;
     chomp($tmp_kit_conf);
     my $tmpdir = dirname($tmp_kit_conf);
@@ -3155,8 +3169,16 @@ sub kit_addpkgs
     #
     # check contents of kit.conf to make sure the framework
     #       is compatible with this codes framework
-    if (&check_framework(\@lines)) {
+    $::kitframework = &check_framework(\@lines);
+    if (!defined($::kitframework)) {
         return 1;
+    }
+
+    # if this in not a partial kit then the framework must be 2 or greater
+    my $kit_name = basename($kittarfile);
+    if ( (!($kit_name =~ /NEED_PRODUCT_PKGS/)) && ($::kitframework < 2) ) {
+        print "This kit cannot be updated.  To update a complete kit the kit framework\n value must be greater than or equal to 2.  You can use the\n\t\'lskit -F <full path tar file>\' \ncommand to check the framework value of the kit.\n";
+	return 1;
     }
 
     ###  Check if this is a new partial kit built with xCAT 2.8.1 or newer
@@ -3461,6 +3483,7 @@ sub NEW_kit_addpkgs
     $::deploy_dir = $tmpdir_base; #kitname appended by validate_bldkitconf routine
 
     my $tmp_buildkit_conf = `find $tmpdir_base -name $::buildkit_conf`;
+
     chomp($tmp_buildkit_conf);
     if ($tmp_buildkit_conf ne $::full_buildkit_conf) {
         print "$tmp_buildkit_conf should match $::full_buildkit_conf  .... error??? \n";
@@ -3649,11 +3672,11 @@ sub NEW_kit_addpkgs
         and kit frameworks that I can be added to. 
 
     Returns:
-        0 - OK
-        1 - error
+        0 - kit framework value
+        undef - error
 
     Example:
-        my $rc = &check_framework(\@lines);
+        my $kitframework = &check_framework(\@lines);
 
 =cut
 
@@ -3666,6 +3689,7 @@ sub check_framework
 
     my $kitbasename;
     my $kitcompat;
+    my $kitframework;
     my $section = '';
     foreach my $l (@kitconflines) {
         # skip blank and comment lines
@@ -3691,6 +3715,9 @@ sub check_framework
                 if ( $attr eq 'compatible_kitframeworks' )   { 
                     $kitcompat = $val;
                 }
+                if ( $attr eq 'kitframework' )   {
+                    $kitframework = $val;
+                }
             }
             if ($section eq 'kit') {
                 if ( $attr eq 'basename' ) { $kitbasename = $val; }
@@ -3712,10 +3739,10 @@ sub check_framework
             chomp $kitfw;
 
             if ($myfw eq $kitfw) {
-                return 0;
+                return $kitframework;
             }
         }        
     }
     print "Error: The kit named \'$kitbasename\' is not compatible with this version of the buildkit command.  \'$kitbasename\' is compatible with \'$kitcompat\' and the buildkit command is compatible with \'$::COMPATIBLE_KITFRAMEWORKS\'\n";
-    return 1;
+    return undef;
 }
