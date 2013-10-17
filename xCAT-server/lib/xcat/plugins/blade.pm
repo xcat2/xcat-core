@@ -5308,6 +5308,11 @@ sub network {
   } else {
     return([1,"No changes specified"]);
   }
+  if (!$ip && !$host && !$gateway && !$mask) {
+    return([1, "No changes specified"]);
+  } elsif (!$ip) {
+    return([1, "No ip address specified"]);
+  }
 
   if ($ip)     { $cmd.=" -i $ip"; }
   if ($host)   { $cmd.=" -n $host"; }
@@ -5330,10 +5335,10 @@ sub network {
     @result = ();
   }
 
-  if ($ip)     { push @result,"IP: $ip"; }
-  if ($host)   { push @result,"Hostname: $host"; }
-  if ($gateway){ push @result,"Gateway: $gateway"; }
-  if ($mask)   { push @result,"Subnet Mask: $mask"; }
+  if ($mask)   { unshift @result,"Subnet Mask: $mask"; }
+  if ($gateway){ unshift @result,"Gateway: $gateway"; }
+  if ($host)   { unshift @result,"Hostname: $host"; }
+  if ($ip)     { unshift @result,"IP: $ip"; }
 
   return([0,@result]);
 
