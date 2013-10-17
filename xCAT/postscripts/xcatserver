@@ -29,26 +29,157 @@ if [ ! -x /usr/bin/openssl ]; then
 fi
 USEOPENSSLFORXCAT=1
 export USEOPENSSLFORXCAT
-   allowcred.awk &
-   CREDPID=$!
-   sleep 1
-   mkdir -p /etc/xcat/cert
-   getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cert/server-cred.pem
+# are we using xcat flow control
+useflowcontrol=0
+if [ $USEFLOWCONTROL = "YES" ] || [ $USEFLOWCONTROL = "yes" ] || [ $USEFLOWCONTROL = "1" ]; then
+  useflowcontrol=1
+fi
+
+xcatpost="xcatpost"
+master=$MASTER
+
+allowcred.awk &
+CREDPID=$!
+sleep 1
+
+# setup and get the xCAT SSL credentials down to the service  node
+# create SSL certificate directory and then get them
+mkdir -p /etc/xcat/cert
+if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+ /$xcatpost/xcatflowrequest $master 3001
+ rc=$?
+ logger -t xCAT -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
+ if [ $rc -ne 0 ]; then
+      logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+      useflowcontrol=0
+ fi
+
+
+fi
+getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cert/server-cred.pem
+
+#check the message is an error or not
+grep -E '<error>' /etc/xcat/cert/server-cred.pem
+if [ $? -ne 0 ]; then
+        #the message received is the data
+   logger -t xCAT -p local4.info "xcatserver: getting server-cred.pem"
+    MAX_RETRIES=10
+    RETRY=0
+    MYCONT=`cat /etc/xcat/cert/server-cred.pem` 
+    
+    while [ -z "$MYCONT" ]; do
+              # not using flow control , need to sleep
+              if [ $useflowcontrol = "0" ]; then
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+              fi
+
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                  rc=$?
+                  logger -t xCAT -p local4.info "xcatserver:xcatflowrequest return=$rc"
+                  if [ $rc -ne 0 ]; then
+                    logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+                    useflowcontrol=0
+                  fi
+                fi
+                getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cert/server-cred.pem
+                MYCONT=`cat /etc/xcat/cert/server-cred.pem` 
+    done
+
    chmod 600 /etc/xcat/cert/*
-   getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
-    # if not DB2
-    grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
-    if [ $? -ne 0 ]; then
-      sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
-      mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
-    else
-     if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
-      cp /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
-     else
-      mv /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
-     fi
-    fi
-   chmod 600 /etc/xcat/cfgloc*
    # do not assume working directory, use the full path
    cp /xcatpost/_xcat/ca.pem /etc/xcat/cert/ca.pem
-   kill -9 $CREDPID
+else  # error from first getcredential call
+        #the message received is an error from credentials.pm, so parse it
+        ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /etc/xcat/cert/server-cred.pem`
+        logger -t xCAT -p local4.err xcatserver: $ERR_MSG
+        rm /etc/xcat/cert/server-cred.pem 
+fi
+
+# get the xcat cfgloc file
+
+if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+ /$xcatpost/xcatflowrequest $master 3001
+ rc=$?
+ logger -t xCAT -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
+ if [ $rc -ne 0 ]; then
+    logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+    useflowcontrol=0
+ fi
+
+fi
+getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
+
+#check the message is an error or not
+grep -E '<error>' /etc/xcat/cfgloc
+if [ $? -ne 0 ]; then
+        #the message received is the data
+   logger -t xCAT -p local4.info "xcatserver: getting cfgloc"
+    MAX_RETRIES=10
+    RETRY=0
+    MYCONT=`cat /etc/xcat/cfgloc` 
+    
+    while [ -z "$MYCONT" ]; do
+      # not using flow control , need to sleep
+      if [ $useflowcontrol = "0" ]; then
+         let SLI=$RANDOM%10
+         let SLI=SLI+10
+         sleep $SLI
+      fi
+
+      RETRY=$(($RETRY+1))
+      if [ $RETRY -eq $MAX_RETRIES ]
+         then
+           break
+      fi
+      if [ $useflowcontrol = "1" ]; then
+         #first contact daemon  xcatflowrequest <server> 3001
+         logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+         /$xcatpost/xcatflowrequest $master 3001
+         rc=$?
+         logger -t xCAT -p local4.info "xcatserver:xcatflowrequest return=$rc"
+         if [ $rc -ne 0 ]; then
+           logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+           useflowcontrol=0
+         fi
+      fi
+      getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
+      MYCONT=`cat /etc/xcat/cfgloc` 
+    done
+    # if we successfully got cfgloc 
+    if [ -f /etc/xcat/cfgloc ]; then
+      # if not DB2
+      grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
+      if [ $? -ne 0 ]; then
+        sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
+        mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
+      else # DB2 cfgloc has different format
+        if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
+        cp /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
+      else
+        mv /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
+      fi
+    fi
+    chmod 600 /etc/xcat/cfgloc*
+   fi
+else  # error from first getcredentials call
+        #the message received is an error from credentials.pm, so parse it
+        ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /etc/xcat/cfgloc`
+        logger -t xCAT -p local4.err xcatserver: $ERR_MSG
+        rm /etc/xcat/cfgloc
+fi
+
+kill -9 $CREDPID
