@@ -18,6 +18,15 @@ echo "cd /" >> /tmp/xcatsysclonepost
 chmod +x /tmp/xcatsysclonepost
 /tmp/xcatsysclonepost
 
+if [ -x /usr/bin/openssl ]; then
+     USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     export USEOPENSSLFORXCAT
+fi
+
+. /opt/xcat/xcatinfo
+XCATSERVER="$XCATSERVER:3001"
+export XCATSERVER
+
 cd /xcatpost/
 #save the postboot scripts to /xcatpost/mypostscript.post
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
@@ -49,6 +58,7 @@ fi
 
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
+
 
 chmod +x /xcatpost/mypostscript
 /xcatpost/mypostscript
