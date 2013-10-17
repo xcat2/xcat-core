@@ -497,12 +497,15 @@ if [ ! -x /$xcatpost/mypostscript ]; then
     # first contact daemon  xcatflowrequest <server> 3001
     logger -t xCAT -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
    /$xcatpost/xcatflowrequest $SIP 3001
+   rc=$?
+   logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+   if [ $rc -ne 0 ]; then
+      logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+      useflowcontrol=0
+   fi 
   fi
   /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
 
-  if [ $useflowcontrol = "1" ]; then
-  logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
-  fi
 
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
@@ -525,11 +528,14 @@ if [ ! -x /$xcatpost/mypostscript ]; then
       # contact daemon  xcatflowrequest <server> 3001
       logger -t xCAT -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
       /$xcatpost/xcatflowrequest $SIP 3001
+      rc=$?
+      logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+      if [ $rc -ne 0 ]; then
+        logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+        useflowcontrol=0
+      fi 
     fi
     /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
-    if [ $useflowcontrol = "1" ]; then
-      logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
-    fi
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
