@@ -20,6 +20,7 @@ use Getopt::Long;
 #use Data::Dumper;
 use File::Basename;
 use File::Path;
+use Cwd;
 
 my $kitconf = "kit.conf";
 
@@ -3402,10 +3403,10 @@ sub lskit_usage {
     push @{ $rsp->{data} },
       "\nUsage: lskit - List infomation for one or more kits.\n";
     push @{ $rsp->{data} },
-      "  lskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names] [-R|--repoattr repoattr_names] [-C|--compattr compattr_names] [kit_names]\n ";
-    push @{ $rsp->{data} }, "  lskit [-h|--help|-?] \n";
-    push @{ $rsp->{data} },
-      "  lskit [-v|--version]  \n ";
+      "\tlskit [-V|--verbose] [-x|--xml|--XML] [-K|--kitattr kitattr_names]\n\t[-R|--repoattr repoattr_names] [-C|--compattr compattr_names]\n\t[kit_names]\n ";
+    push @{ $rsp->{data} }, "\tlskit [-h|--help|-?]\n";
+    push @{ $rsp->{data} }, "\tlskit [-v|--version]\n ";
+    push @{ $rsp->{data} }, "\tlskit [-F|--framework] kit_path_name\n ";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
 }
@@ -3514,6 +3515,7 @@ sub lskit_processargs {
                               'kitattr|K=s' => \$::opt_K,
                               'repoattr|R=s' => \$::opt_R,
                               'compattr|C=s' => \$::opt_C,
+                              'framework|F=s' => \$::opt_F,
                               'verbose|V' => \$::opt_V,
                               'version|v' => \$::opt_v,
                               'xml|XML|x' => \$::opt_x,
@@ -3912,8 +3914,11 @@ sub check_attr_values_exist {
 =cut
 
 #-----------------------------------------------------------------------------
-
 sub lskit {
+
+    my $request = shift;
+    my $callback = shift;
+    my $request_command = shift;
 
     my $rc = 0;
 
@@ -3933,6 +3938,99 @@ sub lskit {
         push @{ $rsp->{data}}, "The lskit command is only supported on Linux.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return 1;
+    }
+
+    if ( defined($::opt_F) ) {
+        if ( defined($::opt_x) || defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
+            my $rsp = {};
+            push @{ $rsp->{data}}, "\nThe \'-F\' option cannot be used with the x, R, K, or C options.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            lskit_usage(1);
+            return 1;
+        }
+	my $tarpathname = $::opt_F;
+
+        # check if full path
+        my $dir = $request->{cwd}; #getcwd;
+        my $cwd = $dir->[0];
+        
+        if ($tarpathname !~ /^\//)
+        {
+            my $fullpath = xCAT::Utils->full_path($tarpathname, $cwd);
+            if ($fullpath)
+            {
+                $tarpathname = $fullpath;
+            }
+        }
+
+        unless (-e $tarpathname) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "Could not find $tarpathname.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        }
+        #  create a unique  /tmp dir name name
+        my $thisdate = `/bin/date +%s`;
+        my $tmp_dir_name = qq~/tmp/tmp_kit_$thisdate~;     
+        $tmp_dir_name =~ s/\s*//g;    #remove blanks
+
+        # extract the kit.conf file
+        my $rsp = {};
+        push @{ $rsp->{data} }, "\nExtracting the kit.conf file from $tarpathname. Please wait.\n";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
+        my $tcmd = qq~/bin/mkdir -p $tmp_dir_name;/bin/tar -C $tmp_dir_name -jxvf $tarpathname --wildcards */kit.conf~;
+        my $kitconffile = xCAT::Utils->runcmd("$tcmd", -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "No kit.conf file was found.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        } 
+
+        # get the framework from the file
+        my $fcmd = "/bin/cat $tmp_dir_name/$kitconffile | grep 'kitframework '";
+        my $fline = xCAT::Utils->runcmd("$fcmd", -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "No kitframework value was found.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        }
+        my ($junk, $kitframework) = split(/=/, $fline);
+        $kitframework =~ s/\s*//g;    #remove blanks
+
+        my $cfcmd = "/bin/cat $tmp_dir_name/$kitconffile | grep 'compatible_kitframeworks'";
+        my $cfline = xCAT::Utils->runcmd("$cfcmd", -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "No compatible_kitframeworks value was found.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        }
+        my ($junk, $compatframework) = split(/=/, $cfline);
+        $compatframework =~ s/\s*//g;    #remove blanks
+
+        my $rcmd = qq~/bin/rm -Rf $tmp_dir_name 2>/dev/null~;
+        my $out = xCAT::Utils->runcmd("$rcmd", -1);
+	if ($::RUNCMD_RC != 0) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "Could not remove $tmp_dir_name.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        }
+
+        if ($kitframework && $compatframework) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "\tkitframework=$kitframework\n\tcompatible_kitframeworks=$compatframework\n";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            return 0;
+        } else {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "Could not determine framework values for Kit $tarpathname.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 1;
+        }
+        return 0; 
     }
 
     # Prepare the hash tables to pass to the output routines
