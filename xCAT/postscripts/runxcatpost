@@ -1,13 +1,63 @@
 #!/bin/bash
+
+if [ ! -f "/opt/xcat/xcatdsklspost" ];then
+    echo "sysclone require /opt/xcat/xcatdsklspost, but it can not be found. return error!"
+    exit 1
+fi
 if [ -f "/opt/xcat/xcatinfo" ];then
     rm -f "/opt/xcat/xcatinfo"
 fi
-/opt/xcat/xcatdsklspost
 
-. /tmp/post-install/variables.txt
 
-if [ -x "/xcatpost/updateflag.awk" ];then
-    /xcatpost/updateflag.awk $IMAGESERVER 3002
-    /xcatpost/updateflag.awk $IMAGESERVER 3002 "installstatus booted"
+#some modification to the xcatdsklspost, only download scripts
+line_num=`sed -n -e '/postbootscripts-start-here.*postbootscripts-end-here.*run_ps/=' /opt/xcat/xcatdsklspost | tail -n 1`
+line_num=`sed -n -e "$line_num,$ {/echo.*TMP.*>.*mypostscript/=}" /opt/xcat/xcatdsklspost | head -n 1`
+
+sed -n -e "1,${line_num}p" /opt/xcat/xcatdsklspost > /tmp/xcatsysclonepost
+echo "cd /" >> /tmp/xcatsysclonepost
+chmod +x /tmp/xcatsysclonepost
+/tmp/xcatsysclonepost
+
+cd /xcatpost/
+#save the postboot scripts to /xcatpost/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript.post
+chmod 755 /xcatpost/mypostscript.post
+
+#create the post init
+cp -f /xcatpost/xcatpostinit1 /etc/init.d/xcatpostinit1
+chmod 755 /etc/init.d/xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
+
+cp -f /xcatpost/xcatinstallpost /opt/xcat/xcatinstallpost
+cat >> /opt/xcat/xcatinstallpost << EOF
+if [ -f /xcatpost/mypostscript.post ]; then
+    RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
+fi
+if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    chkconfig xcatpostinit1 off
+fi
+EOF
+chmod 755 /opt/xcat/xcatinstallpost
+
+ls /etc | grep -i suse
+if [ $? -eq 0 ];then
+    /sbin/insserv -p /etc/init.d xcatpostinit1
 fi
 
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript
+
+chmod +x /xcatpost/mypostscript
+/xcatpost/mypostscript
+
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+echo "$TMP" > /tmp/xcatenv
+. /tmp/xcatenv
+/xcatpost/addsiteyum
+
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+        /xcatpost/updateflag.awk $MASTER 3002
+fi
