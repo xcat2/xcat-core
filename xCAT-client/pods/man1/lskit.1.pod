@@ -6,6 +6,7 @@ B<lskit> - Lists information for one or more Kits.
 =head1 SYNOPSIS
 
 B<lskit> [B<-V> | B<--verbose>] 
+      [B<-F> | B<--framework> I<kitattr_names>]
       [B<-x> | B<--xml> | B<--XML>]
       [B<-K> | B<--kitattr> I<kitattr_names>]
       [B<-R> | B<--repoattr> I<repoattr_names>]
@@ -13,6 +14,8 @@ B<lskit> [B<-V> | B<--verbose>]
       [kit_names]
 
 B<lskit> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+B<lskit> [B<-F> | B<--framework> I<kit_path_name>]
 
 
 =head1 DESCRIPTION
@@ -28,6 +31,10 @@ Input to the command can specify any number or combination of the input options.
 =head1 OPTIONS
 
 =over 10
+
+=item B<-F|--framework> I<kit_path_name>
+
+Use this option to display the framework values of the specified Kit tarfile.  This information is retreived directly from the tarfile and can be done before the Kit has been defined in the xCAT database.  This option cannot be combined with other options.
 
 =item B<-K|--kitattr> I<kitattr_names>
 
@@ -137,6 +144,17 @@ To list the kit "kit-test1-1.0-Linux", enter:
 To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
 
   lskit -K basename,description -R kitreponame -C kitcompname kit-test1-1.0-Linux
+
+=item 4.
+
+To list the framework value of a Kit tarfile.
+
+  lskit -F /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2
+
+  Extracting the kit.conf file from /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2. Please wait.
+  
+        kitframework=2
+        compatible_kitframeworks=0,1,2
 
 =back
 
