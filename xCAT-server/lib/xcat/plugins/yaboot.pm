@@ -194,7 +194,7 @@ sub setstate {
               close($pcfg);
               my $inetn = xCAT::NetworkUtils->getipaddr($node);
               unless ($inetn) {
-               syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+               syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
                return;
               }
             } else { #TODO: actually, should possibly default to xCAT image?
@@ -252,7 +252,7 @@ sub setstate {
       close($pcfg);
       my $inetn = xCAT::NetworkUtils->getipaddr($node);
       unless ($inetn) {
-       syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+       syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
        return;
       }
     } else { #TODO: actually, should possibly default to xCAT image?
@@ -261,7 +261,7 @@ sub setstate {
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-      syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
+      syslog("local4|err","xCAT unable to resolve IP in yaboot plugin");
       return;
     }
     my $mactab = xCAT::Table->new('mac');
@@ -397,7 +397,7 @@ sub preprocess_request {
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes 
+      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes
        return xCAT::Scope->get_broadcast_scope($req,@_);
       }
    }
@@ -408,8 +408,8 @@ sub preprocess_request {
 sub process_request {
   $request = shift;
   $callback = shift;
-  $sub_req = shift;
   $::callback=$callback;
+  $sub_req = shift;
   my $command  = $request->{command}->[0];
   %breaknetbootnodes=();
   %normalnodes=();

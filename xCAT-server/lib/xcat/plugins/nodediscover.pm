@@ -342,7 +342,7 @@ sub process_request {
         Timeout => '1',
         Proto => 'tcp'
     );
-    unless ($sock) { syslog("err","Failed to notify $clientip that it's actually $node."); return; } #Give up if the node won't hear of it.
+    unless ($sock) { syslog("local4|err","Failed to notify $clientip that it's actually $node."); return; } #Give up if the node won't hear of it.
     print $sock $restartstring;
     close($sock);
 
@@ -352,7 +352,7 @@ sub process_request {
     #Update the discoverydata table to indicate the successful discovery
     xCAT::DiscoveryUtils->update_discovery_data($request);
   
-    syslog("info","$node has been discovered");
+    syslog("local4|info","$node has been discovered");
 }
 
 1;

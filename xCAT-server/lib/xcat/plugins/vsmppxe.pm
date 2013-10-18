@@ -131,7 +131,7 @@ sub setstate {
     close($pcfg);
     my $inetn = inet_aton($primarynode);
     unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in pxe plugin");
+     syslog("local4|err","xCAT unable to resolve IP for $node in pxe plugin");
      return;
     }
   } else { #TODO: actually, should possibly default to xCAT image?
@@ -141,12 +141,12 @@ sub setstate {
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my %ipaddrs;
   unless (inet_aton($primarynode)) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
     return;
   }
   my $ip = inet_ntoa(inet_aton($primarynode));;
   unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
     return;
   }
   $ipaddrs{$ip} = 1;
