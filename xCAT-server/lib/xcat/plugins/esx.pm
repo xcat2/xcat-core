@@ -145,7 +145,7 @@ sub preprocess_request {
 	my $request = shift;
 	my $callback = shift;
    #if already preprocessed, go straight to request
-    if (   (defined($request->{_xcatpreprocessed}))
+    if (   (defined($request->{_xcatpreprocessed}->[0]))
         && ($request->{_xcatpreprocessed}->[0] == 1))
     {
         return [$request];
