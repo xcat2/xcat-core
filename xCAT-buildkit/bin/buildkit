@@ -3533,7 +3533,6 @@ sub NEW_kit_addpkgs
              system ("rm -Rf $tmpdir_base");
              return 1;
            }
-
            my @fromfiles=@$files;
 
            foreach my $repo (split(/,/, $ext_reponames)) {
