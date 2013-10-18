@@ -194,7 +194,7 @@ sub setstate {
               close($pcfg);
               my $inetn = xCAT::NetworkUtils->getipaddr($node);
               unless ($inetn) {
-               syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+               syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
                return;
               }
             } else { #TODO: actually, should possibly default to xCAT image?
@@ -252,7 +252,7 @@ sub setstate {
       close($pcfg);
       my $inetn = xCAT::NetworkUtils->getipaddr($node);
       unless ($inetn) {
-       syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+       syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
        return;
       }
     } else { #TODO: actually, should possibly default to xCAT image?
@@ -261,7 +261,7 @@ sub setstate {
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-      syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
+      syslog("local4|err","xCAT unable to resolve IP in yaboot plugin");
       return;
     }
     my $mactab = xCAT::Table->new('mac');
