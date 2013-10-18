@@ -3131,7 +3131,7 @@ sub kit_addpkgs
        return 1;
     } 
 
-    print "Extracting tar file $kittarfile.\n";
+    print "Extracting tar file $kittarfile. Please wait.\n";
 
     if ( system("cd $tmpdir_base; tar -jxf $kittarfile ") ) {
          print "Error extracting tarfile $kittarfile \n";
@@ -3526,14 +3526,15 @@ sub NEW_kit_addpkgs
            my $ext_reponames = $kp->{kitreponame};
 
            my $files = xCAT::BuildKitUtils->find_latest_pkg(\@pkgdirlist, $ext_filename);
-           my @fromfiles=@$files;
 
-           if (scalar(@fromfiles) ==0  ) {
+           if (!defined($files) ) {
              print  "Error: The product package file $ext_filename was not found in the package directory(s) @pkgdirlist.\n";
              # Cleanup
              system ("rm -Rf $tmpdir_base");
              return 1;
            }
+
+           my @fromfiles=@$files;
 
            foreach my $repo (split(/,/, $ext_reponames)) {
              my $repodir = $::base_repodir."/".$repo;
