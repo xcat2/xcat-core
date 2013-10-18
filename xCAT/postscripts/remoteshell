@@ -32,7 +32,7 @@ fi
 master=$MASTER
 # are we using xcat flow control
 useflowcontrol=0
-if [ $USEFLOWCONTROL = "YES" ] || [ $USEFLOWCONTROL = "yes" ] || [ $USEFLOWCONTROL = "1" ]; then
+if [ "$USEFLOWCONTROL" = "YES" ] || [ "$USEFLOWCONTROL" = "yes" ] || [ "$USEFLOWCONTROL" = "1" ]; then
   useflowcontrol=1
 fi    
 
