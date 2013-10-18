@@ -8,6 +8,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
+require xCAT::NodeRange;
 require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
@@ -764,6 +765,14 @@ sub  update_tables_with_mgt_image
             return (1, "Unable to find $::XCATROOT/share/xcat/install directory for $osver");
         }
     }
+   
+    #if the arch of osimage does not match the arch of MN,return
+    my $myarch=qx(uname -i);
+    chop $myarch;
+    if($arch ne $myarch){
+       return 0;
+    }
+
 
     #for rhels5.1  genos=rhel5
     my $genos = $osver;
@@ -772,10 +781,10 @@ sub  update_tables_with_mgt_image
         $genos = "rhel$1";
     }
 
-
+    #if the osver does not match the osver of MN, return
     my $myosver = xCAT::Utils->osver("all");
     $myosver =~ s/,//;
-    if ( $osver != $myosver ) {
+    if ( $osver ne $myosver ) {
         return 0;
     }
 
@@ -812,6 +821,7 @@ sub  update_tables_with_mgt_image
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
+    my $imagename=$osver . "-" . $arch . "-stateful" . "-mgmtnode";
     foreach my $profile (keys %profiles) {
         #print "profile=$profile\n";
         #get template file
@@ -835,6 +845,7 @@ sub  update_tables_with_mgt_image
             $osimagetab=xCAT::Table->new('osimage',-create=>1);
         }
 
+
         if ($osimagetab) {
             #check if the image is already in the table
             if ($osimagetab) {
@@ -850,7 +861,7 @@ sub  update_tables_with_mgt_image
                 }
 #               if ($found) { next; }
 
-                my $imagename=$osver . "-" . $arch . "-mgmtimage";
+
                 #TODO: check if there happen to be a row that has the same imagename but with different contents
                 #now we can wirte the info into db
                 my %key_col = (imagename=>$imagename);
@@ -886,6 +897,31 @@ sub  update_tables_with_mgt_image
     }
     if ($osimagetab) { $osimagetab->close(); }
     if ($linuximagetab) { $linuximagetab->close(); }
+ 
+    #set nodetype.provmethod to the new created osimage if it is not set
+    my @mgtnodes=xCAT::NodeRange::noderange('__mgmtnode');
+    if(scalar @mgtnodes){
+        my $nttab=xCAT::Table->new('nodetype', -create=>1);
+        unless($nttab){
+           return(1, "Cannot open the nodetype table.");
+        }
+
+        my $ntents=$nttab->getNodesAttribs(\@mgtnodes, ['provmethod']);
+        my %ent;
+        foreach my $node (@mgtnodes){
+           print "$node\n";
+           unless($ntents->{$node} and $ntents->{$node}->['provmethod']){
+                 $ent{$node}{'provmethod'}=$imagename;
+           }
+        }
+        
+        $nttab->setNodesAttribs(\%ent);  
+
+               
+        if($nttab){ $nttab->close(); }
+    }
+
+
     return (0, "");
 }
 
