@@ -42,11 +42,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-	 $version = ''    . '2.9' ;	
+	 $version = ''    #XCATVERSIONSUBHERE ;	
     }
     else
     {
-         $version = 'Version '    . '2.9' . ' (git commit aabb, built Thu Oct 17 14:52:04 CST 2013)' ; 
+         $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ; 
     }
     return $version;
 
