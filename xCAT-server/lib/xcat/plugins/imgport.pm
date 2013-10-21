@@ -174,8 +174,15 @@ sub xexport {
     my $dest = shift @ARGV;
     my $cwd = $request->{cwd}; #getcwd;
     $cwd = $cwd->[0];
+    
+    if (!defined $remoteHost) {
+        $callback->( {data => ["Exporting $img_name to $cwd..."]});
+    }
+    else {
+        $callback->( {data => ["Exporting $img_name to $remoteHost..."]});
+    }
 
-    $callback->( {data => ["Exporting $img_name to $cwd..."]});
+    
     # check if all files are in place
     my $attrs = get_image_info($img_name, $callback, $node, @extra);
     #print Dumper($attrs);
@@ -237,11 +244,16 @@ sub get_image_info {
         $errors++;
     }
 
-    unless($attrs0->{provmethod} =~ /install|netboot|statelite|raw/){
+    unless($attrs0->{provmethod} =~ /install|netboot|statelite|raw|sysclone/){
         $callback->({error=>["Exporting images with 'provemethod' " . $attrs0->{provmethod} . " is not supported. Hint: install, netboot, statelite, or raw"], errorcode=>[1]});
         $errors++;
     }
-
+    
+    if (($attrs0->{provmethod} =~ /sysclone/) && ($attrs0->{osarch} !~ /s390x/)) {
+        $callback->({error=>["Exporting images with 'provemethod' " . $attrs0->{provmethod} . " is not supported for osarch '" . $attrs0->{osarch} ."'"], errorcode=>[1]});
+        $errors++;
+    }
+    
     #$attrs->{imagename} = $imagename;
 
     if($errors){
@@ -438,7 +450,7 @@ sub get_files{
                 my @files;
                 my $dir = "$installroot/netboot/$osvers/s390x/$profile";
                 opendir(DIR, $dir) or $callback->({error=>["Could not open image files in directory $dir"], errorcode=>[1]});
-		
+
                 while (my $file = readdir(DIR)) {
                     # We only want files in the directory that end with .img
                     next unless (-f "$dir/$file");
@@ -449,7 +461,7 @@ sub get_files{
                 if (@files) {
                     $attrs->{rawimagefiles}->{files} = [@files];
                 }
-		
+                               
                 closedir(DIR);
             }
             else {
@@ -465,7 +477,7 @@ sub get_files{
                         $attrs->{linuximage}->{pkglist} = $temp;
                     }
                 }
-		
+        
                 @arr = ("$installroot/netboot");
 		my $rootimgdir=$attrs->{linuximage}->{rootimgdir};
 		my $ramdisk;
@@ -489,27 +501,27 @@ sub get_files{
 		    $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
 		}
 		unless($ramdisk){
-		    $callback->({error=>["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"],errorcode=>[1]});
-		    $errors++;
-		}else{
-		    $attrs->{ramdisk} = $ramdisk;
-		}
+                    $callback->({error=>["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"],errorcode=>[1]});
+                    $errors++;
+                }else{
+                    $attrs->{ramdisk} = $ramdisk;
+                }
 		    
 		unless($kernel){
-		    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
-		    $errors++;
-		}else{
-		    $attrs->{kernel} = $kernel;
-		}
+                    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+                    $errors++;
+                }else{
+                    $attrs->{kernel} = $kernel;
+                }
 		    
 		unless($rootimg){
-		    $callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
-		    $errors++;
-		}else{
-		    $attrs->{rootimg} = $rootimg;
-		}
-	    }
-	} elsif ($provmethod =~ /statelite/) {
+                    $callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
+                    $errors++;
+                }else{
+                    $attrs->{rootimg} = $rootimg;
+                }
+            }
+	    } elsif ($provmethod =~ /statelite/) {
             @arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
             #get .pkglist file
             if (! $attrs->{linuximage}->{pkglist})  {
@@ -541,24 +553,24 @@ sub get_files{
 	    }
 	    
 	    unless($kernel){
-		$callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
-		$errors++;
-	    }else{
-		$attrs->{kernel} = $kernel;
-	    }
+                $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+                $errors++;
+            }else{
+                $attrs->{kernel} = $kernel;
+            }
 
 	    unless($ramdisk){
-		$callback->({error=>["Couldn't find ramdisk (initrd-statelite.gz) for  $imagename"],errorcode=>[1]});
-		$errors++;
-	    }else{
-		$attrs->{ramdisk} = $ramdisk;
-	    }
-	}
+                $callback->({error=>["Couldn't find ramdisk (initrd-statelite.gz) for  $imagename"],errorcode=>[1]});
+                $errors++;
+            }else{
+                $attrs->{ramdisk} = $ramdisk;
+            }
+        } 
     }
     
-    if (( $provmethod =~ /raw/ ) and ( $arch =~ /s390x/ )) {    
+    if (( $provmethod =~ /raw|sysclone/ ) and ( $arch =~ /s390x/ )) {    
         my @files;
-        my $dir = "$installroot/raw/$osvers/s390x/$profile";
+        my $dir = "$installroot/$provmethod/$osvers/s390x/$profile";
         opendir(DIR, $dir) or $callback->({error=>["Could not open image files in directory $dir"], errorcode=>[1]});
 
         while (my $file = readdir(DIR)) {
@@ -634,32 +646,52 @@ sub look_for_file {
 }
 
 
-# here's where we make the tarball
+#-------------------------------------------------------
+
+=head3   make_bundle
+
+    Description : Makes the image bundle tar ball.
+    Arguments   : Image name from the command line
+                  Destination command line parameter, i.e. name of the tar ball.  For a
+                    remote host this can include the target directory.
+                  Remote host parameter from the command line, if specified
+                  Image attributes from the osimage table
+                  callback
+                  Current working directory
+    Returns     : None
+    Example     : make_bundle( $img_name, $dest, $remoteHost, $attrs, $callback, $cwd );
+    
+=cut
+
+#-------------------------------------------------------
 sub make_bundle {
     my $imagename = shift;
     my $dest = shift;
     my $remoteHost = shift;
     my $attribs = shift;
     my $callback = shift;
-    
-    # tar ball is made in local working directory.  Sometimes doing this in /tmp 
-    # is bad.  In the case of my development machine, the / filesystem was nearly full.
-    # so doing it in cwd is easy and predictable.
     my $dir = shift;
-    #my $dir = getcwd;
+    my $rc;
+    
+    # Determine the local working directory.  It could be specified in the site table
+    # or we will default to the current working directory which was passed to this routine.
+    my @siteEntries = xCAT::TableUtils->get_site_attribute("tmpdir");
+    my $workDir = $siteEntries[0];
+    if (!$workDir) {
+        $workDir = $dir;
+    }
     
     # get rid of spaces and put in underlines.  
     $imagename =~ s/\s+/_/g;    
     
     
-    # we may find that cwd doesn't work, so we use the request cwd.
-    my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
+    # Create the directory in which we collect the files prior to tarring them.
+    my $ttpath = mkdtemp("$workDir/imgexport.$$.XXXXXX");
     $callback->({data=>["Creating $ttpath..."]}) if $::VERBOSE;
     my $tpath = "$ttpath/$imagename";
     mkdir("$tpath");
     chmod 0755,$tpath;
     
-
     #for statelite
     if ($attribs->{osimage}->{provmethod} eq 'statelite') {
     #copy the rootimgdir over
@@ -670,6 +702,10 @@ sub make_bundle {
         $attribs->{'rootimgtree'} = "$rootimgdir/rootimgtree.gz";
     } else {
         $callback->({error=>["Couldn't locate the root image directory. "],errorcode=>[1]});
+        $rc = system("rm -rf $ttpath");
+        if ($rc) {
+            $callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
+        } 
         return 0;
     }
 
@@ -677,6 +713,10 @@ sub make_bundle {
     my $lftab= xCAT::Table->new("litefile" ,-create=>1);
     if (!$lftab) {
         $callback->({error=>["Could not open the litefile table."],errorcode=>[1]});
+        $rc = system("rm -rf $ttpath");
+        if ($rc) {
+            $callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
+        }
         return 0;
     }
 
@@ -777,7 +817,7 @@ sub make_bundle {
     # Copy any raw image files. Multiple files can exist (used by s390x)
     if ($attribs->{rawimagefiles}->{files}) {
         foreach my $fromf (@{$attribs->{rawimagefiles}->{files}}) {
-            my $rc = system("cp $fromf $tpath");
+            $rc = system("cp $fromf $tpath");
             if ($rc != 0) {
                 $callback->({error=>["Unable to copy the raw image file $fromf."], errorcode=>[1]});
                 $rc = system("rm -rf $ttpath");
@@ -806,30 +846,39 @@ sub make_bundle {
     }
     }
     
-    # If this is an export to a remote host then split the destination into the 
-    # remote directory portion and the name of the export bundle.
-    my $remoteDest;
-    if (defined $remoteHost) {
-        $remoteDest = $dest;
-        if (defined $dest) {
-            $dest = (split( '/', $dest))[-1];
-        }
-    }
-    
     # now get right below all this stuff and tar it up.
     chdir($ttpath);
     $callback->( {data => ["Inside $ttpath."]});
-    unless($dest){ 
-        $dest = "$dir/$imagename.tgz";
-    }
     
-    # if no absolute path specified put it in the cwd
-    unless($dest =~ /^\//){
-	    $dest = "$dir/$dest";			
+    # Determine the name of the bundle that we will create.
+    my ($bundleName, $destDir);
+    if (defined $dest) {
+        ($bundleName, $destDir) = fileparse($dest);
+        if ($bundleName eq '') {
+            $bundleName="$imagename.tgz";
+        }
+    } else {
+        $bundleName="$imagename.tgz";
+    }
+
+    
+    # Determine the full file specification of the image bundle.
+    my $remoteDest;
+    my $tempBundle;
+    if (defined $remoteHost) {
+        # For a remote host, we need both a local build bundle
+        # and the final remote bundle file specification.
+        $tempBundle = mktemp("$workDir/imgexport.$$.XXXXXX");
+        chomp($tempBundle);
+        $dest = $tempBundle;
+        $remoteDest = "$destDir$bundleName";
+    }
+    else {
+        # Local imgexports go to the current working directory
+        $dest = "$dir/$bundleName";
     }
     
     $callback->( {data => ["Compressing $imagename bundle.  Please be patient."]});
-    my $rc;
     if($::VERBOSE){
         $callback->({data => ["tar czvf $dest . "]});   
         $rc = system("tar czvf $dest . ");  
@@ -854,28 +903,48 @@ sub make_bundle {
         if (defined $remoteHost) {
             my $remoteFile = $remoteHost . ':' . $remoteDest;
             
-            $callback->({data=>["Moving the image bundle to the remote system"]});
+            $callback->({data=>["Moving the image bundle to the remote system location $remoteDest"]});
             $rc = system("/usr/bin/scp -B $dest $remoteFile");
             if ($rc) {
-                $callback->({error=>["Unable to copy the image bundle to the remote host"], errorcode=>[1]});
-            }
-            
-            # Remove the image bundle that was sent to the remote system.
-            $rc = system("rm $dest");
-            if ($rc) {
-                $callback->({error=>["Failed to clean up image bundle $dest"], errorcode=>[1]});
+                $callback->({error=>["Unable to copy the image bundle $bundleName to the remote host"], errorcode=>[1]});
             }
         }
     }
     
-    chdir($dir);    
+    # Remove the temporary image bundle if it is still around (for remote exports).
+    if (-e $tempBundle) {
+        $rc = system("rm -f $tempBundle");
+        if ($rc) {
+            $callback->({error=>["Failed to clean up the temporary image bundle $tempBundle"], errorcode=>[1]});
+        }
+    }
+    
+    # Remove the directory that we used to collect the files prior to creating the tar ball.
+    chdir($dir);
     $rc = system("rm -rf $ttpath");
     if ($rc) {
         $callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
-        return;
-    }   
+    }
+    
+    return;   
 }
 
+#-------------------------------------------------------
+
+=head3   extract_bundle
+
+    Description : Extract the files from the image tar ball.
+    Arguments   : Request
+                  callback
+                  nodes
+                  New profile name to use for the image, if specified.
+                  Remote host parameter from the command line
+    Returns     : None
+    Example     : extract_bundle( $request, $callback, $nodes, $new_profile, $remoteHost );
+    
+=cut
+
+#-------------------------------------------------------
 sub extract_bundle {
     my $request = shift;
     #print Dumper($request);
@@ -889,31 +958,43 @@ sub extract_bundle {
     my $data;
     my $datas;
     my $error = 0;
+    my $bundleCopy;
     
     my $bundle = shift @ARGV;
     
-    # extract the image in temp path in cwd
+    # Determine the current working directory.
     my $dir = $request->{cwd}; #getcwd;
     $dir = $dir->[0];
     #print Dumper($dir);
     
-    # If we have a remote file then move it to the xCAT MN
+    # A working directory will hold the temporary image directory.
+    # It will also hold the local copy of a remote image bundle.
+    # The directory can be defined in the site table and if not
+    # defined there then we will default to using the current working 
+    # directory.
+    my @siteEntries = xCAT::TableUtils->get_site_attribute("tmpdir");
+    my $workDir = $siteEntries[0];
+    if (!$workDir) {
+        $workDir = $dir;
+    }
+    
+    # If we have a remote file then transfer it to the xCAT MN first.
     if (defined $remoteHost) {
-        # Create unique directory for the bundle and copy the bundle to it
+        # Create unique copy the remote bundle in the working directory
         my $remoteFile = "$remoteHost:$bundle";
-        $dir = `/bin/mktemp -d /var/tmp/XXXXXX`;
-        chomp($dir);
-        $bundle = $dir . '/' . (split( '/', $bundle))[-1];
+        $bundleCopy = `/bin/mktemp $workDir/imgimport.$$.XXXXXX`;
+        chomp($bundleCopy);
         $callback->({data=>["Obtaining the image bundle from the remote system"]});
-        my $rc = system("/usr/bin/scp -v -B $remoteFile $dir");
+        my $rc = system("/usr/bin/scp -v -B $remoteFile $bundleCopy");
         if ($rc != 0) {
-            $callback->({error=>["Unable to copy the image bundle from the remote host"], errorcode=>[1]});
-            $rc = rmtree $dir;
-            if (! $rc) {
-                $callback->({error=>["Failed to clean up directory containing the remote image bundle $bundle"], errorcode=>[1]});
+            $callback->({error=>["Unable to copy the image bundle $bundle from the remote host"], errorcode=>[1]});
+            $rc = system("rm -rf $bundleCopy");
+            if ($rc) {
+                $callback->({error=>["Failed to remove the local copy of the remote image bundle $bundleCopy"], errorcode=>[1]});
             }
             return;
         }
+        $bundle = $bundleCopy;
     } else {
         # When we are not doing a remote copy, we need to verify the bundle exists and find its exact location
         unless(-r $bundle){
@@ -936,7 +1017,7 @@ sub extract_bundle {
         }
     }
     
-    my $tpath = mkdtemp("$dir/imgimport.$$.XXXXXX");
+    my $tpath = mkdtemp("$workDir/imgimport.$$.XXXXXX");
     
     $callback->({data=>["Unbundling image..."]});
     my $rc;
@@ -949,6 +1030,9 @@ sub extract_bundle {
     
     if ($rc) {
         $callback->({error => ["Failed to extract bundle $bundle"],errorcode=>[1]});
+        # Remove the files in the untar directory so that we don't attempt to process
+        # a partially untarred image bundle.
+        system("rm -rf $tpath");
     }
     
     # get all the files in the tpath.  These should be all the image names.
@@ -956,97 +1040,85 @@ sub extract_bundle {
     # go through each image directory.  Find the XML and put it into the array.  If there are any 
     # errors then the whole thing is over and we error and leave.
     foreach my $imgdir (@files){
-    unless(-r "$imgdir/manifest.xml"){
-        $callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
-        if (defined $remoteHost) {
-            $rc = rmtree $dir;
-            if ( ! $rc ) {
-                $callback->({error=>["Failed to clean up directory containing the remote image bundle $bundle"], errorcode=>[1]});
-            }
-        }
-        return;
-    }
-    $xml = new XML::Simple;
-    # get the data!
-    # put it in an eval string so that it 
-    $data = eval { $xml->XMLin("$imgdir/manifest.xml") };
-    if($@){
-        $callback->({error=>["invalid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
-        #my $foo = $@;
-        #$foo =~ s/\n//;
-        #$callback->({error=>[$foo],errorcode=>[1]});
-        #foreach($@){
-        #   last;
-        #}
-        # If this was an import from a remote host then remove the directory created for the remote files.
-        # We do not want to leave files hanging around that were brought from another system.
-        if (defined $remoteHost) {
-            $rc = rmtree $dir;
-            if ( ! $rc ) {
-                $callback->({error=>["Failed to clean up directory containing the remote image bundle $bundle"], errorcode=>[1]});
-            }
-        }
-        return;
-    }
-    #print Dumper($data);
-    #push @{$datas}, $data;
-    
-    # now we need to import the files...
-    unless(verify_manifest($data, $callback)){
-        $error++;
-        next;       
-    }
-    
-    # check media first
-    unless(check_media($data, $callback)){
-        $error++;
-        next;       
-    }
-
-    #change profile name if needed
-    if ($new_profile) {
-        $data=change_profile($data, $callback, $new_profile, $imgdir);
-    }
-    
-    #import manifest.xml into xCAT database
-    unless(set_config($data, $callback)){
-        $error++;
-        next;
-    }
-    
-    # now place files in appropriate directories.
-    unless(make_files($data, $imgdir, $callback)){
-        $error++;
-        next;
-    }
-    
-    # put postscripts in the postsctipts table
-    if ($nodes) {
-        unless(set_postscripts($data, $callback, $nodes)){
-        $error++;
-        next;
-        }
-    }
-        
-    my $osimage = $data->{osimage}->{imagename};    
-    $callback->({data=>["Successfully imported the image $osimage."]});
+	    unless(-r "$imgdir/manifest.xml"){
+	        $callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
+	        last;
+	    }
+	    
+	    $xml = new XML::Simple;
+	    # get the data!
+	    # put it in an eval string so that it 
+	    $data = eval { $xml->XMLin("$imgdir/manifest.xml") };
+	    if($@){
+	        $callback->({error=>["invalid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
+	        #my $foo = $@;
+	        #$foo =~ s/\n//;
+	        #$callback->({error=>[$foo],errorcode=>[1]});
+	        #foreach($@){
+	        #   last;
+	        #}
+	        last;
+	    }
+	    #print Dumper($data);
+	    #push @{$datas}, $data;
+	    
+	    # now we need to import the files...
+	    unless(verify_manifest($data, $callback)){
+	        $error++;
+	        next;       
+	    }
+	    
+	    # check media first
+	    unless(check_media($data, $callback)){
+	        $error++;
+	        next;       
+	    }
+	
+	    #change profile name if needed
+	    if ($new_profile) {
+	        $data=change_profile($data, $callback, $new_profile, $imgdir);
+	    }
+	    
+	    #import manifest.xml into xCAT database
+	    unless(set_config($data, $callback)){
+	        $error++;
+	        next;
+	    }
+	    
+	    # now place files in appropriate directories.
+	    unless(make_files($data, $imgdir, $callback)){
+	        $error++;
+	        next;
+	    }
+	    
+	    # put postscripts in the postsctipts table
+	    if ($nodes) {
+	        unless(set_postscripts($data, $callback, $nodes)){
+		        $error++;
+		        next;
+	        }
+	    }
+	        
+	    my $osimage = $data->{osimage}->{imagename};    
+	    $callback->({data=>["Successfully imported the image $osimage."]});
     }
     
-    # remove temp file only if there were no problems.
-    unless($error){
+    # Clean up for this routine.
+    # Remove the temp directory used for the exploded bundle
+    if ( -e $tpath ) {
         $rc = system("rm -rf $tpath");
         if ($rc) {
             $callback->({error=>["Failed to clean up temp space $tpath"],errorcode=>[1]});
-            return;
-        }   
+            # Don't return just yet.  We want the rest of the cleanup to occur.
+        }
     }
-
+    
     # If this was an import from a remote host then remove the directory created for the remote files.
     # We do not want to leave files hanging around that were brought from another system.
-    if ( defined $remoteHost ) {
-        $rc = rmtree $dir;
-        if ( ! $rc ) {
-            $callback->({error=>["Failed to clean up directory containing the remote image bundle $bundle"],errorcode=>[1]});
+    if ( -e $bundleCopy ) {
+        $rc = system("rm -rf $bundleCopy");
+        if ($rc) {
+            $callback->({error=>["Failed to remove the local copy of the remote image bundle $bundleCopy"], errorcode=>[1]});
         }
     }
 }
@@ -1068,7 +1140,11 @@ sub change_profile {
     $installdir = '/install';
     }
     if ($data->{linuximage}->{rootimgdir}) {
-        $data->{linuximage}->{rootimgdir}="$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
+        if (($data->{osimage}->{osarch} eq "s390x") && ($data->{osimage}->{provmethod} =~ /raw|sysclone/)) {
+            $data->{linuximage}->{rootimgdir}="$installdir/$data->{osimage}->{provmethod}/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
+        } else {
+            $data->{linuximage}->{rootimgdir}="$installdir/netboot/" . $data->{osimage}->{osvers} . "/" . $data->{osimage}->{osarch} . "/$new_profile";
+        }
     
         for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
             if ($data->{$a}) {
@@ -1325,8 +1401,12 @@ sub verify_manifest {
     }
     $data->{osimage}->{osarch} =~ s/^\s*(\S*)\s*$/$1/;
     
-    unless($data->{osimage}->{provmethod} =~ /install|netboot|statelite|raw/){
-        $callback->({error=>["Importing images with 'provemethod' " . $data->{osimage}->{provmethod} . " is not supported. Hint: install, netboot, statelite, or raw"],errorcode=>[1]});
+    unless($data->{osimage}->{provmethod} =~ /install|netboot|statelite|sysclone|raw/){
+        $callback->({error=>["Importing images with 'provmethod' " . $data->{osimage}->{provmethod} . " is not supported. Hint: install, netboot, statelite, sysclone or raw"],errorcode=>[1]});
+        $errors++;
+    }
+    if (($data->{osimage}->{provmethod} =~ /sysclone/) && ($data->{osimage}->{osarch} !~ /s390x/)) {
+        $callback->({error=>["Importing images with 'provemethod' " . $data->{osimage}->{provmethod} . " is not supported for osarch '" . $data->{osimage}->{osarch} ."'"], errorcode=>[1]});
         $errors++;
     }
     $data->{osimage}->{provmethod} =~ s/^\s*(\S*)\s*$/$1/;
@@ -1344,18 +1424,28 @@ sub verify_manifest {
         $callback->({info => ['this is an esx image']});
         # do nothing for ESX
         1;
-    } elsif (($data->{osimage}->{provmethod} =~ /netboot/) and ($data->{osimage}->{osarch} !~ /s390x/)) {
-        unless($data->{ramdisk}){
-            $callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
-            $errors++;
-        }
-        unless($data->{kernel}){
-            $callback->({error=>["The 'kernel' field is not defined in manifest.xml."],errorcode=>[1]});
-            $errors++;
-        }
-        unless($data->{rootimg}){
-            $callback->({error=>["The 'rootimg' field is not defined in manifest.xml."],errorcode=>[1]});
-            $errors++;
+    } elsif ($data->{osimage}->{provmethod} =~ /netboot/) {
+        if ($data->{osimage}->{osarch} =~ /s390x/) {
+            if (!$data->{rawimagefiles}) {
+                $callback->({error=>["The 'rawimagefiles' section is not defined in manifest.xml."],errorcode=>[1]});
+                $errors++;
+            } elsif (!$data->{rawimagefiles}->{files}) {
+                $callback->({error=>["'files' were not specified in the 'rawimagefiles' section of manifest.xml."],errorcode=>[1]});
+                $errors++;
+            }
+        } else {
+            unless($data->{ramdisk}){
+                $callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
+                $errors++;
+            }
+            unless($data->{kernel}){
+                $callback->({error=>["The 'kernel' field is not defined in manifest.xml."],errorcode=>[1]});
+                $errors++;
+            }
+            unless($data->{rootimg}){
+                $callback->({error=>["The 'rootimg' field is not defined in manifest.xml."],errorcode=>[1]});
+                $errors++;
+            }
         }
     
     }elsif($data->{osimage}->{provmethod} =~ /statelite/){
@@ -1372,6 +1462,16 @@ sub verify_manifest {
             $errors++;
         }
     
+    } elsif ($data->{osimage}->{provmethod} =~ /sysclone/) {
+        if ($data->{osimage}->{osarch} =~ /s390x/) {
+            if (!$data->{rawimagefiles}) {
+                $callback->({error=>["The 'rawimagefiles' section is not defined in manifest.xml."],errorcode=>[1]});
+                $errors++;
+            } elsif (!$data->{rawimagefiles}->{files}) {
+                $callback->({error=>["'files' were not specified in the 'rawimagefiles' section of manifest.xml."],errorcode=>[1]});
+                $errors++;
+            }
+        }
     }       
     
     if($errors){
@@ -1565,7 +1665,7 @@ sub make_files {
         $callback->( {data => ["Updating the litefile table."]});
         my $fn=$data->{litefile};
         if (!$fn) {
-            $callback->({error=>["Could not find liefile.csv."],errorcode=>[1]});
+            $callback->({error=>["Could not find litefile.csv."],errorcode=>[1]});
             return 1;
         } elsif (! -r $fn) {
             $callback->({error=>["Could not find $fn."],errorcode=>[1]});
@@ -1592,11 +1692,11 @@ sub make_files {
     	close(FILE);
         $lftab->commit;
 
-    	$callback->( {data => ["The litetree and statelite talbes are untouched. You can update them if needed."]});
+    	$callback->( {data => ["The litetree and statelite tables are untouched. You can update them if needed."]});
     } 
     
     # For s390x copy all image files from the root bundle directory to the repository location
-    if (($data->{osimage}->{osarch} =~ /s390x/) && (($data->{osimage}->{provmethod} =~ /raw/) || ($data->{osimage}->{provmethod} =~ /netboot/))) {
+    if (($data->{osimage}->{osarch} =~ /s390x/) && ($data->{osimage}->{provmethod} =~ /raw|netboot|sysclone/)) {
         my $reposImgDir = "$installroot/$data->{osimage}->{provmethod}/$data->{osimage}->{osvers}/$data->{osimage}->{osarch}/$data->{osimage}->{profile}";
         mkpath($reposImgDir);
         
