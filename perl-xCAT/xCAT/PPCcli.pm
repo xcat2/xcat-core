@@ -139,7 +139,7 @@ sub connect {
     my $timeout    = $req->{ppctimeout};
     my $verbose    = $req->{verbose};
     my $ssh;
-    my $expect_log;
+    my $expect_log = "/dev/null";
     my $errmsg;
 	
     if ($req->{command} eq 'rflash') {
@@ -170,7 +170,7 @@ sub connect {
     ##################################################
     if ( $verbose ) {
         close STDERR;
-        if ( !open( STDERR, '>', \$expect_log )) {
+        if ( !open( STDERR, '>', $expect_log )) {
              return( "Unable to redirect STDERR: $!" );
         }
     }
@@ -179,7 +179,7 @@ sub connect {
     ##################################################
     if ( $verbose ) {
         close STDOUT;
-        if ( !open( STDOUT, '>', \$expect_log )) {
+        if ( !open( STDOUT, '>', $expect_log )) {
              return( "Unable to redirect STDOUT: $!" );
         }
     }
