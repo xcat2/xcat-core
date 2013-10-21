@@ -460,6 +460,9 @@ then
     fi
 else
     #service sshd restart
+    # sshd is not enabled on SLES 12 by default
+    # does not hurt anything to re-enable if it is enabled already
+    enableservice sshd
     restartservice sshd
 fi
 
