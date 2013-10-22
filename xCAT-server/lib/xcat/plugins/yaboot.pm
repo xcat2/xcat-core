@@ -571,12 +571,12 @@ sub process_request {
     
         if (($osv =~ /rh/ and int($osn) < 6) or 
             ($osv =~ /sles/ and int($osn) < 11)) {
-            # check if xcat-yaboot installed
+            # check if yaboot-xcat installed
             my $yf = $tftpdir . "/yaboot";
             unless (-e $yf) {
                 my $rsp;
                 push @{$rsp->{data}},
-                  "stop configuration because xcat-yaboot need to be installed for $os.\n";
+                  "stop configuration because yaboot-xcat need to be installed for $os.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);       
                 return; 
               }
