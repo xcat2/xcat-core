@@ -501,7 +501,7 @@ if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
     
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
 
-elif ( pmatch "$OSVER" "rhel*" && [ $hasyum -eq 1 ] ); then 
+elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*")) && [ $hasyum -eq 1 ] ); then 
     #remove old repo
     mkdir -p /etc/yum.repos.d
     if [ -r "/etc/yum.repos.d/local-repository.repo" ]; then
