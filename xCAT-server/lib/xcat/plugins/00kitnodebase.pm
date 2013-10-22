@@ -157,7 +157,8 @@ sub process_request {
             my @cmmchassis = keys %$cmmref;
 
             push @commandslist, ['rspconfig', 'network=*'];
-            push @commandslist, ['rscan', '-u'];
+            push @commandslist, ['rscan', '-u', \@cmmchassis];
+            push @commandslist, ['rmhwconn', ''];
             push @commandslist, ['mkhwconn', '-t'];
         }
     }elsif ($command eq 'kitnoderemove') {
@@ -180,6 +181,11 @@ sub process_request {
         if(($current_cmd eq "nodeset") && $noupdate_flag)
         {
             $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, 0, 2);
+        }
+        elsif($current_cmd eq "rscan")
+        {
+            my $current_nodelist = $_->[2];
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$current_nodelist, arg=>[$current_args]}, $request_command, 0, 2);
         }
         else
         {
