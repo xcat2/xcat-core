@@ -35,7 +35,7 @@ then
     fi
     if [ -z "$chefserver" ]
     then
-        chefserver=$SITEMASTER
+        chefserver=$MASTER
     fi
 fi
 
@@ -78,8 +78,23 @@ then
     validation_key='/etc/chef-server/chef-validator.pem'
 else
     # Remote chef-server
-    scp $chefserver:/etc/chef-server/admin.pem $homedir/.chef 2>&1 1>/dev/null
-    scp $chefserver:/etc/chef-server/chef-validator.pem $homedir/.chef 2>&1 1>/dev/null
+    #scp $chefserver:/etc/chef-server/admin.pem $homedir/.chef 2>&1 1>/dev/null
+    #scp $chefserver:/etc/chef-server/chef-validator.pem $homedir/.chef 2>&1 1>/dev/null
+    mkdir -p /etc/chef
+    mkdir -p /etc/chef-server_tmp
+
+    mount $chef_server:/etc/chef-server /etc/chef-server_tmp
+    if [ $? -ne 0 ]
+    then
+        errmsg="Failed to run 'mount $chef_server:/etc/chef-server /etc/chef-server_tmp' on $node"
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
+        exit 1
+    fi
+    cp /etc/chef-server_tmp/admin.pem $homedir/.chef 2>&1 1>/dev/null
+    cp /etc/chef-server_tmp/chef-validator.pem $homedir/.chef 2>&1 1>/dev/null
+    umount /etc/chef-server_tmp
+    rmdir /etc/chef-server_tmp
     if [ ! -e "$homedir/.chef/admin.pem" ] || [ ! -e "$homedir/.chef/chef-validator.pem" ]
     then
         errmsg="Could not get the chef keys from chef server $chefserver"
