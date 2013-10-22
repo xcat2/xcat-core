@@ -28,11 +28,15 @@ management.
 
 %install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 
 cp -a lib/perl/xCAT_schema/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema -type d -exec chmod 755 {} \;
 find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema -type f -exec chmod 644 {} \;
 
+cp -a lib/perl/xCAT_plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeclouddata
 
 %clean
 rm -rf $RPM_BUILD_ROOT
