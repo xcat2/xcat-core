@@ -625,7 +625,7 @@ sub process_request {
                return; 
             } 
         }
-    } #end of foreach oshash
+    } #end of foreach osimagenodehash
   
   #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
   unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
@@ -642,8 +642,11 @@ sub process_request {
       #}
 
       if ($do_dhcpsetup) {
-        if (%oshash) {
-            foreach my $osentry (keys %oshash) {
+        if (%osimagenodehash) {
+            foreach my $osimage (keys %osimagenodehash) {
+                my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');
+                my $osentry = $osimgent->{'osvers'};
+
                 my $osv;
                 my $osn;
                 my $osm;
@@ -662,20 +665,20 @@ sub process_request {
                     my $fpath = "/yb/". $osentry."/yaboot"; 
                     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}},
+                         node=>\@{$osimagenodehash{$osimage}},
                          arg=>['-l','-s','filename = \"'.$fpath.'\";']},$callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}},
+                         node=>\@{$osimagenodehash{$osimage}},
                          arg=>['-s','filename = \"'.$fpath.'\";']},$callback);
                     }
                 } else {
                     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
                     $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                           node=>\@{$oshash{$osentry}}},$callback);
+                           node=>\@{$osimagenodehash{$osimage}}},$callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}}},$callback);
+                         node=>\@{$osimagenodehash{$osimage}}},$callback);
                     }
                 }
             }
