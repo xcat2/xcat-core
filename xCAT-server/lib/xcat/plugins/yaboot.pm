@@ -194,7 +194,7 @@ sub setstate {
               close($pcfg);
               my $inetn = xCAT::NetworkUtils->getipaddr($node);
               unless ($inetn) {
-               syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
+               syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
                return;
               }
             } else { #TODO: actually, should possibly default to xCAT image?
@@ -252,7 +252,7 @@ sub setstate {
       close($pcfg);
       my $inetn = xCAT::NetworkUtils->getipaddr($node);
       unless ($inetn) {
-       syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
+       syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
        return;
       }
     } else { #TODO: actually, should possibly default to xCAT image?
@@ -261,7 +261,7 @@ sub setstate {
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-      syslog("local4|err","xCAT unable to resolve IP in yaboot plugin");
+      syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
       return;
     }
     my $mactab = xCAT::Table->new('mac');
@@ -500,8 +500,9 @@ sub process_request {
   my $nrtab=xCAT::Table->new('noderes',-create=>1);
   my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
   my $typetab=xCAT::Table->new('nodetype',-create=>1);
-  my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod']);
+  my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod','arch','profile']);
   my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
+  my $osimagetab=xCAT::Table->new('osimage',-create=>1);
 
   my $rc;
   my $errstr;
@@ -538,15 +539,22 @@ sub process_request {
   my @normalnodeset = keys %normalnodes;
   my @breaknetboot=keys %breaknetbootnodes;
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
-    my %oshash;
+    my %osimagenodehash;
     for my $nn (@normalnodeset){
         #record the os version for node
-        my $ent = $typehash->{$nn}->[0]; 
-        my $os = $ent->{'os'};
-        push @{$oshash{$os}}, $nn;
+        my $ent = $typehash->{$nn}->[0];
+        my $osimage=$ent->{'provmethod'};
+        if($osimage =~ /^(install|netboot|statelite)$/){
+           $osimage=($ent->{'os'}).'-'.($ent->{'arch'}).'-'.($ent->{'provmethod'}).'-'.($ent->{'profile'});
+        }
+        push @{$osimagenodehash{$osimage}}, $nn;
         
     }
-    foreach my $os (keys %oshash) {
+
+    foreach my $osimage (keys %osimagenodehash) {
+        my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');       
+        my $os = $osimgent->{'osvers'};    
+
         my $osv;
         my $osn;
         my $osm;
@@ -560,6 +568,7 @@ sub process_request {
             $osn = $2;
             $osm = 0;   
         }
+    
         if (($osv =~ /rh/ and int($osn) < 6) or 
             ($osv =~ /sles/ and int($osn) < 11)) {
             # check if xcat-yaboot installed
@@ -582,16 +591,20 @@ sub process_request {
                 xCAT::MsgUtils->message("E", $rsp, $callback);            
                 return;
            }      
-              my $yabootpath = $tftpdir."/yb/".$os;
-              mkpath $yabootpath;     
+            my $yabootpath = $tftpdir."/yb/".$os;
+            mkpath $yabootpath;     
+
+            my $linuximgent = $linuximgtab->getAttribs({imagename => $osimage},'pkgdir');
+            my @pkgdirlist = split  /,/, $linuximgent->{'pkgdir'};
+            my $pkgdir = $pkgdirlist[0];
+            $pkgdir =~ s/\/+$//;            
+                   
 
             my $yabootfile;   
             if ($os =~ /sles/) {
-                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
-                $yabootfile = $installdir."/".$os."/ppc64/1/suseboot/yaboot";
+                $yabootfile = $pkgdir."/1/suseboot/yaboot";
             } elsif ($os =~ /rh/){
-                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
-                $yabootfile = $installdir."/".$os."/ppc64/ppc/chrp/yaboot";
+                $yabootfile = $pkgdir."/ppc/chrp/yaboot";
             }  
             unless (-e "$yabootfile") {
                 my $rsp;
