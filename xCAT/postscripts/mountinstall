@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -vx
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # This script, ("mountinstall"), is a sample xCAT post script for 
@@ -28,8 +28,8 @@ if [ -z "$INSTALLDIR" ]; then
 fi
 
 
-mount | grep "$MASTER:$INSTALLDIR"
-if [ $? -ne 0 ]
+mount | grep "$MASTER:$INSTALLDIR on /install"
+if [ $? -eq 0 ]
 then
    exit 0
 fi
