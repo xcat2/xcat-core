@@ -30,16 +30,29 @@ if [ -z "$chef_server" ]; then
         chef_server=$CHEFSERVER
     fi
     if [ -z "$chef_server" ]; then
-        chef_server=$SITEMASTER
+        chef_server=$MASTER
     fi
 fi
 
 
 mkdir -p /etc/chef
+mkdir -p /etc/chef-server_tmp
+
+mount $chef_server:/etc/chef-server /etc/chef-server_tmp
+if [ $? -ne 0 ]
+then
+    errmsg="Failed to run 'mount $chef_server:/etc/chef-server /etc/chef-server_tmp' on $node"
+    logger -t xcat -p local4.err $errmsg
+    echo $errmsg
+    exit 1
+fi
+
 
 # copy the validator.pem to chef client
-scp root@$chef_server:/etc/chef-server/chef-validator.pem /etc/chef/validation.pem
-
+#scp root@$chef_server:/etc/chef-server/chef-validator.pem /etc/chef/validation.pem
+cp /etc/chef-server_tmp/chef-validator.pem /etc/chef/validation.pem
+umount /etc/chef-server_tmp
+rmdir /etc/chef-server_tmp
 
 # Add the info to /etc/chef/client.rb
 echo -e "log_level        :auto

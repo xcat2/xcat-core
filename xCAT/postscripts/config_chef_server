@@ -25,4 +25,32 @@ then
     exit 1
 fi
 
+# for ubuntu
+if [ -e "/etc/lsb-release" ]
+then
+    apt-get install nfs-kernel-server portmap nfs-common  -y 
+    
+    grep "/etc/chef-server" /etc/exports
+    if [ $? -ne 0 ]
+    then
+        echo -e "\n/etc/chef-server *(rw,no_root_squash,sync,no_subtree_check)\n" >> /etc/exports
+    fi
+    sudo /etc/init.d/nfs-kernel-server restart
+    if [ $? -ne 0 ]
+    then
+        errmsg="Failed to run sudo /etc/init.d/nfs-kernel-server restart on $node"
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
+        exit 1
+    fi
+    service portmap restart
+    if [ $? -ne 0 ]
+    then
+        errmsg="Failed to run service portmap restart on $node"
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
+        exit 1
+    fi
+fi    
+
 exit 0;
