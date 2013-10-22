@@ -213,6 +213,8 @@ sub makescript {
 
   $mn = xCAT::Utils->noderangecontainsMn(@$nodes);
 
+  my $cfgflag=0;
+  my $cloudflag=0;
   my $inc;
   my $t_inc;
   my %table;
@@ -239,6 +241,14 @@ sub makescript {
            }
      }
 
+     if( $line =~ /#CFGMGTINFO_EXPORT#/ ) {
+         $cfgflag = 1;   
+     }
+     if ($cfgflag == 1) {
+         if( $line =~ /#CLOUDINFO_EXPORT#/ ) {
+             $cloudflag = 1;    
+         }
+     }
   }
 
   close($inh);
@@ -334,7 +344,23 @@ sub makescript {
 
   # get all the nodes' setstate   
   my $nodes_setstate_hash = getNodesSetState($nodes); 
- 
+
+  my $cfginfo_hash; 
+  my $cloudinfo_hash;
+  #
+  # if #CFGCLIENTLIST_EXPORT# exists, ...
+  if( $cfgflag == 1 ) { 
+      $cfginfo_hash = getcfginfo(); 
+      #
+      # if #CLOUDINFO_EXPORT# exists, ...
+      if( $cloudflag == 1) {
+          $cloudinfo_hash = getcloudinfo(); 
+
+      }  
+  }
+
+
+
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
@@ -447,7 +473,15 @@ sub makescript {
 
     my $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
 
-
+    my @clients;
+    my $cfgres;
+    my $cloudres;
+    if ( $cfgflag == 1 ) {
+        $cfgres =  getcfgres($cfginfo_hash, $node, \@clients);
+        if ( $cloudflag == 1 ) {
+            $cloudres = getcloudres($cloudinfo_hash, \@clients); 
+        }
+    }
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -462,6 +496,9 @@ sub makescript {
   $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
   $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
+
+  $inc =~ s/#CFGMGTINFO_EXPORT#/$cfgres/eg; 
+  $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
   
   $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
   $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
@@ -1699,7 +1736,127 @@ sub getPostbootScripts
     return $result;
 }
 
+sub getcfginfo
+{
+    my %info = ();
+    my $tab = "cfgmgt";
+    my $ptab = xCAT::Table->new($tab);
+    unless ($ptab) { 
+        xCAT::MsgUtils->message("E", "Unable to open $tab table");
+        return undef 
+    }
+    my @rs = $ptab->getAllAttribs('node','cfgserver','roles');
+
+    foreach my $r ( @rs ) {
+       my $node = $r->{'node'};
+       my $server = $r->{'cfgserver'};
+       my $roles = $r->{'roles'};
+       $info{ $server }{clientlist}  .= "$node,"; 
+       $info{ $node }{roles}  = $roles;
+        
+    }
+       
+    return \%info;
+   
+     
+}
+
+sub getcfgres
+{
+    my $cfginfo_hash = shift;
+    my $server = shift;
+    my $clients = shift;
+    my $cfgclient_list;
+    my $cfgres;
+    if( ! ( exists($cfginfo_hash->{$server}) && exists( $cfginfo_hash->{$server}->{clientlist} ) )  ) {
+        return $cfgres;
+    }
+   
+    $cfgclient_list = $cfginfo_hash->{$server}->{clientlist};
+    chop $cfgclient_list;
+    $cfgres = "CFGCLIENTLIST='$cfgclient_list'\n";
+    $cfgres .= "export CFGCLIENTLIST\n";
+    @$clients = split(',', $cfgclient_list);
+    foreach my $client (@$clients) {
+        my $roles = $cfginfo_hash->{$client}->{roles};
+        #$cfgres .= "hput $client roles $roles\n";
+        $cfgres .= "HASH".$client."roles='$roles'\nexport HASH".$client."roles\n";
+    }
+
+    return $cfgres;
+}
+
+sub getcloudinfo
+{
+    my %info = ();
+
+    my $tab = "clouds";
+    my $ptab = xCAT::Table->new($tab);
+    unless ($ptab) { 
+        xCAT::MsgUtils->message("E", "Unable to open $tab table");
+        return undef; 
+    }
+    my @rs = $ptab->getAllAttribs('name','repository');
+
+    foreach my $r ( @rs ) {
+       my $cloud = $r->{'name'};
+       my $repos = $r->{'repository'};
+       $info{ $cloud }{repository}  = $repos; 
+    }
+
+    $tab = "cloud";
+    $ptab = xCAT::Table->new($tab);
+    unless ($ptab) { 
+        xCAT::MsgUtils->message("E", "Unable to open $tab table");
+        return undef;
+    }
+    @rs = $ptab->getAllAttribs('node','cloudname');
+
+    my $pre;
+    my $curr;
+    foreach my $r ( @rs ) {
+       my $node = $r->{'node'};
+       my $cloud = $r->{'cloudname'};
+       $info{ $node }{cloud}  = $cloud;
+    }
+   
+    return \%info;
 
 
+
+} 
+
+sub getcloudres
+{
+    my $cloudinfo_hash = shift;
+    my $clients = shift;  
+    my $cloudres;
+    my $cloudlist;
+    my $repos;
+    if( @$clients == 0 ) {
+        return $cloudres;
+    }
+    foreach my $client (@$clients) {
+        my $cloud;
+        if( defined($cloudinfo_hash) && defined($cloudinfo_hash->{$client}) ) {
+            $cloud = $cloudinfo_hash->{$client}->{cloud};
+        }
+        #$cloudres .= "hput $client cloud $cloud\n";
+        $cloudres .= "HASH".$client."cloud='$cloud'\nexport HASH".$client."cloud\n";
+        $cloudlist .="$cloud,";
+       
+        my $t = $cloudinfo_hash->{$cloud}->{repository};
+        if( !defined($repos) ) {
+            $repos =  $t;
+        }
+        if( defined($repos) && ( $repos != $t && "$repos/" != $t && $repos != "$t/" ) ) {
+            xCAT::MsgUtils->message("E", "Two cloud repositories: $repos and $t.\n There should be only one cloud repository one ont chef-server.");
+            return undef; 
+        }
+    }
+    chop $cloudlist;
+    $cloudres = "REPOSITORY='$repos'\nexport REPOSITORY\nCLOUDLIST='$cloudlist'\nexport CLOUDLIST\n$cloudres";
+    return $cloudres;
+}
 
 1;
