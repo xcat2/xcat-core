@@ -272,6 +272,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hmc.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ivm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/lsslp.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/slpdiscover.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/seqdiscovery.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/remoteimmsetup.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/IMMUtils.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/RShellAPI.pm
