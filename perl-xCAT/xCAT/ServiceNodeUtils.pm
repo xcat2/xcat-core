@@ -242,12 +242,13 @@ sub getAllSN
     # if did not input "ALL" and there is a MN, remove it
     my @newservicenodes;
     if ((!defined($options)) || ($options ne "ALL")) {   
-       my $mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
-       if ($mname) { # if there is a MN
-        foreach my $nodes (@servicenodes) {
-           if ($mname ne ($nodes)){
-              push @newservicenodes, $nodes;
-           }
+       my @mname = xCAT::Utils->noderangecontainsMn(@servicenodes);
+       if (@mname) { # if there is a MN
+        foreach my $node (@servicenodes) {
+          # check to see if node in MN list
+          if (!(grep(/^$node$/, @mname))) { # if node not in the MN array
+              push @newservicenodes, $node;
+          }
         }
         $servicenodetab->close;
         return @newservicenodes;  # return without the MN in the array

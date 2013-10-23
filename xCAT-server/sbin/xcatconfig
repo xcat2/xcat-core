@@ -2124,23 +2124,27 @@ sub setupMNinDB
 
    my $defined  = 0;
    my $cmds="XCATBYPASS=Y $::XCATROOT/sbin/tabdump nodelist | grep  __mgmtnode";
-   my $output = xCAT::Utils->runcmd("$cmds", -1);
+   my @output = xCAT::Utils->runcmd("$cmds", -1);
+   
    if ($::RUNCMD_RC == 0)  # found a management node defined
    {
       my $chtabcmds;
-      my @mn = split(",", $output);  
+      my @mn = split(",", $output[0]);  
       $mn[0] =~ s/"//g;   # remove the quotes
       if  ($mn[0] ne $mnname) {   # does not match current host name,delete it
-        $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn[0] nodelist;";
-        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-          xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
-          return;
-        }
+         my $size=@output;   # if more than one management  node defined, do not remove any
+         if ($size == 1) {
+           $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn[0] nodelist;";
+           my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+           if ($::RUNCMD_RC != 0)
+           {
+             xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
+             return;
+           }
+         }
       } else {  # it is defined and good
-          xCAT::MsgUtils->message('I', "$mnname already defined in the nodelist table.");
-          $defined=1;     
+             xCAT::MsgUtils->message('I', "$mnname already defined in the nodelist table.");
+             $defined=1;     
       }
     }
     # now add with the new name , if not already there

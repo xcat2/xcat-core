@@ -3237,7 +3237,14 @@ sub bld_resolve_nodes_hash
 
     # find out if we have an MN in the list, local cp and sh will be used
     # not remote shell
-    my $mname = xCAT::Utils->noderangecontainsMn(@target_list);
+    # find out the names for the Management Node
+    my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
+    my $mname   = pop @MNnodeinfo;                  # hostname
+    #my $rsp = {};
+    #$rsp->{info}->[0] =
+    #      "Management node name is $mname.";
+    #            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+
     foreach my $target (@target_list)
     {
 
@@ -4079,11 +4086,12 @@ sub parse_and_run_dsh
         # check if any node in the noderange is the Management Node and exit 
         # with error, if the Management Node is in the Database and in the
         # noderange
-        my $mname = xCAT::Utils->noderangecontainsMn(@nodelist); 
-        if ($mname) {  # MN in the nodelist
+        my @mname = xCAT::Utils->noderangecontainsMn(@nodelist); 
+        if (@mname) {  # MN in the nodelist
+            my $nodes=join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -K option against the Management Node:$nodes.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         } 
