@@ -400,9 +400,8 @@ function updateZProvisionNewStatus(data) {
                             + ';' + size + ';' + mode + ';' + password + ';'
                             + password + ';' + password;
                     } else if (type == '9336') {
-                        var blkSize = '512';
                         args = '--add' + type + ';' + pool + ';' + address + ';' 
-                            + blkSize + ';' + size + ';' + mode + ';' + password + ';'
+                            + size + ';' + mode + ';' + password + ';'
                             + password + ';' + password;
                     }
                     
@@ -1413,7 +1412,6 @@ function openAddDiskDialog(node, hcp) {
                         $('#' + statusId).show();
                     } else if (type == '9336') {
                         // Default block size for FBA volumes = 512
-                        var blkSize = '512';
                         
                         $.ajax( {
                             url : 'lib/cmd.php',
@@ -1421,7 +1419,7 @@ function openAddDiskDialog(node, hcp) {
                             data : {
                                 cmd : 'chvm',
                                 tgt : node,
-                                args : '--add9336;' + pool + ';' + address + ';' + blkSize + ';' + size
+                                args : '--add9336;' + pool + ';' + address + ';' + size
                                     + ';' + mode + ';' + password + ';' + password + ';' + password,
                                 msg : node
                             },

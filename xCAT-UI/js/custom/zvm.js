@@ -2664,9 +2664,9 @@ zvmPlugin.prototype.loadLogPage = function(node) {
 
             // If a value is given for every input
             if (ready) {
-                // Disable all inputs
-                var inputs = $('#' + newTabId + ' input');
-                inputs.attr('disabled', 'disabled');
+                // Do not disable all inputs
+                //var inputs = $('#' + newTabId + ' input');
+                //inputs.attr('disabled', 'disabled');
                 
                 /**
                  * (1) Retrieve, clear, or set options for event logs
@@ -2688,8 +2688,8 @@ zvmPlugin.prototype.loadLogPage = function(node) {
                 $('#' + statBarId).find('div').append(createLoader());
                 $('#' + statBarId).show();
 
-                // Disable run button
-                $(this).attr('disabled', 'true');
+                // Do not disable run button
+                //$(this).attr('disabled', 'true');
             } else {
                 // Show warning message
                 var warn = createWarnBar(errMsg);

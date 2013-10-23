@@ -289,7 +289,7 @@ sub printLn {
     # Print string
     my $rsp;
     my $type = "I";
-    if ($str =~ m/error/i) {  # Set to print error if the string contains error
+    if ($str =~ m/(\(error\)|\sfailed)/i) {  # Set to print error if the string contains error
         $type = "E";
     }
     
@@ -1246,7 +1246,7 @@ sub getArch {
     }
 
     # Get host using VMCP
-    my $arch = `ssh $user\@$node "$sudo uname -p"`;
+    my $arch = `ssh $user\@$node "$sudo uname -m"`;
 
     return ( xCAT::zvmUtils->trimStr($arch) );
 }
@@ -2308,19 +2308,20 @@ sub getUsedFcpDevices {
     Arguments   : Sudoer user name
                   Sudo keyword
                   zHCP hostname
+                  Install root directory
                   Local directory to remotely mount
                   Mount access ('ro' for read only, 'rw' for read write)
                   Directory as known to zHCP (out)
     Returns     : 0 - Mounted, or zHCP and MN are on the same system
                   1 - Mount failed
-    Example     : establishMount( $callback, $::SUDOER, $::SUDO, $hcp, "$installRoot/$provMethod", "ro", \$remoteDeployDir );
+    Example     : establishMount( $callback, $::SUDOER, $::SUDO, $hcp, $installRoot, $provMethod, "ro", \$remoteDeployDir );
     
 =cut
 
 #-------------------------------------------------------
 sub establishMount {
     # Get inputs
-    my ($class, $callback, $sudoer, $sudo, $hcp, $localDir, $access, $mountedPt) = @_;    
+    my ($class, $callback, $sudoer, $sudo, $hcp, $installRoot, $localDir, $access, $mountedPt) = @_;    
     my $out;
 
     # If the target system is not on this system then establish the NFS mount point.
@@ -2338,7 +2339,7 @@ sub establishMount {
     
     if ($masterIp eq $hcpIP) {
         # xCAT MN and zHCP are on the same box and will use the same directory without the need for an NFS mount.
-        $$mountedPt = $localDir;
+        $$mountedPt = "$installRoot/$localDir";
     } else {
         # Determine the hostname for this management node
         my $masterHostname = Sys::Hostname::hostname();
@@ -2347,15 +2348,23 @@ sub establishMount {
             $masterHostname = $masterIp;
         }
         
+        $$mountedPt = "/mnt/$masterHostname$installRoot/$localDir";
+        
+        # If the mount point already exists then return because we are done.
+        my $rc = `ssh $sudoer\@$hcp "$sudo mount | grep $$mountedPt > /dev/null; echo \\\$?"`;
+        if ($rc == 0) {
+            return 0;
+        }
+        
         xCAT::zvmUtils->printSyslog( "establishMount() Preparing the NFS mount point on zHCP ($hcpIP) to xCAT MN $masterHostname($masterIp) for $localDir" );
         
         # Prepare the staging mount point on zHCP, if they need to be established
-        $$mountedPt = "/mnt/$masterHostname$localDir";
-        my $rc = `ssh $sudoer\@$hcp "$sudo mkdir -p $$mountedPt && mount -t nfs -o $access $masterIp:$localDir $$mountedPt; echo \\\$?"`;
+        $rc = `ssh $sudoer\@$hcp "$sudo mkdir -p $$mountedPt && mount -t nfs -o $access $masterIp:/$localDir $$mountedPt; echo \\\$?"`;
         
-        # Return code = 0 (mount succeeded) or 32 (mount already exists)
-        if ($rc != '0' && $rc != '32') {
+        # Return code = 0 (mount succeeded)
+        if ($rc != '0') {
             xCAT::zvmUtils->printLn( $callback, "$hcp: (Error) Unable to establish zHCP mount point: $$mountedPt" );
+            xCAT::zvmUtils->printSyslog( "establishMount() Unable to establish zHCP mount point: $$mountedPt, rc: $rc" );
             return 1;
         }
     }
@@ -2367,9 +2376,12 @@ sub establishMount {
 
 =head3   getFreeRepoSpace
 
-    Description : Get the free space of image repository under /install
+    Description : Get the free space of image repository under /install.
     Arguments   : Node
-    Returns     : The available space for /install
+    Returns     : The available space for /install (e.g. "2.1G ").  
+                  The value is returned as a perl string (e.g. "0 ") to 
+                  avoid perl returning null instead of "0" in the case
+                  of no space available.
     Example     : my $free = getFreeRepoSpace($callback, $node);
     
 =cut
@@ -2395,7 +2407,10 @@ sub getFreeRepoSpace {
         my $out = `$sudo /bin/df -h /install | sed 1d`;
         $out =~ s/\h+/ /g;
         my @results = split(' ', $out);
-        return ($results[3]);
+        if ( $results[3] eq "0" ) {
+            $results[3] = "0M";
+        }
+        return $results[3];
     } 
 
     return;
@@ -2475,12 +2490,12 @@ sub findAndUpdatezFcpPool {
         return \%results;
     }
     
-    # Check WWPN and LUN syntax
-    if ( $wwpn && ($wwpn =~ /[^0-9a-f;"]/i) ) {
-        xCAT::zvmUtils->printLn( $callback, "$header: (Error) Invalid world wide portname $wwpn." );
+    # Owner must be specified if status is used
+    if ($status =~ m/used/i && !$owner) {
+        xCAT::zvmUtils->printLn( $callback, "$header: (Error) Owner must be specified if status is used." );
         return \%results;
-    } if ( $lun && ($lun =~ /[^0-9a-f]/i) ) {
-        xCAT::zvmUtils->printLn( $callback, "$header: (Error) Invalid logical unit number $lun." );
+    } elsif ($status =~ m/free/i && $owner) {
+        xCAT::zvmUtils->printLn( $callback, "$header: (Error) Owner must not be specified if status is free." );
         return \%results;
     }
         
@@ -2509,6 +2524,15 @@ sub findAndUpdatezFcpPool {
         # Make sure WWPN and LUN do not have 0x prefix
         $wwpn = xCAT::zvmUtils->replaceStr($wwpn, "0x", "");
         $lun = xCAT::zvmUtils->replaceStr($lun, "0x", "");
+        
+        # Check WWPN and LUN syntax
+        if ( $wwpn && ($wwpn =~ /[^0-9a-f;"]/i) ) {
+            xCAT::zvmUtils->printLn( $callback, "$header: (Error) Invalid world wide portname $wwpn." );
+            return \%results;
+        } if ( $lun && ($lun =~ /[^0-9a-f]/i) ) {
+            xCAT::zvmUtils->printLn( $callback, "$header: (Error) Invalid logical unit number $lun." );
+            return \%results;
+        }
     }
     
     # Find disk pool (create one if non-existent)
@@ -2569,15 +2593,19 @@ sub findAndUpdatezFcpPool {
         }
         
         # Do not continue if no devices can be found
-        if (!$wwpn && !$lun) {
+        if (!$wwpn || !$lun) {
             xCAT::zvmUtils->printLn($callback, "$header: (Error) A suitable device of $size" . "M or larger could not be found");
             return \%results;
         }
     } else {
-    	# Find given WWPN and LUN. Do not continue if device is used
+        # Find given WWPN and LUN. Do not continue if device is used
         my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | grep -i "$wwpn,$lun"`;
         chomp($select);
-        
+        if (!$select) {
+            xCAT::zvmUtils->printLn($callback, "$header: (Error) zFCP device 0x$wwpn/0x$lun could not be found in zFCP pool $pool");
+            return \%results;
+        }
+
         @info = split(',', $select);
         
         if ($size) {
@@ -2585,13 +2613,11 @@ sub findAndUpdatezFcpPool {
                 # Convert to MegaBytes
                 $info[3] =~ s/\D//g;
                 $info[3] = int($info[3]) * 1024
-            } elsif ($info[3] =~ m/M/i) {
+            } else {
                 # Do nothing
                 $info[3] =~ s/\D//g;
-            } else {
-                next;
             }
-                
+            
             # Do not continue if specified device does not have enough capacity
             if ($info[3] < $size) {
                 xCAT::zvmUtils->printLn($callback, "$header: (Error) FCP device $wwpn/$lun is not large enough");
@@ -2602,7 +2628,7 @@ sub findAndUpdatezFcpPool {
         # Find range of the specified disk
         $range = $info[4];
     }
-       
+    
     # If there are multiple paths, take the 1st one
     # Handle multi-pathing in postscript because autoyast/kickstart does not support it.
     my $origWwpn = $wwpn;
@@ -2612,117 +2638,23 @@ sub findAndUpdatezFcpPool {
     }
         
     xCAT::zvmUtils->printLn($callback, "$header: Found FCP device 0x$wwpn/0x$lun");
-        
-    # Find a free FCP device based on the given range
-    if ($fcpDevice =~ m/^auto/i) {
-        my @ranges;
-        my $min;
-        my $max;
-        my $found = 0;
-                
-        if ($range =~ m/;/i) {
-            @ranges = split(';', $range);
-        } else {
-            push(@ranges, $range);
-        }
-                    
-        if (!$found) {
-            # If the node has an eligible FCP device, use it
-            my @deviceList = xCAT::zvmUtils->getDedicates($callback, $user, $owner);
-            foreach (@deviceList) {
-                # Check if this devide is eligible (among the range specified for disk $lun)
-                @info = split(' ', $_);
-                my $candidate = $info[2];
-                foreach (@ranges) {
-                    ($min, $max) = split('-', $_);
-                    if (hex($candidate) >= hex($min) && hex($candidate) <= hex($max)) {
-                        $found = 1;
-                        $fcpDevice = uc($candidate);
-                        
-                        last;
-                    }
-                }
-                
-                if ($found) {
-                	xCAT::zvmUtils->printLn($callback, "$header: Found eligible FCP channel $fcpDevice");
-                    last;
-                }       
-            }
-        }
-        
-        if (!$found) {
-            # If the node has no eligible FCP device, find a free one for it.
-            my %usedDevices = xCAT::zvmUtils->getUsedFcpDevices($user, $hcp);
-            
-            my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
-            $hcpUserId =~ tr/a-z/A-Z/;
-        
-            # Find a free FCP channel
-            $out = `ssh $user\@$hcp "$sudo $dir/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
-            my @devices = split( "\n", $out );
-            for (my $i = 0; $i < @devices; $i++) {
-                # Extract the device number and status
-                $fcpDevice = $devices[$i];
-                $fcpDevice =~ s/^FCP device number:(.*)/$1/;
-                $fcpDevice =~ s/^\s+//;
-                $fcpDevice =~ s/\s+$//;
-                        
-                $i++;
-                my $fcpStatus = $devices[$i];
-                $fcpStatus =~ s/^Status:(.*)/$1/;
-                $fcpStatus =~ s/^\s+//;
-                $fcpStatus =~ s/\s+$//;                    
-                        
-                # Only look at free FCP devices
-                if ($fcpStatus =~ m/free/i) {                    
-                    # If the device number is within the specified range, exit out of loop
-                    # Range: 3B00-3C00;4B00-4C00;5E12-5E12
-                    foreach (@ranges) {
-                        ($min, $max) = split('-', $_);
-                        if (hex($fcpDevice) >= hex($min) && hex($fcpDevice) <= hex($max)) {
-                            $fcpDevice = uc($fcpDevice);
-                
-                            # Used found FCP channel if not in use or allocated                        
-                            if (!$usedDevices{$fcpDevice}) {
-                                $found = 1;
-                                last;
-                            }
-                        }
-                    }
-                }
-                
-                # Break out of loop if FCP channel is found
-                if ($found) {
-                	xCAT::zvmUtils->printLn($callback, "$header: Found FCP channel within acceptable range $fcpDevice");
-                    last;
-                }
-            }
-        }
-            
-        # Do not continue if no FCP channel is found
-        if (!$found) {
-            xCAT::zvmUtils->printLn($callback, "$header: (Error) A suitable FCP channel could not be found");
+    
+    if ( ($status =~ m/used/i) && ($fcpDevice =~ /^auto/i) ) {
+        # select an eligible FCP device
+        $fcpDevice = xCAT::zvmUtils->selectFcpDevice($callback, $header, $user, $hcp, $fcpDevice, $range, $owner);
+        if (!$fcpDevice) {
             return \%results;
         }
-    }
-    
-    # If there are multiple devices (multipathing), take the 1st one
-    if ($fcpDevice) {
-        if ($fcpDevice =~ m/;/i) {
-            @info = split(';', $fcpDevice);
-            $fcpDevice = xCAT::zvmUtils->trimStr($info[0]);
-        }
-                    
-        # Make sure channel has a length of 4
-        while (length($fcpDevice) < 4) {
-            $fcpDevice = "0" . $fcpDevice;
-        }
+    } elsif ($status =~ m/free/i) {
+        # Owner and FCP channel make no sense when status is free
+        $fcpDevice = "";
+        $owner = "";
     }
             
     # Mark WWPN and LUN as used, free, or reserved and set the owner/channel appropriately
     # This config file keeps track of the owner of each device, which is useful in nodeset
     $size = $size . "M";
-    my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | grep -i "$lun" | grep -i "$wwpn"`;
+    my $select = `ssh $user\@$hcp "$sudo cat $zfcpDir/$pool.conf" | grep -i "$lun"`;
     chomp($select);
     if ($select) {
         @info = split(',', $select);
@@ -2755,6 +2687,156 @@ sub findAndUpdatezFcpPool {
         'lun' => $lun
     );
     return \%results;
+}
+
+#-------------------------------------------------------
+
+=head3   selectFcpDevice
+
+    Description : Select an eligible FCP device for attaching a zFCP device to a node
+    Arguments   :   Message header
+                    User (root or non-root)
+                    zHCP
+                    candidate FCP devices or auto
+                    FCP device range
+                    zFCP device owner
+    Returns     : selected FCP device or empty if no one is selected
+    Example     : my $fcpDevice = xCAT::zvmUtils->selectFcpDevice($callback, $header, $user, $hcp, $fcpDevice, $range, $owner);
+    
+=cut
+
+#-------------------------------------------------------
+sub selectFcpDevice {
+    # Get inputs
+    my ($class, $callback, $header, $user, $hcp, $fcpDevice, $range, $owner) = @_;
+        
+    # Determine if sudo is used
+    my $sudo = "sudo";
+    if ($user eq "root") {
+        $sudo = "";
+    }
+    
+    # Directory where executables are on zHCP
+    my $dir = "/opt/zhcp/bin";
+        
+    # Directory where FCP disk pools are on zHCP
+    my $zfcpDir = "/var/opt/zhcp/zfcp";
+    
+    my %results = ('rc' => -1);  # Default to error
+    
+    # Check FCP device syntax
+    if ($fcpDevice && ($fcpDevice !~ /^auto/i) && ($fcpDevice =~ /[^0-9a-f]/i)) {
+        xCAT::zvmUtils->printLn($callback, "$header: (Error) Invalid FCP channel address $fcpDevice.");
+        return;
+    }
+    
+    # Find a free FCP device based on the given range
+    if ($fcpDevice =~ m/^auto/i) {
+        my @ranges;
+        my $min;
+        my $max;
+        my $found = 0;
+                
+        if ($range =~ m/;/i) {
+            @ranges = split(';', $range);
+        } else {
+            push(@ranges, $range);
+        }
+                    
+        if (!$found) {
+            # If the node has an eligible FCP device, use it
+            my @deviceList = xCAT::zvmUtils->getDedicates($callback, $user, $owner);
+            foreach (@deviceList) {
+                # Check if this devide is eligible (among the range specified for disk $lun)
+                my @info = split(' ', $_);
+                my $candidate = $info[2];
+                foreach (@ranges) {
+                    ($min, $max) = split('-', $_);
+                    if (hex($candidate) >= hex($min) && hex($candidate) <= hex($max)) {
+                        $found = 1;
+                        $fcpDevice = uc($candidate);
+                        
+                        last;
+                    }
+                }
+                
+                if ($found) {
+                    xCAT::zvmUtils->printLn($callback, "$header: Found eligible FCP channel $fcpDevice");
+                    last;
+                }       
+            }
+        }
+        
+        if (!$found) {
+            # If the node has no eligible FCP device, find a free one for it.
+            my %usedDevices = xCAT::zvmUtils->getUsedFcpDevices($user, $hcp);
+            
+            my $hcpUserId = xCAT::zvmCPUtils->getUserId($user, $hcp);
+            $hcpUserId =~ tr/a-z/A-Z/;
+        
+            # Find a free FCP channel
+            my $out = `ssh $user\@$hcp "$sudo $dir/smcli System_WWPN_Query -T $hcpUserId" | egrep -i "FCP device number|Status"`;
+            my @devices = split( "\n", $out );
+            for (my $i = 0; $i < @devices; $i++) {
+                # Extract the device number and status
+                $fcpDevice = $devices[$i];
+                $fcpDevice =~ s/^FCP device number:(.*)/$1/;
+                $fcpDevice =~ s/^\s+//;
+                $fcpDevice =~ s/\s+$//;
+                        
+                $i++;
+                my $fcpStatus = $devices[$i];
+                $fcpStatus =~ s/^Status:(.*)/$1/;
+                $fcpStatus =~ s/^\s+//;
+                $fcpStatus =~ s/\s+$//;                    
+                        
+                # Only look at free FCP devices
+                if ($fcpStatus =~ m/free/i) {                    
+                    # If the device number is within the specified range, exit out of loop
+                    # Range: 3B00-3C00;4B00-4C00;5E12-5E12
+                    foreach (@ranges) {
+                        ($min, $max) = split('-', $_);
+                        if (hex($fcpDevice) >= hex($min) && hex($fcpDevice) <= hex($max)) {
+                            $fcpDevice = uc($fcpDevice);
+                
+                            # Use found FCP channel if not in use or allocated                        
+                            if (!$usedDevices{$fcpDevice}) {
+                                $found = 1;
+                                last;
+                            }
+                        }
+                    }
+                }
+                
+                # Break out of loop if FCP channel is found
+                if ($found) {
+                    xCAT::zvmUtils->printLn($callback, "$header: Found FCP channel within acceptable range $fcpDevice");
+                    last;
+                }
+            }
+        }
+            
+        # Do not continue if no FCP channel is found
+        if (!$found) {
+            xCAT::zvmUtils->printLn($callback, "$header: (Error) A suitable FCP channel could not be found");
+            return;
+        }
+    }
+    
+    # If there are multiple devices (multipathing), take the 1st one
+    if ($fcpDevice) {
+        if ($fcpDevice =~ m/;/i) {
+            my @info = split(';', $fcpDevice);
+            $fcpDevice = xCAT::zvmUtils->trimStr($info[0]);
+        }
+                    
+        # Make sure channel has a length of 4
+        while (length($fcpDevice) < 4) {
+            $fcpDevice = "0" . $fcpDevice;
+        }
+    }
+    
+    return $fcpDevice;
 }
 
 #-------------------------------------------------------
@@ -2807,7 +2889,7 @@ sub findzFcpDevicePool {
                     WWPN
                     LUN
     Returns     : Architecture of node
-    Example     : my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($user, $hcp, $wwpn, $lun);
+    Example     : my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($user, $hcp, $pool, $wwpn, $lun);
     
 =cut
 
@@ -2827,7 +2909,7 @@ sub findzFcpDeviceAttr {
 
     # Find the SCSI/FCP device
     # Entry order: status,wwpn,lun,size,range,owner,channel,tag
-    my @info = split("\n", `ssh $user\@$hcp "$sudo grep \"$wwpn,$lun\" $zfcpDir/$pool.conf"`);
+    my @info = split("\n", `ssh $user\@$hcp "$sudo grep -i \"$wwpn,$lun\" $zfcpDir/$pool.conf"`);
     my $entry = $info[0];
     chomp($entry);
     

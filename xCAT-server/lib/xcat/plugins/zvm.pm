@@ -23,6 +23,7 @@ use XML::Simple;
 use File::Basename;
 use File::Copy;
 use File::Path;
+use File::Temp;
 use Time::HiRes;
 use POSIX;
 use Getopt::Long;
@@ -112,7 +113,7 @@ sub preprocess_request {
         # Input error
         my %rsp;
         my $rsp;
-        $rsp->{data}->[0] = "Input noderange missing. Useage: zvm <noderange> \n";
+        $rsp->{data}->[0] = "Input noderange missing. Usage: zvm <noderange> \n";
         xCAT::MsgUtils->message( "I", $rsp, $callback, 0 );
         return 1;
     }
@@ -721,8 +722,9 @@ sub removeVM {
     xCAT::zvmUtils->delTabEntry( 'noderes',  'node', $node );
     xCAT::zvmUtils->delTabEntry( 'nodehm',   'node', $node );
 
-    # Erase old hostname from known_hosts
-    $out = `ssh-keygen -R $node`;
+    # Erase old hostname from known_hosts,all hostname are recorded in lower-case.
+    my $lowernode = lc($node);
+    $out = `ssh-keygen -R $lowernode`;
     
     # Erase hostname from /etc/hosts
     $out = `sed -i /$node./d /etc/hosts`;
@@ -834,8 +836,8 @@ sub changeVM {
         xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 3390 -a AUTOG -r $pool -u 1 -z $cyl -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
         
         # Add to active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
         }
@@ -907,8 +909,8 @@ sub changeVM {
         xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create_DM -T $userId -v $addr -t 9336 -a AUTOG -r $pool -u 2 -z $blks -m $mode -f 1 -R $readPw -W $writePw -M $multiPw");
         
         # Add to active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Disk_Create -T $userId -v $addr -m $mode"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Disk_Create -T $userId -v $addr -m $mode");
         }
@@ -1029,12 +1031,22 @@ sub changeVM {
             $wwpn = $args->[6];
             $lun = $args->[7];
         }
-                
-        # Find a suitable SCSI/FCP device in the zFCP storage pool
-        my %criteria;
+        
+        my %zFCP; # Store zFCP device's original attributes here
+        my %criteria; # Store zFCP device's new attributes here
         my $resultsRef;
         if ($useWwpnLun) {
-        	%criteria = (
+            # Store current attributes of the SCSI/FCP device in case need to roll back when something goes wrong
+            my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $wwpn, $lun);
+            %zFCP = %$deviceRef;
+            
+            # Check current status of the FCP device
+            if ('used' eq $zFCP{'status'}) {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) FCP device 0x$wwpn/0x$lun is in use.");
+                return;
+            }
+            
+            %criteria = (
                'status' => 'used',
                'fcp' => $device,
                'wwpn' => $wwpn,
@@ -1045,8 +1057,8 @@ sub changeVM {
             );
             $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
         } else {
-        	# Do not know the WWPN or LUN in this case
-        	%criteria = (
+            # Do not know the WWPN or LUN in this case
+            %criteria = (
                'status' => 'used',
                'fcp' => $device,
                'size' => $size, 
@@ -1054,6 +1066,18 @@ sub changeVM {
                'tag' => $tag
             );
             $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
+            
+            # Store original attributes of the SCSI/FCP device in case need to roll back when something goes wrong
+            my %results = %$resultsRef;
+            %zFCP = (
+                'status' => 'free',
+                'wwpn' => $results{'wwpn'},
+                'lun' => $results{'lun'},
+                'fcp' => '',
+                'size' => $size,
+                'owner' => '',
+                'tag' => ''
+            );
         }
         
         my %results = %$resultsRef;
@@ -1073,10 +1097,16 @@ sub changeVM {
         # Find DEDICATE statement in the entry (dedicate one if one does not exist)
         my $dedicate = `echo "$userEntry" | egrep -i "DEDICATE $device"`;
         if (!$dedicate) {
-            $out = `/opt/xcat/bin/chvm $node --dedicatedevice $device $device 0`;
+            # Remove FCP device address from CIO device blacklist
+            my $nodeIp = xCAT::zvmUtils->getIp($node);
+            $out = `ssh $::SUDOER\@$nodeIp "$::SUDO /sbin/cio_ignore -r $device"`;
+            $out = `/opt/xcat/bin/chvm $node --dedicatedevice $device $device 0 2>&1`;
             xCAT::zvmUtils->printLn($callback, "$out");
             if (xCAT::zvmUtils->checkOutput($callback, $out) == -1) {
-            	# Exit if dedicate failed
+                # Roll back. Undedicate FCP device and restore all attributes of the zFCP device
+                `/opt/xcat/bin/chvm $node --undedicatedevice $device`;
+                $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%zFCP);
+                # Exit if dedicate failed
                 return;
             }
         }
@@ -1085,9 +1115,9 @@ sub changeVM {
         my $cmd;
         my $ping = `/opt/xcat/bin/pping $node`;
         if (!($ping =~ m/noping/i)) {
-        	# Add the dedicated device to the active config
-        	# Ignore any errors since it might be already dedicated
-        	$out = `ssh $::SUDOER\@$node "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $device -r $device -R MR"`;
+            # Add the dedicated device to the active config
+            # Ignore any errors since it might be already dedicated
+            $out = `ssh $::SUDOER\@$node "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $device -r $device -R MR"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Device_Dedicate -T $userId -v $device -r $device -R MR");
            
             # Online device
@@ -1103,7 +1133,7 @@ sub changeVM {
             
             # For the version above RHEL6 or SLES11, the port_add is removed
             # Keep the code here for lower editions, of course, ignore the potential errors 
-            $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add");            
+            $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn > /sys/bus/ccw/drivers/zfcp/0.0.$device/port_add");
             $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$lun > /sys/bus/ccw/drivers/zfcp/0.0.$device/0x$wwpn/unit_add");
             
             # Get source node OS
@@ -1192,8 +1222,8 @@ sub changeVM {
         my $owner = $args->[3];
                 
         # Connect to LAN in active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner"`;
             xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_LAN -T $userId -v $addr -l $lan -o $owner");
         }
@@ -1217,8 +1247,8 @@ sub changeVM {
         xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_Vswitch_DM -T $userId -v $addr -n $vswitch");
         
         # Connect to VSwitch in active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out .= `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch"`;
             xCAT::zvmUtils->printSyslog("smcli Virtual_Network_Adapter_Connect_Vswitch -T $userId -v $addr -n $vswitch");
         }
@@ -1494,14 +1524,25 @@ sub changeVM {
             xCAT::zvmUtils->printLn($callback, "$node: (Error) $srcFile does not exist");
             return;
         }
-    
-        $out = `ssh $::SUDOER\@$node  "$::SUDO /usr/bin/stat -L --printf=%t:%T $srcFile"`;
-        if ($out != '') {
-            my @device = split(":", $out);
-            my $major = sprintf("%d", hex($device[0]));
-            my $minor = sprintf("%d", hex($device[1]));
-            $out = `ssh $::SUDOER\@$node "$::SUDO /bin/mknod $tgtFile b $major $minor "`;
+        
+        # Obtain corresponding WWPN and LUN of source file
+        $srcFile =~ m/-zfcp-(\w+):(\w+)/;
+        my ($wwpn, $lun) = ($1, $2);
+        
+        # Create udev config file if not exist
+        my $configFile = '/etc/udev/rules.d/56-zfcp.rules';
+        if (!(`ssh $::SUDOER\@$node "$::SUDO test -e $configFile && echo Exists"`)) {
+            `ssh $::SUDOER\@$node "$::SUDO touch $configFile"`;
         }
+        
+        # Add the entry into udev config file
+        my $tgtFileName = $tgtFile;
+        $tgtFileName =~ s/\/dev\///;
+        my $linkItem = "KERNEL==\\\"sd*\\\", SYSFS{wwpn}==\\\"$wwpn\\\", SYSFS{fcp_lun}==\\\"$lun\\\", SYMLINK+=\\\"$tgtFileName\%n\\\"";
+        $out = `ssh $::SUDOER\@$node "$::SUDO echo '$linkItem' >> $configFile"`;
+        $out = `ssh $::SUDOER\@$node "$::SUDO udevadm trigger --sysname-match=sd*"`;
+        
+        xCAT::zvmUtils->printLn($callback, "$node: Creating file system node $tgtFile... Done");
     }
     
     # dedicatedevice [virtual device] [real device] [mode (1 or 0)]
@@ -1510,14 +1551,20 @@ sub changeVM {
         my $raddr = $args->[2];
         my $mode  = $args->[3];
         
+        my $argsSize = @{$args};
+        if ($argsSize != 4) {
+            xCAT::zvmUtils->printLn($callback, "$node: (Error) Wrong number of parameters");
+            return;
+        }
+        
         # Dedicate device to directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode"`;
         xCAT::zvmUtils->printSyslog("smcli Image_Device_Dedicate_DM -T $userId -v $vaddr -r $raddr -R $mode");
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         
         # Dedicate device to active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Device_Dedicate -T $userId -v $vaddr -r $raddr -R $mode");
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
@@ -1751,10 +1798,12 @@ sub changeVM {
             return;
         }
         
-        # Unmount this disk, but ignore the output
-        $out = `ssh $::SUDOER\@$node  "$::SUDO umount $tgtFile"`;
-        $out = `ssh $::SUDOER\@$node  "$::SUDO rm -f $tgtFile"`;
-        
+        # Unmount this disk and remove this disk from udev config file, but ignore the output
+        my $configFile = '/etc/udev/rules.d/56-zfcp.rules';
+        my $tgtFileName = $tgtFile;
+        $tgtFileName =~ s/\/dev\///;
+        $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e /SYMLINK+=\\\\\\\"$tgtFileName\\\\\\\%n\\\\\\\"/d $configFile"`;
+        $out = `ssh $::SUDOER\@$node "$::SUDO udevadm trigger --sysname-match=sd*"`;
         xCAT::zvmUtils->printLn($callback, "$node: Removing file system node $tgtFile... Done");
     }
     
@@ -1841,7 +1890,7 @@ sub changeVM {
         $out = "";
     }
     
-    # removezfcp [device address] [wwpn] [lun] [persist (0 or 1)]
+    # removezfcp [device address] [wwpn] [lun] [persist (0 or 1) (optional)]
     elsif ( $args->[0] eq "--removezfcp" ) {
         my $device = $args->[1];
         my $wwpn = $args->[2];
@@ -1859,7 +1908,7 @@ sub changeVM {
         }
         
         if ($argsSize == 5) {
-        	$persist = $args->[4];
+            $persist = $args->[4];
         }
         
         # Check the value of persist
@@ -1875,43 +1924,46 @@ sub changeVM {
         	# Continue to try and remove the SCSI/FCP device even when it is not found in a storage pool 
         	xCAT::zvmUtils->printLn( $callback, "$node: Could not find FCP device in any FCP storage pool" );
         } else {
-        	xCAT::zvmUtils->printLn( $callback, "$node: Found FCP device in $pool" );
-        	
-        	# If the device is not known, try to find it in the storage pool
-	        if ($device !~ /^[0-9a-f]/i) {
-	            my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep -i "$wwpn,$lun"`;
-	            chomp($select);
-	            my @info = split(',', $select);
-	            if ($device) {
-	                $device = $info[6];
-	            }
-	        }
-	        
-	        my $status = "free";
-	        my $owner = "";
-	        if ($persist) {
-	            # Keep the device reserved if persist = 1
-	            $status = "reserved";
-	            $owner = $node;
-	        }
-	        
-	        my %criteria = (
-	           'status' => $status,
-	           'wwpn' => $wwpn,
-	           'lun' => $lun,
-	           'owner' => $owner,
-	        );
-	        my $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
-	        my %results = %$resultsRef;
-	        
-	        if ($results{'rc'} == -1) {
-	            xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to find zFCP device");
-	            return;
-	        }
-	        
-	        # Obtain the device assigned by xCAT
-	        $wwpn = $results{'wwpn'};
-	        $lun = $results{'lun'};
+            xCAT::zvmUtils->printLn( $callback, "$node: Found FCP device in $pool" );
+        
+            my $select = `ssh $::SUDOER\@$hcp "$::SUDO cat $::ZFCPPOOL/$pool.conf" | grep -i "$wwpn,$lun"`;
+            chomp($select);
+            my @info = split(',', $select);
+        
+            # A node can only remove a zFCP device that belongs to itself
+            if ( ('used' eq $info[0]) && ($node ne $info[5]) ) {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) The zFCP device 0x$wwpn/0x$lun does not belong to the node $node.");
+                return;
+            }
+            # If the device is not known, try to find it in the storage pool
+            if ($device && $device !~ /^[0-9a-f]/i) {
+                $device = $info[6];
+            }
+            
+            my $status = "free";
+            my $owner = "";
+            if ($persist) {
+                # Keep the device reserved if persist = 1
+                $status = "reserved";
+            }
+            
+            my %criteria = (
+               'status' => $status,
+               'wwpn' => $wwpn,
+               'lun' => $lun,
+               'owner' => $owner,
+            );
+            my $resultsRef = xCAT::zvmUtils->findAndUpdatezFcpPool($callback, $node, $::SUDOER, $hcp, $pool, \%criteria);
+            my %results = %$resultsRef;
+            
+            if ($results{'rc'} == -1) {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to find zFCP device");
+                return;
+            }
+            
+            # Obtain the device assigned by xCAT
+            $wwpn = $results{'wwpn'};
+            $lun = $results{'lun'};
         }
 
         # De-configure SCSI over FCP inside node (if online)
@@ -2134,6 +2186,12 @@ sub changeVM {
     # undedicatedevice [virtual device]
     elsif ( $args->[0] eq "--undedicatedevice" ) {
         my $vaddr = $args->[1];
+        
+        my $argsSize = @{$args};
+        if ($argsSize != 2) {
+            xCAT::zvmUtils->printLn($callback, "$node: (Error) Wrong number of parameters");
+            return;
+        }
 
         # Undedicate device in directory entry
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Undedicate_DM -T $userId -v $vaddr"`;
@@ -2141,8 +2199,8 @@ sub changeVM {
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
         
         # Undedicate device in active configuration
-        my $ping = `/opt/xcat/bin/pping $node`;
-        if (!($ping =~ m/noping/i)) {
+        my $power = `/opt/xcat/bin/rpower $node stat`;
+        if ($power =~ m/: on/i) {
             $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Device_Undedicate -T $userId -v $vaddr"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Device_Undedicate -T $userId -v $vaddr");
             xCAT::zvmUtils->printLn( $callback, "$node: $out" );
@@ -2335,8 +2393,8 @@ sub powerVM {
         xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
         # Wait for output
-        while ( `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q user $userId 2>/dev/null" | sed 's/HCPCQU045E.*/Done/'` != "Done" ) {
-            # Do nothing
+        while ( `ssh $::SUDOER\@$hcp "$::SUDO /sbin/vmcp q user $userId 2>/dev/null" | sed 's/HCPCQU045E.*/Done/'` !~ "Done" ) {
+            sleep(5);
         }
 
         $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Activate -T $userId"`;
@@ -2359,11 +2417,11 @@ sub powerVM {
             $timeout++;
         }
         if ($timeout >= 180) {
-            xCAT::zvmUtils->printLn( $callback, "$node: Shuting down $userId... Failed\n" );
+            xCAT::zvmUtils->printLn( $callback, "$node: Shutting down $userId... Failed\n" );
             return;
         }
         
-        xCAT::zvmUtils->printLn( $callback, "$node: Shuting down $userId... Done\n" );
+        xCAT::zvmUtils->printLn( $callback, "$node: Shutting down $userId... Done\n" );
         
         # Wait until node is up or 180 seconds
         $timeout = 0;
@@ -2684,6 +2742,23 @@ sub inventoryVM {
         $str .= "Total Memory: $memory\n";
         $str .= "Max Memory: $maxMem\n";
         $str .= "Processors: \n$proc\n";
+        
+    } elsif ( $args->[0] eq 'cpumem' ) {
+
+        # Get memory configuration
+        my $memory = xCAT::zvmCPUtils->getMemory($::SUDOER, $node);
+        
+        # Get processors configuration
+        my $proc = xCAT::zvmCPUtils->getCpu($::SUDOER, $node);
+        
+        # Get instance CPU used time
+        my $cputime = xCAT::zvmUtils->getUsedCpuTime($::SUDOER, $hcp , $node); 
+        
+        $str .= "Total Memory: $memory\n";
+        $str .= "Processors: \n$proc\n";
+        $str .= "CPU Used Time: $cputime\n";
+        
+
     } elsif ( $args->[0] eq 'all' ) {
 
         # Get z/VM host for specified node
@@ -5705,53 +5780,180 @@ END
         }
 
         xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
-    } elsif (  $action eq "netboot" ) {
+    } elsif (( $action eq "netboot" ) || ( $action eq "sysclone" )) {
         
         # Obtain the location of the install root directory
         my $installRoot = xCAT::TableUtils->getInstallDir();
         
         # Verify the image exists
-        my $imageFile;
         my $deployImgDir = "$installRoot/$action/$os/$arch/$profile";
         my @imageFiles = glob "$deployImgDir/*.img";
-        if (@imageFiles == 0) {
+        my %imageFileList;
+        if ( @imageFiles == 0 ) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) $deployImgDir does not contain image files" );
             return;
-        } elsif (@imageFiles > 1) {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) $deployImgDir contains more than the expected number of image files" );
-            return;
         } else {
-            $imageFile = (split('/', $imageFiles[0]))[-1];
+            # Obtain the list of image files and the vaddr to which they relate
+            foreach my $imageFileFull ( @imageFiles ) {
+                my $imageFile = (split('/', $imageFileFull))[-1];
+                my $vaddr = (split('\.', $imageFile))[0];
+                $imageFileList{ $vaddr } = $imageFile;
+            }
         }
         
-        if (! defined $device) {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Image device was not specified" );
-            return;
+        # Build the list of image files and their target device addresses
+        if ( $action eq "netboot" ) {
+            if ( @imageFiles > 1 ) {
+                # Can only have one image file for netboot
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) $deployImgDir contains more than the expected number of image files" );
+                return;
+            }
+            if (! defined $device) {
+                # A device must be specified
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Image device was not specified" );
+                return;
+            }
+            # For netboot, image device address is not necessarily the same as the original device name
+            my $origKey = (keys %imageFileList)[0];
+            if ( $origKey ne $device ) {
+                # file name was different with a different name than the target device.  Update to use the target device.
+                $imageFileList{ $device } = $imageFileList{ $origKey };
+                delete $imageFileList{ $origKey };
+            }
+        } else {
+            # Handle sysclone which can have multiple image files which MUST match each mdisk
+            # Get the list of mdisks
+            my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $::SUDOER, $node );
+            
+            # Verify the list of images and matching disks
+            my $validArrayDisks = 0;
+            foreach (@srcDisks) {
+                # Get disk address
+                my @words = split( ' ', $_ );
+                my $vaddr = $words[1];
+                my $diskType = $words[2];
+                
+                if ( $diskType eq 'FB-512' ) {
+                    # We do not do not deploy into vdisks
+                    next;
+                }
+                
+                # Add 0 in front if address length is less than 4
+                while (length($vaddr) < 4) {
+                    $vaddr = '0' . $vaddr;
+                }
+                
+                if ( defined $imageFileList{$vaddr} ) {
+                    # We only count disks that have an image file.
+                    $validArrayDisks = $validArrayDisks + 1;
+                }
+            }
+            if ( $validArrayDisks != @imageFiles ) {
+                # Number of mdisks does not match the number of image files
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) $deployImgDir contains images for devices that do not exist." );
+                return;
+            }
         }
         
-        # Prepare the deployable netboot mount point on zHCP, if they need to be established.
+        # Ensure the staging directory exists in case we need to create subdirectories in it.
+        if (!-d "$installRoot/staging") {
+            mkpath("$installRoot/staging");
+        }
+        
+        # Prepare the deployable mount point on zHCP, if it needs to be established.
         my $remoteDeployDir;
-        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, "$installRoot/$action", "ro", \$remoteDeployDir);
+        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, $installRoot, $action, "ro", \$remoteDeployDir);
         if ( $rc ) {
             # Mount failed
             return;
         }
         
-        xCAT::zvmUtils->printLn( $callback, "$node: Deploying the image using the zHCP node" );
-    
-        # Copy the image to the target disk using the zHCP node
-        xCAT::zvmUtils->printSyslog( "nodeset() unpackdiskimage $userId $device $remoteDeployDir/$os/$arch/$profile/$imageFile" );
-        $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/unpackdiskimage $userId $device $remoteDeployDir/$os/$arch/$profile/$imageFile"`;
-        $rc = $?;
+        # Drive each device deploy separately.  Up to 10 at a time.
+        # Each deploy request to zHCP is driven from a child process.
+        # Process ID for xfork()
+        my $pid;
         
-        my $reasonString = "";
-        $rc = xCAT::zvmUtils->checkOutputExtractReason($callback, $out, \$reasonString);
-        if ($rc != 0) {
-            my $reason = "Reason: $reasonString";
-            xCAT::zvmUtils->printSyslog( "nodeset() unpackdiskimage of $userId $device failed. $reason" );
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to deploy the image to $userId $device. $reason" );
+        # Child process IDs
+        my @children;
+        
+        # Make a temporary directory in case a process needs to communicate a problem.
+        my $statusDir = mkdtemp("$installRoot/staging/status.$$.XXXXXX");
+        
+        xCAT::zvmUtils->printLn( $callback, "$node: Deploying the image using the zHCP node" );
+        my $reason;
+        for my $vaddr ( keys %imageFileList ) {
+            $pid = xCAT::Utils->xfork();
+            
+            # Parent process
+            if ($pid) {
+                push( @children, $pid );
+            }
+            
+            # Child process.
+            elsif ( $pid == 0 ) {
+                # Drive the deploy on the zHCP node
+                # Copy the image to the target disk using the zHCP node
+                xCAT::zvmUtils->printSyslog( "nodeset() unpackdiskimage $userId $vaddr $remoteDeployDir/$os/$arch/$profile/$imageFileList{$vaddr}" );
+                $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/unpackdiskimage $userId $vaddr $remoteDeployDir/$os/$arch/$profile/$imageFileList{$vaddr}"`;
+                $rc = $?;
+                
+                # Check for script errors
+                my $reasonString = "";
+                $rc = xCAT::zvmUtils->checkOutputExtractReason( $callback, $out, \$reasonString );
+                if ($rc != 0) {
+                    $reason = "Reason: $reasonString";
+                    xCAT::zvmUtils->printSyslog( "nodeset() unpackdiskimage of $userId $vaddr failed. $reason" );
+                    xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to deploy the image to $userId $vaddr. $reason" );
+                    # Create a "FAILED" file to indicate the failure.
+                    if ( ! open FILE, '>'."$statusDir/FAILED" ) {
+                        # if we can't open it then we log the problem.
+                        xCAT::zvmUtils->printSyslog( "nodeset() unable to create a 'FAILED' file." );
+                    }
+                }
+                
+                # Exit the child process
+                exit(0);
+            }
+            
+            else {
+                # Ran out of resources
+                # Create a "FAILED" file to indicate the failure.
+                if ( ! open FILE, '>'."$statusDir/FAILED" ) {
+                     # if we can't open it then we log the problem.
+                    xCAT::zvmUtils->printSyslog( "nodeset() unable to create a 'FAILED' file." );
+                }
+                
+                $reason = "Reason: Could not fork\n";
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to deploy the image to $userId $vaddr. $reason" );
+                last;
+            }
+            
+            # Handle 10 nodes at a time, else you will get errors
+            if ( !( @children % 10 ) ) {
+                
+                # Wait for all processes to end
+                foreach (@children) {
+                    waitpid( $_, 0 );
+                }
+                
+                # Clear children
+                @children = ();
+            }
+        }   # End of foreach
+        
+        # If any children remain, then wait for them to complete.
+        foreach $pid ( @children ) {
+            xCAT::zvmUtils->printSyslog( "nodeset() Waiting for child process $pid to complete" );
+            waitpid( $pid, 0 );
+        }
+        
+        # If the deploy failed then clean up and return
+        if ( -e "$statusDir/FAILED" ) {
+            # Failure occurred in one of the child processes.  A message was already generated.
+            rmtree "$statusDir";
             return;
         }
+        rmtree "$statusDir";
         
         # If the transport file was specified then setup the transport disk.
         if ($transport) {
@@ -5786,10 +5988,16 @@ END
             xCAT::zvmUtils->printLn($callback, "$node: Purging reader... Done");
             
             # Online zHCP's punch
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO /sbin/chccwdev -e 00d && echo $?"`;
-            if ($out != '0') {
-                xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to online the zHCP's punch");
-                return;
+            chomp( $out = `ssh $::SUDOER\@$hcp "$::SUDO cat /sys/bus/ccw/drivers/vmur/0.0.000d/online"` );
+            if ($out != 1) {
+                chomp( $out = `ssh $::SUDOER\@$hcp "$::SUDO cio_ignore -r 000d; 
+                    /sbin/chccwdev -e 000d"`);
+                if ( !( $out =~ m/Done$/i ) ) {
+                    xCAT::zvmUtils->printLn($callback, "$node: (Error) Failed to online the zHCP's punch, cmd output: $out.");
+                    xCAT::zvmUtils->printSyslog( "nodeset() Failed to online the zHCP's punch, cmd output: $out." );
+                    return;
+                }
+                `ssh $::SUDOER\@$hcp "$::SUDO which udevadm &> /dev/null && udevadm settle || udevsettle"`;
             }
             
             # Load VMCP module on HCP
@@ -5836,7 +6044,7 @@ END
                 
                 xCAT::zvmUtils->printLn($callback, "$node: Punching $file to reader... $out");
                 if ($out =~ m/Failed/i) {
-                    # Clean up transport directory
+                    # Clean up transport directory.  Message was already generated.
                     $out = `/bin/rm -rf $transportDir`;
                     return;
                 }
@@ -5844,7 +6052,7 @@ END
             
             # Clean up transport directory
             $out = `/bin/rm -rf $transportDir`;            
-            xCAT::zvmUtils->printLn( $callback, "$node: Completed deploying image($os-$arch-netboot-$profile)" );
+            xCAT::zvmUtils->printLn( $callback, "$node: Completed deploying image($os-$arch-$action-$profile)" );
         }
     } else {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
@@ -6686,6 +6894,9 @@ sub changeHypervisor {
         if ($status =~ m/used/i && !$owner) {
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Owner must be specified if status is used." );
             return;
+        } elsif ($status =~ m/free/i && $owner) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Owner must not be specified if status is free." );
+            return;
         }
 
         # Find disk pool (create one if non-existent)
@@ -6717,7 +6928,7 @@ sub changeHypervisor {
     
     # copyzfcp [device address (or auto)] [source wwpn] [source lun] [target wwpn (optional)] [target lun (option)]
     elsif ( $args->[0] eq "--copyzfcp" ) {
-    	my $fcpDevice = $args->[1];
+        my $fcpDevice = $args->[1];
         my $srcWwpn = $args->[2];
         my $srcLun = $args->[3];
         
@@ -6794,13 +7005,13 @@ sub changeHypervisor {
         }
         
         # Obtain source FCP channel
-        $out =~ /Adding zFCP device ([0-9a-f]*)\/([0-9a-f]*)\/([0-9a-f]*).*/;
+        $out =~ /Adding zFCP device ([0-9a-f]*)\/([0-9a-f]*)\/([0-9a-f]*).*/i;
         my $srcFcpDevice = lc($1);
         
         # Attach target disk to zHCP
         my $isTgtAttached = 0;
         if ($useWwpnLun) {
-        	$out = `/opt/xcat/bin/chvm $hcpNode --addzfcp $pool $fcpDevice 0 $tgtSize "" $tgtWwpn $tgtLun | sed 1d`;
+            $out = `/opt/xcat/bin/chvm $hcpNode --addzfcp $pool $fcpDevice 0 $tgtSize "" $tgtWwpn $tgtLun | sed 1d `;
             if ($out !~ /Done/) {
                 xCAT::zvmUtils->printLn($callback, "$node: (Error) Target zFCP device $tgtWwpn/$tgtLun cannot be attached");
             } else {
@@ -6817,7 +7028,7 @@ sub changeHypervisor {
         }
         
         # Obtain target disk FCP channel, WWPN, and LUN
-        $out =~ /Adding zFCP device ([0-9a-f]*)\/([0-9a-f]*)\/([0-9a-f]*).*/;
+        $out =~ /Adding zFCP device ([0-9a-f]*)\/([0-9a-f]*)\/([0-9a-f]*).*/i;
         my $tgtFcpDevice = lc($1);
         $tgtWwpn = lc($2);
         $tgtLun = lc($3);
@@ -6829,6 +7040,7 @@ sub changeHypervisor {
         }
 
         # Get device node of source disk and target disk
+        ($srcWwpn, $srcLun, $tgtWwpn, $tgtLun) = (lc($srcWwpn), lc($srcLun), lc($tgtWwpn), lc($tgtLun));
         $out = `ssh $::SUDOER\@$hcp "$::SUDO /usr/bin/readlink /dev/disk/by-path/ccw-0.0.$srcFcpDevice-zfcp-0x$srcWwpn:0x$srcLun"`;
         chomp($out);
         my @srcDiskInfo = split('/', $out);
@@ -6922,13 +7134,13 @@ sub changeHypervisor {
         my $stagingImgDir = "$installRoot/staging/$os/$arch/$profile";
         
         if(-d $stagingImgDir) {
-            unlink $stagingImgDir;
+            rmtree $stagingImgDir;
         }
         mkpath($stagingImgDir);
         
         # Prepare the staging mount point on zHCP, if they need to be established.
         my $remoteStagingDir;
-        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, "$installRoot/staging", "rw", \$remoteStagingDir);
+        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, $installRoot, "staging", "rw", \$remoteStagingDir);
         if ($rc) {
             # Mount failed.
             rmtree "$stagingImgDir";
@@ -7108,7 +7320,7 @@ sub changeHypervisor {
         
         # Prepare the deployable netboot mount point on zHCP, if they need to be established.
         my $remoteDeployDir;
-        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, "$installRoot/$provMethod", "ro", \$remoteDeployDir);
+        my $rc = xCAT::zvmUtils->establishMount($callback, $::SUDOER, $::SUDO, $hcp, $installRoot, $provMethod, "ro", \$remoteDeployDir);
         if ($rc) {
             # Mount failed.
             return;
@@ -7374,20 +7586,40 @@ sub changeHypervisor {
             return;
         }
         
+        # status can be used or reserved but not free
+        if ($status =~ m/^free$/i) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Status can be used or reserved but not free." );
+            return;
+        }
+        
         # Obtain the FCP device, WWPN, and LUN (if any)
         my $wwpn = "";
         my $lun = "";
         if ($argsSize == 8) {
-        	$wwpn = lc($args->[6]);
-        	$lun = lc($args->[7]);
-        	
-        	# Ignore the size if the WWPN and LUN are given
-        	$size = "";
+            $wwpn = lc($args->[6]);
+            $lun = lc($args->[7]);
+        
+            # WWPN and LUN must both be specified or both not
+            if ($wwpn xor $lun) {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) WWPN and LUN must both be specified or both not.");
+                return;
+            }
+        
+            # Ignore the size if the WWPN and LUN are given
+            $size = "";
         }
         
         my %criteria;
         my $resultsRef;
         if ($wwpn && $lun) {
+            # Check the status of the FCP device
+            my $deviceRef = xCAT::zvmUtils->findzFcpDeviceAttr($::SUDOER, $hcp, $pool, $wwpn, $lun);
+            my %zFCP = %$deviceRef;
+            if ($zFCP{'status'} eq 'used') {
+                xCAT::zvmUtils->printLn($callback, "$node: (Error) FCP device 0x$wwpn/0x$lun is in use.");
+                return;
+            }
+            
             %criteria = (
                'status' => $status,
                'fcp' => $device,
@@ -7416,9 +7648,10 @@ sub changeHypervisor {
         
         if ($results{'rc'} == 0) {
             xCAT::zvmUtils->printLn($callback, "$node: Reserving FCP device... Done");
-            xCAT::zvmUtils->printLn($callback, "$node: FCP device $device/0x$wwpn/0x$lun was reserved");
+            my $fcpDevice = $device ? "$device/0x$wwpn/0x$lun" : "0x$wwpn/0x$lun";
+            xCAT::zvmUtils->printLn($callback, "$node: FCP device $fcpDevice was reserved... Done");
         } else {
-        	xCAT::zvmUtils->printLn($callback, "$node: Reserving FCP device... Failed");
+            xCAT::zvmUtils->printLn($callback, "$node: (Error) Reserving FCP device... Failed");
         }
     }
     
@@ -7594,7 +7827,7 @@ sub inventoryHypervisor {
         my @pools;
         if (!$args->[1]) {
             # Get all known disk pool names
-            $out = `rinv $node --diskpoolnames`;
+            $out = `/opt/xcat/bin/rinv $node "--diskpoolnames"`;
             $out =~ s/$node: //g;
             $out = xCAT::zvmUtils->trimStr($out);
             @pools = split('\n', $out);
@@ -7603,11 +7836,14 @@ sub inventoryHypervisor {
             push(@pools, $pool);
             
             # Check whether disk pool is a valid pool     
-            $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId" | grep "Failed"`;
             xCAT::zvmUtils->printSyslog("smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId");
-            if ($out) {
-                 xCAT::zvmUtils->printLn( $callback, "$node: Disk pool $pool does not exist" );
-                 return;
+            $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli Image_Volume_Space_Query_DM -q 1 -e 3 -n $pool -T $hcpUserId"`;
+            if ( $out eq '') {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to communicate with the zHCP system" );
+                return;
+            } elsif ($out =~ m/Failed/i) {
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable to obtain disk pool information for $pool, additional information: $out" );
+                return;
             }
         }
         
@@ -8087,57 +8323,54 @@ sub migrateVM {
     my $hcpUserId = xCAT::zvmCPUtils->getUserId($::SUDOER, $hcp);
     $hcpUserId =~ tr/a-z/A-Z/;
     
-    # Check required keys: target_identifier, destination, action, immediate, and max_total
-    # Optional keys: max_quiesce, and force
-    if (!$args || @{$args} < 4) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Wrong number of parameters" );
-        return;
-    }
-    
     # Output string
     my $out;
     my $migrateCmd = "VMRELOCATE -T $userId";
 
-    my $i;
     my $destination;
     my $action;
     my $value;
-    foreach $i ( 0 .. 5 ) {
-        if ( $args->[$i] ) {        
+    foreach my $operand ( @$args ) {
+        if ( $operand ) {
             # Find destination key
-            if ( $args->[$i] =~ m/destination=/i ) {
-                $destination = $args->[$i];
+            if ( $operand =~ m/destination=/i ) {
+                $destination = $operand;
                 $destination =~ s/destination=//g;
                 $destination =~ s/"//g;
                 $destination =~ s/'//g;
-            } elsif ( $args->[$i] =~ m/action=/i ) {
-                $action = $args->[$i];
+            } elsif ( $operand =~ m/action=/i ) {
+                $action = $operand;
                 $action =~ s/action=//g;
-            } elsif ( $args->[$i] =~ m/max_total=/i ) {
-                $value = $args->[$i];
+            } elsif ( $operand =~ m/max_total=/i ) {
+                $value = $operand;
                 $value =~ s/max_total=//g;
                 
                 # Strip leading zeros
                 if (!($value =~ m/[^0-9.]/ )) {
                     $value =~ s/^0+//;
-                    $args->[$i] = "max_total=$value";
+                    $operand = "max_total=$value";
                 }
-            } elsif ( $args->[$i] =~ m/max_quiesce=/i ) {
-                $value = $args->[$i];
+            } elsif ( $operand =~ m/max_quiesce=/i ) {
+                $value = $operand;
                 $value =~ s/max_quiesce=//g;
                 
                 # Strip leading zeros
                 if (!($value =~ m/[^0-9.]/ )) {
                     $value =~ s/^0+//;
-                    $args->[$i] = "max_quiesce=$value";
+                    $operand = "max_quiesce=$value";
                 }
             }
             
             # Keys passed directly to smcli
-            $migrateCmd .= " -k $args->[$i]"; 
+            $migrateCmd .= " -k $operand"; 
         }
     }
         
+    if (!$action || !$destination) {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) One or more required operands was not specified: 'action' or 'destination'." );
+        return;
+    }
+    
     my $destHcp;
     if ($action =~ m/MOVE/i) {        
         # Find the zHCP for the destination host and set the node zHCP as it
@@ -8161,7 +8394,7 @@ sub migrateVM {
     
     # Begin migration
     $out = `ssh $::SUDOER\@$hcp "$::SUDO $::DIR/smcli $migrateCmd"`;
-    xCAT::zvmUtils->printSyslog("smcli $migrateCmd");
+    xCAT::zvmUtils->printSyslog("On $hcp, smcli $migrateCmd");
     xCAT::zvmUtils->printLn( $callback, "$node: $out" );
     
     # Check for errors on migration only
@@ -8187,7 +8420,7 @@ sub migrateVM {
         if ($isMigrated) {
             `/opt/xcat/bin/nodech $node zvm.hcp=$destHcp zvm.parent=$destination`;
         } else {
-            xCAT::zvmUtils->printLn( $callback, "$node: Could not determine progress of relocation" );
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not determine progress of relocation" );
         }
     }
     
@@ -8427,25 +8660,46 @@ sub eventLog {
     Arguments   : Node
                   OS
                   Archictecture
+                  Specified provisioning method type
                   Profile
                   Device information
     Returns     : Nothing
-    Example     : imageCapture( $callback, $node, $os, $arch, $profile, $osimg, $device );
+    Example     : imageCapture( $callback, $node, $os, $arch, $type, $profile, $osimg, $device );
     
 =cut
 
 #-------------------------------------------------------
 sub imageCapture {
-    my ($class, $callback, $node, $os, $arch, $profile, $osimg, $device) = @_;
+    my ($class, $callback, $node, $os, $arch, $type, $profile, $osimg, $device) = @_;
     my $rc;
     my $out = '';
     my $reason = "";
+    my $provMethod;
     
-    xCAT::zvmUtils->printSyslog( "imageCapture() $node:$node os:$os arch:$arch profile:$profile osimg:$osimg device:$device" );
+    xCAT::zvmUtils->printSyslog( "imageCapture() node:$node os:$os arch:$arch type:$type profile:$profile osimg:$osimg device:$device" );
     
     # Verify required properties are defined
     if (!defined($os) || !defined($arch) || !defined($profile)) {
         xCAT::zvmUtils->printLn( $callback, "$node: (Error) One or more of the required properties is not specified: os version, architecture or profile" );
+        return;
+    }
+    
+    if (defined($type)) {
+        $provMethod = $type;
+    } else {
+        # Type operand was not specified on command, therefore need to get provmethod from the nodetype table.
+        my $nodetypetab = xCAT::Table->new("nodetype");
+        my $ref_nodetype = $nodetypetab->getNodeAttribs($node, ['provmethod']);
+        $provMethod = $ref_nodetype->{provmethod};
+        if ( !defined($provMethod) ) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) provmethod property is not specified in the nodetype table" );
+            return;
+        }
+    }
+    
+    # Ensure provmethod is one of the supported methods
+    if (( $provMethod ne 'sysclone') && ( $provMethod ne 'netboot' )) {
+        xCAT::zvmUtils->printLn( $callback, "$node: (Error) provmethod property is not 'netboot' or 'sysclone'" );
         return;
     }
     
@@ -8466,6 +8720,12 @@ sub imageCapture {
     # This looks in the passwd table for a key = sudoer
     my ($sudoer, $sudo) = xCAT::zvmUtils->getSudoer();
     
+    # Process ID for xfork()
+    my $pid;
+    
+    # Child process IDs
+    my @children;
+    
     # Get node properties from 'zvm' table
     my @propNames = ( 'hcp', 'userid' );
     my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -8485,49 +8745,80 @@ sub imageCapture {
     my $targetUserId = $propVals->{'userid'};
     $targetUserId =~ tr/a-z/A-Z/;
     
-    # Get node properties from 'zvm' table
+    # Get node properties from 'hosts' table
     @propNames = ( 'ip', 'hostnames' );
     $propVals = xCAT::zvmUtils->getNodeProps('hosts', $node, @propNames);
     
-    # Check if node is pingable
-    if (`/opt/xcat/bin/pping $node | egrep -i "noping"`) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Host is unreachable" );
-        return;
-    }
-    
+    # Determine the disks to be captured.
     my $vaddr;
-    my $devName;
-    # Set the default is device option was specified without any parameters.
-    if (!$device) {
-        $devName = "/dev/root";
-    }
+    my @vaddrList;
     
-    # Obtain the device number from the target system.
-    if ($devName eq '/dev/root') {
-        # Determine which Linux device is associated with the root directory
-        $out = `ssh $sudoer\@$node $sudo cat /proc/cmdline | tr " " "\\n" | grep "^root=" | cut -c6-`;
-        if ($out) {
-            $out = `ssh $sudoer\@$node $sudo "/usr/bin/readlink -f $out"`;
+    if ($provMethod eq 'netboot') {
+        
+        # Check if node is pingable
+        if (`/opt/xcat/bin/pping $node | egrep -i "noping"`) {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Host is unreachable" );
+            return;
+        }
+        
+        my $devName;
+        # Set the default is device option was specified without any parameters.
+        if (!$device) {
+            $devName = "/dev/root";
+        }
+        
+        # Obtain the device number from the target system.
+        if ($devName eq '/dev/root') {
+            # Determine which Linux device is associated with the root directory
+            $out = `ssh $sudoer\@$node $sudo cat /proc/cmdline | tr " " "\\n" | grep "^root=" | cut -c6-`;
             if ($out) {
-                $devName = substr($out, 5);
-                $devName =~ s/\s+$//;
-                $devName =~ s/\d+$//;
+                $out = `ssh $sudoer\@$node $sudo "/usr/bin/readlink -f $out"`;
+                if ($out) {
+                    $devName = substr($out, 5);
+                    $devName =~ s/\s+$//;
+                    $devName =~ s/\d+$//;
+                } else {
+                    xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable locate the device associated with the root directory" );
+                    return;
+                }
             } else {
                 xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable locate the device associated with the root directory" );
                 return;
             }
         } else {
-            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable locate the device associated with the root directory" );
-            return;
+            $devName = substr $devName, 5;
         }
-    } else {
-        $devName = substr $devName, 5;
-    }
+        
+        $vaddr = xCAT::zvmUtils->getDeviceNodeAddr( $sudoer, $node, $devName );
+        if ($vaddr) {
+            push( @vaddrList, $vaddr );
+        } else {
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable determine the device being captured" );
+            return 0;
+        }
     
-    $vaddr = xCAT::zvmUtils->getDeviceNodeAddr($sudoer, $node, $devName);
-    if (!$vaddr) {
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Unable determine the device being captured" );
-        return 0;
+    } else {
+        # provmethod is 'sysclone'
+        
+        # Get the list of mdisks
+        my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $sudoer, $node );
+        foreach (@srcDisks) {
+            # Get disk address
+            my @words = split( ' ', $_ );
+            $vaddr = $words[1];
+            my $diskType = $words[2];
+            
+            if ( $diskType eq 'FB-512' ) {
+                # We do not capture vdisks but we will capture minidisks, dedicated disks and tdisks.
+                next;
+            }
+            
+            # Add 0 in front if address length is less than 4
+            while (length($vaddr) < 4) {
+                $vaddr = '0' . $vaddr;
+            }
+            push( @vaddrList, $vaddr );
+        }
     }
     
     # Shutdown and logoff the virtual machine so that its disks are stable for the capture step.
@@ -8543,18 +8834,39 @@ sub imageCapture {
     $out = `ssh $sudoer\@$hcp "$sudo $dir/smcli Image_Deactivate -T $targetUserId"`;
     xCAT::zvmUtils->printSyslog( "imageCapture() smcli response: $out" );
     
+    # Wait (checking every 15 seconds) until user is finally logged off or maximum wait time has elapsed
+    my $max = 0;
+    $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null | grep HCPCQU045E"`;
+    while ( !$out && $max < 60 ) {
+        sleep(15);  # Wait 15 seconds
+        $max++;
+        $out=`ssh $sudoer\@$hcp "$sudo /sbin/vmcp q user $targetUserId 2>/dev/null | grep HCPCQU045E"`;
+    }
+    my $totalMinutes = $max * 15 / 60;
+    if ( $out ) {
+        # Target system was successfully logged off
+        xCAT::zvmUtils->printSyslog( "imageCapture() Target system was logged off after $totalMinutes minutes" );
+    } else {
+        # Target system was not logged off
+        xCAT::zvmUtils->printSyslog( "imageCapture() Target system was not logged off after $totalMinutes minutes" );
+        xCAT::zvmUtils->printSyslog( "$sudo $dir/smcli Image_Deactivate -T $targetUserId -f IMMED" );
+        $out = `ssh $sudoer\@$hcp "$sudo $dir/smcli Image_Deactivate -T $targetUserId -f IMMED"`;
+        xCAT::zvmUtils->printSyslog( "imageCapture() smcli response: $out" );
+        sleep(15);  # Wait 15 seconds
+    }
+    
     xCAT::zvmUtils->printSyslog( "imageCapture() Preparing the staging directory" );
     
     # Create the staging area location for the image
     my $stagingImgDir = "$installRoot/staging/$os/$arch/$profile";
     if(-d $stagingImgDir) {
-        unlink $stagingImgDir;
+        rmtree $stagingImgDir;
     }
     mkpath($stagingImgDir);
     
     # Prepare the staging mount point on zHCP, if they need to be established.
     my $remoteStagingDir;
-    $rc = xCAT::zvmUtils->establishMount( $callback, $sudoer, $sudo, $hcp, "$installRoot/staging", "rw", \$remoteStagingDir );
+    $rc = xCAT::zvmUtils->establishMount( $callback, $sudoer, $sudo, $hcp, $installRoot, "staging", "rw", \$remoteStagingDir );
     if ($rc) {
         # Mount failed
         rmtree "$stagingImgDir";
@@ -8563,25 +8875,83 @@ sub imageCapture {
     
     xCAT::zvmUtils->printLn( $callback, "$node: Capturing the image using zHCP node" );
     
-    # Drive the capture on the zHCP node
-    xCAT::zvmUtils->printSyslog( "imageCapture() creatediskimage $targetUserId $vaddr $remoteStagingDir/$os/$arch/$profile/${vaddr}.img" );
-    $out = `ssh $sudoer\@$hcp "$sudo $dir/creatediskimage $targetUserId $vaddr $remoteStagingDir/$os/$arch/$profile/${vaddr}.img"`;
-    $rc = $?;
+    # Drive each device capture separately.  Up to 10 at a time.
+    # Each capture request to zHCP is driven from a child process.
+    foreach my $vaddr ( @vaddrList ) {
+        $pid = xCAT::Utils->xfork();
+        
+        # Parent process
+        if ($pid) {
+            push( @children, $pid );
+        }
+        
+        # Child process.
+        elsif ( $pid == 0 ) {
+            # Drive the capture on the zHCP node
+            xCAT::zvmUtils->printSyslog( "imageCapture() creatediskimage $targetUserId $vaddr $remoteStagingDir/$os/$arch/$profile/${vaddr}.img" );
+            $out = `ssh $sudoer\@$hcp "$sudo $dir/creatediskimage $targetUserId $vaddr $remoteStagingDir/$os/$arch/$profile/${vaddr}.img"`;
+            $rc=$?;
+            xCAT::zvmUtils->printLn( $callback, "$node: $out" );
             
-    # If the capture failed then clean up and return
-    my $reasonString = "";
-    $rc = xCAT::zvmUtils->checkOutputExtractReason( $callback, $out, \$reasonString );
-    if ($rc != 0) {
-        $reason = "Reason: $reasonString";
-        xCAT::zvmUtils->printSyslog( "imageCapture() creatediskimage of $targetUserId $vaddr failed. $reason" );
-        xCAT::zvmUtils->printLn( $callback, "$node: (Error) Image capture of $targetUserId $vaddr failed on the zHCP node. $reason" );
-        rmtree "$stagingImgDir" ;
+            # Check for script errors
+            my $reasonString = "";
+            $rc = xCAT::zvmUtils->checkOutputExtractReason( $callback, $out, \$reasonString );
+            if ($rc != 0) {
+                $reason = "Reason: $reasonString";
+                xCAT::zvmUtils->printSyslog( "imageCapture() creatediskimage of $targetUserId $vaddr failed. $reason" );
+                xCAT::zvmUtils->printLn( $callback, "$node: (Error) Image capture of $targetUserId $vaddr failed on the zHCP node. $reason" );
+                # Create a "FAILED" file to indicate the failure.
+                if ( ! open FILE, '>'."$stagingImgDir/FAILED" ) {
+                    # if we can't open it then we log the problem.
+                    xCAT::zvmUtils->printSyslog( "imageCapture() unable to create a 'FAILED' file." );
+                }
+            }
+            
+            # Exit the child process
+            exit(0);
+        }
+        
+        else {
+            # Ran out of resources
+            # Create a "FAILED" file to indicate the failure.
+            if ( ! open FILE, '>'."$stagingImgDir/FAILED" ) {
+                # if we can't open it then we log the problem.
+                xCAT::zvmUtils->printSyslog( "imageCapture() unable to create a 'FAILED' file." );
+            }
+            
+            $reason = ". Reason: Could not fork\n";
+            last;
+        }
+        
+        # Handle 10 nodes at a time, else you will get errors
+        if ( !( @children % 10 ) ) {
+            
+            # Wait for all processes to end
+            foreach (@children) {
+                waitpid( $_, 0 );
+            }
+            
+            # Clear children
+            @children = ();
+        }
+    }   # End of foreach
+    
+    # If any children remain, then wait for them to complete.
+    foreach $pid ( @children ) {
+        xCAT::zvmUtils->printSyslog( "imageCapture() Waiting for child process $pid to complete" );
+        waitpid( $pid, 0 );
+    }
+    
+    # if the capture failed then clean up and return
+    if ( -e "$stagingImgDir/FAILED" ) {
+        xCAT::zvmUtils->printSyslog( "imageCapture() 'FAILED' file found.  Removing staging directory." );
+        rmtree "$stagingImgDir";
         return;
     }
     
     # Now that all image files have been successfully created, move them to the deployable directory.
-    my $imageName = "$os-$arch-netboot-$profile";    
-    my $deployImgDir = "$installRoot/netboot/$os/$arch/$profile";
+    my $imageName = "$os-$arch-$provMethod-$profile";    
+    my $deployImgDir = "$installRoot/$provMethod/$os/$arch/$profile";
     
     xCAT::zvmUtils->printLn( $callback, "$node: Moving the image files to the deployable directory: $deployImgDir" );
     
@@ -8592,7 +8962,11 @@ sub imageCapture {
         return 0;   
     }
     
-    mkpath($deployImgDir);
+    if ( -e "$deployImgDir" ) {
+        $out=`/bin/rm -f $deployImgDir/*.img`;
+    } else {
+        mkpath($deployImgDir);
+    }
     
     foreach my $oldFile (@stagedFiles) {
         $rc = move($oldFile, $deployImgDir);
@@ -8601,6 +8975,21 @@ sub imageCapture {
             # Move failed
             rmtree "$stagingImgDir";
             xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not move $oldFile to $deployImgDir. $reason" );
+            return;
+        }
+    }
+    
+    # For sysclone, obtain the userid/identity entry for the user and move it to the deploy image directory.
+    if ($provMethod eq 'sysclone') {
+        $out=`ssh $sudoer\@$hcp "$sudo $dir/smcli Image_Query_DM -T $targetUserId | sed '\$d' > $remoteStagingDir/$os/$arch/$profile/$targetUserId.direct"`;
+
+        # Move the direct file to the deploy image directory
+        $rc = move("$stagingImgDir/$targetUserId.direct", $deployImgDir);
+        $reason = $!;
+        if ($rc == 0) {
+            # Move failed
+            rmtree "$stagingImgDir";
+            xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not move $stagingImgDir/$targetUserId.direct to $deployImgDir. $reason" );
             return;
         }
     }
@@ -8619,7 +9008,7 @@ sub imageCapture {
         return;
     }
     
-    $keyHash{provmethod} = 'netboot';
+    $keyHash{provmethod} = $provMethod;
     $keyHash{profile} = $profile;
     $keyHash{osvers} = $os;
     $keyHash{osarch} = $arch;

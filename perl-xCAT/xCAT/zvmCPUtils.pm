@@ -611,25 +611,39 @@ sub punch2Reader {
             
     # Punch to reader
     # VMUR located in different directories on RHEL and SLES
-    my $out;
+    my $vmur;
     if ( $os =~ m/sles10/i ) {
-        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
-    } elsif ( $os =~ m/sles11/i ) {
-        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
-    } elsif ( $os =~ m/rhel/i ) {
-    	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
+        $vmur = "/sbin/vmur";
     } else {
-    	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
+        $vmur = "/usr/sbin/vmur";
+    }
+    my $out;
+    my $done = 0;
+    
+    until ( $done ) {
+        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo $vmur punch $options -u $userId -r $srcFile -N $tgtFile" 2>&1`;
+        my $rc = $? >> 8;
+        if ( $rc == 255 ) {
+            $out = "(Error) Unable to communicate with the zHCP system: $hcp";
+            $done = 1;
+        } elsif ( $out =~ m/A concurrent instance of vmur is already active/i ) {
+            # Recoverable error: retry the command after a delay
+            xCAT::zvmUtils->printSyslog( "punch2Reader() Punch in use on $hcp, retrying in 15 seconds" );
+            sleep( 15 );
+        } else {
+            # Punch appears successful -- Look for the completion string
+            my $searchStr = "created and transferred";
+            if ( !( $out =~ m/$searchStr/i ) ) {
+                chomp( $out );
+                $out = "Failed, punch info: '$out'\n";
+                xCAT::zvmUtils->printSyslog( "punch2Reader() Failed punching $srcFile to $userId from $hcp, info: '$out'" );
+            } else {
+                $out = "Done\n";
+            }
+            $done = 1;
+        }
     }
     
-    # If punch is successful -- Look for this string
-    my $searchStr = "created and transferred";
-    if ( !( $out =~ m/$searchStr/i ) ) {
-        $out = "Failed\n";
-    } else {
-        $out = "Done\n";
-    }
-
     return $out;
 }
 
