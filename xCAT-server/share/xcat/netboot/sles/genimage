@@ -804,7 +804,7 @@ if (@new_order) {
 }
 
 # add drivers for local disk support
-push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "ibmvscsi.ko", "ibmvscsic.ko", "megaraid_sas.ko", "pcieport.ko", "sd_mod.ko");
+push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "scsi_dh.ko", "ahci.ko", "ibmvscsi.ko", "ibmvscsic.ko", "megaraid_sas.ko", "pcieport.ko", "sd_mod.ko");
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
