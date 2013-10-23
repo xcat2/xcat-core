@@ -19,6 +19,7 @@ require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
 require xCAT::MsgUtils;
+require xCAT::CFMUtils;
 require xCAT::ProfiledNodeUtils;
 
 # Globals.
@@ -466,7 +467,6 @@ Usage:
     }
 
     # Get no mac address nodes when user only defined CEC in NIF for 7R2 support.
-    setrsp_progress("Checking MACs...");
     my @nomacnodes = ();
     foreach my $nomacnode(@nodelist){
         if(defined($hostinfo_dict{$nomacnode}{'cec'}) &&
@@ -503,13 +503,15 @@ Usage:
         }
     }
 
-    # Use the xcat command: getmacs <noderanges> -D to automatically get node mac address
-    # and if some of nodes can not get mac address, then finally remove them with warning msg.
+    # Use xcat command: getmacs <noderanges> -D to automatically get node mac address
+    # If some of nodes can not get mac address, then finally remove them with warning msg.
     if(@nomacnodes){
+        # Sleep 10 seconds to ensure the basic node attributes are effected
+        sleep 10;
         $retref = xCAT::Utils->runxcmd({command=>["getmacs"], node=>\@nomacnodes, arg=>['-D']}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if($::RUNCMD_RC != 0){
-            $warnstr .= "Warning: Failed to run command getmacs to get node mac address.";
+            $warnstr .= "Warning: Can not discover MAC address by getmacs command for some node(s).";
         }
 
         # Parse the output of "getmacs <noderange> -D" to filter success and failed nodes.
@@ -539,21 +541,31 @@ Usage:
             }
         }
 
+        # Reconfigure the nodes that MAC address discovered by getmacs command
+        $mac_addr_mode = 1;
+        my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@successnodes, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
+        my $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            $warnstr .= "Warning: failed to run command kitnodeadd.";
+            if ($retstrref->[1]) {
+                $warnstr .= "Details: $retstrref->[1]";
+            }
+        }
+
         # Remove these nodes that can not get mac address by xcat command: getmacs <noderange> -D.
         my $nodermretref = xCAT::Utils->runxcmd({command=>["noderm"], node=>\@failednodes}, $request_command, 0, 2);
         my $nodermretstrref = parse_runxcmd_ret($nodermretref);
         if($::RUNCMD_RC != 0){
-            setrsp_progress("Warning: Cannot remove all nodes. The noderm command failed to remove some of the nodes.");
-            $warnstr .= "Warning: Cannot remove all nodes. The noderm command failed to remove some of the nodes.";
+            $warnstr .= "Warning: Cannot remove some of nodes that not MAC address discovered by getmacs command.";
             if($nodermretstrref->[1]){
                 $warnstr .= "Details: $nodermretstrref->[1]";
             }
         }
-        # Push the success nodes to nodelist.
-        push @nodelist, @successnodes;
-        if(@failednodes and $::RUNCMD_RC == 0){
-            $warnstr .= "Warning: Removed all nodes that can not get mac address: @failednodes.";
-        }
+
+        # Push the success nodes to nodelist and remove the failed nodes from nodelist.
+        @nodelist = xCAT::CFMUtils->arrayops("U", \@nodelist, \@successnodes);
+        @failednodes = xCAT::CFMUtils->arrayops("I", \@nodelist, \@failednodes);
+        @nodelist = xCAT::CFMUtils->arrayops("D", \@nodelist, \@failednodes);
     }
 
     setrsp_progress("Imported nodes.");
