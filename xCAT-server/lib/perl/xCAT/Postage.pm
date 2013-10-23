@@ -211,7 +211,7 @@ sub makescript {
      return;
   }
 
-  $mn = xCAT::Utils->noderangecontainsMn(@$nodes);
+  @::mn = xCAT::Utils->noderangecontainsMn(@$nodes);
 
   my $cfgflag=0;
   my $cloudflag=0;
@@ -652,7 +652,7 @@ sub getNodeType
     my $node   = shift;
     my $result;
    
-    if ( $node =~ /^$mn$/) {
+    if (grep(/^$node$/, @::mn)) {   # is it in the Management Node array 
         $result="MN";
         return $result;
     }
