@@ -105,8 +105,8 @@ sub process_request {
        if($verbose) {
            $callback->({info=>["For osimage $imagename: osver = $osver, arch = $arch, profile = $profile, method = $method in osimage table"]});
        }
-       if (($method) && ($method ne "netboot") && ($method ne "statelite") && ($method ne "raw")) {
-          $callback->({error=>["Invalid method \"$method\", the rmimage command can only be used to remove the netboot, statelite, or raw image files"], errorcode=>[1]});
+       if (($method) && ($method ne "netboot") && ($method ne "statelite") && ($method ne "raw") && ($method ne "sysclone")) {
+          $callback->({error=>["Invalid method \"$method\", the rmimage command can only be used to remove the netboot, statelite, sysclone or raw image files"], errorcode=>[1]});
           return;
        }
            
@@ -136,23 +136,31 @@ sub process_request {
                    $callback->({error=>["Invalid image name $imagename"],errorcode=>[1]});
                    return;
                }
-               if (($method ne "netboot") && ($method ne "statelite") && ($method ne "raw")) {
-                  $callback->({error=>["Invalid method \"$method\", the rmimage command can only be used to remove the netboot, statelite, or raw image files"], errorcode=>[1]});
+               if (($method ne "netboot") && ($method ne "statelite") && ($method ne "raw") && ($method ne "sysclone")) {
+                  $callback->({error=>["Invalid method \"$method\", the rmimage command can only be used to remove the netboot, statelite, sysclone or raw image files"], errorcode=>[1]});
                   return;
                }
            }
-
-           if ($method eq "raw") {
-               $imagedir = "$installroot/$method/$osver/$arch/$profile";
+            
+           if ($arch eq "s390x") {
+               if (($method eq "raw") || ($method eq "sysclone")) {
+                   $imagedir = "$installroot/$method/$osver/$arch/$profile";
+               } else {
+                   $imagedir = "$installroot/netboot/$osver/$arch/$profile";
+               }
            } else {
                $imagedir = "$installroot/netboot/$osver/$arch/$profile";
            }
        }
    } else { # imagename is not specified
-       if ($method eq "raw") {
-           $imagedir = "$installroot/$method/$osver/$arch/$profile";
+       if ($arch eq "s390x") {
+           if (($method eq "raw") || ($method eq "sysclone")) {
+               $imagedir = "$installroot/$method/$osver/$arch/$profile";
+           } else {
+               $imagedir = "$installroot/netboot/$osver/$arch/$profile";
+           }
        } else {
-       	   $imagedir = "$installroot/netboot/$osver/$arch/$profile";
+           $imagedir = "$installroot/netboot/$osver/$arch/$profile";
        }
    }
    
@@ -164,7 +172,14 @@ sub process_request {
        $callback->({error=>["Image directory $imagedir does not exist"],errorcode=>[1]});
        return;
    }
-
+   
+   # Doing this extra check now because we now have a method and arch from either the node or the image name.
+   if (($method eq "sysclone") && ($arch ne "s390x")) {
+      # Only supporting removing sysclone images for s390x at this time.
+      $callback->({error=>["rmimage cannot be used to remove sysclone images for \"$arch\" architecture"], errorcode=>[1]});
+      return;
+   }
+   
    my @filestoremove = ("$imagedir/rootimg.gz", "$imagedir/kernel", "$imagedir/initrd-stateless.gz", "$imagedir/initrd-statelite.gz");
 
    #some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
@@ -196,7 +211,7 @@ sub process_request {
    }
    
    # For s390x, remove the image directory.
-   if (($arch eq "s390x") && (-d "$imagedir") && (($method eq "raw") || ($method eq "netboot"))) {
+   if (($arch eq "s390x") && (-d "$imagedir") && (($method eq "raw") || ($method eq "netboot") || ($method eq "sysclone"))) {
        $callback->({info=>["Removing directory $imagedir"]});
        rmtree "$imagedir";	
    }

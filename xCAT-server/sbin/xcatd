@@ -694,6 +694,7 @@ sleep 0.05;
 	     	store_fd({data=>$data,sockaddr=>$saddr},$discoctl);
 	} else { # for *now*, we'll do a tiny YAML subset
 		if ($data =~ /^resourcerequest: xcatd$/) {
+		    $socket->send("ackresourcerequest\n",0,$packets{$pkey}->[0]);
 			$tcclients->{$pkey}={ sockaddr=>$packets{$pkey}->[0], timestamp=>time() }
 		}
 	} # JSON maybe one day if important

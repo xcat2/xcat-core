@@ -123,7 +123,7 @@ sub process_request {
     	# Handle image capture separately for s390x 
     	if ($arch eq 's390x') {
             eval { require xCAT_plugin::zvm; };  # Load z/VM plugin dynamically
-            xCAT_plugin::zvm->imageCapture($callback, $node, $os, $arch, $profile, $osimg, $device);
+            xCAT_plugin::zvm->imageCapture($callback, $node, $os, $arch, $type, $profile, $osimg, $device);
             return;
         }
     

@@ -194,7 +194,7 @@ sub setstate {
               close($pcfg);
               my $inetn = xCAT::NetworkUtils->getipaddr($node);
               unless ($inetn) {
-               syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
+               syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
                return;
               }
             } else { #TODO: actually, should possibly default to xCAT image?
@@ -252,7 +252,7 @@ sub setstate {
       close($pcfg);
       my $inetn = xCAT::NetworkUtils->getipaddr($node);
       unless ($inetn) {
-       syslog("local4|err","xCAT unable to resolve IP for $node in yaboot plugin");
+       syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
        return;
       }
     } else { #TODO: actually, should possibly default to xCAT image?
@@ -261,7 +261,7 @@ sub setstate {
     }
     my $ip = xCAT::NetworkUtils->getipaddr($node);
     unless ($ip) {
-      syslog("local4|err","xCAT unable to resolve IP in yaboot plugin");
+      syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
       return;
     }
     my $mactab = xCAT::Table->new('mac');
@@ -500,8 +500,9 @@ sub process_request {
   my $nrtab=xCAT::Table->new('noderes',-create=>1);
   my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
   my $typetab=xCAT::Table->new('nodetype',-create=>1);
-  my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod']);
+  my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod','arch','profile']);
   my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
+  my $osimagetab=xCAT::Table->new('osimage',-create=>1);
 
   my $rc;
   my $errstr;
@@ -538,15 +539,22 @@ sub process_request {
   my @normalnodeset = keys %normalnodes;
   my @breaknetboot=keys %breaknetbootnodes;
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
-    my %oshash;
+    my %osimagenodehash;
     for my $nn (@normalnodeset){
         #record the os version for node
-        my $ent = $typehash->{$nn}->[0]; 
-        my $os = $ent->{'os'};
-        push @{$oshash{$os}}, $nn;
+        my $ent = $typehash->{$nn}->[0];
+        my $osimage=$ent->{'provmethod'};
+        if($osimage =~ /^(install|netboot|statelite)$/){
+           $osimage=($ent->{'os'}).'-'.($ent->{'arch'}).'-'.($ent->{'provmethod'}).'-'.($ent->{'profile'});
+        }
+        push @{$osimagenodehash{$osimage}}, $nn;
         
     }
-    foreach my $os (keys %oshash) {
+
+    foreach my $osimage (keys %osimagenodehash) {
+        my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');       
+        my $os = $osimgent->{'osvers'};    
+
         my $osv;
         my $osn;
         my $osm;
@@ -560,14 +568,15 @@ sub process_request {
             $osn = $2;
             $osm = 0;   
         }
+    
         if (($osv =~ /rh/ and int($osn) < 6) or 
             ($osv =~ /sles/ and int($osn) < 11)) {
-            # check if xcat-yaboot installed
+            # check if yaboot-xcat installed
             my $yf = $tftpdir . "/yaboot";
             unless (-e $yf) {
                 my $rsp;
                 push @{$rsp->{data}},
-                  "stop configuration because xcat-yaboot need to be installed for $os.\n";
+                  "stop configuration because yaboot-xcat need to be installed for $os.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);       
                 return; 
               }
@@ -582,16 +591,20 @@ sub process_request {
                 xCAT::MsgUtils->message("E", $rsp, $callback);            
                 return;
            }      
-              my $yabootpath = $tftpdir."/yb/".$os;
-              mkpath $yabootpath;     
+            my $yabootpath = $tftpdir."/yb/".$os;
+            mkpath $yabootpath;     
+
+            my $linuximgent = $linuximgtab->getAttribs({imagename => $osimage},'pkgdir');
+            my @pkgdirlist = split  /,/, $linuximgent->{'pkgdir'};
+            my $pkgdir = $pkgdirlist[0];
+            $pkgdir =~ s/\/+$//;            
+                   
 
             my $yabootfile;   
             if ($os =~ /sles/) {
-                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
-                $yabootfile = $installdir."/".$os."/ppc64/1/suseboot/yaboot";
+                $yabootfile = $pkgdir."/1/suseboot/yaboot";
             } elsif ($os =~ /rh/){
-                my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
-                $yabootfile = $installdir."/".$os."/ppc64/ppc/chrp/yaboot";
+                $yabootfile = $pkgdir."/ppc/chrp/yaboot";
             }  
             unless (-e "$yabootfile") {
                 my $rsp;
@@ -612,7 +625,7 @@ sub process_request {
                return; 
             } 
         }
-    } #end of foreach oshash
+    } #end of foreach osimagenodehash
   
   #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
   unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
@@ -629,8 +642,11 @@ sub process_request {
       #}
 
       if ($do_dhcpsetup) {
-        if (%oshash) {
-            foreach my $osentry (keys %oshash) {
+        if (%osimagenodehash) {
+            foreach my $osimage (keys %osimagenodehash) {
+                my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');
+                my $osentry = $osimgent->{'osvers'};
+
                 my $osv;
                 my $osn;
                 my $osm;
@@ -649,20 +665,20 @@ sub process_request {
                     my $fpath = "/yb/". $osentry."/yaboot"; 
                     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}},
+                         node=>\@{$osimagenodehash{$osimage}},
                          arg=>['-l','-s','filename = \"'.$fpath.'\";']},$callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}},
+                         node=>\@{$osimagenodehash{$osimage}},
                          arg=>['-s','filename = \"'.$fpath.'\";']},$callback);
                     }
                 } else {
                     if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
                     $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                           node=>\@{$oshash{$osentry}}},$callback);
+                           node=>\@{$osimagenodehash{$osimage}}},$callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$oshash{$osentry}}},$callback);
+                         node=>\@{$osimagenodehash{$osimage}}},$callback);
                     }
                 }
             }

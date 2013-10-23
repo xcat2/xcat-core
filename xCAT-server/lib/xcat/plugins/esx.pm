@@ -4514,12 +4514,12 @@ sub  makecustomizedmod {
     my $modname;
     if ($osver =~ /esxi4/) { #want more descriptive name,but don't break esxi4 setups.
       $modname="mod.tgz";
+    # if it already exists, do not overwrite it because it may be someone
+    # else's custom image
+      if(-f "$dest/$modname"){ return 1; }
     } else {
       $modname="xcatmod.tgz";
     }
-    # if it already exists, do not overwrite it because it may be someone
-    # else's custom image
-    if(-f "$dest/$modname"){ return 1; }
     my $passtab = xCAT::Table->new('passwd');
     my $tmp;
     my $password;

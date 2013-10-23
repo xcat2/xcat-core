@@ -4,9 +4,41 @@
 # ready to process the request
 # It is called by xcatdsklspost before calling getpostscripts.awk
 # it is called by remoteshell before calling getcredentials.awk
+# For example   xcatflowrequest <ip address of master> 3001
+#  Returns
+#     0 = good
+#     1 = ping/nmap to ip address of master failed (TBD)
+#     2 = xcatd never gave goahead
+#
+
+#  Here we will test to see if nmap is available
+#  if available we will use it to see if the daemon is available
+#  If not available we will use ping to the ip address
+#  If nmap or ping fail then
+#   we will return with exit 1
+#
+
+
 # check bash version, if < 4 then cannot use autodetect of next FD
 bashversion=$BASH_VERSION
 bashversionnum=`echo $bashversion | cut -d. -f1`
+
+# cleanup before exiting
+cleanup()
+{
+sleeper=$(cat /tmp/sleeperpid.$parpid)
+sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
+rm /tmp/goahead.$parpid
+rm /tmp/sleeperpid.$parpid
+rm /tmp/killme.$parpid
+if [[ $bashversionnum > 3 ]]; then
+  exec {REMOTEFD}>&-
+else
+  exec 50>&-
+fi
+kill -TERM $sleeper
+}
+
 if [[ $bashversionnum > 3 ]]; then
     exec {REMOTEFD}<>/dev/udp/$1/$2
 else
@@ -19,6 +51,8 @@ parpid=$$
 touch /tmp/goahead.$parpid
 touch /tmp/killme.$parpid
 exec 2> /dev/null
+RETRY=0
+MAX_RETRIES=50
 while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
 	(
       echo "resourcerequest: xcatd" >&$REMOTEFD
@@ -34,16 +68,15 @@ while ! grep 'resourcerequest: ok' /tmp/goahead.$parpid > /dev/null; do
       echo $! > /tmp/sleeperpid.$parpid
 	  exec awk '{print $0 > "/tmp/goahead.'$parpid'";exit}' <&$REMOTEFD
       exec {LOCALFD}>&-
-	)	
+	)
+    # limit retries, if we reach the max error out
+    RETRY=$(($RETRY+1))
+    if [ $RETRY -eq $MAX_RETRIES ]
+    then
+       cleanup
+       exit 2 
+    fi
+	
 done
-sleeper=$(cat /tmp/sleeperpid.$parpid)
-sleeper=$(ps -ef|awk "\$3==$sleeper"|awk '{print $2}')
-rm /tmp/goahead.$parpid
-rm /tmp/sleeperpid.$parpid
-rm /tmp/killme.$parpid
-if [[ $bashversionnum > 3 ]]; then
-  exec {REMOTEFD}>&-
-else
-  exec 50>&-
-fi
-kill -TERM $sleeper
+cleanup
+exit 0

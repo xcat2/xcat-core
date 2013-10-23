@@ -1,0 +1,50 @@
+#!/bin/sh -vx
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script, ("mountinstall"), is a sample xCAT post script for 
+#	mounting /install from managment node to xCAT chef-server
+#	nodes.  
+#
+#	Make sure your script is executable and that is is in the 
+#	/install/postscripts directory on the xCAT management node.
+#
+#	You must add the script name to the list of scripts that 
+#	must be run at install time,  or use it with updatenode.
+#
+# 	To use this script you should make sure it gets run before the 
+#	"loadchefdata" script or any other scipts that may need to use
+#       scripts in the /install directory.
+#	
+#	For example, to get it to run before the "loadchefdata" script you
+#	could set the "postbootscripts" attribute of the chef-server node
+#	definitions as follows:
+#
+#	chdef -t node -o chef-server postbootscripts="mountinstall,loadclouddata"	
+#
+
+
+if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR="/install"
+fi
+
+
+mount | grep "$MASTER:$INSTALLDIR on /install"
+if [ $? -eq 0 ]
+then
+   exit 0
+fi
+
+
+# mount the files systems
+mkdir /install
+
+mount $MASTER:$INSTALLDIR  /install
+if [ $? -ne 0 ]
+then
+    errmsg="Failed to run mount $MASTER:$INSTALLDIR  /install"
+    logger -t xcat -p local4.err $errmsg
+    echo $errmsg
+    exit 1
+fi
+
+exit 0

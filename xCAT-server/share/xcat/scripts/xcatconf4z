@@ -1,5 +1,4 @@
 #!/bin/sh
-# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 ### BEGIN INIT INFO
 # Provides: xcatconf4z
@@ -181,16 +180,20 @@ function setupIso {
   # @Output:
   #   None
   # @Code:
-  # Create ISO based on transport directory
   iso="/var/opt/xcat/transport.iso"
-  /usr/bin/mkisofs -l -o $iso $transportdir
   
-  # Create loop back device pointing to ISO9660 image
-  nextLoopDev=`/sbin/losetup -f`
-  if [[ -n $nextLoopDev ]]; then
-    /sbin/losetup $nextLoopDev $iso
-  else
-    return
+  # If there are files in the transport directory then create an ISO system.
+  if [ "$(ls -A .)" ]; then
+    /usr/bin/mkisofs -l -o $iso $transportdir
+  fi
+  
+  # If the ISO filesystem exists then create loop back device pointing 
+  # to the ISO9660 image
+  if [[ -e $iso ]]; then
+    nextLoopDev=`/sbin/losetup -f`
+    if [[ -n $nextLoopDev ]]; then
+      /sbin/losetup $nextLoopDev $iso
+    fi
   fi
   
   # Execute init script (if one exists)
@@ -263,18 +266,20 @@ function setupDisk {
       return
     fi
     
-    out=`stat -L --printf=%t:%T $xcat_srcFile`
+    out=`/usr/bin/stat --printf=%n ${xcat_srcFile}`
     if (( $? != 0 )); then
       echo "xcatconf4z $funcName (Error) Unable to stat the source file: $xcat_srcFile"
       return
     fi
     
-    major=${out%:*}
-    major=$(echo ${major} | sed -e 's/^ *//g')
-    minor=${out#*:}
-    minor=$(echo ${minor} | sed -e 's/^ *//g')
+    configFile='/etc/udev/rules.d/56-zfcp.rules'
+    tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
+    wwpn_lun=$(echo ${xcat_srcFile} | sed -e 's/^\/dev.*-zfcp-//')
+    wwpn=$(echo ${wwpn_lun} | sed -e 's/:0x.*//')
+    lun=$(echo ${wwpn_lun} | sed -e 's/^0x.*://')
     
-    mknod $xcat_tgtFile b 0x$major 0x$minor
+    echo "KERNEL==\"sd*\", SYSFS{wwpn}==\"${wwpn}\", SYSFS{fcp_lun}==\"${lun}\", SYMLINK+=\"${tgtNode}%n\"" >> ${configFile}
+    udevadm trigger --sysname-match=sd*
   
   ##########################################################################
   # Handle removing a file system node
@@ -289,8 +294,11 @@ function setupDisk {
       return
     fi
     
-    umount "$xcat_tgtFile"
-    rm -f "$xcat_tgtFile"
+    configFile='/etc/udev/rules.d/56-zfcp.rules'
+    tgtNode=$(echo ${xcat_tgtFile} | sed -e 's/^\/dev\///')
+
+    sed -i -e /SYMLINK+=\"${tgtNode}%n\"/d ${configFile}
+    udevadm trigger --sysname-match=sd*
   
   ##########################################################################
   # Handle adding a SCSI volume
@@ -463,22 +471,23 @@ function setupDisk {
 # Main Code Section
 ############################################################################
 case "$1" in  
-  start) 
-    if [[ -z "$authorizedSenders" ]]; then
-      echo "xcatconf4z is disabled.  There are no authorized senders of configuration files."
-    else
-      echo "xcatconf4z is starting"
-      transportdir="/var/opt/xcat/transport"
-      rm -Rf $transportdir
-      /bin/mkdir -p $transportdir
-      cd $transportdir
-      
-      # Get Linux version
-      getOsVersion
-      
+  start)
+    echo "xcatconf4z is starting"
+    transportdir="/var/opt/xcat/transport"
+    rm -Rf $transportdir
+    /bin/mkdir -p $transportdir
+    cd $transportdir
+    
+    # Get Linux version
+    getOsVersion
+    
+    if [[ -n "$authorizedSenders" ]]; then
       pullReader
-      setupIso
-    fi 
+    else
+      echo "xcatconf4z is disabled from accepting configuration reader files."
+    fi
+      
+    setupIso
   ;;  
   stop|status|restart|reload|force-reload)  
     # Do nothing  

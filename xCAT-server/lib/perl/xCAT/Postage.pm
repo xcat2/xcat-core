@@ -211,8 +211,10 @@ sub makescript {
      return;
   }
 
-  $mn = xCAT::Utils->noderangecontainsMn(@$nodes);
+  @::mn = xCAT::Utils->noderangecontainsMn(@$nodes);
 
+  my $cfgflag=0;
+  my $cloudflag=0;
   my $inc;
   my $t_inc;
   my %table;
@@ -221,6 +223,11 @@ sub makescript {
   #First load input into memory..
   while (<$inh>) {
       my $line = $_;      
+
+      if( $line =~ /#INCLUDE:[^#^\n]+#/ ) {
+         $line =~ s/#INCLUDE:([^#^\n]+)#/includetmpl($1)/eg;
+      }
+
       if ($line !~/^##/ ) {
           $t_inc.=$line;
       }
@@ -239,6 +246,11 @@ sub makescript {
            }
      }
 
+     
+     if( $line =~ /#CFGMGTINFO_EXPORT#/ ) {
+         $cfgflag = 1;   
+     }
+     
   }
 
   close($inh);
@@ -334,6 +346,27 @@ sub makescript {
 
   # get all the nodes' setstate   
   my $nodes_setstate_hash = getNodesSetState($nodes); 
+
+  my $cfginfo_hash; 
+  my $cloudinfo_hash;
+  $cfginfo_hash = getcfginfo(); 
+  #
+  #check it the cloud module exists or not
+  #the default doesn't exist.
+  my $cloud_exists = 0; 
+  my $cloud_module_name="xCAT::Cloud";
+  eval("use $cloud_module_name;");
+  if (!$@) {
+      $cloud_exists = 1;
+      if( $cfgflag == 0) {
+          my $rsp;
+          $rsp->{errorcode}->[0]=1;
+          $rsp->{error}->[0]="xCAT-OpenStack needs the tag #CFGMGTINFO_EXPORT# in $tmpl.\n";
+          $callback->($rsp);
+          return;
+      } 
+      $cloudinfo_hash = getcloudinfo($cloud_module_name, $cloud_exists); 
+  }
  
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -447,6 +480,13 @@ sub makescript {
 
     my $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
 
+    my @clients;
+    my $cfgres;
+    my $cloudres;
+    $cfgres =  getcfgres($cfginfo_hash, $node, \@clients);
+    if ( $cloud_exists == 1 ) {
+        $cloudres = getcloudres($cloud_module_name, $cloud_exists, $cloudinfo_hash, \@clients); 
+    }
 
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
@@ -462,6 +502,9 @@ sub makescript {
   $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
   $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
+
+  $inc =~ s/#CFGMGTINFO_EXPORT#/$cfgres/eg; 
+  $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
   
   $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
   $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
@@ -609,7 +652,7 @@ sub getNodeType
     my $node   = shift;
     my $result;
    
-    if ( $node =~ /^$mn$/) {
+    if (grep(/^$node$/, @::mn)) {   # is it in the Management Node array 
         $result="MN";
         return $result;
     }
@@ -1699,6 +1742,126 @@ sub getPostbootScripts
     return $result;
 }
 
+sub getcfginfo
+{
+    my %info = ();
+    my $tab = "cfgmgt";
+    my $ptab = xCAT::Table->new($tab);
+    unless ($ptab) { 
+        xCAT::MsgUtils->message("E", "Unable to open $tab table");
+        return undef 
+    }
+    my @rs = $ptab->getAllAttribs('node','cfgserver','roles');
+
+    foreach my $r ( @rs ) {
+       my $node = $r->{'node'};
+       my $server = $r->{'cfgserver'};
+       my $roles = $r->{'roles'};
+       $info{ $server }{clientlist}  .= "$node,"; 
+       $info{ $node }{roles}  = $roles;
+        
+    }
+       
+    return \%info;
+   
+     
+}
+
+sub getcfgres
+{
+    my $cfginfo_hash = shift;
+    my $server = shift;
+    my $clients = shift;
+    my $cfgclient_list;
+    my $cfgres;
+    if( ! ( exists($cfginfo_hash->{$server}) && exists( $cfginfo_hash->{$server}->{clientlist} ) )  ) {
+        return $cfgres;
+    }
+   
+    $cfgclient_list = $cfginfo_hash->{$server}->{clientlist};
+    chop $cfgclient_list;
+    $cfgres = "CFGCLIENTLIST='$cfgclient_list'\n";
+    $cfgres .= "export CFGCLIENTLIST\n";
+    @$clients = split(',', $cfgclient_list);
+    foreach my $client (@$clients) {
+        my $roles = $cfginfo_hash->{$client}->{roles};
+        #$cfgres .= "hput $client roles $roles\n";
+        $cfgres .= "HASH".$client."roles='$roles'\nexport HASH".$client."roles\n";
+    }
+
+    return $cfgres;
+}
+
+sub getcloudinfo
+{
+
+    my $module_name  = shift;
+    my $cloud_exists  = shift;
+    my $result;
+
+    #get cloud info
+    if ( $cloud_exists ) {
+	no strict  "refs";
+	if (defined(${$module_name."::"}{getcloudinfo})) {
+	    $result=${$module_name."::"}{getcloudinfo}();
+	}  
+    }
+   return $result;
+}
+
+
+sub getcloudres
+{
+    my $module_name  = shift;
+    my $cloud_exists  = shift;
+    my $cloudinfo_hash = shift;
+    my $clients = shift; 
+    my $result;
+ 
+    #get cloud res
+    if ( $cloud_exists ) {
+	no strict  "refs";
+	if (defined(${$module_name."::"}{getcloudres})) {
+	    $result=${$module_name."::"}{getcloudres}($cloudinfo_hash, $clients);
+	}
+    }  
+   return $result;
+}
+
+##
+#
+#This function only can be used for #INCLUDE:filepath# in mypostscript.tmpl .
+#It doesn't support the #INCLUDE:filepath# in the new $file. So it doesn't
+#support the repeated include.
+#It will put all the content of the file into @text excetp the empty line
+sub includetmpl
+{
+    my $file = shift;
+    my @text = ();
+
+    if ( ! -r $file ) {
+        return "";
+    }
+
+    open(INCLUDE, $file) || \return "";
+
+    while (<INCLUDE>)
+    {
+        chomp($_);    #remove newline
+        s/\s+$//;     #remove trailing spaces
+        next if /^\s*$/;    #-- skip empty lines
+        if (/^@(.*)/)
+        {    #for groups that has space in name
+            my $save = $1;
+            if ($1 =~ / /) { $_ = "\@" . $save; }
+        }
+        push(@text, $_);
+    }
+
+    close(INCLUDE);
+
+    return join(',', @text);
+}
 
 
 
