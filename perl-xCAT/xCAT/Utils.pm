@@ -3151,26 +3151,30 @@ sub noderangecontainsMn
 {
  my ($class, @noderange)=@_;
  # check if any node in the noderange is the Management Node return the
- # name 
- my $mname;
+ # name
+ my @mnames; # management node names in the database, members of __mgmtnode
  my $tab = xCAT::Table->new('nodelist');
  my @nodelist=$tab->getAllNodeAttribs(['node','groups']);
  foreach my $n (@nodelist) {
   if (defined($n->{'groups'})) {
    my @groups=split(",",$n->{'groups'});
    if ((grep (/__mgmtnode/,@groups))) {  # this is the MN
-      $mname=$n->{'node'};
-      last;
+     push @mnames,$n->{'node'};
    }
   }
  }
- if ($mname) {  # if Management Node defined in the database
-   if (grep(/^$mname$/, @noderange)) { # if MN in the noderange
-     return $mname;
-    } else {
-     return ;
+ my @MNs;  # management node names found the noderange
+ if (@mnames) { # if any Management Node defined in the database
+   foreach my $mn (@mnames) {
+     if (grep(/^$mn$/, @noderange)) { # if  MN in the noderange
+       push @MNs, $mn;
+     }
+   }
+   if (@MNs) { # management nodes in the noderange
+       return @MNs;
    }
  }
+ return;   # if no MN in the noderange, return nothing
 }
 
 =head3  filter_nodes
@@ -3221,6 +3225,11 @@ sub filter_nodes{
     if ($ipmitab) {
         $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes,['bmc']);
     }
+    my $nodehmhash;
+    my $nodehmtab = xCAT::Table->new("nodehm");
+    if ($nodehmtab) {
+        $nodehmhash = $nodehmtab->getNodesAttribs(\@nodes,['mgt']);
+    }
 
     my (@mp, @ngpfsp, @ngpbmc, @commonfsp, @commonbmc, @unknow);
 
@@ -3230,6 +3239,15 @@ sub filter_nodes{
     # if only in 'ipmi', a common x86 node
     foreach (@nodes) {
         if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
+            if ($mptabhash->{$_}->[0]->{'mpa'} eq $_) {
+                if (defined($nodehmhash->{$_}->[0]) && defined($nodehmhash->{$_}->[0]->{'mgt'}) && 
+                    $nodehmhash->{$_}->[0]->{'mgt'} eq "blade") {
+                    push @mp, $_;
+                } else {
+                    push @unknow, $_;
+                }
+                next;
+            } 
             if (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) {
               # flex power node
               push @ngpfsp, $_;
@@ -3275,6 +3293,7 @@ sub filter_nodes{
         } else { 
           push @{$mpnodes}, @ngpfsp;
         }
+        push @{$mpnodes}, @ngpbmc;
     } elsif ($cmd eq "rvitals") {
         if (@args && (grep /^lcds$/,@args)) {
             push @{$fspnodes},@ngpfsp;

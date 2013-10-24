@@ -270,14 +270,6 @@ sub process_request {
        return 1;
    }
 
-   if ($krpmver) {
-       if ($osfamily ne "sles") {
-	   $krpmver="";
-	   $callback->({error=>["-g flag is valid for Sles only."],errorcode=>[1]});
-	   return 1;
-       }
-   }   
-
    my $cmd="cd $profDir; ./genimage";
    if ($arch) { $cmd .= " -a $arch";}
    if ($osver) { $cmd .= " -o $osver";}

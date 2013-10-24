@@ -2177,7 +2177,7 @@ sub enable_callingtrace{
   my @xcatdfuncs = (); # function list that will be enabled for xcatd
 
   # call the subroutine scan_plugins to fill the symbol table
-  scan_plugins();
+  #scan_plugins();
 
   # Backup the trace log
   my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
