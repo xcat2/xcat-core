@@ -2974,8 +2974,10 @@ sub parsefru {
             return "unknown-COULDGUESS",undef; #be lazy for now, TODO revisit this and add guessing if it ever matters
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)]; #splice @$bytes,$curridx,$currsize;
-        $fruhash->{chassis} = parsechassis(@currarea);
+        if ($currsize > 0) {
+            @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)]; #splice @$bytes,$curridx,$currsize;
+            $fruhash->{chassis} = parsechassis(@currarea);
+        }
     }
     if ($bytes->[3]) { #Board info area, to be preserved
         $curridx=$bytes->[3]*8;
@@ -2983,8 +2985,10 @@ sub parsefru {
             return "unknown-COULDGUESS",undef;
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
-        $fruhash->{board} = parseboard(@currarea);
+        if ($currsize > 0) {
+            @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
+            $fruhash->{board} = parseboard(@currarea);
+        }
     }
     if (ref $global_sessdata->{currmacs}) {
 	$fruhash->{board}->{macaddrs}=[];
@@ -3001,8 +3005,10 @@ sub parsefru {
             return "unknown-COULDGUESS",undef;
         }
         $currsize=($bytes->[$curridx+1])*8;
-        @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
-        $fruhash->{product} = parseprod(@currarea);
+        if ($currsize > 0) {
+            @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
+            $fruhash->{product} = parseprod(@currarea);
+        }
     }
     if ($bytes->[5]) { #Generic multirecord present..
         $fruhash->{extra}=[];
