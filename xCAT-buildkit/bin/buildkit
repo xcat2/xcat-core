@@ -1920,6 +1920,8 @@ sub build_kitcomp
     #   specifically reference it's version-release
     if ( &update_kitcomp_kitpkgdeps($comp,$repodir) ) { return 1; }
 
+    $::VALID_PRER_COMPONENT = 0;
+
     if ( !$::PREREQUISITE ) {
         if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} || $comp->{preuninstall} ) {
             if ( &gen_kitcomp_spec($comp,\%repo, 'PREREQUISITE') ) { return 1; }
@@ -1958,6 +1960,8 @@ sub build_kitcomp
                     return 1;
                 }
             }
+
+            $::VALID_PRER_COMPONENT = 1;
 
         }
 
@@ -2246,7 +2250,12 @@ sub gen_kitcomp_spec
             s/<<<INSERT_url_HERE>>>/$::bldkit_config->{kit}{entries}[0]->{url}/;
             s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>//;
             s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
-            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            #Update kitcompdeps for prep_<kitcomponent>
+            if ( $::VALID_PRER_COMPONENT ) {
+                s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps},prep_$comp->{basename}/;
+            } else {
+                s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            }
             s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
             s/<<<INSERT_kitcomponent_non_native_pkgs_HERE>>>/$nonnativepkgs/;
             s/<<<INSERT_kitcomponent_sourcetar_HERE>>>/$sourcetar/;
