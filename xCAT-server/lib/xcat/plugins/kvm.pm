@@ -2348,7 +2348,7 @@ sub power {
             $dom->shutdown();
         } else { $retstring .= "$status_noop"; } 
     } elsif ($subcommand eq 'reset') {
-        if ($dom) {
+        if ($dom && $dom->is_active()) {
             my $oldxml=$dom->get_xml_description();
             my $newxml=reconfigvm($node,$oldxml);
             #This *was* to be clever, but libvirt doesn't even frontend the capability, great...
