@@ -132,7 +132,7 @@ in the install image.
 
 =item B<-g> I<krpmver>
 
-This flag is for SLES only. Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES.
+Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES. Generally, the value of -g is the part after B<linux-> and before B<.rpm> in a kernel rpm name. 
 
 =item B<-m> statelite
 

@@ -48,6 +48,7 @@ my $tmplimit;
 my $installroot = "/install";
 my $kerneldir;
 my $kernelver = ""; #`uname -r`;
+my $krpmver;
 my $basekernelver; # = $kernelver;
 my $customdir=$fullpath;
 $customdir =~ s/.*share\/xcat/$installroot\/custom/;
@@ -80,6 +81,7 @@ GetOptions(
    'l=s' => \$rootlimit,
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
+   'g=s' => \$krpmver,
    'permission=s' => \$permission,
    'kerneldir=s' => \$kerneldir,   
    'tempfile=s' =>\$tempfile, #internal flag
@@ -266,16 +268,19 @@ unless ($onlyinitrd) {
             # replace the kernel package with the name has the specific version
             foreach my $p (@$pa) {
                 if ($p =~ /^kernel$/ && $kernelver) {
-                    my $kernelname = "kernel-".$kernelver;
+                    my $kernelname;
+                    if ($krpmver) {
+                        $kernelname = "kernel-".$krpmver;
+                    } else {
+                        $kernelname = "kernel-".$kernelver;
+                    }
                     my $searchkern = $yumcmd . " list $kernelname -q";
                     my @kernpkgs = `$searchkern`;
                     my $found = 0;
                     foreach my $k (@kernpkgs) {
                         if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
                             my $version = $1;
-                            my $relversion = $kernelver;
-                            $relversion =~ s/\.[^\.]+$//;
-                            if ($version == $relversion) {
+                            if ($kernelver =~ /$version/) {
                                 $found++;
                             }
                         }
