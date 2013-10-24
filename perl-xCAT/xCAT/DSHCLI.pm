@@ -3237,7 +3237,18 @@ sub bld_resolve_nodes_hash
 
     # find out if we have an MN in the list, local cp and sh will be used
     # not remote shell
-    my $mname = xCAT::Utils->noderangecontainsMn(@target_list);
+    my @MNnodeinfo   = xCAT::NetworkUtils->determinehostname;
+    my $mname   = pop @MNnodeinfo;                  # hostname
+    my $cmd="hostname";
+    my $localhostname = xCAT::Utils->runcmd($cmd,0);
+    if ($::RUNCMD_RC != 0)
+    {
+       my $rsp = {};
+       $rsp->{info}->[0] = "Command: $cmd failed. Continuing...";
+       xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    }
+
+    
     foreach my $target (@target_list)
     {
 
@@ -3246,11 +3257,9 @@ sub bld_resolve_nodes_hash
         my $localhost;
         my $user;
         my $context = "XCAT";
-        # check to see if this node is the Management Node
-        if ($mname) {
-          if ($mname eq $target) {
+        # check to see if this node is the Management Node we are on,  can run local commands (sh,cp)
+        if (($mname eq $target) || ($localhostname eq $target)){
             $localhost=$target;
-          }
         }
         my %properties = (
                           'hostname'   => $hostname,
@@ -4079,14 +4088,15 @@ sub parse_and_run_dsh
         # check if any node in the noderange is the Management Node and exit 
         # with error, if the Management Node is in the Database and in the
         # noderange
-        my $mname = xCAT::Utils->noderangecontainsMn(@nodelist); 
-        if ($mname) {  # MN in the nodelist
+        my @mname = xCAT::Utils->noderangecontainsMn(@nodelist); 
+        if (@mname) {  # MN in the nodelist
+            my $nodes=join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -K option against the Management Node:$mname.";
+              "You must not run -K option against the Management Node:$nodes.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
-        } 
+        }
         # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
         if ($switchtype =~ /Mellanox/i) {
            my $rsp = {};
