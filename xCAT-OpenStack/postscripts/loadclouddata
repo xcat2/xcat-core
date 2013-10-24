@@ -1,7 +1,7 @@
 #!/bin/sh 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# This script, ("loadchefdata"), is a sample xCAT post script for 
+# This script, ("loadclouddata"), is a sample xCAT post script for 
 #	upload the openstack-cookbooks, roles, enviornment to the 
 #       xCAT chef-server node, and then create the chef-client 
 #        nodes, and then assign the role and environment name to the
@@ -21,12 +21,24 @@
 #	could set the "postbootscripts" attribute of the chef-server node
 #	definitions as follows:
 #
-#	chdef -t node -o chef-server postbootscripts="mountinstall,loadchefdata"	
+#	chdef -t node -o chef-server postbootscripts="mountinstall,loadclouddata"	
 #
 
 
-# load shell hash lib
-source ./hashlib.sh
+## defined HASH functions here
+hput() {
+    eval "HASH""$1""$2"='$3'
+}
+
+hget() {
+    eval echo '${'"HASH$1$2"'}'
+}
+
+hkeys() {
+    set | grep -o "^HASH${1}[[:alnum:]]*=" | sed -re "s/^HASH${1}(.*)=/\\1/g"
+}
+
+
 
 #flags
 no_args=0

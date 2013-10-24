@@ -29,20 +29,36 @@ management.
 %install
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+mkdir -p $RPM_BUILD_ROOT/install/postscripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
 
 cp -a lib/perl/xCAT_schema/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema -type d -exec chmod 755 {} \;
 find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema -type f -exec chmod 644 {} \;
 
 cp -a lib/perl/xCAT_plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeclouddata
+cp -a lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+
+
+#ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeclouddata
+
+#cd -
+cp -a postscripts/* $RPM_BUILD_ROOT/install/postscripts
+chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
+
+cp -a templates/mypostscript/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates/*
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %{prefix}
+/install/postscripts
 %defattr(-,root,root)
 
 
