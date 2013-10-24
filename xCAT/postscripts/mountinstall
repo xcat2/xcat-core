@@ -19,7 +19,7 @@
 #	could set the "postbootscripts" attribute of the chef-server node
 #	definitions as follows:
 #
-#	chdef -t node -o chef-server postbootscripts="mountinstall,loadchefdata"	
+#	chdef -t node -o chef-server postbootscripts="mountinstall,loadclouddata"	
 #
 
 

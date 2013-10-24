@@ -223,6 +223,11 @@ sub makescript {
   #First load input into memory..
   while (<$inh>) {
       my $line = $_;      
+
+      if( $line =~ /#INCLUDE:[^#^\n]+#/ ) {
+         $line =~ s/#INCLUDE:([^#^\n]+)#/includetmpl($1)/eg;
+      }
+
       if ($line !~/^##/ ) {
           $t_inc.=$line;
       }
@@ -241,14 +246,11 @@ sub makescript {
            }
      }
 
+     
      if( $line =~ /#CFGMGTINFO_EXPORT#/ ) {
          $cfgflag = 1;   
      }
-     if ($cfgflag == 1) {
-         if( $line =~ /#CLOUDINFO_EXPORT#/ ) {
-             $cloudflag = 1;    
-         }
-     }
+     
   }
 
   close($inh);
@@ -347,20 +349,25 @@ sub makescript {
 
   my $cfginfo_hash; 
   my $cloudinfo_hash;
+  $cfginfo_hash = getcfginfo(); 
   #
-  # if #CFGCLIENTLIST_EXPORT# exists, ...
-  if( $cfgflag == 1 ) { 
-      $cfginfo_hash = getcfginfo(); 
-      #
-      # if #CLOUDINFO_EXPORT# exists, ...
-      if( $cloudflag == 1) {
-          $cloudinfo_hash = getcloudinfo(); 
-
-      }  
+  #check it the cloud module exists or not
+  #the default doesn't exist.
+  my $cloud_exists = 0; 
+  my $cloud_module_name="xCAT::Cloud";
+  eval("use $cloud_module_name;");
+  if (!$@) {
+      $cloud_exists = 1;
+      if( $cfgflag == 0) {
+          my $rsp;
+          $rsp->{errorcode}->[0]=1;
+          $rsp->{error}->[0]="xCAT-OpenStack needs the tag #CFGMGTINFO_EXPORT# in $tmpl.\n";
+          $callback->($rsp);
+          return;
+      } 
+      $cloudinfo_hash = getcloudinfo($cloud_module_name, $cloud_exists); 
   }
-
-
-
+ 
   foreach my $n (@$nodes ) {
       $node = $n; 
       $inc = $t_inc;
@@ -476,12 +483,11 @@ sub makescript {
     my @clients;
     my $cfgres;
     my $cloudres;
-    if ( $cfgflag == 1 ) {
-        $cfgres =  getcfgres($cfginfo_hash, $node, \@clients);
-        if ( $cloudflag == 1 ) {
-            $cloudres = getcloudres($cloudinfo_hash, \@clients); 
-        }
+    $cfgres =  getcfgres($cfginfo_hash, $node, \@clients);
+    if ( $cloud_exists == 1 ) {
+        $cloudres = getcloudres($cloud_module_name, $cloud_exists, $cloudinfo_hash, \@clients); 
     }
+
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -1788,75 +1794,75 @@ sub getcfgres
 
 sub getcloudinfo
 {
-    my %info = ();
 
-    my $tab = "clouds";
-    my $ptab = xCAT::Table->new($tab);
-    unless ($ptab) { 
-        xCAT::MsgUtils->message("E", "Unable to open $tab table");
-        return undef; 
+    my $module_name  = shift;
+    my $cloud_exists  = shift;
+    my $result;
+
+    #get cloud info
+    if ( $cloud_exists ) {
+	no strict  "refs";
+	if (defined(${$module_name."::"}{getcloudinfo})) {
+	    $result=${$module_name."::"}{getcloudinfo}();
+	}  
     }
-    my @rs = $ptab->getAllAttribs('name','repository');
+   return $result;
+}
 
-    foreach my $r ( @rs ) {
-       my $cloud = $r->{'name'};
-       my $repos = $r->{'repository'};
-       $info{ $cloud }{repository}  = $repos; 
-    }
-
-    $tab = "cloud";
-    $ptab = xCAT::Table->new($tab);
-    unless ($ptab) { 
-        xCAT::MsgUtils->message("E", "Unable to open $tab table");
-        return undef;
-    }
-    @rs = $ptab->getAllAttribs('node','cloudname');
-
-    my $pre;
-    my $curr;
-    foreach my $r ( @rs ) {
-       my $node = $r->{'node'};
-       my $cloud = $r->{'cloudname'};
-       $info{ $node }{cloud}  = $cloud;
-    }
-   
-    return \%info;
-
-
-
-} 
 
 sub getcloudres
 {
+    my $module_name  = shift;
+    my $cloud_exists  = shift;
     my $cloudinfo_hash = shift;
-    my $clients = shift;  
-    my $cloudres;
-    my $cloudlist;
-    my $repos;
-    if( @$clients == 0 ) {
-        return $cloudres;
-    }
-    foreach my $client (@$clients) {
-        my $cloud;
-        if( defined($cloudinfo_hash) && defined($cloudinfo_hash->{$client}) ) {
-            $cloud = $cloudinfo_hash->{$client}->{cloud};
-        }
-        #$cloudres .= "hput $client cloud $cloud\n";
-        $cloudres .= "HASH".$client."cloud='$cloud'\nexport HASH".$client."cloud\n";
-        $cloudlist .="$cloud,";
-       
-        my $t = $cloudinfo_hash->{$cloud}->{repository};
-        if( !defined($repos) ) {
-            $repos =  $t;
-        }
-        if( defined($repos) && ( $repos != $t && "$repos/" != $t && $repos != "$t/" ) ) {
-            xCAT::MsgUtils->message("E", "Two cloud repositories: $repos and $t.\n There should be only one cloud repository one ont chef-server.");
-            return undef; 
-        }
-    }
-    chop $cloudlist;
-    $cloudres = "REPOSITORY='$repos'\nexport REPOSITORY\nCLOUDLIST='$cloudlist'\nexport CLOUDLIST\n$cloudres";
-    return $cloudres;
+    my $clients = shift; 
+    my $result;
+ 
+    #get cloud res
+    if ( $cloud_exists ) {
+	no strict  "refs";
+	if (defined(${$module_name."::"}{getcloudres})) {
+	    $result=${$module_name."::"}{getcloudres}($cloudinfo_hash, $clients);
+	}
+    }  
+   return $result;
 }
+
+##
+#
+#This function only can be used for #INCLUDE:filepath# in mypostscript.tmpl .
+#It doesn't support the #INCLUDE:filepath# in the new $file. So it doesn't
+#support the repeated include.
+#It will put all the content of the file into @text excetp the empty line
+sub includetmpl
+{
+    my $file = shift;
+    my @text = ();
+
+    if ( ! -r $file ) {
+        return "";
+    }
+
+    open(INCLUDE, $file) || \return "";
+
+    while (<INCLUDE>)
+    {
+        chomp($_);    #remove newline
+        s/\s+$//;     #remove trailing spaces
+        next if /^\s*$/;    #-- skip empty lines
+        if (/^@(.*)/)
+        {    #for groups that has space in name
+            my $save = $1;
+            if ($1 =~ / /) { $_ = "\@" . $save; }
+        }
+        push(@text, $_);
+    }
+
+    close(INCLUDE);
+
+    return join(',', @text);
+}
+
+
 
 1;
