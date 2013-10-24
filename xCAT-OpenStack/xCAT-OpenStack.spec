@@ -32,6 +32,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 
 cp -a lib/perl/xCAT_schema/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 find $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema -type d -exec chmod 755 {} \;
@@ -42,6 +43,9 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/*
 
 cp -a lib/perl/xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
+
+cp sbin/* $RPM_BUILD_ROOT/%{prefix}/sbin
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 
 
 #ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeclouddata
