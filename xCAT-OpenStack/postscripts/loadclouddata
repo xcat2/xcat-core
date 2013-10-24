@@ -1,0 +1,224 @@
+#!/bin/sh 
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script, ("loadclouddata"), is a sample xCAT post script for 
+#	upload the openstack-cookbooks, roles, enviornment to the 
+#       xCAT chef-server node, and then create the chef-client 
+#        nodes, and then assign the role and environment name to the
+#       chef-client nodes  
+#
+#	Make sure your script is executable and that is is in the 
+#	/install/postscripts directory on the xCAT management node.
+#
+#	You must add the script name to the list of scripts that 
+#	must be run at install time,  or use it with updatenode.
+#
+# 	To use this script you should make sure it gets run after the 
+#	"mountinstall" script or any other scipts that may need to use
+#       scripts in the /install directory.
+#	
+#	For example, to get it to run after the "mountinstall" script you
+#	could set the "postbootscripts" attribute of the chef-server node
+#	definitions as follows:
+#
+#	chdef -t node -o chef-server postbootscripts="mountinstall,loadclouddata"	
+#
+
+
+## defined HASH functions here
+hput() {
+    eval "HASH""$1""$2"='$3'
+}
+
+hget() {
+    eval echo '${'"HASH$1$2"'}'
+}
+
+hkeys() {
+    set | grep -o "^HASH${1}[[:alnum:]]*=" | sed -re "s/^HASH${1}(.*)=/\\1/g"
+}
+
+
+
+#flags
+no_args=0
+only_load_cookbook=0
+only_load_role=0
+only_load_clouddata=0
+
+if [ $# -eq 0 ]
+then
+    no_args=1
+else
+  for arg in "$@"
+  do
+    if [ "$arg" = "--cookbook" ]
+    then
+        only_load_cookbook=1
+    elif [ "$arg" = "--role" ]
+    then
+        only_load_role=1
+    elif [ "$arg" = "--clouddata" ]
+    then
+        only_load_clouddata=1
+    else 
+        errmsg="no argument $arg in the loadchefdata script"
+        logger -t xcat -p local4.err $errmsg
+        echo $errmsg
+        exit 1
+    fi
+  done
+fi
+
+
+
+# enter the repository director
+# for example: cd /install/chef-cookbooks/grizzy-xcat/
+if [ ! -d "$REPOSITORY" ] 
+then
+    errmsg="$REPOSITORY is not a OpenStack Chef cookbooks directory."
+    logger -t xcat -p local4.err $errmsg
+    echo $errmsg
+    exit 1
+fi
+cd $REPOSITORY
+
+if [ $no_args -eq 1 -o $only_load_cookbook -eq 1 ]
+then
+   # upload coobooks
+   knife cookbook bulk delete '.*' -y  > /dev/null 2>&1
+   knife cookbook upload -o cookbooks --all
+   if [ $? != 0 ]
+   then  
+       errmsg="Failed to run knife cookbook upload -o cookbooks --all on the chefserver $NODE."
+       logger -t xcat -p local4.err $errmsg
+       echo $errmsg
+       exit 1
+    fi
+fi
+
+if [ $no_args -eq 1 -o $only_load_role -eq 1 ]
+then
+    # upload roles
+    knife role bulk delete '.*' -y  > /dev/null 2>&1
+    knife role from file roles/*.rb
+    if [ $? != 0 ]
+    then  
+       errmsg="Failed to run knife role from file roles/*.rb  on the chefserver $NODE."
+       logger -t xcat -p local4.err $errmsg
+       echo $errmsg
+       exit 1
+    fi
+
+fi
+
+
+if [ $no_args -eq 1 -o $only_load_clouddata -eq 1 ]
+then
+
+    if [ -z $CFGCLIENTLIST ]
+    then
+        msg="No cfgclient on the cfgserver $NODE?"
+        logger -t xcat -p local3.info $msg
+        echo $errmsg
+        exit 0
+    fi
+
+    #CLOUDLIST='cloud1,cloud1,cloud3'
+    OIFS=$IFS
+    IFS=','
+    for cloud in $CLOUDLIST
+    do
+        echo "loading the enviornment file $cloud.rb for $cloud"
+        # knife environment delete xcat_per-tenant_routers_with_private_networks  -y
+        # knife environment delete xcat_per-tenant_routers_with_private_networks  -y
+        # load the environment file 
+        # knife environment from file environments/xcat_per-tenant_routers_with_private_networks.rb
+        if [ ! -e "$REPOSITORY/environments/$cloud.rb" ] 
+        then
+            errmsg="$REPOSITORY/environments/$cloud.rb doesn't exsit. run mkclouddata at first."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+        knife environment from file environments/$cloud.rb
+        if [ $? != 0 ]
+        then  
+            errmsg="Failed to run knife environment from file environments/$cloud.rb on the chef-server $NODE."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+    done
+    #IFS=$OIFS
+
+    #CFGCLIENTLIST='node1,node1,node3'
+    #OIFS=$IFS
+    #IFS=','
+    for client in $CFGCLIENTLIST
+    do
+        echo "Configuring the chef-client node $client on the chef-server $NODE."
+        c_fullname="$client.$DOMAIN"
+        knife client delete -y $c_fullname  > /dev/null 2>&1
+        knife node delete -y $c_fullname    > /dev/null 2>&1
+
+        #create nodes on this chef-server
+        # knife node create test3 -d
+        knife node create $c_fullname -d
+        if [ $? != 0 ]
+        then  
+            errmsg="Failed to run knife node create $client -d on the chef-server $NODE."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+
+        roles=`hget $client roles`
+        if [ -z $roles ] 
+        then
+            errmsg="No roles for $client. Please check the cfgmgt table."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+
+        # assign the role for the chef node
+        knife node run_list add $c_fullname "role[$roles]"
+        if [ $? != 0 ]
+        then  
+            errmsg="Failed to run knife node run_list add $client 'role[$roles]' on the chef-server $NODE."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+
+        # assign the new environment to the chef client node 
+        newenv=`hget $client cloud`
+        if [ -z $newenv ] 
+        then
+            errmsg="No cloud for $client. Please check the cloud table."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+        origenv=`knife node show $c_fullname -E | sed -e 's/[ ]*//g'| awk -F: '{print $2}'`
+        EDITOR="sed -e s/$origenv/$newenv/ -i" knife node edit $c_fullname
+        if [ $? != 0 ]
+        then  
+            errmsg="Failed to run knife node edit $client on the chef-server $NODE."
+            logger -t xcat -p local4.err $errmsg
+            echo $errmsg
+            exit 1
+        fi
+
+
+    done
+fi
+
+IFS=$OIFS
+
+
+exit 0
+
+
+
