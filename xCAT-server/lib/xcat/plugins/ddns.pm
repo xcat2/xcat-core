@@ -295,14 +295,23 @@ sub process_request {
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
 
     # exclude the net if it is using an external dns server.
-    foreach (@networks)
+    foreach my $net (@networks)
     {
-        if ($_ and $_->{nameservers})
+        if ($net and $net->{nameservers})
         {
-            my $myip = xCAT::NetworkUtils->my_ip_facing($_->{net});
-            unless (($_->{nameservers} eq $myip) || ($_->{nameservers} eq '<xcatmaster>') || ($_->{nameservers} eq $sitens))
+            my $valid = 0;
+            my $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
+            foreach (split /,/, $net->{nameservers})
             {
-                $_ = undef;
+                chomp $_;
+                if (($_ eq $myip) || ($_ eq '<xcatmaster>') || ($_ eq $sitens))
+                {
+                    $valid += 1;
+                }
+            }
+            unless ($valid > 0)
+            {
+                $net = undef;
             }
         }
     }
