@@ -1103,16 +1103,16 @@ sub updatenode
 
         # check to see if the Management Node is in the noderange and
         # if it is abort
-        my $mname = xCAT::Utils->noderangecontainsMn(@$nodes);
-        if ($mname)
+        my @mname = xCAT::Utils->noderangecontainsMn(@$nodes);
+        if (@mname)
         {    # MN in the nodelist
+            my $nodes=join(',', @mname);
             my $rsp = {};
             $rsp->{error}->[0] =
-              "You must not run -k option against the Management Node:$mname.";
-            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+              "You must not run -k option against a management node: $nodes.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return;
         }
-
         # setup the root ssh keys ( runs xdsh -k)
 
         &security_update_sshkeys($request, $callback, $subreq, \@$nodes);
