@@ -3253,6 +3253,11 @@ sub filter_nodes{
     if ($ipmitab) {
         $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes,['bmc']);
     }
+    my $nodehmhash;
+    my $nodehmtab = xCAT::Table->new("nodehm");
+    if ($nodehmtab) {
+        $nodehmhash = $nodehmtab->getNodesAttribs(\@nodes,['mgt']);
+    }
 
     my (@mp, @ngpfsp, @ngpbmc, @commonfsp, @commonbmc, @unknow);
 
@@ -3262,6 +3267,15 @@ sub filter_nodes{
     # if only in 'ipmi', a common x86 node
     foreach (@nodes) {
         if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
+            if ($mptabhash->{$_}->[0]->{'mpa'} eq $_) {
+                if (defined($nodehmhash->{$_}->[0]) && defined($nodehmhash->{$_}->[0]->{'mgt'}) && 
+                    $nodehmhash->{$_}->[0]->{'mgt'} eq "blade") {
+                    push @mp, $_;
+                } else {
+                    push @unknow, $_;
+                }
+                next;
+            } 
             if (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) {
               # flex power node
               push @ngpfsp, $_;
@@ -3307,6 +3321,7 @@ sub filter_nodes{
         } else { 
           push @{$mpnodes}, @ngpfsp;
         }
+        push @{$mpnodes}, @ngpbmc;
     } elsif ($cmd eq "rvitals") {
         if (@args && (grep /^lcds$/,@args)) {
             push @{$fspnodes},@ngpfsp;
