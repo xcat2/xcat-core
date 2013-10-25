@@ -984,6 +984,18 @@ sub get_usr_passwd {
     } else {
         ($ent) = $passwdtab->getNodeAttribs($key, qw(username password));
     }
+    if (!$ent) {
+        if ($key eq "cec") {
+            $key = "fsp";
+        } elsif ($key eq "frame") {
+            $key = "bpa";
+        }
+        if ($user) {
+            ($ent) = $passwdtab->getAttribs({key => $key, username => $user}, qw(password cryptmethod));
+        } else {
+            ($ent) = $passwdtab->getNodeAttribs($key, qw(username password));
+        }
+    }
     if (!$ent or !$ent->{password}) {
         my $hash = $default_passwd_accounts{$key};
         if (!$hash or ($user and !defined($hash->{$user}))) {
