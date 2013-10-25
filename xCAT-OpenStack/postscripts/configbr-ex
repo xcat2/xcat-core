@@ -1,0 +1,41 @@
+#!/bin/sh -vx
+
+
+bridge_name="br-ex"
+
+pubinterface=$PUBINTERFACE
+#pubinterface="eth0"
+if [ -z "pubinterface" ]
+then
+     errmsg="no pubinterface setting for the $NODE's cloudname in clouds table"
+     logger -t xcat -p local4.err $errmsg 
+     echo $errmsg 
+     exit -1
+fi
+ifconfig $pubinterface 0
+
+pubinterface=`echo $pubinterface | sed 's/^ \+//' | sed 's/ \+$//'`
+str_value=$(hashget hash_defined_nics $pubinterface)
+old_ifs=$IFS
+IFS=$','
+array_temp=($str_value)
+FS=$old_ifs
+
+if [ -n "${array_temp[1]}" ];then
+    str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
+else
+    if [ `echo $pubinterface | grep -E '(eth|en)[0-9]+'` ];then
+        str_nic_type="ethernet"
+    else
+        errmsg="currently, it only supports eth|en, instead of $pubinterface."
+        logger -t xcat -p local4.err $errmsg 
+        echo $errmsg 
+        exit -1;
+    fi
+fi
+
+
+configeth $bridge_name ${array_temp[0]} ${array_temp[2]}
+
+
+
