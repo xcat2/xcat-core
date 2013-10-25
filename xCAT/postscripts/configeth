@@ -314,6 +314,10 @@ if [ "$str_os_type" = "linux" ];then
         str_os_type="redhat"
         str_cfg_dir="/etc/sysconfig/network-scripts/"
     fi
+else
+    echo "configeth dose not support AIX in this build"
+    exit 0
+
 fi
 
 logger -t xcat -p local4.err "configeth: os type: $str_os_type"
