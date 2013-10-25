@@ -17,7 +17,6 @@ BEGIN
 }
 
 use lib "$::XCATROOT/lib/perl";
-use xCAT::Utils;
 use Getopt::Long;
 
 use strict;
@@ -39,21 +38,25 @@ GetOptions( 'V|verbose' => \$::VERBOSE,
 if ($help) {
     print "DB2 Table Reorganization utility.\n";
     print
-      "This script can be set as a cron job or run on the command line to reorg the xcatdb DB2 database tables.\n";
+      "This script can be set as a cron job or run on the command line to reorg the xcatdb DB2 database tables. It automatically added as a cron job, if you use the db2sqlsetup command to create your DB2 database setup for xCAT. \n";
     print "Usage:\n";
     print "\t--V - Verbose mode\n";
     print "\t--h - usage\n";
     print
       "\t--t -comma delimitated list of tables.\n             Without this flag it reorgs all tables in the xcatdb database .\n";
     print "\n";
+    print "Author:  Lissa Valletta\n";
     exit 0;
 }
+
+require xCAT::Utils;
+
 # check to see if running DB2
 my $DBname = xCAT::Utils->get_DBName;
 if ($DBname ne "DB2") {
  
    print " Reorg of table only supported for DB2 database\n";
-   `logger -txcat " reorgtbls:Only supports DB2 database"` ;
+   `logger -p local4.err -t xcat " reorgtbls:Only supports DB2 database"` ;
     exit 1;
   
 }
@@ -64,7 +67,7 @@ if ($tablelist) {  # input list of tables
   @tablist = xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-   `logger -txcat " reorgtbls:error in select tabname from syscat.tables"` ;
+   `logger  -p local4.err -t xcat " reorgtbls:error in select tabname from syscat.tables"` ;
    exit 1;
   }
 }
@@ -96,22 +99,23 @@ foreach my $table (@tablist) {
   $table  =~ tr/a-z/A-Z/;    # convert to upper
   if ($::VERBOSE) {
     print " Reorg of table $table\n";
+    `logger  -p local4.info -t xcat " Reorg of table $table."`;
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg indexes all for table $table allow write access;\"";
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger -txcat " reorgtbls:error $cmd"`;
+    `logger  -p local4.warning -t xcat " reorgtbls:error $cmd"`;
   } else {
-    `logger -txcat " reorgtbls:reorg indexes for $table"`;
+    `logger -p local4.info -t xcat " reorgtbls:reorg indexes for $table"`;
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg table $table inplace allow write access;\"";
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger -txcat " reorgtbls:error $cmd"`;
+    `logger  -p local4.warning -t xcat " reorgtbls:error $cmd"`;
   } else {
-    `logger -txcat " reorgtbls:reorg $table inplace"`;
+    `logger  -p local4.info -t xcat " reorgtbls:reorg $table inplace"`;
   }
 }
 exit 0;
