@@ -58,12 +58,14 @@ sub getcloudinfo
         xCAT::MsgUtils->message("E", "Unable to open $tab table");
         return undef; 
     }
-    my @rs = $ptab->getAllAttribs('name','repository');
+    my @rs = $ptab->getAllAttribs('name','repository', 'pubinterface');
 
     foreach my $r ( @rs ) {
        my $cloud = $r->{'name'};
        my $repos = $r->{'repository'};
+       my $pubinterface = $r->{'pubinterface'};
        $info{ $cloud }{repository}  = $repos; 
+       $info{ $cloud }{pubinterface}  = $pubinterface; 
     }
 
     $tab = "cloud";
@@ -122,11 +124,18 @@ sub getcloudinfo
 sub getcloudres
 {
     my $cloudinfo_hash = shift;
+    my $node = shift;
     my $clients = shift;  
     my $cloudres;
     my $cloudlist;
-    my $repos;
+    my $repos;use Data::Dumper; print Dumper($cloudinfo_hash); 
     if( @$clients == 0 ) {
+        #This should not be a chef-server, and it's a chef-client
+        if( defined($cloudinfo_hash) && defined($cloudinfo_hash->{$node}) ) {
+            my $cloud=$cloudinfo_hash->{$node}->{cloud};
+            my $pubinterface=$cloudinfo_hash->{$cloud}->{pubinterface};
+            $cloudres="PUBINTERFACE='$pubinterface'\nexport PUBINTERFACE\n"; 
+        }
         return $cloudres;
     }
     foreach my $client (@$clients) {
