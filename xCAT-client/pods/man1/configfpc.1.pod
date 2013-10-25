@@ -1,0 +1,55 @@
+=head1 NAME
+
+B<configfpc> - discover the Fan Power Controllers (FPCs) and configure the FPC interface
+
+=head1 SYNOPSIS
+
+B<configfpc> B<-i> I<interface>
+
+B<configfpc> [B<-V>|B<--verbose>] 
+
+B<configfpc> [B<-h>|B<--help>|B<-?>]
+
+=head1 DESCRIPTION
+
+B<configfpc> will discover and configure all FPCs that are set to the default IP address.
+
+The B<-i> B<interface> is required to direct B<configfpc> to the xCAT MN interface which is on the same VLAN as the FPCs.
+
+There are several bits of information that must be included in the xCAT database before running this command.
+
+You must create the FPC node definitions for all FPCs being discovered including the IP address and switch port information.
+
+The B<configfpc> command discovers the FPCs and collects the MAC address. The MAC address is used to relate the FPC to a FPC node using the switch information for this MAC. Once the relationship is discovered the FPC is configured with the FPC node IP settings. 
+
+This process is repeated until no more FPCs are discovered. 
+
+For more information on xCAT support of NeXtScale and configfpc see:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_NeXtScale_Clusters
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<-i> I<interface>
+
+Use this flag to specify which xCAT MN interface (example: eth4) that is connected to the NeXtScale FPCs. This option is required. 
+
+=item B<-V>|B<--verbose>
+
+Verbose mode
+
+=back
+
+=head1 Example
+
+=over 6
+
+=item 1
+
+To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface. 
+
+B<configfpc> B<-i> I<eth0>
+
+=back
+
