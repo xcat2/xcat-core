@@ -525,7 +525,7 @@ sub invoke_dodiscover {
     if ($globalopt{service}) {
         $services = $globalopt{service};
     } else {
-        $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+        $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE,SERVICE_IMM2];
     }
 	#efix for hmc bug
 	if ($services  =~ /hardware-management-console/)  {
