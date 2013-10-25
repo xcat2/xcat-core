@@ -1720,6 +1720,10 @@ sub remove {
     my @result = ();
     while (my ($mtms, $h) = each (%$hash)) {
         while (my ($name, $d) = each (%$h)) {
+             if (@$d[4] ne "lpar") {
+                 push @result, [$name, "Node must be LPAR", 1];
+                 last;
+             } 
              &clear_service_authority_lpar($request, $name, $d);
              my $values = &set_lpar_undefined($request, $name, $d);
              push @result, $values;
@@ -1878,6 +1882,10 @@ sub mkspeclpar {
         my @nodes = keys(%$h);
         my $ent = $vmtab->getNodesAttribs(\@nodes, ['cpus', 'memory','physlots', 'othersettings']); 
         while (my ($name, $d) = each (%$h)) {
+            if (@$d[4] ne 'lpar') {
+                push @result, [$name, "Node must be LPAR", 1];
+                last;
+            }
             if (!exists($memhash->{run})) {
                 my @td = @$d;
                 @td[0] = 0;
@@ -1954,6 +1962,10 @@ sub mkfulllpar {
     while (my ($mtms, $h) = each (%$hash)) {
         my $rethash;
         while (my ($name, $d) = each (%$h)) {
+            if (@$d[4] ne 'lpar') {
+                push @result, [$name, "Node must be LPAR", 1];
+                last;
+            }
             if (!exists($rethash->{run})) {
                 my @td = @$d;
                 @td[0] = 0;
