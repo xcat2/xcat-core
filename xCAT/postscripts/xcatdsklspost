@@ -765,7 +765,7 @@ echo "$TMP" >> /$xcatpost/mypostscript
 TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "$TMP" > /$xcatpost/mypostscript 
 
-if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /$xcatpost/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
