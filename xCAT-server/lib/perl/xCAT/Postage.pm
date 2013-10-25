@@ -485,7 +485,7 @@ sub makescript {
     my $cloudres;
     $cfgres =  getcfgres($cfginfo_hash, $node, \@clients);
     if ( $cloud_exists == 1 ) {
-        $cloudres = getcloudres($cloud_module_name, $cloud_exists, $cloudinfo_hash, \@clients); 
+        $cloudres = getcloudres($cloud_module_name, $cloud_exists, $cloudinfo_hash, $node, \@clients); 
     }
 
   #ok, now do everything else..
@@ -1815,6 +1815,7 @@ sub getcloudres
     my $module_name  = shift;
     my $cloud_exists  = shift;
     my $cloudinfo_hash = shift;
+    my $node = shift;
     my $clients = shift; 
     my $result;
  
@@ -1822,7 +1823,7 @@ sub getcloudres
     if ( $cloud_exists ) {
 	no strict  "refs";
 	if (defined(${$module_name."::"}{getcloudres})) {
-	    $result=${$module_name."::"}{getcloudres}($cloudinfo_hash, $clients);
+	    $result=${$module_name."::"}{getcloudres}($cloudinfo_hash, $node, $clients);
 	}
     }  
    return $result;
