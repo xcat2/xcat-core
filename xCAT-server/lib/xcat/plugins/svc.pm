@@ -21,8 +21,41 @@ sub handled_commands {
     return {
         mkstorage => "storage:type",
         lsstorage => "storage:type",
+        detachstorage => "storage:type",
         rmstorage => "storage:type",
         lspool => "storage:type",
+    }
+}
+
+sub detachstorage {
+    my $request = shift;
+    my @nodes = @{$request->{node}};
+    my $controller;
+    @ARGV = @{$request->{arg}};
+    unless (GetOptions(
+        'controller=s' => \$controller,
+        )) {
+        foreach (@nodes) {
+            sendmsg([1,"Error parsing arguments"],$callback,$_);
+        }
+    }
+    my $storagetab = xCAT::Table->new('storage');
+    my $storents = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
+    unless ($controller) {
+        $controller = assure_identical_table_values(\@nodes, $storents, 'controller');
+    }
+    my $volname = shift @ARGV;
+    my $wwns = get_wwns(@nodes);
+    use Data::Dumper;
+    my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+    foreach my $node (keys %namemap) {
+        my $host = $namemap{$node};
+        my $session = establish_session(controller=>$controller);
+        my @rets = $session->cmd("rmvdiskhostmap -host $host $volname");
+        my $ret = $rets[0];
+        if ($ret =~ m/^CMMVC5842E/) {
+            sendmsg([1,"Node not attached"],$callback,$node);
+        }
     }
 }
 
@@ -332,7 +365,7 @@ sub assure_identical_table_values {
                 $callback, $node);
             return undef;
         }
-        my $currval = $storents->{$node}->{$attribute};
+        my $currval = $sent->{$attribute};
         unless ($currval) {
             sendmsg([1, "No $attribute in arguments or table"],
                 $callback, $node);
@@ -344,6 +377,7 @@ sub assure_identical_table_values {
                 $callback, $node);
             return undef;
         }
+        if (not defined $lastval) { $lastval = $currval; }
     }
     return $lastval;
 }
@@ -397,6 +431,8 @@ sub process_request {
         mkstorage($request);
     } elsif ($request->{command}->[0] eq 'lsstorage') {
         lsstorage($request);
+    } elsif ($request->{command}->[0] eq 'detachstorage') {
+        detachstorage($request);
     } elsif ($request->{command}->[0] eq 'lspool') {
         lsmdiskgrp($request);
     }
