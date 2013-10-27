@@ -20,14 +20,42 @@ my %controllersessions;
 sub handled_commands {
     return {
         mkstorage => "storage:type",
+        lsstorage => "storage:type",
         rmstorage => "storage:type",
         lspool => "storage:type",
     }
 }
 
+sub lsstorage {
+    my $request = shift;
+    my @nodes = @{$request->{node}};
+    my $storagetab = xCAT::Table->new("storage",-create=>0);
+    unless ($storagetab) { return; }
+    my $storents = $storagetab->getNodesAttribs(\@nodes,[qw/controller/]);
+    my $wwns = get_wwns(@nodes);
+    foreach my $node (@nodes) {
+        if ($storents and $storents->{$node} and $storents->{$node}->[0]->{controller}) {
+            my $ctls = $storents->{$node}->[0]->{controller};
+            foreach my $ctl (split /,/, $ctls) { # TODO: scan all controllers at once
+                my $session = establish_session(controller=>$ctl);
+                my %namemap = makehosts($wwns, controller=>$ctl, cfg=>$storents);
+                my @vdisks = hashifyoutput($session->cmd("lsvdisk -delim :"));
+                foreach my $vdisk (@vdisks) {
+                    my @maps = hashifyoutput($session->cmd("lsvdiskhostmap -delim : ".$vdisk->{'id'}));
+                    foreach my $map (@maps) {
+                        if ($map->{host_name} eq $namemap{$node}) {
+                            sendmsg($vdisk->{name}.': size: '.$vdisk->{capacity}.' id: '.$vdisk->{vdisk_UID},$callback,$node);
+                            last; 
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 sub mkstorage {
     my $request = shift;
-    my $ctx = shift;
     my @nodes = @{$request->{node}};
     my $shared = 0;
     my $controller;
@@ -76,7 +104,8 @@ sub mkstorage {
         }
         my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
         my $wwns = get_wwns(@nodes);
-        my @names = makehosts($wwns, controller=>$controller, cfg=>$storents);
+        my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+        my @names = values %namemap;
         bindhosts(\@names, $lun, controller=>$controller);
     } else {
         foreach my $node (@nodes) {
@@ -159,7 +188,7 @@ sub makehosts {
     my %args = @_;
     my $session = establish_session(%args);
     my $stortab = xCAT::Table->new('storage');
-    my @hosts;
+    my %nodenamemap;
     foreach my $node (keys %$wwnmap) {
         my $wwnstr = "";
         foreach my $wwn (@{$wwnmap->{$node}}) {
@@ -175,12 +204,12 @@ sub makehosts {
         if ($result =~ m/^CMM/) { # we have some exceptional case....
             if ($result =~ m/^CMMVC6035E/) { #duplicate name and/or wwn..
                 #need to finde the host and massage it to being viable
-                push @hosts, fixup_host($session, $wwnmap->{$node});
+                $nodenamemap{$node} = fixup_host($session, $wwnmap->{$node});
             } else {
                 die $result." while trying to create host";
             }
         } else {
-            push @hosts, $node;
+            $nodenamemap{$node} = $node;
         }
         my @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
         if ($args{cfg}->{$node}->[0] and $args{cfg}->{$node}->[0]->{controller}) {
@@ -195,7 +224,7 @@ sub makehosts {
         my $ctrstring = join ",", @currentcontrollers;
         $stortab->setNodeAttribs($node,{controller=>$ctrstring});
     }
-    return @hosts;
+    return %nodenamemap;
 }
 
 my %wwnmap;
@@ -341,7 +370,8 @@ sub mkstorage_single {
     }
     my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
     my $wwns = get_wwns($node);
-    my @names = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    my %namemap = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    my @names = values %namemap;
     bindhosts(\@names, $lun, controller=>$controller);
 }
 
@@ -351,6 +381,8 @@ sub process_request {
     $dorequest = shift;
     if ($request->{command}->[0] eq 'mkstorage') {
         mkstorage($request);
+    } elsif ($request->{command}->[0] eq 'lsstorage') {
+        lsstorage($request);
     } elsif ($request->{command}->[0] eq 'lspool') {
         lsmdiskgrp($request);
     }
