@@ -107,6 +107,7 @@ sub mkstorage {
         my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
         if ($name) { $lunargs{name} = $name; }
         my $lun = create_lun(%lunargs);
+        sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback);
         my $wwns = get_wwns(@nodes);
         my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
         my @names = values %namemap;
@@ -381,6 +382,7 @@ sub mkstorage_single {
         $lunargs{name} = $args{name}."-".$node;
     }
     my $lun = create_lun(%lunargs);
+    sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback,$node);
     my $wwns = get_wwns($node);
     my %namemap = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
     my @names = values %namemap;
