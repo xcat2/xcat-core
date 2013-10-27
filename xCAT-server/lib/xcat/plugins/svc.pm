@@ -115,7 +115,7 @@ sub bindhosts {
         #TODO: get what failure looks like... somehow...
         #I guess I could make something with mismatched name and see how it
         #goes
-        $session->cmd("mkvdiskhostmap -host $node ".$lun->{id});
+        $session->cmd("mkvdiskhostmap -force -host $node ".$lun->{id});
     }
 }
 
