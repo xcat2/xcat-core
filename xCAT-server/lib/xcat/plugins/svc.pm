@@ -76,8 +76,8 @@ sub mkstorage {
         }
         my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
         my $wwns = get_wwns(@nodes);
-        makehosts($wwns, controller=>$controller, cfg=>$storents);
-        bindhosts(\@nodes, $lun, controller=>$controller);
+        my @names = makehosts($wwns, controller=>$controller, cfg=>$storents);
+        bindhosts(\@names, $lun, controller=>$controller);
     } else {
         foreach my $node (@nodes) {
             mkstorage_single(node=>$node, size=>$size, pool=>$pool,
@@ -119,11 +119,47 @@ sub bindhosts {
     }
 }
 
+sub fixup_host {
+    my $session = shift;
+    my $wwnlist = shift;
+    my @hosts = hashifyoutput($session->cmd("lshost -delim :"));
+    my %wwnmap;
+    my %hostmap;
+    foreach my $host (@hosts) {
+        my @hostd = $session->cmd("lshost -delim : ".$host->{name});
+        foreach my $hdatum (@hostd) {
+            if ($hdatum =~ m/^WWPN:(.*)$/) {
+                $wwnmap{$1} = $host->{name};
+                $hostmap{$host->{name}}->{$1} = 1;
+            }
+        }
+    }
+    my $name;
+    foreach my $wwn (@$wwnlist) {
+        $wwn =~ s/://g;
+        $wwn = uc($wwn);
+        if (defined $wwnmap{$wwn}) { # found the matching host
+            #we want to give the host all the ports that may be relevant
+            $name = $wwnmap{$wwn};
+            foreach my $mwwn (@$wwnlist) {
+                $mwwn =~ s/://g;
+                $mwwn = uc($mwwn);
+                if (not defined $hostmap{$name}->{$mwwn}) {
+                    $session->cmd("addhostport -hbawwpn $mwwn -force $name");
+                }
+            }
+            return $name;
+        }
+    }
+    die "unable to find host to fixup";
+}
+
 sub makehosts {
     my $wwnmap = shift;
     my %args = @_;
     my $session = establish_session(%args);
     my $stortab = xCAT::Table->new('storage');
+    my @hosts;
     foreach my $node (keys %$wwnmap) {
         my $wwnstr = "";
         foreach my $wwn (@{$wwnmap->{$node}}) {
@@ -134,7 +170,18 @@ sub makehosts {
         #TODO: what if the given wwn exists, but *not* as the nodename we want
         #the correct action is to look at hosts, see if one exists, and reuse,
         #create, or warn depending
-        $session->cmd("mkhost -name $node -fcwwpn $wwnstr -force");
+        my @hostres = $session->cmd("mkhost -name $node -hbawwpn $wwnstr -force");
+        my $result = $hostres[0];
+        if ($result =~ m/^CMM/) { # we have some exceptional case....
+            if ($result =~ m/^CMMVC6035E/) { #duplicate name and/or wwn..
+                #need to finde the host and massage it to being viable
+                push @hosts, fixup_host($session, $wwnmap->{$node});
+            } else {
+                die $result." while trying to create host";
+            }
+        } else {
+            push @hosts, $node;
+        }
         my @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
         if ($args{cfg}->{$node}->[0] and $args{cfg}->{$node}->[0]->{controller}) {
             @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
@@ -148,6 +195,7 @@ sub makehosts {
         my $ctrstring = join ",", @currentcontrollers;
         $stortab->setNodeAttribs($node,{controller=>$ctrstring});
     }
+    return @hosts;
 }
 
 my %wwnmap;
@@ -293,8 +341,8 @@ sub mkstorage_single {
     }
     my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
     my $wwns = get_wwns($node);
-    makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
-    bindhosts([$node], $lun, controller=>$controller);
+    my @names = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    bindhosts(\@names, $lun, controller=>$controller);
 }
 
 sub process_request {
