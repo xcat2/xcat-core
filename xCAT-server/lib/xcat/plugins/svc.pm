@@ -445,8 +445,8 @@ sub mkstorage_single {
     }
     if (defined $args{controller}) {
         $controller = $args{controller};
-    } elsif ($cfg->{controller}) {
-        $controller = $cfg->{controller};
+    } elsif ($cfg->[0]->{controller}) {
+        $controller = $cfg->[0]->{controller};
         $controller =~ s/.*,//;
     }
     my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
