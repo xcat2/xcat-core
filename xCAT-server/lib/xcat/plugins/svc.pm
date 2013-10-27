@@ -65,12 +65,14 @@ sub mkstorage {
     unless (ref $request->{arg}) {
         die "TODO: usage";
     }
+    my $name;
     @ARGV = @{$request->{arg}};
     unless (GetOptions(
         'shared' => \$shared,
         'controller=s' => \$controller,
         'boot' => \$boot,
         'size=f' => \$size,
+        'name=s' => \$name,
         'pool=s' => \$pool,
         )) {
         foreach (@nodes) {
@@ -102,7 +104,9 @@ sub mkstorage {
         unless (defined $pool and defined $controller) {
             return;
         }
-        my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
+        my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+        if ($name) { $lunargs{name} = $name; }
+        my $lun = create_lun(%lunargs);
         my $wwns = get_wwns(@nodes);
         my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
         my @names = values %namemap;
@@ -110,7 +114,7 @@ sub mkstorage {
     } else {
         foreach my $node (@nodes) {
             mkstorage_single(node=>$node, size=>$size, pool=>$pool,
-                             boot=>$boot, controller=>$controller,
+                             boot=>$boot, name=>$name, controller=>$controller,
                              cfg=>$storents->{$node});
         }
     }
@@ -293,7 +297,11 @@ sub create_lun {
     my $session = establish_session(%args);
     my $pool = $args{pool};
     my $size = $args{size};
-    my @result = $session->cmd("mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb");
+    my $cmd="mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb";
+    if ($args{name}) {
+        $cmd .= " -name ".$args{name};
+    }
+    my @result = $session->cmd($cmd);
     if ($result[0] =~ m/Virtual Disk, id \[(\d*)\], successfully created/) {
         my $diskid = $1;
         my $name;
@@ -368,7 +376,11 @@ sub mkstorage_single {
         $controller = $cfg->{controller};
         $controller =~ s/.*,//;
     }
-    my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
+    my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+    if ($args{name}) {
+        $lunargs{name} = $args{name}."-".$node;
+    }
+    my $lun = create_lun(%lunargs);
     my $wwns = get_wwns($node);
     my %namemap = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
     my @names = values %namemap;
