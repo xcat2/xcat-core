@@ -128,7 +128,7 @@ sub getcloudres
     my $clients = shift;  
     my $cloudres;
     my $cloudlist;
-    my $repos;use Data::Dumper; print Dumper($cloudinfo_hash); 
+    my $repos;
     if( @$clients == 0 ) {
         #This should not be a chef-server, and it's a chef-client
         if( defined($cloudinfo_hash) && defined($cloudinfo_hash->{$node}) ) {
