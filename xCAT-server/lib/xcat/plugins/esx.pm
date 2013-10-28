@@ -125,6 +125,7 @@ sub handled_commands{
 		rpower => 'nodehm:power,mgt',
 		rsetboot => 'nodehm:power,mgt',
 		rmigrate => 'nodehm:power,mgt',
+        formatdisk => "nodetype:os=(esxi.*)",
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
         clonevm => 'nodehm:mgt',
@@ -210,7 +211,7 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host','migrationdest']);
 	foreach my $node (@$noderange){
-        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor") {
+        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor" or $command eq "formatdisk") {
             $hyp_hash{$node}{nodes} = [$node];
         } else {
         my $ent = $vmtabhash->{$node}->[0];
@@ -636,6 +637,8 @@ sub do_cmd {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
     } elsif ($command eq 'rinv') {
         generic_vm_operation(['config.name','config','runtime.host','layoutEx'],\&inv,@exargs);
+    } elsif ($command eq 'formatdisk') {
+        generic_hyp_operation(\&formatdisk,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'rshutdown') {
@@ -2169,6 +2172,37 @@ sub rshutdown_inmaintenance {
         }
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
+    }
+    return;
+}
+
+sub formatdisk {
+    my %args = @_;
+    my $hyp = $args{hyp};
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']);
+    @ARGV = @{$args{exargs}};
+    my $nid;
+    my $name;
+    GetOptions(
+        'id=s' => \$nid,
+        'name=s' => \$name,
+        );
+    my $hostview = $hyphash{$hyp}->{hostview};
+    if (defined $hyphash{$hyp}->{hostview}) {
+        my $hdss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->storageSystem);
+        $hdss->RescanAllHba();
+        my $dss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
+        my $diskList = $dss->QueryAvailableDisksForVmfs(); 
+        foreach my $disk (@$diskList) {
+            foreach my $id (@{$disk->{descriptor}}) {
+                if (lc($id->{id}) eq lc('naa.'.$nid)) {
+                    my $options = $dss->QueryVmfsDatastoreCreateOptions(devicePath => $disk->devicePath);
+                    @$options[0]->spec->vmfs->volumeName($name);
+                    my $newDatastore = $dss->CreateVmfsDatastore(spec => @$options[0]->spec );
+                }
+            }
+        }
+
     }
     return;
 }
