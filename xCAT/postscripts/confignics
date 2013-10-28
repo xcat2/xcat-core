@@ -45,6 +45,11 @@ bool_cfg_inst_nic=0
 str_inst_nic=''
 str_ib_nics=''
 str_os_type=`uname | tr 'A-Z' 'a-z'`
+if [ "$str_os_type" = "aix" ];then
+    logger -t xcat -p local4.err "confignics: aix does not support in this build"
+    echo "confignics: aix does not support in this build"
+    exit 0
+fi
 bool_remove=0
 num_iba_ports=
 str_all_nics=''

@@ -525,7 +525,7 @@ sub invoke_dodiscover {
     if ($globalopt{service}) {
         $services = $globalopt{service};
     } else {
-        $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE];
+        $services = [WILDCARD_SERVICE,HARDWARE_SERVICE,SOFTWARE_SERVICE,SERVICE_IMM2];
     }
 	#efix for hmc bug
 	if ($services  =~ /hardware-management-console/)  {
@@ -1421,7 +1421,6 @@ sub xCATdB {
         my $hidden = ($type =~ /bpa|fsp/)? 1:0;
         my $groups = lc($type).",all";
         my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($model);
-       
         if (defined($tmp_pre)) {
             $groups .= ",$tmp_pre";
         }
@@ -1504,7 +1503,6 @@ sub format_stanza {
         if (defined($tmp_pre)) {
             $groups .= ",$tmp_pre";
         }
-	
 
         #################################
         # Node attributes
@@ -2099,3 +2097,5 @@ sub bt_handle_new_slp_entity {
 	$btresult{$mac} = $data;
 }
 1;
+
+
