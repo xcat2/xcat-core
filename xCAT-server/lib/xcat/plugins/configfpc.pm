@@ -43,7 +43,6 @@ sub process_request {
 		'help|h|?'  => \$::opt_h,
 		'i|I=s' => \$::opt_I,
 		'verbose|V' => \$::opt_V,
-		'version|v' => \$::opt_v,
 	);
 
 	# Option -h for Help
@@ -94,9 +93,9 @@ sub configfpc_usage {
     push @{ $rsp->{data} },
       "\nUsage: configfpc - Configure the NeXtScale FPCs.i This command requires the -i option to give specify which network adapter to use to look for the FPCs.\n";
     push @{ $rsp->{data} },
-      "  configfpc -i interface_adapter \n ";
+      "  configfpc -i interface \n ";
     push @{ $rsp->{data} },
-      "  configfpc [-V|--verbose] -i adapter_interface \n ";
+      "  configfpc [-V|--verbose] -i interface \n ";
     push @{ $rsp->{data} }, "  configfpc [-h|--help|-?] \n";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -218,7 +217,8 @@ sub configfpc {
 		} else { 
 			my %rsp;
 			push@{ $rsp{data} }, "No FPC found that is associated with MAC address $fpcmac.\nCheck to see if the switch and switch table contain the information needed to locate this FPC MAC";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
+			xCAT::MsgUtils->message( "E", \%rsp, $callback );
+			$foundfpc = 0;
 		}  
 	
 		#
@@ -231,16 +231,19 @@ sub configfpc {
 		}
 		my $arpout = `arp -d $fpcip`;
 		
-		# check for another FPC 
-		$res = `LANG=C ping -c 1 -w 5 $fpcip 2>&1`;
-		if ( $res =~ /100% packet loss/g) { 
-			my %rsp;
-			push@{ $rsp{data} }, "There are no more FPCs with the default IP address to process";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
-			$foundfpc = 0;
-		}
-		else {
-			$foundfpc = 1;
+		if ( ($foundfpc==1) ) { # if the last FPC was found and processed
+ 
+			# check for another FPC 
+			$res = `LANG=C ping -c 1 -w 5 $fpcip 2>&1`;
+			if ( ($res =~ /100% packet loss/g) && ($foundfpc==1) ) { 
+				my %rsp;
+				push@{ $rsp{data} }, "There are no more FPCs with the default IP address to process";
+				xCAT::MsgUtils->message( "I", \%rsp, $callback );
+				$foundfpc = 0;
+			}
+			else {
+				$foundfpc = 1;
+			}
 		}
 	}
 
