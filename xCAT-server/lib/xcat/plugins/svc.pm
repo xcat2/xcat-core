@@ -20,14 +20,113 @@ my %controllersessions;
 sub handled_commands {
     return {
         mkstorage => "storage:type",
+        lsstorage => "storage:type",
+        detachstorage => "storage:type",
         rmstorage => "storage:type",
         lspool => "storage:type",
     }
 }
 
+sub detachstorage {
+    my $request = shift;
+    my @nodes = @{$request->{node}};
+    my $controller;
+    @ARGV = @{$request->{arg}};
+    unless (GetOptions(
+        'controller=s' => \$controller,
+        )) {
+        foreach (@nodes) {
+            sendmsg([1,"Error parsing arguments"],$callback,$_);
+        }
+    }
+    my $storagetab = xCAT::Table->new('storage');
+    my $storents = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
+    unless ($controller) {
+        $controller = assure_identical_table_values(\@nodes, $storents, 'controller');
+    }
+    my @volnames = @ARGV;
+    my $wwns = get_wwns(@nodes);
+    use Data::Dumper;
+    my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+    foreach my $node (keys %namemap) {
+        my $host = $namemap{$node};
+        my $session = establish_session(controller=>$controller);
+        foreach my $volname (@volnames) {
+            my @rets = $session->cmd("rmvdiskhostmap -host $host $volname");
+            my $ret = $rets[0];
+            if ($ret =~ m/^CMMVC5842E/) {
+                sendmsg([1,"Node not attached to $volname"],$callback,$node);
+            }
+        }
+    }
+}
+
+sub rmstorage {
+    my $request = shift;
+    my @nodes = @{$request->{node}};
+    my $controller;
+    @ARGV = @{$request->{arg}};
+    unless (GetOptions(
+        'controller=s' => \$controller,
+        )) {
+        foreach (@nodes) {
+            sendmsg([1,"Error parsing arguments"],$callback,$_);
+        }
+    }
+    my @volnames = @ARGV;
+    my $storagetab = xCAT::Table->new('storage');
+    my $storents = $storagetab->getNodesAttribs(\@nodes, [qw/controller/]);
+    unless ($controller) {
+        $controller = assure_identical_table_values(\@nodes, $storents, 'controller');
+    }
+    detachstorage($request);
+    my $session = establish_session(controller=>$controller);
+    foreach my $volname (@volnames) {
+        my @info = $session->cmd("rmvdisk $volname");
+        my $ret = $info[0];
+        if ($ret =~ m/^CMMVC5753E/) {
+            foreach my $node (@nodes) {
+                sendmsg([1,"Disk $volname does not exist"], $callback, @nodes);
+            }
+        } elsif ($ret =~ m/^CMMVC5840E/) {
+            foreach my $node (@nodes) {
+                sendmsg([1,"Disk $volname is mapped to other nodes and/or busy"], $callback, @nodes);
+            }
+        }
+    }
+}
+
+
+sub lsstorage {
+    my $request = shift;
+    my @nodes = @{$request->{node}};
+    my $storagetab = xCAT::Table->new("storage",-create=>0);
+    unless ($storagetab) { return; }
+    my $storents = $storagetab->getNodesAttribs(\@nodes,[qw/controller/]);
+    my $wwns = get_wwns(@nodes);
+    foreach my $node (@nodes) {
+        if ($storents and $storents->{$node} and $storents->{$node}->[0]->{controller}) {
+            my $ctls = $storents->{$node}->[0]->{controller};
+            foreach my $ctl (split /,/, $ctls) { # TODO: scan all controllers at once
+                my $session = establish_session(controller=>$ctl);
+                my %namemap = makehosts($wwns, controller=>$ctl, cfg=>$storents);
+                my @vdisks = hashifyoutput($session->cmd("lsvdisk -delim :"));
+                foreach my $vdisk (@vdisks) {
+                    my @maps = hashifyoutput($session->cmd("lsvdiskhostmap -delim : ".$vdisk->{'id'}));
+                    foreach my $map (@maps) {
+                        if ($map->{host_name} eq $namemap{$node}) {
+                            sendmsg($vdisk->{name}.': size: '.$vdisk->{capacity}.' id: '.$vdisk->{vdisk_UID},$callback,$node);
+                            last; 
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 sub mkstorage {
     my $request = shift;
-    my $ctx = shift;
     my @nodes = @{$request->{node}};
     my $shared = 0;
     my $controller;
@@ -37,12 +136,14 @@ sub mkstorage {
     unless (ref $request->{arg}) {
         die "TODO: usage";
     }
+    my $name;
     @ARGV = @{$request->{arg}};
     unless (GetOptions(
         'shared' => \$shared,
         'controller=s' => \$controller,
         'boot' => \$boot,
         'size=f' => \$size,
+        'name=s' => \$name,
         'pool=s' => \$pool,
         )) {
         foreach (@nodes) {
@@ -74,14 +175,18 @@ sub mkstorage {
         unless (defined $pool and defined $controller) {
             return;
         }
-        my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
+        my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+        if ($name) { $lunargs{name} = $name; }
+        my $lun = create_lun(%lunargs);
+        sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback);
         my $wwns = get_wwns(@nodes);
-        makehosts($wwns, controller=>$controller, cfg=>$storents);
-        bindhosts(\@nodes, $lun, controller=>$controller);
+        my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
+        my @names = values %namemap;
+        bindhosts(\@names, $lun, controller=>$controller);
     } else {
         foreach my $node (@nodes) {
             mkstorage_single(node=>$node, size=>$size, pool=>$pool,
-                             boot=>$boot, controller=>$controller,
+                             boot=>$boot, name=>$name, controller=>$controller,
                              cfg=>$storents->{$node});
         }
     }
@@ -115,8 +220,43 @@ sub bindhosts {
         #TODO: get what failure looks like... somehow...
         #I guess I could make something with mismatched name and see how it
         #goes
-        $session->cmd("mkvdiskhostmap -host $node ".$lun->{id});
+        $session->cmd("mkvdiskhostmap -force -host $node ".$lun->{id});
     }
+}
+
+sub fixup_host {
+    my $session = shift;
+    my $wwnlist = shift;
+    my @hosts = hashifyoutput($session->cmd("lshost -delim :"));
+    my %wwnmap;
+    my %hostmap;
+    foreach my $host (@hosts) {
+        my @hostd = $session->cmd("lshost -delim : ".$host->{name});
+        foreach my $hdatum (@hostd) {
+            if ($hdatum =~ m/^WWPN:(.*)$/) {
+                $wwnmap{$1} = $host->{name};
+                $hostmap{$host->{name}}->{$1} = 1;
+            }
+        }
+    }
+    my $name;
+    foreach my $wwn (@$wwnlist) {
+        $wwn =~ s/://g;
+        $wwn = uc($wwn);
+        if (defined $wwnmap{$wwn}) { # found the matching host
+            #we want to give the host all the ports that may be relevant
+            $name = $wwnmap{$wwn};
+            foreach my $mwwn (@$wwnlist) {
+                $mwwn =~ s/://g;
+                $mwwn = uc($mwwn);
+                if (not defined $hostmap{$name}->{$mwwn}) {
+                    $session->cmd("addhostport -hbawwpn $mwwn -force $name");
+                }
+            }
+            return $name;
+        }
+    }
+    die "unable to find host to fixup";
 }
 
 sub makehosts {
@@ -124,6 +264,7 @@ sub makehosts {
     my %args = @_;
     my $session = establish_session(%args);
     my $stortab = xCAT::Table->new('storage');
+    my %nodenamemap;
     foreach my $node (keys %$wwnmap) {
         my $wwnstr = "";
         foreach my $wwn (@{$wwnmap->{$node}}) {
@@ -134,7 +275,18 @@ sub makehosts {
         #TODO: what if the given wwn exists, but *not* as the nodename we want
         #the correct action is to look at hosts, see if one exists, and reuse,
         #create, or warn depending
-        $session->cmd("mkhost -name $node -fcwwpn $wwnstr -force");
+        my @hostres = $session->cmd("mkhost -name $node -hbawwpn $wwnstr -force");
+        my $result = $hostres[0];
+        if ($result =~ m/^CMM/) { # we have some exceptional case....
+            if ($result =~ m/^CMMVC6035E/) { #duplicate name and/or wwn..
+                #need to finde the host and massage it to being viable
+                $nodenamemap{$node} = fixup_host($session, $wwnmap->{$node});
+            } else {
+                die $result." while trying to create host";
+            }
+        } else {
+            $nodenamemap{$node} = $node;
+        }
         my @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
         if ($args{cfg}->{$node}->[0] and $args{cfg}->{$node}->[0]->{controller}) {
             @currentcontrollers = split /,/, $args{cfg}->{$node}->[0]->{controller};
@@ -148,6 +300,7 @@ sub makehosts {
         my $ctrstring = join ",", @currentcontrollers;
         $stortab->setNodeAttribs($node,{controller=>$ctrstring});
     }
+    return %nodenamemap;
 }
 
 my %wwnmap;
@@ -216,7 +369,11 @@ sub create_lun {
     my $session = establish_session(%args);
     my $pool = $args{pool};
     my $size = $args{size};
-    my @result = $session->cmd("mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb");
+    my $cmd="mkvdisk -iogrp io_grp0 -mdiskgrp $pool -size $size -unit gb";
+    if ($args{name}) {
+        $cmd .= " -name ".$args{name};
+    }
+    my @result = $session->cmd($cmd);
     if ($result[0] =~ m/Virtual Disk, id \[(\d*)\], successfully created/) {
         my $diskid = $1;
         my $name;
@@ -246,7 +403,7 @@ sub assure_identical_table_values {
                 $callback, $node);
             return undef;
         }
-        my $currval = $storents->{$node}->{$attribute};
+        my $currval = $sent->{$attribute};
         unless ($currval) {
             sendmsg([1, "No $attribute in arguments or table"],
                 $callback, $node);
@@ -258,6 +415,7 @@ sub assure_identical_table_values {
                 $callback, $node);
             return undef;
         }
+        if (not defined $lastval) { $lastval = $currval; }
     }
     return $lastval;
 }
@@ -287,14 +445,20 @@ sub mkstorage_single {
     }
     if (defined $args{controller}) {
         $controller = $args{controller};
-    } elsif ($cfg->{controller}) {
-        $controller = $cfg->{controller};
+    } elsif ($cfg->[0]->{controller}) {
+        $controller = $cfg->[0]->{controller};
         $controller =~ s/.*,//;
     }
-    my $lun = create_lun(controller=>$controller, size=>$size, pool=>$pool);
+    my %lunargs = (controller=>$controller, size=>$size, pool=>$pool);
+    if ($args{name}) {
+        $lunargs{name} = $args{name}."-".$node;
+    }
+    my $lun = create_lun(%lunargs);
+    sendmsg($lun->{name}.": id: ".$lun->{wwn},$callback,$node);
     my $wwns = get_wwns($node);
-    makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
-    bindhosts([$node], $lun, controller=>$controller);
+    my %namemap = makehosts($wwns, controller=>$controller, cfg=>{$node=>$cfg});
+    my @names = values %namemap;
+    bindhosts(\@names, $lun, controller=>$controller);
 }
 
 sub process_request {
@@ -303,6 +467,12 @@ sub process_request {
     $dorequest = shift;
     if ($request->{command}->[0] eq 'mkstorage') {
         mkstorage($request);
+    } elsif ($request->{command}->[0] eq 'lsstorage') {
+        lsstorage($request);
+    } elsif ($request->{command}->[0] eq 'rmstorage') {
+        rmstorage($request);
+    } elsif ($request->{command}->[0] eq 'detachstorage') {
+        detachstorage($request);
     } elsif ($request->{command}->[0] eq 'lspool') {
         lsmdiskgrp($request);
     }
