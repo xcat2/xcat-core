@@ -133,12 +133,14 @@ sub mkstorage {
     my $pool;
     my $size;
     my $boot = 0;
+    my $format = 0;
     unless (ref $request->{arg}) {
         die "TODO: usage";
     }
     my $name;
     @ARGV = @{$request->{arg}};
     unless (GetOptions(
+        'format' => \$format,
         'shared' => \$shared,
         'controller=s' => \$controller,
         'boot' => \$boot,
@@ -183,6 +185,16 @@ sub mkstorage {
         my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
         my @names = values %namemap;
         bindhosts(\@names, $lun, controller=>$controller);
+        if ($format) { 
+            my %request = (
+                node => [$nodes[0]],
+                command => [ 'formatdisk' ],
+                arg => [ '--id', $lun->{wwn}, '--name', $lun->{name} ]
+            );
+            use Data::Dumper;
+            print Dumper($request{arg});
+            $dorequest->(\%request, $callback);
+        }
     } else {
         foreach my $node (@nodes) {
             mkstorage_single(node=>$node, size=>$size, pool=>$pool,
