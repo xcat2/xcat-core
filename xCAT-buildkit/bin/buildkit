@@ -949,9 +949,14 @@ sub kit_buildtar
 
     my $tarfile = $::deploy_dir."/".$kitfilename;
 
-    if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
-        print "Error: Could not copy  building tarfile $tarfile \n";
-        return 1;
+    my $dir = dirname($::deploy_dir);
+    my $bidir =  "$dir/build_input";
+
+    if ( -d "$bidir") {
+        if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
+            print "Error: Could not copy building tarfile $tarfile \n";
+            return 1;
+        }
     }
 
     print "Creating tar file $tarfile.\n";
@@ -1940,9 +1945,10 @@ sub build_kitcomp
             my $specfile = $::workdir."/tmp/$comp->{kitcompname}-prep.spec";
             my $rpmbuild_cmd = "rpmbuild --define \"_topdir $rpmbuild_dir\" -ba $specfile";
 
-            if (!$::VERBOSE) {
+            #  don't want debug info  - 3845 
+#            if (!$::VERBOSE) {
                 $rpmbuild_cmd .= ' --quiet ';
-            }
+#            }
             if ( system($rpmbuild_cmd) ) {
                 print "Error running rpmbuild command for kit component $comp->{kitcompname} meta package\n";
                 return 1;
@@ -1955,7 +1961,7 @@ sub build_kitcomp
                     return 1;
                 }
             }
-
+            
             $::VALID_PRER_COMPONENT = 1;
 
         }
@@ -2012,9 +2018,12 @@ sub build_kitcomp
             return 1;
         }
     }
-    if (!$::VERBOSE) {
+
+    # - don't want debug info - 3845
+#    if (!$::VERBOSE) {
         $rpmbuild_cmd .= ' --quiet ';
-    }
+#    }
+
     if ( system($rpmbuild_cmd) ) {
         print "Error running rpmbuild command for kit component $comp->{kitcompname} meta package\n";
         return 1;
@@ -2056,7 +2065,7 @@ sub update_kitcomp_kitpkgdeps
     my $repodir = shift;
 
     if (defined($comp->{kitpkgdeps})) {
-        # we have some rpms listed -n buildkit.conf file
+        # we have some rpms listed in buildkit.conf file
         my $new_kitpkgdeps = '';
         foreach my $d (split(/,/, $comp->{kitpkgdeps})) {
             $d =~ s/\s+//g;
@@ -2073,7 +2082,6 @@ sub update_kitcomp_kitpkgdeps
                 my @rpmlist = `$lscmd`;
 
                 if ( scalar(@rpmlist) == 0) {
-                    print "Error: Could not find rpm named $d in $repodir. \n";
                     next;
                 } 
 
@@ -3542,6 +3550,7 @@ sub NEW_kit_addpkgs
              system ("rm -Rf $tmpdir_base");
              return 1;
            }
+
            my @fromfiles=@$files;
 
            foreach my $repo (split(/,/, $ext_reponames)) {
