@@ -1998,6 +1998,11 @@ sub addnet
             if ($ent[0] eq $net and $ent[2] eq $mask)
             {
                 $nic = $ent[1];
+                # The first nic that matches the network,
+                # what will happen if there are more than one nics in the same subnet,
+                # and we want to use the second nic as the dhcp interfaces?
+                # this is a TODO
+                last;
             }
         }
         #print " add $net $mask under $nic\n";
@@ -2014,6 +2019,13 @@ sub addnet
             }
             unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
             {
+                  $callback->(
+                      {
+                         error =>
+                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile."],
+                            errorcode => [1]
+                      }
+                  );
                 return 1;    #TODO: this is an error condition
             }
         }
