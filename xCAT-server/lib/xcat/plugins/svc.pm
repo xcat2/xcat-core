@@ -185,14 +185,17 @@ sub mkstorage {
         my %namemap = makehosts($wwns, controller=>$controller, cfg=>$storents);
         my @names = values %namemap;
         bindhosts(\@names, $lun, controller=>$controller);
-        if ($format) { 
+        if ($format) {
             my %request = (
                 node => [$nodes[0]],
                 command => [ 'formatdisk' ],
                 arg => [ '--id', $lun->{wwn}, '--name', $lun->{name} ]
             );
-            use Data::Dumper;
-            print Dumper($request{arg});
+            $dorequest->(\%request, $callback);
+            %request = (
+                node => \@nodes,
+                command => [ 'rescansan' ],
+            );
             $dorequest->(\%request, $callback);
         }
     } else {
