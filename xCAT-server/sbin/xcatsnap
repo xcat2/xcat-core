@@ -102,7 +102,7 @@ sub run_cmd {
     print "\n\tExecuting: $Command \n";
     eval {
         local $SIG{ALRM} = sub { die "Timeout\n" };
-        alarm 60;
+        alarm 600;
         @output = `$Command`;
         alarm 0;
     };
@@ -238,7 +238,7 @@ sub snap_it {
             "ls $installdir","/usr/bin/crontab -l",
             "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
-            "cat /etc/issue","lsxcatd -a");
+            "cat /etc/issue","lsxcatd -a","cat /proc/meminfo", "cat /proc/cpuinfo");
     }
     foreach my $item (@Commands_array) {
         $Command = $item;
