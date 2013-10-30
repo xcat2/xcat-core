@@ -75,6 +75,13 @@ until ($dsthost and $speed and $dstty) {
     exec "sleep $sleepint";
 }
 release_lock();
+# The screen command needs the TERM env var,
+# TERM might be empty for some unknown reasons,
+# for example, on SLES 12 and on PowerKVM
+if (!$ENV{'TERM'}) {
+    $ENV{'TERM'}="vt100";
+}
+
 exec "ssh -t $dsthost screen -U -a -O -e ^]a -d -R -S serial-".$ARGV[0]."-cons -A $dstty $speed";
 
 #my $pathtochild= dirname($scriptname). "/";
