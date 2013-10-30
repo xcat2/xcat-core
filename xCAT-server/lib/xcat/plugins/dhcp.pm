@@ -868,6 +868,14 @@ sub check_options
         return 1;
      }
 
+    # check to see if -n is listed with any other options which is not allowed
+    if ($::opt_n and ($::opt_a || $::opt_d || $::opt_q || $::opt_r || $::opt_l || $statements)) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "The -n option cannot be used with other options.";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+     }
+
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
         my $rsp = {};
@@ -1927,6 +1935,11 @@ sub addnet
             if ($ent[0] eq $net and $ent[2] eq $mask)
             {
                 $nic = $ent[1];
+                # The first nic that matches the network,
+                # what will happen if there are more than one nics in the same subnet,
+                # and we want to use the second nic as the dhcp interfaces?
+                # this is a TODO
+                last;
             }
         }
         #print " add $net $mask under $nic\n";
@@ -1943,6 +1956,13 @@ sub addnet
             }
             unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
             {
+                  $callback->(
+                      {
+                         error =>
+                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile."],
+                            errorcode => [1]
+                      }
+                  );
                 return 1;    #TODO: this is an error condition
             }
         }

@@ -43,7 +43,6 @@ sub process_request {
 		'help|h|?'  => \$::opt_h,
 		'i|I=s' => \$::opt_I,
 		'verbose|V' => \$::opt_V,
-		'version|v' => \$::opt_v,
 	);
 
 	# Option -h for Help
@@ -94,9 +93,9 @@ sub configfpc_usage {
     push @{ $rsp->{data} },
       "\nUsage: configfpc - Configure the NeXtScale FPCs.i This command requires the -i option to give specify which network adapter to use to look for the FPCs.\n";
     push @{ $rsp->{data} },
-      "  configfpc -i interface_adapter \n ";
+      "  configfpc -i interface \n ";
     push @{ $rsp->{data} },
-      "  configfpc [-V|--verbose] -i adapter_interface \n ";
+      "  configfpc [-V|--verbose] -i interface \n ";
     push @{ $rsp->{data} }, "  configfpc [-h|--help|-?] \n";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -140,7 +139,7 @@ sub configfpc {
 	# Setup routing to 182.168.0.100 network
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Adding route definition for $::interface and 192.168.0.101 network";
+		push@{ $rsp{data} }, "Adding route definition for 192.168.0.101/16 to the $::interface network interface";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	my $setroute = `ip addr add dev $::interface 192.168.0.101/16`;
@@ -155,7 +154,7 @@ sub configfpc {
 		$foundfpc = 0;
 
 		my %rsp = {};
-		push@{ $rsp{data} }, "No nodes Found FPC with $fpcip address";
+		push@{ $rsp{data} }, "No default $fpcip IP addresses found";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 		exit; # EXIT if we find no more default IP addresses on the network
 	}
@@ -163,14 +162,14 @@ sub configfpc {
 #		xCAT::MsgUtils->message ("I", "Found $fpcip FPC IP addresses to process");
 		if($::VERBOSE){
 			my %rsp = {};
-			push@{ $rsp{data} }, "Found FPC with $fpcip address";
+			push@{ $rsp{data} }, "Found $fpcip address";
 			xCAT::MsgUtils->message( "I", \%rsp, $callback );
 		}
 		$foundfpc = 1;
 	}
 
 
-	my $addnode = &add_node($defnode,$callback);
+	my $addnode = &add_node($defnode,$fpcip,$callback);
 
 	#
 	# Main loop - check to see if we found an FPC and continue to set the FPC infomration and look for the next one
@@ -218,7 +217,8 @@ sub configfpc {
 		} else { 
 			my %rsp;
 			push@{ $rsp{data} }, "No FPC found that is associated with MAC address $fpcmac.\nCheck to see if the switch and switch table contain the information needed to locate this FPC MAC";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
+			xCAT::MsgUtils->message( "E", \%rsp, $callback );
+			$foundfpc = 0;
 		}  
 	
 		#
@@ -231,16 +231,19 @@ sub configfpc {
 		}
 		my $arpout = `arp -d $fpcip`;
 		
-		# check for another FPC 
-		$res = `LANG=C ping -c 1 -w 5 $fpcip 2>&1`;
-		if ( $res =~ /100% packet loss/g) { 
-			my %rsp;
-			push@{ $rsp{data} }, "There are no more FPCs with the default IP address to process";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
-			$foundfpc = 0;
-		}
-		else {
-			$foundfpc = 1;
+		if ( ($foundfpc==1) ) { # if the last FPC was found and processed
+ 
+			# check for another FPC 
+			$res = `LANG=C ping -c 1 -w 5 $fpcip 2>&1`;
+			if ( ($res =~ /100% packet loss/g) && ($foundfpc==1) ) { 
+				my %rsp;
+				push@{ $rsp{data} }, "There are no more  default IP address to process";
+				xCAT::MsgUtils->message( "I", \%rsp, $callback );
+				$foundfpc = 0;
+			}
+			else {
+				$foundfpc = 1;
+			}
 		}
 	}
 
@@ -250,7 +253,7 @@ sub configfpc {
 	# Delete routing to 182.168.0.100 network
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Deleting route definition for $::interface and 192.168.0.101 network";
+		push@{ $rsp{data} }, "Deleting route definition for 192.168.0.101/16 on interface $::interface";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	my $setroute = `ip addr del dev $::interface 192.168.0.101/16`;
@@ -343,7 +346,7 @@ sub set_FPC_network_parms {
 	# Set FPC Netmask
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Use rspconfig to set the FPC netmask $netmask for node $defnode";
+		push@{ $rsp{data} }, "Use rspconfig to set the FPC netmask $netmask";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	my $netmaskout = xCAT::Utils->runxcmd( 
@@ -355,7 +358,7 @@ sub set_FPC_network_parms {
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
 		my %rsp;
-		push@{ $rsp{data} }, "Could not change nemask $netmask on default FPC";
+		push@{ $rsp{data} }, "Could not change nemask $netmask";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 		$error++;
 	}
@@ -375,7 +378,7 @@ sub set_FPC_network_parms {
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
 		my %rsp;
-		push@{ $rsp{data} }, "Could not change gateway $gateway on default FPC";
+		push@{ $rsp{data} }, "Could not change gateway $gateway";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 		$error++;
 	}
@@ -419,9 +422,12 @@ sub get_node {
 	# extract the MAC address
 	my ($junk1, $junk2, $junk3, $fpcmac, $junk4, $junk5, $junk6) = split(" ", $arpout);
 	
+	# set the FPC MAC as static for the arp table
+	my $arpout = `arp -s $fpcip $fpcmac`;
+	
 	# Print a message that this MAC has been found
 	my %rsp;
-	push@{ $rsp{data} }, "Found FPC with default IP $fpcip and MAC $fpcmac";
+	push@{ $rsp{data} }, "Found IP $fpcip and MAC $fpcmac";
 	xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	
 	# Usee find_mac to 1) look for which switch port contains this MAC address
@@ -432,7 +438,7 @@ sub get_node {
 	# verbose
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Found FPC with MAC $fpcmac associated with node $node";
+		push@{ $rsp{data} }, "Found IP $fpcip with MAC $fpcmac associated with node $node";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	
@@ -444,6 +450,7 @@ sub get_node {
 # 
 sub add_node {
 	my $defnode = shift;
+	my $fpcip = shift;
 	my $callback = shift;
 # add this node entry
 # Object name: feihu-fpc
@@ -466,8 +473,7 @@ sub add_node {
 	my $nodehmtab  = xCAT::Table->new('nodehm',-create=>1);
 	$nodehmtab->setNodeAttribs($defnode, {mgt => 'ipmi'});
 	my $ipmitab  = xCAT::Table->new('ipmi',-create=>1);
-	$ipmitab->setNodeAttribs($defnode, {bmc => $defnode, username => 'USERID', password => 'PASSW0RD'});
-
+	$ipmitab->setNodeAttribs($defnode, {bmc => $fpcip, username => 'USERID', password => 'PASSW0RD'});
 return 0;
 }
 
