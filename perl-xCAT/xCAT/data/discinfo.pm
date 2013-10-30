@@ -100,6 +100,7 @@ require Exporter;
                  "1390839789.062069" => "SL6.5", #x86_64 DVD ISO Install
 
                  "1394111947.452332" => "pkvm2.1", # ppc64, PowerKVM
+                 "1413749127.352649" => "pkvm2.1.1", # ppc64, PowerKVM
                 );
 my %numdiscs = (
                 "1156364963.862322" => 4,
