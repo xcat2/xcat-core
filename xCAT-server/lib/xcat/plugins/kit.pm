@@ -1730,7 +1730,7 @@ sub validate_os{
         return 1;
     }
 
-    if ( $osimage->{arch} ne $kitcomp->{osarch} ) {
+    if ( $osimage->{arch} ne $kitcomp->{osarch} && $kitcomp->{osarch} ne 'noarch' ) {
 #        my %rsp;
 #        push@{ $rsp{data} }, "osimage $os is not compatible with kit component $kitcomp->{kitcompname} with attribute arch";
 #        xCAT::MsgUtils->message( "E", \%rsp, $::CALLBACK );
@@ -2013,7 +2013,7 @@ sub addkitcomp
                 return 1;
             }
 
-            if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
+            if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch' ) {
                 my %rsp;
                 push@{ $rsp{data} }, "osimage $osimage is not compatible with kit component $kitcomp with attribute arch";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
@@ -3328,7 +3328,7 @@ sub chkkitcomp
             return 1;
         }
 
-        if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} ) {
+        if ( $os{$osimage}{arch} ne $kitcomps{$kitcomp}{osarch} && $kitcomps{$kitcomp}{osarch} ne 'noarch' ) {
             my %rsp;
             push@{ $rsp{data} }, "kit component $kitcomp is not compatible with osimage $osimage with attribute arch";
             xCAT::MsgUtils->message( "E", \%rsp, $callback );
@@ -4516,7 +4516,7 @@ sub get_compat_kitreponames {
         if (defined($kitrepo->{osminorversion}) && $kitrepo->{osminorversion} ne $osdistro->{minorversion}) {
             next;
         }
-        if (defined($kitrepo->{osarch}) && $kitrepo->{osarch} ne $osdistro->{arch}) {
+        if (defined($kitrepo->{osarch}) && $kitrepo->{osarch} ne $osdistro->{arch} && $kitrepo->{osarch} ne 'noarch') {
             next;
         }
 
