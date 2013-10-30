@@ -10,7 +10,9 @@ B<chkkitcomp> [B<-V>|B<--verbose>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
-The B<chkkitcomp> command will check if the kit components are compatible with the xCAT osimage.  This command will if the kitcompname_list provided on the command line is compatible with the osimage. 
+The B<chkkitcomp> command will check if the kit components are compatible with the xCAT osimage.
+
+This command will ignore the current osimage.kitcomponents setting, and just to check if the kitcompname list in the cmdline are compatible with the osimage by osversion/ostype/osarch/ and kit component dependencies.
 
 Note: The xCAT support for Kits is only available for Linux operating systems.
 

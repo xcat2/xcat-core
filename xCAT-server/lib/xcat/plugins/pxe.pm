@@ -205,7 +205,7 @@ sub setstate {
     close($pcfg);
     my $inetn = inet_aton($node);
     unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in pxe plugin");
+     syslog("local4|err","xCAT unable to resolve IP for $node in pxe plugin");
      return;
     }
   } else { #TODO: actually, should possibly default to xCAT image?
@@ -215,12 +215,12 @@ sub setstate {
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
   my %ipaddrs;
   unless (inet_aton($node)) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
     return;
   }
   my $ip = inet_ntoa(inet_aton($node));;
   unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+    syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
     return;
   }
   $ipaddrs{$ip} = 1;
@@ -288,7 +288,6 @@ sub preprocess_request {
         @args=($req->{arg});
     }
     @ARGV = @args;
-    
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     if (!GetOptions('h|?|help' => \$HELP, 'v|version' => \$VERSION) ) {
@@ -326,6 +325,7 @@ sub preprocess_request {
         return;
     }
 
+   #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
@@ -346,8 +346,8 @@ sub preprocess_request {
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      if (@CN >0 ) { # there are computenodes then run on all servicenodes
-        return xCAT::Scope->get_broadcast_scope($req,@_);
+      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes 
+         return xCAT::Scope->get_broadcast_scope($req,@_);
       }
    }
    return [$req];
@@ -524,12 +524,12 @@ sub process_request {
     foreach my $node (@nodes) {
       my %ipaddrs;
       unless (inet_aton($node)) {
-        syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+        syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
         return;
       }
       my $ip = inet_ntoa(inet_aton($node));;
       unless ($ip) {
-        syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+        syslog("local4|err","xCAT unable to resolve IP in pxe plugin");
         return;
       }
       $ipaddrs{$ip} = 1;

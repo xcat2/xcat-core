@@ -2107,8 +2107,8 @@ sub cleanupPSTable
 
 =head3   setupMNinDB 
 	
- Will add/replace the management node to the noderes table with group=__mgmtnode  
- Will add/replace the management node to the servicenode tble with group=__mgmtnode  
+ Will add the management node to the noderes table with group=__mgmtnode  
+ Will add the management node to the servicenode tble with group=__mgmtnode  
 
 
 =cut
@@ -2124,23 +2124,20 @@ sub setupMNinDB
 
    my $defined  = 0;
    my $cmds="XCATBYPASS=Y $::XCATROOT/sbin/tabdump nodelist | grep  __mgmtnode";
-   my $output = xCAT::Utils->runcmd("$cmds", -1);
-   if ($::RUNCMD_RC == 0)  # found a management node defined
+   my @output = xCAT::Utils->runcmd("$cmds", -1);
+   
+   if ($::RUNCMD_RC == 0)  # found nodes in __mgmtnode 
    {
       my $chtabcmds;
-      my @mn = split(",", $output);  
-      $mn[0] =~ s/"//g;   # remove the quotes
-      if  ($mn[0] ne $mnname) {   # does not match current host name,delete it
-        $chtabcmds = "$::XCATROOT/sbin/chtab -d node=$mn[0] nodelist;";
-        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-          xCAT::MsgUtils->message('E', "Could not run $chtabcmds.");
-          return;
+      # Look through the MN list and see if this MN is defined 
+      foreach my $line (@output) {
+        my @mn = split(",", $line);
+        $mn[0]=~ s/"//g;   # remove the quotes
+        if  ($mn[0] eq $mnname) {   # already in the database 
+             verbose("$mnname already defined in the the nodelist table.");
+             $defined=1;     
+             last;     
         }
-      } else {  # it is defined and good
-          xCAT::MsgUtils->message('I', "$mnname already defined in the nodelist table.");
-          $defined=1;     
       }
     }
     # now add with the new name , if not already there
@@ -2195,9 +2192,10 @@ sub setupMNinDB
      }
       
    } else { # it was already defined in the servicenode table
-         xCAT::MsgUtils->message('I', "$mnname was already defined in the servicenode table.");
+         verbose("$mnname already defined in the the servicenode table.");
            
    }
+   xCAT::MsgUtils->message('I', "Management Node defined in the database.");
    return; 
 }
 #-----------------------------------------------------------------------------

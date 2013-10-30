@@ -118,20 +118,23 @@ sub process_request
        if (/ssh_root_key/) { 
           unless (-r "$root/.ssh/id_rsa") {
             push @{$rsp->{'error'}},"Unable to read root's private ssh key";
+            `logger -t xCAT -p local4.info "credentials: Unable to read root's private ssh key"` ;
             next;
           }
           $tfilename = "$root/.ssh/id_rsa";
 
        } elsif (/xcat_server_cred/) {
           unless (-r "/etc/xcat/cert/server-cred.pem") {
-            push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
+            push @{$rsp->{'error'}},"Unable to read xcat_server_cred";
+            `logger -t xCAT -p local4.info "credentials: Unable to read xcat_server_cred"` ;
             next;
           }
           $tfilename = "/etc/xcat/cert/server-cred.pem";
 
        } elsif (/xcat_client_cred/ or /xcat_root_cred/) {
           unless (-r "$root/.xcat/client-cred.pem") {
-            push @{$rsp->{'error'}},"Unable to read root's private xCAT key";
+            push @{$rsp->{'error'}},"Unable to read xcat_client_cred or xcat_root_cred";
+            `logger -t xCAT -p local4.info "credentials: Unable to read xcat_client_cred or xcat_root_cred"` ;
             next;
           }
           $tfilename = "$root/.xcat/client-cred.pem";
@@ -143,6 +146,7 @@ sub process_request
 	  	$tfilename="/etc/xcat/hostkeys/ssh_host_dsa_key";
 	  } else {
              push @{$rsp->{'error'}},"Unable to read private DSA key from /etc/xcat/hostkeys";
+            `logger -t xCAT -p local4.info "credentials: Unable to read private DSA key"` ;
              next;
           }
        } elsif (/ssh_rsa_hostkey/) {
@@ -152,11 +156,13 @@ sub process_request
 	  	 $tfilename="/etc/xcat/hostkeys/ssh_host_rsa_key";
 	  } else {
              push @{$rsp->{'error'}},"Unable to read private RSA key from /etc/xcat/hostkeys";
+            `logger -t xCAT -p local4.info "credentials: Unable to read private RSA key"` ;
              next;
           }
        } elsif (/xcat_cfgloc/) {
           unless (-r "/etc/xcat/cfgloc") {
-            push @{$rsp->{'error'}},"Unable to read xCAT database location";
+            push @{$rsp->{'error'}},"Unable to read /etc/xcat/cfgloc ";
+            `logger -t xCAT -p local4.info "credentials: Unable to read /etc/xcat/cfgloc"` ;
             next;
           }
           $tfilename = "/etc/xcat/cfgloc";

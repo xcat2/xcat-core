@@ -3875,7 +3875,7 @@ sub build_depend {
       if (!defined($ent->{mpa})) {
         return("no mpa defined for node $name");
       }
-      my $id = (defined($ent->{id})) ? $ent->{id} : "";
+      my $id = (defined($ent->{id}) && $name ne $ent->{mpa}) ? $ent->{id} : "";
       push @{$mpa_hash{$name}},$ent->{mpa};
       push @{$mpa_hash{$name}},$id;
 
@@ -3887,7 +3887,7 @@ sub build_depend {
           if (!defined($ent->{mpa})) {
             return("no mpa defined for node $_");
           }
-          my $id = (defined($ent->{id})) ? $ent->{id} : "";
+          my $id = (defined($ent->{id}) && $ent->{mpa} ne $_) ? $ent->{id} : "";
           push @{$mpa_hash{$_}},$ent->{mpa};
           push @{$mpa_hash{$_}},$id;
         }
@@ -4158,7 +4158,7 @@ sub preprocess_request {
         $request = {};
         return;
     }
-    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
+    if (defined($ent->{id}) && $node ne $ent->{mpa}) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
     if (defined($mpatype{$ent->{mpa}})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $mpatype{$ent->{mpa}};}
     else { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, "mm";}
@@ -4220,7 +4220,7 @@ sub build_more_info{
         $callback->({data=>["no mpa defined for node $node"]});
         return @moreinfo;;
     }
-    if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
+    if (defined($ent->{id}) && $node ne $ent->{mpa}) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";} 
     if (defined($mpatype{$ent->{mpa}})) { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, $mpatype{$ent->{mpa}};}
     else { push @{$mpa_hash{$ent->{mpa}}{nodetype}}, "mm";} 
@@ -5308,6 +5308,11 @@ sub network {
   } else {
     return([1,"No changes specified"]);
   }
+  if (!$ip && !$host && !$gateway && !$mask) {
+    return([1, "No changes specified"]);
+  } elsif (!$ip) {
+    return([1, "No ip address specified"]);
+  }
 
   if ($ip)     { $cmd.=" -i $ip"; }
   if ($host)   { $cmd.=" -n $host"; }
@@ -5330,10 +5335,10 @@ sub network {
     @result = ();
   }
 
-  if ($ip)     { push @result,"IP: $ip"; }
-  if ($host)   { push @result,"Hostname: $host"; }
-  if ($gateway){ push @result,"Gateway: $gateway"; }
-  if ($mask)   { push @result,"Subnet Mask: $mask"; }
+  if ($mask)   { unshift @result,"Subnet Mask: $mask"; }
+  if ($gateway){ unshift @result,"Gateway: $gateway"; }
+  if ($host)   { unshift @result,"Hostname: $host"; }
+  if ($ip)     { unshift @result,"IP: $ip"; }
 
   return([0,@result]);
 

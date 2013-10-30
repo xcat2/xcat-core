@@ -553,12 +553,12 @@ sub nextdestiny {
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
   foreach $node (@nodes) {
     unless($chaintab) {
-      syslog("local1|err","ERROR: $node requested destiny update, no chain table");
+      syslog("local4|err","ERROR: $node requested destiny update, no chain table");
       return; #nothing to do...
     }
     my $ref =  $chainents->{$node}->[0]; #$chaintab->getNodeAttribs($node,[qw(currstate currchain chain)]);
     unless ($ref->{chain} or $ref->{currchain}) {
-      syslog ("local1|err","ERROR: node requested destiny update, no path in chain.currchain");
+      syslog ("local4|err","ERROR: node requested destiny update, no path in chain.currchain");
       return; #Can't possibly do anything intelligent..
     }
     unless ($ref->{currchain}) { #If no current chain, copy the default

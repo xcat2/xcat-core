@@ -694,6 +694,7 @@ sleep 0.05;
 	     	store_fd({data=>$data,sockaddr=>$saddr},$discoctl);
 	} else { # for *now*, we'll do a tiny YAML subset
 		if ($data =~ /^resourcerequest: xcatd$/) {
+		    $socket->send("ackresourcerequest\n",0,$packets{$pkey}->[0]);
 			$tcclients->{$pkey}={ sockaddr=>$packets{$pkey}->[0], timestamp=>time() }
 		}
 	} # JSON maybe one day if important
@@ -1064,9 +1065,9 @@ until ($quit) {
   }
   #we have a pending connection and we are under the threshold, grab one from the list and process it...
   my $cnnection=shift @pendingconnections;
-  my $previous = select ($cnnection); #assure that perl buffering is not in play at the low level
-  $|=1;
-  select ($previous);
+  #my $previous = select ($cnnection); #assure that perl buffering is not in play at the low level
+  #$|=1;
+  #select ($previous);
   my $connection;
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
   if ($child) {
@@ -1111,9 +1112,9 @@ until ($quit) {
     unless ($connection) {
        xexit 0;
     }
-    $previous=select($connection); #also assure buffering not in play at SSL socket, which seems to be possibly independent of lower socket
-    $|=1;
-    select($previous);
+  #  $previous=select($connection); #also assure buffering not in play at SSL socket, which seems to be possibly independent of lower socket
+  #  $|=1;
+  #  select($previous);
     $clientselect->add($connection);
     my $peerhost=undef;
     my $peerfqdn=undef;
@@ -2260,7 +2261,7 @@ sub enable_callingtrace{
   my @xcatdfuncs = (); # function list that will be enabled for xcatd
 
   # call the subroutine scan_plugins to fill the symbol table
-  scan_plugins();
+  #scan_plugins();
 
   # Backup the trace log
   my ($sec,$min,$hour,$mday,$mon,$year) = localtime();

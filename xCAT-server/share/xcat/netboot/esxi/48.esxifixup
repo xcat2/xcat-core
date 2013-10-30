@@ -1,6 +1,7 @@
 #!/bin/sh
 #first off, let's ditch UNMAP, per vwmare's recall...
 localcli system settings advanced set --int-value 0 --option /VMFS3/EnableBlockDelete
+localcli system settings advanced set --int-value 1 --option /UserVars/SuppressShellWarning
 #ok, now let's turn on some SSH and ESXShell fun
 localcli network firewall ruleset set -r sshServer -e y
 chkconfig ESXShell on

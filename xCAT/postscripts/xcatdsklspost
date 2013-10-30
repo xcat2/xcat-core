@@ -497,12 +497,15 @@ if [ ! -x /$xcatpost/mypostscript ]; then
     # first contact daemon  xcatflowrequest <server> 3001
     logger -t xCAT -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
    /$xcatpost/xcatflowrequest $SIP 3001
+   rc=$?
+   logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+   if [ $rc -ne 0 ]; then
+      logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+      useflowcontrol=0
+   fi 
   fi
   /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
 
-  if [ $useflowcontrol = "1" ]; then
-  logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
-  fi
 
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
@@ -525,11 +528,14 @@ if [ ! -x /$xcatpost/mypostscript ]; then
       # contact daemon  xcatflowrequest <server> 3001
       logger -t xCAT -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
       /$xcatpost/xcatflowrequest $SIP 3001
+      rc=$?
+      logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+      if [ $rc -ne 0 ]; then
+        logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+        useflowcontrol=0
+      fi 
     fi
     /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
-    if [ $useflowcontrol = "1" ]; then
-      logger -t xCAT -p local4.info "xcatdsklspost: received response /$xcatpost/xcatflowrequest $master 3001"
-    fi
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
@@ -553,6 +559,33 @@ if [ -n "$new_ms" ]; then
     else
 	echo "XCATSERVER=$new_ms" >> /opt/xcat/xcatinfo
     fi
+fi
+
+#save the USEFLOWCONTROL into the xcatinfo file  
+#for updatenode case, passwd in with the -f flag 
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
+    useflowcontrol=`grep '^USEFLOWCONTROL' /$xcatpost/mypostscript |cut -d= -f2`
+fi
+if [ ! -f /opt/xcat/xcatinfo ]; then
+	mkdir -p /opt/xcat
+	touch /opt/xcat/xcatinfo
+fi
+if [ -n "$useflowcontrol" ]; then
+    # lets just put YES or NO in xcatinfo
+    if [ "$useflowcontrol" = "1" ] || [ "$useflowcontrol" = "yes" ] || [ "$useflowcontrol" = "YES" ]; then
+       new_fc="YES"
+    else 
+       new_fc="NO"
+    fi
+    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    if [ $? -eq 0 ]; then
+	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
+    else
+	echo "USEFLOWCONTROL=$new_fc" >> /opt/xcat/xcatinfo
+    fi
+# no setting means do not use flowcontrol
+else
+    echo "USEFLOWCONTROL=NO" >> /opt/xcat/xcatinfo
 fi
 
 
@@ -732,7 +765,7 @@ echo "$TMP" >> /$xcatpost/mypostscript
 TMP=`sed "/# postbootscripts-start-here/,/# postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "$TMP" > /$xcatpost/mypostscript 
 
-if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /$xcatpost/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
