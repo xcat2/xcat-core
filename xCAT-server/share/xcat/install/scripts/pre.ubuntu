@@ -4,48 +4,7 @@ if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
 fi
 
-while [ -z "$instdisk" ]; do
-VIRTDISKS=`ls /dev/vd*|wc -l`
-if [ $VIRTDISKS -gt 0 ]; then 
-for disk in /dev/vd*[^0-9]; do
-	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-	#no edd_id in debian installer, no edd hints supported
-done
-fi
-if [ -z "$firstdirectdisk" ]; then
-	SCSIDISKS=`ls /dev/sd*|wc -l`
-	if [ $SCSIDISKS -gt 0 ]; then 
-	for disk in /dev/sd*[^0-9]; do
-		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
-		case "$currdriver" in
-			"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
-				if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resor
-				;;
-			 "mptsas"|"mpt2sas") #*PROBABLY* not SAN, but SAS SAN is possible
-				if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi
-				;;
-			*) # could be san or who knows what, use it as a last resort
-				if [ -z "$firstdisk" ]; then firstdisk=$disk; fi 
-				;;
-		esac
-	done
-	fi
-fi
-if [ -z "$instdisk" ]; then
-        if [ ! -z "$firstdirectdisk" ]; then
-                instdisk=$firstdirectdisk
-        elif [ ! -z "$probablyfirstdirectdisk" ]; then
-                instdisk=$probablyfirstdirectdisk
-        elif [ ! -z "$firstdisk" ]; then
-                instdisk=$firstdisk
-        fi
-fi
-if [ ! -z "$instdisk" ]; then debconf-set partman-auto/disk "$instdisk"; fi
 debconf-get open-iscsi/targets > /tmp/q
-sleep 0.1
-done &
-
-
 
 cat >/tmp/foo.sh <<EOF
 #!/bin/sh
