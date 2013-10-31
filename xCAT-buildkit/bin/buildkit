@@ -1933,6 +1933,10 @@ sub build_kitcomp
             my $avoiderr = $rpmbuild_dir."/BUILDROOT/prep_".$comp->{basename};
             $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
             mkpath($avoiderr);
+            my $current_osarch = `uname -p`;
+            chomp($current_osarch);
+            $avoiderr = $rpmbuild_dir."/BUILDROOT/prep_".$comp->{basename}."-$comp->{version}-$comp->{release}.$current_osarch";
+            mkpath($avoiderr);
             $avoiderr = $rpmbuild_dir."/BUILD/";
             mkpath($avoiderr);
             $avoiderr = $rpmbuild_dir."/SRPMS/";
@@ -1978,6 +1982,10 @@ sub build_kitcomp
     system($cmd);
     my $avoiderr = $rpmbuild_dir."/BUILDROOT/".$comp->{basename};
     $avoiderr .= "-$comp->{version}-$comp->{release}.$repo{osarch}";
+    mkpath($avoiderr);
+    my $current_osarch = `uname -p`;
+    chomp($current_osarch);
+    $avoiderr = $rpmbuild_dir."/BUILDROOT/".$comp->{basename}."-$comp->{version}-$comp->{release}.$current_osarch";
     mkpath($avoiderr);
     $avoiderr = $rpmbuild_dir."/BUILD/";
     mkpath($avoiderr);
