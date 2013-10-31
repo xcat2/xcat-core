@@ -54,7 +54,7 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -a postscripts/* $RPM_BUILD_ROOT/install/postscripts
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
 
-cp -a templates/mypostscript/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
+cp -a templates/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates/*
 
 %clean
