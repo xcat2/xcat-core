@@ -131,7 +131,7 @@ sub configfpc {
 	my $ipmiuser = 'USERID';
 	my $ipmipass = 'PASSW0RD';
 	my $fpcip = '192.168.0.100';
-	my $defnode = "deffpc";
+	my $defnode = 'deffpc';
 
 	# This is the default FPC IP that we are looking for 
 	my $foundfpc = 0;
@@ -139,7 +139,7 @@ sub configfpc {
 	# Setup routing to 182.168.0.100 network
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Adding route definition for 192.168.0.101/16 to the $::interface network interface";
+		push@{ $rsp{data} }, "Adding route definition for 192.168.0.101/16 to $::interface interface";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	my $setroute = `ip addr add dev $::interface 192.168.0.101/16`;
@@ -265,15 +265,9 @@ sub configfpc {
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 
-	if($::VERBOSE){ $::VERBOSE = {}; }
-	#if($::VERBOSE){ undef $::VERBOSE; }
 
-	my $out=xCAT::Utils->runxcmd( 
-		{ 
-		command => ['rmdef'],
-		arg     => [ $defnode ]
-		}, 
-		$subreq, 0,1);
+	# Remove the defnode node entry
+	my $out = xCAT::Utils->runxcmd({command=>["noderm"], node=>["$defnode"]}, $subreq, 0, 2);
 
 	return 1;
 }
@@ -438,7 +432,7 @@ sub get_node {
 	# verbose
 	if($::VERBOSE){
 		my %rsp = {};
-		push@{ $rsp{data} }, "Found IP $fpcip with MAC $fpcmac associated with node $node";
+		push@{ $rsp{data} }, "Mapped MAC $fpcmac to node $node";
 		xCAT::MsgUtils->message( "I", \%rsp, $callback );
 	}
 	
