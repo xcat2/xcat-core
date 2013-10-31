@@ -167,7 +167,7 @@ sub process_request
         unless ( -r "$tmplfile") {
             my $rsp;
             $rsp->{errorcode}->[0]=1;
-            $rsp->{error}->[0]="The $cloud environment template $tmplfile doesn't exist.";
+            $rsp->{error}->[0]="The environment template for the cloud $cloud doesn't exist. Please check the clouds table";
             $callback->($rsp);
             next;
         }
@@ -175,7 +175,7 @@ sub process_request
         unless ( -r "$repos") {
             my $rsp;
             $rsp->{errorcode}->[0]=1;
-            $rsp->{error}->[0]="The $cloud repository $repos doesn't exist.";
+            $rsp->{error}->[0]="The repository $repos for the cloud $cloud doesn't exist. Pleae check the clouds table.";
             $callback->($rsp);
             next;
         }

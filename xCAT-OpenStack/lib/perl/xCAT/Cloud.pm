@@ -145,12 +145,13 @@ sub getcloudres
         }
         #$cloudres .= "hput $client cloud $cloud\n";
         $cloudres .= "HASH".$client."cloud='$cloud'\nexport HASH".$client."cloud\n";
-        if ( $cloudlist !~ $cloud ) {
-            $cloudlist .="$cloud,";
+        if( defined($cloud) ) {
+            if ( $cloudlist !~ $cloud ) {
+                $cloudlist .="$cloud,";
+            }
         }
-       
         my $t = $cloudinfo_hash->{$cloud}->{repository};
-        if( !defined($repos) ) {
+        if( !defined($repos) && defined($t) ) {
             $repos =  $t;
         }
         if( defined($repos) && ( $repos != $t && "$repos/" != $t && $repos != "$t/" ) ) {
