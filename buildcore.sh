@@ -183,6 +183,11 @@ if [ "$GIT" = "1" ]; then			# using git
 		GITUP=../coregitup
 		echo "git pull > $GITUP"
 		git pull > $GITUP
+		if [[ $? != 0 ]]; then
+			# do not continue so we do not build with old files
+			echo "The 'git pull' command failed.  Exiting the build."
+			exit 3
+		fi
 	fi
 	if ! $GREP 'Already up-to-date' $GITUP; then
 		SOMETHINGCHANGED=1
