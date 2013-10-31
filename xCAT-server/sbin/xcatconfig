@@ -1051,6 +1051,20 @@ sub is_debian
     return 0;
 }
 
+sub is_redhat6sp4
+{
+    if( -e "/etc/redhat-release" ){
+        open(my $relfile, "<", "/etc/redhat-release");
+        my $line = <$relfile>;
+        close($relfile);
+        if ( $line =~ /Red Hat Enterprise Linux Server release 6.4/i ){
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 # on Ubuntu need to painstakingly compare /etc/localtime with files under
 # /usr/share/zoneinfo since /etc/localtime # isn't always a symbolic link
 sub discover_timezone_ubuntu
@@ -2233,6 +2247,13 @@ sub startnamedonboot
             $serv = "bind9";
             $cmd = "update-rc.d $serv enable";
         }
+
+        #"service named start" is very slowly,sometimes hang in rhels6.4 after installation
+        #a work around is to generate /etc/rndc-key during xCAT installation
+        if( is_redhat6sp4() ){
+           system("rndc-confgen -a -r /dev/urandom");
+        }
+
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {

@@ -125,6 +125,8 @@ sub handled_commands{
 		rpower => 'nodehm:power,mgt',
 		rsetboot => 'nodehm:power,mgt',
 		rmigrate => 'nodehm:power,mgt',
+        formatdisk => "nodetype:os=(esxi.*)",
+        rescansan => "nodetype:os=(esxi.*)",
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
         clonevm => 'nodehm:mgt',
@@ -210,7 +212,7 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host','migrationdest']);
 	foreach my $node (@$noderange){
-        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor") {
+        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor" or $command eq "formatdisk" or $command eq 'rescansan') {
             $hyp_hash{$node}{nodes} = [$node];
         } else {
         my $ent = $vmtabhash->{$node}->[0];
@@ -319,6 +321,7 @@ sub process_request {
     if ($request->{_xcat_authname}->[0]) {
         $requester=$request->{_xcat_authname}->[0];
     }
+    %vcenterhash = ();#A data structure to reflect the state of vcenter connectivity to hypervisors
 	my $level = shift;
 	my $distname = undef;
 	my $arch = undef;
@@ -636,6 +639,10 @@ sub do_cmd {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
     } elsif ($command eq 'rinv') {
         generic_vm_operation(['config.name','config','runtime.host','layoutEx'],\&inv,@exargs);
+    } elsif ($command eq 'formatdisk') {
+        generic_hyp_operation(\&formatdisk,@exargs);
+    } elsif ($command eq 'rescansan') {
+        generic_hyp_operation(\&rescansan,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'rshutdown') {
@@ -2169,6 +2176,48 @@ sub rshutdown_inmaintenance {
         }
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
+    }
+    return;
+}
+
+sub rescansan {
+    my %args = @_;
+    my $hyp = $args{hyp};
+    my $hostview = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']);
+    if (defined $hostview) {
+        my $hdss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->storageSystem);
+        $hdss->RescanAllHba();
+        $hdss->RescanVmfs();
+    }
+}
+
+sub formatdisk {
+    my %args = @_;
+    my $hyp = $args{hyp};
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn},properties=>['config','configManager']);
+    @ARGV = @{$args{exargs}};
+    my $nid;
+    my $name;
+    GetOptions(
+        'id=s' => \$nid,
+        'name=s' => \$name,
+        );
+    my $hostview = $hyphash{$hyp}->{hostview};
+    if (defined $hyphash{$hyp}->{hostview}) {
+        my $hdss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->storageSystem);
+        $hdss->RescanAllHba();
+        my $dss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
+        my $diskList = $dss->QueryAvailableDisksForVmfs(); 
+        foreach my $disk (@$diskList) {
+            foreach my $id (@{$disk->{descriptor}}) {
+                if (lc($id->{id}) eq lc('naa.'.$nid)) {
+                    my $options = $dss->QueryVmfsDatastoreCreateOptions(devicePath => $disk->devicePath);
+                    @$options[0]->spec->vmfs->volumeName($name);
+                    my $newDatastore = $dss->CreateVmfsDatastore(spec => @$options[0]->spec );
+                }
+            }
+        }
+
     }
     return;
 }
@@ -4925,7 +4974,6 @@ sub cpNetbootImages {
 		    chdir($tmpDir);
             xCAT::SvrUtils::sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n", $output_handler);
             my $cmd = "tar zxf $srcDir/image.tgz";
-            print "\n$cmd\n";
             if(system($cmd)){
                 xCAT::SvrUtils::sendmsg([1,"Unable to extract $srcDir/image.tgz\n"], $output_handler); 
             }
@@ -4937,13 +4985,11 @@ sub cpNetbootImages {
 	
             # now we need to get partition 5 which has the installation goods in it.
             my $scmd = "fdisk -lu $tmpDir/usr/lib/vmware/installer/*dd 2>&1 | grep dd5 | awk '{print \$2}'";
-            print "running: $scmd\n";
             my $sector = `$scmd`;
             chomp($sector);
             my $offset = $sector * 512;
             mkdir "/mnt/xcat";
             my $mntcmd = "mount $tmpDir/usr/lib/vmware/installer/*dd  /mnt/xcat -o loop,offset=$offset";
-            print "$mntcmd\n";
             if(system($mntcmd)){
                 xCAT::SvrUtils::sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"], $output_handler);
                 return;
@@ -4965,7 +5011,6 @@ sub cpNetbootImages {
             }
             chdir("/tmp");
             system("umount /mnt/xcat");
-            print "tempDir: $tmpDir\n";
             system("rm -rf $tmpDir");
             } elsif (-r "$srcDir/cim.vgz" and -r "$srcDir/vmkernel.gz" and -r "$srcDir/vmkboot.gz" and -r "$srcDir/sys.vgz") {
                 use File::Basename;
