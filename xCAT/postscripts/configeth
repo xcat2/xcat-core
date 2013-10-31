@@ -23,7 +23,8 @@ use File::Path;
 #process arguments. Currently supported arguments are:
 # -c nics_to_configure,
 # -u nics_to_unconfigure
-# Both arguments are comma separated list of nics, i.e. eth0,eth1,ib0,ib1
+# -s nics_to_configured_with_dhcplease
+# All the arguments are comma separated list of nics, i.e. eth0,eth1,ib0,ib1
 # it is possible that only -u may be specified to unconfigure nics and there will be no 
 # nics to configure. Likewise, there may be nics to configure but not nics to unconfigure.
 my $nics = '';
@@ -50,6 +51,17 @@ while ($a = shift(@ARGV)) {
         }
         else {
             $rm_nics = $a;
+        }
+    }
+    elsif ($a eq "-s") {
+        $a = shift(@ARGV);
+        if (!$a || $a=~/^-/) {
+            # no arg specified for -s
+            system("logger -t xcat -p local4.err  'configeth: No argument specified for -s flag'");
+            exit 1;
+        }
+        else {
+            sprocess($a);
         }
     }
 }
@@ -591,6 +603,136 @@ for ($j=0; $j < (scalar @nics_to_install); $j++) {
     }
 }
 exit 0;
+
+sub sprocess () {
+    my $str_inst_nic = shift;
+    my $str_lease_file;
+    my $str_inst_ip;
+    my $str_inst_mask;
+    my $str_inst_gateway;
+    my $str_inst_mac;
+    my $str_conf_file;
+    
+    if ($^O =~ /^aix/i) {
+        system("logger -t xcat -p local4.err  'configeth: aix does not support -s flag'");    
+        exit 0;
+    } elsif (-r "/etc/debian_version" ){
+        $str_lease_file = "/var/lib/dhcp/dhclient.".$str_inst_nic.".leases";
+        if (-r $str_lease_file) {
+            chomp($str_inst_ip = `grep fixed-address $str_lease_file | tail -n 1 | awk '{print \$2}' | sed 's/;\$//'`);
+            chomp($str_inst_mask = `grep subnet-mask $str_lease_file | tail -n 1 | awk '{print \$3}' | sed 's/;\$//'`);
+            chomp($str_inst_gateway = `grep routers $str_lease_file | tail -n 1 | awk '{print \$3}' | sed 's/;\$//'`);
+        }    
+    } elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) {
+        $str_lease_file = "/var/lib/dhcpcd/dhcpcd-".$str_inst_nic.".info";
+        if (-r $str_lease_file) {
+            chomp($str_inst_ip = `grep IPADDR $str_lease_file | tail -n 1 | awk -F'=' '{print \$2}' | sed "s/\'//g"`);
+            chomp($str_inst_mask = `grep NETMASK $str_lease_file | tail -n 1 | awk -F'=' '{print \$2}' | sed "s/\'//g"`);
+            chomp($str_inst_gateway = `grep GATEWAYS $str_lease_file | tail -n 1 | awk -F'=' '{print \$2}' | sed "s/\'//g"`);
+        }    
+    } else  { 
+        $str_lease_file = `ls /var/lib/dhclient/*$str_inst_nic* | grep leases`;
+        chomp($str_lease_file);
+        if (-r $str_lease_file) {
+            chomp($str_inst_ip = `grep fixed-address $str_lease_file | tail -n 1 | awk '{print \$2}' | sed 's/;\$//'`);
+            chomp($str_inst_mask = `grep subnet-mask $str_lease_file | tail -n 1 | awk '{print \$3}' | sed 's/;\$//'`);
+            chomp($str_inst_gateway = `grep routers $str_lease_file | tail -n 1 | awk '{print \$3}' | sed 's/;\$//'`);
+        }             
+    }
+
+    if($ENV{MACADDRESS}) {
+        $str_inst_mac = $ENV{MACADDRESS};
+    } else {
+        chomp($str_inst_mac = `ifconfig $str_inst_nic | grep HWaddr | awk -F'HWaddr' '{print \$2}' | sed 's/\s*//'`);
+    }
+    
+    unless ( "$str_inst_ip" or "$str_inst_mask" ){
+        system("logger -t xcat -p local4.err  'configeth: config install nic, can not find the information from lease file, return.'");    
+        exit 0
+    }
+
+    if (-r "/etc/debian_version" ) {
+        $str_conf_file = "/etc/network/interfaces.d/".$str_inst_nic;
+        if(!open (FILE, ">$str_conf_file")){system("logger -t xcat -p local4.err  'configeth: config install nic, can not open interfaces file, return.'");  exit 1;};
+        print FILE "auto $str_inst_nic \n";
+        print FILE "iface $str_inst_nic inet static\n";
+        print FILE "  address $str_inst_ip\n";
+        print FILE "  netmask $str_inst_mask\n";
+        print FILE "  hwaddress ether $str_inst_mac\n";
+        if ($str_inst_gateway) { print FILE "  gateway $str_inst_gateway \n"; }
+        close FILE;
+        my $hostname = $ENV{NODE};
+        `hostname $hostname`;
+        my $hostfile = "/etc/hostname";
+        if(!open (FILE, ">$hostfile")){system("logger -t xcat -p local4.err  'configeth: config install nic, can not open $hostfile file, return.'");  exit 1;};
+        print FILE "$hostname\n";
+        close FILE;
+    }    
+    elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-r "/etc/SuSE-release")) {
+        $str_conf_file="/etc/sysconfig/network/ifcfg-".$str_inst_nic;
+        if(!open (FILE, ">$str_conf_file")){system("logger -t xcat -p local4.err  'configeth: config install nic, can not open $str_conf_file file, return.'");  exit 1;};
+        print FILE "DEVICE=$str_inst_nic\n";  
+        print FILE "BOOTPROTO=static\n";
+        print FILE "IPADDR=$str_inst_ip\n";
+        print FILE "NETMASK=$str_inst_mask\n";
+        print FILE "HWADDR=$str_inst_mac\n";
+        print FILE "STARTMODE=onboot\n";
+        close FILE;
+        
+        if ($str_inst_gateway) {
+            chomp(my $default = `grep -i "default" /etc/sysconfig/network/routes`);
+            if ($default) {
+                `sed -i "s/.*default.*/default ${str_inst_gateway} - -/i" /etc/sysconfig/network/routes`;
+            } else {
+                `echo "default $str_inst_gateway - -" >> /etc/sysconfig/network/routes`;
+            }
+        }
+        
+        my $node = $ENV{NODE};
+        `hostname $node`;
+        my $hostfile = "/etc/HOSTNAME";
+        if(!open (FILE, ">$hostfile")){system("logger -t xcat -p local4.err  'configeth: config install nic, can not open $hostfile file, return.'");  exit 1;};
+        print FILE "$ENV{NODE}\n";
+        close FILE;       
+    }
+    else {
+        $str_conf_file="/etc/sysconfig/network-scripts/ifcfg-".$str_inst_nic;
+        open (FILE, ">$str_conf_file");
+        print FILE "DEVICE=$str_inst_nic\n"; 
+        print FILE "IPADDR=$str_inst_ip\n";
+        print FILE "NETMASK=$str_inst_mask\n";
+        print FILE "BOOTPROTO=static\n";
+        print FILE "ONBOOT=yes\n";
+        print FILE "HWADDR=$str_inst_mac\n";
+        close FILE; 
+ 
+        my $netfile = "/etc/sysconfig/network";
+        if(!open (FILE, ">>$netfile")){
+            system("logger -t xcat -p local4.err  'configeth: can not open $netfile file, return.'");  
+            exit 1;
+        } 
+        if ($str_inst_gateway) {
+            chomp(my $gatewayflag = `grep -i "GATEWAY" /etc/sysconfig/network`);
+            if ($gatewayflag) {
+                `sed -i "s/.*GATEWAY.*/GATEWAY=$str_inst_gateway/i" /etc/sysconfig/network`;
+            } else {
+                print FILE "GATEWAY=$str_inst_gateway\n"; 
+            }
+        }
+        
+        my $hostname = $ENV{NODE};
+       `hostname $hostname`;
+        my $hostflag = `grep -i "HOSTNAME" $netfile`;
+        if ($hostflag) {
+            `sed -i "s/.*HOSTNAME.*/HOSTNAME=$hostname/i" /etc/sysconfig/network`;
+        }else {
+            print FILE "HOSTNAME=$hostname\n"; 
+        } 
+        close FILE; 
+    }
+    exit 0;
+}
+
 
 
 sub runcmd {
