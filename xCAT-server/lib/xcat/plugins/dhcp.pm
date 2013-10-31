@@ -122,6 +122,9 @@ sub handled_commands
     return {makedhcp => "dhcp",};
 }
 
+######################################################
+# List nodes in DHCP for both IPv4 and IPv6
+######################################################
 sub listnode
 {
     my $node  = shift;
@@ -140,7 +143,9 @@ sub listnode
     my $pwtab = xCAT::Table->new("passwd");
     my @pws = $pwtab->getAllAttribs('key','username','password','cryptmethod','authdomain','comments','disable');
     foreach (@pws) {
+        # Look for the opapi entry in the passwd table
         if ($_->{key} =~ "omapi") { #omapi key
+            # save username and password for omapi connection
             $omapiuser = $_->{username};
             $omapikey = $_->{password};
         }
@@ -154,49 +159,62 @@ sub listnode
         }
      }
 
-    # open ipv4 omshell file handles
+    # open ipv4 omshell file handles - $OMOUT will contain the response
     open2($OMOUT,$OMIN,"/usr/bin/omshell ");
 
+    # setup omapi for the connection and check for the node requested
     print $OMIN "key "
      . $omapiuser . " \""
      . $omapikey . "\"\n";
     print $OMIN "connect\n";
     print $OMIN "new host\n";
+    # specify which node we are looking up
     print $OMIN "set name = \"$node\"\n";
     print $OMIN "open\n";
+    # the close will put the data into $OMOUT
     print $OMIN "close\n";
     close ($OMIN);
     my $name = 0;
+
+    # Process the output 
     while (<$OMOUT>) {     # now read the output of sort(1)
-	chomp $_;
+        chomp $_;
+        # if this line contains the node name
         if ($_ =~ $node) {
-                if ($name) {
-			$nname = $_;
-			$nname =~ s/name = //;
-			$nname =~ s/"//g;
-                }
-                $name =1;
-                }
-        if ($_ =~ 'hardware-address') {
-		$hwaddr = $_;
+            # save the name returned 
+            if ($name) {
+                $nname = $_;
+                $nname =~ s/name = //;
+                $nname =~ s/"//g;
+            }
+            $name =1;
         }
+        # if this line is the hardware-address line
+        if ($_ =~ 'hardware-address') {
+            # save the hardware address as it is with the hardware-address label
+            $hwaddr = $_;
+        }
+        # if this line is the ip-address line
         elsif ($_ =~ 'ip-address') {
-                my ($ipname,$ip) = split /= /,$_;
-                chomp($ip);
-                my ($p1, $p2, $p3, $p4) = split(/\:/, $ip);
-                my $dp1 = hex($p1);
-                my $dp2 = hex($p2);
-                my $dp3 = hex($p3);
-                my $dp4 = hex($p4);
-		$ipaddr = "ip-address = $dp1.$dp2.$dp3.$dp4";
+            # convert the hex IP address to a dotted decimal address for readability
+            my ($ipname,$ip) = split /= /,$_;
+            chomp($ip);
+            my ($p1, $p2, $p3, $p4) = split(/\:/, $ip);
+            my $dp1 = hex($p1);
+            my $dp2 = hex($p2);
+            my $dp3 = hex($p3);
+            my $dp4 = hex($p4);
+            $ipaddr = "ip-address = $dp1.$dp2.$dp3.$dp4";
         }
     }
+    # if we collected the ip address then print out the information for this node
     if ($ipaddr) { 
 	push @{$rsp->{data}}, "$nname: $ipaddr, $hwaddr";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     close ($OMOUT);
 
+    # if using IPv6 addresses check using omshell IPv6 port
     if ($usingipv6) {
          open2($OMOUT6,$OMIN6,"/usr/bin/omshell ");
          print $OMOUT6 "port 7912\n";
@@ -206,15 +224,17 @@ sub listnode
           . $omapikey . "\"\n";
          print $OMIN6 "connect\n";
          print $OMIN6 "new host\n";
+         # check for the node specified
          print $OMIN6 "set name = \"$node\"\n";
          print $OMIN6 "open\n";
          print $OMIN6 "close\n";
          close ($OMIN6);
          $name = 0;
          $ipaddr = "";
-         while (<$OMOUT6>) {     # now read the output of sort(1)
+         while (<$OMOUT6>) {     # now read the output 
 	     chomp $_;
              if ($_ =~ $node) {
+                # save the name
                 if ($name) {
 			$nname = $_;
 			$nname =~ s/name = //;
@@ -223,17 +243,21 @@ sub listnode
                 $name =1;
                 }
              if ($_ =~ 'hardware-address') {
+             # save the hardware-address   
 		$hwaddr = $_;
              }
              elsif ($_ =~ 'ip-address') {
+                #save the ip address
                 my ($ipname,$ipaddr) = split /= /,$_;
                 chomp($ipaddr);
              }
          }
+         # print the information if the ip address is found
          if ($ipaddr) { 
 	     push @{$rsp->{data}}, "$nname: $ipaddr, $hwaddr";
 	     xCAT::MsgUtils->message("I", $rsp, $callback);
          }
+         # close the IPv6 output file handle
      close ($OMOUT6);
      }
 }
@@ -643,11 +667,13 @@ sub addnode
 
             print $omshell "create\n";
             print $omshell "close\n";
-            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
-            {
-                push @dhcpconf,
-                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
-            }
+    	    unless ($::XCATSITEVALS{externaldhcpservers}) { 
+	            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
+	            {
+	                push @dhcpconf,
+	                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file (typically /var/lib/dhcpd/dhcpd.leases)\n";
+            	}
+	    }
         }
         $count = $count + 2;
     }
@@ -876,6 +902,7 @@ sub check_options
         return 1;
      }
 
+
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
         my $rsp = {};
@@ -885,30 +912,35 @@ sub check_options
     }
 }
 
+############################################################
+# preprocess_request will perform syntax checking and do basic precess checking
+############################################################
 sub preprocess_request
 {
     my $req = shift;
     my $callback = shift;
     my $rc       = 0;
-    
+   
+    # check the syntax 
     check_options($req,$callback);
   
     my $snonly=0;
-	my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
-	my $t_entry = $entries[0];
-	if (defined($t_entry)) {
-	    $snonly=$t_entry;
-	}
+    my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
+    my $t_entry = $entries[0];
+    if (defined($t_entry)) {
+	$snonly=$t_entry;
+    }
     my @requests=();
     my $hasHierarchy=0;
 
     my @nodes=();
-    # if the network option is specified
+    # if the new option is not specified
     if (!$::opt_n) {
+	# save the node names specified    
 	if ($req->{node}) {
 	    @nodes=@{$req->{node}};
 	}
-        # if option all 
+	# if option all 
 	elsif($::opt_a) {
 	    # if option delete - Delete all node entries, that were added by xCAT, from the DHCP server configuration.
 	    if ($::opt_d)
@@ -936,8 +968,8 @@ sub preprocess_request
 	} # end - if -a
 
 	# don't put compute node entries in for AIX nodes
-    # this is handled by NIM - duplicate entires will cause
-    # an error
+	# this is handled by NIM - duplicate entires will cause
+	# an error
 	if ($^O eq 'aix') {
 		my @tmplist;
 		my $Imsg;
@@ -950,13 +982,16 @@ sub preprocess_request
 			    if ($mytype->{nodetype} =~ /osi/) {
 				$Imsg++;
 			    }
+			    # if its aix and not "osi" then add it to the list of nodes
 			    unless ($mytype->{nodetype} =~ /osi/) {
 				    push @tmplist, $n;
 			    }
             }
 		}
+		# replace nodes with the tmplist of nodes that are not osi nodetype
 		@nodes = @tmplist;
 
+		# if any nodes were found with a ndoetype of osi - issue message that they are handled by NIM
 		if ($Imsg) {
 			my $rsp;
 			push @{$rsp->{data}}, "AIX nodes with a nodetype of \'osi\' will not be added to the dhcp configuration file.  This is handled by NIM.\n";
@@ -965,14 +1000,20 @@ sub preprocess_request
 	}
 	}
 
+    # If service node and not -n option
     if (($snonly == 1) && (!$::opt_n)) {
+	# if a list of nodes are specified
         if (@nodes > 0) {
+	    # get the hash of service nodes
 	    my $sn_hash =xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes,"xcat","MN"); 
+	    # if processing only on the local host
 	    if ($localonly) {
 		#check if this node is the service node for any input node
 		my @hostinfo=xCAT::NetworkUtils->determinehostname();
 		my %iphash=();
+		# flag the hostnames in iphash
 		foreach(@hostinfo) {$iphash{$_}=1;}
+		# compare the service node hash with the iphash - a match adds this service node 
 		foreach(keys %$sn_hash) {
 		    if (exists($iphash{$_})) {
 			my $reqcopy = {%$req};
@@ -983,9 +1024,10 @@ sub preprocess_request
 		    }
 		}
 	    } else {
+		# check to see if dhcp is running on service nodes
 		my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
 		if (@sn > 0) { $hasHierarchy=1;}
-
+		# create a request for each service node
 		foreach(keys %$sn_hash) {
 		    my $reqcopy = {%$req};
 		    $reqcopy->{'node'}=$sn_hash->{$_};
@@ -994,10 +1036,14 @@ sub preprocess_request
 		    push @requests, $reqcopy;
 		}
 	    }
-	}
-    } elsif (@nodes > 0 or $::opt_n) { #send the request to every dhservers
+	}   # list of nodes specified
+    # if new specified or there are nodes
+    } # end if service node only and NOT -n option
+    # if -n option or nodes were specified
+    elsif (@nodes > 0 or $::opt_n) { #send the request to every dhservers
         $req->{'node'}=\@nodes;
        	@requests = ({%$req});    #Start with a straight copy to reflect local instance
+	# if not localonly - get list of service nodes and create requests
 	unless ($localonly) {
 	    my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
 	    if (@sn > 0) { $hasHierarchy=1; }
@@ -1021,6 +1067,7 @@ sub preprocess_request
 	{
 	    foreach (@{$ntab->getAllEntries()})
 	    {
+		# if dynamicrange specified but dhcpserver was not - issue error message
 		if ($_->{dynamicrange} and not $_->{dhcpserver})
 		{
 		    $callback->({error=>["Hierarchy requested, therefore networks.dhcpserver must be set for net=".$_->{net}.""],errorcode=>[1]});
@@ -1033,40 +1080,47 @@ sub preprocess_request
     return \@requests;
 
 }
-
+ 
+#############################################################################
+# process_request will perform syntax checking and do basic process checkingi
+# and call other functions to complete the request to add or delete entries
+#############################################################################
 sub process_request
 {
-    my $oldmask = umask 0077;
-    $restartdhcp=0;
     my $req = shift;
     $callback = shift;
+    my $oldmask = umask 0077;
+    $restartdhcp=0;
+    my $rsp;
     #print Dumper($req);
 
     # Check options again in case we are called from plugin and options have not been processed
     check_options($req,$callback);
 
+    # if option is query then call listnode for each node and return 
     if ($::opt_q)
         {
+	# call listnode for each node requested
         foreach my $node ( @{$req->{node}} ) {
                 listnode($node,$callback);
          }
     return;
     }
 
-    #if current node is a servicenode, make sure that it is also a dhcpserver
+    # if current node is a servicenode, make sure that it is also a dhcpserver
     my $isok=1;
     if (xCAT::Utils->isServiceNode()) {
-	$isok=0;
-	my @hostinfo=xCAT::NetworkUtils->determinehostname();
-	my %iphash=();
-	foreach(@hostinfo) {$iphash{$_}=1;}
-	my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
-	foreach my $s (@sn)
-	{
-	    if (exists($iphash{$s})) {
-		$isok=1;
-	    }
-	}
+	   $isok=0;
+	   my @hostinfo=xCAT::NetworkUtils->determinehostname();
+	   my %iphash=();
+	   foreach(@hostinfo) {$iphash{$_}=1;}
+	   my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
+	   foreach my $s (@sn)
+	   {
+	       if (exists($iphash{$s})) {
+		      $isok=1;
+	       }
+	   }
     }
     
     if($isok == 0) { #do nothing if it is a service node, but not dhcpserver
@@ -1172,7 +1226,8 @@ sub process_request
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
-   if ($::opt_n)
+   if ($::XCATSITEVALS{externaldhcpservers}) { #do nothing if remote dhcpservers at this point
+   } elsif ($::opt_n)
     {
         if (-e $dhcpconffile)
         {
@@ -1574,9 +1629,15 @@ sub process_request
             print $omshell "key "
                 . $ent->{username} . " \""
                 . $ent->{password} . "\"\n";
+	    if ($::XCATSITEVALS{externaldhcpservers}) {
+	    	print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+	    }
             print $omshell "connect\n";
             if ($usingipv6) {
                 open($omshell6, "|/usr/bin/omshell > /dev/null");
+	    	if ($::XCATSITEVALS{externaldhcpservers}) {
+		    	print $omshell "server $::XCATSITEVALS{externaldhcpservers}\n";
+		    }
                 print $omshell6 "port 7912\n";
                 print $omshell6 "key "
                     . $ent->{username} . " \""
@@ -1658,7 +1719,7 @@ sub process_request
         }
     }
     writeout();
-    if ($restartdhcp) {
+    if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
         if ( $^O eq 'aix')
         {
             restart_dhcpd_aix();
@@ -1812,6 +1873,7 @@ sub putmyselffirst {
 }
 sub addnet6
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $netentry = shift;
     my $net = $netentry->{net};
     my $iface = $netentry->{iface};
@@ -1859,7 +1921,7 @@ sub addnet6
     unless ($netdomain) { $netdomain = $site_domain; }
     push @netent, "    option domain-name \"".$netdomain."\";\n";
 
-    #  add domain-search if not sles10 or rh5
+	#  add domain-search if not sles10 or rh5
     my $osv = xCAT::Utils->osver();
     unless ( ($osv =~ /^sle[sc]10/) || ($osv =~ /^rh.*5$/) ) {
 	    # We want something like "option domain-search "foo.com", "bar.com";"
@@ -1869,7 +1931,7 @@ sub addnet6
 		    if ($dom ne $netcfgs{$net}->{domain}){
 			    $domainstring .= qq~, "$dom"~;
 		    }
-		}
+	    }
 
 	    if ($netcfgs{$net}->{domain}) {
 		    push @netent, "    option domain-search  $domainstring;\n";
@@ -1911,6 +1973,7 @@ sub addnet6
 }
 sub addnet
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $net  = shift;
     my $mask = shift;
     my $nic;
@@ -1982,7 +2045,9 @@ sub addnet
             my $mask_formated = $mask;
             if ( $^O eq 'aix')
             {
-                $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << (32 - $mask)));
+                my $mask_shift = 32 - $mask;
+                $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << $mask_shift));
+             #  $mask_formated = inet_ntoa(pack("N", 2**$mask - 1 << (32 - $mask)));
             }
 
             my ($ent) =
@@ -2168,13 +2233,13 @@ sub addnet
 			    chomp $dom;
 			    if ($dom ne $domain){
 				    $domainstring .= qq~, "$dom"~;
-			    }
+			   }
 		    }
 
 		    if ($domain) {
 			    push @netent, "    option domain-search  $domainstring;\n";
-		    }
-        }
+            }
+		}
 
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
@@ -2337,6 +2402,7 @@ sub gen_aix_net
 
 sub addnic
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     my $nic        = shift;
     my $conf       = shift;
     my $firstindex = 0;
@@ -2374,6 +2440,7 @@ sub addnic
 
 sub writeout
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
 
 	# add the new entries to the dhcp config file
     my $targ;
@@ -2427,6 +2494,7 @@ sub writeout
 }
 
 sub newconfig6 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     #phase 1, basic working
     #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
     push @dhcp6conf, "#xCAT generated dhcp configuration\n";
@@ -2463,6 +2531,7 @@ sub newconfig6 {
 
 sub newconfig
 {
+    if ($::XCATSITEVALS{externaldhcpservers}) { return; }
     return newconfig_aix() if ( $^O eq 'aix');
 
     # This function puts a standard header in and enough to make omapi work.
