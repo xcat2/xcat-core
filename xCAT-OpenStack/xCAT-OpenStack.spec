@@ -54,8 +54,8 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/*
 cp -a postscripts/* $RPM_BUILD_ROOT/install/postscripts
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
 
-cp -a share/xcat/mypostscript/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/mypostscript
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/mypostscript/*
+cp -a share/xcat/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/*
 
 %clean
 rm -rf $RPM_BUILD_ROOT

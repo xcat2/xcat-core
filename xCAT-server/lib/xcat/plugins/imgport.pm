@@ -1061,6 +1061,9 @@ sub extract_bundle {
 	    }
 	    #print Dumper($data);
 	    #push @{$datas}, $data;
+
+            #support imgimport osimage exported by xCAT 2.7 
+            manifest_adapter($data);
 	    
 	    # now we need to import the files...
 	    unless(verify_manifest($data, $callback)){
@@ -1358,6 +1361,36 @@ sub set_config {
 
     $linuxtab->setAttribs({imagename => $osimage }, \%keyhash );
     $linuxtab->commit;
+
+    return 1;
+}
+
+#an adapter to convert the manifest structure from 2.7 to 2.8
+sub manifest_adapter {
+    my $data = shift;
+
+    if(exists($data->{osimage}) or exists($data->{linuximage})){
+       return 0;
+    }
+
+    my %colstodel;
+    foreach my $col (@{$xCAT::Schema::tabspec{osimage}->{cols}}){
+       if(defined($data->{$col})){
+          $colstodel{$col}=1;
+          $data->{osimage}->{$col}=$data->{$col};
+       }
+    }
+
+    foreach my $col (@{$xCAT::Schema::tabspec{linuximage}->{cols}}){
+       if(defined($data->{$col})){
+          $colstodel{$col}=1;
+          $data->{linuximage}->{$col}=$data->{$col};
+       }
+    }
+
+    foreach my $col(keys %colstodel){
+       delete($data->{$col});
+    }
 
     return 1;
 }
