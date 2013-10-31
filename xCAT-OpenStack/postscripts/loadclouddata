@@ -70,13 +70,19 @@ else
   done
 fi
 
-
+if [ -z $CLOUDLIST ]
+then
+    errmsg="Error! No Cloud name is assigned to the chef-client of the chef-server $NODE. Please check the cloud table."
+    logger -t xcat -p local4.err $errmsg
+    echo $errmsg
+    exit 1
+fi
 
 # enter the repository director
 # for example: cd /install/chef-cookbooks/grizzy-xcat/
 if [ ! -d "$REPOSITORY" ] 
 then
-    errmsg="$REPOSITORY is not a OpenStack Chef cookbooks directory."
+    errmsg="Error! Not an available OpenStack Chef cookbooks repository for the cloud $CLOUDLIST.Please check the clouds table."
     logger -t xcat -p local4.err $errmsg
     echo $errmsg
     exit 1
@@ -91,7 +97,7 @@ then
    if [ $? != 0 ]
    then  
        errmsg="Failed to run knife cookbook upload -o cookbooks --all on the chefserver $NODE."
-       logger -t xcat -p local4.err $errmsg
+       logger -t xcat -p local4.err "$errmsg"
        echo $errmsg
        exit 1
     fi
@@ -104,7 +110,7 @@ then
     knife role from file roles/*.rb
     if [ $? != 0 ]
     then  
-       errmsg="Failed to run knife role from file roles/*.rb  on the chefserver $NODE."
+       errmsg="Failed to run \'knife role from file roles/*.rb\'  on the chefserver $NODE."
        logger -t xcat -p local4.err $errmsg
        echo $errmsg
        exit 1
@@ -144,7 +150,7 @@ then
         knife environment from file environments/$cloud.rb
         if [ $? != 0 ]
         then  
-            errmsg="Failed to run knife environment from file environments/$cloud.rb on the chef-server $NODE."
+            errmsg="Failed to run \'knife environment from file environments/$cloud.rb\' on the chef-server $NODE."
             logger -t xcat -p local4.err $errmsg
             echo $errmsg
             exit 1
@@ -167,7 +173,7 @@ then
         knife node create $c_fullname -d
         if [ $? != 0 ]
         then  
-            errmsg="Failed to run knife node create $client -d on the chef-server $NODE."
+            errmsg="Failed to run \'knife node create $client -d\' on the chef-server $NODE."
             logger -t xcat -p local4.err $errmsg
             echo $errmsg
             exit 1
@@ -176,7 +182,7 @@ then
         roles=`hget $client roles`
         if [ -z $roles ] 
         then
-            errmsg="No roles for $client. Please check the cfgmgt table."
+            errmsg="No value of the attribute cfgmgtroles is set for $client. Please check the cfgmgt table."
             logger -t xcat -p local4.err $errmsg
             echo $errmsg
             exit 1
@@ -196,7 +202,7 @@ then
         newenv=`hget $client cloud`
         if [ -z $newenv ] 
         then
-            errmsg="No cloud for $client. Please check the cloud table."
+            errmsg="No value of the attribute cloud is set for $client. Please check the cloud table."
             logger -t xcat -p local4.err $errmsg
             echo $errmsg
             exit 1
