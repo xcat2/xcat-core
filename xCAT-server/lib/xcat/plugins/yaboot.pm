@@ -15,7 +15,7 @@ use xCAT::Table;
 
 my $request;
 my %breaknetbootnodes;
-my %normalnodes;
+our %normalnodes;
 my $callback;
 my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
