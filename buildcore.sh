@@ -497,6 +497,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ];
 	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
+	rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
 	i=0
 	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done

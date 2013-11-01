@@ -13,6 +13,7 @@ package xCAT_schema::Clouds;
         required => [qw(name)],
 	table_desc => 'OpenStack clouds managed by this xCAT cluster',
 	descriptions => {
+        name => 'The name of the cloud.  This is referred to by the nodes in the cloud table.',
 	    controller => 'The xCAT node name of the controller node',
 	    hostip => 'The host IP is in openstack management network on the controller node. It is always the rabbitmq host IP and nova_metadata_ip.',
 	    pubinterface => 'Interface to use for external bridge. The default value is eth1.',
