@@ -41,6 +41,69 @@ function splitconfig(){
     done
 }
 
+function findnetwork(){
+    str_ip=$1
+    str_network=''
+    local num_i=1
+    while [ $num_i -le $NETWORKS_LINES ];do
+        eval str_temp=\$NETWORKS_LINE$num_i
+        str_net=`echo $str_temp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
+        str_mask=`echo $str_temp | awk -F'mask=' '{print $2}' | awk -F'|' '{print $1}' | sed 's:^/::'`
+        echo $str_net | grep ':' > /dev/null
+        if [ $? -ne 0 ];then
+            str_temp_net1=$(v4calcnet $str_ip $str_mask)
+            str_temp_net2=$(v4calcnet $str_net $str_mask)
+            if [ "$str_temp_net1" = "$str_temp_net2" ];then
+                str_network=`echo $str_temp  | awk -F'netname=' '{print $2}' | awk -F'|' '{print $1}'`
+                echo "$str_network"
+                return
+            fi
+        fi
+        num_i=$((num_i+1))
+    done
+    
+    echo "Error: Can not find the corresponding network defination for ip address: $str_ip ."
+}
+
+function checknetwork(){
+    old_ifs=$IFS
+    IFS=$'|'
+    array_ip=($1)
+    array_networkname=($2)
+    IFS=$old_ifs
+    str_ret=''
+
+    num_length=${#array_ip[@]}
+    num_index=0
+    while [ $num_index -lt $num_length ]
+    do
+        str_ip=${array_ip[$num_index]}
+        str_networkname=${array_networkname[$num_index]}
+        echo "$str_ip" | grep ':' > /dev/null
+        if [ $? -ne 0 ];then
+            if [ -z "$str_networkname" ];then
+                str_networkname=$(findnetwork $str_ip)
+                echo "$str_networkname" | grep -i 'error' > /dev/null
+                if [ $? -eq 0 ];then
+                    echo "$str_networkname"
+                    return
+                fi
+            fi
+            str_ret="${str_ret}${str_networkname},"
+        else
+            if [ -z "$str_networkname" ];then
+                echo "Error: ipv6 address should define networks name, the ip is $str_ip ."
+                return
+            fi
+            str_ret="${str_ret}${str_networkname},"
+        fi
+        num_index=$((num_index+1))
+    done
+
+    str_ret=`echo $str_ret | sed 's/.$//'`
+    echo "$str_ret"
+}
+
 bool_cfg_inst_nic=0
 str_inst_nic=''
 str_ib_nics=''
@@ -149,7 +212,6 @@ if [ $bool_exit_flag -eq 1 ];then
 fi
 
 splitconfig $NICIPS
-splitconfig $NICTYPES
 splitconfig $NICNETWORKS
 splitconfig $NICCUSTOMSCRIPTS
 
@@ -227,30 +289,33 @@ do
     array_temp=($str_value)
     IFS=$old_ifs
 
-    if [ "${array_temp[3]}" ];then
-        logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[3]} for interface $key" 
-        echo "confignics on $NODE: processing custom scripts: ${array_temp[3]} for interface $key"
-        ${array_temp[3]}
+    if [ -n "${array_temp[2]}" ];then
+        logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[2]} for interface $key" 
+        echo "confignics on $NODE: processing custom scripts: ${array_temp[2]} for interface $key"
+        ${array_temp[2]}
     else
-        if [ -z "${array_temp[2]}" ];then
-            logger -t xcat -p local4.info "confignics: ip address,nic type and network are required. $key: $str_value ."
-            echo "confignics on $NODE: ip address,nic type and network are required. $key: $str_value ."
+        if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
+            str_nic_type="ethernet"
+        elif [ `echo $KEY | grep -E 'ib[0-9]+'` ];then
+            str_nic_type="infiniband"
+        else
+            logger -t xcat -p local4.info "confignics: unknown nic type for $key: $str_value ."
+            echo "confignics on $NODE: unknown nic type for $key: $str_value ."
             continue
         fi
-        if [ -n "${array_temp[1]}" ];then
-            str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
-        else
-            if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
-                str_nic_type="ethernet"
-            elif [ `echo $KEY | grep -E 'ib[0-9]+'` ];then
-                str_nic_type="infiniband"
-            fi
+
+        str_network=$(checknetwork ${array_temp[0]} ${array_temp[1]})
+        echo "$str_network" | grep -i 'error' > /dev/null
+        if [ $? -eq 0 ];then
+            logger -t xcat -p local4.info "$str_network"
+            echo "confignics on $NODE: $str_network"
+            continue
         fi
 
         if [ "$str_nic_type" = "ethernet" ];then
-             logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
-             echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} ${array_temp[2]}'"
-             configeth $key ${array_temp[0]} ${array_temp[2]}
+             logger -t xcat -p local4.info "confignics: call 'configeth $key ${array_temp[0]} $str_network'"
+             echo "confignics on $NODE: call 'configeth $key ${array_temp[0]} $str_network'"
+             #configeth $key ${array_temp[0]} $str_network
         elif [ "$str_nic_type" = "infiniband" ];then
             if [ $str_ib_nics ];then
                 str_ib_nics=$str_ib_nics","$key
