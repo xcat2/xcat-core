@@ -70,6 +70,20 @@ sub xdie {
    die @_;
 }
 
+#check whether a dir is NFS mounted
+sub isNFSdir{
+   my $dir=shift;
+   my $out=qx(df -T -P $dir|tail -n 1|awk '{print \$2}');
+
+   if($out =~ /nfs/i)
+     {
+        return 1;
+     }
+
+   return 0;
+}
+
+
 $SIG{INT} = $SIG{TERM} = sub { xdie "Interrupted" };
 GetOptions(
    'a=s' => \$arch,
@@ -236,6 +250,11 @@ unless ($onlyinitrd) {
    if (!$prompt) { $non_interactive="-y"; }
 
    my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+   #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+   if(isNFSdir("$rootimg_dir")){
+      $yumcmd .= "--setopt=diskspacecheck=0 ";
+   }  
+
    foreach (0..$repnum) {
       $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
    }
@@ -342,9 +361,15 @@ unless ($onlyinitrd) {
       close($yumconfig);
       $index--;
       my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+
+      #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+      if(isNFSdir("$rootimg_dir")){
+         $yumcmd_base .= "--setopt=diskspacecheck=0 ";
+       }  
+
       foreach (0..$repnum) {
           $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
-      }
+       }
 #      for (1..$index) {
 #          $yumcmd .= "--enablerepo=otherpkgs$_ ";
 #      } 
