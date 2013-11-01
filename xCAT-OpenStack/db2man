@@ -1,0 +1,411 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Builds the xCAT-OpenStack database table man pages from the descriptions that are contained
+# in the Cloud.pm schema plugin.  This script is run during the build of the xCAT-OpenStack rpm, but
+# is not packaged in the binary form of that rpm.
+
+# This script is run in the xCAT-OpenStack subdir of the rpm build directory, so everything is
+# done relative to that.
+
+# The overview of what this script does is:
+# - get the table descriptions from lib/perl/xCAT_schema/Clouds.pm and create a summary man page
+# - iterate thru the tables in lib/perl/xCAT_schema/Clouds.pm and create pods for each
+# - use the pod2man to convert them to man pages
+# - use the pod2html to convert them to html pages
+
+use strict;
+use lib 'lib/perl';
+
+use xCAT_schema::Clouds;
+#use xCAT::Table;
+use Pod::Man;
+use Pod::Html;
+
+my $VERBOSE = 1;		# set this to 1 for debugging
+my $poddir = 'pods';
+my $mandir = 'share/man';
+my $htmldir = 'share/doc';
+my $cachedir = '/tmp';
+
+my $poddir5 = 'pods/man5';
+my $poddir7 = 'pods/man7';
+if (system("mkdir -p $poddir5")) { die "Error: could not create $poddir5.\n"; }
+if (system("mkdir -p $poddir7")) { die "Error: could not create $poddir7.\n"; }
+
+# Build the DB overview page.
+print "Building PODs pages for the database tables...\n";
+writesummarypage("$poddir5/xcat-openstack-db.5.pod", getTableDescriptions(), getDefRef());
+
+# Build the pod man page for each object definition
+my $defspecref = getDefRef();
+foreach my $defkey (keys %$defspecref) {
+	my $def = $defspecref->{$defkey};
+	my $attrs = $def->{'attrs'};
+	my $podfile = "$poddir7/$defkey.7.pod";
+	verbose("Writing pod file for $defkey");
+    writedefmanpage($podfile, $defkey, $attrs);
+}
+
+# Build the pod man page for each table.
+my $tabspecref = getTableRef();
+foreach my $tablekey (keys %$tabspecref) {
+    my $table = $tabspecref->{$tablekey};
+    my $summary = $table->{table_desc};
+    my $colorder = $table->{cols};
+    my $descriptions = $table->{descriptions};
+	verbose("Writing pod file for $tablekey");
+    writepodmanpage("$poddir5/$tablekey.5.pod", $tablekey, $summary, $colorder, $descriptions);
+}
+
+my @pods = getPodList($poddir);
+verbose('Pod list:' . "@pods");
+
+# Build the man page for each pod.
+print "Converting PODs to man pages...\n";
+foreach my $podfile (@pods) {
+    my $manfile = $podfile;
+    $manfile =~ s/^$poddir/$mandir/;      # change the beginning of the path
+    $manfile =~ s/\.pod$//;			# change the ending
+    my $mdir = $manfile;
+    $mdir =~ s|/[^/]*$||;			# get rid of the basename part
+	if (system("mkdir -p $mdir")) { die "Error: could not create $mdir.\n"; }
+	my ($section) = $podfile =~ /\.(\d+)\.pod$/;
+	verbose("Converting $podfile to $manfile");
+    convertpod2man($podfile, $manfile, $section);
+}
+
+my @dummyPods = createDummyPods($poddir);
+
+# Build the html page for each pod.
+print "Converting PODs to HTML pages...\n";
+# have to clear the cache, because old entries can cause a problem
+unlink("$cachedir/pod2htmd.tmp", "$cachedir/pod2htmi.tmp");
+foreach my $podfile (@pods) {
+    my $htmlfile = $podfile;
+    $htmlfile =~ s/^$poddir/$htmldir/;      # change the beginning of the path
+    $htmlfile =~ s/\.pod$/\.html/;			# change the ending
+    my $hdir = $htmlfile;
+    $hdir =~ s|/[^/]*$||;			# get rid of the basename part
+	if (system("mkdir -p $hdir")) { die "Error: could not create $hdir.\n"; }
+	verbose("Converting $podfile to $htmlfile");
+    convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
+}
+
+unlink @dummyPods;
+
+exit;
+
+# if VERBOSE is on, print out the given string
+sub verbose { if ($VERBOSE) { print $_[0], "\n"; } }
+
+sub getDefRef { return \%xCAT_schema::Clouds::defspec; }
+
+sub getTableRef { return \%xCAT_schema::Clouds::tabspec; }
+
+# Returns a list of the table names in the xCAT database.
+sub getTableList { return keys %xCAT_schema::Clouds::tabspec; }
+
+# Returns a reference to the db schema hash for the specified table.
+sub getTableSchema { return $xCAT_schema::Clouds::tabspec{$_[0]}; }
+
+# Return a reference to a hash where each key is the table name and each value is the table description.
+sub getTableDescriptions {
+	# List each table name and the value for table_desc.
+	my $ret = {};
+	#my @a = keys %{$xCAT_schema::Clouds::tabspec{nodelist}};  print 'a=', @a, "\n";
+	foreach my $t (getTableList()) { $ret->{$t} = getTableSchema($t)->{table_desc}; }
+	return $ret;
+}
+
+
+# Recursively get the list of pod man page files.
+sub getPodList {
+	my $poddir = shift;
+	my @files;
+
+	# 1st get toplevel dir listing
+	opendir(DIR, $poddir) or die "Error: could not read $poddir.\n";
+	my @topdir = grep !/^\./, readdir(DIR);		# /
+	close(DIR);
+
+	# Now go thru each subdir (these are man1, man3, etc.)
+	foreach my $mandir (@topdir) {
+		opendir(DIR, "$poddir/$mandir") or die "Error: could not read $poddir/$mandir.\n";
+		my @dir = grep !/^\./, readdir(DIR);		# /
+		close(DIR);
+		foreach my $file (@dir) {
+			push @files, "$poddir/$mandir/$file";
+		}
+	}
+	return sort @files;
+}
+
+
+# Create the html page for one pod.
+sub convertpod2html {
+	my ($podfile, $htmlfile, $poddir, $htmldir) = @_;
+
+	#TODO: use --css=<stylesheet> and --title=<pagetitle> to make the pages look better
+	pod2html($podfile,
+			"--outfile=$htmlfile",
+			"--podpath=man5:man7",
+			"--podroot=$poddir",
+			"--htmldir=$htmldir",
+			"--recurse",
+			"--cachedir=$cachedir",
+			);
+
+}
+
+
+# Create the man page for one pod.
+sub convertpod2man {
+	my ($podfile, $manfile, $section) = @_;
+
+	my $parser = Pod::Man->new(section => $section);
+    $parser->parse_from_file($podfile, $manfile);
+}
+
+
+# Create the xcat-openstack-db man page that gives a summary description of each table.
+sub writesummarypage {
+	my $file = shift;       # relative path file name of the man page
+	my $descriptions = shift;	# a hash containing the description of each table
+	my $defdescriptions = shift;	# a hash containing the description of each object definition
+
+	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+
+	print FILE <<'EOS1';
+=head1 NAME
+
+An overview of the xCAT OpenStack database objects and tables.
+
+=head1 DESCRIPTION
+
+The xCAT OpenStack database objects and tables contain user settings for the OpenStack cloud being set up by xCAT.
+To get more information about a particular table, run man for that table name.
+The tables and objects can be viewed using B<tabdump>, B<nodels>, or B<lsdef>.
+The tables and objects can be manipulated directly using B<tabedit>, B<nodech>, or B<chdef>.
+For more information about the xCAT database and the base tables and objects, see the L<xcatdb(5)|xcatdb.5> man page.
+
+=head1 XCAT OPENSTACK OBJECT DEFINITIONS
+
+Because it can get confusing what attributes need to go in what tables, the xCAT database can also
+be viewed and edited as logical objects, instead of flat tables.  Use B<mkdef>, B<chdef>, B<lsdef>,
+and B<rmdef> to create, change, list, and delete objects.
+When using these commands, the object attributes will be stored in the same tables, as if you edited
+the tables by hand.  The only difference is that the object commands take care of knowing which tables
+all of the information should go in.
+
+To run man for any of the object definitions below, use section 7.  For example:  B<man 7 node>
+
+The object types are:
+
+=over 2
+EOS1
+
+foreach my $def (sort keys %$defdescriptions) {
+	if ($def eq 'node') { print FILE "\n=item L<$def(7)|node-openstack.7>\n"; }		# can not overwrite the node man page in xcat-core
+	else { print FILE "\n=item L<$def(7)|$def.7>\n"; }
+}
+
+	print FILE <<"EOS2";
+
+=back
+
+=head1 TABLES
+
+To manipulate the tables directly, use B<nodels(1)>, B<chtab(8)>, B<tabdump(8)>, B<tabedit(8)>,
+B<nodeadd(8)>, B<nodech(1)>.
+
+To run man for any of the table descriptions below, use section 5.  For example:  B<man 5 nodehm>
+
+The tables are:
+
+=over 2
+EOS2
+
+foreach my $table (sort keys %$descriptions) {
+	print FILE "\n=item L<$table(5)|$table.5>\n\n".$descriptions->{$table}."\n";
+}
+
+	print FILE <<"EOS3";
+
+=back
+
+=head1 SEE ALSO
+
+B<nodels(1)>, B<chtab(8)>, B<tabdump(8)>, B<tabedit(8)>, B<lsdef(1)>, B<mkdef(1)>, B<chdef(1)>, B<rmdef(1)>
+EOS3
+
+	close FILE;
+}
+
+
+# Create the man page for one object definition.
+sub writedefmanpage {
+	my $file = shift;       # relative path file name of the man page
+	my $defname = shift;		# name of object
+	my $attrs = shift;		# reference to the array of attributes
+
+	# Make exception for the node object, because we can not overwrite the node man page from xcat-core
+	if ($defname eq 'node') { $file = "$poddir7/node-openstack.7.pod"; }
+
+	# Go thru the attributes, collecting the descriptions
+	# Note:  this logic is loosely taken from DBobjectdefs.pm
+	my %attrlist;		# holds the attr name as the key, and the description & tables as value
+	foreach my $this_attr (@$attrs) {
+        my $attr = $this_attr->{attr_name};
+        my $desc = $this_attr->{description};
+        my ($table, $at) = split(/\./, $this_attr->{tabentry});
+        if (!defined($desc)) {
+			# description key not there, so go to the corresponding
+			#	entry in tabspec to get the description
+            my $schema = getTableSchema($table);
+            $desc = $schema->{descriptions}->{$at};
+        }
+
+		# Attr names can appear more than once, if they are in multiple tables.
+		# We will keep track of that based on the table attribute, because that can be duplicated too
+		if (!defined($attrlist{$attr})) {
+			$attrlist{$attr}->{'tables'} = [];		# initialize the array, so we can check it below
+		}
+		my $tableattr = "$table.$at";
+		if (!grep(/^$tableattr$/, @{$attrlist{$attr}->{'tables'}})) {
+			# there can be multiple entries that refer to the same table attribute
+			# if this is a new table attribute, then save the attr name and description
+			push @{$attrlist{$attr}->{'tables'}}, $tableattr;
+			push @{$attrlist{$attr}->{'descriptions'}}, $desc;
+		}
+	}
+
+	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+
+	print FILE <<"EOS1";
+=head1 NAME
+
+B<$defname> - a logical object definition in the xCAT database.
+
+=head1 SYNOPSIS
+
+EOS1
+
+	print FILE "B<$defname Attributes:>  I<" . join('>, I<',sort(keys(%attrlist))) . ">\n";
+
+	print FILE <<"EOS2";
+
+=head1 DESCRIPTION
+
+Logical objects of this type are stored in the xCAT database in one or more tables.  Use the following commands
+to manipulate the objects: B<mkdef>, B<chdef>, B<lsdef>, and B<rmdef>.  These commands will take care of
+knowing which tables the object attributes should be stored in.  The attribute list below shows, in
+parentheses, what tables each attribute is stored in.
+
+=head1 $defname Attributes:
+
+=over 6
+
+EOS2
+
+foreach my $a (sort keys %attrlist) {
+	my $d = join("\nor\n", @{$attrlist{$a}->{'descriptions'}});
+	$d =~ s/\n/\n\n/sg;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
+	my $t = '(' . join(', ',@{$attrlist{$a}->{'tables'}}) . ')';
+	#print FILE "\nB<$a> - $d\n";
+	print FILE "\n=item B<$a> $t\n\n$d\n";
+}
+
+	print FILE <<"EOS3";
+
+=back
+
+EOS3
+
+if ($defname eq 'node') {
+	print FILE "B<The node attributes listed above are just the ones that the xCAT-OpenStack RPM adds to the node object definition.  For the rest of the node attributes from xcat-core, see the L<node(7)|node.7> man page.>\n\n";
+}
+
+	print FILE <<"EOS4";
+=head1 SEE ALSO
+
+B<mkdef(1)>, B<chdef(1)>, B<lsdef(1)>, B<rmdef(1)>
+EOS4
+
+	close FILE;
+}
+
+
+# Create the man page for one table.
+sub writepodmanpage {
+	my $file = shift;       # relative path file name of the man page
+	my $tablename = shift;		# name of table
+	my $summary = shift;		# description of table
+	my $colorder = shift;		# the order in which the table attributes should be presented in
+	my $descriptions = shift;	# a hash containing the description of each attribute
+
+	open(FILE, ">$file") or die "Error: could not open $file for writing.\n";
+
+	print FILE <<"EOS1";
+=head1 NAME
+
+B<$tablename> - a table in the xCAT database.
+
+=head1 SYNOPSIS
+
+EOS1
+
+	print FILE "B<$tablename Attributes:>  I<" . join('>, I<',@$colorder) . ">\n";
+
+	print FILE <<"EOS2";
+
+=head1 DESCRIPTION
+
+$summary
+
+=head1 $tablename Attributes:
+
+=over 10
+
+EOS2
+
+foreach my $a (@$colorder) {
+	my $d = $descriptions->{$a};
+	#$d =~ s/\n/\n\n/sg;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
+	#print FILE "\nB<$a> - $d\n";
+	print FILE "\n=item B<$a>\n\n$d\n";
+}
+
+	print FILE <<"EOS3";
+
+=back
+
+=head1 SEE ALSO
+
+B<nodels(1)>, B<chtab(8)>, B<tabdump(8)>, B<tabedit(8)>
+EOS3
+
+	close FILE;
+}
+
+
+# To enable linking between the man pages in xCAT-OpenStack and the xcat-core man pages
+# we need to create an empty one that will satisfy pod2html.
+# Returns all dummy pods created, so they can be removed later
+sub createDummyPods {
+	my $poddir = shift @_;
+
+	# Also add xcattest.1.pod and buildkit.1.pod, because the xcat.1.pod summary page refers to it
+	push @dummyPods, "$poddir/man7/node.7.pod";
+	push @dummyPods, "$poddir/man5/xcatdb.5.pod";
+	
+	# Create these empty files
+	print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
+	#mkdir "$poddir/man7";
+	foreach my $d (@dummyPods) {
+		if (!open(TMP, ">>$d")) { warn "Could not create dummy pod file $d ($!)\n"; }
+		else { close TMP; }
+	}
+	
+	return @dummyPods;
+}
