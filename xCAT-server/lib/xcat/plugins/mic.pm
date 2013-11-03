@@ -307,7 +307,7 @@ sub rinv {
     my @hosts = (keys  %$host2mic);
     my $output = xCAT::Utils->runxcmd({ command => ['xdsh'],
                                            node => \@hosts,
-                                           arg => ["/opt/intel/mic/bin/micinfo"]}, $subreq, 0, 1);
+                                           arg => ["/usr/bin/micinfo"]}, $subreq, 0, 1);
 
     # classify all the output with the host name
     my %outofhost;
@@ -379,6 +379,27 @@ sub copytar {
                    'f=s' => \$file);
     }
 
+    # get the 
+    my ($mpssver, $targetos, $targetosver);
+    my $tarfilename = basename ($file);
+    if ($tarfilename =~ /mpss-([\d\.-]+)-(rhel|suse)-([\d\.-]+)\.tar/) {
+        $mpssver = $1;
+        $targetos = $2;
+        $targetosver = $3;
+    } elsif ($tarfilename =~ /mpss/) {
+        if ($osname =~ /mpss-([\d\.-]+)-(rhel|suse)-([\d\.-]+)/) {
+            $mpssver = $1;
+            $targetos = $2;
+            $targetosver = $3;
+        } else {
+            xCAT::MsgUtils->message("E", {error=>["The flag -n needs be specified to identify the version of mpss and target os. The value format for -n must be mpss-[mpss_versoin]-[rhel/suse]-[os_version]."], errorcode=>["1"]}, $callback);
+            return;
+        }
+    } else {
+        # not for Xeon Phi
+        return;
+    }
+    
     my $installroot = "/install";
     my @entries =  xCAT::TableUtils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
@@ -386,35 +407,40 @@ sub copytar {
         $installroot = $t_entry;
     }
     
-    my $tmpdir = "/tmp/mictmp";
-    my $destdir = "$installroot/$osname";
-    rmtree ($tmpdir);
-    mkpath ($tmpdir);
+    my $destdir = "$installroot/mpss$mpssver";
     mkpath ($destdir);
 
+    # creae the default dirs in the mpss image dir
+    mkpath ("$destdir/common");
+    mkpath ("$destdir/overlay/package");
+    mkpath ("$destdir/overlay/rpm");
+    `/bin/touch "$destdir/common.filelist"`;
+
     # extract the files from the mpss tar file
-    my $cmd = "tar xvf $file -C $tmpdir";
-    my @output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
-        return 1;
-    }
+    #my $cmd = "tar xvf $file -C $tmpdir";
+    #my @output = xCAT::Utils->runcmd($cmd, -1);
+    #if ($::RUNCMD_RC != 0) {
+    #    xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
+    #    return 1;
+    #}
 
     # get the rpm packages intel-mic-gpl and intel-mic-flash which include the files for root file system, flash ...
-    my @micgpl = <$tmpdir/*/intel-mic-gpl*>;
-    my @micflash = <$tmpdir/*/intel-mic-flash*>;
-    unless (-r $micgpl[0] && -r $micflash[0]) {
-        xCAT::MsgUtils->message("E", {error=>["Error: Cannot get the rpm files intel-mic-gpl or intel-mic-flash from the tar file."], errorcode=>["1"]}, $callback);
-        return 1;
-    }
+    #my @micgpl = <$tmpdir/*/intel-mic-gpl*>;
+    #my @micflash = <$tmpdir/*/intel-mic-flash*>;
+    #unless (-r $micgpl[0] && -r $micflash[0]) {
+    #    xCAT::MsgUtils->message("E", {error=>["Error: Cannot get the rpm files intel-mic-gpl or intel-mic-flash from the tar file."], errorcode=>["1"]}, $callback);
+    #    return 1;
+    #}
 
     # extract the files from rpm packages
-    $cmd = "cd $destdir; rpm2cpio $micgpl[0] | cpio -idum; rpm2cpio $micflash[0] | cpio -idum";
-    @output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
-        return 1;
-    }
+    #$cmd = "cd $destdir; rpm2cpio $micgpl[0] | cpio -idum; rpm2cpio $micflash[0] | cpio -idum";
+    #@output = xCAT::Utils->runcmd($cmd, -1);
+    #if ($::RUNCMD_RC != 0) {
+    #    xCAT::MsgUtils->message("E", {error=>["Error when run [$cmd], @output"], errorcode=>["1"]}, $callback);
+    #    return 1;
+    #}
+
+    
 
     # generate the image objects
     my $oitab = xCAT::Table->new('osimage');
@@ -426,14 +452,22 @@ sub copytar {
     my %values;
     $values{'imagetype'} = "linux";
     $values{'provmethod'} = "netboot";
-    $values{'rootfstype'} = "ramdisk";
     $values{'description'} = "Linux for Intel mic";
     $values{'osname'} = "Linux";
-    $values{'osvers'} = "mic";
+    $values{'osvers'} = "mic$mpssver";
     $values{'osarch'} = "x86_64";
     $values{'profile'} = "compute";
 
-    my $imagename = "$osname-netboot-compute";
+    # set the osdistroname attr which will be used to get the repo path for the rpm install in osimage
+    my $osver;
+    if ($targetos =~ /rhel/) {
+        $osver = "rhels".$targetosver;
+    } elsif ($targetos =~ /suse/) {
+        $osver = "sles".$targetosver;
+    }
+    $values{'osdistroname'} = $osver."-x86_64";
+
+    my $imagename = "mpss$mpssver-$osver-compute";
     $oitab->setAttribs({'imagename' => $imagename}, \%values);
 
     my $litab = xCAT::Table->new('linuximage');
@@ -441,13 +475,15 @@ sub copytar {
         xCAT::MsgUtils->message("E", {error=>["Error: Cannot open table linuximage."], errorcode=>["1"]}, $callback);
         return 1;
     }
+
+    my $otherpkgdir = "$installroot/post/otherpkgs/mic$mpssver/x86_64";
     
     # set a default package list
     my $pkglist = "$::XCATROOT/share/xcat/netboot/mic/compute.pkglist";
-    $litab->setAttribs({'imagename' => $imagename}, {'pkgdir' => $destdir, 'pkglist' => $pkglist});
+    $litab->setAttribs({'imagename' => $imagename}, {'pkgdir' => $destdir, 'pkglist' => $pkglist, 'otherpkgdir' => $otherpkgdir});
 
     xCAT::MsgUtils->message("I", {data=>["The image $imagename has been created."]}, $callback);
-    rmtree ($tmpdir);
+    #rmtree ($tmpdir);
 }
 
 # get the console configuration for rcons: 
@@ -627,7 +663,7 @@ sub nodeset {
     my $nthash = $nttab->getNodesAttribs($nodes,['provmethod']);
     foreach my $node (@$nodes) {
         unless (defined ($nthash->{$node}->[0]->{'provmethod'})) {
-            xCAT::MsgUtils->message("E", {error=>["The provmethod for the node $node must be set by [nodeset <node> osimage=<image name>] or set in the provmethod attribute of the node."], errorcode=>["1"]}, $callback);
+            xCAT::MsgUtils->message("E", {error=>["The <image name> must be specified in [nodeset <node> osimage=<image name>] or it must be set in the provmethod attribute before running nodeset command."], errorcode=>["1"]}, $callback);
             return;
         }
     }
@@ -660,6 +696,22 @@ sub nodeset {
         $osimage{$_->{'imagename'}} = $_->{'pkgdir'};
     }
 
+    # get the bridge configuration from nics table
+    my $nicstab = xCAT::Table->new("nics");
+    unless ($nicstab) {
+        xCAT::MsgUtils->message("E", {error=>["Cannot open the nics table."], errorcode=>["1"]}, $callback);
+        return;
+    }
+
+    # get mic mount entries from litefile table
+    my $lftab = xCAT::Table->new("litefile");
+    unless ($lftab) {
+        xCAT::MsgUtils->message("E", {error=>["Cannot open the litefile table."], errorcode=>["1"]}, $callback);
+        return;
+    }
+    my @lfentall = $lftab->getAttribs({'image'=>'ALL'}, 'file', 'options');
+
+
     # get the tftp dir and create the path for mic configuration
     my $tftpdir = "/tftpboot";
     my @entries =  xCAT::TableUtils->get_site_attribute("$tftpdir");
@@ -677,6 +729,8 @@ sub nodeset {
     #overlay=ol1
     my %imghash; # cache of osimage information
     my @hosts = (keys %$host2mic);
+    # get the bridge configuration from nics table, use host as key
+    my $nicshash = $nicstab->getNodesAttribs(\@hosts, ['nicips', 'nictypes']);
     foreach my $host (@hosts) {
         my @cfgfile;
         push @cfgfile, "#XCAT MIC CONFIGURATION FILE#";
@@ -696,7 +750,7 @@ sub nodeset {
             # and make sure the osimage which set to the mic shold be same for all the mics on one host
             if ($osimg) {
                 if ($osimg ne $nthash->{$micname}->[0]->{'provmethod'}) {
-                    xCAT::MsgUtils->message("E", {error=>["The provmethod for the nodes in the same host should be same."], errorcode=>["1"]}, $callback);
+                    xCAT::MsgUtils->message("E", {error=>["The provmethod for the mic nodes which located in the same host should be same."], errorcode=>["1"]}, $callback);
                     return;
                 }
             } else {
@@ -721,6 +775,24 @@ sub nodeset {
                 return;
             }
 
+            # get the bridge configuration
+            my ($brgip, $brgtype);
+            if (defined ($nicshash->{$host}) && defined ($nicshash->{$host}->[0]->{'nicips'})) {
+                foreach (split(/,/, $nicshash->{$host}->[0]->{'nicips'})) {
+                    if (/$micbrg!(.+)/) {
+                        $brgip = $1;
+                    }
+                }
+                push @cfgfile, "brgip=$brgip";
+
+                foreach (split(/,/, $nicshash->{$host}->[0]->{'nictypes'})) {
+                    if (/$micbrg!(.+)/) {
+                        $brgtype = $1;
+                    }
+                }
+                push @cfgfile, "brgtype=$brgtype";
+            }
+
             # generate the mic specific entry in the configuration file
             my $micattrs = "$micid:ip=$micip|br=$micbrg|name=$micname";
             if (defined ($michash->{$micname}->[0]->{'onboot'})) {
@@ -735,23 +807,77 @@ sub nodeset {
         push @cfgfile, "imgpath=$osimage{$osimg}";
 
         # get all the overlay entries for the osimage and do the cache for image
-        # search all the dir in the overlay dir execpt the system dir (system dir includes the files
+        # search all the dir in the /install/<image>/overlay dir, the dir tree in 'overlay' should be following:
+        # |--mnt
+        # |  `--system (files for system boot)
+        # |  |--common.filelist
+        # |  `--common
+        # |  `--overlay
+        # |       `--overlay
+        # |           `--rpm
+        # |           `--simple
+        # |               |--simple.cfg  (the file must be multiple lines of 'a->b' format; 'a' is dir name in simple/, 'b' is the path on mic for 'a'
+        # |           `--package
+        # |                |--the base file for fs
+        # |                `--opt/mic
+        # |                     |--yy.filelist
+        # |                     `--yy
+        # |           |--xx.filelist
+        # |           `--xx
+        #the system dir (system dir includes the files
         # which generated by genimage command, and will be copied to mic osimage separated)
+            if (! -d "$osimage{$osimg}/system") {
+                xCAT::MsgUtils->message("E", {error=>["Missed system directory in $osimage{$osimg}. Did you miss to run genimage command?"], errorcode=>["1"]}, $callback);
+                return;
+            }
         if (defined ($imghash{$osimg}{'ollist'})) {
             push @cfgfile, "overlay=$imghash{$osimg}{'ollist'}";
         } else {
-            my @overlays = <$osimage{$osimg}/opt/intel/mic/filesystem/overlay/*>;
+            my @items = <$osimage{$osimg}/overlay/*>;
             my $ollist; # overlay list
-            foreach my $obj (@overlays) {
+            foreach my $obj (@items) {
                 my $objname = basename($obj);
-                if (-d $obj && $objname ne "system") {
-                    $ollist .= ",$objname";
+                if (-d $obj) {
+                    if ($objname eq "rpm") {
+                        $ollist .= ",rpm:$objname";
+                    } elsif ($objname eq "simple") {
+                        if (-f "$osimage{$osimg}/overlay/simple/simple.cfg") {
+                            open (SIMPLE, "<$osimage{$osimg}/overlay/simple/simple.cfg");
+                            while (<SIMPLE>) {
+                                if (/(.+)->(.+)/) {
+                                    $ollist .= ",simple:$_";
+                                }
+                            }
+                        }
+                    } elsif ($objname eq "package") {
+                        my @pfl = <$osimage{$osimg}/overlay/package/opt/mic/*.filelist>;
+                        foreach my $filelist (@pfl) {
+                            $filelist = basename($filelist);
+                            if ($filelist =~ /(.+)\.filelist/) {
+                                $ollist .= ",pfilelist:$1";
+                            }
+                        }
+                    }
+                } else {
+                    if ($objname =~ /(.+)\.filelist/) {
+                        $ollist .= ",filelist:$1";
+                    }
                 }
             }
             $ollist =~ s/^,//;
 
             $imghash{$osimg}{'ollist'} = $ollist;
             push @cfgfile, "overlay=$ollist";
+        }
+
+        # generate the nfs mount entries for mic node
+        my @lfentimg = $lftab->getAttribs({'image'=>$osimg}, 'file', 'options');
+        foreach my $ent (@lfentall, @lfentimg) {
+            if (defined ($ent->{'options'}) && $ent->{'options'} eq "micmount") {
+               if (defined ($ent->{'file'})) {
+                   push @cfgfile, "micmount=$ent->{file}";
+               }
+            }
         }
 
         if (open (CFG, ">$tftpdir/xcat/miccfg/miccfg.$host")) {
@@ -763,6 +889,7 @@ sub nodeset {
             xCAT::MsgUtils->message("E", {error=>["Cannot open the file $tftpdir/xcat/miccfg/miccfg.$host to write."], errorcode=>["1"]}, $callback);
             return;
         }
+
     }
 
     # run the cmd on the host to configure the mic

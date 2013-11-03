@@ -6540,7 +6540,7 @@ sub scan {
 
     my $output = xCAT::Utils->runxcmd({ command => ['xdsh'], 
                                        node => $nodes,
-                                       arg => ['/opt/intel/mic/bin/micinfo', '-listDevices'] }, $subreq, 0, 1);
+                                       arg => ['micinfo', '-listDevices'] }, $subreq, 0, 1);
 
     # parse the output from 'xdsh micinfo -listDevices'
     my %host2mic;
