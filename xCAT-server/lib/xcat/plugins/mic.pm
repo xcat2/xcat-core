@@ -379,7 +379,7 @@ sub copytar {
                    'f=s' => \$file);
     }
 
-    # get the 
+    # get the mpss version and target host os version
     my ($mpssver, $targetos, $targetosver);
     my $tarfilename = basename ($file);
     if ($tarfilename =~ /mpss-([\d\.-]+)-(rhel|suse)-([\d\.-]+)\.tar/) {
