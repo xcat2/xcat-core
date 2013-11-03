@@ -20,8 +20,12 @@ $| = 1;
 my $tmppath = "/tmp/mictmp";
 my $logpath = "/var/log/xcat/";
 my $logfile = "$logpath/flash.log";
-my $micmnt = "/opt/intel/mic/mnt";
-my $flashpath = "$micmnt/opt/intel/mic/flash";
+my $micmnt = "/var/mpss/mnt";
+my $flashpath = "$micmnt/usr/share/mpss/flash";
+
+if (! -d "$flashpath") {
+    $flashpath = "/usr/share/mpss/flash";
+}
 
 mkpath $tmppath;
 mkpath $micmnt;
@@ -110,8 +114,8 @@ close (CFGFILE);
 $miclist =~ s/,/ /g;
 
 # add the mount entry for mounting of root fs from master to /etc/fstab
-# e.g. mount $master:/install/mpss3 /opt/intel/mic/mnt
-$cmd = "grep $master:$ospath $micmnt /etc/fstab ";
+# e.g. mount $master:/install/mpss3 /var/mpss/mnt
+$cmd = "grep \'$master:$ospath \' $micmnt /etc/fstab ";
 ($rc, $output) = runsyscmd ($cmd);
 if ($rc) {
     # not found the exact mount entry
@@ -155,7 +159,7 @@ foreach my $micid (keys %miccfg) {
 $micidlist =~ s/^,//;
 
 # do the flash
-$cmd = "/opt/intel/mic/bin/micflash -update $flashpath -device $micidlist";
+$cmd = "micflash -update $flashpath -device $micidlist";
 ($rc, $output) = runsyscmd ($cmd);
 
 # generate the output messages
