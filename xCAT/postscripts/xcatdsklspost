@@ -29,7 +29,7 @@ update_VPD()
 
 # Run updatevpd only when necessary
 if [ -f /usr/sbin/lsvpd ]; then
-    /usr/sbin/lsvpd | grep -i cpu 2>&1 1>/dev/null
+    /usr/sbin/lsvpd | grep -i -E 'cpu|processor' 2>&1 1>/dev/null
     if [ "$?" = "1" ]; then
       update_VPD
     fi
