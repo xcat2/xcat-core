@@ -1,0 +1,47 @@
+start:Linux_cn_with_sn_full_installation_flat_x86_64_sles_vm
+os:Linux
+cmd:makedns
+check:rc==0
+cmd:service named restart
+check:rc==0
+cmd:makeconservercf $$CNWITHSN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CNWITHSN
+check:output=~$$CNWITHSN
+cmd:sleep 60
+cmd:makedhcp -n
+#check:rc==0
+cmd:makedhcp -a
+#check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:chdef $$CNWITHSN servicenode=$$SN xcatmaster=$$SN
+cmd:chdef -t osimage __GETNODEATTR($$CNWITHSN,os)__-__GETNODEATTR($$CNWITHSN,arch)__-install-compute synclists=/install/custom/install/rh/compute.synclist
+check:rc==0
+cmd:xdsh $$SN df|grep /install;if [ $? -ne 0 ] ; then xdsh $$SN mount $$MN:/install /install;fi
+check:rc==0
+cmd:nodeset $$CNWITHSN osimage=__GETNODEATTR($$CNWITHSN,os)__-__GETNODEATTR($$CNWITHSN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CNWITHSN reset
+check:rc==0
+cmd:sleep 2500
+cmd:ping $$CNWITHSN -c 3
+check:output=~64 bytes from $$CNWITHSN
+cmd:lsdef -l $$CNWITHSN | grep status
+check:output=~booted
+cmd:xdsh $$CNWITHSN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:nodeset $$CNWITHSN osimage
+check:rc==0
+cmd:rpower $$CNWITHSN reset
+check:rc==0
+cmd:sleep 2500
+cmd:ping $$CNWITHSN -c 3
+check:output=~64 bytes from $$CNWITHSN
+cmd:lsdef -l $$CNWITHSN | grep status
+check:output=~booted
+cmd:xdsh $$CNWITHSN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
