@@ -1,0 +1,53 @@
+#first define 
+start:Linux_sn_installation_flat_x86_64_redhat_vm
+os:Linux
+cmd:makedns 
+check:rc==0
+cmd:chdef $$SN groups=service,kvm,vm,all
+check:rc==0
+cmd:chdef -t group service arch=__GETNODEATTR($$SN,arch)__ os=__GETNODEATTR($$SN,os)__ profile=service netboot=xnba primarynic=eth0
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1
+check:rc==0
+cmd:chdef $$SN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-service synclists=/install/custom/install/rh/service.synclist
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels6.x86_64.otherpkgs.pkglist
+check:rc==0
+cmd:mkdir -p /install/post/otherpkgs/__GETNODEATTR($$CN,os)__/x86_64/xcat/
+check:rc==0
+cmd:cp -rf /2.8/xcat-core /install/post/otherpkgs/__GETNODEATTR($$CN,os)__/x86_64/xcat/
+check:rc==0
+cmd:createrepo /install/post/otherpkgs/__GETNODEATTR($$CN,os)__/x86_64/xcat/xcat-core
+check:rc==0
+cmd:for i in mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt; do  cat /opt/xcat/share/xcat/install/rh/service.rhels6.x86_64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.rhels6.x86_64.pkglist; fi done
+cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
+check:rc==0
+cmd:nodeset $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-service
+check:rc==0
+cmd:rpower $$SN off
+cmd:rpower $$SN on
+check:rc==0
+cmd:sleep 1200
+cmd:ping $$SN -c 3
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN nodels
+check:rc==0
+end
