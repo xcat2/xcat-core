@@ -1,0 +1,63 @@
+#first define 
+start:Linux_sn_installation_flat_x86_64_sles_vm
+os:Linux
+cmd:makedns -n 
+check:rc==0
+cmd:chdef $$SN groups=service,kvm,vm,all
+check:rc==0
+cmd:chdef -t group service arch=__GETNODEATTR($$SN,arch)__ os=__GETNODEATTR($$SN,os)__ profile=service netboot=xnba primarynic=eth0
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1
+check:rc==0
+cmd:chdef $$SN nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 60
+cmd:makedhcp -n
+cmd:makedhcp -a
+#check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service synclists=/install/custom/install/sles/service.synclist
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/x86_64,/install/__GETNODEATTR($$SN,os)__/x86_64/sdk1"
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles11.x86_64.otherpkgs.pkglist
+check:rc==0
+cmd:mkdir -p /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/x86_64/xcat/
+check:rc==0
+cmd:cp -rf /xcat-core /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/x86_64/xcat/
+check:rc==0
+cmd:createrepo /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/x86_64/xcat/xcat-core
+check:rc==0
+cmd:for i in mysql-client libmysqlclient_r15 libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql bridge-utils iscsitarget libvirt kvm libvirt-devel gcc; do  cat /opt/xcat/share/xcat/install/sles/service.sles11.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/sles/service.sles11.pkglist; fi done
+cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
+check:rc==0
+cmd:nodeset $$SN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-service
+check:rc==0
+cmd:rpower $$SN reset
+check:rc==0
+cmd:sleep 2400
+cmd:ping $$SN -c 3
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN nodels
+check:rc==0
+cmd:xdsh $$SN mkdir -p /autotest
+check:rc==0
+cmd:scp /autotest/Sys-Virt-0.9.5.tar slessnauto:/autotest/
+check:rc==0
+cmd:xdsh $$SN tar xvf /autotest/Sys-Virt-0.9.5.tar
+check:rc==0
+cmd:xdsh $$SN "cd /root/Sys-Virt-0.9.5/; perl Makefile.PL"
+check:rc==0
+cmd:xdsh $$SN "cd Sys-Virt-0.9.5 ;perl Makefile.PL; sleep 10; make"
+cmd:xdsh $$SN "cd Sys-Virt-0.9.5 ;sudo make install"
+end
