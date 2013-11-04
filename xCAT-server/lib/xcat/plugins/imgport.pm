@@ -1312,7 +1312,7 @@ sub manifest_adapter {
        }
     }
 
-    foreach my $col(keys %colstodel){
+    foreach my $col (keys %colstodel){
        delete($data->{$col});
     }
 
