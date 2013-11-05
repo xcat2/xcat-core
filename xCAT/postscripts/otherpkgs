@@ -682,7 +682,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    if ( pmatch "$OSVER" "sles11*" ); then
 		        result=`zypper ar -c $REPOFILE`
 		    else
-		        result=`zypper sa -c $REPOFILE` 
+                        result=`zypper sa -r $REPOFILE << EOF
+y
+EOF`
 		    fi	
 		
 		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
