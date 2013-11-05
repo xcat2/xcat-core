@@ -692,7 +692,12 @@ EOF`
 		        rc=0
 		        array_set_element repo_path $index $path
 		    else
-		        result=`zypper sd xcat-otherpkgs$index`
+                        if ( pmatch "$OSVER" "sles10*" );then
+                            rc=0
+                            array_set_element repo_path $index $path
+                        else
+                            result=`zypper sd xcat-otherpkgs$index`
+                        fi
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
 		    #use apt
