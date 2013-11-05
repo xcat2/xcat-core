@@ -159,7 +159,11 @@ chmod 755 /opt/xcat/xcatinstallpost
 
 export OSVER=#TABLE:nodetype:THISNODE:os#
 if [[ $OSVER == sles* ]]; then
-    /sbin/insserv -p /etc/init.d xcatpostinit1
+    if [[ $OSVER == sles10* ]];then
+        /sbin/insserv xcatpostinit1
+    else
+        /sbin/insserv -p /etc/init.d xcatpostinit1
+    fi
 fi
 #chkconfig --add xcatpostinit1
 chkconfig xcatpostinit1 on
