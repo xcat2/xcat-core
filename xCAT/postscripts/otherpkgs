@@ -372,13 +372,10 @@ fi
 
 ##end collecting the repositories for os 
 #########################
-if [ $VERBOSE  ]; then
-  echo NFSSERVER=$NFSSERVER
-fi
+
+echo NFSSERVER=$NFSSERVER
 logger -p local4.info -t xcat "NFSSERVER=$NFSSERVER"
-if [ $VERBOSE  ]; then
-  echo OTHERPKGDIR=$OTHERPKGDIR
-fi
+echo OTHERPKGDIR=$OTHERPKGDIR
 logger -p local4.info -t xcat "OTHERPKGDIR=$OTHERPKGDIR"
 
 #if [ -x "/sbin/dhcpcd" ]; then
@@ -447,10 +444,8 @@ if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
         if [ $? -ne 0 ]; then 
 	    if ( ! pmatch "$result" "*exists*" ); then 
 	        logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER\n    $result"
-                if [ $VERBOSE  ]; then
-	          echo "ospkgs: zypper ar $path xCAT-$OSVER"
-	          echo "    $result"
-	        fi
+	        echo "ospkgs: zypper ar $path xCAT-$OSVER"
+	        echo "    $result"
 	    fi
         fi
     else 
@@ -465,10 +460,8 @@ if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
             if [ $? -ne 0 ]; then 
 	        if ( ! pmatch "$result" "*exists*" ); then 
 	            logger -t xcat -p local4.info "ospkgs: zypper ar $path xCAT-$OSVER-path$i\n    $result"
-                  if [ $VERBOSE  ]; then
 	            echo "ospkgs: zypper ar $path xCAT-$OSVER-path$i"
 	            echo "    $result"
-	          fi
 	        fi
             fi
            
@@ -486,10 +479,8 @@ if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
         if [ $? -ne 0 ]; then 
 	    if ( ! pmatch "$result" "*exists*" ); then 
 		logger -t xcat -p local4.info "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk\n    $result"
-                if [ $VERBOSE ]; then
-	   	  echo "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk"
-		  echo "    $result"
-	        fi
+		echo "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk"
+		echo "    $result"
 	    fi
 	fi
     fi
@@ -560,12 +551,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         do
             result=`zypper sd $x`
         done
-	result=`zypper --non-interactive refresh 2>&1`
-    if [ $VERBOSE  ]; then
-	   echo "otherpkgs: zypper --non-interactive refresh"
-	   echo "    $result"
-	fi
-    repo_base="/tmp"
+	zypper --non-interactive refresh
+        repo_base="/tmp"
     elif [ $hasapt -eq 1 ] ; then
         mkdir -p /etc/apt/sources.list.d
 	result=`rm /etc/apt/sources.list.d/xCAT-otherpkgs*.list 2>&1`
@@ -658,11 +645,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                     yum clean all
                 fi
                 if [ $haszypper -eq 1 ]; then
-	                     result=`zypper --non-interactive refresh 2>&1`
-                         if [ $VERBOSE  ]; then
-	                       echo "otherpkgs: zypper --non-interactive refresh"
-	                       echo "    $result"
-	                     fi
+                    zypper --non-interactive refresh
                 fi
 		elif [ $hasapt -eq 1 ] ; then
 		    REPOFILE="$repo_base/xCAT-otherpkgs$index.list"
@@ -699,7 +682,9 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    if ( pmatch "$OSVER" "sles11*" ); then
 		        result=`zypper ar -c $REPOFILE`
 		    else
-		        result=`zypper sa -r $REPOFILE` 
+                        result=`zypper sa -r $REPOFILE << EOF
+y
+EOF`
 		    fi	
 		
 		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
@@ -707,12 +692,11 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		        rc=0
 		        array_set_element repo_path $index $path
 		    else
-                        #on sles10, the $? always 1, even the refresh is success.
-                        if ( pmatch "$OSVER" "sles10*" ); then
+                        if ( pmatch "$OSVER" "sles10*" );then
                             rc=0
                             array_set_element repo_path $index $path
                         else
-		            result=`zypper sd xcat-otherpkgs$index`
+                            result=`zypper sd xcat-otherpkgs$index`
                         fi
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
@@ -742,22 +726,16 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 
     #now update all the existing rpms
     if [ $hasyum -eq 1 ]; then 
-        if [ $VERBOSE  ]; then
-          echo "$envlist yum -y upgrade"
-        fi
+        echo "$envlist yum -y upgrade"
         result=`eval $envlist yum -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
         logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-          echo "$result"
-        fi
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
-        if [ $VERBOSE  ]; then
-          echo "$envlist zypper --non-interactive update --auto-agree-with-license"
-        fi
+        echo "$envlist zypper --non-interactive update --auto-agree-with-license"
 	result=`eval $envlist zypper --non-interactive update --auto-agree-with-license 2>&1`
        
         R=$?
@@ -765,23 +743,17 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
               RETURNVAL=$R 
         fi
         logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-          echo "$result"
-        fi
+        echo "$result"
     elif [ $hasapt -eq 1 ]; then
 	apt_get_update_if_repos_changed $REPOFILE
-        if [ $VERBOSE  ]; then
-	  echo "$envlist  apt-get -y upgrade"
-        fi
+	echo "$envlist  apt-get -y upgrade"
 	result=`eval $envlist  apt-get -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
 	logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-	  echo "$result"
-        fi
+	echo "$result"
     fi     
 
     #echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
@@ -791,92 +763,68 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #Now we have parsed the input, let's remove rpms if is specified with -
     if [ "$repo_pkgs_preremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            if [ $VERBOSE  ]; then
-              echo "$envlist yum -y remove $repo_pkgs_preremove"
-            fi 
+            echo "$envlist yum -y remove $repo_pkgs_preremove"
             result=`eval $envlist yum -y remove $repo_pkgs_preremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-            fi
+            echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            if [ $VERBOSE  ]; then
-              echo "$envlist zypper remove -y $repo_pkgs_preremove"
-            fi
+            echo "$envlist zypper remove -y $repo_pkgs_preremove"
 	    result=`eval $envlist zypper remove -y $repo_pkgs_preremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-            fi
+            echo "$result"
 	elif [ $hasapt -eq 1 ]; then
   	    apt_get_update_if_repos_changed $REPOFILE
-            if [ $VERBOSE  ]; then
-	      echo "apt-get -y remove $repo_pkgs_preremove"
-            fi
+	    echo "apt-get -y remove $repo_pkgs_preremove"
 	    result=`apt-get -y remove $repo_pkgs_preremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-            fi
+            echo "$result"
         fi
     fi 
 
     if [ "$plain_pkgs_preremove" != "" ]; then 
-        if [ $VERBOSE  ]; then
-          echo "$envlist $sremovecommand $plain_pkgs_preremove" 
-        fi 
+        echo "$envlist $sremovecommand $plain_pkgs_preremove" 
         result=`eval $envlist $sremovecommand $plain_pkgs_preremove 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
         fi
         logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-          echo "$result"
-        fi
+        echo "$result"
     fi
 
 
     #installation using yum or zypper     
     if [ "$repo_pkgs" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            if [ $VERBOSE  ]; then
-             echo "$envlist yum -y install $repo_pkgs"
-            fi
+            echo "$envlist yum -y install $repo_pkgs"
             result=`eval $envlist yum -y install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
             fi
 	    logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-            fi
+            echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            if [ $VERBOSE  ]; then
-              echo "$envlist zypper install -y $repo_pkgs"
-            fi
+            echo "$envlist zypper install -y $repo_pkgs"
 	    result=`eval $envlist zypper install -y $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-	    fi
+            echo "$result"
             #remove the repos
             #old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
             #for x in $old_repo
@@ -884,19 +832,15 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             #    result=`zypper sd $x`
             #done
 	elif [ $hasapt -eq 1 ]; then
-	    apt_get_update_if_repos_changed $REPOFILE
-            if [ $VERBOSE  ]; then
-	      echo "$envlist apt-get -q -y --force-yes install $repo_pkgs"
-	    fi
+		apt_get_update_if_repos_changed $REPOFILE
+	    echo "$envlist apt-get -q -y --force-yes install $repo_pkgs"
 	    result=`eval $envlist apt-get -q -y --force-yes install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
 	    logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-             echo "$result"
-	    fi
+            echo "$result"
         fi
     fi 
 
@@ -922,18 +866,14 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             cd $OTHERPKGDIR
         fi
 
-        if [ $VERBOSE  ]; then
-          echo "$envlist $supdatecommand $plain_pkgs" 
-        fi
+        echo "$envlist $supdatecommand $plain_pkgs" 
         result=`eval $envlist $supdatecommand $plain_pkgs 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	fi
         logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-          echo "$result"
-	fi
+        echo "$result"
     
         if [ $mounted -eq 0 ]; then
 	    cd /xcatpost
@@ -946,61 +886,45 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     #remove more rpms if specified with --
     if [ "$repo_pkgs_postremove" != "" ]; then
         if [ $hasyum -eq 1 ]; then 
-            if [ $VERBOSE  ]; then
-             echo "$envlist yum -y remove $repo_pkgs_postremove"
-            fi
+            echo "$envlist yum -y remove $repo_pkgs_postremove"
             result=`eval $envlist yum -y remove $repo_pkgs_postremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-	    fi
+            echo "$result"
         elif [ $haszypper -eq 1 ]; then
-            if [ $VERBOSE  ]; then
-              echo "$envlist zypper remove -y $repo_pkgs_postremove"
-	    fi
+            echo "$envlist zypper remove -y $repo_pkgs_postremove"
 	    result=`eval $envlist zypper remove -y $repo_pkgs_postremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
             logger -p local4.info -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-	    fi
+            echo "$result"
         elif [ $hasapt -eq 1 ]; then 
             apt_get_update_if_repos_changed $REPOFILE
-            if [ $VERBOSE  ]; then
-              echo "$envlist apt-get -y remove $repo_pkgs_postremove"
-	    fi
+            echo "$envlist apt-get -y remove $repo_pkgs_postremove"
             result=`eval $envlist apt-get -y remove $repo_pkgs_postremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	    fi
             logger -p local4.info  -t xcat "$result"
-            if [ $VERBOSE  ]; then
-              echo "$result"
-	    fi
+            echo "$result"
         fi
     fi 
 
     if [ "$plain_pkgs_postremove" != "" ]; then 
-        if [ $VERBOSE  ]; then
-           echo "$envlist $sremovecommand $plain_pkgs_postremove" 
-        fi
+        echo "$envlist $sremovecommand $plain_pkgs_postremove" 
         result=`eval $envlist $sremovecommand $plain_pkgs_postremove 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
 	fi
         logger -p local4.info -t xcat "$result"
-        if [ $VERBOSE  ]; then
-          echo "$result"
-	fi
+        echo "$result"
     fi
 
     op_index=$((op_index+1))
