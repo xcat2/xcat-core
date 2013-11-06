@@ -201,18 +201,13 @@ EOF
 	chmod +x instoss
 fi
 
-# Get the permissions correct.  Have to have all dirs/files with a group of xcat
-# and have them writeable by group, so any member of the xcat can build.
+# Get the permissions and group correct
 if [ "$OSNAME" == "AIX" ]; then
-	if ! lsgroup xcat >/dev/null 2>&1; then
-		mkgroup xcat
-	fi
+	SYSGRP=system
 else
-	if ! $GREP xcat /etc/group; then
-		groupadd xcat
-	fi
+	SYSGRP=root
 fi
-chgrp -R root *
+chgrp -R $SYSGRP *
 chmod -R g+w *
 
 # Build the tarball
