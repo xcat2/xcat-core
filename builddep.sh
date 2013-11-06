@@ -140,6 +140,13 @@ elif [ "$PERLVER" == "v5.8.8" ]; then
         OSVER='6.1'
 elif [ "$PERLVER" == "v5.10.1" ]; then
         OSVER='7.1'
+        aixver=`lslpp -lc|grep 'bos.rte:'|head -1|cut -d: -f3`
+		if [[ $aixver < '7.1.3.0' ]]; then
+			AIX71L=0
+		else
+			AIX71L=1
+		fi
+
 else
         echo "Error: the perl version of '$PERLVER' is not one that instoss understands.  Exiting..."
         exit 2
@@ -163,9 +170,13 @@ for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^per
 	else
 		opts=""
 	fi
-	
-	# just in case we need it sometime, this next if stmt would mean: if it does not start with perl-DBD-DB2
-	#if [ "${i#perl-DBD-DB2}" == "$i" ]; then
+
+	# On 7.1L we need a newer version of perl-Net_SSLeay.pm
+	if [[ $AIX71L -eq 1 ]]; then
+		if [[ $i == perl-Net_SSLeay.pm-1.30-* ]]; then continue; fi 	# skip the old rpm
+	else
+		if [[ $i == perl-Net_SSLeay.pm-1.55-* ]]; then continue; fi 	# skip the new rpm
+	fi
 	
 	echo rpm -Uvh $opts $i
 	rpm -Uvh $opts $i
