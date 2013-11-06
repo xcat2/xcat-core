@@ -849,7 +849,8 @@ sub check_options
     Getopt::Long::Configure("no_pass_through");
 
     # Exit if the packet has been preprocessed
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    # Comment this line to make sure check_options can be processed on service node.
+    #if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
     # Save the arguements in ARGV for GetOptions
     if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
@@ -882,7 +883,7 @@ sub check_options
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
-        xCAT::MsgUtils->message("I", $rsp, $callback, 1);
+        xCAT::MsgUtils->message("I", $rsp, $callback, 0);
         return 0;
     }
 
@@ -910,6 +911,8 @@ sub check_options
         xCAT::MsgUtils->message("I", $rsp, $callback, 1);
         return;
     }
+
+    return 0;
 }
 
 ############################################################
@@ -922,7 +925,10 @@ sub preprocess_request
     my $rc       = 0;
    
     # check the syntax 
-    check_options($req,$callback);
+    $rc = check_options($req,$callback);
+    if ( $rc ) {
+        return [];
+    }
   
     my $snonly=0;
     my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
@@ -1095,7 +1101,13 @@ sub process_request
     #print Dumper($req);
 
     # Check options again in case we are called from plugin and options have not been processed
-    check_options($req,$callback);
+    my $rc       = 0;
+
+    $rc = check_options($req,$callback);
+    if ( $rc ) {
+        return [];
+    }
+
 
     # if option is query then call listnode for each node and return 
     if ($::opt_q)
