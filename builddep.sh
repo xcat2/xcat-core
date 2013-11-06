@@ -207,7 +207,7 @@ if [ "$OSNAME" == "AIX" ]; then
 else
 	SYSGRP=root
 fi
-chgrp -R $SYSGRP *
+chgrp -R -h $SYSGRP *
 chmod -R g+w *
 
 # Build the tarball
