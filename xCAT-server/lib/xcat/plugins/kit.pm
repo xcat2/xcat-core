@@ -1790,12 +1790,13 @@ sub addkitcomp
     my $rc;
 
     my $xusage = sub {
+        my $ret = shift;
         my %rsp;
         push@{ $rsp{data} }, "Usage: addkitcomp - Add a Kit component to an xCAT osimage.";
         push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\taddkitcomp [-v|--version]";
         push@{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] -i <osimage> <kitcompname_list>";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
     };
 
     if ($^O ne 'linux') {
@@ -1832,6 +1833,13 @@ sub addkitcomp
         create_version_response('addkitcomp');
         return 1;    # no usage - just exit
     }
+
+    unless(scalar @ARGV)
+    {
+        $xusage->(1);
+        return 1;
+    }
+
 
     my %tabs = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
@@ -2316,12 +2324,13 @@ sub rmkitcomp
     my $rc;
 
     my $xusage = sub {
+        my $ret = shift;
         my %rsp;
         push@{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
         push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\trmkitcomp [-v|--version]";
         push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] \n\t\t-i <osimage> <kitcompname_list>";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
     };
 
     if ($^O ne 'linux') {
@@ -2358,6 +2367,13 @@ sub rmkitcomp
         create_version_response('rmkitcomp');
         return 1;    # no usage - just exit
     }
+
+    unless(scalar @ARGV)
+    {
+        $xusage->(1);
+        return 1;
+    }
+
 
     my %tabs = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
