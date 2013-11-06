@@ -1465,7 +1465,7 @@ cfgmgt => {
    },
 },
 mic => {
-    cols => [qw(node host id nodetype bridge onboot vlog comments disable)],
+    cols => [qw(node host id nodetype bridge onboot vlog powermgt comments disable)],
     keys => [qw(node)],
     table_desc => 'The host, slot id and configuraton of the mic (Many Integrated Core).',
     descriptions => {
@@ -1476,6 +1476,7 @@ mic => {
         bridge => 'The virtual bridge on the host node which the mic connected to.',
         onboot => 'Set mic to autoboot when mpss start. Valid values: yes|no. Default is yes.',
         vlog => 'Set the Verbose Log to console. Valid values: yes|no. Default is no.',
+        powermgt => 'Set the Power Management for mic node. The value must be the [cpufreq=<on | off>]![corec6=<on | off>]![pc3=<on | off>]![pc6=<on | off>].',
         comments => 'Any user-provided notes.',
         disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
@@ -2444,6 +2445,11 @@ my @nodeattrs = (
 	{attr_name => 'micvlog',
 		only_if => 'mgt=mic',
 		tabentry => 'mic.vlog',
+		access_tabentry => 'mic.node=attr:node',
+	},
+	{attr_name => 'micpowermgt',
+		only_if => 'mgt=mic',
+		tabentry => 'mic.powermgt',
 		access_tabentry => 'mic.node=attr:node',
 	},
 	

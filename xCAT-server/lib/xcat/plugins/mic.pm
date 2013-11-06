@@ -674,7 +674,7 @@ sub nodeset {
         xCAT::MsgUtils->message("E", {error=>["Cannot open the mic table."], errorcode=>["1"]}, $callback);
         return;
     }
-    my $michash = $mictab->getNodesAttribs($nodes, ['bridge', 'onboot', 'vlog']);
+    my $michash = $mictab->getNodesAttribs($nodes, ['bridge', 'onboot', 'vlog', 'powermgt']);
 
     # get ip for the mic nodes from hosts table
     my $hosttab = xCAT::Table->new("hosts");
@@ -711,6 +711,13 @@ sub nodeset {
     }
     my @lfentall = $lftab->getAttribs({'image'=>'ALL'}, 'file', 'options');
 
+    # get the nfs server from statelite table
+    my $sltab = xCAT::Table->new('statelite');
+    unless ($sltab) {
+        xCAT::MsgUtils->message("E", {error=>["Cannot open the statelite table."], errorcode=>["1"]}, $callback);
+        return;
+    }
+    my $slhash = $sltab->getNodesAttribs($nodes, ['statemnt']);
 
     # get the tftp dir and create the path for mic configuration
     my $tftpdir = "/tftpboot";
@@ -800,6 +807,12 @@ sub nodeset {
             }
             if (defined ($michash->{$micname}->[0]->{'vlog'})) {
                 $micattrs .= "|vlog=$michash->{$micname}->[0]->{'vlog'}";
+            }
+            if (defined ($michash->{$micname}->[0]->{'powermgt'})) {
+                $micattrs .= "|powermgt=$michash->{$micname}->[0]->{'powermgt'}";
+            }
+            if (defined ($slhash->{$micname}->[0]->{'statemnt'})) {
+                $micattrs .= "|statemnt=$slhash->{$micname}->[0]->{statemnt}";
             }
             push @cfgfile, $micattrs;
 
