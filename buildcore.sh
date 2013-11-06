@@ -137,8 +137,10 @@ SRCD=core-snap-srpms
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
 	NOARCH=ppc
+	SYSGRP=system
 else
 	NOARCH=noarch
+	SYSGRP=root
 fi
 
 function setversionvars {
@@ -369,20 +371,13 @@ if [ "$OSNAME" != "AIX" ]; then
 	fi
 fi
 
-# make everything have a group of xcat, so anyone can manage them once they get on SF
+# set group and permissions correctly on the built rpms
 if [ "$OSNAME" = "AIX" ]; then
-	if ! lsgroup xcat >/dev/null 2>&1; then
-		mkgroup xcat
-	fi
 	chmod +x $DESTDIR/instxcat
-else	# linux
-	if ! $GREP xcat /etc/group; then
-		groupadd xcat
-	fi
 fi
-chgrp -R root $DESTDIR
+chgrp -R $SYSGRP $DESTDIR
 chmod -R g+w $DESTDIR
-chgrp -R root $SRCDIR
+chgrp -R $SYSGRP $SRCDIR
 chmod -R g+w $SRCDIR
 
 else		# end of very long if-not-promote
@@ -442,7 +437,7 @@ if [ "$OSNAME" = "AIX" ]; then
 else
 	tar $verboseflag -hjcf $TARNAME $XCATCORE
 fi
-chgrp root $TARNAME
+chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
 
 # Decide whether to upload or not
