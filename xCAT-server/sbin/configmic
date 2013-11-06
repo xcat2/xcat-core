@@ -100,7 +100,7 @@ while (<CFGFILE>) {
         my $deviceid = $1;
         my @params = split (/\|/, $2);
         foreach (@params) {
-            my ($n, $v) = split (/=/, $_);
+            my ($n, $v) = split (/=/, $_, 2);
             $miccfg{$deviceid}{$n} = $v;
             if ($n eq 'br') {
                 $brgname = $v;
@@ -290,10 +290,11 @@ foreach my $micid (keys %miccfg) {
     # set the autoboot
     if ($miccfg{$micid}{'onboot'} =~ /no/i) {
         $cmd = "micctrl --autoboot=no mic$micid";
+        runsyscmd ($cmd, "Error: failed to set the autoboot for mic.\n", 106);
     } elsif($miccfg{$micid}{'onboot'} =~ /yes/i) {
         $cmd = "micctrl --autoboot=yes mic$micid";
+        runsyscmd ($cmd, "Error: failed to set the autoboot for mic.\n", 106);
     }
-    runsyscmd ($cmd, "Error: failed to set the autoboot for mic.\n", 106);
 
     # set the hostname
     $cmd = "sed \"s/Hostname .*/Hostname \"$micname\"/\" /etc/mpss/mic$micid.conf > $tmppath/mic$micid.conf";
@@ -307,14 +308,44 @@ foreach my $micid (keys %miccfg) {
         copy ("$tmppath/mic$micid.conf", "/etc/mpss/mic$micid.conf");
     }
 
+    # configure the power management
+    if (defined ($miccfg{$micid}{'powermgt'})) {
+        $cmd = "micctrl --pm=set ";
+        foreach my $item (split (/!/, $miccfg{$micid}{'powermgt'})) {
+            $cmd .= " --$item ";
+        }
+        $cmd .= " mic$micid";
+        runsyscmd ($cmd, "Error: failed to set power management for mic.\n", 109);
+    }
+
     # configure network for each mic
     $cmd = "micctrl --network=static --bridge=".$miccfg{$micid}{br}." --ip=".$miccfg{$micid}{ip}." mic$micid";
     runsyscmd ($cmd, "Error: failed to generate IP configuration for mic.\n", 104);
 
     # configure nfs mount for each mic
     foreach my $msrc (keys %{$miccfg{'micmount'}}) {
-        $cmd = "micctrl --addnfs=$brgip:/$msrc --dir=$miccfg{micmount}{$msrc} mic$micid";
+        my $mntsrc;
+        if (defined $miccfg{$micid}{'statemnt'}) {
+            if ($miccfg{$micid}{'statemnt'} =~ /:/) {
+                # for 'statemnt' is a nfs server plus dir like 192.168.1:/nfs
+                $mntsrc = $miccfg{$micid}{'statemnt'}."/$msrc";
+            } else {
+                # for 'statemnt' is a nfs server ip 192.168.0.1
+                $mntsrc = $miccfg{$micid}{'statemnt'}.":/$msrc";
+            }
+        } else {
+            $mntsrc = "$brgip:/$msrc";
+        }
+        $cmd = "micctrl --addnfs=$mntsrc --dir=$miccfg{micmount}{$msrc} mic$micid";
         runsyscmd ($cmd, "Error: failed to add nfs mount for mic.\n", 104);
+
+        # since there's a bug that nfsserver cannot be set, just manully change it
+        if ($mntsrc =~ /^(.+):/) {
+            if ($1 ne $brgip) {
+                $cmd = "sed -i \'s/$brgip/$1/g\' /var/mpss/mic$micid/etc/fstab";
+                runsyscmd ($cmd, "Error: failed to hack nfs mount for mic.\n", 104);
+            }
+        }
     }
 
     # take the configuration to effect
