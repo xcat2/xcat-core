@@ -582,6 +582,10 @@ sub setup_DHCP
     
     # setup DHCP 
     # 
+
+    # clean up $::opt_n which set by last makedhcp context and conlicts with -a below.
+    undef $::opt_n;
+
     my $modname = "dhcp";
     if ($snonly != 1)  {  # setup  dhcp for all nodes
       $cmdref;
