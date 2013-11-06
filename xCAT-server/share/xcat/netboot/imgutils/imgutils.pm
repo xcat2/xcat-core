@@ -117,7 +117,7 @@ sub get_package_names {
                     }
                 }
      
-                #print "pkgtext=$pkgtext\n";
+                #print "\n\npkgtext=$pkgtext\n\n";
                 my @tmp=split(',', $pkgtext);
                 my $pass=1;
                 foreach (@tmp) {
@@ -138,6 +138,15 @@ sub get_package_names {
                             push(@$pa,$env);
                         } else {
                             $pkgnames{$pass}{ENVLIST} = [$env];
+                        }
+                        next;
+                    } elsif  (/^#INCLUDEBAD:([^#^\n]+)#/){
+                        my $pa=$pkgnames{$pass}{INCLUDEBAD};
+                        my $file=$1;
+                        if (exists($pkgnames{$pass}{INCLUDEBAD})){
+                           push(@$pa,$file);
+                        } else {
+                           $pkgnames{$pass}{INCLUDEBAD} =[$file];
                         }
                         next;
                     } elsif  (/^#/) {

@@ -218,6 +218,10 @@ unless ($onlyinitrd) {
    foreach $pass (sort (keys(%pkg_hash))) {
        my $pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
+           if($_ eq "INCLUDEBAD")  {
+              print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
+              exit 1;
+           }
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            $pkgnames .= " " . join(' ', @$pa);
@@ -248,6 +252,12 @@ unless ($onlyinitrd) {
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
+ 
+          if($_ eq "INCLUDEBAD")  {
+              print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+              exit 1;
+          }
+
 	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
 	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
 	  $index++;

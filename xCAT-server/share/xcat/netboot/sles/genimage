@@ -316,6 +316,12 @@ unless ($onlyinitrd) {
    my $pass;
    foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
      foreach (keys(%{$extra_hash{$pass}})) {
+
+       if($_ eq "INCLUDEBAD")  {
+          print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+          exit 1;
+       }
+
        if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
@@ -395,6 +401,12 @@ unless ($onlyinitrd) {
        $pkgnames = "";
        $group_pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
+
+           if($_ eq "INCLUDEBAD")  {
+              print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
+              exit 1;
+           }
+
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            # replace the kernel package with the name has the specific version
