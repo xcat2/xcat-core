@@ -26,7 +26,7 @@ install:
 	dh_install -X".svn"
 	chmod 755 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema/*
-	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/perl/xCAT_plugin/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_plugin/*
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT/*
 	chmod 755 `pwd`/debian/xcat-openstack/opt/xcat/sbin/*
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/man/man5/*
