@@ -450,7 +450,7 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
       } else {
           foreach (@moreslots) {
             #$matchstring=sprintf("BLADE_%02d",$_);
-            $matchstring=sprintf("(NODE_%02d|BLADE_%02d",$_,$_);
+            $matchstring=sprintf("(NODE_%02d|BLADE_%02d)",$_,$_);
             if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
                 if (defined($order)) {
                     $numentries++;

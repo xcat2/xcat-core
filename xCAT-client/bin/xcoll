@@ -10,8 +10,10 @@ my %output;
 
 my $option;
 my $printcount;
+my $individual;
 
 GetOptions("n"=>\$option,
+           "i"=>\$individual,
            "c"=>\$printcount);
 
 while (<STDIN>) {
@@ -27,8 +29,10 @@ while (<STDIN>) {
     $output{$node}.=$output;
 }
 my %collated;
-foreach (keys %output) {
-    $collated{$output{$_}}->{$_}=1;
+unless ($individual) {
+    foreach (keys %output) {
+        $collated{$output{$_}}->{$_}=1;
+    }
 }
 
 my $nodes;
@@ -37,6 +41,16 @@ sub fillerup {
     if ($response->{data}->[0]) {
         $nodes = $response->{data}->[0];
     }
+}
+if ($individual) {
+    foreach my $node (keys %output) {
+        print "====================================\n";
+        print "$node\n";
+        print "====================================\n";
+        print $output{$node};
+        print "\n";
+    }
+    exit(0);
 }
 foreach my $output (keys %collated) {
     $nodes = join(',',sort (keys %{$collated{$output}}));
