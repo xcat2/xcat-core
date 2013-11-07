@@ -1586,6 +1586,11 @@ sub copycd
                     unless ($distname) { $distname = "sles" . $subparts[0] };
                 }
                 if($prod =~ m/Software-Development-Kit/) {
+                    if ($distname eq 'sles11.3') {
+                        if ($discnumber == 1 and $totaldiscnumber == 1) { #disc 3, aka disc1 of 'debug'
+                            $discnumber = 3;
+                        }
+                    }
                     $discnumber = 'sdk' . $discnumber;
                 }
 		# check media.1/products for text.  
