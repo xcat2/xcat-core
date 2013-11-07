@@ -22,8 +22,8 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
-	dh_install -X".svn"
 	`pwd`/db2man
+	dh_install -X".svn"
 	chmod 755 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema/*
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/perl/xCAT_plugin/*
