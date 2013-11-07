@@ -22,9 +22,19 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_installdirs
+	`pwd`/db2man
 	dh_install -X".svn"
 	chmod 755 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_schema/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT_plugin/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/lib/perl/xCAT/*
+	chmod 755 `pwd`/debian/xcat-openstack/opt/xcat/sbin/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/man/man5/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/doc/man5/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/man/man7/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/doc/man7/*
+	chmod 755 `pwd`/debian/xcat-openstack/install/postscripts/*
+	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/xcat/*
 	dh_link
 
 binary-indep: build install

@@ -1,1 +1,10 @@
 lib/perl/xCAT_schema/* opt/xcat/lib/perl/xCAT_schema/
+lib/perl/xCAT_plugin/* opt/xcat/lib/perl/xCAT_plugin/
+lib/perl/xCAT/* opt/xcat/lib/perl/xCAT/
+sbin/* opt/xcat/sbin/
+share/man/man5/* opt/xcat/share/man/man5/
+share/doc/man5/* opt/xcat/share/doc/man5/
+share/man/man7/* opt/xcat/share/man/man7/
+share/doc/man7/* opt/xcat/share/doc/man7/
+postscripts/* install/postscripts/
+share/xcat/* opt/xcat/share/xcat/
