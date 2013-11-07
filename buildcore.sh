@@ -430,9 +430,12 @@ else
 	verboseflag=""
 fi
 echo "Creating $TARNAME ..."
+if [[ -e $TARNAME ]]; then
+	mkdir -p previous
+	mv -f $TARNAME previous
+fi
 if [ "$OSNAME" = "AIX" ]; then
 	tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
-	rm -f $TARNAME
 	gzip ${TARNAME%.gz}
 else
 	tar $verboseflag -hjcf $TARNAME $XCATCORE
