@@ -22,7 +22,7 @@ function debianpreconf(){
         mkdir -p "/etc/network/interfaces.d"
     fi
     #search xcat flag
-    `grep "#XCAT_CONFIG" /etc/network/interfaces`
+    grep '#XCAT_CONFIG' /etc/network/interfaces
     if [ $? -eq 0 ];then
         return
     fi
