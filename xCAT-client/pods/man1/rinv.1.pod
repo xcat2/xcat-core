@@ -112,15 +112,15 @@ Diagnostics information of firmware.
 
 =item B<mprom>
 
-?
+Retrieves mprom firmware level
 
 =item B<deviceid>
 
-?
+Retrieves device identification. Usually device, manufacturing and product ids. 
 
 =item B<guid>
 
-?
+Retrieves the global unique identifier 
 
 =item B<all>
 
