@@ -712,7 +712,7 @@ if ($tempfile) {
 	$updates_os{'provmethod'} = 'netboot';
 	$updates_os{'osname'} = 'Linux';
 	$updates_os{'osvers'} = $osver;
-	$updates_os{'osdistro'} = 'sles'; # not used currently
+	$updates_os{'osdistroname'} = 'sles'; # not used currently
 	$updates_os{'osarch'} = $arch;
 	# update the imagename for stateless 
 	print FILE "The output for table updates starts here\n";
