@@ -1724,6 +1724,10 @@ sub inv {
         $sessdata->{skipotherfru}=1;
 		@types = qw(asset);
 	}
+	elsif($subcommand eq "firm" || $subcommand eq "firmware") {
+        $sessdata->{skipotherfru}=1;
+		@types = qw(firmware);
+	}
 	elsif($subcommand eq "model") {
         $sessdata->{skipotherfru}=1;
 		@types = qw(model);
