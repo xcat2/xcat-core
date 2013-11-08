@@ -24,7 +24,7 @@ B<rvitals> I<noderange> {B<temp>|B<wattage>|B<fanspeed>|B<leds>|B<summary>|B<all
 
 =head2 BMC specific:
 
-B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<lcds>|B<summary>|B<all>}
+B<rvitals> I<noderange> {B<temp>|B<voltage>|B<wattage>|B<fanspeed>|B<power>|B<leds>|B<all>}
 
 =head1 B<Description>
 

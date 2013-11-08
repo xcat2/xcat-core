@@ -1724,6 +1724,10 @@ sub inv {
         $sessdata->{skipotherfru}=1;
 		@types = qw(asset);
 	}
+	elsif($subcommand eq "firm" || $subcommand eq "firmware") {
+        $sessdata->{skipotherfru}=1;
+		@types = qw(firmware);
+	}
 	elsif($subcommand eq "model") {
         $sessdata->{skipotherfru}=1;
 		@types = qw(model);
@@ -4479,7 +4483,7 @@ sub ieminitted {
 sub readenergy {
     my $sessdata = shift;
     unless ($iem_support) { 
-        xCAT::SvrUtils::sendmsg([1,"IBM::EnergyManager package required for this value"],$callback,$sessdata->{node},%allerrornodes);
+        xCAT::SvrUtils::sendmsg([1,":IBM::EnergyManager package required for this value"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     my @entries;
@@ -4854,7 +4858,7 @@ sub renergy {
     my $sessdata = shift;
     my @subcommands = @{$sessdata->{extraargs}};
     unless ($iem_support) {
-        xCAT::SvrUtils::sendmsg("Command unsupported without IBM::EnergyManager installed",$callback,$sessdata->{node});
+        xCAT::SvrUtils::sendmsg(":Command unsupported without IBM::EnergyManager installed",$callback,$sessdata->{node});
         return;
     }
     my @directives=();
@@ -5036,7 +5040,7 @@ sub vitals {
         if ($iem_support) {
             push @{$sessdata->{sensorstoread}},"energy";
         } elsif (not $doall) {
-            xCAT::SvrUtils::sendmsg([1,"Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment"],$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg([1,":Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment"],$callback,$sessdata->{node},%allerrornodes);
         }
         #my @energies;
         #($rc,@energies)=readenergy();
@@ -6336,7 +6340,6 @@ sub preprocess_request {
           return 0;
       }
   }
-
   if (!$realnoderange) {
     $usage_string=xCAT::Usage->getUsage($command);
     $callback->({data=>$usage_string});

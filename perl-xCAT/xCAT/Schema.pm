@@ -1476,7 +1476,7 @@ mic => {
         bridge => 'The virtual bridge on the host node which the mic connected to.',
         onboot => 'Set mic to autoboot when mpss start. Valid values: yes|no. Default is yes.',
         vlog => 'Set the Verbose Log to console. Valid values: yes|no. Default is no.',
-        powermgt => 'Set the Power Management for mic node. The value must be the [cpufreq=<on | off>]![corec6=<on | off>]![pc3=<on | off>]![pc6=<on | off>].',
+        powermgt => 'Set the Power Management for mic node. This attribute is used to set the power management state that mic may get into when it is idle. Four states can be set: cpufreq, corec6, pc3 and pc6. The valid value for powermgt attribute should be [cpufreq=<on|off>]![corec6=<on|off>]![pc3=<on|off>]![pc6=<on|off>]. e.g. cpufreq=on!corec6=off!pc3=on!pc6=off. Refer to the doc of mic to get more information for power management.',
         comments => 'Any user-provided notes.',
         disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
