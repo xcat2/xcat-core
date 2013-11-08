@@ -185,3 +185,84 @@ function v4calcnet(){
     str_net=`echo $str_net | sed 's/.$//'`
     echo "$str_net"
 }
+
+function v6expand(){
+    local str_v6address=$1
+    str_v6address=${str_v6address%%/*}
+    echo "$str_v6address" | grep '::' > /dev/null
+    if [ $? -ne 0 ];then
+        echo "$str_v6address"
+        return
+    fi
+
+    local num_colon=`echo "$str_v6address" | grep -o ':' | wc -l`
+    local num_omit=$((7-num_colon))
+    local str_temp=0
+    local num_index=1
+    while [ $num_index -le $num_omit  ];do
+        str_temp=$str_temp":0"
+        num_index=$((num_index+1))
+    done
+    
+    str_v6address=`echo $str_v6address | sed "s/::/:$str_temp:/" | sed 's/^:/0:/' | sed 's/:$/:0/'`
+    echo "$str_v6address"
+}
+
+function v6prefix2mask(){
+    local num_v6prefix=$1
+    num_v6prefix=`echo $num_v6prefix | sed 's:/::g'`
+    if [ $num_v6prefix -gt 128 ];then
+        $num_v6prefix=128
+    fi
+
+    if [ $num_v6prefix -le 0 ];then
+        $num_v6prefix=1
+    fi
+
+    local num_i=1
+    local str_mask=''
+    while [ $num_i -le 8 ];do
+        if [ $num_v6prefix -ge 16 ];then
+            str_mask=$str_mask"ffff:"
+            num_v6prefix=$((num_v6prefix-16))
+        elif [ $num_v6prefix -eq 0 ];then
+            str_mask=$str_mask"0:"
+        else
+            local str_temp=$(((65535>>$num_v6prefix)^65535))
+            str_temp=`echo "$str_temp"|awk '{printf("%x\n",$0)}'`
+            str_mask=$str_mask"$str_temp:"
+            num_v6prefix=0
+        fi
+        num_i=$((num_i+1))
+    done
+
+    str_mask=`echo $str_mask | sed 's/.$//'`
+    echo "$str_mask"
+}
+
+function v6calcnet(){
+    local str_v6ip=$(v6expand $1)
+    local str_v6mask=$2
+    local str_v6net=''
+
+    echo "$str_v6maks " | grep ':' > /dev/null
+    if [ $? -ne 0 ];then
+        str_v6mask=$(v6prefix2mask $str_v6mask)
+    fi
+
+    local str_old_ifs=$IFS
+    IFS=$':'
+    local array_ip=($str_v6ip)
+    local array_mask=($str_v6mask)
+    IFS=$str_old_ifs
+
+    for num_i in {0..7}
+    do
+        str_temp=$(( 0x${array_ip[$num_i]} & 0x${array_mask[$num_i]} ))
+        str_temp=`echo $str_temp | awk '{printf("%x\n",$0)}'`
+        str_v6net=$str_v6net$str_temp":"
+    done
+
+    str_v6net=`echo $str_v6net | sed 's/.$//'`
+    echo "$str_v6net"
+}
