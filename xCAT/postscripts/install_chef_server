@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 #####################################################
 #=head1  install_chef_server
@@ -50,10 +50,16 @@ fi
 
 if [ "$os" == "ubuntu" ]; then
     #remove the old chef-server and the configuration files
+    HOME='/root/'
+    export HOME
+    /usr/bin/chef-server-ctl cleanse   > /dev/null 2>&1
+    /usr/bin/chef-server-ctl stop   > /dev/null 2>&1
+    /usr/bin/chef-server-ctl status   > /dev/null 2>&1
     apt-get -y autoremove --purge chef-server
     rm -rf /etc/chef-server
     rm -rf /etc/chef
     rm -rf /root/.chef
+    rm -rf /opt/chef-server/    
 
     #add the internet Ubuntu repositories
     #urelease="precise" #default release name
