@@ -521,13 +521,18 @@ sub nextdestiny {
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
+    if($ref->{currstate} =~ /noupdateinitrd$/)
+    {
+        my @items = split /[:]/,$ref->{currstate};
+        $requ{arg}= \@items;
+    }
     setdestiny(\%requ, $flag+1);
   }
   
   if ($callnodeset) {
      $subreq->({command=>['nodeset'],
                node=> \@nodes,
-               arg=>['enact']});
+               arg=>['enact', '--noupdateinitrd']});
   }
 
 }

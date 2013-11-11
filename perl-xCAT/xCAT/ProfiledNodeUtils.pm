@@ -542,6 +542,32 @@ sub get_allnode_singleattrib_hash
 }
 
 #-------------------------------------------------------------------------------
+ 
+=head3 get_db_swtiches
+      Description : Get all records of switch config from a table, then return a string list.
+      Arguments   : $tabname - the table name.
+      Returns     : Reference of the records hash.
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_db_switches
+{
+    my $class = shift;
+    my $table = xCAT::Table->new("switches");
+    my @attribs = ("switch");
+    my @entries = $table->getAllAttribs(@attribs);
+    $table->close();
+    my %allrecords;
+    foreach (@entries) 
+    {
+        if ($_->{'switch'}){
+            $allrecords{$_->{'switch'}} = 0;
+        }
+    }
+    return \%allrecords;
+}
+
+#-------------------------------------------------------------------------------
 
 =head3 get_db_swtichports
       Description : Get all records of switch config from a table, then return a string list.
@@ -556,6 +582,7 @@ sub get_db_switchports
     my $table = xCAT::Table->new("switch");
     my @attribs = ("switch", "port");
     my @entries = $table->getAllAttribs(@attribs);
+    $table->close();
     my %allrecords;
     foreach (@entries) 
     {
