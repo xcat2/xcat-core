@@ -14,10 +14,11 @@ use Sys::Hostname;
 use xCAT::Table;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
-use Data::Dumper;
+#use Data::Dumper;
 use xCAT::MacMap;
 use Socket;
 use Net::Ping;
+my $interface;
 
 ##########################################################################
 ## Command handler method from tables
@@ -28,16 +29,38 @@ sub handled_commands {
 	};
 }
 
+
+#sub preprocess_request {
+
+    #   set management node as server for all requests
+    #   any requests sent to service node need to get
+    #   get sent up to the MN
+
+    #my $req = shift;
+     ##if already preprocessed, go straight to request
+    #if (   (defined($req->{_xcatpreprocessed}))
+        #&& ($req->{_xcatpreprocessed}->[0] == 1))
+    #{
+        #return [$req];
+    #}
+#
+    #$req->{_xcatdest} = xCAT::TableUtils->get_site_Master();
+    #return [$req];
+#}
+
+
+
 sub process_request {
 	my $request  = shift;
 	my $callback = shift;
 	my $subreq = shift;
+	#my $subreq = $request->{command};
  	
 	$::CALLBACK = $callback;
 
-	if ( defined( @{$::args} ) ) {
-        @ARGV = @{$::args};
-    }
+	if ($request && $request->{arg}) { @ARGV = @{$request->{arg}}; }
+	else { @ARGV = (); }
+
 	Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
 	my $getopt_success = Getopt::Long::GetOptions(
 		'help|h|?'  => \$::opt_h,
@@ -66,7 +89,7 @@ sub process_request {
 
 	# Option -i for kit component attributes
 	if ( defined($::opt_I) ) {
-		$::interface = $::opt_I;
+		$interface = $::opt_I;
 	} 
 
 	my $command       = $request->{command}->[0];
@@ -79,9 +102,9 @@ sub process_request {
 	}
 	else
 	{
-		my %rsp;
-		push@{ $rsp{data} }, "$localhostname: Unsupported command: $command";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push @{ $rsp->{data} }, "$localhostname: Unsupported command: $command";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 		return 1;
 	}
 
@@ -126,6 +149,7 @@ sub configfpc {
 	my $callback = shift;
 	my $subreq = shift;
 
+	$::CALLBACK = $callback;
 
 	# Use default userid and passwd
 	my $ipmiuser = 'USERID';
@@ -138,9 +162,9 @@ sub configfpc {
 
 	# Setup routing to 182.168.0.100 network
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Adding route definition for 192.168.0.101/16 to $::interface interface";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Adding route definition for 192.168.0.101/16 to $::interface interface";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	my $setroute = `ip addr add dev $::interface 192.168.0.101/16`;
 	
@@ -148,22 +172,19 @@ sub configfpc {
 	# check for an FPC - this ping will also add the FPC IP and MAC  to the ARP table 
 	#
 	my $res = `LANG=C ping -c 1 -w 5 $fpcip`;
-	#my $res = system("LANG=C ping -c 1 -w 5 $fpcip 2>&1");
 	if ( $res =~ /100% packet loss/g) { 
-#		xCAT::MsgUtils->message ("I", "There are no default $fpcip FPC IP addresses to process");
 		$foundfpc = 0;
 
-		my %rsp = {};
-		push@{ $rsp{data} }, "No default $fpcip IP addresses found";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "No default $fpcip IP addresses found";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 		exit; # EXIT if we find no more default IP addresses on the network
 	}
 	else {
-#		xCAT::MsgUtils->message ("I", "Found $fpcip FPC IP addresses to process");
 		if($::VERBOSE){
-			my %rsp = {};
-			push@{ $rsp{data} }, "Found $fpcip address";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
+			my $rsp;
+			push@{ $rsp->{data} }, "Found $fpcip address";
+			xCAT::MsgUtils->message( "I", $rsp, $callback );
 		}
 		$foundfpc = 1;
 	}
@@ -189,25 +210,25 @@ sub configfpc {
 			&set_FPC_network_parms($defnode,$netmask,$gateway,$newfpcip,$callback,$subreq);
 
 			# message changed network settings
-			my %rsp = {};
-			push@{ $rsp{data} }, "Configured FPC with MAC $fpcmac as $node ($newfpcip)";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
+			my $rsp;
+			push@{ $rsp->{data} }, "Configured FPC with MAC $fpcmac as $node ($newfpcip)";
+			xCAT::MsgUtils->message( "I", $rsp, $callback );
 	
 			# Validate that new IP is working - Use ping to check if the new IP has been set
 			my $p = Net::Ping->new();
 			my $ping_success=1;
 			while ($ping_success) {
 				if ($p->ping($newfpcip)) {
-					my %rsp = {};
-					push@{ $rsp{data} }, "Verified the FPC with MAC $fpcmac is responding to the new IP $newfpcip as node $node";
-					xCAT::MsgUtils->message( "I", \%rsp, $callback );
+					my $rsp; 
+					push@{ $rsp->{data} }, "Verified the FPC with MAC $fpcmac is responding to the new IP $newfpcip as node $node";
+					xCAT::MsgUtils->message( "I", $rsp, $callback );
 					$ping_success=0;
 				}
 				else {
 					if($::VERBOSE){
-						my %rsp = {};
-						push@{ $rsp{data} }, "ping to $newfpcip is unsuccessful. Retrying ";
-						xCAT::MsgUtils->message( "I", \%rsp, $callback );
+						my $rsp;
+						push@{ $rsp->{data} }, "ping to $newfpcip is unsuccessful. Retrying ";
+						xCAT::MsgUtils->message( "I", $rsp, $callback );
 					}
 				}
 			}
@@ -215,9 +236,9 @@ sub configfpc {
 
 		# The Node associated with this MAC was not found - print an infomrational message and continue
 		} else { 
-			my %rsp;
-			push@{ $rsp{data} }, "No FPC found that is associated with MAC address $fpcmac.\nCheck to see if the switch and switch table contain the information needed to locate this FPC MAC";
-			xCAT::MsgUtils->message( "E", \%rsp, $callback );
+			my $rsp;
+			push@{ $rsp->{data} }, "No FPC found that is associated with MAC address $fpcmac.\nCheck to see if the switch and switch table contain the information needed to locate this FPC MAC";
+			xCAT::MsgUtils->message( "E", $rsp, $callback );
 			$foundfpc = 0;
 		}  
 	
@@ -225,9 +246,9 @@ sub configfpc {
 		# Delete this FPC default IP Arp entry to get ready to look for another defautl FPC
 		#
 		if($::VERBOSE){
-			my %rsp = {};
-			push@{ $rsp{data} }, "Removing default IP $fpcip from the arp table";
-			xCAT::MsgUtils->message( "I", \%rsp, $callback );
+			my $rsp;
+			push@{ $rsp->{data} }, "Removing default IP $fpcip from the arp table";
+			xCAT::MsgUtils->message( "I", $rsp, $callback );
 		}
 		my $arpout = `arp -d $fpcip`;
 		
@@ -236,9 +257,9 @@ sub configfpc {
 			# check for another FPC 
 			$res = `LANG=C ping -c 1 -w 5 $fpcip 2>&1`;
 			if ( ($res =~ /100% packet loss/g) && ($foundfpc==1) ) { 
-				my %rsp;
-				push@{ $rsp{data} }, "There are no more  default IP address to process";
-				xCAT::MsgUtils->message( "I", \%rsp, $callback );
+				my $rsp;
+				push@{ $rsp->{data} }, "There are no more  default IP address to process";
+				xCAT::MsgUtils->message( "I", $rsp, $callback );
 				$foundfpc = 0;
 			}
 			else {
@@ -252,17 +273,17 @@ sub configfpc {
 	#
 	# Delete routing to 182.168.0.100 network
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Deleting route definition for 192.168.0.101/16 on interface $::interface";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Deleting route definition for 192.168.0.101/16 on interface $::interface";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	my $setroute = `ip addr del dev $::interface 192.168.0.101/16`;
 	
 	# Delete routing to 182.168.0.100 network
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Removing default FPC node definition $defnode";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Removing default FPC node definition $defnode";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 
 
@@ -292,10 +313,9 @@ sub get_network_parms {
 	if (inet_aton($ip)) {
 		$ip = inet_ntoa(inet_aton($ip));
 	} else {
-		my %rsp;
-		push@{ $rsp{data} }, "Unable to resolve $ip";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
-		#xCAT::MsgUtils->message("S","Unable to resolve $ip");
+		my $rsp;
+		push@{ $rsp->{data} }, "Unable to resolve $ip";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 		return undef;
 	}
 	my $nettab = xCAT::Table->new('networks');
@@ -339,61 +359,64 @@ sub set_FPC_network_parms {
 	# Proceed with changing the FPC network parameters.
 	# Set FPC Netmask
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Use rspconfig to set the FPC netmask $netmask";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Use rspconfig to set the FPC netmask $netmask";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	my $netmaskout = xCAT::Utils->runxcmd( 
 		{ 
 		command => ["rspconfig"],
 		node => ["$defnode"],
-		arg     => [ "netmask=$netmask" ]
+		arg     => [ "netmask=$netmask" ], 
+		sequential=>["1"],
 		}, 
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
-		my %rsp;
-		push@{ $rsp{data} }, "Could not change nemask $netmask";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Could not change nemask $netmask";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 		$error++;
 	}
 	
 	# Set FPC gateway
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Use rspconfig to set the FPC gateway $gateway";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Use rspconfig to set the FPC gateway $gateway";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	my $gatewayout = xCAT::Utils->runxcmd( 
 		{ 
 		command => ["rspconfig"],
 		node => ["$defnode"],
-		arg     => [ "gateway=$gateway" ] 
+		arg     => [ "gateway=$gateway" ],
+		sequential=>["1"],
 		}, 
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
-		my %rsp;
-		push@{ $rsp{data} }, "Could not change gateway $gateway";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Could not change gateway $gateway";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 		$error++;
 	}
 	
 	# Set FPC Ip address
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Use rspconfig to set the FPC IP address $newfpcip";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Use rspconfig to set the FPC IP address $newfpcip";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	my $ipout = xCAT::Utils->runxcmd( 
 		{ 
 		command => ["rspconfig"],
 		node => ["$defnode"],
-		arg     => [ "ip=$newfpcip" ] 
-		}, 
+		arg     => [ "ip=$newfpcip" ], 
+		sequential=>["1"],
+		},  
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
-		my %rsp;
-		push@{ $rsp{data} }, "Could not change ip address $newfpcip on default FPC";
-		xCAT::MsgUtils->message( "S", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Could not change ip address $newfpcip on default FPC";
+		xCAT::MsgUtils->message( "S", $rsp, $callback );
 		$error++;
 	}
 	return 1;
@@ -420,9 +443,9 @@ sub get_node {
 	my $arpout = `arp -s $fpcip $fpcmac`;
 	
 	# Print a message that this MAC has been found
-	my %rsp;
-	push@{ $rsp{data} }, "Found IP $fpcip and MAC $fpcmac";
-	xCAT::MsgUtils->message( "I", \%rsp, $callback );
+	my $rsp;
+	push@{ $rsp->{data} }, "Found IP $fpcip and MAC $fpcmac";
+	xCAT::MsgUtils->message( "I", $rsp, $callback );
 	
 	# Usee find_mac to 1) look for which switch port contains this MAC address
 	# and 2) look in the xcat DB to find the node associated with the switch port this MAC was found in
@@ -431,9 +454,9 @@ sub get_node {
 	$node = $macmap->find_mac($fpcmac,0);
 	# verbose
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Mapped MAC $fpcmac to node $node";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Mapped MAC $fpcmac to node $node";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 	
 	return ($node,$fpcmac);
@@ -457,9 +480,9 @@ sub add_node {
 #
 
 	if($::VERBOSE){
-		my %rsp = {};
-		push@{ $rsp{data} }, "Creating default FPC node deffpc with IP 192.168.0.100 for later use with rspconfig";
-		xCAT::MsgUtils->message( "I", \%rsp, $callback );
+		my $rsp;
+		push@{ $rsp->{data} }, "Creating default FPC node deffpc with IP 192.168.0.100 for later use with rspconfig";
+		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 
 	my $nodelisttab  = xCAT::Table->new('nodelist',-create=>1);
