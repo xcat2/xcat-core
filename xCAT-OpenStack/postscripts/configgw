@@ -1,0 +1,67 @@
+#!/bin/bash 
+
+str_dir_name=`dirname $0`
+. $str_dir_name/xcatlib.sh
+
+if [ -z "$1" ];then
+    echo "$0 need the interface name."
+    exit
+fi
+
+str_nic_name=$1
+str_ip_mask=`ip addr show dev $str_nic_name | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
+
+str_ip=`echo $str_ip_mask | awk -F'/' '{print $1}'`
+str_mask=`echo $str_ip_mask | awk -F'/' '{print $2}'`
+
+str_net=$(v4calcnet $str_ip $str_mask)
+
+num_i=1
+while [ $num_i -le $NETWORKS_LINES ];do
+    eval str_temp=\$NETWORKS_LINE$num_i
+    str_net_table=`echo $str_temp | awk -F'net=' '{print $2}' | awk -F'|' '{print $1}'`
+
+    if [ "$str_net" = "$str_net_table" ];then
+        str_gateway=`echo $str_temp | awk -F'gateway=' '{print $2}' | awk -F'|' '{print $1}' | sed 's:^/::'`
+    fi
+    num_i=$((num_i+1))
+done
+
+if [ -z "$str_gateway" ];then
+    echo "Can not find the corresponding network defination"
+    exit
+fi
+
+echo $str_gateway |  grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null
+if [ $? -ne 0 ];then
+    echo "The gateway must be ipv4 address: $str_gateway"
+    exit
+fi
+
+#change the default route
+route del default
+route add default gw $str_gateway dev $str_nic_name
+
+#change the gateway persistent
+if [ -f "/etc/debian_version" ];then
+    debianpreconf
+    #delete the gateway from all configuration files
+    sed -i "s/.*gateway.*//" /etc/network/interfaces.d/*
+    
+    str_conf_file="/etc/network/interfaces.d/$str_nic_name"
+    echo "  gateway $str_gateway --" >> $str_conf_file
+elif [ -f "/etc/SuSE-release" ];then
+    grep -i "default" /etc/sysconfig/network/routes
+    if [ $? -eq 0 ];then
+        sed -i "s/.*default.*/default ${str_gateway} - -/i" /etc/sysconfig/network/routes
+    else
+        echo "default ${str_gateway} - -" >> /etc/sysconfig/network/routes
+    fi
+else
+    grep -i "GATEWAY" /etc/sysconfig/network
+    if [ $? -eq 0 ];then
+        sed -i "s/.*GATEWAY.*/GATEWAY=${str_gateway}/i" /etc/sysconfig/network
+    else
+        echo "GATEWAY=${str_gateway}" >> /etc/sysconfig/network
+    fi
+fi

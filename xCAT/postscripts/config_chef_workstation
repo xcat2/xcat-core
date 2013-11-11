@@ -11,6 +11,7 @@
 
 node=`hostname`
 
+uselocalhost=0
 # Who is the chef server?
 # -s takes precedence
 # then site.chefserver
