@@ -1307,8 +1307,15 @@ sub fpc_update_aborted {
 }
 
 sub fpc_firmxfer_watch {
+    my $abort = 0;
     if ($_[0]->{code} == 0x89) {
 	    xCAT::SvrUtils::sendmsg([1,"Transfer failed (wrong url?)"],$callback,$_[1]->{node},%allerrornodes);
+        $abort = 1;
+    } elsif ($_[0]->{code} == 0x91) {
+	    xCAT::SvrUtils::sendmsg([1,"Invalid URL format given"],$callback,$_[1]->{node},%allerrornodes);
+        $abort = 1;
+    }
+    if ($abort) {
         abort_fpc_update($_[1]);
         return;
     }
