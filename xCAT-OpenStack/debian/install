@@ -1,5 +1,6 @@
 lib/perl/xCAT_schema/* opt/xcat/lib/perl/xCAT_schema/
 lib/perl/xCAT_plugin/* opt/xcat/lib/perl/xCAT_plugin/
+lib/perl/xCAT/* opt/xcat/lib/perl/xCAT/
 templates/* opt/xcat/lib/perl/xCAT/templates
 sbin/* opt/xcat/sbin/
 share/man/man5/* opt/xcat/share/man/man5/
