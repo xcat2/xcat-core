@@ -2134,6 +2134,11 @@ sub copycd
 		return;
 	   }
     }
+    if ($::XCATSITEVALS{onlysupportarchs} and $::XCATSITEVALS{onlysupportarchs} ne $arch) {
+        $callback->({error => "$arch is unsupported by this system",errorcode=>2});
+	return;
+    }
+
 
     #tranverse the directory structure of the os media and get the fingerprint     
     my @filelist=();
