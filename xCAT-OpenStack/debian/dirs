@@ -1,7 +1,6 @@
 opt/xcat/lib/perl/xCAT_schema
 opt/xcat/lib/perl/xCAT_plugin
 opt/xcat/lib/perl/xCAT
-opt/xcat/share/xcat/mypostscript
 opt/xcat/share/xcat/templates
 opt/xcat/sbin
 opt/xcat/share/man/man5
