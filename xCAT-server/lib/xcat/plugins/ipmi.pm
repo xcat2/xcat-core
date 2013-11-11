@@ -1256,11 +1256,6 @@ sub rflash {
 }
 
 sub fpc_firmup_config {
-    if ($_[0]->{code} == 0x91) { #ipmi error
-        xCAT::SvrUtils::sendmsg([1,"Invalid URL given"],$callback,$sessdata->{node},%allerrornodes);
-        abort_fpc_update($_[1]);
-        return;
-    }
     if (check_rsp_errors(@_)) {
         abort_fpc_update($_[1]);
         return;
