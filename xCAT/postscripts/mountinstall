@@ -1,4 +1,4 @@
-#!/bin/sh -vx
+#!/bin/sh 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # This script, ("mountinstall"), is a sample xCAT post script for 
