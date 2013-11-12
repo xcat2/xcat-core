@@ -47,7 +47,8 @@ R:perl-Net-DNS*
 R:perl-Net-IP*
 R:perl-Net-Telnet*
 R:perl-version-0.82-2*
-R:perl-Net_SSLeay.pm-1.30-3*
+#R:perl-Net_SSLeay.pm-1.30-3*   #used for AIX 7.1.2 and older
+R:perl-Net_SSLeay.pm-1.55-3*    #used for AIX 7.1.3 and above
 R:perl-IO-Socket-SSL*
 R:unixODBC*
 
