@@ -132,7 +132,7 @@ override_attributes(
         }
    },
    "compute" => {
-        "identity_service_chef_role" => "os-compute-single-controller",
+        "identity_service_chef_role" => "os-single-controller",
         "rabbit"=>{
            "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
         },
