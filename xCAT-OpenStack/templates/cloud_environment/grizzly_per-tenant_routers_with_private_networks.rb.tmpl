@@ -109,6 +109,7 @@ override_attributes(
       "use_ssl" => "false"
    },
    "network" => {
+        "network_server_chef_role" => "os-single-controller",
         "metadata"=>{
            "nova_metadata_ip"=>"#TABLE:clouds:name=$CLOUD:hostip#"
         },

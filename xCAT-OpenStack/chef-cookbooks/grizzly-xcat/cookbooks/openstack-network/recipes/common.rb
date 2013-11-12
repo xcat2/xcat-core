@@ -120,11 +120,16 @@ else
   bind_port = node["openstack"]["network"]["api"]["bind_port"]
 end
 
-# retrieve the local interface for tunnels
-if node["openstack"]["network"]["openvswitch"]["local_ip_interface"].nil?
-  local_ip = node["openstack"]["network"]["openvswitch"]["local_ip"]
+network_server_role = node["openstack"]["network"]["network_server_chef_role"]
+if node.run_list.roles.include?(network_server_role)
+   local_ip="{}"
 else
-  local_ip = address_for node["openstack"]["network"]["openvswitch"]["local_ip_interface"]
+  # retrieve the local interface for tunnels
+  if node["openstack"]["network"]["openvswitch"]["local_ip_interface"].nil?
+    local_ip = node["openstack"]["network"]["openvswitch"]["local_ip"]
+  else
+    local_ip = address_for node["openstack"]["network"]["openvswitch"]["local_ip_interface"]
+  end
 end
 
 platform_options["quantum_client_packages"].each do |pkg|
