@@ -239,6 +239,7 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/48.esxifixup
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/xcatsplash
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/fedora*
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/mic
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ol
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
