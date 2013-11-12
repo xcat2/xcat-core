@@ -84,6 +84,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %{prefix}
 /install/postscripts
+/install/chef-cookbooks
 %defattr(-,root,root)
 
 
