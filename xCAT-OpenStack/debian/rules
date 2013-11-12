@@ -34,6 +34,7 @@ install:
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/man/man7/*
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/doc/man7/*
 	chmod 755 `pwd`/debian/xcat-openstack/install/postscripts/*
+	chmod 644 `pwd`/debian/xcat-openstack/install/chef-cookbooks/*
 	chmod 644 `pwd`/debian/xcat-openstack/opt/xcat/share/xcat/*
 	dh_link
 
