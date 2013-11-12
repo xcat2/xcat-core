@@ -478,8 +478,9 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-
-chmod +x /$xcatpost/*; 
+# To support the postscripts in the subdirectories under /install/postscripts
+#chmod +x /$xcatpost/*; 
+chmod -R +x `find $xcatpost/ -maxdepth 1 -print | grep -E -v "^($xcatpost/|$xcatpost/_xcat|$xcatpost/_ssh|$xcatpost/ca|$xcatpost/hostkeys)$"`
 
 cd /$xcatpost; 
 PATH=/$xcatpost:$PATH

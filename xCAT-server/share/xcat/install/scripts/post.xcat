@@ -43,7 +43,9 @@ do
          # If mypostscript doesn't exist, we will get it through getpostscript.awk
          if [ ! -x /xcatpost/mypostscript ]; then
 
-         chmod +x /xcatpost/*
+         # To support the postscripts in the subdirectories under /install/postscripts
+         # chmod +x /xcatpost/*
+         chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
          
 
