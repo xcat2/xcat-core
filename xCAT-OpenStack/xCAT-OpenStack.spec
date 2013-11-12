@@ -34,6 +34,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
+mkdir -p $RPM_BUILD_ROOT/install/chef-cookbooks
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin
 
@@ -70,6 +71,9 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man7/*
 #cd -
 cp -a postscripts/* $RPM_BUILD_ROOT/install/postscripts
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
+
+cp -a chef-cookbooks/* $RPM_BUILD_ROOT/install/chef-cookbooks
+chmod 644 $RPM_BUILD_ROOT/install/chef-cookbooks/*
 
 cp -a templates/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/xcat/templates/*
