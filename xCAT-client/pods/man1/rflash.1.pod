@@ -1,6 +1,6 @@
 =head1 Name
 
-B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. 
+B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. rflash is also able to update firmware for NextScale Fan Power Controllers (FPC).
 
 =head1 B<Synopsis>
 
@@ -18,6 +18,10 @@ B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive>|B<deferred
 
 B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
+=head2 BMC (with FPC) specific:
+
+B<rflash> I<noderange> I<http directory> 
+
 =head1 B<Description>
 
 B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.
@@ -27,6 +31,8 @@ The command scans the specified directory structure for Firmware update package 
 The POWER5  and POWER6 systems contain several components that use Licensed Internal Code.  The B<rflash> command supports two of these components: the managed system (also known as the Central Electronics Complex, or CEC) and the power subsystem (also known as the Bulk Power Assembly (BPA) or Bulk Power Controller (BPC)).  Some POWER5 managed systems can be attached to a power subsystem.  These power subsystems can support multiple managed systems.  When the B<rflash> command is invoked, xCAT will determine the managed system or power subsystem associated with that CEC and perform the update. 
 
 The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a Frame or Frame list. But CEC (or Lpar) and Frame B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.  If I<noderange> is a Frame or Frame list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
+
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. 
 
 =head2 PPC (with HMC) specific:
 
@@ -66,6 +72,12 @@ For Power 775, the rflash command takes effect on the primary and secondary FSPs
 
 For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
   https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
+
+=head2 BMC (with NeXtScale FPC) specific:
+
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the link to get more details:
+ https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_NeXtScale_Clusters#Update_the_FPC_firmware_.28optional.29 
+
 
 =head1 B<Options>
 
@@ -132,6 +144,12 @@ To  update  only the  power subsystem attached to a single HMC-attached pSeries 
 To commit a firmware update to permanent flash for both managed system and the related power subsystems, enter:
 
  rflash cec_name --commit
+
+=item 4
+
+To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address  and the directory on the xCAT MN containing the firmware as follows:
+
+ rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
 
 =back
 
