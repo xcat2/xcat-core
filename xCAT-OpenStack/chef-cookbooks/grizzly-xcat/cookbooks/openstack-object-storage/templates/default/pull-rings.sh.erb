@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# this has to be run as root to restart the services...
+
+if [ ! -d /etc/swift/rings ] || [ ! -e /etc/swift/rings/.git/config ]; then
+    rm -rf /etc/swift/rings
+    git clone git://<%= @builder_ip %>/rings /etc/swift/rings
+fi
+
+cd /etc/swift/rings
+git reset --hard
+git clean -df
+git pull
+
+[ -e /etc/swift/rings ] && chown -R swift: /etc/swift/rings
+
+for d in object account container; do
+    if [ -e /etc/swift/rings/${d}.ring.gz ]; then
+        if [ ! -e ../${d}.ring.gz ] || [ "$(md5sum ${d}.ring.gz | cut -f1 -d' ')" != "$(md5sum ../${d}.ring.gz | cut -f1 -d' ')" ]; then
+            cp ${d}.ring.gz ../${d}.ring.new
+            chown swift: ../${d}.ring.new
+            mv ../${d}.ring.new ../${d}.ring.gz
+
+            if [ -e /etc/swift/${d}-server.conf ]; then
+                service <%= @service_prefix %>swift-${d}-replicator restart
+            fi
+        fi
+    fi
+done

@@ -1,0 +1,289 @@
+<%= node["openstack"]["identity"]["custom_template_banner"] %>
+
+[DEFAULT]
+public_port = <%= node["openstack"]["identity"]["service_port"] %>
+admin_port = <%= node["openstack"]["identity"]["admin_port"] %>
+admin_token = <%= @bootstrap_token %>
+bind_host = <%= @ip_address %>
+compute_port = 8774
+verbose = <%= node["openstack"]["identity"]["verbose"] %>
+debug = <%= node["openstack"]["identity"]["debug"] %>
+<% if node["openstack"]["identity"]["syslog"]["use"] %>
+log_config = /etc/openstack/logging.conf
+<% else %>
+log_file = /var/log/keystone/keystone.log
+<% end %>
+public_endpoint = <%= @public_endpoint %>
+admin_endpoint = <%= @admin_endpoint %>
+
+<% if @memcache_servers -%>
+[memcache]
+servers = <%= @memcache_servers %>
+
+<% end -%>
+[sql]
+connection = <%= @sql_connection %>
+idle_timeout = 200
+min_pool_size = 5
+max_pool_size = 10
+pool_timeout = 200
+
+[ldap]
+url = <%= @ldap["url"] %>
+user = <%= @ldap["user"] %>
+<% if @ldap["password"] -%>
+password = <%= @ldap["password"] %>
+<% else -%>
+# password = None
+<% end -%>
+suffix = <%= @ldap["suffix"] %>
+use_dumb_member = <%= @ldap["use_dumb_member"] %>
+allow_subtree_delete = <%= @ldap["allow_subtree_delete"] %>
+dumb_member = <%= @ldap["dumb_member"] %>
+page_size = <%= @ldap["page_size"] %>
+alias_dereferencing = <%= @ldap["alias_dereferencing"] %>
+query_scope = <%= @ldap["query_scope"] %>
+
+<% if @ldap["user_tree_dn"] -%>
+user_tree_dn = <%= @ldap["user_tree_dn"] %>
+<% else -%>
+# user_tree_dn =
+<% end -%>
+<% if @ldap["user_filter"] -%>
+user_filter = <%= @ldap["user_filter"] %>
+<% else -%>
+# user_filter =
+<% end -%>
+user_objectclass = <%= @ldap["user_objectclass"] %>
+user_id_attribute = <%= @ldap["user_id_attribute"] %>
+user_name_attribute = <%= @ldap["user_name_attribute"] %>
+user_mail_attribute = <%= @ldap["user_mail_attribute"] %>
+user_pass_attribute = <%= @ldap["user_pass_attribute"] %>
+user_enabled_attribute = <%= @ldap["user_enabled_attribute"] %>
+user_domain_id_attribute = <%= @ldap["user_domain_id_attribute"] %>
+user_enabled_mask = <%= @ldap["user_enabled_mask"] %>
+user_enabled_default = <%= @ldap["user_enabled_default"] %>
+user_attribute_ignore = <%= @ldap["user_attribute_ignore"] %>
+user_allow_create = <%= @ldap["user_allow_create"] %>
+user_allow_update = <%= @ldap["user_allow_update"] %>
+user_allow_delete = <%= @ldap["user_allow_delete"] %>
+user_enabled_emulation = <%= @ldap["user_enabled_emulation"] %>
+<% if @ldap["user_enabled_emulation_dn"] -%>
+user_enabled_emulation_dn = <%= @ldap["user_enabled_emulation_dn"] %>
+<% else -%>
+# user_enabled_emulation_dn =
+<% end -%>
+
+<% if @ldap["tenant_tree_dn"] -%>
+tenant_tree_dn = <%= @ldap["tenant_tree_dn"] %>
+<% else -%>
+# tenant_tree_dn =
+<% end -%>
+<% if @ldap["tenant_filter"] -%>
+tenant_filter = <%= @ldap["tenant_filter"] %>
+<% else -%>
+# tenant_filter =
+<% end -%>
+tenant_objectclass = <%= @ldap["tenant_objectclass"] %>
+tenant_id_attribute = <%= @ldap["tenant_id_attribute"] %>
+tenant_member_attribute = <%= @ldap["tenant_member_attribute"] %>
+tenant_name_attribute = <%= @ldap["tenant_name_attribute"] %>
+tenant_desc_attribute = <%= @ldap["tenant_desc_attribute"] %>
+tenant_enabled_attribute = <%= @ldap["tenant_enabled_attribute"] %>
+tenant_domain_id_attribute = <%= @ldap["tenant_domain_id_attribute"] %>
+<% if @ldap["tenant_attribute_ignore"] -%>
+tenant_attribute_ignore = <%= @ldap["tenant_attribute_ignore"] %>
+<% else -%>
+# tenant_attribute_ignore =
+<% end -%>
+tenant_allow_create = <%= @ldap["tenant_allow_create"] %>
+tenant_allow_update = <%= @ldap["tenant_allow_update"] %>
+tenant_allow_delete = <%= @ldap["tenant_allow_delete"] %>
+tenant_enabled_emulation = <%= @ldap["tenant_enabled_emulation"] %>
+<% if @ldap["tenant_enabled_emulation_dn"] -%>
+tenant_enabled_emulation_dn = <%= @ldap["tenant_enabled_emulation_dn"] %>
+<% else -%>
+# tenant_enabled_emulation_dn =
+<% end -%>
+
+<% if @ldap["role_tree_dn"] -%>
+role_tree_dn = <%= @ldap["role_tree_dn"] %>
+<% else -%>
+# role_tree_dn =
+<% end -%>
+<% if @ldap["role_filter"] -%>
+role_filter = <%= @ldap["role_filter"] %>
+<% else -%>
+# role_filter =
+<% end -%>
+role_objectclass = <%= @ldap["role_objectclass"] %>
+role_id_attribute = <%= @ldap["role_id_attribute"] %>
+role_name_attribute = <%= @ldap["role_name_attribute"] %>
+role_member_attribute = <%= @ldap["role_member_attribute"] %>
+<% if @ldap["role_attribute_ignore"] -%>
+role_attribute_ignore = <%= @ldap["role_attribute_ignore"] %>
+<% else -%>
+# role_attribute_ignore =
+<% end -%>
+role_allow_create = <%= @ldap["role_allow_create"] %>
+role_allow_update = <%= @ldap["role_allow_update"] %>
+role_allow_delete = <%= @ldap["role_allow_delete"] %>
+
+<% if @ldap["group_tree_dn"] -%>
+group_tree_dn = <%= @ldap["group_tree_dn"] %>
+<% else -%>
+# group_tree_dn =
+<% end -%>
+<% if @ldap["group_filter"] -%>
+group_filter = <%= @ldap["group_filter"] %>
+<% else -%>
+# group_filter =
+<% end -%>
+group_objectclass = <%= @ldap["group_objectclass"] %>
+group_id_attribute = <%= @ldap["group_id_attribute"] %>
+group_name_attribute = <%= @ldap["group_name_attribute"] %>
+group_member_attribute = <%= @ldap["group_member_attribute"] %>
+group_desc_attribute = <%= @ldap["group_desc_attribute"] %>
+group_domain_id_attribute = <%= @ldap["group_domain_id_attribute"] %>
+<% if @ldap["group_attribute_ignore"] -%>
+group_attribute_ignore = <%= @ldap["group_attribute_ignore"] %>
+<% else -%>
+# group_attribute_ignore =
+<% end -%>
+group_allow_create = <%= @ldap["group_allow_create"] %>
+group_allow_update = <%= @ldap["group_allow_update"] %>
+group_allow_delete = <%= @ldap["group_allow_delete"] %>
+
+
+[identity]
+driver = keystone.identity.backends.<%= node["openstack"]["identity"]["identity"]["backend"] %>.Identity
+
+[catalog]
+<% if node["openstack"]["identity"]["catalog"]["backend"] == "templated" -%>
+# templated driver uses different class name :(
+driver = keystone.catalog.backends.templated.TemplatedCatalog
+<% else -%>
+driver = keystone.catalog.backends.<%= node["openstack"]["identity"]["catalog"]["backend"] %>.Catalog
+<% end -%>
+template_file = /etc/keystone/default_catalog.templates
+
+[token]
+driver = keystone.token.backends.<%= node["openstack"]["identity"]["token"]["backend"] %>.Token
+
+# Amount of time a token should remain valid (in seconds)
+expiration = 86400
+
+[policy]
+driver = keystone.policy.backends.rules.Policy
+
+[ec2]
+driver = keystone.contrib.ec2.backends.sql.Ec2
+
+[ssl]
+#enable = True
+#certfile = /etc/keystone/ssl/certs/keystone.pem
+#keyfile = /etc/keystone/ssl/private/keystonekey.pem
+#ca_certs = /etc/keystone/ssl/certs/ca.pem
+#cert_required = True
+
+[signing]
+<% if node["openstack"]["auth"]["strategy"] == "pki" -%>
+token_format = PKI
+certfile = <%= node["openstack"]["identity"]["signing"]["certfile"] %>
+keyfile = <%= node["openstack"]["identity"]["signing"]["keyfile"] %>
+ca_certs = <%= node["openstack"]["identity"]["signing"]["ca_certs"] %>
+key_size = <%= node["openstack"]["identity"]["signing"]["key_size"] %>
+valid_days = <%= node["openstack"]["identity"]["signing"]["valid_days"] %>
+ca_password = <%= node["openstack"]["identity"]["signing"]["ca_password"] %>
+<% else -%>
+token_format = UUID
+<% end -%>
+
+[auth]
+methods = password,token
+password = keystone.auth.plugins.password.Password
+token = keystone.auth.plugins.token.Token
+
+[filter:debug]
+paste.filter_factory = keystone.common.wsgi:Debug.factory
+
+[filter:token_auth]
+paste.filter_factory = keystone.middleware:TokenAuthMiddleware.factory
+
+[filter:admin_token_auth]
+paste.filter_factory = keystone.middleware:AdminTokenAuthMiddleware.factory
+
+[filter:xml_body]
+paste.filter_factory = keystone.middleware:XmlBodyMiddleware.factory
+
+[filter:json_body]
+paste.filter_factory = keystone.middleware:JsonBodyMiddleware.factory
+
+[filter:user_crud_extension]
+paste.filter_factory = keystone.contrib.user_crud:CrudExtension.factory
+
+[filter:crud_extension]
+paste.filter_factory = keystone.contrib.admin_crud:CrudExtension.factory
+
+[filter:ec2_extension]
+paste.filter_factory = keystone.contrib.ec2:Ec2Extension.factory
+
+[filter:s3_extension]
+paste.filter_factory = keystone.contrib.s3:S3Extension.factory
+
+[filter:url_normalize]
+paste.filter_factory = keystone.middleware:NormalizingFilter.factory
+
+[filter:sizelimit]
+paste.filter_factory = keystone.middleware:RequestBodySizeLimiter.factory
+
+[filter:stats_monitoring]
+paste.filter_factory = keystone.contrib.stats:StatsMiddleware.factory
+
+[filter:stats_reporting]
+paste.filter_factory = keystone.contrib.stats:StatsExtension.factory
+
+[filter:access_log]
+paste.filter_factory = keystone.contrib.access:AccessLogMiddleware.factory
+
+[app:public_service]
+paste.app_factory = keystone.service:public_app_factory
+
+[app:service_v3]
+paste.app_factory = keystone.service:v3_app_factory
+
+[app:admin_service]
+paste.app_factory = keystone.service:admin_app_factory
+
+[pipeline:public_api]
+pipeline = access_log sizelimit stats_monitoring url_normalize token_auth admin_token_auth xml_body json_body debug ec2_extension user_crud_extension public_service
+
+[pipeline:admin_api]
+pipeline = access_log sizelimit stats_monitoring url_normalize token_auth admin_token_auth xml_body json_body debug stats_reporting ec2_extension s3_extension crud_extension admin_service
+
+[pipeline:api_v3]
+pipeline = access_log sizelimit stats_monitoring url_normalize token_auth admin_token_auth xml_body json_body debug stats_reporting ec2_extension s3_extension service_v3
+
+[app:public_version_service]
+paste.app_factory = keystone.service:public_version_app_factory
+
+[app:admin_version_service]
+paste.app_factory = keystone.service:admin_version_app_factory
+
+[pipeline:public_version_api]
+pipeline = access_log sizelimit stats_monitoring url_normalize xml_body public_version_service
+
+[pipeline:admin_version_api]
+pipeline = access_log sizelimit stats_monitoring url_normalize xml_body admin_version_service
+
+[composite:main]
+use = egg:Paste#urlmap
+/v2.0 = public_api
+/v3 = api_v3
+/ = public_version_api
+
+[composite:admin]
+use = egg:Paste#urlmap
+/v2.0 = admin_api
+/v3 = api_v3
+/ = admin_version_api

@@ -1,0 +1,25 @@
+Tailor.config do |config|
+  config.formatters "text"
+  config.file_set '**/*.rb' do |style|
+    style.max_line_length 80, level: :off
+    style.allow_camel_case_methods false, level: :error
+    style.allow_hard_tabs false, level: :error
+    style.allow_screaming_snake_case_classes false, level: :error
+    style.allow_trailing_line_spaces false, level: :error
+    style.allow_invalid_ruby false, level: :warn
+    style.indentation_spaces 2, level: :error
+    style.max_code_lines_in_class 300, level: :error
+    style.max_code_lines_in_method 30, level: :error
+    style.spaces_after_comma 1, level: :error
+    style.spaces_after_lbrace 1, level: :error
+    style.spaces_after_lbracket 0, level: :error
+    style.spaces_after_lparen 0, level: :error
+    style.spaces_before_comma 0, level: :error
+    style.spaces_before_lbrace 1, level: :error
+    style.spaces_before_rbrace 1, level: :error
+    style.spaces_before_rbracket 0, level: :error
+    style.spaces_before_rparen 0, level: :error
+    style.spaces_in_empty_braces 0, level: :error
+    style.trailing_newlines 1, level: :error
+  end
+end

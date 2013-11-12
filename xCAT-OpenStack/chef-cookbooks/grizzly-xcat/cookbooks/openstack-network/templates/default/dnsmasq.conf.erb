@@ -1,0 +1,7 @@
+<%= node["openstack"]["network"]["custom_template_banner"] %>
+
+dhcp-option=<%= node["openstack"]["network"]["dhcp"]["dhcp-option"] %>
+
+<% node["openstack"]["network"]["dhcp"]["upstream_dns_servers"].each do |dns_server| -%>
+server=<%= dns_server %>
+<% end -%>

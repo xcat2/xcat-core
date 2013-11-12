@@ -1,0 +1,192 @@
+---
+driver_plugin: vagrant
+driver_config:
+  require_chef_omnibus: true
+
+platforms:
+- name: ubuntu-10.04
+  driver_config:
+    box: opscode-ubuntu-10.04
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-10.04_provisionerless.box
+  run_list:
+  - recipe[apt]
+
+- name: ubuntu-12.04
+  driver_config:
+    box: opscode-ubuntu-12.04
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box
+  run_list:
+  - recipe[apt]
+
+- name: ubuntu-13.04
+  driver_config:
+    box: opscode-ubuntu-13.04
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_ubuntu-13.04_provisionerless.box
+  run_list:
+  - recipe[apt]
+
+- name: centos-5.9
+  driver_config:
+    box: opscode-centos-5.9
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_centos-5.9_provisionerless.box
+  run_list:
+  - recipe[yum::epel]
+
+- name: centos-6.4
+  driver_config:
+    box: opscode-centos-6.4
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_centos-6.4_provisionerless.box
+  run_list:
+  - recipe[yum::epel]
+
+- name: fedora-18
+  driver_config:
+    box: opscode-fedora-18
+    box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode-fedora-18_provisionerless.box
+  run_list: {}
+
+# add once the bento image is fixed
+# - name: debian-7.1
+#   driver_config:
+#     box: opscode-debian-7.1
+#     box_url: https://opscode-vm-bento.s3.amazonaws.com/vagrant/opscode_debian-7.1.0_provisionerless.box
+#   run_list:
+#   - recipe[apt]
+
+# image not downloading
+# - name: smartos-13.1
+#   driver_config:
+#     box: smartos-base1310
+#     box_url: http://dlc-int.openindiana.org/aszeszo/vagrant/smartos-base1310-64-virtualbox-20130806.box
+#   run_list:
+#   - recipe[rabbitmq]
+
+# http://tickets.opscode.com/browse/COOK-2467
+# - name: omnios-r151002
+#   driver_config:
+#     box: omnios-r151002
+#     box_url: http://omnios.omniti.com/media/omnios-latest.box
+#   run_list:
+#   - recipe[rabbitmq]
+
+suites:
+- name: default
+  excludes:
+  - omnios-r151002
+  - smartos-13.1
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::default]
+  attributes: {}
+
+- name: default-esl
+  excludes:
+  - centos-5.9
+  - fedora-18
+  - omnios-r151002
+  - smartos-13.1
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::default]
+  attributes:
+    erlang:
+      install_method: 'esl'
+
+- name: upstart
+  excludes:
+  - centos-5.9
+  - centos-6.4
+  - fedora-18
+  - ubuntu-13.04
+  - omnios-r151002
+  - smartos-13.1
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::default]
+  attributes:
+    rabbitmq:
+      job_control: 'upstart'
+
+- name: distro-version
+  excludes:
+  - centos-5.9
+  - fedora-18
+  - ubuntu-10.04
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::default]
+  attributes:
+    rabbitmq:
+      use_distro_version: true
+
+- name: mgmt_console
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::mgmt_console]
+  attributes: {}
+
+- name: cook-2151-3489
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::cook-2151-3489]
+  attributes:
+    rabbitmq:
+      disk_free_limit_relative: 1.0
+      vm_memory_high_watermark: 0.5
+      max_file_descriptors: 2048
+      open_file_limit: 102400
+
+- name: cook-2705
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::default]
+  attributes:
+    rabbitmq:
+      tcp_listen_keepalive: true
+
+# stress test for lwrps
+- name: lwrps-default
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::lwrps]
+  attributes:
+    rabbitmq:
+      enabled_plugins: ["rabbitmq_stomp", "rabbitmq_shovel", "rabbitmq_stomp"]
+      disabled_plugins: ["nonexistant_plugin", "rabbitmq_shovel"]
+      enabled_users: [
+      {name: "kitchen1", password: "test", tag: "tag1", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen2", password: "test", tag: "tag2", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}, {vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen3", password: "test", tag: "tag3", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen1", password: "test", tag: "tag4", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]}
+      ]
+      disabled_users: ["nonexistant_user", "kitchen2"]
+      disabled_policies: ["nonexistant_policy"]
+      virtualhosts: ["kitchen", "kitchen"]
+      disabled_virtualhosts: ["nonexistant_vhost"]
+
+# stress test for lwrps with distro packages
+- name: lwrps-distro
+  excludes:
+  - centos-5.9
+  - centos-6.4
+  - fedora-18
+  - ubuntu-10.04
+  - ubuntu-12.04
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[rabbitmq_test::lwrps]
+  attributes:
+    rabbitmq:
+      use_distro_version: true
+      enabled_plugins: ["rabbitmq_stomp", "rabbitmq_shovel", "rabbitmq_stomp"]
+      disabled_plugins: ["nonexistant_plugin", "rabbitmq_shovel"]
+      enabled_users: [
+      {name: "kitchen1", password: "test", tag: "tag1", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen2", password: "test", tag: "tag2", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}, {vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen3", password: "test", tag: "tag3", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]},
+      {name: "kitchen1", password: "test", tag: "tag4", rights: [{vhost: "kitchen", conf: ".*", write: ".*", read: ".*"}]}
+      ]
+      disabled_users: ["nonexistant_user", "kitchen2"]
+      disabled_policies: ["nonexistant_policy"]
+      virtualhosts: ["kitchen", "kitchen"]
+      disabled_virtualhosts: ["nonexistant_vhost"]

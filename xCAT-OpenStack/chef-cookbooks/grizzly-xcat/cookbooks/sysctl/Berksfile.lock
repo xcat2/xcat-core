@@ -1,0 +1,7 @@
+cookbook 'test_sysctl', :path => '/srv/sysctl-cookbook/test/kitchen/cookbooks/test_sysctl'
+cookbook 'sysctl', :path => '/srv/sysctl-cookbook'
+cookbook 'apt', :locked_version => '1.9.0'
+cookbook 'yum', :locked_version => '2.1.0'
+cookbook 'minitest-handler', :locked_version => '0.1.7'
+cookbook 'sysctl_test', :path => '/srv/sysctl-cookbook/test/kitchen/cookbooks/sysctl_test'
+cookbook 'chef_handler', :locked_version => '1.1.4'

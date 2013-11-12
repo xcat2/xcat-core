@@ -1,0 +1,23 @@
+<%= node["openstack"]["compute"]["custom_template_banner"] %>
+
+# COMMON OPENSTACK ENVS
+export OS_USERNAME=<%= @user %>
+export OS_PASSWORD=<%= @password %>
+export OS_TENANT_NAME=<%= @tenant %>
+export OS_AUTH_URL=<%= @identity_endpoint.to_s %>
+export OS_AUTH_STRATEGY=<%= @auth_strategy %>
+export OS_REGION_NAME=<%= node["openstack"]["compute"]["region"] %>
+
+# LEGACY NOVA ENVS
+export NOVA_USERNAME=${OS_USERNAME}
+export NOVA_PROJECT_ID=${OS_TENANT_NAME}
+export NOVA_PASSWORD=${OS_PASSWORD}
+export NOVA_API_KEY=${OS_PASSWORD}
+export NOVA_URL=${OS_AUTH_URL}
+export NOVA_VERSION=<%= @nova_api_version %>
+export NOVA_REGION_NAME=<%= node["openstack"]["compute"]["region"] %>
+
+# EUCA2OOLs ENV VARIABLES
+export EC2_ACCESS_KEY=<%= node["credentials"]["EC2"]["admin"]["access"] %>
+export EC2_SECRET_KEY=<%= node["credentials"]["EC2"]["admin"]["secret"] %>
+export EC2_URL=<%= @ec2_url %>

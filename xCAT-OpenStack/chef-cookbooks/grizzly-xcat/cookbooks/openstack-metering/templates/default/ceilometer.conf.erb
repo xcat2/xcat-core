@@ -1,0 +1,36 @@
+[DEFAULT]
+<% if node["openstack"]["metering"]["host"] %>
+host = <%= node["openstack"]["metering"]["host"] %>
+<% end %>
+os_auth_url = <%= @auth_uri %>
+os_tenant_name = <%= @service_tenant_name %>
+os_password = <%= @service_pass %>
+os_username = <%= @service_user %>
+policy_file = /etc/ceilometer/policy.json
+database_connection = <%= @database_connection %>
+rabbit_userid = <%= node["openstack"]["metering"]["rabbit"]["username"] %>
+rabbit_password = <%= @rabbit_pass %>
+rabbit_port = <%= node["openstack"]["metering"]["rabbit"]["port"] %>
+rabbit_host = <%= node["openstack"]["metering"]["rabbit"]["host"] %>
+rabbit_virtual_host = <%= node["openstack"]["metering"]["rabbit"]["vhost"] %>
+verbose = True
+notification_topics = notifications,glance_notifications
+rpc_backend = ceilometer.openstack.common.rpc.impl_kombu
+<% if node["openstack"]["metering"]["syslog"]["use"] %>
+log_config = /etc/openstack/logging.conf
+<% end %>
+<% if node["openstack"]["metering"]["debug"] %>
+debug = True
+<% end %>
+glance_registry_host = <%= @image_endpoint.host %>
+periodic_interval = <%= node["openstack"]["metering"]["periodic_interval"] %>
+
+[keystone_authtoken]
+paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
+auth_host = <%= @identity_endpoint.host %>
+auth_port = <%= @identity_endpoint.port %>
+auth_protocol = <%= @identity_endpoint.scheme %>
+admin_tenant_name = <%= @service_tenant_name %>
+admin_user = <%= @service_user %>
+admin_password = <%= @service_pass %>
+signing_dir = <%= node["openstack"]["metering"]["api"]["auth"]["cache_dir"] %>

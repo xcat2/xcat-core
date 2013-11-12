@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/procps
+#
+# description: procps compatible apply_sysctl
+#
+# this was installed by the sysctl cookbook
+# http://community.opscode.com/cookbooks/sysctl
+
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+case "$1" in
+    start)
+        apply_sysctl
+    ;;
+    stop)
+    ;;
+    restart)
+        apply_sysctl
+    ;;
+    reload)
+        apply_sysctl
+    ;;
+    *)
+        echo "Usage: procps [start|stop|reload]"
+        exit 1
+    ;;
+esac

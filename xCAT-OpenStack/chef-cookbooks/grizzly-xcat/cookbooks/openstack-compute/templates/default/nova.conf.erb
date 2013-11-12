@@ -1,0 +1,238 @@
+<%= node["openstack"]["compute"]["custom_template_banner"] %>
+
+[DEFAULT]
+
+# LOGS/STATE
+debug=<%= node["openstack"]["compute"]["debug"] %>
+verbose=<%= node["openstack"]["compute"]["verbose"] %>
+auth_strategy=<%= node["openstack"]["compute"]["api"]["auth_strategy"] %>
+dhcpbridge_flagfile=/etc/nova/nova.conf
+dhcpbridge=/usr/bin/nova-dhcpbridge
+logdir=/var/log/nova
+<% if node["openstack"]["compute"]["syslog"]["use"] %>
+log_config = /etc/openstack/logging.conf
+<% end %>
+state_path=/var/lib/nova
+lock_path=/var/lock/nova
+
+##### RABBITMQ #####
+rabbit_userid=<%= node["openstack"]["compute"]["rabbit"]["username"] %>
+rabbit_password=<%= @rabbit_password %>
+rabbit_virtual_host=<%= node["openstack"]["compute"]["rabbit"]["vhost"] %>
+<% if node["openstack"]["compute"]["rabbit"]["ha"] -%>
+rabbit_hosts=<%= @rabbit_hosts %>
+rabbit_ha_queues=True
+<% else -%>
+rabbit_host=<%= node["openstack"]["compute"]["rabbit"]["host"] %>
+rabbit_port=<%= node["openstack"]["compute"]["rabbit"]["port"] %>
+<% end -%>
+
+##### SCHEDULER #####
+# scheduler_manager=nova.scheduler.manager.SchedulerManager
+compute_scheduler_driver=<%= node["openstack"]["compute"]["scheduler"]["scheduler_driver"] %>
+scheduler_available_filters=nova.scheduler.filters.all_filters
+# which filter class names to use for filtering hosts when not specified in the request.
+scheduler_default_filters=<%= @scheduler_default_filters %>
+default_availability_zone=<%= node["openstack"]["compute"]["config"]["availability_zone"] %>
+default_schedule_zone=<%= node["openstack"]["compute"]["config"]["default_schedule_zone"] %>
+storage_availability_zone=<%= node["openstack"]["compute"]["config"]["storage_availability_zone"] %>
+
+##### NETWORK #####
+
+
+<% case node["openstack"]["compute"]["network"]["service_type"]
+
+when "quantum" -%>
+
+# N.B. due to https://bugs.launchpad.net/nova/+bug/1206330
+# we override the endpoint scheme below, ignore the port
+# and essentially force http
+<% if @network_endpoint.port == 443 -%>
+quantum_url=http://<%= @network_endpoint.host %>:80
+<% else -%>
+quantum_url=http://<%= @network_endpoint.host %>:<%= @network_endpoint.port %>
+<% end -%>
+network_api_class=<%= node["openstack"]["compute"]["network"]["quantum"]["network_api_class"]  %>
+quantum_auth_strategy=<%= node["openstack"]["compute"]["network"]["quantum"]["auth_strategy"] %>
+quantum_admin_tenant_name=<%= node["openstack"]["compute"]["network"]["quantum"]["admin_tenant_name"] %>
+quantum_admin_username=<%= node["openstack"]["compute"]["network"]["quantum"]["admin_username"] %>
+quantum_admin_password=<%= @quantum_admin_password %>
+quantum_admin_auth_url=<%= @identity_endpoint.to_s %>
+libvirt_vif_driver=<%= node["openstack"]["compute"]["network"]["quantum"]["libvirt_vif_driver"] %>
+linuxnet_interface_driver=<%= node["openstack"]["compute"]["network"]["quantum"]["linuxnet_interface_driver"] %>
+firewall_driver = nova.virt.firewall.NoopFirewallDriver
+security_group_api=<%= node["openstack"]["compute"]["network"]["quantum"]["security_group_api"] %>
+service_quantum_metadata_proxy=<%= node["openstack"]["compute"]["network"]["quantum"]["service_quantum_metadata_proxy"] %>
+quantum_metadata_proxy_shared_secret=<%= @quantum_metadata_proxy_shared_secret %>
+default_floating_pool=<%= node["openstack"]["compute"]["network"]["quantum"]["public_network_name"] %>
+dns_server=<%= node["openstack"]["compute"]["network"]["quantum"]["dns_server"] %>
+
+<% if node["openstack"]["compute"]["libvirt"]["virt_type"] == "qemu" -%>
+libvirt_use_virtio_for_bridges=false
+libvirt_cpu_mode = none
+<% else -%>
+libvirt_use_virtio_for_bridges=true
+<% end -%>
+
+
+
+<% when "nova" -%>
+multi_host=<%= node["openstack"]["compute"]["network"]["multi_host"] %>
+network_manager=<%= node["openstack"]["compute"]["network"]["network_manager"] %>
+public_interface=<%= node["openstack"]["compute"]["network"]["public_interface"] %>
+fixed_range=<%= node["openstack"]["compute"]["network"]["fixed_range"] %>
+dmz_cidr=<%= node["openstack"]["compute"]["network"]["dmz_cidr"] %>
+<% if %w(fedora redhat centos).include? node.platform -%>
+# https://bugzilla.redhat.com/show_bug.cgi?id=788485 - not released in epel yet
+force_dhcp_release=false
+<% else -%>
+force_dhcp_release=true
+<% end -%>
+<% if node["openstack"]["compute"]["dhcp_domain"] -%>
+dhcp_domain=<%= node["openstack"]["compute"]["dhcp_domain"] %>
+<% end %>
+send_arp_for_ha=true
+use_single_default_gateway=<%= node["openstack"]["compute"]["network"]["use_single_default_gateway"] %>
+<% if node["openstack"]["compute"]["libvirt"]["virt_type"] == "qemu" -%>
+libvirt_use_virtio_for_bridges=false
+<% else -%>
+libvirt_use_virtio_for_bridges=true
+<% end -%>
+vlan_interface=<%= node["openstack"]["compute"]["network"]["vlan_interface"] %>
+
+<% end -%>
+
+##### GLANCE #####
+image_service=nova.image.glance.GlanceImageService
+glance_api_servers=<%= @glance_api_ipaddress %>:<%= @glance_api_port %>
+
+##### COMPUTE #####
+compute_driver=<%= node["openstack"]["compute"]["driver"] %>
+compute_manager=nova.compute.manager.ComputeManager
+sql_connection=<%= @sql_connection %>
+connection_type=libvirt
+libvirt_type=<%= node["openstack"]["compute"]["libvirt"]["virt_type"] %>
+# Command prefix to use for running commands as root (default: sudo)
+rootwrap_config=/etc/nova/rootwrap.conf
+# Should unused base images be removed? (default: false)
+remove_unused_base_images=<%= node["openstack"]["compute"]["libvirt"]["remove_unused_base_images"] %>
+# Unused resized base images younger than this will not be removed (default: 3600)
+remove_unused_resized_minimum_age_seconds=<%= node["openstack"]["compute"]["libvirt"]["remove_unused_resized_minimum_age_seconds"] %>
+# Unused unresized base images younger than this will not be removed (default: 86400)
+remove_unused_original_minimum_age_seconds=<%= node["openstack"]["compute"]["libvirt"]["remove_unused_original_minimum_age_seconds"] %>
+# Write a checksum for files in _base to disk (default: false)
+checksum_base_images=<%= node["openstack"]["compute"]["libvirt"]["checksum_base_images"] %>
+
+##### VNCPROXY #####
+novncproxy_base_url=<%= @novncproxy_base_url %>
+xvpvncproxy_base_url=<%= @xvpvncproxy_base_url %>
+
+# This is only required on the server running xvpvncproxy
+xvpvncproxy_host=<%= @xvpvncproxy_bind_host %>
+xvpvncproxy_port=<%= node["openstack"]["compute"]["xvpvnc_proxy"]["service_port"] %>
+
+# This is only required on the server running novncproxy
+novncproxy_host=<%= @novncproxy_bind_host %>
+novncproxy_port=<%= node["openstack"]["compute"]["novnc_proxy"]["service_port"] %>
+
+vncserver_listen=<%= @vncserver_listen %>
+vncserver_proxyclient_address=<%= @vncserver_proxyclient_address %>
+
+# store consoleauth tokens in memcached
+<% unless @memcache_servers.empty? -%>
+memcached_servers=<%= @memcache_servers %>
+<% end -%>
+
+##### MISC #####
+# force backing images to raw format
+force_raw_images=<%= node["openstack"]["compute"]["config"]["force_raw_images"] %>
+allow_same_net_traffic=<%= node["openstack"]["compute"]["config"]["allow_same_net_traffic"] %>
+osapi_max_limit=<%= node["openstack"]["compute"]["config"]["osapi_max_limit"] %>
+# If you terminate SSL with a load balancer, the HTTP_HOST environ
+# variable that generates the request_uri in webob.Request will lack
+# the HTTPS scheme. Setting this overrides the default and allows
+# URIs returned in the various links collections to contain the proper
+# HTTPS endpoint.
+osapi_compute_link_prefix = <%= @osapi_compute_link_prefix %>
+snapshot_image_format=<%= node["openstack"]["compute"]["config"]["snapshot_image_format"] %>
+start_guests_on_host_boot=<%= node["openstack"]["compute"]["config"]["start_guests_on_host_boot"] %>
+resume_guests_state_on_host_boot=<%= node["openstack"]["compute"]["config"]["resume_guests_state_on_host_boot"] %>
+
+##### QUOTAS #####
+# (StrOpt) default driver to use for quota checks (default: nova.quota.DbQuotaDriver)
+quota_driver=<%= node["openstack"]["compute"]["config"]["quota_driver"] %>
+# number of security groups per project (default: 10)
+quota_security_groups=<%= node["openstack"]["compute"]["config"]["quota_security_groups"] %>
+# number of security rules per security group (default: 20)
+quota_security_group_rules=<%= node["openstack"]["compute"]["config"]["quota_security_group_rules"] %>
+# number of instance cores allowed per project (default: 20)
+quota_cores=<%= node["openstack"]["compute"]["config"]["quota_cores"] %>
+# number of fixed ips allowed per project (this should be at least the number of instances allowed) (default: -1)
+quota_fixed_ips=<%= node["openstack"]["compute"]["config"]["quota_fixed_ips"] %>
+# number of floating ips allowed per project (default: 10)
+quota_floating_ips=<%= node["openstack"]["compute"]["config"]["quota_floating_ips"] %>
+# number of bytes allowed per injected file (default: 10240)
+quota_injected_file_content_bytes=<%= node["openstack"]["compute"]["config"]["quota_injected_file_content_bytes"] %>
+# number of bytes allowed per injected file path (default: 255)
+quota_injected_file_path_bytes=<%= node["openstack"]["compute"]["config"]["quota_injected_file_path_bytes"] %>
+# number of injected files allowed (default: 5)
+quota_injected_files=<%= node["openstack"]["compute"]["config"]["quota_injected_files"] %>
+# number of instances allowed per project (defailt: 10)
+quota_instances=<%= node["openstack"]["compute"]["config"]["quota_instances"] %>
+# number of key pairs per user (default: 100)
+quota_key_pairs=<%= node["openstack"]["compute"]["config"]["quota_key_pairs"] %>
+# number of metadata items allowed per instance (default: 128)
+quota_metadata_items=<%= node["openstack"]["compute"]["config"]["quota_metadata_items"] %>
+# megabytes of instance ram allowed per project (default: 51200)
+quota_ram=<%= node["openstack"]["compute"]["config"]["quota_ram"] %>
+
+
+<%- if /FilterScheduler/.match(node["openstack"]["compute"]["scheduler"]["scheduler_driver"]) or
+       /MultiScheduler/.match(node["openstack"]["compute"]["scheduler"]["scheduler_driver"]) %>
+# FilterScheduler Only Options
+<%- if /ComputeFilter/.match(@scheduler_default_filters) %>
+# virtual CPU to Physical CPU allocation ratio (default: 16.0)
+cpu_allocation_ratio=<%= node["openstack"]["compute"]["config"]["cpu_allocation_ratio"] %>
+<%- end %>
+<%- if /RamFilter/.match(@scheduler_default_filters) %>
+# virtual ram to physical ram allocation ratio (default: 1.5)
+ram_allocation_ratio=<%= node["openstack"]["compute"]["config"]["ram_allocation_ratio"] %>
+<%- end %>
+<%- elsif /SimpleScheduler/.match(node["openstack"]["compute"]["scheduler"]["scheduler_driver"]) %>
+# SimpleScheduler Only Options
+# maximum number of instance cores to allow per host
+max_cores=<%= node["openstack"]["compute"]["config"]["cpu_allocation_ratio"].to_i * node["cpu"]["total"].to_i %>
+<%- end %>
+
+# If true, force creation of config drive regardless of if --config-drive was specified in the API call
+force_config_drive=<%= node["openstack"]["compute"]["config"]["force_config_drive"] %>
+
+<% if %w(fedora redhat centos).include? node.platform -%>
+# Adding support for non-modded euca2ools to display ip address info
+# https://bugs.launchpad.net/nova/+bug/901594
+ec2_private_dns_show_ip=True
+<% end -%>
+
+##### WORKERS ######
+ec2_workers=<%= node["cpu"]["total"] %>
+osapi_compute_workers=<%= node["cpu"]["total"] %>
+metadata_workers=<%= node["cpu"]["total"] %>
+
+##### KEYSTONE #####
+keystone_ec2_url=<%= @identity_endpoint.scheme %>://<%= @identity_endpoint.host %>:<%= @identity_endpoint.port %>/v2.0/ec2tokens
+
+##### VOLUMES #####
+# iscsi target user-land tool to use
+iscsi_helper=<%= @iscsi_helper %>
+volume_api_class=<%= node["openstack"]["compute"]["config"]["volume_api_class"] %>
+
+##### THIRD PARTY ADDITIONS #####
+<% if node["openstack"]["compute"]["plugins"] %>
+<% node["openstack"]["compute"]["plugins"].each do |p| %>
+osapi_compute_extension=<%= p %>
+<% end %>
+<% end %>
+
+[conductor]
+
+use_local=<%= node["openstack"]["compute"]["conductor"]["use_local"] %>

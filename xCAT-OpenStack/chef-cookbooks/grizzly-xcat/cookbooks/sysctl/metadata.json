@@ -1,0 +1,33 @@
+{
+  "name": "sysctl",
+  "description": "Configures sysctl parameters",
+  "long_description": "# sysctl [![Build Status](https://travis-ci.org/onehealth-cookbooks/sysctl.png?branch=master)](https://travis-ci.org/onehealth-cookbooks/sysctl)\n\nDescription\n===========\n\nSet [sysctl](http://en.wikipedia.org/wiki/Sysctl) system control parameters via Opscode Chef\n\n\nPlatforms\n=========\n\n* Debian/Ubuntu\n* RHEL/CentOS (work in progress)\n\nUsage\n=======\n\nThere are two main ways to interact with the cookbook. This is via chef [attributes](http://docs.opscode.com/essentials_cookbook_attribute_files.html) or via the provided [LWRP](http://docs.opscode.com/lwrp.html).\n\n## Attributes\n\n* node['sysctl']['params'] - A namespace for setting sysctl parameters\n* node['sysctl']['conf_dir']  - Specifies the sysctl.d directory to be used. Defaults on Debian to /etc/sysctl.d, otherwise nil\n* node['sysctl']['allow_sysctl_conf'] - Defaults to false. This will write params to /etc/sysctl.conf directly when set to true.\n\n## LWRP\n\n### sysctl_param\n\nActions\n\n- apply (default)\n- remove\n\nAttributes\n\n- key\n- value\n\n## Examples\n\n    # set vm.swapiness to 20 via attributes\n\n    node.default['sysctl']['params']['vm']['swappiness'] = 20\n\n    # set vm.swapiness to 20 via sysctl_param LWRP\n    sysctl_param 'vm.swappiness' do\n      value 20\n    end\n\n    # remove sysctl parameter and set net.ipv4.tcp_fin_timeout back to default\n    sysctl_param 'net.ipv4.tcp_fin_timeout' do\n      value 30\n      action :remove\n    end\n\n# Development\n\nThis cookbook can be tested using vagrant, but it depends on the following vagrant plugins\n\n```\nvagrant plugin install vagrant-omnibus\nvagrant plugin install vagrant-berkshelf\n```\n\nTested with \n* Vagrant (version 1.2.1)\n* vagrant-berkshelf (1.2.0)\n* vagrant-omnibus (1.0.2)\n\n# Links\n\nThere are a lot of different documents that talk about system control parameters, the hope here is to point to some of the most useful ones to provide more guidance as to what the possible kernel parameters are and what they mean.\n\n* [Linux Kernel Sysctl](https://www.kernel.org/doc/Documentation/sysctl/)\n* [Linux Kernel IP Sysctl](http://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt)\n* [THE /proc FILESYSTEM (Jun 2009)](http://www.kernel.org/doc/Documentation/filesystems/proc.txt)\n* [RHEL 5 VM/Page Cache Tuning Presentation (2009) pdf](http://people.redhat.com/dshaks/Larry_Shak_Perf_Summit1_2009_final.pdf)\n* [Arch Linux SysCtl Tutorial (Feb 2013)](http://gotux.net/arch-linux/sysctl-config/)\n* [Old RedHat System Tuning Overview (2001!)](http://people.redhat.com/alikins/system_tuning.html)\n\n",
+  "maintainer": "OneHealth Solutions, Inc.",
+  "maintainer_email": "cookbooks@onehealth.com",
+  "license": "Apache v2.0",
+  "platforms": {
+    "ubuntu": ">= 0.0.0",
+    "debian": ">= 0.0.0",
+    "redhat": ">= 0.0.0",
+    "centos": ">= 0.0.0"
+  },
+  "dependencies": {
+  },
+  "recommendations": {
+  },
+  "suggestions": {
+  },
+  "conflicting": {
+  },
+  "providing": {
+  },
+  "replacing": {
+  },
+  "attributes": {
+  },
+  "groupings": {
+  },
+  "recipes": {
+  },
+  "version": "0.3.2"
+}

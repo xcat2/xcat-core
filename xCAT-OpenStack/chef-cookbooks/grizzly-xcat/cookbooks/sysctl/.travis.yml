@@ -1,0 +1,6 @@
+language: ruby
+rvm:
+  - 1.9.3
+bundler_args: --without integration development
+script: bundle exec thor foodcritic:lint -f correctness
+after_script: bundle exec thor tailor:lint

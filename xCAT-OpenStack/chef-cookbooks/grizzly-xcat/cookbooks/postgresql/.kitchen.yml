@@ -1,0 +1,78 @@
+---
+driver_plugin: vagrant
+
+platforms:
+- name: ubuntu-12.04
+  driver_config:
+    box: opscode-ubuntu-12.04
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_ubuntu-12.04_provisionerless.box
+    require_chef_omnibus: true
+  run_list:
+  - recipe[apt]
+- name: ubuntu-10.04
+  driver_config:
+    box: opscode-ubuntu-10.04
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_ubuntu-10.04_provisionerless.box
+    require_chef_omnibus: true
+  run_list:
+  - recipe[apt]
+- name: centos-6.4
+  driver_config:
+    box: opscode-centos-6.4
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-6.4_provisionerless.box
+    require_chef_omnibus: true
+- name: centos-5.9
+  driver_config:
+    box: opscode-centos-5.9
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-5.9_provisionerless.box
+    require_chef_omnibus: true
+
+suites:
+- name: default
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[postgresql]
+  attributes: {}
+- name: contrib
+  run_list:
+  - recipe[postgresql::contrib]
+  attributes:
+    postgresql:
+      password:
+        postgres: "iloverandompasswordsbutthiswilldo"
+- name: apt-pgdg
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[postgresql]
+  excludes: ["centos-5.9", "centos-6.4"]
+  attributes:
+    postgresql:
+      enable_pgdg_apt: true
+      version: "9.2"
+      client:
+        packages: ["postgresql-client-9.2", "libpq-dev"]
+- name: yum-pgdg
+  run_list:
+  - recipe[minitest-handler]
+  - recipe[postgresql]
+  excludes: ["ubuntu-10.04", "ubuntu-12.04", "debian-6.0.7"]
+  attributes:
+    postgresql:
+      enable_pgdg_yum: true
+      version: "9.2"
+      client:
+        packages: ["postgresql92"]
+- name: ruby
+  run_list:
+  - recipe[postgresql::ruby]
+  - recipe[minitest-handler]
+  attributes: {}
+- name: server
+  run_list:
+  - recipe[postgresql::ruby]
+  - recipe[minitest-handler]
+  - recipe[postgresql::server]
+  attributes:
+    postgresql:
+      password:
+        postgres: "iloverandompasswordsbutthiswilldo"

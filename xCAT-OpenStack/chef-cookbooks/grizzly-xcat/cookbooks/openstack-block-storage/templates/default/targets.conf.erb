@@ -1,0 +1,9 @@
+<%= node["openstack"]["block-storage"]["custom_template_banner"] %>
+
+<% if %w{redhat centos fedora suse}.include?(node["platform"]) %>
+include /var/lib/cinder/volumes/*
+<% end %>
+<% if %w{debian ubuntu}.include?(node["platform"]) %>
+include /etc/tgt/conf.d/*.conf
+<% end %>
+default-driver iscsi

@@ -1,0 +1,36 @@
+<%= node["openstack"]["network"]["custom_template_banner"] %>
+[CISCO_PLUGINS]
+nexus_plugin = <%= node["openstack"]["network"]["cisco"]["nexus_plugin"] %>
+vswitch_plugin = <%= node["openstack"]["network"]["cisco"]["vswitch_plugin"] %>
+
+[CISCO]
+vlan_start = <%= node["openstack"]["network"]["cisco"]["vlan_start"] %> 
+vlan_end = <%= node["openstack"]["network"]["cisco"]["vlan_end"] %>
+vlan_name_prefix = <%= node["openstack"]["network"]["cisco"]["vlan_name_prefix"] %>
+max_ports = <%= node["openstack"]["network"]["cisco"]["max_ports"] %>
+max_port_profiles = <%= node["openstack"]["network"]["cisco"]["max_port_profiles"] %>
+max_networks = <%= node["openstack"]["network"]["cisco"]["max_networks"] %>
+model_class = <%= node["openstack"]["network"]["cisco"]["model_class"] %>
+manager_class = <%= node["openstack"]["network"]["cisco"]["manager_class"] %>
+nexus_driver = <%= node["openstack"]["network"]["cisco"]["nexus_driver"] %>
+
+<%- node["openstack"]["network"]["cisco"]["nexus_switch"].each_pair do | ip, info | -%>
+[NEXUS_SWITCH:<%= @ip %>]
+<%- @info["hosts"].each do | host_info | -%>
+<%= @host_info[0] %> = <%= @host_info[1] %>
+<%- end -%>
+ssh_port = <%= @info["ssh_port"] %>
+username = <%= @info["username"] %> 
+password = <%= @info["password"] %> 
+
+<%- end -%>
+
+[DATABASE]
+#
+# This line MUST be changed to actually run the plugin.
+# Example:
+# sql_connection = mysql://quantum:password@127.0.0.1:3306/cisco_quantum
+# Replace 127.0.0.1 above with the IP address of the database used by the
+# main quantum server. (Leave it as is if the database runs on this host.)
+#
+sql_connection = <%= @sql_connection %>

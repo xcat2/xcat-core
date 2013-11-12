@@ -1,0 +1,11 @@
+description "Start rabbitmq on startup"
+start on started networking
+limit nofile <%= @max_file_descriptors %> <%= @max_file_descriptors %>
+
+respawn
+respawn limit 5 60
+
+env HOME=""
+exec /usr/sbin/rabbitmq-server > /var/log/rabbitmq/startup_log \
+                              2> /var/log/rabbitmq/startup_err
+post-start exec /usr/sbin/rabbitmqctl wait >/dev/null 2>&1

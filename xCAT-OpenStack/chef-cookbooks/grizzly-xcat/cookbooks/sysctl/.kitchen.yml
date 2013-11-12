@@ -1,0 +1,46 @@
+---
+driver_plugin: vagrant
+
+platforms:
+- name: ubuntu-12.04
+  driver_config:
+    box: canonical-ubuntu-12.04
+    box_url: http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-amd64-vagrant-disk1.box
+    require_chef_omnibus: true
+- name: ubuntu-10.04
+  driver_config:
+    box: opscode-ubuntu-10.04
+    box_url: http://opscode-vm.s3.amazonaws.com/vagrant/opscode_ubuntu-10.04_chef-11.4.4.box
+- name: centos-6.4
+  driver_config:
+    box: opscode-centos-6.4
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-6.4_chef-11.4.4.box
+- name: centos-5.9
+  driver_config:
+    box: opscode-centos-5.9
+    box_url: https://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-5.9_chef-11.4.4.box
+
+suites:
+- name: default
+  run_list:
+    - recipe[sysctl_test]
+  attributes:
+    sysctl:
+      params:
+        vm:
+          swappiness: 19
+        net:
+          ipv4:
+            tcp_fin_timeout: 29
+- name: override_conf
+  run_list:
+    - recipe[sysctl_test]
+  attributes:
+    sysctl:
+      allow_sysctl_conf: true
+      params:
+        vm:
+          swappiness: 19
+        net:
+          ipv4:
+            tcp_fin_timeout: 29

@@ -1,0 +1,11 @@
+[Unit]
+Description=Rsync Server
+After=local-fs.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/rsync --daemon
+PIDFile=/var/run/rsyncd.pid
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=<%= @description %>
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=<%= @user %>
+ExecStart=<%= @exec %>
+
+[Install]
+WantedBy=multi-user.target

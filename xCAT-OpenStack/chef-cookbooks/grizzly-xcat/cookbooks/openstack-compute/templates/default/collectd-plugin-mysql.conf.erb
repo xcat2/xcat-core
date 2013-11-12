@@ -1,0 +1,18 @@
+<%= node["openstack"]["compute"]["custom_template_banner"] %>
+
+LoadPlugin "<%= @name %>"
+<% if not @options.empty? %>
+<Plugin "<%= @name %>">
+  <% @options[:databases].each_pair do |db, vars| %>
+  <Database "<%= db %>">
+  <% vars.each_pair do |key, value|
+     if value.is_a? Array
+       value.each do |subvalue| %>
+    <%= collectd_key(key) %> <%= collectd_option(subvalue) %>
+  <% end else %>
+    <%= collectd_key(key) %> <%= collectd_option(value) %>
+  <% end end %>
+  </Database>
+  <% end %>
+</Plugin>
+<% end %>

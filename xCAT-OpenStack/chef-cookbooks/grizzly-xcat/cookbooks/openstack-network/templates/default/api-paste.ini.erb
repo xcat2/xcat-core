@@ -1,0 +1,34 @@
+<%= node["openstack"]["network"]["custom_template_banner"] %>
+
+[composite:quantum]
+use = egg:Paste#urlmap
+/: quantumversions
+/v2.0: quantumapi_v2_0
+
+[composite:quantumapi_v2_0]
+use = call:quantum.auth:pipeline_factory
+noauth = extensions quantumapiapp_v2_0
+keystone = authtoken keystonecontext extensions quantumapiapp_v2_0
+
+[filter:keystonecontext]
+paste.filter_factory = quantum.auth:QuantumKeystoneContext.factory
+
+[filter:extensions]
+paste.filter_factory = quantum.api.extensions:plugin_aware_extension_middleware_factory
+
+[app:quantumversions]
+paste.app_factory = quantum.api.versions:Versions.factory
+
+[app:quantumapiapp_v2_0]
+paste.app_factory = quantum.api.v2.router:APIRouter.factory
+
+[filter:authtoken]
+paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
+auth_host = <%= @identity_endpoint.host %>
+auth_port = <%= @identity_endpoint.port %>
+auth_protocol = <%= @identity_endpoint.scheme %>
+admin_tenant_name = <%= node["openstack"]["network"]["service_tenant_name"] %>
+admin_user = <%= node["openstack"]["network"]["service_user"] %>
+admin_password = <%= @service_pass %>
+delay_auth_decision = true
+signing_dir = <%= node["openstack"]["network"]["api"]["auth"]["cache_dir"] %>

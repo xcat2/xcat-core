@@ -1,0 +1,58 @@
+<%= node["openstack"]["dashboard"]["custom_template_banner"] %>
+<VirtualHost *:80>
+<% if node["openstack"]["dashboard"]["server_hostname"] -%>
+  ServerName <%= node["openstack"]["dashboard"]["server_hostname"] %>
+<% end -%>
+<% if node["openstack"]["dashboard"]["use_ssl"] %>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R]
+</VirtualHost>
+
+<VirtualHost *:443>
+<%   if node["openstack"]["dashboard"]["server_hostname"] -%>
+  ServerName <%= node["openstack"]["dashboard"]["server_hostname"] %>
+<%   end -%>
+<% end %>
+  ServerAdmin <%= node["apache"]["contact"] %>
+  WSGIScriptAlias / <%= node["openstack"]["dashboard"]["wsgi_path"] %>
+  WSGIDaemonProcess dashboard user=<%= node["apache"]["user"] %> group=<%= node["apache"]["group"] %> processes=3 threads=10 python-path=<%= node["openstack"]["dashboard"]["dash_path"] %>
+  WSGIProcessGroup dashboard
+
+  DocumentRoot <%= node["openstack"]["dashboard"]["dash_path"] %>/.blackhole/
+  Alias /static <%= node["openstack"]["dashboard"]["static_path"] %>
+
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  <Directory <%= node["openstack"]["dashboard"]["dash_path"] %>>
+    Options Indexes FollowSymLinks MultiViews
+    AllowOverride None
+    Order allow,deny
+    allow from all
+  </Directory>
+
+  <Directory <%= node["openstack"]["dashboard"]["static_path"] %>>
+      Options FollowSymLinks MultiViews
+      AllowOverride None
+      Order allow,deny
+      allow from all
+  </Directory>
+
+  <% if node["openstack"]["dashboard"]["use_ssl"] %>
+  SSLEngine on
+  SSLCertificateFile <%= @ssl_cert_file %>
+  SSLCertificateKeyFile <%= @ssl_key_file %>
+  <% end %>
+
+  # Allow custom files to overlay the site (such as logo.png)
+  RewriteEngine On
+  RewriteCond /opt/dash/site_overlay%{REQUEST_FILENAME} -s
+  RewriteRule ^/(.+) /opt/dash/site_overlay/$1 [L]
+
+  ErrorLog <%= node["apache"]["log_dir"] %>/<%= node["openstack"]["dashboard"]["error_log"] %>
+  LogLevel warn
+  CustomLog <%= node["apache"]["log_dir"] %>/<%= node["openstack"]["dashboard"]["access_log"] %> combined
+</VirtualHost>

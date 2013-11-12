@@ -1,0 +1,41 @@
+{
+  "sources": {
+    "openstack-metering": {
+      "path": "."
+    },
+    "openstack-common": {
+      "locked_version": "0.4.3",
+      "git": "git://github.com/stackforge/cookbook-openstack-common.git",
+      "ref": "eb5eed7126b6a6efbaf803e8a594d610cf661e97"
+    },
+    "openstack-identity": {
+      "locked_version": "7.0.0",
+      "git": "git://github.com/stackforge/cookbook-openstack-identity.git",
+      "ref": "b881af26095cfa869a6970067c49597a0ee63586"
+    },
+    "apt": {
+      "locked_version": "2.0.0"
+    },
+    "database": {
+      "locked_version": "1.4.0"
+    },
+    "mysql": {
+      "locked_version": "3.0.2"
+    },
+    "openssl": {
+      "locked_version": "1.0.2"
+    },
+    "build-essential": {
+      "locked_version": "1.4.0"
+    },
+    "postgresql": {
+      "locked_version": "3.0.2"
+    },
+    "aws": {
+      "locked_version": "0.101.2"
+    },
+    "xfs": {
+      "locked_version": "1.1.0"
+    }
+  }
+}

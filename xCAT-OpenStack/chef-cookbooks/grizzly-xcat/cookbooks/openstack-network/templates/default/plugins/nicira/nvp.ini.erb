@@ -1,0 +1,116 @@
+<%= node["openstack"]["network"]["custom_template_banner"] %>
+# #############################################################
+# WARNINGS: The following deprecations have been made in the
+# Havana release. Support for the options below will be removed
+# in Ixxx.
+#
+# Section: [DEFAULT], Option: 'metadata_dhcp_host_route'
+# Remarks: Use 'enable_isolated_metadata' in dhcp_agent.ini.
+#
+#
+# Section: [CLUSTER:name], Option: 'nvp_controller_connection'
+# Remarks: The configuration will allow the specification of
+#          a single cluster, therefore [CLUSTER:name] is no
+#          longer used.  Use 'nvp_*', options, 'req_timeout',
+#          'retries', etc. as indicated in the DEFAULT section.
+#          Support for multiple clusters will be added through
+#          an API extension.
+# ##############################################################
+
+[DEFAULT]
+# User name for NVP controller
+nvp_user = <%= node["openstack"]["network"]["nicira"]["nvp_user"] %>
+
+# Password for NVP controller
+nvp_password = <%= node["openstack"]["network"]["nicira"]["nvp_password"] %>
+
+# Total time limit for a cluster request
+# (including retries across different controllers)
+req_timeout = <%= node["openstack"]["network"]["nicira"]["req_timeout"] %>
+
+# Time before aborting a request on an unresponsive controller
+http_timeout = <%= node["openstack"]["network"]["nicira"]["http_timeout"] %>
+
+# Maximum number of times a particular request should be retried
+retries = <%= node["openstack"]["network"]["nicira"]["retries"] %>
+
+# Maximum number of times a redirect response should be followed
+redirects = <%= node["openstack"]["network"]["nicira"]["redirects"] %>
+
+# Comma-separated list of NVP controller endpoints (<ip>:<port>). When port
+# is omitted, 443 is assumed. This option MUST be specified, e.g.:
+nvp_controllers = <%= node["openstack"]["network"]["nicira"]["nvp_controllers"] %>
+
+# UUID of the pre-existing default NVP Transport zone to be used for creating
+# tunneled isolated "Quantum" networks. This option MUST be specified, e.g.:
+default_tz_uuid = <%= node["openstack"]["network"]["nicira"]["default_tz_uuid"] %>
+
+# (Optional) UUID of the cluster in NVP.  It can be retrieved from NVP management
+# console "admin" section.
+nvp_cluster_uuid = <%= node["openstack"]["network"]["nicira"]["nvp_cluster_uuid"] %>
+
+# (Optional) UUID for the default l3 gateway service to use with this cluster.
+# To be specified if planning to use logical routers with external gateways.
+default_l3_gw_service_uuid = <%= node["openstack"]["network"]["nicira"]["default_l3_gateway_service_uuid"] %>
+
+# (Optional) UUID for the default l2 gateway service to use with this cluster.
+# To be specified for providing a predefined gateway tenant for connecting their networks.
+default_l2_gw_service_uuid = <%= node["openstack"]["network"]["nicira"]["default_l2_gateway_service_uuid"] %>
+
+# Name of the default interface name to be used on network-gateway.  This value
+# will be used for any device associated with a network gateway for which an
+# interface name was not specified
+default_iface_name = <%= node["openstack"]["network"]["nicira"]["default_iface_name"] %>
+
+
+[DATABASE]
+# This line MUST be changed to actually run the plugin.
+# Example:
+# sql_connection = mysql://root:quantum@127.0.0.1:3306/nvp_quantum
+# Replace 127.0.0.1 above with the IP address of the database used by the
+# main quantum server. (Leave it as is if the database runs on this host.)
+sql_connection = <%= @sql_connection %>
+
+# Number of reconnection attempts to the DB; Set to -1 to try indefinitely
+# sql_max_retries = 10
+
+# Period between reconnection attempts to the DB
+# reconnect_interval = 2
+
+# Enable the use of eventlet's db_pool for MySQL. The flags sql_min_pool_size,
+# sql_max_pool_size and sql_idle_timeout are relevant only if this is enabled.
+
+# sql_dbpool_enable = False
+
+# Minimum number of SQL connections to keep open in a pool
+# sql_min_pool_size = 1
+
+# Maximum number of SQL connections to keep open in a pool
+# sql_max_pool_size = 5
+
+# Timeout in seconds before idle sql connections are reaped
+# sql_idle_timeout = 3600
+
+
+[QUOTAS]
+# number of network gateways allowed per tenant, -1 means unlimited
+quota_network_gateway = <%= node["openstack"]["network"]["nicira"]["quota_network_gateway"] %>
+
+
+[NVP]
+# Maximum number of ports for each bridged logical switch
+max_lp_per_bridged_ls = <%= node["openstack"]["network"]["nicira"]["max_lp_per_bridged_ls"] %>
+
+# Maximum number of ports for each overlay (stt, gre) logical switch
+max_lp_per_overlay_ls = <%= node["openstack"]["network"]["nicira"]["max_lp_per_overlay_ls"] %>
+
+# Number of connects to each controller node.
+concurrent_connections = <%= node["openstack"]["network"]["nicira"]["concurrent_connections"] %>
+
+# Acceptable values for 'metadata_mode' are:
+#   - 'access_network': this enables a dedicated connection to the metadata
+#     proxy for metadata server access via Quantum router.
+#   - 'dhcp_host_route': this enables host route injection via the dhcp agent.
+# This option is only useful if running on a host that does not support
+# namespaces otherwise access_network should be used.
+metadata_mode = <%= node["openstack"]["network"]["nicira"]["metadata_mode"] %>

@@ -1,0 +1,29 @@
+catalog.<%= node["openstack"]["identity"]["region"] %>.identity.publicURL = <%= @uris["identity"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.identity.adminURL = <%= @uris["identity-admin"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.identity.internalURL = <%= @uris["identity"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.identity.name = Identity Service
+
+catalog.<%= node["openstack"]["identity"]["region"] %>.compute.publicURL = <%= @uris["compute"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.compute.adminURL = <%= @uris["compute"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.compute.internalURL = <%= @uris["compute"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.compute.name = Compute Service
+
+catalog.<%= node["openstack"]["identity"]["region"] %>.volume.publicURL = <%= @uris["volume"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.volume.adminURL = <%= @uris["volume"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.volume.internalURL = <%= @uris["volume"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.volume.name = Volume Service
+
+catalog.<%= node["openstack"]["identity"]["region"] %>.ec2.publicURL = <%= @uris["ec2"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.ec2.adminURL = <%= @uris["ec2"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.ec2.internalURL = <%= @uris["ec2"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.ec2.name = EC2 Service
+
+catalog.<%= node["openstack"]["identity"]["region"] %>.image.publicURL = <%= @uris["image"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.image.adminURL = <%= @uris["image"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.image.internalURL = <%= @uris["image"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.image.name = Image Service
+
+catalog.<%= node["openstack"]["identity"]["region"] %>.network.publicURL = <%= @uris["network"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.network.adminURL = <%= @uris["network"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.network.internalURL = <%= @uris["network"].to_s %>
+catalog.<%= node["openstack"]["identity"]["region"] %>.network.name = Network Service

@@ -1,0 +1,4 @@
+cookbook 'apt', :path => '/Users/jtimberman/Development/opscode/cookbooks/apt'
+cookbook 'minitest-handler', :locked_version => '0.1.2'
+cookbook 'apt_test', :path => './test/cookbooks/apt_test'
+cookbook 'chef_handler', :locked_version => '1.1.0'

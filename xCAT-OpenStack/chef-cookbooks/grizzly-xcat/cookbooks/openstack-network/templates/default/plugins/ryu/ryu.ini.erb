@@ -1,0 +1,58 @@
+<%= node["openstack"]["network"]["custom_template_banner"] %>
+[DATABASE]
+# This line MUST be changed to actually run the plugin.
+# Example: sql_connection = mysql://root:nova@127.0.0.1:3306/ryu_quantum
+sql_connection = <%= @sql_connection %>
+# Enable the use of eventlet's db_pool for MySQL. The flags sql_min_pool_size,
+# sql_max_pool_size and sql_idle_timeout are relevant only if this is enabled.
+# sql_dbpool_enable = False
+# Minimum number of SQL connections to keep open in a pool
+# sql_min_pool_size = 1
+# Maximum number of SQL connections to keep open in a pool
+# sql_max_pool_size = 5
+# Timeout in seconds before idle sql connections are reaped
+# sql_idle_timeout = 3600
+
+[OVS]
+# Do not change this parameter unless you have a good reason to.
+# This is the name of the OVS integration bridge. There is one per hypervisor.
+# The integration bridge acts as a virtual "patch port". All VM VIFs are
+# attached to this bridge and then "patched" according to their network
+# connectivity.
+integration_bridge = <%= node["openstack"]["network"]["ryu"]["integration_bridge"] %>
+
+# openflow_rest_api = <host IP address of ofp rest api service>:<port: 8080>
+openflow_rest_api = <%= node["openstack"]["network"]["ryu"]["openflow_rest_api"] %>
+
+# tunnel key range: 0 < tunnel_key_min < tunnel_key_max
+# VLAN: 12bits, GRE, VXLAN: 24bits
+tunnel_key_min = <%= node["openstack"]["network"]["ryu"]["tunnel_key_min"] %>
+tunnel_key_max = <%= node["openstack"]["network"]["ryu"]["tunnel_key_max"] %>
+
+# tunnel_ip = <ip address for tunneling>
+# tunnel_interface = interface for tunneling
+#                    when tunnel_ip is NOT specified, ip address is read
+#                    from this interface
+tunnel_ip = <%= node["openstack"]["network"]["ryu"]["tunnel_ip"] %>
+tunnel_interface = <%= node["openstack"]["network"]["ryu"]["tunnel_interface"] %>
+
+# ovsdb_port = port number on which ovsdb is listening
+#              ryu-agent uses this parameter to setup ovsdb.
+#   ovs-vsctl set-manager ptcp:<ovsdb_port>
+#   See set-manager section of man ovs-vsctl for details.
+#   currently ptcp is only supported.
+# ovsdb_ip = <host IP address on which ovsdb is listening>
+# ovsdb_interface = interface for ovsdb
+#                   when ovsdb_addr NOT specifiied, ip address is gotten
+#                   from this interface
+ovsdb_port = <%= node["openstack"]["network"]["ryu"]["ovsdb_port"] %>
+ovsdb_ip = <%= node["openstack"]["network"]["ryu"]["ovsdb_ip"] %>
+ovsdb_interface = <%= node["openstack"]["network"]["ryu"]["ovsdb_interface"] %>
+
+[SECURITYGROUP]
+# Firewall driver for realizing quantum security group function
+firewall_driver = <%= node["openstack"]["network"]["ryu"]["firewall_driver"] %>
+
+[AGENT]
+# Agent's polling interval in seconds
+polling_interval = <%= node["openstack"]["network"]["ryu"]["polling_interval"] %>

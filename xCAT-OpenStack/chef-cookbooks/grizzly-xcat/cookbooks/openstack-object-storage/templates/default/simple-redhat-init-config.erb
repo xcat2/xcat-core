@@ -1,0 +1,77 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          <%= @exec %>
+# Required-Start:    $remote_fs
+# Required-Stop:     $remote_fs
+# Default-Stop:      0 1 6
+# Description:       <%= @description %>
+### END INIT INFO
+
+# chkconfig: - 98 02
+
+
+. /etc/rc.d/init.d/functions
+
+name="<%= @exec =%>"
+
+[ -e "/etc/sysconfig/openstack-swift-$name" ] && . "/etc/sysconfig/openstack-swift-$name"
+
+lockfile="/var/lock/subsys/openstack-swift-$name"
+
+start() {
+    swift-init "$name" start
+    retval=$?
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    swift-init "$name" stop
+    retval=$?
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+rh_status() {
+    swift-init "$name" status
+    retval=$?
+    return $retval
+}
+
+rh_status_q() {
+    rh_status &> /dev/null
+}
+
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart}"
+        exit 2
+esac
+exit $?

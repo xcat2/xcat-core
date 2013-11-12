@@ -1,0 +1,65 @@
+{
+  "sources": {
+    "openstack-compute": {
+      "path": "."
+    },
+    "openstack-image": {
+      "locked_version": "7.0.0",
+      "git": "git://github.com/stackforge/cookbook-openstack-image.git",
+      "ref": "c06c440a371e4b8602a2de54b21e4c6a82a0fbf3"
+    },
+    "openstack-identity": {
+      "locked_version": "7.0.0",
+      "git": "git://github.com/stackforge/cookbook-openstack-identity.git",
+      "ref": "b881af26095cfa869a6970067c49597a0ee63586"
+    },
+    "openstack-common": {
+      "locked_version": "0.4.3",
+      "git": "git://github.com/stackforge/cookbook-openstack-common.git",
+      "ref": "eb5eed7126b6a6efbaf803e8a594d610cf661e97"
+    },
+    "openstack-network": {
+      "locked_version": "7.0.0",
+      "git": "git://github.com/stackforge/cookbook-openstack-network.git",
+      "ref": "2b6ecb00e81e98765343ecb4d8655c5d74fd46c9"
+    },
+    "sysctl": {
+      "locked_version": "0.2.0",
+      "git": "git://github.com/Fewbytes/sysctl-cookbook.git",
+      "ref": "65a96b45d489c904515d916aae6bc474da35f1ca"
+    },
+    "selinux": {
+      "locked_version": "0.5.6"
+    },
+    "yum": {
+      "locked_version": "2.3.0"
+    },
+    "python": {
+      "locked_version": "1.3.6"
+    },
+    "build-essential": {
+      "locked_version": "1.4.0"
+    },
+    "apt": {
+      "locked_version": "2.0.0"
+    },
+    "database": {
+      "locked_version": "1.4.0"
+    },
+    "mysql": {
+      "locked_version": "3.0.2"
+    },
+    "openssl": {
+      "locked_version": "1.0.2"
+    },
+    "postgresql": {
+      "locked_version": "3.0.2"
+    },
+    "aws": {
+      "locked_version": "0.101.2"
+    },
+    "xfs": {
+      "locked_version": "1.1.0"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+# Strainerfile
+tailor: bundle exec tailor
+knife test: bundle exec knife cookbook test $COOKBOOK
+foodcritic: bundle exec foodcritic -f any -t ~FC003 -t ~FC023 $SANDBOX/$COOKBOOK
+chefspec: bundle exec rspec $SANDBOX/$COOKBOOK/spec

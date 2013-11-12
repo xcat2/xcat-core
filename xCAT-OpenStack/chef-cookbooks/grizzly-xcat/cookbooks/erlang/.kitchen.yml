@@ -1,0 +1,53 @@
+---
+driver_plugin: vagrant
+
+platforms:
+- name: ubuntu-12.04
+  driver_config:
+    box: canonical-ubuntu-12.04
+    box_url: http://cloud-images.ubuntu.com/vagrant/precise/current/precise-server-cloudimg-amd64-vagrant-disk1.box
+    require_chef_omnibus: 11.4.4
+  run_list: ["recipe[apt]"]
+- name: ubuntu-10.04
+  driver_config:
+    box: opscode-ubuntu-10.04
+    box_url: http://opscode-vm.s3.amazonaws.com/vagrant/opscode_ubuntu-10.04_chef-11.2.0.box
+    require_chef_omnibus: 11.4.4
+  run_list: ["recipe[apt]"]
+- name: centos-6.3
+  driver_config:
+    box: opscode-centos-6.3
+    box_url: http://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-6.3_chef-11.2.0.box
+    require_chef_omnibus: 11.4.4
+- name: centos-5.8
+  driver_config:
+    box: opscode-centos-5.8
+    box_url: http://opscode-vm.s3.amazonaws.com/vagrant/opscode_centos-5.8_chef-11.2.0.box
+    require_chef_omnibus: 11.4.4
+
+suites:
+- name: default
+  run_list:
+  - "recipe[minitest-handler]"
+  - "recipe[erlang]"
+  attributes: {}
+
+- name: gui_tools
+  run_list:
+  - "recipe[minitest-handler]"
+  - "recipe[erlang]"
+  attributes: {erlang: {gui_tools: true}}
+  excludes: ["centos-5.8", "centos-6.3"]
+
+- name: esl
+  run_list:
+  - "recipe[minitest-handler]"
+  - "recipe[erlang::esl]"
+  attributes: {}
+  excludes: ["centos-5.8", "centos-6.3"]
+
+- name: source
+  run_list:
+  - "recipe[minitest-handler]"
+  - "recipe[erlang::source]"
+  attributes: {}
