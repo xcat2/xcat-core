@@ -578,20 +578,13 @@ sub process_request {
 
                     if (xCAT::Utils->isAIX())
                     {
+                        #try to stop named
                         my $cmd = "/usr/bin/stopsrc -s $service";
                         my @output=xCAT::Utils->runcmd($cmd, 0);
-                        my $outp = join('', @output);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            return;
-                        }
 
                         $cmd = "/usr/bin/startsrc -s $service";
                         @output=xCAT::Utils->runcmd($cmd, 0);
-                        $outp = join('', @output);
+                        my $outp = join('', @output);
                         if ($::RUNCMD_RC != 0)
                         {
                             my $rsp = {};
