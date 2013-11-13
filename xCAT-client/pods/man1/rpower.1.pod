@@ -102,7 +102,7 @@ The B<suspend> action could be run together with B<-w> B<-o> B<-r>.
 
 Refer to the following steps to enable the B<suspend> function:
 
-1. Add the 'acpid' and 'suspend' package to the .pkglist of your osimage so that the required package could be installed correctly to your target system.
+1. Add the 'acpid' and 'suspend'(the suspend package is not needed on RHEL) package to the .pkglist of your osimage so that the required package could be installed correctly to your target system.
 
 2. Add two configuration files for the base function:
 
