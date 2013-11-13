@@ -186,7 +186,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm.legacy
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
@@ -238,6 +237,7 @@ rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/48.esxifixup
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/esxi/xcatsplash
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/fedora*
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/imgutils
+rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/mic
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/rh
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/ol
 rm -rf $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
@@ -255,7 +255,6 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/AAsn.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm.legacy
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm

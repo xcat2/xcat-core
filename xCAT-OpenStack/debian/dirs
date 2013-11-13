@@ -8,3 +8,4 @@ opt/xcat/share/doc/man5
 opt/xcat/share/man/man7
 opt/xcat/share/doc/man7
 install/postscripts
+install/chef-cookbooks
