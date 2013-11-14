@@ -107,7 +107,7 @@ function checknetwork(){
         num_index=$((num_index+1))
     done
 
-    str_ret=`echo $str_ret | sed 's/.$//'`
+    str_ret=`echo $str_ret | sed 's/,$//'`
     echo "$str_ret"
 }
 

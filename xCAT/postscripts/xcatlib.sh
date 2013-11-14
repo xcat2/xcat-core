@@ -129,7 +129,7 @@ function v4prefix2mask(){
         num_index=$((num_index+1))
     done
 
-    str_mask=`echo $str_mask | sed 's/.$//'`
+    str_mask=`echo $str_mask | sed 's/\.$//'`
     echo "$str_mask"
 }
 
@@ -158,7 +158,7 @@ function v4calcbcase(){
         str_bcast=$str_bcast$str_temp"."
     done
 
-    str_bcast=`echo $str_bcast | sed 's/.$//'`
+    str_bcast=`echo $str_bcast | sed 's/\.$//'`
     echo "$str_bcast"
 }
 
@@ -182,7 +182,7 @@ function v4calcnet(){
         str_net=$str_net$str_temp"."
     done
 
-    str_net=`echo $str_net | sed 's/.$//'`
+    str_net=`echo $str_net | sed 's/\.$//'`
     echo "$str_net"
 }
 
@@ -236,7 +236,7 @@ function v6prefix2mask(){
         num_i=$((num_i+1))
     done
 
-    str_mask=`echo $str_mask | sed 's/.$//'`
+    str_mask=`echo $str_mask | sed 's/:$//'`
     echo "$str_mask"
 }
 
@@ -263,6 +263,6 @@ function v6calcnet(){
         str_v6net=$str_v6net$str_temp":"
     done
 
-    str_v6net=`echo $str_v6net | sed 's/.$//'`
+    str_v6net=`echo $str_v6net | sed 's/:$//'`
     echo "$str_v6net"
 }
