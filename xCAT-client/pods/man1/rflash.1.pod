@@ -18,7 +18,7 @@ B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive>|B<deferred
 
 B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
-=head2 BMC (with FPC) specific:
+=head2 NeXtScale FPC specific:
 
 B<rflash> I<noderange> I<http directory> 
 
@@ -73,7 +73,7 @@ For Power 775, the rflash command takes effect on the primary and secondary FSPs
 For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
   https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
 
-=head2 BMC (with NeXtScale FPC) specific:
+=head2 NeXtScale FPC specific:
 
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the link to get more details:
  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_NeXtScale_Clusters#Update_the_FPC_firmware_.28optional.29 

@@ -199,7 +199,7 @@ function add_ip_temporary(){
                 str_label=$str_nic_name
             fi
 
-            str_bcase=$(calcbcase $str_ip $str_mask)
+            str_bcase=$(v4calcbcase $str_ip $str_mask)
             #the label is ready, add the ip address directly
             ip addr add $str_ip/${str_mask} broadcast $str_bcase dev $str_nic_name scope global label $str_label
         fi
