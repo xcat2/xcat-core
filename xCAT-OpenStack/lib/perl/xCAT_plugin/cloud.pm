@@ -179,6 +179,10 @@ sub process_request
             $callback->($rsp);
             next;
         }
+        
+        unless ( -d "$repos/environments") {
+            mkdir("$repos/environments", 0777);
+        }
          
         my $tmperr = cloudvars(
             $tmplfile,
