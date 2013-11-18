@@ -573,8 +573,8 @@ sub backupxcatdb
             }
         }
 
-        # back it up
-        my $cmd = "dumpxCATdb -p $::backupdir";
+        # back it up in bypass mode ( do not require the xcatd running)
+        my $cmd = "XCATBYPASS=y dumpxCATdb -p $::backupdir";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
