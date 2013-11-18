@@ -699,7 +699,7 @@ sub mknetboot
                         $xcatmasterip = $xcatmaster;
                     }
 
-                    $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+                    $kcmdline .= "XCAT=$xcatmasterip:$xcatdport ";
 
 
             if ($rootfstype ne "ramdisk") {
