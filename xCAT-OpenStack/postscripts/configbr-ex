@@ -1,4 +1,4 @@
-#!/bin/sh -vx
+#!/bin/sh
 
 
 bridge_name="br-ex"
@@ -19,7 +19,7 @@ str_value=$(hashget hash_defined_nics $pubinterface)
 old_ifs=$IFS
 IFS=$','
 array_temp=($str_value)
-FS=$old_ifs
+IFS=$old_ifs
 
 if [ -n "${array_temp[1]}" ];then
     str_nic_type=`echo ${array_temp[1]} | tr "[A-Z]" "[a-z]"`
@@ -35,7 +35,27 @@ else
 fi
 
 
-configeth $bridge_name ${array_temp[0]} ${array_temp[2]}
+str_network=$(checknetwork ${array_temp[0]})
+if [ -z "$str_network" ];then
+    logger -t xcat -p local4.info "configbr-ex: could not find the network for $bridge_name which is based on $pubinterface. Please check the networks and nics tables."
+    echo "configbr-ex: could not find the network for $bridge_name which is based on $pubinterface. Please check the networks and nics tables."
+    exit -1
+fi
 
+#configeth $bridge_name ${array_temp[0]} ${array_temp[2]}
+configeth $bridge_name ${array_temp[0]} $str_network
+if [ $? -ne 0 ];then
+    logger -t xcat -p local4.info "configbr-ex failed to configure $bridge_name : configeth $bridge_name ${array_temp[0]} $str_network"
+    echo "confignics: configbr-ex failed to configure $bridge_name : configeth $bridge_name ${array_temp[0]} $str_network"
+    exit -1
+fi
+
+. ./configgw $bridge_name
+if [ $? -ne 0 ];then
+    logger -t xcat -p local4.info "configgw failed to configure gateway for $bridge_name."
+    echo "configgw failed to configure gateway for $bridge_name."
+    exit -1
+fi
+exit 0
 
 
