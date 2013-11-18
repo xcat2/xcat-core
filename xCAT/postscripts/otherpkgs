@@ -893,9 +893,9 @@ EOF`
 	elif [ $hasapt -eq 1 ]; then
 	    apt_get_update_if_repos_changed $REPOFILE
             if [ $VERBOSE  ]; then
-	      echo "$envlist apt-get -q -y --force-yes install $repo_pkgs"
+	      echo "$envlist apt-get install -y --force-yes -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" -q $repo_pkgs"
 	    fi
-	    result=`eval $envlist apt-get -q -y --force-yes install $repo_pkgs 2>&1`
+	    result=`eval $envlist apt-get install -y --force-yes -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" -q $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
