@@ -778,9 +778,9 @@ EOF`
     elif [ $hasapt -eq 1 ]; then
 	apt_get_update_if_repos_changed $REPOFILE
         if [ $VERBOSE  ]; then
-	  echo "$envlist  apt-get -y upgrade"
+	  echo "$envlist  DEBIAN_FRONTEND=noninteractive apt-get -y upgrade"
         fi
-	result=`eval $envlist  apt-get -y upgrade 2>&1`
+	result=`eval $envlist  DEBIAN_FRONTEND=noninteractive apt-get -y upgrade 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
               RETURNVAL=$R 
@@ -826,9 +826,9 @@ EOF`
 	elif [ $hasapt -eq 1 ]; then
   	    apt_get_update_if_repos_changed $REPOFILE
             if [ $VERBOSE  ]; then
-	      echo "apt-get -y remove $repo_pkgs_preremove"
+	      echo "DEBIAN_FRONTEND=noninteractive apt-get -y remove $repo_pkgs_preremove"
             fi
-	    result=`apt-get -y remove $repo_pkgs_preremove 2>&1`
+	    result=`DEBIAN_FRONTEND=noninteractive apt-get -y remove $repo_pkgs_preremove 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
@@ -893,9 +893,9 @@ EOF`
 	elif [ $hasapt -eq 1 ]; then
 	    apt_get_update_if_repos_changed $REPOFILE
             if [ $VERBOSE  ]; then
-	      echo "$envlist apt-get install -y --force-yes -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" -q $repo_pkgs"
+	      echo "$envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes install $repo_pkgs"
 	    fi
-	    result=`eval $envlist apt-get install -y --force-yes -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" -q $repo_pkgs 2>&1`
+	    result=`eval $envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 
