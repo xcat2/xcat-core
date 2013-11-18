@@ -2282,6 +2282,25 @@ sub insert_dd () {
             copy ("$dd_dir/initrd.gz", "$img");
         }
     } elsif ($arch =~ /x86/) {
+        mkpath("$dd_dir/initrd_img/cus_driverdisk");
+
+        # insert the driver update disk into the cus_driverdisk dir
+        foreach my $dd (@dd_list) {
+            copy($dd, "$dd_dir/initrd_img/cus_driverdisk");
+        }
+        # Repack the initrd
+        # In order to avoid the runcmd add the '2>&1' at end of the cpio
+        # cmd, the echo cmd is added at the end
+        $cmd = "cd $dd_dir/initrd_img; find . -print | cpio -H newc -o > $dd_dir/initrd | echo";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return ();
+        }
+        $cmd = "gzip -f $dd_dir/initrd";
+        xCAT::Utils->runcmd($cmd, -1);
         my $rdhandle;
         my $ddhandle;
         open($rdhandle,">>",$img);
