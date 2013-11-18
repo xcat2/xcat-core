@@ -955,7 +955,7 @@ sub updatenode
     my $postscripts = "$installdir/postscripts";
     if (-e $postscripts)
     {
-        my $cmd = "chmod -R u+x,a+r $postscripts";
+        my $cmd = "chmod -R a+r $postscripts";
         xCAT::Utils->runcmd($cmd, 0);
         my $rsp = {};
         if ($::RUNCMD_RC != 0)
