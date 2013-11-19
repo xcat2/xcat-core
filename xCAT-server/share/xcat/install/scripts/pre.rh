@@ -221,6 +221,10 @@ echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partit
 # The following code is to generate the repository for the installation
 cat /proc/cmdline
 
-export nextserver=`cat /proc/cmdline | grep http | head -n 1 | cut -d / -f 3 | cut -d : -f 1`
+NEXTSERVER=`cat /proc/cmdline | grep http | head -n 1`
+NEXTSERVER=${NEXTSERVER#*http://}
+NEXTSERVER=${NEXTSERVER%%:*}
+
+export nextserver=$NEXTSERVER
 #INSTALL_SOURCES_IN_PRE#
 
