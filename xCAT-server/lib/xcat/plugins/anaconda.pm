@@ -175,6 +175,7 @@ sub mknetboot
     my @args     = @{$req->{arg}} if(exists($req->{arg}));
     my @nodes    = @{$req->{node}};
     my $noupdateinitrd = $req->{'noupdateinitrd'};
+    my $ignorekernelchk = $req->{'ignorekernelchk'};
     my $ostab    = xCAT::Table->new('nodetype');
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
@@ -941,6 +942,7 @@ sub mkinstall
     my $doreq    = shift;
     my @nodes    = @{$request->{node}};
     my $noupdateinitrd = $request->{'noupdateinitrd'};
+    my $ignorekernelchk = $request->{'ignorekernelchk'};
     #my $sitetab  = xCAT::Table->new('site');
     my $linuximagetab;
     my $osimagetab;
@@ -1353,7 +1355,7 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy($kernpath,"$tftppath");
                         copy($initrdpath,"$tftppath/initrd.img");
-                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir);
+                        &insert_dd($callback, $os, $arch, "$tftppath/initrd.img", "$tftppath/vmlinuz", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
             }
@@ -2429,6 +2431,7 @@ sub insert_dd {
     my $driverupdatesrc = shift;
     my $drivers = shift;
     my $osupdirlist = shift;
+    my $ignorekernelchk = shift;
 
     my $install_dir = xCAT::TableUtils->getInstallDir();
 
@@ -2439,6 +2442,7 @@ sub insert_dd {
     
     my @dd_list;
     my @rpm_list;
+    my @vendor_rpm; # the rpms from driverupdatesrc attribute
     my @driver_list;
     my $Injectalldriver;
     my $updatealldriver;
@@ -2468,8 +2472,10 @@ sub insert_dd {
                 push @dd_list, $1;
             } elsif ($src =~ /rpm:(.*)/i) {
                 push @rpm_list, $1;
+                push @vendor_rpm, $1;
             } else {
                 push @rpm_list, $src;
+                push @vendor_rpm, $src;
             }
         }
     }
@@ -2498,6 +2504,7 @@ sub insert_dd {
 
     chomp(@dd_list);
     chomp(@rpm_list);
+    chomp(@vendor_rpm);
     
     unless (@dd_list || (@rpm_list && ($Injectalldriver || $updatealldriver || @driver_list))) {
         return ();
@@ -2606,22 +2613,46 @@ sub insert_dd {
                         }
                     }
                 }
-                
-                # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
-                # Change it back to xxx.ko here
-                $driver_name = "\*ko.new";
-                @all_real_path = ();
-                find(\&get_all_path, <$dd_dir/rpm/*>);
-                foreach my $file (@all_real_path) {
-                    my $newname = $file;
-                    $newname =~ s/\.new$//;
-                    $cmd = "/bin/mv -f $file $newname";
-                    xCAT::Utils->runcmd($cmd, -1);
-                    if ($::RUNCMD_RC != 0) {
+            }
+            
+            # Extract files from vendor rpm when $ignorekernelchk is specified
+            if ($ignorekernelchk) {
+                mkpath "$dd_dir/vendor_rpm";
+                foreach my $rpm (@vendor_rpm) {
+                    if (-r $rpm) {
+                        $cmd = "cd $dd_dir/vendor_rpm; rpm2cpio $rpm | cpio -idum";
+                        xCAT::Utils->runcmd($cmd, -1);
+                        if ($::RUNCMD_RC != 0) {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Handle the driver update failed. Could not extract files from the rpm $rpm.";
+                            xCAT::MsgUtils->message("I", $rsp, $callback);
+                        }
+                    } else {
                         my $rsp;
-                        push @{$rsp->{data}}, "Handle the driver update failed. Could not move $file.";
+                        push @{$rsp->{data}}, "Handle the driver update failed. Could not read the rpm $rpm.";
                         xCAT::MsgUtils->message("I", $rsp, $callback);
                     }
+                }
+            }
+
+            # To skip the conflict of files that some rpm uses the xxx.ko.new as the name of the driver
+            # Change it back to xxx.ko here
+            $driver_name = "\*ko.new";
+            @all_real_path = ();
+            my @rpmfiles = <$dd_dir/rpm/*>;
+            if ($ignorekernelchk) {
+                push @rpmfiles, <$dd_dir/vendor_rpm/*>;
+            }
+            find(\&get_all_path, @rpmfiles);
+            foreach my $file (@all_real_path) {
+                my $newname = $file;
+                $newname =~ s/\.new$//;
+                $cmd = "/bin/mv -f $file $newname";
+                xCAT::Utils->runcmd($cmd, -1);
+                if ($::RUNCMD_RC != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Handle the driver update failed. Could not move $file.";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
             }
         }
@@ -2684,9 +2715,27 @@ sub insert_dd {
                 }
 
                 foreach my $kernelver (@kernelvers) {
+                  # if $ignorekernelchk is specified, copy all files from vendor_rpm dir to target kernel dir
+                  if ($ignorekernelchk) {
+                      my @kernelpath4vrpm = <$dd_dir/vendor_rpm/lib/modules/*>;
+                      foreach my $path (@kernelpath4vrpm) {
+                          unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                              mkpath "$dd_dir/rpm/lib/modules/$kernelver";
+                          }
+                          $cmd = "/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver";
+                          xCAT::Utils->runcmd($cmd, -1);
+                          if ($::RUNCMD_RC != 0) {
+                              my $rsp;
+                              push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $path from vendor rpm.";
+                              xCAT::MsgUtils->message("I", $rsp, $callback);
+                          }
+                      }
+                  }
+                  
                   unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                       next;
                   }
+
                   if (@driver_list) {
                     foreach my $driver (@driver_list) {
                       $driver =~ s/\.gz$//;
@@ -2903,9 +2952,27 @@ sub insert_dd {
                 }
 
                foreach my $kernelver (@kernelvers) {
+                  # if $ignorekernelchk is specified, copy all files from vendor_rpm dir to target kernel dir
+                  if ($ignorekernelchk) {
+                      my @kernelpath4vrpm = <$dd_dir/vendor_rpm/lib/modules/*>;
+                      foreach my $path (@kernelpath4vrpm) {
+                          unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                              mkpath "$dd_dir/rpm/lib/modules/$kernelver";
+                          }
+                          $cmd = "/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver";
+                          xCAT::Utils->runcmd($cmd, -1);
+                          if ($::RUNCMD_RC != 0) {
+                              my $rsp;
+                              push @{$rsp->{data}}, "Handle the driver update failed. Could not copy driver $path from vendor rpm.";
+                              xCAT::MsgUtils->message("I", $rsp, $callback);
+                          }
+                      }
+                  }
+                  
                   unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
                       next;
                   }
+
                   # create path for the new kernel in the modules package
                   unless (-d "$dd_dir/modules/$kernelver") {
                       mkpath ("$dd_dir/modules/$kernelver/$arch/");
@@ -3156,7 +3223,7 @@ sub insert_dd {
         if (@rpm_drivers) {
             push @{$rsp->{data}}, "The drivers:".join(',', sort(@rpm_drivers))." from ".join(',', sort(@rpm_list))." have been injected to initrd.";
         } elsif ($Injectalldriver) {
-            push @{$rsp->{data}}, "All the drivers from :".join(',', sort(@rpm_list))." have been injected to initrd.";
+            push @{$rsp->{data}}, "All the drivers from: ".join(',', sort(@rpm_list))." have been injected to initrd.";
         } else {
             push @{$rsp->{data}}, "No driver was injected to initrd.";
         }
