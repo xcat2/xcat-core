@@ -618,7 +618,7 @@ sub getDBtable
     {
 
     	# need to get info from DB
-    	my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+    	my $thistable = xCAT::Table->new($table, -create => 1);
     	if (!$thistable)
     	{
         	return undef;
