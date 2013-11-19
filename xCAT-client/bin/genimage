@@ -42,6 +42,7 @@ my $mode;
 my $interactive;
 my $onlyinitrd;
 my $dryrun;
+my $ignorekernelchk;
 #-----------------------------------------------------------------------------
 
 =head3 print_usage   - usage message
@@ -55,7 +56,7 @@ sub print_usage
     print "    genimage\n\n";
     print "    genimage --dryrun\n\n";
     print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun]'."\n\n";
-    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] <imagename>'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--ignorekernelchk] <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
     print "      -m is used for urbuntu, debian and fedora12 only\n\n";
@@ -88,6 +89,7 @@ if (!GetOptions(
          'interactive' => \$interactive,  
          'onlyinitrd' => \$onlyinitrd, 
          'dryrun' => \$dryrun,
+	 'ignorekernelchk' => \$ignorekernelchk,
 	 'h|help' => \$help,
 	 'v|version' => \$version,
 )) {
@@ -402,6 +404,10 @@ if ($onlyinitrd) {
 
 if ($dryrun) {
     push @arg, "--dryrun";
+}
+
+if ($ignorekernelchk) {
+    push @arg, "--ignorekernelchk";
 }
 
 my $cmdref;

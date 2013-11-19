@@ -62,6 +62,7 @@ my $rootimg_dir;
 my $permission; # the permission works only for statelite mode currently
 my $tempfile;
 my $prompt;
+my $ignorekernelchk;
 
 
 sub xdie {
@@ -92,6 +93,7 @@ GetOptions(
    'driverupdatesrc=s' => \$driverupdatesrc, #internal flag
    'interactive' =>\$prompt, 
    'onlyinitrd' =>\$onlyinitrd, 
+   'ignorekernelchk' => \$ignorekernelchk,
 );
 
 if (@ARGV > 0) {
@@ -1866,6 +1868,22 @@ sub load_dd ()
         if (-d "$dd_dir/rpm/lib/firmware") {
             system ("cp -rf $dd_dir/rpm/lib/firmware $rootimg_dir/lib");
         }
+
+        # if $ignorekernelchk is specified, copy all driver files to target kernel dir
+        if ($ignorekernelchk) {
+            my @kernelpath4vrpm = <$dd_dir/rpm/lib/modules/*>;
+            foreach my $path (@kernelpath4vrpm) {
+                if ($path eq "$dd_dir/rpm/lib/modules/$kernelver") {
+                    next;
+                }
+                
+                unless (-d "$dd_dir/rpm/lib/modules/$kernelver") {
+                    mkpath "$dd_dir/rpm/lib/modules/$kernelver";
+                }
+                system ("/bin/cp -rf $path/* $dd_dir/rpm/lib/modules/$kernelver");
+            }
+        }
+
         # Copy the drivers to the rootimage
         if (-d "$dd_dir/rpm/lib/modules/$kernelver") {
           if (@driver_list) {
@@ -1894,6 +1912,8 @@ sub load_dd ()
             }
           } elsif ($Injectalldriver) {
             # copy all the drviers to the rootimage
+            $driver_name = "\*\.ko";
+            @all_real_path = ();
             find(\&get_all_path, <$dd_dir/rpm/lib/modules/$kernelver/*>);
             my @all_drivers = @all_real_path;
             foreach my $new_driver (@all_drivers) {

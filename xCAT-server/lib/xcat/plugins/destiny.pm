@@ -93,7 +93,9 @@ sub setdestiny {
 
     @ARGV = @{$req->{arg}};
     my $noupdateinitrd;
-    GetOptions('noupdateinitrd' => \$noupdateinitrd,);
+    my $ignorekernelchk;
+    GetOptions('noupdateinitrd' => \$noupdateinitrd,
+               'ignorekernelchk' => \$ignorekernelchk,);
     
     my $state = $ARGV[0];
     my $reststates;
@@ -304,7 +306,8 @@ sub setdestiny {
 	    $errored=0;
 	    $subreq->({command=>["mk$tempstate"],
 		       node=>$samestatenodes, 
-		       noupdateinitrd=>$noupdateinitrd}, \&relay_response);
+		       noupdateinitrd=>$noupdateinitrd,
+                       ignorekernelchk=>$ignorekernelchk,}, \&relay_response);
 	    if ($errored) { 
 		$callback->({error=>"Some nodes failed to set up $state resources, aborting"});
 		return; 

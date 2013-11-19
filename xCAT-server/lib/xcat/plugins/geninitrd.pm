@@ -28,15 +28,20 @@ sub preprocess_request
 
     my $usage = sub {
         my $callback = shift;
-        xCAT::MsgUtils->message("I", {data=>["Usage: geninitrd <imagename> [-h | --help]"]}, $callback);
+        xCAT::MsgUtils->message("I", {data=>["Usage: geninitrd <imagename> [--ignorekernelchk] [-h | --help]"]}, $callback);
     };
 
     my $osimage;
+    my $ignorekernelchk;
     if (defined ($req->{arg})) {
         foreach (@{$req->{arg}}) {
             if (/^-/) {
-                $usage->($callback);
-                return;
+                if (/--ignorekernelchk/) {
+                    $ignorekernelchk = 1;
+                } else {
+                    $usage->($callback);
+                    return;
+                }
             }else {
                 $osimage = $_;
             }
@@ -51,11 +56,13 @@ sub preprocess_request
         return;
     }
  
+    $req->{'ignorekernelchk'} = [$ignorekernelchk];
+
     #if tftpshared is not set, dispatch this command to all the service nodes
     my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $t_entry = $entries[0];
     if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
-        $req->{'_disparatetftp'}=[1];
+        $req->{'_disparatetftp'} = [1];
         return xCAT::Scope->get_broadcast_scope($req,@_);
     }
    return [$req];
@@ -81,6 +88,10 @@ sub geninitrd {
     my $doreq = shift;
 
     my $osimage = $req->{arg}->[0];
+    my $ignorekernelchk;
+    if (defined ($req->{'ignorekernelchk'}) && $req->{'ignorekernelchk'}->[0]) {
+        $ignorekernelchk = $req->{'ignorekernelchk'}->[0];
+    }
 
     my ($osvers, $arch, $pkgdir, $driverupdatesrc, $netdrivers, $osdisupdir);
 
@@ -218,10 +229,10 @@ sub geninitrd {
     # 2. Inject the drivers to initrd in /tftpboot base on the new kernel ver
     if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)/) {
         require  xCAT_plugin::anaconda;
-        xCAT_plugin::anaconda->insert_dd($callback, $osvers, $arch, $initrdpath, $kernelpath, $driverupdatesrc, $netdrivers, $osdisupdir);
+        xCAT_plugin::anaconda->insert_dd($callback, $osvers, $arch, $initrdpath, $kernelpath, $driverupdatesrc, $netdrivers, $osdisupdir, $ignorekernelchk);
     } elsif ($osvers =~ /(sles.*)|(suse.*)/) {
         require  xCAT_plugin::sles;
-        xCAT_plugin::sles->insert_dd($callback, $osvers, $arch, $initrdpath, $kernelpath, $driverupdatesrc, $netdrivers, $osdisupdir);
+        xCAT_plugin::sles->insert_dd($callback, $osvers, $arch, $initrdpath, $kernelpath, $driverupdatesrc, $netdrivers, $osdisupdir, $ignorekernelchk);
     } 
 
 }
