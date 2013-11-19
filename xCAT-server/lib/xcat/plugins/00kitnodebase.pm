@@ -179,7 +179,7 @@ sub process_request {
         $retref = "";
         if(($current_cmd eq "nodeset") && $noupdate_flag)
         {
-            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $reques    t_command, 0, 2);
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, 0, 2);
         }
         else
         {
