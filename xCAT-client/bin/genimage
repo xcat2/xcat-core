@@ -42,6 +42,7 @@ my $mode;
 my $interactive;
 my $onlyinitrd;
 my $dryrun;
+my $ignorekernelchk;
 #-----------------------------------------------------------------------------
 
 =head3 print_usage   - usage message
@@ -88,6 +89,7 @@ if (!GetOptions(
          'interactive' => \$interactive,  
          'onlyinitrd' => \$onlyinitrd, 
          'dryrun' => \$dryrun,
+	 'ignorekernelchk' => \$ignorekernelchk,
 	 'h|help' => \$help,
 	 'v|version' => \$version,
 )) {
@@ -402,6 +404,10 @@ if ($onlyinitrd) {
 
 if ($dryrun) {
     push @arg, "--dryrun";
+}
+
+if ($ignorekernelchk) {
+    push @arg, "--ignorekernelchk";
 }
 
 my $cmdref;
