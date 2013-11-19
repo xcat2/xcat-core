@@ -6,7 +6,7 @@ B<nodeset> - set the boot state for a noderange
 
 B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]]
 
-B<nodeset> I<noderange> [I<osimage=<imagename>> I<--noupdateinitrd>]
+B<nodeset> I<noderange> I<osimage=<imagename>> [I<--noupdateinitrd>] [I<--ignorekernelchk>]
 
 B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>]
 
@@ -73,6 +73,10 @@ Prepare server for installing a node using the specified os image. The os image 
 
 Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drviers to initrd. But, the geninitrd command
 should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of nodeset command.
+
+=item B<--ignorekernelchk>
+
+Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
 
 =item B<runimage>=<task>>
 

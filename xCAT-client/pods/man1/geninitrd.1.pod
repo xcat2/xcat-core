@@ -4,7 +4,7 @@ B<genimage> - Generate an initrd (initial ramfs) which to be used for statefull 
 
 =head1 SYNOPSIS
 
-B<geninitrd> <imagename>
+B<geninitrd> I<imagename> [B<--ignorekernelchk>]
 
 B<geninitrd> [B<-h> | B<--help>] 
 
@@ -66,6 +66,13 @@ B<driverupdatesrc> - comma separated driver rpm packages (full path should be sp
 
 I<imagename> specifies the name of an os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
 
+=over 12
+
+=item B<--ignorekernelchk>
+
+Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+
+=back
 
 =head1 RETURN VALUE
 
