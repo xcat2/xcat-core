@@ -69,6 +69,7 @@ sub process_request {
    my $onlyinitrd;
    my $tempfile;
    my $dryrun;
+   my $ignorekernelchk;
 
    GetOptions(
        'a=s' => \$arch,
@@ -88,6 +89,7 @@ sub process_request {
        'onlyinitrd' => \$onlyinitrd,
        'tempfile=s' => \$tempfile,
        'dryrun' => \$dryrun, 
+       'ignorekernelchk' => \$ignorekernelchk,
        );
 
    my $osimagetab;
@@ -298,6 +300,7 @@ sub process_request {
        if (!$dryrun) { $cmd .= " --tempfile $tempfile"; } 
    }
    if ($driverupdatesrc) { $cmd .= " --driverupdatesrc $driverupdatesrc"; }
+   if ($ignorekernelchk) { $cmd .= " --ignorekernelchk $ignorekernelchk"; }
 
    if($osfamily eq "sles") {
        my @entries =  xCAT::TableUtils->get_site_attribute("timezone");
