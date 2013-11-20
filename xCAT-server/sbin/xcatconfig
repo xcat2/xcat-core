@@ -408,12 +408,16 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 # TERM is needed for KVM consoles(actually screen command needs TERM)
 # import the TERM into systemd
 if ( -d "/usr/lib/systemd/system" ) {
-    my $cmd = "systemctl import-environment TERM";
+    my $term=$ENV{'TERM'};
+    if (!$term) {
+        $term = "vt100";
+    }
+    my $cmd = "systemctl set-environment TERM=$term";
     xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0) {
-        xCAT::MsgUtils->message('E', "Could not import TERM into systemd.");
+        xCAT::MsgUtils->message('E', "Could not set TERM into systemd.");
     } else {
-        verbose("Imported TERM=$ENV{'TERM'} into systemd.");
+        verbose("Imported TERM=$term into systemd.");
     }
 }
 
