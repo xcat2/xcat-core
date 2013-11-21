@@ -368,7 +368,6 @@ sub set_FPC_network_parms {
 		command => ["rspconfig"],
 		node => ["$defnode"],
 		arg     => [ "netmask=$netmask" ], 
-		sequential=>["1"],
 		}, 
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
@@ -389,7 +388,6 @@ sub set_FPC_network_parms {
 		command => ["rspconfig"],
 		node => ["$defnode"],
 		arg     => [ "gateway=$gateway" ],
-		sequential=>["1"],
 		}, 
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
@@ -410,7 +408,6 @@ sub set_FPC_network_parms {
 		command => ["rspconfig"],
 		node => ["$defnode"],
 		arg     => [ "ip=$newfpcip" ], 
-		sequential=>["1"],
 		},  
 		$request, 0,1);
 	if ($::RUNCMD_RC != 0) {
