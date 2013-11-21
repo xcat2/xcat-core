@@ -1439,6 +1439,7 @@ sub plugin_command {
       }
     $parent_fd = $old_parent_fd;
   } else {
+    my $req_back = undef;
       # executing plugins parallel
   foreach (keys %handler_hash) {
     my $modname = $_;
@@ -1464,6 +1465,11 @@ sub plugin_command {
         binmode($pfd,':utf8');
         $child = xCAT::Utils->xfork;
       } else {
+        if ($req_back) {
+            $req = dclone($req_back);
+        } else {
+            $req_back = dclone($req);
+        }
         $child = 0;
       }
       unless (defined $child) {
