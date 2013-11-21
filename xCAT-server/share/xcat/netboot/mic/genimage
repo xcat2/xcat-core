@@ -34,6 +34,12 @@ my $otherpkglist;
 my $rootimg_dir;
 my $srcdir_otherpkgs;
 my $tempfile;
+my $postinstall;
+my $rootimgdir;
+my $prompt;
+
+my $imagename;
+
 GetOptions(
    'a=s' => \$arch,
    'p=s' => \$profile,
@@ -42,13 +48,21 @@ GetOptions(
    'srcdir=s' => \$srcdir,
    'otherpkglist=s' => \$otherpkglist,
    'otherpkgdir=s' => \$srcdir_otherpkgs,
-   'tempfile=s' =>\$tempfile,
+   'tempfile=s' => \$tempfile,
+   'postinstall=s' => \$postinstall,
+   'rootimgdir=s' => \$rootimgdir,
+   'imagename=s' => \$imagename,
+   'interactive' =>\$prompt, 
 );
 
-$rootimg_dir = "$srcdir/overlay/package/";
+if ($rootimgdir) {
+    $rootimg_dir = $rootimgdir."/rootimg";      # for 2.8.4 and later
+} else {
+    $rootimg_dir = "$srcdir/overlay/package";   # for 2.8.3 that rootimgdir was not set by default
+}
+
 my @yumdirs;
-my $imagename;
-if (@ARGV > 0) {
+if (!$imagename && @ARGV > 0) {
     $imagename=$ARGV[0];
 }
 unless ($imagename) {
@@ -63,6 +77,13 @@ sub isyumdir {
       push @yumdirs,$location;
    }
 }
+
+# creae default paths
+mkpath "$srcdir/common";
+mkpath "$srcdir/overlay/rootimg";
+mkpath "$srcdir/overlay/simple";
+mkpath "$srcdir/overlay/package";
+mkpath "$srcdir/overlay/rpm";
 
 if ($otherpkglist) {
 
@@ -120,10 +141,9 @@ if ($otherpkglist) {
       my $pass;
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
-
             if($_ eq "INCLUDEBAD")  {
-             print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
-               exit 1;
+                print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+                exit 1;
             }
 
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
@@ -202,7 +222,18 @@ if ($otherpkglist) {
     }
 }
 
-
+# run postinstall scripts
+foreach my $post ( split /,/, $postinstall) {
+    if ( !-x $post) {
+        print "postinstall script $post is not executable\n";
+        exit 1;
+    }
+    my $rc = system($postinstall, $rootimg_dir, $osver, $arch, $profile);
+    if($rc) {
+        print "postinstall script $post failed\n";
+        exit 1;
+    }
+}
 
 
 my $fsdir = "$srcdir/";

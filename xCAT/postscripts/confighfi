@@ -101,6 +101,26 @@ ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-bond0
     fi
 
+    if [[ $NTYPE != service ]]
+    then
+        if echo $MASTER | egrep '^([0-9]+.){3}[0-9]+$'
+        then
+            XCATMASTER=`grep "$MASTER " /etc/hosts | grep -v "^#" | awk '{print $2}' | awk -F '.' '{print $1}' | sed  's/-hf.*//g'`
+            GATEWAY_IP=`ping -c 3 $XCATMASTER-bond0 -I hf0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+
+        elif [ -n "$MASTER" ]
+        then
+            XCATMASTER=`echo $MASTER | awk -F-hf '{print $1}'`
+            GATEWAY_IP=`ping -c 3 $XCATMASTER-bond0 -I hf0 2>/dev/null | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+        fi
+
+        if [ -n "$GATEWAY_IP" ]
+        then
+            sed -i "/GATEWAY.*/d" /etc/sysconfig/network
+            echo "GATEWAY=$GATEWAY_IP" >> /etc/sysconfig/network
+        fi
+    fi
+
     x=0
     while [ $x -le $i ]; do
         ip link set dev hf${x} down
