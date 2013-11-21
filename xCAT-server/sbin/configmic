@@ -164,7 +164,7 @@ if ($rc) {
 # |           `--rpm
 # |           `--simple
 # |               |--simple.cfg  (the file must be multiple lines of 'a->b' format; 'a' is dir name in simple/, 'b' is the path on mic for 'a'
-# |           `--package
+# |           `--package (2.8.3) / rootimg (2.8.4 and later)
 # |                |--the base file for fs
 # |                `--opt/mic
 # |                     |--yy.filelist
@@ -225,7 +225,9 @@ my @ols = split (/,/, $overlay);
 foreach (@ols) {
     if (/^filelist:(.+)/) {
         $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/$1/ --target=$micmnt/overlay/$1.filelist --state=on $miclist";
-    } elsif (/^pfilelist:(.+)/) {
+    } elsif (/^ofilelist:(.+)/) { # for 2.8.4 and later
+        $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/rootimg/ --target=$micmnt/overlay/rootimg/opt/mic/$1.filelist --state=on $miclist";
+    } elsif (/^pfilelist:(.+)/) { # only for 2.8.3
         $cmd = "micctrl --overlay=Filelist --source=$micmnt/overlay/package/ --target=$micmnt/overlay/package/opt/mic/$1.filelist --state=on $miclist";
     } elsif (/^rpm:(.+)/) {
         $cmd = "micctrl --overlay=RPM --source=$micmnt/overlay/rpm/ --state=on $miclist";
