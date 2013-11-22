@@ -2544,7 +2544,7 @@ sub process_request {
   unless ($libvirtsupport) {
       $libvirtsupport = eval { 
       require Sys::Virt; 
-      if (Sys::Virt->VERSION < "0.2.0") {
+      if ( xCAT::Utils::version_cmp(Sys::Virt->VERSION, "0.2.0") < 0 ) {
           die;
       }
       1;
