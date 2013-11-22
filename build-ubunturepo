@@ -413,6 +413,10 @@ __EOF__
     while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/
          do : ; done
     #upload the tarball
+    i=0
+    echo "Uploading $dep_tar_name to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v $dep_tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    do : ; done
     cd $old_pwd
 fi
 exit 0
