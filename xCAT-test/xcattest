@@ -21,7 +21,7 @@ my $cmd_list = undef;
 my $needshow = 0;
 my $restore = 0;
 my $ret = 0;
-
+my $string1 = undef;
 if (
     !GetOptions("h|?"  => \$needhelp,
                 "f=s" => \$configfile,
@@ -488,7 +488,16 @@ sub loadcase
                 }
             }elsif($line =~ /^os\s*:\s*(\w[\w\,]+)/){
                 next if $skip;
-                $cases[$i]->{os}=$1;
+                $string1=$1;
+                if($string1 =~ /^rhels\s*/ && -f "/etc/redhat-release"){
+                $cases[$i]->{os}="Linux";
+                }elsif($string1 =~ /^sles\s*/ && -f "/etc/SuSE-release"){
+                $cases[$i]->{os}="Linux";
+                }else{
+                 $cases[$i]->{os}=$string1;
+
+                }
+                 
                 if($cases[$i]->{os} !~ /$config{var}{OS}/){
                     push(@notrightcase, $cases[$i]->{name});
                     pop(@rightcase);
