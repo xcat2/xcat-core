@@ -5996,7 +5996,10 @@ sub gotguid {
 	my $fru = FRU->new();
 	$fru->rec_type("guid");
 	$fru->desc("UUID/GUID");
-	$fru->value(sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",@{$rsp->{data}}));
+    my $binuuid = pack("C*",@{$rsp->{data}});
+    my @pieces = unpack("VvvNNN",$binuuid);
+    my @uuid = unpack("C*",pack("NnnNNN",@pieces));
+	$fru->value(sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",@uuid));
 	$sessdata->{fru_hash}->{guid} = $fru;
     initfru_withguid($sessdata);
 }
