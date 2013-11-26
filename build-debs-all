@@ -68,7 +68,6 @@ function makedeb {
 
 # build all debian packages
 makedeb xCAT-client $PKG_LOCATION "$BUILD_STRING" $VERSION
-makedeb xCAT-nbroot $PKG_LOCATION "$BUILD_STRING" $VERSION
 makedeb perl-xCAT $PKG_LOCATION "$BUILD_STRING" $VERSION
 makedeb xCAT-server $PKG_LOCATION "$BUILD_STRING" $VERSION
 makedeb xCAT-UI $PKG_LOCATION "$BUILD_STRING" $VERSION

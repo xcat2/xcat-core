@@ -10,9 +10,6 @@
         <packagereq type="required">xCAT-server</packagereq>
         <packagereq type="required">xCAT-client</packagereq>
         <packagereq type="required">perl-xCAT</packagereq>
-        <packagereq type="required">xCAT-nbroot-core-x86_64</packagereq>
-        <packagereq type="required">xCAT-nbroot-core-x86</packagereq>
-        <packagereq type="optional">xCAT-nbroot-core-ppc64</packagereq>
     </packagelist>
 </group>
 </comps>
