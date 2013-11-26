@@ -4,9 +4,9 @@ B<pasu> - run the ASU to many nodes in parallel
 
 =head1 SYNOPSIS
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] I<noderange> I<command>
+B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] I<noderange> I<command>
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] B<-b> I<batchfile> I<noderange>
+B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] B<-b> I<batchfile> I<noderange>
 
 B<pasu> [B<-h> | B<--help>]
 
@@ -59,6 +59,10 @@ By default, pasu filters out (i.e. does not display) the standard initial output
  Connected to IMM at IP address node2-imm
 
 If you want this output to be displayed, use this flag.
+
+=item B<-i|--interface> I<hostname-suffix>
+
+The hostname suffix to be appended to the node names.  
 
 =item B<-V|--verbose>
 
