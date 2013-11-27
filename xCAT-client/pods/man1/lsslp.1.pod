@@ -14,7 +14,7 @@ I<lsslp [noderange] [-V] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RS
 
 =head1 DESCRIPTION
 
-The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output. If you can't receive all the hardware, please use -T to increase the waiting time. B<NOTE> lsslp on AIX has restriction. According to AIX design, you need to use these steps to discover nodes for each vlan: 1.Add multicast route, for example: route add 239.255.255.253 40.0.0.96. 2. Use lsslp -i to do discovery, for example, lsslp -i 40.0.0.96. 3. Delete the route: route delete 239.255.255.253 40.0.0.96. If you have several vlans and need to do discovery through several network interfaces, you need to repeat the steps above.
+The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output. If you can't receive all the hardware, please use -T to increase the waiting time.
 
 NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -i flag.
 
