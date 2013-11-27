@@ -163,8 +163,10 @@ echo "Running updtvpkg. This could take a few minutes."
 /usr/sbin/updtvpkg
 echo "updtvpkg has completed."
 
+# unixODBC is required by pyodbc, so install it first
 rpm -Uvh unixODBC*
-for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^perl-DBD-DB2Lite'`; do
+# Now install the bulk of the rpms, one at a time, in case some are already installed
+for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^perl-DBD-DB2Lite|^net-snmp'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
 		opts="--nodeps"
 	else
@@ -181,19 +183,10 @@ for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^per
 	echo rpm -Uvh $opts $i
 	rpm -Uvh $opts $i
 done
-# don't try to install tcl, tk, or expect if they are already installed!
-# this section about expect/tcl/tk can be removed once 2.8 releases, because 2.8 no longer requires expect
-lslpp -l | grep expect.base > /dev/null 2>&1
-if [ $? -gt 0 ]; then
-	if [ "$OSVER" == "5.3" ]; then
-		for i in tcl-*.rpm tk-*.rpm expect-*.rpm; do
-			echo rpm -Uvh $i
-			rpm -Uvh $i
-		done
-	else
-		echo "The expect.base, tcl.base, and tk.base filesets must also be installed before installing the xCAT RPMs from xcat-core."
-	fi
-fi
+# Have to upgrade all of the net-snmp rpms together because they depend on each other.
+# Also, they require bash, so do it after the loop, rather than before
+rpm -Uvh net-snmp*
+
 EOF
 # end of instoss file content ---------------------------------------------
 
