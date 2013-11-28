@@ -66,7 +66,12 @@ function debianpreconf(){
             #write lines into the conffile
             echo $str_line >> $str_conf_file
         else
-            echo $str_line >> $str_conf_file
+            # Write the remaining lines of the nic conf info to conffile
+            # It is possible that there are some lines at the beginning of /etc/network/interfaces,
+            # that we could not recognize, ignore these lines. The indication is that the str_conf_file is empty
+            if [ ! -z "$str_conf_file" ]; then
+                echo $str_line >> $str_conf_file
+            fi
         fi
     done
 }
