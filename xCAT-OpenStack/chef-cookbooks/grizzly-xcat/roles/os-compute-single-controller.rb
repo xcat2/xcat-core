@@ -6,6 +6,7 @@ run_list(
   "role[os-ops-messaging]",
   "role[os-identity]",
   "role[os-network-server]",
+  "role[os-network-dhcp-agent]",
   "role[os-compute-scheduler]",
   "role[os-compute-api]",
   "role[os-compute-cert]",
