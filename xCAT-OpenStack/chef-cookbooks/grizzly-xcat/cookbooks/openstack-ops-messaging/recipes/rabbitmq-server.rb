@@ -66,6 +66,13 @@ rabbitmq_user "add openstack rabbit user" do
   action :add
 end
 
+rabbitmq_user "change the password of the openstack rabbit user" do
+  user user
+  password pass
+
+  action :change_password
+end
+
 rabbitmq_vhost "add openstack rabbit vhost" do
   vhost vhost
 
