@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh  
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # This script, ("loadclouddata"), is a sample xCAT post script for 
@@ -41,14 +41,16 @@ hkeys() {
 
 
 #flags
-no_args=0
+run_all=0
 only_load_cookbook=0
 only_load_role=0
 only_load_clouddata=0
+# develop mode. 0 -- false(customer mode); 1 -- true(develop mode)
+devmode=1
 
 if [ $# -eq 0 ]
 then
-    no_args=1
+    run_all=1
 else
   for arg in "$@"
   do
@@ -61,13 +63,28 @@ else
     elif [ "$arg" = "--clouddata" ]
     then
         only_load_clouddata=1
+    elif [ "$arg" = "--nodevmode" ]
+    then
+        devmode=0
+        run_all=1
     else 
         errmsg="no argument $arg in the loadchefdata script"
-        logger -t xcat -p local4.err $errmsg
-        echo $errmsg
+        logger -t xcat -p local4.err "$errmsg"
+        echo "$errmsg"
         exit 1
     fi
   done
+fi
+
+if [ $devmode -eq 0 ] 
+then
+   if [ $only_load_cookbook -eq 1 -o $only_load_role -eq 1 -o $only_load_clouddata -eq 1 ]
+   then
+       errmsg="'--nodevmode' could not be used with other arguments"
+       logger -t xcat -p local4.err "$errmsg"
+       echo "$errmsg"
+       exit 1
+   fi
 fi
 
 if [ -z $CLOUDLIST ]
@@ -89,7 +106,7 @@ then
 fi
 cd $REPOSITORY
 
-if [ $no_args -eq 1 -o $only_load_cookbook -eq 1 ]
+if [ $run_all -eq 1 -o $only_load_cookbook -eq 1 ]
 then
    # upload coobooks
    knife cookbook bulk delete '.*' -y  > /dev/null 2>&1
@@ -103,7 +120,7 @@ then
     fi
 fi
 
-if [ $no_args -eq 1 -o $only_load_role -eq 1 ]
+if [ $run_all -eq 1 -o $only_load_role -eq 1 ]
 then
     # upload roles
     knife role bulk delete '.*' -y  > /dev/null 2>&1
@@ -119,7 +136,7 @@ then
 fi
 
 
-if [ $no_args -eq 1 -o $only_load_clouddata -eq 1 ]
+if [ $run_all -eq 1 -o $only_load_clouddata -eq 1 ]
 then
 
     if [ -z $CFGCLIENTLIST ]
@@ -219,10 +236,76 @@ then
 
 
     done
+    
+    IFS=$OIFS
 fi
 
-IFS=$OIFS
 
+if [ $devmode -eq 0 ]
+then
+    bags=(db_passwords  secrets  service_passwords  user_passwords)
+    
+    if [ ! -e "$REPOSITORY/databags" ]
+    then
+        mkdir -p "$REPOSITORY/databags"
+    fi 
+   
+    databag_key="$REPOSITORY/databags/openstack_databag_key"
+    openssl rand -base64 512 > $databag_key
+    if [ $? != 0 ]
+    then  
+        errmsg="Failed to use openssl to generate the data bag key on $NODE. Please check whether openssl is installed."
+        logger -t xcat -p local4.err "$errmsg"
+        echo "$errmsg"
+        exit 1
+    fi
+
+    if [ ! -e "/etc/chef/" ]
+    then
+        mkdir -p "/etc/chef/"
+    fi
+    
+    #for knife command 
+    cp -f $databag_key "/etc/chef/encrypted_data_bag_secret"
+    #for other chef-client nodes
+    cp -f $databag_key "/etc/chef-server/encrypted_data_bag_secret"
+   
+   # add the path of encrypted_data_bag_secret to knife.rb file
+   if ! grep -w -q 'encrypted_data_bag_secret' /root/.chef/knife.rb
+   then
+       echo "encrypted_data_bag_secret '/etc/chef/openstack_encrypted_data_bag_secret'" >> /root/.chef/knife.rb
+   fi
+ 
+   # delete the old databags
+   knife data bag list | xargs -i knife data bag delete -y {}
+
+   # create databags and upload items
+   for bag in ${bags[@]}
+   do
+       bagpath="$REPOSITORY/databags/$bag"
+       if [ ! -e "$bagpath" ]
+       then
+           errmsg="$bag doesn't exist in $REPOSITORY/databags. Please make sure the databags are in the directory $REPOSITORY/databags."
+           logger -t xcat -p local4.err "$errmsg"
+           echo "$errmsg"
+           exit 1
+       fi
+       knife data bag create --secret-file $databag_key $bag
+       items=$(ls $bagpath)
+       for item in $items
+       do
+           knife data bag from file $bag $REPOSITORY/databags/$bag/$item --secret-file $databag_key
+           if [ $? != 0 ]
+           then  
+               errmsg="Failed to run knife data bag from file $bag $REPOSITORY/databags/$bag/$item --secret-file $databag_key"
+               logger -t xcat -p local4.err "$errmsg"
+               echo "$errmsg"
+               exit 1
+           fi
+       done
+   done
+
+fi
 
 exit 0
 
