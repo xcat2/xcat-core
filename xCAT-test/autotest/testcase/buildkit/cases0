@@ -82,11 +82,28 @@ end
 
 start:buildkit_buildrepo_rhels
 os:rhels
-arch:ppc64
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo rhels6.4
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit buildrepo $reponame
+check:rc==0
+check:output!~error
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
+check:output=~prodkit-1.0-1
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
+check:output=~repodata
+check:output=~pkg1-1-1.noarch.rpm
+check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
+check:output=~prodkit_compute-1.0-1.noarch.rpm
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_buildrepo_sles
+os:sles
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit buildrepo $reponame
 check:rc==0
 check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
@@ -122,9 +139,9 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create pro
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
 check:rc==0
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit cleanrepo rhels6.4
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit cleanrepo $reponame
 check:rc==0
-check:output=~Kit repository rhels6.4 has been removed
+check:output=~Kit repository rhels[0-9].[0-9] has been removed
 check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep rhels
 check:output!~rhels
@@ -138,9 +155,9 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create pro
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
 check:rc==0
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit cleanrepo sles11.2
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit cleanrepo $reponame
 check:rc==0
-check:output=~Kit repository sles11.2 has been removed
+check:output=~Kit repository sles[0-9][0-9].[0-9] has been removed
 check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep sles
 check:output!~sles
@@ -157,7 +174,7 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit bu
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit listrepo
 check:rc==0
-check:output=~rhels6.4:  DONE
+check:output=~rhels[0-9].[0-9]:  DONE
 check:output!~error
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
@@ -172,7 +189,7 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit bu
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit listrepo
 check:rc==0
-check:output=~sles11.2:  DONE
+check:output=~sles[0-9][0-9].[0-9]:  DONE
 check:output!~error
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
