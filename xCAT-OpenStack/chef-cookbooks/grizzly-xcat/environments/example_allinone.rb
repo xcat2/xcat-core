@@ -14,7 +14,7 @@ override_attributes(
     "root_network_acl" => "%"
   },
   "openstack" => {
-    "developer_mode" => false,
+    "developer_mode" => true,
     "secret"=>{
         "key_path"=>"/etc/chef/encrypted_data_bag_secret"
     },
