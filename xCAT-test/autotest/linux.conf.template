@@ -52,7 +52,10 @@ os=rhels5.4
 
 #system varible for autotest
 [System]
-CN=lpar5
+MN=rhmn      
+SN=rhsn
+CN=lpar5            #It can be used in flat environment
+CNWITHSN=lpar6      #It can be used in hierarchy environment for cn
 ISO=/iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso
 NETDRIVER=ibmveth     #network infterface card driver used by diskless installation
 NETBOOTDIR=/opt/xcat/share/xcat/netboot/rh       #path of netboot directory, used by diskless installation
