@@ -190,7 +190,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using mysql
         if ($::INIT)
         {
             my $message =
-              "The /etc/xcat/cfgloc file is already configured for MySQL. xcat database initialization will not take place.";
+              "The /etc/xcat/cfgloc file is already configured for MySQL and xCAT is using mysql as it's database. No xCAT setup is required.";
             xCAT::MsgUtils->message("I", "$message");
         }
         $::xcatrunningmysql = 1;
@@ -205,10 +205,10 @@ if ($::osname eq 'AIX')
     &setulimits;
 }
 
-#  if not just odbc update
+#  if not just odbc update  and not already running mysql
 #  Get root and admin passwords
 #
-if ($odbconly == 0)
+if (($odbconly == 0) && ( $::xcatrunningmysql == 0))
 {    # not just updating the odbc
     if ($ENV{'XCATMYSQLADMIN_PW'})    # input env sets the password
     {
@@ -270,8 +270,8 @@ if ($odbconly == 0)
     }
 }
 
-# initial setup request
-if ($::INIT)
+# initial setup request, if not already running mysql
+if (($::INIT) && ($::xcatrunningmysql == 0))
 {
 
     #
@@ -573,8 +573,8 @@ sub backupxcatdb
             }
         }
 
-        # back it up in bypass mode ( do not require the xcatd running)
-        my $cmd = "XCATBYPASS=y dumpxCATdb -p $::backupdir";
+        # back it up
+        my $cmd = "dumpxCATdb -p $::backupdir";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
