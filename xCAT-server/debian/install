@@ -2,6 +2,7 @@ bin/* opt/xcat/bin/
 sbin/* opt/xcat/sbin/
 share/xcat/install/* opt/xcat/share/xcat/install/
 share/xcat/netboot/* opt/xcat/share/xcat/netboot/
+share/xcat/mypostscript opt/xcat/share/xcat/templates/
 share/xcat/ca/* opt/xcat/share/xcat/ca
 
 share/xcat/scripts/* opt/xcat/share/xcat/scripts

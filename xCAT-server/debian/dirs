@@ -5,6 +5,7 @@ opt/xcat/share
 opt/xcat/share/xcat
 opt/xcat/share/xcat/install
 opt/xcat/share/xcat/netboot
+opt/xcat/share/xcat/templates
 opt/xcat/share/xcat/ca
 opt/xcat/share/xcat/scripts
 opt/xcat/share/xcat/tools
