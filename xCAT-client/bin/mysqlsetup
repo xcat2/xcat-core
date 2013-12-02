@@ -30,10 +30,7 @@ BEGIN
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
-        use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/5.8.2";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 
 use lib "$::XCATROOT/lib/perl";
@@ -56,6 +53,7 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 $::installdir             = "/usr/local/mysql";  # current release of xcat-mysql
+$::debianflag = 0;
 
 #$::installdir="/opt/xcat/mysql";  # next release of xcat-mysql
 
@@ -144,6 +142,9 @@ else
     $::osname = 'Linux';
 }
 
+if ( -e "/etc/debian_version" ){
+    $::debianflag = 1;
+}
 # determine whether redhat or sles
 $::linuxos = xCAT::Utils->osver();
 
@@ -151,6 +152,9 @@ $::linuxos = xCAT::Utils->osver();
 # check to see if mysql is installed
 #
 my $cmd = "rpm -qa | grep mysql";
+if ( $::debianflag ){
+    $cmd = "dpkg -l | grep mysql-server";
+}
 xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
@@ -186,7 +190,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using mysql
         if ($::INIT)
         {
             my $message =
-              "The /etc/xcat/cfgloc file is already configured for MySQL. xcat database initialization will not take place.";
+              "The /etc/xcat/cfgloc file is already configured for MySQL and xCAT is using mysql as it's database. No xCAT setup is required.";
             xCAT::MsgUtils->message("I", "$message");
         }
         $::xcatrunningmysql = 1;
@@ -201,27 +205,48 @@ if ($::osname eq 'AIX')
     &setulimits;
 }
 
-#  if not just odbc update
+#  if not just odbc update  and not already running mysql
 #  Get root and admin passwords
 #
-if ($odbconly == 0)
+if (($odbconly == 0) && ( $::xcatrunningmysql == 0))
 {    # not just updating the odbc
     if ($ENV{'XCATMYSQLADMIN_PW'})    # input env sets the password
     {
+        my $pw= $ENV{'XCATMYSQLADMIN_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+           my $warning = 
+           " The password in the env variable XCATMYSQLADMIN_PW is not alpha-numeric.";
+           xCAT::MsgUtils->message("E", $warning);
+           exit 1;
+        }
 
         $::adminpassword = $ENV{'XCATMYSQLADMIN_PW'};
 
     }
     else                              # prompt for password
     {
-        my $msg = "Input the password for xcatadmin in the MySQL database: ";
+        my $msg = "Input the alpha-numberic  password for xcatadmin in the MySQL database: ";
         xCAT::MsgUtils->message('I', "$msg");
         `stty -echo`;
         chop($::adminpassword = <STDIN>);
         `stty echo`;
+
+        if ($::adminpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+         }
     }
     if ($ENV{'XCATMYSQLROOT_PW'})     # input env sets the password
     {
+        my $pw= $ENV{'XCATMYSQLROOT_PW'};
+        if ($pw =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            " The password in the env variable XCATMYSQLROOT_PW is not alpha-numeric.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+        }
 
         $::rootpassword = $ENV{'XCATMYSQLROOT_PW'};
 
@@ -234,12 +259,19 @@ if ($odbconly == 0)
         `stty -echo`;
         chop($::rootpassword = <STDIN>);
         `stty echo`;
+        
+        if ($::rootpassword =~ m/[^a-zA-Z0-9]/){ # if not alpha-numerid
+            my $warning = 
+            "The input password  is not alpha-numeric. Rerun the command an input an alpha-numeric password.";
+            xCAT::MsgUtils->message("E", $warning);
+            exit 1;
+         }
 
     }
 }
 
-# initial setup request
-if ($::INIT)
+# initial setup request, if not already running mysql
+if (($::INIT) && ($::xcatrunningmysql == 0))
 {
 
     #
@@ -775,6 +807,17 @@ sub initmysqldb
         }
     }    # end AIX only
 
+    #on debian/ubuntu should comment the bind-adress line in my.cnf
+    if ( $::debianflag ){
+        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' /etc/mysql/my.cnf > /tmp/my.cnf; mv -f /tmp/my.cnf /etc/mysql/my.cnf;chmod 644 /etc/mysql/my.cnf";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " comment the bind-address line in /etc/mysql/my.cfg failed: $cmd.");
+            exit(1);
+        }
+    }
+
     # Create the MySQL data directory and initialize the grant tables
     # if not already setup
     my $cmd2 =
@@ -844,12 +887,15 @@ sub mysqlstart
     }
 
     # make sure running
-    $cmd = "ps -ef | grep mysqld";
+    $cmd = "ps -ef | grep mysqld | grep -v grep";
     my $i;
     for ($i = 0 ; $i < 12 ; $i++)
     {
         my @output = xCAT::Utils->runcmd($cmd, 0);
         my $mysqlcheck = "--datadir";    # see if really running
+        if ( $::debianflag ){
+            $mysqlcheck = "mysqld";
+        }
         if (grep(/$mysqlcheck/, @output))
         {
             sleep 10;  # give a few extra seconds to be sure
@@ -934,6 +980,9 @@ sub mysqlreboot
         else
         {    # sles
             $cmd = "chkconfig mysql on";
+            if ( $::debianflag ){
+                $cmd = "update-rc.d mysql defaults";
+            }
         }
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -1376,6 +1425,9 @@ sub setupODBC
     #
     # for all OS need unixODBC rpm
     my $cmd = "rpm -qa | grep unixODBC";
+    if ( $::debianflag ){
+        $cmd = "dpkg -l | grep unixodbc";
+    }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1394,6 +1446,16 @@ sub setupODBC
         {
             my $message =
               "\nxcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
+            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            exit(1);
+        }
+    }
+    elsif ( $::debianflag ){
+        $cmd = "dpkg -l | grep libmyodbc";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $message = "\nlibmyodbc is not installed.";
             xCAT::MsgUtils->message("E", " $cmd failed. $message");
             exit(1);
         }
@@ -1469,6 +1531,12 @@ sub setupODBC
         $odbcinstfile = "/etc/odbcinst.ini";
         $odbcfile     = "/etc/odbc.ini";
         $cmd          = "rpm -ql mysql-connector-odbc | grep libmyodbc..so";
+        @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
+    }
+    elsif ( $::debianflag ){
+        $odbcinstfile = "/etc/odbcinst.ini";
+        $odbcfile     = "/etc/odbc.ini";
+        $cmd          = "dpkg -L libmyodbc | grep libmyodbc.so";
         @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
     }
     else
@@ -1551,7 +1619,7 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
         my $entry =
-          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = xcatadmin\nPASSWORD = $passwd";
+          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = $adminid\nPASSWORD = $passwd";
         $cmd = "echo \"$entry\" >> $rootodbcfile";
         # secure passwd in verbose mode
         my $tmpv = $::VERBOSE;
@@ -1692,7 +1760,11 @@ sub restorexcatdb
 
     # restore it
     my $cmd = "XCATBYPASS=y XCATCFG=\"$xcatcfg\"  restorexCATdb -p $::backupdir";
+    # not display passwords in verbose mode
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;
     xCAT::Utils->runcmd($cmd, 0);
+    $::VERBOSE = $tmpv;
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message("E", " $cmd failed.");
