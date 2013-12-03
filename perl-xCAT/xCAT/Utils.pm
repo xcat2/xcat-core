@@ -6565,8 +6565,8 @@ sub version_cmp {
         $ver_a = shift;
     }
     my $ver_b = shift;
-    my @array_a = ($ver_a =~ /([-.]|\d|[^-.\d])/g);
-    my @array_b = ($ver_b =~ /([-.]|\d|[^-.\d])/g);
+    my @array_a = ($ver_a =~ /([-.]|\d+|[^-.\d])/g);
+    my @array_b = ($ver_b =~ /([-.]|\d+|[^-.\d])/g);
 
     my ($a, $b);
     my $len_a = @array_a;
@@ -6575,7 +6575,7 @@ sub version_cmp {
     if ( $len_b < $len_a ) {
         $len = $len_b;
     }
-    for ( my $i = 0; $i < $len; $i ) {
+    for ( my $i = 0; $i < $len; $i++ ) {
         $a = $array_a[$i];
         $b = $array_b[$i];
         if ($a eq $b) {
@@ -6588,7 +6588,7 @@ sub version_cmp {
             return -1;
         } elsif ( $b eq '.' ) {
             return 1;
-        } elsif ($a =~ /^\d$/ and $b =~ /^\d$/) {
+        } elsif ($a =~ /^\d+$/ and $b =~ /^\d+$/) {
             if ($a =~ /^0/ || $b =~ /^0/) {
                 return ($a cmp $b);
             } else {
