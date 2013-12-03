@@ -14,11 +14,7 @@
         <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DiskConfiguration>
                 <WillShowUI>OnError</WillShowUI>
-                <Disk>
-                    <DiskID>==INSTALLTODISK==</DiskID>
-                    <WillWipeDisk>true</WillWipeDisk>
-		    ==BOOTPARTITIONS==
-                </Disk>
+		    ==DISKCONFIG==
             </DiskConfiguration>
             <DynamicUpdate>
                 <Enable>false</Enable>
@@ -27,7 +23,7 @@
                 <OSImage>
                     <InstallTo>
                         <DiskID>==INSTALLTODISK==</DiskID>
-                        <PartitionID>1</PartitionID>
+                        <PartitionID>==INSTALLTOPART==</PartitionID>
                     </InstallTo>
                     <InstallFrom>
                         <MetaData wcm:action="add">
@@ -90,6 +86,7 @@
         </component>
     </settings>
     <settings pass="specialize">
+        #WINNETCFG#
         <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <fDenyTSConnections>false</fDenyTSConnections>
         </component>

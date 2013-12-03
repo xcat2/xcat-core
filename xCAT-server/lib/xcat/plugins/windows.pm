@@ -241,6 +241,10 @@ sub mkinstall
     my $hmtab = xCAT::Table->new('nodehm');
     my $vpdtab = xCAT::Table->new('vpd');
     my $vpdhash = $vpdtab->getNodesAttribs(\@nodes,['uuid']);
+    my %img_hash=();
+    my $winimagetab;
+    my $osimagetab;
+    
     unless (-r "$tftpdir/Boot/pxeboot.0" ) {
        $callback->(
         {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
@@ -253,148 +257,184 @@ sub mkinstall
     	copy("/etc/xcat/cert/ca.pem","$installroot/xcat/ca.pem");
     }
     require xCAT::Template;
+
+    # get image attributes
+    my $osents = $ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod']);
+    
     foreach $node (@nodes)
     {
-        my $osinst;
-        my $ent = $ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
-        unless ($ent->{os} and $ent->{arch} and $ent->{profile})
-        {
-            $callback->(
-                        {
-                         error => ["No profile defined in nodetype for $node"],
-                         errorcode => [1]
+        my $os;
+        my $arch;
+        my $profile;
+        my $tmplfile;
+        my $imagename; # set it if running of 'nodeset osimage=xxx'
+        my $partfile;
+        my $installto;
+        
+        my $ent = $osents->{$node}->[0];
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+            $imagename=$ent->{provmethod};
+            if (!exists($img_hash{$imagename})) {
+                if (!$osimagetab) {
+                    $osimagetab=xCAT::Table->new('osimage', -create=>1);
+                }
+    
+                my $ref = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+                if ($ref) {
+                    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+                    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+                    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+                    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+                    if (!$winimagetab) {
+                        $winimagetab=xCAT::Table->new('winimage', -create=>1);
+                    }
+                    my $ref1 = $winimagetab->getAttribs({imagename => $imagename}, 'template', 'installto', 'partitionfile');
+                    if ($ref1) {
+                        if ($ref1->{'template'}) {
+                            $img_hash{$imagename}->{template}=$ref1->{'template'};
                         }
-                        );
-            next;    #No profile
-        }
-        my $os      = $ent->{os};
-        my $arch    = $ent->{arch};
-        my $profile = $ent->{profile};
-        if ($os eq "imagex") {
-                    my $wimfile="$installroot/images/$arch/$profile.wim";
-                     unless ( -r $wimfile ) {
-                        $callback->({error=>["$wimfile not found, run rimage on a node to capture first"],errorcode=>[1]});
-                         next;
-                     }
-                     my $script=applyimagescript($arch,$profile);
-                     my $shandle;
-                     open($shandle,">","$installroot/autoinst/$node.cmd");
-                     print $shandle $script;
-                     close($shandle);
-                     if ($vpdhash->{$node}) {
-                        mkwinlinks($node,$ent,$vpdhash->{$node}->[0]->{uuid});
-                     } else {
-                        mkwinlinks($node,$ent);
-                     }
-                    if ($arch =~ /x86_64/)
-                    {
-                        $bptab->setNodeAttribs(
-                                                $node,
-                                                {
-                                                 kernel   => "Boot/pxeboot.0",
-                                                 initrd   => "",
-                                                 kcmdline => ""
-                                                }
-                                                );
-                   } elsif ($arch =~ /x86/) {
-                       unless (-r "$tftpdir/Boot/pxeboot32.0") {
-                           my $origpxe;
-                           my $pxeboot;
-                           open($origpxe,"<$tftpdir/Boot/pxeboot.0");
-                           open($pxeboot,">$tftpdir/Boot/pxeboot32.0");
-                           binmode($origpxe);
-                           binmode($pxeboot);
-                           my @origpxecontent = <$origpxe>;
-                           foreach (@origpxecontent) {
-                               s/bootmgr.exe/bootm32.exe/;
-                               print $pxeboot $_;
-                           }
-                       }
-                       unless (-r "$tftpdir/bootm32.exe") {
-                           my $origmgr;
-                           my $bootmgr;
-                           open($origmgr,"<$tftpdir/bootmgr.exe");
-                           open($bootmgr,">$tftpdir/bootm32.exe");
-                           binmode($origmgr);
-                           binmode($bootmgr);
-		           my @data = <$origmgr>;
-                           foreach (@data) {
-                               s/(\\.B.o.o.t.\\.B.)C(.)D/${1}3${2}2/; # 16 bit encoding... cheat
-                               print $bootmgr $_;
-                           }
-                       }
-                        $bptab->setNodeAttribs(
-                                                $node,
-                                                {
-                                                 kernel   => "Boot/pxeboot32.0",
-                                                 initrd   => "",
-                                                 kcmdline => ""
-                                                }
-                                                );
-                   }
-                     next;
-        } 
+                        if ($ref1->{'installto'}) {
+                            $img_hash{$imagename}->{installto}=$ref1->{'installto'};
+                        }
+                        if ($ref1->{'partitionfile'}) {
+                            $img_hash{$imagename}->{partitionfile}=$ref1->{'partitionfile'};
+                        }
+                    }
+                } else {
+                    $callback->({error => ["The os image $imagename does not exists on the osimage table for $node"], errorcode => [1]});
+                    next;
+    		    }
+            }
 
-	my $custmplpath = "$installroot/custom/install/windows";
-	my $tmplpath = "$::XCATROOT/share/xcat/install/windows";
-	if ($os =~ /^hyperv/) { 
-		$custmplpath = "$installroot/custom/install/hyperv";
-		$tmplpath = "$::XCATROOT/share/xcat/install/hyperv";
-	}
-        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
-        if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($tmplpath, $profile, $os, $arch); }
+            my $ph=$img_hash{$imagename};
+            $os = $ph->{osver};
+            $arch  = $ph->{osarch};
+            $profile = $ph->{profile};
+            $partfile = $ph->{partitionfile};
+            $tmplfile = $ph->{template};
+            $installto = $ph->{installto};
+        } else {
+            unless ($ent->{os} and $ent->{arch} and $ent->{profile})
+            {
+                $callback->(
+                            {
+                             error => ["No profile defined in nodetype for $node"],
+                             errorcode => [1]
+                            }
+                            );
+                next;    #No profile
+            }
+
+            $os      = $ent->{os};
+            $arch    = $ent->{arch};
+            $profile = $ent->{profile};
+            if ($os eq "imagex") {
+                my $wimfile="$installroot/images/$arch/$profile.wim";
+                unless ( -r $wimfile ) {
+                    $callback->({error=>["$wimfile not found, run rimage on a node to capture first"],errorcode=>[1]});
+                    next;
+                }
+                my $script=applyimagescript($arch,$profile);
+                my $shandle;
+                open($shandle,">","$installroot/autoinst/$node.cmd");
+                print $shandle $script;
+                close($shandle);
+                if ($vpdhash->{$node}) {
+                    mkwinlinks($node,$ent,$vpdhash->{$node}->[0]->{uuid});
+                } else {
+                    mkwinlinks($node,$ent);
+                }
+                if ($arch =~ /x86_64/)
+                {
+                    $bptab->setNodeAttribs(
+                                            $node,
+                                            {
+                                             kernel   => "Boot/pxeboot.0",
+                                             initrd   => "",
+                                             kcmdline => ""
+                                            }
+                                            );
+                } elsif ($arch =~ /x86/) {
+                    unless (-r "$tftpdir/Boot/pxeboot32.0") {
+                        my $origpxe;
+                        my $pxeboot;
+                        open($origpxe,"<$tftpdir/Boot/pxeboot.0");
+                        open($pxeboot,">$tftpdir/Boot/pxeboot32.0");
+                        binmode($origpxe);
+                        binmode($pxeboot);
+                        my @origpxecontent = <$origpxe>;
+                        foreach (@origpxecontent) {
+                            s/bootmgr.exe/bootm32.exe/;
+                            print $pxeboot $_;
+                        }
+                    }
+                    unless (-r "$tftpdir/bootm32.exe") {
+                        my $origmgr;
+                        my $bootmgr;
+                        open($origmgr,"<$tftpdir/bootmgr.exe");
+                        open($bootmgr,">$tftpdir/bootm32.exe");
+                        binmode($origmgr);
+                        binmode($bootmgr);
+                        my @data = <$origmgr>;
+                        foreach (@data) {
+                            s/(\\.B.o.o.t.\\.B.)C(.)D/${1}3${2}2/; # 16 bit encoding... cheat
+                            print $bootmgr $_;
+                        }
+                    }
+                    $bptab->setNodeAttribs(
+                        $node,
+                        {
+                        kernel   => "Boot/pxeboot32.0",
+                        initrd   => "",
+                        kcmdline => ""
+                        }
+                    );
+                }
+                next;
+            } 
+
+            my $custmplpath = "$installroot/custom/install/windows";
+            my $tmplpath = "$::XCATROOT/share/xcat/install/windows";
+            if ($os =~ /^hyperv/) { 
+                $custmplpath = "$installroot/custom/install/hyperv";
+                $tmplpath = "$::XCATROOT/share/xcat/install/hyperv";
+            }
+            my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
+            if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($tmplpath, $profile, $os, $arch); }
+        }
+        
         unless ( -r "$tmplfile")
         {
-            $callback->(
-                      {
-                       error =>
-                         ["No unattended template exists for " . $ent->{profile}],
-                       errorcode => [1]
-                      }
-                      );
+            $callback->({error =>["No unattended template exists for " . $ent->{profile}],errorcode => [1]});
             next;
         }
 
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
-	my @utilfiles = (
-		"fixupunattend.vbs",
-		"detectefi.exe",
-		"xCAT.psd1",
-		"xCAT.psm1",
-		"xCAT.format.ps1xml",
-		"nextdestiny.ps1",
-	);
-	foreach my $utilfile (@utilfiles) {
-		unless (-r "$installroot/utils/windows/$utilfile" and stat("$::XCATROOT/share/xcat/netboot/windows/$utilfile")->mtime <= stat("$installroot/utils/windows/$utilfile")->mtime) {
-			mkpath("$installroot/utils/windows/");
-			copy("$::XCATROOT/share/xcat/netboot/windows/$utilfile","$installroot/utils/windows/$utilfile");
-		}
-	}
-        if (-r "$tmplfile")
-        {
-            $tmperr =
-              xCAT::Template->subvars(
+        my @utilfiles = (
+            "fixupunattend.vbs",
+            "detectefi.exe",
+            "xCAT.psd1",
+            "xCAT.psm1",
+            "xCAT.format.ps1xml",
+            "nextdestiny.ps1",
+        );
+        foreach my $utilfile (@utilfiles) {
+            unless (-r "$installroot/utils/windows/$utilfile" and stat("$::XCATROOT/share/xcat/netboot/windows/$utilfile")->mtime <= stat("$installroot/utils/windows/$utilfile")->mtime) {
+                mkpath("$installroot/utils/windows/");
+                copy("$::XCATROOT/share/xcat/netboot/windows/$utilfile","$installroot/utils/windows/$utilfile");
+            }
+        }
+        if (-r "$tmplfile") {
+            $tmperr = xCAT::Template->subvars(
                          $tmplfile,
                          "$installroot/autoinst/$node.xml",
                          $node,
-                         0
-                         );
+                         0);
         }
         
-        if ($tmperr)
-        {
-            $callback->(
-                        {
-                         node => [
-                                  {
-                                   name      => [$node],
-                                   error     => [$tmperr],
-                                   errorcode => [1]
-                                  }
-                         ]
-                        }
-                        );
+        if ($tmperr) {
+            $callback->({node => [{name => [$node], error => [$tmperr], errorcode => [1]}]});
             next;
         }
 	
@@ -405,7 +445,6 @@ sub mkinstall
             {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
             });
         } elsif (-r $installroot."/$os/$arch/sources/install.wim") {
-
             if ($arch =~ /x86/)
             {
                 $bptab->setNodeAttribs(
@@ -440,15 +479,53 @@ sub mkinstall
             }
         }
 
+        if (-f "$::XCATROOT/share/xcat/netboot/detectefi.exe" and not -f "$installroot/utils/detectefi.exe") {
+            mkpath("$installroot/utils/");
+            copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
+        }
 
-	if (-f "$::XCATROOT/share/xcat/netboot/detectefi.exe" and not -f "$installroot/utils/detectefi.exe") {
-		mkpath("$installroot/utils/");
-		copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
-	}
+        my $partcfg;
+        if ($partfile) {
+            if (-r $partfile) {
+                $partcfg = "[BIOS]";
+                if (open (PFILE, "<$partfile")) {
+                    while (<PFILE>) {
+                        s/\s*$//g;
+                        s/^\s*//g;
+                        if (/^\[bios\](.*)/i) {
+                            $partcfg .= $1;
+                        } elsif (/^\[uefi\](.*)/i) {
+                            $partcfg .= "[UEFI]$1";
+                        } else {
+                            $partcfg .= $_;
+                        }
+                    }
+                }
+            } else {
+                $callback->({data =>["Cannot open partition configuration file: $partfile."]});
+            }
+        }
+
+        if ($installto && ($installto !~ /^[\d:]+$/)) {
+            $callback->({error =>["The format of installto is not correct: installto."]});
+            $installto = "";
+        }
+        
+        # generate the auto running command file for windows deployment
         open($shandle,">","$installroot/autoinst/$node.cmd");
-	print $shandle 'for /f "tokens=2 delims= " %%i in ('."'net use ^| find ".'"install"'."') do set instdrv=%%i\r\n";
-	print $shandle "%instdrv%\\utils\\windows\\fixupunattend.vbs %instdrv%\\autoinst\\$node.xml x:\\unattend.xml\r\n";
-		
+        if ($partcfg) {
+            print $shandle "set PARTCFG=\"$partcfg\n";
+        }
+        if ($installto) {
+            print $shandle "set INSTALLTO=$installto\n";
+        }
+        print $shandle 'for /f "tokens=2 delims= " %%i in ('."'net use ^| find ".'"install"'."') do set instdrv=%%i\r\n";
+        print $shandle "%instdrv%\\utils\\windows\\fixupunattend.vbs %instdrv%\\autoinst\\$node.xml x:\\unattend.xml\r\n";
+        
+        #### test part
+        #print $shandle "start /max cmd\r\n";
+        #print $shandle "pause\r\n";
+        
         if ($sspeed) {
             $sport++;
             print $shandle "%instdrv%\\$os\\$arch\\setup /unattend:x:\\unattend.xml /emsport:COM$sport /emsbaudrate:$sspeed /noreboot\r\n";
@@ -460,7 +537,7 @@ sub mkinstall
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg unload HKLM\csystem'."\r\n";
-	print $shandle "If EXIST X:\\Windows\\system32\\WindowsPowerShell GOTO PSH\r\n";
+        print $shandle "If EXIST X:\\Windows\\system32\\WindowsPowerShell GOTO PSH\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";

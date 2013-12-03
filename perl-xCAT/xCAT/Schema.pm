@@ -731,6 +731,20 @@ linuximage  => {
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+winimage => {
+ cols => [qw(imagename template installto partitionfile comments disable)],
+ keys => [qw(imagename)],
+ tablespace =>'XCATTBS32K',
+ table_desc => 'Information about a Windows operating system image that can be used to deploy cluster nodes.',
+ descriptions => {
+  imagename => 'The name of this xCAT OS image definition.',
+  template => 'The fully qualified name of the template file that is used to create the windows unattend.xml file for diskful installation.',
+  installto => 'The disk and partition that the Windows will be deployed to. The valid format is <disk>:<partition>. If it is not set, default value is 0:1 for bios boot mode(legacy) and 0:3 for uefi boot mode; If it is set to 1, it means 1:1 for bios boot and 1:3 for uefi boot',
+  partitionfile => 'The path of partition configuration file. Since the partition configuration for bios boot mode and uefi boot mode are different, this configuration file should include two parts if customer wants to support both bios and uefi mode. If customer just wants to support one of the modes, specify one of them anyway. Example of partition configuration file: [BIOS]xxxxxxx[UEFI]yyyyyyy.',
+  comments => 'Any user-written notes.',
+  disable => "Set to 'yes' or '1' to comment out this row.",
+ }
+},
 passwd => {
     cols => [qw(key username password cryptmethod authdomain comments disable)],
     keys => [qw(key username)],
@@ -2706,6 +2720,24 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'linuximage.comments',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                  },
+####################
+# winimage table#
+####################
+ {attr_name => 'template',
+                 only_if => 'imagetype=windows',
+                 tabentry => 'winimage.template',
+                 access_tabentry => 'winimage.imagename=attr:imagename',
+                }, 
+ {attr_name => 'installto',
+                 only_if => 'imagetype=windows',
+                 tabentry => 'winimage.installto',
+                 access_tabentry => 'winimage.imagename=attr:imagename',
+                },
+{attr_name => 'partitionfile',
+                 only_if => 'imagetype=windows',
+                 tabentry => 'winimage.partitionfile',
+                 access_tabentry => 'winimage.imagename=attr:imagename',
+                },
 ####################
 # nimimage table#
 ####################
