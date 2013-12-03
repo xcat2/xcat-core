@@ -638,6 +638,7 @@ sub  update_tables_with_templates
     #update the osimage and linuximage table
     my $osimagetab;
     my $linuximagetab;
+    my $winimagetab;
     if ($args{checkonly}) {
     	if (keys %profiles) {
 		return (0,"");
@@ -697,7 +698,16 @@ sub  update_tables_with_templates
 			     osdistroname=>$osdistroname);
 		$osimagetab->setAttribs(\%key_col, \%tb_cols);
                 
-		if ($osname !~ /^win/) {
+		if ($osname =~ /^win/) {
+		    if (!$winimagetab) { $winimagetab=xCAT::Table->new('winimage',-create=>1); }
+		    if ($winimagetab) {
+		        my %key_col = (imagename=>$imagename);
+			    my %tb_cols=(template=>$tmplfile);
+			    $winimagetab->setAttribs(\%key_col, \%tb_cols);
+		    } else {
+			    return (1, "Cannot open the winimage table.");
+		    }
+		} else {
 		    if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
 		    if ($linuximagetab) {
 			my %key_col = (imagename=>$imagename);

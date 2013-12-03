@@ -351,24 +351,78 @@ sub windows_account_data {
 		return $useraccountxml;
 }
 sub windows_net_cfg {
-	if ($::XCATSITEVALS{managedaddressmode} =~ /static/) { return "<!-- WINCFG Static not supported -->"; }
-	unless ($::XCATSITEVALS{managedaddressmode} =~ /autoula/) {
-		return ""; #windows default behavior
-	}
-	#autoula, 
-	my $hoststab;
-	my $mactab = xCAT::Table->new('mac',-create=>0);
-	unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
-	my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
-	unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
-	my $suffix = $ent->{mac};
-	my $mac = $suffix;
-	$suffix = lc($suffix);
+    if ($::XCATSITEVALS{managedaddressmode} =~ /static/) { return "<!-- WINCFG Static not supported -->"; }
+    unless ($::XCATSITEVALS{managedaddressmode} =~ /autoula/) {
+        # handle the general windows deployment that create interfaces sections from nic table
+        my $component_head = '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">';
+        my $component_end = '</component>';
+        
+        my $interfaces_cfg = '<Interfaces>';
+        my $nicstab = xCAT::Table->new('nics',-create=>0);
+        my $hasif;
+        if ($nicstab) {
+            my $nicsent = $nicstab->getNodeAttribs($node,['nicips']);
+            if ($nicsent->{nicips}) {
+                my @nics = split (/,/, $nicsent->{nicips});
+                foreach (@nics) {
+                    my $gateway;
+                    my $interface_cfg = '<Interface wcm:action="add">';
+                    my ($nicname, $ips) = split(/!/, $_);
+                    unless ($nicname) {next;}
+                    if ($ips) {
+                        $interface_cfg .= '<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>';
+                        $interface_cfg .= "<Identifier>$nicname</Identifier>";
+                        $interface_cfg .= '<UnicastIpAddresses>';
+                        
+                        my @setip = split (/\|/, $ips);
+                        my $num = 1;
+                        foreach my $ip (@setip) {
+                            my ($netmask, $gw) = getNM_GW($ip);
+                            unless ($netmask) {
+                                next;
+                            }
+                            if ($gw) { $gateway = $gw; }
+                            $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="'.$num++.'">'.$ip."/$netmask".'</IpAddress>';
+                        }
+                        
+                        $interface_cfg .= "</UnicastIpAddresses>"
+                    } else {
+                        # set with dhcp
+                        $interface_cfg .= '<Ipv4Settings><DhcpEnabled>true</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>true</DhcpEnabled></Ipv6Settings>';
+                        $interface_cfg .= "<Identifier>$nicname</Identifier>";
+                    }
+        
+                    # add the default gateway
+                    $interface_cfg .= '<Routes><Route wcm:action="add"><Identifier>1</Identifier><NextHopAddress>'.$gateway.'</NextHopAddress><Prefix>0/0</Prefix></Route></Routes>';
+                    $interface_cfg .= '</Interface>';
+                    
+                    $interfaces_cfg .= $interface_cfg;
+                    $hasif = 1;
+                }
+            }
+        }
+        $interfaces_cfg .= "</Interfaces>";
+        if ($hasif) {
+            return "$component_head$interfaces_cfg$component_end"; #windows default behavior
+        } else {
+            return "";
+        }
+    }
+	
+    #autoula, 
+    my $hoststab;
+    my $mactab = xCAT::Table->new('mac',-create=>0);
+    unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+    my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
+    unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+    my $suffix = $ent->{mac};
+    my $mac = $suffix;
+    $suffix = lc($suffix);
     $mac =~ s/:/-/g;
-	unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
-	my $ulaaddr = autoulaaddress($suffix);
-	$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
-	return '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Interfaces><Interface wcm:action=\"add\">\r\n<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>\r\n<Identifier>$mac</Identifier>\r\n<UnicastIpAddresses>\r\n<IpAddress wcm:action=\"add\" wcm:keyValue=\"1\">$ulaaddr/64</IpAddress>\r\n</UnicastIpAddresses>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
+    unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
+    my $ulaaddr = autoulaaddress($suffix);
+    $hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
+    return '<component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'."\r\n<Interfaces><Interface wcm:action=\"add\">\r\n<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>\r\n<Identifier>$mac</Identifier>\r\n<UnicastIpAddresses>\r\n<IpAddress wcm:action=\"add\" wcm:keyValue=\"1\">$ulaaddr/64</IpAddress>\r\n</UnicastIpAddresses>\r\n</Interface>\r\n</Interfaces>\r\n</component>\r\n";
 }
 sub windows_dns_cfg {
 	my $domain;
@@ -991,6 +1045,25 @@ sub enablesshbetweennodes
    }
 
    return $result;
+}
+
+# Get the netmask and gateway for a specific ip
+# netmask is the number of bits
+sub getNM_GW()
+{
+    my $ip = shift;
+    
+    my $nettab = xCAT::Table->new("networks");
+    if ($nettab) {
+        my @nets = $nettab->getAllAttribs('net','mask','gateway');
+        foreach my $net (@nets) {
+            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                return (xCAT::NetworkUtils::formatNetmask($net->{'mask'},0,1), $net->{'gateway'});
+            }
+        }
+    }
+
+    return (undef, undef);
 }
 
 

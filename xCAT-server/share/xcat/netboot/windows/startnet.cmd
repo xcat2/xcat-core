@@ -25,7 +25,7 @@ echo Waiting for successful mount of \\%XCATD%\install (if this hangs, check tha
 :nomount
 net use i: \\%XCATD%\install || goto :nomount
 echo Successfully mounted \\%XCATD%\install, moving on to execute remote script
-for /f "delims=: tokens=2" %%c in ('ipconfig ^|find "IPv4 Address. . ."') do set NODEIP=%%c
+for /f "delims=: tokens=2" %%c in ('ipconfig ^|find "IPv4 Address. . ."') do for /f "tokens=1" %%d in ('echo %%c') do for /f "delims=. tokens=1,2,3,4" %%m in ('echo %%d') do if "%%m.%%n" NEQ  "169.254" set NODEIP=%%m.%%n.%%o.%%p
 for /f %%c in ('echo %NODEIP%') do set NODEIP=%%c
 if exist  i:\autoinst\%NODEIP%.cmd copy i:\autoinst\%NODEIP%.cmd x:\xcat\autoscript.cmd
 if exist i:\autoinst\%uuid%.cmd copy i:\autoinst\%uuid%.cmd x:\xcat\autoscript.cmd
