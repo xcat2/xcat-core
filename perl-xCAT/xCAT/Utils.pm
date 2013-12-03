@@ -6558,4 +6558,48 @@ sub filter_nodes{
     return 0;
 }
 
+sub version_cmp {
+    my $ver_a = shift;
+    if ($ver_a =~ /xCAT::Utils/)
+    {
+        $ver_a = shift;
+    }
+    my $ver_b = shift;
+    my @array_a = ($ver_a =~ /([-.]|\d|[^-.\d])/g);
+    my @array_b = ($ver_b =~ /([-.]|\d|[^-.\d])/g);
+
+    my ($a, $b);
+    my $len_a = @array_a;
+    my $len_b = @array_b;
+    my $len = $len_a;
+    if ( $len_b < $len_a ) {
+        $len = $len_b;
+    }
+    for ( my $i = 0; $i < $len; $i ) {
+        $a = $array_a[$i];
+        $b = $array_b[$i];
+        if ($a eq $b) {
+            next;
+        } elsif ( $a eq '-' ) {
+            return -1;
+        } elsif ( $b eq '-') {
+            return 1;
+        } elsif ( $a eq '.' ) {
+            return -1;
+        } elsif ( $b eq '.' ) {
+            return 1;
+        } elsif ($a =~ /^\d$/ and $b =~ /^\d$/) {
+            if ($a =~ /^0/ || $b =~ /^0/) {
+                return ($a cmp $b);
+            } else {
+                return ($a <=> $b);
+            }
+        } else {
+            $a = uc $a;
+            $b = uc $b;
+            return ($a cmp $b);
+        }
+    }
+    return ( $len_a <=> $len_b )
+}
 1;
