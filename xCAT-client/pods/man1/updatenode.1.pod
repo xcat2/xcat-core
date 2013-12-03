@@ -40,13 +40,10 @@ Update the ca and credentials for the service nodes.
 
 =back
 
-The default behavior of updatenode will be to attempt to perform the update 
-which doing by "-S", "-P" and "-F" flags.
-If you wish to limit updatenode to one or two specific 
+The default behavior when no options are input to updatenode will be to run  
+the following options "-S", "-P" and "-F" options in this order.
+If you wish to limit updatenode to specific 
 actions you can use combinations of the "-S", "-P", and "-F" flags.
-
-If more than one actions doing by "-S", "-P" and "-F" need to be performed,
-the execution sequence is "-F", "-S" and then "-P".
 
 For example, If you just want to synchronize configuration file you could
 specify the "-F" flag.   If you want to synchronize files and update 
@@ -55,6 +52,10 @@ of these flags and examples below.
 
 The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F"
 flags.
+
+The flag "-f" (--snsync) can NOT be used together with "-S", "-P", and "-F"
+flags.
+
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
 manner can quickly get out of hand, leaving the system administrator with 
@@ -83,7 +84,7 @@ Run the updatenode command to update the nodes.
 =back
 
 Files may be distributed and synchronized for both diskless and 
-diskfull nodes.  Syncing files to statelite nodes is not supported. 
+diskfull nodes.  Syncing files to NFS-based statelite nodes is not supported. 
 
 More information on using the  synchronization file function is in  
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Using_Updatenode.
@@ -114,21 +115,10 @@ To install/update the packages, run:
 
   updatenode <noderange> -S
 
-
-
-B<For AIX systems:>
-
-Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
-For information on updating software on AIX cluster:
-For diskful installs, read:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_RTE_Diskfull_Nodes
-For diskless installs, read:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_Diskless_Nodes
-
 B<For Linux systems:>
 
-It is equivalent to running the 
-folloiwng command:
+It this is equivalent to running the 
+following command:
 
  updatenode noderange -P ospkgs,otherpkgs
 
@@ -139,12 +129,21 @@ To preserve the existing repositories, you can run the following command instead
 
 updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
 
+B<For AIX systems:>
+
+Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
+For information on updating software on AIX cluster:
+For diskful installs, read:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_RTE_Diskfull_Nodes
+For diskless installs, read:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_Diskless_Nodes
+
 
 =head2 To run postscripts
 
 The scripts must be copied to the /install/postscripts 
 directory on the xCAT management node. (Make sure they are 
-executable.)
+executable and world readable.)
 
 To run scripts on a node you must either specify them on the 
 command line or you must add them to the "postscripts" attribute 
@@ -154,9 +153,8 @@ To set the postscripts attribute of the node (or group)
 definition you can use the xCAT chdef command. Set the value to 
 be a comma separated list of the scripts that you want to be 
 executed on the nodes. The order of the scripts in the list 
-determines the order in which they will be run.  You could also set
-the postscripts value by directly editing the xCAT "postscripts" 
-database table using the xCAT tabedit command.
+determines the order in which they will be run.  You can use the 
+lsdef command to check the postscript order. 
 
 Scripts can  be run on both diskless and diskfull nodes.
 
@@ -191,8 +189,8 @@ The basic functions of update security for nodes:
 
 =item *
 
-Setup the ssh keys for the target nodes. It makes the management
-node and service node access the target nodes without password.
+Setup the ssh keys for the target nodes. It enables the management
+node and service nodes to ssh to the target nodes without password.
 
 =item *
 
@@ -304,8 +302,8 @@ Used to specify a source directory other than the standard lpp_source directory 
 Specifies that file synchronization should be
 performed on the nodes.  rsync and ssh must
 be installed and configured on the nodes. 
-The function is not supported for statelite installations.
-For statelite installations to sync files, you should use the
+The function is not supported for NFS-based statelite installations.
+For NFS-based statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 litefile table with source location specified in the litetree table.
 
@@ -317,14 +315,14 @@ performed to the service nodes that service the
 nodes in the noderange. This updates the service
 nodes with the data to sync to the nodes. rsync and ssh must
 be installed and configured on the service nodes.
-For hierachy, this optionally can  be done before syncing the files
+For hierarchy, this optionally can  be done before syncing the files
 to the nodes with the -F flag.  If the -f flag is not used, then
 the -F flag will sync the servicenodes before the nodes automatically.
 When installing nodes in a hierarchical cluster, this flag should be
 used to sync the service nodes before the install, since the files will
 be sync'd from the service node by the syncfiles postscript during the
 install.
-The function is not supported for statelite installations.
+The function is not supported for NFS-based statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 litefile table with source location specified in the litetree table.
@@ -361,12 +359,12 @@ Specifies that node software should be updated.
 
 =item B<-s|--sn>
 
-Set the server information stored on the nodes.
+Set the server information stored on the nodes in /opt/xcat/xcatinfo on Linux.
 
 =item B<-t timeout>
 
 Specifies a timeout in seconds the command will wait for the remote targets to complete. If timeout is not specified
-it will wait indefinitely. The exception is the updatenode -k option whose default timeout is 10 seconds.  
+it will wait indefinitely. updatenode -k is the exception that has a timeout of 10 seconds, unless overridden by this flag.  
 
 =item B<-v|--version>
 
