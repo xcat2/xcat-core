@@ -13,6 +13,8 @@ R:rsync*
 R:bash*
 
 # using Perl 5.10.1
-#R:perl-Net_SSLeay.pm-1.30-3*   #used for AIX 7.1.2 and older
-R:perl-Net_SSLeay.pm-1.55-3*    #used for AIX 7.1.3 and above
+# used for AIX 7.1.2 and older
+#R:perl-Net_SSLeay.pm-1.30-3*
+# used for AIX 7.1.3 and above
+R:perl-Net_SSLeay.pm-1.55-3*
 R:perl-IO-Socket-SSL*
