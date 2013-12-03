@@ -199,7 +199,7 @@ sub getobjattrs
             # list of object names
             foreach my $table (keys %tableattrs) {
                 # open the table
-                my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+                my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 1);
                 if (!$thistable) {
                     my $rsp;
                     $rsp->{data}->[0] = "Could not open the \'$table\' table.";
