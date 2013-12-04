@@ -29,7 +29,7 @@ R:curl*
 R:expat*
 R:fping*
 R:libxml2*
-R:net-snmp-5.4.2.1-3*
+R:net-snmp-5.7.2-3*
 R:net-snmp-devel*
 R:net-snmp-perl*
 R:openslp-xcat*
