@@ -183,6 +183,7 @@ sub runh2p {
 	while (<OUT>) {
 		next if /DeprecationWarning:\sthe sets module is deprecated/;
 		next if /from sets import ImmutableSet/;
+		next if /^\s*import sets\s*$/;
 		next if /^Converting\ssourceforge.net/;
 		print;
 	}
