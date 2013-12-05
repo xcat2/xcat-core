@@ -236,7 +236,7 @@ sub setdestiny {
     (my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
     (my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
     my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
-    my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
+	my $resents = $restab->getNodesAttribs(\@nodes,[qw(xcatmaster)]);
     foreach (@nodes) {
       my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
       unless ($ent and $ent->{arch}) {
