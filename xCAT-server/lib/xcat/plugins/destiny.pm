@@ -362,7 +362,7 @@ sub setdestiny {
 	my @entries =  xCAT::TableUtils->get_site_attribute("master");
 	my $master_entry = $entries[0];
 	my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
-	my $resents = $restab->getNodeAttribs(\@nodes,[qw(xcatmaster)]);
+	my $resents = $restab->getNodesAttribs(\@nodes,[qw(xcatmaster)]);
 	foreach (@nodes) {
 	    my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
 	    unless ($ent and $ent->{arch}) {
