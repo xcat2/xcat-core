@@ -1374,7 +1374,18 @@ sub process_request
             {
                 next;
             }
-            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+)/)
+
+            # Bridge nics
+            if ((-f "/usr/sbin/brctl") || (-f "/sbin/brctl"))
+            {
+                system "brctl showmacs $ent[1] 2>&1 1>/dev/null";
+                if ($? == 0)
+                {
+                    $activenics{$ent[1]} = 1;
+                    next;
+                }
+            }
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+|em\d+)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
                 $activenics{$ent[1]} = 1;
             }
