@@ -172,7 +172,7 @@ sub runwget {
 		if (/URL:https*:\/\/sourceforge\.net.+\s+->\s+\"(\S+)\"\s+\[/) { print "Downloaded $1.\n"; }
 		else { print; }
 	}
-	close OUT || die "Error running $cmd: $! $?";
+	close OUT || print "Error running $cmd: $! $?\n";
 }
 
 # Run the xhtml2pdf cmd and filter out some of the silly output
@@ -186,5 +186,5 @@ sub runh2p {
 		next if /^Converting\ssourceforge.net/;
 		print;
 	}
-	close OUT || die "Error running $cmd: $! $?";
+	close OUT || print "Error running $cmd: $! $?\n";
 }
