@@ -39,10 +39,18 @@
 #     This command can only be run by a root user.
 #
 ####################################################################
-
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
 use File::Spec;
 use Getopt::Long;
 use strict;
+require xCAT::MsgUtils;
 my $OSname;
 my @Commands_array;
 my $Command_name;
@@ -94,7 +102,7 @@ sub run_cmd {
     print "\n\tExecuting: $Command \n";
     eval {
         local $SIG{ALRM} = sub { die "Timeout\n" };
-        alarm 60;
+        alarm 600;
         @output = `$Command`;
         alarm 0;
     };
@@ -193,7 +201,7 @@ sub snap_it {
         
         @files_array = (
             "/etc/xcat/*","$::ROOTHOME/.xcat/*", "$INSTALLDIR/autoinst/*",
-            "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*",
+            "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*", "$INSTALLDIR/custom/*", 
             "/tftpboot/*",                 "/var/log/consoles/*",
             "/etc/*-release",              "/etc/dhcpd.conf",
             "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
@@ -230,7 +238,7 @@ sub snap_it {
             "ls $installdir","/usr/bin/crontab -l",
             "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
-            "cat /etc/issue","lsxcatd -a");
+            "cat /etc/issue","lsxcatd -a","cat /proc/meminfo", "cat /proc/cpuinfo");
     }
     foreach my $item (@Commands_array) {
         $Command = $item;
@@ -332,7 +340,11 @@ if ($::HELP ) {
     exit 0;
 }
 if ($::VERSION) {
-    print " xcatsnap tool version 1.0\n";
+        my $version = xCAT::Utils->Version();
+        $version .= "\n";
+        xCAT::MsgUtils->message("N", $version);
+        exit 0;
+
     exit 0;
 
 }
