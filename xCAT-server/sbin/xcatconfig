@@ -1057,7 +1057,7 @@ sub is_redhat6sp4
         open(my $relfile, "<", "/etc/redhat-release");
         my $line = <$relfile>;
         close($relfile);
-        if ( $line =~ /Red Hat Enterprise Linux Server release 6.4/i ){
+        if ( $line =~ /Red Hat Enterprise Linux Server release 6.[4-5]/i ){
             return 1;
         }
     }
