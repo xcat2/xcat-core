@@ -134,7 +134,7 @@ litetree => {
 	table_desc => 'Directory hierarchy to traverse to get the initial contents of node files.  The files that are specified in the litefile table are searched for in the directories specified in this table.',        
 	descriptions => {
 		priority => 'This number controls what order the directories are searched.  Directories are searched from smallest priority number to largest.',
-		image => "The name of the image that will use this directory, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
+        image => "The name of the image (as specified in the osimage table) that will use this directory. You can also specify an image group name that is listed in the osimage.groups attribute of some osimages. 'ALL' means use this row for all images.",
 		directory => 'The location (hostname:path) of a directory that contains files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
 		mntopts => "A comma-separated list of options to use when mounting the litetree directory.  (Ex. 'soft') The default is to do a 'hard' mount.",
 		comments => 'Any user-written notes.',
@@ -148,7 +148,7 @@ litefile => {
 	required => [qw(image file)], # default type is rw nfsroot   
 	table_desc => 'The litefile table specifies the directories and files on the statelite nodes that should be readwrite, persistent, or readonly overlay.  All other files in the statelite nodes come from the readonly statelite image.',        
 	descriptions => {
-		image => "The name of the image that will use these files, as specified in the osimage table. 'ALL' means use it for all images.",
+		image => "The name of the image (as specified in the osimage table) that will use these options on this dir/file. You can also specify an image group name that is listed in the osimage.groups attribute of some osimages. 'ALL' means use this row for all images.",
 		file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
 		options => "Options for the file:\n\n".
             qq{ tmpfs - It is the default option if you leave the options column blank. It provides a file or directory for the node to use when booting, its permission will be the same as the original version on the server. In most cases, it is read-write; however, on the next statelite boot, the original version of the file or directory on the server will be used, it means it is non-persistent. This option can be performed on files and directories..\n\n}.
