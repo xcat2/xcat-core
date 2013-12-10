@@ -244,13 +244,15 @@ sub mkinstall
     my %img_hash=();
     my $winimagetab;
     my $osimagetab;
+    my $winpepathcfg; # the configuration of winpepath for each node. the format is nodename(50)data(150)
+    my $dowinpecfg = 0;
     
-    unless (-r "$tftpdir/Boot/pxeboot.0" ) {
-       $callback->(
-        {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
-        });
-       return;
-    }
+    #unless (-r "$tftpdir/Boot/pxeboot.0" ) {
+    #   $callback->(
+    #    {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
+    #    });
+    #   return;
+    #}
     my $xcatsslname=get_server_certname();
     unless (-r "$installroot/xcat/ca.pem" and stat("/etc/xcat/cert/ca.pem")->mtime <= stat("$installroot/xcat/ca.pem")->mtime) {
     	mkpath("$installroot/xcat/");
@@ -260,7 +262,13 @@ sub mkinstall
 
     # get image attributes
     my $osents = $ostab->getNodesAttribs(\@nodes, ['profile', 'os', 'arch', 'provmethod']);
-    
+
+    # get the proxydhcp configuration 
+    if (open (FILE, "</var/lib/xcat/proxydhcp.cfg")) {
+        $winpepathcfg = <FILE>;
+        close(FILE);
+    }
+
     foreach $node (@nodes)
     {
         my $os;
@@ -270,6 +278,7 @@ sub mkinstall
         my $imagename; # set it if running of 'nodeset osimage=xxx'
         my $partfile;
         my $installto;
+        my $winpepath;
         
         my $ent = $osents->{$node}->[0];
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -288,7 +297,7 @@ sub mkinstall
                     if (!$winimagetab) {
                         $winimagetab=xCAT::Table->new('winimage', -create=>1);
                     }
-                    my $ref1 = $winimagetab->getAttribs({imagename => $imagename}, 'template', 'installto', 'partitionfile');
+                    my $ref1 = $winimagetab->getAttribs({imagename => $imagename}, 'template', 'installto', 'partitionfile', 'winpepath');
                     if ($ref1) {
                         if ($ref1->{'template'}) {
                             $img_hash{$imagename}->{template}=$ref1->{'template'};
@@ -298,6 +307,9 @@ sub mkinstall
                         }
                         if ($ref1->{'partitionfile'}) {
                             $img_hash{$imagename}->{partitionfile}=$ref1->{'partitionfile'};
+                        }
+                        if ($ref1->{'winpepath'}) {
+                            $img_hash{$imagename}->{winpepath}=$ref1->{'winpepath'};
                         }
                     }
                 } else {
@@ -313,6 +325,7 @@ sub mkinstall
             $partfile = $ph->{partitionfile};
             $tmplfile = $ph->{template};
             $installto = $ph->{installto};
+            $winpepath = $ph->{winpepath};
         } else {
             unless ($ent->{os} and $ent->{arch} and $ent->{profile})
             {
@@ -409,6 +422,36 @@ sub mkinstall
             next;
         }
 
+        # generate the winpe path configuration file for proxydhcp daemon
+        if ($winpepath) {
+            if ($winpepath =~ /^\//) {
+                $callback->({error =>["The winpepath should be a relative path to /tftpboot/"],errorcode => [1]});
+                return;
+            }
+            if ($winpepath !~ /\/$/) {
+                $winpepath .= '/';
+            }
+        }
+            my $nodename .= pack("a50", $node);
+            my $winpevalue .= pack("a150", $winpepath);
+            if ($winpepathcfg =~ /$nodename$winpevalue/) {
+                ; # do nothing
+            } elsif ($winpepathcfg =~ /$nodename/) {
+                $winpepathcfg =~ s/$nodename.{150}/$nodename$winpevalue/;
+                $dowinpecfg = 1;
+            } else {
+                $winpepathcfg .= $nodename;
+                $winpepathcfg .= $winpevalue;
+                $dowinpecfg = 1;
+            }
+        #}
+
+        # copy bootmgr.exe from winpe path, this is shared by different winpes.
+        # if it cannot be shared between winpes, we must figure out a fix
+        if (! -r "$tftpdir/bootmgr.exe") {
+            copy("$tftpdir/$winpepath/Boot/bootmgr.exe", "$tftpdir/bootmgr.exe");
+        }
+
         #Call the Template class to do substitution to produce an unattend.xml file in the autoinst dir
         my $tmperr;
         my @utilfiles = (
@@ -440,17 +483,18 @@ sub mkinstall
 	
 		# create the node-specific post script DEPRECATED, don't do
 		#mkpath "/install/postscripts/";
-        if (! -r "$tftpdir/Boot/pxeboot.0" ) {
+        if (! -r "$tftpdir/$winpepath/Boot/pxeboot.0" ) {
            $callback->(
             {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
             });
+            return;
         } elsif (-r $installroot."/$os/$arch/sources/install.wim") {
             if ($arch =~ /x86/)
             {
                 $bptab->setNodeAttribs(
                                         $node,
                                         {
-                                         kernel   => "Boot/pxeboot.0",
+                                         kernel   => "$winpepath"."Boot/pxeboot.0",
                                          initrd   => "",
                                          kcmdline => ""
                                         }
@@ -496,6 +540,8 @@ sub mkinstall
                             $partcfg .= $1;
                         } elsif (/^\[uefi\](.*)/i) {
                             $partcfg .= "[UEFI]$1";
+                        } elsif (/^\[installto\](.*)/i) {
+                            $installto = $1;
                         } else {
                             $partcfg .= $_;
                         }
@@ -576,6 +622,18 @@ sub mkinstall
       #         link "$tftpdir/Boot/BCD.32","$tftpdir/Boot/BCD.$_";
       #     }
       # }
+    }
+
+    # generate the winpe path configuration file for proxydhcp daemon
+    if ($dowinpecfg) {
+        open (FILE, ">/var/lib/xcat/proxydhcp.cfg");
+        print FILE $winpepathcfg;
+        close (FILE);
+
+        if (open (PDPID, "</var/run/xcat/proxydhcp.pid")) {
+            my $pdpid = <PDPID>;
+            kill 10, $pdpid;
+        }
     }
 }
 sub getips { #TODO: all the possible ip addresses
