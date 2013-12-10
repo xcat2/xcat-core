@@ -6,7 +6,7 @@ B<rmkit> - Remove Kits from xCAT
 
 B<rmkit> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<rmkit> [B<-V>|B<--verbose>] [B<-f>|B<--force>] I<kitlist>
+B<rmkit> [B<-V>|B<--verbose>] [B<-f>|B<--force>] [B<-t>|B<--test>] I<kitlist>
 
 =head1 DESCRIPTION
 
@@ -33,6 +33,10 @@ Command version.
 =item B<-f|--force>
 
 Remove this kit even there is any component in this kit is listed by osimage.kitcomponents.  If this option is not specified, this kit will not be removed if any kit components listed in an osimage.kitcomponents
+
+=item B<-t|--test>
+
+Test if kitcomponents in this kit are used by osimage
 
 =item B<kitlist>
 
@@ -64,6 +68,14 @@ Output is similar to:
 
 Kit kit-test1-1.0-Linux,kit-test2-1.0-Linux was successfully removed.
 
+3. To list kitcomponents in this kit used by osimage
+
+rmkit kit-test1,kit-test2 -t
+
+Output is similar to:
+
+kit-test1-kitcomp-1.0-Linux is being used by osimage osimage-test
+Following kitcomponents are in use: kit-test1-kitcomp-1.0-Linux
 
 =head1 SEE ALSO
 
