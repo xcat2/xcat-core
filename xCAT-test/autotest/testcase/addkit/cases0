@@ -1,0 +1,122 @@
+start:addkit_v
+cmd:addkit -v
+check:rc==0
+check:output~=Version
+check:output~=kitframework
+check:output~=compatible_frameworks
+end
+
+start:addkit_h
+cmd:addkit -h
+check:rc==0
+check:output~=Usage
+check:outpur!~error
+end
+
+start:addkit_kit
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~Adding Kit prodkit-1.0-1
+check:output=~Kit prodkit-1.0-1 was successfully added
+check:output!~error
+cmd:tabdump kit|grep prodkit-1.0-1
+check:rc==0
+cmd:rmkit prodkit-1.0-1
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+end
+
+start:addkit_i
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:addkit -i /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~kitname=prodkit-1.0-1
+check:output=~description=description for prodkit
+check:output=~version=1.0
+check:output=~ostype=Linux
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+end
+
+start:addkit_multikit
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create testkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2,/opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit/testkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~Adding Kit prodkit-1.0-1
+check:output=~Adding Kit testkit-1.0-1
+check:output=~Kit prodkit-1.0-1,testkit-1.0-1 was successfully added
+cmd:tabdump kit|grep prodkit-1.0-1
+check:rc==0
+cmd:tabdump kit|grep testkit-1.0-1
+check:rc==0
+cmd:rmkit prodkit-1.0-1
+cmd:rmkit testkit-1.0-1
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit/testkit-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit
+end
+
+start:addkit_p
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit;buildkit create testkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit;buildkit buildtar
+check:rc==0
+cmd:mkdir -p /install/test
+cmd:addkit -p /install/test /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2,/opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit/testkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~Adding Kit prodkit-1.0-1
+check:output=~Adding Kit testkit-1.0-1
+check:output=~Kit prodkit-1.0-1,testkit-1.0-1 was successfully added
+cmd:tabdump kit|grep prodkit-1.0-1
+check:rc==0
+cmd:tabdump kit|grep testkit-1.0-1
+cmd:rmkit prodkit-1.0-1
+cmd:rmkit testkit-1.0-1
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit/prodkit-1.0-1.tar.bz2
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit/testkit-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/testkit
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkit/prodkit
+end
+
+
