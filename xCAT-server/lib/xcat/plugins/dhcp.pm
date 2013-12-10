@@ -100,6 +100,17 @@ sub check_uefi_support {
 	return 1;
 }
 
+# check whether the proxydhcp has been enabled.
+sub proxydhcp {
+    my @output = xCAT::Utils->runcmd("ps -C proxydhcp", -1);
+    if (@output) {
+        if (grep /proxydhcp/, @output) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 sub ipIsDynamic { 
 	#meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
@@ -574,14 +585,18 @@ sub addnode
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
                     $lstatements = 'if option client-architecture = 00:00 and not exists gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } '.$lstatements;
                 } else {
-			#TODO: if windows uefi, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
-		    if (($douefi == 2 and $chainent->{currstate} =~ /^install/) or $chainent->{currstate} =~ /^winshell/) { #proxy dhcp required in uefi invocation
-                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
-		    } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
+                    # If proxydhcp daemon is enabled for windows deployment, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
+                    if (($douefi == 2 and $chainent->{currstate} =~ /^install/) or $chainent->{currstate} =~ /^winshell/) { 
+                        if (proxydhcp()){ #proxy dhcp required in uefi invocation
+                            $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }'.$lstatements; #If proxydhcp daemon is enable, use it.
+                        } else {
+                            $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
+                        }
+                    } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
                         $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
-		    } else {
+                    } else {
                         $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
-		   }
+                    }
                 } 
             } #TODO: warn when windows
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {

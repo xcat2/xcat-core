@@ -73,7 +73,7 @@ Do Until srcfile.AtEndOfStream
 		if partuefi<>"" Then
 			fline = Replace(fline,"==DISKCONFIG==", partuefi)
 		else
-			fline = Replace(fline,"==DISKCONFIG==","<DiskID>" & instdrv & "<Disk></DiskID><WillWipeDisk>true</WillWipeDisk><CreatePartitions><CreatePartition><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition><CreatePartition><Order>2</Order><Type>MSR</Type><Size>128</Size></CreatePartition><CreatePartition><Order>3</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions></Disk>")
+			fline = Replace(fline,"==DISKCONFIG==","<Disk><DiskID>" & instdrv & "</DiskID><WillWipeDisk>true</WillWipeDisk><CreatePartitions><CreatePartition><Order>1</Order><Type>EFI</Type><Size>260</Size></CreatePartition><CreatePartition><Order>2</Order><Type>MSR</Type><Size>128</Size></CreatePartition><CreatePartition><Order>3</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions></Disk>")
 		end if
 
 		if instpart<>"0" Then
@@ -87,7 +87,7 @@ Do Until srcfile.AtEndOfStream
 		if partbios<>"" Then
 			fline = Replace(fline,"==DISKCONFIG==", partbios)
 		else
-			fline = Replace(fline,"==DISKCONFIG==", "<DiskID>" & instdrv & "<Disk></DiskID><WillWipeDisk>true</WillWipeDisk><CreatePartitions><CreatePartition><Order>1</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions></Disk>")
+			fline = Replace(fline,"==DISKCONFIG==", "<Disk><DiskID>" & instdrv & "</DiskID><WillWipeDisk>true</WillWipeDisk><CreatePartitions><CreatePartition><Order>1</Order><Type>Primary</Type><Extend>true</Extend></CreatePartition></CreatePartitions></Disk>")
 		end if
 
 		if instpart<>"0" Then
