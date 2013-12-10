@@ -1430,7 +1430,7 @@ sub rmkit
         push@{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
         push@{ $rsp{data} }, "\trmkit [-h|--help]";
         push@{ $rsp{data} }, "\trmkit [-v|--version]";
-        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] <kitlist>] [-V]";
+        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>] [-V]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
@@ -1453,6 +1453,7 @@ sub rmkit
             'h|help' => \$help,
             'V|verbose' => \$::VERBOSE,
             'v|version' => \$vers,
+            't|test' => \$test,
             'f|force' => \$force
     );
 
@@ -1521,12 +1522,15 @@ sub rmkit
     my @entries = $tabs{'osimage'}->getAllAttribs( 'imagename', 'kitcomponents' );
     my @kitlist;
     my $hasplugin;
+    my @kpinuse;
 
     foreach my $kitname (keys %kitnames) {
 
-        my %rsp;
-        push@{ $rsp{data} }, "Removing kit $kitname";
-        xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        if ( !$test ) {
+            my %rsp;
+            push@{ $rsp{data} }, "Removing kit $kitname";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        }
 
         # Remove osimage.kitcomponents.
 
@@ -1536,7 +1540,7 @@ sub rmkit
 
         if (@entries && (@entries > 0)) {  
 
-            if($::VERBOSE){
+            if($::VERBOSE and !$test){
                 my %rsp;
                 push@{ $rsp{data} }, "Removing kit components from osimage.kitcomponents";
                 xCAT::MsgUtils->message( "I", \%rsp, $callback );
@@ -1547,12 +1551,18 @@ sub rmkit
                 my @kitcomponents = split ',', $entry->{kitcomponents};
                 foreach my $kitcomponent ( @kitcomponents ) {
                     chomp $kitcomponent;
-
                     # Compare with each component in osimage.kitcomponents list.
                     foreach my $kitcomp ( @kitcomphash ) {
                         my $kitcompname =  $kitcomp->{kitcompname};
                         # Remove this component from osimage.kitcomponents if -f option.
                         if ("$kitcompname" =~ /^$kitcomponent$/) {
+                            if ( $test  ) {
+                                push @kpinuse, $kitcomponent;
+                                my %rsp;
+                                push@{ $rsp{data} }, "$kitcomponent is being used by osimage $entry->{imagename}";
+                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                                next;
+                            }
                             unless ($force) {
                                 my %rsp;
                                 push@{ $rsp{data} }, "Failed to remove kit component $kitcomponent because:$kitcomponent is being used by osimage $entry->{imagename}";
@@ -1572,6 +1582,10 @@ sub rmkit
                     }
                 }
             }
+        }
+
+        if ( $test ) {
+            next;
         }
 
         my $kitdir;
@@ -1670,6 +1684,20 @@ sub rmkit
 
         push @kitlist, $kitname;
 
+    }
+    
+    if ( $test ) {
+        if ( scalar(@kpinuse) ) {
+            my $kp = join ',', @kpinuse;
+            my %rsp;
+            push @{ $rsp{data} }, "Following kitcomponents are in use: $kp";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        } else {
+            my %rsp;
+            push @{ $rsp{data} }, "No kitcomponents are in use";
+            xCAT::MsgUtils->message( "I", \%rsp, $callback );
+        }
+        return 0;
     }
 
     my $kits = join ',', @kitlist;
