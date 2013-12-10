@@ -367,7 +367,8 @@ sub windows_net_cfg {
                     my $gateway;
                     my $interface_cfg = '<Interface wcm:action="add">';
                     my ($nicname, $ips) = split(/!/, $_);
-                    unless ($nicname) {next;}
+                    unless ($nicname) { next; }
+                    if ($nicname =~ /^bmc/) { next; }  # do nothing for bmc interface
                     if ($ips) {
                         $interface_cfg .= '<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>';
                         $interface_cfg .= "<Identifier>$nicname</Identifier>";
@@ -383,6 +384,10 @@ sub windows_net_cfg {
                             if ($gw) { $gateway = $gw; }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="'.$num++.'">'.$ip."/$netmask".'</IpAddress>';
                         }
+                        if ($num eq 1) {
+                            # no correct IP with correct network is found
+                            next;
+                        }
                         
                         $interface_cfg .= "</UnicastIpAddresses>"
                     } else {
@@ -392,7 +397,9 @@ sub windows_net_cfg {
                     }
         
                     # add the default gateway
-                    $interface_cfg .= '<Routes><Route wcm:action="add"><Identifier>1</Identifier><NextHopAddress>'.$gateway.'</NextHopAddress><Prefix>0/0</Prefix></Route></Routes>';
+                    if ($gateway) {
+                        $interface_cfg .= '<Routes><Route wcm:action="add"><Identifier>1</Identifier><NextHopAddress>'.$gateway.'</NextHopAddress><Prefix>0/0</Prefix></Route></Routes>';
+                    }
                     $interface_cfg .= '</Interface>';
                     
                     $interfaces_cfg .= $interface_cfg;
@@ -1028,8 +1035,6 @@ sub enablesshbetweennodes
    return $result;
 }
 
-# Get the netmask and gateway for a specific ip
-# netmask is the number of bits
 sub getNM_GW()
 {
     my $ip = shift;
