@@ -451,7 +451,8 @@ sub process_request {
     # now stick the rc file in:
     # this is actually a pre-rc file because it gets run before the node boots up all the way.
     $verbose && $callback->({info => ["put the statelite rc file to $rootimg_dir/etc/init.d/"]});
-    if ($osver =~ m/^rh[a-zA-Z]*[56]/ and $arch eq "ppc64") { # special case for redhat5/6.x on PPC64
+    # rh5,rh6.1 to rh6.4 use rc.statelite.ppc.redhat, otherwise use rc.statelite 
+    if (($osver =~ m/^rh[a-zA-Z]*5/) or ($osver =~ m/^rh[a-zA-Z]*6(\.)?[1-4]/) and $arch eq "ppc64") { # special case for redhat5/6.x on PPC64
         system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite.ppc.redhat $rootimg_dir/etc/init.d/statelite");
     }else {
         system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
