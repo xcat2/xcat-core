@@ -330,17 +330,19 @@ sub preprocess_request {
    my $t_entry = $entries[0];
    if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
       # check for  computenodes and servicenodes from the noderange, if so error out
-       my @SN;
-       my @CN;
-       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
-       if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+      my @SN;
+      my @CN;
+      xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+      unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) { # ok for these options 
+          if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
             my $rsp;
             $rsp->{data}->[0] =
               "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
             xCAT::MsgUtils->message("E", $rsp, $callback1);
             return;
 
-       }
+          }
+      }
       
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
