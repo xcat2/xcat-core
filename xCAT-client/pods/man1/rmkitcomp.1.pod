@@ -6,7 +6,7 @@ B<rmkitcomp> - Remove Kit components from an xCAT osimage.
 
 B<rmkitcomp> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<rmkitcomp> [B<-V>|B<--verbose>] [B<-u>|B<--uninstall>] [B<-f>|B<--force>] B<-i> I<osimage>  I<kitcompname_list>
+B<rmkitcomp> [B<-V>|B<--verbose>] [B<-u>|B<--uninstall>] [B<-f>|B<--force>] [B<--noscripts>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
@@ -37,6 +37,11 @@ Command version.
 =item B<-f|--force>
 
 Remove this kit component from osimage no matter it is a dependency of other kit components.
+
+=item B<--noscripts>
+
+Do not remove kitcomponent's postbootscripts from osimage
+
 
 =item B<-i> I<osimage>
 
