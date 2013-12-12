@@ -482,7 +482,7 @@ sub assign_to_osimage
     }
  
     # Adding postbootscrits to osimage.postbootscripts
-    if ( $kitcomptable and $kitcomptable->{postbootscripts} ){
+    if ( !$::noscripts and $kitcomptable and $kitcomptable->{postbootscripts} ){
         my @kitcompscripts = split ',', $kitcomptable->{postbootscripts};
         foreach my $kitcompscript ( @kitcompscripts ) {
 
@@ -1823,7 +1823,7 @@ sub addkitcomp
         push@{ $rsp{data} }, "Usage: addkitcomp - Add a Kit component to an xCAT osimage.";
         push@{ $rsp{data} }, "\taddkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\taddkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] -i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\taddkitcomp [-V|--verbose] [-a|--adddeps] [-f|--force] \n\t\t[-n|--noupgrade] [--noscripts] -i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
     };
 
@@ -1848,6 +1848,7 @@ sub addkitcomp
             'a|adddeps' => \$adddeps,
             'f|force' => \$force,
             'n|noupgrade' => \$::noupgrade,
+            'noscripts' => \$::noscripts,
             'i=s' => \$osimage
     );
 
@@ -2382,6 +2383,7 @@ sub rmkitcomp
             'v|version' => \$vers,
             'u|uninstall' => \$uninstall,
             'f|force' => \$force,
+            'noscripts' => \$noscripts,
             'i=s' => \$osimage
     );
 
@@ -2591,7 +2593,7 @@ sub rmkitcomp
             last if ($match);
         }
 
-        if (!$match) {
+        if (!$match or $noscripts) {
             push @newosimagescripts, $osimagescript;
         }
 
