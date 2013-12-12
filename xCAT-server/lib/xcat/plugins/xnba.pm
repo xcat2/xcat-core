@@ -350,9 +350,10 @@ sub preprocess_request {
    my $t_entry = $entries[0];
    if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
       # check for  computenodes and servicenodes from the noderange, if so error out
-       my @SN;
-       my @CN;
-       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+      my @SN;
+      my @CN;
+      xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+      unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) { # mix is ok for these options
        if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
             my $rsp;
             $rsp->{data}->[0] =
@@ -360,7 +361,8 @@ sub preprocess_request {
             xCAT::MsgUtils->message("E", $rsp, $callback1);
             return;
 
-       }
+         }
+      }
 
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
