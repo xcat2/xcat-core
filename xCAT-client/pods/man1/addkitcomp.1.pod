@@ -6,7 +6,7 @@ B<addkitcomp> - Assign Kit components to an xCAT osimage.
 
 B<addkitcomp> [B<-?>|B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<addkitcomp> [B<-V>|B<--verbose>] [B<-a>|B<--adddeps>] [B<-f>|B<--force>] [B<-n>|B<--noupgrade>] B<-i> I<osimage>  I<kitcompname_list>
+B<addkitcomp> [B<-V>|B<--verbose>] [B<-a>|B<--adddeps>] [B<-f>|B<--force>] [B<-n>|B<--noupgrade>] [B<--noscripts>] B<-i> I<osimage>  I<kitcompname_list>
 
 =head1 DESCRIPTION
 
@@ -45,6 +45,10 @@ The osimage name that the kit component is assigning to.
 =item B<-n|--noupgrade>
 
 Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade
+
+=item B<--noscripts>
+
+Do not add kitcomponent's postbootscripts to osimage
 
 =item B<kitcompname_list>
 
