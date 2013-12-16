@@ -523,6 +523,14 @@ sub mkinstall
             }
         }
 
+        #copy precreated mypostscript from /tftpboot/mypostscript to /install/mypostscript
+        if (-r "$tftpdir/mypostscripts/mypostscript.$node") {
+            if (! -d "$installroot/mypostscripts") {
+                mkpath ("$installroot/mypostscripts");
+            }
+            copy ("$tftpdir/mypostscripts/mypostscript.$node", "$installroot/mypostscripts/mypostscript.$node");
+        }
+
         if (-f "$::XCATROOT/share/xcat/netboot/detectefi.exe" and not -f "$installroot/utils/detectefi.exe") {
             mkpath("$installroot/utils/");
             copy("$::XCATROOT/share/xcat/netboot/detectefi.exe","$installroot/utils/detectefi.exe");
@@ -560,11 +568,13 @@ sub mkinstall
         # generate the auto running command file for windows deployment
         open($shandle,">","$installroot/autoinst/$node.cmd");
         if ($partcfg) {
-            print $shandle "set PARTCFG=\"$partcfg\n";
+            print $shandle "set PARTCFG=\"$partcfg\r\n";
         }
         if ($installto) {
-            print $shandle "set INSTALLTO=$installto\n";
+            print $shandle "set INSTALLTO=$installto\r\n";
         }
+
+
         print $shandle 'for /f "tokens=2 delims= " %%i in ('."'net use ^| find ".'"install"'."') do set instdrv=%%i\r\n";
         print $shandle "%instdrv%\\utils\\windows\\fixupunattend.vbs %instdrv%\\autoinst\\$node.xml x:\\unattend.xml\r\n";
         
@@ -578,6 +588,24 @@ sub mkinstall
         } else {
             print $shandle "%instdrv%\\$os\\$arch\\setup /unattend:x:\\unattend.xml /noreboot\r\n";
         }
+
+        #check the existence of necessary files
+        print $shandle "IF NOT EXIST %instdrv%\\mypostscripts\\mypostscript.$node GOTO:SKIPPOST\r\n";
+        print $shandle "IF NOT EXIST %instdrv%\\winpostscripts\\xcatwinpost.vbs GOTO:SKIPPOST\r\n";
+        print $shandle "IF NOT EXIST %instdrv%\\winpostscripts\\runpost.vbs GOTO:SKIPPOST\r\n";
+        #crate c:\xcatpost
+        print $shandle "mkdir c:\\xcatpost\r\n";
+        #generate c:\xcatpost\xcatenv to pass env variables for later using
+        print $shandle "set NODENAME=$node\r\n";
+        print $shandle "echo NODENAME=$node>>c:\\xcatpost\\xcatenv\r\n";
+        #copy postscripts to c:\xcatpost
+        print $shandle "copy %instdrv%\\winpostscripts\\* c:\\xcatpost\\\r\n";
+        print $shandle "copy %instdrv%\\mypostscripts\\mypostscript.$node c:\\xcatpost\\\r\n";
+        print $shandle ":SKIPPOST\r\n";
+        #### test part
+        #print $shandle "start /max cmd\r\n";
+        #print $shandle "pause\r\n";
+
         #print $shandle "i:\\postscripts\
         print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot
         print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters /f'."\r\n";
