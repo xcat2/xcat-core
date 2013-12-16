@@ -14,11 +14,7 @@
         <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <DiskConfiguration>
                 <WillShowUI>OnError</WillShowUI>
-                <Disk>
-                    <DiskID>==INSTALLTODISK==</DiskID>
-                    <WillWipeDisk>true</WillWipeDisk>
-		    ==BOOTPARTITIONS==
-                </Disk>
+                ==DISKCONFIG==
             </DiskConfiguration>
             <DynamicUpdate>
                 <Enable>false</Enable>
@@ -84,6 +80,7 @@
         </component>
     </settings>
     <settings pass="specialize">
+        #WINNETCFG#
         #WINADJOIN#
         <component name="Microsoft-Windows-TerminalServices-LocalSessionManager" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <fDenyTSConnections>false</fDenyTSConnections>
@@ -102,6 +99,12 @@
         </component>
         <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 		<RunSynchronous>
+            <RunSynchronousCommand wcm:action="add">
+                <Description>StartPointOfPostscripts</Description>
+                <Order>50</Order>
+                <Path>cmd /c c:\xcatpost\xcatwinpost.vbs</Path>
+                <WillReboot>OnRequest</WillReboot>
+            </RunSynchronousCommand>
 		#WINDISABLENULLADMIN#
 		</RunSynchronous>
         </component>
