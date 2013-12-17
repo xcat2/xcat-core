@@ -38,7 +38,8 @@ hkeys() {
     set | grep -o "^HASH${1}[[:alnum:]]*=" | sed -re "s/^HASH${1}(.*)=/\\1/g"
 }
 
-
+HOME='/root/'
+export HOME
 
 #flags
 run_all=0

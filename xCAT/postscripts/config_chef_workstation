@@ -8,6 +8,8 @@
 #        It is used by install_chef_workstation on Ubuntu and chef kit on RH.
 #=cut
 #-------------------------------------------------------------------------------
+HOME='/root/'
+export HOME
 
 node=`hostname`
 
