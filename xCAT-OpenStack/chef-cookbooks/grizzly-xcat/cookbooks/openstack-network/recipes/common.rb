@@ -91,7 +91,9 @@ template "/etc/quantum/policy.json" do
   group node["openstack"]["network"]["platform"]["group"]
   mode 00644
 
-  notifies :restart, "service[quantum-server]", :delayed
+  if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::server")
+     notifies :restart, "service[quantum-server]", :delayed
+  end
 end
 
 rabbit_server_role = node["openstack"]["network"]["rabbit_server_chef_role"]
@@ -143,12 +145,14 @@ end
 # may just be running a subset of agents (like l3_agent)
 # and not the api server components, so we ignore restart
 # failures here as there may be no quantum-server process
-service "quantum-server" do
-  service_name platform_options["quantum_server_service"]
-  supports :status => true, :restart => true
-  ignore_failure true
+if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::server")
+  service "quantum-server" do
+    service_name platform_options["quantum_server_service"]
+    supports :status => true, :restart => true
+    ignore_failure true
 
-  action :nothing
+    action :nothing
+  end
 end
 
 template "/etc/quantum/quantum.conf" do
@@ -166,7 +170,9 @@ template "/etc/quantum/quantum.conf" do
     :service_pass => service_pass
   )
 
-  notifies :restart, "service[quantum-server]", :delayed
+  if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::server")
+    notifies :restart, "service[quantum-server]", :delayed
+  end
 end
 
 template "/etc/quantum/api-paste.ini" do
@@ -179,7 +185,9 @@ template "/etc/quantum/api-paste.ini" do
     "service_pass" => service_pass
   )
 
-  notifies :restart, "service[quantum-server]", :delayed
+  if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::server")
+     notifies :restart, "service[quantum-server]", :delayed
+  end
 end
 
 directory "/etc/quantum/plugins/#{main_plugin}" do
@@ -336,7 +344,9 @@ when "openvswitch"
       :sql_connection => sql_connection,
       :local_ip => local_ip
     )
-    notifies :restart, "service[quantum-server]", :delayed
+    if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::server")
+        notifies :restart, "service[quantum-server]", :delayed
+    end
     if node.run_list.expand(node.chef_environment).recipes.include?("openstack-network::openvswitch")
       notifies :restart, "service[quantum-plugin-openvswitch-agent]", :delayed
     end
