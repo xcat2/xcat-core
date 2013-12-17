@@ -17,6 +17,7 @@ Source5: xCATMN
 
 %ifos linux
 Source4: prescripts.tar.gz
+Source6: winpostscripts.tar.gz
 %endif
 
 Provides: xCAT = %{version}
@@ -73,6 +74,7 @@ hardware management and software management.
 %ifos linux
 tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
+tar zxf %{SOURCE6}
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
@@ -132,6 +134,7 @@ cd $RPM_BUILD_ROOT/install
 %ifos linux
 tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
+tar zxf %{SOURCE6}
 %else
 cp %{SOURCE2} $RPM_BUILD_ROOT/install
 gunzip -f postscripts.tar.gz
@@ -189,6 +192,7 @@ exit 0
 /etc/xCATMN
 /install/postscripts
 /install/prescripts
+/install/winpostscripts
 %defattr(-,root,root)
 
 %postun
