@@ -206,7 +206,7 @@ sub preprocess_request
         }
         else
         {                                # no servicenodes, no hierarchy
-                                         # process here on the MN
+                                         # process here on the MN  or I am on a service node
             &process_request($req, $cb, $sub_req);
             return;
 
@@ -272,6 +272,8 @@ sub preprocess_request
 =head3 parse_xdcp_cmd 
   Check to see if full path on file(s) input to the command
   If not add currentpath to the file in the argument 
+  Check to see if on a servicenode, if so then add the SNsynfiledir
+  to the path
 =cut
 
 #-------------------------------------------------------
@@ -329,6 +331,17 @@ sub parse_xdcp_cmd
        $changedfile=1;
      } else { # it is a full path
        $newfile =$options{'File'};
+     }
+     # if we are on a service node then we have to add the SNsyncfiledir path to the file name
+     if  (xCAT::Utils->isServiceNode()) {  
+         my  $synfiledir = "/var/xcat/syncfiles";    # default
+         my @syndir = xCAT::TableUtils->get_site_attribute("SNsyncfiledir");
+         if ($syndir[0])
+         {
+            $synfiledir = $syndir[0];
+         }
+         $newfile = $synfiledir . $newfile;
+         $changedfile=1;
      }
      # now need to go through the original argument list and replace the file 
      # after the -F flag, if a file was changed

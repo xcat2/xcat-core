@@ -316,14 +316,24 @@ sub preprocess_updatenode
         $callback->($rsp);
         return;
     }
-
-    # --security cannot work with -S -P -F
-    if ($::SECURITY
-        && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS)))
+    # -f must not be with any other flag, this updates service nodes syncfiles 
+    if ($::SNFILESYNC && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS) || $::SECURITY || $::FILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you use the -k flag, you cannot specify the -S,-P or -F flags.";
+          "If you specify the -f flag you must not specify either the -S or -k or -P or -F
+ flags";
+        $callback->($rsp);
+        return;
+    } 
+
+    # --security cannot work with -S -P -F
+    if ($::SECURITY
+        && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS) || $::FILESYNC || $::SNFILESYNC))
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] =
+          "If you use the -k flag, you cannot specify the -S,-P,-f  or -F flags.";
         $callback->($rsp);
         return;
     }
@@ -528,7 +538,7 @@ sub preprocess_updatenode
     # If -F or -f  option specified, sync files to the noderange or their
     # service nodes.
     # Note: This action only happens on MN, since xdcp, xdsh handles the
-    #	hierarchical scenario inside
+    #	hierarchy
     if ($::FILESYNC)
     {
         $request->{FileSyncing}->[0] = "yes";
@@ -563,13 +573,6 @@ sub preprocess_updatenode
         }
     }
 
-    # if  not -S or -P or --security, only -F which is always run on the MN
-    unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
-    {
-        $request->{_xcatpreprocessed}->[0] = 1;
-        &updatenode($request, $callback, $subreq);
-        return;
-    }
 
     #  - need to consider the mixed cluster case
     #		- can't depend on the os of the MN - need to split out the AIX nodes
@@ -589,7 +592,8 @@ sub preprocess_updatenode
             return undef;
         }
     }
-
+    
+    #  Determine if we are dealing with hierarchy
     my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
     {
@@ -623,9 +627,41 @@ sub preprocess_updatenode
        }
     }
 
+    #  if -f or -F in the request then just build an updatenode -f/-F request and run it now
+    # note -f cannot be combined with any other flags
+    # -F can only be combined with -S and/or -P
+    if (($::FILESYNC) || ($::SNFILESYNC))
+    {
+       # If it is only -F or -f  which are always run on the MN, then run it now and you are
+       # finished.
+       if ((!defined($::SWMAINTENANCE))  && (!defined($::RERUNPS))) {
+        $request->{_xcatpreprocessed}->[0] = 1;
+        &updatenode($request, $callback, $subreq);
+        return;
+       } else {  
+         if (@sns)  {  # if servicenodes
+           # We have a command with -F and -S and/or -P
+           # if hierarchical we need to run -f now from the managment node 
+           # to sync the service nodes
+           my $reqcopy ;
+           $reqcopy->{arg}->[0] = "-f";
+           $reqcopy->{_xcatpreprocessed}->[0] = 1;
+           $reqcopy->{SNFileSyncing}->[0] = "yes";
+           $reqcopy->{command}->[0] = $request->{command}->[0];
+           $reqcopy->{environment} = $request->{environment};
+           $reqcopy->{node} = $request->{node};
+           $reqcopy->{noderange} = $request->{noderange};
+           $reqcopy->{username} = $request->{username};
+           $reqcopy->{clienttype} = $request->{clientype};
+           $reqcopy->{cwd} = $request->{cwd};
+           &updatenodesyncfiles($reqcopy, $subreq, $callback);
+         }
+      }
+    }
+
     
-     if (defined($::SWMAINTENANCE))
-     {
+    if (defined($::SWMAINTENANCE))
+    {
             $request->{swmaintenance}->[0] = "yes";
 
             # send along the update info and osimage defs
@@ -665,7 +701,7 @@ sub preprocess_updatenode
 
 
     #
-    # if hierarchy,  then split the request  -F must run on the MN and -P -S on the service nodes
+    # if hierarchy,  then build the request for the service nodes
     #
     if (@sns)  {  # if servicenodes
       # build each request for each servicenode 
@@ -1402,7 +1438,7 @@ sub updatenoderunps
 
 #-------------------------------------------------------------------------------
 
-=head3  updatenodesyncfiles  - performs node rsync  updatenode -F
+=head3  updatenodesyncfiles  - performs node rsync  updatenode -F  or -f
 
     Arguments: request
     Returns:
@@ -1450,19 +1486,22 @@ sub updatenodesyncfiles
     }
 
     my $numberofsynclists=0; 
-    # Check the existence of the synclist file
     if (%syncfile_node)
     {    # there are files to sync defined
-        foreach my $synclist (keys %syncfile_node)
-        {
+        # Check the existence of the synclist file , if running from the Management Node
+        # other wise rely on xdcp
+        if (xCAT::Utils->isMN()) {
+          foreach my $synclist (keys %syncfile_node)
+          {
             if (!(-r $synclist))
             {
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "The Synclist file $synclist which specified for certain node does NOT existed.";
+                  "The file $synclist which is specified to be sync'd to the node does NOT exist.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
+          }
         }
 
         # Sync files to the target nodes
@@ -1472,10 +1511,10 @@ sub updatenodesyncfiles
             $numberofsynclists++; 
             my $args;
             my $env;
-            if ($request->{FileSyncing}->[0] ne "yes") {  # sync SN only
-              push @$args,"-s" ;
+            if ($request->{SNFileSyncing}->[0] eq "yes") { 
+              push @$args,"-s" ;   # add xdcp -s flag to only sync SN  ( updatenode -f option)
               $env = ["DSH_RSYNC_FILE=$synclist", "RSYNCSNONLY=1"];
-            } else {
+            } else {   # else this is updatenode -F
               $env = ["DSH_RSYNC_FILE=$synclist"];
             }
             push @$args,"--nodestatus" ;
