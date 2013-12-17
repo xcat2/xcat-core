@@ -192,7 +192,9 @@ exit 0
 /etc/xCATMN
 /install/postscripts
 /install/prescripts
+%ifos linux
 /install/winpostscripts
+%endif
 %defattr(-,root,root)
 
 %postun
