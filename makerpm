@@ -75,6 +75,7 @@ function makexcat {
 			tar --exclude .svn --exclude upflag -czf $RPMROOT/SOURCES/postscripts.tar.gz  postscripts LICENSE.html
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
 			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
+			tar --exclude .svn -czf $RPMROOT/SOURCES/winpostscripts.tar.gz winpostscripts
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xCATMN $RPMROOT/SOURCES
 			cd - >/dev/null
