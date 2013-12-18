@@ -129,7 +129,7 @@ override_attributes(
         "openvswitch"=> {
             "tenant_network_type"=>"vlan",
             "network_vlan_ranges"=>"physnet1",
-            "bridge_mappings"=>"physnet1:#TABLE:clouds:name=$CLOUD:datainterface#"
+            "bridge_mappings"=>"physnet1:br-#TABLE:clouds:name=$CLOUD:datainterface#"
         }
     },
    "compute" => {
