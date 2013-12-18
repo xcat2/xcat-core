@@ -1753,11 +1753,7 @@ sub preprocess_monshow
     $rsp->{data}->[10]= "     -o specifies montype, it can be p, e or pe.";
     $rsp->{data}->[11]= "        p means performance, e means events, default is e";
 #    $cb->($rsp);
-    if($error){
-      xCAT::MsgUtils->message("E", $rsp, $callback);
-    } else {
-      xCAT::MsgUtils->message("D", $rsp, $callback);
-    }
+      xCAT::MsgUtils->message("D", $rsp, $callback, $error);
   }
 
   @ARGV=();
