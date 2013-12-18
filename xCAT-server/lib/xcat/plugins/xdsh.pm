@@ -525,7 +525,6 @@ sub process_servicenodes_xdcp
     my $synfiledir = shift;
     my @snodes     = @$sn;
     my @snoderange = @$snrange;
-    my $args;
     $::RUNCMD_RC = 0;
     my $cmd = $req->{command}->[0];
 
@@ -572,10 +571,15 @@ sub process_servicenodes_xdcp
         $addreq->{'_xcatdest'}  = $::mnname;
         $addreq->{node}         = \@sn;
         $addreq->{noderange}    = \@sn;
-        $addreq->{arg}->[0]     = "-v";
-        $addreq->{arg}->[1]     = "-s";
-        $addreq->{arg}->[2]     = "-F";
-        $addreq->{arg}->[3]     = $::syncsnfile;
+        # check input request for --nodestatus
+        my $args=$req->{arg};   # argument
+        if (grep(/^--nodestatus$/, @$args)) {
+          push (@{$addreq->{arg}},"--nodestatus"); # return nodestatus
+        }
+         push (@{$addreq->{arg}},"-v"); 
+         push (@{$addreq->{arg}},"-s"); 
+         push (@{$addreq->{arg}},"-F"); 
+         push (@{$addreq->{arg}},$::syncsnfile); 
         $addreq->{command}->[0] = $cmd;
         $addreq->{cwd}->[0]     = $req->{cwd}->[0];
         $addreq->{env}          = $req->{env};
