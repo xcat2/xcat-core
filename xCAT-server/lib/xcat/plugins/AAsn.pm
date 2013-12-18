@@ -144,10 +144,10 @@ sub init_plugin
             
                 }
             }
-            if ($servicelist->{"nameserver"} == 1)
+            if (($servicelist->{"nameserver"} == 1) || ($servicelist->{"nameserver"} == 2) )
             {
 
-                &setup_DNS();    # setup DNS
+                &setup_DNS($servicelist);    # setup DNS
 
             }
             if ($servicelist->{"nfsserver"} == 1)
@@ -689,6 +689,7 @@ sub setup_FTP
 #-----------------------------------------------------------------------------
 sub setup_DNS
 {
+    my $srvclist = shift;
 
     my $XCATROOT = "/opt/xcat";    # default
 
@@ -697,9 +698,24 @@ sub setup_DNS
         $XCATROOT = $ENV{'XCATROOT'};
     }
 
-    # setup the named.conf file
-    system("$XCATROOT/sbin/makenamed.conf");
-
+    if ($srvclist->{"nameserver"} == 1)
+    {
+        # setup the named.conf file as dns forwarding/caching
+        system("$XCATROOT/sbin/makenamed.conf");
+     }
+     else
+     {
+        # setup the named.conf file as dns slave
+        my $cmdref;
+        $cmdref->{command}->[0] = "makedns";
+        $cmdref->{arg}->[0]     = "-s";
+        $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+        no strict "refs";
+        my $modname = "ddns";
+        ${"xCAT_plugin::" . $modname . "::"}{process_request}
+          ->($cmdref, \&xCAT::Client::handle_response);
+     }
+        
     # turn DNS on
 
     my $distro = xCAT::Utils->osver();

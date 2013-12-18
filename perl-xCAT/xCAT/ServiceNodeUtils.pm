@@ -163,6 +163,8 @@ sub isServiceReq
                         if (($value eq "1") || ($value eq "YES"))
                         {
                             $servicehash->{$service} = "1";
+                        } elsif ($value eq "2") {
+                            $servicehash->{$service} = "2";
                         } else {
                             $servicehash->{$service} = "0";
                         }
