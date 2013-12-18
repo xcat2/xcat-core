@@ -207,6 +207,7 @@ sub process_request {
     my $help;
     my $deletemode=0;
     my $external=0;
+    my $slave=0;
     if ($request->{arg}) {
         $hadargs=1;
         @ARGV=@{$request->{arg}};
@@ -218,6 +219,7 @@ sub process_request {
             'n|new' => \$zapfiles,
             'd|delete' => \$deletemode,
             'e|external' => \$external,
+            's|slave' => \$slave,
             'h|help' => \$help,
             )) {
             #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
@@ -493,6 +495,16 @@ sub process_request {
         $ctx->{forwarders}=\@forwarders;
     }
 
+    my @slave_ips;
+    my $dns_slaves = get_dns_slave();
+    if (scalar @$dns_slaves) {
+        foreach my $slave_hn (@$dns_slaves) {
+            my $slave_ip = xCAT::NetworkUtils->getipaddr($slave_hn);
+            push @slave_ips, $slave_ip;
+        }
+        $ctx->{slaves}=\@slave_ips;
+    }
+
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
 	foreach (@networks) {
 		if ($_->{domain}) {
@@ -570,9 +582,13 @@ sub process_request {
 	        $ctx->{zonesdir} = get_zonesdir();
 	        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
 
-	        update_namedconf($ctx); 
-	        update_zones($ctx);
-        
+                update_namedconf($ctx, $slave); 
+
+                unless ($slave)
+                {
+                    update_zones($ctx);
+                }
+      
 	        if ($ctx->{restartneeded}) {
 	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
 
@@ -626,6 +642,11 @@ sub process_request {
         unless ($ctx->{privkey}) {
             xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);
         }
+    }
+
+    if ($slave)
+    {
+        return;
     }
 
     # check if named is active before update dns records.
@@ -843,6 +864,7 @@ sub update_zones {
 
 sub update_namedconf {
     my $ctx = shift;
+    my $slave = shift;
     my $namedlocation = get_conf();
     my $nameconf;
     my @newnamed;
@@ -872,6 +894,20 @@ sub update_namedconf {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";
+                    } elsif ($ctx->{slaves} and $line =~ /allow-transfer {/) {
+                        push @newnamed,"\tallow-transfer \{\n";
+                        $skip=1;
+                        foreach (@{$ctx->{slaves}}) {
+                            push  @newnamed,"\t\t".$_.";\n";
+                        }
+                        push @newnamed,"\t};\n";
+                    } elsif ($ctx->{slaves} and $line =~ /also-notify {/) {
+                        push @newnamed,"\talso-notify \{\n";
+                        $skip=1;
+                        foreach (@{$ctx->{slaves}}) {
+                            push  @newnamed,"\t\t".$_.";\n";
+                        }
+                        push @newnamed,"\t};\n";                    
                     } elsif ($skip) {
                         if ($line =~ /};/) {
                             $skip = 0;
@@ -975,23 +1011,52 @@ sub update_namedconf {
             }
             push @newnamed,"\t};\n";
         }
+        if ($slave) {
+            push @newnamed,"\tallow-transfer { any; };\n";
+        } else {
+            if ($ctx->{slaves}) {
+                push @newnamed,"\tnotify yes;\n";
+                push @newnamed,"\tallow-transfer {\n";
+                foreach (@{$ctx->{slaves}}) {
+                    push @newnamed,"\t\t$_;\n";
+                }
+                push @newnamed,"\t};\n";
+                push @newnamed,"\talso-notify {\n";
+                foreach (@{$ctx->{slaves}}) {
+                    push @newnamed,"\t\t$_;\n";
+                }            
+                push @newnamed,"\t};\n";            
+            }
+        }
         push @newnamed,"};\n\n";
     }
-    unless ($gotkey) {
-        unless ($ctx->{privkey}) { #need to generate one
-            $ctx->{privkey} = encode_base64(genpassword(32));
-            chomp($ctx->{privkey});
-        }
-        push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
-        $ctx->{restartneeded}=1;
+
+    unless ($slave) {
+        unless ($gotkey) {
+            unless ($ctx->{privkey}) { #need to generate one
+                $ctx->{privkey} = encode_base64(genpassword(32));
+                chomp($ctx->{privkey});
+            }
+            push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
+            $ctx->{restartneeded}=1;
+        }    
     }
+
+    my $cmd = "grep '^nameserver' /etc/resolv.conf | awk '{print $2}'";
+    my @output=xCAT::Utils->runcmd($cmd, 0);
     my $zone;
     foreach $zone (keys %{$ctx->{zonestotouch}}) {
         if ($didzones{$zone}) { next; }
         $ctx->{restartneeded}=1; #have to add a zone, a restart will be needed
-        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
-        foreach (@{$ctx->{dnsupdaters}}) {
-            push @newnamed,"\t\t$_;\n";
+        push @newnamed,"zone \"$zone\" in {\n";
+        if ($slave) {
+            push @newnamed,"\ttype slave;\n";
+            push @newnamed,"\tmasters { $output[0]; };\n";
+        } else {
+           push @newnamed,"\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
+            foreach (@{$ctx->{dnsupdaters}}) {
+                push @newnamed,"\t\t$_;\n";
+            }
         }
         if ($zone =~ /IN-ADDR\.ARPA/) {
             my $net = $zone;
@@ -1009,9 +1074,15 @@ sub update_namedconf {
     foreach $zone (keys %{$ctx->{adzones}}) {
         if ($didzones{$zone}) { next; }
         $ctx->{restartneeded}=1; #have to add a zone, a restart will be needed
-        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
-        foreach (@{$ctx->{adservers}}) {
-            push @newnamed,"\t\t$_;\n";
+            push @newnamed,"zone \"$zone\" in {\n";
+        if ($slave) {
+            push @newnamed,"\ttype slave;\n";
+            push @newnamed,"\tmasters { $output[0]; };\n";
+        } else {
+            push @newnamed,"\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
+            foreach (@{$ctx->{adservers}}) {
+                push @newnamed,"\t\t$_;\n";
+            }
         }
         my $zfilename = $zone;
         #$zfilename =~ s/\..*//;
@@ -1301,6 +1372,26 @@ sub makedns_usage
     push @{$rsp->{data}}, "\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
+}
+
+sub get_dns_slave
+{
+    # get all service nodes with servicenode.nameserver=2
+    my @sns;
+    my @slaves;
+    my $sntab = xCAT::Table->new('servicenode');
+    my @ents = $sntab->getAllAttribs('node', 'nameserver');
+
+    foreach my $sn (@ents)
+    {
+        if ($sn->{'nameserver'} == 2)
+	{
+            push @sns, $sn->{'node'};
+	}
+    }
+
+    @slaves = xCAT::NodeRange::noderange(join(',',@sns));
+    return \@slaves;
 }
 
 1;
