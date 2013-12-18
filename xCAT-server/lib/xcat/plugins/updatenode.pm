@@ -327,7 +327,7 @@ sub preprocess_updatenode
         return;
     } 
 
-    # --security cannot work with -S -P -F
+    # --security cannot work with -S -P -F -f
     if ($::SECURITY
         && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS) || $::FILESYNC || $::SNFILESYNC))
     {
@@ -535,10 +535,8 @@ sub preprocess_updatenode
         }
     }
 
-    # If -F or -f  option specified, sync files to the noderange or their
+    # If -F or -f  option specified, sync files to the noderange and their
     # service nodes.
-    # Note: This action only happens on MN, since xdcp, xdsh handles the
-    #	hierarchy
     if ($::FILESYNC)
     {
         $request->{FileSyncing}->[0] = "yes";
@@ -598,7 +596,8 @@ sub preprocess_updatenode
     if ($::ERROR_RC)
     {
         my $rsp;
-        push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
+        $rsp->{data}->[0] =
+         "Could not get list of xCAT service nodes";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
 
@@ -626,13 +625,21 @@ sub preprocess_updatenode
          }
        }
     }
-
-    #  if -f or -F in the request then just build an updatenode -f/-F request and run it now
-    # note -f cannot be combined with any other flags
-    # -F can only be combined with -S and/or -P
+    # check if no servicenodes for noderange and using the -f flag
+    if ($::SNFILESYNC) {
+      if (!(scalar(@sns))) {
+        my $rsp;
+        $rsp->{data}->[0] =
+         "There are no servicenodes to process for the noderange in the updatenode -f command.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return;
+      }
+    }
+    # process the -F or -f flags 
     if (($::FILESYNC) || ($::SNFILESYNC))
     {
-       # If it is only -F or -f  which are always run on the MN, then run it now and you are
+       # If it is only -F or -f  in the command, which are always run on the MN, 
+       # then run it now and you are
        # finished.
        if ((!defined($::SWMAINTENANCE))  && (!defined($::RERUNPS))) {
         $request->{_xcatpreprocessed}->[0] = 1;
@@ -640,7 +647,7 @@ sub preprocess_updatenode
         return;
        } else {  
          if (@sns)  {  # if servicenodes
-           # We have a command with -F and -S and/or -P
+           # We have a command with -F and -S and/or -P 
            # if hierarchical we need to run -f now from the managment node 
            # to sync the service nodes
            my $reqcopy ;
@@ -1560,9 +1567,16 @@ sub updatenodesyncfiles
            &buildnodestatus(\@$output,$callback);
 	     }
    	
-       my $rsp = {};
-       $rsp->{data}->[0] = "File synchronization has completed.";
-       $callback->($rsp);
+       if ($request->{SNFileSyncing}->[0] eq "yes") { 
+          my $rsp = {};
+          $rsp->{data}->[0] = "File synchronization has completed for service nodes.";
+          $callback->($rsp);
+       }
+       if ($request->{FileSyncing}->[0] eq "yes") { 
+          my $rsp = {};
+          $rsp->{data}->[0] = "File synchronization has completed for nodes.";
+          $callback->($rsp);
+       }
     }
     else
     {    # no syncfiles defined
