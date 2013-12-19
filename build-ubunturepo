@@ -276,7 +276,7 @@ __EOF__
     done
 
     #create the mklocalrepo script
-    cat << __EOF__ > mklocalrepo.sh
+    cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
 echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
