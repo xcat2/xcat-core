@@ -577,6 +577,6 @@ ResolveLinks
 # foo
 
 # If the resolv.conf is not setup in rootimg, copy the dhcp generated one into rootimg
-if grep --quiet --no-messages "Dummy resolv.conf" "$MNTDIR/etc/resolv.conf"; then
+if grep -q -s "Dummy resolv.conf" "$MNTDIR/etc/resolv.conf"; then
 /bin/cat /etc/resolv.conf > $MNTDIR/etc/resolv.conf
 fi
