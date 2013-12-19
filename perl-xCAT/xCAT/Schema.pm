@@ -1500,6 +1500,20 @@ mic => {
         disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
 },
+capacity => {
+    cols => [qw(node cputype cpucount memory disksize comments disable)],
+    keys => [qw(node)],
+    table_desc => 'The basic node capacity.',
+    descriptions => {
+        node => 'The node name or group name.',
+        cputype => 'The cpu model name for the node.',
+        cpucount => 'The number of cpus for the node.',
+        memory => 'The size of the memory for the node.',
+        disksize => 'The size of the disks for the node.',
+        comments => 'Any user-provided notes.',
+        disable =>  "Set to 'yes' or '1' to comment out this row.",
+    },
+},
 
 ); # end of tabspec definition
 
@@ -2478,7 +2492,26 @@ my @nodeattrs = (
 		tabentry => 'mic.powermgt',
 		access_tabentry => 'mic.node=attr:node',
 	},
-	
+#####################
+##   capacity   table    #
+#####################
+	{attr_name => 'cputype',
+		tabentry => 'capacity.cputype',
+		access_tabentry => 'capacity.node=attr:node',
+	},
+	{attr_name => 'cpucount',
+		tabentry => 'capacity.cpucount',
+		access_tabentry => 'capacity.node=attr:node',
+	},
+	{attr_name => 'memory',
+		tabentry => 'capacity.memory',
+		access_tabentry => 'capacity.node=attr:node',
+	},
+	{attr_name => 'disksize',
+		tabentry => 'capacity.disksize',
+		access_tabentry => 'capacity.node=attr:node',
+	},
+		
   );	# end of @nodeattrs that applies to both nodes and groups
 
 

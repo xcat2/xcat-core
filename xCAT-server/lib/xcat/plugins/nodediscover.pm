@@ -153,6 +153,27 @@ sub process_request {
             $vpdtab->setNodeAttribs($node,{serial=>$request->{serial}->[0]});
         }
     }
+
+    # save basic capacities in the capacity table
+    if (defined($request->{cpucount}) or defined($request->{cputype}) or defined($request->{memory}) or defined($request->{disksize})) {
+	my $basicdata;
+        my $cap_tab = xCAT::Table->new("capacity",-create=>1);
+        if ($request->{memory}->[0]) {
+	    $basicdata->{memory} = $request->{memory}->[0];
+        }
+        if ($request->{disksize}->[0]) {
+	    $basicdata->{disksize} = $request->{disksize}->[0];
+        }
+        if ($request->{cpucount}->[0]) {
+	    $basicdata->{cpucount} = $request->{cpucount}->[0];
+        }
+        if ($request->{cputype}->[0]) {
+	    $basicdata->{cputype} = $request->{cputype}->[0];
+        }
+	$cap_tab->setNodeAttribs($node, $basicdata);
+    }
+
+
     my $nrtab;
     my @discoverynics;
     my @forcenics; #list of 'eth' style interface names to require to come up on post-discovery client dhcp restart
