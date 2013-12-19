@@ -1509,7 +1509,7 @@ capacity => {
         comments => 'Any user-provided notes.',
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
-
+},
 ); # end of tabspec definition
 
 
