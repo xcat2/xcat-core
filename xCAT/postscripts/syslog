@@ -111,7 +111,7 @@ config_Rsyslog_C3()
 
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
 
-if [ $NTYPE = service ]; then 
+if [ "$NTYPE" = service ]; then 
   isSN=1
 fi
 
