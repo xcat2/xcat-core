@@ -102,9 +102,14 @@ sub check_uefi_support {
 
 # check whether the proxydhcp has been enabled.
 sub proxydhcp {
-    my @output = xCAT::Utils->runcmd("ps -C proxydhcp", -1);
+    my $nrent = shift;
+
+    if ($nrent && defined $nrent->{'proxydhcp'} && $nrent->{'proxydhcp'} =~ /0|no|n/i) {
+        return 0;
+    }
+    my @output = xCAT::Utils->runcmd("ps -C proxydhcp-xcat", -1);
     if (@output) {
-        if (grep /proxydhcp/, @output) {
+        if (grep /proxydhcp-xcat/, @output) {
             return 1;
         }
     }
@@ -587,7 +592,7 @@ sub addnode
                 } else {
                     # If proxydhcp daemon is enabled for windows deployment, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
                     if (($douefi == 2 and $chainent->{currstate} =~ /^install/) or $chainent->{currstate} =~ /^winshell/) { 
-                        if (proxydhcp()){ #proxy dhcp required in uefi invocation
+                        if (proxydhcp($nrent)){ #proxy dhcp required in uefi invocation
                             $lstatements = 'if option client-architecture = 00:00 or option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else { filename = \"\"; }'.$lstatements; #If proxydhcp daemon is enable, use it.
                         } else {
                             $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
@@ -1691,7 +1696,7 @@ sub process_request
         } else {
             $chainents = undef;
         }
-        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot']);
+        $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot','proxydhcp']);
         my $nodetypetab;
 	$nodetypetab = xCAT::Table->new('nodetype',-create=>0);
 	if ($nodetypetab) {

@@ -128,7 +128,11 @@ sub init_plugin
                  }
 
                 }
-
+                if ($servicelist->{"proxydhcp"} == 1) {
+                    &setup_proxydhcp(1);
+                } else {
+                    &setup_proxydhcp(0);
+                }
             }    # end Linux only
             #
             # setup these services for AIX or Linux
@@ -1455,5 +1459,26 @@ sub enable_TFTPhpa
   return 0;
 }
 
+# enable or disable proxydhcp service
+sub setup_proxydhcp {
+    my $flag = shift;
+
+    my $pid;
+    # read the pid of proxydhcp
+    if (open (PIDF, "</var/run/xcat/proxydhcp-xcat.pid")) {
+        $pid = <PIDF>;
+    }
+    close(PIDF);
+
+    # kill it first
+    if ($pid) {
+        kill 2, $pid;
+    }
+
+    # start the proxydhcp daemon if it's set to enable
+    if ($flag) {
+        system ("/opt/xcat/sbin/proxydhcp-xcat -d");
+    }
+}
 
 1;

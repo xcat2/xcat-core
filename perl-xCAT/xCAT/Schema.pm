@@ -595,7 +595,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver tftpdir nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames nameservers comments disable)],
+    cols => [qw(node servicenode netboot tftpserver tftpdir nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames nameservers proxydhcp comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS16K',
     table_desc => 'Resources and settings to use when installing nodes.',
@@ -618,6 +618,7 @@ noderes => {
   nimserver => 'Not used for now. The NIM server for this node (as known by this node).',
   routenames => 'A comma separated list of route names that refer to rows in the routes table. These are the routes that should be defined on this node when it is deployed.',
   nameservers => 'An optional node/group specific override for name server list.  Most people want to stick to site or network defined nameserver configuration.',
+  proxydhcp => 'To specify whether the node supports proxydhcp protocol. Valid values: yes or 1, no or 0. Default value is yes.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -839,7 +840,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward dhcpinterfaces comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward dhcpinterfaces proxydhcp comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS16K',
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
@@ -857,6 +858,7 @@ servicenode => {
   nimserver => 'Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
   dhcpinterfaces => 'The network interfaces DHCP server should listen on for the target node. This attribute can be used for management node and service nodes.  If defined, it will override the values defined in site.dhcpinterfaces. This is a comma separated list of device names. !remote! indicates a non-local network for relay DHCP. For example: !remote!,eth0,eth1',
+  proxydhcp => 'Do we set up proxydhcp service on this node? valid values: yes or 1, no or 0. If yes, the proxydhcp daemon will be enabled on this node.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1081,9 +1083,10 @@ site => {
    " xcatmaxbatchconnections:  Number of concurrent xCAT connections allowed from the nodes.\n".
    "                      Value must be less than xcatmaxconnections. Default is 50.\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
-   " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
-   " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n",
-   " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
+   " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n".
+   " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n".
+   " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n".
+   " setinstallnic:  Set the network configuration for installnic to be static.\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1660,6 +1663,11 @@ my @nodeattrs = (
                  tabentry => 'noderes.monserver',
                  access_tabentry => 'noderes.node=attr:node',
   },
+        {attr_name => 'supportproxydhcp',
+                 tabentry => 'noderes.proxydhcp',
+                 access_tabentry => 'noderes.node=attr:node',
+  },
+
  {attr_name => 'kernel',
                  tabentry => 'bootparams.kernel',
                  access_tabentry => 'bootparams.node=attr:node',
@@ -1727,6 +1735,10 @@ my @nodeattrs = (
   },
 	{attr_name => 'setupipforward',
                  tabentry => 'servicenode.ipforward',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupproxydhcp',
+                 tabentry => 'servicenode.proxydhcp',
                  access_tabentry => 'servicenode.node=attr:node',
   },
 # - moserver not used yet

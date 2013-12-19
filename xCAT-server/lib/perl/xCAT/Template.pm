@@ -358,6 +358,28 @@ sub windows_net_cfg {
         my $component_end = '</component>';
         
         my $interfaces_cfg = '<Interfaces>';
+
+        # get the installnic
+        my $nrtab = xCAT::Table->new('noderes',-create=>0);
+        my $installnic;
+        if ($nrtab) {
+            my $nrent = $nrtab->getNodeAttribs($node,['installnic', 'primarynic']);
+            if ($nrent) {
+                if (defined ($nrent->{'installnic'})) {
+                    $installnic = $nrent->{'installnic'};
+                } elsif (defined ($nrent->{'primarynic'})) {
+                    $installnic = $nrent->{'primarynic'};
+                }
+            }
+        }
+
+        # get the site.setinstallnic
+        my @ents = xCAT::TableUtils->get_site_attribute("setinstallnic");
+        my $setinstallnic;
+        if ($ents[0] =~ /1|yes|y/i) {
+            $setinstallnic = 1;
+        }
+
         my $nicstab = xCAT::Table->new('nics',-create=>0);
         my $hasif;
         if ($nicstab) {
@@ -370,6 +392,15 @@ sub windows_net_cfg {
                     my ($nicname, $ips) = split(/!/, $_);
                     unless ($nicname) { next; }
                     if ($nicname =~ /^bmc/) { next; }  # do nothing for bmc interface
+                    my $dosetgw = 0;
+                    if ($nicname eq $installnic) {
+                        if ($setinstallnic) {
+                            # set to static with gateway
+                            $dosetgw = 1;
+                        } else {# else: do nothing means using dhcp
+                            next;
+                        }
+                    } # else: do not set gateway, since gateway only set for installnic
                     if ($ips) {
                         $interface_cfg .= '<Ipv4Settings><DhcpEnabled>false</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>false</DhcpEnabled></Ipv6Settings>';
                         $interface_cfg .= "<Identifier>$nicname</Identifier>";
@@ -383,6 +414,9 @@ sub windows_net_cfg {
                                 next;
                             }
                             if ($gw) { $gateway = $gw; }
+                            if ($gateway eq '<xcatmaster>') {
+                                $gateway = xCAT::NetworkUtils->my_ip_facing($ip);
+                            }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="'.$num++.'">'.$ip."/$netmask".'</IpAddress>';
                         }
                         if ($num eq 1) {
@@ -396,9 +430,10 @@ sub windows_net_cfg {
                         $interface_cfg .= '<Ipv4Settings><DhcpEnabled>true</DhcpEnabled></Ipv4Settings><Ipv6Settings><DhcpEnabled>true</DhcpEnabled></Ipv6Settings>';
                         $interface_cfg .= "<Identifier>$nicname</Identifier>";
                     }
+
         
                     # add the default gateway
-                    if ($gateway) {
+                    if ($gateway && $dosetgw) {
                         $interface_cfg .= '<Routes><Route wcm:action="add"><Identifier>1</Identifier><NextHopAddress>'.$gateway.'</NextHopAddress><Prefix>0/0</Prefix></Route></Routes>';
                     }
                     $interface_cfg .= '</Interface>';

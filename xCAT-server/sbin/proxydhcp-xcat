@@ -1,0 +1,331 @@
+#! /usr/bin/perl
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+# This program will start a proxydhcp daemon to handle 4011 request
+
+use Sys::Syslog;
+use IO::Socket::INET;
+use IO::Select;
+use Getopt::Long;
+
+my $quit = 0;
+my $doreload = 0;
+my %nodecfg;
+my $bootpmagic = pack("C*", 0x63, 0x82, 0x53, 0x63);
+
+# set signal handler to set flag to reload configuration file
+$SIG{USR1} = sub {
+    $doreload = 1;
+};
+$SIG{TERM} = $SIG{INT} = sub {
+    $quit = 1;
+};
+
+my $verbose;
+my $tobedaemon;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+GetOptions(
+    'V' => \$verbose,
+    'd' => \$tobedaemon,
+);
+
+if ($tobedaemon) {
+    daemonize();
+}
+
+# open syslog 
+openlog("proxydhcp", "nofatal", "local4");
+
+my $socket;
+my $retry = 5;
+while ($retry > 0) { 
+    $socket = IO::Socket::INET->new(LocalPort => 4011,
+        Proto     => 'udp',
+        Domain => AF_INET);
+    if ($socket) {
+        last;
+    } else {
+        sleep 1;
+    }
+    $retry--;
+}
+unless ($socket) {
+    syslog ("info", "Unable to open socket on port 4011.");
+    closelog(); 
+    exit;
+}
+
+# regist my pid to /var/run/xcat/proxydhcp.pid
+if (open (PIDF, ">/var/run/xcat/proxydhcp-xcat.pid")) {
+    print PIDF $$;
+    close(PIDF);
+} else {
+    syslog ("info", "Cannot open /var/run/xcat/proxydhcp.pid.");
+    closelog(); 
+    exit;
+}
+
+
+my $select = new IO::Select;
+$select->add($socket);
+load_cfg();
+until ($quit) {	
+    until ($select->can_read(5)) {  #Wait for data
+        if ($doreload) {
+            load_cfg();
+            syslog ("info", "Reload configuration file in select.");
+        }
+        if ($quit) { last; }; 
+        yield; 
+    }
+
+    if ($doreload) {
+        load_cfg();
+        syslog ("info", "Reload configuration file before recv.");
+    }
+
+    my $data;
+    my $caddr = $socket->recv($data,1500);
+
+    my ($cport, $cnip) = sockaddr_in($caddr);
+    my $snip = my_ip_facing($cnip);
+    unless ($snip) {
+        syslog ("info", "Cannot find the server ip of proxydhcp daemon");
+        next;
+    }
+
+    if (length ($data) < 320) {
+        next;
+    }
+
+    my @package = unpack("C*", $data);
+    my @replypkg;
+
+    if (pack("C*", $package[0xec], $package[0xed], $package[0xee], $package[0xef]) != $bootpmagic) {
+        next;
+    } 
+
+    # get the node name of client
+    my $nodename = gethostbyaddr($cnip, AF_INET);
+    
+    # get the winpepath
+    my $winpepath = "";
+    if ($nodename) {
+        if (defined $nodecfg{$nodename}) {
+            $winpepath = $nodecfg{$nodename};
+            if ($verbose) {syslog ("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file")};
+        } else {
+            $nodename =~ s/\..*//;
+            if (defined $nodecfg{$nodename}) {
+                $winpepath = $nodecfg{$nodename};
+                if ($verbose) {syslog ("info", "Find configure for $nodename= $nodecfg{$nodename} in configuration file")};
+            }
+        }
+    }
+
+    # get the Vendor class identifier
+    my $strp = 0xf0;
+    my $archp = 0;
+    while ($strp < $#package) {
+        if ($package[$strp] eq 60) {
+            $archp = $strp + 0x11;
+            last;
+        } else {
+            $strp += $package[$strp+1] + 2;
+        }
+    }
+
+    # get the winpe boot loader path 
+    my $winboot = $winpepath."Boot/pxeboot.0";
+    if ($archp) {
+        my $clienttype = substr($data, $archp, 5);
+        if ($clienttype == "00000") {
+        #if ("$package[$archp]$package[$archp+1]$package[$archp+2]$package[$archp+3]$package[$archp+4]" == "00000") {
+            $winboot = $winpepath."Boot/pxeboot.0";
+        } elsif ($clienttype == "00007") {
+            $winboot = $winpepath."Boot/bootmgfw.efi";
+        }
+    }
+
+    syslog ("info", "The boot loader path for node $nodename is $winboot");
+
+    # set message type
+    $replypkg[0] = 2;
+
+    # set the hardware type
+    $replypkg[1] = $package[1];
+
+    # set the hardware address length
+    $replypkg[2] = $package[2];
+
+    # set the hops
+    $replypkg[3] = $package[3];
+
+    # set the transaction ID
+    @replypkg = (@replypkg, @package[4 .. 7]);
+
+    # set elapsed time
+    $replypkg[8] = 0;
+    $replypkg[9] = 0;
+
+    # set bootp flag
+    $replypkg[0xa] = 0;
+    $replypkg[0xb] = 0;
+
+    # set client ip
+    @replypkg = (@replypkg, @package[0xc .. 0xf]);
+
+    # set Your (client IP)
+    @replypkg = (@replypkg, 0, 0, 0, 0);
+
+    #set Next server IP (set my IP)
+    @replypkg = (@replypkg, unpack("C*", $snip));
+
+    # set dhcp relay agent ip
+    @replypkg = (@replypkg, 0, 0, 0, 0);
+
+    # set client hardware address
+    @replypkg = (@replypkg, @package[0x1c .. 0x2b]);
+
+    # set server host name
+    foreach (0x2c .. 0x6b) {
+        $replypkg[$_] = 0;
+    }
+
+    # set the boot file name
+    @replypkg = (@replypkg, unpack("C*", $winboot));
+    my $lenth = length ($winboot);
+    foreach (0x6c + $lenth .. 0xeb) {
+        $replypkg[$_] = 0;
+    }
+
+    # add magic cookie
+    #my @xx = unpack("C*", $bootpmagic);
+    #@replypkg = (@replypkg, @xx);
+    @replypkg = (@replypkg, unpack("C*", $bootpmagic));
+
+    # set dhcp msg type
+    $replypkg[0xf0] = 0x35; # option number
+    $replypkg[0xf1] = 0x1; # msg length
+    $replypkg[0xf2] = 0x5; # dhcp ack
+
+    # set dhcp server identifer
+    $replypkg[0xf3] = 0x36; # option number
+    $replypkg[0xf4] = 0x4; # msg length
+    @replypkg = (@replypkg, unpack("C*", $snip));
+
+    # set the bcd path
+    my $winbcd = $winpepath."Boot/BCD";
+    $replypkg[0xf9] = 0xfc; # option number
+    $replypkg[0xfa] = length($winbcd) + 1; # msg length
+    @replypkg = (@replypkg, unpack("C*", $winbcd));
+    $replypkg[0xfa + length($winbcd) + 1] = 0;
+    $replypkg[0xfa + length($winbcd) + 2] = 0xff;
+    
+    $socket->send(pack("C*", @replypkg), 0, $caddr);
+
+    syslog ("info", "The BCD path for node $nodename is $winbcd");
+
+    # debug package detail
+    if (0) {
+    my $msg; 
+    my $firstline = 1;
+    my $num = 0;
+    foreach (@replypkg) {
+        my $v = sprintf("%2x ", $_);
+        $msg .= $v;
+        if (($num - 5)%8 eq 0) {
+            $msg .= "   ";
+        }
+        if (($num - 5)%16 eq 0) {
+            syslog ("info", $msg);
+            print $msg."\n";
+            $msg = "";
+        }
+        $num++;
+    }
+    print $msg."\n";
+    }  
+}
+
+closelog(); 
+
+# daemonize the service
+sub daemonize
+{
+    chdir('/');
+    umask 0022;
+    my $pid = fork;
+
+    if ($pid) {
+        exit;
+    }
+    open STDOUT, '>/dev/null';
+    open STDERR, '>/dev/null';
+    $0='proxydhcp-xcat';
+    $progname = \$0;
+}
+
+#  load configuration from /var/lib/xcat/proxydhcp.cfg to %nodecfg
+sub load_cfg
+{
+    $doreload = 0;
+    if (! -r "/var/lib/xcat/proxydhcp.cfg") {
+        return;
+    }
+
+    if (! open (CFG, "</var/lib/xcat/proxydhcp.cfg")) {
+        syslog ("info", "Cannot open /var/lib/xcat/proxydhcp.cfg");
+        return;
+    }
+
+    my $mycfg;
+    while (<CFG>) {
+        $mycfg .= $_;
+    }
+
+    my $p = 0;
+    while (1) {
+    
+        my $name = substr($mycfg, $p, 50); 
+        $p += 50;
+        my $value = substr($mycfg, $p, 150); 
+        $p += 150;
+
+        $name =~ s/\0//g;
+        $value =~ s/\0//g;
+        if ($name) {
+            $nodecfg{$name} = $value;
+        } else {
+            return;
+        }
+    }
+
+
+    close(CFG);
+}
+
+# get the ip in xCAT MN/SN which facing target ip
+sub my_ip_facing
+{
+    my $peer = shift;
+    unless ($peer) { return undef; }
+    my $noden = unpack("N", $peer);
+    my @nets = split /\n/, `/sbin/ip addr`;
+    foreach (@nets)
+    {
+        my @elems = split /\s+/;
+        unless (/^\s*inet\s/)
+        {
+            next;
+        }
+        (my $curnet, my $maskbits) = split /\//, $elems[2];
+        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
+        my $curn = unpack("N", inet_aton($curnet));
+        if (($noden & $curmask) == ($curn & $curmask))
+        {
+            return inet_aton($curnet);
+        }
+    }
+    return undef;
+}
