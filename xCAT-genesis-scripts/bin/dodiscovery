@@ -74,7 +74,17 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 	MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
 fi
 CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
-MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{print $2}'`
+
+# The MEMORY will look like this: 32868920
+MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
+# The MEMORY will look like this: 32GiB
+#MEMORY=`lshw -C memory -short |grep "System Memory"|awk -F' ' '{print $3}'`
+
+# The DISKSIZE will look like this: /dev/sda:250GB,/dev/sdb:250GB
+#DISKSIZE=`lshw -C disk -short |grep disk |awk -F' ' '{print $2":"$4}'|sed 'N;s/\n/,/'`
+# The DISKSIZE will look like this: sdb:250GB,sda:250GB
+DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n", $4, $3*0.000001024}' |sed 'N;s/\n/,/'`
+
 UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
 grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
 	echo $line > /tmp/cpumod
@@ -89,6 +99,7 @@ fi
 echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
 echo "<cputype>$CPUTYPE</cputype>" >> /tmp/discopacket
 echo "<memory>$MEMORY</memory>" >> /tmp/discopacket
+echo "<disksize>$DISKSIZE</disksize>" >> /tmp/discopacket
 echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 if [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
