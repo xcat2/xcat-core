@@ -1510,6 +1510,7 @@ EOMS
       push @filestoadd,"lib64/libresolv.so.2";
    } else {
       push @filestoadd,"lib/libnss_dns.so.2";
+      push @filestoadd,"lib/libresolv.so.2";
    }
    push @filestoadd,keys %libhash;
 
