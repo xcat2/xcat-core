@@ -1503,10 +1503,10 @@ mic => {
         disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
 },
-capacity => {
+hwinv => {
     cols => [qw(node cputype cpucount memory disksize comments disable)],
     keys => [qw(node)],
-    table_desc => 'The basic node capacity.',
+    table_desc => 'The hareware inventory for the node.',
     descriptions => {
         node => 'The node name or group name.',
         cputype => 'The cpu model name for the node.',
@@ -2505,23 +2505,23 @@ my @nodeattrs = (
 		access_tabentry => 'mic.node=attr:node',
 	},
 #####################
-##   capacity   table    #
+##   hwinv   table    #
 #####################
 	{attr_name => 'cputype',
-		tabentry => 'capacity.cputype',
-		access_tabentry => 'capacity.node=attr:node',
+		tabentry => 'hwinv.cputype',
+		access_tabentry => 'hwinv.node=attr:node',
 	},
 	{attr_name => 'cpucount',
-		tabentry => 'capacity.cpucount',
-		access_tabentry => 'capacity.node=attr:node',
+		tabentry => 'hwinv.cpucount',
+		access_tabentry => 'hwinv.node=attr:node',
 	},
 	{attr_name => 'memory',
-		tabentry => 'capacity.memory',
-		access_tabentry => 'capacity.node=attr:node',
+		tabentry => 'hwinv.memory',
+		access_tabentry => 'hwinv.node=attr:node',
 	},
 	{attr_name => 'disksize',
-		tabentry => 'capacity.disksize',
-		access_tabentry => 'capacity.node=attr:node',
+		tabentry => 'hwinv.disksize',
+		access_tabentry => 'hwinv.node=attr:node',
 	},
 		
   );	# end of @nodeattrs that applies to both nodes and groups

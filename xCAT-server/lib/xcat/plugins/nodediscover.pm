@@ -154,10 +154,10 @@ sub process_request {
         }
     }
 
-    # save basic capacities in the capacity table
+    # save inventory info into the hwinv table
     if (defined($request->{cpucount}) or defined($request->{cputype}) or defined($request->{memory}) or defined($request->{disksize})) {
 	my $basicdata;
-        my $cap_tab = xCAT::Table->new("capacity",-create=>1);
+        my $hwinv_tab = xCAT::Table->new("hwinv",-create=>1);
         if ($request->{memory}->[0]) {
 	    $basicdata->{memory} = $request->{memory}->[0];
         }
@@ -170,7 +170,7 @@ sub process_request {
         if ($request->{cputype}->[0]) {
 	    $basicdata->{cputype} = $request->{cputype}->[0];
         }
-	$cap_tab->setNodeAttribs($node, $basicdata);
+	$hwinv_tab->setNodeAttribs($node, $basicdata);
     }
 
 
