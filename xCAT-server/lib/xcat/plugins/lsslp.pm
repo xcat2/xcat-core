@@ -262,7 +262,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I updatehosts makedhcp resetnet vpdtable))) {
+        qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I u range=s updatehosts makedhcp resetnet vpdtable))) {
         return( usage() );
     }
 
@@ -405,6 +405,18 @@ sub parse_args {
         $globalopt{n} = 1;
     }
 
+    if ( exists( $opt{u} )) {
+        $globalopt{u} = 1;
+        unless (exists( $opt{s} ) and exists ($opt{range})) {
+            return( usage( "-u should be used with -s and --range" ));
+        }
+        $globalopt{range} = $opt{range};
+    }
+    if (exists( $opt{range} )) {
+        unless (exists( $opt{u} )) {
+            return( usage( "range is used in unicast mode" ));
+        }
+    }
     ##############################################
     # warn for no discovered nodes in database
     ##############################################
@@ -525,6 +537,10 @@ sub invoke_dodiscover {
    $arg{Time} = $globalopt{T} if($globalopt{T});
    $arg{nomsg} = 1 if($globalopt{z} or $globalopt{x});
    $arg{reqcallback} = $request->{callback} if($request->{callback});
+   if ($globalopt{u}) {
+       $arg{unicast} = 1;
+           $arg{range} = $globalopt{range};
+    }
     my ($searchmacsref,$sendcount,$rsp) = xCAT::SLP::dodiscover(%arg);
 
 
