@@ -120,6 +120,8 @@ sub dodiscover {
             send_message($args{reqcallback}, 0, "Nmap returns nothing");
             return undef;
         }  
+        my $number = scalar (@servernodes);
+        send_message($args{reqcallback}, 0, "Begin to do unicast to $number nodes...");
         my %rechash;
         pipe CREAD,PWRITE;
         my $pid = xCAT::Utils->xfork();
@@ -155,7 +157,7 @@ sub dodiscover {
         } else {
             close CREAD;
             $rspcount = 0;
-            my $waittime = ($args{Time}>0)?$args{Time}:60;
+            my $waittime = ($args{Time}>0)?$args{Time}:300;
             my $deadline = time()+ $waittime;
             my $waitforsocket = IO::Select->new();
             $waitforsocket->add($args{'socket'});
@@ -221,6 +223,10 @@ sub dodiscover {
             } # end of while(deadline) 
             syswrite PWRITE,"NowYouNeedToDie\n";
             close PWRITE;             
+            if (@servernodes) {
+                my $miss = join(",", @servernodes);
+                send_message($args{reqcallback}, 0, "Warning: can't got attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
+            }
         }# end of parent process 
     }  else {
     send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback} and !$args{nomsg} );
@@ -366,6 +372,9 @@ sub process_slp_packet {
             $attrpy++;
             $parsedpacket->{SrvType} = $xid_to_srvtype_map{$parsedpacket->{Xid}};
             $parsedpacket->{attributes} = parse_attribute_reply($parsedpacket->{payload});
+            my $attributes = $parsedpacket->{attributes};
+            my $type = ${$attributes->{'type'}}[0] ;
+            return undef unless ($type) ;
             #delete $parsedpacket->{payload};
             return $parsedpacket;
         } else {
@@ -530,9 +539,9 @@ sub send_service_request_single {
             $ipnum= $ipnum | (2**(32-$maskbits))-1;
             my $bcastn = pack("N",$ipnum);
             my $bcastaddr = sockaddr_in(427,$bcastn);
-                        setsockopt($socket,0,IP_MULTICAST_IF,$ipn);
-                        $socket->send($packet,0,$ipv4sockaddr);
-                        $socket->send($packet,0,$bcastaddr);
+            setsockopt($socket,0,IP_MULTICAST_IF,$ipn);
+            $socket->send($packet,0,$ipv4sockaddr);
+            $socket->send($packet,0,$bcastaddr);
         }
     }
 }
