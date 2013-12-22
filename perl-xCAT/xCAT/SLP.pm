@@ -23,7 +23,10 @@ my $gprlist;
 my %searchmacs;
 my %ip4neigh;
 my %ip6neigh;
-
+my %servicehash;
+my %sendhash;
+my $attrpy = 0;
+my $serrpy = 0;
 sub getmulticasthash {
 	my $hash=0;
 	my @nums = unpack("C*",shift);
@@ -40,10 +43,13 @@ sub getmulticasthash {
 	
 sub dodiscover {
 	my %args = @_;
+    my $unicast = $args{unicast}; #should be used with -s !
+    my $ipranges = $args{range};
         my $rspcount = 0;
     my $rspcount1 = 0;
     my $sendcount = 1;
 	$xid = int(rand(16384))+1;
+    my %rethash;
 	unless ($args{'socket'}) {
 		if ($ip6support) {
 			$args{'socket'} = IO::Socket::INET6->new(Proto => 'udp');
@@ -60,7 +66,7 @@ sub dodiscover {
 				$args{'socket'}->sockopt(SO_RCVBUF,$maxrcvbuf/2);
 			}
 		}
-	}
+    } #end of unless socket
 	unless ($args{SrvTypes}) { croak "SrvTypes argument is required for xCAT::SLP::Dodiscover"; }
 	unless (xCAT::Utils->isAIX()) { # AIX bug, can't set socket with SO_BROADCAST, otherwise multicast can't work.
 	    setsockopt($args{'socket'},SOL_SOCKET,SO_BROADCAST,1); #allow for broadcasts to be sent, we know what we are doing
@@ -91,11 +97,141 @@ sub dodiscover {
         }
     }
     my $printinfo = join(",", @printip);  
+    if ($unicast) {
+        my @servernodes;
+        my @iprange = split /,/, $ipranges;
+        foreach my $range (@iprange) {
+            `/usr/bin/nmap $range -sn -PE -n --send-ip -T5 `;
+            my $nmapres = `/usr/bin/nmap $range -PE -p 427 -n --send-ip -T5 `;
+            foreach my $line (split(/\n\n/,$nmapres)) {#\n/,$nmapres)) {
+                my $server;
+                foreach my $sline (split(/\n/, $line)) {
+                    if ($sline =~ /Nmap scan report for (\d+\.\d+\.\d+\.\d+)/) {
+                       $server = $1;
+                    }
+                    if ($sline =~ /427/ and ($sline =~ /open/ or $sline =~ /filtered/)){
+                    push @servernodes, $server;
+                }
+                } # end of foreach line
+            } # end of foreach line
+        } # end of foreach pi-range
+        unless (@servernodes){
+            send_message($args{reqcallback}, 0, "Nmap returns nothing");
+            return undef;
+        }
+        my $number = scalar (@servernodes);
+        send_message($args{reqcallback}, 0, "Begin to do unicast to $number nodes...");
+        my %rechash;
+        pipe CREAD,PWRITE;
+        my $pid = xCAT::Utils->xfork();
+        if ( !defined($pid) ) {
+            send_message($args{reqcallback}, 1, "Fork error: $!" );
+            return undef;
+        } elsif ( $pid == 0 ) {
+            close PWRITE; 
+            foreach my $srvtype (@srvtypes) {
+                my $packet = generate_attribute_request(%args, SrvType=>$srvtype);
+                foreach my $destserver (@servernodes) {
+                    my $destip = inet_aton($destserver);
+                    my $destaddr = sockaddr_in(427,$destip);
+                    my $res =  $args{'socket'}->send($packet,0,$destaddr);
+                } # end of foreach destserver    
+            }# end of foreach services
+            while(<CREAD>){ 
+                chomp; 
+                my $destserver = $_;
+                if ($destserver =~ /NowYouNeedToDie/){
+                   close CREAD;
+                   exit 0;
+                }   
+                foreach my $srvtype (@srvtypes) {
+                    my $packet = generate_attribute_request(%args, SrvType=>$srvtype);
+                    my $destip = inet_aton($destserver);
+                    my $destaddr = sockaddr_in(427,$destip);
+                                        for( my $j = 0; $j < 1; $j++) {
+                        my $res =  $args{'socket'}->send($packet,0,$destaddr);
+                    } # end of foreach j++
+                }# end of foreach services
+            } # end of while (cread)
+        } else {
+            close CREAD;
+            $rspcount = 0;
+            my $waittime = ($args{Time}>0)?$args{Time}:300;
+            my $deadline = time()+ $waittime;
+            my $waitforsocket = IO::Select->new();
+            $waitforsocket->add($args{'socket'});
+            my $rectime = time() + 5;
+            my $recvzero = 0;
+            while ($deadline > time()) {
+                $rspcount1 = 0;
+                while ($rectime > time()) {
+                    while ($waitforsocket->can_read(0)) {
+                        my $slppacket;
+                        my $peer = $args{'socket'}->recv($slppacket,3000,0);
+                        $rechash{$peer} = $slppacket;
+                    }  #end of can_read
+                } # end of receiving
+                # now begin to parse the packets
+                for my $tp (keys %rechash) {
+                    my @restserver ;
+                    my $pkg = $tp; #$peerarray[$j];
+                    my $slpkg = $rechash{$tp}; #$pkgarray[$j];               
+                    my( $port,$flow,$ip6n,$ip4n,$scope);
+                    my $peername;
+                    if ($ip6support) {
+                        ( $port,$flow,$ip6n,$scope) = Socket6::unpack_sockaddr_in6_all($pkg);
+                        $peername = Socket6::inet_ntop(Socket6::AF_INET6(),$ip6n);
+                    } else {
+                        ($port,$ip4n) = sockaddr_in($pkg);
+                        $peername = inet_ntoa($ip4n);
+                    }
+                    if ($peername =~ /\./) { #ipv4
+                        $peername =~ s/::ffff://;
+                    }
+                    if ($rethash{$peername}) {
+                        next; #got a dupe, discard
+                    }
+                    my $result = process_slp_packet(packet=>$slpkg,sockaddr=>$pkg,'socket'=>$args{'socket'}, peername=>$peername, callback=>$args{reqcallback});
+                    if ($result) {
+                    $rspcount++;
+                    $rspcount1++;
+                        $result->{peername} = $peername;
+                        $result->{scopeid} = $scope;
+                        $result->{sockaddr} = $pkg;
+                        my $hashkey;
+                        if ($peername =~ /fe80/) {
+                            $peername .= '%'.$scope;
+                        }
+                        $rethash{$peername} = $result;
+                        if ($args{Callback}) {
+                            $args{Callback}->($result);
+                        }
+                        foreach my $mynode (@servernodes) {
+                            unless ($mynode =~ $peername) {
+                        push @restserver, $mynode;
+                        }#end of mynode=~peername
+                        } # end of foreach
+						@servernodes = @restserver;
+                    } # end of if result
+                } # end of foreach processing
+                foreach my $node (@servernodes) {
+                    syswrite PWRITE,"$node\n";
+                } # end of foreach servernodes
+            $recvzero++ unless ($rspcount1);
+            last if ($recvzero > 2);    
+            } # end of while(deadline) 
+            syswrite PWRITE,"NowYouNeedToDie\n";
+            close PWRITE; 
+            if (@servernodes) {
+			    my $miss = join(",", @servernodes);
+                send_message($args{reqcallback}, 0, "Warning: can't got attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
+            }
+		}# end of parent process 
+    }  else {
     send_message($args{reqcallback}, 0, "Sending SLP request on interfaces: $printinfo ...") if ($args{reqcallback} and !$args{nomsg} );
 	foreach my $srvtype (@srvtypes) {
 		send_service_request_single(%args,ifacemap=>$interfaces,SrvType=>$srvtype);
 	}
-    my %rethash;
 	unless ($args{NoWait}) { #in nowait, caller owns the responsibility..
 		#by default, report all respondants within 3 seconds:
 		my $waitforsocket = IO::Select->new();
@@ -192,11 +328,11 @@ sub dodiscover {
                 $rspcount1 = 0;
 				}	
 		    }
-  
         } #end nowait
+    } #end of if( unicast )
 
     foreach my $entry (keys %rethash) {
-        handle_new_slp_entity($rethash{$entry})
+        handle_new_slp_entity($rethash{$entry});
         }
     if (xCAT::Utils->isAIX()) {
         foreach my $iface (keys %{$interfaces}) {
@@ -226,12 +362,19 @@ sub process_slp_packet {
 		}
 		my $srvtype = $xid_to_srvtype_map{$parsedpacket->{Xid}};
 		my $packet = generate_attribute_request(%args,SrvType=>$srvtype);
+        $sendhash{$args{peername}}->{package} = $packet;
+        $sendhash{$args{peername}}->{sockaddy} = $sockaddy;
+        $serrpy++;
 		$socket->send($packet,0,$sockaddy);
 		return undef;
 	} elsif ($parsedpacket->{FunctionId} == 7) { #attribute reply
+        $attrpy++;
 		$parsedpacket->{SrvType} = $xid_to_srvtype_map{$parsedpacket->{Xid}};
 		$parsedpacket->{attributes} = parse_attribute_reply($parsedpacket->{payload});
 		#delete $parsedpacket->{payload}; 
+		my $attributes = $parsedpacket->{attributes};
+        my $type = ${$attributes->{'type'}}[0] ;
+        return undef unless ($type) ;
 		return $parsedpacket;
 	} else {
 		return undef;
