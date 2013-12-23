@@ -108,6 +108,11 @@ override_attributes(
        "cirros" => "https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img"
      },
    },
+   "block-storage" => {
+        "rabbit"=>{
+           "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
+        }
+   },
    "dashboard" => {
       "use_ssl" => "false"
    },
@@ -134,7 +139,7 @@ override_attributes(
         }
    },
    "compute" => {
-        "identity_service_chef_role" => "os-compute-single-controller",
+        "identity_service_chef_role" => "os-single-controller",
         "rabbit"=>{
            "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
         },
