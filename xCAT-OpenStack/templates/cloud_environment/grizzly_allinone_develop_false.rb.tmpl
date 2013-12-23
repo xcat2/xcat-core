@@ -108,7 +108,10 @@ override_attributes(
      "identity_service_chef_role" => "allinone-compute"
    },
    "block-storage" => {
-     "keystone_service_chef_role" => "allinone-compute"
+        "rabbit"=>{
+           "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
+        },
+        "keystone_service_chef_role" => "allinone-compute"
    },
    "dashboard" => {
      "keystone_service_chef_role" => "allinone-compute",

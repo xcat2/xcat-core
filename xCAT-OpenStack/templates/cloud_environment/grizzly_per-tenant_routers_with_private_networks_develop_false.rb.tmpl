@@ -108,6 +108,11 @@ override_attributes(
        "cirros" => "https://launchpad.net/cirros/trunk/0.3.0/+download/cirros-0.3.0-x86_64-disk.img"
      },
    },
+   "block-storage" => {
+        "rabbit"=>{
+           "host"=>"#TABLE:clouds:name=$CLOUD:hostip#"
+        }
+   },
    "dashboard" => {
       "use_ssl" => "false"
    },
