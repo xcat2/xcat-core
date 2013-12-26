@@ -14,7 +14,7 @@ describe 'openstack-object-storage::disks' do
       @node = @chef_run.node
       @node.set['platform_family'] = "debian"
       @node.set['lsb']['codename'] = "precise"
-      @node.set['swift']['release'] = "folsom"
+      @node.set['swift']['release'] = "grizzly"
       @node.set['swift']['authmode'] = 'swauth'
       @node.set['swift']['git_builder_ip'] = '10.0.0.10'
       @node.set['swift']['disk_enum_expr'] = "[{ 'sda' => {}}]"

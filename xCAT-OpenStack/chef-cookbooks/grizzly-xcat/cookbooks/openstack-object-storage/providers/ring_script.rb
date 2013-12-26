@@ -62,7 +62,8 @@ def generate_script
 
     # figure out what's present in the cluster
     disk_data[which] = {}
-    disk_state,_,_ = Chef::Search::Query.new.search(:node,"chef_environment:#{node.chef_environment} AND roles:swift-#{which}-server")
+    role = node["swift"]["#{which}_server_chef_role"]
+    disk_state,_,_ = Chef::Search::Query.new.search(:node,"chef_environment:#{node.chef_environment} AND roles:#{role}")
 
     # for a running track of available disks
     disk_data[:available] ||= {}
@@ -195,24 +196,24 @@ def parse_ring_output(ring_data)
       next
     elsif line =~ /^\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\S+)\s+([0-9.]+)\s+(\d+)\s+([-0-9.]+)\s*$/
       output[:hosts] ||= {}
-      output[:hosts][$3] ||= {}
+      output[:hosts][$4] ||= {}
 
-      output[:hosts][$3][$5] = {}
+      output[:hosts][$4][$6] ||= {}
 
-      output[:hosts][$3][$5][:id] = $1
-      output[:hosts][$3][$5][:region] = $2
-      output[:hosts][$3][$5][:zone] = $3
-      output[:hosts][$3][$5][:ip] = $4
-      output[:hosts][$3][$5][:port] = $5
-      output[:hosts][$3][$5][:device] = $6
-      output[:hosts][$3][$5][:weight] = $7
-      output[:hosts][$3][$5][:partitions] = $8
-      output[:hosts][$3][$5][:balance] = $9
+      output[:hosts][$4][$6][:id] = $1
+      output[:hosts][$4][$6][:region] = $2
+      output[:hosts][$4][$6][:zone] = $3
+      output[:hosts][$4][$6][:ip] = $4
+      output[:hosts][$4][$6][:port] = $5
+      output[:hosts][$4][$6][:device] = $6
+      output[:hosts][$4][$6][:weight] = $7
+      output[:hosts][$4][$6][:partitions] = $8
+      output[:hosts][$4][$6][:balance] = $9
     elsif line =~ /^\s+(\d+)\s+(\d+)\s+(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(\S+)\s+([0-9.]+)\s+(\d+)\s+([-0-9.]+)\s*$/
       output[:hosts] ||= {}
       output[:hosts][$3] ||= {}
 
-      output[:hosts][$3][$5] = {}
+      output[:hosts][$3][$5] ||= {}
 
       output[:hosts][$3][$5][:id] = $1
       output[:hosts][$3][$5][:zone] = $2

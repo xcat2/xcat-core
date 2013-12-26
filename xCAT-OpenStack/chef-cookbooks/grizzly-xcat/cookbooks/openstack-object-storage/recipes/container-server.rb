@@ -91,3 +91,31 @@ template "/etc/swift/container-server.conf" do
   notifies :restart, "service[swift-container-updater]", :immediately
   notifies :restart, "service[swift-container-auditor]", :immediately
 end
+
+# Ubuntu 12.04 packages are missing the swift-container-sync service scripts
+# See https://bugs.launchpad.net/cloud-archive/+bug/1250171
+if platform?("ubuntu")
+  cookbook_file "/etc/init/swift-container-sync.conf" do
+    owner "root"
+    group "root"
+    mode "0755"
+    source "swift-container-sync.conf.upstart"
+    action :create
+    not_if "[ -e /etc/init/swift-container-sync.conf ]"
+  end
+  link "/etc/init.d/swift-container-sync" do
+    to "/lib/init/upstart-job"
+    not_if "[ -e /etc/init.d/swift-container-sync ]"
+  end
+end
+
+service_name=platform_options["service_prefix"] + 'swift-container-sync' + platform_options["service_suffix"]
+unless node["swift"]["container-server"]["allowed_sync_hosts"] == []
+  service "swift-container-sync" do
+    service_name service_name
+    provider platform_options["service_provider"]
+    supports :status => false, :restart => true
+    action [:enable, :start]
+    only_if "[ -e /etc/swift/container-server.conf ] && [ -e /etc/swift/container.ring.gz ]"
+  end
+end

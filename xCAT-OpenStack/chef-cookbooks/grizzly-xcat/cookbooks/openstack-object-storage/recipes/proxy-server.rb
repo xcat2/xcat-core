@@ -26,7 +26,8 @@ end
 if node.run_list.expand(node.chef_environment).recipes.include?("openstack-object-storage::setup")
   Chef::Log.info("I ran the openstack-object-storage::setup so I will use my own swift passwords")
 else
-  setup = search(:node, "chef_environment:#{node.chef_environment} AND roles:swift-setup")
+  setup_role = node["swift"]["setup_chef_role"]
+  setup = search(:node, "chef_environment:#{node.chef_environment} AND roles:#{setup_role}")
   if setup.length == 0
     Chef::Application.fatal! "You must have run the openstack-object-storage::setup recipe (on this or another node) before running the swift::proxy recipe on this node"
   elsif setup.length == 1
@@ -47,10 +48,34 @@ platform_options["proxy_packages"].each do |pkg|
   end
 end
 
-package "python-swauth" do
-  action :install
-  only_if { node["swift"]["authmode"] == "swauth" }
+if node["swift"]["authmode"] == "swauth"
+  case node["swift"]["swauth_source"]
+  when "package"
+    platform_options["swauth_packages"].each do |pkg|
+      package pkg do
+        action :install
+        options platform_options["override_options"]
+      end
+    end
+  when "git"
+    git "#{Chef::Config[:file_cache_path]}/swauth" do
+      repository node["swift"]["swauth_repository"]
+      revision   node["swift"]["swauth_version"]
+      action :sync
+    end
+
+    bash "install_swauth" do
+      cwd "#{Chef::Config[:file_cache_path]}/swauth"
+      user "root"
+      group "root"
+      code <<-EOH
+        python setup.py install
+      EOH
+      environment 'PREFIX' => "/usr/local"
+    end
+  end
 end
+
 
 package "python-swift-informant" do
   action :install
@@ -84,7 +109,8 @@ if Chef::Config[:solo]
    memcache_servers = [ "127.0.0.1:11211" ]
 else
    memcache_servers = []
-   proxy_nodes = search(:node, "chef_environment:#{node.chef_environment} AND roles:swift-proxy-server")
+   proxy_role = node["swift"]["proxy_server_chef_role"]
+   proxy_nodes = search(:node, "chef_environment:#{node.chef_environment} AND roles:#{proxy_role}")
    proxy_nodes.each do |proxy|
      proxy_ip = locate_ip_in_cidr(node["swift"]["network"]["proxy-cidr"], proxy)
      next if not proxy_ip # skip nil ips so we dont break the config

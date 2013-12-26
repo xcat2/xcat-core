@@ -63,6 +63,14 @@ Attributes
 
  * ```default[:swift][:authmode]``` - "swauth" or "keystone" (default "swauth"). Right now, only swauth is supported (defaults to swauth)
 
+ * ```default[:swift][:tempurl]``` - "true" or "false". Adds tempurl to the pipeline and sets allow_overrides to true when using swauth
+
+ * ```default[:swift][:swauth_source]``` - "git" or "package"(default). Selects between installing python-swauth from git or system package
+
+ * ```default[:swift][:swauth_repository]``` - Specifies git repo. Default "https://github.com/gholt/swauth.git"
+
+ * ```default[:swift][:swauth_version]``` - Specifies git repo tagged branch. Default "1.0.8"
+
  * ```default[:swift][:swift_secret_databag_name]``` - this cookbook supports an optional secret databag where we will retrieve the following attributes overriding any default attributes below. (defaults to nil)
 
 ```
@@ -249,7 +257,7 @@ License and Author
 |                      |                                                    |
 |:---------------------|:---------------------------------------------------|
 | **Authors**          |  Alan Meadows (<alan.meadows@gmail.com>)           |
-|                      |  Oisin Feely (<of3434@att.com>)                    |
+|                      |  Oisin Feeley (<of3434@att.com>)                    |
 |                      |  Ron Pedde (<ron.pedde@rackspace.com>)             |
 |                      |  Will Kelly (<will.kelly@rackspace.com>)           |
 |                      |                                                    |

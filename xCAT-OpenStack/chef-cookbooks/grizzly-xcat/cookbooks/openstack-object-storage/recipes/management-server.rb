@@ -26,10 +26,29 @@ include_recipe "openstack-object-storage::ring-repo"
 platform_options = node["swift"]["platform"]
 
 if node["swift"]["authmode"] == "swauth"
-  platform_options["swauth_packages"].each.each do |pkg|
-    package pkg do
-      action :install
-      options platform_options["override_options"] # retain configs
+  case node["swift"]["swauth_source"]
+  when "package"
+    platform_options["swauth_packages"].each do |pkg|
+      package pkg do
+        action :install
+        options platform_options["override_options"]
+      end
+    end
+  when "git"
+    git "#{Chef::Config[:file_cache_path]}/swauth" do
+      repository node["swift"]["swauth_repository"]
+      revision   node["swift"]["swauth_version"]
+      action :sync
+    end
+
+    bash "install_swauth" do
+      cwd "#{Chef::Config[:file_cache_path]}/swauth"
+      user "root"
+      group "root"
+      code <<-EOH
+        python setup.py install
+      EOH
+      environment 'PREFIX' => "/usr/local"
     end
   end
 end
@@ -42,6 +61,19 @@ else
   swift_secrets = Chef::EncryptedDataBagItem.load "secrets", node['swift']['swift_secret_databag_name']
   auth_user = swift_secrets['dispersion_auth_user']
   auth_key = swift_secrets['dispersion_auth_key']
+end
+
+if node['swift']['statistics']['enabled']
+  template platform_options["swift_statsd_publish"] do
+    source "swift-statsd-publish.py.erb"
+    owner "root"
+    group "root"
+    mode "0755"
+  end
+  cron "cron_swift_statsd_publish" do
+    command "#{platform_options['swift_statsd_publish']} > /dev/null 2>&1"
+    minute "*/#{node["swift"]["statistics"]["report_frequency"]}"
+  end
 end
 
 template "/etc/swift/dispersion.conf" do

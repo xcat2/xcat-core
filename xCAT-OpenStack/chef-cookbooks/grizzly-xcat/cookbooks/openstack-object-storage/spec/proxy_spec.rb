@@ -14,6 +14,8 @@ describe 'openstack-object-storage::proxy-server' do
       @node = @chef_run.node
       @node.set['lsb']['code'] = 'precise'
       @node.set['swift']['authmode'] = 'swauth'
+      @node.set['swift']['platform']['swauth_packages'] = ['swauth']
+      @node.set['swift']['swauth_source'] = 'package'
       @node.set['swift']['network']['proxy-bind-ip'] = '10.0.0.1'
       @node.set['swift']['network']['proxy-bind-port'] = '8080'
       @chef_run.converge "openstack-object-storage::proxy-server"
@@ -28,7 +30,7 @@ describe 'openstack-object-storage::proxy-server' do
     end
 
     it "installs swauth package if swauth is selected" do
-      expect(@chef_run).to install_package "python-swauth"
+      expect(@chef_run).to install_package "swauth"
     end
 
     it "starts swift-proxy on boot" do

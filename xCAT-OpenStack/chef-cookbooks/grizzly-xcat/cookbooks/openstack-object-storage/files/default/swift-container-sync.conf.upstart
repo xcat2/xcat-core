@@ -1,0 +1,19 @@
+# swift-container-sync - SWIFT Container Sync
+#
+# The swift container sync.
+
+description     "SWIFT Container Sync"
+author          "Sergio Rubio <rubiojr@bvox.net>"
+
+start on runlevel [2345]
+stop on runlevel [016]
+
+pre-start script
+  if [ -f "/etc/swift/container-server.conf" ]; then
+    exec /usr/bin/swift-init container-sync start
+  else
+    exit 1
+  fi
+end script
+
+post-stop exec /usr/bin/swift-init container-sync stop

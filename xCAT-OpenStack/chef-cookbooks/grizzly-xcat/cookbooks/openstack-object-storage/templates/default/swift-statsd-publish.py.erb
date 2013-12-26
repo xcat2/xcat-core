@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+# coding=utf-8
+#
+#    Author: Alan Meadows <alan.meadows@gmail.com>
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+#
+"""
+THIS FILE WAS INSTALLED BY CHEF.  ANY CHANGES WILL BE OVERWRITTEN.
+
+Openstack swift collector for recon and dispersion reports.  Will send
+back dispersion reporting metrics as well as swift recon statistics
+to a statsd server for graphite consumption
+"""
+
+from subprocess import Popen, PIPE, check_call
+from socket import socket, AF_INET, SOCK_DGRAM
+import re
+import os
+
+try:
+    import json
+    json  # workaround for pyflakes issue #13
+except ImportError:
+    import simplejson as json
+
+
+class OpenStackSwiftStatisticsCollector(object):
+
+    def __init__(self):
+        '''Setup some initial values defined by chef'''
+
+        self.statsd_host              = '<%= node[:swift][:statistics][:statsd_host] %>'
+        self.statsd_port              = <%= node[:swift][:statistics][:statsd_port] %>
+        self.statsd_prefix            = '<%= node[:swift][:statistics][:statsd_prefix] %>'
+<% if node[:swift][:statistics][:enable_dispersion_report] -%>
+        self.enable_dispersion_report = True
+<% else %>
+        self.enable_dispersion_report = False
+<% end %>
+<% if node[:swift][:statistics][:enable_recon_report] -%>
+        self.enable_recon_report      = True
+<% else %>
+        self.enable_recon_report      = False
+<% end %>
+<% if node[:swift][:statistics][:enable_disk_report] -%>
+        self.enable_disk_report       = True
+<% else %>
+        self.enable_disk_report       = False
+<% end %>
+        self.recon_account_cache      = '<%= node[:swift][:statistics][:recon_account_cache] %>'
+        self.recon_container_cache    = '<%= node[:swift][:statistics][:recon_container_cache] %>'
+        self.recon_object_cache       = '<%= node[:swift][:statistics][:recon_object_cache] %>'
+
+    def _dispersion_report(self):
+        """
+        Swift Dispersion Report Collection
+        """
+        p = Popen(['/usr/bin/swift-dispersion-report', '-j'],
+            stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p.communicate()
+        self.publish('%s.dispersion.errors' % self.statsd_prefix, len(stderr.split('\n')) - 1)
+        data = json.loads(stdout)
+        for t in ('object', 'container'):
+            for (k, v) in data[t].items():
+                self.publish('%s.dispersion.%s.%s' % (self.statsd_prefix, t, k), v)
+
+    def _recon_report(self):
+        """
+        Swift Recon Collection
+        """
+        recon_cache = {'account': self.recon_account_cache,
+                       'container': self.recon_container_cache,
+                       'object': self.recon_object_cache}
+        for recon_type in recon_cache:
+            if not os.access(recon_cache[recon_type], os.R_OK):
+                continue
+            try:
+                f = open(recon_cache[recon_type])
+                try:
+                    rmetrics = json.loads(f.readlines()[0].strip())
+                    metrics = self._process_cache(rmetrics)
+                    for k, v in metrics:
+                        metric_name = '%s.%s.%s' % (self.statsd_prefix, recon_type, ".".join(k))
+                        if isinstance(v, (int, float)):
+                            self.publish(metric_name, v)
+                except (ValueError, IndexError):
+                    continue
+            finally:
+                f.close()
+
+    def _disk_report(self):
+        """
+        Swift Disk Capacity Report
+        """
+        p = Popen(['/usr/bin/swift-recon', '-d'],
+            stdout=PIPE, stderr=PIPE)
+        stdout, stderr = p.communicate()
+
+        used, total = 0, 0
+        match = re.search(r'.* space used: ([0-9]*\.?[0-9]+) of ([0-9]*\.?[0-9]+)', stdout, re.M|re.I)
+        if match:
+            used, total = [int(i) for i in match.groups()]
+
+        highest, avg = 0, 0
+        match = re.search(r'.* lowest:.+highest: ([0-9]*\.?[0-9]+)%, avg: ([0-9]*\.?[0-9]+)%', stdout, re.M|re.I)
+        if match:
+            highest, avg = match.groups()
+
+        self.publish('%s.capacity.bytes_used' % self.statsd_prefix, used)
+        self.publish('%s.capacity.bytes_free' % self.statsd_prefix, total-used)
+        self.publish('%s.capacity.bytes_utilization' % self.statsd_prefix, int((used/total)*100))
+        self.publish('%s.capacity.single_disk_utilization_highest' % self.statsd_prefix, highest)
+        self.publish('%s.capacity.single_disk_utilization_average' % self.statsd_prefix, avg)
+
+    def collect(self):
+
+        if (self.enable_dispersion_report):
+            self._dispersion_report()
+
+        if (self.enable_recon_report):
+            self._recon_report()
+
+        if (self.enable_disk_report):
+            self._disk_report()
+
+    def publish(self, metric_name, value):
+        """Publish a metric to statsd server"""
+        # TODO: IPv6 support
+        print '%s:%s|g' % (metric_name.encode('utf-8'), value), (self.statsd_host, self.statsd_port)
+        udp_sock = socket(AF_INET, SOCK_DGRAM)
+        udp_sock.sendto('%s:%s|g' % (metric_name.encode('utf-8'), value), (self.statsd_host, self.statsd_port))
+
+    def _process_cache(self, d, path=()):
+        """Recusively walk a nested recon cache dict to obtain path/values"""
+        metrics = []
+        for k, v in d.iteritems():
+            if not isinstance(v, dict):
+                metrics.append((path + (k,), v))
+            else:
+                self._process_cache(v, path + (k,))
+        return metrics
+
+if __name__ == '__main__':
+    collector =  OpenStackSwiftStatisticsCollector()
+    collector.collect()

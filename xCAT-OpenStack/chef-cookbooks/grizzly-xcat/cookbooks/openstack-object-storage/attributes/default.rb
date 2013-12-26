@@ -11,7 +11,7 @@ default["swift"]["git_builder_ip"] = "127.0.0.1"
 
 # the release only has any effect on ubuntu, and must be
 # a valid release on http://ubuntu-cloud.archive.canonical.com/ubuntu
-default["swift"]["release"] = "folsom"
+default["swift"]["release"] = "grizzly"
 
 # we support an optional secret databag where we will retrieve the
 # following attributes overriding any default attributes here
@@ -24,6 +24,17 @@ default["swift"]["release"] = "folsom"
 #   "dispersion_auth_key": "test"
 # }
 default["swift"]["swift_secret_databag_name"] = nil
+
+#--------------------
+# roles
+#--------------------
+
+default["swift"]["setup_chef_role"]             = "swift-setup"
+default["swift"]["management_server_chef_role"] = "swift-management-server"
+default["swift"]["proxy_server_chef_role"]      = "swift-proxy-server"
+default["swift"]["object_server_chef_role"]     = "swift-object-server"
+default["swift"]["account_server_chef_role"]    = "swift-account-server"
+default["swift"]["container_server_chef_role"]  = "swift-container-server"
 
 #--------------------
 # authentication
@@ -53,7 +64,40 @@ default["swift"]["ring"]["replicas"] = 3
 #------------------
 # statistics
 #------------------
-default["swift"]["enable_statistics"] = true
+default["swift"]["statistics"]["enabled"] = true
+default["swift"]["statistics"]["sample_rate"] = 1
+
+# there are two ways to discover your graphite server ip for
+# statsd to periodically publish to.  You can directly set
+# the ip below, or leave it set to nil and supply chef with
+# the role name of your graphite server and the interface
+# name to retrieve the appropriate internal ip address from
+#
+# if no servers with the role below can be found then
+# 127.0.0.1 will be used
+default["swift"]["statistics"]["graphing_ip"]  = nil
+default["swift"]["statistics"]["graphing_role"] = 'graphite-role'
+default["swift"]["statistics"]["graphing_interface"] = 'eth0'
+
+# how frequently to run chef instantiated /usr/local/bin/swift_statsd_publish.py
+# which publishes dispersion and recon statistics (in minutes)
+default["swift"]["statistics"]["report_frequency"] = 15
+
+# enable or disable specific portions of generated report
+default["swift"]["statistics"]["enable_dispersion_report"] = true
+default["swift"]["statistics"]["enable_recon_report"] = true
+default["swift"]["statistics"]["enable_disk_report"] = true
+
+# settings for statsd which should be configured to use the local
+# statsd daemon that chef will install if statistics are enabled
+default["swift"]["statistics"]["statsd_host"] = "127.0.0.1"
+default["swift"]["statistics"]["statsd_port"] = "8125"
+default["swift"]["statistics"]["statsd_prefix"] = "openstack.swift"
+
+# paths to the recon cache files
+default["swift"]["statistics"]["recon_account_cache"] = "/var/cache/swift/account.recon"
+default["swift"]["statistics"]["recon_container_cache"] = "/var/cache/swift/container.recon"
+default["swift"]["statistics"]["recon_object_cache"] = "/var/cache/swift/object.recon"
 
 #------------------
 # network settings
@@ -109,10 +153,51 @@ default["swift"]["disk_test_filter"] = [ "candidate =~ /(sd|hd|xvd|vd)(?!a$)[a-z
                                          "not system('/sbin/parted /dev/' + candidate + ' -s print | grep linux-swap')",
                                          "not info.has_key?('removable') or info['removable'] == 0.to_s" ]
 
+#-------------------
+# template overrides
+#-------------------
+
+# proxy-server
+
+# override in a wrapper to enable tempurl with swauth
+default["swift"]["tempurl"]["enabled"] = false
+
+# container-server
+
+# Override this with an allowed list of your various swift clusters if you wish
+# to enable container sync for your end-users between clusters.  This should
+# be an array of fqdn hostnames for the cluster end-points that your end-users
+# would access in the format of ['host1', 'host2', 'host3']
+default["swift"]["container-server"]["allowed_sync_hosts"] = []
+
+# container-sync logging settings
+default["swift"]["container-server"]["container-sync"]["log_name"] = 'container-sync'
+default["swift"]["container-server"]["container-sync"]["log_facility"] = 'LOG_LOCAL0'
+default["swift"]["container-server"]["container-sync"]["log_level"] = 'INFO'
+
+# If you need to use an HTTP Proxy, set it here; defaults to no proxy.
+default["swift"]["container-server"]["container-sync"]["sync_proxy"] = nil
+
+# Will sync, at most, each container once per interval (in seconds)
+default["swift"]["container-server"]["container-sync"]["interval"] = 300
+
+# Maximum amount of time to spend syncing each container per pass (in seconds)
+default["swift"]["container-server"]["container-sync"]["container_time"] = 60
+
+#------------------
+# swauth source
+# -----------------
+# Versions of swauth in Ubuntu Cloud Archive PPA can be outdated. This
+# allows us to chose to install directly from a tagged branch of
+# gholt's repository.
+# values:  package, git
+default["swift"]["swauth_source"] = "package"
+default["swift"]["swauth_repository"] = "https://github.com/gholt/swauth.git"
+default["swift"]["swauth_version"] = "1.0.8"
+
 #------------------
 # packages
 #------------------
-
 
 # Leveling between distros
 case platform
@@ -132,7 +217,8 @@ when "redhat"
     "git_dir" => "/var/lib/git",
     "git_service" => "git",
     "service_provider" => Chef::Provider::Service::Redhat,
-    "override_options" => ""
+    "override_options" => "",
+    "swift_statsd_publish" => "/usr/bin/swift-statsd-publish.py"
   }
 #
 # python-iso8601 is a missing dependency for swift.
@@ -153,7 +239,8 @@ when "centos"
     "git_dir" => "/var/lib/git",
     "git_service" => "git",
     "service_provider" => Chef::Provider::Service::Redhat,
-    "override_options" => ""
+    "override_options" => "",
+    "swift_statsd_publish" => "/usr/bin/swift-statsd-publish.py"
   }
 when "fedora"
   default["swift"]["platform"] = {
@@ -171,7 +258,8 @@ when "fedora"
     "git_dir" => "/var/lib/git",
     "git_service" => "git",
     "service_provider" => Chef::Provider::Service::Systemd,
-    "override_options" => ""
+    "override_options" => "",
+    "swift_statsd_publish" => "/usr/bin/swift-statsd-publish.py"
   }
 when "ubuntu"
   default["swift"]["platform"] = {
@@ -189,6 +277,7 @@ when "ubuntu"
     "git_dir" => "/var/cache/git",
     "git_service" => "git-daemon",
     "service_provider" => Chef::Provider::Service::Upstart,
-    "override_options" => "-o Dpkg::Options:='--force-confold' -o Dpkg::Option:='--force-confdef'"
+    "override_options" => "-o Dpkg::Options:='--force-confold' -o Dpkg::Option:='--force-confdef'",
+    "swift_statsd_publish" => "/usr/local/bin/swift-statsd-publish.py"
   }
 end

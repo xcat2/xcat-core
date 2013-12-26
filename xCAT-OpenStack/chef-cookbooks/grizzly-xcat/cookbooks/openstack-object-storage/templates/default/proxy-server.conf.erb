@@ -8,15 +8,23 @@ when "swauth"
 end
 
 account_management=false
-if node[:roles].include?("swift-management-server") and node[:swift][:authmode] == "swauth" then
+if node[:swift][:authmode] == "swauth" then
   account_management="true"
 end
+
+# need to both: 1) add tempurl before auth middleware, 2) set allow_overrides=true
+tempurl_toggle=false
+if node[:swift][:authmode] == "swauth" and node[:swift][:tempurl][:enabled] == true then
+  tempurl_toggle = true
+  pipeline = "tempurl swauth"
+end
+
 -%>
 # This file is managed by chef.  Do not edit it.
 #
 # Cluster info:
 #   Auth mode: <%= node[:swift][:authmode] %>
-#   Management server: <%= node[:roles].include?("swift-management-server") %>
+#   Management server: <%= node[:roles].include?(node[:swift][:management_server_chef_role]) %>
 #   Account management enabled: <%= account_management %>
 #   Auth pipeline: <%= pipeline %>
 
@@ -38,11 +46,11 @@ end
 workers = <%= [ node[:cpu][:total] - 1, 1 ].max %>
 bind_ip = <%= @bind_host %>
 bind_port = <%= @bind_port %>
-<% if node[:swift][:enable_statistics] -%>
+<% if node[:swift][:statistics][:enabled] -%>
 log_statsd_host = localhost
 log_statsd_port = 8125
-log_statsd_default_sample_rate = 1
-log_statsd_metric_prefix = openstack.swift.<%= node[:hostname] %>
+log_statsd_default_sample_rate = <%= node[:swift][:statistics][:sample_rate] %>
+log_statsd_metric_prefix = <%= node[:swift][:statistics][:statsd_prefix] %>.<%= node[:hostname] %>
 <% end %>
 
 
@@ -82,13 +90,7 @@ use = egg:swift#proxy
 # If set to 'true' authorized accounts that do not yet exist within the Swift
 # cluster will be automatically created.
 # account_autocreate = false
-######
-#
-# N.B. ideally allow_account_management would only be set on the
-# management server, but swauth will delete using the cluster url
-# and not the local url
-# allow_account_managemnet = <%= account_management %>
-allow_account_management = true
+allow_account_management = <%= account_management %>
 
 <% if @authmode == "keystone" -%>
 account_autocreate = true
@@ -106,6 +108,12 @@ default_swift_cluster = local#<%= node[:swift][:swift_url] %>#<%= node[:swift][:
 <% else %>
 default_swift_cluster = local#<%= node[:swift][:swift_url] %>
 <% end %>
+<% if tempurl_toggle -%>
+allow_overrides = true
+<% end %>
+<% end %>
+<% if node["swift"]["container-server"]["allowed_sync_hosts"] -%>
+allowed_sync_hosts = <%= node["swift"]["container-server"]["allowed_sync_hosts"].join(",") %>
 <% end %>
 
 [filter:healthcheck]
@@ -253,7 +261,7 @@ use = egg:swift#proxy_logging
 # You can use log_statsd_* from [DEFAULT] or override them here:
 # access_log_statsd_host = localhost
 # access_log_statsd_port = 8125
-# access_log_statsd_default_sample_rate = 1
+# access_log_statsd_default_sample_rate = <%= node[:swift][:statistics][:sample_rate] %>
 # access_log_statsd_metric_prefix =
 # access_log_headers = False
 # What HTTP methods are allowed for StatsD logging (comma-sep); request methods

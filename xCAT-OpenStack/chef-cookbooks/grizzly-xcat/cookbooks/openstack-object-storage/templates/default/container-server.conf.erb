@@ -18,12 +18,16 @@
 bind_ip = <%= @bind_ip %>
 bind_port = <%= @bind_port %>
 workers = 10
-<% if node[:swift][:enable_statistics] -%>
+<% if node["swift"]["enable_statistics"] -%>
 log_statsd_host = localhost
 log_statsd_port = 8125
 log_statsd_default_sample_rate = 1
-log_statsd_metric_prefix = openstack.swift.<%= node[:hostname] %>
-<% end %>
+log_statsd_metric_prefix = openstack.swift.<%= node["hostname"] %>
+<% end -%>
+
+<% if node["swift"]["container-server"]["allowed_sync_hosts"] -%>
+allowed_sync_hosts = <%= node["swift"]["container-server"]["allowed_sync_hosts"].join(",") %>
+<% end -%>
 
 [pipeline:main]
 pipeline = container-server
@@ -77,12 +81,14 @@ use = egg:swift#container
 
 [container-sync]
 # You can override the default log routing for this app here (don't use set!):
-# log_name = container-sync
-# log_facility = LOG_LOCAL0
-# log_level = INFO
+log_name = <%= node["swift"]["container-server"]["container-sync"]["log_name"] %>
+log_facility = <%= node["swift"]["container-server"]["container-sync"]["log_facility"] %>
+log_level = <%= node["swift"]["container-server"]["container-sync"]["log_level"] %>
 # If you need to use an HTTP Proxy, set it here; defaults to no proxy.
-# sync_proxy = http://127.0.0.1:8888
+<% if node["swift"]["container-server"]["container-sync"]["sync_proxy"] -%>
+sync_proxy = <%= node["swift"]["container-server"]["container-sync"]["sync_proxy"] %>
+<% end -%>
 # Will sync, at most, each container once per interval
-# interval = 300
+interval = <%= node["swift"]["container-server"]["container-sync"]["interval"] %>
 # Maximum amount of time to spend syncing each container per pass
-# container_time = 60
+container_time = <%= node["swift"]["container-server"]["container-sync"]["container_time"] %>
