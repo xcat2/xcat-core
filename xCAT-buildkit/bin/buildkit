@@ -2169,10 +2169,10 @@ sub gen_kitcomp_spec
         if (defined($comp->{preupgrade})) {
             $preupscript = &load_script("$scriptdir$comp->{preupgrade}");
             $preupscript = "if [ \"\$1\" = \"2\" ] ; then\n" . $preupscript . "\nfi";}
-        if (defined($comp->{preuninstall})) {
-            $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
     }
     if ( $level eq 'METARPM' || $level eq 'ALL' ) {
+        if (defined($comp->{preuninstall})) {
+            $preunscript = &load_script("$scriptdir$comp->{preuninstall}"); }
         if (defined($comp->{postinstall})) {
             $postscript = &load_script("$scriptdir$comp->{postinstall}"); 
             $postscript = "if [ \"\$1\" = \"1\" ] ; then\n" . $postscript . "\nfi"; }
