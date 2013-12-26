@@ -1,69 +1,53 @@
-# DESCRIPTION
+Description
+===========
 
-Chef cookbook to install [Etsy's
-StatsD](https://github.com/etsy/statsd) daemon. Supports the new
-pluggable backend modules.
+Installs and sets up statsd <http://github.com/etsy/statsd>
 
-# REQUIREMENTS
+Requirements
+============
 
-Depends on the cookbooks:
+Ubuntu 12.04
 
- * git
- * nodejs
+Attributes
+==========
 
-# ATTRIBUTES
+* `node['statsd']['port']` - The port for Statsd to listen for stats on. Defaults to 8125
+* `node['statsd']['graphite_host']` - The host to forward processed statistics to. Defaults to localhost.
+* `node['statsd']['graphite_port']` - The port to forward processed statistics to. Defaults to 2003
+* `node['statsd']['package_version']` - The version to use when creating the package. Defaults to 0.6.0
+* `node['statsd']['tmp_dir']` - The temporary directory to while building the package. Defaults to /tmp
+* `node['statsd']['repo']` - The gitrepo to use. Defaults to "git://github.com/etsy/statsd.git"
+* `node['statsd']['sha']`  - The sha checksum of the repo to use
 
-## Basic attributes
+Usage
+=====
 
- * `repo`: Location of statsd repo (defaults to Etsy's).
- * `log_file`: Where to log output (defaults to:
-    `/var/log/statsd.log`).
- * `flush_interval_msecs`: Flush interval in msecs (default 10000).
- * `port`: Port to listen for UDP stats (default 8125).
+Including this recipe will build a dpkg from the statsd git repository and install it.
 
-## Graphite settings
+By default statsd will attempt to send statistics to a graphite instance running on localhost.
 
- * `graphite_enabled`: Enable the built-in Graphite backend (default true).
- * `graphite_port`: Port to talk to Graphite on (default 2003).
- * `graphite_host`: Host name of Graphite server (default localhost).
+Testing
+=======
 
-## Adding backends
+    $ bundle install
+    $ bundle exec berks install
+    $ bundle exec strainer test
 
-Set the attribute `backends` to a hash of statsd NPM module
-backends. The hash key is the name of the NPM module, while the hash
-value is the version of the NPM module to install (or null for latest
-version).
+License and Author
+==================
 
-For example, to use version 0.0.1 of [statsd-librato-backend][]:
+Author:: Scott Lampert (<sl724q@att.com>)
 
-    attrs[:statsd][:backends] = { 'statsd-librato-backend' => '0.0.1' }
+Copyright 2012-2013, AT&T Services, Inc.
 
-To use the latest version of statsd-librato-backend:
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-    attrs[:statsd][:backends] = { 'statsd-librato-backend' => nil }
+    http://www.apache.org/licenses/LICENSE-2.0
 
-The cookbook will install each backend module under the statsd
-directory and add it to the list of backends loaded in the
-configuration file.
-
-### Extra backend configuration
-
-Set the attribute `extra_config` to any additional configuration
-options that should be included in the StatsD configuration file.
-
-For example, to set your email and token for the
-[statsd-librato-backend][] backend module, use the following:
-
-```js
-    attrs[:statsd][:extra_config] => {
-      'librato' => {
-        'email' => 'myemail@example.com',
-        'token' => '1234567890ABCDEF'
-      }
-    }
-```
-
-# USAGE
-
-
-[statsd-librato-backend]: https://github.com/librato/statsd-librato-backend
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

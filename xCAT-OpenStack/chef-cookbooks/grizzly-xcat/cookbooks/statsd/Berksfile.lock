@@ -1,0 +1,28 @@
+{
+  "sources": {
+    "statsd": {
+      "path": "."
+    },
+    "build-essential": {
+      "locked_version": "1.4.2"
+    },
+    "git": {
+      "locked_version": "2.6.0"
+    },
+    "dmg": {
+      "locked_version": "2.0.0"
+    },
+    "yum": {
+      "locked_version": "2.3.2"
+    },
+    "windows": {
+      "locked_version": "1.10.0"
+    },
+    "chef_handler": {
+      "locked_version": "1.1.4"
+    },
+    "runit": {
+      "locked_version": "1.2.0"
+    }
+  }
+}
