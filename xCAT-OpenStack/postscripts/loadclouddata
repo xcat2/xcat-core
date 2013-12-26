@@ -206,11 +206,18 @@ then
             exit 1
         fi
 
+        roles=`echo $roles | sed -e 's/ /,/g'` 
+        r="";        
+        for onerole in $roles
+        do
+            r+="role[$onerole],"
+        done
+ 
         # assign the role for the chef node
-        knife node run_list add $c_fullname "role[$roles]"
+        knife node run_list add $c_fullname "$r"
         if [ $? != 0 ]
         then  
-            errmsg="Failed to run knife node run_list add $client 'role[$roles]' on the chef-server $NODE."
+            errmsg="Failed to run knife node run_list add $client '$r' on the chef-server $NODE."
             logger -t xcat -p local4.err $errmsg
             echo $errmsg
             exit 1
