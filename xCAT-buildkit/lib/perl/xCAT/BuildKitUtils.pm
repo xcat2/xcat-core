@@ -266,6 +266,8 @@ sub testVersion
     for (my $i = 0 ; $i < $len ; $i++)
     {
         # remove any non-numbers on the end
+      if(defined($a1[$i])&&defined($a2[$i]))
+      { 
         my ($d1) = $a1[$i] =~ /^(\d*)/;  
         my ($d2) = $a2[$i] =~ /^(\d*)/;
 
@@ -285,6 +287,7 @@ sub testVersion
             $num1 .= $d1;
             $num2 .= $d2;
         }
+      }
     }
 
     # Remove the leading 0s or perl will interpret the numbers as octal
