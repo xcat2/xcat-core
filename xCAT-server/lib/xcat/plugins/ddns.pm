@@ -559,7 +559,7 @@ sub process_request {
                 my @nservers = split /[ ,]/,$site_entry;
                 $ctx->{dnsupdaters} = \@nservers;
         }
-        if ($zapfiles) { #here, we unlink all the existing files to start fresh
+        if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
             if (xCAT::Utils->isAIX())
             {
                 system("/usr/bin/stopsrc -s $service");
@@ -998,8 +998,11 @@ sub update_namedconf {
         }
     }
     unless ($gotoptions) {
-        push @newnamed,"options {\n","\tdirectory \"".$ctx->{zonesdir}."\";\n";
-	push @newnamed,"\t\t//listen-on-v6 { any; };\n";
+           push @newnamed,"options {\n";
+        unless ($slave) {
+           push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
+        }
+	 push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
@@ -1038,8 +1041,8 @@ sub update_namedconf {
         }    
     }
 
-    my $cmd = "grep '^nameserver' /etc/resolv.conf | awk '{print $2}'";
-    my @output=xCAT::Utils->runcmd($cmd, 0);
+    my $cmd = "grep '^nameserver' /etc/resolv.conf | awk '{print \$2}'";
+    my @output = xCAT::Utils->runcmd($cmd, 0);
     my $zone;
     foreach $zone (keys %{$ctx->{zonestotouch}}) {
         if ($didzones{$zone}) { next; }
@@ -1049,7 +1052,7 @@ sub update_namedconf {
             push @newnamed,"\ttype slave;\n";
             push @newnamed,"\tmasters { $output[0]; };\n";
         } else {
-           push @newnamed,"\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
+           push @newnamed,"\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n","\t};\n";
             foreach (@{$ctx->{dnsupdaters}}) {
                 push @newnamed,"\t\t$_;\n";
             }
@@ -1059,12 +1062,12 @@ sub update_namedconf {
             $net =~ s/.IN-ADDR\.ARPA.*//;
             my @octets = split/\./,$net;
             $net = join('.',reverse(@octets));
-            push @newnamed,"\t};\n","\tfile \"db.$net\";\n","};\n";
+            push @newnamed,"\tfile \"db.$net\";\n","};\n";
 
         } else {
             my $zfilename = $zone;
             #$zfilename =~ s/\..*//;
-            push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n";
+            push @newnamed,"\tfile \"db.$zfilename\";\n","};\n";
         }
     }
     foreach $zone (keys %{$ctx->{adzones}}) {
