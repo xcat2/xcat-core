@@ -827,7 +827,7 @@ sub get_mac_addr {
     $done[0] = 0;
     $cmd[0] = "\" local-mac-address\" ". $phandle . " get-package-property\r";
     $msg[0] = "Status: return code and mac-address now on stack\n";
-    $pattern[0] = "ok";#"\s*3 >";
+    $pattern[0] = "local-mac-address.*ok";#"\s*3 >";
     $newstate[0] = 1;
 
     # cmd(1) is a dot (.). This is a stack manipulation command that removes one
@@ -1231,8 +1231,8 @@ sub  ping_server{
     $done[2] = 0;
     $cmd[2] = "dev /packages/net\r";
     $msg[2] = "Status: selected the /packages/net node as the active package\n";
-    #$pattern[2] = ".*dev(.*)ok(.*)0 >(.*)";
-    $pattern[2] = "ok";
+    $pattern[2] = ".*dev.*packages.*net(.*)ok(.*)0 >(.*)";
+    #$pattern[2] = "ok";
     $newstate[2]= 3;
 
     # state 3, ping the server
@@ -1265,6 +1265,7 @@ sub  ping_server{
 
     # state 5, all done
     $done[5] = 1;
+
 
     # for ping, only need to set speed and duplex for ethernet adapters
     #
@@ -1323,8 +1324,10 @@ sub  ping_server{
 
     $timeout = 300;
     while ( $done[$state] eq 0 ) {
+
         send_command($verbose, $rconsole, $cmd[$state]);
         @result = $rconsole->expect(
+
             $timeout,
             [qr/$pattern[$state]/s=>
             sub {
@@ -1362,7 +1365,9 @@ sub  ping_server{
                 }
             ],
         );
-        return 1 if ($rc eq 1);
+
+       return 1 if ($rc eq 1);
+
         if ( $state eq 1 ) {
             $adap_conn = $adap_conn_list[$j];
             $cmd[1] = "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r";
@@ -2050,14 +2055,46 @@ sub multiple_open_dev {
                  ; \r";
     send_command($verbose, $rconsole, $command);
 
-    $command = "patch new-open-dev open-dev net-ping \r";
-    send_command($verbose, $rconsole, $command);
-
     $timeout = 30;
     $rconsole->expect(
         $timeout,
-        #[qr/patch new-open-dev(.*)>/=>
-        [qr/>/=>
+        [qr/new-open-dev(.*)ok/=>
+        #[qr/>/=>
+            sub {
+                nc_msg($verbose, "Status: at End of multiple_open_dev \n");
+                $rconsole->clear_accum();
+             }
+        ],
+        [qr/]/=>
+            sub {
+                nc_msg($verbose, "Unexpected prompt\n");
+                $rconsole->clear_accum();
+                $rc = 1;
+             }
+        ],
+        [timeout =>
+            sub {
+                send_user(2, "Timeout\n");
+                $rconsole->clear_accum();
+                $rc = 1;
+            }
+        ],
+        [eof =>
+            sub {
+                send_user(2, "Cannot connect to $node\n");
+                $rconsole->clear_accum();
+                $rc = 1;
+            }
+        ],
+    );
+
+    $command = "patch new-open-dev open-dev net-ping \r";
+    send_command($verbose, $rconsole, $command);
+
+    $rconsole->expect(
+        $timeout,
+        [qr/patch new-open-dev(.*)ok/=>
+        #[qr/>/=>
             sub {
                 nc_msg($verbose, "Status: at End of multiple_open_dev \n");
                 $rconsole->clear_accum();
@@ -2086,6 +2123,7 @@ sub multiple_open_dev {
             }
         ],
     );
+
     return $rc;
 }
 ###################################################################
@@ -2569,7 +2607,7 @@ sub lparnetbootexp
     ####################################
     nc_msg($verbose, "Connecting to the $node.\n");
     sleep 3;
-    $timeout = 2;
+    $timeout = 10;
     $rconsole->expect(
         $timeout,
         [ qr/Enter.* for help.*/i =>
@@ -2778,6 +2816,8 @@ sub lparnetbootexp
     $done = 0;
     $retry_count = 0;
 
+    $timeout = 10;
+
     while (!$done) {
         my @result = $rconsole->expect(
             $timeout,
@@ -2885,6 +2925,7 @@ sub lparnetbootexp
         }
     }
 
+
     ##############################
     # Call multiple_open_dev to
     # circumvent firmware OPEN-DEV
@@ -2918,6 +2959,7 @@ sub lparnetbootexp
         } else {
             $match_pat = ".*";
         }
+
 
         if($colon) {
             nc_msg($verbose, "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n");
@@ -2972,7 +3014,7 @@ sub lparnetbootexp
         } else {
             for( $i = 0; $i < $adapter_found; $i++) {
                 if ($adap_type[$i] =~ /$match_pat/) {
-                    if ($adap_type[$i] eq "hfi-ent") {
+                    if (!($adap_type[$i] eq "hfi-ent")) {
                         $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                         $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                     }
