@@ -55,6 +55,7 @@ copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy getnextserver.exe c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy "C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 dism /Image:c:\WinPE_%SUFFIX%\rootfs /add-package /packagepath:"C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\WinPE_FPs\winpe-wmi.cab"
+dism /Image:c:\WinPE_%SUFFIX%\rootfs /add-package /packagepath:"C:\Program Files\Windows AIK\Tools\PETools\%ARCH%\WinPE_FPs\winpe-scripting.cab"
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\pxeboot.n12 c:\WinPE_%SUFFIX%\pxe\%BOOTPATH%\pxeboot.0
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\wdsmgfw.efi c:\WinPE_%SUFFIX%\pxe\%BOOTPATH%\wdsmgfw.efi
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\EFI\bootmgfw.efi c:\WinPE_%SUFFIX%\pxe\%BOOTPATH%\bootmgfw.efi
