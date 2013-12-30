@@ -9,7 +9,7 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use IPC::Open2;
 use xCAT::Table;
-use Data::Dumper;
+#use Data::Dumper;
 use MIME::Base64;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
@@ -65,6 +65,10 @@ if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
     $dhcp6conffile = '/etc/dhcp/dhcpd6.conf'; 
 }
 my $usingipv6;
+
+# define usage statement
+my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp -q\n\tmakedhcp [-h|--help]";
+
 
 # is this ubuntu ?
 if ( $distro =~ /ubuntu.*/ ){
@@ -861,45 +865,16 @@ sub delnode_aix
 sub check_options
 {
     my $req = shift;
+    my $opt = shift;
     my $callback = shift;
     my $rc       = 0;
     
-    Getopt::Long::Configure("bundling");
-    $Getopt::Long::ignorecase = 0;
-    Getopt::Long::Configure("no_pass_through");
-
     # Exit if the packet has been preprocessed
     # Comment this line to make sure check_options can be processed on service node.
-    #if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-
-    # Save the arguements in ARGV for GetOptions
-    if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
-    else { @ARGV = (); }
-
-    # define usage statement
-    my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp -q\n\tmakedhcp [-h|--help]";
-
-    # Parse the options for makedhcp 
-    if (!GetOptions(
-                     'h|help'    => \$::opt_h,
-                     'a'  => \$::opt_a,
-                     'd'  => \$::opt_d,
-                     'l|localonly'  => \$localonly,
-                     'n'  => \$::opt_n,
-                     'r'  => \$::opt_r,
-                     's=s'  => \$statements,  # $statements is declared globally 
-                     'q'  => \$::opt_q
-                   )) 
-    {
-        # If the arguements do not pass GetOptions then issue error message and return 
-        my $rsp = {};
-        $rsp->{data}->[0] = $usage;
-        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-        return 1;
-    }
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
     # display the usage if -h
-    if ($::opt_h)
+    if ($opt->{h})
     {
         my $rsp = {};
         $rsp->{data}->[0] = $usage;
@@ -908,7 +883,7 @@ sub check_options
     }
 
     # check to see if -q is listed with any other options which is not allowed
-    if ($::opt_q and ($::opt_a || $::opt_d || $::opt_n || $::opt_r || $::opt_l || $statements)) {
+    if ($opt->{q} and ($opt->{a} || $opt->{d} || $opt->{n} || $opt->{r} || $opt->{l} || $statements)) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -q option cannot be used with other options.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -916,7 +891,7 @@ sub check_options
      }
 
     # check to see if -n is listed with any other options which is not allowed
-    if ($::opt_n and ($::opt_a || $::opt_d || $::opt_q || $::opt_r || $::opt_l || $statements)) {
+    if ($opt->{n} and ($opt->{a} || $opt->{d} || $opt->{q} || $opt->{r} || $opt->{l} || $statements)) {
         my $rsp = {};
         $rsp->{data}->[0] = "The -n option cannot be used with other options.";
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
@@ -944,12 +919,44 @@ sub preprocess_request
     my $callback = shift;
     my $rc       = 0;
    
-    # check the syntax 
-    $rc = check_options($req,$callback);
+
+    Getopt::Long::Configure("bundling");
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure("no_pass_through");
+
+    # Exit if the packet has been preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
+    # Save the arguements in ARGV for GetOptions
+    if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
+    else { @ARGV = (); }
+
+    my %opt;
+    # Parse the options for makedhcp
+    if (!GetOptions(
+                     'h|help'    => \$opt{h},
+                     'a'  => \$opt{a},
+                     'd'  => \$opt{d},
+                     'l|localonly'  => \$localonly,
+                     'n'  => \$opt{n},
+                     'r'  => \$opt{r},
+                     's=s'  => \$statements,  # $statements is declared globally
+                     'q'  => \$opt{q}
+                   ))
+    {
+        # If the arguements do not pass GetOptions then issue error message and return
+        my $rsp = {};
+        $rsp->{data}->[0] = $usage;
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+    }
+
+    # check the syntax
+    $rc = check_options($req, \%opt,$callback);
     if ( $rc ) {
         return [];
     }
-  
+ 
     my $snonly=0;
     my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
     my $t_entry = $entries[0];
@@ -961,15 +968,15 @@ sub preprocess_request
 
     my @nodes=();
     # if the new option is not specified
-    if (!$::opt_n) {
+    if (!$opt{n}) {
 	# save the node names specified    
 	if ($req->{node}) {
 	    @nodes=@{$req->{node}};
 	}
 	# if option all 
-	elsif($::opt_a) {
+        elsif($opt{a}) {
 	    # if option delete - Delete all node entries, that were added by xCAT, from the DHCP server configuration.
-	    if ($::opt_d)
+            if ($opt{d})
 	    {
 			my $nodelist = xCAT::Table->new('nodelist');
 			my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
@@ -1027,7 +1034,7 @@ sub preprocess_request
 	}
 
     # If service node and not -n option
-    if (($snonly == 1) && (!$::opt_n)) {
+    if (($snonly == 1) && (!$opt{n})) {
 	# if a list of nodes are specified
         if (@nodes > 0) {
 	    # get the hash of service nodes
@@ -1066,7 +1073,7 @@ sub preprocess_request
     # if new specified or there are nodes
     } # end if service node only and NOT -n option
     # if -n option or nodes were specified
-    elsif (@nodes > 0 or $::opt_n) { #send the request to every dhservers
+    elsif (@nodes > 0 or $opt{n}) { #send the request to every dhservers
         $req->{'node'}=\@nodes;
        	@requests = ({%$req});    #Start with a straight copy to reflect local instance
 	# if not localonly - get list of service nodes and create requests
@@ -1120,17 +1127,47 @@ sub process_request
     my $rsp;
     #print Dumper($req);
 
+    Getopt::Long::Configure("bundling");
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure("no_pass_through");
+
+    # Save the arguements in ARGV for GetOptions
+    if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
+    else { @ARGV = (); }
+
+    my %opt;
+
+    # Parse the options for makedhcp
+    if (!GetOptions(
+                     'h|help'    => \$opt{h},
+                     'a'  => \$opt{a},
+                     'd'  => \$opt{d},
+                     'l|localonly'  => \$localonly,
+                     'n'  => \$opt{n},
+                     'r'  => \$opt{r},
+                     's=s'  => \$statements,  # $statements is declared globally
+                     'q'  => \$opt{q}
+                   ))
+    {
+        # If the arguements do not pass GetOptions then issue error message and return
+        my $rsp = {};
+        $rsp->{data}->[0] = $usage;
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
+     }
+
+
     # Check options again in case we are called from plugin and options have not been processed
     my $rc       = 0;
+    $rc = check_options($req, \%opt,$callback);
 
-    $rc = check_options($req,$callback);
     if ( $rc ) {
         return [];
     }
 
 
     # if option is query then call listnode for each node and return 
-    if ($::opt_q)
+    if ($opt{q})
         {
 	# call listnode for each node requested
         foreach my $node ( @{$req->{node}} ) {
@@ -1259,7 +1296,7 @@ sub process_request
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
    if ($::XCATSITEVALS{externaldhcpservers}) { #do nothing if remote dhcpservers at this point
-   } elsif ($::opt_n)
+   } elsif ($opt{n})
     {
         if (-e $dhcpconffile)
         {
@@ -1553,9 +1590,9 @@ sub process_request
         $req->{node} = \@validnodes;
     }
 	
-    if ((!$req->{node}) && ($::opt_a))
+    if ((!$req->{node}) && ($opt{a}))
     {
-        if ($::opt_d) #delete all entries
+        if ($opt{d}) #delete all entries
         {
             $req->{node} = [];
             my $nodelist = xCAT::Table->new('nodelist');
@@ -1712,7 +1749,7 @@ sub process_request
         $vpdhash = $vpdtab->getNodesAttribs($req->{node},['uuid']);
         foreach (@{$req->{node}})
         {
-            if ($::opt_d)
+            if ($opt{d})
             {
                 if ( $^O eq 'aix')
                 {
