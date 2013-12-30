@@ -371,6 +371,13 @@ sub assign_to_osimage
     }
     $installdir =~ s/\/$//;
 
+
+    # Reading kitdir
+    my $kittable;
+    if ( $kitcomptable and $kitcomptable->{kitname} ) {
+        ($kittable) = $tabs->{kit}->getAttribs({kitname=> $kitcomptable->{kitname}}, 'kitdir', 'kitdeployparams');
+    }
+
     # Create osimage direcotry to save kit tmp files
     mkpath("$installdir/osimages/$osimage/kits/");
 
@@ -457,8 +464,31 @@ sub assign_to_osimage
                     }
 
                     unless ( grep(/$kitcompscript/ , @postinstalllines ) ) {
+                        my $deployparams;
+                        my @ls;
+                        if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                            if (open(DEPLOYPARAM, "<", "$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}")) {
+                                @ls = <DEPLOYPARAM>;
+                                close(DEPLOYPARAM);
+                             }
+                        }
+
+                        foreach my $line (@ls) {
+                            if ($line =~ /^#ENV:.+=.+#$/) {
+                                chomp($line);
+                                $line =~ s/^#ENV://;
+                                $line =~ s/#$//;
+                            }
+                        }
+
+                        $deployparams = join / /, @ls;
+
                         if (open(NEWLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
-                            print NEWLIST "installroot=$rootimgdir otherpkgdir=$otherpkgdir $installdir/postscripts/$kitcompscript\n";
+                            if ($deployparams) {
+                                print NEWLIST "installroot=$rootimgdir otherpkgdir=$otherpkgdir $deployparams $installdir/postscripts/$kitcompscript\n";
+                            } else {
+                                print NEWLIST "installroot=$rootimgdir otherpkgdir=$otherpkgdir $installdir/postscripts/$kitcompscript\n";
+                            }
                             close(NEWLIST);
                         }
                     }
@@ -558,12 +588,6 @@ sub assign_to_osimage
         }
     }
 
-    # Reading kitdir
-    my $kittable;
-    if ( $kitcomptable and $kitcomptable->{kitname} ) {
-        ($kittable) = $tabs->{kit}->getAttribs({kitname=> $kitcomptable->{kitname}}, 'kitdir', 'kitdeployparams');
-    }
-    
     # Adding kitcomponent.exlist to osimage.exlist
     if ( $kitcomptable and $kitcomptable->{exlist} and $kittable and $kittable->{kitdir} ) {
 
@@ -620,23 +644,6 @@ sub assign_to_osimage
     my @kitdeployparams;
     if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) { 
 
-        # Reading contents from kit.kitdeployparams file
-        my @contents;
-        my $kitdir = $kittable->{kitdir};
-        my $kitdeployfile = $kittable->{kitdeployparams};
-        if ( -e "$kitdir/other_files/$kitdeployfile" ) {
-            if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
-                @contents = <KITDEPLOY>;
-                @kitdeployparams = @contents;
-                close(KITDEPLOY);
-                if($::VERBOSE){
-                    $callback->({data=>["\nReading kit deployparams from $kitdir/other_files/$kitdeployfile\n"]});
-                }
-            } else {
-                $callback->({error => ["Could not open kit deployparams file $kitdir/other_files/$kitdeployfile"],errorcode=>[1]});
-            }
-        }
-
         # Creating kit deployparams file
         my @lines;
         mkpath("$installdir/osimages/$osimage/kits/");
@@ -655,20 +662,17 @@ sub assign_to_osimage
 
         # Checking if the kit deployparams have been written in the generated kit deployparams file.
         my @l;
-        foreach my $content ( @contents ) {
-            chomp $content;
-            my $matched = 0;
-            foreach my $line ( @lines ) {
-                chomp $line;
-                if ( $line =~ /$content/ ) {
-                    $matched = 1;
-                    last;
-                }
+        my $matched = 0;
+        foreach my $line ( @lines ) {
+            chomp $line;
+            if ( $line =~ m!$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}! ) {
+                $matched = 1;
+                last;
             }
+        }
 
-            unless ( $matched ) {
-                push @l, $content . "\n";
-            }
+        unless ( $matched ) {
+            push @l, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
         }
 
         # Write the missing lines to kit deployparams file
@@ -723,8 +727,9 @@ sub assign_to_osimage
             if (open(NEWOTHERPKGLIST, ">", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.otherpkgs.pkglist")) {
                 if ( $kitcomptable and $kitcomptable->{prerequisite} ) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
-                    foreach my $kitdeployparam ( @kitdeployparams ) {
-                        push @lines, "$kitdeployparam";
+
+                    if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                        push @lines, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
                     }
                     push @lines, "$kitreponame/$kitcomptable->{prerequisite}\n";
                     $::noupgrade = 1;
@@ -738,9 +743,11 @@ sub assign_to_osimage
 
                 if ( $::noupgrade ) {
                     push @lines, "#NEW_INSTALL_LIST#\n";
-                    foreach my $kitdeployparam ( @kitdeployparams ) {
-                         push @lines, "$kitdeployparam";
+
+                    if ( $kittable and $kittable->{kitdeployparams} and $kittable->{kitdir} ) {
+                        push @lines, "#INCLUDE:$kittable->{kitdir}/other_files/$kittable->{kitdeployparams}#\n";
                     }
+
                     push @lines, "$kitreponame/$basename\n";
                     print NEWOTHERPKGLIST @lines;
                 } else {
@@ -2995,20 +3002,7 @@ sub rmkitcomp
                 unless ( $match ) {
                     my @contents = ();;
                     if ( -e "$kitdir/other_files/$kitdeployfile" ) {
-                        if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
-                            @contents = <KITDEPLOY>;
-                            close(KITDEPLOY);
-                            if($::VERBOSE){
-                                my %rsp;
-                                push@{ $rsp{data} }, "Reading kit deployparams from $kitdir/other_files/$kitdeployfile";
-                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                            }
-                        } else {
-                            my %rsp;
-                            push@{ $rsp{data} }, "Could not open kit deployparams file $kitdir/other_files/$kitdeployfile";
-                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                            return 1;
-                        }
+                        push @contents, "#INCLUDE:$kitdir/other_files/$kitdeployfile#";
                     }
 
                     my @lines = ();
@@ -3044,13 +3038,7 @@ sub rmkitcomp
                                 my @otherdeployparams;
                                 my $deployparam_file = $kittable->{kitdir}."/other_files/".$kittable->{kitdeployparams};
                                 if ( -e "$deployparam_file" ) {
-                                    if (open(OTHERDEPLOYPARAM, "<", "$deployparam_file" )) {
-                                        @otherdeployparams = <OTHERDEPLOYPARAM>;
-                                        close(OTHERDEPLOYPARAM);
-                                    }
-                                }
-                                foreach ( @otherdeployparams ) {
-                                    push @otherlines, $_;
+                                    push @otherlines, "#INCLUDE:$deployparam_file#";
                                 }
                              }
                         }
@@ -3065,7 +3053,7 @@ sub rmkitcomp
                         #check if the parameter is used by other kitcomponent
                         foreach my $otherline ( @otherlines ) {
                             chomp $otherline;
-                            if ( $line =~ /$otherline/ ) {
+                            if ( $line =~ m!$otherline! ) {
                                 $found = 1;
                                 last;
                             }
@@ -3076,7 +3064,7 @@ sub rmkitcomp
                         } else {
                             foreach my $content ( @contents ) {
                                 chomp $content;
-                                if ( $line =~ /$content/ ) {
+                                if ( $line =~ m!$content! ) {
                                     $found = 1;
                                     last;
                                 }

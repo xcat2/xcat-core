@@ -241,7 +241,7 @@ sub makescript {
   
      if( $line =~ /^tabdump\(([\w]+)\)/) {
            my $tabname = $1;
-           if( $tabname !~ /^(auditlog|bootparams|chain|deps|domain|eventlog|firmware|hypervisor|iscsi|kvm_nodedata|mac|nics|ipmi|mp|ppc|ppcdirect|site|websrv|zvm|statelite|rack|hosts|prodkey|switch|node)/) {
+           if( $tabname !~ /^(auditlog|bootparams|chain|deps|domain|eventlog|firmware|hypervisor|iscsi|kvm_nodedata|mac|nics|ipmi|mp|ppc|ppcdirect|site|websrv|zvm|statelite|rack|hosts|prodkey|switch|node|kit|kitcomponent)/) {
                push @tabs, $tabname;
            }
      }
@@ -488,6 +488,9 @@ sub makescript {
         $cloudres = getcloudres($cloud_module_name, $cloud_exists, $cloudinfo_hash, $node, \@clients); 
     }
 
+    ## kit and kitcomponent parameter.
+    my $kitcomp_deployparams = getKitcompDeployParams($osimgname,\%image_hash);
+
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -502,6 +505,8 @@ sub makescript {
   $inc =~ s/#NETWORK_FOR_DISKLESS_EXPORT#/$diskless_net_vars/eg; 
   $inc =~ s/#INCLUDE_POSTSCRIPTS_LIST#/$postscripts/eg; 
   $inc =~ s/#INCLUDE_POSTBOOTSCRIPTS_LIST#/$postbootscripts/eg; 
+
+  $inc =~ s/#KITCOMP_DEPLOY_PARAMS_EXPORT#/$kitcomp_deployparams/eg;
 
   $inc =~ s/#CFGMGTINFO_EXPORT#/$cfgres/eg; 
   $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
@@ -580,6 +585,68 @@ sub getservicenode
     }
 
     return 0; 
+}
+
+sub getKitcompDeployParams
+{
+
+    my $osimagename = shift;
+    my $imagehash = shift;
+    my $result;
+
+    my $kitcomptab = xCAT::Table->new('kitcomponent');
+    unless ($kitcomptab)    # no kitcomponent table
+    {
+        xCAT::MsgUtils->message('I', "Unable to open kitcomponent table.\n");
+        return undef;
+    }
+    my $kittab = xCAT::Table->new('kit');
+    unless ($kittab)    # no kit table
+    {
+        xCAT::MsgUtils->message('I', "Unable to open kit table.\n");
+        return undef;
+    }
+
+    my %deployparamshash;
+
+    if ( $osimagename and $imagehash->{$osimagename} and  $imagehash->{$osimagename}->{kitcomponents} ) {
+        my @kitcomps = split /,/, $imagehash->{$osimagename}->{kitcomponents};
+        foreach my $kitcompname (@kitcomps) {
+            (my $kitcomp) = $kitcomptab->getAttribs({kitcompname => $kitcompname}, 'kitname');
+            if ( $kitcomp and $kitcomp->{'kitname'}) {
+                my $kitdeploy = $kittab->getAttribs({kitname => $kitcomp->{'kitname'}}, 'kitdeployparams', 'kitdir');
+                if ( $kitdeploy and $kitdeploy->{kitdeployparams} and $kitdeploy->{kitdir} ) {
+                    if ( -e "$kitdeploy->{kitdir}/other_files/$kitdeploy->{kitdeployparams}") {
+                        my @lines;
+                        if (open(DEPLOYPARAM, "<", "$kitdeploy->{kitdir}/other_files/$kitdeploy->{kitdeployparams}")) {
+                            @lines = <DEPLOYPARAM>;
+                            close(DEPLOYPARAM);
+                        }
+
+                        foreach my $line ( @lines ) {
+                            if ($line =~ /^#ENV:.+=.+#$/) {
+                                chomp($line);
+                                $line =~ s/^#ENV://;
+                                $line =~ s/#$//;
+                                (my $name, my $value) = split(/=/, $line); 
+                                if ( $name and $value ) {
+                                    $deployparamshash{$name} = $value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    foreach my $name ( keys %deployparamshash ) {
+        $result .= "$name='" . $deployparamshash{$name} . "'\n";
+        $result .= "export $name\n";
+    }
+
+    return $result;
+
 }
 
 sub getAllAttribsFromSiteTab {
@@ -1548,7 +1615,7 @@ sub getScripts
     $script_hash{default_postboot} = $et->{'postbootscripts'}; 
      
    
-    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers','osarch','profile','provmethod','synclists');
+    my @et2 = $ostab->getAllAttribs('imagename', 'postscripts', 'postbootscripts', 'osvers','osarch','profile','provmethod','synclists','kitcomponents');
     if( @et2 ) {
           foreach my $tmp_et2 (@et2) {
                my $imagename= $tmp_et2->{imagename};
@@ -1559,6 +1626,7 @@ sub getScripts
                $image_hash->{$imagename}->{profile} = $tmp_et2->{profile}; 
                $image_hash->{$imagename}->{provmethod} = $tmp_et2->{provmethod}; 
                $image_hash->{$imagename}->{synclists} = $tmp_et2->{synclists}; 
+               $image_hash->{$imagename}->{kitcomponents} = $tmp_et2->{kitcomponents} if ( $tmp_et2->{kitcomponents} );
           }
     }
 
