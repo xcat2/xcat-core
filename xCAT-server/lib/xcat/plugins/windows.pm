@@ -652,7 +652,7 @@ sub mkinstall
         print FILE $winpepathcfg;
         close (FILE);
 
-        if (open (PDPID, "</var/run/xcat/proxydhcp.pid")) {
+        if (open (PDPID, "</var/run/xcat/proxydhcp-xcat.pid")) {
             my $pdpid = <PDPID>;
             kill 10, $pdpid;
         }
