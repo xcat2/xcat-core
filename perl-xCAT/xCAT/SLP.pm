@@ -224,7 +224,7 @@ sub dodiscover {
             close PWRITE; 
             if (@servernodes) {
 			    my $miss = join(",", @servernodes);
-                send_message($args{reqcallback}, 0, "Warning: can't got attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
+                send_message($args{reqcallback}, 0, "Warning: can't get attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
             }
 		}# end of parent process 
     }  else {
