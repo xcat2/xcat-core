@@ -41,7 +41,7 @@ B<-u>          Do unicast to a specified IP range. Must be used with -s and --ra
 B<--range>     Specify one or more IP ranges. Must be use in unicast mode. 
             It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
             If the range is huge, for example, 192.168.1.1/8, lsslp may take a very long time for node scan.
-            So the reange should be exactly specified. 
+            So the range should be exactly specified. 
 
 B<-r>          Display Raw SLP response.
 
