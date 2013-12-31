@@ -1,8 +1,14 @@
 @echo off
+
+::This script is used to create customized Winpe and BCD for deployment of Windows 7 and Windows Server 2008
+
 ::This script requires that the AIK must be installed onto the Windows 
 ::workstation used to build the winpe and BCD
 ::AIK download path
 ::'https://www.microsoft.com/downloads/details.aspx?displaylang=en&FamilyID=94bb6e34-d890-4932-81a5-5b50c657de08'
+
+::This script can accept three parameters: 
+::genimage.bat arch [winpe name] [bcd create only]
 
 set ROOTPATH=
 set BCDONLY=
@@ -15,6 +21,7 @@ if [%2] NEQ [] set BOOTPATH=winboot\%2%\Boot
 if [%2] NEQ [] echo Generate winpe to path c:\WinPE_%SUFFIX%\pxe\%ROOTPATH%
 if [%3] EQU [bcdonly] set BCDONLY=1
 
+::get the arch from first param
 set ARCH=%1%
 if [%ARCH%] EQU [x86] set SUFFIX=32
 if [%ARCH%] EQU [amd64] set SUFFIX=64
@@ -70,5 +77,6 @@ echo Copy c:\WinPE_%SUFFIX%\pxe\* to xCAT MN:/tftpboot.
 goto :eof
 :errorbadargs
 echo Specify the architecture on the command line
+echo Usage: genimage.bat arch [winpe name] [bcd create only]
 goto :eof
 :eof
