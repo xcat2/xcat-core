@@ -473,15 +473,17 @@ sub assign_to_osimage
                              }
                         }
 
+                        my @newlines;
                         foreach my $line (@ls) {
                             if ($line =~ /^#ENV:.+=.+#$/) {
                                 chomp($line);
                                 $line =~ s/^#ENV://;
                                 $line =~ s/#$//;
+                                push @newlines, $line;
                             }
                         }
 
-                        $deployparams = join ' ', @ls;
+                        $deployparams = join ' ', @newlines;
 
                         if (open(NEWLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
                             if ($deployparams) {
