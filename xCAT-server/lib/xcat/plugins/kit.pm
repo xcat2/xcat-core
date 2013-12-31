@@ -481,7 +481,7 @@ sub assign_to_osimage
                             }
                         }
 
-                        $deployparams = join / /, @ls;
+                        $deployparams = join ' ', @ls;
 
                         if (open(NEWLIST, ">>", "$installdir/osimages/$osimage/kits/KIT_COMPONENTS.postinstall")) {
                             if ($deployparams) {
