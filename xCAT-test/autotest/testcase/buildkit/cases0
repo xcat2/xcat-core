@@ -75,7 +75,6 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
 check:output=~prodkit_compute-1.0-1.noarch.rpm
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
@@ -93,7 +92,6 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
 check:output=~prodkit_compute-1.0-1.noarch.rpm
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
@@ -111,7 +109,6 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
 check:output=~prodkit_compute-1.0-1.noarch.rpm
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
@@ -269,7 +266,6 @@ check:output=~prodkit-1.0-1/build_input/buildkit.conf
 check:output=~prodkit-1.0-1/kit.conf
 check:output=~prodkit-1.0-1/repos/
 check:output=~prodkit_compute-1.0-1.noarch.rpm
-check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
 check:output!~pkg1-1-1.noarch.rpm
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
@@ -295,7 +291,6 @@ check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.tar.bz2
 check:rc==0
 check:output=~prodkit_compute-1.0-1.noarch.rpm
-check:output=~prep_prodkit_compute-1.0-1.noarch.rpm
 check:output=~pkg1-1-1.noarch.rpm
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;rm -f prodkit-1.0-1.tar.bz2
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit addpkgs prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2 -p source_packages/sample/pkg1 -k 2.0 -r s002a
@@ -303,7 +298,6 @@ check:rc==0
 check:output=~/opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/prodkit-2.0-s002a.tar.bz2 successfully built
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-2.0-s002a.tar.bz2
 check:output=~prodkit_compute-2.0-s002a.noarch.rpm
-check:output=~prep_prodkit_compute-2.0-s002a.noarch.rpm
 check:output=~pkg1-1-1.noarch.rpm
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
