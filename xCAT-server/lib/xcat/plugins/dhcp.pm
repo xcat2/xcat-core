@@ -2176,10 +2176,7 @@ sub addnet
             }
 
             # convert <xcatmaster> to nameserver IP
-            if ($nameservers eq '<xcatmaster>')
-            {
-                $nameservers = $myip;
-            }
+            $nameservers =~ s/<xcatmaster>/$myip/g;
 
             if (!$ntpservers || ($ntpservers eq '<xcatmaster>'))
             {
