@@ -13,8 +13,8 @@ BEGIN
     if (defined $ENV{ENABLE_TRACE_CODE}) {
       use lib "$ENV{'XCATROOT'}/lib/perl";
       use lib "/opt/xcat/lib/perl";
-      use xCAT::Enabletrace qw(loadtrace filter);
-      loadtrace();
+      require xCAT::Enabletrace;
+      xCAT::Enabletrace->loadtrace();
     }
 }
 
