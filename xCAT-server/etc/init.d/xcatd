@@ -76,7 +76,12 @@ restart)
   fi
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
-    ver=`nodels --version`
+    if [ ! -z $XCATROOT ]; then
+        XCATLIBPATH="$XCATROOT/lib/perl"
+    else
+        XCATLIBPATH="/opt/xcat/lib/perl"
+    fi
+    ver=`perl -I $XCATLIBPATH -mxCAT::Version -e 'print xCAT::Version::Version()'`
     if [ "$ver" \< "Version 2.6" ]; then # force to stop xcatd first when update from version earlier than 2.6
         $0 stop
     fi
@@ -90,7 +95,12 @@ reload)
   fi
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
-    ver=`nodels --version`
+    if [ ! -z $XCATROOT ]; then
+        XCATLIBPATH="$XCATROOT/lib/perl"
+    else
+        XCATLIBPATH="/opt/xcat/lib/perl"
+    fi
+    ver=`perl -I $XCATLIBPATH -mxCAT::Version -e 'print xCAT::Version::Version()'`
     if [ "$ver" \< "Version 2.6" ]; then # force to stop xcatd first when update from version earlier than 2.6
         $0 stop
     fi
