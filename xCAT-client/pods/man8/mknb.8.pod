@@ -12,10 +12,7 @@ B<mknb> I<arch>
 The B<mknb> command is run by xCAT automatically, when xCAT is installed on the management node.
 It creates a network boot root image (used for node discovery, BMC programming, and flashing)
 for the same architecture that the management node is.  So you normally do not need to run the B<mknb>
-command yourself.  If you have nodes of a different architecture
-than the management node (e.g. ppc), you can run B<mknb> to create an additional network boot image for
-that architecture.
-
+command yourself. Presently, only the arch x86_64 is supported.
 
 =head1 OPTIONS
 
@@ -23,7 +20,7 @@ that architecture.
 
 =item I<arch>
 
-The hardware architecture for which to build the boot image:  x86, x86_64, ppc, ppc64
+The hardware architecture for which to build the boot image: x86_64
 
 =back
 
