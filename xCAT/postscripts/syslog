@@ -23,7 +23,7 @@ isSN=0
 isLinux=1
 isRsyslog=0
 isC3=0
-
+systemdEnabled=0
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -115,12 +115,19 @@ if [ "$NTYPE" = service ]; then
   isSN=1
 fi
 
+if [ -e /etc/systemd ]; then
+  systemdEnabled=1
+fi
+
 if [ "$(uname -s)" = "Linux" ]; then
   if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
       init="/etc/init.d/rsyslog"
+      if [ $systemdEnabled -eq 1 ]; then
+         init="rsyslog"
+      fi
       isRsyslog=1
       if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
         sysconfig="/etc/default/rsyslog"
@@ -263,7 +270,7 @@ else
       grep "xCAT settings" $conf_file 2>&1 1> /dev/null
       if [ $? -eq 0 ]; then
 	  sed "/# xCAT settings/,$ d" $conf_file >/tmp/sed.tmp
-      cat /tmp/sed.tmp >$conf_file
+          cat /tmp/sed.tmp >$conf_file
       fi
       echo "# xCAT settings" >> $conf_file
       echo "destination loghost { udp(\"$master\"); };" >> $conf_file
@@ -320,8 +327,12 @@ if [ $isLinux -eq 0 ]; then
           break
       fi
   done
-else 
-  $init restart
+else
+  if [ $systemdEnabled -eq 1 ]; then 
+    systemctl restart $init.service 
+  else
+    $init restart
+  fi
 fi
 
 #keep a record
