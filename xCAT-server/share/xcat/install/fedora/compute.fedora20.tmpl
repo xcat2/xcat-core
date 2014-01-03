@@ -1,0 +1,156 @@
+#egan@us.ibm.com
+#
+#cmdline
+
+lang en_US
+
+#
+# Where's the source?
+# nfs --server hostname.of.server or IP --dir /path/to/RH/CD/image
+#
+#nfs --server #XCATVAR:INSTALL_NFS# --dir #XCATVAR:INSTALL_SRC_DIR#
+
+%include /tmp/repos
+
+#device ethernet e100
+keyboard "us"
+
+#
+# Clear the MBR
+#
+zerombr
+
+#
+# Wipe out the disk
+#
+clearpart --all --initlabel
+#clearpart --linux
+#key --skip
+
+#
+# Customize to fit your needs
+#
+
+#XCAT_PARTITION_START#
+#No RAID
+#/boot really significant for this sort of setup nowadays?
+#part /boot --size 50 --fstype ext3
+%include /tmp/partitioning
+#XCAT_PARTITION_END#
+
+#RAID 0 /scr for performance
+#part / --size 1024 --ondisk sda
+#part swap --size 512 --ondisk sda
+#part /var --size 1024 --ondisk sdb
+#part swap --size 512 --ondisk sdb
+#part raid.01 --size 1 --grow --ondisk sda
+#part raid.02 --size 1 --grow --ondisk sdb
+#raid /scr --level 0 --device md0 raid.01 raid.02
+
+#Full RAID 1 Sample
+#part raid.01 --size 50 --ondisk sda
+#part raid.02 --size 50 --ondisk sdb
+#raid /boot --level 1 --device md0 raid.01 raid.02
+#
+#part raid.11 --size 1024 --ondisk sda
+#part raid.12 --size 1024 --ondisk sdb
+#raid / --level 1 --device md1 raid.11 raid.12
+#
+#part raid.21 --size 1024 --ondisk sda
+#part raid.22 --size 1024 --ondisk sdb
+#raid /var --level 1 --device md2 raid.21 raid.22
+#
+#part raid.31 --size 1024 --ondisk sda
+#part raid.32 --size 1024 --ondisk sdb
+#raid swap --level 1 --device md3 raid.31 raid.32
+#
+#part raid.41 --size 1 --grow --ondisk sda
+#part raid.42 --size 1 --grow --ondisk sdb
+#raid /scr --level 1 --device md4 raid.41 raid.42
+
+#
+# bootloader config
+# --append <args>
+# --useLilo
+# --md5pass <crypted MD5 password for GRUB>
+#
+bootloader
+
+#
+# install or upgrade
+#
+install
+
+#
+# text mode install (default is graphical)
+#
+text
+
+#
+# firewall
+#
+firewall --disabled
+
+#
+# mouse selection
+#
+#mouse genericps/2 --emulthree
+
+#
+# Select a zone
+# Add the --utc switch if your hardware clock is set to GMT
+#
+#timezone US/Hawaii
+#timezone US/Pacific
+#timezone US/Mountain
+#timezone US/Central
+#timezone US/Eastern
+timezone --utc "#TABLE:site:key=timezone:value#"
+
+#
+# Don't do X
+#
+skipx
+
+
+#
+# To generate an encrypted root password use:
+#
+# perl -e 'print crypt("blah","Xa") . "\n";'p
+# openssl passwd -apr1 -salt xxxxxxxx password
+# 
+# where "blah" is your root password.
+#
+#rootpw --iscrypted XaLGAVe1C41x2
+#rootpw XaLGAVe1C41x2 --iscrypted
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+
+#
+# NIS setup: auth --enablenis --nisdomain sensenet 
+# --nisserver neptune --useshadow --enablemd5
+#
+# OR
+auth --useshadow --enablemd5
+
+#
+# SE Linux
+#
+selinux --disabled
+
+#
+# Reboot after installation
+#
+reboot
+
+#
+#end of section
+#
+%packages --ignoremissing
+#INCLUDE_DEFAULT_PKGLIST#
+%end
+%pre
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
+%end
+%post
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rh#
+%end
