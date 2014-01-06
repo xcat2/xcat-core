@@ -190,7 +190,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg = "odbcsetup:$cmd returned rc=$rc $::outref\n";
+            my $msg = "odbcsetup:\"$cmd\" returned rc=$rc \"$::outref\"\n";
+            print $msg;
             `logger -t xcat -p local4.err $msg`;
             return 1;
         }

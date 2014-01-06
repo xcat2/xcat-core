@@ -1432,8 +1432,8 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+          "unixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs.";
+        xCAT::MsgUtils->message("E", " $message");
         exit(1);
     }
 
@@ -1445,8 +1445,8 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "\nxcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+              "xcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
     }
@@ -1456,7 +1456,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message = "\nlibmyodbc is not installed.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
     }
@@ -1467,8 +1467,8 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "\nmysql-client is not installed.  It should be first installed from the SLES CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+              "mysql-client is not installed.  It should be first installed from the SLES CDs.";
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
         $cmd = "rpm -qa | grep libmysqlclient";
@@ -1476,8 +1476,8 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "\nlibmysqlclient is not installed.  It should be first installed from the SLES CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+              "libmysqlclient is not installed.  It should be first installed from the SLES CDs.";
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
         $cmd = "rpm -qa | grep MyODBC-unixODBC";
@@ -1485,7 +1485,7 @@ sub setupODBC
         if ($::RUNCMD_RC != 0)
         {
             my $message =
-              "\n$cmd failed. MyODBC-unixODBC is not installed.  It should be first installed from the SLES CDs.";
+              "MyODBC-unixODBC is not installed.  It should be first installed from the SLES CDs.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1517,7 +1517,7 @@ sub setupODBC
         {
             $message =
               "Cannot find host info in the cfgloc or cfgloc.mysql file. Configuration of ODBC cannot continue.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
+            xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
     }
@@ -1549,7 +1549,7 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message = "Cannot configure the ODBC.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+        xCAT::MsgUtils->message("E", "$message");
         exit(1);
     }
 
@@ -1565,7 +1565,7 @@ sub setupODBC
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "$cmd failed. Could not setup ODBC.";
+            $message = "Could not setup ODBC.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
@@ -1587,7 +1587,7 @@ sub setupODBC
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "$cmd failed. Could not setup ODBC DNS file.";
+            $message = "Could not setup ODBC DNS file.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
@@ -1627,7 +1627,7 @@ sub setupODBC
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "command failed. Could not setup root ODBC file.";
+            $message = "Could not setup root ODBC file.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
