@@ -3004,6 +3004,21 @@ sub rmkitcomp
                 unless ( $match ) {
                     my @contents = ();;
                     if ( -e "$kitdir/other_files/$kitdeployfile" ) {
+                        if (open(KITDEPLOY, "<", "$kitdir/other_files/$kitdeployfile") ) {
+                            @contents = <KITDEPLOY>;
+                            close(KITDEPLOY);
+                            if($::VERBOSE){
+                                my %rsp;
+                                push@{ $rsp{data} }, "Reading kit deployparams from $kitdir/other_files/$kitdeployfile";
+                                xCAT::MsgUtils->message( "I", \%rsp, $callback );
+                            }
+                        } else {
+                            my %rsp;
+                            push@{ $rsp{data} }, "Could not open kit deployparams file $kitdir/other_files/$kitdeployfile";
+                            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                            return 1;
+                        }
+
                         push @contents, "#INCLUDE:$kitdir/other_files/$kitdeployfile#";
                     }
 
@@ -3040,6 +3055,16 @@ sub rmkitcomp
                                 my @otherdeployparams;
                                 my $deployparam_file = $kittable->{kitdir}."/other_files/".$kittable->{kitdeployparams};
                                 if ( -e "$deployparam_file" ) {
+
+                                    if (open(OTHERDEPLOYPARAM, "<", "$deployparam_file" )) {
+                                        @otherdeployparams = <OTHERDEPLOYPARAM>;
+                                        close(OTHERDEPLOYPARAM);
+                                    }
+
+                                    foreach ( @otherdeployparams ) {
+                                        push @otherlines, $_;
+                                    }
+
                                     push @otherlines, "#INCLUDE:$deployparam_file#";
                                 }
                              }
