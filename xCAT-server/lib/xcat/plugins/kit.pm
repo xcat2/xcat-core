@@ -1502,7 +1502,7 @@ sub rmkit
         if ( $ref1 and $ref1->{'basename'}){
             if ( $ref1->{'isinternal'} and !$force ) {
                 my %rsp;
-                push@{ $rsp{data} }, "Kit $kit with isinterval attribute cannot be remoed";
+                push@{ $rsp{data} }, "Kit $kit with isinterval attribute cannot be removed";
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
