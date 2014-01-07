@@ -57,4 +57,11 @@ esxcli network ip set -e y
 esxcli network firewall ruleset set -r DHCPv6 -e y
 esxcli network firewall ruleset set -r sshServer -e y
 esxcli network ip interface ipv6 set -i vmk0  -d y
+cat > /etc/init.d/xcatesxiready << EOF
+echo -e "<xcatrequest>\n<command>esxiready</command>\n</xcatrequest>" | /bin/openssl s_client -quiet -connect $xcatd:3001 2>&1 | tee /tmp/foo.log
+chkconfig --del xcatesxiready
+rm -rf /etc/init.d/xcatesxiready
+EOF
+chmod +x xcatesxiready
+chkconfig --add xcatesxiready
 reboot

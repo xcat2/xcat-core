@@ -1,0 +1,10 @@
+#!/bin/sh
+for param in `vsish -e get /system/bootCmdLine|head -n 2 |tail -n 1`; do
+    if [ "xcatd" = ${param%=*} ]; then
+        xcatd=${param#*=}
+    fi
+done
+localcli network firewall unload
+echo -e '<xcatrequest>\n<command>esxiready</command></xcatrequest>' | openssl s_client -connect $xcatd
+localcli network firewall load
+return ${SUCCESS}

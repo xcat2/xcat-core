@@ -123,6 +123,7 @@ sub handled_commands{
 		mknetboot => "nodetype:os=(esxi.*)",
 		mkinstall => "nodetype:os=(esxi5.*)",
 		rpower => 'nodehm:power,mgt',
+        esxiready => "esx",
 		rsetboot => 'nodehm:power,mgt',
 		rmigrate => 'nodehm:power,mgt',
         formatdisk => "nodetype:os=(esxi.*)",
@@ -180,8 +181,17 @@ sub preprocess_request {
          # exit if preprocesses
 	my @requests;
 
-	my $noderange = $request->{node};  # array ref
+	my $noderange;
 	my $command = $request->{command}->[0];
+    if ($request->{node}) {
+	    $noderange = $request->{node};  # array ref
+    } elsif ($command eq "esxiready") {
+        my $node;
+        ($node) = noderange($request->{'_xcat_clienthost'}->[0]);
+        $noderange = [$node];
+        $request->{node} = $noderange;
+    }
+
 	my $extraargs = $request->{arg};
 	my @exargs=($request->{arg});
 	my %hyp_hash = ();
@@ -212,7 +222,7 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host','migrationdest']);
 	foreach my $node (@$noderange){
-        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor" or $command eq "formatdisk" or $command eq 'rescansan') {
+        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'esxiready' or $command eq 'rshutdown' or $command eq "chhypervisor" or $command eq "formatdisk" or $command eq 'rescansan') {
             $hyp_hash{$node}{nodes} = [$node];
         } else {
         my $ent = $vmtabhash->{$node}->[0];
@@ -363,7 +373,14 @@ sub process_request {
     }
 
 	my $moreinfo;
-	my $noderange = $request->{node};
+	my $noderange;
+    if ($request->{node}) {
+	    $noderange = $request->{node};  # array ref
+    } elsif ($command eq "esxiready") {
+        my $node;
+        ($node) = noderange($request->{'_xcat_clienthost'}->[0]);
+        $noderange = [$node];
+    }
     xCAT::VMCommon::grab_table_data($noderange,\%tablecfg,$output_handler);
 	my @exargs;
 	unless($command){
@@ -631,6 +648,9 @@ sub validate_licenses {
 sub do_cmd {
     my $command = shift;
     my @exargs = @_;
+    if ($command eq 'esxiready') {
+        return;
+    }
     if ($command eq 'rpower') {
         generic_vm_operation(['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState','runtime.host'],\&power,@exargs);
     } elsif ($command eq 'rmvm') {
@@ -4621,6 +4641,11 @@ sub  makecustomizedmod {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup",$tempdir."/etc/init.d/48.esxifixup");
 		chmod(0755,"$tempdir/etc/init.d/48.esxifixup");
     }
+    if ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/99.esxiready") {
+        mkpath($tempdir."/etc/init.d");
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/99.esxiready",$tempdir."/etc/init.d/99.esxiready");
+		chmod(0755,"$tempdir/etc/init.d/99.esxiready");
+    }
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
       mkpath($tempdir."/etc/vmware/");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash",$tempdir."/etc/vmware/welcome");
@@ -4911,6 +4936,7 @@ sub mkcommonboot {
 	} else {
 	  $append = "-c $tp/boot.cfg.$bootmode";
 	}
+    $append .= " xcatd=$ksserver:3001";
 	  if ($bootmode eq "install") {
 	  	$append .= " ks=http://$ksserver/install/autoinst/$node";
 		esxi_kickstart_from_template(node=>$node,os=>$osver,arch=>$arch,profile=>$profile);
