@@ -134,6 +134,10 @@ do
     fi
 done
 
+if [ "$SETINSTALLNIC" = "1" ] || [ "$SETINSTALLNIC" = "yes" ]; then
+    bool_cfg_inst_nic=1
+fi
+
 boot_myscript=0
 if [ $# -eq 2 ]
 then
