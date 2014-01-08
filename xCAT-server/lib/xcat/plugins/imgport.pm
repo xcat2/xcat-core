@@ -272,6 +272,96 @@ sub get_image_info {
     #}
     $attrs->{linuximage}=$attrs1;
 
+
+    # for kit staff
+
+    if ($attrs0->{kitcomponents}) {
+        my $kitcomponenttab = new xCAT::Table('kitcomponent', -create=>1);
+        unless($kitcomponenttab){
+            $callback->(
+                {error => ["Unable to open table 'kitcomponent'"],errorcode=>1}
+            );
+            return 0;
+        }
+
+        my $kittab = new xCAT::Table('kit', -create=>1);
+            unless($kittab){
+            $callback->(
+                {error => ["Unable to open table 'kit'"],errorcode=>1}
+            );
+            return 0;
+        }
+
+        my $kitrepotab = new xCAT::Table('kitrepo', -create=>1);
+            unless($kitrepotab){
+            $callback->(
+                {error => ["Unable to open table 'kitrepo'"],errorcode=>1}
+            );
+            return 0;
+        }
+
+        my $kitlist;
+        my $kitrepolist;
+        my $kitcomplist;
+        foreach my $kitcomponent (split ',', $attrs0->{kitcomponents}) {
+            (my $kitcomphash) = $kitcomponenttab->getAttribs({kitcompname => $kitcomponent},'kitname');
+            if (!$kitcomphash) {
+                $callback->({error=>["Cannot find kitname of \'$kitcomponent\' from the kitcomponent table."],errorcode=>[1]});
+                return 0;
+            }
+            
+            if ($kitcomphash->{kitname}) {
+                $kitlist->{$kitcomphash->{kitname}} = 1;
+
+                my @kitrepohash = $kitrepotab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitreponame');
+                foreach my $kitrepo (@kitrepohash) {
+                    if ($kitrepo->{kitreponame}) {
+                        $kitrepolist->{$kitrepo->{kitreponame}} = 1;
+                    }
+                }
+
+                my @kitcomponents = $kitcomponenttab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitcompname');
+                foreach my $kitcomp (@kitcomponents) {
+                    if ($kitcomp->{kitcompname}) {
+                        $kitcomplist->{$kitcomp->{kitcompname}} = 1;
+                    }
+                }
+            }
+        }
+
+
+        foreach my $kitname (keys %$kitlist) {
+            (my $kitattrs) = $kittab->getAttribs({kitname => $kitname},\@{$xCAT::Schema::tabspec{kit}->{cols}});
+            if (!$kitattrs) {
+                $callback->({error=>["Cannot find kit \'$kitname\' from the kit table."],errorcode=>[1]});
+                return 0;
+            }
+
+            $attrs->{kit}->{$kitname}=$kitattrs;
+        }
+
+        foreach my $kitreponame (keys %$kitrepolist) {
+            (my $kitrepoattrs) = $kitrepotab->getAttribs({kitreponame => $kitreponame},\@{$xCAT::Schema::tabspec{kitrepo}->{cols}});
+            if (!$kitrepoattrs) {
+                $callback->({error=>["Cannot find kitrepo \'$kitreponame\' from the kitrepo table."],errorcode=>[1]});
+                return 0;
+            }
+
+            $attrs->{kitrepo}->{$kitreponame}=$kitrepoattrs;
+        }
+
+        foreach my $kitcompname (keys %$kitcomplist) {
+            (my $kitcompattrs) = $kitcomponenttab->getAttribs({kitcompname => $kitcompname},\@{$xCAT::Schema::tabspec{kitcomponent}->{cols}});
+            if (!$kitcompattrs) {
+                $callback->({error=>["Cannot find kitcomp \'$kitcompname\' from the kitcomp table."],errorcode=>[1]});
+                return 0;
+            }
+
+            $attrs->{kitcomp}->{$kitcompname}=$kitcompattrs;
+        }
+
+    }
+
     $attrs = get_files($imagename, $callback, $attrs);
     if($#extra > -1){
         my $ex = get_extra($callback, @extra);
@@ -284,7 +374,6 @@ sub get_image_info {
         if ($node) {
         $attrs = get_postscripts($node, $callback, $attrs)
     }
-
 
     # if we get nothing back, then we couldn't find the files.  How sad, return nuthin'
     return $attrs;  
@@ -774,6 +863,23 @@ sub make_bundle {
         }
     }
     
+    # Copy kit 
+    my @kits = keys %{$attribs->{kit}};
+    foreach my $kit (@kits) {
+
+        my $values = $attribs->{kit}->{$kit};
+        if ( $values->{kitdir} ) {
+            my $fn = $values->{kitdir};
+            $callback->({data => ["$fn"]});
+            if (-r $fn) {
+                system("cp -dr $fn $tpath");
+            } else {
+                $callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
+            }
+        }
+    }
+
+
     # Copy any raw image files. Multiple files can exist (used by s390x)
     if ($attribs->{rawimagefiles}->{files}) {
         foreach my $fromf (@{$attribs->{rawimagefiles}->{files}}) {
@@ -990,10 +1096,12 @@ sub extract_bundle {
     }
     #print Dumper($data);
     #push @{$datas}, $data;
-  
-    #support imgimport osimage exported by xCAT 2.7 
+
+
+    #support imgimport osimage exported by xCAT 2.7
     manifest_adapter($data);
- 
+
+    
     # now we need to import the files...
     unless(verify_manifest($data, $callback)){
         $error++;
@@ -1254,6 +1362,9 @@ sub set_config {
     my $callback = shift;
     my $ostab = xCAT::Table->new('osimage',-create => 1,-autocommit => 0);
     my $linuxtab = xCAT::Table->new('linuximage',-create => 1,-autocommit => 0);
+    my $kittab = xCAT::Table->new('kit',-create => 1,-autocommit => 0);
+    my $kitrepotab = xCAT::Table->new('kitrepo',-create => 1,-autocommit => 0);
+    my $kitcomptab = xCAT::Table->new('kitcomponent',-create => 1,-autocommit => 0);
     my %keyhash;
     my $osimage = $data->{osimage}->{imagename};
 
@@ -1266,6 +1377,21 @@ sub set_config {
 		$callback->({error => ["Unable to open table 'linuximage'"],errorcode=>1});
 		return 0;
 	}
+
+    unless($kittab){
+        $callback->({error => ["Unable to open table 'kit'"],errorcode=>1});
+        return 0;
+    }
+
+    unless($kitrepotab){
+        $callback->({error => ["Unable to open table 'kitrepo'"],errorcode=>1});
+        return 0;
+    }
+
+    unless($kitcomptab){
+        $callback->({error => ["Unable to open table 'kitcomponent'"],errorcode=>1});
+        return 0;
+    }
 
     $callback->({data=>["Adding $osimage"]}) if $::VERBOSE;
 
@@ -1286,16 +1412,49 @@ sub set_config {
     $linuxtab->setAttribs({imagename => $osimage }, \%keyhash );
     $linuxtab->commit;
 
+    my $kit = $data->{kit};
+    foreach my $k (keys %$kit) { 
+        my $kithash = $kit->{$k};
+        %keyhash=();
+        foreach my $key (keys %$kithash){
+            $keyhash{$key} = $kithash->{$key};
+        }
+        $kittab->setAttribs({kitname => $k }, \%keyhash );
+        $kittab->commit;
+    }
+
+    my $kitrepo = $data->{kitrepo};
+    foreach my $k (keys %$kitrepo) {
+        my $kitrepohash = $kitrepo->{$k};
+        %keyhash=();
+        foreach my $key (keys %$kitrepohash){
+            $keyhash{$key} = $kitrepohash->{$key};
+        }
+        $kitrepotab->setAttribs({kitreponame => $k }, \%keyhash );
+        $kitrepotab->commit;
+    } 
+
+    my $kitcomp = $data->{kitcomp};
+    foreach my $k (keys %$kitcomp) {
+        my $kitcomphash = $kitcomp->{$k};
+        %keyhash=();
+        foreach my $key (keys %$kitcomphash){
+            $keyhash{$key} = $kitcomphash->{$key};
+        }
+        $kitcomptab->setAttribs({kitcompname => $k }, \%keyhash );
+        $kitcomptab->commit;
+    }
+
     return 1;
 }
 
 #an adapter to convert the manifest structure from 2.7 to 2.8
 sub manifest_adapter {
     my $data = shift;
-    
+
     if(exists($data->{osimage}) or exists($data->{linuximage})){
        return 0;
-    } 
+    }
 
     my %colstodel;
     foreach my $col (@{$xCAT::Schema::tabspec{osimage}->{cols}}){
@@ -1304,7 +1463,7 @@ sub manifest_adapter {
           $data->{osimage}->{$col}=$data->{$col};
        }
     }
-     
+
     foreach my $col (@{$xCAT::Schema::tabspec{linuximage}->{cols}}){
        if(defined($data->{$col})){
           $colstodel{$col}=1;
@@ -1318,6 +1477,7 @@ sub manifest_adapter {
 
     return 1;
 }
+
 
 sub verify_manifest {
     my $data = shift;
@@ -1553,6 +1713,25 @@ sub make_files {
             }
         }
     }
+
+    # unpack kit
+    my $k = $data->{kit};
+    foreach my $kit (keys %$k) {
+        my $fn = $k->{$kit}->{kitdir};
+        if ($fn) {
+            my $dirname = dirname($fn);
+            if (! -r $dirname) {
+                mkpath("$dirname", { verbose => 1, mode => 0755 });
+            }
+
+            if (-r "$dirname/$kit") {
+                $callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
+                move("$dirname/$kit", "$dirname/$kit.ORIG");
+            }
+            move("$imgdir/$kit","$dirname/$kit");
+        }
+    }
+
 
     #unpack the rootimgtree.gz for statelite
     my $fn=$data->{'rootimgtree'};
