@@ -977,13 +977,9 @@ sub runcmd
 	if ($::VERBOSE)
 	{
 		# get this systems name as known by xCAT management node
-		my $Sname = xCAT::InstUtils->myxCATname();
-		my $msg;
-		if ($Sname) {
-			$msg = "Running command on $Sname: $cmd";
-		} else {
-			$msg="Running command: $cmd";
-		}
+      my $hostname = `/bin/hostname`;
+      chomp $hostname;
+		my $msg="Running command on $hostname: $cmd";
 
 		if ($::CALLBACK){
 			my $rsp    = {};
