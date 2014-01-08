@@ -719,7 +719,8 @@ sub mknetboot
                 }
                 # END service node
             }
-	    }
+            $kcmdline .= "NODE=$node ";
+        }
         else {
             $kcmdline =
               "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";

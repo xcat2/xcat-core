@@ -1224,17 +1224,19 @@ for i in `cat /proc/cmdline`; do
    elif [ "\$KEY" == 'STATEMNT' ]; then
 	STATELITE=1
 	VALUE=`echo \$i |awk -F= '{print \$2}'`
-    # the VALUE may be null
-    if [ ! -z \$VALUE ]; then
-	    SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
-	    SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
-	    # may be that there is not server and just a directory.
-	    if [ -z \$SNAPSHOTROOT ]
-	    then
-		    SNAPSHOTROOT=\$SNAPSHOTSERVER
-		    SNAPSHOTSERVER=
-	    fi
-    fi
+        # the VALUE may be null
+        if [ ! -z \$VALUE ]; then
+            SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
+            SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+            # may be that there is not server and just a directory.
+            if [ -z \$SNAPSHOTROOT ]
+            then
+                SNAPSHOTROOT=\$SNAPSHOTSERVER
+                SNAPSHOTSERVER=
+            fi
+       fi
+   elif [ "\$KEY" == 'NODE' ]; then
+        NODENAME=`echo \$i |awk -F= '{print \$2}'`
    fi
 done
 
@@ -1257,6 +1259,9 @@ if [ "\$STATELITE" = "1" ]; then
     MAXTRIES=5
     ITER=0
     ME=`hostname`
+    if [ ! -z "\$NODENAME" ]; then
+        ME=\$NODENAME
+    fi
     if [ "\$NFSROOT" = "1" ]; then
         while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14; do
             ITER=\$(expr \$ITER + 1)
@@ -1343,6 +1348,38 @@ EOMS
             echo -e "\${RED}Hmmm... Can't mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT. \${NORMAL}"
             RS=\$(expr \$RANDOM % 20 )
             echo -e "Trying again in \$RS seconds"
+            sleep \$RS
+        done
+
+        # create directory which is named after my node name
+        mkdir -p \$NEWROOT/\$RWDIR/persistent/\$ME
+        ITER=0
+        # umount current persistent mount
+        while ! umount -l \$NEWROOT/\$RWDIR/persistent; do
+            ITER=\$(( ITER + 1 ))
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "Your are dead, rpower \$ME boot to play again."
+                echo "Cannot umount \$NEWROOT/\$RWDIR/persistent."
+                /bin/sh
+                exit
+            fi
+            RS= \$(( \$RANDOM % 20 ))
+            echo "Trying again in \$RS seconds..."
+            sleep \$RS
+        done
+
+        # mount persistent to server:/rootpath/nodename
+        ITER=0
+        while ! mount \$SNAPSHOTSERVER:/\$SNAPSHOTROOT/\$ME  \$NEWROOT/\$RWDIR/persistent -o nolock,rsize=32768; do
+            ITER=\$(( ITER + 1 ))
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+                echo "Your are dead, rpower \$ME boot to play again."
+                echo "Possible problems: cannot mount to \$SNAPSHOTSERVER:/\$SNAPSHOTROOT/\$ME."
+                /bin/sh
+                exit
+            fi
+            RS= \$(( \$RANDOM % 20 ))
+            echo "Trying again in \$RS seconds..."
             sleep \$RS
         done
     fi
