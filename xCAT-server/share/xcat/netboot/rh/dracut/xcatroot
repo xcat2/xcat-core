@@ -113,6 +113,10 @@ elif [ -r /rootimg-statelite.gz ]; then
   mount -t tmpfs rw $NEWROOT/$RWDIR
   mkdir -p $NEWROOT/$RWDIR/tmpfs
   ME=`hostname`
+  if [ ! -z $NODE ]; then
+      ME=$NODE
+  fi
+
 
   # mount the SNAPSHOT directory here for persistent use.
   if [ ! -z $STATEMNT ]; then
@@ -145,6 +149,38 @@ elif [ -r /rootimg-statelite.gz ]; then
         fi
         RS=$(( $RANDOM % 20 ))
         echo "Trying again in $RS seconds ..."
+        sleep $RS
+    done
+
+    # create directory which is named after my node name
+    mkdir -p $NEWROOT/$RWDIR/persistent/$ME
+    ITER=0
+    # umount current persistent mount
+    while ! umount -l $NEWROOT/$RWDIR/persistent; do
+        ITER=$(( ITER + 1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "Your are dead, rpower $ME boot to play again."
+            echo "Cannot umount $NEWROOT/$RWDIR/persistent."
+            /bin/sh
+            exit
+        fi
+        RS= $(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds..."
+        sleep $RS
+    done
+
+    # mount persistent to server:/rootpath/nodename
+    ITER=0
+    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
+        ITER=$(( ITER + 1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "Your are dead, rpower $ME boot to play again."
+            echo "Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+            /bin/sh
+            exit
+        fi
+        RS= $(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds..."
         sleep $RS
     done
   fi
