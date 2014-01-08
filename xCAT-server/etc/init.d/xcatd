@@ -74,36 +74,12 @@ restart)
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
-  $STATUS > /dev/null 2>&1
-  if [ "$?" = "0" ]; then
-    if [ ! -z $XCATROOT ]; then
-        XCATLIBPATH="$XCATROOT/lib/perl"
-    else
-        XCATLIBPATH="/opt/xcat/lib/perl"
-    fi
-    ver=`perl -I $XCATLIBPATH -mxCAT::Version -e 'print xCAT::Version::Version()'`
-    if [ "$ver" \< "Version 2.6" ]; then # force to stop xcatd first when update from version earlier than 2.6
-        $0 stop
-    fi
-  fi
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 reload)
   echo -n "Reloading xCATd "
    if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
-  fi
-  $STATUS > /dev/null 2>&1
-  if [ "$?" = "0" ]; then
-    if [ ! -z $XCATROOT ]; then
-        XCATLIBPATH="$XCATROOT/lib/perl"
-    else
-        XCATLIBPATH="/opt/xcat/lib/perl"
-    fi
-    ver=`perl -I $XCATLIBPATH -mxCAT::Version -e 'print xCAT::Version::Version()'`
-    if [ "$ver" \< "Version 2.6" ]; then # force to stop xcatd first when update from version earlier than 2.6
-        $0 stop
-    fi
   fi
   export XCATRELOAD=yes 
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
