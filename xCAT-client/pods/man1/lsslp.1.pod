@@ -37,6 +37,7 @@ B<-h>          Display usage message.
 B<-n>          Only display and write the newly discovered hardwares.
 
 B<-u>          Do unicast to a specified IP range. Must be used with -s and --range.
+            The -u flag is not supported on AIX.
 
 B<--range>     Specify one or more IP ranges. Must be use in unicast mode. 
             It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
