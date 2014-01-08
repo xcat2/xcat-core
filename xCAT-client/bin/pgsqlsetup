@@ -1191,7 +1191,7 @@ sub setupODBC
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $message = "$cmd failed. Could not setup ODBC DNS file.";
+            $message = "Could not setup ODBC DNS file.";
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
 
