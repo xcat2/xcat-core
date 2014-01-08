@@ -48,7 +48,7 @@ my %tabooseq; #TODO: this is a global which means one taboo in the whole set cau
 my $maxpending; #determined dynamically based on rcvbuf detection
 
 my $ipmi2support;
-if ( -f "/etc/debian_release" ){
+if ( -f "/etc/debian_release" or -f "/etc/debian_version"){
     $ipmi2support = eval {
         require Digest::SHA;
         Digest::SHA->import(qw/sha1/);
