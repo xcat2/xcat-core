@@ -99,6 +99,14 @@ sub dodiscover {
     my $printinfo = join(",", @printip);
     
     if ($unicast) {
+        if (xCAT::Utils->isAIX()){
+            send_message($args{reqcallback}, 1, "lsslp unicast is not supported on AIX");
+            exit 1;
+        }
+        if (! -f "/usr/bin/nmap"){
+            send_message($args{reqcallback}, 1, "nmap does not exist, lsslp unicast is not possible");
+            exit 1;
+        }
         my @servernodes;
         my @iprange = split /,/, $ipranges;
         foreach my $range (@iprange) {
