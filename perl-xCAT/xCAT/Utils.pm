@@ -940,18 +940,15 @@ sub runcmd
     my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
     $::RUNCMD_RC = 0;
     # redirect stderr to stdout
+   
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
+    my $hostname = `/bin/hostname`;
+    chomp $hostname;
 
-	if ($::VERBOSE)
-	{
-		# get this systems name as known by xCAT management node
-		my $Sname = xCAT::InstUtils->myxCATname();
-		my $msg;
-		if ($Sname) {
-			$msg = "Running command on $Sname: $cmd";
-		} else {
-			$msg="Running command: $cmd";
-		}
+
+    if ($::VERBOSE)
+	 {
+      my $msg="Running command on $hostname: $cmd";
 
 		if ($::CALLBACK){
 			my $rsp    = {};
@@ -960,7 +957,7 @@ sub runcmd
 		} else {
 			xCAT::MsgUtils->message("I", "$msg\n");
 		}
-	}
+	 }
 
     my $outref = [];
     if (!defined($stream) || (length($stream) == 0)) { # do not stream
