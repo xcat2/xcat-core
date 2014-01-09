@@ -867,7 +867,7 @@ servicenode => {
 site => {
     cols => [qw(key value comments disable)],
     keys => [qw(key)],
-    table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
+    table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nattributes currently used by xCAT organized into categories.\n",
  descriptions => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
   # ----------------------------------------------------------------------------------|----------
