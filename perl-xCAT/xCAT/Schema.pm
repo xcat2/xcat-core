@@ -1325,7 +1325,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1343,6 +1343,13 @@ nics => {
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
+            nichostnameprefixes  => 'Comma-separated list of hostname prefixes per NIC. 
+                        If only one ip address is associated with each NIC:
+                            <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
+                        If multiple ip addresses are associcated with each NIC:
+                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
+                        The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
+                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband. The xCAT object definition commands support to use nictypes.<nicname> as the sub attributes.', 
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
 .',

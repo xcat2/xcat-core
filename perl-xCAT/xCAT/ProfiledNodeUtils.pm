@@ -265,6 +265,7 @@ sub rackformat_to_numricformat{
                     values are attributes of a specific nic, like:
                         type : nic type
                         hostnamesuffix: hostname suffix
+                        hostnameprefix: hostname prefix
                         customscript: custom script for this nic
                         network: network name for this nic
                         ip: ip address of this nic.
@@ -276,7 +277,7 @@ sub get_nodes_nic_attrs{
     my $nodes = shift;
 
     my $nicstab = xCAT::Table->new( 'nics');
-    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
+    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'nichostnameprefixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
 
     my %nicsattrs;
     my @nicattrslist;
@@ -305,6 +306,20 @@ sub get_nodes_nic_attrs{
 					@nicattrs = split(":", $_);
 				}
                 $nicsattrs{$node}{$nicattrs[0]}{'hostnamesuffix'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nichostnameprefixes'}){
+
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nichostnameprefixes'});
+            foreach (@nicattrslist){
+                               my @nicattrs;
+                               if ($_  =~ /!/) {
+                                       @nicattrs = split("!", $_);
+                               } else {
+                                       @nicattrs = split(":", $_);
+                               }
+                $nicsattrs{$node}{$nicattrs[0]}{'hostnameprefix'} = $nicattrs[1];
             }
         }
 

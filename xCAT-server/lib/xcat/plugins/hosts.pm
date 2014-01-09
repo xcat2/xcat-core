@@ -93,7 +93,7 @@ sub addnode
 
 					# at this point "othernames", if any is just a space
 					#	delimited list - so just add the node name to the list
-					$othernames .= " $node";
+					#$othernames .= " $node";
 					$hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
 				} else {
 					# otherwise just try to completely update the existing
@@ -568,6 +568,7 @@ sub donics
                                    $node,
                                    [
                                     'nicips', 'nichostnamesuffixes',
+                                    'nichostnameprefixes',
                                     'nicnetworks', 'nicaliases'
                                    ]
                                    );
@@ -613,6 +614,7 @@ sub donics
 		}
 
         my @nicandsufx = split(',', $et->{'nichostnamesuffixes'});
+        my @nicandprfx = split(',', $et->{'nichostnameprefixes'});
 
         foreach (@nicandsufx)
         {
@@ -634,12 +636,32 @@ sub donics
                 $nich->{$nicname}->{nicsufx}->[0] = $nicsufx;
             }
         }
+        foreach (@nicandprfx)
+        {
+			my ($nicname, $nicprfx);
+			if ($_  =~ /!/) {
+				($nicname, $nicprfx) = split('!', $_);
+			} else {
+            	($nicname, $nicprfx) = split(':', $_);
+			}
+
+            if ( $nicprfx =~ /\|/) {
+                my @prfs = split( /\|/, $nicprfx);
+				my $index=0;
+                foreach my $prf (@prfs) {
+                    $nich->{$nicname}->{nicprfx}->[$index] = $prf;
+					$index++;
+                }
+            } else {
+                $nich->{$nicname}->{nicprfx}->[0] = $nicprfx;
+            }
+        }
 
 		# see if we need to fill in a default suffix
 		# nich has all the valid nics - ie. that have IPs provided!
 		foreach my $nic (keys %{$nich}) {
 			for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
-				if (!$nich->{$nic}->{nicsufx}->[$i]) {
+				if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
 					# then we have no suffix at all for this 
 					# so set a default
 					$nich->{$nic}->{nicsufx}->[$i] = "-$nic";
@@ -710,6 +732,7 @@ sub donics
 
 				my $nicip = $nich->{$nic}->{nicip}->[$i];
 				my $nicsuffix = $nich->{$nic}->{nicsufx}->[$i];
+				my $nicprefix = $nich->{$nic}->{nicprfx}->[$i];
 				my $nicnetworks = $nich->{$nic}->{netwrk}->[$i];
 				my $nicaliases = $nich->{$nic}->{nicaliases}->[$i];
 
@@ -718,7 +741,7 @@ sub donics
 				}
 
             	# construct hostname for nic
-            	my $nichostname = "$shorthost$nicsuffix";
+            	my $nichostname = "$nicprefix$shorthost$nicsuffix";
 
             	# get domain from network def provided by nic attr
 				my $nt = $nettab->getAttribs({ netname => "$nicnetworks"}, 'domain');
