@@ -1003,7 +1003,7 @@ sub update_namedconf {
     }
     unless ($gotoptions) {
            push @newnamed,"options {\n";
-        unless ($slave) {
+        unless ($slave && xCAT::Utils->isLinux()) {
            push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
         }
 	 push @newnamed,"\t\t//listen-on-v6 { any; };\n";
