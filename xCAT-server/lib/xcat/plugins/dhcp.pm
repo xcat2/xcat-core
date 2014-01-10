@@ -871,7 +871,7 @@ sub check_options
     
     # Exit if the packet has been preprocessed
     # Comment this line to make sure check_options can be processed on service node.
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return 0; }
 
     # display the usage if -h
     if ($opt->{h})
