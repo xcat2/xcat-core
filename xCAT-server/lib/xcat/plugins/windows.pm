@@ -648,13 +648,18 @@ sub mkinstall
 
     # generate the winpe path configuration file for proxydhcp daemon
     if ($dowinpecfg) {
-        open (FILE, ">/var/lib/xcat/proxydhcp.cfg");
-        print FILE $winpepathcfg;
-        close (FILE);
-
-        if (open (PDPID, "</var/run/xcat/proxydhcp-xcat.pid")) {
-            my $pdpid = <PDPID>;
-            kill 10, $pdpid;
+        unless (-d "/var/lib/xcat/") {
+            mkpath "/var/lib/xcat/";
+        }
+        if (open (FILE, ">/var/lib/xcat/proxydhcp.cfg")) {
+            print FILE $winpepathcfg;
+            close (FILE);
+            if (open (PDPID, "</var/run/xcat/proxydhcp-xcat.pid")) {
+                my $pdpid = <PDPID>;
+                kill 10, $pdpid;
+            }
+        } else {
+            $callback->({error=>["Cannot open /var/lib/xcat/proxydhcp.cfg for update."],errorcode=>[1]});
         }
     }
 }
