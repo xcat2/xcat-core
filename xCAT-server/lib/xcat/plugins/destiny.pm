@@ -453,7 +453,7 @@ sub setdestiny {
                 return;
             }
         }
-    } elsif ($state eq "offline") {
+    } elsif ($state eq "offline" || $state eq "shutdown") {
 	1;
     } elsif (!($state eq "boot")) { 
 	$callback->({error=>["Unknown state $state requested"],errorcode=>[1]});

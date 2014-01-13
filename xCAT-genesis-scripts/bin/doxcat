@@ -189,6 +189,8 @@ while :; do
 			sleep 1
 		done
 		echo "Retrying                                                                                   ";
+	elif [ "$dest" = shutdown ]; then
+		poweroff -f
 	else 
 		echo "Unrecognized directive $dest"
 		destiny=''

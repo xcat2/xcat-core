@@ -381,6 +381,16 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
+# update the node status to 'bmcready'
+for parm in `cat /proc/cmdline`; do
+	key=`echo $parm|awk -F= '{print $1}'`
+	if [ "$key" = "xcatd" ]; then
+		XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+	fi
+done
+if [ ! -z "$XCATMASTER" ]; then
+    updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
+fi
 #frume.awk
 
 echo "Lighting Identify Light"
