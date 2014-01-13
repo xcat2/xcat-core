@@ -65,14 +65,9 @@ else {
         1;
     };
 }
-my $aessupport;
-if ($ipmi2support) {
-    $aessupport = eval {
-        require Crypt::Rijndael;
-        require Crypt::CBC;
-        1;
-    };
-}
+use Crypt::Rijndael;
+use Crypt::CBC;
+
 sub hexdump {
     foreach  (@_) {
         printf "%02X ",$_;
@@ -382,10 +377,7 @@ sub open_rmcpplus_request {
 	    @sidbytes,
             0,0,0,8,1,0,0,0, #table 13-17, request sha
             1,0,0,8,1,0,0,0); #sha integrity
-        if ($aessupport) { 
-            push @payload,(2,0,0,8,1,0,0,0);
-        } else {
-            push @payload,(2,0,0,8,0,0,0,0);
+            push @payload,(2,0,0,8,1,0,0,0); # aes 
         }
     $self->{sessionestablishmentcontext} = STATE_OPENSESSION;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rmcpplusopenreq'});
@@ -802,9 +794,7 @@ sub got_rakp4 {
     }
     $self->{sessionid} = $self->{pendingsessionid};
     $self->{integrityalgo}='sha1';
-    if ($aessupport) {
-        $self->{confalgo} = 'aes';
-    }
+    $self->{confalgo} = 'aes';
     $self->{sequencenumber}=1;
     $self->{sequencenumberbytes}=[1,0,0,0];
     $self->{sessionestablishmentcontext} = STATE_ESTABLISHED; #will move on to relying upon session sequence number
@@ -862,11 +852,9 @@ sub got_rakp2 {
     }
     $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
     $self->{k1} = hmac_sha1(pack("C*",1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1),$self->{sik});
-    if ($aessupport) {
-        $self->{k2} = hmac_sha1(pack("C*",2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2),$self->{sik});
-        my @aeskey = unpack("C*",$self->{k2});
-        $self->{aeskey} = pack("C*",(splice @aeskey,0,16));
-    }
+    $self->{k2} = hmac_sha1(pack("C*",2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2),$self->{sik});
+    my @aeskey = unpack("C*",$self->{k2});
+    $self->{aeskey} = pack("C*",(splice @aeskey,0,16));
     $self->{sessionestablishmentcontext} = STATE_EXPECTINGRAKP4;
     $self->send_rakp3();
     return 0;
