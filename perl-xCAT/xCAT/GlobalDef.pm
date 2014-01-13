@@ -56,6 +56,7 @@ $::STATUS_SHELL="shell";
 $::STATUS_DEFINED="defined";
 $::STATUS_UNKNOWN="unknown";
 $::STATUS_FAILED="failed";
+$::STATUS_BMCREADY="bmcready";
 %::VALID_STATUS_VALUES = (
 	$::STATUS_ACTIVE=>1,
 	$::STATUS_INACTIVE=>1,
@@ -72,6 +73,7 @@ $::STATUS_FAILED="failed";
 	$::STATUS_DEFINED=>1,
 	$::STATUS_UNKNOWN=>1,
         $::STATUS_FAILED=>1,
+        $::STATUS_BMCREADY=>1,
 
 	$::STATUS_SYNCING=>1,
 	$::STATUS_OUT_OF_SYNC=>1,
