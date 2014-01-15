@@ -205,10 +205,10 @@ if ($::osname eq 'AIX')
     &setulimits;
 }
 
-#  if not just odbc update  and not already running mysql
+#  if not just odbc update  and not already running mysql or mysqlsetup -u
 #  Get root and admin passwords
 #
-if (($odbconly == 0) && ( $::xcatrunningmysql == 0))
+if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE )
 {    # not just updating the odbc
     if ($ENV{'XCATMYSQLADMIN_PW'})    # input env sets the password
     {
