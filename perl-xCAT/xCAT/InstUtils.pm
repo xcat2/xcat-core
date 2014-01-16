@@ -1353,6 +1353,16 @@ sub dolitesetup
 					return 1;
 				}
 
+				# also copy $instrootloc/.statelite contents
+				$ccmd = "/usr/bin/cp -p -r $instrootloc/.statelite $SRloc";
+				$out = xCAT::Utils->runcmd("$ccmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $instrootloc/.statelite to $SRloc.";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
 			}
 		}
 	}
