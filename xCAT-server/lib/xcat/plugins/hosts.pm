@@ -122,6 +122,10 @@ sub build_line
     my $othernames = shift;
     my @o_names    = ();
     my @n_names    = ();
+
+    # Trim spaces from the beginning and end from $othernames
+    $othernames =~ s/^\s+|\s+$//g;
+
     if (defined $othernames)
     {
 		# the "hostnames" attribute can be a list delimited by 
