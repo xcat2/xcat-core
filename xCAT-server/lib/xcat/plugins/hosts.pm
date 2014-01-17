@@ -91,7 +91,7 @@ sub addnode
 
 					# at this point "othernames", if any is just a space
 					#	delimited list - so just add the node name to the list
-					#$othernames .= " $node";
+					$othernames .= " $node";
 					$hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
 				} else {
 					# otherwise just try to completely update the existing
@@ -120,6 +120,10 @@ sub build_line
     my $othernames = shift;
     my @o_names    = ();
     my @n_names    = ();
+
+    # Trim spaces from the beginning and end from $othernames
+    $othernames =~ s/^\s+|\s+$//g;
+
     if (defined $othernames)
     {
 		# the "hostnames" attribute can be a list delimited by 
