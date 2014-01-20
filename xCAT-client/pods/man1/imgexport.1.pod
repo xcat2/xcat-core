@@ -11,7 +11,7 @@ B<imgexport image_name [destination] [[-e|--extra file:dir] ... ] [-p|--postscri
 
 =head1 DESCRIPTION
 
-The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the I<osimage> table. All the columns in the I<osimage> and I<linuximage> tables will be exported. If kits are used in statefull or stateless images, I<kit>, I<kitconponent> and I<kitrepo> tables will be exported. In addition, the following files will also be exported.
+The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the I<osimage> table. All the columns in the I<osimage> and I<linuximage> tables will be exported. If kits are used in statefull or stateless images, I<kit>, I<kitcomponent> and I<kitrepo> tables will be exported. In addition, the following files will also be exported.
 
 For statefull:
   x.pkglist
