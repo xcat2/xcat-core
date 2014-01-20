@@ -952,11 +952,18 @@ sub kit_buildtar
     my $dir = dirname($::deploy_dir);
     my $bidir =  "$dir/build_input";
 
-    if ( -d "$bidir") {
-        if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
-            print "Error: Could not copy building tarfile $tarfile \n";
-            return 1;
+    if ($::HAVE_EXTERNAL_PKG or $::HAVE_NON_NATIVE_PKGS) {
+        if ( -d "$bidir") {
+            if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
+                 print "Error: Could not copy building tarfile $tarfile \n";
+                 return 1;
+            }
         }
+    } else {
+           my $mykitdir=$::deploy_dir."/"."build_input";
+           if ( -d $mykitdir ) {
+                system("cd $mykitdir; cd ..; rm -r build_input" );
+           }
     }
 
     print "Creating tar file $tarfile.\n";
