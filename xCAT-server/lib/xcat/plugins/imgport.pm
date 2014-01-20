@@ -1173,7 +1173,6 @@ sub extract_bundle {
 	    #print Dumper($data);
 	    #push @{$datas}, $data;
 
-<<<<<<< HEAD
             #support imgimport osimage exported by xCAT 2.7 
             manifest_adapter($data);
 	    
@@ -1216,41 +1215,8 @@ sub extract_bundle {
 	        
 	    my $osimage = $data->{osimage}->{imagename};    
 	    $callback->({data=>["Successfully imported the image $osimage."]});
-=======
-    #change profile name if needed
-    if ($new_profile) {
-        $data=change_profile($data, $callback, $new_profile, $imgdir);
-    }
     
-    #import manifest.xml into xCAT database
-    unless(set_config($data, $callback)){
-        $error++;
-        next;
-    }
-    
-    # now place files in appropriate directories.
-    unless(make_files($data, $imgdir, $callback)){
-        $error++;
-        next;
-    }
-
-    #for kit stuff,create symlink between kitrepodir to otherpkgdir
-    unless(create_symlink($data,$callback)){
-        $error++;
-        next;
-    } 
-    # put postscripts in the postsctipts table
-    if ($nodes) {
-        unless(set_postscripts($data, $callback, $nodes)){
-        $error++;
-        next;
-        }
-    }
-        
-    my $osimage = $data->{osimage}->{imagename};    
-    $callback->({data=>["Successfully imported the image $osimage."]});
->>>>>>> ece1fd7... fixed 3357,add symlink,copy postscripts and plugin files for kit
-    }
+     }
     
     # Clean up for this routine.
     # Remove the temp directory used for the exploded bundle
