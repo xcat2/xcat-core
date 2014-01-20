@@ -1,4 +1,5 @@
 xcat.conf etc/apache2/conf.d/
+xcat.conf.apach24 etc/apache2/conf.d/
 LICENSE.html opt/xcat/share/doc/packages/xCAT
 postscripts/* install/postscripts/
 prescripts/* install/prescripts/
