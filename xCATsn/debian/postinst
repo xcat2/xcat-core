@@ -28,6 +28,13 @@ case "$1" in
         rm  /etc/xCATMN
       fi
 
+        ver=$(cat /etc/issue |awk '{print $2}')
+        num=${ver%.*}
+        file="xcat.conf.apach24"
+        if [ $num -gt 12 ];then
+            mv /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf-enabled/
+        fi
+
       apachedaemon='apache2'
 
       update-rc.d $apachedaemon enable
