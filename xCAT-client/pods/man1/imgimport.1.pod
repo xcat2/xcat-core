@@ -17,6 +17,7 @@ For statefull, the following files will be copied to the appropriate directories
   x.otherpkgs.pkglist
   x.tmpl
   x.synclist
+  kits related files
 
 For stateless, the following files will be copied to the appropriate directories.
   kernel
@@ -27,6 +28,7 @@ For stateless, the following files will be copied to the appropriate directories
   x.synclist
   x.postinstall
   x.exlist
+  kits related files
 
 For statelite, the following files will be copied to the appropriate directories.
   kernel
