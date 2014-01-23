@@ -1,0 +1,45 @@
+start:Ubuntu_full_installation_flat_x86_vm
+os:Linux
+cmd:makedns
+check:rc==0
+cmd:service named restart
+check:rc==0
+cmd:chdef $$CN servicenode= xcatmaster=
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if [ ! -e /install/custom/netboot/ubuntu/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/ubuntu/compute.synclist; fi
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/ubuntu/compute.synclist
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:nodeset $$CN osimage
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
