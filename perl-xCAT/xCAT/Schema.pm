@@ -1052,7 +1052,7 @@ site => {
    "                 from the MN that will eventually be rsync'd to the compute nodes.\n\n".
    " sshbetweennodes:  Comma separated list of groups of compute nodes to enable passwordless root \n".
    "                   ssh during install, or xdsh -K. Default is ALLGROUPS.\n".
-   "                   Set to NOGROUPS,if you do not wish to enabled any groups of compute nodes.\n".
+   "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
    "                   passwordless root access to nodes and other SN.\n\n".
