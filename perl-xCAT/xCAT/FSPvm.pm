@@ -1749,8 +1749,8 @@ sub query_cec_info {
     my $args    = $request->{opt};
     my @td = ();
     my @result = ();
-    print Dumper($request);
-    print Dumper($hash);
+    #print Dumper($request);
+    #print Dumper($hash);
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name, $d) = each (%$h)) {
             @td = @$d;

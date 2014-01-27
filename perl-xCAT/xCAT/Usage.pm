@@ -207,6 +207,7 @@ my %usage = (
        mkvm noderange [--full]
        mkvm noderange [vmcpus=min/req/max] [vmmemory=min/req/max]
                       [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
+                      [vmnics=vlan1,vlan2] [vmstorage=<N|viosnode:slotid>] [--vios]
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force
     For zVM
@@ -241,6 +242,8 @@ my %usage = (
        chvm <noderange> [lparname=<*|name>]
        chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
                         [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
+                        [vmnics=vlan1,vlan2] [vmstorage=<N|viosnode:slotid>] [--vios]
+       chvm <noderange> [del_vadapter=slotid]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:

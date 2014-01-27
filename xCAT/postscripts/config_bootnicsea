@@ -129,16 +129,15 @@ unless($mask) {
     }
 }
 
-close($::LOG_FILE);
 {
     my $lsicmd = "/usr/sbin/lsitab bootnicsea > /dev/null 2>&1"; 
     if (&runcmd($lsicmd) == 0) {
-       #my $mkicmd = '/usr/sbin/mkitab "bootnicsea:2:wait:/xcatpost/config_bootnicsea > /dev/console 2>&1"';
        my $rmicmd = 'rmitab "bootnicsea" > /dev/null 2>&1';
         if (&runcmd($rmicmd) != 0) {
             msg("Warning: config_bootnicsea: Could not remove config_bootnicsea from /etc/inittab.\n")
         }
     }
 }
+close($::LOG_FILE);
 
 exit 0;
