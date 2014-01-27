@@ -17,7 +17,7 @@ use File::Path;
 use File::Copy;
 use Fcntl qw/:flock/;
 
-use Data::Dumper;
+#use Data::Dumper;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -144,7 +144,7 @@ sub preprocess_request {
             $request = {};
             return;
         }
-        print Dumper($request);
+        #print Dumper($request);
         return [$request];   
     } 
     
@@ -160,7 +160,7 @@ sub process_request {
     if ($command eq 'copycd') {
         return copycd($request, $callback, $subreq);
     } elsif ($command eq 'nodeset') {
-        print Dumper($request);
+        #print Dumper($request);
         return nodeset($request, $callback, $subreq);
     }
 }
@@ -202,8 +202,8 @@ sub copycd {
         $callback->({error=>"Only suport to use the iso file vios"});
         return;
     }
-    print __LINE__."=====>vios=====.\n";
-    print Dumper($request);
+    #print __LINE__."=====>vios=====.\n";
+    #print Dumper($request);
     my $installroot = "/install";
     my @entries = xCAT::TableUtils->get_site_attribute("installdir");
     my $t_entry = $entries[0];
@@ -259,7 +259,7 @@ sub copycd {
         close($expectcd_fd);
     }
     if ($expect_cd eq "END") {
-        goto CREATE_OBJ;
+        #goto CREATE_OBJ;
         $callback->({error=>"All the cds for $distname are gotten."});
         return;    
     }
@@ -318,7 +318,7 @@ sub copycd {
         $callback->({error=>$res});
         return;
     }
-CREATE_OBJ:
+    #CREATE_OBJ:
     if ($expect_cd eq "END") {
         my $imagename = $distname.'_sysb';
         xCAT::MsgUtils->message("I", {data=>["create osimage object: $imagename"]}, $callback);
@@ -331,7 +331,7 @@ CREATE_OBJ:
                            osdistroname=>$distname,
                            osvers=>$oslevel,
                            osarch=>$arch);
-            print Dumper(%tb_cols);
+            #print Dumper(%tb_cols);
             $osimagetab->setAttribs(\%key_col, \%tb_cols);
         } else {
             $callback->({error=>"Can not open 'osimage' table"});
