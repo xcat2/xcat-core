@@ -19,6 +19,7 @@ require xCAT::Utils;
 require xCAT::TableUtils;
 require xCAT::NetworkUtils;
 require xCAT::MsgUtils;
+require xCAT::CFMUtils;
 require xCAT::ProfiledNodeUtils;
 
 # Globals.
@@ -481,7 +482,7 @@ Usage:
         $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr);
     }
-    
+
     setrsp_progress("Configuring nodes...");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
@@ -1686,6 +1687,15 @@ sub gen_new_hostinfo_dict{
     # Get node's provisioning method
     my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
 
+    # start to check windows nodes, product will indicate it is a windows node:  win2k8r2.enterprise
+    my ($osvers, $osprofile) = xCAT::ProfiledNodeUtils->get_imageprofile_prov_osvers($provmethod);
+    my $product = undef;
+    if ($osvers =~ /^win/)
+    {
+        $product = "$osvers.$osprofile";
+    }
+    
+
     # Check whether this is Power env.
     my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
 
@@ -1747,6 +1757,18 @@ sub gen_new_hostinfo_dict{
         }
         $hostinfo_dict{$item}{"nicips"} = $nicips;
 
+        #save for windows node
+        if(defined($product) && exists($hostinfo_dict{$item}{"prodkey"}))
+        {
+            if(defined($hostinfo_dict{$item}{"prodkey"}))
+            {
+                my $rst = xCAT::ProfiledNodeUtils->update_windows_prodkey($item, $product, $hostinfo_dict{$item}{"prodkey"});
+            	if($rst == 1)
+                {
+                    return 0, "Test Store windows per-node key failed for node: $item";
+                }
+            }
+        }
         $hostinfo_dict{$item}{"objtype"} = "node";
         $hostinfo_dict{$item}{"groups"} = "__Managed";
         if (exists $args_dict{'networkprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'networkprofile'}}
@@ -1790,11 +1812,11 @@ sub gen_new_hostinfo_dict{
 
         if (exists $chain->{'chain'}) {
            my $hardwareprofile_chain = $chain->{'chain'};
-           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod;
+           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod.":--noupdateinitrd";
         }
 
         else {
-           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod;
+           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod.":--noupdateinitrd";
         }
 
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
@@ -2056,7 +2078,7 @@ sub validate_node_entry{
         $errmsg .= "Node name $node_name already exists. You must use a new node name.\n";
     }
     # Must specify either MAC or switch + port.
-    if (exists $node_entry{"mac"} || 
+    if (exists $node_entry{"mac"} ||
         exists $node_entry{"switch"} && exists $node_entry{"switchport"}){
     } else{
         $errmsg .= "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.\n";
@@ -2090,6 +2112,20 @@ sub validate_node_entry{
                 #push the IP into allips list.
                 $allips{$node_entry{$_}} = 0;
             }
+        }elsif ($_ eq "prodkey"){
+            # Get node's provisioning os version
+            my $osimagename = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
+            my ($osvers, $profile) = xCAT::ProfiledNodeUtils->get_imageprofile_prov_osvers($osimagename);
+            if (!($osvers =~ /^win/)){
+                $errmsg .= "Specified Windows per-node key to a non-windows node is not acceptable\n";
+            }
+
+            # it will handle windows pernode key
+            if (!($node_entry{$_} =~ /\w{5}-\w{5}-\w{5}-\w{5}-\w{5}/)){
+                $errmsg .= "Specified Windows per-node key $node_entry{$_} is not valid\n";
+            }
+            #Transfer to capital
+            $node_entry{$_} = uc $node_entry{$_}; 
         }elsif ($_ eq "switch"){
             #TODO: xCAT switch discovery enhance: verify whether switch exists.
             if (! exists $allswitches{$node_entry{$_}}){
