@@ -1,0 +1,144 @@
+#!/usr/bin/env perl -w
+
+
+if ($^O =~ /^aix/i) {
+	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
+}
+
+use strict;
+use File::Path;
+use Getopt::Long;
+# script file name
+$::script = $0;
+$::script =~ s/.*\///;
+#####################################################
+#
+# run the command
+#
+#####################################################
+
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc=0;
+    $cmd .= ' 2>&1' ;
+    msg("Running command $cmd");
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            print "$::sdate $0: $::outref\n";
+            print $::LOG_FILE "$::sdate $0: $::outref\n";
+        }
+    }
+    return $rc;
+}
+
+sub msg
+{
+    my $str = shift;
+    $::sdate = `/bin/date`;
+    chomp $::sdate;
+    #print "$::sdate $::script $str\n";
+    print $::LOG_FILE "$::sdate $::script $str\n";
+}
+
+my $cmd;
+
+my $logdir = "/var/log/xcat";
+
+if (!-d $logdir) {
+    mkpath($logdir);
+}
+
+my $logfile = $logdir . "/xcat.log";
+# this log should not contain much so it might be ok to let it grow?
+# at least we'll have the errors preserved
+open(LOGFILE,">>",$logfile);
+$::LOG_FILE = \*LOGFILE;
+
+my $xcatinfo;
+open($xcatinfo,"<","/etc/xcatinfo");
+my @sea_info = <$xcatinfo>;
+close($xcatinfo);
+my ($phy,$vir,$vlan,$ip,$mask,$host);
+foreach my $sea_line (@sea_info) {
+    if ($sea_line =~ /SEA_ADAPTERS=(.*)$/) {
+        ($phy,$vir,$vlan,$ip,$mask,$host) = split (/:/,$1);
+        last;
+    }
+}
+
+if (!$phy || !$vir || !$vlan) {
+    msg("Warning: incorrect SEA_ADAPTERS format, the syntax is physcial_adapter:virtual_adapter:vlan_id:ip_addr:netmask, where the ip_addr and netmask could be blank if you do not want to configure ip for this SEA adapter, skipping TCP/IP configuration");
+    exit 1;
+} else {
+    msg("Info: phy:$phy,vir:$vir,vlan:$vlan,ip:$ip-$mask, hostname:$host");
+}
+
+unless($mask) {
+    $mask = "255.255.255.0";
+}
+
+{
+    #$cmd = "/usr/ios/cli/ioscli license -swma";
+    #&runcmd($cmd);
+    $cmd = "/usr/ios/cli/ioscli license -accept";
+    &runcmd($cmd);
+}
+{ # detach bootnic
+    if ($phy =~ /^ent(\d+)/) {
+        my $phynic_id = $1;
+        my $en_nic = "en".$phynic_id;
+        my $ent_nic = "ent".$phynic_id;
+        my $et_nic = "et".$phynic_id;
+        $cmd = "ifconfig $en_nic down; ifconfig $en_nic detach; rmdev -dl $en_nic; rmdev -dl $ent_nic; rmdev -dl $et_nic; cfgmgr;";
+        if (&runcmd($cmd) != 0) {
+            msg("Error: could not detach nic:$phy");
+            exit 1;
+        }
+    }
+}
+{ # create sea adapter and config it
+    #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mkvdev -sea $phy -vadapter $virt -default $virt -defaultid $vlan"~;
+    $cmd = "/usr/ios/cli/ioscli mkvdev -sea $phy -vadapter $vir -default $vir -defaultid $vlan";
+    if (&runcmd($cmd) != 0) {
+        msg("Error: could not create SEA with physical adapter $phy, virtual adapter $vir and vlan id $vlan");
+        exit 1;
+    }
+    my $sea_out = $::outref;
+    my $sea = undef;
+    my @out_array = split (/\n/, $sea_out); 
+    foreach (@out_array) { 
+        if (/(ent\d+)\s*Available/) {
+            $sea = $1;
+            $sea =~ s/t//;
+        }
+    }
+    unless ($sea) {
+        msg("Error: did not get available SEA adapter, $sea_out===");
+        exit 1;
+    }
+    msg("Info: The interface created with mkvdev is: $sea");
+    #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mktcpip -host $host -inetaddr $ip -interface $sea -netmask $mask"~;
+    $cmd = "/usr/ios/cli/ioscli mktcpip -hostname $host -inetaddr $ip -interface $sea -netmask $mask";
+    if (&runcmd($cmd) != 0) {
+        msg("Error: could not configure ip address for SEA $sea");
+    }
+}
+
+close($::LOG_FILE);
+{
+    my $lsicmd = "/usr/sbin/lsitab bootnicsea > /dev/null 2>&1"; 
+    if (&runcmd($lsicmd) == 0) {
+       #my $mkicmd = '/usr/sbin/mkitab "bootnicsea:2:wait:/xcatpost/config_bootnicsea > /dev/console 2>&1"';
+       my $rmicmd = 'rmitab "bootnicsea" > /dev/null 2>&1';
+        if (&runcmd($rmicmd) != 0) {
+            msg("Warning: config_bootnicsea: Could not remove config_bootnicsea from /etc/inittab.\n")
+        }
+    }
+}
+
+exit 0;

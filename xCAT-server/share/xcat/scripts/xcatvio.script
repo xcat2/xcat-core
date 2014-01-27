@@ -1,0 +1,382 @@
+#!/usr/bin/env perl -w
+# IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
+#####################################################
+#
+# xCAT script resource for VIOS installation
+#
+#####################################################
+
+use File::Path;
+use Getopt::Long;
+
+# script file name
+$::script = $0;
+$::script =~ s/.*\///;
+
+#####################################################
+#
+# run the command
+#
+#####################################################
+
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc=0;
+    $cmd .= ' 2>&1' ;
+    msg("Running command $cmd");
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+        print "$::sdate $0: $::outref\n";
+        print $::LOG_FILE "$::sdate $0: $::outref\n";
+        }
+    }
+    return $rc;
+}
+
+sub msg
+{
+    my $str = shift;
+    $sdate = `/bin/date`;
+    chomp $sdate;
+    print "$sdate $::script $str\n";
+    print $::LOG_FILE "$sdate $::script $str\n";
+}
+
+
+# since we don't have syslog set up yet we'll
+# just save msgs in a local log file
+$logdir = "/var/log/xcat";
+
+if (!-d $logdir) {
+    mkpath($logdir);
+}
+
+my $logfile = $logdir . "/xcat.log";
+# this log should not contain much so it might be ok to let it grow?
+# at least we'll have the errors preserved
+open(LOGFILE,">>",$logfile);
+$::LOG_FILE = \*LOGFILE;
+foreach my $env (keys %ENV)
+{
+    msg("ENV{$env} = $ENV{$env}");
+}
+
+my $cmd;
+my $hostname;
+my $ipaddr;
+my $servnode;
+# TODO: use the environment variable instead of reading /etc/niminfo
+# get the name of my service node/NIM master from the /etc/niminfo file
+
+if (-f "/etc/niminfo") {
+
+        $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_HOSTNAME'";
+        &runcmd($cmd);
+        my $hostline = $::outref;
+        my $junk;
+        ($junk, $hostname) = split(/=/, $hostline);
+        $hostname =~ s/^\s*//;
+        chomp $hostname;
+        msg("Info: the hostname is $hostname");
+
+        $cmd = "host $hostname";
+        &runcmd($cmd);
+        $ipaddr = $::outref;
+        $ipaddr =~ s/.*is\s+//;
+        chomp $ipaddr;
+        msg("Info: the ip address is $ipaddr");
+
+        $cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
+        &runcmd($cmd);
+        my $SNline = $::outref;
+        ($junk, $servnode) =  split(/=/, $SNline);
+        $servnode =~ s/^\s*//;
+        chomp $servnode;
+
+   
+        my $xcatinfo="/etc/xcatinfo";
+        open(XCATINFO,">",$xcatinfo);
+        print XCATINFO "XCATSERVER=$servnode\n";
+        close(XCATINFO);
+} else {
+        msg("Error: could not find /etc/niminfo file, exiting...");
+        exit 1;
+}
+# Configure TCP/IP
+# Get the boot nic
+my $bootnic;
+if (defined($ENV{'BOOTDEV'}))
+{
+    $bootnic = $ENV{'BOOTDEV'};
+}
+if (!$bootnic)
+{
+    $cmd = "/usr/sbin/bootinfo -b";
+    if (&runcmd($cmd) != 0) {
+        msg("Error: could not get the boot nic, exiting...");
+        exit 1;
+    }
+    $bootnic = $::outref;
+    chomp $bootnic;
+}
+
+msg("Info: bootnic is $bootnic");
+my $skiptcpip = 0;
+if ($bootnic !~ /^en/)
+{
+    msg("Error: bootnic $bootnic is not a nic, skipping the TCP/IP configuration");
+    $skiptcpip = 1;
+}
+
+$cmd = "lsdev -C -l $bootnic";
+if (&runcmd($cmd) != 0) {
+    msg("Warning: could not get information for $bootnic, skipping the TCP/IP configuration");
+    $skiptcpip = 1;
+}
+my @vir_nic = ();
+$cmd = qq~lsdev -c adapter \| grep ent \| grep "Virtual I\/O Ethernet Adapter" \| awk -F ' ' '{print \$1}'~;
+if (&runcmd($cmd) != 0) {
+    msg("Warning: could not find virtual I/O Ethernet Adapter");
+    msg("Error: $::outref");
+    $skiptcpip = 1;
+} else {
+    if (!grep(/ent/, $::outref)) {
+        msg("Error($cmd): $::outref");
+        $skiptcpip = 1;
+    } else {
+        @vir_nic = sort (split(/\n/, $::outref));
+        msg("Find virtual NIC: @vir_nic");
+    }
+}
+
+my %sea_adapters = ();
+if (defined($ENV{'SEA_ADAPTERS'}) and $ENV{'SEA_ADAPTERS'} =~ /bootnic/i) {
+    msg("Info: Environment variable SEA_ADAPTERS is $ENV{'SEA_ADAPTERS'}");
+    if (scalar(@vir_nic) == 0) {
+        msg("Warning: No Virtual Ethernet Adapter found");
+        $skiptcpip = 1;
+    } else {
+        my $xcatinfo="/etc/xcatinfo";
+        open(XCATINFO,">>",$xcatinfo);
+        print XCATINFO "SEA_ADAPTERS=$bootnic:$vir_nic[0]:1:$ENV{'NIM_IPADDR'}:$ENV{'NIM_NETMASK'}:$hostname\n";
+        close(XCATINFO);
+        
+        my $lsicmd = "/usr/sbin/lsitab bootnicsea > /dev/null 2>&1"; 
+        if (&runcmd($lsicmd) != 0) {
+            my $mkicmd = '/usr/sbin/mkitab "bootnicsea:2:wait:/xcatpost/config_bootnicsea > /dev/console 2>&1"';
+            if (&runcmd($mkicmd) != 0) {
+                msg("Warning: config_bootnicsea: Could not add config_bootnicsea to /etc/inittab.\n")
+            }
+        }
+        
+    }
+} elsif (defined($ENV{'SEA_ADAPTERS'})) {
+    msg("Info: Environment variable SEA_ADAPTERS is $ENV{'SEA_ADAPTERS'}");
+    my @sea_array = split(/\s+/, $ENV{'SEA_ADAPTERS'});
+    foreach my $sea (@sea_array)
+    {
+        my ($phy, $virt, $vlan, $ip, $mask) = split(/:/, $sea);
+        if (!$phy || !$virt || !$vlan)
+        {
+            msg("Warning: incorrect SEA_ADAPTERS format, the syntax is physcial_adapter:virtual_adapter:vlan_id:ip_addr:netmask, where the ip_addr and netmask could be blank if you do not want to configure ip for this SEA adapter, skipping TCP/IP configuration");
+            $skiptcpip = 1;
+            last;
+        }
+        $sea_adapters{$phy}{'phy'} = $phy;
+        $sea_adapters{$phy}{'virt'} = $virt;
+        $sea_adapters{$phy}{'vlan'} = $vlan;
+        $sea_adapters{$phy}{'ip'} = $ip;
+        $sea_adapters{$phy}{'mask'} = $mask;
+    }
+} else {
+    msg("Info: The environment variable SEA_ADAPTERS is not defined");
+}
+
+if (!$skiptcpip) {
+    my $bootnicsea = 0;
+    my $netmask;
+    if (defined($ENV{'NIM_NETMASK'}))
+    {
+        $netmask = $ENV{'NIM_NETMASK'};
+    }
+    if (!$netmask)
+    {
+        msg("Warning: NIM_NETMASK is not specified, using the default 255.255.255.0");
+        $netmask = "255.255.255.0";
+    }
+    
+    foreach my $phy (keys %sea_adapters)
+    {
+        my $phy = $sea_adapters{$phy}{'phy'};
+        my $virt = $sea_adapters{$phy}{'virt'};
+        my $vlan = $sea_adapters{$phy}{'vlan'};
+        my $ip = $sea_adapters{$phy}{'ip'};
+        my $mask = $sea_adapters{$phy}{'mask'};
+        if ($phy eq $bootnic)
+        {
+            $bootnicsea = 1;
+        }
+        {
+            $cmd = "/usr/ios/cli/ioscli license -swma";
+            &runcmd($cmd);
+            $cmd = "/usr/ios/cli/ioscli license -accept";
+            &runcmd($cmd);
+        }
+        { # detach bootnic
+            if ($bootnicsea and $phy =~ /^ent(\d+)/) {
+                my $phynic_id = $1;
+                my $en_nic = "en".$phynic_id;
+                my $ent_nic = "ent".$phynic_id;
+                my $et_nic = "et".$phynic_id;
+                $cmd = "ifconfig $en_nic down; ifconfig $en_nic detach; rmdev -dl $en_nic; rmdev -dl $ent_nic; rmdev -dl $et_nic; cfgmgr;";
+                if (&runcmd($cmd) != 0) {
+                    msg("Error: could not detach bootnic:$bootnic");
+                    next;
+                }
+            }
+          
+        }
+        #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mkvdev -sea $phy -vadapter $virt -default $virt -defaultid $vlan"~;
+        $cmd = "/usr/ios/cli/ioscli mkvdev -sea $phy -vadapter $virt -default $virt -defaultid $vlan";
+        if (&runcmd($cmd) != 0) {
+            msg("Error: could not create SEA with physical adapter $phy, virtual adapter $virt and vlan id $vlan");
+            next;
+        }
+        my $sea_out = $::outref;
+        my $sea = undef;
+        my @out_array = split (/\n/, $sea_out); 
+        foreach (@out_array) { 
+            if (/(ent\d+)\s*Available/) {
+                $sea = $1;
+                $sea =~ s/t//;
+            }
+        }
+        unless ($sea) {
+            msg("Error: did not get available SEA adapter, $sea_out===");
+            next;
+        }
+        msg("Info: The interface created with mkvdev is: $sea");
+        #$cmd = qq~su - padmin "-c ioscli license -accept; ioscli mktcpip -hostname $hostname -inetaddr $ip -interface $sea -netmask $mask"~;
+        $cmd = "/usr/ios/cli/ioscli mktcpip -hostname $hostname -inetaddr $ip -interface $sea -netmask $mask";
+        if (&runcmd($cmd) != 0) {
+            msg("Error: could not configure ip address for SEA $sea");
+        }
+    }
+
+    if (!$bootnicsea)
+    {
+        # ent1 -> en1
+        if ($bootnic =~ /^ent/)
+        {
+            $bootnic =~ s/t//;
+        }
+        $cmd = "mktcpip -h \"$hostname\" -a $ipaddr -m $netmask -i $bootnic -A 'no' -t 'N/A' -s ''";
+        if (&runcmd($cmd) != 0) {
+            msg("Error: could not configure IP for nic $bootnic, exiting ...");
+            exit 1;
+        }
+    }
+}
+
+# create the xcatpost dir
+$cmd = "/bin/mkdir -m 755 -p /xcatpost";
+if (&runcmd($cmd) != 0) {
+    print "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
+}
+
+# Set a temporary root password
+# - the user-provided root passwd will be set by xcataixpost
+my $padmin_passwd;
+if(defined($ENV{'PADMIN_PASSWD'}))
+{
+    $padmin_passwd = $ENV{'PADMIN_PASSWD'};
+}
+
+if(!$padmin_passwd)
+{
+    msg("Warning: padmin password is not specified, using the default password \"cluster\"");
+    $padmin_passwd = "cluster";
+}
+my $pwcmd = qq~/bin/echo "padmin:$padmin_passwd" | /bin/chpasswd -c >/dev/null 2>&1~;
+if (&runcmd($pwcmd) != 0) {
+    print "$::sdate xcatvio.script: Could not set password for padmin.\n";
+    print $::LOG_FILE "$::sdate xcatvio.script: Could not set password for padmin.\n";
+}
+
+# The license accept does not work in postscript phase,
+#  should be done in postbootscript phase
+# my $liccmd = qq~su - padmin "-c ioscli license -accept"~;
+# if (&runcmd($liccmd) != 0) {
+#     msg("Error: failed to run license accept command");
+# }
+#
+#
+# need fix to support INSTALLDIR !!!!!
+# socket doesn't work at this point of install so need another
+# way to get INSTALLDIR value!!!
+
+my $installdir;
+if (!$installdir) {
+    $installdir="/install";
+}
+
+# get the contents of the $installdir/postscripts dir on the server
+#  - mount dir from server and copy files
+# IPv6, should only use NFS version 4 mount
+
+my $mcmd;
+my $snipcmd = "host $servnode";
+if (((&runcmd($snipcmd) == 0) && ($::outref =~ /:/)) || ($ENV{'USENFSV4ONAIX'} && ($ENV{'USENFSV4ONAIX'} =~ /1|Yes|yes|YES|Y|y/)))
+{
+    $mcmd = "mkdir -p /xcatmnt; mount -o nolock -o vers=4 $servnode:$installdir/postscripts /xcatmnt";
+} else {
+    $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
+}
+if (&runcmd($mcmd) != 0) {
+    print "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
+}
+
+my $cpcmd;
+if ((@ARGV==0) || ($ARGV[0] != 2)) {
+    $cpcmd = "/bin/cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
+} else {
+# when argv[1]=2, there is only one postscript file,
+# user wants only download it to save time
+    $cpcmd= "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+}
+
+if (&runcmd($cpcmd) != 0) {
+    print "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
+}
+# make sure all are executable
+
+my $chcmd = "/bin/chmod +x /xcatpost/*";
+if (&runcmd($chcmd) != 0) {
+    print "$::sdate xcataixscript: Could not change /xcatpost file permissions.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not change /xcatpost file permissions.\n";
+}
+
+my $ucmd = "/usr/sbin/umount /xcatmnt; /bin/rmdir /xcatmnt";
+if (&runcmd($ucmd) != 0) {
+    print "$::sdate xcataixscript: Could not unmount $installdir.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not unmount $installdir/postscripts.\n";
+}
+
+# Setup remote shell
+if (-f "/xcatpost/_ssh/authorized_keys")
+{
+    runcmd("cat /xcatpost/_ssh/authorized_keys >> /home/padmin/.ssh/authorized_keys2");
+}
+close($::LOG_FILE);
+
+exit 0;
+
+
