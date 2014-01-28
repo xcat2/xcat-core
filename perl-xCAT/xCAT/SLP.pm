@@ -110,6 +110,12 @@ sub dodiscover {
         my @servernodes;
         my @iprange = split /,/, $ipranges;
         foreach my $range (@iprange) {
+            send_message($args{reqcallback}, 0, "Processing range $range...");
+            if ($range =~/\/(\d+)/){
+               if ($1 > 16) {
+                   send_message($args{reqcallback}, 0, "The rarge is too large and may be time consuming. Broadcast is recommended.");
+               }
+            }
             `/usr/bin/nmap $range -sn -PE -n --send-ip -T5 `;
             my $nmapres = `/usr/bin/nmap $range -PE -p 427 -n --send-ip -T5 `;
             foreach my $line (split(/\n\n/,$nmapres)) {
@@ -233,7 +239,7 @@ sub dodiscover {
             close PWRITE;             
             if (@servernodes) {
                 my $miss = join(",", @servernodes);
-                send_message($args{reqcallback}, 0, "Warning: can't got attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
+                send_message($args{reqcallback}, 0, "Warning: can't get attributes from these nodes' replies: $miss. Please re-send unicast to these nodes.") if ($args{reqcallback});
             }
         }# end of parent process 
     }  else {
