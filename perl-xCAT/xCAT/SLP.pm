@@ -112,7 +112,7 @@ sub dodiscover {
         foreach my $range (@iprange) {
             send_message($args{reqcallback}, 0, "Processing range $range...");
             if ($range =~/\/(\d+)/){
-               if ($1 > 16) {
+               if ($1 < 16) {
                    send_message($args{reqcallback}, 0, "The rarge is too large and may be time consuming. Broadcast is recommended.");
                }
             }
