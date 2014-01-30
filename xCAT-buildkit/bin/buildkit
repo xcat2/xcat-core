@@ -952,11 +952,57 @@ sub kit_buildtar
     my $dir = dirname($::deploy_dir);
     my $bidir =  "$dir/build_input";
 
-    if ( -d "$bidir") {
-        if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
-            print "Error: Could not copy building tarfile $tarfile \n";
-            return 1;
+    #It is for partial kit.
+    if ($::HAVE_EXTERNAL_PKG or $::HAVE_NON_NATIVE_PKGS) {
+        if ( -d "$bidir") {
+            if ( system("cd $::deploy_dir; cd ..; cp -r build_input $kitname" )  ) {
+                 print "Error: Could not copy building tarfile $tarfile \n";
+                 return 1;
+            }
         }
+    } else {
+    #If it is complete kit and there is build_input directory in deploy_dir
+    #If there is tmp rpmbuild source_packages
+    #delete them from complete kit build_input
+       if ( -d "$bidir") {
+          if (system("cd $::deploy_dir; cd ..; rm -fr build_input/tmp" )){
+                 print "Error:Could not delete build_input/tmp \n";
+          }
+          if (system("cd $::deploy_dir; cd ..; rm -fr build_input/rpmbuild" )){
+                 print "Error:Could not delete build_input/tmp \n";
+          }
+          if (system("cd $::deploy_dir; cd ..; rm -fr build_input/source_packages" )){
+                 print "Error:Could not delete build_input/source_packages \n";
+          }
+          if (system("cd $::deploy_dir; cd ..; cp -fr build_input $kitname")){
+                 print "Error: Could not copy building tarfile $tarfile \n";
+                 return 1;
+          }
+       } else{
+      #If kit build dir is new created
+      #partial kit is never created before
+      #make sure there is build_input dir in complete kit dir
+           if (system("cd $::deploy_dir; mkdir -p build_input" )){
+            print "Error creating kit build directory contents \n";
+            return 1;
+           }
+           if (system("cd $::deploy_dir; cp -fp $::workdir/buildkit.conf build_input" )){
+            print "Error creating kit build directory contents \n";
+            return 1;
+           }
+           if (system("cd $::deploy_dir; cp -frp $::workdir/other_files build_input" )){
+            print "Error creating kit build directory contents \n";
+            return 1;
+           }
+           if (system("cd $::deploy_dir; cp -frp $::workdir/plugins build_input" )){
+            print "Error creating kit build directory contents \n";
+            return 1;
+           }
+           if (system("cd $::deploy_dir; cp -frp $::workdir/scripts build_input" )){
+            print "Error creating kit build directory contents \n";
+            return 1;
+           }
+       }
     }
 
     print "Creating tar file $tarfile.\n";

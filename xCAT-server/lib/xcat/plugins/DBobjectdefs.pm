@@ -538,7 +538,7 @@ sub processArgs
 
     # --nics is the equivalent of -i nicips,nichostnamesuffixes...
     if ($::opt_nics) {
-        $::opt_i="nicips,nichostnamesuffixes,nihostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
+        $::opt_i="nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
     }
 
     # -i and -s cannot be used together

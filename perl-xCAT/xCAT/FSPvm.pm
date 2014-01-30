@@ -15,6 +15,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::FSPUtils;
+use xCAT::VMCommon;
 #use Data::Dumper;
 use xCAT::MsgUtils qw(verbose_message);
 ##############################################
@@ -52,7 +53,7 @@ sub chvm_parse_extra_options {
 	my $args = shift;
 	my $opt = shift;
     # Partition used attributes #
-    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting);
+    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting vmstorage vmnics del_vadapter);
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
@@ -84,6 +85,24 @@ sub chvm_parse_extra_options {
                     $opt->{bsr} = $1;
                 }
                 next;
+            } elsif ($cmd eq "vmstorage") {
+                if (exists($opt->{vios})) {
+                    if ($value !~ /\d+/) {
+                        return "'$value' is invalid, must be numbers";
+                    } else {
+                        my @array = ();
+                        for (1..$value) {
+                            push @array, 0;
+                        }
+                        $value = \@array;
+                    }
+                } else {
+                    if ($value =~ /^([\w_-]*):(\d+)$/) {
+                        $value = ["0,$1:$2"];
+                    } else {
+                        return "'$value' is invalid, must be in form of 'Server_name:slotnum'";
+                    }
+                }
             }
 
         } else {
@@ -124,7 +143,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s p775) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s p775 vios) )) {
         return( usage() );
     }
     ####################################
@@ -398,7 +417,7 @@ sub mkvm_parse_args {
                 push @unsupport_ops, $tmpop;
             }
         }
-        my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting);
+        my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting vmnics vmstorage);
         if (defined(@ARGV[0]) and defined($opt{full})) {
             return(usage("Option 'full' shall be used alone."));
         } elsif (defined(@ARGV[0])) {
@@ -711,6 +730,45 @@ sub do_op_extra_cmds {
                     $action = "part_set_lpar_pending_proc";
                 } elsif ($op eq "vmphyslots") {
                     $action = "set_io_slot_owner_uber";
+                } elsif ($op eq "del_vadapter") {
+                    $action = "part_clear_vslot_config";
+                } elsif ($op eq "vmnics") {
+                    my @vlans = split /,/,$param;
+                    foreach (@vlans) {
+                        if (/vlan(\d+)/i) {
+                            my $vlanid = $1;
+                            my $mac = lc(xCAT::VMCommon::genMac($name));
+                            if ($mac =~ /(..):(..):(..):(..):(..):(..)/) {
+                                my $tail = hex($6)+$vlanid;
+                                $mac = sprintf("$1$2$3$4$5%02x",$tail);
+                            }
+                            my $value = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_veth_slot_config",0,"0,$vlanid,$mac");
+                            if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
+                                return ([[$name, @$value[1], '1']]) ;
+                            } else {
+                                push @values, [$name, "Success", '0'];
+                            } 
+                        }
+                    }
+                    next;
+                } elsif ($op eq "vmstorage") {
+                    foreach my $v_info (@$param) {
+                        if ($v_info =~ /(\d+),([\w_-]*):(\d+)/) {
+                            my $vios = &find_lpar_id($request, @$d[3], $2);
+                            my $r_slotid = $3;
+                            if (!defined($vios)) {
+                                return ([[$name, "Cannot find lparid for Server lpar:$1", '1']]);
+                            }
+                            $v_info = "$1,$vios,$r_slotid";
+                        }
+                        my $value = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_vscsi_slot_config",0,$v_info);      
+                        if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
+                            return ([[$name, @$value[1], '1']]) ;
+                        } else {
+                            push @values, [$name, "Success", '0'];
+                        } 
+                    }
+                    next;
                 } elsif ($op eq "vmmemory") {
                     my @td = @$d;
                     @td[0] = 0;
@@ -750,6 +808,9 @@ sub do_op_extra_cmds {
                     $action = "part_set_lpar_pending_mem";
                 } elsif ($op eq "bsr") {
                     $action = "set_lpar_bsr";
+                } elsif ($op eq "vios") {
+                    print __LINE__."=========>op=vios===\n";
+                    next;
                 } else {
                     last;
                 }
@@ -1638,6 +1699,34 @@ sub query_cec_info_actions {
                     #$data .= "\n";
                     next;
                 } 
+                if ($action eq "part_get_all_vio_info") {
+                    my @output = split /\n/, @$values[1];
+                    my ($drc_index,$drc_name);
+                    foreach my $line (@output) {
+                        chomp($line);
+                        if ($line =~ /Index:.*drc_index:([^,]*),\s*drc_name:(.*)$/) {
+                            $drc_index = $1;
+                            $drc_name = $2;
+                            next;
+                        } elsif ($line =~ /\s*lpar_id=(\d+),type=(vSCSI|vSerial),slot=(\d+),attr=(\d+).*remote_lpar_id=(0x\w+),remote_slot_num=(0x\w+)/) {
+                            if ($4 eq '0') {
+                                push @array, [$name, "$1,$3,$drc_name,$drc_index,$2 Client(Server_lparid=$5,Server_slotid=$6)", 0];
+                            } else {
+                                push @array, [$name, "$1,$3,$drc_name,$drc_index,$2 Server", 0];
+                            }
+                        } elsif ($line =~ /\s*lpar_id=(\d+),type=(vEth),slot=(\d+).*port_vlan_id=(\d+),mac_addr=(\w+)/) {
+                            push @array, [$name, "$1,$3,$drc_name,$drc_index,$2 (port_vlanid=$4,mac_addr=$5)", 0];
+                        #} elsif ($line =~ /\s*lpar_id=(\d+),type=(\w+),slot=(\d+)/) {
+                        #    push @array, [$name, "$1,$3,$drc_name,$drc_index,$2", 0];
+                        #} else {
+                            #print "=====>line:$line\n";
+                            #push @array, [$name, $line, 0];
+                        }
+                        $drc_index = '';
+                        $drc_name = '';
+                    }
+                    next;
+                }
             }
 	    #$data .= "@$values[1]\n\n";
             push @array, [$name, @$values[1], @$values[2]];
@@ -1660,14 +1749,16 @@ sub query_cec_info {
     my $args    = $request->{opt};
     my @td = ();
     my @result = ();
+    #print Dumper($request);
+    #print Dumper($hash);
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name, $d) = each (%$h)) {
             @td = @$d;
-            if (@$d[0] == 0 && @$d[4] ne "lpar") {
+            if (@$d[0] == 0 && @$d[4] !~ /lpar|vios/) {
                 last;
             }
             #my $rethash = query_cec_info_actions($request, $name, $d, 0, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","lpar_lhea_mac","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
-            my $rethash = query_cec_info_actions($request, $name, $d, 0, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
+            my $rethash = query_cec_info_actions($request, $name, $d, 0, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","part_get_all_vio_info","get_huge_page","get_cec_bsr"]);
 	        #push @result, [$name, $rethash, 0];
 	        push @result, @$rethash;
         }
@@ -1766,7 +1857,7 @@ sub deal_with_avail_mem {
             } else {
                 $cur_avail = $lparhash->{hyp_avail_mem} + $used_regions - $tmphash{lpar0_used_mem};
             }
-            xCAT::MsgUtils->verbose_message($request, "====****====used:$used_regions,avail:$cur_avail,($min:$cur:$max)."); 
+            #xCAT::MsgUtils->verbose_message($request, "====****====used:$used_regions,avail:$cur_avail,($min:$cur:$max)."); 
             if ($cur_avail < $min) {
                 return([$name, "Parse reserverd regions failed, no enough memory, available:$lparhash->{hyp_avail_mem}.", 1]);
             }           
@@ -1779,6 +1870,17 @@ sub deal_with_avail_mem {
         }
     }
     return 0;
+}
+
+sub find_lpar_id {
+    my $request = shift;
+    my $parent = shift;
+    my $name = shift;
+    my %mapping = %{$request->{ppc}->{$parent}->{mapping}};
+    if (exists($mapping{$name})) {
+        return $mapping{$name};
+    }
+    return undef;
 }
 
 sub create_lpar {
@@ -1804,12 +1906,42 @@ sub create_lpar {
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_group_id");
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_avail_priority");
     #print "======>physlots:$lparhash->{physlots}.\n";
-    $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner_uber", 0, $lparhash->{physlots}); 
-    #$values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner", 0, join(",",@phy_io_array)); 
-    if (@$values[2] ne 0) {
-        &set_lpar_undefined($request, $name, $d);
-        return ([$name, @$values[1], @$values[2]]);
+    if (exists($lparhash->{physlots})) {
+        $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner_uber", 0, $lparhash->{physlots}); 
+        #$values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner", 0, join(",",@phy_io_array)); 
+        if (@$values[2] ne 0) {
+            &set_lpar_undefined($request, $name, $d);
+            return ([$name, @$values[1], @$values[2]]);
+        }
     }
+    if (exists($lparhash->{nics})) {
+        my @vlans = split /,/,$lparhash->{nics};
+        foreach (@vlans) {
+            if (/vlan(\d+)/i) {
+                my $vlanid = $1;
+                my $mac = lc(xCAT::VMCommon::genMac($name));
+                if ($mac =~ /(..):(..):(..):(..):(..):(..)/) {
+                    my $tail = hex($6)+$vlanid;
+                    $mac = sprintf("$1$2$3$4$5%02x",$tail);
+                }
+                $values = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_veth_slot_config",0,"0,$vlanid,$mac");
+                if (@$values[2] ne 0) {
+                    &set_lpar_undefined($request, $name, $d);
+                    return ([$name, @$values[1], @$values[2]]);
+                }
+            }
+        }
+    }
+    if (exists($lparhash->{storage})) {
+        foreach my $v_info (@{$lparhash->{storage}}) {
+            $values = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_vscsi_slot_config",0,$v_info);
+            if (@$values[2] ne 0) {
+                &set_lpar_undefined($request, $name, $d);
+                return ([$name, @$values[1], @$values[2]]);
+            }
+        }
+    }
+    # ======  ====== #
     if (exists($lparhash->{phy_hea})) {
         my $phy_hash = $lparhash->{phy_hea};
         foreach my $phy_drc (keys %$phy_hash) {
@@ -1850,6 +1982,7 @@ sub create_lpar {
         &set_lpar_undefined($request, $name, $d);
         return ([$name, @$values[1], @$values[2]]);
     }
+    
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_comp_modes"); 
     #print "======>memory:$lparhash->{huge_page}.\n";
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_huge_page", 0, $lparhash->{huge_page});
@@ -1866,7 +1999,6 @@ sub create_lpar {
     }
     return ([$name, "Done", 0]);
 }
-
 sub mkspeclpar {
     my $request = shift;
     my $hash = shift;
@@ -1880,7 +2012,7 @@ sub mkspeclpar {
     while (my ($mtms, $h) = each (%$hash)) {
         my $memhash;
         my @nodes = keys(%$h);
-        my $ent = $vmtab->getNodesAttribs(\@nodes, ['cpus', 'memory','physlots', 'othersettings']); 
+        my $ent = $vmtab->getNodesAttribs(\@nodes, ['cpus', 'memory','physlots', 'othersettings', 'storage', 'nics']); 
         while (my ($name, $d) = each (%$h)) {
             if (@$d[4] ne 'lpar') {
                 push @result, [$name, "Node must be LPAR", 1];
@@ -1889,7 +2021,7 @@ sub mkspeclpar {
             if (!exists($memhash->{run})) {
                 my @td = @$d;
                 @td[0] = 0;
-                $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem","lpar_lhea_mac"]);
+                $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem","lpar_lhea_mac","part_get_all_io_bus_info"]);
                 $memhash->{run} = 1; 
             }
             my $tmp_ent = $ent->{$name}->[0];
@@ -1902,13 +2034,50 @@ sub mkspeclpar {
             if (exists($opt->{vmphyslots})) {
                 $tmp_ent->{physlots} = $opt->{vmphyslots};
             }
+
             if (exists($opt->{vmothersetting})) {
                 $tmp_ent->{othersettings} = $opt->{vmothersetting};
             }
+            if (exists($opt->{vmstorage})) {
+                $tmp_ent->{storage} = $opt->{vmstorage};
+            }
+            if (exists($opt->{vmnics})) {
+                $tmp_ent->{nics} = $opt->{vmnics};
+            }
+            if (exists($opt->{vios})) {
+                if (!exists($tmp_ent->{physlots})) {
+                    my @phy_io_array = keys(%{$memhash->{bus}});
+                    $tmp_ent->{physlots} = join(",", @phy_io_array); 
+                } 
+                if (exists($tmp_ent->{storage}) and $tmp_ent->{storage} !~ /^\d+$/) {
+                    return ([[$name, "Parameter for 'vmstorage' is invalid", 1]]);
+                } elsif (exists($tmp_ent->{storage})) {
+                    my $num = $tmp_ent->{storage};
+                    my @array = ();
+                    for (1..$num) {
+                        push @array, '0';
+                    }
+                    $tmp_ent->{storage} = \@array;
+                }
+            } else {
+                if (exists($tmp_ent->{storage}) and $tmp_ent->{storage} !~ /^[\w_-]*:\d+$/) {
+                    return ([[$name, "Parameter for 'vmstorage' is invalid", 1]]);
+                } elsif (exists($tmp_ent->{storage})) {
+                    if ($tmp_ent->{storage} =~ /([\w_-]*):(\d+)/) {
+                        my $vios = &find_lpar_id($request, @$d[3], $1);
+                        my $r_slotid = $2;
+                        if (!defined($vios)) {
+                            return ([[$name, "Cannot find lparid for Server lpar:$1"]]);
+                        }
+                        $tmp_ent->{storage} = ["0,$vios,$r_slotid"];
+                    }
+                }
+            }
             if (!defined($tmp_ent) ) {
                 return ([[$name, "Not find params", 1]]);
-            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
-                return ([[$name, "The attribute 'vmcpus', 'vmmemory' and 'vmphyslots' are all needed to be specified.", 1]]);
+            #} elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
+            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory})) {
+                return ([[$name, "The attribute 'vmcpus', 'vmmemory' are needed to be specified.", 1]]);
             }
             if ($tmp_ent->{memory} =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
                 my $memsize = $memhash->{mem_region_size};

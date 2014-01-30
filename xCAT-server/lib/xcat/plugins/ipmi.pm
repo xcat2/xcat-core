@@ -2681,7 +2681,9 @@ sub add_fruhash {
              $fru->rec_type("hw");
         }
         $fru->value($sessdata->{currfrudata});
-        $fru->desc($sessdata->{currfrusdr}->id_string);
+        if (exists($sessdata->{currfrusdr})) {
+            $fru->desc($sessdata->{currfrusdr}->id_string);
+        }
         $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
         $sessdata->{frudex} += 1;
     } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
@@ -2699,9 +2701,13 @@ sub add_fruhash {
              $fru->rec_type("hw");
         }
         $fru->value($err);
-        $fru->desc($sessdata->{currfrusdr}->id_string);
-        $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
-        $sessdata->{frudex} += 1;
+        if (exists($sessdata->{currfrusdr})) {
+            $fru->desc($sessdata->{currfrusdr}->id_string);
+        }
+        if (exists($sessdata->{frudex})) {
+            $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
+            $sessdata->{frudex} += 1;
+        }
         undef $sessdata->{currfrudata}; #skip useless calls to add more frus when parsing failed miserably anyway
 
                 #xCAT::SvrUtils::sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"],$callback);

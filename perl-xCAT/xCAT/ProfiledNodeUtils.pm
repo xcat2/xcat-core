@@ -721,6 +721,28 @@ sub get_nodes_profiles
 
 #-------------------------------------------------------------------------------
 
+=head3 get_imageprofile_prov_osvers
+      Description : Get A node's provisioning os version and profile from its imageprofile attribute.
+      Arguments   : $imgprofilename - imageprofile name
+      Returns     : node's osversion and profile
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_imageprofile_prov_osvers
+{
+
+    my $class = shift;
+    my $imgprofilename = shift;
+    my $osimgtab = xCAT::Table->new('osimage');
+    my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$imgprofilename'", 'ALL' ))[0];
+    my $osversion = $osimgentry->{'osvers'};
+    my $profile = $osimgentry->{'profile'};
+    return ($osversion, $profile);
+}
+
+
+#-------------------------------------------------------------------------------
+
 =head3 get_imageprofile_prov_method
       Description : Get A node's provisioning method from its imageprofile attribute.
       Arguments   : $imgprofilename - imageprofile name
@@ -1013,6 +1035,40 @@ sub parse_nodeinfo_file
     }
     
     return 1, "";
+}
+
+#-------------------------------------------------------
+
+=head3  update the table prodkey, in order to support windows
+        per node license key
+
+    Returns: $retcode.
+              $retcode = 1. update failed, the value is undef
+              $retcode = 0. save into db is OK..
+=cut
+#-------------------------------------------------------
+
+sub update_windows_prodkey
+{
+    my $class   = shift;
+    my $node    = shift;
+    my $product = shift;
+    my $key     = shift;
+    unless(defined($node) && defined($product) && defined($key))
+    {
+        return 1;
+    }
+    # please notice this db usage
+    my %keyhash;
+    my %updates;
+    $keyhash{'node'}             = $node;
+    $updates{'product'}          = $product;
+    $updates{'key'}              = $key;
+    my $tab = xCAT::Table->new('prodkey', -create=>1, -autocommit=>0);
+    $tab->setAttribs( \%keyhash,\%updates );
+    $tab->commit;
+    $tab->close; 
+    return 0;
 }
 
 #-------------------------------------------------------------------------------

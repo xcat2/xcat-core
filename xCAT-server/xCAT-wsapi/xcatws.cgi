@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use CGI qw/:standard/;
-#use JSON;		# require this dynamically later on so that installations that do not use xcatws.cgi do not need perl-JSON
+use JSON;		# require this dynamically later on so that installations that do not use xcatws.cgi do not need perl-JSON
 use Data::Dumper;
 
 #added the line:

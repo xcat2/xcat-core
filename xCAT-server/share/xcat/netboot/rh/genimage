@@ -231,8 +231,16 @@ unless ($onlyinitrd) {
       exit 1;
    }
 
+
+   mkpath "$rootimg_dir";
    my $yumconfig;
    open($yumconfig,">","/tmp/genimage.$$.yum.conf");
+
+   #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+   if(isNFSdir("$rootimg_dir")){
+      print $yumconfig "[main]\ndiskspacecheck=0\n\n";
+   }
+
    my $repnum=0;
    foreach $srcdir (@yumdirs) {
       print $yumconfig "[$osver-$arch-$repnum]\nname=$osver-$arch-$repnum\nbaseurl=file://$srcdir\ngpgpcheck=0\n\n";
@@ -252,10 +260,6 @@ unless ($onlyinitrd) {
    if (!$prompt) { $non_interactive="-y"; }
 
    my $yumcmd = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
-   #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
-   if(isNFSdir("$rootimg_dir")){
-      $yumcmd .= "--setopt=diskspacecheck=0 ";
-   }  
 
    foreach (0..$repnum) {
       $yumcmd .= "--enablerepo=$osver-$arch-$_ ";

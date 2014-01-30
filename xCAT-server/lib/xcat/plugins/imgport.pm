@@ -33,6 +33,7 @@ use xCAT::Schema;
 use Cwd;
 my $requestcommand;
 $::VERBOSE = 0;
+my $hasplugin=0;
 
 1;
 
@@ -1214,7 +1215,8 @@ sub extract_bundle {
 	        
 	    my $osimage = $data->{osimage}->{imagename};    
 	    $callback->({data=>["Successfully imported the image $osimage."]});
-    }
+    
+     }
     
     # Clean up for this routine.
     # Remove the temp directory used for the exploded bundle
@@ -1433,6 +1435,64 @@ sub set_postscripts {
     }
 
     return 1;
+}
+
+
+sub create_symlink {
+    my $data = shift;
+    my $callback = shift;
+    my $otherpkgdir = $data->{linuximage}->{otherpkgdir};
+    my @kitcomps=split(',',$data->{osimage}->{kitcomponents});
+
+    my %tabs = ();
+    my @tables = qw(kit kitrepo kitcomponent);
+    foreach my $t ( @tables ) {
+        $tabs{$t} = xCAT::Table->new($t,-create => 1,-autocommit => 1);
+
+        if ( !exists( $tabs{$t} )) {
+            my %rsp;
+            push@{ $rsp{data} }, "Could not open xCAT table $t";
+            xCAT::MsgUtils->message( "E", \%rsp, $callback );
+            return 1;
+        }
+    }
+
+
+    if ( defined($otherpkgdir) ) {
+
+         # Create otherpkgdir if it doesn't exist
+         unless ( -d "$otherpkgdir" ) {
+         mkpath("$otherpkgdir");
+         }
+
+         if ( $data and $data->{osimage} and $data->{osimage}->{kitcomponents} ) {   
+               foreach my $kitcomponent ( @kitcomps ){                           
+                   (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $kitcomponent}, 'kitreponame');
+                   if ( $kitcomptable and $kitcomptable->{'kitreponame'}){
+                     
+                           # Create symlink if doesn't exist
+                           unless ( -d "$otherpkgdir/$kitcomptable->{'kitreponame'}" ) {
+                           (my $kitrepotable) = $tabs{kitrepo}->getAttribs({kitreponame => $kitcomptable->{'kitreponame'}}, 'kitrepodir');
+                           if ( $kitrepotable and $kitrepotable->{'kitrepodir'}){
+                                  system("ln -sf $kitrepotable->{'kitrepodir'} $otherpkgdir/$kitcomptable->{'kitreponame'}");
+                           } else {
+                                  $callback->({error => ["Cannot open kitrepo table or kitrepodir do not exist"],errorcode=>[1]});
+                                  next ;
+                                              }
+                           }
+                    } else {
+                           $callback->({error => ["Cannot open kitcomponent table or kitreponame do not exist"],errorcode=>[1]});
+                           next;
+                    }
+              } 
+          } else {
+              $callback->({error => ["osimage table or kitcomponent do not exist"],errorcode=>[1]});
+              return 1;
+          }
+     } 
+     return 1;
+            
+
 }
 
 sub set_config {
@@ -1830,11 +1890,20 @@ sub make_files {
             if (-r "$dirname/$kit") {
                 $callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
                 move("$dirname/$kit", "$dirname/$kit.ORIG");
+            
             }
             move("$imgdir/$kit","$dirname/$kit");
+            #copy postscripts from kit dir to postscripts dir;
+            copyPostscripts($dirname,$kit,$installroot,$callback);
+            #copy plugin from kit to xCAT_plugin
+            movePlugin($dirname,$kit,$callback);
         }
     }
-
+    if ( $hasplugin ) {
+    # Issue xcatd reload to load the new plugins
+         system("/etc/init.d/xcatd reload");
+         $hasplugin=0;
+    }
 
 
     #unpack the rootimgtree.gz for statelite
@@ -1960,6 +2029,47 @@ sub make_files {
     return 1;
 }
 
+sub copyPostscripts{
+    my $dirname=shift;
+    my $kit=shift;
+    my $installdir = shift;
+    my $callback = shift;
+    my $fenv='\.env$';
+    my $fexlist='\.exlist$';
+
+    if ( -d "$dirname/$kit/other_files/") {
+         opendir(DIRP,"$dirname/$kit/other_files/");
+         foreach my $f (readdir(DIRP)) {
+             if (($f=~m/^\./) || ($f =~ /$fexlist/i) || ($f =~ m/$fenv/i)) {
+                  next;
+             } else {
+                  print "$f\n";
+                  chmod(0755,"$dirname/$kit/other_files/$f");
+                  system("cp -rfv $dirname/$kit/other_files/$f $installdir/postscripts/");
+             }
+         }
+
+    closedir(DIRP);
+    }
+}
+
+sub movePlugin {
+
+    my $dirname=shift;
+    my $kit=shift;
+    my $callback=shift;
+
+    if( -d "$dirname/$kit/plugins/") {
+        chmod(644, "$dirname/$kit/plugins/*");
+        opendir(DIR,"$dirname/$kit/plugins/");
+        if ( grep { ($_ ne '.') && ($_ ne '..') } readdir(DIR) ) {
+             system("cp -rfv $dirname/$kit/plugins/* $::XCATROOT/lib/perl/xCAT_plugin/");
+             $hasplugin = 1;
+         }
+        closedir(DIR);
+    } 
+
+}
 
 sub moveExtra {
     my $callback = shift;
