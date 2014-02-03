@@ -1,33 +1,55 @@
 #!/usr/bin/perl
 use strict;
-use CGI qw/:standard/;
-use JSON;		# require this dynamically later on so that installations that do not use xcatws.cgi do not need perl-JSON
+use CGI qw/:standard/;      #todo: remove :standard when the code only uses object oriented interface
+use JSON;		#todo: require this dynamically later on so that installations that do not use xcatws.cgi do not need perl-JSON
 use Data::Dumper;
 
-#added the line:
-#ScriptAlias /xcatws /var/www/cgi-bin/xcatws.cgi
-#to /etc/httpd/conf/httpd.conf to hid the cgi-bin and .cgi extension in the uri
-#
-# also upgraded CGI to 3.52
+#talk to the server
+use Socket;
+use IO::Socket::INET;
+use IO::Socket::SSL;
+use lib "/opt/xcat/lib/perl";
+use xCAT::Table;
 
-#take the JSON or XML and put it into a data structure
-#all data input will be done from the common structure
+# Development notes:
+# - added this line to /etc/httpd/conf/httpd.conf to hide the cgi-bin and .cgi extension in the uri:
+#  ScriptAlias /xcatws /var/www/cgi-bin/xcatws.cgi
+# - also upgraded CGI to 3.52
+# - If "Internal Server Error" is returned, look at /var/log/httpd/ssl_error_log
+# -can run your cgi script from the cli:  http://perldoc.perl.org/CGI.html#DEBUGGING
 
-#turn on or off the debugging output
-my $DEBUGGING = 0;
+# This is how the parameters come in:
+# GET: url parameters come $q->url_param.  There is no put/post data.
+# PUT: url parameters come $q->url_param.  Put data comes in q->param(PUTDATA).
+# POST: url parameters come $q->url_param.  Post data comes in q->param(POSTDATA).
+# DELETE: ??
+
+# Notes from http://perldoc.perl.org/CGI.html:
+# %params = $q->Vars;       # same as $q->param() except put it in a hash
+# @foo = split("\0",$params{'foo'});
+# my $error = $q->cgi_error;        #todo: check for errors that occurred while processing user input
+# print $q->end_html;       #todo: add the </body></html> tags
+# $q->url_param()      # gets url options, even when there is put/post data (unlike q->param)
+
 my $VERSION   = "2.8";
 
 my $q           = CGI->new;
-my $url         = $q->url;
-my $pathInfo    = $q->path_info;
-my $requestType = $ENV{'REQUEST_METHOD'};
-my $queryString = $ENV{'QUERY_STRING'};
-my %queryhash;
+#my $url         = $q->url;      # the 1st part of the url, https, hostname, port num, and /xcatws
+my $pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
+#my $requestType = $ENV{'REQUEST_METHOD'};
+my $requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
+my $queryString = $ENV{'QUERY_STRING'};     #todo: remove this when not used any more
+#my $userAgent = $ENV{'HTTP_USER_AGENT'};        # curl, etc.
+my $userAgent = $q->user_agent();        # the client program: curl, etc.
+my %queryhash;          # the queryString will get put into this
 my @path = split(/\//, $pathInfo);
-shift(@path);
+shift(@path);       # get rid of the initial /
 my $resource    = $path[0];
-my $pageContent = '';
+my $pageContent = '';       # global var containing the ouptut back to the rest client
 my $request     = {clienttype => 'ws'};
+
+my $userName = $q->url_param('userName');
+my $password = $q->url_param('password');
 
 #error status codes
 my $STATUS_BAD_REQUEST         = "400 Bad Request";
@@ -45,9 +67,153 @@ my $STATUS_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 my $STATUS_OK      = "200 OK";
 my $STATUS_CREATED = "201 Created";
 
-#default format
-my $format = 'html';
+my $XCAT_PATH = '/opt/xcat/bin';
 
+my $pdata;     # global var holding either the put data or the post data
+if (isPut()) { $pdata = $q->param('PUTDATA'); }
+elsif (isPost()) { $pdata = $q->param('POSTDATA'); }
+
+my $DEBUGGING = $q->url_param('debug');      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
+if ($DEBUGGING) {
+    #if (defined($q->param('PUTDATA')) || defined($q->param('POSTDATA'))) {
+    #    addPageContent("put data 1 " . $q->p($q->param('PUTDATA') . "\n"));
+    #} elsif (isPut()) {
+    #    my $entries = JSON::decode_json($q->param('PUTDATA'));
+    #    if (scalar(@$entries) >= 1) {
+    #        addPageContent("put data 2 \n");
+    #        foreach (@$entries) {
+    #            addPageContent("$_\n");
+    #        }
+    #    }
+    #}
+
+    #addPageContent($q->p("DEBUG: q->param:\n"));
+    #my @params = $q->param;
+    #foreach (@params) {
+    #    addPageContent($q->p("DEBUG: $_ = " . join(',', $q->param($_)) . "\n"));
+    #}
+    #addPageContent($q->p("DEBUG: queryString: $queryString\n"));
+    #addPageContent($q->p("DEBUG: queryhash (from queryString):" . Dumper(\%queryhash) . "\n"));
+    #my %paramshash = $q->Vars;
+    #addPageContent($q->p("DEBUG: paramshash (from q->Vars):" . Dumper(\%paramshash) . "\n"));
+    #my @urlparams = $q->url_param;
+    addPageContent($q->p("DEBUG: q->url_param:\n"));
+    foreach ($q->url_param) {
+        addPageContent($q->p("DEBUG: $_ = " . join(',', $q->url_param($_)) . "\n"));
+    }
+    addPageContent($q->p("DEBUG: q->request_method: $requestType\n"));
+    addPageContent($q->p("DEBUG: q->user_agent: $userAgent\n"));
+    addPageContent($q->p("DEBUG: pathInfo: $pathInfo\n"));
+    #addPageContent($q->p("DEBUG: path " . Dumper(@path) . "\n"));
+    #foreach (keys(%ENV)) { addPageContent($q->p("DEBUG: ENV{$_}: $ENV{$_}\n")); }
+    addPageContent($q->p("DEBUG: resource: $resource\n"));
+    addPageContent($q->p("DEBUG: userName=$userName, password=$password\n"));
+    #addPageContent($q->p("DEBUG: http() values:\n" . http() . "\n"));
+    if ($pdata) { addPageContent($q->p("DEBUG: pdata: $pdata\n")); }
+    addPageContent("\n");
+    if ($DEBUGGING == 2) {
+        sendResponseMsg($STATUS_OK);     # this will also exit
+    }
+}
+
+# Process the format requested
+my $format = $q->url_param('format');
+if (!$format) { $format = 'html'; }    # this is the default format
+
+# supported formats
+my %formatters = (
+    'html' => \&wrapHtml,
+    'json' => \&wrapJson,
+    'xml'  => \&wrapXml
+    );
+
+
+# puts $queryString into %queryHash
+fetchParameter($queryString);       #todo: remove when not used anymore
+
+if (!exists $formatters{$format}) {
+    addPageContent("The format '$format' is not supported");
+    sendResponseMsg($STATUS_BAD_REQUEST);
+}
+
+if ($format eq 'json' || isPut() || isPost()) {
+	# require JSON dynamically and let them know if it is not installed
+	my $jsoninstalled = eval { require JSON; };
+	unless ($jsoninstalled) {
+        addPageContent('{"data":"JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."}');
+	    sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
+	}
+}
+if ($format eq 'xml') {
+    # require XML dynamically and let them know if it is not installed
+    my $xmlinstalled = eval { require XML::Simple; };
+    unless ($xmlinstalled) {
+        addPageContent('The XML::Simple perl module is missing.  Install perl-XML-Simple before using the xCAT REST web services API with this format."}');
+        sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
+    }
+    $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
+    #debugandexit('here');
+}
+
+#resource handlers
+my %resources = (
+    groups        => \&groupsHandler,
+    images        => \&imagesHandler,
+    logs          => \&logsHandler,
+    monitors      => \&monitorsHandler,
+    networks      => \&networksHandler,
+    nodes         => \&nodesHandler,
+    notifications => \&notificationsHandler,
+    policies      => \&policiesHandler,
+    site          => \&siteHandler,
+    tables        => \&tablesHandler,
+    accounts      => \&accountsHandler,
+    objects       => \&objectsHandler,
+    vms           => \&vmsHandler,
+    debug         => \&debugHandler,
+    hypervisor    => \&hypervisorHandler,
+    version       => \&versionHandler);
+
+#if no resource was specified
+if ($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/) {
+    addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    foreach (sort keys %resources) {
+        addPageContent($q->p($_));
+    }
+    sendResponseMsg($STATUS_OK);     # this will also exit
+}
+
+#my @imageFields = (
+#    'imagename', 'profile', 'imagetype', 'provmethod', 'osname', 'osvers',
+#    'osdistro',  'osarch',  'synclists', 'comments',   'disable');
+
+my $formatType;     # global var for tablesHandler to pass the splitCommas option to wrapHtml
+
+#general tests for valid requests and responses with HTTP codes here
+if (!doesResourceExist($resource)) {
+    addPageContent("Resource '$resource' does not exist");
+    sendResponseMsg($STATUS_NOT_FOUND);     # this will also exit
+}
+
+# Main function - process user request
+handleRequest();        
+# end of main
+
+#todo: add msg function display messages in the correct format
+
+# if debugging, output the given string
+sub debug {
+    if (!$DEBUGGING) { return; }
+    addPageContent($q->p("DEBUG: $_[0]\n"));
+}
+
+# when having bugs that cause this cgi to not produce any output, output something and then exit.
+sub debugandexit {
+    addPageContent("$_[0]\n");
+    sendResponseMsg($STATUS_OK);
+}
+
+# Append content to the global var holding the output to go back to the rest client
 sub addPageContent {
     my $newcontent = shift;
     $pageContent .= $newcontent;
@@ -78,70 +244,12 @@ sub unsupportedRequestType {
     sendResponseMsg($STATUS_NOT_ALLOWED);
 }
 
-use XML::Simple;
-$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
-
+# Convert xcat request to xml for sending to xcatd
 sub genRequest {
     if ($DEBUGGING) {
-        addPageContent($q->p("request " . Dumper($request)));
+        #addPageContent($q->p("DEBUG: request to xcatd: " . Dumper($request) . "\n"));
     }
-    my $xml = XMLout($request, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
-}
-
-#data formatters.  To add one simple copy the format of an existing one
-# and add it to this hash
-my %formatters = (
-    'html' => \&wrapHtml,
-    'json' => \&wrapJson,
-    'xml'  => \&wrapXml,);
-
-fetchParameter($queryString);
-
-if ($queryhash{'format'}) {
-    $format = $queryhash{'format'}->[0];
-    if (!exists $formatters{$format}) {
-        addPageContent("The format '$format' is not valid");
-        sendResponseMsg($STATUS_BAD_REQUEST);
-    }
-
-	if ($format eq 'json') {
-		# require JSON dynamically and let them know if it is not installed
-		my $jsoninstalled = eval { require JSON; };
-		unless ($jsoninstalled) {
-           addPageContent('{"data":"JSON perl module missing.  Install perl-JSON before using the xCAT REST web services API."}');
-		   sendResponseMsg($STATUS_SERVICE_UNAVAILABLE);
-		}
-	}
-}
-
-my $XCAT_PATH = '/opt/xcat/bin';
-
-#resource handlers
-my %resources = (
-    groups        => \&groupsHandler,
-    images        => \&imagesHandler,
-    logs          => \&logsHandler,
-    monitors      => \&monitorsHandler,
-    networks      => \&networksHandler,
-    nodes         => \&nodesHandler,
-    notifications => \&notificationsHandler,
-    policies      => \&policiesHandler,
-    site          => \&siteHandler,
-    tables        => \&tablesHandler,
-    accounts      => \&accountsHandler,
-    objects       => \&objectsHandler,
-    vms           => \&vmsHandler,
-    debug         => \&debugHandler,
-    hypervisor    => \&hypervisorHandler,
-    version       => \&versionHandler);
-
-#if no resource was specified
-if ($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/) {
-    addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
-    foreach (sort keys %resources) {
-        addPageContent($q->p($_));
-    }
-    sendResponseMsg($STATUS_OK);
+    my $xml = XML::Simple::XMLout($request, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
 }
 
 sub doesResourceExist {
@@ -149,44 +257,7 @@ sub doesResourceExist {
     return exists $resources{$res};
 }
 
-if ($DEBUGGING) {
-    if (defined $q->param('PUTDATA')) {
-        addPageContent("put data " . $q->p($q->param('PUTDATA') . "\n"));
-    } elsif (isPut()) {
-        my $entries = JSON::decode_json($q->param('PUTDATA'));
-        if (scalar(@$entries) >= 1) {
-            addPageContent("put data \n");
-            foreach (@$entries) {
-                addPageContent("$_\n");
-            }
-        }
-    }
-    
-    if (defined $q->param('POSTDATA')) {
-        addPageContent("post data " . $q->p($q->param('POSTDATA') . "\n"));
-    } elsif (isPost()) {
-        my $entries = JSON::decode_json($q->param('POSTDATA'));
-        if (scalar(@$entries) >= 1) {
-            addPageContent("post data \n");
-            foreach (@$entries) {
-                addPageContent("$_\n");
-            }
-        }
-    }
-
-    addPageContent($q->p("Parameters "));
-    my @params = $q->param;
-    foreach (@params) {
-        addPageContent("$_ = " . join(',', $q->param($_)) . "\n");
-    }
-    addPageContent($q->p("Query String $queryString" . "\n"));
-    addPageContent($q->p("Query parameters from the Query String" . Dumper(\%queryhash) . "\n"));
-    addPageContent($q->p("HTTP Method $requestType" . "\n"));
-    addPageContent($q->p("URI $url" . "\n"));
-    addPageContent($q->p("path " . Dumper(@path) . "\n"));
-}
-
-#when use put and post, can not fetch the url-parameter, so add this sub to support all kinks of method
+#when use put and post, can not fetch the url-parameter, so add this sub to support all kinds of methods
 sub fetchParameter {
     my $parstr = shift;
     unless ($parstr) {
@@ -202,9 +273,10 @@ sub fetchParameter {
     }
 }
 
-#extract the put data or post data into perl hash, easy for retrieve
+# Extract the put data or post data into the hash that is passed in by reference.
+# The data (2nd parameter) comes from JSON::decode_json()
 sub extractData {
-    my $temphash = shift;
+    my $returnhash = shift;
     my $parArray = shift;
     my $key;
     my $value;
@@ -221,24 +293,15 @@ sub extractData {
             $key = substr $_, 0, $position;
             $value = substr $_, $position + 1;
         }
-        $temphash->{$key} = $value;
+        $returnhash->{$key} = $value;
 
         if ($DEBUGGING) {
-            addPageContent($q->p("The parameter extract from put/post data:<br/>" . Dumper($temphash)));
+            addPageContent($q->p("DEBUG: parameters extracted from put/post data: " . Dumper($returnhash) . "\n"));
         }
     }
 }
 
-my $userName=http('userName');
-my $password=http('password');
-
 sub handleRequest {
-    if (defined $queryhash{'userName'}) {
-        $userName = $queryhash{'userName'}->[0];
-    }
-    if (defined $queryhash{'password'}) {
-        $password = $queryhash{'password'}->[0];
-    }
     if ($userName && $password) {
         $request->{becomeuser}->[0]->{username}->[0] = $userName;
         $request->{becomeuser}->[0]->{password}->[0] = $password;
@@ -247,8 +310,6 @@ sub handleRequest {
     wrapData(\@data);
 }
 
-my @groupFields = ('groupname', 'grouptype', 'members', 'wherevals', 'comments', 'disable');
-
 #get is done
 #post and delete are done but not tested
 #groupfiles4dsh is done but not tested
@@ -256,6 +317,8 @@ sub groupsHandler {
     my @responses;
     my @args;
     my $groupName;
+
+    my @groupFields = ('groupname', 'grouptype', 'members', 'wherevals', 'comments', 'disable');
 
     #is the group name in the URI?
     if (defined $path[1]) {
@@ -353,10 +416,6 @@ sub groupsHandler {
 
     return @responses;
 }
-
-my @imageFields = (
-    'imagename', 'profile', 'imagetype', 'provmethod', 'osname', 'osvers',
-    'osdistro',  'osarch',  'synclists', 'comments',   'disable');
 
 #get is done, nothing else
 sub imagesHandler {
@@ -908,7 +967,7 @@ sub nodesHandler {
     }
     elsif (isPut()) {
         my $subResource;
-        my @entries;
+        my $entries;
         my $entrydata;
         
         unless (defined($noderange)) {
@@ -919,25 +978,29 @@ sub nodesHandler {
 		
         unless ($q->param('PUTDATA')) {
             #temporary allowance for the put data to be contained in the queryString
-            unless ($queryhash{'putData'}) {
+        #    unless ($queryhash{'putData'}) {
                 addPageContent("No set attribute was supplied.");
                 sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-            else {
-                foreach my $put (@{$queryhash{'putData'}}) {
-                    my ($key, $value) = split(/=/, $put, 2);
-                    if ($key eq 'field' && $value) {
-                        push @entries, $value;
-                    }
-                }
-            }
+        #    }
+        #    else {
+        #        foreach my $put (@{$queryhash{'putData'}}) {
+        #            debug("put=$put");
+        #            my ($key, $value) = split(/=/, $put, 2);
+        #            if ($key eq 'field' && $value) {
+        #                push @entries, $value;
+        #            }
+        #        }
+        #    }
         }
         else {
-            @entries = JSON::decode_json($q->param('PUTDATA'));
-            if (scalar(@entries) < 1) {
-                addPageContent("No set attribute was supplied.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
+            # decode_json returns a reference to an array or hash
+            $entries = eval { JSON::decode_json($q->param('PUTDATA')); };
+            if ($@) { addPageContent ("$@"); sendResponseMsg($STATUS_BAD_REQUEST); }
+            debug("entries=" . Dumper($entries));
+            #if (scalar(@entries) < 1) {
+            #    addPageContent("No set attribute was supplied.");
+            #    sendResponseMsg($STATUS_BAD_REQUEST);
+            #}
         }
 		
         if (defined $path[2]) {
@@ -946,7 +1009,7 @@ sub nodesHandler {
             if (($subResource ne "dsh") && ($subResource ne "dcp")) {
                 # For any function other than "dsh" or "dcp",
                 # move all operands to the argument list.
-                foreach (@entries) {
+                foreach (@$entries) {
                     if (ref($_) eq 'ARRAY') {
                         foreach (@$_) {
                             push @args, $_;
@@ -959,7 +1022,7 @@ sub nodesHandler {
             if ($subResource eq "power") {
                 $request->{command} = "rpower";
                 my %elements;
-                extractData(\%elements, @entries);
+                extractData(\%elements, @$entries);
                 
                 unless (scalar(%elements)) {
                     addPageContent("No power operands were supplied.");
@@ -984,7 +1047,7 @@ sub nodesHandler {
             elsif ($subResource eq "dsh") {
                 $request->{command} = "xdsh";
                 my %elements;
-                extractData(\%elements, @entries);
+                extractData(\%elements, @$entries);
                 if (defined($elements{'devicetype'})) {
                     push @args, '--devicetype';
                     push @args, $elements{'devicetype'};
@@ -1056,7 +1119,7 @@ sub nodesHandler {
             elsif ($subResource eq "dcp") {
                 $request->{command} = "xdcp";
                 my %elements;
-                extractData(\%elements, @entries);
+                extractData(\%elements, @$entries);
                 if (defined($elements{'fanout'})) {
                     push @args, '-f';
                     push @args, $elements{'fanout'};
@@ -1101,16 +1164,16 @@ sub nodesHandler {
                 }
             }
         }
-        else {
-            my %elements;
+        else {      # setting node attributes in the db
+            #my %elements;
             my $name;
             my $val;
 
             $request->{command} = "tabch";
             push @args, "node=" . $request->{noderange};
 
-            extractData(\%elements, @entries);
-            while (($name, $val) = each (%elements)) {
+            #extractData(\%elements, @entries);
+            while (($name, $val) = each (%$entries)) {
             	push @args, $name . "=" . $val;
             }
         }
@@ -1157,18 +1220,19 @@ sub nodesHandler {
     if (@envs) {
         push @{$request->{env}}, @envs;
     }
+    debug("request: " . Dumper($request));
     my $req = genRequest();
     @responses = sendRequest($req);
 
     return @responses;
 }
 
-my @notificationFields = ('filename', 'tables', 'tableops', 'comments', 'disable');
-
 #complete, unless there is some way to alter existing notifications
 sub notificationsHandler {
     my @responses;
     my @args;
+
+    my @notificationFields = ('filename', 'tables', 'tableops', 'comments', 'disable');
 
     #does not support using the notification fileName in the URI
 
@@ -1246,14 +1310,14 @@ sub notificationsHandler {
     return @responses;
 }
 
-my @policyFields =
-  ('priority', 'name', 'host', 'commands', 'noderange', 'parameters', 'time', 'rule', 'comments', 'disable');
-
 #complete
 sub policiesHandler {
     my @responses;
     my @args;
     my $priority;
+
+    my @policyFields =
+        ('priority', 'name', 'host', 'commands', 'noderange', 'parameters', 'time', 'rule', 'comments', 'disable');
 
     #does it specify the prioirty in the URI?
     if (defined $path[1]) {
@@ -1401,8 +1465,6 @@ sub siteHandler {
     return @responses;
 }
 
-my $formatType;
-
 #provide direct table access
 #complete and tested on the site table
 #use of the actual DELETE doesn't seem to fit here, since a resource would not be deleted
@@ -1520,13 +1582,13 @@ sub tablesHandler {
     return @responses;
 }
 
-my @accountFields = ('key', 'username', 'password', 'cryptmethod', 'comments', 'disable');
-
 #done aside from being able to change cluster users, which xcat can't do yet
 sub accountsHandler {
     my @responses;
     my @args;
     my $key = $q->param('key');
+
+    my @accountFields = ('key', 'username', 'password', 'cryptmethod', 'comments', 'disable');
 
     if (isGet()) {
 
@@ -2115,10 +2177,10 @@ sub wrapJson {
 sub wrapHtml {
     my $item;
     my $response = shift;
-    my $baseUri  = $url . $pathInfo;
-    if ($baseUri !~ /\/^/) {
-        $baseUri .= "/";
-    }
+    #my $baseUri  = $url . $pathInfo;
+    #if ($baseUri !~ /\/^/) {
+    #    $baseUri .= "/";
+    #}
 
     foreach my $element (@$response) {
 
@@ -2213,44 +2275,22 @@ sub wrapXml {
     my @data = shift;
     foreach (@data) {
         foreach (@$_) {
-            addPageContent(XMLout($_, RootName => '', NoAttr => 1, KeyAttr => []));
+            addPageContent(XML::Simple::XMLout($_, RootName => '', NoAttr => 1, KeyAttr => []));
         }
     }
 }
 
-#general tests for valid requests and responses with HTTP codes here
-if (!doesResourceExist($resource)) {
-    addPageContent("Resource '$resource' does not exist");
-    sendResponseMsg($STATUS_NOT_FOUND);
-}
-else {
-    if ($DEBUGGING) {
-        addPageContent($q->p("resource is $resource"));
-    }
-    handleRequest();
-}
-
-#talk to the server
-use Socket;
-use IO::Socket::INET;
-use IO::Socket::SSL;
-use lib "/opt/xcat/lib/perl";
-use xCAT::Table;
-
-# The database initialization may take some time in the system boot scenario
-# wait for a while for the database initialization
-#do we really need to do this for the web service?
+# Send the request to xcatd.  The request passed in has already been converted to xml.
 sub sendRequest {
     my $request = shift;
     my $sitetab;
     my $retries = 0;
 
     if ($DEBUGGING) {
-        my $preXml = $request;
-
+        #my $preXml = $request;
         #$preXml =~ s/</<br>&lt /g;
         #$preXml =~ s/>/&gt<br>/g;
-        addPageContent($q->p("request XML<br>" . $preXml));
+        #addPageContent($q->p("DEBUG: request XML: " . $request . "\n"));
     }
 
     #hardcoded port for now
@@ -2301,12 +2341,12 @@ sub sendRequest {
 
             #replace ESC with xxxxESCxxx because XMLin cannot handle it
             if ($DEBUGGING) {
-                addPageContent($response . "\n");
+                #addPageContent("DEBUG: response from xcatd: " . $response . "\n");
             }
             $response =~ s/\e/xxxxESCxxxx/g;
 
             #print "responseXML is ".$response;
-            $rsp = XMLin($response, SuppressEmpty => undef, ForceArray => 1);
+            $rsp = XML::Simple::XMLin($response, SuppressEmpty => undef, ForceArray => 1);
 
             #add ESC back
             foreach my $key (keys %$rsp) {
@@ -2336,7 +2376,7 @@ sub sendRequest {
     }
 
     if ($DEBUGGING) {
-        addPageContent($q->p("response " . Dumper(@fullResponse)));
+        #addPageContent($q->p("DEBUG: full response from xcatd: " . Dumper(@fullResponse) . "\n"));
     }
     return @fullResponse;
 }
