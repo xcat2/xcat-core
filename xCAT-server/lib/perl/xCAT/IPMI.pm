@@ -379,7 +379,6 @@ sub open_rmcpplus_request {
             0,0,0,8,1,0,0,0, #table 13-17, request sha
             1,0,0,8,1,0,0,0); #sha integrity
             push @payload,(2,0,0,8,1,0,0,0); # aes 
-        }
     $self->{sessionestablishmentcontext} = STATE_OPENSESSION;
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rmcpplusopenreq'});
 }
