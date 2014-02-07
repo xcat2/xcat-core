@@ -37,7 +37,12 @@ RHFailure()
 }
 MStatus()
 {
-  ps ax|grep -v grep|grep xcatd: > /dev/null 2>&1
+  PID=`cat /var/run/xcatd.pid`
+  if [ -z "$PID" ]; then
+    echo "xCAT service is not running"
+    return 3
+  fi
+  ps $PID|grep xcatd: > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     RVAL=0
     echo "xCAT service is running"
