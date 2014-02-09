@@ -46,7 +46,7 @@ my @path = split(/\//, $pathInfo);
 shift(@path);       # get rid of the initial /
 my $resource    = $path[0];
 my $pageContent = '';       # global var containing the ouptut back to the rest client
-my $request     = {clienttype => 'ws'};
+my $request     = {clienttype => 'ws'};     # global var that holds the request to send to xcatd
 
 my $userName = $q->url_param('userName');
 my $password = $q->url_param('password');
@@ -199,115 +199,376 @@ if (!doesResourceExist($resource)) {
 handleRequest();        
 # end of main
 
-#todo: add msg function display messages in the correct format
+# The flow of functions is:
+# handleRequest() - do the whole api call
+# *Handler() - the specific handler routine for this resource
+# genRequest() - convert xcat request to xml to prepare it for sending to xcatd
+# sendRequest() - send the request to xcatd and read the xml response and convert it to a perl structure
+# wrapData() - convert the output to the format requested by the user
+# wrap*() - the specific formatter the user requested
+# sendResponseMsg() - form/send the output header, and then exit
 
-# if debugging, output the given string
-sub debug {
-    if (!$DEBUGGING) { return; }
-    addPageContent($q->p("DEBUG: $_[0]\n"));
-}
-
-# when having bugs that cause this cgi to not produce any output, output something and then exit.
-sub debugandexit {
-    addPageContent("$_[0]\n");
-    sendResponseMsg($STATUS_OK);
-}
-
-# Append content to the global var holding the output to go back to the rest client
-sub addPageContent {
-    my $newcontent = shift;
-    $pageContent .= $newcontent;
-}
-
-#send the response to client side
-#the http only return once in each request, so all content shoudl save in a global variable,
-#create the response header by status
-sub sendResponseMsg {
-    my $code       = shift;
-    my $tempFormat = '';
-    if ('json' eq $format) {
-        $tempFormat = 'application/json';
-    }
-    elsif ('xml' eq $format) {
-        $tempFormat = 'text/xml';
-    }
-    else {
-        $tempFormat = 'text/html';
-    }
-    print $q->header(-status => $code, -type => $tempFormat);
-    print $pageContent;
-    exit(0);
-}
-
-sub unsupportedRequestType {
-    addPageContent("request method '$requestType' is not supported on resource '$resource'");
-    sendResponseMsg($STATUS_NOT_ALLOWED);
-}
-
-# Convert xcat request to xml for sending to xcatd
-sub genRequest {
-    if ($DEBUGGING) {
-        #addPageContent($q->p("DEBUG: request to xcatd: " . Dumper($request) . "\n"));
-    }
-    my $xml = XML::Simple::XMLout($request, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
-}
-
-sub doesResourceExist {
-    my $res = shift;
-    return exists $resources{$res};
-}
-
-#when use put and post, can not fetch the url-parameter, so add this sub to support all kinds of methods
-sub fetchParameter {
-    my $parstr = shift;
-    unless ($parstr) {
-        return;
-    }
-
-    my @pairs = split(/&/, $parstr);
-    foreach my $pair (@pairs) {
-        my ($key, $value) = split(/=/, $pair, 2);
-        $value =~ tr/+/ /;
-        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/chr(hex($1))/eg;
-        push @{$queryhash{$key}}, $value;
-    }
-}
-
-# Extract the put data or post data into the hash that is passed in by reference.
-# The data (2nd parameter) comes from JSON::decode_json()
-sub extractData {
-    my $returnhash = shift;
-    my $parArray = shift;
-    my $key;
-    my $value;
-    my $position;
-
-    #traversal all element in the array
-    foreach (@$parArray) {
-        $position = index($_, '=');
-        if ($position < 0) {
-            $key   = $_;
-            $value = 1;
-        }
-        else {
-            $key = substr $_, 0, $position;
-            $value = substr $_, $position + 1;
-        }
-        $returnhash->{$key} = $value;
-
-        if ($DEBUGGING) {
-            addPageContent($q->p("DEBUG: parameters extracted from put/post data: " . Dumper($returnhash) . "\n"));
-        }
-    }
-}
-
+# Call one of the handler routines to process the api call, and then return the output
 sub handleRequest {
     if ($userName && $password) {
         $request->{becomeuser}->[0]->{username}->[0] = $userName;
         $request->{becomeuser}->[0]->{password}->[0] = $password;
     }
+    # this calls one of the handler routines that are stored in the resources hash
     my @data = $resources{$resource}->();
     wrapData(\@data);
+}
+
+# handle all the api calls for listing nodes, modifying nodes, querying nodes, running cmds on nodes, etc.
+sub nodesHandler {
+    my @responses;
+    my @args;
+    my $noderange;
+    my @envs;
+
+    if (defined $path[1]) {
+        $noderange = $path[1];
+    }
+
+    if (isGet()) {
+        my $subResource;
+        if (defined $path[2]) {
+            $subResource = $path[2];
+            unless (defined($noderange)) {
+                addPageContent("Invalid nodes and/or groups in noderange");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+            $request->{noderange} = $noderange;
+
+            #use the corresponding command by the subresource name
+            if ($subResource eq "power") {
+                $request->{command} = 'rpower';
+                push @args, 'stat';
+            }
+            elsif ($subResource eq "energy") {
+                $request->{command} = 'renergy';
+
+                #no fields will default to 'all'
+                if (defined $q->url_param('field')) {
+                    push @args, $q->url_param('field');
+                }
+                else {
+                    push @args, 'all';
+                }
+            }
+            elsif ($subResource eq "status") {
+                $request->{command} = 'nodestat';
+            }
+            elsif ($subResource eq "inventory") {
+                $request->{command} = 'rinv';
+                if (defined $q->url_param('field')) {
+                    push @args, $q->url_param('field');
+                }
+                else {
+                    push @args, 'all';
+                }
+            }
+            elsif ($subResource eq "vitals") {
+                $request->{command} = 'rvitals';
+                if (defined $q->url_param('field')) {
+                    push @args, $q->url_param('field');
+                }
+                else {
+                    push @args, 'all';
+                }
+            }
+            elsif ($subResource eq "scan") {
+                $request->{command} = 'rscan';
+                if (defined $q->url_param('field')) {
+                    push @args, $q->url_param('field');
+                }
+            }
+            else {
+                addPageContent("Unspported operation on nodes object.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+            }
+        }
+        else {
+            $request->{command} = 'lsdef';
+            push @args, "-t", "node";
+
+            #add the nodegroup into args
+            if (defined($noderange)) {
+                push @args, "-o", $noderange;
+            }
+
+            #maybe it's specified in the parameters
+            my @temparray = $q->url_param('field');
+            if (scalar(@temparray) > 0) {
+                push @args, "-i";
+                push @args, join(',', @temparray);
+            }
+        }
+    }
+    elsif (isPut()) {       # this could be change node attributes, power state, etc.
+        my $subResource;
+        my $entries;
+        my $entrydata;
+        
+        unless (defined($noderange)) {
+        addPageContent("Invalid nodes and/or groups in noderange");
+        sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        $request->{noderange} = $noderange;
+        
+        unless ($q->param('PUTDATA')) {
+            #temporary allowance for the put data to be contained in the queryString
+        #    unless ($queryhash{'putData'}) {
+                addPageContent("No set attribute was supplied.");
+                sendResponseMsg($STATUS_BAD_REQUEST);
+        #    }
+        #    else {
+        #        foreach my $put (@{$queryhash{'putData'}}) {
+        #            debug("put=$put");
+        #            my ($key, $value) = split(/=/, $put, 2);
+        #            if ($key eq 'field' && $value) {
+        #                push @entries, $value;
+        #            }
+        #        }
+        #    }
+        }
+        else {
+            # decode_json returns a reference to an array or hash
+            $entries = eval { JSON::decode_json($q->param('PUTDATA')); };
+            if ($@) { addPageContent ("$@"); sendResponseMsg($STATUS_BAD_REQUEST); }
+            debug("entries=" . Dumper($entries));
+            #if (scalar(@entries) < 1) {
+            #    addPageContent("No set attribute was supplied.");
+            #    sendResponseMsg($STATUS_BAD_REQUEST);
+            #}
+        }
+        
+        if (defined $path[2]) {
+            $subResource = $path[2];
+
+            if (($subResource ne "dsh") && ($subResource ne "dcp")) {
+                # For any function other than "dsh" or "dcp",
+                # move all operands to the argument list.
+                foreach (@$entries) {
+                    if (ref($_) eq 'ARRAY') {
+                        foreach (@$_) {
+                            push @args, $_;
+                        }
+                    } else {
+                        push @args, $_;
+                    }
+                }
+            }
+            if ($subResource eq "power") {
+                $request->{command} = "rpower";
+                my %elements;
+                extractData(\%elements, @$entries);
+                
+                unless (scalar(%elements)) {
+                    addPageContent("No power operands were supplied.");
+                    sendResponseMsg($STATUS_BAD_REQUEST);
+                }
+            }
+            elsif ($subResource eq "energy") {
+                $request->{command} = "renergy";
+            }
+            elsif ($subResource eq "bootstat" or $subResource eq "bootstate") {
+                $request->{command} = "nodeset";
+            }
+            elsif ($subResource eq "bootseq") {
+                $request->{command} = "rbootseq";
+            }
+            elsif ($subResource eq "setboot") {
+                $request->{command} = "rsetboot";
+            }
+            elsif ($subResource eq "migrate") {
+                $request->{command} = "rmigrate";
+            }
+            elsif ($subResource eq "dsh") {
+                $request->{command} = "xdsh";
+                my %elements;
+                extractData(\%elements, @$entries);
+                if (defined($elements{'devicetype'})) {
+                    push @args, '--devicetype';
+                    push @args, $elements{'devicetype'};
+                }
+                if (defined($elements{'execute'})) {
+                    push @args, '-e';
+                }
+                if (defined($elements{'environment'})) {
+                    push @args, '-E';
+                    push @args, $elements{'environment'};
+                }
+                if (defined($elements{'fanout'})) {
+                    push @args, '-f';
+                    push @args, $elements{'fanout'};
+                }
+                if (defined($elements{'nolocale'})) {
+                    push @args, '-L';
+                }
+                if (defined($elements{'userid'})) {
+                    push @args, '-l';
+                    push @args, $elements{'userid'};
+                }
+                if (defined($elements{'monitor'})) {
+                    push @args, '-m';
+                }
+                if (defined($elements{'options'})) {
+                    push @args, '-o';
+                    push @args, $elements{'options'};
+                }
+                if (defined($elements{'showconfig'})) {
+                    push @args, '-q';
+                }
+                if (defined($elements{'silent'})) {
+                    push @args, '-Q';
+                }
+                if (defined($elements{'remoteshell'})) {
+                    push @args, '-r';
+                    push @args, $elements{'remoteshell'};
+                }
+                if (defined($elements{'syntax'})) {
+                    push @args, '-S';
+                    push @args, $elements{'syntax'};
+                }
+                if (defined($elements{'timeout'})) {
+                    push @args, '-t';
+                    push @args, $elements{'timeout'};
+                }
+                if (defined($elements{'envlist'})) {
+                    push @args, '-X';
+                    push @args, $elements{'envlist'};
+                }
+                if (defined($elements{'sshsetup'})) {
+                    push @args, '-K';
+                    push @args, $elements{'sshsetup'};
+                }
+                if (defined($elements{'rootimg'})) {
+                    push @args, '-i';
+                    push @args, $elements{'rootimg'};
+                }
+                if (defined($elements{'command'})) {
+                    push @args, $elements{'command'};
+                }
+                if (defined($elements{'remotepasswd'})) {
+                    push @envs, 'DSH_REMOTE_PASSWORD=' . $elements{'remotepasswd'};
+                    push @envs, 'DSH_FROM_USERID=root';
+                    push @envs, 'DSH_TO_USERID=root';
+                }
+            }
+            elsif ($subResource eq "dcp") {
+                $request->{command} = "xdcp";
+                my %elements;
+                extractData(\%elements, @$entries);
+                if (defined($elements{'fanout'})) {
+                    push @args, '-f';
+                    push @args, $elements{'fanout'};
+                }
+                if (defined($elements{'rootimg'})) {
+                    push @args, '-i';
+                    push @args, $elements{'rootimg'};
+                }
+                if (defined($elements{'options'})) {
+                    push @args, '-o';
+                    push @args, $elements{'options'};
+                }
+                if (defined($elements{'rsyncfile'})) {
+                    push @args, '-F';
+                    push @args, $elements{'rsyncfile'};
+                }
+                if (defined($elements{'preserve'})) {
+                    push @args, '-p';
+                }
+                if (defined($elements{'pull'})) {
+                    push @args, '-P';
+                }
+                if (defined($elements{'showconfig'})) {
+                    push @args, '-q';
+                }
+                if (defined($elements{'remotecopy'})) {
+                    push @args, '-r';
+                    push @args, $elements{'remotecopy'};
+                }
+                if (defined($elements{'recursive'})) {
+                    push @args, '-R';
+                }
+                if (defined($elements{'timeout'})) {
+                    push @args, '-t';
+                    push @args, $elements{'timeout'};
+                }
+                if (defined($elements{'source'})) {
+                    push @args, $elements{'source'};
+                }
+                if (defined($elements{'target'})) {
+                    push @args, $elements{'target'};
+                }
+            }
+            else { msg('error',"unsupported node resource $subResource."); sendResponseMsg($STATUS_BAD_REQUEST); }
+        }
+        else {      # setting node attributes in the db
+            #my %elements;
+            #my $name;
+            #my $val;
+
+            #$request->{command} = "tabch";
+            #push @args, "node=" . $request->{noderange};
+            $request->{command} = "chdef";
+            push @args, "-t", "node";
+            push @args, "-o", $request->{noderange};
+
+            #extractData(\%elements, @entries);
+            while (my ($name, $val) = each (%$entries)) {
+                push @args, $name . "=" . $val;
+            }
+        }
+    }
+    elsif (isPost()) {
+        $request->{command} = 'mkdef';
+        push @args, "-t", "node";
+
+        unless (defined($noderange)) {
+            addPageContent("No nodename was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+
+        push @args, "-o", $noderange;
+
+        if ($q->param('POSTDATA')) {
+            # decode_json returns a reference to an array or hash
+            my $entries = eval { JSON::decode_json($q->param('POSTDATA')); };
+            if ($@) { addPageContent ("$@"); sendResponseMsg($STATUS_BAD_REQUEST); }
+            debug("entries=" . Dumper($entries));
+            while (my ($name, $val) = each (%$entries)) {
+                push @args, $name . "=" . $val;
+            }
+        }
+        else { msg('error', 'no post data given.'); sendResponseMsg($STATUS_BAD_REQUEST); }
+    }
+    elsif (isDelete()) {
+
+        #F the nodeRange for delete is specified in the URI
+        $request->{command} = 'rmdef';
+        push @args, "-t", "node";
+        unless (defined($noderange)) {
+            addPageContent("No nodename was supplied.");
+            sendResponseMsg($STATUS_BAD_REQUEST);
+        }
+        push @args, "-o", $noderange;
+    }
+    else {
+        unsupportedRequestType();
+        exit();
+    }
+
+    push @{$request->{arg}}, @args;
+    if (@envs) {
+        push @{$request->{env}}, @envs;
+    }
+    debug("request: " . Dumper($request));
+    my $req = genRequest();
+    @responses = sendRequest($req);
+
+    return @responses;
 }
 
 #get is done
@@ -716,6 +977,7 @@ sub logsHandler {
 }
 
 #complete
+#todo: delete this handler.  We are de-emphasizing the monitoring plugins in xcat, so don't need a rest api for them.
 sub monitorsHandler {
     my @responses;
     my @args;
@@ -876,353 +1138,6 @@ sub networksHandler {
         exit(0);
     }
     @responses = sendRequest(genRequest());
-
-    return @responses;
-}
-
-sub nodesHandler {
-    my @responses;
-    my @args;
-    my $noderange;
-    my @envs;
-
-    if (defined $path[1]) {
-        $noderange = $path[1];
-    }
-
-    if (isGet()) {
-        my $subResource;
-        if (defined $path[2]) {
-            $subResource = $path[2];
-            unless (defined($noderange)) {
-                addPageContent("Invalid nodes and/or groups in noderange");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-            $request->{noderange} = $noderange;
-
-            #use the corresponding command by the subresource name
-            if ($subResource eq "power") {
-                $request->{command} = 'rpower';
-                push @args, 'stat';
-            }
-            elsif ($subResource eq "energy") {
-                $request->{command} = 'renergy';
-
-                #no fields will default to 'all'
-                if (defined $q->param('field')) {
-                    push @args, $q->param('field');
-                }
-                else {
-                    push @args, 'all';
-                }
-            }
-            elsif ($subResource eq "status") {
-                $request->{command} = 'nodestat';
-            }
-            elsif ($subResource eq "inventory") {
-                $request->{command} = 'rinv';
-                if (defined $q->param('field')) {
-                    push @args, $q->param('field');
-                }
-                else {
-                    push @args, 'all';
-                }
-            }
-            elsif ($subResource eq "vitals") {
-                $request->{command} = 'rvitals';
-                if (defined $q->param('field')) {
-                    push @args, $q->param('field');
-                }
-                else {
-                    push @args, 'all';
-                }
-            }
-            elsif ($subResource eq "scan") {
-                $request->{command} = 'rscan';
-                if (defined $q->param('field')) {
-                    push @args, $q->param('field');
-                }
-            }
-            else {
-                addPageContent("Unspported operation on nodes object.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-        }
-        else {
-            $request->{command} = 'lsdef';
-            push @args, "-t", "node";
-
-            #add the nodegroup into args
-            if (defined($noderange)) {
-                push @args, "-o", $noderange;
-            }
-
-            #maybe it's specified in the parameters
-            my @temparray = $q->param('field');
-            if (scalar(@temparray) > 0) {
-                push @args, "-i";
-                push @args, join(',', @temparray);
-            }
-        }
-    }
-    elsif (isPut()) {
-        my $subResource;
-        my $entries;
-        my $entrydata;
-        
-        unless (defined($noderange)) {
-	    addPageContent("Invalid nodes and/or groups in noderange");
-	    sendResponseMsg($STATUS_BAD_REQUEST);
-        }
-        $request->{noderange} = $noderange;
-		
-        unless ($q->param('PUTDATA')) {
-            #temporary allowance for the put data to be contained in the queryString
-        #    unless ($queryhash{'putData'}) {
-                addPageContent("No set attribute was supplied.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-        #    }
-        #    else {
-        #        foreach my $put (@{$queryhash{'putData'}}) {
-        #            debug("put=$put");
-        #            my ($key, $value) = split(/=/, $put, 2);
-        #            if ($key eq 'field' && $value) {
-        #                push @entries, $value;
-        #            }
-        #        }
-        #    }
-        }
-        else {
-            # decode_json returns a reference to an array or hash
-            $entries = eval { JSON::decode_json($q->param('PUTDATA')); };
-            if ($@) { addPageContent ("$@"); sendResponseMsg($STATUS_BAD_REQUEST); }
-            debug("entries=" . Dumper($entries));
-            #if (scalar(@entries) < 1) {
-            #    addPageContent("No set attribute was supplied.");
-            #    sendResponseMsg($STATUS_BAD_REQUEST);
-            #}
-        }
-		
-        if (defined $path[2]) {
-            $subResource = $path[2];
-
-            if (($subResource ne "dsh") && ($subResource ne "dcp")) {
-                # For any function other than "dsh" or "dcp",
-                # move all operands to the argument list.
-                foreach (@$entries) {
-                    if (ref($_) eq 'ARRAY') {
-                        foreach (@$_) {
-                            push @args, $_;
-                        }
-                    } else {
-                        push @args, $_;
-                    }
-                }
-            }
-            if ($subResource eq "power") {
-                $request->{command} = "rpower";
-                my %elements;
-                extractData(\%elements, @$entries);
-                
-                unless (scalar(%elements)) {
-                    addPageContent("No power operands were supplied.");
-                    sendResponseMsg($STATUS_BAD_REQUEST);
-                }
-            }
-            elsif ($subResource eq "energy") {
-                $request->{command} = "renergy";
-            }
-            elsif ($subResource eq "bootstat" or $subResource eq "bootstate") {
-                $request->{command} = "nodeset";
-            }
-            elsif ($subResource eq "bootseq") {
-                $request->{command} = "rbootseq";
-            }
-            elsif ($subResource eq "setboot") {
-                $request->{command} = "rsetboot";
-            }
-            elsif ($subResource eq "migrate") {
-                $request->{command} = "rmigrate";
-            }
-            elsif ($subResource eq "dsh") {
-                $request->{command} = "xdsh";
-                my %elements;
-                extractData(\%elements, @$entries);
-                if (defined($elements{'devicetype'})) {
-                    push @args, '--devicetype';
-                    push @args, $elements{'devicetype'};
-                }
-                if (defined($elements{'execute'})) {
-                    push @args, '-e';
-                }
-                if (defined($elements{'environment'})) {
-                    push @args, '-E';
-                    push @args, $elements{'environment'};
-                }
-                if (defined($elements{'fanout'})) {
-                    push @args, '-f';
-                    push @args, $elements{'fanout'};
-                }
-                if (defined($elements{'nolocale'})) {
-                    push @args, '-L';
-                }
-                if (defined($elements{'userid'})) {
-                    push @args, '-l';
-                    push @args, $elements{'userid'};
-                }
-                if (defined($elements{'monitor'})) {
-                    push @args, '-m';
-                }
-                if (defined($elements{'options'})) {
-                    push @args, '-o';
-                    push @args, $elements{'options'};
-                }
-                if (defined($elements{'showconfig'})) {
-                    push @args, '-q';
-                }
-                if (defined($elements{'silent'})) {
-                    push @args, '-Q';
-                }
-                if (defined($elements{'remoteshell'})) {
-                    push @args, '-r';
-                    push @args, $elements{'remoteshell'};
-                }
-                if (defined($elements{'syntax'})) {
-                    push @args, '-S';
-                    push @args, $elements{'syntax'};
-                }
-                if (defined($elements{'timeout'})) {
-                    push @args, '-t';
-                    push @args, $elements{'timeout'};
-                }
-                if (defined($elements{'envlist'})) {
-                    push @args, '-X';
-                    push @args, $elements{'envlist'};
-                }
-                if (defined($elements{'sshsetup'})) {
-                    push @args, '-K';
-                    push @args, $elements{'sshsetup'};
-                }
-                if (defined($elements{'rootimg'})) {
-                    push @args, '-i';
-                    push @args, $elements{'rootimg'};
-                }
-                if (defined($elements{'command'})) {
-                    push @args, $elements{'command'};
-                }
-                if (defined($elements{'remotepasswd'})) {
-                    push @envs, 'DSH_REMOTE_PASSWORD=' . $elements{'remotepasswd'};
-                    push @envs, 'DSH_FROM_USERID=root';
-                    push @envs, 'DSH_TO_USERID=root';
-                }
-            }
-            elsif ($subResource eq "dcp") {
-                $request->{command} = "xdcp";
-                my %elements;
-                extractData(\%elements, @$entries);
-                if (defined($elements{'fanout'})) {
-                    push @args, '-f';
-                    push @args, $elements{'fanout'};
-                }
-                if (defined($elements{'rootimg'})) {
-                    push @args, '-i';
-                    push @args, $elements{'rootimg'};
-                }
-                if (defined($elements{'options'})) {
-                    push @args, '-o';
-                    push @args, $elements{'options'};
-                }
-                if (defined($elements{'rsyncfile'})) {
-                    push @args, '-F';
-                    push @args, $elements{'rsyncfile'};
-                }
-                if (defined($elements{'preserve'})) {
-                    push @args, '-p';
-                }
-                if (defined($elements{'pull'})) {
-                    push @args, '-P';
-                }
-                if (defined($elements{'showconfig'})) {
-                    push @args, '-q';
-                }
-                if (defined($elements{'remotecopy'})) {
-                    push @args, '-r';
-                    push @args, $elements{'remotecopy'};
-                }
-                if (defined($elements{'recursive'})) {
-                    push @args, '-R';
-                }
-                if (defined($elements{'timeout'})) {
-                    push @args, '-t';
-                    push @args, $elements{'timeout'};
-                }
-                if (defined($elements{'source'})) {
-                    push @args, $elements{'source'};
-                }
-                if (defined($elements{'target'})) {
-                    push @args, $elements{'target'};
-                }
-            }
-        }
-        else {      # setting node attributes in the db
-            #my %elements;
-            my $name;
-            my $val;
-
-            $request->{command} = "tabch";
-            push @args, "node=" . $request->{noderange};
-
-            #extractData(\%elements, @entries);
-            while (($name, $val) = each (%$entries)) {
-            	push @args, $name . "=" . $val;
-            }
-        }
-    }
-    elsif (isPost()) {
-        $request->{command} = 'mkdef';
-        push @args, "-t", "node";
-
-        unless (defined($noderange)) {
-            addPageContent("No nodename was supplied.");
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
-
-        push @args, "-o", $noderange;
-
-        if ($q->param('POSTDATA')) {
-            my $entries = JSON::decode_json($q->param('POSTDATA'));
-            if (scalar($entries) < 1) {
-                addPageContent("No Field and Value map was supplied.");
-                sendResponseMsg($STATUS_BAD_REQUEST);
-            }
-            foreach (@$entries) {
-                push @args, $_;
-            }
-        }
-    }
-    elsif (isDelete()) {
-
-        #FYI:  the nodeRange for delete has to be specified in the URI
-        $request->{command} = 'rmdef';
-        push @args, "-t", "node";
-        unless (defined($noderange)) {
-            addPageContent("No nodename was supplied.");
-            sendResponseMsg($STATUS_BAD_REQUEST);
-        }
-        push @args, "-o", $noderange;
-    }
-    else {
-        unsupportedRequestType();
-        exit();
-    }
-
-    push @{$request->{arg}}, @args;
-    if (@envs) {
-        push @{$request->{env}}, @envs;
-    }
-    debug("request: " . Dumper($request));
-    my $req = genRequest();
-    @responses = sendRequest($req);
 
     return @responses;
 }
@@ -2065,11 +1980,6 @@ sub versionHandler {
     exit(0);
 }
 
-#for operations that take a 'long' time to finish, this will provide the interface to check their status
-sub jobsHandler {
-
-}
-
 sub hypervisorHandler {                                                
     my @responses;                                             
     my @args;                                                  
@@ -2106,6 +2016,11 @@ sub hypervisorHandler {
     }                                                          
 }
 
+#for operations that take a 'long' time to finish, this will provide the interface to check their status
+#todo: this is not supported in xcatd yet, so not sure what to do about this one
+sub jobsHandler {
+}
+
 sub debugHandler {                                             
     my @responses;                                             
     my @args;                                                  
@@ -2131,7 +2046,120 @@ sub debugHandler {
     }                                                          
 }                   
 
-#all data wrapping and writing is funneled through here
+# if debugging, output the given string
+sub debug {
+    if (!$DEBUGGING) { return; }
+    addPageContent($q->p("DEBUG: $_[0]\n"));
+}
+
+# when having bugs that cause this cgi to not produce any output, output something and then exit.
+sub debugandexit {
+    addPageContent("$_[0]\n");
+    sendResponseMsg($STATUS_OK);
+}
+
+# add a msg to the output in the correct format
+sub msg {
+    my ($severity, $str) = @_;
+    if (!$severity) { $severity = 'info'; }
+    my $m;
+    if ($format eq 'xml') { $m = "<$severity>$str</$severity>\n"; }
+    elsif ($format eq 'json') { $m = qq({"$severity":"$str"}\n); }
+    else { $m = "<p>$severity: $str</p>\n"; }
+    addPageContent($m);
+}
+
+# Append content to the global var holding the output to go back to the rest client
+sub addPageContent {
+    my $newcontent = shift;
+    $pageContent .= $newcontent;
+}
+
+# send the response to client side, then exit
+# with http there is only one return for each request, so all content should be in pageContent global variable when you call this
+# create the response header by status code and format
+sub sendResponseMsg {
+    my $code       = shift;
+    my $tempFormat = '';
+    if ('json' eq $format) {
+        $tempFormat = 'application/json';
+    }
+    elsif ('xml' eq $format) {
+        $tempFormat = 'text/xml';
+    }
+    else {
+        $tempFormat = 'text/html';
+    }
+    print $q->header(-status => $code, -type => $tempFormat);
+    print $pageContent;
+    exit(0);
+}
+
+sub unsupportedRequestType {
+    addPageContent("request method '$requestType' is not supported on resource '$resource'");
+    sendResponseMsg($STATUS_NOT_ALLOWED);
+}
+
+# Convert xcat request to xml for sending to xcatd
+sub genRequest {
+    if ($DEBUGGING) {
+        #addPageContent($q->p("DEBUG: request to xcatd: " . Dumper($request) . "\n"));
+    }
+    my $xml = XML::Simple::XMLout($request, RootName => 'xcatrequest', NoAttr => 1, KeyAttr => []);
+}
+
+sub doesResourceExist {
+    my $res = shift;
+    return exists $resources{$res};
+}
+
+#when use put and post, can not fetch the url-parameter, so add this sub to support all kinds of methods
+sub fetchParameter {
+    my $parstr = shift;
+    unless ($parstr) {
+        return;
+    }
+
+    my @pairs = split(/&/, $parstr);
+    foreach my $pair (@pairs) {
+        my ($key, $value) = split(/=/, $pair, 2);
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/chr(hex($1))/eg;
+        push @{$queryhash{$key}}, $value;
+    }
+}
+
+# Extract the put data or post data into the hash that is passed in by reference.
+# The data (2nd parameter) comes from JSON::decode_json()
+#todo: remove when not used any more
+sub extractData {
+    my $returnhash = shift;
+    my $parArray = shift;
+    my $key;
+    my $value;
+    my $position;
+
+    #traversal all element in the array
+    foreach (@$parArray) {
+        $position = index($_, '=');
+        if ($position < 0) {
+            $key   = $_;
+            $value = 1;
+        }
+        else {
+            $key = substr $_, 0, $position;
+            $value = substr $_, $position + 1;
+        }
+        $returnhash->{$key} = $value;
+
+        if ($DEBUGGING) {
+            addPageContent($q->p("DEBUG: parameters extracted from put/post data: " . Dumper($returnhash) . "\n"));
+        }
+    }
+}
+
+# Format the output data the way the user requested.  All data wrapping and writing is funneled through here.
+# This will call one of the other wrap*() functions.
 sub wrapData {
     my $data             = shift;
     my $errorInformation = '';
@@ -2151,11 +2179,13 @@ sub wrapData {
     else {
         pop @{$data};
     }
+
+    # Call the appropriate formatting function stored in the formatters hash
     if (exists $formatters{$format}) {
         $formatters{$format}->($data);
     }
 
-    #all information were add into the global varibale, call the response funcion
+    # all output has been added into the global varibale pageContent, call the response funcion
     if (exists $data->[0]->{info} && $data->[0]->{info}->[0] =~ /Could not find an object/) {
         sendResponseMsg($STATUS_NOT_FOUND);
     }
@@ -2280,7 +2310,8 @@ sub wrapXml {
     }
 }
 
-# Send the request to xcatd.  The request passed in has already been converted to xml.
+# Send the request to xcatd and read the response.  The request passed in has already been converted to xml.
+# The response returned to the caller of this function has already been converted from xml to perl structure.
 sub sendRequest {
     my $request = shift;
     my $sitetab;
@@ -2381,27 +2412,19 @@ sub sendRequest {
     return @fullResponse;
 }
 
-sub isGet {
-    return uc($requestType) eq "GET";
-}
+# Functions to test the http request type
+sub isGet { return uc($requestType) eq "GET"; }
 
-sub isPut {
-    return uc($requestType) eq "PUT";
-}
+sub isPut { return uc($requestType) eq "PUT"; }
 
-sub isPost {
-    return uc($requestType) eq "POST";
-}
+sub isPost { return uc($requestType) eq "POST"; }
 
-sub isPatch {
-    return uc($requestType) eq "PATCH";
-}
+sub isPatch { return uc($requestType) eq "PATCH"; }
 
-sub isDelete {
-    return uc($requestType) eq "DELETE";
-}
+sub isDelete { return uc($requestType) eq "DELETE"; }
 
-#check to see if this is a valid user.  userName and password are already set
+# check to see if this is a valid user.  userName and password are already set
+# this function is not currently used.
 sub isAuthenticUser {
     $request->{command} = 'authcheck';
     my $req       = genRequest();
