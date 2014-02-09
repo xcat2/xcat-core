@@ -558,7 +558,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime comments disable)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime zonename comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
@@ -573,6 +573,7 @@ nodelist => {
      hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
      updatestatus => "The current node update status. Valid states are synced, out-of-sync,syncing,failed.",
      updatestatustime => "The date and time when the updatestatus was updated.",
+     zonename => "The name of the zone to which the node is currently assigned. If undefined, then it is not assigned to any zone. ",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
     },
@@ -1193,6 +1194,18 @@ performance => {
    disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
+zone => {
+    cols => [qw(zonename sshkeydir defaultzone comments disable)],
+    keys => [qw(zonename)],
+    table_desc => 'Defines a cluster zone for nodes that share root ssh key access to each other.',
+ descriptions => {
+   zonename => 'The name of the zone.',
+   sshkeydir => 'Directory containing the shared root ssh RSA keys.',
+   defaultzone => 'If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.',
+   comments => 'Any user-provided notes.',
+   disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
 
 eventlog => {
     cols => [qw(recid  eventtime eventtype monitor monnode node application component id severity  message rawdata comments disable)], 
@@ -1630,6 +1643,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   rack => { attrs => [], attrhash => {}, objkey => 'rackname' },
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
   osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
+  zone=> { attrs => [], attrhash => {}, objkey => 'zonename' },
   
 );
 
@@ -2612,7 +2626,11 @@ my @nodeattrs = (
 		{attr_name => 'updatestatustime',
                  tabentry => 'nodelist.updatestatustime',
                  access_tabentry => 'nodelist.node=attr:node',
-             },             
+             },       
+                {attr_name => 'zonename',
+                 tabentry => 'nodelist.zonename',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },
 		{attr_name => 'usercomment',
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
@@ -3064,6 +3082,27 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
         {attr_name => 'usercomment',
                  tabentry => 'rack.comments',
                  access_tabentry => 'rack.rackname=attr:rackname',
+        },
+   );
+####################
+#  zone table      #
+####################
+@{$defspec{zone}->{'attrs'}} = (
+        {attr_name => 'zonename',
+                tabentry => 'zone.zonename',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshkeydir',
+                tabentry => 'zone.sshkeydir',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'defaultzone',
+                tabentry => 'zone.defaultzone',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'usercomment',
+                 tabentry => 'zone.comments',
+                 access_tabentry => 'zone.zonename=attr:zonename',
         },
    );
 #########################
