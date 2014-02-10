@@ -70,7 +70,6 @@ try:
 			command = re.split('\s+',received)
 			if(command[0] == "stat"):
 				ilog = ""
-				firstline = ""
 				line = ""
 				post = 0
 				percent = 0
@@ -78,44 +77,20 @@ try:
 				numpack = 0
 				if(os.path.isfile('/tmp/packaging.log')):
 					ilog = '/tmp/packaging.log'
-				if(os.path.isfile('/mnt/sysimage/root/install.log')):
-					ilog = '/mnt/sysimage/root/install.log'
-				if(os.path.isfile('/mnt/sysimage/tmp/install.log')):
-					ilog = '/mnt/sysimage/tmp/install.log'
-				if(os.path.isfile('/mnt/sysimage/root/post.log')):
-					ilog = '/mnt/sysimage/root/post.log'
-					post = 1
+				if(os.path.isfile('/mnt/sysimage/tmp/post.log')):
+					ilog = '/mnt/sysimage/tmp/post.log'
+					post = True
 				if(ilog):
 					count = len(open(ilog).readlines())
-					firstline = linecache.getline(ilog,1)
 					line = linecache.getline(ilog,count)
 					linecache.clearcache()
 				if(line and not post):
-					r1 = re.compile("^Installing (\d+) ")
-					m1 = r1.search(firstline)
-					if m1:
-						numpack = int(m1.group(1))
-						if(numpack > 0):
-							percent = int(((count - 2) * 100)/numpack + .5)
-						if(percent > 100):
-							percent = 100
-						if(percent < 0):
-							percent = 0
-					r2 = re.compile("^Installing (.*)\.")
+					r2 = re.compile("Installing ([^ ]*) \((\d+)/(\d+)\)")
 					m2 = r2.search(line)
 					if m2:
-						newline = m2.group(1)
-						newline = newline + " ("
-						newline = newline + str(percent)
-						newline = newline + "%)"
-#						newline = newline + " ["
-#						count = count - 2
-#						newline = newline + str(count)
-#						newline = newline + "/"
-#						newline = newline + str(numpack)
-#						newline = newline + "]"
+						newline = "%s (%.2f%%)" % (m2.group(1), 100 * float(m2.group(2)) / float(m2.group(3)))
 					else:
-						newline = "prep"
+						newline = "post"
 					line = "installing " + newline
 				if(line and post):
 					line = "installing " + line
