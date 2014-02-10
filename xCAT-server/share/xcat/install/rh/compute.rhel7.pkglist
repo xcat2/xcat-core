@@ -1,4 +1,5 @@
 #Please make sure there is a space between @ and group name
+wget
 ntp
 nfs-utils
 net-snmp
