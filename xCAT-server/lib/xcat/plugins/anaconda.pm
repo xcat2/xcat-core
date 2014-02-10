@@ -2025,6 +2025,18 @@ sub copycd
             $distname = "ol$1.$2";
         }
     }
+    elsif ($desc =~ /^RHEL-(\d)\.(\d) ([^.]*)\./) {
+        my $edition = "";
+        my $version = "$1.$2";
+        my %editionmap = (
+            "Server" => "s",
+            );
+        $edition = $editionmap{$3};
+        unless ($distname)
+        {
+            $distname = "rhel$edition$version";
+        }
+    }
     elsif ($desc =~ /^Red Hat Enterprise Linux (\d)\.(\d)/)
     {
 	my $edition;
