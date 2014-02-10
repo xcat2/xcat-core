@@ -1433,7 +1433,9 @@ sub mkinstall
              if($esxi){
                  $ksdev =~ s/eth/vmnic/g;
              }
-             $kcmdline .= " ksdevice=" . $ksdev;
+             unless ($ksdev eq "bootif" and $os =~ /7/) {
+                 $kcmdline .= " ksdevice=" . $ksdev;
+            }
 
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))
