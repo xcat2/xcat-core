@@ -190,16 +190,17 @@ sub copycd {
                 'n=s' => \$distname,
               );
     unless($distname && $file && $mntpath && $arch) {
-        $callback->({error=>"distname, file or mntpath not specified, $distname, $file, $mntpath"});
+        #$callback->({error=>"distname, file or mntpath not specified, $distname, $file, $mntpath"});
         return ;
     }
     if ($distname && $distname !~ /^vios/i) {
-        $callback->({error=>"distname incorrect"});
+        #$callback->({error=>"distname incorrect"});
         return ;
     } elsif ($arch !~ /^ppc64/i) {
-        $callback->({error=>"arch incorrect"});
+        #$callback->({error=>"arch incorrect"});
+        return ;
     } elsif (!$file) {
-        $callback->({error=>"Only suport to use the iso file vios"});
+        #$callback->({error=>"Only suport to use the iso file vios"});
         return;
     }
     #print __LINE__."=====>vios=====.\n";
