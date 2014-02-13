@@ -9,7 +9,7 @@ B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>]
 [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
-      [B<-u> B<provmethod>=<I<install>|I<netboot>|I<statelite>> B<profile>=<xxx> [I<attr>=I<value>]]
+      [B<-u> B<provmethod>=<I<install>|I<netboot>|I<statelite>> B<profile>=<xxx> [I<osvers>=I<value>] [I<osarch>=I<value>]]
 
 
 =head1 DESCRIPTION
@@ -73,9 +73,10 @@ Indicates that the file being piped to the command is in stanza format.  See the
 
 =item B<-u>
 
-This option only works for objtype B<osimage>.
+Fill in the attributes such as template file, pkglist file and otherpkglist file of osimage object based on the specified parameters. It will search "/install/custom/" directory first, and then "/opt/xcat/share/".
+The I<provmethod> and I<profile> must be specified. If I<osvers> or I<osarch> is not specified, the corresponding value of the management node will be used.
 
-Fill in the osimage attribute automatically when define osimage. The I<provmethod> and I<profile> must be specified. If osvers or osarch is not specified, the corresponding value of the management node will be used.
+Note: this option only works for objtype B<osimage>.
 
 =back
 
