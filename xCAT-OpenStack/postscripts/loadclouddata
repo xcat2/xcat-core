@@ -182,7 +182,8 @@ then
     for client in $CFGCLIENTLIST
     do
         echo "Configuring the chef-client node $client on the chef-server $NODE."
-        c_fullname="$client.$DOMAIN"
+        #c_fullname="$client.$DOMAIN"
+        c_fullname=$client
         knife client delete -y $c_fullname  > /dev/null 2>&1
         knife node delete -y $c_fullname    > /dev/null 2>&1
 
