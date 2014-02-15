@@ -4024,7 +4024,7 @@ sub defmk_usage
     $rsp->{data}->[4] =
       "      [-f | --force] [noderange] [attr=val [attr=val...]]";
     $rsp->{data}->[5] = 
-      "      [-u provmethod=<install|netboot|statelite> profile=<xxx> [attr=value]]\n";
+      "      [-u provmethod=<install|netboot|statelite> profile=<xxx> [osvers=value] [osarch=value]]\n";
     $rsp->{data}->[6] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 7;
@@ -4074,7 +4074,7 @@ sub defch_usage
     $rsp->{data}->[5] =
       "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[6] = 
-      "    [-u [provmethod=<install|netboot|statelite>]|[profile=<xxx>]|[attr=value]]";
+      "    [-u [provmethod=<install|netboot|statelite>]|[profile=<xxx>]|[osvers=value]|[osarch=value]]";
     $rsp->{data}->[7] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 8;
