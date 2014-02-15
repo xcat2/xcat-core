@@ -1,0 +1,249 @@
+#!/usr/bin/perl
+
+# Modify the grub config file on the node to boot the specified kernel and initrd.
+# This script is meant to be run on the node via xdsh -e.
+# Currently requires that dns on the mn be configured and working to resolve the short node names.
+
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+use Socket;
+
+# Globals - these are set once and then only read.
+my $HELP;
+my $VERBOSE;
+my $WAITTIME;
+my $XCATNETBOOTTITLE = 'xCAT network boot kernel and initrd';
+
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w waittime] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
+   	if (!$exitcode) {
+   		print "Modify the grub config file on the node to boot the specified kernel and initrd.\n";
+   	}
+	exit $exitcode;
+};
+
+if (-f '/etc/os-release') { die "This script doesn't support ubuntu yet.\n"; }
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime' => \$WAITTIME)) { $usage->(1); }
+
+if ($HELP) { $usage->(0); }
+if (scalar(@ARGV) != 4) { $usage->(1); }
+if (!defined($WAITTIME)) { $WAITTIME = 90; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
+my %args;
+$args{kernelpath} = $ARGV[0];
+$args{initrdpath} = $ARGV[1];
+$args{kernelparms} = $ARGV[2];
+$args{mnip} = $ARGV[3];
+
+addKernelParms(\%args);		# replace and add some parms to args{kernelparms}
+updateGrub(\%args);			# update the grub config with an entry filled with the info in args
+	
+exit(0);
+
+
+# Add ip and net info to the kernel parms.  Modifies the kernelparms value of the args hash passed in.
+sub addKernelParms {
+	my $args = shift @_;
+
+	# replace '!myipfn!' with the mn ip
+	my $mnip = $args->{mnip};
+	$args->{kernelparms} =~ s/!myipfn!/$mnip/g;
+
+	# replace <nodename> with the nodename
+	my $nodename = $ENV{NODE};			# this env var is set by xdsh
+	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
+
+	# get node ip and add it to the kernel parms
+	my ($nic, $ip, $netmask, $gateway) = getNodeIpInfo($args);
+	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
+	$args->{kernelparms} .= " hostip=$ip netmask=$netmask gateway=$gateway netdevice=$nic netwait=$WAITTIME";
+}
+
+
+# get this nodes nic, ip, netmask, and gateway.  Returns them in a 4 element array.
+sub getNodeIpInfo {
+	my $args = shift @_;
+	my ($ipprefix) = $args->{mnip}=~m/^(\d+\.\d+)\./;		#todo: this is a hack, just using the 1st 2 octets of the mn ip addr
+	verbose("using IP prefix $ipprefix");
+
+	# parse ip addr show output, looking for ipprefix, to determine nic and ip
+	my @output = runcmd("ip addr show");
+	my ($nic, $ipandmask);
+	foreach my $line (@output) {
+		my ($nictmp, $iptmp);
+		if (($nictmp) = $line=~m/^\d+:\s+(\S+): /) { $nic = $nictmp; }		# new stanza, remember it
+		if (($iptmp) = $line=~m/^\s+inet\s+($ipprefix\S+) /) { $ipandmask = $iptmp; last; }		# got ip, we are done
+	}
+	my ($ip, $netmask) = convertIpAndMask($ipandmask);
+
+	# if the nic is a bonded nic (common on sl), then find the 1st real nic that is part of it
+	my $realnic = $nic;
+	if ($nic =~ /^bond/) {
+		my @nics = grep(m/\s+master\s+$nic\s+/, @output);
+		if (!scalar(@nics)) { die "Error: can't find the NICs that are part of $nic.\n"; }
+		($realnic) = $nics[0]=~m/^\d+:\s+(\S+): /;
+	}
+
+	# finally, find the gateway
+	my $gateway;
+	my @output = runcmd("ip route");
+	# we are looking for a line like: 10.0.0.0/8 via 10.54.51.1 dev bond0
+	my @networks = grep(m/ via .* $nic\s*$/, @output);
+	if (scalar(@networks)) { ($gateway) = $networks[0]=~m/ via\s+(\S+)/; }
+	else {
+		# use the mn ip as a fall back
+		$gateway = $args->{mnip};
+		verbose("using xCAT mgmt node IP as the fall back gateway.");
+	}
+
+	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway");
+	return ($realnic, $ip, $netmask, $gateway);
+}
+
+
+# Convert an ip/mask in slash notation (like 10.0.0.1/26) to separate ip and netmask like 10.0.0.1 and 255.255.255.192
+sub convertIpAndMask {
+	my $ipandmask = shift @_;
+	my ($ip, $masknum) = split('/', $ipandmask);
+	my $netbin = oct("0b" . '1' x $masknum . '0' x (32-$masknum));	# create a str like '1111100', then convert to binary
+	my @netarr=unpack('C4',pack('N',$netbin));		# separate into the 4 octets
+	my $netmask=join('.',@netarr);			# put them together into the normal looking netmask
+	return ($ip, $netmask);
+}
+
+
+# not used - resolve the hostname to an ip addr
+sub getipaddr {
+	my $hostname = shift @_;
+	my $packed_ip;
+    $packed_ip = inet_aton($hostname);
+    if (!$packed_ip) { return undef; }
+    return inet_ntoa($packed_ip);
+}
+
+
+# Update the grub config file with a new stanza for booting our kernel and initrd
+sub updateGrub {
+	my $args = shift @_;
+
+	# this is the entry we want in the grub file
+	my @entry = (
+		"title $XCATNETBOOTTITLE\n",
+		"\troot (hd0,0)\n",
+		"\tkernel " . $args->{kernelpath} . ' ' . $args->{kernelparms} . "\n",
+		"\tinitrd " . $args->{initrdpath} . "\n",
+		);
+
+	# open the grub file and see if it is in there or if we have to add it
+	my $grubfile = findGrubPath();
+	verbose("reading $grubfile");
+	open(FILE, $grubfile) || die "Error: can not open config file $grubfile for reading: $!\n";
+	my @lines = <FILE>;
+	close FILE;
+
+	my $needtowritefile = 1;
+	if (grep(/^title\s+$XCATNETBOOTTITLE/, @lines)) { $needtowritefile = updateGrubEntry(\@lines, \@entry); }		# there is already an entry in there
+	else { addGrubEntry (\@lines, \@entry); }
+
+	# write the file with the new/updated xcat entry
+	if ($needtowritefile) {
+		verbose("updating $grubfile");
+		open(FILE, '>', $grubfile) || die "Error: can not open config file $grubfile for writinging: $!\n";
+		print FILE @lines;
+		close FILE;
+	}
+	else { print "Info: $grubfile did not need modifying. It was already up to date.\n"; }
+}
+
+
+# add our entry as the 1st one in the grub file
+sub addGrubEntry {
+	my ($lines, $entry) = @_;
+	# find the index of the 1st stanza (it starts with 'title')
+	my $i;
+	for ($i=0; $i<scalar(@$lines); $i++) {
+		if ($lines->[$i] =~ m/^title\s+/) { verbose('adding xcat entry before:'.$lines->[$i]); last; }		# found it
+	}
+	
+	# splice the entry right before the i-th line (which may also be 1 past the end)
+	splice(@$lines, $i, 0, @$entry);
+}
+
+
+# check the xcat entry in the grub file and see if it needs to be updated.  Return 1 if it does.
+sub updateGrubEntry {
+	my ($lines, $entry) = @_;
+	# find the index of the xcat stanza
+	my $i;
+	for ($i=0; $i++; $i<scalar(@$lines)) {
+		if ($lines->[$i] =~ m/^title\s+$XCATNETBOOTTITLE/) { last; }		# found it
+	}
+
+	# compare the next few lines with the corresponding line in @$entries and replace if different
+	my $replaced = 0;
+	for (my $j=0; $j++; $j<scalar(@$entry)) {
+		if ($lines->[$i+$j] ne $entry->[$j]) {		# this line was different
+			$lines->[$i+$j] = $entry->[$j];
+			$replaced = 1;
+		}
+	}
+	
+	return $replaced;
+}
+
+
+# depending on the distro, find the correct grub file and return its path
+sub findGrubPath {
+	# for rhel/centos it is /boot/grub/grub.conf, for sles it is /boot/grub/menu.lst
+	my @paths = qw(/boot/grub/grub.conf /boot/grub/menu.lst);
+	foreach my $p (@paths) {
+		if (-f $p) { return $p; }
+	}
+	
+	die "Error: Can't find grub config file.\n";
+
+	#todo: support ubuntu: you add an executable file in /etc/grub.d named 06_xcatnetboot that prints out the
+	#		entry to add.  Then run grub-mkconfig.
+}
+
+
+# Pring msg only if -v was specified
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+
+# Run a command.  If called in the context of return an array, it will capture the output
+# of the cmd and return it.  Otherwise, it will display the output to stdout.
+# If the cmd has a non-zero rc, this function will die with a msg.
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc;
+
+    $cmd .= ' 2>&1' ;
+    verbose($cmd);
+
+   	my @output;
+   	if (wantarray) {
+		@output = `$cmd`;
+		$rc = $?;
+	}
+	else {
+		system($cmd);
+		$rc = $?;
+	}
+
+    if ($rc) {
+        $rc = $rc >> 8;
+        if ($rc > 0) { die "Error: rc $rc return from cmd: $cmd\n"; }
+        else { die "Error: system error returned from cmd: $cmd\n"; }
+    }
+    elsif (wantarray) { return @output; }
+}
+

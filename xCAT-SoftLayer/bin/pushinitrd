@@ -1,0 +1,147 @@
+#!/usr/bin/perl
+
+# Copy the initrd, kernel, params, and static IP info to nodes, so they can net install
+# even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working
+# OS is on the node.  This script is primarily meant to be used in the softlayer environment.
+
+#todo: site attr for using static ip?
+
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+
+# Globals - these are set once and then only read.
+my $HELP;
+my $VERBOSE;
+
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] <noderange>\n\n";
+   	if (!$exitcode) {
+   		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
+		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
+		print "OS is on the node, that you've run nodeset for these nodes, and that all of the nodes\n";
+		print "are using the same osimage.\n";
+   	}
+	exit $exitcode;
+};
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE)) { $usage->(1); }
+
+if ($HELP) { $usage->(0); }
+if (scalar(@ARGV) != 1) { $usage->(1); }
+my $noderange = $ARGV[0];
+
+my %bootparms = getBootParms($noderange);
+
+copyFilesToNodes($noderange, \%bootparms);
+
+updateGrubOnNodes($noderange, \%bootparms);
+
+exit(0);
+
+
+# Query the db for the kernel, initrd, and kcmdline attributes of the 1st node in the noderange
+sub getBootParms {
+	my $nr = shift @_;
+	my %bootparms;
+	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline");
+
+	# the attributes can be displayed in a different order than requested, so need to grep for them
+	my @gresults;
+	foreach my $a (qw(kernel initrd kcmdline)) {
+		my $attr = "bootparams.$a";
+		@gresults = grep(/^\S+:\s+$attr:/, @output);
+		if (!scalar(@gresults)) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
+		# for now just pick the 1st one. They should all be the same, except for the node name kcmdline
+		chomp($gresults[0]);
+		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
+		$bootparms{$a} = $gresults[0];
+		if ($a eq 'kcmdline') { $bootparms{$a} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|; }
+	}
+
+	# get the mgmt node cluster-facing ip addr
+	@output = runcmd('lsdef -t site -i master -c');
+	my ($junk, $ip) = split(/=/, $output[0]);
+	$bootparms{mnip} = $ip;
+
+	verbose(Dumper(\%bootparms));
+	return %bootparms;
+}
+
+
+# Copy the kernel and initrd to the nodes
+# Args: noderange, reference to the bootparms hash
+sub copyFilesToNodes {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+	foreach my $a (qw(kernel initrd)) {
+		my $file = $bootparms->{$a};
+		my $localfile = "/tftpboot/$file";
+		# for the remote file name, use the last 2 parts of the path, separated by "-"
+		my $remotefile = $file;
+		$remotefile =~ s|^.*/([^/]+)/([^/]+)$|$1-$2|;
+		$remotefile = "/boot/$remotefile";
+		print "Copying $localfile to $nr:$remotefile\n";
+		runcmd("xdcp $nr -p $localfile $remotefile");
+	}
+}
+
+
+# Run the modifygrub script on the nodes to update the grub config file
+# Args: noderange, reference to the bootparms hash
+sub updateGrubOnNodes {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+	my $vtxt = ($VERBOSE ? '-v' : '');
+	my @output = runcmd('which modifygrub');
+	my $modifygrub = $output[0];
+	chomp($modifygrub);
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt " . $bootparms->{kernel} . ' ' . $bootparms->{initrd} . ' ';
+	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
+	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
+	# is to quote each of the outer single quotes with double quotes.
+	$cmd .= q("'"') . $bootparms->{kcmdline} . q('"'");
+	$cmd .= ' ' . $bootparms->{mnip};
+	print "Running modifygrub on $nr to update the grub configuration.\n";
+	runcmd($cmd);
+}
+
+
+# Pring msg only if -v was specified
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+
+# Run a command.  If called in the context of return an array, it will capture the output
+# of the cmd and return it.  Otherwise, it will display the output to stdout.
+# If the cmd has a non-zero rc, this function will die with a msg.
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc;
+
+    $cmd .= ' 2>&1' ;
+    verbose($cmd);
+
+   	my @output;
+   	if (wantarray) {
+		@output = `$cmd`;
+		$rc = $?;
+	}
+	else {
+		system($cmd);
+		$rc = $?;
+	}
+
+    if ($rc) {
+        $rc = $rc >> 8;
+        if ($rc > 0) { die "Error: rc $rc return from cmd: $cmd\n"; }
+        else { die "Error: system error returned from cmd: $cmd\n"; }
+    }
+    elsif (wantarray) { return @output; }
+}
