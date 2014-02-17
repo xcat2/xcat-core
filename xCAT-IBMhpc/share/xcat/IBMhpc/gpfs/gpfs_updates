@@ -14,7 +14,7 @@
 #    postscript (stateful install) or with the otherpkgs processing of
 #    genimage (stateless/statelite install).  This script will install any
 #    gpfs update rpms that exist on the xCAT management node in the 
-#    /install/post/gpfs_updates directory.
+#    /install/post/otherpkgs/gpfs_updates directory.
 #    This is necessary because the GPFS updates can ONLY be installed
 #    after the base rpms have been installed, and the update rpms cannot
 #    exist in any rpm repositories used by xCAT otherpkgs processing
