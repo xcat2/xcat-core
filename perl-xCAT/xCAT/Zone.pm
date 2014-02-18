@@ -190,17 +190,27 @@ sub  genSSHRootKeys
 #--------------------------------------------------------------------------------
 sub  getdefaultzone 
 {
+ my ($class, $callback) = @_;
  my $defaultzone;
  # read all the zone table and find the defaultzone, if it exists
  my $tab = xCAT::Table->new("zone");
- my @zones = $tab->getAllAttribs('zonename','defaultzone');
- foreach my $zone (@zones) {
-  # Look for the  defaultzone=yes/1 entry
-  if ((defined($zone->{defaultzone})) && ($zone->{defaultzone} =~ "yes")) {
-     $defaultzone = $zone->{zonename};
-  }
+ if ($tab){
+   my @zones = $tab->getAllAttribs('zonename','defaultzone');
+   foreach my $zone (@zones) {
+    # Look for the  defaultzone=yes/1 entry
+    if ((defined($zone->{defaultzone})) && 
+          (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+       $defaultzone = $zone->{zonename};
+    }
+    $tab->close();
+   }
+ } else {
+    my $rsp = {};
+    $rsp->{error}->[0] = 
+    "Error reading the zone table. ";
+    xCAT::MsgUtils->message("E", $rsp, $callback);
+
  }
- $tab->close();
  return $defaultzone;
 }
 #--------------------------------------------------------------------------------
@@ -227,5 +237,93 @@ sub iszonedefined
  }else{
     return 0;
  }
+}
+#--------------------------------------------------------------------------------
+
+=head3    getzoneinfo
+    Arguments:
+     An array of nodes
+    Returns:
+     Hash array  by zonename point to the nodes in that zonename  and sshkeydir
+      zonename1 -> {nodelist} -> array of nodes in the zone
+                 -> {sshkeydir} -> directory containing ssh RSA keys
+                 -> {defaultzone} ->  is it the default zone             
+    Example:
+     my %zonehash =xCAT::Zone->getNodeZones($nodelist); 
+    Rules:
+       If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
+       If the nodes nodelist.zonename attribute is undefined:
+          If there is a defaultzone in the zone table, the node is assigned to that zone
+          If there is no defaultzone in the zone table, the node is assigned to the ~.ssh keydir
+=cut
+
+#--------------------------------------------------------------------------------
+sub  getzoneinfo 
+{
+  my ($class, $callback,$nodes) = @_;
+ 
+ # make the list into an array
+# $nodelist=~ s/\s*//g; # remove blanks
+# my @nodes = split ',', $nodelist;
+ my $zonehash;
+ my $defaultzone;
+ # read all the zone table 
+ my $zonetab = xCAT::Table->new("zone");
+ if ($zonetab){
+    my @zones = $zonetab->getAllAttribs('zonename','sshkeydir','defaultzone');
+    $zonetab->close();
+    if (@zones) {
+       foreach  my $zone (@zones) {
+          my $zonename=$zone->{zonename};
+          $zonehash->{$zonename}->{sshkeydir}= $zone->{sshkeydir};
+          $zonehash->{$zonename}->{defaultzone}= $zone->{defaultzone};
+          # find the defaultzone
+          if ((defined($zone->{defaultzone})) && 
+             (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+              $defaultzone = $zone->{zonename};
+          }
+       }
+    }
+ } else {
+    my $rsp = {};
+    $rsp->{error}->[0] = 
+    "Error reading the zone table. ";
+    xCAT::MsgUtils->message("E", $rsp, $callback);
+    return;
+
+ }
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my $nodehash = $nodelisttab->getNodesAttribs(\@$nodes, ['zonename']); 
+ # for each of the nodes, look up it's zone name and assign to the zonehash
+ # if the node is a service node, it is assigned to the __xcatzone which gets its keys from
+ #    the ~/.ssh dir no matter what in the database for the zonename. 
+ # If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
+ # If the nodes nodelist.zonename attribute is undefined:
+ #         If there is a defaultzone in the zone table, the node is assigned to that zone
+ #         If there is no defaultzone in the zone table, the node is assigned to the ~.ssh keydir
+ 
+
+ my @allSN=xCAT::ServiceNodeUtils->getAllSN("ALL");  # read all the servicenodes define 
+ my $xcatzone = "__xcatzone";  # if node is in no zones or a service node, use this one
+ $zonehash->{$xcatzone}->{sshkeydir}= "~/.ssh"; 
+ foreach my $node (@$nodes) {
+    my $zonename;
+    if (grep(/^$node$/, @allSN)) {  # this is a servicenode, treat special
+      $zonename=$xcatzone;    # always use ~/.ssh directory
+    } else { # use the nodelist.zonename attribute
+      $zonename=$nodehash->{$node}->[0]->{zonename};
+    }
+    if (defined($zonename)) {  # zonename explicitly defined in nodelist.zonename
+       push @{$zonehash->{$zonename}->{nodes}},$node;
+    } else { # no explict zonename
+      if (defined ($defaultzone)) {  # there is a default zone in the zone table, use it
+       push @{$zonehash->{$defaultzone}->{nodes}},$node;
+      } else {  # if no default then use the ~/.ssh keys as the default, put them in the __xcatzone
+          push @{$zonehash->{$xcatzone}->{nodes}},$node;
+       
+      }   
+    }   
+ }
+ return;
 }
 1;
