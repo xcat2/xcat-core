@@ -279,7 +279,7 @@ sub  getzoneinfo
           $zonehash->{$zonename}->{defaultzone}= $zone->{defaultzone};
           # find the defaultzone
           if ((defined($zone->{defaultzone})) && 
-             (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+             (($zone->{defaultzone} =~ /yes/i) or ($zone->{defaultzone} eq "1"))) {
               $defaultzone = $zone->{zonename};
           }
        }
@@ -324,6 +324,6 @@ sub  getzoneinfo
       }   
     }   
  }
- return;
+ return $zonehash;
 }
 1;
