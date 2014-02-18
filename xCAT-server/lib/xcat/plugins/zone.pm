@@ -77,6 +77,13 @@ sub process_request
             return 1; 
 
     }
+    # you may not run on AIX
+    if (xCAT::Utils->isAIX()) {
+            my $rsp = {};
+            $rsp->{error}->[0] = "The $command may only be run on a Linux Cluster.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return 1; 
+    }
     # test to see if any parms 
     if (scalar($request->{arg} == 0)) {
         my $rsp = {};
@@ -135,7 +142,36 @@ sub process_request
     }
     # save input noderange
     if ($options{'noderange'}) {
+       
+       # check to see if Management Node is in the noderange, if so error
        $request->{noderange}->[0] = $options{'noderange'};
+       my @nodes = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+       my @mname = xCAT::Utils->noderangecontainsMn(@nodes); 
+       if (@mname)
+        {    # MN in the nodelist
+            my $nodes=join(',', @mname);
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run $command and include the  management node: $nodes.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1; 
+        }
+       # now check for service nodes in noderange.  It they exist that is an error also.
+        my @SN;
+        my @CN;
+        xCAT::ServiceNodeUtils->getSNandCPnodes(\@nodes, \@SN, \@CN);
+        if (scalar(@SN))       
+        {    # SN in the nodelist
+            my $nodes=join(',', @SN);
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run $command and include any service nodes: $nodes.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1; 
+        }
+       # now check for service nodes in noderange.  It they exist that is an error also.
+ 
+ 
     }
     if ($options{'verbose'})
     {
@@ -393,7 +429,7 @@ sub updatezonetable
      my $zonename=$request->{zonename};
      if ( $$options{'defaultzone'}) {  # set the default
        # check to see if a default already defined
-       my $curdefaultzone = xCAT::Zone->getdefaultzone;
+       my $curdefaultzone = xCAT::Zone->getdefaultzone($callback);
        if (!(defined ($curdefaultzone))) {  # no default defined
            $tb_cols{defaultzone} ="yes";
        } else { # already a default
