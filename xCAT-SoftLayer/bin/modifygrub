@@ -132,13 +132,11 @@ sub getipaddr {
 sub updateGrub {
 	my $args = shift @_;
 
-	# this is the entry we want in the grub file
-	my @entry = (
-		"title $XCATNETBOOTTITLE\n",
-		"\troot (hd0,0)\n",
-		"\tkernel " . $args->{kernelpath} . ' ' . $args->{kernelparms} . "\n",
-		"\tinitrd " . $args->{initrdpath} . "\n",
-		);
+	# how we specify the path for the kernel and initrd is different on redhat and suse
+	my $fileprefix;
+	if (isRedhat()) { $fileprefix = '/'; }
+	elsif (isSuse()) { $fileprefix = '/boot/'; }
+	else { die "Error: currently only support red hat or suse distros.\n"; }
 
 	# open the grub file and see if it is in there or if we have to add it
 	my $grubfile = findGrubPath();
@@ -146,6 +144,17 @@ sub updateGrub {
 	open(FILE, $grubfile) || die "Error: can not open config file $grubfile for reading: $!\n";
 	my @lines = <FILE>;
 	close FILE;
+
+	# this is the entry we want in the grub file
+	my @rootlines = grep(/^\s+root\s+/, @lines);		# copy one of the existing root lines
+	if (!scalar(@rootlines)) { die "Error: can't find an existing line for 'root' in the grub config file\n"; }
+	my ($rootline) = $rootlines[0] =~ m/^\s*(.*?)\s*$/;
+	my @entry = (
+		"title $XCATNETBOOTTITLE\n",
+		"\t$rootline\n",
+		"\tkernel " . $fileprefix . $args->{kernelpath} . ' ' . $args->{kernelparms} . "\n",
+		"\tinitrd " . $fileprefix . $args->{initrdpath} . "\n",
+		);
 
 	my $needtowritefile = 1;
 	if (grep(/^title\s+$XCATNETBOOTTITLE/, @lines)) { $needtowritefile = updateGrubEntry(\@lines, \@entry); }		# there is already an entry in there
@@ -179,15 +188,17 @@ sub addGrubEntry {
 # check the xcat entry in the grub file and see if it needs to be updated.  Return 1 if it does.
 sub updateGrubEntry {
 	my ($lines, $entry) = @_;
+	#print Dumper($lines), Dumper($entry);
 	# find the index of the xcat stanza
 	my $i;
-	for ($i=0; $i++; $i<scalar(@$lines)) {
+	for ($i=0; $i<scalar(@$lines); $i++) {
 		if ($lines->[$i] =~ m/^title\s+$XCATNETBOOTTITLE/) { last; }		# found it
 	}
 
 	# compare the next few lines with the corresponding line in @$entries and replace if different
 	my $replaced = 0;
-	for (my $j=0; $j++; $j<scalar(@$entry)) {
+	for (my $j=0; $j<scalar(@$entry); $j++) {
+		#print "comparing:\n  ", $lines->[$i+$j], "\n  ", $entry->[$j], "\n";
 		if ($lines->[$i+$j] ne $entry->[$j]) {		# this line was different
 			$lines->[$i+$j] = $entry->[$j];
 			$replaced = 1;
@@ -215,6 +226,10 @@ sub findGrubPath {
 
 # Pring msg only if -v was specified
 sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+# Check the distro we are running on
+sub isSuse { return (-e '/etc/SuSE-release'); }
+sub isRedhat { return (-e '/etc/redhat-release' || -e '/etc/centos-release' || -e '/etc/fedora-release'); }		# add chk for fedora
 
 
 
