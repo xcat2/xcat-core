@@ -1053,7 +1053,7 @@ site => {
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
    "                   passwordless root access to nodes and other SN.\n".
-   "                   If using the zone table, this attribute in not used.\n".
+   "                   If using the zone table, this attribute in not used.\n\n".
    " -----------------\n".
    "SERVICES ATTRIBUTES\n".
    " -----------------\n".
