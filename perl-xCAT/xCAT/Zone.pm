@@ -249,7 +249,7 @@ sub iszonedefined
                  -> {sshkeydir} -> directory containing ssh RSA keys
                  -> {defaultzone} ->  is it the default zone             
     Example:
-     my %zonehash =xCAT::Zone->getNodeZones($nodelist); 
+     my %zonehash =xCAT::Zone->getNodeZones(@nodearray); 
     Rules:
        If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
        If the nodes nodelist.zonename attribute is undefined:
