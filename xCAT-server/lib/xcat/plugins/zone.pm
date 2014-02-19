@@ -108,6 +108,7 @@ sub process_request
                     'h|help'        => \$options{'help'},
                     'k|sshkeypath=s'   => \$options{'sshkeypath'},
                     'K|genkeys'     => \$options{'gensshkeys'},
+                    's|sshbetweennodes=s'     => \$options{'sshbetweennodes'},
                     'v|version'     => \$options{'version'},
                     'V|Verbose'     => \$options{'verbose'},
         )
@@ -244,6 +245,7 @@ sub mkzone
     
     # Create path to generated ssh keys
     $keydir .= $request->{zonename}; 
+    
 
     # update the zone table 
     $rc=updatezonetable($request, $callback,$options,$keydir);
@@ -337,11 +339,11 @@ sub usage
     my $usagemsg2="";
     if ($command eq "mkzone") {
        $usagemsg1  = " mkzone -h \n mkzone -v \n";
-       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n        [-a <noderange>] [-g] [-f]";
+       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n        [-a <noderange>] [-g] [-f] [-s <yes/no>]";
     } else {
        if ($command eq "chzone") {
            $usagemsg1  = " chzone -h \n chzone -v \n";
-           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] ";
+           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] [-s <yes/no>]";
        } else {
             if ($command eq "rmzone") {
                $usagemsg1  = " rmzone -h \n rmzone -v \n";
@@ -424,6 +426,18 @@ sub updatezonetable
     my $tab = xCAT::Table->new("zone");
     if ($tab)
     {
+     # read a record from the zone table, if it is empty then add
+     #  the xcatdefault entry
+     my @zones = $tab->getAllAttribs('zonename');
+     if (!(@zones)) {  # table empty
+       my %xcatdefaultzone;
+       $xcatdefaultzone{defaultzone} ="yes";
+       $xcatdefaultzone{sshbetweennodes} ="yes";
+       $xcatdefaultzone{sshkeydir} ="~/.ssh";
+       $tab->setAttribs({zonename => "xcatdefault"}, \%xcatdefaultzone);
+     }
+
+     # now add the users zone
      my %tb_cols;
      $tb_cols{sshkeydir} = $keydir;             
      my $zonename=$request->{zonename};
