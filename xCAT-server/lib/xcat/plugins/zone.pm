@@ -141,6 +141,32 @@ sub process_request
     } else {
        $request->{zonename} = $ARGV[0];
     }
+    # if -s entered must be yes/1 or no/0
+    if ($options{'sshbetweennodes'}) {
+      if ($options{'sshbetweennodes'}=~ /^yes$/i || $options{'sshbetweennodes'} eq "1") {
+           $options{'sshbetweennodes'}= "yes";
+      } else {
+        if ($options{'sshbetweennodes'}=~ /^no$/i || $options{'sshbetweennodes'} eq "0") {
+           $options{'sshbetweennodes'}= "no";
+        } else {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+              "The input on the -s flag $options{'sshbetweennodes'} is not valid.";
+             xCAT::MsgUtils->message("E", $rsp, $callback);
+             exit 1;
+        }
+      }
+    }
+
+    # check for site.sshbetweennodes attribute, put out a warning it will not be used as long
+    # as zones are defined in the zone table.
+    my @entries =  xCAT::TableUtils->get_site_attribute("sshbetweennodes");    
+    if ($entries[0]) {
+         my $rsp = {};
+         $rsp->{info}->[0] =
+              "The site table sshbetweennodes attribute is set to $entries[0].  It is not used when zones are defined.  To get rid of this warning, remove the site table sshbetweennodes attribute.";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
     # save input noderange
     if ($options{'noderange'}) {
        
@@ -439,7 +465,13 @@ sub updatezonetable
 
      # now add the users zone
      my %tb_cols;
-     $tb_cols{sshkeydir} = $keydir;             
+     $tb_cols{sshkeydir} = $keydir;  # key directory
+     # set sshbetweennodes attribute from -s flag or default to yes
+     if ( $$options{'sshbetweennodes'}) {
+        $tb_cols{sshbetweennodes} = $$options{'sshbetweennodes'};         
+     } else {
+        $tb_cols{sshbetweennodes} = "yes";         
+     }
      my $zonename=$request->{zonename};
      if ( $$options{'defaultzone'}) {  # set the default
        # check to see if a default already defined
