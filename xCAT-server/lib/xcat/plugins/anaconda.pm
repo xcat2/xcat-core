@@ -34,6 +34,7 @@ my $httpport="80";
 my $useflowcontrol="0";
 
 
+
 sub handled_commands
 {
     return {
@@ -62,7 +63,7 @@ sub preprocess_request
     my @ents = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $site_ent = $ents[0];
     unless (  defined($site_ent)
-            and ($site_ent =~ /no/i or $site_ent =~ /0/))
+            and ($site_ent eq "no" or $site_ent eq "NO"  or $site_ent eq "0"))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call

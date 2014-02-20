@@ -348,27 +348,27 @@ sub preprocess_request {
    #they specify no sharedtftp in site table
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+   if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
       my @CN;
       xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
       unless (($args[0] eq 'stat') or ($args[0] eq 'enact')) { # mix is ok for these options
-        if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+       if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
             my $rsp;
             $rsp->{data}->[0] =
               "Nodeset was run with a noderange containing both service nodes and compute nodes. This is not valid. You must submit with either compute nodes in the noderange or service nodes. \n";
             xCAT::MsgUtils->message("E", $rsp, $callback1);
             return;
 
-        }
+         }
       }
 
       $req->{'_disparatetftp'}=[1];
       if ($req->{inittime}->[0]) {
           return [$req];
       }
-      if (@CN >0 ) { # there are computenodes then run on all servicenodes 
+      if (@CN >0 ) { # if compute nodes broadcast to all servicenodes
         return xCAT::Scope->get_broadcast_scope($req,@_);
       }
    }
