@@ -199,7 +199,7 @@ sub  getdefaultzone
    foreach my $zone (@zones) {
     # Look for the  defaultzone=yes/1 entry
     if ((defined($zone->{defaultzone})) && 
-          (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+          (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} eq "1"))) {
        $defaultzone = $zone->{zonename};
     }
     $tab->close();
@@ -249,28 +249,29 @@ sub iszonedefined
                  -> {sshkeydir} -> directory containing ssh RSA keys
                  -> {defaultzone} ->  is it the default zone             
     Example:
-     my %zonehash =xCAT::Zone->getNodeZones($nodelist); 
+     my %zonehash =xCAT::Zone->getNodeZones(@nodearray); 
     Rules:
        If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
        If the nodes nodelist.zonename attribute is undefined:
           If there is a defaultzone in the zone table, the node is assigned to that zone
           If there is no defaultzone in the zone table, the node is assigned to the ~.ssh keydir
+    $::GETZONEINFO_RC
+           0 = good return
+           1 = error occured
 =cut
 
 #--------------------------------------------------------------------------------
 sub  getzoneinfo 
 {
   my ($class, $callback,$nodes) = @_;
- 
- # make the list into an array
-# $nodelist=~ s/\s*//g; # remove blanks
-# my @nodes = split ',', $nodelist;
+ $::GETZONEINFO_RC=0; 
  my $zonehash;
  my $defaultzone;
  # read all the zone table 
  my $zonetab = xCAT::Table->new("zone");
+ my @zones;
  if ($zonetab){
-    my @zones = $zonetab->getAllAttribs('zonename','sshkeydir','defaultzone');
+    @zones = $zonetab->getAllAttribs('zonename','sshkeydir','sshbetweennodes','defaultzone');
     $zonetab->close();
     if (@zones) {
        foreach  my $zone (@zones) {
@@ -279,7 +280,7 @@ sub  getzoneinfo
           $zonehash->{$zonename}->{defaultzone}= $zone->{defaultzone};
           # find the defaultzone
           if ((defined($zone->{defaultzone})) && 
-             (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+             (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} eq "1"))) {
               $defaultzone = $zone->{zonename};
           }
        }
@@ -289,6 +290,7 @@ sub  getzoneinfo
     $rsp->{error}->[0] = 
     "Error reading the zone table. ";
     xCAT::MsgUtils->message("E", $rsp, $callback);
+    $::GETZONEINFO_RC =1;
     return;
 
  }
@@ -314,6 +316,15 @@ sub  getzoneinfo
       $zonename=$nodehash->{$node}->[0]->{zonename};
     }
     if (defined($zonename)) {  # zonename explicitly defined in nodelist.zonename
+       # check to see if defined in the zone table
+       if (!(grep(/^$zonename$/, @zones))) {
+          my $rsp = {};
+          $rsp->{error}->[0] = 
+         "$node has a  zonenane: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone.";
+          xCAT::MsgUtils->message("E", $rsp, $callback);
+          $::GETZONEINFO_RC =1;
+          return;
+       }
        push @{$zonehash->{$zonename}->{nodes}},$node;
     } else { # no explict zonename
       if (defined ($defaultzone)) {  # there is a default zone in the zone table, use it
