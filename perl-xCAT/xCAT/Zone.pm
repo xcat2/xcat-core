@@ -199,7 +199,8 @@ sub  getdefaultzone
    foreach my $zone (@zones) {
     # Look for the  defaultzone=yes/1 entry
     if ((defined($zone->{defaultzone})) && 
-          (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} eq "1"))) {
+          (($zone->{defaultzone} =~ /^yes$/i )
+           || ($zone->{defaultzone} eq "1"))) {
        $defaultzone = $zone->{zonename};
     }
     $tab->close();
@@ -279,8 +280,9 @@ sub  getzoneinfo
           $zonehash->{$zonename}->{sshkeydir}= $zone->{sshkeydir};
           $zonehash->{$zonename}->{defaultzone}= $zone->{defaultzone};
           # find the defaultzone
-          if ((defined($zone->{defaultzone})) && 
-             (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} eq "1"))) {
+          if ((defined($zone->{defaultzone})) &&
+          (($zone->{defaultzone} =~ /^yes$/i ) 
+              || ($zone->{defaultzone} eq "1"))) {
               $defaultzone = $zone->{zonename};
           }
        }
