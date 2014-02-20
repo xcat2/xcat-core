@@ -1,0 +1,75 @@
+=head1 NAME
+
+B<opsaddbmnode> - It adds xCAT baremetal nodes to an OpenStack cloud.
+
+=head1 SYNOPSIS
+
+B<opsaddbmnode> I<noderange> B<-s> I<service_host>
+
+B<opsaddbmnode> [B<-h>|B<--help>]
+
+B<opsaddbmnode> [B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<opsaddbmnode> command registers xCAT nodes to an OpenStack cloud. 
+
+An OpenStack nova baremetal node registration command takes several node attributes:
+=item BMC ip addresss, user id and password
+=item Name of nova compute host which will control this baremetal node
+=item Number of CPUs in the node
+=item Memory in the node (MB)
+=item Local hard disk in the node (GB)
+=item MAC address to provision the node
+
+The opsaddbmnode command pulls the above baremetal node information from xCAT tables and calls "nova baremetal-node-create" to register the baremetal node with the OpenStack cloud.
+
+Please make sure the following xCAT tables are filled with correct information for the given nodes before calling this command.
+=item ipmi (for BMC ip addresss, user id and password)
+=item mac (for MAC address)
+=item hwinv (for CPU, memory and disk info.)
+
+=head1 Parameters
+
+I<noderage> is a comma separated node or node group names. 
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-s>    The node name of the OpenStack compute host that hosts the baremetal nodes. 
+
+=item B<-h|--help>     Display usage message.
+
+=item B<-v|--version>  The Command Version.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To register node1, node2 and node3 to OpenStack, sv1 is the compute host.
+
+   opsassbmnode node1,node2,node3 -s sv1
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/opadddbmnode
+
+=head1 SEE ALSO
+
+L<opsaddimage(1)|opsaddimage.1>
+
