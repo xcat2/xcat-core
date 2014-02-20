@@ -260,7 +260,7 @@ sub preprocess_request {
 
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+   if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
       my @CN;

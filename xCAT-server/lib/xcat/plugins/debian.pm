@@ -75,9 +75,9 @@ sub preprocess_request
     my $stab = xCAT::Table->new('site');
     my $sent;
     ($sent) = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-    unless (    $sent
-            and defined($sent->{value})
-            and ($sent->{value} =~ /no/i or $sent->{value} =~ /0/))
+    unless ( $sent
+        and defined($sent->{value})
+            and ($sent->{value} eq "no" or $sent->{value} eq "NO" or $sent->{value} eq "0"))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
