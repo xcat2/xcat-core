@@ -13,10 +13,11 @@ use Data::Dumper;
 # Globals - these are set once and then only read.
 my $HELP;
 my $VERBOSE;
+my $WAITTIME;
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] <noderange>\n\n";
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [-w <waittime>] <noderange>\n\n";
    	if (!$exitcode) {
    		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
 		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
@@ -30,10 +31,11 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 1) { $usage->(1); }
+if (!defined($WAITTIME)) { $WAITTIME = 60; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
 my $noderange = $ARGV[0];
 
 my %bootparms = getBootParms($noderange);
@@ -41,6 +43,8 @@ my %bootparms = getBootParms($noderange);
 copyFilesToNodes($noderange, \%bootparms);
 
 updateGrubOnNodes($noderange, \%bootparms);
+
+modifyAutoinstFiles($noderange, \%bootparms);
 
 exit(0);
 
@@ -108,7 +112,7 @@ sub updateGrubOnNodes {
 	my @output = runcmd('which modifygrub');
 	my $modifygrub = $output[0];
 	chomp($modifygrub);
-	my $cmd = "xdsh $nr -e $modifygrub $vtxt " . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME " . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
 	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
 	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
 	# is to quote each of the outer single quotes with double quotes.
@@ -116,6 +120,71 @@ sub updateGrubOnNodes {
 	$cmd .= ' ' . $bootparms->{mnip};
 	print "Running modifygrub on $nr to update the grub configuration.\n";
 	runcmd($cmd);
+}
+
+
+# Hack the autoinst files to wait in a key spot to make them work even tho it takes
+# the NICs almost a min before they can transmit after a state change.
+#todo: this has only been tested with SLES nodes
+sub modifyAutoinstFiles {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+
+	# expand the noderange into a list of nodes
+	my @nodes = runcmd("nodels $nr");
+	chomp(@nodes);
+
+	# Edit each file to have chroot.sles insert a wait at the end of /etc/init.d/network
+	# this finds the end of boot.sh script (which is chroot.sles)
+	my $search = '\n\]\]>\s*</source>\s*</script>\s*</chroot-scripts>';
+	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
+	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
+	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escape for sed
+	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 30 \] \&\& ! ping -c2 -w2 ' . $bootparms->{mnip} .'; do : ; done';
+	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
+	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
+	# finally create the perl replace string that will be used to modify the autoinst file
+	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
+	print "Updating /install/autoinst files.\n";
+	foreach my $n (@nodes) {
+		my $f = "/install/autoinst/$n";
+		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
+		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
+	}
+}
+
+
+# this is like multi-line sed replace function
+# Args: filename, search-string, replace-string
+sub sed {
+	my ($file, $search, $replace, %options) = @_;
+	#my $opts = 's';
+	#if ($options{global}) { $opts .= 'g'; }
+
+	# open the file for reading
+	verbose("reading $file");
+	open(FILE, $file) || die "Error: can not open file $file for reading: $!\n";
+	my $lines;
+	while (<FILE>) { $lines .= $_; }
+	#verbose('file length is '.length($lines));
+	close FILE;
+
+	# search/replace and see if there were any matches
+	my $matches;
+	if ($options{mode} eq 'insertbefore') { $matches = $lines =~ s/($search)/\n$replace\n$1/s; }
+	elsif ($options{mode} eq 'insertafter') { $matches = $lines =~ s/($search)/$1\n$replace\n/s; }
+	elsif ($options{mode} eq 'replace') { $matches = $lines =~ s/$search/$replace/s; }
+	else { die "Internal error: don't suppor sed mode of $options{mode}.\n"; }
+
+
+	# write file if necessary
+	if ($matches) {
+		verbose("updating $file");
+		open(FILE, '>', $file) || die "Error: can not open file $file for writing: $!\n";
+		print FILE $lines;
+		close FILE;
+	}
+	return $matches;
 }
 
 

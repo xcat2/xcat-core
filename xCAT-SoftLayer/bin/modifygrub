@@ -17,7 +17,7 @@ my $XCATNETBOOTTITLE = 'xCAT network boot kernel and initrd';
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w waittime] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
+   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w <waittime>] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
    	if (!$exitcode) {
    		print "Modify the grub config file on the node to boot the specified kernel and initrd.\n";
    	}
@@ -30,11 +30,11 @@ if (-f '/etc/os-release') { die "This script doesn't support ubuntu yet.\n"; }
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime' => \$WAITTIME)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 4) { $usage->(1); }
-if (!defined($WAITTIME)) { $WAITTIME = 90; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
+if (!defined($WAITTIME)) { $WAITTIME = 60; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
 my %args;
 $args{kernelpath} = $ARGV[0];
 $args{initrdpath} = $ARGV[1];
@@ -163,7 +163,7 @@ sub updateGrub {
 	# write the file with the new/updated xcat entry
 	if ($needtowritefile) {
 		verbose("updating $grubfile");
-		open(FILE, '>', $grubfile) || die "Error: can not open config file $grubfile for writinging: $!\n";
+		open(FILE, '>', $grubfile) || die "Error: can not open config file $grubfile for writing: $!\n";
 		print FILE @lines;
 		close FILE;
 	}
