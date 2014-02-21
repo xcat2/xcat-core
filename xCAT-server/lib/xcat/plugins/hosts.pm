@@ -288,9 +288,16 @@ sub add_hosts_content {
                     }
 		    else
 		    {
-			my $rsp;
-			push @{$rsp->{data}}, "Invalid IP Addr \'$ref->{ip}\' for node \'$ref->{node}\'.";
-			xCAT::MsgUtils->message("E", $rsp, $callback);
+			    my $rsp;
+                if (!$ip)
+                {
+                    push @{$rsp->{data}}, "Ignoring node \'$nodename\', it can not be resolved.";
+                }
+                else
+                {
+			        push @{$rsp->{data}}, "Ignoring node \'$nodename\', its ip address \'$ip\' is not valid.";
+                }
+			    xCAT::MsgUtils->message("W", $rsp, $callback);
 		    }
 
                     if (defined($ref->{otherinterfaces}))

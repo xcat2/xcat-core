@@ -495,6 +495,7 @@ sub sendnodeskeys
     #  in $HOME/.ssh/tmp/authorized_keys 
     #  copy to the node to the temp directory 
     #  scp $HOME/.ssh/tmp/authorized_keys to_userid@<node>:/tmp/$to_userid/.ssh
+    #  scp $HOME/.ssh/id_rsa.pub to_userid@<node>:/tmp/$to_userid/.ssh
     #  If you are going to enable ssh to ssh between nodes, then
     #  scp $HOME/.ssh/id_rsa to that temp directory on the node
     #  copy the script $HOME/.ssh/copy.sh to the node, it will do the 
@@ -607,11 +608,11 @@ sub sendnodeskeys
       my $spawncopyfiles;
       if ($ENV{'DSH_ENABLE_SSH'}) { # we will enable node to node ssh 
          $spawncopyfiles=
-        "$remotecopy $home/.ssh/id_rsa $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
+        "$remotecopy $home/.ssh/id_rsa $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
           
       } else {    # no node to node ssh ( don't send private key)
          $spawncopyfiles=
-        "$remotecopy $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
+        "$remotecopy $home/.ssh/id_rsa.pub $home/.ssh/copy.sh $home/.ssh/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh "; 
       }
       # send copy command 
       unless ($sendkeys->spawn($spawncopyfiles))

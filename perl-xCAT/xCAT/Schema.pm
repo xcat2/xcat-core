@@ -536,7 +536,7 @@ nodegroup => {
  },
   },
 nodehm => {
-    cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping comments disable)],
+    cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping consoleondemand comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS16K',
     table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
@@ -553,6 +553,7 @@ nodehm => {
   serialflow => "The flow control value of the serial port for this node.  For SOL this is typically 'hard'.",
   getmac => 'The method to use to get MAC address of the node with the getmac command. If not set, the mgt attribute will be used.  Valid values: same as values for mgmt attribute.',
   cmdmapping => 'The fully qualified name of the file that stores the mapping between PCM hardware management commands and xCAT/third-party hardware management commands for a particular type of hardware device.  Only used by PCM.',
+  consoleondemand => 'This overrides the value from site.consoleondemand; (0=no, 1=yes). Default is the result from site.consoleondemand.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1056,7 +1057,8 @@ site => {
    "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
-   "                   passwordless root access to nodes and other SN.\n\n".
+   "                   passwordless root access to nodes and other SN.\n".
+   "                   If using the zone table, this attribute in not used.\n\n".
    " -----------------\n".
    "SERVICES ATTRIBUTES\n".
    " -----------------\n".
@@ -1195,12 +1197,13 @@ performance => {
  },
   },
 zone => {
-    cols => [qw(zonename sshkeydir defaultzone comments disable)],
+    cols => [qw(zonename sshkeydir sshbetweennodes defaultzone comments disable)],
     keys => [qw(zonename)],
     table_desc => 'Defines a cluster zone for nodes that share root ssh key access to each other.',
  descriptions => {
    zonename => 'The name of the zone.',
    sshkeydir => 'Directory containing the shared root ssh RSA keys.',
+   sshbetweennodes => 'Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes. ',
    defaultzone => 'If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.',
    comments => 'Any user-provided notes.',
    disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1908,6 +1911,10 @@ my @nodeattrs = (
   },
         {attr_name => 'serialflow',
                  tabentry => 'nodehm.serialflow',
+                 access_tabentry => 'nodehm.node=attr:node',
+  },
+        {attr_name => 'consoleondemand',
+                 tabentry => 'nodehm.consoleondemand',
                  access_tabentry => 'nodehm.node=attr:node',
   },
 ##################
@@ -3094,6 +3101,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
         },
         {attr_name => 'sshkeydir',
                 tabentry => 'zone.sshkeydir',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshbetweennodes',
+                tabentry => 'zone.sshbetweennodes',
                 access_tabentry => 'zone.zonename=attr:zonename',
         },
         {attr_name => 'defaultzone',

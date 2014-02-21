@@ -77,6 +77,13 @@ sub process_request
             return 1; 
 
     }
+    # you may not run on AIX
+    if (xCAT::Utils->isAIX()) {
+            my $rsp = {};
+            $rsp->{error}->[0] = "The $command may only be run on a Linux Cluster.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return 1; 
+    }
     # test to see if any parms 
     if (scalar($request->{arg} == 0)) {
         my $rsp = {};
@@ -101,6 +108,7 @@ sub process_request
                     'h|help'        => \$options{'help'},
                     'k|sshkeypath=s'   => \$options{'sshkeypath'},
                     'K|genkeys'     => \$options{'gensshkeys'},
+                    's|sshbetweennodes=s'     => \$options{'sshbetweennodes'},
                     'v|version'     => \$options{'version'},
                     'V|Verbose'     => \$options{'verbose'},
         )
@@ -133,9 +141,64 @@ sub process_request
     } else {
        $request->{zonename} = $ARGV[0];
     }
+    # if -s entered must be yes/1 or no/0
+    if ($options{'sshbetweennodes'}) {
+      if ($options{'sshbetweennodes'}=~ /^yes$/i || $options{'sshbetweennodes'} eq "1") {
+           $options{'sshbetweennodes'}= "yes";
+      } else {
+        if ($options{'sshbetweennodes'}=~ /^no$/i || $options{'sshbetweennodes'} eq "0") {
+           $options{'sshbetweennodes'}= "no";
+        } else {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+              "The input on the -s flag $options{'sshbetweennodes'} is not valid.";
+             xCAT::MsgUtils->message("E", $rsp, $callback);
+             exit 1;
+        }
+      }
+    }
+
+    # check for site.sshbetweennodes attribute, put out a warning it will not be used as long
+    # as zones are defined in the zone table.
+    my @entries =  xCAT::TableUtils->get_site_attribute("sshbetweennodes");    
+    if ($entries[0]) {
+         my $rsp = {};
+         $rsp->{info}->[0] =
+              "The site table sshbetweennodes attribute is set to $entries[0].  It is not used when zones are defined.  To get rid of this warning, remove the site table sshbetweennodes attribute.";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
     # save input noderange
     if ($options{'noderange'}) {
+       
+       # check to see if Management Node is in the noderange, if so error
        $request->{noderange}->[0] = $options{'noderange'};
+       my @nodes = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+       my @mname = xCAT::Utils->noderangecontainsMn(@nodes); 
+       if (@mname)
+        {    # MN in the nodelist
+            my $nodes=join(',', @mname);
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run $command and include the  management node: $nodes.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1; 
+        }
+       # now check for service nodes in noderange.  It they exist that is an error also.
+        my @SN;
+        my @CN;
+        xCAT::ServiceNodeUtils->getSNandCPnodes(\@nodes, \@SN, \@CN);
+        if (scalar(@SN))       
+        {    # SN in the nodelist
+            my $nodes=join(',', @SN);
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "You must not run $command and include any service nodes: $nodes.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1; 
+        }
+       # now check for service nodes in noderange.  It they exist that is an error also.
+ 
+ 
     }
     if ($options{'verbose'})
     {
@@ -208,6 +271,7 @@ sub mkzone
     
     # Create path to generated ssh keys
     $keydir .= $request->{zonename}; 
+    
 
     # update the zone table 
     $rc=updatezonetable($request, $callback,$options,$keydir);
@@ -301,11 +365,11 @@ sub usage
     my $usagemsg2="";
     if ($command eq "mkzone") {
        $usagemsg1  = " mkzone -h \n mkzone -v \n";
-       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n        [-a <noderange>] [-g] [-f]";
+       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n        [-a <noderange>] [-g] [-f] [-s <yes/no>]";
     } else {
        if ($command eq "chzone") {
            $usagemsg1  = " chzone -h \n chzone -v \n";
-           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] ";
+           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] [-s <yes/no>]";
        } else {
             if ($command eq "rmzone") {
                $usagemsg1  = " rmzone -h \n rmzone -v \n";
@@ -388,12 +452,30 @@ sub updatezonetable
     my $tab = xCAT::Table->new("zone");
     if ($tab)
     {
+     # read a record from the zone table, if it is empty then add
+     #  the xcatdefault entry
+     my @zones = $tab->getAllAttribs('zonename');
+     if (!(@zones)) {  # table empty
+       my %xcatdefaultzone;
+       $xcatdefaultzone{defaultzone} ="yes";
+       $xcatdefaultzone{sshbetweennodes} ="yes";
+       $xcatdefaultzone{sshkeydir} ="~/.ssh";
+       $tab->setAttribs({zonename => "xcatdefault"}, \%xcatdefaultzone);
+     }
+
+     # now add the users zone
      my %tb_cols;
-     $tb_cols{sshkeydir} = $keydir;             
+     $tb_cols{sshkeydir} = $keydir;  # key directory
+     # set sshbetweennodes attribute from -s flag or default to yes
+     if ( $$options{'sshbetweennodes'}) {
+        $tb_cols{sshbetweennodes} = $$options{'sshbetweennodes'};         
+     } else {
+        $tb_cols{sshbetweennodes} = "yes";         
+     }
      my $zonename=$request->{zonename};
      if ( $$options{'defaultzone'}) {  # set the default
        # check to see if a default already defined
-       my $curdefaultzone = xCAT::Zone->getdefaultzone;
+       my $curdefaultzone = xCAT::Zone->getdefaultzone($callback);
        if (!(defined ($curdefaultzone))) {  # no default defined
            $tb_cols{defaultzone} ="yes";
        } else { # already a default

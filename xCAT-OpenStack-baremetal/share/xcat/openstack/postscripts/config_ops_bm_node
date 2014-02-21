@@ -1,0 +1,187 @@
+#!/bin/sh 
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# xCAT post script for configuring the openstack baremetal node.
+# The format is:
+# config_ops_bm_node ops_hostname ops_ip ops_netmask
+
+
+get_os_type()
+{
+    #get os type
+	str_os_type=`uname | tr 'A-Z' 'a-z'`
+	str_temp=''
+	if [ "$str_os_type" = "linux" ];then
+		str_temp=`echo $OSVER | grep -E '(sles|suse)'`
+		if [ -f "/etc/debian_version" ];then
+			str_os_type="debian"
+		elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
+			str_os_type="sles"
+		else
+			str_os_type="redhat"
+		fi
+	else
+		str_os_type="aix"
+	fi
+	echo "$str_os_type"
+}
+
+
+setup_ip()
+{
+	str_os_type=$1
+    str_if_name=$2
+    str_v4ip=$3
+    str_v4mask=$4
+
+	ret=`ifconfig $str_if_name |grep "inet addr" 2>&1`
+    if [ $? -eq 0 ]; then
+		old_ip=`echo $ret|cut -d':' -f2 |cut -d' ' -f1`
+		old_mask=`echo $ret|cut -d':' -f4`
+		#echo "old ip = $old_ip, old mask=$old_mask"
+		if [ "$old_ip" == "$str_v4ip" -a "$old_mask" == "$str_v4mask" ]; then
+			#if nic is up and the address is the same, then donothing
+			#echo "do nothing"
+			exit 0
+		else
+			#bring down the nic and reconstruct it.
+			#echo "bring down the old nic"
+			ifconfig $str_if_name del $old_ip
+        fi
+	fi
+
+    if [ "$str_os_type" = "sles" ];then
+        str_conf_file="/etc/sysconfig/network/ifcfg-${str_if_name}"
+		if [ -f $str_conf_file ]; then
+			rm $str_conf_file
+		fi
+        echo "DEVICE=${str_if_name}" > $str_conf_file
+        echo "BOOTPROTO=static" >> $str_conf_file
+        echo "IPADDR=${str_v4ip}" >> $str_conf_file
+        echo "NETMASK=${str_v4mask}" >> $str_conf_file
+		echo "NETWORK=''" >> $str_conf_file
+        echo "STARTMODE=onboot" >> $str_conf_file
+        echo "USERCONTROL=no" >> $str_conf_file
+		ifup $str_if_name
+    #debian ubuntu
+    elif [ "$str_os_type" = "debian" ];then
+        str_conf_file="/etc/network/interfaces.d/${str_if_name}"
+		if [ -f $str_conf_file ]; then
+			rm $str_conf_file
+		fi
+        echo "auto ${str_if_name}" > $str_conf_file
+        echo "iface ${str_if_name} inet static" >> $str_conf_file
+        echo "  address ${str_v4ip}" >> $str_conf_file
+        echo "  netmask ${str_v4mask}" >> $str_conf_file
+		ifconfig $str_if_name up
+    else
+        # Write the info to the ifcfg file for redhat
+        str_conf_file="/etc/sysconfig/network-scripts/ifcfg-${str_if_name}"
+		if [ -f $str_conf_file ]; then
+			rm $str_conf_file
+		fi
+        echo "DEVICE=${str_if_name}" > $str_conf_file
+        echo "BOOTPROTO=static" >> $str_conf_file
+        echo "NM_CONTROLLED=no" >> $str_conf_file
+        echo "IPADDR=${str_v4ip}" >> $str_conf_file
+        echo "NETMASK=${str_v4mask}" >> $str_conf_file
+        echo "ONBOOT=yes" >> $str_conf_file
+		ifup $str_if_name
+    fi
+}
+
+
+str_os_type=$(get_os_type)
+echo "os_type=$str_os_type"
+if [ "$str_os_type" = "aix" ]; then
+	logger -t xcat "config_ops_bm_node dose not support AIX."
+	echo "config_ops_bm_node dose not support AIX."
+	exit 0
+fi
+
+#change the hostname
+if [[ -n "$1" ]]; then
+    hostname $1
+fi
+
+#Add the openstack ip to the node
+if [[ -n $2 ]]; then
+    ops_ip=$2
+	
+	if [[ -z $3 ]]; then
+        logger -t xcat "config_ops_bm_node: Please specify the netmask."
+		echo "config_ops_bm_node: Please specify the netmask."
+		exit 1
+	else
+		ops_mask=$3
+	fi
+
+	#figure out the install nic
+    if [[ -n $MACADDRESS ]]; then
+        pos=0
+        #mac has the following format: 01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1
+        for x in `echo "$MACADDRESS" | tr "|" "\n"`
+        do
+            node=""
+            mac=""
+            pos=$((pos+1))
+            i=`expr index $x !`
+            if [[ $i -gt 0 ]]; then
+                node=`echo ${x##*!}`
+                mac_tmp=`echo ${x%%!*}`
+            else
+                mac_tmp=$x
+            fi
+			
+            if [[ $pos -eq 1 ]]; then
+                mac1=$mac_tmp
+            fi
+			
+            if [[ "$PRIMARYNIC" = "$mac_tmp" ]]; then
+                mac=$mac_tmp
+                break
+            fi
+
+            if [[ -z "$PRIMARYNIC" ]] || [[ "$PRIMARYNIC" = "mac" ]]; then
+                if [[ -z $node ]] || [[ "$node" = "$NODE" ]]; then
+                    mac=$mac_tmp
+                    break
+                fi
+            fi
+        done
+
+        if [[ -z $mac ]]; then
+            if [[ -z "$PRIMARYNIC" ]] || [[ "$PRIMARYNIC" = "mac" ]]; then
+                mac=$mac1 #if nothing mathes, take the first mac
+            else
+                nic=$PRIMARYNIC #or the primary nic itself is the nic
+            fi
+        fi
+    else
+        logger -t xcat "config_ops_bm_node: no mac addresses are defined in the mac table for the node $NODE"
+        echo "config_ops_bm_node: no mac addresses are defined in the mac table for the node $NODE"
+        index=$((index+1))
+        continue
+    fi
+	echo "mac=$mac"
+    
+    #find the nic that has the mac
+    if [[ -z $nic ]];  then
+        #go to each nic to match the mac address
+        ret=`ifconfig |grep -i $mac 2>&1`;
+        if [ $? -eq 0 ]; then
+           nic=`echo $ret |head -n1|cut -d' ' -f 1`
+        else
+            logger -t xcat "config_ops_bm_node: The mac address for the network for $NODE is not defined."
+            echo "config_ops_bm_node: The mac address for the network for $NODE is not defined."
+        fi
+    fi
+    echo "nic=$nic"
+
+	#now setup the ip alias
+    setup_ip $str_os_type $nic:0 $ops_ip $ops_mask 
+fi
+
+
+
+
