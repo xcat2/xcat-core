@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # This is a command which can be used to access the rest api of xCAT
 
@@ -18,6 +18,10 @@ my $usage_string = "Usage:
       -o Target object
       -f The output format of the requested action
       -V Display the verbose message\n";
+
+#todo: make the code below into functions so that this file can be used for 2 purposes:
+#       1. contain all the test cases that can all be run at once
+#       2. if arguments are passed in, run the one api call passed in
 
 # Parse the argument
 $Getopt::Long::ignorecase = 0;
