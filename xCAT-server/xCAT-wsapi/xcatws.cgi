@@ -119,7 +119,7 @@ if ($DEBUGGING) {
 
 # Process the format requested
 my $format = $q->url_param('format');
-if (!$format) { $format = 'html'; }    # this is the default format
+if (!$format) { $format = 'json'; }    # this is the default format
 
 # supported formats
 my %formatters = (
@@ -2172,7 +2172,23 @@ sub wrapJson {
     # At this point, these are all gets
     my $json;
     if ($resource eq 'nodes') {
-        if (!defined $path[2]) {        # querying node attributes
+        if (!defined $path[2] && !defined($q->url_param('field'))) {        # querying node list
+            # The data structure is: array of hashes that have a single key 'info'.  The value for that key
+            # is an array of lines of lsdef output of the form "<nodename>   (node)".
+            # Create a json array of node name strings.
+            $json = [];
+            foreach my $d (@$data) {
+                my $jsonnode;
+                my $lines = $d->{info};
+                foreach my $l (@$lines) {
+                    my ($nodename) = $l =~ /^(\S+)/;
+                    if (!defined($nodename)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
+                    push @$json, $nodename;
+                }
+            }
+            addPageContent($JSON->encode($json));
+        }
+        elsif (!defined $path[2] && defined($q->url_param('field'))) {        # querying node attributes
             # The data structure is: array of hashes that have a single key 'info'.  The value for that key
             # is an array of lines of lsdef output (all nodes in the same array).
             # Create a json array of node objects. Each node object contains the attributes/values (including
