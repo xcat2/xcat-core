@@ -66,7 +66,7 @@ sub process_request
     my $command = $request->{command}->[0];
     my $rc=0;
     # the directory which will contain the zone keys
-    my $keydir="/etc/xcat/sshkeydir/";
+    my $keydir="/etc/xcat/sshkeys/";
     
     # check if Management Node, if not error
     unless (xCAT::Utils->isMN()) 
@@ -271,6 +271,7 @@ sub mkzone
     
     # Create path to generated ssh keys
     $keydir .= $request->{zonename}; 
+    $keydir .= "/.ssh"; 
     
 
     # update the zone table 
@@ -394,7 +395,7 @@ sub usage
 
 =head3   
 
-   generate the ssh keys and store them in /etc/xcat/sshkeys/<zonename> 
+   generate the ssh keys and store them in /etc/xcat/sshkeys/<zonename>/.ssh 
 
 
 =cut
@@ -459,7 +460,9 @@ sub updatezonetable
        my %xcatdefaultzone;
        $xcatdefaultzone{defaultzone} ="yes";
        $xcatdefaultzone{sshbetweennodes} ="yes";
-       $xcatdefaultzone{sshkeydir} ="~/.ssh";
+       my $roothome = xCAT::Utils->getHomeDir("root");
+       $roothome .="\/.ssh";
+       $xcatdefaultzone{sshkeydir} =$roothome;
        $tab->setAttribs({zonename => "xcatdefault"}, \%xcatdefaultzone);
      }
 
