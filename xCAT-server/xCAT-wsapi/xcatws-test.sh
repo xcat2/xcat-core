@@ -1,11 +1,13 @@
 #!/bin/bash
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Test driver for xcatws.cgi
+# Test driver for xcatws.cgi, pass two arguments to it, user and password.
+# Usage example: ./xcatws-test.sh wsuer cluster
 
-user = ''
-pw = ''
-format = 'format=json&pretty=1'
+
+user=$1
+pw=$2
+format='format=json&pretty=1'
 
 #todo: add a test case for every api call that is documented
 #todo: figure out why i currently have to specify -k
