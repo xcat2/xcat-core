@@ -731,26 +731,6 @@ sub sendkeysTOzones
 
     return (0);
 }
-#-------------------------------------------------------------------------------
-
-=head3   GetNodeOSARCH
-
-          
-          # strip off .ssh
-          my ($newhome,$ssh) = (split(/\/\.ssh/, $keydir));
-          $ENV{'DSH_FROM_USERID_HOME'} =$newhome ;
-          # send the keys to the nodes
-           my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$zonenodelist,$expecttimeout);
-           if ($rc != 0)
-           {
-             $rsp->{data}->[0] = "remoteshellexp failed sending keys to $zonename.";
-             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-       
-           }
-       } # endforeach zone
-
-    return 0;
-}
 #--------------------------------------------------------------------------------
 
 =head3    cpSSHFiles
