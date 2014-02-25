@@ -24,6 +24,7 @@ B<mkvm> I<noderange> [B<--full>]
 
 B<mkvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
                [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
+               [B<vmnics=vlan1[,vlan2..]]> [B<vmstorage=<N|viosnode:slotid>>] [B<--vios>]
 
 =head2 For KVM:
 
@@ -55,7 +56,7 @@ Please note that the mkvm command currently only supports creating standard LPAR
 
 With option I<full>, a partition using all the resources on a normal power machine will be created.
 
-If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
+If no option is specified, a partition using the parameters specified with attributes such as 'vmcpus', 'vmmory', 'vmphyslots', 'vmothersetting', 'vmnics', 'vmstorage' will be created. Those attributes can either be specified with '*def' commands running before or be specified with this command.
 
 =head2 For KVM and Vmware:
 
@@ -89,9 +90,11 @@ The cpu count which will be created for the kvm/vmware virtual machine.
 
 Request to create a new full system partition for each CEC.
 
-=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value>
+=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value> B<vmnics=value> B<vmstorage=value> [B<--vios>]
 
-To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> and I<vmphyslots> are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.  
+To specify the parameters which are used to create a partition. The I<vmcpus>, I<vmmemory> are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to L<lsvm(1)|lsvm.1> for more information about 'drc_index' for I<vmphyslots>.  
+
+The option I<vios> is used to specify the partition that will be created is a VIOS partition. If specified, the value for I<vmstorage> shall be number which indicate the number of vSCSI server adapter will be created, and if no value specified for I<vmphyslots>, all the physical slot of the power machine will be asigned to VIOS partition. If not specified, it shall be in form of I<vios_name:server_slotid> to specify the vios and the virtual slot id of the vSCSI server adapter that will be connected from the Logical partition.
 
 =item B<-f|--force>
 
@@ -318,6 +321,32 @@ The output is similar to:
  lpar1: 1/2/2
  lpar1: 128.
 
+10. To create a vios partition using some of the resources on normal power machine.
+
+ mkvm viosnode vmcpus=1/4/16 vmmemory=1G/4G/32G vmphyslots=0x21010201,0x21010200 vmnics=vlan1 vmstorage=5 --vios
+
+The resouces for the node is similar to:
+
+ viosnode: Lpar Processor Info:
+ Curr Processor Min: 1.
+ Curr Processor Req: 4.
+ Curr Processor Max: 16.
+ viosnode: Lpar Memory Info:
+ Curr Memory Min: 1.00 GB(4 regions).
+ Curr Memory Req: 4.00 GB(16 regions).
+ Curr Memory Max: 32.00 GB(128 regions).
+ viosnode: 1,513,U78AA.001.WZSGVU7-P1-T7,0x21010201,0xc03(USB Controller)
+ viosnode: 1,512,U78AA.001.WZSGVU7-P1-T9,0x21010200,0x104(RAID Controller)
+ viosnode: 1,0,U8205.E6B.0612BAR-V1-C,0x30000000,vSerial Server
+ viosnode: 1,1,U8205.E6B.0612BAR-V1-C1,0x30000001,vSerial Server
+ viosnode: 1,3,U8205.E6B.0612BAR-V1-C3,0x30000003,vEth (port_vlanid=1,mac_addr=4211509276a7)
+ viosnode: 1,5,U8205.E6B.0612BAR-V1-C5,0x30000005,vSCSI Server
+ viosnode: 1,6,U8205.E6B.0612BAR-V1-C6,0x30000006,vSCSI Server
+ viosnode: 1,7,U8205.E6B.0612BAR-V1-C7,0x30000007,vSCSI Server
+ viosnode: 1,8,U8205.E6B.0612BAR-V1-C8,0x30000008,vSCSI Server
+ viosnode: 1,9,U8205.E6B.0612BAR-V1-C9,0x30000009,vSCSI Server
+ viosnode: 0/0/0
+ viosnode: 0.
 
 =head1 FILES
 
