@@ -111,8 +111,11 @@ sub preprocess_request
       $req = &parse_xdcp_cmd($req);
     }
     # if xdsh need to make sure request has full path to input files 
+    # also process -K flag and use of zones
+    # will set $::UPDATESNZONEDATA=1, if zones are defined, there are service nodes  and using -K
+    $::UPDATESNZONEDATA=0; 
     if ($command eq "xdsh") {
-     $req = &parse_xdsh_cmd($req);
+     $req = &parse_xdsh_cmd($req,$cb);
     }
 
     # there are nodes in the xdsh command, not xdsh  to an image
@@ -148,6 +151,12 @@ sub preprocess_request
                 }
             }
           }
+        }
+        # if servicenodes and xdsh -K and using zones, then we need to sync
+        # /etc/xcat/sshkeys to the service nodes
+        if ((@snodes)  && ($::UPDATESNZONEDATA==1)) {   
+              $rc =
+               &syncSNZoneKeys($req, $cb, $sub_req, \@snodes);
         }
 
         # if servicenodes and (if xdcp and not pull function or xdsh -e)
@@ -421,7 +430,9 @@ sub parse_xdcp_cmd
 sub parse_xdsh_cmd 
 {
    my $req=shift;
+   my $cb=shift;
    my $args=$req->{arg};   # argument
+   my $nodes   = $req->{node};
    my $currpath=$req->{cwd}->[0]; # current path when command was executed
    my $orgargarraySize = @{$args};  # get the size of the arg array
    @ARGV = @{$args};    # get arguments
@@ -498,6 +509,41 @@ sub parse_xdsh_cmd
      
      
    } # end -e option
+   
+   # if -k options and there are zones and service nodes, we cannot allow
+   #  servicenodes and compute nodes in the noderange.  The /etc/xcat/sshkeys directory must be sync'd 
+   # to the service nodes first.  So they must run xdsh -K to the service nodes and then to the compute
+   #  nodes. 
+   
+   if (defined($options{'ssh-setup'})) {
+      my $tab = xCAT::Table->new("zone");  # check for zones
+      if ($tab){
+          my @zones = $tab->getAllAttribs('zonename','defaultzone');
+          if (@zones) {  # there are zones
+              # check to see if service nodes and compute nodes in node range
+               my @SN;
+               my @CN;
+               xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+               if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+                 my $rsp;
+                 $rsp->{data}->[0] =
+                 "xdsh -K was run with a noderange containing both service nodes and compute nodes. This is not valid if using zones.  You must run xdsh -K to the service nodes first to setup the service node to be able to run xdsh -K to the compute nodes.  \n";
+                 xCAT::MsgUtils->message("E", $rsp, $cb);
+                 exit 1;
+
+               } else{   # if servicenodes for the node range this will  force the update of
+                         # the servicenode with /etc/xcat/sshkeys dir first
+                   $::UPDATESNZONEDATA=1;
+               }
+ 
+        }
+      } else {
+         my $rsp = {};
+         $rsp->{error}->[0] =
+         "Error reading the zone table. ";
+          xCAT::MsgUtils->message("E", $rsp, $cb);
+      }
+   }
 
    return $req;
 }
@@ -991,6 +1037,105 @@ sub process_nodes
     #push @requests, $newSNreq;
 
     return $newSNreq;
+}
+#-------------------------------------------------------
+
+=head3 syncSNZoneKeys
+  Build the xdcp command to send the zone keys to the service nodes 
+  Return an array of servicenodes that do not have errors 
+  Returns error code:
+  if  = 0,  good return continue to process the
+	  nodes.
+  if  = 1,  global error need to quit
+
+=cut
+
+#-------------------------------------------------------
+sub syncSNZoneKeys
+{
+
+    my $req        = shift;
+    my $callback   = shift;
+    my $sub_req    = shift;
+    my $sn         = shift;
+    my @snodes     = @$sn;
+    $::RUNCMD_RC = 0;
+    my $file="/tmp/xcatzonesynclist";
+    # Run xdcp <servicenodes> -F /tmp/xcatzonesynclist 
+    # can leave it , never changes and is built each time
+    my $content= "\"/etc/xcat/sshkeys/* -> /etc/xcat/sshkeys/\"";
+    `echo $content  > $file`;
+
+    # xdcp rsync the file 
+
+    my @sn = ();
+    #build the array of all service nodes 
+    foreach my $node (@snodes)
+    {
+
+            # handle multiple servicenodes for one node
+            my @sn_list = split ',', $node;
+            foreach my $snode (@sn_list) {
+             push @sn, $snode;
+            }
+    }
+
+    @::good_SN = @sn;  # initialize all good
+
+    # run the command to the servicenodes
+    # xdcp <sn>  -F <syncfile>
+    my $addreq;
+    $addreq->{'_xcatdest'}  = $::mnname;
+    $addreq->{node}         = \@sn;
+    $addreq->{noderange}    = \@sn;
+    # check input request for --nodestatus
+    my $args=$req->{arg};   # argument
+    if (grep(/^--nodestatus$/, @$args)) {
+       push (@{$addreq->{arg}},"--nodestatus"); # return nodestatus
+    }
+    push (@{$addreq->{arg}},"-v"); 
+    push (@{$addreq->{arg}},"-F"); 
+    push (@{$addreq->{arg}},$file); 
+    $addreq->{command}->[0] = "xdcp";  # input command is xdsh, but we need to run xdcp -F
+    $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+    $addreq->{env}          = $req->{env};
+    &process_request($addreq, $callback, $sub_req);
+
+    if ($::FAILED_NODES == 0)
+    {
+            @::good_SN = @sn;   # all servicenodes were sucessful
+    }
+    else
+    {
+          @::bad_SN = @::DCP_NODES_FAILED; 
+          # remove all failing nodes from the good list
+          my @tmpgoodnodes;
+          foreach my $gnode (@::good_SN) {
+            if (!grep(/$gnode/,@::bad_SN ))  # if not a bad node
+            {   
+               push @tmpgoodnodes, $gnode;
+            }
+          }
+          @::good_SN = @tmpgoodnodes;
+    }
+
+    # report bad service nodes
+    if (@::bad_SN)
+    {
+        my $rsp = {};
+        my $badnodes;
+        foreach my $badnode (@::bad_SN)
+        {
+            $badnodes .= $badnode;
+            $badnodes .= ", ";
+        }
+        chop $badnodes;
+        my $msg =
+          "\nThe following servicenodes: $badnodes have errors and cannot be updated\n Until the error is fixed, xdcp will not work to nodes serviced by these service nodes.";
+        $rsp->{data}->[0] = $msg;
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+    return (0);
 }
 
 #-------------------------------------------------------
