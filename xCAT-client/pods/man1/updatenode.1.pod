@@ -329,7 +329,7 @@ For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 litefile table with source location specified in the litetree table.
 
-=item B<-g|--genmypost
+=item B<-g|--genmypost>
 
 Will generate a new mypostscript file for the
 nodes in the noderange, if site precreatemypostscripts is 1 or YES.
