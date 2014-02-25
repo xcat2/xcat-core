@@ -78,18 +78,20 @@ if (!$::URL) {
 my @updatearray;
 my $fieldname;
 my $fieldvalue;
+my %entryhash;
 if (scalar(@ARGV) > 0){
     foreach my $tempstr (@ARGV){
-        push @updatearray, $tempstr;
+       push @updatearray, split(/=/,$tempstr);
     }
 }
+%entryhash=@updatearray;
 
 my $request;
 
 my $ua = LWP::UserAgent->new();
 my $response;
 if (($::METHOD eq 'PUT') || ($::METHOD eq 'POST')){
-    my $tempstr = encode_json \@updatearray;
+    my $tempstr = encode_json \%entryhash;
     $request = HTTP::Request->new($::METHOD => $::URL);
     $request->header('content-type' => 'text/plain');
     $request->header('content-length' => length($tempstr));

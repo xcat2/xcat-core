@@ -24,7 +24,9 @@ B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
 
 B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
                [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
-
+               [B<vmnics=vlan1[,vlan2..]]> [B<vmstorage=<N|viosnode:slotid>>] [B<--vios>]
+               [B<del_vadapter=slotid>]
+               
 =head2 VMware/KVM specific:
 
 B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
@@ -111,7 +113,7 @@ The administrator should use lsvm to get the profile content, and then edit the 
 
 For normal power machine:
 
-chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options I<vmcpus>, I<vmmemory>, I<vmphyslots> and/or I<vmothersetting>. If nothing specified, nothing will be returned. 
+chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options I<vmcpus>, I<vmmemory>, I<vmphyslots>, I<vmothersetting>, I<vmnics> and/or I<vmstorage>. If nothing specified, nothing will be returned. 
 
 =head2 VMware/KVM specific:
 
@@ -198,6 +200,14 @@ Set LPAR name for the specified lpars. If '*' specified, it means to get names f
 =item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value>
 
 To specify the parameters that will be modified.
+
+=item B<vmnics=value> B<vmstorage=value> [B<--vios>]
+
+To create new virtual adapter for the specified node. 
+
+=item B<del_vadapter=value>
+
+To specify the slot id of the virtual adapter will be deleted.
 
 =back
 

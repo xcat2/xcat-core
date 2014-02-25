@@ -35,7 +35,7 @@ package xCAT::RemoteShellExp;
                   node.
    DSH_TO_USERID - The userid on the node where the ssh keys will be updated.
    DSH_ENABLE_SSH - Node to node root passwordless ssh will be setup.
- 
+   DSH_ZONE_SSHKEYS  - directory containing the zones root .ssh keys 
 
  Usage: remoteshellexp
    [-t node list]  test ssh connection to the node 
@@ -144,7 +144,7 @@ sub remoteshellexp
   } else {
      $from_userid="root";
   }
-  # set User on the node where we will send the keys 
+  # set User  on the node where we will send the keys 
   # this id can be a local id as well as root 
   if ($ENV{'DSH_TO_USERID'}) {
      $to_userid=$ENV{'DSH_TO_USERID'};
@@ -154,18 +154,19 @@ sub remoteshellexp
   # set User home directory to find the ssh public key to send 
   # For non-root ids information may not be in /etc/passwd
   #  but elsewhere like LDAP 
+   
   if ($ENV{'DSH_FROM_USERID_HOME'}) {
-     $home=$ENV{'DSH_FROM_USERID_HOME'};
+       $home=$ENV{'DSH_FROM_USERID_HOME'};
   } else {
-     $home=xCAT::Utils->getHomeDir($from_userid);
+      $home=xCAT::Utils->getHomeDir($from_userid);
   }
-  
   # This indicates we will generate new ssh keys for the user,
   # if they are not already there
-  my $key="$home/.ssh/id_rsa";
-  my $key2="$home/.ssh/id_rsa.pub";
-  # Check to see if empty
-  if (-z $key) {
+  # unless using zones
+   my $key="$home/.ssh/id_rsa";
+   my $key2="$home/.ssh/id_rsa.pub";
+   # Check to see if empty
+   if (-z $key) {
          my $rsp = {};
          $rsp->{error}->[0] = 
          "The $key file is empty. Remove it and rerun the command.";
@@ -183,8 +184,7 @@ sub remoteshellexp
   } 
   if (($flag eq "k") && (!(-e $key))) 
   {
-     # if the file size of the id_rsa key is 0, tell them to remove it
-     # and run the command again
+     # updating keys and the key file does not exist 
      $rc=xCAT::RemoteShellExp->gensshkeys($expecttimeout);
   }
   # send ssh keys to the nodes/devices, to setup passwordless ssh 
@@ -200,6 +200,9 @@ sub remoteshellexp
     if ($ssh_setup_cmd) { # setup ssh on devices
      $rc=xCAT::RemoteShellExp->senddeviceskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$ssh_setup_cmd,$nodes, $expecttimeout);
     } else {  #setup ssh on nodes
+     if ($ENV{'DSH_ZONE_SSHKEYS'}) {   # if using zones the override the location of the keys
+        $home= $ENV{'DSH_ZONE_SSHKEYS'};
+     }  
      $rc=xCAT::RemoteShellExp->sendnodeskeys($remoteshell,$remotecopy,$to_userid,$to_user_password,$home,$nodes, $expecttimeout);
     } 
   }
@@ -496,11 +499,14 @@ sub sendnodeskeys
     #  copy to the node to the temp directory 
     #  scp $HOME/.ssh/tmp/authorized_keys to_userid@<node>:/tmp/$to_userid/.ssh
     #  scp $HOME/.ssh/id_rsa.pub to_userid@<node>:/tmp/$to_userid/.ssh
+    #  Note if using zones,  the keys do not come from ~/.ssh but from the
+    #  zone table, sshkeydir attribute.  For zones the userid is always root
     #  If you are going to enable ssh to ssh between nodes, then
     #  scp $HOME/.ssh/id_rsa to that temp directory on the node
     #  copy the script $HOME/.ssh/copy.sh to the node, it will do the 
     #  the work of setting up the user's ssh keys  and clean up
     #  ssh (run)  copy.sh on the node
+    
     my @nodelist=split(/,/,$nodes);
     foreach my $node (@nodelist) {
       $sendkeys = new Expect;

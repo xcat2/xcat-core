@@ -10,7 +10,9 @@ pw=$2
 format='format=json&pretty=1'
 
 #todo: add a test case for every api call that is documented
-#todo: figure out why i currently have to specify -k
+#curl [options] [URL...]:
+#     -X/--request <command> : commands include PUT,POST,GET and DELETE.
+#     -k/--insecure : This option explicitly allows curl to perform "insecure" SSL connections and transfers. 
 
 curl -X GET -k "https://127.0.0.1/xcatws/nodes?userName=$user&password=$pw&$format"
 curl -X GET -k "https://127.0.0.1/xcatws/nodes?userName=$user&password=$pw&$format&field=mac"
