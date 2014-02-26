@@ -16,6 +16,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::Template;
 use xCAT::SvrUtils;
+use xCAT::Zone;
 #use Data::Dumper;
 use File::Basename;
 use Socket;
@@ -186,8 +187,8 @@ sub makescript {
   if($entries[0]) {
        $installroot = $entries[0];
   }
+
   my $tmpl="$installroot/postscripts/mypostscript.tmpl";     #the customized mypostscript template
-    
   unless ( -r $tmpl) {
        $tmpl="$::XCATROOT/share/xcat/mypostscript/mypostscript.tmpl";  #the default xcat mypostscript template
   }
@@ -367,6 +368,16 @@ sub makescript {
       } 
       $cloudinfo_hash = getcloudinfo($cloud_module_name, $cloud_exists); 
   }
+
+  # see if we are using zones.  If we are then sshbetweennodes comes from the zone table not
+  # from the site table
+  my $usingzones;
+  if (xCAT::Zone->usingzones) {
+     $usingzones=1;
+  } else {
+     $usingzones=0;
+  }
+
  
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -477,9 +488,15 @@ sub makescript {
     # for #INCLUDE_POSTBOOTSCRIPTS_LIST#
     my $postbootscripts;
     $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
-
-    my $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
-
+    
+    # if using zones then must go to the zone.sshbetweennodes
+    # else go to site.sshbetweennodes
+    my $enablesshbetweennodes;
+    if ($usingzones) {
+       $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback); 
+    } else {  
+       $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
+    }
     my @clients;
     my $cfgres;
     my $cloudres;
@@ -792,7 +809,7 @@ sub getsshbetweennodes
     Error:
         none
     Example:
-        my $enable = xCAT::TableUtils->enableSSH($node);
+        my $enable = xCAT::TableUtils->enableSSHbetweennodes($node,$sn_hash, $groups_hash);
     Comments:
 
 =cut
@@ -816,6 +833,48 @@ sub enableSSHbetweennodes
  
     return $result;
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3  enableSSHbetweennodeszones 
+    Description:  return how to fill in the ENABLESSHBETWEENNODES  export in the mypostscript file
+                  based on the setting in the zone table sshbetweennodes attribute
+    Arguments:
+     $node
+     $callback
+    Returns:
+       1 = enable ssh
+       0 = do not enable ssh 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $enable = xCAT::TableUtils->enableSSHbetweennodeszones($node);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub enableSSHbetweennodeszones
+{
+
+    my $node   = shift;
+    my $callback   = shift;
+    my $result;
+  
+    my $enablessh=xCAT::Zone->enableSSHbetweennodes($node,$callback);
+    if ($enablessh == 1) {
+       $result = "'YES'";
+    } else {
+       $result = "'NO'";
+    }
+ 
+    return $result;
+}
+
 
 
 
