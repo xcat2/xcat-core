@@ -192,9 +192,85 @@ sub iszonedefined
  my ($class,$zonename) = @_;
  # checks the zone table to see if input zonename already in the table 
  my $tab = xCAT::Table->new("zone");
- my $zone = $tab->getAttribs({zonename => $zonename},'sshkeydir');
  $tab->close();
- if (defined($zone)) {
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshkeydir');
+ if ( keys %$zonehash) {
+    return 1;
+ }else{
+    return 0;
+ }
+}
+#--------------------------------------------------------------------------------
+
+=head3    enableSSHbetweennodes 
+    Arguments:
+      zonename 
+    Returns:
+     1 if the  sshbetweennodes attribute is yes/1 or undefined
+     0 if the  sshbetweennodes attribute is no/0 
+    Example:
+     xCAT::Zone->enableSSHbetweennodes($zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub enableSSHbetweennodes 
+{
+ my ($class,$node,$callback) = @_;
+ # finds the zone of the node
+ my $enablessh = 1;   # default
+ my @node;
+ push @node,$node;
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my $nodehash = $nodelisttab->getNodesAttribs(\@node, ['zonename']); 
+ $nodelisttab->close();
+ my $zonename;
+ $zonename=$nodehash->{$node}->[0]->{zonename};
+ # reads the zone table 
+ my $tab = xCAT::Table->new("zone");
+ $tab->close();
+ # read both keys,  want to know zone is in the zone table. If sshkeydir is not there
+ # it is either missing or invalid anyway
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshbetweennodes','sshkeydir');
+ if (! ( keys %$zonehash)) {
+          my $rsp = {};
+          $rsp->{error}->[0] = 
+         "$node has a  zonename: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone. The generated mypostscript may not reflect the correct setting for  ENABLESSHBETWEENNODES";
+          xCAT::MsgUtils->message("E", $rsp, $callback);
+          return $enablessh;
+ }
+ my $sshbetweennodes=$zonehash->{sshbetweennodes};
+ if (defined ($sshbetweennodes)) {
+   if (($sshbetweennodes  =~ /^no$/i) ||  ($sshbetweennodes eq "0")) {
+     $enablessh = 0;  
+   } else {
+     $enablessh = 1;  
+   }
+ } else { # not defined default yes
+   $enablessh = 1 ;   # default
+ }
+ return $enablessh;
+}
+#--------------------------------------------------------------------------------
+
+=head3    usingzones 
+    Arguments:
+      none 
+    Returns:
+     1 if the zone table is not empty
+     0 if empty
+    Example:
+     xCAT::Zone->usingzones; 
+=cut
+
+#--------------------------------------------------------------------------------
+sub usingzones 
+{
+ my ($class) = @_;
+ # reads the zonetable 
+ my $tab = xCAT::Table->new("zone");
+ my  @zone = $tab->getAllAttribs('zonename');
+ $tab->close();
+ if (@zone) {
     return 1;
  }else{
     return 0;
@@ -275,7 +351,7 @@ sub getzoneinfo
      unless ( xCAT::Zone->iszonedefined($zonename)) {
           my $rsp = {};
           $rsp->{error}->[0] = 
-         "$node has a  zonenane: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone.";
+         "$node has a  zonename: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone.";
           xCAT::MsgUtils->message("E", $rsp, $callback);
           $::GETZONEINFO_RC =1;
           return;
