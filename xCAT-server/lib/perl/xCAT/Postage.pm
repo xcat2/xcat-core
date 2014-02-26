@@ -492,8 +492,14 @@ sub makescript {
     # if using zones then must go to the zone.sshbetweennodes
     # else go to site.sshbetweennodes
     my $enablesshbetweennodes;
+    my $zonename;
     if ($usingzones) {
        $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback); 
+       my $tmpzonename = xCAT::Zone->getmyzonename($node,$callback); 
+       $zonename="\'";
+       $zonename .= $tmpzonename;
+       $zonename .="\'";
+
     } else {  
        $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
     }
@@ -529,6 +535,7 @@ sub makescript {
   $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
   
   $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
+  $inc =~ s/\$ZONENAME/$zonename/eg; 
   $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
