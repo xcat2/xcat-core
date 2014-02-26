@@ -492,7 +492,7 @@ sub makescript {
     # if using zones then must go to the zone.sshbetweennodes
     # else go to site.sshbetweennodes
     my $enablesshbetweennodes;
-    my $zonename;
+    my $zonename="\'\'";
     if ($usingzones) {
        $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback); 
        my $tmpzonename = xCAT::Zone->getmyzonename($node,$callback); 
