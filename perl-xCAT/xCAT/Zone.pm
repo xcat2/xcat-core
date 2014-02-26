@@ -145,7 +145,7 @@ sub genSSHRootKeys
     Returns:
     Name of the current default  zone from the zone table
     Example:
-     my $defaultzone =xCAT::Zone->getdefaultzone(); 
+     my $defaultzone =xCAT::Zone->getdefaultzone($callback); 
 =cut
 
 #--------------------------------------------------------------------------------
@@ -202,6 +202,34 @@ sub iszonedefined
 }
 #--------------------------------------------------------------------------------
 
+=head3    getmyzonename 
+    Arguments:
+       $node -one nodename      
+    Returns:
+     $zonename 
+    Example:
+     my $zonename=xCAT::Zone->getmyzonename($node); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getmyzonename 
+{
+ my ($class,$node,$callback) = @_;
+ my @node;
+ push @node,$node;
+ my $zonename;
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my $nodehash = $nodelisttab->getNodesAttribs(\@node, ['zonename']); 
+ $nodelisttab->close();
+ if ( defined ($nodehash->{$node}->[0]->{zonename})) { # it was defined in the nodelist table
+    $zonename=$nodehash->{$node}->[0]->{zonename};
+ } else {  # get the default zone
+    $zonename =xCAT::Zone->getdefaultzone($callback);
+ }
+   return $zonename;
+}
+#--------------------------------------------------------------------------------
+
 =head3    enableSSHbetweennodes 
     Arguments:
       zonename 
@@ -218,13 +246,7 @@ sub enableSSHbetweennodes
  my ($class,$node,$callback) = @_;
  # finds the zone of the node
  my $enablessh = 1;   # default
- my @node;
- push @node,$node;
- my $nodelisttab = xCAT::Table->new("nodelist");
- my $nodehash = $nodelisttab->getNodesAttribs(\@node, ['zonename']); 
- $nodelisttab->close();
- my $zonename;
- $zonename=$nodehash->{$node}->[0]->{zonename};
+ my $zonename=xCAT::Zone->getmyzonename($node);
  # reads the zone table 
  my $tab = xCAT::Table->new("zone");
  $tab->close();
