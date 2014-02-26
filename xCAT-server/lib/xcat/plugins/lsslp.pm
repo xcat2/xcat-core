@@ -817,6 +817,7 @@ sub read_from_table {
                 $::OLD_DATA_CACHE{"cec*".$parent."*".$iid} = $node if (defined $parent and defined $id);
             }elsif ($type =~ /^fsp|bpa$/) {
                 $::OLD_DATA_CACHE{$type."*".$mtm."*".$sn."*".$side} = $node if (defined $mtm and defined $sn);;
+                $::OLD_DATA_CACHE{$type."*".$parent."*".$id."*".$side} = $node if (defined $parent and defined $id and defined $side);
             }elsif ($type =~ /hmc/) {
                 $::OLD_DATA_CACHE{"hmc*".$ip} = $node if (defined $ip);
             }else {
@@ -1305,9 +1306,30 @@ sub parse_responses {
                 ${$outhash{$child}}{cid} = ${$outhash{$h}}{cid};
 		        trace( $request, "child is $child, fid is ${$outhash{$child}}{fid}, cid is ${$outhash{$child}}{cid}");
     }	
-
         } # end - process fsp and bpa
     } # end process responses loop
+	
+    
+    trace( $request, "\n\n\nBegin to find fsp/bpa's hostname by parent and id");
+    foreach my $h ( keys %outhash ) {
+        if(${$outhash{$h}}{type} eq TYPE_FSP or ${$outhash{$h}}{type} eq TYPE_BPA) {
+            my $tp = ${$outhash{$h}}{parent};
+            my $id;
+            if (${$outhash{$h}}{type} eq TYPE_FSP) {
+                #$tp = 'Server-'.${$outhash{$h}}{mtm}.'-SN'.${$outhash{$h}}{serial} ;
+                $id = ${$outhash{$h}}{cid};
+            } elsif (${$outhash{$h}}{type} eq TYPE_BPA) {
+                #$tp = 'Server-'.${$outhash{$h}}{mtm}.'-SN'.${$outhash{$h}}{serial} ;
+                $id = ${$outhash{$h}}{fid};
+            }
+            $newhostname = $::OLD_DATA_CACHE{${$outhash{$h}}{type}."*".$tp.'*'.$id.'*'.${$outhash{$h}}{side}};
+            if ($newhostname){
+                ${$outhash{$h}}{hostname} = $newhostname ;
+                trace( $request, "$h find hostname $newhostname");
+                push  @matchnode, $h;
+            }
+        }
+    } 
 
     ##########################################################
     # If there is -n flag, skip the matched nodes
