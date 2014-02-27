@@ -183,20 +183,6 @@ sub process_request
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             exit 1; 
         }
-       # now check for service nodes in noderange.  It they exist that is an error also.
-        my @SN;
-        my @CN;
-        xCAT::ServiceNodeUtils->getSNandCPnodes(\@nodes, \@SN, \@CN);
-        if (scalar(@SN))       
-        {    # SN in the nodelist
-            my $nodes=join(',', @SN);
-            my $rsp = {};
-            $rsp->{error}->[0] =
-              "You must not run $command and include any service nodes: $nodes.";
-            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            exit 1; 
-        }
-       # now check for service nodes in noderange.  It they exist that is an error also.
  
  
     }

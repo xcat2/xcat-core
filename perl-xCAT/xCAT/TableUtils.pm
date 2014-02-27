@@ -1824,8 +1824,8 @@ sub enableSSH
        
     } else { 
         # if not a service node we need to check, before enabling
-        if (defined($groups_hash)) {
-            if ($groups_hash->{ALLGROUPS} == 1)
+          if (keys %$groups_hash) {   # not empty
+            if  ($groups_hash->{ALLGROUPS} == 1)
             {
               $enablessh=1;
             }
