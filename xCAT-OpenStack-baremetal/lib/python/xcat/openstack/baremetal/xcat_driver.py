@@ -137,6 +137,7 @@ class xCAT(object):
             LOG.warning(errstr)
             raise exception.xCATCommandError(errstr)
         else:
+            self._wait_for_node_reboot(nodename)
             return power_states.ON
     
     def power_off_node(self, nodename):
@@ -199,6 +200,7 @@ class xCAT(object):
 
             if out:
                 node,status = out.split(": ")
+                status = status.strip()
                 if status == "booted":
                     LOG.info(_("Deployment for node %s completed.")
                              % nodename)
@@ -226,7 +228,7 @@ class xCAT(object):
         locals = {'errstr':''}
 
         def _wait_for_reboot():
-            out,err = self._exec_xcat_command("nodels %s nodelist.status" % nodename)
+            out,err = self._exec_xcat_command("nodestat %s" % nodename)
             if err:
                 locals['errstr'] = _("Error returned when quering node status"
                            " for node %s:%s") % (nodename, err)
@@ -235,7 +237,8 @@ class xCAT(object):
 
             if out:
                 node,status = out.split(": ")
-                if status == "booted":
+                status = status.strip()
+                if status == "sshd":
                     LOG.info(_("Rebooting node %s completed.")
                              % nodename)
                     raise loopingcall.LoopingCallDone()

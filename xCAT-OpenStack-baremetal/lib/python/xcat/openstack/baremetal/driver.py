@@ -150,8 +150,8 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
                              'error':str(e)})
                 bm_driver._update_state(context, node, instance, baremetal_states.ERROR)
 
-    def destroy(self, context, instance, network_info, block_device_info=None,
-                destroy_disks=True):
+    def destroy(self, instance, network_info, block_device_info=None,
+                context=None):
         """Destroy (shutdown and delete) the specified instance.
 
         If the instance is not found (for example if networking failed), this
@@ -168,6 +168,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
         """
  	    #import pdb
 	    #pdb.set_trace()
+	    context = nova_context.get_admin_context()
         try:
             node = bm_driver._get_baremetal_node_by_instance_uuid(instance['uuid'])
             

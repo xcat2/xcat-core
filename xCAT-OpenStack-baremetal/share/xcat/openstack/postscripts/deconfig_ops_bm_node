@@ -26,6 +26,34 @@ get_os_type()
 	echo "$str_os_type"
 }
 
+#change hostname permanently
+change_host_name()
+{
+    str_os_type=$1
+    str_hostname=$2
+
+    hostname $str_hostname
+
+    if [ "$str_os_type" = "sles" ];then
+        echo "Persistently changing the hostname not implemented yet."
+    #debian ubuntu
+    elif [ "$str_os_type" = "debian" ];then
+        conf_file="/etc/hostname"
+        echo "$str_hostname" > $conf_file
+    else
+        conf_file="/etc/sysconfig/network"
+        if [ ! -f $conf_file ]; then
+            touch $conf_file
+        fi
+        grep 'HOSTNAME' $conf_file 2>&1 > /dev/null
+        if [ $? -eq 0 ]; then
+            sed -i "s/HOSTNAME=.*/HOSTNAME=$str_hostname/" $conf_file
+        else
+            echo "HOSTNAME=$str_hostname" >> $conf_file
+        fi
+    fi
+}
+
 
 str_os_type=$(get_os_type)
 echo "os_type=$str_os_type"
@@ -37,7 +65,8 @@ if [ $str_os_type == "aix" ]; then
 fi
 
 #change the hostname
-hostname $NODE
+#hostname $NODE
+change_host_name $str_os_type $NODE
 
 #remove the openstack ip from the node
 if [[ -n $1 ]]; then
