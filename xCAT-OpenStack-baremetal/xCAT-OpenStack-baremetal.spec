@@ -85,9 +85,8 @@ rm -rf $RPM_BUILD_ROOT
 %post
 #copy the postscripts under /installl/postscripts directory on MN only
 if [ -f "/etc/xCATMN" ]; then
-	cp $RPM_INSTALL_PREFIX0/share/xcat/openstack/postscripts/* /install/postscripts
+	cp $RPM_INSTALL_PREFIX0/share/xcat/openstack/postscripts/* /install/postscripts/
 fi
-exit 0
 
 %preun
 #remove postscripts under /installl/postscripts directory on MN only
