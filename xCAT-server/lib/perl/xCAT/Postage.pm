@@ -187,10 +187,16 @@ sub makescript {
   if($entries[0]) {
        $installroot = $entries[0];
   }
+  # Location of the customized template
   my $tmpl="$installroot/postscripts/mypostscript.tmpl";
-    
+  
+  # if not customized template use the default  
   unless ( -r $tmpl) {
        $tmpl="$::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl";
+  } else {  # using customized template
+     # need to update with new added exports for this release
+     addexports($tmpl,$callback);  
+     
   }
     
   unless ( -r "$tmpl") {
@@ -590,6 +596,69 @@ sub makescript {
   }
 }
 
+#----------------------------------------------------------------------------
+
+=head3  addexports 
+
+        
+   As we change the default mypostscript.tmpl, this routine will update
+   and existing customized template with the information 
+     addexports($tmpl, $callback);
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub addexports 
+{
+
+    my $tmplfile = shift;
+    my $callback = shift;
+    # check for ZONENAME
+    my $cmd="cat $tmplfile \| grep ZONENAME";
+    my $result = xCAT::Utils->runcmd($cmd, -1); 
+    if ($::RUNCMD_RC != 0) {  # ZONENAME not in the customized template
+      $cmd = "cp $tmplfile $tmplfile.$$";  # backup the original
+      xCAT::Utils->runcmd($cmd, -1);
+      my $insertstr='ZONENAME=$ZONENAME';
+      my $insertstr2="export ZONENAME";
+
+      $cmd = "awk '{gsub(\"export ENABLESSHBETWEENNODES\",\"export ENABLESSHBETWEENNODES\\n$insertstr\\n$insertstr2 \"); print}'   $tmplfile > $tmplfile.xcat";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " Update of the $tmplfile file failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd = "cp -p  $tmplfile.xcat  $tmplfile  ";  # copy back the modified file 
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd =  "rm  $tmplfile.xcat ";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+      }
+
+    }
+    return 0; 
+}
 sub getservicenode
 {
     # reads all nodes from the service node table
