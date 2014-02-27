@@ -618,7 +618,7 @@ sub addexports
     my $cmd="cat $tmplfile \| grep ZONENAME";
     my $result = xCAT::Utils->runcmd($cmd, -1); 
     if ($::RUNCMD_RC != 0) {  # ZONENAME not in the customized template
-      $cmd = "cp $tmplfile $tmplfile.$$";  # backup the original
+      $cmd = "cp $tmplfile $tmplfile.backup";  # backup the original
       xCAT::Utils->runcmd($cmd, -1);
       my $insertstr='ZONENAME=$ZONENAME';
       my $insertstr2="export ZONENAME";
