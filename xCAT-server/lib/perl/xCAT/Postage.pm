@@ -187,10 +187,15 @@ sub makescript {
   if($entries[0]) {
        $installroot = $entries[0];
   }
-
+  # Location of the customized template
   my $tmpl="$installroot/postscripts/mypostscript.tmpl";     #the customized mypostscript template
+  
+  # if not customized template use the default
   unless ( -r $tmpl) {
        $tmpl="$::XCATROOT/share/xcat/mypostscript/mypostscript.tmpl";  #the default xcat mypostscript template
+  } else {  # using customized template
+     # need to update with new added exports for this release
+     addexports($tmpl,$callback); 
   }
     
   unless ( -r "$tmpl") {
@@ -494,7 +499,6 @@ sub makescript {
     my $enablesshbetweennodes;
     my $zonename="\'\'";
     if ($usingzones) {
-       $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback); 
        $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback);
        my $tmpzonename = xCAT::Zone->getmyzonename($node,$callback);
        $zonename="\'";
@@ -534,7 +538,8 @@ sub makescript {
   $inc =~ s/#CFGMGTINFO_EXPORT#/$cfgres/eg; 
   $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
   
-  $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
+  $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg;
+  $inc =~ s/\$ZONENAME/$zonename/eg; 
   $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
@@ -587,6 +592,69 @@ sub makescript {
   } else {  # files were created
     return 0;
   }
+}
+#----------------------------------------------------------------------------
+
+=head3  addexports 
+
+        
+   As we change the default mypostscript.tmpl, this routine will update
+   and existing customized template with the information 
+     addexports($tmpl, $callback);
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub addexports 
+{
+
+    my $tmplfile = shift;
+    my $callback = shift;
+    # check for ZONENAME
+    my $cmd="cat $tmplfile \| grep ZONENAME";
+    my $result = xCAT::Utils->runcmd($cmd, -1); 
+    if ($::RUNCMD_RC != 0) {  # ZONENAME not in the customized template
+      $cmd = "cp $tmplfile $tmplfile.$$";  # backup the original
+      xCAT::Utils->runcmd($cmd, -1);
+      my $insertstr='ZONENAME=$ZONENAME';
+      my $insertstr2="export ZONENAME";
+
+      $cmd = "awk '{gsub(\"export ENABLESSHBETWEENNODES\",\"export ENABLESSHBETWEENNODES\\n$insertstr\\n$insertstr2 \"); print}'   $tmplfile > $tmplfile.xcat";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " Update of the $tmplfile file failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd = "cp -p  $tmplfile.xcat  $tmplfile  ";  # copy back the modified file 
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd =  "rm  $tmplfile.xcat ";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+      }
+
+    }
+    return 0; 
 }
 
 sub getservicenode
