@@ -390,7 +390,8 @@ sub process_request {
 			# - need domain for this node
 			my $host = $nodehash{$n}{host};
 			$domain=$nodedomains{$host};
-			unless ($domain =~ /^\./) { $domain = '.'.$domain; }
+			# remove the first . at domain name since it's not accepted by high dns parser
+			if ($domain =~ /^\./) { $domain =~ s/^\.//;; } 
 
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
             if ($aliasstr) {
@@ -404,13 +405,13 @@ sub process_request {
             xCAT::SvrUtils::sendmsg(":Handling $node in /etc/hosts.", $callback);
             
             unless ($canonical =~ /$domain/) {
-                $canonical.=$domain;
+                $canonical.=".".$domain;
             }
 			# for only the sake of comparison, ensure consistant dot suffix
             unless ($canonical =~ /\.\z/) { $canonical .= '.' }
             foreach my $alias (@aliases) {
                 unless ($alias =~ /$domain/) {
-                    $alias .= $domain;
+                    $alias .= ".".$domain;
                 }
                 unless ($alias =~ /\.\z/) {
                     $alias .= '.';
@@ -505,9 +506,11 @@ sub process_request {
         $ctx->{slaves}=\@slave_ips;
     }
 
+    $ctx->{domain} =~ s/^\.//; # remove . if it's the first char of domain name
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
 	foreach (@networks) {
 		if ($_->{domain}) {
+		    $_->{domain} =~ s/^\.//; # remove . if it's the first char of domain name
 			$ctx->{zonestotouch}->{$_->{domain}}=1;
 		}
 	}
@@ -796,11 +799,11 @@ sub update_zones {
 
     xCAT::SvrUtils::sendmsg("Updating zones.", $callback);
 
-    unless ($domain =~ /^\./) {
-        $domain = '.'.$domain;
+    if ($domain =~ /^\./) { # remove . if it's the first char of domain name
+        $domain =~ s/^\.//;
     }
     unless ($name =~ /\./) {
-        $name .= $domain;
+        $name .= ".".$domain;
     }
     unless ($name =~ /\.\z/) {
         $name .= '.';
@@ -1166,9 +1169,9 @@ sub add_or_delete_records {
         }
 
 		my $domain = $nodedomains{$node};
-		unless ($domain =~ /^\./) { $domain = '.'.$domain; }
+		if ($domain =~ /^\./) { $domain =~ s/^\.//; } # remove . if it's the first char of domain name
 
-        unless ($name =~ /$domain/) { $name .= $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
+        unless ($name =~ /$domain/) { $name .= ".".$domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
 
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
             @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
