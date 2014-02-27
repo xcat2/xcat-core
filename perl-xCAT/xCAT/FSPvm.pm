@@ -103,6 +103,53 @@ sub chvm_parse_extra_options {
                         return "'$value' is invalid, must be in form of 'Server_name:slotnum'";
                     }
                 }
+            } elsif ($cmd eq "vmcpus") {
+                if ($value =~ /^(\d+)\/(\d+)\/(\d+)$/) {
+                    unless ($1 <= $2 and $2 <= $3) {
+                        return "'$value' is invalid, must be in order";
+                    }
+                } else {
+                    return "'$value' is invalid, must be integer";
+                }
+            } elsif ($cmd eq "vmmemory") {
+                if ($value =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
+                    my ($mmin, $mcur, $mmax);
+                    if ($2 == "G" or $2 == '') {
+                        $mmin = $1 * 1024;
+                    } 
+                    if ($4 == "G" or $4 == '') {
+                        $mcur = $3 * 1024;
+                    }
+                    if ($6 == "G" or $6 == '') {
+                        $mmax = $5 * 1024;
+                    }
+                    unless ($mmin <= $mcur and $mcur <= $mmax) {
+                        return "'$value' is invalid, must be in order";
+                    }
+                } else {
+                    return "'$value' is invalid";
+                }
+            } elsif ($cmd eq "vmphyslots") {
+                my @tmp_array = split ",",$value;
+                foreach (@tmp_array) {
+                    unless (/(0x\w{8})/) {
+                        return "'$_' is invalid";
+                    }
+                }
+            } elsif ($cmd eq "vmothersetting") {
+                my @tmp_array = split ",", $value;
+                foreach (@tmp_array) {
+                    unless (/^(bsr|hugepage):\d+$/) {
+                        return "'$_' is invalid";
+                    }
+                }
+            } elsif ($cmd eq "vmnics") {
+                my @tmp_array = split ",", $value;
+                foreach (@tmp_array) {
+                    unless (/^vlan\d+$/i) {
+                        return "'$_' is invalid";
+                    }
+                }
             }
 
         } else {
@@ -1859,7 +1906,8 @@ sub deal_with_avail_mem {
             }
             #xCAT::MsgUtils->verbose_message($request, "====****====used:$used_regions,avail:$cur_avail,($min:$cur:$max)."); 
             if ($cur_avail < $min) {
-                return([$name, "Parse reserverd regions failed, no enough memory, available:$lparhash->{hyp_avail_mem}.", 1]);
+                my $cur_mem_in_G = $lparhash->{hyp_avail_mem} * $lparhash->{mem_region_size} * 1.0 / 1024;
+                return([$name, "Parse reserverd regions failed, no enough memory, available:$cur_mem_in_G GB.", 1]);
             }           
             if ($cur > $cur_avail) {
                 my $new_cur = $cur_avail;
@@ -1999,6 +2047,7 @@ sub create_lpar {
     }
     return ([$name, "Done", 0]);
 }
+
 sub mkspeclpar {
     my $request = shift;
     my $hash = shift;
@@ -2044,6 +2093,75 @@ sub mkspeclpar {
             if (exists($opt->{vmnics})) {
                 $tmp_ent->{nics} = $opt->{vmnics};
             }
+
+
+            if (!defined($tmp_ent) ) {
+                return ([[$name, "Not find params", 1]]);
+            #} elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
+            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory})) {
+                return ([[$name, "The attribute 'vmcpus', 'vmmemory' are needed to be specified.", 1]]);
+            }
+	    # FIX bug 3873 [FVT]DFM illegal action could work
+	    #
+
+	    if ($tmp_ent->{cpus} =~ /^(\d+)\/(\d+)\/(\d+)$/) {
+                unless ($1 <= $2 and $2 <= $3) {
+                    return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
+                }
+            } else {
+                return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
+            }
+            if ($tmp_ent->{memory} =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
+                my ($mmin, $mcur, $mmax);
+                if ($2 == "G" or $2 == '') {
+                    $mmin = $1 * 1024;
+                } 
+                if ($4 == "G" or $4 == '') {
+                    $mcur = $3 * 1024;
+                }
+                if ($6 == "G" or $6 == '') {
+                    $mmax = $5 * 1024;
+                }
+                unless ($mmin <= $mcur and $mcur <= $mmax) {
+                    return([[$name, "Parameter for 'vmmemory' is invalid", 1]]);
+                }
+                my $memsize = $memhash->{mem_region_size};
+                $mmin = ($mmin + $memsize) / $memsize;
+                $mcur = ($mcur + $memsize) / $memsize;
+                $mmax = ($mmax + $memsize) / $memsize;
+                $tmp_ent->{memory} = "$mmin/$mcur/$mmax";
+                $tmp_ent->{mem_region_size} = $memsize;
+            } else {
+                return([[$name, "Parameter for 'vmmemory' is invalid", 1]]);
+            }
+            
+            if (exists($tmp_ent->{physlots})) {
+                my @tmp_array = split ",",$tmp_ent->{physlots};
+                foreach (@tmp_array) {
+                    unless (/(0x\w{8})/i) {
+                        return([[$name, "Parameter:$_ for 'vmphyslots' is invalid", 1]]);
+                    }
+                }
+            }
+            if (exists($tmp_ent->{othersettings})) {
+                my @tmp_array = split ",",$tmp_ent->{othersettings};
+                foreach (@tmp_array) {
+                    unless (/^(bsr|hugepage):\d+$/) {
+                        return([[$name, "Parameter:$_ for 'vmothersetting' is invalid", 1]]);
+                    }
+                }
+            }
+            
+            if (exists($tmp_ent->{nics})) {
+                my @tmp_array = split ",",$tmp_ent->{nics};
+                foreach (@tmp_array) {
+                    unless (/^vlan\d+$/i) {
+                        return([[$name, "Parameter:$_ for 'vmnics' is invalid", 1]]);
+                    }
+                }
+            }
+
+
             if (exists($opt->{vios})) {
                 if (!exists($tmp_ent->{physlots})) {
                     my @phy_io_array = keys(%{$memhash->{bus}});
@@ -2073,43 +2191,22 @@ sub mkspeclpar {
                     }
                 }
             }
-            if (!defined($tmp_ent) ) {
-                return ([[$name, "Not find params", 1]]);
-            #} elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
-            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory})) {
-                return ([[$name, "The attribute 'vmcpus', 'vmmemory' are needed to be specified.", 1]]);
-            }
-            if ($tmp_ent->{memory} =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
-                my $memsize = $memhash->{mem_region_size};
-                my $min = $1;
-                if ($2 == "G" or $2 == '') {
-                    $min = $min * 1024;
-                }
-                $min = $min/$memsize;
-                my $cur = $3;
-                if ($4 == "G" or $4 == '') {
-                    $cur = $cur * 1024;
-                }
-                $cur = $cur/$memsize;
-                my $max = $5;
-                if ($6 == "G" or $6 == '') {
-                    $max = $max * 1024;
-                }
-                $max = $max/$memsize;
-                $tmp_ent->{memory} = "$min/$cur/$max";
-            }
+
+
             $tmp_ent->{hyp_config_mem} = $memhash->{hyp_config_mem};
             $tmp_ent->{hyp_avail_mem} = $memhash->{hyp_avail_mem};
-            $tmp_ent->{huge_page} = "0/0/0"; 
-            $tmp_ent->{bsr_num} = "0";
             if (exists($tmp_ent->{othersettings}))  {
                 my $setting = $tmp_ent->{othersettings};
                 if ($setting =~ /hugepage:(\d+)/) {
                     my $tmp = $1;
-                    $tmp_ent->{huge_page} = "1/".$tmp."/".$tmp;
+                    if ($tmp >= 1) {
+                        $tmp_ent->{huge_page} = "1/".$tmp."/".$tmp;
+                    }
                 }
                 if ($setting =~ /bsr:(\d+)/) {
-                    $tmp_ent->{bsr_num} = $1;
+                    if ($1 >= 1) {
+                        $tmp_ent->{bsr_num} = $1;
+                    }
                 }
             }
             $tmp_ent->{phy_hea} = $memhash->{phy_drc_group_port};
