@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile SYSTEM "/usr/share/YaST2/include/autoinstall/profile.dtd">
+<!-- The 2 main differences from the standard xcat compute.sles11.tmpl are:
+      1. instead of dhcp settings in the networking section it puts static info there
+      2. it includes post.sles.softlayer.common instead of post.sles11 and post.sles.common -->
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+  <install>
+    <bootloader>
+      <write_bootloader config:type="boolean">true</write_bootloader>
+      <activate config:type="boolean">true</activate>
+      <kernel_parameters></kernel_parameters>
+      <lba_support config:type="boolean">false</lba_support>
+      <linear config:type="boolean">false</linear>
+      <location>mbr</location>
+    </bootloader>
+    <general>
+      <clock>
+        <hwclock>GMT</hwclock>
+        <timezone>#TABLE:site:key=timezone:value#</timezone>
+      </clock>
+      <keyboard>
+        <keymap>english-us</keymap>
+      </keyboard>
+      <language>en_US</language>
+      <mode>
+        <confirm config:type="boolean">false</confirm>
+        <forceboot config:type="boolean">false</forceboot>
+        <interactive_boot config:type="boolean">false</interactive_boot>
+        <reboot config:type="boolean">true</reboot>
+      </mode>
+      <mouse>
+        <id>non</id>
+      </mouse>
+      <signature-handling>
+         <accept_non_trusted_gpg_key config:type="boolean">true</accept_non_trusted_gpg_key>
+         <accept_unknown_gpg_key config:type="boolean">true</accept_unknown_gpg_key>
+         <accept_unsigned_file config:type="boolean">true</accept_unsigned_file>
+      </signature-handling>
+
+    </general>
+    <partitioning config:type="list">
+      <!-- XCAT-PARTITION-START -->
+      <drive>
+        <device>XCATPARTITIONHOOK</device>
+        <initialize config:type="boolean">true</initialize>
+        <use>all</use>
+      </drive>
+      <!-- XCAT-PARTITION-END -->
+    </partitioning>
+    <software>
+      <patterns config:type="list">
+        #INCLUDE_DEFAULT_PTRNLIST_S#
+      </patterns>
+      <packages config:type="list">
+        #INCLUDE_DEFAULT_PKGLIST_S#
+      </packages>
+    </software>
+  </install>
+  <configure>
+    <users config:type="list">
+      <user>
+        <username>root</username>
+        <user_password>#CRYPT:passwd:key=system,username=root:password#</user_password>
+        <encrypted config:type="boolean">true</encrypted>
+        <forename/>
+        <surname/>
+      </user>
+    </users>
+    <networking>
+      <keep_install_network config:type="boolean">true</keep_install_network>
+      <dns>
+        <domain>#TABLE:site:key=domain:value#</domain>
+        <hostname>#TABLE:nodelist:$NODE:node#</hostname>
+        <nameservers config:type="list">
+          <nameserver>#XCATVAR:XCATMASTER#</nameserver>
+        </nameservers>
+        <searchlist config:type="list">
+          <search>#TABLE:site:key=domain:value#</search>
+        </searchlist>
+      </dns>
+      <routing>
+        <ip_forward config:type="boolean">false</ip_forward>
+      </routing>
+    </networking>
+    <scripts>
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sles#
+   #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#
+      <post-scripts config:type="list">
+        <script>
+          <filename>xcat.sh</filename>
+          <interpreter>shell</interpreter>
+          <source>
+
+<![CDATA[
+#INCLUDE:/root/share/post.sles.softlayer.common#
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+
+]]>
+
+          </source>
+        </script>
+      </post-scripts>
+    </scripts>
+  </configure>
+</profile>

@@ -62,7 +62,7 @@ sub addKernelParms {
 	# get node ip and add it to the kernel parms
 	my ($nic, $ip, $netmask, $gateway) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
-	$args->{kernelparms} .= " hostip=$ip netmask=$netmask gateway=$gateway netdevice=$nic netwait=$WAITTIME";
+	$args->{kernelparms} .= " hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
 }
 
 

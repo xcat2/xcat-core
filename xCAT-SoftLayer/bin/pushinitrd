@@ -14,6 +14,7 @@ use Data::Dumper;
 my $HELP;
 my $VERBOSE;
 my $WAITTIME;
+my $NOAUTOINST;
 
 my $usage = sub {
    	my $exitcode = shift @_;
@@ -31,11 +32,11 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 1) { $usage->(1); }
-if (!defined($WAITTIME)) { $WAITTIME = 60; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
+if (!defined($WAITTIME)) { $WAITTIME = 75; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
 my $noderange = $ARGV[0];
 
 my %bootparms = getBootParms($noderange);
@@ -44,7 +45,7 @@ copyFilesToNodes($noderange, \%bootparms);
 
 updateGrubOnNodes($noderange, \%bootparms);
 
-modifyAutoinstFiles($noderange, \%bootparms);
+if (!$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
 
 exit(0);
 
@@ -61,7 +62,7 @@ sub getBootParms {
 		my $attr = "bootparams.$a";
 		@gresults = grep(/^\S+:\s+$attr:/, @output);
 		if (!scalar(@gresults)) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
-		# for now just pick the 1st one. They should all be the same, except for the node name kcmdline
+		# for now just pick the 1st one. They should all be the same, except for the node name in kcmdline
 		chomp($gresults[0]);
 		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
 		$bootparms{$a} = $gresults[0];
@@ -140,11 +141,13 @@ sub modifyAutoinstFiles {
 	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
 	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
 	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escape for sed
-	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 30 \] \&\& ! ping -c2 -w2 ' . $bootparms->{mnip} .'; do : ; done';
+	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 60 \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .'; do echo i=\$xcati ; done; sleep 10';
 	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
 	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
 	# finally create the perl replace string that will be used to modify the autoinst file
 	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
+
+	# now actually update the file
 	print "Updating /install/autoinst files.\n";
 	foreach my $n (@nodes) {
 		my $f = "/install/autoinst/$n";
@@ -168,6 +171,16 @@ sub sed {
 	while (<FILE>) { $lines .= $_; }
 	#verbose('file length is '.length($lines));
 	close FILE;
+
+	# we also need to look for this string 1st
+	my $replacecopy = $replace;				# a search string can't have special chars in it
+	$replacecopy =~ s/(\W)/\\$1/g;			# so escape all of the meta characters
+	#print "replacecopy=$replacecopy\n";
+	# check to see if the replace string is already in the file
+	if ($lines =~ m/$replacecopy/s) {
+		print "$file did not need updating.\n";
+		return 1;
+	}
 
 	# search/replace and see if there were any matches
 	my $matches;

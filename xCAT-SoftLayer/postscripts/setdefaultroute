@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# set the default route of the node to the ip address and nic passed in
+
+set -x
+ip route replace to default via $1 dev $2
