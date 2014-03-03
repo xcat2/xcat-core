@@ -100,7 +100,7 @@ getcredentials.awk ssh_dsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}ser
 grep -E '<error>' /tmp/ssh_dsa_hostkey
 if [ $? -ne 0 ]; then
 	#the message received is the data
-	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
+	cat /tmp/ssh_dsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_dsa_key
 	logger -t xCAT -p local4.info "remoteshell: getting ssh_host_dsa_key"
    MAX_RETRIES=10
    RETRY=0
@@ -164,7 +164,7 @@ getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}ser
 grep -E '<error>' /tmp/ssh_rsa_hostkey
 if [ $? -ne 0 ]; then
 	#the message received is the data we request
-	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
+	cat /tmp/ssh_rsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_rsa_key
 	logger -t xCAT -p local4.info ssh_rsa_hostkey
 	MYCONT=`cat /etc/ssh/ssh_host_rsa_key`
    MAX_RETRIES=10
@@ -216,12 +216,88 @@ if [[ $NTYPE = service ]]; then
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
 fi
 
-
-umask 0077
-
+umask 0077 
+# This is where we start getting root ssh keys
+# This tells credentials.pm where to get the root .ssh keys.  If no zone then old path of ~.ssh
+#rootsshpvtkey=ssh_root_key:$zonename
 mkdir -p /root/.ssh/
+# this is for obtaining non-zone keys
+rootsshpvtkey=ssh_root_key
+rootsshpubkey=ssh_root_pub_key
+if [ $ZONENAME ];
+then 
+# This tells credentials.pm where to get the root .ssh keys.  If no zone then old path of ~/.ssh
+  zonename=$ZONENAME
+  rootsshpvtkey=ssh_root_key:$zonename
+  rootsshpubkey=ssh_root_pub_key:$zonename
+  logger -t xCAT -p local4.info "remoteshell: gathering root ssh keys for $zonename"
+    
+fi
+
+# always get  the id_rsa.pub key for the node and put in authorized_keys 
+if [ $useflowcontrol = "1" ]; then
+  #first contact daemon  xcatflowrequest <server> 3001
+  logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+  /$xcatpost/xcatflowrequest $master 3001
+  rc=$? 
+  logger -t xCAT -p local4.info "remoteshell:xcatflowrequest return=$rc" 
+  if [ $rc -ne 0 ]; then
+    logger -t xCAT -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+    useflowcontrol=0
+  fi
+fi
+
+  getcredentials.awk $rootsshpubkey  | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_pub_key
+
+  logger -t xCAT -p local4.info "remoteshell: gathering $rootsshpubkey "
+  #check whether the message is an error or not
+  grep -E '<error>' /tmp/ssh_root_pub_key
+if [ $? -ne 0 ]; then
+	#The message contains the data we request
+	cat /tmp/ssh_root_pub_key | grep -E -v '</{0,1}errorcode>|</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa.pub
+        # no add to authorized_keys, so the node can ssh to itself
+	cat /tmp/ssh_root_pub_key | grep -E -v '</{0,1}errorcode>|</{0,1}data>|</{0,1}content>|</{0,1}desc>' >> /root/.ssh/authorized_keys
+	logger -t xCAT -p local4.info ssh_root_pub_key
+	MYCONT=`cat /root/.ssh/id_rsa.pub`
+   MAX_RETRIES=10
+   RETRY=0
+	while [ -z "$MYCONT" ]; do
+                if [ $useflowcontrol = "0" ]; then
+                 let SLI=$RANDOM%10
+                 let SLI=SLI+10
+                 sleep $SLI
+                fi
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                  rc=$? 
+                  logger -t xCAT -p local4.info "remoteshell:xcatflowrequest return=$rc" 
+                  if [ $rc -ne 0 ]; then
+                     logger -t xCAT -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                     useflowcontrol=0
+                  fi
+                fi
+		          getcredentials.awk $rootsshpubkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa.pub
+		          getcredentials.awk $rootsshpubkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" >> /root/.ssh/authorized_keys
+		          MYCONT=`cat /root/.ssh/id_rsa.pub`
+	done
+else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_pub_key`
+	logger -t xCAT -p local4.err $rootsshpubkey Error: $ERR_MSG
+fi
+rm /tmp/ssh_root_pub_key
+
+# if sshbetweennodes is enabled then we get id_rsa ( private key) 
 if [ $ENABLESSHBETWEENNODES = "YES" ];  # want nodes to be able to ssh to each other without password
 then 
+ logger -t xCAT -p local4.info "remoteshell:sshbetweennodes is yes" 
  if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
   logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
@@ -233,13 +309,14 @@ then
     useflowcontrol=0
   fi
  fi
-  getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
+  getcredentials.awk $rootsshpvtkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
+  logger -t xCAT -p local4.info "remoteshell: gathering $rootsshpvtkey "
   #check whether the message is an error or not
   grep -E '<error>' /tmp/ssh_root_key
   if [ $? -ne 0 ]; then
 	#The message contains the data we request
-	cat /tmp/ssh_root_key | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
+        cat /tmp/ssh_root_key | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
 	logger -t xCAT -p local4.info ssh_root_key
 	MYCONT=`cat /root/.ssh/id_rsa`
    MAX_RETRIES=10
@@ -266,21 +343,25 @@ then
                      useflowcontrol=0
                   fi
                 fi
-		          getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
+		          getcredentials.awk $rootsshpvtkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 		          MYCONT=`cat /root/.ssh/id_rsa`
 	done
   else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_key`
-	logger -t xCAT -p local4.err ssh_root_key Error: $ERR_MSG
+	logger -t xCAT -p local4.err $rootsshpvtkey Error: $ERR_MSG
   fi
   rm /tmp/ssh_root_key
 
   if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
      rm /root/.ssh/id_rsa
   fi
-  if [ -r /root/.ssh/id_rsa ]; then
+  # if public key does not exist then generate one from the private key
+  if [ ! -f /root/.ssh/id_rsa.pub ]; then
+    if [ -r /root/.ssh/id_rsa ]; then
      ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
+     logger -t xCAT -p local4.err  remoteshell:transfer of the id_rsa.pub key failed. Had to generate a public key. 
+    fi
   fi
 fi
 
