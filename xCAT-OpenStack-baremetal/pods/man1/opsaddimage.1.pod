@@ -14,7 +14,7 @@ B<opsaddimage> [B<-v>|B<--version>]
 
 The B<opsaddimage> command adds a list of xCAT images into the OpenStack cloud. 
 
-Under the cover, it creates a fake imgae and registers the fake image into OpenStack with command B<glance image-create>. It sets the property in the image to indicate that this is an xCAT image and also stores the original xCAT image name in the property for further reference. 
+Under the cover, it creates a fake image and registers the fake image into OpenStack with command B<glance image-create>. It sets the property in the image to indicate that this is an xCAT image and also stores the original xCAT image name in the property for further reference. 
 
 The xCAT image names can be listed using B<lsdef -t osimage> command.      
 
