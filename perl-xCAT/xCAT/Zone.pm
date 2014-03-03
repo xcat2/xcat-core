@@ -202,6 +202,32 @@ sub iszonedefined
 }
 #--------------------------------------------------------------------------------
 
+=head3  getzonekeydir 
+    Arguments:
+      zonename 
+    Returns:
+     path to the root ssh keys for the zone /etc/xcat/sshkeys/<zonename>/.ssh 
+     1 - zone not defined 
+    Example:
+     xCAT::Zone->getzonekeydir($zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getzonekeydir 
+{
+ my ($class,$zonename) = @_;
+ my $tab = xCAT::Table->new("zone");
+ $tab->close();
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshkeydir');
+ if ( keys %$zonehash) {
+    my $zonesshkeydir=$zonehash->{sshkeydir};
+    return $zonesshkeydir;
+ }else{
+    return 1;   # this is a bad error  zone not defined
+ }
+}
+#--------------------------------------------------------------------------------
+
 =head3    getmyzonename 
     Arguments:
        $node -one nodename      
