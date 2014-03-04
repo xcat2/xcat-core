@@ -19,6 +19,7 @@ use POSIX;
 require xCAT::Table;
 
 require xCAT::Utils;
+require xCAT::Zone;
 require xCAT::TableUtils;
 require xCAT::ServiceNodeUtils;
 require xCAT::MsgUtils;
@@ -112,10 +113,8 @@ sub preprocess_request
     }
     # if xdsh need to make sure request has full path to input files 
     # also process -K flag and use of zones
-    # will set $::UPDATESNZONEDATA=1, if zones are defined, there are service nodes  and using -K
-    $::UPDATESNZONEDATA=0; 
     if ($command eq "xdsh") {
-     $req = &parse_xdsh_cmd($req,$cb);
+     $req = &parse_xdsh_cmd($req,$cb,$sub_req);
     }
 
     # there are nodes in the xdsh command, not xdsh  to an image
@@ -151,12 +150,6 @@ sub preprocess_request
                 }
             }
           }
-        }
-        # if servicenodes and xdsh -K and using zones, then we need to sync
-        # /etc/xcat/sshkeys to the service nodes
-        if ((@snodes)  && ($::UPDATESNZONEDATA==1)) {   
-              $rc =
-               &syncSNZoneKeys($req, $cb, $sub_req, \@snodes);
         }
 
         # if servicenodes and (if xdcp and not pull function or xdsh -e)
@@ -431,6 +424,7 @@ sub parse_xdsh_cmd
 {
    my $req=shift;
    my $cb=shift;
+   my $sub_req=shift;
    my $args=$req->{arg};   # argument
    my $nodes   = $req->{node};
    my $currpath=$req->{cwd}->[0]; # current path when command was executed
@@ -516,34 +510,38 @@ sub parse_xdsh_cmd
    #  nodes. 
    
    if (defined($options{'ssh-setup'})) {
-      my $tab = xCAT::Table->new("zone");  # check for zones
-      if ($tab){
-          my @zones = $tab->getAllAttribs('zonename','defaultzone');
-          if (@zones) {  # there are zones
-              # check to see if service nodes and compute nodes in node range
-               my @SN;
-               my @CN;
-               xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
-               if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
-                 my $rsp;
-                 $rsp->{data}->[0] =
-                 "xdsh -K was run with a noderange containing both service nodes and compute nodes. This is not valid if using zones.  You must run xdsh -K to the service nodes first to setup the service node to be able to run xdsh -K to the compute nodes.  \n";
-                 xCAT::MsgUtils->message("E", $rsp, $cb);
-                 exit 1;
-
-               } else{   # if servicenodes for the node range this will  force the update of
-                         # the servicenode with /etc/xcat/sshkeys dir first
-                   $::UPDATESNZONEDATA=1;
-               }
- 
+     if (xCAT::Zone->usingzones) { 
+        # check to see if service nodes and compute nodes in node range
+        my @SN;
+        my @CN;
+        xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+        if ((@SN > 0) && (@CN >0 )) { # there are both SN and CN
+           my $rsp;
+           $rsp->{data}->[0] =
+           "xdsh -K was run with a noderange containing both service nodes and compute nodes. This is not valid if using zones.  You must run xdsh -K to the service nodes first to setup the service node to be able to run xdsh -K to the compute nodes.  \n";
+            xCAT::MsgUtils->message("E", $rsp, $cb);
+            exit 1;
         }
-      } else {
-         my $rsp = {};
-         $rsp->{error}->[0] =
-         "Error reading the zone table. ";
-          xCAT::MsgUtils->message("E", $rsp, $cb);
-      }
-   }
+        # if servicenodes for the node range this will  force the update of
+        # the servicenode with /etc/xcat/sshkeys dir first
+        # if servicenodes and xdsh -K and using zones and we are on the Management Node
+        #  then we need to sync
+        # /etc/xcat/sshkeys to the service nodes
+        # get list of all servicenodes
+        if (xCAT::Utils->isMN()) {  # on the MN
+            my @snlist;
+            foreach my $sn (xCAT::ServiceNodeUtils->getSNList()) {
+               if (xCAT::NetworkUtils->thishostisnot($sn)) {  # if it is not me, the MN
+                 push @snlist, $sn;
+               }
+            }
+            if (@snlist) {   
+                &syncSNZoneKeys($req, $cb, $sub_req, \@snlist);
+            }
+         }
+ 
+      }  # not using zones
+   }  # not -k flag
 
    return $req;
 }
