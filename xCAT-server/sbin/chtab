@@ -153,9 +153,14 @@ else {
   #commit all the changes
   foreach (keys %tables) {
     if (exists($tableupdates{$_})) {
-      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+      my $rc = $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+      if ($rc) {
+          $::exitcode = 1;
+      }
     }
     $tables{$_}->commit;
   }
 }
-
+if ($::exitcode) {
+   exit $::exitcode;
+}
