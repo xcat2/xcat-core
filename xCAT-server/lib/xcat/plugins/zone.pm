@@ -2,7 +2,7 @@
 #-------------------------------------------------------
 
 =head1
-  xCAT plugin package to handle mkzone,chzone,rmzone commands 
+  xCAT plugin package to handle mkzone,chzone,Input rmzone commands 
 
    Supported command:
          mkzone,chzone,rmzone - manage xcat cluster zones 
@@ -201,14 +201,14 @@ sub process_request
     }
     if ($command eq "rmzone")
     {
-         $rc=rmzone($request, $callback,\%options,$keydir);
+         $rc=rmzone($request, $callback,\%options);
     }
     my $rsp = {};
     if ($rc ==0) {
       $rsp->{info}->[0] = "The $command ran successfully.";
       xCAT::MsgUtils->message("I", $rsp, $callback);
     } else {
-      $rsp->{info}->[0] = "The $command had errors.";
+      $rsp->{error}->[0] = "The $command had errors.";
       xCAT::MsgUtils->message("E", $rsp, $callback);
     }
     return $rc; 
@@ -220,7 +220,11 @@ sub process_request
 =head3   
 
    Parses and runs  mkzone 
-
+   Input 
+     request
+     callback
+     Input  arguments from the GetOpts
+     zone ssh key dir
 
 =cut
 
@@ -234,7 +238,7 @@ sub mkzone
 
         my $rsp = {};
         $rsp->{error}->[0] =
-          "zonename not specified, see man page for syntax.";
+          "zonename not specified The zonename is required.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
@@ -256,6 +260,7 @@ sub mkzone
     }
     
     # Create path to generated ssh keys
+    # keydir comes in set to /etc/xcat/sshkeys
     $keydir .= $request->{zonename}; 
     $keydir .= "/.ssh"; 
     
@@ -263,7 +268,7 @@ sub mkzone
     # update the zone table 
     $rc=updatezonetable($request, $callback,$options,$keydir);
     if ($rc == 0) {  # zone table setup is ok
-      $rc=updatenodelisttable($request, $callback,$options,$keydir);
+      $rc=addnodestozone($request, $callback,$options,$keydir);
       if ($rc == 0) {  # zone table setup is ok
         # generate root ssh keys
         $rc=gensshkeys($request, $callback,$options,$keydir);
@@ -304,21 +309,112 @@ sub chzone
 =head3   
 
    Parses and runs rmzone 
-
+   Input 
+     request
+     callback
+     Input  arguments from the GetOpts
+      
 
 =cut
 
 #-------------------------------------------------------
 sub rmzone 
 {
-    my ($request, $callback,$options,$keydir) = @_;
+    my ($request, $callback,$options) = @_;
+    
+    # already checked but lets do it again,  need a zonename, it is the only required parm
+    if (!($request->{zonename})) {
 
+        my $rsp = {};
+        $rsp->{error}->[0] =
+          "zonename not specified The zonename is required.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+    # check to see if the input zone already exists
+    # cannot remove it if it is not defined
+    my $zonename=$request->{zonename};
+    if (!(xCAT::Zone->iszonedefined($zonename))) {
+       my $rsp = {};
+       $rsp->{error}->[0] =
+        " zonename: $zonename is not defined. You cannot remove it.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+       return 1;
+    }
+    # is this zone is the default zone you must force the delete
+    my $defaultzone =xCAT::Zone->getdefaultzone($callback);
+    if (($defaultzone eq $zonename) && (!($$options{'force'}))) {
+       my $rsp = {};     
+       $rsp->{error}->[0] =
+        " You are removing the default zone: $zonename.  You must define another default zone before deleting or use the -f flag to force the removal.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+       return 1;
+    }
 
-   # my $rsp = {};
+    # get the zone ssh key directory
+    my $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
+    if ($sshrootkeydir == 1) { # error return
+       my $rsp = {};
+       $rsp->{info}->[0] =
+        " sshkeydir attribute not defined for $zonename. Cannot remove it.";
+       xCAT::MsgUtils->message("I", $rsp, $callback);
+    } else {  # remove the keys  unless it is /root/.ssh
+       my $roothome = xCAT::Utils->getHomeDir("root");
+       $roothome .="\/.ssh";
+       if ($sshrootkeydir eq $roothome) {  # will not delete /root/.ssh
+           my $rsp = {};
+           $rsp->{info}->[0] =
+             "  $zonename sshkeydir is $roothome. This will not be deleted.";
+             xCAT::MsgUtils->message("I", $rsp, $callback);
+       } else {  # not roothome/.ssh
+         # check to see if id_rsa.pub is there. I don't want to remove the
+         # wrong directory
+         # if id_rsa.pub exists remove the files
+         # then remove the directory
+         if ( -e "$sshrootkeydir/id_rsa.pub") {
+           my $cmd= "rm -rf $sshrootkeydir";    
+           xCAT::Utils->runcmd($cmd,0);
+           if ($::RUNCMD_RC != 0)
+           {
+              my $rsp = {};
+              $rsp->{error}->[0] = "Command: $cmd failed";
+              xCAT::MsgUtils->message("E", $rsp, $callback);
+           }
+           my ($zonedir,$ssh)= split(/\.ssh/, $sshrootkeydir);
+           $cmd= "rmdir $zonedir";    
+           xCAT::Utils->runcmd($cmd,0);
+           if ($::RUNCMD_RC != 0)
+           {
+              my $rsp = {};
+              $rsp->{error}->[0] = "Command: $cmd failed";
+              xCAT::MsgUtils->message("E", $rsp, $callback);
+           }
+          } else {  #  no id_rsa.pub key will not remove the files
+              my $rsp = {};
+              $rsp->{info}->[0] = "$sshrootkeydir did not contain an id_rsa.pub key, will not remove files";
+              xCAT::MsgUtils->message("I", $rsp, $callback);
+          }
+       }
+    
+    }
 
-    #xCAT::MsgUtils->message("I", $rsp, $callback);
+    # open zone table and remove this entry
+    my $tab = xCAT::Table->new("zone");
+    if (!defined($tab)) {  
+       my $rsp = {};
+       $rsp->{error}->[0] =
+        " Failure opening the zone table.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+       return 1;
+    }
+    # remove the table entry
+    $tab->delEntries({zonename=>$zonename});
 
-    return 0;
+    # remove zonename and possibly group name (-g flag) from  any nodes defined in this zone
+    my $rc=rmnodesfromzone($request, $callback,$options);
+
+    return $rc;
+
 
 
 }
@@ -364,7 +460,7 @@ sub usage
             }
        }
     }
-    my $usagemsg .= $usagemsg1 .=  $usagemsg2 .= "\n";
+    my $usagemsg .= $usagemsg1 .=  $usagemsg2 ;
     if ($callback)
     {
         my $rsp = {};
@@ -506,7 +602,7 @@ sub updatezonetable
 #-------------------------------------------------------
 
 =head3   
-    updatenodelisttable 
+    addnodestozone 
     Add the new zonename attribute to any nodes in the noderange ( if a noderange specified) 
     Add zonename group to nodes in the noderange if -g flag. 
 
@@ -515,7 +611,7 @@ sub updatezonetable
 =cut
 
 #-------------------------------------------------------
-sub updatenodelisttable 
+sub addnodestozone 
 {
     my ($request, $callback,$options,$keydir) = @_;
     my $rc=0;
@@ -551,5 +647,48 @@ sub updatenodelisttable
     return  $rc;
 
 }
+#-------------------------------------------------------
+
+=head3   
+    rmnodesfromzone 
+    removes the zonename from all nodes with their zonename the input zone 
+    if -g, removes zonename group from all nodes defined with their zonename the input zone. 
+
+
+
+=cut
+
+#-------------------------------------------------------
+sub rmnodesfromzone 
+{
+    my ($request, $callback,$options) = @_;
+    my $zonename=$request->{zonename};
+    my $tab = xCAT::Table->new("nodelist");
+    if ($tab)
+    {
+      # read all the nodes with zonename
+      my @nodes = xCAT::Zone->getnodesinzone($callback,$zonename);
+      # if -g then remove the zonename  group attribute on each node
+      if ($$options{'assigngroup'}){
+         foreach my $node (@nodes) {
+             xCAT::TableUtils->rmnodegroups($node,$tab,$zonename);
+         }
+      }
+      # set the nodelist zonename to nothing
+      my $nozonename=""; 
+      $tab-> setNodesAttribs(\@nodes, { zonename => $nozonename  });
+      $tab->commit();
+      $tab->close();
+    } else {
+       my $rsp = {};
+       $rsp->{error}->[0] =
+        " Failure opening the nodelist table.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+       return 1;
+    }
+    return  0;
+
+}
+
 
 1;
