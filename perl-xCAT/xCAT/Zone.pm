@@ -328,14 +328,15 @@ sub usingzones
 
 =head3    getzoneinfo
     Arguments:
+     callback
      An array of nodes
     Returns:
      Hash array  by zonename point to the nodes in that zonename  and sshkeydir
-      zonename1 -> {nodelist} -> array of nodes in the zone
+      <zonename1> -> {nodelist} -> array of nodes in the zone
                  -> {sshkeydir} -> directory containing ssh RSA keys
                  -> {defaultzone} ->  is it the default zone             
     Example:
-     my %zonehash =xCAT::Zone->getNodeZones(@nodearray); 
+     my %zonehash =xCAT::Zone->getzoneinfo($callback,@nodearray); 
     Rules:
        If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
        If the nodes nodelist.zonename attribute is undefined:
@@ -420,5 +421,32 @@ sub getzoneinfo
     }   
  }
  return $zonehash;
+}
+#--------------------------------------------------------------------------------
+
+=head3    getnodesinzone
+    Arguments:
+     callback
+     zonename 
+    Returns:
+     Array of nodes 
+    Example:
+     my @nodes =xCAT::Zone->getnodesinzone($callback,$zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getnodesinzone 
+{
+ my ($class, $callback,$zonename) = @_;
+ my @nodes;
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my @nodelist=$nodelisttab->getAllAttribs('node','zonename');
+ # build the array of nodes in this zone
+ foreach my $nodename (@nodelist) {
+     if  ((defined($nodename->{'zonename'})) && ($nodename->{'zonename'} eq $zonename)) {
+       push @nodes,$nodename->{'node'};
+     }
+ }
+ return @nodes;
 }
 1;
