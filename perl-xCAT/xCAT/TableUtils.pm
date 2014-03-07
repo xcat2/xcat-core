@@ -2013,5 +2013,54 @@ sub updatenodegroups {
     @list = keys %saw;
     $tabhd->setNodeAttribs($node, {groups=>join(",",@list)});
 }
+#-----------------------------------------------------------------------------
+
+
+=head3 rmnodegroups
+    remove groups from the group attribute for the specified node
+
+    Arguments:
+      node
+      tabhd: the handler of 'nodelist' table, 
+      groups: the groups that need to be removed.
+              Can be an array or string. 
+    Globals:
+        none
+    Error:
+    Example:
+         xCAT::TableUtils->rmnodegroups($node, $tab, $groups);
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub rmnodegroups {
+    my ($class, $node, $tabhd, $groups) = @_;
+    my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
+    my @definedgroups;
+    my @removegroups;
+    my @newgroups;
+    if (defined($ent) and $ent->{groups}) {
+        push @definedgroups, split(/,/,$ent->{groups});
+    }   
+    if (ref($groups) eq 'ARRAY') {
+        push @removegroups, @$groups;
+    } else {
+        push @removegroups, split(/,/,$groups);
+    }
+    # take out any groups that match the input list of groups to remove
+    foreach my $dgrp (@definedgroups){
+       if (grep(/^$dgrp$/, @removegroups)) { # is the group to be removed
+          next;
+       } else {  # keep this group
+         push @newgroups,$dgrp;
+       } 
+    }
+    my %saw;
+    @saw{@newgroups} = ();
+    @newgroups = keys %saw;
+    
+    $tabhd->setNodeAttribs($node, {groups=>join(",",@newgroups)});
+}
 
 1;
