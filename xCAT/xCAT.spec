@@ -20,6 +20,8 @@ Source4: prescripts.tar.gz
 Source6: winpostscripts.tar.gz
 %endif
 
+Source7: xcat.conf.apach24
+
 Provides: xCAT = %{version}
 Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
@@ -29,6 +31,9 @@ Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
 Requires: httpd nfs-utils nmap bind perl(CGI)
+# on RHEL7, need to specify it explicitly
+Requires: net-tools
+Requires: /usr/bin/killall 
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
 Requires: /usr/sbin/dhcpd
 # On RHEL this pulls in openssh-server, on SLES it pulls in openssh
@@ -147,8 +152,10 @@ chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
 cd -
-cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
-cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf.apach22
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf.apach24
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf.apach22
+cp %{SOURCE7} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf.apach24
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -156,6 +163,22 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 
 %post
+#Apply the correct httpd/apache configuration file according to the httpd/apache version
+if expr match $(rpm -q --queryformat "%{VERSION}" httpd)  '^2.4[\.0-9]*$' >/dev/null 2>&1  
+then
+    ln -s -f /etc/httpd/conf.d/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf 
+else
+    ln -s -f /etc/httpd/conf.d/xcat.conf.apach22 /etc/httpd/conf.d/xcat.conf 
+fi
+
+
+if expr match $(rpm -q --queryformat "%{VERSION}" apache2)  '^2.4[\.0-9]*$' >/dev/null 2>&1  
+then
+    ln -s -f /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf 
+else
+    ln -s -f /etc/apache2/conf.d/xcat.conf.apach22 /etc/apache2/conf.d/xcat.conf 
+fi
+
 # create dir for the current pid
 mkdir -p /var/run/xcat
 
@@ -184,11 +207,16 @@ exit 0
 
 %clean
 
+
 %files
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
-/etc/httpd/conf.d/xcat.conf
-/etc/apache2/conf.d/xcat.conf
+/etc/httpd/conf.d/xcat.conf.apach22
+/etc/httpd/conf.d/xcat.conf.apach24
+
+/etc/apache2/conf.d/xcat.conf.apach22
+/etc/apache2/conf.d/xcat.conf.apach24
+
 /etc/xCATMN
 /install/postscripts
 /install/prescripts
@@ -198,7 +226,13 @@ exit 0
 %defattr(-,root,root)
 
 %postun
+
+
 if [ "$1" = "0" ]; then
+
+rm /etc/httpd/conf.d/xcat.conf 
+rm /etc/apache2/conf.d/xcat.conf
+
 %ifnos linux
 if grep "^xcatd" /etc/inittab >/dev/null
 then
