@@ -540,11 +540,16 @@ if ($::INITIALINSTALL || $::FORCE)
     elsif(-f "/etc/redhat-release")
     {
         $fwserv = "iptables";
+        if( -f "/usr/sbin/firewalld" )
+        {
+           $fwserv = "firewalld";
+        }
     }
     else
     {
         #Ubuntu: FIXME
     }
+
     if($fwserv)
     {
         my $cmd = "service $fwserv stop";
@@ -855,19 +860,21 @@ sub settunables
 {
    # tuning ARP on Linux
    # set for right now
-   my $cmd = "/bin/echo '1024' >/proc/sys/net/ipv4/neigh/default/gc_thresh1";
+ 
+   my $ECHO=xCAT::Utils->fullpathbin("echo");
+   my $cmd = "$ECHO '1024' >/proc/sys/net/ipv4/neigh/default/gc_thresh1";
    my $outref = xCAT::Utils->runcmd("$cmd", 0);
    if ($::RUNCMD_RC != 0)
    {
     xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
    }
-   $cmd = "/bin/echo '4096' >/proc/sys/net/ipv4/neigh/default/gc_thresh2";
+   $cmd = "$ECHO '4096' >/proc/sys/net/ipv4/neigh/default/gc_thresh2";
    my $outref = xCAT::Utils->runcmd("$cmd", 0);
    if ($::RUNCMD_RC != 0)
    {
     xCAT::MsgUtils->message( 'E', "Could not run $cmd.");
    }
-   $cmd = "/bin/echo '8192' >/proc/sys/net/ipv4/neigh/default/gc_thresh3";
+   $cmd = "$ECHO '8192' >/proc/sys/net/ipv4/neigh/default/gc_thresh3";
    my $outref = xCAT::Utils->runcmd("$cmd", 0);
    if ($::RUNCMD_RC != 0)
    {
@@ -1853,10 +1860,11 @@ sub setupLinuxexports
         # restart nfs
         my $cmd;
         my $os = xCAT::Utils->osver();
+        my $SERVICE = xCAT::Utils->fullpathbin("service");
         if ($os =~ /sles/) {
-           $cmd = "/sbin/service nfsserver restart";
+           $cmd = "$SERVICE nfsserver restart";
         } else {
-           $cmd = "/sbin/service nfs restart";
+           $cmd = "$SERVICE nfs restart";
         }
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -1868,10 +1876,11 @@ sub setupLinuxexports
             xCAT::MsgUtils->message('I', "NFS has been restarted.");
         }
 
+        my $CHKCONFIG=xCAT::Utils->fullpathbin("chkconfig");
         if ($os =~ /sles/) {
-          $cmd = "/sbin/chkconfig nfsserver on";
+          $cmd = "$CHKCONFIG nfsserver on";
         } else {
-          $cmd = "/sbin/chkconfig nfs on";
+          $cmd = "$CHKCONFIG nfs on";
         }  
         $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -1969,9 +1978,13 @@ sub setuphttp
     {    #for sles/ubuntu
         $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
     }
-    else
+    elsif  (-e "/etc/init.d/httpd") 
     {
         $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
+    }
+    else
+    {
+        $cmd = "service httpd stop; service httpd start";
     }
 
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
@@ -1996,10 +2009,26 @@ sub setuphttp
             $cmd = "/sbin/chkconfig apache2 on";
         }
     }
+#    elsif (-e "/sbin/chkconfig")
+#    {
+#        $cmd = "/sbin/chkconfig httpd on";
+#    }
+#    elsif (-e "/usr/sbin/chkconfig")
+#    {
+#        $cmd = "/usr/sbin/chkconfig httpd on";        
+#    }
+#    else
+#    {
+#        $cmd = "chkconfig httpd on";
+#    }
     else
     {
-        $cmd = "/sbin/chkconfig httpd on";
+         my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+         $cmd = "$CHKCONFIG httpd on";
     }
+    
+
+
     $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
