@@ -3446,4 +3446,45 @@ sub version_cmp {
     }
     return ( $len_a <=> $len_b )
 }
+
+#--------------------------------------------------------------------------------
+=head3    fullpathbin
+    returns the full path of a specified binary executable file
+    Arguments:
+      string of the bin file name
+    Returns:
+      string of the full path name of the binary executable file
+    Globals:
+        none
+    Error:
+      string of the bin file name in the argument
+    Example:
+         my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+    Comments:
+        none
+
+=cut
+#--------------------------------------------------------------------------------
+sub fullpathbin
+{
+  my $bin=shift;
+  if( $bin =~ /xCAT::Utils/)
+  {
+     $bin=shift;
+  }
+
+  my @paths= ("/bin","/usr/bin","/sbin","/usr/sbin");
+  my $fullpath=$bin;
+
+  foreach my $path (@paths)
+  {
+     if (-x $path.'/'.$bin)
+     {
+        $fullpath= $path.'/'.$bin;
+        last;
+     }
+  }
+
+  return $fullpath;
+}
 1;
