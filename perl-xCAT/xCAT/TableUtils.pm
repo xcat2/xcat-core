@@ -1999,7 +1999,7 @@ sub updatenodegroups {
         }
     }
     my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
-    my @list = qw(all);
+    my @list = ();
     if (defined($ent) and $ent->{groups}) {
         push @list, split(/,/,$ent->{groups});
     }   
