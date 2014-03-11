@@ -365,6 +365,7 @@ sub chzone
     # see if they asked to do anything
     if ((!($$options{'sshkeypath'})) && (!($$options{'gensshkeys'})) && 
        (!( $$options{'addnoderange'})) && (!( $$options{'rmnoderange'})) &&
+       (!( $$options{'defaultzone'})) &&
         (!($$options{'assigngroup'} )) && (!($$options{'sshbetweennodes'}))) {
         my $rsp = {};
         $rsp->{info}->[0] =
@@ -714,8 +715,8 @@ sub addtozonetable
 
 =head3   
     updatezonetable
-    change the zones in the zone table 
-
+    change either the sshbetweennodes or defaultzone  attribute
+    or generate new keys ( -k -K)
 
 
 =cut
@@ -724,10 +725,14 @@ sub addtozonetable
 sub updatezonetable 
 {
     my ($request, $callback,$options,$keydir) = @_;
-    my $rc=0;
-    my $zoneentry;
-    my $tab = xCAT::Table->new("zone");
-    if($tab) {
+    my $zoneentry; 
+    my $zonename=$request->{zonename};
+    # check for changes
+    if (($$options{'sshbetweennodes'}) || ( $$options{'defaultzone'}) ||
+       ($$options{'sshkeypath'}) || ($$options{'gensshkeys'})) { 
+
+      my $tab = xCAT::Table->new("zone");
+      if($tab) {
 
        # now add the users changes 
        my %tb_cols;
@@ -739,7 +744,6 @@ sub updatezonetable
        if ( $$options{'sshbetweennodes'}) {
         $tb_cols{sshbetweennodes} = $$options{'sshbetweennodes'};         
        }
-       my $zonename=$request->{zonename};
        # if --defaultzone
        if ( $$options{'defaultzone'}) {  # set the default
          # check to see if a default already defined
@@ -764,17 +768,22 @@ sub updatezonetable
                return 1;
             }
          }
-       } 
-    } else {
-       my $rsp = {};
-       $rsp->{error}->[0] =
+       } else { # not a default zone change, just commit the other changes
+         $tab->setAttribs({zonename => $zonename}, \%tb_cols);
+         $tab->commit();
+         $tab->close();
+       }
+      } else {
+         my $rsp = {};
+         $rsp->{error}->[0] =
         " Failure opening the zone table.";
-       xCAT::MsgUtils->message("E", $rsp, $callback);
-       return 1;
-    }
+         xCAT::MsgUtils->message("E", $rsp, $callback);
+         return 1;
+      }
+  }
 
      
-    return  $rc;
+  return  0;
 
 }
 #-------------------------------------------------------
