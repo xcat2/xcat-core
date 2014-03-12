@@ -97,10 +97,14 @@ sub process_request
     @ARGV = @{$args};    # get arguments
     # Get the zonename if it is in the input 
     my @SaveARGV = @ARGV;
-    my $zonename = @SaveARGV[0];  # here is the zonename, if there is one
-    if ($zonename) {   #  take zonename off the argument list so it will parse correctly
-       my $tmp = shift(@SaveARGV);
-       @ARGV = @SaveARGV;       
+    my $zonename;
+    my $arg= @SaveARGV[0];
+    if (!($arg =~ /-h/) && (!($arg =~ /-v/)))  {   # if not -h -v,then it must be a zone name 
+     $zonename = @SaveARGV[0];  # here is the zonename, if there is one
+     if ($zonename) {   #  take zonename off the argument list so it will parse correctly
+        my $tmp = shift(@SaveARGV);
+        @ARGV = @SaveARGV;       
+     }
     }
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
