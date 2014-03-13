@@ -1,0 +1,14 @@
+Source: xcat-openstack-baremetal
+Section: admin
+Priority: extra
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.4
+Homepage: http://xcat.sourceforge.net/
+#Vcs-Git: git://git.debian.org/collab-maint/xcat-openstack-baremetal.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/xcat-openstack-baremetal.git;a=summary
+
+Package: xcat-openstack-baremetal
+Architecture: all
+Depends: xCAT-client
+Description:  Executables and data of the xCAT baremetal driver for OpenStack
