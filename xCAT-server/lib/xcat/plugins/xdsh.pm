@@ -1061,7 +1061,7 @@ sub syncSNZoneKeys
     my $file="/tmp/xcatzonesynclist";
     # Run xdcp <servicenodes> -F /tmp/xcatzonesynclist 
     # can leave it , never changes and is built each time
-    my $content= "\"/etc/xcat/sshkeys/* -> /etc/xcat/sshkeys/\"";
+    my $content= "\"/etc/xcat/sshkeys/ -> /etc/xcat/sshkeys/\"";
     `echo $content  > $file`;
 
     # xdcp rsync the file 
@@ -1081,7 +1081,7 @@ sub syncSNZoneKeys
     @::good_SN = @sn;  # initialize all good
 
     # run the command to the servicenodes
-    # xdcp <sn>  -F <syncfile>
+    # xdcp <sn>  -o "--delete" -F <syncfile>
     my $addreq;
     $addreq->{'_xcatdest'}  = $::mnname;
     $addreq->{node}         = \@sn;
@@ -1092,6 +1092,8 @@ sub syncSNZoneKeys
        push (@{$addreq->{arg}},"--nodestatus"); # return nodestatus
     }
     push (@{$addreq->{arg}},"-v"); 
+    push (@{$addreq->{arg}},"-o"); 
+    push (@{$addreq->{arg}},"--delete");  # will cleanup the directory if zones are removed
     push (@{$addreq->{arg}},"-F"); 
     push (@{$addreq->{arg}},$file); 
     $addreq->{command}->[0] = "xdcp";  # input command is xdsh, but we need to run xdcp -F
