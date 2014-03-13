@@ -1,0 +1,5 @@
+xcat-openstack-baremetal (2.8.4-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- root <root@unknown>  Wed, 12 Mar 2014 01:47:54 -0700

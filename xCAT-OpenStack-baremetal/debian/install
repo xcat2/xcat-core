@@ -1,0 +1,6 @@
+lib/* opt/xcat/lib/
+share/xcat/openstack/postscripts/* opt/xcat/share/xcat/openstack/postscripts/
+share/man/man1/* opt/xcat/share/man/man1/
+share/doc/man1/*  opt/xcat/share/doc/man1/
+
+
