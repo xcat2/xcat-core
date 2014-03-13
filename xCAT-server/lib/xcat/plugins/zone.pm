@@ -377,6 +377,32 @@ sub chzone
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
     }
+    # test for -g, if no noderange (-r or -a) this is an error 
+    if ((( ! defined($$options{'addnoderange'}))&& ( ! defined($$options{'rmnoderange'}))) && ($$options{'assigngroup'})) {
+       my $rsp = {};
+       $rsp->{error}->[0] =
+        " The -g flag requires a noderange using the -a or -r option.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+       return 1;
+    }
+
+    #  if -r remove nodes from zone, check to see that they are a member of the zone
+    #  if not a member of the zone,  error out and do nothing
+    if ($$options{'rmnoderange'}){
+      my @nodes = xCAT::NodeRange::noderange($request->{noderange}->[0]);
+     
+      foreach my $node (@nodes) {
+        my $nodezonename=xCAT::Zone->getmyzonename($node);
+        if ($nodezonename ne $zonename) {
+            my $rsp = {};
+            $rsp->{error}->[0] =
+             " $node does not belong to the zone:$zonename. Rerun the chzone -r  command with only nodes in the noderange that are currently assigned to the zone.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }  
+       
+      }  
+    }  
     # get the zone ssh key directory. We don't have a good zone without it.
     my $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
     if ($sshrootkeydir == 1) { # error return
