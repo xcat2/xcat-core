@@ -81,4 +81,4 @@ Location of the rmzone command.
 
 =head1 B<SEE ALSO>
 
-L <xdsh(1)|xdsh.1>, L<updatenode(1)|updatenode.1>
+L <mkzone(1)|mkzone.1>,L <chzone(1)|chzone.1>,L <xdsh(1)|xdsh.1>, L<updatenode(1)|updatenode.1>
