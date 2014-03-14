@@ -538,7 +538,7 @@ sub processArgs
 
     # --nics is the equivalent of -i nicips,nichostnamesuffixes...
     if ($::opt_nics) {
-        $::opt_i="nicips,nichostnamesuffixes,nihostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
+        $::opt_i="nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
     }
 
     # -i and -s cannot be used together
@@ -3411,7 +3411,7 @@ sub defls
                     my $rsp;
                     $rsp->{data}->[0] =
                       "Could not find an object named \'$obj\' of type \'$type\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                     next;
                 }
              }
