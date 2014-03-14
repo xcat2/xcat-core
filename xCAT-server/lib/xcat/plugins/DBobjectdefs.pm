@@ -3408,7 +3408,7 @@ sub defls
                     my $rsp;
                     $rsp->{data}->[0] =
                       "Could not find an object named \'$obj\' of type \'$type\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                     next;
                 }
              }
