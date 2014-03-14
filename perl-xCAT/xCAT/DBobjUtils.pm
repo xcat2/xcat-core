@@ -2747,7 +2747,7 @@ sub collapsenicsattr()
         # e.g nicips.eth0
         # do not need to handle nic attributes without the postfix .ethx,
         # it will be overwritten by the attributes with the postfix .ethx,
-        if ($nodeattr =~ /^(nic\w+)\.(\w+)$/)
+        if ($nodeattr =~ /^(nic\w+)\.(.*)$/)
         {       
            if ($1 && $2)
            {       
