@@ -12,6 +12,7 @@ use IO::Socket::SSL;
 use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 
+#bmp: you need more comments in most of the file, especially in the handler routines
 
 #URIdef{node|network}->{allnode|nodeattr}
 
@@ -412,8 +413,34 @@ my %URIdef = (
         },
     },
 
-    #### definition for database resources
-    database => {
+    #### definition for database/table resources
+    table => {
+        table_nodes_allattr => {
+            desc => "[URI:/table/{table}/{noderange}] - The table resource",
+            matcher => '^\/table\/[^\/]*\/[^\/]*$',
+            GET => {
+                desc => "Get all the attibutes for noderange {noderange} of the table {table}.",
+                cmd => "getNodesAttribs",
+                fhandler => \&tablehdl,
+                outhdler => \&tableout,
+            },
+            PUT => {
+                desc => "Change the attibutes for the table {table}.",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+                #outhdler => \&defout,
+            },
+            POST => {
+                desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
+                cmd => "mkdef",
+                fhandler => \&defhdl,
+            },
+            DELETE => {
+                desc => "Remove the table {table}.",
+                cmd => "rmdef",
+                fhandler => \&defhdl,
+            },
+        },
     },
 
 );
@@ -472,10 +499,10 @@ my $q           = CGI->new;
 my $pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
 #my $requestType = $ENV{'REQUEST_METHOD'};
 my $requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
-my $queryString = $ENV{'QUERY_STRING'};     #todo: remove this when not used any more
+#my $queryString = $ENV{'QUERY_STRING'};     #todo: remove this when not used any more
 #my $userAgent = $ENV{'HTTP_USER_AGENT'};        # curl, etc.
 my $userAgent = $q->user_agent();        # the client program: curl, etc.
-my %queryhash;          # the queryString will get put into this
+#my %queryhash;          # the queryString will get put into this
 my @path = split(/\//, $pathInfo);
 #shift(@path);       # get rid of the initial /
 #my $resource    = $path[0];
@@ -514,7 +541,9 @@ if ($ARGV[0] eq "-h") {
 }
 
 my $JSON;       # global ptr to the json object.  Its set by loadJSON()
-if (isPut() || isPost()) { loadJSON(); }        # need to do this early, so we can fetch the params
+#if (isPut() || isPost()) {
+    loadJSON();        # need to do this early, so we can fetch the params
+#}
 
 # the input parameters from both the url and put/post data will combined and then
 # separated into the general params (not specific to the api call) and params specific to the call
@@ -533,27 +562,27 @@ $format = $generalparams->{format} if (defined ($generalparams->{format}));
 $pathInfo =~ s/\/$//;
 
 # Get the payload format from the end of URI
-if ($pathInfo =~ /\.json$/) {
-    $format = "json";
-    $pathInfo =~ s/\.json$//;
-} elsif ($pathInfo =~ /\.json.pretty$/) {
-    $format = "json";
-    $pretty = 1;
-    $pathInfo =~ s/\.json.pretty$//;
-} elsif ($pathInfo =~ /\.xml$/) {
-    $format = "xml";
-    $pathInfo =~ s/\.xml$//;
-} elsif ($pathInfo =~ /\.html$/) {
-    $format = "html";
-    $pathInfo =~ s/\.html$//;
-}
+#if ($pathInfo =~ /\.json$/) {
+#    $format = "json";
+#    $pathInfo =~ s/\.json$//;
+#} elsif ($pathInfo =~ /\.json.pretty$/) {
+#    $format = "json";
+#    $pretty = 1;
+#    $pathInfo =~ s/\.json.pretty$//;
+#} elsif ($pathInfo =~ /\.xml$/) {
+#    $format = "xml";
+#    $pathInfo =~ s/\.xml$//;
+#} elsif ($pathInfo =~ /\.html$/) {
+#    $format = "html";
+#    $pathInfo =~ s/\.html$//;
+#}
 
-if (!exists $formatters{$format}) {
-    error("The format '$format' is not supported",$STATUS_BAD_REQUEST);
-}
+#if (!exists $formatters{$format}) {
+#    error("The format '$format' is not supported",$STATUS_BAD_REQUEST);
+#}
 
 if ($format eq 'json') {
-    loadJSON();         # in case it was not loaded before
+#    loadJSON();         # in case it was not loaded before
     if ($generalparams->{pretty}) { $JSON->indent(1); }
 }
 
@@ -568,6 +597,7 @@ $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 # Match the first layer of resource URI
 my $uriLayer1;
 
+#bmp: why can't you just split on "/" like xcatws.cgi did?
 # Get all the layers in the URI
 my @layers;
 my $portion = index($pathInfo, '/');
@@ -596,24 +626,26 @@ if ($#layers < 0) {
 }
 
 # set the user and password to access xcatd
+#todo: replace with using certificates or an api key
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
 $request->{becomeuser}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
 
+# find and invoke the correct handler and output handler functions
 my $outputdata;
 my $handled;
 if (defined ($URIdef{$uriLayer1})) {
     # Make sure the resource has been defined
     foreach my $res (keys %{$URIdef{$uriLayer1}}) {
         my $matcher = $URIdef{$uriLayer1}->{$res}->{matcher};
+        #bmp: if you use m|$matcher| here instead then you won't need to escape all of the /'s ?
         if ($pathInfo =~ /$matcher/) {
             # matched to a resource
-            if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler})) {
+            if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler})) {    #bmp: if there isn't a handler, shouldn't we error out?
                  my $params;
-                 unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {
-                     addPageContent("request method '$requestType' is not supported on resource '$pathInfo'");
-                     sendResponseMsg($STATUS_NOT_ALLOWED);
+                 unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {       #bmp: how can this not be defined if we got here?
+                     error("request method '$requestType' is not supported on resource '$pathInfo'",$STATUS_NOT_ALLOWED);
                  }
                  $params->{'cmd'} = $URIdef{$uriLayer1}->{$res}->{$requestType}->{cmd} if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{cmd}));
                  $params->{'outputhdler'} = $URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler} if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler}));
@@ -626,7 +658,7 @@ if (defined ($URIdef{$uriLayer1})) {
                  $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler}->($params);
                  # Filter the output data from the response
                  $outputdata = filterData ($outputdata);
-                 # Resture the output data
+                 # Restructure the output data
                  if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler})) {
                      $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler}->($outputdata, $params);
                  } else {
@@ -642,18 +674,12 @@ if (defined ($URIdef{$uriLayer1})) {
         }
     }
 } else {
-    addPageContent("Unspported resource.");
-    sendResponseMsg($STATUS_NOT_FOUND);
+    error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
 unless ($handled) {
-    addPageContent("Unspported resource.");
-    sendResponseMsg($STATUS_NOT_FOUND);
+    error("Unspported resource1.",$STATUS_NOT_FOUND);
 }
-
-
-
-
 
 
 # all output has been added into the global varibale pageContent, call the response funcion
@@ -801,6 +827,8 @@ sub defout_1 {
     return \@output;
 }
 
+
+# invoke one of the def cmds
 sub defhdl {
     my $params = shift;
 
@@ -861,8 +889,7 @@ sub actionhdl {
             #my @v = keys(%$paramhash);
             push @args, $paramhash->{'action'};
         } else {
-            addPageContent("Missed Action.");
-            sendResponseMsg($STATUS_NOT_FOUND);
+            error("Missed Action.",$STATUS_NOT_FOUND);
         }
     }
 
@@ -871,6 +898,44 @@ sub actionhdl {
     my $responses = sendRequest($req);
 
     return $responses;
+}
+
+
+# get all attrs of 1 table for a noderange
+sub tablehdl {
+    my $params = shift;
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+
+    # the uri is /table/<tablename>/<noderange>
+    if (defined($urilayers[1])) { $request->{table} = $urilayers[1]; }
+    if (defined($urilayers[2])) { $request->{noderange} = $urilayers[2]; }
+
+    # attr=ALL means get all non-blank attributes
+    $request->{attr} = 'ALL';
+
+    my $req = genRequest();
+    my $responses = sendRequest($req, 1);
+
+    return $responses;
+}
+
+# parse the output of all attrs of 1 table for a noderange
+sub tableout {
+    my $data = shift;
+    my $json;
+    # each element is a hash with 1 key called "node" that has a 1 element array that has the node hash
+    foreach my $d (@$data) {
+        my $jsonnode = $d->{node};
+        debug(Dumper($d)); debug (Dumper($jsonnode));
+        if (!defined($jsonnode)) { error('improperly formatted output from xcatd', $STATUS_TEAPOT); }
+        push @$json, $jsonnode;
+    }
+    addPageContent($JSON->encode($json));
 }
 
 sub displayUsage {
@@ -897,16 +962,11 @@ sub displayUsage {
 
 
 
-
-
-
-
-
-
-
-
-# Format the output data the way the user requested.  All data wrapping and writing is funneled through here.
-# This will call one of the other wrap*() functions.
+# This handles and removes serverdone and error tags in the perl data structure that is from the xml that xcatd returned
+#bmp: is there a way to avoid make a copy of the whole response?  For big output that could be time consuming.
+#       For the error tag, you don't have to bother copying the response, because you are going to exit anyway.
+#       Maybe this function could just verify there is a serverdone and handle any error, and then
+#       let the output handler ignore the serverdone tag?
 sub filterData {
     my $data             = shift;
     my $errorInformation = '';
@@ -914,8 +974,8 @@ sub filterData {
     my $outputdata;
     #trim the serverdone message off
     foreach (@{$data}) {
-        if (defined ($_->{serverdone}) || defined($_->{error})) {
-            if (defined ($_->{serverdone}) && defined($_->{error})) {
+        if (exists($_->{serverdone}) || defined($_->{error})) {
+            if (exists($_->{serverdone}) && defined($_->{error})) {
                 $errorInformation = $_->{error}->[0];
                 addPageContent($q->p($errorInformation));
                 if (($errorInformation =~ /Permission denied/) || ($errorInformation =~ /Authentication failure/)) {
@@ -954,6 +1014,7 @@ sub wrapJson {
 }
 
 
+#bmp: this isn't used anymore, just here for reference, right?
 # structure the json output for node resource api calls
 sub wrapJsonNodes {
     # this is an array of responses from xcatd.  Often all the output comes back in 1 response, but not always.
@@ -1114,6 +1175,7 @@ sub genRequest {
 # The response returned to the caller of this function has already been converted from xml to perl structure.
 sub sendRequest {
     my $request = shift;
+    my $noarray = shift;        # optional arg to not set ForceArray on the XMLin() call
     my $sitetab;
     my $retries = 0;
 
@@ -1173,9 +1235,12 @@ sub sendRequest {
                 #addPageContent("DEBUG: response from xcatd: " . $response . "\n");
             }
             $response =~ s/\e/xxxxESCxxxx/g;
+            debug("response xml=$response");
 
-            #print "responseXML is ".$response;
-            $rsp = XML::Simple::XMLin($response, SuppressEmpty => undef, ForceArray => 1);
+            #bmp: i added the $noarray option because for the table output it saved me processing if everything
+            #       wasn't forced into arrays.  Consider if that could save you processing on other api calls too.
+            $rsp = XML::Simple::XMLin($response, SuppressEmpty => undef, ForceArray => (!$noarray));
+            debug(Dumper($rsp));
 
             #add ESC back
             foreach my $key (keys %$rsp) {
@@ -1192,7 +1257,7 @@ sub sendRequest {
 
             $response = '';
             push(@$fullResponse, $rsp);
-            if ($rsp->{serverdone}) {
+            if (exists($rsp->{serverdone})) {
                 $cleanexit = 1;
                 last;
             }
@@ -1210,7 +1275,7 @@ sub sendRequest {
 
 # Put input parameters from both $q->url_param and put/post data (if it exists) into generalparams and paramhash for all to use
 sub fetchParameters {
-    my @generalparamlist = qw(userName password format pretty debug);
+    my @generalparamlist = qw(userName password pretty debug);
     # 1st check for put/post data and put that in the hash
     my $pdata;
     if (isPut()) { $pdata = $q->param('PUTDATA'); }
@@ -1261,14 +1326,15 @@ sub loadJSON {
 }
 
 # add a error msg to the output in the correct format and end this request
-#todo: replace all addPageContent/sendResponseMsg pairs to call this function instead
 sub error {
     my ($msg, $errorcode) = @_;
     my $severity = 'error';
     my $m;
-    if ($format eq 'xml') { $m = "<$severity>$msg</$severity>\n"; }
-    elsif ($format eq 'json') { $m = qq({"$severity":"$msg"}\n); }
-    else { $m = "<p>$severity: $msg</p>\n"; }
+    #if ($format eq 'xml') { $m = "<$severity>$msg</$severity>\n"; }
+    #elsif ($format eq 'json') {
+        $m = qq({"$severity":"$msg"}\n);
+    #}
+    #else { $m = "<p>$severity: $msg</p>\n"; }
     addPageContent($m);
     sendResponseMsg($errorcode);
 }
@@ -1290,7 +1356,7 @@ sub displaydebugmsg {
     addPageContent($q->p("DEBUG: generalparams:". Dumper($generalparams)));
     addPageContent($q->p("DEBUG: paramhash:". Dumper($paramhash)));
     addPageContent($q->p("DEBUG: q->request_method: $requestType\n"));
-    addPageContent($q->p("DEBUG: q->user_agent: $userAgent\n"));
+    #addPageContent($q->p("DEBUG: q->user_agent: $userAgent\n"));
     addPageContent($q->p("DEBUG: pathInfo: $pathInfo\n"));
     #addPageContent($q->p("DEBUG: path " . Dumper(@path) . "\n"));
     #foreach (keys(%ENV)) { addPageContent($q->p("DEBUG: ENV{$_}: $ENV{$_}\n")); }
@@ -1300,5 +1366,20 @@ sub displaydebugmsg {
     addPageContent("\n");
     if ($DEBUGGING == 3) {
         sendResponseMsg($STATUS_OK);     # this will also exit
+    }
+}
+
+
+# push flags (options) onto the xcatd request.  Arguments: request args array, flags array.
+# Format of flags array: <urlparam-name> <xdsh-cli-flag> <if-there-is-associated-value>
+# Use this function for cmds with a lot of flags like xdcp and xdsh
+sub pushFlags {
+    my ($args, $flags) = @_;
+    foreach my $f (@$flags) {
+        my ($key, $flag, $arg) = @$f;
+        if (defined($paramhash->{$key})) {
+            push @$args, $flag;
+            if ($arg) { push @$args, $paramhash->{$key}; }
+        }
     }
 }
