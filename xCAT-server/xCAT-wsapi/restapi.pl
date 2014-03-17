@@ -79,25 +79,26 @@ my %URIdef = (
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change power status for the node {nodename}. DataBody: {on|off|reset ...}.",
+                desc => "Change power status for the node {nodename}. DataBody: {action:on|off|reset ...}.",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             }
         },
         energy => {
-            disable => 1,
             desc => "[URI:/node/{nodename}/energy] - The energy resource for the node {nodename}",
             matcher => '^\/node\/[^\/]*/energy$',
             GET => {
                 desc => "Get the energy status for the node {nodename}.",
                 cmd => "renergy",
-                fhandler => \&energyhdl,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
-            BACKUP => {
-                desc => "Change energy status for the node {nodename}. DataBody: {cappingstatus:on ...}.",
-                cmd => "cddef",
-                fhandler => \&energyhdl,
+            PUT => {
+                desc => "Change energy attributes for the node {nodename}. DataBody: {cappingstatus:on ...}.",
+                cmd => "renergy",
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             }
         },
         energyattr => {
@@ -107,12 +108,14 @@ my %URIdef = (
             GET => {
                 desc => "Get the specific energy attributes cappingmaxmin,cappingstatus,cappingvalue for the node {nodename}.",
                 cmd => "renergy",
-                fhandler => \&energyhdl,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
                 desc => "Change energy attributes for the node {nodename}. DataBody: {cappingstatus:on ...}.",
                 cmd => "renergy",
-                fhandler => \&energyhdl,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             }
         },
         serviceprocessor => {
@@ -140,38 +143,40 @@ my %URIdef = (
                 fhandler => \&common,
             },
         },
-        nextbootorder => {
-            disable => 1,
-            desc => "[URI:/node/{nodename}/nextbootorder] - The next boot order for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/nextbootorder$',
+        nextboot => {
+            desc => "[URI:/node/{nodename}/nextboot] - The boot order in next boot for the node {nodename}",
+            matcher => '^\/node\/[^\/]*/nextboot$',
             GET => {
                 desc => "Get the next boot order.",
                 cmd => "rsetboot",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change the next boot order. DataBody: {net,hd}.",
+                desc => "Change the next boot order. DataBody: {order:net}.",
                 cmd => "rsetboot",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             }
         },
         bootorder => {
-            disable => 1,
             desc => "[URI:/node/{nodename}/bootorder] - The boot order for the node {nodename}",
             matcher => '^\/node\/[^\/]*/bootorder$',
             GET => {
                 desc => "Get the boot order.",
                 cmd => "rbootseq",
-                fhandler => \&power,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change the boot order. DataBody: {net,hd}.",
+                desc => "Change the boot order. DataBody: {\"order\":\"net,hd\"}.",
                 cmd => "rbootseq",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             }
         },
         vitals => {
-            desc => "[URI:/node/{nodename}/vital] - The vitals attributes for the node {nodename}",
+            desc => "[URI:/node/{nodename}/vitals] - The vitals attributes for the node {nodename}",
             matcher => '^\/node\/[^\/]*/vitals$',
             GET => {
                 desc => "Get all the vitals attibutes.",
@@ -182,8 +187,8 @@ my %URIdef = (
         },
         vitalsattr => {
             disable => 1,
-            desc => "[URI:/node/{nodename}/vital/{temp;voltage;wattage;fanspeed;power;leds...}] - The specific vital attributes for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/vitalattr/\S+$',
+            desc => "[URI:/node/{nodename}/vitals/{temp|voltage|wattage|fanspeed|power|leds...}] - The specific vital attributes for the node {nodename}",
+            matcher => '^\/node\/[^\/]*/vitals/\S+$',
             GET => {
                 desc => "Get the specific vital attibutes.",
                 cmd => "rvitals",
@@ -207,7 +212,8 @@ my %URIdef = (
             GET => {
                 desc => "Get the specific inventory attibutes.",
                 cmd => "rinv",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
         },
         eventlog => {
@@ -354,25 +360,31 @@ my %URIdef = (
                 fhandler => \&common,
             },
         },
-        nodeprovision => {
-            desc => "[URI:/node/{nodename}/provision] - The provisioning resource for node {nodename}.",
-            matcher => '^\/node\/[^\/]*/provision$',
+        bootstat => {
+            desc => "[URI:/node/{nodename}/bootstat] - The boot state resource for node {nodename}.",
+            matcher => '^\/node\/[^\/]*/bootstat$',
             GET => {
-                desc => "Get get provisioning status.",
+                desc => "Get boot state.",
                 cmd => "nodeset",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
-                desc => "Set the provisioning status. DataBody: {osimage:xxx}",
+                desc => "Set the boot state. DataBody: {osimage:xxx}",
                 cmd => "nodeset",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
         },
 
 
         # TODO: rflash
     },
-   
+
+    #### definition for group resources
+    group => {
+    },
+    
     #### definition for network resources
     network => {
         network => {
@@ -383,7 +395,12 @@ my %URIdef = (
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
-            }
+            },
+            POST => {
+                desc => "Create the network resources base on the network configuration on xCAT MN.",
+                cmd => "makenetworks",
+                fhandler => \&defhdl,
+            },
         },
         network_allattr => {
             desc => "[URI:/network/{netname}] - The network resource",
@@ -398,7 +415,6 @@ my %URIdef = (
                 desc => "Change the attibutes for the network {netname}.",
                 cmd => "chdef",
                 fhandler => \&defhdl,
-                #outhdler => \&defout,
             },
             POST => {
                 desc => "Create the network {netname}. DataBody: {attr1:v1,att2:v2...}.",
@@ -411,7 +427,112 @@ my %URIdef = (
                 fhandler => \&defhdl,
             },
         },
+        network_attr => {
+            desc => "[URI:/network/{netname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
+            matcher => '^\/network\/[^\/]*/attr/\S+$',
+            GET => {
+                desc => "Get the specific attributes for the network {netname}.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+            PUT => {
+                desc => "Change attributes for the network {netname}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+            }
+        },
+
     },
+
+    #### definition for osimage resources
+    osimage => {
+        osimage => {
+            desc => "[URI:/osimage] - The osimage resource.",
+            matcher => '^\/osimage$',
+            GET => {
+                desc => "Get all the osimage in xCAT.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout_remove_appended_type,
+            },
+            POST => {
+                desc => "Create the osimage resources base on the iso specified in the Data body. DataBody: {isopath: path}",
+                cmd => "copycds",
+                fhandler => \&defhdl,
+            },
+        },
+        osimage_allattr => {
+            desc => "[URI:/osimage/{osname}] - The osimage resource",
+            matcher => '^\/osimage\/[^\/]*$',
+            GET => {
+                desc => "Get all the attibutes for the osimage {osname}.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+            PUT => {
+                desc => "Change the attibutes for the osimage {osname}.",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+            },
+            POST => {
+                desc => "Create the osimage {osname}. DataBody: {attr1:v1,att2:v2...}.",
+                cmd => "mkdef",
+                fhandler => \&defhdl,
+            },
+            DELETE => {
+                desc => "Remove the osimage {osname}.",
+                cmd => "rmdef",
+                fhandler => \&defhdl,
+            },
+        },
+        osimage_attr => {
+            desc => "[URI:/osimage/{osname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the osimage {osname}",
+            matcher => '^\/osimage\/[^\/]*/attr/\S+$',
+            GET => {
+                desc => "Get the specific attributes for the osimage {osname}.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+            PUT => {
+                desc => "Change attributes for the osimage {osname}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+            }
+        },
+
+        # todo: genimage, packimage, imagecapture, imgexport, imgimport
+    },
+
+    #### definition for global setting resources
+    site => {
+        site => {
+            desc => "[URI:/globalconf] - The global configuration resource.",
+            matcher => '^\/globalconf$',
+            GET => {
+                desc => "Get all the configuration in global.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout_remove_appended_type,
+            },
+        },
+        site => {
+            desc => "[URI:/globalconf/attr/{attr1;attr2 ...}] - The specific global configuration resource.",
+            matcher => '^\/globalconf/attr/\S+$',
+            GET => {
+                desc => "Get the specific configuration in global.",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout_remove_appended_type,
+            },
+            PUT => {
+            },
+        },
+    },
+    
+    #### definition for database/table resources
 
     #### definition for database/table resources
     table => {
@@ -678,7 +799,7 @@ if (defined ($URIdef{$uriLayer1})) {
 }
 
 unless ($handled) {
-    error("Unspported resource1.",$STATUS_NOT_FOUND);
+    error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
 
@@ -779,13 +900,15 @@ sub actionout {
         } else {
             next;
         }
-        if (defined ($d->{node}->[0]->{data}->[0]->{contents})) {
+        if (defined ($d->{node}->[0]->{data}) && ! defined($d->{node}->[0]->{data}->[0]->{contents})) {
+            $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0];
+        } elsif (defined ($d->{node}->[0]->{data}->[0]->{contents})) {
             if (defined($d->{node}->[0]->{data}->[0]->{desc})) {
                 $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$d->{node}->[0]->{data}->[0]->{desc}->[0]} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
             } else {
                 $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
             }
-        }
+        } 
     }
 
     foreach (keys %{$jsonnode}) {
@@ -890,6 +1013,44 @@ sub actionhdl {
             push @args, $paramhash->{'action'};
         } else {
             error("Missed Action.",$STATUS_NOT_FOUND);
+        }
+    } elsif  ($params->{'resourcename'} =~ /(energy|energyattr)/) {
+        if (isGET()) {
+            if ($params->{'resourcename'} eq "energy") {
+                push @args, 'all';
+            } elsif ($params->{'resourcename'} eq "energyattr") {
+                my @attrs = split(';', $urilayers[3]);
+                push @args, @attrs;
+            }
+        } elsif ($paramhash) {
+            my @params = keys(%$paramhash);
+            push @args, "$params[0]=$paramhash->{$params[0]}";
+        } else {
+            error("Missed Action.",$STATUS_NOT_FOUND);
+        }
+    } elsif  ($params->{'resourcename'}eq "bootstat") {
+        if (isGET()) {
+            push @args, 'stat';
+        } elsif ($paramhash->{'action'}) {
+            push @args, $paramhash->{'action'};
+        } elsif ($paramhash) {
+            my @params = keys(%$paramhash);
+            push @args, "$params[0]=$paramhash->{$params[0]}";
+        } else {
+            error("Missed Action.",$STATUS_NOT_FOUND);
+        }
+    } elsif  ($params->{'resourcename'} eq "nextboot") {
+        if (isGET()) {
+            push @args, 'stat';
+        } elsif ($paramhash->{'order'}) {
+            push @args, $paramhash->{'order'};
+        } else {
+            error("Missed Action.",$STATUS_NOT_FOUND);
+        }
+    } elsif ($params->{'resourcename'} =~ /(vitals|vitalsattr|inventory|inventoryattr)/) {
+        if (defined($urilayers[3])) {
+            my @attrs = split(';', $urilayers[3]);
+            push @args, @attrs;
         }
     }
 
