@@ -8,7 +8,6 @@ B<mkzone> <zonename>  [B<--defaultzone>] [B<-k> I<full path to the ssh RSA priva
 
 B<mkzone> [B<-h> | B<-v>]
 
-
 =head1 B<DESCRIPTION>
 
 The B<mkzone> command is designed to divide the xCAT cluster into multiple zones. The nodes in each zone will share common root ssh keys. This allows the nodes in a zone to be able to as root ssh to each other without password, but cannot do the same to any node in another zone. All zones share a common xCAT Management Node and database including the site table, which defines the attributes of the entire cluster.
@@ -64,9 +63,7 @@ Used with the (-a) flag to create the group zonename for all nodes in the input 
 
 Verbose mode.
 
-
 =back
-
 
 =head1 B<Examples>
 
@@ -110,7 +107,7 @@ B<mkzone> I<zone4>  -a compute4  -g
 To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
 
 B<mkzone> I<zone5>  -a compute5  -g -s no
- 
+
 =back
 
 B<Files>
