@@ -1080,7 +1080,9 @@ sub tablehdl {
     $request->{attr} = 'ALL';
 
     my $req = genRequest();
-    my $responses = sendRequest($req, 1);
+    # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
+    # out of the node hash and make it the key
+    my $responses = sendRequest($req, {SuppressEmpty => undef, ForceArray => 0, KeyAttr => []});
 
     return $responses;
 }
@@ -1089,12 +1091,18 @@ sub tablehdl {
 sub tableout {
     my $data = shift;
     my $json;
-    # each element is a hash with 1 key called "node" that has a 1 element array that has the node hash
+    # For the table calls, we turn off ForceArray and KeyAttr for XMLin(), so the output is a little
+    # different than usual.
+    # each element is a hash with 1 key called "node" that has either: an array of node hashes,
+    # or (if there is only 1 node returned) the node hash directly.
     foreach my $d (@$data) {
         my $jsonnode = $d->{node};
-        debug(Dumper($d)); debug (Dumper($jsonnode));
-        if (!defined($jsonnode)) { error('improperly formatted output from xcatd', $STATUS_TEAPOT); }
-        push @$json, $jsonnode;
+        #debug(Dumper($d)); debug (Dumper($jsonnode));
+        if (ref($jsonnode) eq 'HASH') { push @$json, $jsonnode; }       # 1 node
+        elsif (ref($jsonnode) eq 'ARRAY') {         # an array of nodes
+            foreach my $n (@$jsonnode) { push @$json, $n; }
+        }
+        else { error('improperly formatted output from xcatd', $STATUS_TEAPOT); }
     }
     addPageContent($JSON->encode($json));
 }
@@ -1336,7 +1344,7 @@ sub genRequest {
 # The response returned to the caller of this function has already been converted from xml to perl structure.
 sub sendRequest {
     my $request = shift;
-    my $noarray = shift;        # optional arg to not set ForceArray on the XMLin() call
+    my $xmlinoptions = shift;        # optional arg to not set ForceArray on the XMLin() call
     my $sitetab;
     my $retries = 0;
 
@@ -1398,10 +1406,11 @@ sub sendRequest {
             $response =~ s/\e/xxxxESCxxxx/g;
             debug("response xml=$response");
 
-            #bmp: i added the $noarray option because for the table output it saved me processing if everything
+            #bmp: i added the $xmlinoptions var because for the table output it saved me processing if everything
             #       wasn't forced into arrays.  Consider if that could save you processing on other api calls too.
-            $rsp = XML::Simple::XMLin($response, SuppressEmpty => undef, ForceArray => (!$noarray));
-            debug(Dumper($rsp));
+            if (!$xmlinoptions) { $xmlinoptions = {SuppressEmpty => undef, ForceArray => 1}; }
+            $rsp = XML::Simple::XMLin($response, %$xmlinoptions);
+            #debug(Dumper($rsp));
 
             #add ESC back
             foreach my $key (keys %$rsp) {
