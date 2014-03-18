@@ -549,13 +549,39 @@ my %URIdef = (
 
     #### definition for database/table resources
     table => {
-        table_nodes_allattr => {
-            desc => "[URI:/table/{table}/{noderange}] - The table resource",
-            matcher => '^\/table\/[^\/]*\/[^\/]*$',
+        table_nodes => {
+            desc => "[URI:/table/{tablelist}/node/{noderange}/{attrlist}] - The node table resource",
+            matcher => '^/table/[^/]+/node(/[^/]+){0,2}$',
             GET => {
-                desc => "Get all the attibutes for noderange {noderange} of the table {table}.",
-                cmd => "getNodesAttribs",
-                fhandler => \&tablehdl,
+                desc => "Get attibutes for noderange {noderange} of the table {table}.",
+                cmd => "getTablesNodesAttribs",     # not used
+                fhandler => \&tablenodehdl,
+                outhdler => \&tableout,
+            },
+            PUT => {
+                desc => "Change the attibutes for the table {table}.",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+                #outhdler => \&defout,
+            },
+            POST => {
+                desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
+                cmd => "mkdef",
+                fhandler => \&defhdl,
+            },
+            DELETE => {
+                desc => "Remove the table {table}.",
+                cmd => "rmdef",
+                fhandler => \&defhdl,
+            },
+        },
+        table_rows => {
+            desc => "[URI:/table/{tablelist}/row/{keys}/{attrlist}] - The non-node table resource",
+            matcher => '^/table/[^/]+/row(/[^/]+){0,2}$',
+            GET => {
+                desc => "Get attibutes for rows of the table {table}.",
+                cmd => "getTablesAllRowAttribs",        # not used
+                fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
             PUT => {
@@ -775,7 +801,7 @@ if (defined ($URIdef{$uriLayer1})) {
     foreach my $res (keys %{$URIdef{$uriLayer1}}) {
         my $matcher = $URIdef{$uriLayer1}->{$res}->{matcher};
         #bmp: if you use m|$matcher| here instead then you won't need to escape all of the /'s ?
-        if ($pathInfo =~ /$matcher/) {
+        if ($pathInfo =~ m|$matcher|) {
             # matched to a resource
             if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler})) {    #bmp: if there isn't a handler, shouldn't we error out?
                  my $params;
@@ -1090,22 +1116,52 @@ sub actionhdl {
 }
 
 
-# get all attrs of 1 table for a noderange
-sub tablehdl {
+# get attrs of tables for a noderange
+sub tablenodehdl {
     my $params = shift;
 
     my @args;
     my @urilayers = @{$params->{'layers'}};
+    # the array elements for @urilayers are:
+    # 0 - 'table'
+    # 1 - <tablelist>
+    # 2 - 'node'
+    # 3 - <noderange>  (optional)
+    # 4 - <attrlist>  (optional)
 
     # set the command name
-    $request->{command} = $params->{'cmd'};
+    my @tables = split(/,/, $urilayers[1]);
 
-    # the uri is /table/<tablename>/<noderange>
-    if (defined($urilayers[1])) { $request->{table} = $urilayers[1]; }
-    if (defined($urilayers[2])) { $request->{noderange} = $urilayers[2]; }
+    if (!defined($urilayers[3]) || $urilayers[3] eq 'ALLNODES') {
+        $request->{command} = 'getTablesAllNodeAttribs';
+    } else {
+        $request->{command} = 'getTablesNodesAttribs';
+        $request->{noderange} = $urilayers[3];
+    }
 
-    # attr=ALL means get all non-blank attributes
-    $request->{attr} = 'ALL';
+    # if they specified attrs, sort/group them by table
+    my $attrlist = $urilayers[4];
+    if (!defined($attrlist)) { $attrlist = 'ALL'; }       # attr=ALL means get all non-blank attributes
+    my @attrs = split(/,/, $attrlist);
+    my %attrhash;
+    foreach my $a (@attrs) {
+        if ($a =~ /\./) {
+            my ($table, $attr) = split(/\./, $a);
+            push @{$attrhash{$table}}, $attr;
+        }
+        else {      # the attr doesn't have a table qualifier so apply to all tables
+            foreach my $t (@tables) { push @{$attrhash{$t}}, $a; }
+        }
+    }
+
+    # deal with all of the tables and the attrs for each table
+    foreach my $tname (@tables) {
+        my $table = { tablename => $tname };
+        if (defined($attrhash{$tname})) { $table->{attr} = $attrhash{$tname}; }
+        else { $table->{attr} = 'ALL'; }
+        push @{$request->{table}}, $table;
+    }
+
 
     my $req = genRequest();
     # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
@@ -1115,22 +1171,104 @@ sub tablehdl {
     return $responses;
 }
 
-# parse the output of all attrs of 1 table for a noderange
+
+# get attrs of tables for keys
+sub tablerowhdl {
+    my $params = shift;
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    # the array elements for @urilayers are:
+    # 0 - 'table'
+    # 1 - <tablelist>
+    # 2 - 'row'
+    # 3 - <key-val-list>  (optional)
+    # 4 - <attrlist>  (optional)
+
+    # do stuff that is common between getAttribs and getTablesAllRowAttribs
+    my @tables = split(/,/, $urilayers[1]);
+    my $attrlist = $urilayers[4];
+    if (!defined($attrlist)) { $attrlist = 'ALL'; }       # attr=ALL means get all non-blank attributes
+    my @attrs = split(/,/, $attrlist);
+
+    # get all rows for potentially multiple tables
+    if (!defined($urilayers[3]) || $urilayers[3] eq 'ALLROWS') {
+        $request->{command} = 'getTablesAllRowAttribs';
+
+        # if they specified attrs, sort/group them by table
+        my %attrhash;
+        foreach my $a (@attrs) {
+            if ($a =~ /\./) {
+                my ($table, $attr) = split(/\./, $a);
+                push @{$attrhash{$table}}, $attr;
+            }
+            else {      # the attr doesn't have a table qualifier so apply to all tables
+                foreach my $t (@tables) { push @{$attrhash{$t}}, $a; }
+            }
+        }
+
+        # deal with all of the tables and the attrs for each table
+        foreach my $tname (@tables) {
+            my $table = { tablename => $tname };
+            if (defined($attrhash{$tname})) { $table->{attr} = $attrhash{$tname}; }
+            else { $table->{attr} = 'ALL'; }
+            push @{$request->{table}}, $table;
+        }
+    }
+
+    # for 1 table, get just one row based on the keys given
+    else {
+        if (scalar(@tables) > 1) { error('currently you can only specify keys for a single table.', $STATUS_BAD_REQUEST); }
+        $request->{command} = 'getAttribs';
+        $request->{table} = $tables[0];
+        if (defined($urilayers[3])) {
+            my @keyvals = split(/,/, $urilayers[3]);
+            foreach my $kv (@keyvals) {
+                my ($key, $value) = split(/\s*=\s*/, $kv, 2);
+                $request->{keys}->{$key} = $value; 
+            }
+        }
+        foreach my $a (@attrs) { push @{$request->{attr}}, $a; }
+    }
+
+    my $req = genRequest();
+    # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
+    # out of the node hash and make it the key
+    my $responses = sendRequest($req, {SuppressEmpty => undef, ForceArray => 0, KeyAttr => []});
+
+    return $responses;
+}
+
+# parse the output of all attrs of tables.  This is used for both node-oriented tables
+# and non-node-oriented tables.
+#todo: investigate a converter straight from xml to json
 sub tableout {
     my $data = shift;
-    my $json;
-    # For the table calls, we turn off ForceArray and KeyAttr for XMLin(), so the output is a little
-    # different than usual.
-    # each element is a hash with 1 key called "node" that has either: an array of node hashes,
+    my $json = {};
+    # For the table calls, we turned off ForceArray and KeyAttr for XMLin(), so the output is a little
+    # different than usual.  Each element is a hash with key "table" that is either a hash or array of hashes.
+    # Each element of that is a hash with 2 keys called "tablename" and "node". The latter has either: an array of node hashes,
     # or (if there is only 1 node returned) the node hash directly.
+    # We are producing json that is a hash of table name keys that each have an array of node objects.
     foreach my $d (@$data) {
-        my $jsonnode = $d->{node};
-        #debug(Dumper($d)); debug (Dumper($jsonnode));
-        if (ref($jsonnode) eq 'HASH') { push @$json, $jsonnode; }       # 1 node
-        elsif (ref($jsonnode) eq 'ARRAY') {         # an array of nodes
-            foreach my $n (@$jsonnode) { push @$json, $n; }
+        my $table = $d->{table};
+        if (!defined($table)) {     # special case for the getAttribs cmd
+            $json = $d;
+            last;
         }
-        else { error('improperly formatted output from xcatd', $STATUS_TEAPOT); }
+        #debug(Dumper($d)); debug (Dumper($jsonnode));
+        if (ref($table) eq 'HASH') { $table = [$table]; }       # if a single table, make it a 1 element array of tables
+        foreach my $t (@$table) {
+            my $jsonnodes = [];         # start an array of node objects for this table
+            my $tabname = $t->{tablename};
+            if (!defined($tabname)) { $tabname = 'unknown' . $::i++; }       #todo: have lissa fix this bug
+            $json->{$tabname} = $jsonnodes;           # add it into the top level hash
+            my $node = $t->{node};
+            if (!defined($node)) { $node = $t->{row}; }
+            #debug(Dumper($d)); debug (Dumper($jsonnode));
+            if (ref($node) eq 'HASH') { $node = [$node]; }       # if a single node, make it a 1 element array of nodes
+            foreach my $n (@$node) { push @$jsonnodes, $n; }
+        }
     }
     addPageContent($JSON->encode($json));
 }
@@ -1162,18 +1300,20 @@ sub displayUsage {
 #bmp: is there a way to avoid make a copy of the whole response?  For big output that could be time consuming.
 #       For the error tag, you don't have to bother copying the response, because you are going to exit anyway.
 #       Maybe this function could just verify there is a serverdone and handle any error, and then
-#       let the output handler ignore the serverdone tag?
+#       let each specific output handler ignore the serverdone tag?
 sub filterData {
     my $data             = shift;
     my $errorInformation = '';
+    #debugandexit(Dumper($data));
 
     my $outputdata;
     #trim the serverdone message off
     foreach (@{$data}) {
         if (exists($_->{serverdone}) || defined($_->{error})) {
             if (exists($_->{serverdone}) && defined($_->{error})) {
-                $errorInformation = $_->{error}->[0];
-                addPageContent($q->p($errorInformation));
+                if (ref($_->{error}) eq 'ARRAY') { $errorInformation = $_->{error}->[0]; }
+                else { $errorInformation = $_->{error}; }
+                addPageContent(qq({"error":"$errorInformation"}));
                 if (($errorInformation =~ /Permission denied/) || ($errorInformation =~ /Authentication failure/)) {
                     sendResponseMsg($STATUS_UNAUTH);
                 }
@@ -1358,6 +1498,7 @@ sub sendResponseMsg {
         $tempFormat = 'text/html';
     }
     print $q->header(-status => $code, -type => $tempFormat);
+    if ($pageContent) { $pageContent .= "\n"; }     # if there is any content, append a newline
     print $pageContent;
     exit(0);
 }
@@ -1540,7 +1681,7 @@ sub error {
     my $m;
     #if ($format eq 'xml') { $m = "<$severity>$msg</$severity>\n"; }
     #elsif ($format eq 'json') {
-        $m = qq({"$severity":"$msg"}\n);
+        $m = qq({"$severity":"$msg"});
     #}
     #else { $m = "<p>$severity: $msg</p>\n"; }
     addPageContent($m);
@@ -1556,7 +1697,7 @@ sub debug {
 
 # when having bugs that cause this cgi to not produce any output, output something and then exit.
 sub debugandexit {
-    addPageContent("$_[0]\n");
+    debug("$_[0]\n");
     sendResponseMsg($STATUS_OK);
 }
 

@@ -117,7 +117,7 @@ curl -# -X POST -k "https://127.0.0.1/xcatws/node/$nr/dcp?userName=$user&passwor
  | grep -q '"errorcode":"0"'; chkrc
 
 # test the table calls
-#curl -# -X GET -k "https://127.0.0.1/xcatws/table/nodelist/test001?userName=$user&password=$pw&$format"
+curl -# -X GET -k "https://127.0.0.1/xcatws/table/nodelist/wstest?userName=$user&password=$pw&$format"
 
 
 exit
