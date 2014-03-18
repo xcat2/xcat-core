@@ -11,8 +11,9 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-
+%ifos linux
 BuildArch: noarch
+%endif
 Requires: xCAT-server
 #Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
