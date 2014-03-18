@@ -24,6 +24,8 @@ my %URIdef = (
             matcher => '^\/node$',
             GET => {
                 desc => "Get all the nodes in xCAT.",
+                usage => "||An array of node names.|",
+                example => "|Get all the node names from xCAT database.|GET|/node|[\n   all,\n   node1,\n   node2,\n   node3,\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
@@ -34,24 +36,35 @@ my %URIdef = (
             matcher => '^\/node\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for the node {nodename}.",
+                usage => "||An array of node objects.|",
+                example => "|Get all the attibutes for node \'node1\'.|GET|/node/node1|[\n   {\n      netboot:xnba,\n      mgt:1,\n      groups:22,\n      name:node1,\n      postbootscripts:otherpkgs,\n      postscripts:syslog,remoteshell,syncfiles\n   }\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
                 desc => "Change the attibutes for the node {nodename}.",
+                usage => "||An array of node objects.|",
+                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/node/node1 {mgt:dfm,netboot:yaboot}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
                 cmd => "chdef",
                 fhandler => \&defhdl,
+                outhdler => \&infoout,
             },
             POST => {
                 desc => "Create the node {nodename}. DataBody: {attr1:v1,att2:v2...}.",
+                usage => "||An array of node objects.|",
+                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/node/node1 {groups:all,mgt:dfm,netboot:yaboot}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
+                outhdler => \&infoout,
             },
             DELETE => {
                 desc => "Remove the node {nodename}.",
+                usage => "||An array of node objects.|",
+                example => "|Delete the node node1|DELETE|/node/node1|{\n   \"info\":[\n      \"1 object definitions have been removed.\"\n   ]\n}|",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
+                outhdler => \&infoout,
             },
         },
         nodeattr => {
@@ -631,6 +644,7 @@ my $pageContent = '';       # global var containing the ouptut back to the rest 
 my $request     = {clienttype => 'ws'};     # global var that holds the request to send to xcatd
 my $format = 'json';
 my $pretty;
+my $xmlinstalled;
 
 # Handle the command parameter for debugging and generating doc
 my $dbgdata;
@@ -638,6 +652,10 @@ sub dbgusage { print "Usage:\n    $0 -h\n    $0 -d\n    $0 {GET|PUT|POST|DELETE}
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
+    exit 0;
+} elsif ($ARGV[0] eq "-g") {
+    require genrestapidoc;
+    genrestapidoc::gendoc(\%URIdef);
     exit 0;
 } elsif ($ARGV[0] eq "-d") {
     displayUsage();
@@ -709,11 +727,7 @@ if ($format eq 'json') {
 
 # require XML dynamically and let them know if it is not installed
 # we need XML all the time to send request to xcat, even if thats not the return format requested by the user
-my $xmlinstalled = eval { require XML::Simple; };
-unless ($xmlinstalled) {
-    error('The XML::Simple perl module is missing.  Install perl-XML-Simple before using the xCAT REST web services API with this format."}',$STATUS_SERVICE_UNAVAILABLE);
-}
-$XML::Simple::PREFERRED_PARSER = 'XML::Parser';
+loadXML();
 
 # Match the first layer of resource URI
 my $uriLayer1;
@@ -882,6 +896,20 @@ sub defout_remove_appended_type {
             }
         }
         #if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
+    }
+    if ($json) {
+        addPageContent($JSON->encode($json));
+    }
+}
+
+sub infoout {
+    my $data = shift;
+
+    my $json;
+    foreach my $d (@$data) {
+        if (defined ($d->{info})) {
+            push @{$json->{info}}, @{$d->{info}};
+        }
     }
     if ($json) {
         addPageContent($JSON->encode($json));
@@ -1128,7 +1156,6 @@ sub displayUsage {
         }
     }
 }
-
 
 
 # This handles and removes serverdone and error tags in the perl data structure that is from the xml that xcatd returned
@@ -1482,6 +1509,17 @@ sub fetchParameters {
     }
 
     return ($genparms, $phash);
+}
+
+# Load the XML::Simple module
+sub loadXML {
+    if ($xmlinstalled) { return; }
+    
+    $xmlinstalled = eval { require XML::Simple; };
+    unless ($xmlinstalled) {
+        error('The XML::Simple perl module is missing.  Install perl-XML-Simple before using the xCAT REST web services API with this format."}',$STATUS_SERVICE_UNAVAILABLE);
+    }
+    $XML::Simple::PREFERRED_PARSER = 'XML::Parser';
 }
 
 # Load the JSON perl module, if not already loaded.  Sets the $JSON global var.
