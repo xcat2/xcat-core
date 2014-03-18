@@ -168,7 +168,7 @@ class xCATBareMetalDriver(bm_driver.BareMetalDriver):
         """
  	    #import pdb
 	    #pdb.set_trace()
-	    context = nova_context.get_admin_context()
+        context = nova_context.get_admin_context()
         try:
             node = bm_driver._get_baremetal_node_by_instance_uuid(instance['uuid'])
             
