@@ -21,7 +21,7 @@ my @pods = getPodList($poddir);
 #foreach (@pods) { print "$_\n"; } exit;
 
 # Build the cmd overview page.
-writesummarypage("$poddir/man1/xcat.1.pod", @pods);
+#writesummarypage("$poddir/man1/xcat.1.pod", @pods);
 
 # Build the man page for each pod.
 #mkdir($mandir) or die "Error: could not create $mandir.\n";
@@ -126,6 +126,7 @@ sub getPodList {
 
 
 # Create the xcat man page that gives a summary description of each xcat cmd.
+# Not used
 sub writesummarypage {
 	my $file = shift;       # relative path file name of the man page
 	# the rest of @_ contains the pod files that describe each cmd
