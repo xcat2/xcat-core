@@ -47,7 +47,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 
-cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
+cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
