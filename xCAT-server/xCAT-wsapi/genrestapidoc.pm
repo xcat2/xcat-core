@@ -26,7 +26,7 @@ my @apigroups = (
         groupname => 'table',
         header => "Table Resources",
         desc => "URI list which can be used to create, query, change global configuration.",
-        resources => ['table_nodes']
+        resources => ['table_nodes', 'table_rows']
     },
     {
     #    groupname => 'network', 

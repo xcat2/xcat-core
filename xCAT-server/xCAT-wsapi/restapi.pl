@@ -724,57 +724,57 @@ my %URIdef = (
             desc => "[URI:/table/{tablelist}/node/{noderange}/{attrlist}] - The node table resource",
             matcher => '^/table/[^/]+/node(/[^/]+){0,2}$',
             GET => {
-                desc => "Get attibutes for noderange {noderange} of the table {table}.",
+                desc => "Get table attibutes for a noderange. {noderange} and {attrlist} are optional.",
                 usage => "||An object for the specific attributes.|",
                 example => "|Get |GET|/table/mac/node/node1/mac|{\n   \"mac\":[\n      {\n         \"name\":\"node1\",\n         \"mac\":\"mac=6c:ae:8b:41:3f:53\"\n      }\n   ]\n}|",
                 cmd => "getTablesNodesAttribs",     # not used
                 fhandler => \&tablenodehdl,
                 outhdler => \&tableout,
             },
-            PUT => {
-                desc => "Change the attibutes for the table {table}.",
-                cmd => "chdef",
-                fhandler => \&defhdl,
+            #PUT => {
+            #    desc => "Change the attibutes for the table {table}.",
+            #    cmd => "chdef",
+            #    fhandler => \&defhdl,
                 #outhdler => \&defout,
-            },
-            POST => {
-                desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
-                cmd => "mkdef",
-                fhandler => \&defhdl,
-            },
-            DELETE => {
-                desc => "Remove the table {table}.",
-                cmd => "rmdef",
-                fhandler => \&defhdl,
-            },
+            #},
+            #POST => {
+            #    desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
+            #    cmd => "mkdef",
+            #    fhandler => \&defhdl,
+            #},
+            #DELETE => {
+            #    desc => "Remove the table {table}.",
+            #    cmd => "rmdef",
+            #    fhandler => \&defhdl,
+            #},
         },
         table_rows => {
             desc => "[URI:/table/{tablelist}/row/{keys}/{attrlist}] - The non-node table resource",
             matcher => '^/table/[^/]+/row(/[^/]+){0,2}$',
             GET => {
-                desc => "Get attibutes for rows of the table {table}.",
+                desc => "Get attibutes for rows of non-node tables. {rows} and {attrlist} are optional.",
                 usage => "||?|",
-                example => "|Get|GET|/table/mac/row/priotiry/name|?|",
+                example => qq(|Get|GET|/table/networks/row/net=192.168.122.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   "mgtifname":"virbr0",\n   "tftpserver":"192.168.122.1"\n}|),
                 cmd => "getTablesAllRowAttribs",        # not used
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
-            PUT => {
-                desc => "Change the attibutes for the table {table}.",
-                cmd => "chdef",
-                fhandler => \&defhdl,
+            #PUT => {
+            #    desc => "Change the attibutes for the table {table}.",
+            #    cmd => "chdef",
+            #    fhandler => \&defhdl,
                 #outhdler => \&defout,
-            },
-            POST => {
-                desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
-                cmd => "mkdef",
-                fhandler => \&defhdl,
-            },
-            DELETE => {
-                desc => "Remove the table {table}.",
-                cmd => "rmdef",
-                fhandler => \&defhdl,
-            },
+            #},
+            #POST => {
+            #    desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
+            #    cmd => "mkdef",
+            #    fhandler => \&defhdl,
+            #},
+            #DELETE => {
+            #    desc => "Remove the table {table}.",
+            #    cmd => "rmdef",
+            #    fhandler => \&defhdl,
+            #},
         },
     },
 
