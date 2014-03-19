@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#############################################################################################################################################
+#
+#   This script will be used to run xCAT daily regression 
+#
+#   Usage:xCATreg - Run xCAT daily regression  
+#   xCATreg [-?|-h]
+#   xCATreg [-b branch][-m MN][-f configure file][-a][-V]
+#   
+#   -?/-h:  help information for the xCATreg usage.
+#   -b: when -b is specified, the regression will be done against the specified branch. You can use 2.7, 2.8,master.The default value is master.
+#   -m: when -m is specified, the regression will be done the specified mn. The default value is all the mn in configuration file.
+#   -f :specify the configuration file,default value is /xCATreg/regresson.conf
+#   -a: when -a is specified, run the regression even there is no code updates
+#   -V: log and message in verbose mode
+#
+#   Example usage:
+#   ./xCATreg   Run regressoins on master branch and on all platforms in configuration file  
+#   ./xCATreg -b 2.8 -m slesmn -f /root/regressoin.conf -a    Run regression on 2.8 branch on slesmn even when there is no code updates. 
+#
+#############################################################################################################################################
+
+
+
+
+
