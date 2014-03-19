@@ -376,6 +376,7 @@ fi
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
 cat /tmp/$to_userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
+rm -f \$home/.ssh/id_rsa 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa.pub  \$home/.ssh/id_rsa.pub 2>&1
 chmod 0600 \$home/.ssh/id_* 2>&1
@@ -1999,7 +2000,7 @@ sub updatenodegroups {
         }
     }
     my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
-    my @list = qw(all);
+    my @list = ();
     if (defined($ent) and $ent->{groups}) {
         push @list, split(/,/,$ent->{groups});
     }   

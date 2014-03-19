@@ -11,8 +11,9 @@ Vendor: IBM Corp.
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
-
+%ifos linux
 BuildArch: noarch
+%endif
 Requires: xCAT-server
 #Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
@@ -47,7 +48,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 
-cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
+cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*

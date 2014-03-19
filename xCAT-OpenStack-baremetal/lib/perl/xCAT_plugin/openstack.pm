@@ -103,6 +103,13 @@ sub opsaddbmnode {
     
     my $nodes = $request->{node};
 
+    #get node mgt
+    my $nodehmhash;
+    my $nodehmtab = xCAT::Table->new("nodehm");
+    if ($nodehmtab) {
+        $nodehmhash = $nodehmtab->getNodesAttribs($nodes,['power', 'mgt']);
+    }
+
     #get bmc info for the nodes
 	my $ipmitab = xCAT::Table->new("ipmi", -create => 0);
 	my $tmp_ipmi;
@@ -113,6 +120,7 @@ sub opsaddbmnode {
 		$callback->({error=>["Cannot open the ipmi table."],errorcode=>[1]});
 		return 1;		
 	}
+
     #get mac for the nodes
 	my $mactab = xCAT::Table->new("mac", -create => 0);
 	my $tmp_mac;
@@ -135,24 +143,55 @@ sub opsaddbmnode {
 		return 1;		
 	}
 
+    #get default username and password for bmc
+    my $d_bmcuser;
+    my $d_bmcpasswd;
+	my $passtab = xCAT::Table->new('passwd');
+	if ($passtab) {
+		($tmp_passwd)=$passtab->getAttribs({'key'=>'ipmi'},'username','password');
+		if (defined($tmp_passwd)) {
+			$d_bmcuser = $tmp_passwd->{username};
+			$d_bmcpasswd = $tmp_passwd->{password};
+		}
+	}
+
+	#print "d_bmcuser=$d_bmcuser, d_bmcpasswd=$d_bmcpasswd \n";
 	foreach my $node (@$nodes) {
         #collect the node infomation needed for each node, some info
-        #may not be defined in the xCAT db
-		my ($bmc, $bmc_user, $bmc_password, $mac, $cpu, $memory, $disk);
-		my $ref_ipmi = $tmp_ipmi->{$node}->[0]; 
-	    if ($ref_ipmi) {
-			if (exists($ref_ipmi->{bmc})) {
-				$bmc = $ref_ipmi->{bmc};
-			}
-			if (exists($ref_ipmi->{username})) {
-				$bmc_user = $ref_ipmi->{username};
-			}
-			if (exists($ref_ipmi->{password})) {
-				$bmc_password = $ref_ipmi->{password};
+		my $mgt;
+		my $ref_nodehm = $nodehmhash->{$node}->[0];
+		if ($ref_nodehm) {
+			if ($ref_nodehm->{'power'}) {
+				$mgt = $ref_nodehm->{'power'};
+			} elsif ($ref_nodehm->{'mgt'}) {
+				$mgt = $ref_nodehm->{'mgt'};
 			}
 		}
 
-		$ref_mac = $tmp_mac->{$node}->[0]; 
+		my ($bmc, $bmc_user, $bmc_password, $mac, $cpu, $memory, $disk);
+		if (($mgt) && ($mgt eq 'ipmi')) { 
+			my $ref_ipmi = $tmp_ipmi->{$node}->[0]; 
+			if ($ref_ipmi) {
+				if (exists($ref_ipmi->{bmc})) {
+					$bmc = $ref_ipmi->{bmc};
+				}
+				if (exists($ref_ipmi->{username})) {
+					$bmc_user = $ref_ipmi->{username};
+					if (exists($ref_ipmi->{password})) {
+						$bmc_password = $ref_ipmi->{password};
+					} 
+				} else { #take the default if they cannot be found on ipmi table
+					if ($d_bmcuser) { $bmc_user = $d_bmcuser; }
+					if ($d_bmcpasswd) { $bmc_password = $d_bmcpasswd; }
+				}
+			}
+		} # else { # for hardware control point other than ipmi, just fake it in OpenStack.
+			#$bmc = "0.0.0.0";
+			#$bmc_user = "xCAT";
+			#$bmc_password = "xCAT";
+		#}
+
+		my $ref_mac = $tmp_mac->{$node}->[0]; 
 	    if ($ref_mac) {
 			if (exists($ref_mac->{mac})) {
 				$mac = $ref_mac->{mac};
@@ -180,7 +219,7 @@ sub opsaddbmnode {
 				} else {
 					$disk = $b[0];
 				}
-                print "a=@a, b=@b\n";
+                #print "a=@a, b=@b\n";
                 #TODO: what if the unit is not in GB? We need to convert it to MB
 				$disk =~ s/GB|gb//g;
 			}
@@ -418,7 +457,7 @@ sub deploy_ops_bm_node {
         $callback->($rsp);
         return 0;
     }
-	print "node=$node, image=$img_name, host=$hostname, ip=$fixed_ip, mask=$netmask\n";
+	#print "node=$node, image=$img_name, host=$hostname, ip=$fixed_ip, mask=$netmask\n";
 
 	#validate the image name
     my $osimagetab = xCAT::Table->new('osimage', -create=>1);
@@ -604,7 +643,7 @@ sub  add_postscript {
     my $callback=shift;
     my $node=shift;
 	my $script=shift;
-	print "script=$script\n";
+	#print "script=$script\n";
 
     my $posttab=xCAT::Table->new("postscripts", -create =>1);
 	my %setup_hash;

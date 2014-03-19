@@ -53,6 +53,7 @@ function makexcat {
 			tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/templates.tar templates
 			gzip -f $RPMROOT/SOURCES/templates.tar
 			cp xcat.conf $RPMROOT/SOURCES
+			cp xcat.conf.apach24 $RPMROOT/SOURCES
 			cp xCATMN $RPMROOT/SOURCES
 		else	# xCATsn
 			tar -X /tmp/xcat-excludes -cf $RPMROOT/SOURCES/license.tar LICENSE.html

@@ -138,6 +138,12 @@ if [ "$PERLVER" == "v5.8.2" ]; then
         OSVER='5.3'
 elif [ "$PERLVER" == "v5.8.8" ]; then
         OSVER='6.1'
+        aixver=`lslpp -lc|grep 'bos.rte:'|head -1|cut -d: -f3`
+                if [[ $aixver < '6.1.9.0' ]]; then
+                        AIX61Y=0
+                else
+                        AIX61Y=1
+                fi
 elif [ "$PERLVER" == "v5.10.1" ]; then
         OSVER='7.1'
         aixver=`lslpp -lc|grep 'bos.rte:'|head -1|cut -d: -f3`
@@ -173,8 +179,8 @@ for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps|^per
 		opts=""
 	fi
 
-	# On 7.1L we need a newer version of perl-Net_SSLeay.pm
-	if [[ $AIX71L -eq 1 ]]; then
+	# On 7.1L and 6.1Y we need a newer version of perl-Net_SSLeay.pm
+	if [[ $AIX71L -eq 1 || $AIX61Y -eq 1 ]]; then
 		if [[ $i == perl-Net_SSLeay.pm-1.30-* ]]; then continue; fi 	# skip the old rpm
 	else
 		if [[ $i == perl-Net_SSLeay.pm-1.55-* ]]; then continue; fi 	# skip the new rpm

@@ -117,7 +117,7 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
     if ($? == 0) {
 	if (($tmpimgs) && ($tmpimgs !~ /^Could/)) { #Could is returned when the osimage table is empty
 	    my @images=split('\n', $tmpimgs);
-	    print "Do you want to re-genarate an existing image from the osimage table? ";
+	    print "Do you want to re-generate an existing image from the osimage table? ";
 	    print "[y/n] ";
 	    my $conf = <stdin>;
 	    chomp($conf);
@@ -128,7 +128,7 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
 		    foreach(sort @images){
 			print  "   $_\n";
 		    } 
-		    # default is the first image cause in many cases
+		    # default is the first image 
 		    print "Which image do you want to re-generate? [";
 		    print $images[0];
 		    print "] ";
@@ -294,13 +294,10 @@ if ($profile) { print  "  Profile: $profile\n"; }
 # get the interface
 if ((!$imagename) && (!$interface)){
     while(1){
-	print "Which network interface do you want the image to boot from? [";
-	print "eth0";
-	print "] ";
+	print "OPTIONAL: Which specific network interface will the image boot from? [<blank>]";
 	$interface = <stdin>;
 	chomp($interface);
 	if($interface eq ""){
-	    $interface = "eth0";
 	    last;
 	}else{
 	    print "You want your stateless machines to boot off of ";
@@ -317,8 +314,9 @@ if ((!$imagename) && (!$interface)){
 	    }	
 	}
     }
+    if ($interface) { print "  Interface: $interface\n"; }
+              else  { print "  No interface specified.  The interface will be determined at network boot time.\n"; }
 }
-if ($interface) { print "  Interface: $interface\n"; }
 
     
 
