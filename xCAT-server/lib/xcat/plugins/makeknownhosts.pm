@@ -239,7 +239,7 @@ sub add_known_host
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
-    chop($output[0]);
+    chomp($output[0]);
     my ($hostname,$ip_address) = xCAT::NetworkUtils->gethostnameandip($node);
     if (!$hostname || !$ip_address)
     {
