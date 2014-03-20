@@ -8,7 +8,8 @@ my @apigroups = (
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage nodes.",
         resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 
-                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstat',]
+                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstat',
+                      'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',]
     },
     {
         groupname => 'policy',
@@ -45,16 +46,29 @@ my @errmsg;
 sub outtext {
     my $def = shift;
     my $opt = shift;
-    my $head = shift;
+    my $res = shift;
 
-    if ($head) {
-        print "\n$head\n";
+    if ($res) {
+        if (defined ($res->{'desc'})) {
+            print "\n$res->{'desc'}\n";
+        }
+        foreach (1..10) {
+            if (defined ($res->{'desc'.$_})) {
+                print $res->{'desc'.$_}."\n";
+            }
+        }
     }
+                    
 
     my $postfix = "?userName=root&password=cluster&pretty=1";
 
     if (defined ($def->{desc})) {
         print "  $opt - $def->{desc}\n";
+    }
+    foreach (1..10) {
+        if (defined ($def->{'desc'.$_})) {
+            print "   ".$def->{'desc'.$_}."\n";
+        }
     }
 
     if (defined ($def->{usage})) {
@@ -99,16 +113,39 @@ sub outtext {
 sub outwiki {
     my $def = shift;
     my $opt = shift;
-    my $head = shift;
+    my $res = shift;
 
-    if ($head) {
-        print "===$head===\n";
+    if ($res) {
+        if (defined ($res->{'desc'})) {
+            print "===$res->{'desc'}===\n";
+        }
+        foreach (1..10) {
+            if (defined ($res->{'desc'.$_})) {
+                print $res->{'desc'.$_}."\n\n";
+            }
+        }
     }
 
     my $postfix = "?userName=root&password=cluster&pretty=1";
 
     if (defined ($def->{desc})) {
         print "===='''$opt - $def->{desc}'''====\n";
+    }
+    foreach (1..10) {
+        if (defined ($def->{'desc'.$_})) {
+            print $def->{'desc'.$_}."\n\n";
+        }
+    }
+
+    if (defined ($def->{cmd})) {
+        my $manpath = search_manpage($def->{cmd});
+
+        if ($manpath) {
+            print "Refer to the man page:[http://xcat.sourceforge.net".$manpath.".html ".$def->{cmd}."]\n\n";
+        } else {
+            print "Refer to the man page of ".$def->{cmd}." command.\n\n";
+        }
+
     }
 
     if (defined ($def->{usage})) {
@@ -150,6 +187,23 @@ sub outwiki {
     }
 }
 
+
+sub search_manpage {
+    my $cmd = shift;
+
+    if (-d "/opt/xcat/share/man") {
+        my $run = "cd /opt/xcat/share/man; find . | grep \'$cmd\\.\'";
+        my @output = `$run`;
+        if (@output) {
+            $output[0] =~ s/^\.//;
+            chomp($output[0]);
+            return $output[0];
+        }
+    }
+
+    return undef;
+}
+
 sub gendoc {
     my $URIdef = shift;
     my $format = shift;
@@ -176,14 +230,14 @@ sub gendoc {
                 if (defined ($URIdef->{$groupname}->{$res})) {
                     my $headdone;
                     if (defined ($URIdef->{$groupname}->{$res}->{GET})) {
-                        $formathdl{$format}->($URIdef->{$groupname}->{$res}->{GET}, "GET", $URIdef->{$groupname}->{$res}->{desc});
+                        $formathdl{$format}->($URIdef->{$groupname}->{$res}->{GET}, "GET", $URIdef->{$groupname}->{$res});
                         $headdone = 1;
                     }
                     if (defined ($URIdef->{$groupname}->{$res}->{PUT})) {
                         if ($headdone) {
                             $formathdl{$format}->($URIdef->{$groupname}->{$res}->{PUT}, "PUT");
                         } else {
-                            $formathdl{$format}->($URIdef->{$groupname}->{$res}->{PUT}, "PUT", $URIdef->{$groupname}->{$res}->{desc});
+                            $formathdl{$format}->($URIdef->{$groupname}->{$res}->{PUT}, "PUT", $URIdef->{$groupname}->{$res});
                         }
                     }
                     if (defined ($URIdef->{$groupname}->{$res}->{POST})) {

@@ -22,14 +22,18 @@ use xCAT::Table;
 #   4. Call the 'outhdler' which is defined in the resource to parse the xml response and translate it to JSON format
 #   5. Output the http response to STDOUT
 #
+# Refer to the $URIdef{node}->{allnode} and $URIdef{node}->{nodeallattr} for your new created resource definition.
+#
 # |--node - Resource Group
 # |  `--allnode - Resource Name
 # |    `--desc - Description for the Resource
+# |    `--desc[1..10] - Additional description for the Resource
 # |    `--matcher - The matcher which is used to match the URI to the Resource
 # |    `--GET - The info is used to handle the GET request
 # |      `--desc - Description for the GET operation
+# |      `--desc[1..10] - Additional description for the GET operation
 # |      `--usage - Usage message. The format must be '|Parameters for the GET request|Returns for the GET request|'. The message in the '|' can be black, but the delimiter '|' must be kept.
-# |      `--example - Example message. The format must be '|Description|GET|URI|Return Msg|'. The messages in the four sections must be completed.
+# |      `--example - Example message. The format must be '|Description|GET|URI PUT/POST_data|Return Msg|'. The messages in the four sections must be completed.
 # |      `--cmd - The xCAT command line coammnd which will be used to complete the request. It's not a must have attribute.
 # |      `--fhandler - The call back subroutine which is used to handle the GET request. Generally, it parses the parameters from request and then call xCAT command. This subroutine can be exclusive or shared.
 # |      `--outhdler - The call back subroutine which is used to handle the GET request. Generally, it parses the xml output from the 'fhandler' and then format the output to JSON. This subroutine can be exclusive or shared.
@@ -42,9 +46,11 @@ my %URIdef = (
     node => {
         allnode => {
             desc => "[URI:/node] - The node list resource.",
+            desc1 => "This resource can be used to display all the nodes which have been defined in the xCAT database.",
             matcher => '^\/node$',
             GET => {
                 desc => "Get all the nodes in xCAT.",
+                desc1 => "The attributes details for the node will not be displayed.",
                 usage => "||An array of node names.|",
                 example => "|Get all the node names from xCAT database.|GET|/node|[\n   all,\n   node1,\n   node2,\n   node3,\n]|",
                 cmd => "lsdef",
@@ -349,8 +355,11 @@ my %URIdef = (
             matcher => '^\/node\/[^\/]*/updating$',
             PUT => {
                 desc => "Update the node with file syncing, software maintenance and rerun postscripts.",
+                usage => "||An array of messages for performing the node updating.|",
+                example => "|Initiate an updatenode process.|PUT|/node/node2/updating|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\",\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:01:43 CST 2013 Running postscript: ospkgs\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         filesyncing => {
@@ -358,8 +367,11 @@ my %URIdef = (
             matcher => '^\/node\/[^\/]*/filesyncing$',
             PUT => {
                 desc => "Sync files for the node {nodename}. DataBody: {location of syncfile}",
+                usage => "||An array of messages for performing the file syncing for the node.|",
+                example => "|Initiate an file syncing process.|PUT|/node/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
                 cmd => "updatenode",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         software_maintenance => {
@@ -367,35 +379,47 @@ my %URIdef = (
             matcher => '^\/node\/[^\/]*/sw$',
             PUT => {
                 desc => "Perform the software maintenance process for the node {nodename}.",
+                usage => "||An array of messages for performing the software maintenance for the node.|",
+                example => "|Initiate an software maintenance process.|PUT|/node/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
                 cmd => "updatenode",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         postscript => {
             desc => "[URI:/node/{nodename}/postscript] - The postscript resource for the node {nodename}",
             matcher => '^\/node\/[^\/]*/postscript$',
             PUT => {
-                desc => "Run the postscripts for the node {nodename}. DataBody: {p1,p2,p3...}",
+                desc => "Run the postscripts for the node {nodename}. DataBody: {scripts:[p1,p2,p3,...]}",
+                usage => "|Put data: Json formatted scripts:[scriptname list].|An array of messages for the running postscripts for the node.|",
+                example => "|Initiate an updatenode process.|PUT|/node/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         nodeshell => {
             desc => "[URI:/node/{nodename}/nodeshell] - The nodeshell resource for the node {nodename}",
             matcher => '^\/node\/[^\/]*/nodeshell$',
             PUT => {
-                desc => "Run the command in the nodeshell of the node {nodename}. DataBody: { ... }",
+                desc => "Run the command in the shell of the node {nodename}. DataBody: {command:[cmd1,cmd2]}",
+                usage => "|Put data: Json formatted command:[cmd1,cmd2].|An arry of messages for running commands on the node.|",
+                example => "|Run the \'data\' command on the node2.|PUT|/node/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
                 cmd => "xdsh",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         nodecopy => {
             desc => "[URI:/node/{nodename}/nodecopy] - The nodecopy resource for the node {nodename}",
             matcher => '^\/node\/[^\/]*/nodecopy$',
             PUT => {
-                desc => "Copy files to the node {nodename}. DataBody: { ... }",
-                cmd => "xcp",
-                fhandler => \&common,
+                desc => "Copy files to the node {nodename}. DataBody: {src:[file1,file2],target:dir}",
+                usage => "|Put data: Json formatted src file and target file or directory.|Error messages.|",
+                example => "|Copy files to the node2.|PUT|/node/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
+                cmd => "xdcp",
+                fhandler => \&actionhdl,
+                outhdler => \&infoout,
             },
         },
         subnode => {
@@ -1136,6 +1160,12 @@ sub infoout {
         if (defined ($d->{info})) {
             push @{$json}, @{$d->{info}};
         }
+        if (defined ($d->{data})) {
+            push @{$json}, @{$d->{data}};
+        }
+        if (defined ($d->{error})) {
+            push @{$json}, @{$d->{error}};
+        }
     }
     if ($json) {
         addPageContent($JSON->encode($json));
@@ -1325,6 +1355,26 @@ sub actionhdl {
     } elsif ($params->{'resourcename'} eq "beacon") {
         if (isPut()) {
             push @args, $paramhash->{'action'};
+        }
+    } elsif ($params->{'resourcename'} eq "filesyncing") {
+        push @args, '-F';
+    } elsif ($params->{'resourcename'} eq "software_maintenance") {
+        push @args, '-S';
+    } elsif ($params->{'resourcename'} eq "postscript") {
+        push @args, '-P';
+        if (defined ($paramhash->{'scripts'})) {
+            push @args, join (',', @{$paramhash->{'scripts'}});
+        }
+    } elsif ($params->{'resourcename'} eq "nodeshell") {
+        if (defined ($paramhash->{'command'})) {
+            push @args, join (';', @{$paramhash->{'command'}});
+        }
+    } elsif ($params->{'resourcename'} eq "nodecopy") {
+        if (defined ($paramhash->{'src'})) {
+            push @args, @{$paramhash->{'src'}};
+        }
+        if (defined ($paramhash->{'target'})) {
+            push @args, $paramhash->{'target'};
         }
     }
 
