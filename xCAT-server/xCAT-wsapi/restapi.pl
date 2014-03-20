@@ -12,9 +12,30 @@ use IO::Socket::SSL;
 use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 
-#bmp: you need more comments in most of the file, especially in the handler routines
-
-#URIdef{node|network}->{allnode|nodeattr}
+# The hash %URIdef defines all the xCAT resources which can be access from Web Service.
+# This script will be called when a https request with the URI started with /xcatws/ is sent to xCAT Web Service
+# Inside this script:
+#   1. The main body parses the URI and parameters
+#   2. Base on the URI, go through the %URIdef to find the matched resource by the 'matcher' which is defined for each resource
+#   3. Call the 'fhandler' which is defined in the resource to communicate with xcatd and get the xml response
+#     3.1 The 'fhandler' generates the xml request base on the resource, parameters and http method 'GET|PUT|POST|DELETE', sends to xcatd and then get the xml response
+#   4. Call the 'outhdler' which is defined in the resource to parse the xml response and translate it to JSON format
+#   5. Output the http response to STDOUT
+#
+# |--node - Resource Group
+# |  `--allnode - Resource Name
+# |    `--desc - Description for the Resource
+# |    `--matcher - The matcher which is used to match the URI to the Resource
+# |    `--GET - The info is used to handle the GET request
+# |      `--desc - Description for the GET operation
+# |      `--usage - Usage message. The format must be '|Parameters for the GET request|Returns for the GET request|'. The message in the '|' can be black, but the delimiter '|' must be kept.
+# |      `--example - Example message. The format must be '|Description|GET|URI|Return Msg|'. The messages in the four sections must be completed.
+# |      `--cmd - The xCAT command line coammnd which will be used to complete the request. It's not a must have attribute.
+# |      `--fhandler - The call back subroutine which is used to handle the GET request. Generally, it parses the parameters from request and then call xCAT command. This subroutine can be exclusive or shared.
+# |      `--outhdler - The call back subroutine which is used to handle the GET request. Generally, it parses the xml output from the 'fhandler' and then format the output to JSON. This subroutine can be exclusive or shared.
+# |    `--PUT - The info is used to handle the PUT request
+# |    `--POST - The info is used to handle the POST request
+# |    `--DELETE - The info is used to handle the DELETE request
 
 my %URIdef = (
     #### definition for node resources
