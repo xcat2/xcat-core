@@ -587,8 +587,10 @@ sub setup_DHCP
     # setup DHCP 
     # 
 
+
     # clean up $::opt_n which set by last makedhcp context and conlicts with -a below.
     undef $::opt_n;
+
 
     my $modname = "dhcp";
     if ($snonly != 1)  {  # setup  dhcp for all nodes
@@ -1213,6 +1215,7 @@ sub setup_TFTP
                     push @{$netmethods{$hmhash{$_}->[0]->{netboot}}}, $_;
                 }
             }
+            $::DISABLENODESETWARNING=1;  # stop the warnings about using install/netboot etc
             $cmdref->{command}->[0]  = "nodeset";
             $cmdref->{inittime}->[0] = "1";
             $cmdref->{arg}->[0]      = "enact";
