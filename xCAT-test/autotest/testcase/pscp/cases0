@@ -1,0 +1,84 @@
+start:pscp_h
+cmd:pscp -h
+check:rc==0
+check:output=~Usage
+end
+
+start:pscp_v
+cmd:pscp -v
+check:rc==0
+check:output=~Version
+end
+
+#copy single file
+start:pscp_node
+cmd:echo "test" > /tmp/pscp.tmp
+check:rc==0
+cmd:pscp /tmp/pscp.tmp $$CN:/tmp/
+check:rc==0
+check:$$CN: done
+cmd:xdsh $$CN "ls -l /tmp |grep pscp.tmp"
+check:rc==0
+check:output=~pscp.tmp
+cmd:xdsh $$CN "cat /tmp/pscp.tmp"
+check:rc==0
+check:output=~test
+cmd:xdsh $$CN "rm -f /tmp/pscp.tmp"
+check:rc==0
+cmd:rm -f /tmp/pscp.tmp
+check:rc==0
+end
+
+#copy a directory
+start:pscp_r_node
+cmd: mkdir -p /tmp/pscp
+check:rc==0
+cmd:echo "test" > /tmp/pscp/pscp.tmp
+check:rc==0
+cmd:pscp -r /tmp/pscp $$CN:/tmp/
+check:rc==0
+check:$$CN: done
+cmd:xdsh $$CN "ls -l /tmp |grep pscp"
+check:rc==0
+check:output=~pscp
+cmd:xdsh $$CN "ls -l /tmp/pscp |grep pscp.tmp"
+check:rc==0
+check:output=~pscp.tmp
+cmd:xdsh $$CN "cat /tmp/pscp/pscp.tmp"
+check:rc==0
+check:output=~test
+cmd:xdsh $$CN "rm -rf /tmp/pscp"
+check:rc==0
+cmd:rm -rf /tmp/pscp
+check:rc==0
+end
+
+
+start:pscp_i_node
+cmd:cp /etc/hosts  /etc/hosts.bak
+check:rc==0
+cmd:a=`cat /etc/hosts |grep ' $$CN.'|awk '{print $1}'`;b=`cat /etc/resolv.conf |grep search|awk '{print $2}'`;echo "$a $$CN-eth0.$b $$CN-eth0" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:echo "pscp" > /tmp/pscp.tmp
+check:rc==0
+cmd:pscp -i eth0  /tmp/pscp.tmp  $$CN:/tmp
+check:rc==0
+check:output=~$$CN-eth0: done
+cmd:xdsh $$CN "ls -l /tmp |grep pscp.tmp"
+check:rc==0
+check:output=~pscp.tmp
+cmd:xdsh $$CN "cat /tmp/pscp.tmp"
+check:rc==0
+check:output=~pscp
+cmd:xdsh $$CN "rm -rf /tmp/pscp.tmp"
+check:rc==0
+cmd:rm -rf /tmp/pscp.tmp
+check:rc==0
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.bak  /etc/hosts
+check:rc==0
+end
+
