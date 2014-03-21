@@ -515,16 +515,25 @@ sub process_request {
     unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
         foreach my $osimage (keys %osimagenodehash) {
             #TOTO check the existence of grub2 executable files for corresponding arch
-            my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'arch');
-                my $grub2 = "/boot/grub2/grub2.ppc";
-                my $tftppath = $tftpdir . $grub2;
-                unless (-e "$tftppath") {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "stop configuration, missing $tftppath.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);       
-                    return; 
-                  }
+            my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osarch');
+            my $validarch=undef;
+            if($osimgent and $osimgent->{'osarch'}) 
+               {
+                 $validarch = $osimgent->{'osarch'};
+               }
+            if ($validarch =~ /ppc64/i)
+               {
+                   $validarch="ppc"
+               }
+            my $grub2 = "/boot/grub2/grub2.".$validarch;
+            my $tftppath = $tftpdir . $grub2;
+            unless (-e "$tftppath") {
+               my $rsp;
+               push @{$rsp->{data}},
+                   "stop configuration, missing $tftppath.\n";
+               xCAT::MsgUtils->message("E", $rsp, $callback);       
+               return; 
+               }
             if ($do_dhcpsetup) {
                 if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
