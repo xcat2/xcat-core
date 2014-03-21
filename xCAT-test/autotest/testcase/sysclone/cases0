@@ -1,0 +1,104 @@
+start:sysclone 
+cmd:makedns -n
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$GOLDEN_CLIENT
+check:rc==0
+cmd:makeconservercf $$TARGET_NODE
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:yum -y install systemimager-server
+check:rc==0
+cmd:lsdef
+check:output=~$$GOLDEN_CLIENT
+check:output=~$$TARGET_NODE
+cmd:rpm -qa|grep perl-AppConfig
+check:output=~perl-AppConfig[0-9.-]*noarch
+cmd:rpm -qa|grep systemconfigurator
+check:output=~systemconfigurator[0-9.-]*noarch
+cmd:rpm -qa|grep systemimager-common
+check:output=~systemimager-common[0-9.-]*noarch
+cmd:rpm -qa|grep genisoimage
+check:output=~genisoimage[0-9.-]*el6.x86_64
+cmd:rpm -qa|grep systemimager-server
+check:output=~systemimager-server[0-9.-]*noarch
+
+
+cmd:mkdir -p $$OTHERPKGDIR/xcat
+check:rc==0
+cmd:cp $$XCAT_DEP_TARBALL_PATH/$$XCAT_DEP_TARBALL $$OTHERPKGDIR/xcat
+check:rc==0
+cmd:cd $$OTHERPKGDIR/xcat && tar xvf $$XCAT_DEP_TARBALL
+check:rc==0
+cmd:chdef -t osimage -o $$GOS-x86_64-install-compute -p otherpkgdir=$$OTHERPKGDIR 
+check:rc==0
+cmd:chdef -t osimage -o $$GOS-x86_64-install-compute otherpkglist=$$OTHERPKGLIST
+check:rc==0
+
+cmd:nodeset $$GOLDEN_CLIENT osimage=$$GOS-x86_64-install-compute
+check:rc==0
+cmd:rsetboot $$GOLDEN_CLIENT net
+check:rc==0
+cmd:rpower $$GOLDEN_CLIENT reset
+check:rc==0
+
+cmd:sleep 500
+cmd:a=0;while ! `lsdef -l $$GOLDEN_CLIENT|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 200 ];then break;fi done
+
+cmd:ping $$GOLDEN_CLIENT -c 3
+check:output=~64 bytes from $$GOLDEN_CLIENT
+cmd:lsdef -l $$GOLDEN_CLIENT | grep status
+check:output=~booted
+cmd:xdsh $$GOLDEN_CLIENT date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+
+
+cmd:xdsh $$GOLDEN_CLIENT "rpm -qa|grep systemimager-client"
+check:output=~$$GOLDEN_CLIENT: systemimager-client*
+cmd:xdsh $$GOLDEN_CLIENT "rpm -qa|grep perl-AppConfig"
+check:output=~$$GOLDEN_CLIENT: perl-AppConfig*
+cmd:xdsh $$GOLDEN_CLIENT "rpm -qa|grep systemconfigurator"
+check:output=~$$GOLDEN_CLIENT: systemconfigurator*
+cmd:xdsh $$GOLDEN_CLIENT "rpm -qa|grep systemimager-common"
+check:output=~$$GOLDEN_CLIENT: systemimager-common*
+
+cmd:xdsh $$GOLDEN_CLIENT "cd /home && >test.file"
+check:rc==0
+cmd:imgcapture $$GOLDEN_CLIENT  -t sysclone -o goldenclient-osimage-$$GOS-$$MODE -V
+check:rc==0
+cmd:lsdef -t osimage goldenclient-osimage-$$GOS-$$MODE| grep provmethod
+check:output=~sysclone
+
+cmd:nodeset $$TARGET_NODE osimage=goldenclient-osimage-$$GOS-$$MODE
+check:rc==0
+cmd:rsetboot $$TARGET_NODE net
+check:rc==0
+cmd:rpower $$TARGET_NODE reset
+check:rc==0
+
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$TARGET_NODE|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
+
+cmd:ping $$TARGET_NODE -c 3
+check:output=~64 bytes from $$TARGET_NODE
+cmd:lsdef -l $$TARGET_NODE | grep status
+check:output=~booted
+cmd:xdsh $$TARGET_NODE date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$TARGET_NODE  "ls -l /home"
+check:output=~test.file
+cmd:xdsh $$TARGET_NODE "hostname"
+check:output=~$$TARGET_NODE: $$TARGET_NODE
+
+end
+
+
+ 
