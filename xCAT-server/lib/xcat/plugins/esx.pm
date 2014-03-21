@@ -4333,10 +4333,12 @@ sub copycd {
 		}
 	#}
 	@ARGV = @{$request->{arg}};
+    my $includeupdate = 0;
 	GetOptions(
 		'n=s' => \$distname,
 		'a=s' => \$arch,
-		'm=s' => \$path
+		'm=s' => \$path,
+        's' => \$includeupdate
 	);
 	# run a few tests to see if the copycds should use this plugin
 	unless ($path){
@@ -4428,6 +4430,34 @@ sub copycd {
             }
         }
         close(LINE);
+    } elsif (-r $path . "/upgrade/metadata.xml") {
+	open(LINE,$path."/upgrade/metadata.xml");
+	my $detectdistname;
+    	while (<LINE>) {
+            if (/esxVersion>([^<]*)</) {
+                my $version = $1;
+                while ($version =~ /\.0$/) {
+                    $version =~ s/\.0$//;
+                }
+			    $darch="x86_64";
+    			$arch="x86_64";
+                $detectdistname = 'esxi' . $version;
+		$found=1;
+            } elsif (/esxRelease>([^<]*)</) {
+                unless ($includeupdate) {
+                    next;
+                }
+		my $release = $1;
+                while ($release =~ /\.0$/) {
+                    $release =~ s/\.0$//;
+                }
+		unless ($release ne "0") {
+			next;
+		}
+                $detectdistname .= '_' . $release;
+            }
+        }
+			unless ($distname) { $distname=$detectdistname; }
     } elsif (-r $path . "/vmware-esx-base-readme") {
 	open(LINE,$path."/vmware-esx-base-readme");
 	while (<LINE>) {
