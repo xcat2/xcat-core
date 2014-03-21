@@ -1,0 +1,42 @@
+#
+# Select a zone
+# Add the --utc switch if your hardware clock is set to GMT
+#
+#timezone US/Hawaii
+#timezone US/Pacific
+#timezone US/Mountain
+#timezone US/Central
+#timezone US/Eastern
+timezone --utc "#TABLE:site:key=timezone:value#"
+
+#
+# Don't do X
+#
+#skipx
+
+
+#
+# To generate an encrypted root password use:
+#
+# perl -e 'print crypt("blah","Xa") . "\n";'p
+# openssl passwd -apr1 -salt xxxxxxxx password
+#
+# where "blah" is your root password.
+#
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+
+#partition / --ondisk=/dev/mapper/ibmpkvm_vg_root-ibmpkvm_lv_root
+partition / --ondisk=/dev/sda
+network --device eth0 --bootproto dhcp
+
+%post
+touch "/startpost"
+
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+touch "/inpost"
+
+#sleep 1000000
+
+
+%end
+

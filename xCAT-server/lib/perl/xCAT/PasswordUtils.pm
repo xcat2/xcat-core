@@ -39,11 +39,27 @@ sub getIPMIAuth {
 		if (defined($tmp)) { 
 			$ipmiuser = $tmp->{username};
 			$ipmipass = $tmp->{password};
+                        if ($ipmiuser or $ipmipass) {
+                            unless($ipmiuser) {
+                                $ipmiuser = '';
+                            }
+                            unless($ipmipass) {
+                                $ipmipass = '';
+                            }
+                        }
 		}
 		($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
 		if (defined($tmp)) { 
 			$bladeuser = $tmp->{username};
 			$bladepass = $tmp->{password};
+                        if ($bladeuser or $bladepass) {
+                            unless($bladeuser) {
+                                $bladeuser = '';
+                            }
+                            unless($bladepass) {
+                                $bladepass = '';
+                            }
+                        }
 		}
 	}
 	my $mpatab;
@@ -58,9 +74,19 @@ sub getIPMIAuth {
 			my $mpa = $mphash->{$node}->[0]->{mpa};
 			if (not $mpaauth{$mpa} and $mpatab) { 
 				my $mpaent = $mpatab->getNodeAttribs($mpa,[qw/username password/],prefetchcache=>1); #TODO: this might make more sense to do as one retrieval, oh well
-				if (ref $mpaent and $mpaent->{username}) { $mpaauth{$mpa}->{username} = $mpaent->{username} }
-				if (ref $mpaent and $mpaent->{password}) { $mpaauth{$mpa}->{password} = $mpaent->{password} }
-				 $mpaauth{$mpa}->{checked} = 1;  #remember we already looked this up, to save lookup time even if search was fruitless
+                                if (ref $mpaent and ($mpaent->{username} or $mpaent->{password})) {
+                                    if (!exists($mpaent->{username})) {
+                                        $mpaauth{$mpa}->{username} = '';
+                                    } else {
+                                        $mpaauth{$mpa}->{username} = $mpaent->{username};
+                                    }
+                                    if (!exists($mpaent->{password})) {
+                                        $mpaauth{$mpa}->{password} = '';
+                                    } else {
+                                        $mpaauth{$mpa}->{password} = $mpaent->{password};
+                                    }
+                                }
+				$mpaauth{$mpa}->{checked} = 1;  #remember we already looked this up, to save lookup time even if search was fruitless
 			}
 			if ($mpaauth{$mpa}->{username}) {  $authmap{$node}->{username} = $mpaauth{$mpa}->{username}; $authmap{$node}->{cliusername}=$mpaauth{$mpa}->{username}; }
 			if ($mpaauth{$mpa}->{password}) {  $authmap{$node}->{password} = $mpaauth{$mpa}->{password} ;  $authmap{$node}->{clipassword}=$mpaauth{$mpa}->{password} }
@@ -68,8 +94,18 @@ sub getIPMIAuth {
 		unless (ref $ipmihash and ref $ipmihash->{$node}) { 
 			next;
 		}
-		if ($ipmihash->{$node}->[0]->{username}) {   $authmap{$node}->{username}=$ipmihash->{$node}->[0]->{username} }
-		if ($ipmihash->{$node}->[0]->{password}) {   $authmap{$node}->{password}=$ipmihash->{$node}->[0]->{password} }
+                if ($ipmihash->{$node}->[0]->{username} or $ipmihash->{$node}->[0]->{password}) {
+                    unless($ipmihash->{$node}->[0]->{username}) {
+                        $authmap{$node}->{username} = '';
+                    } else {
+                        $authmap{$node}->{username}=$ipmihash->{$node}->[0]->{username};
+                    }
+                    unless($ipmihash->{$node}->[0]->{password}) {
+                        $authmap{$node}->{password} = '';
+                    } else {
+                        $authmap{$node}->{password}=$ipmihash->{$node}->[0]->{password};
+                    }
+                }
 	}
 	return \%authmap;
 }

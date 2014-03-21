@@ -40,7 +40,7 @@ sub handled_commands
     return {
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(pkvm.*)|(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
             mksysclone => "nodetype:os=(esxi4.1)|(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh(?!evh).*)|(fedora.*)|(SL.*)",
             mkstatelite => "nodetype:os=(esx[34].*)|(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
@@ -1287,7 +1287,11 @@ sub mkinstall
         my $kernpath;
         my $initrdpath;
         my $maxmem;
-	 my $esxi = 0;
+        my $esxi = 0;
+        my $pkvm = 0;
+        if ($os =~ /^pkvm/) {
+            $pkvm = 1;
+        }
 
         if (
             (
@@ -1383,11 +1387,16 @@ sub mkinstall
 	    } else {
 	       $httpprefix =~ s/^$installroot/\/install/;
 	    }
-            my $kcmdline =
+            my $kcmdline;
+            if ($pkvm) {
+                $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
+            } else {
+            $kcmdline =
                 "quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
               . $instserver . ":". $httpport
               . "/install/autoinst/"
               . $node;
+            }
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
             }
@@ -1482,6 +1491,9 @@ sub mkinstall
                 foreach(@addfiles){
                     $kcmdline .= " --- $rtftppath/$_";
                 }
+            }elsif ($pkvm) {
+                $k = "$httpmethod://$instserver:$httpport$tftppath/vmlinuz";
+                $i = "$httpmethod://$instserver:$httpport$tftppath/initrd.img";
             }else{
                     $k = "$rtftppath/vmlinuz";
                     $i = "$rtftppath/initrd.img";
@@ -1989,6 +2001,7 @@ sub copycd
         and $distname !~ /^fedora/
         and $distname !~ /^SL/
         and $distname !~ /^ol/
+        and $distname !~ /^pkvm/
         and $distname !~ /^rh/)
     {
 
