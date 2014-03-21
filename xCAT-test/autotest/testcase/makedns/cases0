@@ -7,71 +7,1192 @@ check:rc==0
 check:output=~Usage
 end
 
-start:makedns_v
-description:version
-cmd:makedns -v
-check:rc==0
-check:output=~Version
-end
-
 start:makedns_d_node
-description:makedns -d nodename
-cmd:makedns -n 
+description:makedns -d noderange
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
-cmd:nslookup $$CN
-check:output!~(server can't find $$CN)
-cmd:makedns -d $$CN 
+cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.1
 check:rc==0
-check:output=~(Completed updating zones)
-check:output=~(DNS setup is completed)
-cmd:nslookup $$CN
-check:output=~(server can't find $$CN)
+cmd:makedns -n
+check:rc==0
+cmd:makedns dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+cmd:rmdef -t node dnstestnode
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
 end
 
 start:makedns_node
-description:makedns nodename
-cmd:makedns -d $$CN
-check:rc=0
-cmd:nslookup $$CN
-check:output=~(server can't find $$CN)
-cmd:makedns $$CN 
+description:makedns noderange
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
-check:output=~(Completed updating zones)
-check:output=~(DNS setup is completed)
-cmd:nslookup $$CN 
-check:output!~(server can't find $$CN)
-end
-
-
-
-start:makedns_n
-description:makedns
-cmd:makedns -d $$CN
-cmd:nslookup $$CN
-check:output=~(server can't find $$CN)
+cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.1
+check:rc==0
 cmd:makedns -n
 check:rc==0
-check:output=~(Completed updating zones)
-check:output=~(DNS setup is completed)
-cmd:nslookup $$CN
-check:output!~(server can't find $$CN)
+cmd:makedns dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+cmd:rmdef -t node dnstestnode
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
 end
 
+start:makedns_n
+description:makedns -n
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+end
 
 start:makedns
 description:makedns
-os:Linux
-cmd:makedns -d $$CN
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
-cmd:nslookup $$CN
-check:output=~(server can't find $$CN)
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
+check:rc==0
+cmd:cat /etc/named.conf  > /tmp/makedns_named_conf.org
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
 cmd:makedns
 check:rc==0
-check:output=~(Completed updating zones)
-check:output=~(DNS setup is completed)
-cmd:service named stop
-cmd:service named start
-cmd:nslookup $$CN 
-check:output!~(server can't find $$CN)
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:cat /etc/named.conf  > /tmp/makedns_named_conf.old
+check:rc==0
+cmd:diff /tmp/makedns_named_conf.org   /tmp/makedns_named_conf.old
+check:rc==0
+check:output~=
+cmd:rm -f /tmp/makedns_named_conf.org /tmp/makedns_named_conf.new
+check:rc==0
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
 end
+
+#------------------------------------
+start:makedns_environment_check_forworder_mode
+description:check basic environment of makedns in hierarchical arch and sn acts forworder
+os:rhels
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+cmd:chdef service setupnameserver=1 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+cmd:more /etc/resolv.conf |grep nameserver
+cmd:xdsh $$SN "more /etc/resolv.conf |grep nameserver"
+cmd:xdsh $$CN "more /etc/resolv.conf |grep nameserver"
+cmd:more /etc/dhcp/dhcpd.conf |grep domain-name-servers
+cmd:xdsh $$SN "more /etc/dhcp/dhcpd.conf|grep domain-name-servers"
+cmd:tabdump site|grep nameservers
+cmd:tabdump networks
+cmd:lsdef $$SN -i setupnameserver |grep setupnameserver
+check:rc==0
+check:output~=1
+cmd:lsdef $$SN -i setupdhcp |grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=forward only
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+end
+
+start:makedns_environment_check_forworder_mode
+description:check basic environment of makedns in hierarchical arch and sn acts forworder
+os:sles
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+cmd:chdef service setupnameserver=1 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+cnd:output~=running
+cmd:more /etc/resolv.conf |grep nameserver
+cmd:xdsh $$SN "more /etc/resolv.conf |grep nameserver"
+cmd:xdsh $$CN "more /etc/resolv.conf |grep nameserver"
+cmd:more /etc/dhcpd.conf|grep domain-name-servers
+cmd:xdsh $$SN "more /etc/dhcpd.conf|grep domain-name-servers"
+cmd:tabdump site|grep nameservers
+cmd:tabdump networks
+cmd:lsdef $$SN -i setupnameserver|grep setupnameserver
+check:rc==0
+check:output~=1
+cmd:lsdef $$SN -i setupdhcp|grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=forward only
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+end
+
+
+start:makedns_environment_check_forworder_mode
+description:check basic environment of makedns in hierarchical arch and sn acts forworder
+os:AIX
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+cmd:chdef service setupnameserver=1 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:more /etc/resolv.conf|grep nameserver
+check:rc==0
+cmd:xdsh $$SN "more /etc/resolv.conf|grep nameserver"
+check:rc==0
+cmd:xdsh $$CN "more /etc/resolv.conf|grep nameserver"
+cmd:tabdump site|grep nameservers
+check:rc==0
+cmd:tabdump networks
+check:rc==0
+cmd:lsdef $$SN -i setupnameserver|grep setupnameserver
+check:rc==0
+check:output~=1
+cmd:lsdef $$SN -i setupdhcp|grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:lssrc -s named
+check:output~=active
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "lssrc -s named"
+check:output~=active
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=forward only
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+end
+
+
+start:makedns_environment_check_master_slave_mode
+description:check basic environment of makedns in hierarchical arch and sn acts slave
+os:rhels
+cmd:chtab key=nameservers site.value="<xcatmaster>,$$MNIP"
+check:rc==0
+cmd:chdef  service setupnameserver=2 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+cmd:more /etc/resolv.conf|grep nameserver
+check:rc==0
+cmd:xdsh $$SN "more /etc/resolv.conf|grep nameserver"
+check:rc==0
+cmd:xdsh $$CN "more /etc/resolv.conf|grep nameserver"
+cmd:more /etc/dhcp/dhcpd.conf |grep domain-name-servers
+check:rc==0
+cmd:xdsh $$SN "more /etc/dhcp/dhcpd.conf|grep domain-name-servers"
+check:rc==0
+cmd:tabdump site|grep nameservers
+check:rc==0
+cmd:tabdump networks
+check:rc==0
+cmd:lsdef $$SN -i setupnameserver|grep setupnameserver
+check:rc==0
+check:output~=2
+cmd:lsdef $$SN -i setupdhcp|grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:service named status
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named status"
+check:output~=running
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=type slave
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+end
+
+start:makedns_environment_check_master_slave_mode
+description:check basic environment of makedns in hierarchical arch and sn acts slave
+os:sles
+cmd:chtab key=nameservers site.value="<xcatmaster>,$$MNIP"
+check:rc==0
+cmd:chdef  service setupnameserver=2 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+cmd:more /etc/resolv.conf|grep nameserver
+check:rc==0
+cmd:xdsh $$SN "more /etc/resolv.conf|grep nameserver"
+check:rc==0
+cmd:xdsh $$CN "more /etc/resolv.conf|grep nameserver"
+cmd:more /etc/dhcpd.conf|grep domain-name-servers
+check:rc==0
+cmd:xdsh $$SN "more /etc/dhcpd.conf|grep domain-name-servers"
+check:rc==0
+cmd:tabdump site|grep nameservers
+check:rc==0
+cmd:tabdump networks
+check:rc==0
+cmd:lsdef $$SN -i setupnameserver|grep setupnameserver
+check:rc==0
+check:output~=2
+cmd:lsdef $$SN -i setupdhcp|grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:service named status
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named status"
+check:output~=running
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=type slave
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running
+end
+
+start:makedns_environment_check_master_slave_mode
+description:check basic environment of makedns in hierarchical arch and sn acts slave
+os:AIX
+cmd:chtab key=nameservers site.value="<xcatmaster>,$$MNIP"
+check:rc==0
+cmd:chdef  service setupnameserver=2 setupdhcp=1
+check:rc==0
+cmd:tabdump servicenode
+check:rc==0
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:more /etc/resolv.conf|grep nameserver
+check:rc==0
+cmd:xdsh $$SN "more /etc/resolv.conf|grep nameserver"
+check:rc==0
+cmd:xdsh $$CN "more /etc/resolv.conf|grep nameserver"
+cmd:tabdump site|grep nameservers
+check:rc==0
+cmd:tabdump networks
+check:rc==0
+cmd:lsdef $$SN -i setupnameserver|grep setupnameserver
+check:rc==0
+check:output~=2
+cmd:lsdef $$SN -i setupdhcp|grep setupdhcp
+check:rc==0
+check:output~=1
+cmd:lssrc -s named
+check:output~=active
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "lssrc -s named"
+check:output~=active
+cmd:xdsh $$SN "more /etc/named.conf"
+check:rc==0
+check:output~=type slave
+cmd:nslookup $$SN $$MN
+check:output~=Server:             $$MN
+check:output!~(server can't find $$SN)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:             $$SN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+end
+#---------------------------------------------------------------------
+
+start:makedns_when_nameserver_on_mn_down
+description:when nameserver on mn down, nameserver on sn should provide service
+os:rhels
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:service named stop
+check:rc==0
+cmd:service named status
+check:output~=stopped
+cmd:nslookup dnstestnode $$MN
+check:rc!=0
+check:output~=Server:         $$MN
+check:output~=(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:service named start
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running 
+end
+
+start:makedns_when_nameserver_on_mn_down
+description:when nameserver on mn down, nameserver on sn should provide service
+os:sles
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:service named stop
+check:rc==0
+cmd:service named status
+check:output~=unused
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output~=(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:service named start
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:output~=running  
+end
+
+start:makedns_when_nameserver_on_mn_down
+description:when nameserver on mn down, nameserver on sn should provide service
+os:AIX
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:lssrc -s named
+check:output~=active
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:sleep 5
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:stopsrc -s named
+check:rc==0
+cmd:sleep 3
+cmd:lssrc -s named
+check:output~=inoperative
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output~=(server can't find dnstestnode)
+cmd:sleep 5
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:startsrc -s named
+check:rc==0
+cmd:lssrc -a |grep named
+check:rc==0
+check:output~=active
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+end
+
+start:makedns_when_nameserver_on_sn_down
+description:when nameserver on sn down, nameserver on mn should provide service
+os:rhels
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named stop"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:rc!=0
+check:output~=stopped
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:rc!=0
+check:output~=Server:         $$SN
+check:output~=(server can't find dnstestnode)
+cmd:xdsh $$SN "service named start"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+end
+
+start:makedns_when_nameserver_on_sn_down
+description:when nameserver on sn down, nameserver on mn should provide service
+os:sles
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named stop"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:output~=unused
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output~=(server can't find dnstestnode)
+cmd:xdsh $$SN "service named start"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "service xcatd status"
+check:rc==0
+check:output~=running
+end
+
+
+start:makedns_when_nameserver_on_sn_down
+description:when nameserver on sn down, nameserver on mn should provide service
+os:AIX
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:lssrc -s named
+check:output~=active
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:sleep 10
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "stopsrc -s named"
+check:rc==0
+cmd:xdsh $$SN "lssrc -s named"
+check:rc==0
+check:output~=inoperative
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:sleep 5
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output~=(server can't find dnstestnode)
+cmd:xdsh $$SN "startsrc -s named"
+check:rc==0
+cmd:xdsh $$SN "lssrc -s named"
+check:rc==0
+check:output~=active
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+end
+
+#999999999999999999999999999
+start:makedns_nameserver_on_sn_sync_db
+description:when nameserver's db on mn was changed, nameserver's db on sn should be synchronized
+os:Linux
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.2
+check:rc==0
+cmd:makedns dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output~=(server can't find dnstestnode)
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output~=(server can't find dnstestnode)
+cmd:rmdef -t node dnstestnode
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+end
+
+
+start:makedns_nameserver_on_sn_sync_db
+description:when nameserver's db on mn was changed, nameserver's db on sn should be synchronized
+os:AIX
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.2
+check:rc==0
+cmd:makedns dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find dnstestnode)
+cmd:makedns -d dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:         $$MN
+check:output~=(server can't find dnstestnode)
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:output~=Server:         $$SN
+check:output~=(server can't find dnstestnode)
+cmd:rmdef -t node dnstestnode
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+
+end
+
+start:makedns_nameserver_on_sn_sync_conf
+description:when nameserver's conf file on mn was changed, nameserver's conf file on sn should be synchronized when xcatd restart
+os:Linux
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "service xcatd restart"
+check:rc==0
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~=zone "100.100.100.IN-ADDR.ARPA."
+end
+
+start:makedns_nameserver_on_sn_sync_conf
+description:when nameserver's conf file on mn was changed, nameserver's conf file on sn should be synchronized when xcatd restart
+os:AIX
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:xdsh $$SN "stopsrc -s xcatd"
+check:rc==0
+cmd:sleep 5
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=inoperative
+cmd:xdsh $$SN "startsrc -s xcatd"
+check:rc==0
+cmd:sleep 10
+cmd:xdsh $$SN "lssrc -s xcatd"
+check:output~=active
+cmd:xdsh $$SN "cat /etc/named.conf"
+check:rc==0
+check:output!~=zone "100.100.100.IN-ADDR.ARPA."
+end
+
+start:makedns_nameserver_on_sn_sync_db_when_sn_down
+description:when nameserver's db on mn was changed and name server on SN down at the same time, when name server on SN restart, it should sync the latest name server db on MN
+os:rhels
+cmd:makedns -n
+check:rc==0
+cmd:service named status
+check:rc==0
+check:output~=running
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:chdef -t node -o dnstestnode groups=all  ip=100.100.100.2
+check:rc==0
+cmd:xdsh $$SN "service named stop"
+check:rc==0
+cmd:makedns dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:rc==0
+check:output~=Server:         $$MN
+check:output!~(server can't find dnstestnode)
+cmd:xdsh $$SN "service named start"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:rc==0
+check:output~=Server:         $$SN
+check:output!~(server can't find $$CN)
+cmd:xdsh $$SN "service named stop"
+check:rc==0
+cmd:makedns -d dnstestnode
+check:rc==0
+cmd:nslookup dnstestnode $$MN
+check:rc!=0
+check:output~=Server:         $$MN
+check:output~=(server can't find $$CN)
+cmd:xdsh $$SN "service named start"
+check:rc==0
+cmd:xdsh $$SN "service named status"
+check:rc==0
+check:output~=running
+cmd:sleep 2
+cmd:nslookup dnstestnode $$SN
+check:rc!=0
+cmd:rmdef -t node dnstestnode
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+end
+
+
+
+
+
+
+
+
 
