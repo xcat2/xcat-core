@@ -571,7 +571,16 @@ sub process_request {
             $osn = $2;
             $osm = 0;   
         }
-    
+
+        #Redhat recommend to use grub2 instead of yaboot for rhels7 provision
+        if ( $osv =~ /rh/ and int($osn) == 7 ){
+            my $rsp;
+            push @{$rsp->{data}},
+                  "stop configuration because yaboot DOES NOT work for $os provision, please change noderes.netboot=grub2 instead.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;                    
+        }
+
         if (($osv =~ /rh/ and int($osn) < 6) or 
             ($osv =~ /sles/ and int($osn) < 11)) {
             # check if yaboot-xcat installed
