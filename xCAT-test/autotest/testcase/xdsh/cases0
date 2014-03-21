@@ -1,0 +1,140 @@
+start:xdsh_h
+cmd:xdsh  -h
+check:rc==0
+check:output=~Usage
+end
+
+start:xdsh_V
+cmd:xdsh -V
+check:rc==0
+check:output=~Version
+end
+
+start:xdsh_regular_command
+cmd:xdsh $$CN "ps -ef"
+check:rc==0
+check:output=~$$CN: UID        PID  PPID  C STIME TTY          TIME CMD
+end
+
+start:xdsh_Q_command
+cmd:xdsh $$CN -Q "ps -ef"
+check:rc==0
+check:output=~
+end
+
+start:xdsh_c_sn
+cmd:xdsh $$SN "ls -l /var/xcat/syncfiles" > /dev/null 2>&1; if [ "$?" -ne "0" ]; then xdsh $$SN "mkdir -p /var/xcat/syncfiles";fi
+check:rc==0
+cmd: xdsh $$SN "echo 'test' > /var/xcat/syncfiles/xdsh_c.tmp"
+check:rc==0
+cmd: xdsh $$SN -c
+check:rc==0
+cmd:xdsh $$SN "ls -l /var/xcat/syncfiles" 
+check:rc==0
+check:output=~
+end
+
+start:xdsh_c_cn
+cmd:xdsh $$CN "ls -l /var/xcat/node/syncfiles" > /dev/null 2>&1; if [ "$?" -ne "0" ]; then xdsh $$CN "mkdir -p /var/xcat/node/syncfiles";fi
+check:rc==0
+cmd: xdsh $$CN "echo 'test' > /var/xcat/node/syncfiles/xdsh_c.tmp"
+check:rc==0
+cmd: xdsh $$CN -c
+check:rc==0
+cmd:xdsh $$CN "ls -l /var/xcat/node" 
+check:rc==0
+check:output=~
+end
+
+start:xdsh_e_filename
+cmd:echo "echo 'xdsh_e_filename test' > /tmp/xdsh_e_filename.txt" > /tmp/xdsh_script.sh
+check:rc==0
+cmd:chmod +x /tmp/xdsh_script.sh
+check:rc==0
+cmd:xdsh $$CN -e /tmp/xdsh_script.sh
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp |grep xdsh_e_filename.txt"
+check:output=~xdsh_e_filename.txt
+cmd:xdsh $$CN "cat /tmp/xdsh_e_filename.txt"
+check:output=~xdsh_e_filename test
+cmd:xdsh $$CN "rm -r /tmp/xdsh_e_filename.txt"
+check:rc==0
+cmd:rm -r /tmp/xdsh_script.sh
+check:rc==0
+end
+
+start:xdsh_E 
+cmd:echo 'export DSH_FANOUT=8' > /tmp/xdsh.test
+check:rc==0
+cmd:xdsh $$CN -E /tmp/xdsh.test  "export |grep DSH_FANOUT"
+check:rc==0
+check:output=$$CN: declare -x DSH_FANOUT="8"
+cmd:rm -r /tmp/xdsh.test
+check:rc==0
+end
+
+start:xdsh_i_linux
+cmd:copycds $$ISO
+check:rc==0
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:xdsh -i /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg  "rpm -qa|grep uuid"
+check:rc==0
+check:output=~libuuid
+end
+
+
+start:xdsh_t
+cmd:date +%s > /tmp/start.txt
+check:rc==0
+cmd:xdsh $$CN -t 5 "ssh 1.1.1.1"
+check:rc!=0
+check:output=~Error: Caught SIGINT - terminating the child processes.
+cmd:date +%s > /tmp/end.txt
+check:rc==0
+cmd:a=`cat /tmp/start.txt`;b=`cat /tmp/end.txt`;c=$[$b-$a];echo $c
+check:rc==0
+check:output<7
+cmd:rm -f /tmp/start.txt /tmp/end.txt
+end
+
+start:xdsh_q
+cmd:xdsh $$CN -q
+check:rc==0
+check:output=~DSH:DSH_FANOUT=
+end
+
+start:xdsh_T
+cmd:xdsh $$CN -T  "hostname"
+check:rc==0
+check:output=~TRACE:Default context is XCAT
+check:output=~$$CN: $$CN
+end
+
+start:xdsh_o
+cmd:xdsh $$CN -o "-v" date
+check:rc==0
+check:output=~$$CN: OpenSSH
+check:output=~$$CN: debug
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
