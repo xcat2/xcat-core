@@ -127,6 +127,19 @@ else
   authkey = swift_secrets['swift_authkey']
 end
 
+if node["swift"]["authmode"] == "keystone"
+  openstack_identity_bootstrap_token = secret "secrets", "openstack_identity_bootstrap_token"  
+  %w[ /home/swift /home/swift/keystone-signing ].each do |path|
+    directory path do
+      owner "swift"
+      group "swift"
+      mode  00700
+  
+      action :create
+    end
+  end
+end
+
 # create proxy config file
 template "/etc/swift/proxy-server.conf" do
   source "proxy-server.conf.erb"
@@ -134,6 +147,7 @@ template "/etc/swift/proxy-server.conf" do
    group "swift"
    mode "0600"
    variables("authmode" => node["swift"]["authmode"],
+             "openstack_identity_bootstrap_token" => openstack_identity_bootstrap_token,
              "bind_host" => node["swift"]["network"]["proxy-bind-ip"],
              "bind_port" => node["swift"]["network"]["proxy-bind-port"],
              "authkey" => authkey,

@@ -1,0 +1,218 @@
+if grep n8r /proc/cmdline > /dev/null 2>&1;
+then
+  stty crtscts
+fi
+for x in 0 1 2 3 4 5 6 7 8
+do
+	mknod /dev/vcs$x c 7 $x
+	mknod /dev/vcsa$x c 7 $[$x+128]
+done
+chmod 644 /dev/vcs*
+chown root /dev/vcs*
+if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
+        cp -f /tmp/updates/etc/pki/tls/certs/ca-bundle.crt /etc/pki/tls/certs/
+fi
+
+
+
+cat >/tmp/baz.py <<EOF
+#!/usr/bin/python
+import socket
+import sys
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+
+print sys.argv[1]
+response = sock.recv(100)
+if(response == "ready\n"):
+        sock.send(sys.argv[1]+"\n")
+        response = sock.recv(100)
+
+sock.close()
+EOF
+
+
+
+cat >/tmp/foo.py <<EOF
+#!/usr/bin/python
+
+import socket
+import os
+import linecache
+import re
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(('#XCATVAR:XCATMASTER#',#TABLE:site:key=xcatiport:value#))
+
+response = sock.recv(100)
+if(response == "ready\n"):
+	sock.send("installmonitor\n")
+	response = sock.recv(100)
+
+sock.close()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+port = 3001
+sock.bind(('', port))
+
+sock.listen(5)
+
+try:
+	while 1:
+		newSocket, address = sock.accept()
+		while 1:
+			received = newSocket.recv(200)
+			if not received:
+				break
+			command = re.split('\s+',received)
+			if(command[0] == "stat"):
+				ilog = ""
+				line = ""
+				post = 0
+				percent = 0
+				count = 0
+				numpack = 0
+				if(os.path.isfile('/tmp/packaging.log')):
+					ilog = '/tmp/packaging.log'
+				if(os.path.isfile('/mnt/sysimage/tmp/post.log')):
+					ilog = '/mnt/sysimage/tmp/post.log'
+					post = True
+				if(ilog):
+					count = len(open(ilog).readlines())
+					line = linecache.getline(ilog,count)
+					linecache.clearcache()
+				if(line and not post):
+					r2 = re.compile("Installing ([^ ]*) \((\d+)/(\d+)\)")
+					m2 = r2.search(line)
+					if m2:
+						newline = "%s (%.2f%%)" % (m2.group(1), 100 * float(m2.group(2)) / float(m2.group(3)))
+					else:
+						newline = "post"
+					line = "installing " + newline
+				if(line and post):
+					line = "installing " + line
+				if(not line):
+					line = "installing prep"
+				newSocket.send(line)
+				break
+#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
+#				newcommand = ""
+#				for i in command[1:]:
+#					newcommand = newcommand + i + " "
+#				output = os.popen(newcommand).read()
+#				newSocket.send(output)
+#				break
+			if(command[0] == "screendump"):
+				newcommand = "cat /dev/vcs"
+				for i in command[1:]:
+					newcommand = newcommand + i
+				output = os.popen(newcommand).read()
+				newSocket.send(output)
+				break
+				
+		newSocket.close()
+
+finally:
+	sock.close()
+EOF
+
+chmod 755 /tmp/foo.py
+chmod 755 /tmp/baz.py
+
+NODESTATUS=#TABLEBLANKOKAY:site:key=nodestatus:value#
+
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+   /tmp/baz.py "installstatus installing" &
+fi
+
+
+
+/tmp/foo.py >/foo.log 2>&1 &
+
+
+
+#time to ascertain fstype and PReP/UEFI/legacy
+#also, find first available block device (sda or vda likely)
+#TODO: pick a likely non-SAN target if possible
+shopt -s nullglob
+for disk in /dev/vd*[^0-9];do
+	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+	eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
+	if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
+		instdisk=$disk
+		break
+	fi
+done
+
+if [ -z "$instdisk" ]; then
+	for disk in /dev/sd*[^0-9]; do
+		eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
+		if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
+			instdisk=$disk
+			break
+		fi
+		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
+		case "$currdriver" in 
+		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
+			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		"mptsas"|"mpt2sas") #*PROBABLY* not SAN, but SAS SAN is possible
+			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		*)
+			if [ -z "$firstdisk" ]; then firstdisk=$disk; fi #remember first disk as a guess of medium resort
+			;;
+		esac
+	done
+fi
+
+if [ -z "$instdisk" ]; then
+	if [ ! -z "$firstdirectdisk" ]; then 
+		instdisk=$firstdirectdisk 
+	elif [ ! -z "$probablyfirstdirectdisk" ]; then
+		instdisk=$probablyfirstdirectdisk 
+	elif [ ! -z "$firstdisk" ]; then
+		instdisk=$firstdisk 
+	fi
+fi
+		
+
+modprobe ext4 >& /dev/null
+modprobe ext4dev >& /dev/null
+if grep ext4dev /proc/filesystems > /dev/null; then
+	FSTYPE=ext3
+elif grep ext4 /proc/filesystems > /dev/null; then
+	FSTYPE=ext4
+else
+	FSTYPE=ext3
+fi
+
+if [ `uname -m` = "ppc64" ]; then
+	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
+fi
+if [ -d /sys/firmware/efi ]; then 
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype vfat' >> /tmp/partitioning
+fi
+
+#TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
+echo "part /boot --size 256 --fstype ext3 --ondisk $instdisk" >> /tmp/partitioning
+echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
+echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
+	
+#XCA_PARTITION_SCRIPT#
+
+
+# The following code is to generate the repository for the installation
+cat /proc/cmdline
+
+NEXTSERVER=`cat /proc/cmdline | grep http | head -n 1`
+NEXTSERVER=${NEXTSERVER#*http://}
+NEXTSERVER=${NEXTSERVER%%:*}
+
+export nextserver=$NEXTSERVER
+#INSTALL_SOURCES_IN_PRE#
+
+

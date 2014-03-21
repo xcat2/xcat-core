@@ -2654,7 +2654,7 @@ sub getTablesNodesAttribs
       my %noderecs;
       my $recs;
       # build the table name record
-      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      #@{$noderecs{table}->[0]->{tablename}} = $tablename;
       # if request for ALL attributes
       if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
         @attrs=();
@@ -2681,6 +2681,7 @@ sub getTablesNodesAttribs
        }
 
       }
+     @{$noderecs{table}->[0]->{tablename}} = $tablename;
      push @{$rsp{"table"}}, @{$noderecs{table}};
   } # end of all table processing 
 # for checkin XML created
@@ -2752,9 +2753,9 @@ sub getTablesAllRowAttribs
       my $attr    = $tabhash->{attr};
       my @attrs=@$attr;
       my $tab=xCAT::Table->new($tablename);
-      my %noderecs;
+      my %tblrecs;
       # build the table name record
-      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      @{$tblrecs{table}->[0]->{tablename}} = $tablename;
       # if request for ALL attributes
       if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
         @attrs=();
@@ -2767,7 +2768,6 @@ sub getTablesAllRowAttribs
       }
       # read all the attributes in this table
       my @recs        =   $tab->getAllAttribs(@attrs);
-      my %tblrecs;
       foreach my $rec (@recs) { 
          my %datseg=();
          foreach my $key (keys %$rec) {

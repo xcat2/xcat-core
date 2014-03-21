@@ -662,7 +662,7 @@ sub  update_tables_with_templates
 	
 	#get the pkglist file
 	my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-	if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+	if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch,$genos);}
 
 	#now update the db
 	if (!$osimagetab) { 

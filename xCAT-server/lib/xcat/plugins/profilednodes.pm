@@ -1626,13 +1626,16 @@ sub findme{
     }
 
     my @nodelist = keys %hostinfo_dict;
-
+    # call makehosts to get the IP by resolving the name
+    my $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>\@nodelist, sequential=>[1]}, $request_command, 0, 2);
+    
     # call discover to notify client.
     xCAT::MsgUtils->message('S', "Call discovered request.\n");
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
     $request->{discoverymethod} = ['profile'];
-    my $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
+    $retref = "";
+    $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
 
     xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");

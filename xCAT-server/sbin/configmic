@@ -71,6 +71,9 @@ my ($rc, $output) = runsyscmd ($cmd);
 if ($rc) {
     $cmd = "wget -N --waitretry=10 --random-wait -T 60 http://$master/$cfgpath/miccfg.$nodename -P $tmppath";
     runsyscmd ($cmd, "Error: failed to download mic configuration file from $master\n", 3);
+} else {
+    # use the correct short hotname in $nodename_short
+    $nodename=$nodename_short;
 }
 
 unless (-r "$tmppath/miccfg.$nodename") {

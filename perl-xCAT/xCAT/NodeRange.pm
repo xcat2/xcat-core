@@ -149,7 +149,7 @@ sub nodesbycriteria {
 	 }
 	 if ($neednewcache) {
 	   if ($nodelist) { 
-	     $nodelist->_clear_cache(); 
+	     #$nodelist->_clear_cache(); 
 	     $nodelist->_build_cache(\@cachedcolumns);
 	   }
 	  }

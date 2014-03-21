@@ -554,7 +554,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime comments disable)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime zonename comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
@@ -569,6 +569,7 @@ nodelist => {
      hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
      updatestatus => "The current node update status. Valid states are synced out-of-sync,syncing,failed.",
      updatestatustime => "The date and time when the updatestatus was updated.",
+     zonename => "The name of the zone to which the node is currently assigned. If undefined, then it is not assigned to any zone. ",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
     },
@@ -1051,7 +1052,8 @@ site => {
    "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
-   "                   passwordless root access to nodes and other SN.\n\n".
+   "                   passwordless root access to nodes and other SN.\n".
+   "                   If using the zone table, this attribute in not used.\n\n".
    " -----------------\n".
    "SERVICES ATTRIBUTES\n".
    " -----------------\n".
@@ -1185,6 +1187,19 @@ performance => {
    node => 'The node name.',
    attrname => 'The metric name.',
    attrvalue => 'The metric value.',
+   comments => 'Any user-provided notes.',
+   disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
+zone => {
+    cols => [qw(zonename sshkeydir sshbetweennodes defaultzone comments disable)],
+    keys => [qw(zonename)],
+    table_desc => 'Defines a cluster zone for nodes that share root ssh key access to each other.',
+ descriptions => {
+   zonename => 'The name of the zone.',
+   sshkeydir => 'Directory containing the shared root ssh RSA keys.',
+   sshbetweennodes => 'Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes. ',
+   defaultzone => 'If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.',
    comments => 'Any user-provided notes.',
    disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1325,7 +1340,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1343,6 +1358,13 @@ nics => {
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
+            nichostnameprefixes  => 'Comma-separated list of hostname prefixes per NIC. 
+                        If only one ip address is associated with each NIC:
+                            <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
+                        If multiple ip addresses are associcated with each NIC:
+                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
+                        The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
+                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband. The xCAT object definition commands support to use nictypes.<nicname> as the sub attributes.', 
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
 .',
@@ -1535,8 +1557,8 @@ hwinv => {
         node => 'The node name or group name.',
         cputype => 'The cpu model name for the node.',
         cpucount => 'The number of cpus for the node.',
-        memory => 'The size of the memory for the node.',
-        disksize => 'The size of the disks for the node.',
+        memory => 'The size of the memory for the node in MB.',
+        disksize => 'The size of the disks for the node in GB.',
         comments => 'Any user-provided notes.',
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
@@ -1618,6 +1640,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   rack => { attrs => [], attrhash => {}, objkey => 'rackname' },
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
   osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
+  zone=> { attrs => [], attrhash => {}, objkey => 'zonename' },
   
 );
 
@@ -2244,6 +2267,10 @@ my @nodeattrs = (
                 tabentry => 'nics.nichostnamesuffixes',
                 access_tabentry => 'nics.node=attr:node',
         },
+        {attr_name => 'nichostnameprefixes',
+                tabentry => 'nics.nichostnameprefixes',
+                access_tabentry => 'nics.node=attr:node',
+        },
         {attr_name => 'nictypes',
                 tabentry => 'nics.nictypes',
                 access_tabentry => 'nics.node=attr:node',
@@ -2587,6 +2614,10 @@ my @nodeattrs = (
              },             
 		{attr_name => 'updatestatustime',
                  tabentry => 'nodelist.updatestatustime',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },             
+		{attr_name => 'zonename',
+                 tabentry => 'nodelist.zonename',
                  access_tabentry => 'nodelist.node=attr:node',
              },             
 		{attr_name => 'usercomment',
@@ -3042,6 +3073,36 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'rack.rackname=attr:rackname',
         },
    );
+####################
+#  zone table      #
+####################
+@{$defspec{zone}->{'attrs'}} = (
+        {attr_name => 'zonename',
+                tabentry => 'zone.zonename',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshkeydir',
+                tabentry => 'zone.sshkeydir',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshbetweennodes',
+                tabentry => 'zone.sshbetweennodes',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'defaultzone',
+                tabentry => 'zone.defaultzone',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'usercomment',
+                 tabentry => 'zone.comments',
+                 access_tabentry => 'zone.zonename=attr:zonename',
+        },
+   );
+#########################
+#  route data object  #
+#########################
+#     routes table    #
+#########################
 #########################
 #  route data object  #
 #########################

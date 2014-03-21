@@ -23,7 +23,7 @@ use Cwd;
 
 # Update this list if you group any xcat docs on a separate page such that they are no longer linked from the
 # main doc page.
-my @indexdocs = ('XCAT_Documentation', 'Power_775_Cluster_Documentation', 'Highly_Available_Management_Node', 'Mixed_Cluster_Support');
+my @indexdocs = ('XCAT_Documentation', 'Power_775_Cluster_Documentation', 'Highly_Available_Management_Node', 'Mixed_Cluster_Support','IBM_HPC_Stack_in_an_xCAT_Cluster');
 
 #my $VERSION;
 my $HELP;

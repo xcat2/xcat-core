@@ -1442,7 +1442,7 @@ sub process_request
                     next;
                 }
             }
-            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+|em\d+)/)
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\S*\d+|em\S*\d+)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
                 $activenics{$ent[1]} = 1;
             }

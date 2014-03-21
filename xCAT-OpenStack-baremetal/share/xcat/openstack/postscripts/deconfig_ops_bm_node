@@ -1,0 +1,94 @@
+#!/bin/sh 
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# xCAT post script for deconfiguring the openstack baremetal node.
+# The format is:
+# deconfig_ops_bm_node ops_ip
+
+
+get_os_type()
+{
+    #get os type
+	str_os_type=`uname | tr 'A-Z' 'a-z'`
+	str_temp=''
+	if [ "$str_os_type" = "linux" ];then
+		str_temp=`echo $OSVER | grep -E '(sles|suse)'`
+		if [ -f "/etc/debian_version" ];then
+			str_os_type="debian"
+		elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
+			str_os_type="sles"
+		else
+			str_os_type="redhat"
+		fi
+	else
+		str_os_type="aix"
+	fi
+	echo "$str_os_type"
+}
+
+#change hostname permanently
+change_host_name()
+{
+    str_os_type=$1
+    str_hostname=$2
+
+    hostname $str_hostname
+
+    if [ "$str_os_type" = "sles" ];then
+        echo "Persistently changing the hostname not implemented yet."
+    #debian ubuntu
+    elif [ "$str_os_type" = "debian" ];then
+        conf_file="/etc/hostname"
+        echo "$str_hostname" > $conf_file
+    else
+        conf_file="/etc/sysconfig/network"
+        if [ ! -f $conf_file ]; then
+            touch $conf_file
+        fi
+        grep 'HOSTNAME' $conf_file 2>&1 > /dev/null
+        if [ $? -eq 0 ]; then
+            sed -i "s/HOSTNAME=.*/HOSTNAME=$str_hostname/" $conf_file
+        else
+            echo "HOSTNAME=$str_hostname" >> $conf_file
+        fi
+    fi
+}
+
+
+str_os_type=$(get_os_type)
+echo "os_type=$str_os_type"
+
+if [ $str_os_type == "aix" ]; then
+	logger -t xcat "deconfig_ops_bm_node dose not support AIX."
+	echo "deconfig_ops_bm_node dose not support AIX."
+	exit 0
+fi
+
+#change the hostname
+#hostname $NODE
+change_host_name $str_os_type $NODE
+
+#remove the openstack ip from the node
+if [[ -n $1 ]]; then
+    ops_ip=$1
+	nic=$(ip addr | grep $ops_ip | awk '{print $NF}')	
+	echo "nic=$nic, ops_ip=$ops_ip"
+
+	ifconfig $nic del $ops_ip
+ 
+	#delete the configuration file
+    if [ "$str_os_type" = "sles" ]; then
+        str_conf_file="/etc/sysconfig/network/ifcfg-$nic"
+    elif [ "$str_os_type" = "debian" ]; then  #debian ubuntu
+        str_conf_file="/etc/network/interfaces.d/$nic"
+    else #redhat
+        str_conf_file="/etc/sysconfig/network-scripts/ifcfg-$nic"
+    fi
+	if [ -f $str_conf_file ]; then
+		rm $str_conf_file
+	fi
+fi
+
+
+
+

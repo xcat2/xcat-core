@@ -67,7 +67,7 @@ sub getHcpAttribs
 	}
     }
     
-    my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype','hcp']); 
+    my @ps = $tabs->{ppc}->getAllNodeAttribs(['node','parent','nodetype','hcp','id']); 
     for my $entry ( @ps ) {
         my $tmp_parent = $entry->{parent};
         my $tmp_node = $entry->{node};
@@ -78,6 +78,9 @@ sub getHcpAttribs
         }
         if (defined($tmp_node) && defined($tmp_type) && ($tmp_type eq "blade") && defined($entry->{hcp})) {
             push @{$ppchash{$tmp_node}{children}}, $entry->{hcp};
+        }
+        if (defined($tmp_node) && defined($entry->{id}) && defined($tmp_parent) && defined($tmp_type) && ($tmp_type eq "lpar")) {
+            $ppchash{$tmp_parent}{mapping}{$tmp_node} = $entry->{id};
         }
 
 	#if(exists($ppchash{$tmp_node})) {

@@ -28,6 +28,7 @@ use strict;
 use xCAT::Table;
 use Data::Dumper;
 use xCAT::NodeRange;
+use xCAT::Zone;
 use IO::Socket::INET;
 use Time::HiRes qw(sleep);
 
@@ -112,34 +113,71 @@ sub process_request
     } else {
         $root = "/root";
     }
+    
+    foreach my $parm (@params_to_return) {
+       
+       # if  paramter is ssh_root_key or ssh_root_pub_key then
+       # we need to see if a zonename is attached
+       # it comes in as ssh_root_key:zonename
+       # if zonename then we need to read the keys from the zone table sshkeydir attribute
+       
+       my $errorfindingkeys=0;
+       my $foundkeys=0;
+       my $sshrootkeydir="$root/.ssh";   # old default
+       if ((($parm =~ /^ssh_root_key/) || ($parm =~ /^ssh_root_pub_key/)) && ($foundkeys==0)){
+         my ($rootkeyparm,$zonename) = split(/:/,$parm);
+         if ($zonename) {   
+            $parm=$rootkeyparm;  # take the zone off
+           `logger -t xCAT -p local4.info "credentials: The node is asking for zone:$zonename sshkeys ."`;
+           $sshrootkeydir = xCAT::Zone->getzonekeydir($zonename);
+           if ($sshrootkeydir == 1) { # error return
+               `logger -t xCAT -p local4.info "credentials: The node is asking for zone:$zonename sshkeys and the $zonename is not defined."`;
+           } else {
+                $foundkeys=1;  # don't want to read the zone data twice
+           }
+         }
+       }
 
-    foreach (@params_to_return) {
-
-       if (/ssh_root_key/) { 
-          unless (-r "$root/.ssh/id_rsa") {
+       if ($parm  =~ /ssh_root_key/) { 
+          unless (-r "$sshrootkeydir/id_rsa") {
             push @{$rsp->{'error'}},"Unable to read root's private ssh key";
             `logger -t xCAT -p local4.info "credentials: Unable to read root's private ssh key"` ;
             next;
           }
-          $tfilename = "$root/.ssh/id_rsa";
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
+          $tfilename = "$sshrootkeydir/id_rsa";
+         `logger -t xCAT -p local4.info "credentials: The  ssh root private key is in $tfilename."`;
 
-       } elsif (/xcat_server_cred/) {
+       } elsif ($parm =~ /ssh_root_pub_key/) {
+          unless (-r "$sshrootkeydir/id_rsa.pub") {
+            push @{$rsp->{'error'}},"Unable to read root's public ssh key";
+            `logger -t xCAT -p local4.info "credentials: Unable to read root's public ssh key"` ;
+            next;
+          }
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
+          $tfilename = "$sshrootkeydir/id_rsa.pub";
+         `logger -t xCAT -p local4.info "credentials: The  ssh root public key is in $tfilename."`;
+
+       } elsif ($parm =~ /xcat_server_cred/) {
           unless (-r "/etc/xcat/cert/server-cred.pem") {
             push @{$rsp->{'error'}},"Unable to read xcat_server_cred";
             `logger -t xCAT -p local4.info "credentials: Unable to read xcat_server_cred"` ;
             next;
           }
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
           $tfilename = "/etc/xcat/cert/server-cred.pem";
 
-       } elsif (/xcat_client_cred/ or /xcat_root_cred/) {
+       } elsif (($parm =~ /xcat_client_cred/) or ($parm =~ /xcat_root_cred/)) {
           unless (-r "$root/.xcat/client-cred.pem") {
             push @{$rsp->{'error'}},"Unable to read xcat_client_cred or xcat_root_cred";
             `logger -t xCAT -p local4.info "credentials: Unable to read xcat_client_cred or xcat_root_cred"` ;
             next;
           }
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
           $tfilename = "$root/.xcat/client-cred.pem";
 
-       } elsif (/ssh_dsa_hostkey/) {
+       } elsif ($parm =~ /ssh_dsa_hostkey/) {
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
 	  if (-r "/etc/xcat/hostkeys/$client/ssh_host_dsa_key") {
 	  	$tfilename="/etc/xcat/hostkeys/$client/ssh_host_dsa_key";
 	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_dsa_key") {
@@ -149,7 +187,8 @@ sub process_request
             `logger -t xCAT -p local4.info "credentials: Unable to read private DSA key"` ;
              next;
           }
-       } elsif (/ssh_rsa_hostkey/) {
+       } elsif ($parm =~ /ssh_rsa_hostkey/) {
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
           if (-r "/etc/xcat/hostkeys/$client/ssh_host_rsa_key") {
 	  	 $tfilename="/etc/xcat/hostkeys/$client/ssh_host_rsa_key";
 	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_rsa_key") {   
@@ -159,7 +198,8 @@ sub process_request
             `logger -t xCAT -p local4.info "credentials: Unable to read private RSA key"` ;
              next;
           }
-       } elsif (/xcat_cfgloc/) {
+       } elsif ($parm =~ /xcat_cfgloc/) {
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
           unless (-r "/etc/xcat/cfgloc") {
             push @{$rsp->{'error'}},"Unable to read /etc/xcat/cfgloc ";
             `logger -t xCAT -p local4.info "credentials: Unable to read /etc/xcat/cfgloc"` ;
@@ -167,7 +207,8 @@ sub process_request
           }
           $tfilename = "/etc/xcat/cfgloc";
 
-       } elsif (/krb5_keytab/) { #TODO: MUST RELAY TO MASTER
+       } elsif ($parm =~ /krb5_keytab/) { #TODO: MUST RELAY TO MASTER
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
            my $princsuffix=$request->{'_xcat_clientfqdn'}->[0];
            $ENV{KRB5CCNAME}="/tmp/xcat/krb5cc_xcat_$$";
            system('kinit -S kadmin/admin -k -t /etc/xcat/krb5_pass xcat/admin');
@@ -188,10 +229,11 @@ sub process_request
            while (read($keytab,$buf,1140)) {
                $tabdata.=MIME::Base64::encode_base64($buf);
            }
-           push @{$rsp->{'data'}},{content=>[$tabdata],desc=>[$_]};
+           push @{$rsp->{'data'}},{content=>[$tabdata],desc=>[$parm]};
            unlink "/tmp/xcat/keytab.$$";
            next;
-       } elsif (/x509cert/) {
+       } elsif ($parm =~ /x509cert/) {
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
 	   my $csr = $request->{'csr'}->[0];
 	   my $csrfile;
            my $oldumask = umask 0077;
@@ -243,7 +285,7 @@ sub process_request
 	   close($csrfile);
 	   unlink "/tmp/xcat/client.cert.$$";
            my $certcontents = join('',@certdata);
-           push @{$rsp->{'data'}},{content=>[$certcontents],desc=>[$_]};
+           push @{$rsp->{'data'}},{content=>[$certcontents],desc=>[$parm]};
        } else {
           next;
        }
@@ -253,7 +295,7 @@ sub process_request
            @filecontent=<$tmpfile>;
            close($tmpfile);
            $retdata = "\n".join('',@filecontent);
-           push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$_]};
+           push @{$rsp->{'data'}},{content=>[$retdata],desc=>[$parm]};
            $retdata="";
            @filecontent=();
        }
@@ -261,6 +303,7 @@ sub process_request
     if (defined $rsp->{data}->[0]) {
 	#if we got the data from the file, send the data message to the client
         xCAT::MsgUtils->message("D", $rsp, $callback, 0);
+        return;
     }else {
 	#if the file doesn't exist, send the error message to the client
         delete $rsp->{'data'};
