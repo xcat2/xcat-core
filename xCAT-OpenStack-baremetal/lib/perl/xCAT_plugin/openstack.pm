@@ -497,8 +497,40 @@ sub deploy_ops_bm_node {
 		return 1;
 	}		
  
-    #set boot order, assuming it is ipmi nodes for now
-    # TODO: add support for system power hw.
+    #deploy the node now, supported nodehm.mgt values: ipmi, blade,fsp, hmc.
+    my $hmtab  = xCAT::Table->new('nodehm');
+	my $hment = $hmtab->getNodeAttribs($node,['mgt']);
+	if ($hment && $hment->{'mgt'}) {
+		my $mgt = $hment->{'mgt'};
+		if ($mgt eq 'ipmi') { 
+			deploy_bmc_node($callback, $doreq, $node);
+		} elsif (($mgt eq 'blade') || ($mgt eq 'fsp')) {
+			deploy_blade($callback, $doreq, $node);
+		} elsif ($mgt eq 'hmc') {
+			deploy_hmc_node($callback, $doreq, $node);
+		} else {
+			my $rsp;
+			push @{$rsp->{data}}, "Node $node: nodehm.mgt=$mgt is not supported in the OpenStack cloud.";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	} else {
+		#nodehm.mgt must setup for node 
+		my $rsp;
+		push @{$rsp->{data}}, "Node $node: nodehm.mgt cannot be empty in order to deploy.";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+}
+
+# Deploy a rack-mounted node
+sub deploy_bmc_node {
+	my $callback = shift;
+	my $doreq = shift;
+	my $node = shift;
+
+    #set boot order
 	my $cmd = qq~net~;
 	my $output = xCAT::Utils->runxcmd(
 		{command => ["rsetboot"],
@@ -525,7 +557,62 @@ sub deploy_ops_bm_node {
 		push @{$rsp->{data}}, "$output";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
+	}
+}
+
+# Deploy a blade or fsp controlled node
+sub deploy_blade {
+	my $callback = shift;
+	my $doreq = shift;
+	my $node = shift;
+
+    #set boot order
+	my $cmd = qq~net~;
+	my $output = xCAT::Utils->runxcmd(
+		{command => ["rbootseq"],
+		 node    => [$node], 
+		 arg     => [$cmd]},
+		$doreq, -1, 1);
+	if ($::RUNCMD_RC != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "rbootseq:";
+		push @{$rsp->{data}}, "$output";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
 	}		
+	
+    #reboot the node
+	my $cmd = qq~boot~;
+	my $output = xCAT::Utils->runxcmd(
+		{command => ["rpower"],
+		 node    => [$node], 
+		 arg     => [$cmd]},
+		$doreq, -1, 1);
+	if ($::RUNCMD_RC != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "rpower:";
+		push @{$rsp->{data}}, "$output";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}	
+}
+
+# Deploy a node controlled by HMC
+sub deploy_hmc_node {
+	my $callback = shift;
+	my $doreq = shift;
+	my $node = shift;
+
+	my $output = xCAT::Utils->runxcmd(
+		{command => ["rnetboot"],
+		 node    => [$node]},
+		$doreq, -1, 1);
+	if ($::RUNCMD_RC != 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "rnetboot:";
+		push @{$rsp->{data}}, "$output";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}	
 }
 
 
