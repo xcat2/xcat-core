@@ -1,0 +1,100 @@
+start:ppping_h
+cmd:ppping -h
+check:rc==0
+check:output=~Usage
+end
+
+start:ppping_v
+cmd:ppping -v
+check:rc==0
+check:output=~Version
+end
+
+start:ppping_node
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ppping $$CN
+check:rc==0
+check:output=~$$CN: pinged all nodes successfully
+end
+
+start:ppping_V_node
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ppping -V $$CN
+check:rc==0
+check:output=~$$CN: $$CN: ping
+end
+
+start:ppping_q_node
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ppping -q $$CN
+check:rc==0
+check:output=~
+end
+
+start:ppping_d_node
+cmd:ppping -d $$CN
+check:rc==0
+check:output=~[start]
+check:output=~[stop]
+end
+
+start:ppping_i_node
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.bak
+check:rc==0
+cmd:a=`cat /etc/hosts |grep ' $$CN.'|awk '{print $1}'`;b=`cat /etc/resolv.conf |grep search|awk '{print $2}'`;echo "$a $$CN-eth0.$b $$CN-eth0" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:ppping $$CN -i eth0
+check:rc==0
+check:output=~$$CN: pinged all nodes successfully on interface eth0
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.bak  /etc/hosts
+check:rc==0
+end
+
+start:ppping_nodes
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ping -c 3 $$SN > /dev/null 2>&1
+check:rc==0
+cmd:ppping $$SN,$$CN
+check:rc==0
+check:output=~$$SN: pinged all nodes successfully
+check:output=~$$CN: pinged all nodes successfully
+end
+
+start:ppping_V_nodes
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ping -c 3 $$SN > /dev/null 2>&1
+check:rc==0
+cmd:ppping -V $$SN,$$CN
+check:rc==0
+check:output=~$$CN: $$CN: ping
+check:output=~$$CN: $$SN: ping
+check:output=~$$SN: $$SN: ping
+check:output=~$$SN: $$CN: ping
+end
+
+
+
+start:ppping_V_s_nodes
+cmd:ping -c 3 $$CN > /dev/null 2>&1
+check:rc==0
+cmd:ping -c 3 $$SN > /dev/null 2>&1
+check:rc==0
+cmd:ppping -V -s $$SN,$$CN
+check:rc==0
+check:output=~$$SN: $$SN: ping*\n$$SN: $$CN: ping*\n$$CN: $$SN: ping*\n$$CN: $$CN: ping
+end
+
+
+
+
