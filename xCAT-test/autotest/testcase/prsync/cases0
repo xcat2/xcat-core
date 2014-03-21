@@ -1,0 +1,52 @@
+start:prsync_h
+cmd:prsync -h
+check:rc==0
+check:output=~Usage
+end
+
+start:prsync_v
+cmd:prsync -v
+check:rc==0
+check:output=~Version
+end
+
+start:prsync_dir_node
+cmd: mkdir -p /tmp/pscp
+check:rc==0
+cmd:echo "test" > /tmp/pscp/pscp.tmp
+check:rc==0
+cmd:prsync -o "crz" /tmp/pscp $$CN:/tmp/
+check:rc==0
+check:$$CN: done
+cmd:xdsh $$CN "ls -l /tmp |grep pscp"
+check:rc==0
+check:output=~pscp
+cmd:xdsh $$CN "ls -l /tmp/pscp |grep pscp.tmp"
+check:rc==0
+check:output=~pscp.tmp
+cmd:xdsh $$CN "cat /tmp/pscp/pscp.tmp"
+check:rc==0
+check:output=~test
+cmd:xdsh $$CN "rm -rf /tmp/pscp"
+check:rc==0
+cmd:rm -rf /tmp/pscp
+check:rc==0
+end
+
+start:prsync_file_node
+cmd: echo "prsync-test" > prsync.test
+check:rc==0
+cmd:prsync prsync.test $$CN:/tmp/
+check:rc==0
+check:$$CN: done
+cmd:xdsh $$CN "ls -l /tmp |grep prsync.test"
+check:rc==0
+check:output=~prsync.test
+cmd:xdsh $$CN "cat /tmp/prsync.test"
+check:rc==0
+check:output=~prsync-test
+cmd:xdsh $$CN "rm -rf /tmp/prsync.test"
+check:rc==0
+cmd:rm -rf prsync.test
+check:rc==0
+end
