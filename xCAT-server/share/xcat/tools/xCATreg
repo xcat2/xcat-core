@@ -22,6 +22,79 @@
 #
 #############################################################################################################################################
 
+#######################################
+# step 1. Parse arguments
+#######################################
+my %reghash = arg_phase();
+unless (%reghash) {
+    send_msg("PARSE ARGUMENTS returns error, exit");
+    exit;
+}
+
+#######################################
+# step 2. Read configuration files
+#######################################
+my %confhash = read_conf();
+unless (%confhash) {
+    send_msg("READ CONF returns error, exit");
+    exit;
+}
+
+#######################################
+# step 3. Install MNs
+#######################################
+$res = mn_install();
+if ($res) {
+    send_msg("INSTALL MNS returns error, exit");
+    exit;
+}
+
+#######################################
+# step 4. Copy code to MNs
+#######################################
+$res = copy_code();
+if ($res) {
+    send_msg("COPY CODE returns error, exit");
+    exit;
+}
+
+#######################################
+# step 5. Build xcat code in MNs
+#######################################
+$res = build_xcat();
+if ($res) {
+    send_msg("BUILD XCAT returns error, exit");
+    exit;
+}
+
+#######################################
+# step 6. Configure xCAT MN
+#######################################
+$res = config_mn();
+if ($res) {
+    send_msg("CONFIGURE MN returns error, exit");
+    exit;
+}
+
+#######################################
+# step 7. Genrate local configuration file
+#         Do test
+#         Write log
+#######################################
+$res = do_test();
+if ($res) {
+    send_msg("DO TEST returns error, exit");
+    exit;
+}
+
+#######################################
+# step 8. Copy code and configuration
+#######################################
+$res = pro_result();
+if ($res) {
+    send_msg("PROCESS RESULT returns error, exit");
+    exit;
+}
 
 
 
