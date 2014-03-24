@@ -6318,13 +6318,17 @@ sub preprocess_request {
   if ($command eq "rpower") {
       my $subcmd=$exargs[0];
 			if($subcmd eq ''){
-	  		$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+	  		#$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+                        #Above statement will miss error code, so replaced by the below statement
+                        $callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
 	  		$request = {};
 				return 0;
 
 			}
       if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
-	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+	 #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+          #Above statement will miss error code, so replaced by the below statement
+          $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
       }
