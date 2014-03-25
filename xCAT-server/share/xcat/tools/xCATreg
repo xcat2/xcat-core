@@ -3,12 +3,12 @@
 #
 #############################################################################################################################################
 #
-#   This script will be used to run xCAT daily regression 
+#   This script will be used to run xCAT daily regression
 #
-#   Usage:xCATreg - Run xCAT daily regression  
+#   Usage:xCATreg - Run xCAT daily regression
 #   xCATreg [-?|-h]
 #   xCATreg [-b branch][-m MN][-f configure file][-a][-V]
-#   
+#
 #   -?/-h:  help information for the xCATreg usage.
 #   -b: when -b is specified, the regression will be done against the specified branch. You can use 2.7, 2.8,master.The default value is master.
 #   -m: when -m is specified, the regression will be done the specified mn. The default value is all the mn in configuration file.
@@ -17,16 +17,12 @@
 #   -V: log and message in verbose mode
 #
 #   Example usage:
-#   ./xCATreg   Run regressoins on master branch and on all platforms in configuration file  
-#   ./xCATreg -b 2.8 -m slesmn -f /root/regressoin.conf -a    Run regression on 2.8 branch on slesmn even when there is no code updates. 
+#   ./xCATreg   Run regressoins on master branch and on all platforms in configuration file
+#   ./xCATreg -b 2.8 -m slesmn -f /root/regressoin.conf -a    Run regression on 2.8 branch on slesmn even when there is no code updates.
 #
 #############################################################################################################################################
 
-#######################################
-# step 1. Parse arguments
-#######################################
-#!/usr/bin/env perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
 use strict;
 use warnings;
 use Getopt::Long;
@@ -40,6 +36,11 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
+
+
+#######################################
+# step 0. Parse input arguments
+#######################################
 my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp  = 0;
 my $configfile = "$::XCATROOT/share/xcat/tools/autotest";
@@ -88,7 +89,50 @@ sub usage
 }
 
    # send_msg("PARSE ARGUMENTS returns error, exit");
+my $res;
+my $confile = "regconf";
 
+#######################################
+# send messages
+#######################################
+sub send_msg {
+    my $msg = shift;
+	print "xcatreg message: $msg.\n";
+}
+#######################################
+# read_conf
+#######################################
+sub read_conf{
+    my %confkeys;
+	my $keys;
+	if (!open($keys, "<$confile")) {
+	    send_msg("Open configuration file error");
+	}
+	my $line;
+	while ($line = <$keys>) {
+	    if ($line =~ /end/) {
+		    last;
+		}
+		if ($line =~ /^\s*log\s*=\s*(\S*)\s*/) {
+		    $confkeys{log} = $1;
+		}
+		if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {	
+        	$confkeys{mailgroup} = $1;
+        }
+    }
+    return %confkeys;	
+}
+
+
+
+#######################################
+# step 1. Parse arguments
+#######################################
+my %reghash = arg_phase();
+unless (%reghash) {
+    send_msg("PARSE ARGUMENTS returns error, exit");
+    exit;
+}
 #######################################
 # step 2. Read configuration files
 #######################################
@@ -780,3 +824,5 @@ sub trim
 }
 
 ########
+
+
