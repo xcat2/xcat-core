@@ -75,7 +75,7 @@ my %URIdef = (
                 example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/node/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
                 cmd => "chdef",
                 fhandler => \&defhdl,
-                outhdler => \&infoout,
+                outhdler => \&noout,
             },
             POST => {
                 desc => "Create the node {nodename}. DataBody: {attr1:v1,att2:v2,...}.",
@@ -83,7 +83,7 @@ my %URIdef = (
                 example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/node/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
-                outhdler => \&infoout,
+                outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the node {nodename}.",
@@ -91,7 +91,7 @@ my %URIdef = (
                 example => "|Delete the node node1|DELETE|/node/node1|{\n   \"info\":[\n      \"1 object definitions have been removed.\"\n   ]\n}|",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
-                outhdler => \&infoout,
+                outhdler => \&noout,
             },
         },
         nodeattr => {
@@ -111,6 +111,7 @@ my %URIdef = (
                 example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/node/node1/attr/groups;mgt;netboot||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             }
         },
         power => {
@@ -1001,9 +1002,13 @@ while (1) {
 
 if ($#layers < 0) {
     # If no resource was specified
-    addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    #addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    my $json;
     foreach (sort keys %URIdef) {
-        addPageContent($q->p($_));
+        push @{$json}, $_;
+    }
+    if ($json) {
+        addPageContent($JSON->encode($json));
     }
     sendResponseMsg($STATUS_OK);     # this will also exit
 } else {
@@ -1027,11 +1032,12 @@ if (defined ($URIdef{$uriLayer1})) {
         #bmp: if you use m|$matcher| here instead then you won't need to escape all of the /'s ?
         if ($pathInfo =~ m|$matcher|) {
             # matched to a resource
-            if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler})) {    #bmp: if there isn't a handler, shouldn't we error out?
+            unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {
+                 error("request method '$requestType' is not supported on resource '$pathInfo'", $STATUS_NOT_ALLOWED);
+            }
+            if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler})) {
                  my $params;
-                 unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {       #bmp: how can this not be defined if we got here?
-                     error("request method '$requestType' is not supported on resource '$pathInfo'",$STATUS_NOT_ALLOWED);
-                 }
+                 
                  $params->{'cmd'} = $URIdef{$uriLayer1}->{$res}->{$requestType}->{cmd} if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{cmd}));
                  $params->{'outputhdler'} = $URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler} if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler}));
                  $params->{'layers'} = \@layers;
@@ -1103,22 +1109,23 @@ sub defout {
 
     my $json;
     foreach my $d (@$data) {
-        my $jsonnode;
+        #my $jsonnode;
+        my $nodename;
         my $lines = $d->{info};
         foreach my $l (@$lines) {
             if ($l =~ /^Object name: /) {    # start new node
-                if (defined($jsonnode)) { push @$json, $jsonnode; }     # push previous object onto array
-                my ($nodename) = $l =~ /^Object name:\s+(\S+)/;
-                $jsonnode = { name => $nodename };
+                #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef;}     # push previous object onto array
+                $l =~ /^Object name:\s+(\S+)/;
+                $nodename = $1;
             }
             else {      # just an attribute of the current node
-                if (!defined($jsonnode)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
+                if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 my ($attr, $val) = $l =~ /^\s*(\S+)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                $jsonnode->{$attr} = $val;
+                $json->{$nodename}->{$attr} = $val;
             }
         }
-        if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
+        #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef; }     # push last object onto array
     }
     addPageContent($JSON->encode($json));
 }
@@ -1152,6 +1159,26 @@ sub defout_remove_appended_type {
     }
 }
 
+# This is the general callback subroutine for PUT/POST/DELETE methods
+# when this subroutine is called, that means the operation has been done successfully
+# The correct output is 'null'
+sub noout {
+
+### for debugging
+    my $data = shift;
+
+    my $json;
+    if ($data) {
+        addPageContent($JSON->encode($data));
+    }
+
+    addPageContent(qq(["Debug: the operation has been done successfully"]));
+### finish the debugging
+
+    
+}
+
+
 sub infoout {
     my $data = shift;
 
@@ -1171,6 +1198,7 @@ sub infoout {
         addPageContent($JSON->encode($json));
     }
 }
+
 
 sub actionout {
     my $data = shift;
@@ -1650,32 +1678,56 @@ sub displayUsage {
 #       For the error tag, you don't have to bother copying the response, because you are going to exit anyway.
 #       Maybe this function could just verify there is a serverdone and handle any error, and then
 #       let each specific output handler ignore the serverdone tag?
+
+# Filter out the error message
+#   If has 'error' message in the output data, push them all to one list
+#   If has 'errorcode' in the output data, set it to be the errorcode of response. Otherwise, the errorcode to '1'
+# When get the 'serverdone' identifer
+#   If 'errorcode' has been set, return the error message and error code like {error:[msg1,msg2...], errorcode:num}
+#   Otherwise, pass the output to the outputhandler for the specific resource
+
 sub filterData {
     my $data             = shift;
-    my $errorInformation = '';
     #debugandexit(Dumper($data));
 
     my $outputdata;
+    my $outputerror;
     #trim the serverdone message off
     foreach (@{$data}) {
-        if (exists($_->{serverdone}) || defined($_->{error})) {
-            if (exists($_->{serverdone}) && defined($_->{error})) {
-                if (ref($_->{error}) eq 'ARRAY') { $errorInformation = $_->{error}->[0]; }
-                else { $errorInformation = $_->{error}; }
-                addPageContent(qq({"error":"$errorInformation"}));
-                if (($errorInformation =~ /Permission denied/) || ($errorInformation =~ /Authentication failure/)) {
-                    sendResponseMsg($STATUS_UNAUTH);
+        if (defined($_->{error})) {
+            if (ref($_->{error}) eq 'ARRAY') {
+                foreach my $msg (@{$_->{error}}) {
+                    if ($msg =~ /(Permission denied|Authentication failure)/) {
+                        # return 401 Unauthorized
+                        sendResponseMsg($STATUS_UNAUTH);
+                    } else {
+                        push @{$outputerror->{error}}, $msg;
+                    }
                 }
-                else {
-                    sendResponseMsg($STATUS_FORBIDDEN);
-                }
-                exit 1;
+            } else {
+                push @{$outputerror->{error}}, $_->{error};
             }
-            next;
+            
+            if (defined ($_->{errorcode})) {
+                $outputerror->{errorcode} = $_->{errorcode}->[0];
+            } else {
+                # set the default errorcode to '1'
+                $outputerror->{errorcode} = '1';
+            }
+        } 
+
+        if (exists($_->{serverdone})) {
+            if (defined ($outputerror->{errorcode})) {
+                 addPageContent($JSON->encode($outputerror));
+                 #return the default http error code to be 403 forbidden
+                 sendResponseMsg($STATUS_FORBIDDEN);
+            } else {
+                #otherwise, ignore the 'servicedone' data
+                next;
+            }
         } else {
             push @{$outputdata}, $_;
-        }
-        
+        }        
     }
 
     return $outputdata;
@@ -1906,6 +1958,7 @@ sub sendRequest {
         }
     }
 
+    debug("request xml=$request");
     print $client $request;
 
     my $response;
@@ -1974,7 +2027,13 @@ sub fetchParameters {
     my $phash;
     if ($pdata) {
         $phash = eval { $JSON->decode($pdata); };
-        if ($@) { error("$@",$STATUS_BAD_REQUEST); }
+        if ($@) { 
+            # remove the code location information to make the output looks better
+            if ($@ =~ / at \//) {
+                $@ =~ s/ at \/.*$//;
+            }
+            error("$@",$STATUS_BAD_REQUEST); 
+        }
         #debug("phash=" . Dumper($phash));
         if (ref($phash) ne 'HASH') { error("put or post data must be a json object (hash/dict).", $STATUS_BAD_REQUEST); }
 
@@ -2025,16 +2084,16 @@ sub loadJSON {
 
 # add a error msg to the output in the correct format and end this request
 sub error {
-    my ($msg, $errorcode) = @_;
-    my $severity = 'error';
-    my $m;
-    #if ($format eq 'xml') { $m = "<$severity>$msg</$severity>\n"; }
-    #elsif ($format eq 'json') {
-        $m = qq({"$severity":"$msg"});
-    #}
-    #else { $m = "<p>$severity: $msg</p>\n"; }
-    addPageContent($m);
-    sendResponseMsg($errorcode);
+    my ($errmsg, $httpcode, $errorcode) = @_;
+    my $json;
+    $json->{error} = $errmsg;
+    $json->{errorcode} = '2';
+    if ($errorcode) {
+        $json->{errorcode} = $errorcode;
+    }
+   
+    addPageContent($JSON->encode($json));
+    sendResponseMsg($httpcode);
 }
 
 
