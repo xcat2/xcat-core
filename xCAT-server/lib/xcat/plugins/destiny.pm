@@ -285,6 +285,23 @@ sub setdestiny {
 	    }
 	}
   
+
+        #if the postscripts directory exists then make sure it is
+        # world readable and executable by root; otherwise wget fails
+        my $installdir = xCAT::TableUtils->getInstallDir();
+        my $postscripts = "$installdir/postscripts";
+        if (-e $postscripts)
+        {
+           my $cmd = "chmod -R a+r $postscripts";
+           xCAT::Utils->runcmd($cmd, 0);
+           my $rsp = {};
+           if ($::RUNCMD_RC != 0)
+           {
+	      $callback->({info=>"$cmd failed"});
+
+           }
+
+        }
 	
 	#print Dumper($req);
 	# if precreatemypostscripts=1, create each mypostscript for each node
