@@ -11,9 +11,6 @@ use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::TableUtils;
-my $addkcmdlinehandled;
-my $request;
-my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $tftpdir = "/tftpboot/vsmp";
 #my $dhcpver = 3;
@@ -75,7 +72,7 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {  #Implement the kcmdline append here for
+  if (not $::VSMPPXE_addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {  #Implement the kcmdline append here for
                                #most generic, least code duplication
         $kern->{kcmdline} .= " ".$kern->{addkcmdline};
   }
@@ -84,7 +81,7 @@ sub setstate {
       unless ($ipfn) {
         my @myself = xCAT::NetworkUtils->determinehostname();
         my $myname = $myself[(scalar @myself)-1];
-         $callback->(
+         $::VSMPPXE_callback->(
                 {
                  error => [
                      "$myname: Unable to determine or reasonably guess the image server for $node"
@@ -189,11 +186,11 @@ sub pass_along {
           $errored=1;
        }
        if ($_->{_addkcmdlinehandled}) {
-           $addkcmdlinehandled->{$_->{name}->[0]}=1;
+           $::VSMPPXE_addkcmdlinehandled->{$_->{name}->[0]}=1;
            return; #Don't send back to client this internal hint
        }
     }
-    $callback->($resp);
+    $::VSMPPXE_callback->($resp);
 }
 
 
@@ -288,29 +285,30 @@ sub preprocess_request {
 }
 
 sub process_request {
-  $request = shift;
-  $callback = shift;
+  $::VSMPPXE_request = shift;
+  $::VSMPPXE_callback = shift;
   my $sub_req = shift;
+  undef $::VSMPPXE_addkcmdlinehandled;
   my @args;
   my @nodes;
   my @rnodes;
-  if (ref($request->{node})) {
-    @rnodes = @{$request->{node}};
+  if (ref($::VSMPPXE_request->{node})) {
+    @rnodes = @{$::VSMPPXE_request->{node}};
   } else {
-    if ($request->{node}) { 
-    	@rnodes = ($request->{node}); 
+    if ($::VSMPPXE_request->{node}) { 
+    	@rnodes = ($::VSMPPXE_request->{node}); 
     }
   }
 
   unless (@rnodes) {
-      if ($usage{$request->{command}->[0]}) {
-          $callback->({data=>$usage{$request->{command}->[0]}});
+      if ($usage{$::VSMPPXE_request->{command}->[0]}) {
+          $::VSMPPXE_callback->({data=>$usage{$::VSMPPXE_request->{command}->[0]}});
       }
       return;
   }
 
   #if not shared, then help sync up
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($::VSMPPXE_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::NetworkUtils->nodeonmynet($_)) {
@@ -329,17 +327,17 @@ sub process_request {
      return;
   }
 
-  if (ref($request->{arg})) {
-      @args=@{$request->{arg}};
+  if (ref($::VSMPPXE_request->{arg})) {
+      @args=@{$::VSMPPXE_request->{arg}};
   } else {
-      @args=($request->{arg});
+      @args=($::VSMPPXE_request->{arg});
   }
 
    #now run the begin part of the prescripts
 
    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
        $errored=0;
-       if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+       if ($::VSMPPXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
            $sub_req->({command=>['runbeginpre'],
            node=>\@nodes,
            arg=>[$args[0], '-l']},\&pass_along);
@@ -352,7 +350,7 @@ sub process_request {
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running begin prescripts\n";
-	  $callback->($rsp);
+	  $::VSMPPXE_callback->($rsp);
 	  return; 
        }
    }
@@ -375,7 +373,7 @@ sub process_request {
 
   if (! -r "$tftpdir/pxelinux.0") {
     unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-       $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
+       $::VSMPPXE_callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
        return;
     }
     if (-r "/usr/lib/syslinux/pxelinux.0") {
@@ -386,14 +384,14 @@ sub process_request {
      chmod(0644,"$tftpdir/pxelinux.0");
   }
   unless ( -r "$tftpdir/pxelinux.0" ) {
-     $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
+     $::VSMPPXE_callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
 
       
   $errored=0;
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (exists($::VSMPPXE_request->{inittime})) { $inittime= $::VSMPPXE_request->{inittime}->[0];}
   if (!$inittime) { $inittime=0;}
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
@@ -414,19 +412,19 @@ sub process_request {
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_);
-      $callback->(\%response);
+      $::VSMPPXE_callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
+        $::VSMPPXE_callback->(\%response);
       }
     }
   }
 
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
+  if (exists($::VSMPPXE_request->{inittime})) { $inittime= $::VSMPPXE_request->{inittime}->[0];} 
   if (!$inittime) { $inittime=0;}
 
   #dhcp stuff -- inittime is set when xcatd on sn is started
@@ -443,12 +441,12 @@ sub process_request {
       #}
       
       if ($do_dhcpsetup) {
-        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        if ($::VSMPPXE_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
             $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                        node=>\@nodes},$callback);
+                        node=>\@nodes},$::VSMPPXE_callback);
         } else {
             $sub_req->({command=>['makedhcp'],
-                       node=>\@nodes},$callback);
+                       node=>\@nodes},$::VSMPPXE_callback);
         }
      }  
 
@@ -456,7 +454,7 @@ sub process_request {
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::VSMPPXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
          $sub_req->({command=>['runendpre'],
                      node=>\@nodes,
                      arg=>[$args[0], '-l']},\&pass_along);
@@ -469,7 +467,7 @@ sub process_request {
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running end prescripts\n";
-	  $callback->($rsp);
+	  $::VSMPPXE_callback->($rsp);
 	  return; 
       }
   }
