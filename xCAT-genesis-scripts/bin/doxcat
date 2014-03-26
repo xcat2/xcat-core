@@ -103,7 +103,9 @@ done
 echo -n "Acquired IPv4 address on $bootnic: "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
-(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
+# rv 0 state does not work with the new ntp versions
+#(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
+(while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}'`" -ge 1000 ]; do sleep 1; done; hwclock --systohc) &
 if dmidecode|grep IPMI > /dev/null; then
 	modprobe ipmi_si
 	modprobe ipmi_devintf
