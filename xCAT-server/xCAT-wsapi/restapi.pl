@@ -41,18 +41,24 @@ use xCAT::Table;
 # |    `--POST - The info is used to handle the POST request
 # |    `--DELETE - The info is used to handle the DELETE request
 
+my %usagemsg = (
+    objreturn => "Json format: An object which includes multiple \'<name> : {att:value, attr:value ...}\' pairs.",
+    objchparam => "Json format: An object which includes multiple \'att:value\' pairs.",
+    non_getreturn => "No output for succeeded execution. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
+);
+
 my %URIdef = (
     #### definition for node resources
     node => {
         allnode => {
             desc => "[URI:/node] - The node list resource.",
             desc1 => "This resource can be used to display all the nodes which have been defined in the xCAT database.",
-            matcher => '^\/node$',
+            matcher => '^/node$',
             GET => {
                 desc => "Get all the nodes in xCAT.",
                 desc1 => "The attributes details for the node will not be displayed.",
                 usage => "||An array of node names.|",
-                example => "|Get all the node names from xCAT database.|GET|/node|[\n   all,\n   node1,\n   node2,\n   node3,\n]|",
+                example => "|Get all the node names from xCAT database.|GET|/node|[\n   \"node1\",\n   \"node2\",\n   \"node3\",\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
@@ -60,47 +66,47 @@ my %URIdef = (
         },
         nodeallattr => {
             desc => "[URI:/node/{nodename}] - The node resource",
-            matcher => '^\/node\/[^\/]*$',
+            matcher => '^/node/[^/]*$',
             GET => {
                 desc => "Get all the attibutes for the node {nodename}.",
-                usage => "||An array of node object, each node object includes all the node attributes.|",
-                example => "|Get all the attibutes for node \'node1\'.|GET|/node/node1|[\n   {\n      netboot:xnba,\n      mgt:1,\n      groups:22,\n      name:node1,\n      postbootscripts:otherpkgs,\n      postscripts:syslog,remoteshell,syncfiles\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the attibutes for node \'node1\'.|GET|/node/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attibutes for the node {nodename}.DataBody: {attr1:v1,att2:v2,...}.",
-                usage => "|Put data: Json formatted attribute:value pairs.|Message indicates the success or failure.|",
-                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/node/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
+                desc => "Change the attibutes for the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/node/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
             POST => {
-                desc => "Create the node {nodename}. DataBody: {attr1:v1,att2:v2,...}.",
-                usage => "|Post data: Json formatted attribute:value pairs.|Message indicates the success or failure.|",
-                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/node/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}|{\n   \"info\":[\n      \"1 object definitions have been created or modified.\"\n   ]\n}|",
+                desc => "Create the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/node/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the node {nodename}.",
-                usage => "||Message indicates the success or failure.|",
-                example => "|Delete the node node1|DELETE|/node/node1|{\n   \"info\":[\n      \"1 object definitions have been removed.\"\n   ]\n}|",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the node node1|DELETE|/node/node1||",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
         },
         nodeattr => {
-            desc => "[URI:/node/{nodename}/attr/{attr1;attr2;attr3 ...}] - The attributes resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/attr/\S+$',
+            desc => "[URI:/node/{nodename}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
+            matcher => '^/node/[^/]*/attr/\S+$',
             GET => {
                 desc => "Get the specific attributes for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the attributes which are specified in the URI.|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/node/node1/attr/groups;mgt;netboot|[\n   {\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\",\n      \"groups\":\"all\",\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/node/node1/attr/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -119,19 +125,19 @@ my %URIdef = (
             matcher => '^\/node\/[^\/]*/power$',
             GET => {
                 desc => "Get the power status for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the power status of the node.|",
+                usage => "||$usagemsg{objreturn}|",
                 example => "|Get the power status.|GET|/node/node1/power|[\n   {\n      \"power\":\"on\",\n      \"name\":\"node1\"\n   }\n]|",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change power status for the node {nodename}. DataBody: {action:on|off|reset ...}.",
-                usage => "|Put data: Json formatted target status.|An array of node object, each node object includes the power status of the node.|",
+                desc => "Change power status for the node {nodename}.",
+                usage => "|Json Formatted DataBody: {action:on/off/reset ...}.|$usagemsg{non_getreturn}|",
                 example => "|Change the power status to on|PUT|/node/node1/power {\"action\":\"on\"}|[\n   {\n      \"power\":\"on\",\n      \"name\":\"node1\"\n   }\n]|",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         energy => {
@@ -1167,6 +1173,8 @@ sub noout {
 ### for debugging
     my $data = shift;
 
+    addPageContent(qq(\n\n\n=======================================================\nDebug: Following message is just for debugging. It will be removed in the GAed version.\n));
+
     my $json;
     if ($data) {
         addPageContent($JSON->encode($data));
@@ -1692,6 +1700,9 @@ sub filterData {
 
     my $outputdata;
     my $outputerror;
+    # set the default errorcode to '1'
+    $outputerror->{errorcode} = '1';
+    
     #trim the serverdone message off
     foreach (@{$data}) {
         if (defined($_->{error})) {
@@ -1710,11 +1721,24 @@ sub filterData {
             
             if (defined ($_->{errorcode})) {
                 $outputerror->{errorcode} = $_->{errorcode}->[0];
-            } else {
-                # set the default errorcode to '1'
-                $outputerror->{errorcode} = '1';
+            } 
+        }
+
+        # handle the output like 
+        #<node>
+        #  <name>node1</name>
+        #  <error>Unable to identify plugin for this command, check relevant tables: nodehm.power,mgt;nodehm.mgt</error>
+        #  <errorcode>1</errorcode>
+        #</node>
+        if (defined($_->{node}) && defined ($_->{node}->[0]->{error})) {
+            if (defined ($_->{node}->[0]->{name})) {
+                push @{$outputerror->{error}}, "$_->{node}->[0]->{name}->[0]: ".$_->{node}->[0]->{error}->[0];
             }
-        } 
+            if (defined ($_->{node}->[0]->{errorcode})) {
+                $outputerror->{errorcode} = $_->{node}->[0]->{errorcode}->[0];
+            } 
+        }
+
 
         if (exists($_->{serverdone})) {
             if (defined ($outputerror->{errorcode})) {
