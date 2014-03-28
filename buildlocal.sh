@@ -7,11 +7,12 @@
 
 OSNAME=$(uname)
 NAMEALL=$(uname -a)
+CURDIR=`pwd`
 
 echo "OSNAME is $OSNAME!"
 echo "NAMEALL is $NAMEALL"
 
-ls /code/xcat-core
+ls $CURDIR/makerpm
 
 if [ $? -gt 0 ]; then
                 echo "Error:no repo exist, exit 1."
@@ -26,9 +27,8 @@ if ! flock -n 8; then
 fi
 
 #used only for hard code, will change later
-cd /code/xcat-core
 
-rm -rf build/
+rm -rf $CURDIR/build/
 
 echo "==============================================="
 echo $NAMEALL |  egrep "Ubuntu"
@@ -43,7 +43,7 @@ echo "This is an Ubuntu system"
      short_ver=`cat Version|cut -d. -f 1,2`
      pkg_version="${short_ver}-${pkg_type}${cur_date}"
 
-     mkdir -p /code/xcat-core/build
+     mkdir -p $CURDIR/build
 
  for rpmname in xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test; do
      rpmname_low=`echo $rpmname | tr '[A-Z]' '[a-z]'`
@@ -61,7 +61,7 @@ echo "This is an Ubuntu system"
  
  done 
      #delete all files except  .deb file
-     find /code/xcat-core/build/* ! -name *.deb | xargs rm -f
+     find $CURDIR/build/* ! -name *.deb | xargs rm -f
 
 else
 #This is not an Ubuntu system
@@ -70,7 +70,7 @@ echo "This is an $OSNAME system"
      rm -rf /root/rpmbuild/RPMS/noarch/*
      rm -rf /root/rpmbuild/RPMS/x86_64/*
      rm -rf /root/rpmbuild/RPMS/ppc64/*
-     mkdir build/
+     mkdir -p $CURDIR/build/
    # Build the rest of the noarch rpms
    for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-test xCAT-buildkit; do
         if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi     
@@ -97,9 +97,23 @@ echo "This is an $OSNAME system"
                 fi
   done
 
-  cp /root/rpmbuild/RPMS/noarch/* build/
-  cp  /root/rpmbuild/RPMS/x86_64/* build/
-  cp /root/rpmbuild/RPMS/ppc64/* build/
+  cp /root/rpmbuild/RPMS/noarch/* $CURDIR/build/
+  cp  /root/rpmbuild/RPMS/x86_64/* $CURDIR/build/
+  cp /root/rpmbuild/RPMS/ppc64/* $CURDIR/build/
+
+  #begin to create repo for redhat platform
+
+  if [ "$OSNAME" != "AIX" ]; then  
+        cat >$CURDIR/build/xCAT-core.repo << EOF
+[xcat-2-core]
+name=xCAT 2 Core packages
+baseurl=file:///$CURDIR
+enabled=1
+EOF
+
+  cp $CURDIR/build/xCAT-core.repo /etc/yum.repos.d/
+
+  fi
    
 fi
 
