@@ -360,10 +360,10 @@ my %URIdef = (
         updating => {
             desc => "[URI:/nodes/{nodename}/updating] - The updating resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/updating$',
-            PUT => {
+            POST => {
                 desc => "Update the node with file syncing, software maintenance and rerun postscripts.",
                 usage => "||An array of messages for performing the node updating.|",
-                example => "|Initiate an updatenode process.|PUT|/nodes/node2/updating|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\",\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:01:43 CST 2013 Running postscript: ospkgs\",\n   \"node2: Running of postscripts has completed.\"\n]|",
+                example => "|Initiate an updatenode process.|POST|/nodes/node2/updating|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\",\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:01:43 CST 2013 Running postscript: ospkgs\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -372,10 +372,10 @@ my %URIdef = (
         filesyncing => {
             desc => "[URI:/nodes/{nodename}/filesyncing] - The filesyncing resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/filesyncing$',
-            PUT => {
+            POST => {
                 desc => "Sync files for the node {nodename}. DataBody: {location of syncfile}",
                 usage => "||An array of messages for performing the file syncing for the node.|",
-                example => "|Initiate an file syncing process.|PUT|/nodes/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
+                example => "|Initiate an file syncing process.|POST|/nodes/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -384,10 +384,10 @@ my %URIdef = (
         software_maintenance => {
             desc => "[URI:/nodes/{nodename}/sw] - The software maintenance for the node {nodename}",
             matcher => '^/nodes/[^/]*/sw$',
-            PUT => {
+            POST => {
                 desc => "Perform the software maintenance process for the node {nodename}.",
                 usage => "||An array of messages for performing the software maintenance for the node.|",
-                example => "|Initiate an software maintenance process.|PUT|/nodes/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
+                example => "|Initiate an software maintenance process.|POST|/nodes/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -396,10 +396,10 @@ my %URIdef = (
         postscript => {
             desc => "[URI:/nodes/{nodename}/postscript] - The postscript resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/postscript$',
-            PUT => {
+            POST => {
                 desc => "Run the postscripts for the node {nodename}. DataBody: {scripts:[p1,p2,p3,...]}",
                 usage => "|Put data: Json formatted scripts:[scriptname list].|An array of messages for the running postscripts for the node.|",
-                example => "|Initiate an updatenode process.|PUT|/nodes/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
+                example => "|Initiate an updatenode process.|POST|/nodes/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -408,10 +408,10 @@ my %URIdef = (
         nodeshell => {
             desc => "[URI:/nodes/{nodename}/nodeshell] - The nodeshell resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/nodeshell$',
-            PUT => {
+            POST => {
                 desc => "Run the command in the shell of the node {nodename}. DataBody: {command:[cmd1,cmd2]}",
                 usage => "|Put data: Json formatted command:[cmd1,cmd2].|An arry of messages for running commands on the node.|",
-                example => "|Run the \'data\' command on the node2.|PUT|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
+                example => "|Run the \'data\' command on the node2.|POST|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
                 cmd => "xdsh",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -420,10 +420,10 @@ my %URIdef = (
         nodecopy => {
             desc => "[URI:/nodes/{nodename}/nodecopy] - The nodecopy resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/nodecopy$',
-            PUT => {
+            POST => {
                 desc => "Copy files to the node {nodename}. DataBody: {src:[file1,file2],target:dir}",
                 usage => "|Put data: Json formatted src file and target file or directory.|Error messages.|",
-                example => "|Copy files to the node2.|PUT|/nodes/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
+                example => "|Copy files to the node2.|POST|/nodes/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
                 cmd => "xdcp",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -498,7 +498,81 @@ my %URIdef = (
     },
 
     #### definition for group resources
-    group => {
+    groups => {
+        all_groups => {
+            desc => "[URI:/groups] - The group list resource.",
+            desc1 => "This resource can be used to display all the groups which have been defined in the xCAT database.",
+            matcher => '^/groups$',
+            GET => {
+                desc => "Get all the groups in xCAT.",
+                desc1 => "The attributes details for the group will not be displayed.",
+                usage => "||Json format: An array of group names.|",
+                example => "|Get all the group names from xCAT database.|GET|/groups|[\n   \"__mgmtnode\",\n   \"all\",\n   \"compute\",\n   \"ipmi\",\n   \"kvm\",\n]|",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout_remove_appended_type,
+            }
+        },
+        group_allattr => {
+            desc => "[URI:/groups/{groupname}] - The group resource",
+            matcher => '^/groups/[^/]*$',
+            GET => {
+                desc => "Get all the attibutes for the group {groupname}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the attibutes for group \'all\'.|GET|/groups/all|{\n   \"all\":{\n      \"members\":\"zxnode2,nodexxx,node1,node4\"\n   }\n}|",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+            PUT => {
+                desc => "Change the attibutes for the group {groupname}.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/groups/all {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
+                cmd => "chdef",
+                fhandler => \&defhdl,
+                outhdler => \&noout,
+            },
+        },
+        group_attr => {
+            desc => "[URI:/groups/{groupname}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}",
+            matcher => '^/groups/[^/]*/attr/\S+$',
+            GET => {
+                desc => "Get the specific attributes for the group {groupname}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the attributes {mgt,netboot} for group all|GET|/groups/all/attr/mgt,netboot|{\n   \"all\":{\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\"\n   }\n}|",
+                cmd => "lsdef",
+                fhandler => \&defhdl,
+                outhdler => \&defout,
+            },
+        },
+    },
+
+    #### definition for services resources: dns, dhcp
+    services => {
+        dns => {
+            desc => "[URI:/services/dns] - The dns service resource.",
+            matcher => '^/services/dns$',
+            POST => {
+                desc => "Create the dns records for all the entries in the MN:/etc/hosts configuration file.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dns records for all the entries in the /etc/hosts.|POST|/services/dns||",
+                cmd => "makedns",
+                fhandler => \&nonobjhdl,
+                outhdler => \&noout,
+            }
+        },
+        dhcp => {
+            desc => "[URI:/services/dhcp] - The dhcp service resource.",
+            matcher => '^/services/dhcp$',
+            POST => {
+                desc => "Create the dhcpd.conf for all the networks which are defined in the xCAT Management Node.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dhcpd.conf and restart the dhcpd.|POST|/services/dhcp||",
+                cmd => "makedhcp",
+                fhandler => \&nonobjhdl,
+                outhdler => \&noout,
+            }
+        },
     },
     
     #### definition for network resources
@@ -1186,7 +1260,7 @@ sub noout {
     
 }
 
-
+# hanlde the output which is node irrelevant
 sub infoout {
     my $data = shift;
 
@@ -1196,7 +1270,13 @@ sub infoout {
             push @{$json}, @{$d->{info}};
         }
         if (defined ($d->{data})) {
-            push @{$json}, @{$d->{data}};
+            if (ref($d->{data}->[0]) ne "HASH") {
+                push @{$json}, @{$d->{data}};
+            } else {
+                if (defined($d->{data}->[0]->{contents})) {
+                    push @{$json}, @{$d->{data}->[0]->{contents}};
+                }
+            }
         }
         if (defined ($d->{error})) {
             push @{$json}, @{$d->{error}};
@@ -1207,7 +1287,7 @@ sub infoout {
     }
 }
 
-
+# handle the action against noderange
 sub actionout {
     my $data = shift;
     my $param =shift;
@@ -1294,7 +1374,7 @@ sub defhdl {
     
     if ($params->{'resourcename'} eq "allnode") {
         push @args, '-s';
-    } elsif ($params->{'resourcename'} eq "nodeattr" or $params->{'resourcename'} eq "osimage_attr") {
+    } elsif ($params->{'resourcename'} =~ /(nodeattr|osimage_attr|group_attr)/) {
         my $attrs = $urilayers[3];
         $attrs =~ s/;/,/g;
 
@@ -1319,7 +1399,7 @@ sub actionhdl {
     # set the command name
     $request->{command} = $params->{'cmd'};
 
-        # push the object name - node/noderange
+    # push the object name - node/noderange
     if (defined ($urilayers[1])) {
         $request->{noderange} = $urilayers[1];
     }
@@ -1407,7 +1487,7 @@ sub actionhdl {
         if (defined ($paramhash->{'target'})) {
             push @args, $paramhash->{'target'};
         }
-    }
+    } 
 
     push @{$request->{arg}}, @args;  
     my $req = genRequest();
@@ -1415,6 +1495,26 @@ sub actionhdl {
 
     return $responses;
 }
+
+# handle the request for node irrelevant commands like makedns -n and makedhcp -n
+sub nonobjhdl {
+    my $params = shift;
+
+    my @args;
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+    if ($params->{'resourcename'} =~ /(dns|dhcp)/) {
+        push @args, '-n';
+    }
+    
+    push @{$request->{arg}}, @args;  
+    my $req = genRequest();
+    my $responses = sendRequest($req);
+
+    return $responses;
+}
+
 
 # operate image instance for a osimage
 sub imgophdl {
