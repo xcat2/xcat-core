@@ -509,6 +509,31 @@ system("mkdir -p $nodedir/result");
 system("scp -r $MN:/autotest/result $nodedir/result");
 
 }
+
+sub mn_install {
+    my osimage="management_1408a";
+    my mn="the_name_of_mn";
+
+    `nodeset $mn osimage=$osimage`;
+
+    $output = system("rpower $mn off");
+    do {
+         sleep 5;
+         $output = system("rpower $mn state");
+    } while ($output =~ /off/);
+
+    $output = system("rpower $mn on");
+    do {
+         sleep 5;
+         $output = system("rpower $mn state");
+    } while ($output =~ /on/);
+
+    do (
+         sleep 5 * 60;
+         $output = system("xdsh $mn date");
+    } while ($output =~ /$mn/);
+}
+
 #######################################
 # runcmd
 #######################################
