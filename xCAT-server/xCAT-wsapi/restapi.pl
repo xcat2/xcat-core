@@ -49,28 +49,28 @@ my %usagemsg = (
 
 my %URIdef = (
     #### definition for node resources
-    node => {
+    nodes => {
         allnode => {
-            desc => "[URI:/node] - The node list resource.",
+            desc => "[URI:/nodes] - The node list resource.",
             desc1 => "This resource can be used to display all the nodes which have been defined in the xCAT database.",
-            matcher => '^/node$',
+            matcher => '^/nodes$',
             GET => {
                 desc => "Get all the nodes in xCAT.",
                 desc1 => "The attributes details for the node will not be displayed.",
-                usage => "||An array of node names.|",
-                example => "|Get all the node names from xCAT database.|GET|/node|[\n   \"node1\",\n   \"node2\",\n   \"node3\",\n]|",
+                usage => "||Json format: An array of node names.|",
+                example => "|Get all the node names from xCAT database.|GET|/nodes|[\n   \"node1\",\n   \"node2\",\n   \"node3\",\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
             }
         },
         nodeallattr => {
-            desc => "[URI:/node/{nodename}] - The node resource",
-            matcher => '^/node/[^/]*$',
+            desc => "[URI:/nodes/{nodename}] - The node resource",
+            matcher => '^/nodes/[^/]*$',
             GET => {
                 desc => "Get all the attibutes for the node {nodename}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the attibutes for node \'node1\'.|GET|/node/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
+                example => "|Get all the attibutes for node \'node1\'.|GET|/nodes/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -78,7 +78,7 @@ my %URIdef = (
             PUT => {
                 desc => "Change the attibutes for the node {nodename}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/node/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
+                example => "|Change the attributes mgt=dfm and netboot=yaboot.|PUT|/nodes/node1 {\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
@@ -86,7 +86,7 @@ my %URIdef = (
             POST => {
                 desc => "Create the node {nodename}.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/node/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
+                example => "|Create a node with attributes groups=all, mgt=dfm and netboot=yaboot|POST|/nodes/node1 {\"groups\":\"all\",\"mgt\":\"dfm\",\"netboot\":\"yaboot\"}||",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
@@ -94,19 +94,19 @@ my %URIdef = (
             DELETE => {
                 desc => "Remove the node {nodename}.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => "|Delete the node node1|DELETE|/node/node1||",
+                example => "|Delete the node node1|DELETE|/nodes/node1||",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
         },
         nodeattr => {
-            desc => "[URI:/node/{nodename}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
-            matcher => '^/node/[^/]*/attr/\S+$',
+            desc => "[URI:/nodes/{nodename}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/attr/\S+$',
             GET => {
                 desc => "Get the specific attributes for the node {nodename}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/node/node1/attr/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -114,19 +114,19 @@ my %URIdef = (
             PUT_backup => {
                 desc => "Change attributes for the node {nodename}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
                 usage => "||An array of node objects.|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/node/node1/attr/groups;mgt;netboot||",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups;mgt;netboot||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             }
         },
         power => {
-            desc => "[URI:/node/{nodename}/power] - The power resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/power$',
+            desc => "[URI:/nodes/{nodename}/power] - The power resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/power$',
             GET => {
                 desc => "Get the power status for the node {nodename}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the power status.|GET|/node/node1/power|[\n   {\n      \"power\":\"on\",\n      \"name\":\"node1\"\n   }\n]|",
+                example => "|Get the power status.|GET|/nodes/node1/power|{\n   \"node1\":{\n      \"power\":\"on\"\n   }\n}|",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
@@ -134,78 +134,78 @@ my %URIdef = (
             PUT => {
                 desc => "Change power status for the node {nodename}.",
                 usage => "|Json Formatted DataBody: {action:on/off/reset ...}.|$usagemsg{non_getreturn}|",
-                example => "|Change the power status to on|PUT|/node/node1/power {\"action\":\"on\"}|[\n   {\n      \"power\":\"on\",\n      \"name\":\"node1\"\n   }\n]|",
+                example => "|Change the power status to on|PUT|/nodes/node1/power {\"action\":\"on\"}||",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
             }
         },
         energy => {
-            desc => "[URI:/node/{nodename}/energy] - The energy resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/energy$',
+            desc => "[URI:/nodes/{nodename}/energy] - The energy resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/energy$',
             GET => {
                 desc => "Get all the energy status for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the energy status of the node.|",
-                example => "|Get all the energy attributes.|GET|/node/node1/energy|[\n   {\n      \"cappingmin\":\"272.3 W\",\n      \"cappingmax\":\"354.0 W\",\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the energy attributes.|GET|/nodes/node1/energy|{\n   \"node1\":{\n      \"cappingmin\":\"272.3 W\",\n      \"cappingmax\":\"354.0 W\"\n      ...\n   }\n}|",
                 cmd => "renergy",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change energy attributes for the node {nodename}. DataBody: {cappingstatus:on ...}.",
-                usage => "|Put data: Json formatted attribute:value pair.|An array of node object, each node object includes the energy status of the node.|",
-                example => "|Turn on the cappingstatus to [on]|PUT|/node/node1/energy {\"cappingstatus\":\"on\"}|[\n   {\n      \"cappingstatus\":\"off\",\n      \"name\":\"node1\"\n   }\n]|",
+                desc => "Change energy attributes for the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {powerattr:value}.|$usagemsg{non_getreturn}|",
+                example => "|Turn on the cappingstatus to [on]|PUT|/nodes/node1/energy {\"cappingstatus\":\"on\"}||",
                 cmd => "renergy",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         energyattr => {
             disable => 1,
-            desc => "[URI:/node/{nodename}/energy/{cappingmaxmin;cappingstatus;cappingvalue ...}] - The specific energy attributes resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/energy/\S+$',
+            desc => "[URI:/nodes/{nodename}/energy/{cappingmaxmin,cappingstatus,cappingvalue ...}] - The specific energy attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/energy/\S+$',
             GET => {
                 desc => "Get the specific energy attributes cappingmaxmin,cappingstatus,cappingvalue ... for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the energy status of the node.|",
-                example => "|Get the energy attributes which are specified in the URI.|GET|/node/node1/energy/cappingmaxmin;cappingstatus|[\n   {\n      \"cappingmin\":\"272.3 W\",\n      \"cappingmax\":\"354.0 W\",\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the energy attributes which are specified in the URI.|GET|/nodes/node1/energy/cappingmaxmin,cappingstatus|{\n   \"node1\":{\n      \"cappingmin\":\"272.3 W\",\n      \"cappingmax\":\"354.0 W\"\n   }\n}|",
                 cmd => "renergy",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change energy attributes for the node {nodename}. DataBody: {cappingstatus:on}.",
-                usage => "|Put data: Json formatted attribute:value pair.|An array of node object, each node object includes the energy status of the node.|",
-                example => "|Turn on the cappingstatus to [on]|PUT|/node/node1/energy {\"cappingstatus\":\"on\"}|[\n   {\n      \"cappingstatus\":\"off\",\n      \"name\":\"node1\"\n   }\n]|",
+                desc => "Change energy attributes for the node {nodename}. ",
+                usage => "|$usagemsg{objchparam} DataBody: {powerattr:value}.|$usagemsg{non_getreturn}|",
+                example => "|Turn on the cappingstatus to [on]|PUT|/nodes/node1/energy {\"cappingstatus\":\"on\"}||",
                 cmd => "renergy",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         serviceprocessor => {
             disable => 1,
-            desc => "[URI:/node/{nodename}/sp/{community|ip|netmask|...}] - The attribute resource of service processor for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/sp/\S+$',
+            desc => "[URI:/nodes/{nodename}/sp/{community|ip|netmask|...}] - The attribute resource of service processor for the node {nodename}",
+            matcher => '^/nodes/[^/]*/sp/\S+$',
             GET => {
                 desc => "Get the specific attributes for service processor resource.",
-                usage => "||An array of node object, each node object includes the service processor attributes for the node.|",
-                example => "|Get the snmp community for the service processor of node1.|GET|/node/node1/sp/community|[\n   {\n      \"name\":\"node1\",\n      \"SP SNMP Community\":\"public\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the snmp community for the service processor of node1.|GET|/nodes/node1/sp/community|{\n   \"node1\":{\n      \"SP SNMP Community\":\"public\"\n   }\n}|",
                 cmd => "rspconfig",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change the specific attributes for the service processor resource. DataBody: {community:public}.",
-                usage => "|Put data: Json formatted value for the resource.|An array of node object, each node object includes the service processor attributes for the node.|",
-                example => "|Set the snmp community to [mycommunity].|PUT|/node/node1/sp/community {\"value\":\"mycommunity\"}|[\n   {\n      \"name\":\"node1\",\n      \"SP SNMP Community\":\"public\"\n   }\n]|",
+                desc => "Change the specific attributes for the service processor resource. ",
+                usage => "|$usagemsg{objchparam} DataBody: {community:public}.|$usagemsg{non_getreturn}|",
+                example => "|Set the snmp community to [mycommunity].|PUT|/nodes/node1/sp/community {\"value\":\"mycommunity\"}||",
                 cmd => "rspconfig",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         macaddress => {
             disable => 1,
-            desc => "[URI:/node/{nodename}/mac] - The mac address resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/mac$',
+            desc => "[URI:/nodes/{nodename}/mac] - The mac address resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/mac$',
             GET => {
                 desc => "Get the mac address for the node {nodename}. Generally, it also updates the mac attribute of the node.",
                 cmd => "getmacs",
@@ -213,32 +213,32 @@ my %URIdef = (
             },
         },
         nextboot => {
-            desc => "[URI:/node/{nodename}/nextboot] - The temporary bootorder resource in next boot for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/nextboot$',
+            desc => "[URI:/nodes/{nodename}/nextboot] - The temporary bootorder resource in next boot for the node {nodename}",
+            matcher => '^/nodes/[^/]*/nextboot$',
             GET => {
                 desc => "Get the next bootorder.",
-                usage => "||An array of node object, each node object includes the value of nextboot attribute for the node.|",
-                example => "|Get the bootorder for the next boot. (It's only valid after setting.)|GET|/node/node1/nextboot|[\n   {\n      \"name\":\"node1\",\n      \"nextboot\":\"Network\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the bootorder for the next boot. (It's only valid after setting.)|GET|/nodes/node1/nextboot|{\n   \"node1\":{\n      \"nextboot\":\"Network\"\n   }\n}|",
                 cmd => "rsetboot",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change the next boot order. DataBody: {order:net}.",
-                usage => "|Put data: Json formatted order:value pair.|An array of node object, each node object includes the value of nextboot attribute for the node.|",
-                example => "|Set the bootorder for the next boot.|PUT|/node/node1/nextboot {\"order\":\"net\"}|[\n   {\n      \"name\":\"node1\",\n      \"nextboot\":\"Network\"\n   }\n]|",
+                desc => "Change the next boot order. ",
+                usage => "|$usagemsg{objchparam} DataBody: {order:net/hd}.|$usagemsg{non_getreturn}|",
+                example => "|Set the bootorder for the next boot.|PUT|/nodes/node1/nextboot {\"order\":\"net\"}||",
                 cmd => "rsetboot",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         bootorder => {
-            desc => "[URI:/node/{nodename}/bootorder] - The permanent bootorder resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/bootorder$',
+            desc => "[URI:/nodes/{nodename}/bootorder] - The permanent bootorder resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/bootorder$',
             GET => {
                 desc => "Get the permanent boot order.",
                 usage => "|?|?|",
-                example => "|Get the permanent bootorder for the node1.|GET|/node/node1/bootorder|?|",
+                example => "|Get the permanent bootorder for the node1.|GET|/nodes/node1/bootorder|?|",
                 cmd => "rbootseq",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
@@ -246,19 +246,19 @@ my %URIdef = (
             PUT => {
                 desc => "Change the boot order. DataBody: {\"order\":\"net,hd\"}.",
                 usage => "|Put data: Json formatted order:value pair.|?|",
-                example => "|Set the permanent bootorder for the node1.|PUT|/node/node1/bootorder|?|",
+                example => "|Set the permanent bootorder for the node1.|PUT|/nodes/node1/bootorder|?|",
                 cmd => "rbootseq",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             }
         },
         vitals => {
-            desc => "[URI:/node/{nodename}/vitals] - The vitals resources for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/vitals$',
+            desc => "[URI:/nodes/{nodename}/vitals] - The vitals resources for the node {nodename}",
+            matcher => '^/nodes/[^/]*/vitals$',
             GET => {
                 desc => "Get all the vitals attibutes.",
-                usage => "||An array of node object, each node object includes the value of vitals attribute for the node.|",
-                example => "|Get all the vitails attributes for the node1.|GET|/node/node1/vitals|[\n   {\n      \"SysBrd Fault\":\"0\",\n      \"CPUs\":\"0\",\n      \"Fan 4A Tach\":\"3293 RPM\",\n      ...\n      }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the vitails attributes for the node1.|GET|/nodes/node1/vitals|{\n   \"node1\":{\n      \"SysBrd Fault\":\"0\",\n      \"CPUs\":\"0\",\n      \"Fan 4A Tach\":\"3330 RPM\",\n      \"Drive 15\":\"0\",\n      \"SysBrd Vol Fault\":\"0\",\n      \"nvDIMM Flash\":\"0\",\n      \"Progress\":\"0\"\n      ...\n   }\n}|",
                 cmd => "rvitals",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
@@ -266,81 +266,81 @@ my %URIdef = (
         },
         vitalsattr => {
             disable => 1,
-            desc => "[URI:/node/{nodename}/vitals/{temp|voltage|wattage|fanspeed|power|leds...}] - The specific vital attributes for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/vitals/\S+$',
+            desc => "[URI:/nodes/{nodename}/vitals/{temp|voltage|wattage|fanspeed|power|leds...}] - The specific vital attributes for the node {nodename}",
+            matcher => '^/nodes/[^/]*/vitals/\S+$',
             GET => {
                 desc => "Get the specific vitals attibutes.",
-                usage => "||An array of node object, each node object includes the value of vitals attribute for the node.|",
-                example => "|Get the \'fanspeed\' vitals attribute.|GET|/node/node1/vitals/fanspeed|[\n   {\n      \"Fan 1A Tach\":\"3219 RPM\",\n      \"Fan 4B Tach\":\"2688 RPM\",\n      \"Fan 3B Tach\":\"2592 RPM\",\n      \"Fan 4A Tach\":\"3330 RPM\",\n      \"name\":\"node1\",\n      \"Fan 2A Tach\":\"3256 RPM\",\n      \"Fan 1B Tach\":\"2560 RPM\",\n      \"Fan 3A Tach\":\"3145 RPM\",\n      \"Fan 2B Tach\":\"2592 RPM\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the \'fanspeed\' vitals attribute.|GET|/nodes/node1/vitals/fanspeed|{\n   \"node1\":{\n      \"Fan 1A Tach\":\"3219 RPM\",\n      \"Fan 4B Tach\":\"2688 RPM\",\n      \"Fan 3B Tach\":\"2560 RPM\",\n      \"Fan 4A Tach\":\"3330 RPM\",\n      \"Fan 2A Tach\":\"3293 RPM\",\n      \"Fan 1B Tach\":\"2592 RPM\",\n      \"Fan 3A Tach\":\"3182 RPM\",\n      \"Fan 2B Tach\":\"2592 RPM\"\n   }\n}|",
                 cmd => "rvitals",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
         },
         inventory => {
-            desc => "[URI:/node/{nodename}/inventory] - The inventory attributes for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/inventory$',
+            desc => "[URI:/nodes/{nodename}/inventory] - The inventory attributes for the node {nodename}",
+            matcher => '^/nodes/[^/]*/inventory$',
             GET => {
                 desc => "Get all the inventory attibutes.",
-                usage => "||An array of node object, each node object includes the value of inventory attribute for the node.|",
-                example => "|Get all the inventory attributes for node1.|GET|/node/node1/inventory|[\n   {\n      \"DIMM 21 \":\"8GB PC3-12800 (1600 MT/s) ECC RDIMM\",\n      \"DIMM 1 Manufacturer\":\"Hyundai Electronics\",\n      \"Power Supply 2 Board FRU Number\":\"94Y8105\",\n      \"DIMM 9 Model\":\"HMT31GR7EFR4C-PB\",\n      \"DIMM 8 Manufacture Location\":\"01\",\n      \"DIMM 13 Manufacturer\":\"Hyundai Electronics\",\n      \"DASD Backplane 4\":\"Not Present\",\n      \"DIMM 24 Model\":\"HMT31GR7EFR4C-PB\",\n      \"DIMM 2 Manufacture Location\":\"01\",\n      \"DIMM 17 Manufacture Location\":\"01\",\n      \"Backup UEFI Version\":\"1.41 (VVE128GUS )\",\n      \"DIMM 1 Model\":\"HMT31GR7EFR4A-H9\",\n      \"DIMM 13 Manufacture Date\":\"Week 22 of 2013\",\n      \"name\":\"node1\",\n      \"DIMM 4 \":\"8GB PC3-12800 (1600 MT/s) ECC RDIMM\",\n      ...\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the inventory attributes for node1.|GET|/nodes/node1/inventory|{\n   \"node1\":{\n      \"DIMM 21 \":\"8GB PC3-12800 (1600 MT/s) ECC RDIMM\",\n      \"DIMM 1 Manufacturer\":\"Hyundai Electronics\",\n      \"Power Supply 2 Board FRU Number\":\"94Y8105\",\n      \"DIMM 9 Model\":\"HMT31GR7EFR4C-PB\",\n      \"DIMM 8 Manufacture Location\":\"01\",\n      \"DIMM 13 Manufacturer\":\"Hyundai Electronics\",\n      \"DASD Backplane 4\":\"Not Present\",\n      ...\n   }\n}|",
                 cmd => "rinv",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
         },
         inventoryattr => {
-            desc => "[URI:/node/{nodename}/inventory/{pci;model...}] - The specific inventory attributes for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/inventory/\S+$',
+            desc => "[URI:/nodes/{nodename}/inventory/{pci;model...}] - The specific inventory attributes for the node {nodename}",
+            matcher => '^/nodes/[^/]*/inventory/\S+$',
             GET => {
                 desc => "Get the specific inventory attibutes.",
-                usage => "||An array of node object, each node object includes the value of inventory attribute for the node.|",
-                example => "|Get the \'model\' inventory attribute for node1.|GET|/node/node1/inventory/model|[\n   {\n      \"System Description\":\"System x3650 M4\",\n      \"System Model/MTM\":\"7915C2A\",\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the \'model\' inventory attribute for node1.|GET|/nodes/node1/inventory/model|{\n   \"node1\":{\n      \"System Description\":\"System x3650 M4\",\n      \"System Model/MTM\":\"7915C2A\"\n   }\n}|",
                 cmd => "rinv",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
         },
         eventlog => {
-            desc => "[URI:/node/{nodename}/eventlog] - The eventlog resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/eventlog$',
+            desc => "[URI:/nodes/{nodename}/eventlog] - The eventlog resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/eventlog$',
             GET => {
                 desc => "Get all the eventlog for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the enentlog array for all the eventlog entries.|",
-                example => "|Get all the eventlog for node1.|GET|/node/node1/eventlog|[\n   {\n      \"eventlog\":[\n         \"09/07/2013 10:05:02 Event Logging Disabled, Log Area Reset/Cleared (SEL Fullness)\",\n         ...\n      ],\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the eventlog for node1.|GET|/nodes/node1/eventlog|{\n   \"node1\":{\n      \"eventlog\":[\n         \"03/19/2014 15:17:58 Event Logging Disabled, Log Area Reset/Cleared (SEL Fullness)\"\n      ]\n   }\n}|",
                 cmd => "reventlog",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             DELETE => {
                 desc => "Clean up the event log for the node {nodename}.",
-                usage => "||An array of node object, each node object includes the delete result.|",
-                example => "|Delete all the event log for node1.|DELETE|/node/node1/eventlog|[\n   {\n      \"eventlog\":[\n         \"SEL cleared\"\n      ],\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete all the event log for node1.|DELETE|/nodes/node1/eventlog|[\n   {\n      \"eventlog\":[\n         \"SEL cleared\"\n      ],\n      \"name\":\"node1\"\n   }\n]|",
                 cmd => "reventlog",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             },
         },
         beacon => {
-            desc => "[URI:/node/{nodename}/beacon] - The beacon resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/beacon$',
+            desc => "[URI:/nodes/{nodename}/beacon] - The beacon resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/beacon$',
             GET_backup => {
                 desc => "Get the beacon status for the node {nodename}.",
                 cmd => "rbeacon",
                 fhandler => \&common,
             },
             PUT => {
-                desc => "Change the beacon status for the node {nodename}. DataBody: {on|off|blink}.",
-                usage => "|Put data: Json formatted action:on/off/blink pair.|An array of node object, each node object includes the beacon status.|",
-                example => "|Turn on the beacon.|PUT|/node/node1/beacon {\"action\":\"on\"}|[\n   {\n      \"name\":\"node1\",\n      \"beacon\":\"on\"\n   }\n]|",
+                desc => "Change the beacon status for the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {action:on/off/blink}.|$usagemsg{non_getreturn}|",
+                example => "|Turn on the beacon.|PUT|/nodes/node1/beacon {\"action\":\"on\"}|[\n   {\n      \"name\":\"node1\",\n      \"beacon\":\"on\"\n   }\n]|",
                 cmd => "rbeacon",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             },
         },
         virtualization => {
-            desc => "[URI:/node/{nodename}/virtualization] - The virtualization resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/virtualization$',
+            desc => "[URI:/nodes/{nodename}/virtualization] - The virtualization resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/virtualization$',
             GET => {
                 desc => "Get the vm status for the node {nodename}.",
                 cmd => "lsvm",
@@ -358,80 +358,80 @@ my %URIdef = (
             },
         },
         updating => {
-            desc => "[URI:/node/{nodename}/updating] - The updating resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/updating$',
+            desc => "[URI:/nodes/{nodename}/updating] - The updating resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/updating$',
             PUT => {
                 desc => "Update the node with file syncing, software maintenance and rerun postscripts.",
                 usage => "||An array of messages for performing the node updating.|",
-                example => "|Initiate an updatenode process.|PUT|/node/node2/updating|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\",\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:01:43 CST 2013 Running postscript: ospkgs\",\n   \"node2: Running of postscripts has completed.\"\n]|",
+                example => "|Initiate an updatenode process.|PUT|/nodes/node2/updating|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\",\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:01:43 CST 2013 Running postscript: ospkgs\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         filesyncing => {
-            desc => "[URI:/node/{nodename}/filesyncing] - The filesyncing resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/filesyncing$',
+            desc => "[URI:/nodes/{nodename}/filesyncing] - The filesyncing resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/filesyncing$',
             PUT => {
                 desc => "Sync files for the node {nodename}. DataBody: {location of syncfile}",
                 usage => "||An array of messages for performing the file syncing for the node.|",
-                example => "|Initiate an file syncing process.|PUT|/node/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
+                example => "|Initiate an file syncing process.|PUT|/nodes/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         software_maintenance => {
-            desc => "[URI:/node/{nodename}/sw] - The software maintenance for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/sw$',
+            desc => "[URI:/nodes/{nodename}/sw] - The software maintenance for the node {nodename}",
+            matcher => '^/nodes/[^/]*/sw$',
             PUT => {
                 desc => "Perform the software maintenance process for the node {nodename}.",
                 usage => "||An array of messages for performing the software maintenance for the node.|",
-                example => "|Initiate an software maintenance process.|PUT|/node/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
+                example => "|Initiate an software maintenance process.|PUT|/nodes/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         postscript => {
-            desc => "[URI:/node/{nodename}/postscript] - The postscript resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/postscript$',
+            desc => "[URI:/nodes/{nodename}/postscript] - The postscript resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/postscript$',
             PUT => {
                 desc => "Run the postscripts for the node {nodename}. DataBody: {scripts:[p1,p2,p3,...]}",
                 usage => "|Put data: Json formatted scripts:[scriptname list].|An array of messages for the running postscripts for the node.|",
-                example => "|Initiate an updatenode process.|PUT|/node/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
+                example => "|Initiate an updatenode process.|PUT|/nodes/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         nodeshell => {
-            desc => "[URI:/node/{nodename}/nodeshell] - The nodeshell resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/nodeshell$',
+            desc => "[URI:/nodes/{nodename}/nodeshell] - The nodeshell resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/nodeshell$',
             PUT => {
                 desc => "Run the command in the shell of the node {nodename}. DataBody: {command:[cmd1,cmd2]}",
                 usage => "|Put data: Json formatted command:[cmd1,cmd2].|An arry of messages for running commands on the node.|",
-                example => "|Run the \'data\' command on the node2.|PUT|/node/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
+                example => "|Run the \'data\' command on the node2.|PUT|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
                 cmd => "xdsh",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         nodecopy => {
-            desc => "[URI:/node/{nodename}/nodecopy] - The nodecopy resource for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/nodecopy$',
+            desc => "[URI:/nodes/{nodename}/nodecopy] - The nodecopy resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/nodecopy$',
             PUT => {
                 desc => "Copy files to the node {nodename}. DataBody: {src:[file1,file2],target:dir}",
                 usage => "|Put data: Json formatted src file and target file or directory.|Error messages.|",
-                example => "|Copy files to the node2.|PUT|/node/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
+                example => "|Copy files to the node2.|PUT|/nodes/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
                 cmd => "xdcp",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
             },
         },
         subnode => {
-            desc => "[URI:/node/{nodename}/subnode] - The sub nodes for the node {nodename}",
-            matcher => '^\/node\/[^\/]*/subnode$',
+            desc => "[URI:/nodes/{nodename}/subnode] - The sub nodes for the node {nodename}",
+            matcher => '^/nodes/[^/]*/subnode$',
             GET => {
                 desc => "Return the Children node for the node {nodename}.",
                 cmd => "rscan",
@@ -446,7 +446,7 @@ my %URIdef = (
         # for slpnode, we need use the query attribute to specify the network parameter for lsslp command
         slpnode => {
             desc => "[URI:/slpnode?network=xx] - The slp nodes in the xCAT cluster",
-            matcher => '^\/slpnode\?.*$',
+            matcher => '^/slpnode\?.*$',
             GET => {
                 desc => "Get all the nodes which support slp protocol in the network.",
                 cmd => "lsslp",
@@ -460,7 +460,7 @@ my %URIdef = (
         },
         specific_slpnode => {
             desc => "[URI:/slpnode/{IMM;CMM;CEC;FSP...}?network=xx] - The slp nodes with specific service type in the xCAT cluster",
-            matcher => '^\/slpnode/[^\/]*/\?.*$',
+            matcher => '^/slpnode/[^/]*/\?.*$',
             GET => {
                 desc => "Get all the nodes with specific slp service type in the network.",
                 cmd => "lsslp",
@@ -473,23 +473,23 @@ my %URIdef = (
             },
         },
         bootstat => {
-            desc => "[URI:/node/{nodename}/bootstat] - The boot state resource for node {nodename}.",
-            matcher => '^\/node\/[^\/]*/bootstat$',
+            desc => "[URI:/nodes/{nodename}/bootstat] - The boot state resource for node {nodename}.",
+            matcher => '^/nodes/[^/]*/bootstat$',
             GET => {
                 desc => "Get boot state.",
-                usage => "||An array of node object, each node object includes the boot status.|",
-                example => "|Get the next boot state for the node1.|GET|/node/node1/bootstat|[\n   {\n      \"bootstat\":\"boot\",\n      \"name\":\"node1\"\n   }\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the next boot state for the node1.|GET|/nodes/node1/bootstat|{\n   \"node1\":{\n      \"bootstat\":\"boot\"\n   }\n}|",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
-                desc => "Set the boot state. DataBody: {osimage:xxx}",
-                usage => "|Put data: Json formatted osimage:imagename pair.|An array of node object, each node object includes the boot status.|",
-                example => "|Set the next boot state for the node1.|PUT|/node/node1/bootstat {\"osimage\":\"rhels6.4-x86_64-install-compute\"}|[\n   {\n      \"bootstat\":\"install rhels6.4-x86_64-compute\",\n      \"name\":\"node1\"\n   }\n]|",
+                desc => "Set the boot state.",
+                usage => "|$usagemsg{objchparam} DataBody: {osimage:xxx}.|$usagemsg{non_getreturn}|",
+                example => "|Set the next boot state for the node1.|PUT|/nodes/node1/bootstat {\"osimage\":\"rhels6.4-x86_64-install-compute\"}||",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
-                outhdler => \&actionout,
+                outhdler => \&noout,
             },
         },
 
@@ -773,12 +773,12 @@ my %URIdef = (
     #### definition for database/table resources
     table => {
         table_nodes => {
-            desc => "[URI:/table/{tablelist}/node/{noderange}/{attrlist}] - The node table resource",
-            matcher => '^/table/[^/]+/node(/[^/]+){0,2}$',
+            desc => "[URI:/table/{tablelist}/nodes/{noderange}/{attrlist}] - The node table resource",
+            matcher => '^/table/[^/]+/nodes(/[^/]+){0,2}$',
             GET => {
                 desc => "Get table attibutes for a noderange. {noderange} and {attrlist} are optional.",
                 usage => "||An object for the specific attributes.|",
-                example => "|Get |GET|/table/mac/node/node1/mac|{\n   \"mac\":[\n      {\n         \"name\":\"node1\",\n         \"mac\":\"mac=6c:ae:8b:41:3f:53\"\n      }\n   ]\n}|",
+                example => "|Get |GET|/table/mac/nodes/node1/mac|{\n   \"mac\":[\n      {\n         \"name\":\"node1\",\n         \"mac\":\"mac=6c:ae:8b:41:3f:53\"\n      }\n   ]\n}|",
                 cmd => "getTablesNodesAttribs",     # not used
                 fhandler => \&tablenodehdl,
                 outhdler => \&tableout,
@@ -1212,12 +1212,9 @@ sub actionout {
     my $data = shift;
     my $param =shift;
 
-    my $json;
     my $jsonnode;
     foreach my $d (@$data) {
-        if (defined ($d->{node}->[0]->{name})) {
-            $jsonnode->{$d->{node}->[0]->{name}->[0]}->{'name'} = $d->{node}->[0]->{name}->[0];
-        } else {
+        unless (defined ($d->{node}->[0]->{name})) {
             next;
         }
         if (defined ($d->{node}->[0]->{data}) && (ref($d->{node}->[0]->{data}->[0]) ne "HASH" || ! defined($d->{node}->[0]->{data}->[0]->{contents}))) {
@@ -1235,11 +1232,7 @@ sub actionout {
         } 
     }
 
-    foreach (keys %{$jsonnode}) {
-        push @$json, $jsonnode->{$_};
-    }
-
-    addPageContent($JSON->encode($json)) if ($json);
+    addPageContent($JSON->encode($jsonnode)) if ($jsonnode);
 }
 
 sub defout_1 {
@@ -1286,7 +1279,9 @@ sub defhdl {
     $request->{command} = $params->{'cmd'};
 
     # push the -t args
-    push @args, ('-t', $params->{'resourcegroup'});
+    my $resrctype = $params->{'resourcegroup'};
+    $resrctype =~ s/s$//;  # remove the last 's' as the type of object
+    push @args, ('-t', $resrctype);
 
     # push the object name - node/noderange
     if (defined ($urilayers[1])) {
@@ -1343,7 +1338,7 @@ sub actionhdl {
             if ($params->{'resourcename'} eq "energy") {
                 push @args, 'all';
             } elsif ($params->{'resourcename'} eq "energyattr") {
-                my @attrs = split(';', $urilayers[3]);
+                my @attrs = split(',', $urilayers[3]);
                 push @args, @attrs;
             }
         } elsif ($paramhash) {
@@ -1741,7 +1736,7 @@ sub filterData {
 
 
         if (exists($_->{serverdone})) {
-            if (defined ($outputerror->{errorcode})) {
+            if (defined ($outputerror->{error})) {
                  addPageContent($JSON->encode($outputerror));
                  #return the default http error code to be 403 forbidden
                  sendResponseMsg($STATUS_FORBIDDEN);

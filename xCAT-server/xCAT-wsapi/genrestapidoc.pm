@@ -4,12 +4,13 @@ package genrestapidoc;
 
 my @apigroups = (
     {
-        groupname => 'node', 
+        groupname => 'nodes', 
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage nodes.",
         resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 
                       'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstat',
-                      'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',]
+                      'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',
+                      ]
     },
     {
         groupname => 'policy',
@@ -91,7 +92,7 @@ sub outtext {
             push @errmsg, "Error format in:[".$def->{desc}."]\n";
         }
         
-        if ($parts[2] && $parts[3] && $parts[4]) {
+        if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
             my ($uri, $data);
             if ($parts[3] =~ /\s+/) {
                 ($uri, $data) = split(/ /, $parts[3]);
@@ -168,7 +169,7 @@ sub outwiki {
             push @errmsg, "Error format for:[".$def->{desc}."]\n";
         }
         
-        if ($parts[2] && $parts[3] && $parts[4]) {
+        if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
             my ($uri, $data);
             if ($parts[3] =~ /\s+/) {
                 ($uri, $data) = split(/ /, $parts[3]);
