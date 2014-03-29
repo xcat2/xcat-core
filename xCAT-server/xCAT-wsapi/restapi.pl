@@ -120,6 +120,71 @@ my %URIdef = (
                 outhdler => \&noout,
             }
         },
+        nodestat => {
+            desc => "[URI:/nodes/{nodename}/nodestat}] - The attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/nodestat$',
+            GET => {
+                desc => "Get the running status for the node {nodename}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|x|",
+                cmd => "nodestat",
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
+            },
+        },
+        nodehost => {
+            desc => "[URI:/nodes/{nodename}/host] - The mapping of ip and hostname for the node {nodename}",
+            matcher => '^/nodes/[^/]*/host$',
+            POST => {
+                desc => "Create the mapping of ip and hostname record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the mapping of ip and hostname record for node \'node1\'.|POST|/nodes/node1/host||",
+                cmd => "makehosts",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
+        nodedns => {
+            desc => "[URI:/nodes/{nodename}/dns] - The dns record resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/dns$',
+            POST => {
+                desc => "Create the dns record for the node {nodename}.",
+                desc1 => "The prerequisite of the POST operation is the mapping of ip and nodename for the node has been added in the /etc/hosts.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dns record for node \'node1\'.|POST|/nodes/node1/dns||",
+                cmd => "makedns",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+            DELETE => {
+                desc => "Remove the dns record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the dns record for node node1|DELETE|/nodes/node1/dns||",
+                cmd => "makedns",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
+        nodedhcp => {
+            desc => "[URI:/nodes/{nodename}/dhcp] - The dhcp record resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/dhcp$',
+            POST => {
+                desc => "Create the dhcp record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dhcp record for node \'node1\'.|POST|/nodes/node1/dhcp||",
+                cmd => "makedhcp",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+            DELETE => {
+                desc => "Remove the dhcp record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the dhcp record for node node1|DELETE|/nodes/node1/dhcp||",
+                cmd => "makedhcp",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
         power => {
             desc => "[URI:/nodes/{nodename}/power] - The power resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/power$',
@@ -472,21 +537,21 @@ my %URIdef = (
                 fhandler => \&common,
             },
         },
-        bootstat => {
-            desc => "[URI:/nodes/{nodename}/bootstat] - The boot state resource for node {nodename}.",
-            matcher => '^/nodes/[^/]*/bootstat$',
+        bootstate => {
+            desc => "[URI:/nodes/{nodename}/bootstate] - The boot state resource for node {nodename}.",
+            matcher => '^/nodes/[^/]*/bootstate$',
             GET => {
                 desc => "Get boot state.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the next boot state for the node1.|GET|/nodes/node1/bootstat|{\n   \"node1\":{\n      \"bootstat\":\"boot\"\n   }\n}|",
+                example => "|Get the next boot state for the node1.|GET|/nodes/node1/bootstate|{\n   \"node1\":{\n      \"bootstat\":\"boot\"\n   }\n}|",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
                 desc => "Set the boot state.",
-                usage => "|$usagemsg{objchparam} DataBody: {osimage:xxx}.|$usagemsg{non_getreturn}|",
-                example => "|Set the next boot state for the node1.|PUT|/nodes/node1/bootstat {\"osimage\":\"rhels6.4-x86_64-install-compute\"}||",
+                usage => "|$usagemsg{objchparam} DataBody: {osimage:xxx}/{state:offline}.|$usagemsg{non_getreturn}|",
+                example => "|Set the next boot state for the node1.|PUT|/nodes/node1/bootstate {\"osimage\":\"rhels6.4-x86_64-install-compute\"}||",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
@@ -547,15 +612,27 @@ my %URIdef = (
         },
     },
 
-    #### definition for services resources: dns, dhcp
+    #### definition for services resources: dns, dhcp, hostname
     services => {
+        host => {
+            desc => "[URI:/services/host] - The hostname resource.",
+            matcher => '^/services/host$',
+            POST => {
+                desc => "Create the ip/hostname records for all the nodes to /etc/hosts.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the ip/hostname records for all the nodes to /etc/hosts.|POST|/services/host||",
+                cmd => "makehosts",
+                fhandler => \&nonobjhdl,
+                outhdler => \&noout,
+            }
+        },
         dns => {
             desc => "[URI:/services/dns] - The dns service resource.",
             matcher => '^/services/dns$',
             POST => {
-                desc => "Create the dns records for all the entries in the MN:/etc/hosts configuration file.",
+                desc => "Initialize the dns service.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => "|Create the dns records for all the entries in the /etc/hosts.|POST|/services/dns||",
+                example => "|Initialize the dns service.|POST|/services/dns||",
                 cmd => "makedns",
                 fhandler => \&nonobjhdl,
                 outhdler => \&noout,
@@ -1427,14 +1504,20 @@ sub actionhdl {
         } else {
             error("Missed Action.",$STATUS_NOT_FOUND);
         }
-    } elsif  ($params->{'resourcename'}eq "bootstat") {
+    } elsif  ($params->{'resourcename'}eq "bootstate") {
         if (isGET()) {
             push @args, 'stat';
         } elsif ($paramhash->{'action'}) {
             push @args, $paramhash->{'action'};
         } elsif ($paramhash) {
             my @params = keys(%$paramhash);
-            push @args, "$params[0]=$paramhash->{$params[0]}";
+            if ($params[0] eq "state") {
+                # hanlde the {state:offline}
+                push @args, $paramhash->{$params[0]};
+            } else {
+                # handle the {osimage:imagename}
+                push @args, "$params[0]=$paramhash->{$params[0]}";
+            }
         } else {
             error("Missed Action.",$STATUS_NOT_FOUND);
         }
@@ -1487,7 +1570,11 @@ sub actionhdl {
         if (defined ($paramhash->{'target'})) {
             push @args, $paramhash->{'target'};
         }
-    } 
+    } elsif ($params->{'resourcename'} =~ /(dns|dhcp)/) {
+        if (isDelete()) {
+            push @args, '-d';
+        }
+    }
 
     push @{$request->{arg}}, @args;  
     my $req = genRequest();
