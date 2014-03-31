@@ -328,35 +328,42 @@ sleep 0.05; #up to 50 ms outage possible
     my $conn;
     next unless $conn = $socket->accept;
 
-my @clients;
-if ($inet6support) {
-    @clients = gethostbyaddr($conn->peeraddr,AF_INET6);
-    unless (@clients) { @clients =  gethostbyaddr($conn->peeraddr,AF_INET); }
-} else {
-    @clients = gethostbyaddr($conn->peeraddr,AF_INET);
-}
+    my $client_name;
+    my $client_aliases;
+    my @clients;
+    if ($inet6support) {
+        ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET6);
+        unless ($client_name) { ($client_name,$client_aliases) =  gethostbyaddr($conn->peeraddr,AF_INET); }
+    } else {
+        ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET);
+    }
+
+    $clients[0] = $client_name;
+    if ($client_aliases) {
+       push @clients, split(/\s+/,$client_aliases);
+    }
 
 	my $validclient=0;
 	my $node;
 	my $domain;
 
-	my $nd = xCAT::NetworkUtils->getNodeDomains(\@clients);
-	my %nodedomains = %{$nd};
-
 	foreach my $client (@clients) {
-		$domain = $nodedomains{$client};
+            my @ndn = ($client);
+	    my $nd = xCAT::NetworkUtils->getNodeDomains(\@ndn);
+	    my %nodedomains = %{$nd};
+	    $domain = $nodedomains{$client};
+  	    $client =~ s/\..*//;
+	    if ($domain) {
+		$client =~ s/\.$domain//;
+ 	    } else {
 		$client =~ s/\..*//;
-		if ($domain) {
-			$client =~ s/\.$domain//;
-		} else {
-			$client =~ s/\..*//;
-		}
-		#ensure this is coming from a node IP at least
-		($node) = noderange($client);
-		if ($node) {  #Means the source isn't valid
-			$validclient=1;
-			last;
-		}
+	    }
+	    #ensure this is coming from a node IP at least
+	    ($node) = noderange($client);
+	    if ($node) {  #Means the source isn't valid
+		$validclient=1;
+		last;
+	    }
 	}
 
     unless ($validclient) {
