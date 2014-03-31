@@ -7,7 +7,7 @@ my @apigroups = (
         groupname => 'nodes', 
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage node objects.",
-        resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 
+        resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'subnodes',
                       'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstate',
                       'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',
                       'nodestat', 'nodehost', 'nodedns', 'nodedhcp',

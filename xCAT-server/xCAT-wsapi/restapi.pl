@@ -494,15 +494,19 @@ my %URIdef = (
                 outhdler => \&infoout,
             },
         },
-        subnode => {
-            desc => "[URI:/nodes/{nodename}/subnode] - The sub nodes for the node {nodename}",
-            matcher => '^/nodes/[^/]*/subnode$',
+        subnodes => {
+            desc => "[URI:/nodes/{nodename}/subnodes] - The sub-nodes resources for the node {nodename}",
+            matcher => '^/nodes/[^/]*/subnodes$',
             GET => {
-                desc => "Return the Children node for the node {nodename}.",
+                desc => "Return the Children nodes for the node {nodename}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the children nodes for node \'node1\'.|GET|/nodes/node1/subnodes|{\n   \"cmm01node09\":{\n      \"mpa\":\"ngpcmm01\",\n      \"parent\":\"ngpcmm01\",\n      \"serial\":\"1035CDB\",\n      \"mtm\":\"789523X\",\n      \"cons\":\"fsp\",\n      \"hwtype\":\"blade\",\n      \"objtype\":\"node\",\n      \"groups\":\"blade,all,p260\",\n      \"mgt\":\"fsp\",\n      \"nodetype\":\"ppc,osi\",\n      \"slotid\":\"9\",\n      \"hcp\":\"10.1.9.9\",\n      \"id\":\"1\"\n   },\n   ...\n}|",
                 cmd => "rscan",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&defout,
             },
-            PUT => {
+            # the put should be implemented by customer that using GET to get all the resources and define it with PUT /nodes/<node name>
+            PUT_bak => {
                 desc => "Update the Children node for the node {nodename}.",
                 cmd => "rscan",
                 fhandler => \&common,
@@ -1253,14 +1257,20 @@ sub isPatch { return uc($requestType) eq "PATCH"; }
 sub isDelete { return uc($requestType) eq "DELETE"; }
 
 
-# handle the input like  
+#handle the output for def command and rscan 
+#handle the input like  
 # Object name: <objname>
 #   attr=value
+#OR
+# <objname>:
+#   attr=value
 # ---
-# TO
+#TO
 # ---
-# nodename : value
-# attr : value
+# {<objname> : {
+#   attr : value
+#   ...
+# } ... }
 sub defout {
     my $data = shift;
 
@@ -1268,12 +1278,22 @@ sub defout {
     foreach my $d (@$data) {
         #my $jsonnode;
         my $nodename;
-        my $lines = $d->{info};
+        my $lines;
+        if (defined ($d->{info})) {
+            $lines = $d->{info};
+        } elsif (defined ($d->{data})) {
+            my @alldata = split ('\n', $d->{data}->[0]);
+            $lines = \@alldata;
+        }
         foreach my $l (@$lines) {
-            if ($l =~ /^Object name: /) {    # start new node
+            if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef;}     # push previous object onto array
-                $l =~ /^Object name:\s+(\S+)/;
-                $nodename = $1;
+                if ($l =~ /^Object name:\s+(\S+)/) {
+                    $nodename = $1;
+                }
+                if ($l =~ /^(\S+):$/) {
+                    $nodename = $1;
+                }
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
@@ -1284,7 +1304,9 @@ sub defout {
         }
         #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef; }     # push last object onto array
     }
-    addPageContent($JSON->encode($json));
+    if ($json) {
+        addPageContent($JSON->encode($json));
+    }
 }
 # handle the input like
 # all  (node)
@@ -1573,6 +1595,10 @@ sub actionhdl {
     } elsif ($params->{'resourcename'} =~ /(dns|dhcp)/) {
         if (isDelete()) {
             push @args, '-d';
+        }
+    } elsif ($params->{'resourcename'} eq "subnodes") {
+        if (isGET()) {
+            push @args, '-z';
         }
     }
 
