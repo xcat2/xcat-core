@@ -881,8 +881,8 @@ sub check_options
         xCAT::MsgUtils->message("I", $rsp, $callback, 0);
         return 0;
     }
-    # if not help,  dhcpd needs to be running
-    if (!($opt->{h})) {
+    # if not help and not -n,  dhcpd needs to be running
+    if (!($opt->{h})&& (!($opt->{n}))) {
      if (xCAT::Utils->isLinux()) {
        my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
        if ($::RUNCMD_RC != 0)  { # not running
