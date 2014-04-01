@@ -101,12 +101,12 @@ my %URIdef = (
             },
         },
         nodeattr => {
-            desc => "[URI:/nodes/{nodename}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
-            matcher => '^/nodes/[^/]*/attr/\S+$',
+            desc => "[URI:/nodes/{nodename}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the node {nodename}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attrs/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -114,7 +114,7 @@ my %URIdef = (
             PUT_backup => {
                 desc => "Change attributes for the node {nodename}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
                 usage => "||An array of node objects.|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups;mgt;netboot||",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attrs/groups;mgt;netboot||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
@@ -603,12 +603,12 @@ my %URIdef = (
             },
         },
         group_attr => {
-            desc => "[URI:/groups/{groupname}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}",
-            matcher => '^/groups/[^/]*/attr/\S+$',
+            desc => "[URI:/groups/{groupname}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}",
+            matcher => '^/groups/[^/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the group {groupname}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the attributes {mgt,netboot} for group all|GET|/groups/all/attr/mgt,netboot|{\n   \"all\":{\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\"\n   }\n}|",
+                example => "|Get the attributes {mgt,netboot} for group all|GET|/groups/all/attrs/mgt,netboot|{\n   \"all\":{\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -699,8 +699,8 @@ my %URIdef = (
             },
         },
         network_attr => {
-            desc => "[URI:/network/{netname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
-            matcher => '^\/network\/[^\/]*/attr/\S+$',
+            desc => "[URI:/network/{netname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
+            matcher => '^\/network\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the network {netname}.",
                 cmd => "lsdef",
@@ -759,8 +759,8 @@ my %URIdef = (
             },
         },
         osimage_attr => {
-            desc => "[URI:/osimage/{imgname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the osimage {imgname}",
-            matcher => '^\/osimage\/[^\/]*/attr/\S+$',
+            desc => "[URI:/osimage/{imgname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the osimage {imgname}",
+            matcher => '^\/osimage\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the osimage {imgname}.",
                 cmd => "lsdef",
@@ -849,12 +849,12 @@ my %URIdef = (
             },
         },
         policy_attr => {
-            desc => "[URI:/policy/{policyname}/attr/{attr1;attr2;attr3,...}] - The attributes resource for the policy {policy_priority}",
-            matcher => '^\/policy\/[^\/]*/attr/\S+$',
+            desc => "[URI:/policy/{policyname}/attrs/{attr1;attr2;attr3,...}] - The attributes resource for the policy {policy_priority}",
+            matcher => '^\/policy\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the policy {policy_priority}.",
                 usage => "||An array policy object, each object includes the values for each attribute.|",
-                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attr/name;rule|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
+                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attrs/name;rule|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -891,12 +891,12 @@ my %URIdef = (
             },
         },
         site => {
-            desc => "[URI:/globalconf/attr/{attr1;attr2 ...}] - The specific global configuration resource.",
-            matcher => '^\/globalconf/attr/\S+$',
+            desc => "[URI:/globalconf/attrs/{attr1;attr2 ...}] - The specific global configuration resource.",
+            matcher => '^\/globalconf/attrs/\S+$',
             GET => {
                 desc => "Get the specific configuration in global.",
                 usage => "||?|",
-                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attr/master;domain|?|",
+                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attrs/master;domain|?|",
                 cmd => "lsdef",
                 fhandler => \&sitehdl,
                 outhdler => \&defout,
@@ -904,21 +904,21 @@ my %URIdef = (
             PUT => {
                 desc => "Change the attributes for the site table. DataBody: {name:value}.",
                 usage => "|Put data: Json formatted name:value pairs.|?|",
-                example => "|Change the domain attribute.|PUT|/globalconf/attr/domain|?|",
+                example => "|Change the domain attribute.|PUT|/globalconf/attrs/domain|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
             POST => {
                 desc => "Create the global configuration entry. DataBody: {name:value}.",
                 usage => "|Put data: Json formatted name:value pairs.||",
-                example => "|Create the domain attribute|POST|/globalconf/attr/domain {\"domain\":\"cluster.com\"}|?|",
+                example => "|Create the domain attribute|POST|/globalconf/attrs/domain {\"domain\":\"cluster.com\"}|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
             DELETE => {
                 desc => "Remove the site attributes.",
                 usage => "||?|",
-                example => "|Remove the domain configure.|DELETE|/globalconf/attr/domain|?|",
+                example => "|Remove the domain configure.|DELETE|/globalconf/attrs/domain|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
@@ -1106,6 +1106,8 @@ if ($DEBUGGING) {
     displaydebugmsg();
 }
 
+my $XCOLL = $generalparams->{xcoll}; # The filter flag is used to group the nodes which have the same output 
+
 # Process the format requested
 $format = $generalparams->{format} if (defined ($generalparams->{format}));
 
@@ -1259,6 +1261,11 @@ sub isDelete { return uc($requestType) eq "DELETE"; }
 
 #handle the output for def command and rscan 
 #handle the input like  
+# ===raw xml input
+#  $d->{info}->[msg list] - each msg could be mulitple msg which split with '\n' 
+#  $d->{data}->[msg list]
+#
+# ===msg format
 # Object name: <objname>
 #   attr=value
 #OR
@@ -1279,10 +1286,16 @@ sub defout {
         #my $jsonnode;
         my $nodename;
         my $lines;
+        my @alldata;
         if (defined ($d->{info})) {
-            $lines = $d->{info};
+            foreach (@{$d->{info}}) {
+                push @alldata, split ('\n', $_);
+            }
+            $lines = \@alldata;
         } elsif (defined ($d->{data})) {
-            my @alldata = split ('\n', $d->{data}->[0]);
+            foreach (@{$d->{data}}) {
+                push @alldata, split ('\n', $_);
+            }
             $lines = \@alldata;
         }
         foreach my $l (@$lines) {
@@ -1305,7 +1318,7 @@ sub defout {
         #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef; }     # push last object onto array
     }
     if ($json) {
-        addPageContent($JSON->encode($json));
+        addPageContent($JSON->encode($json), 1);
     }
 }
 # handle the input like
@@ -1334,7 +1347,7 @@ sub defout_remove_appended_type {
         #if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
     }
     if ($json) {
-        addPageContent($JSON->encode($json));
+        addPageContent($JSON->encode($json), 1);
     }
 }
 
@@ -1362,15 +1375,20 @@ sub noout {
 # hanlde the output which is node irrelevant
 sub infoout {
     my $data = shift;
+    my $param =shift;
 
     my $json;
     foreach my $d (@$data) {
         if (defined ($d->{info})) {
-            push @{$json}, @{$d->{info}};
+            foreach (@{$d->{info}}) {
+                push @{$json}, split ('\n', $_);
+            }
         }
         if (defined ($d->{data})) {
             if (ref($d->{data}->[0]) ne "HASH") {
-                push @{$json}, @{$d->{data}};
+                foreach (@{$d->{data}}) {
+                    push @{$json}, split ('\n', $_);
+                }
             } else {
                 if (defined($d->{data}->[0]->{contents})) {
                     push @{$json}, @{$d->{data}->[0]->{contents}};
@@ -1381,8 +1399,20 @@ sub infoout {
             push @{$json}, @{$d->{error}};
         }
     }
+
+    # for nodeshell (xdsh), group msg with node name
+    if ($param->{'resourcename'} eq "nodeshell") {
+        my $jsonnode;
+        foreach (@{$json}) {
+            if (/^(\S+):(.*)$/) {
+                push @{$jsonnode->{$1}}, $2;
+            }
+        }
+        addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
+        return;
+    }
     if ($json) {
-        addPageContent($JSON->encode($json));
+        addPageContent($JSON->encode($json), 1);
     }
 }
 
@@ -1411,7 +1441,7 @@ sub actionout {
         } 
     }
 
-    addPageContent($JSON->encode($jsonnode)) if ($jsonnode);
+    addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
 }
 
 sub defout_1 {
@@ -1445,7 +1475,6 @@ sub defout_1 {
     }
     return \@output;
 }
-
 
 # invoke one of the def cmds
 sub defhdl {
@@ -1583,7 +1612,13 @@ sub actionhdl {
         }
     } elsif ($params->{'resourcename'} eq "nodeshell") {
         if (defined ($paramhash->{'command'})) {
-            push @args, join (';', @{$paramhash->{'command'}});
+            if (ref($paramhash->{'command'}) eq "ARRAY") {
+                push @args, join (';', @{$paramhash->{'command'}});
+            } else {
+                push @args, $paramhash->{'command'};
+            }
+        } else {
+            error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
         }
     } elsif ($params->{'resourcename'} eq "nodecopy") {
         if (defined ($paramhash->{'src'})) {
@@ -2110,8 +2145,46 @@ sub wrapJsonNodes {
 }
 
 # Append content to the global var holding the output to go back to the rest client
+# 1st param - The output message
+# 2nd param - A flag to specify the format of 1st param: 1 - json formatted standard xcat output data
 sub addPageContent {
     my $newcontent = shift;
+    my $userdata = shift;
+
+    if ($userdata && $XCOLL) {
+        my $group;
+        my $hash = $JSON->decode($newcontent);
+        if (ref($hash) eq "HASH") {
+            foreach my $node (keys %{$hash}) {
+                if (ref($hash->{$node}) eq "HASH") {
+                    my $value;
+                    foreach (sort (keys %{$hash->{$node}})) {
+                        $value .= "$_$hash->{$node}->{$_}";
+                    }
+                    push @{$group->{$value}->{node}}, $node; 
+                    $group->{$value}->{orig} = $hash->{$node};
+                } elsif (ref($hash->{$node}) eq "ARRAY") {
+                    my $value;
+                    foreach (sort (@{$hash->{$node}})) {
+                        $value .= "$_";
+                    }
+                    push @{$group->{$value}->{node}}, $node; 
+                    $group->{$value}->{orig} = $hash->{$node};
+                }
+            }
+        }
+        my $groupout;
+        foreach my $value (keys %{$group}) {
+            if (defined $group->{$value}->{node}) {
+                my $nodes = join(',', @{$group->{$value}->{node}});
+                if (defined ($group->{$value}->{orig})) {
+                    $groupout->{$nodes} = $group->{$value}->{orig};
+                }
+            }
+        }
+        $newcontent = $JSON->encode($groupout) if ($groupout);
+    }
+    
     $pageContent .= $newcontent;
 }
 
@@ -2247,7 +2320,7 @@ sub sendRequest {
 
 # Put input parameters from both $q->url_param and put/post data (if it exists) into generalparams and paramhash for all to use
 sub fetchParameters {
-    my @generalparamlist = qw(userName password pretty debug);
+    my @generalparamlist = qw(userName password pretty debug xcoll);
     # 1st check for put/post data and put that in the hash
     my $pdata;
     if (isPut()) { $pdata = $q->param('PUTDATA'); }
