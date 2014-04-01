@@ -41,6 +41,7 @@ use xCAT::Table;
 # |    `--POST - The info is used to handle the POST request
 # |    `--DELETE - The info is used to handle the DELETE request
 
+# The common messages which can be used in the %URIdef
 my %usagemsg = (
     objreturn => "Json format: An object which includes multiple \'<name> : {att:value, attr:value ...}\' pairs.",
     objchparam => "Json format: An object which includes multiple \'att:value\' pairs.",
@@ -994,7 +995,7 @@ my %formatters = (
     #'xml'  => \&wrapXml
 );
 
-#error status codes
+# error status codes
 my $STATUS_BAD_REQUEST         = "400 Bad Request";
 my $STATUS_UNAUTH              = "401 Unauthorized";
 my $STATUS_FORBIDDEN           = "403 Forbidden";
@@ -1006,13 +1007,9 @@ my $STATUS_EXPECT_FAILED       = "417 Expectation Failed";
 my $STATUS_TEAPOT              = "418 I'm a teapot";
 my $STATUS_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 
-#good status codes
+# good status codes
 my $STATUS_OK      = "200 OK";
 my $STATUS_CREATED = "201 Created";
-
-my $XCAT_PATH = '/opt/xcat/bin';
-my $VERSION   = "2.8";
-
 
 # Development notes:
 # - added this line to /etc/httpd/conf/httpd.conf to hide the cgi-bin and .cgi extension in the uri:
@@ -1034,34 +1031,34 @@ my $VERSION   = "2.8";
 # print $q->end_html;       #todo: add the </body></html> tags
 # $q->url_param()      # gets url options, even when there is put/post data (unlike q->param)
 
+
+
 #### Main procedure to handle the REST request
 
+# To get the HTTP elements through perl CGI module
 my $q           = CGI->new;
-#my $url         = $q->url;      # the 1st part of the url, https, hostname, port num, and /xcatws
 my $pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
-#my $requestType = $ENV{'REQUEST_METHOD'};
 my $requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
-#my $queryString = $ENV{'QUERY_STRING'};     #todo: remove this when not used any more
-#my $userAgent = $ENV{'HTTP_USER_AGENT'};        # curl, etc.
 my $userAgent = $q->user_agent();        # the client program: curl, etc.
-#my %queryhash;          # the queryString will get put into this
-my @path = split(/\//, $pathInfo);
-#shift(@path);       # get rid of the initial /
-#my $resource    = $path[0];
-my $pageContent = '';       # global var containing the ouptut back to the rest client
-my $request     = {clienttype => 'ws'};     # global var that holds the request to send to xcatd
-my $format = 'json';
-my $pretty;
-my $xmlinstalled;
+my @path = split(/\//, $pathInfo);    # The uri path like /nodes/node1/...
 
-# Handle the command parameter for debugging and generating doc
+# Define the golbal variables which will be used through the handling process
+my $pageContent = '';       # Global var containing the ouptut back to the rest client
+my $request     = {clienttype => 'ws'};     # Global var that holds the request to send to xcatd
+my $format = 'json';    # The output format for a request invoke
+my $xmlinstalled;    # Global var to speicfy whether the xml modules have been loaded
+
+# To easy the perl debug, this script can be run directly with 'perl -d'
+# This script also support to generate the rest api doc automatically.
+# Following part of code will not be run when this script is called by http server
 my $dbgdata;
-sub dbgusage { print "Usage:\n    $0 -h\n    $0 -d\n    $0 {GET|PUT|POST|DELETE} URI user:password data\n"; }
+sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g [wiki] (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
     exit 0;
 } elsif ($ARGV[0] eq "-g") {
+    # generate the document
     require genrestapidoc;
     if (defined ($ARGV[1])) {
         genrestapidoc::gendoc(\%URIdef, $ARGV[1]);
@@ -1073,6 +1070,7 @@ if ($ARGV[0] eq "-h") {
     displayUsage();
     exit 0;
 } elsif ($ARGV[0] =~ /(GET|PUT|POST|DELETE)/) {
+    # parse the parameters when run this script locally
     $requestType = $ARGV[0];
     $pathInfo= $ARGV[1];
 
@@ -1092,13 +1090,15 @@ if ($ARGV[0] eq "-h") {
 }
 
 my $JSON;       # global ptr to the json object.  Its set by loadJSON()
-#if (isPut() || isPost()) {
-    loadJSON();        # need to do this early, so we can fetch the params
-#}
+# Since the json is the only supported format, load it at beginning
+# need to do this early, so we can fetch the PUT/POST params
+loadJSON();        
 
 # the input parameters from both the url and put/post data will combined and then
 # separated into the general params (not specific to the api call) and params specific to the call
 # Note: some of the values of the params in the hash can be arrays
+# $generalparams - the general parameters like 'debug=1', 'pretty=1'
+# $paramhash - all parameters come from url or put/post data except the ones in $generalparams
 my ($generalparams, $paramhash) = fetchParameters();
 
 my $DEBUGGING = $generalparams->{debug};      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
@@ -1106,7 +1106,8 @@ if ($DEBUGGING) {
     displaydebugmsg();
 }
 
-my $XCOLL = $generalparams->{xcoll}; # The filter flag is used to group the nodes which have the same output 
+# The filter flag is used to group the nodes which have the same output 
+my $XCOLL = $generalparams->{xcoll}; 
 
 # Process the format requested
 $format = $generalparams->{format} if (defined ($generalparams->{format}));
@@ -1135,37 +1136,22 @@ $pathInfo =~ s/\/$//;
 #}
 
 if ($format eq 'json') {
-#    loadJSON();         # in case it was not loaded before
+    # make the output to be readable if 'pretty=1' is specified
     if ($generalparams->{pretty}) { $JSON->indent(1); }
 }
 
-# require XML dynamically and let them know if it is not installed
 # we need XML all the time to send request to xcat, even if thats not the return format requested by the user
 loadXML();
 
-# Match the first layer of resource URI
+# The first layer of resource URI. It should be 'nodes' for URI '/nodes/node1'
 my $uriLayer1;
 
-#bmp: why can't you just split on "/" like xcatws.cgi did?
 # Get all the layers in the URI
-my @layers;
-my $portion = index($pathInfo, '/');
-while (1) {
-    my $endportion = index($pathInfo, '/', $portion+1);
-    if ($endportion >= 0) {
-        my $layer = substr($pathInfo, $portion+1, ($endportion - $portion - 1));
-        push @layers, $layer if ($layer);
-        $portion = $endportion;
-    } else { # the last layer
-        my $layer = substr($pathInfo, $portion+1);
-        push @layers, $layer if ($layer);
-        last;
-    }
-}
+my @layers = split('\/', $pathInfo);
+shift (@layers);
 
 if ($#layers < 0) {
-    # If no resource was specified
-    #addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    # If no resource was specified, list all the resource groups which have been defined in the %URIdef
     my $json;
     foreach (sort keys %URIdef) {
         push @{$json}, $_;
@@ -1179,7 +1165,7 @@ if ($#layers < 0) {
 }
 
 # set the user and password to access xcatd
-#todo: replace with using certificates or an api key
+# todo: replace with using certificates or an api key
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
@@ -1192,7 +1178,6 @@ if (defined ($URIdef{$uriLayer1})) {
     # Make sure the resource has been defined
     foreach my $res (keys %{$URIdef{$uriLayer1}}) {
         my $matcher = $URIdef{$uriLayer1}->{$res}->{matcher};
-        #bmp: if you use m|$matcher| here instead then you won't need to escape all of the /'s ?
         if ($pathInfo =~ m|$matcher|) {
             # matched to a resource
             unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {
@@ -1206,17 +1191,15 @@ if (defined ($URIdef{$uriLayer1})) {
                  $params->{'layers'} = \@layers;
                  $params->{'resourcegroup'} = $uriLayer1;
                  $params->{'resourcename'} = $res;
-                 # Call the hanldle subroutine to send request to xcatd and format the output
-                 #@outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler}->($params);
-                 # get the response from xcatd
+                 # Call the handler subroutine which specified in 'fhandler' to send request to xcatd and get the response
                  $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler}->($params);
                  # Filter the output data from the response
                  $outputdata = filterData ($outputdata);
-                 # Restructure the output data
+                 # Restructure the output data with the subroutine which is specified in 'outhdler' 
                  if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler})) {
                      $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler}->($outputdata, $params);
                  } else {
-                     # Call the appropriate formatting function stored in the formatters hash
+                     # Call the appropriate formatting function stored in the formatters hash as default output handler
                      if (exists $formatters{$format}) {
                          $formatters{$format}->($outputdata);
                      }
@@ -1228,18 +1211,18 @@ if (defined ($URIdef{$uriLayer1})) {
         }
     }
 } else {
+    # not matches to any resource group. Check the 'resource group' to improve the performance
     error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
+# the URI cannot match to any resources which are defined in %URIdef
 unless ($handled) {
     error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
 
-# all output has been added into the global varibale pageContent, call the response funcion
-#if (exists $data->[0]->{info} && $data->[0]->{info}->[0] =~ /Could not find an object/) {
-#    sendResponseMsg($STATUS_NOT_FOUND);
-#}
+# all output has been added into the global varibale pageContent, call the response funcion to generate HTTP reply and exit
+
 if (isPost()) {
     sendResponseMsg($STATUS_CREATED);
 }
@@ -1248,6 +1231,10 @@ else {
 }
 
 #### End of the Main Program
+
+
+
+
 
 #===========================================================
 # Subrutines 
@@ -1442,38 +1429,6 @@ sub actionout {
     }
 
     addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
-}
-
-sub defout_1 {
-    my $msg = shift;
-   
-    my @output;
-    my $hn; 
-    my $node;
-    foreach (@{$msg}) {
-        if (defined ($_->{info})) {
-            foreach my $line (@{$_->{info}}) {
-                if ($line =~ /Object name: (.*)/) {
-                    #if ($node) {
-                    #    push @output, $hn;
-                    #}
-                    $node = $1;
-                } elsif ($line =~ /(.*)=(.*)/) {
-                    my $n = $1;
-                    my $v = $2;
-                    $n =~ s/^\s*//;
-                    $n =~ s/\s*$//;
-                    $v =~ s/^\s*//;
-                    $v =~ s/\s*$//;
-                    $hn->{$node}->{$n} = $v;
-                }
-            }
-            push @output, $hn;
-        } else {
-            push @output, $_;
-        }
-    }
-    return \@output;
 }
 
 # invoke one of the def cmds
@@ -2017,133 +1972,6 @@ sub wrapJson {
     }
 }
 
-
-#bmp: this isn't used anymore, just here for reference, right?
-# structure the json output for node resource api calls
-sub wrapJsonNodes {
-    # this is an array of responses from xcatd.  Often all the output comes back in 1 response, but not always.
-    my $data = shift;
-
-    # Divide the processing into several groups of requests, according to how they return the output
-    # At this point, these are all gets and posts.  The others were taken care of wrapJson()
-    my $json;
-    if (isGet()) {
-        if (!defined $path[2] && !defined($paramhash->{field})) {        # querying node list
-            # The data structure is: array of hashes that have a single key 'node'.  The value for that key
-            # is an array of hashes with a single key 'name'.  The value for that key
-            # is a 1-element array that contains the node name.
-            # Create a json array of node name strings.
-            $json = [];
-            foreach my $d (@$data) {
-                my $ar = $d->{node};
-                foreach my $a (@$ar) {
-                    my $nodename = $a->{name}->[0];
-                    if (!defined($nodename)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                    push @$json, $nodename;
-                }
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif (!defined $path[2] && defined($paramhash->{field})) {        # querying node attributes
-            # The data structure is: array of hashes that have a single key 'info'.  The value for that key
-            # is an array of lines of lsdef output (all nodes in the same array).
-            # Create a json array of node objects. Each node object contains the attributes/values (including
-            # the nodename) of that object.
-            $json = [];
-            foreach my $d (@$data) {
-                my $jsonnode;
-                my $lines = $d->{info};
-                foreach my $l (@$lines) {
-                    if ($l =~ /^Object name: /) {    # start new node
-                        if (defined($jsonnode)) { push @$json, $jsonnode; }     # push previous object onto array
-                        my ($nodename) = $l =~ /^Object name:\s+(\S+)/;
-                        $jsonnode = { nodename => $nodename };
-                    }
-                    else {      # just an attribute of the current node
-                        if (!defined($jsonnode)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                        my ($attr, $val) = $l =~ /^\s*(\S+)=(.*)$/;
-                        if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                        $jsonnode->{$attr} = $val;
-                    }
-                }
-                if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif (grep(/^$path[2]$/, qw(power inventory vitals energy status))) {        # querying other node info
-            # The data structure is: array of hashes that have a single key 'node'.  The value for that key
-            # is a 1-element array that has a hash with keys 'name' and 'data'.  The 'name' value is a 1-element
-            # array that has the nodename.  The 'data' value is a 1-element array of a hash that has keys 'desc'
-            # and 'content' (sometimes desc is ommited), or in the case of status it has the status directly in the array.
-            # Create a json array of node objects. Each node object contains the attributes/values (including
-            # the nodename) of that object.
-            $json = {};     # its keys are nodenames
-            foreach my $d (@$data) {
-                # each element is a complex structure that contains 1 attr and value for a node
-                my $node = $d->{node}->[0];
-                my $nodename = $node->{name}->[0];
-                my $nodedata = $node->{data}->[0];
-                if ($path[2] eq 'status') {
-                    $json->{$nodename} = $nodedata;
-                }
-                else {
-                    my $contents = $nodedata->{contents}->[0];
-                    my $desc = 'power';         # rpower doesn't output a desc tag
-                    if (defined($nodedata->{desc})) { $desc = $nodedata->{desc}->[0]; }
-                    # add this desc and content into this node's hash
-                    $json->{$nodename}->{$desc} = $contents;
-                }
-            }
-            if ($path[2] eq 'status') { addPageContent($JSON->encode($json)); }
-            else {
-                # convert this hash of hashes into an array of hashes
-                my @jsonarray;
-                foreach my $n (sort(keys(%$json))) {
-                    $json->{$n}->{nodename} = $n;       # add the key (nodename) inside of the node's hash
-                    push @jsonarray, $json->{$n};
-                }
-                addPageContent($JSON->encode(\@jsonarray));
-            }
-        }
-        else {      # querying a node subresource (rpower, rvitals, rinv, etc.)
-            addPageContent($JSON->encode($data));
-        }       # end else path[2] defined
-    }
-    elsif (isPost()) {          # dsh or dcp
-        if ($path[2] eq 'dsh') {
-            # The data structure is: array of hashes with a single key, either 'data' or 'errorcode'.  The value
-            # of 'errorcode' is a 1-element array containing the error code.  The value of 'data' is an array of
-            # output lines prefixed by the node name.  Some of the lines can be null.
-            # Create a hash with 2 keys: 'errorcode' and 'nodes'. The 'nodes' value is a hash of nodenames, each
-            # value is an array of the output for that node.
-            $json = {};     # its keys are nodenames
-            foreach my $d (@$data) {
-                # this is either an errorcode hash or data hash
-                if (defined($d->{errorcode})) {
-                    $json->{errorcode} = $d->{errorcode}->[0];
-                }
-                elsif (defined($d->{data})) {
-                    foreach my $line (@{$d->{data}}) {
-                        my ($nodename, $output) = $line =~ m/^(\S+): (.*)$/;
-                        if (defined($nodename)) { push @{$json->{$nodename}}, $output; }
-                    }
-                }
-                else { error('improperly formatted xdsh output from xcatd', $STATUS_TEAPOT); }
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif ($path[2] eq 'dcp') {
-            # The data structure is a 1-element array of a hash with 1 key 'errorcode'.  That has a 1-element
-            # array with the code in it.  Let's simplify it.
-            $json->{errorcode} = $data->[0]->{errorcode}->[0];
-            addPageContent($JSON->encode($json));
-        }
-        else {
-            addPageContent($JSON->encode($data));
-        }
-    }       # end if isPost
-}
-
 # Append content to the global var holding the output to go back to the rest client
 # 1st param - The output message
 # 2nd param - A flag to specify the format of 1st param: 1 - json formatted standard xcat output data
@@ -2319,6 +2147,8 @@ sub sendRequest {
 }
 
 # Put input parameters from both $q->url_param and put/post data (if it exists) into generalparams and paramhash for all to use
+# 1st output param - The params which are listed in @generalparamlis as a general parameters like 'debug=1, pretty=1'
+# 2nd output param - All the params from url params and 'PUTDATA'/'POSTDATA' except the ones in @generalparamlis
 sub fetchParameters {
     my @generalparamlist = qw(userName password pretty debug xcoll);
     # 1st check for put/post data and put that in the hash
