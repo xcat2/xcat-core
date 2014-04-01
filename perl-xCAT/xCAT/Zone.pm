@@ -49,7 +49,7 @@ This program module file, is a set of Zone utilities used by xCAT *zone commands
 =cut
 
 #--------------------------------------------------------------------------------
-sub  genSSHRootKeys 
+sub genSSHRootKeys 
 {
     my ($class, $callback, $keydir,$zonename,$rsakey) = @_;
     
@@ -71,22 +71,6 @@ sub  genSSHRootKeys
         }
     }
 
-    #
-    #  create /install/postscripts/_ssh/zonename if needed
-    #
-    my $installdir = xCAT::TableUtils->getInstallDir();  # get installdir
-    if (!-d "$installdir/postscripts/_ssh/$zonename")
-    {
-        my $cmd = "/bin/mkdir -m 755 -p $installdir/postscripts/_ssh/$zonename";
-        my $output = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{error}->[0] = "Could not create $installdir/postscripts/_ssh/$zonename directory.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-           return 1;
-        }
-    }
 
     #need to gen a new rsa key for root for the zone 
     my $pubfile = "$keydir/id_rsa.pub";
@@ -152,29 +136,6 @@ sub  genSSHRootKeys
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
     }
-    # copy authorized_keys for install on node
-    if (-r $pubfile)
-    {
-        my $cmd =
-          "/bin/cp -p $pubfile $installdir/postscripts/_ssh/$zonename ";
-        my $output = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp = {};
-            $rsp->{error}->[0] = 
-           "Could not copy $pubfile to $installdir/postscripts/_ssh/$zonename";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
-
-        }
-    }
-    else
-    {
-            my $rsp = {};
-            $rsp->{error}->[0] = 
-           "Could not copy $pubfile to $installdir/postscripts/_ssh/$zonename, because $pubfile does not exist.";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-    }
 }
 #--------------------------------------------------------------------------------
 
@@ -184,11 +145,11 @@ sub  genSSHRootKeys
     Returns:
     Name of the current default  zone from the zone table
     Example:
-     my $defaultzone =xCAT::Zone->getdefaultzone(); 
+     my $defaultzone =xCAT::Zone->getdefaultzone($callback); 
 =cut
 
 #--------------------------------------------------------------------------------
-sub  getdefaultzone 
+sub getdefaultzone 
 {
  my ($class, $callback) = @_;
  my $defaultzone;
@@ -199,7 +160,8 @@ sub  getdefaultzone
    foreach my $zone (@zones) {
     # Look for the  defaultzone=yes/1 entry
     if ((defined($zone->{defaultzone})) && 
-          (($zone->{defaultzone} =~ "yes") || ($zone->{defaultzone} = "1"))) {
+          (($zone->{defaultzone} =~ /^yes$/i )
+           || ($zone->{defaultzone} eq "1"))) {
        $defaultzone = $zone->{zonename};
     }
     $tab->close();
@@ -230,9 +192,133 @@ sub iszonedefined
  my ($class,$zonename) = @_;
  # checks the zone table to see if input zonename already in the table 
  my $tab = xCAT::Table->new("zone");
- my $zone = $tab->getAttribs({zonename => $zonename},'sshkeydir');
  $tab->close();
- if (defined($zone)) {
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshkeydir');
+ if ( keys %$zonehash) {
+    return 1;
+ }else{
+    return 0;
+ }
+}
+#--------------------------------------------------------------------------------
+
+=head3  getzonekeydir 
+    Arguments:
+      zonename 
+    Returns:
+     path to the root ssh keys for the zone /etc/xcat/sshkeys/<zonename>/.ssh 
+     1 - zone not defined 
+    Example:
+     xCAT::Zone->getzonekeydir($zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getzonekeydir 
+{
+ my ($class,$zonename) = @_;
+ my $tab = xCAT::Table->new("zone");
+ $tab->close();
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshkeydir');
+ if ( keys %$zonehash) {
+    my $zonesshkeydir=$zonehash->{sshkeydir};
+    return $zonesshkeydir;
+ }else{
+    return 1;   # this is a bad error  zone not defined
+ }
+}
+#--------------------------------------------------------------------------------
+
+=head3    getmyzonename 
+    Arguments:
+       $node -one nodename      
+    Returns:
+     $zonename 
+    Example:
+     my $zonename=xCAT::Zone->getmyzonename($node); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getmyzonename 
+{
+ my ($class,$node,$callback) = @_;
+ my @node;
+ push @node,$node;
+ my $zonename;
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my $nodehash = $nodelisttab->getNodesAttribs(\@node, ['zonename']); 
+ $nodelisttab->close();
+ if ( defined ($nodehash->{$node}->[0]->{zonename})) { # it was defined in the nodelist table
+    $zonename=$nodehash->{$node}->[0]->{zonename};
+ } else {  # get the default zone
+    $zonename =xCAT::Zone->getdefaultzone($callback);
+ }
+   return $zonename;
+}
+#--------------------------------------------------------------------------------
+
+=head3    enableSSHbetweennodes 
+    Arguments:
+      zonename 
+    Returns:
+     1 if the  sshbetweennodes attribute is yes/1 or undefined
+     0 if the  sshbetweennodes attribute is no/0 
+    Example:
+     xCAT::Zone->enableSSHbetweennodes($zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub enableSSHbetweennodes 
+{
+ my ($class,$node,$callback) = @_;
+ # finds the zone of the node
+ my $enablessh = 1;   # default
+ my $zonename=xCAT::Zone->getmyzonename($node);
+ # reads the zone table 
+ my $tab = xCAT::Table->new("zone");
+ $tab->close();
+ # read both keys,  want to know zone is in the zone table. If sshkeydir is not there
+ # it is either missing or invalid anyway
+ my $zonehash = $tab->getAttribs({zonename => $zonename},'sshbetweennodes','sshkeydir');
+ if (! ( keys %$zonehash)) {
+          my $rsp = {};
+          $rsp->{error}->[0] = 
+         "$node has a  zonename: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone. The generated mypostscript may not reflect the correct setting for  ENABLESSHBETWEENNODES";
+          xCAT::MsgUtils->message("E", $rsp, $callback);
+          return $enablessh;
+ }
+ my $sshbetweennodes=$zonehash->{sshbetweennodes};
+ if (defined ($sshbetweennodes)) {
+   if (($sshbetweennodes  =~ /^no$/i) ||  ($sshbetweennodes eq "0")) {
+     $enablessh = 0;  
+   } else {
+     $enablessh = 1;  
+   }
+ } else { # not defined default yes
+   $enablessh = 1 ;   # default
+ }
+ return $enablessh;
+}
+#--------------------------------------------------------------------------------
+
+=head3    usingzones 
+    Arguments:
+      none 
+    Returns:
+     1 if the zone table is not empty
+     0 if empty
+    Example:
+     xCAT::Zone->usingzones; 
+=cut
+
+#--------------------------------------------------------------------------------
+sub usingzones 
+{
+ my ($class) = @_;
+ # reads the zonetable 
+ my $tab = xCAT::Table->new("zone");
+ my  @zone = $tab->getAllAttribs('zonename');
+ $tab->close();
+ if (@zone) {
     return 1;
  }else{
     return 0;
@@ -242,44 +328,48 @@ sub iszonedefined
 
 =head3    getzoneinfo
     Arguments:
+     callback
      An array of nodes
     Returns:
      Hash array  by zonename point to the nodes in that zonename  and sshkeydir
-      zonename1 -> {nodelist} -> array of nodes in the zone
+      <zonename1> -> {nodelist} -> array of nodes in the zone
                  -> {sshkeydir} -> directory containing ssh RSA keys
                  -> {defaultzone} ->  is it the default zone             
     Example:
-     my %zonehash =xCAT::Zone->getNodeZones($nodelist); 
+     my %zonehash =xCAT::Zone->getzoneinfo($callback,@nodearray); 
     Rules:
        If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
        If the nodes nodelist.zonename attribute is undefined:
           If there is a defaultzone in the zone table, the node is assigned to that zone
           If there is no defaultzone in the zone table, the node is assigned to the ~.ssh keydir
+    $::GETZONEINFO_RC
+           0 = good return
+           1 = error occured
 =cut
 
 #--------------------------------------------------------------------------------
-sub  getzoneinfo 
+sub getzoneinfo 
 {
   my ($class, $callback,$nodes) = @_;
- 
- # make the list into an array
-# $nodelist=~ s/\s*//g; # remove blanks
-# my @nodes = split ',', $nodelist;
+ $::GETZONEINFO_RC=0; 
  my $zonehash;
  my $defaultzone;
  # read all the zone table 
  my $zonetab = xCAT::Table->new("zone");
+ my @zones;
  if ($zonetab){
-    my @zones = $zonetab->getAllAttribs('zonename','sshkeydir','defaultzone');
+    @zones = $zonetab->getAllAttribs('zonename','sshkeydir','sshbetweennodes','defaultzone');
     $zonetab->close();
     if (@zones) {
        foreach  my $zone (@zones) {
           my $zonename=$zone->{zonename};
           $zonehash->{$zonename}->{sshkeydir}= $zone->{sshkeydir};
           $zonehash->{$zonename}->{defaultzone}= $zone->{defaultzone};
+          $zonehash->{$zonename}->{sshbetweennodes}= $zone->{sshbetweennodes};
           # find the defaultzone
-          if ((defined($zone->{defaultzone})) && 
-             (($zone->{defaultzone} =~ /yes/i) or ($zone->{defaultzone} eq "1"))) {
+          if ((defined($zone->{defaultzone})) &&
+          (($zone->{defaultzone} =~ /^yes$/i ) 
+              || ($zone->{defaultzone} eq "1"))) {
               $defaultzone = $zone->{zonename};
           }
        }
@@ -289,41 +379,74 @@ sub  getzoneinfo
     $rsp->{error}->[0] = 
     "Error reading the zone table. ";
     xCAT::MsgUtils->message("E", $rsp, $callback);
+    $::GETZONEINFO_RC =1;
     return;
 
  }
  my $nodelisttab = xCAT::Table->new("nodelist");
  my $nodehash = $nodelisttab->getNodesAttribs(\@$nodes, ['zonename']); 
  # for each of the nodes, look up it's zone name and assign to the zonehash
- # if the node is a service node, it is assigned to the __xcatzone which gets its keys from
- #    the ~/.ssh dir no matter what in the database for the zonename. 
  # If the nodes nodelist.zonename attribute is a zonename, it is assigned to that zone
  # If the nodes nodelist.zonename attribute is undefined:
  #         If there is a defaultzone in the zone table, the node is assigned to that zone
- #         If there is no defaultzone in the zone table, the node is assigned to the ~.ssh keydir
+ #         If there is no defaultzone error out 
  
 
- my @allSN=xCAT::ServiceNodeUtils->getAllSN("ALL");  # read all the servicenodes define 
- my $xcatzone = "__xcatzone";  # if node is in no zones or a service node, use this one
- $zonehash->{$xcatzone}->{sshkeydir}= "~/.ssh"; 
  foreach my $node (@$nodes) {
     my $zonename;
-    if (grep(/^$node$/, @allSN)) {  # this is a servicenode, treat special
-      $zonename=$xcatzone;    # always use ~/.ssh directory
-    } else { # use the nodelist.zonename attribute
-      $zonename=$nodehash->{$node}->[0]->{zonename};
-    }
+    $zonename=$nodehash->{$node}->[0]->{zonename};
     if (defined($zonename)) {  # zonename explicitly defined in nodelist.zonename
-       push @{$zonehash->{$zonename}->{nodes}},$node;
+     # check to see if defined in the zone table
+     unless ( xCAT::Zone->iszonedefined($zonename)) {
+          my $rsp = {};
+          $rsp->{error}->[0] = 
+         "$node has a  zonename: $zonename that is  not define in the zone table. Remove the zonename from the node, or create the zone using mkzone.";
+          xCAT::MsgUtils->message("E", $rsp, $callback);
+          $::GETZONEINFO_RC =1;
+          return;
+      }
+      push @{$zonehash->{$zonename}->{nodes}},$node;
     } else { # no explict zonename
       if (defined ($defaultzone)) {  # there is a default zone in the zone table, use it
        push @{$zonehash->{$defaultzone}->{nodes}},$node;
-      } else {  # if no default then use the ~/.ssh keys as the default, put them in the __xcatzone
-          push @{$zonehash->{$xcatzone}->{nodes}},$node;
+      } else {  # if no default, this is an error
+          my $rsp = {};
+          $rsp->{error}->[0] = 
+         "There is no default zone defined in the zone table. There must be exactly one default zone. ";
+          xCAT::MsgUtils->message("E", $rsp, $callback);
+          $::GETZONEINFO_RC =1;
+          return;
        
       }   
     }   
  }
  return $zonehash;
+}
+#--------------------------------------------------------------------------------
+
+=head3    getnodesinzone
+    Arguments:
+     callback
+     zonename 
+    Returns:
+     Array of nodes 
+    Example:
+     my @nodes =xCAT::Zone->getnodesinzone($callback,$zonename); 
+=cut
+
+#--------------------------------------------------------------------------------
+sub getnodesinzone 
+{
+ my ($class, $callback,$zonename) = @_;
+ my @nodes;
+ my $nodelisttab = xCAT::Table->new("nodelist");
+ my @nodelist=$nodelisttab->getAllAttribs('node','zonename');
+ # build the array of nodes in this zone
+ foreach my $nodename (@nodelist) {
+     if  ((defined($nodename->{'zonename'})) && ($nodename->{'zonename'} eq $zonename)) {
+       push @nodes,$nodename->{'node'};
+     }
+ }
+ return @nodes;
 }
 1;

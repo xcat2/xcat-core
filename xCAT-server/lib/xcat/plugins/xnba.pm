@@ -11,9 +11,7 @@ use Getopt::Long;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
-my $addkcmdlinehandled;
-my $request;
-my $callback;
+
 my $dhcpconf = "/etc/dhcpd.conf";
 #my $tftpdir = "/tftpboot";
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
@@ -102,7 +100,7 @@ sub setstate {
   if (ref $linuximghashref) { %linuximghash = %{$linuximghashref}; }
   my $imgaddkcmdline=($linuximghash{'boottarget'})? undef:$linuximghash{'addkcmdline'};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  unless ($addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
+  unless ($::XNBA_addkcmdlinehandled->{$node}) { #Tag to let us know the plugin had a special syntax implemented for addkcmdline
     if ($kern->{addkcmdline} or ($imgaddkcmdline)) {
 
 #Implement the kcmdline append here for
@@ -138,7 +136,7 @@ sub setstate {
             $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
         } else {
             my $msg =  "Table key of $2 not yet supported by boottarget mini-template";
-            $callback->({
+            $::XNBA_callback->({
                 error => ["$msg"],
                 errorcode => [1]
             });
@@ -279,11 +277,11 @@ sub pass_along {
           $errored=1;
        }
        if ($_->{_addkcmdlinehandled}) {
-           $addkcmdlinehandled->{$_->{name}->[0]}=1;
+           $::XNBA_addkcmdlinehandled->{$_->{name}->[0]}=1;
            return; #Don't send back to client this internal hint
        }
     }
-    $callback->($resp);
+    $::XNBA_callback->($resp);
 }
 
 
@@ -348,7 +346,7 @@ sub preprocess_request {
    #they specify no sharedtftp in site table
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+   if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
       my @CN;
@@ -376,27 +374,28 @@ sub preprocess_request {
 }
 
 sub process_request {
-  $request = shift;
-  $callback = shift;
+  $::XNBA_request = shift;
+  $::XNBA_callback = shift;
   my $sub_req = shift;
+  undef $::XNBA_addkcmdlinehandled;  # clear out any previous value
   my @args;
   my @nodes;
   my @rnodes;
-  if (ref($request->{node})) {
-    @rnodes = @{$request->{node}};
+  if (ref($::XNBA_request->{node})) {
+    @rnodes = @{$::XNBA_request->{node}};
   } else {
-    if ($request->{node}) { @rnodes = ($request->{node}); }
+    if ($::XNBA_request->{node}) { @rnodes = ($::XNBA_request->{node}); }
   }
 
   unless (@rnodes) {
-      if ($usage{$request->{command}->[0]}) {
-          $callback->({data=>$usage{$request->{command}->[0]}});
+      if ($usage{$::XNBA_request->{command}->[0]}) {
+          $::XNBA_callback->({data=>$usage{$::XNBA_request->{command}->[0]}});
       }
       return;
   }
 
   #if not shared, then help sync up
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::NetworkUtils->nodeonmynet($_)) {
@@ -415,16 +414,16 @@ sub process_request {
      return;
   }
 
-  if (ref($request->{arg})) {
-    @args=@{$request->{arg}};
+  if (ref($::XNBA_request->{arg})) {
+    @args=@{$::XNBA_request->{arg}};
   } else {
-    @args=($request->{arg});
+    @args=($::XNBA_request->{arg});
   }
 
   #now run the begin part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::XNBA_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runbeginpre'],
 		      node=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
@@ -437,7 +436,7 @@ sub process_request {
 	  my $rsp;
  	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running begin prescripts.\n";
-	  $callback->($rsp);
+	  $::XNBA_callback->($rsp);
 	  return; 
       }
   }  
@@ -445,21 +444,21 @@ sub process_request {
   #back to normal business
   if (! -r "$globaltftpdir/xcat/pxelinux.0") {
     unless (-r $::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0") {
-       $callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
+       $::XNBA_callback->({error=>["Unable to find pxelinux.0 at ".$::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0"],errorcode=>[1]});
        return;
     }
     copy($::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0","$globaltftpdir/xcat/pxelinux.0");
      chmod(0644,"$globaltftpdir/xcat/pxelinux.0");
   }
   unless ( -r "$globaltftpdir/xcat/pxelinux.0" ) {
-     $callback->({error=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
+     $::XNBA_callback->({error=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
 
       
 
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
+  if (exists($::XNBA_request->{inittime})) { $inittime= $::XNBA_request->{inittime}->[0];} 
   if (!$inittime) { $inittime=0;}
   $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
@@ -499,7 +498,7 @@ sub process_request {
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
-      $callback->(\%response);
+      $::XNBA_callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       my $rc;
       my $errstr;
@@ -514,7 +513,7 @@ sub process_request {
       #if ($rc) {
       #  $response{node}->[0]->{errorcode}->[0]= $rc;
       #  $response{node}->[0]->{errorc}->[0]= $errstr;
-      #  $callback->(\%response);
+      #  $::XNBA_callback->(\%response);
       #}
       if($args[0] eq 'offline') {
         unlink($tftpdir."/xcat/xnba/nodes/".$_);
@@ -540,12 +539,12 @@ sub process_request {
       #}
       
       if ($do_dhcpsetup) {
-        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        if ($::XNBA_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
             $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                        node=>\@nodes},$callback);
+                        node=>\@nodes},$::XNBA_callback);
         } else {
             $sub_req->({command=>['makedhcp'],
-                       node=>\@nodes},$callback);
+                       node=>\@nodes},$::XNBA_callback);
         }
      }  
   }
@@ -553,7 +552,7 @@ sub process_request {
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::XNBA_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runendpre'],
 		      node=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
@@ -566,7 +565,7 @@ sub process_request {
 	  my $rsp;
  	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running end prescripts.\n";
-	  $callback->($rsp);
+	  $::XNBA_callback->($rsp);
 	  return; 
       }
   }

@@ -577,13 +577,13 @@ foreach my $dn (@ndrivers) {
 @ndrivers = @fulldrivers;
 
 unlink "/tmp/genimage.$$.yum.conf";
-if (-d "$rootimg_dir/usr/share/dracut") {
+if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") ) {
     $dracutmode = 1;
     # get dracut version
     my $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
-        if ($dracutver >= "009") {
+        if (($dracutver >= "009") and ($dracutver < "033")) {
             $dracutdir = "dracut_009";
         } else {
             $dracutdir = "dracut";  # The default directory
@@ -813,7 +813,14 @@ sub getlibs {
 
 sub mkinitrd_dracut {
     my ($mode) = @_; # the mode is for statelite or stateless
-    my $dracutmpath = "$rootimg_dir/usr/share/dracut/modules.d/97xcat";
+
+    my $dracutmoduledir="$rootimg_dir/usr/share/dracut/modules.d/";
+    if ( (! -d $dracutmoduledir) and (-d "$rootimg_dir/usr/lib/dracut/modules.d/"))   
+    {
+       $dracutmoduledir="$rootimg_dir/usr/lib/dracut/modules.d/";
+    }
+
+    my $dracutmpath = $dracutmoduledir."97xcat/";
     mkpath($dracutmpath);
 
     my $perm = (stat("$fullpath/$dracutdir/check"))[2];
@@ -857,7 +864,7 @@ sub mkinitrd_dracut {
   
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
         }
         else{
@@ -896,7 +903,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob("$rootimg_dir/usr/share/dracut/modules.d/[0-9]*fadump")){
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
             print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
         }
         else{

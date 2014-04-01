@@ -25,6 +25,14 @@ if [ "$HOSTOS" = "mcp" ]; then
 	sed -i 's/ kexec//' $DRACUTMODDIR/install
 	sed -i 's/ klogd//' $DRACUTMODDIR/install
 	sed -i 's/ mdadm//' $DRACUTMODDIR/install
+
+        # These timezone files are not available in the latest mcp build
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh87//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh88//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh89//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh87//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh88//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh89//' $DRACUTMODDIR/install
 fi
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 

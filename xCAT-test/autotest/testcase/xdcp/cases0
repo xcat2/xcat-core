@@ -1,3 +1,15 @@
+start:xdcp_h
+cmd:xdcp -h
+check:rc==0
+check:output=~Usage
+end
+
+start:xdcp_V
+cmd:xdcp -V
+check:rc==0
+check:output=~Version
+end
+
 start:xdcp_src_dst
 cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:xdcp $$CN /etc/hosts /tmp/hosts
@@ -9,7 +21,8 @@ check:rc==0
 cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:rm -f /tmp/hosts
 end
-start:xdcp_P
+
+start:xdcp_P_src_dst 
 cmd:xdcp $$CN -P /etc/inittab /tmp/
 check:rc==0
 cmd:xdsh $$CN cat /etc/inittab > /tmp/inittab1
@@ -18,3 +31,181 @@ cmd:diff /tmp/inittab._$$CN /tmp/inittab1
 check:rc==0
 cmd:rm -f /tmp/inittab._$$CN /tmp/inittab1
 end
+
+
+start:xdcp_RP
+cmd:xdsh $$CN "mkdir -p /tmp/xdcp/test1"
+check:rc==0
+cmd:xdsh $$CN "echo "test1" > /tmp/xdcp/test1/test1.txt"
+check:rc==0
+cmd:xdsh $$CN "mkdir -p /tmp/xdcp/test2"
+check:rc==0
+cmd:xdsh $$CN "echo "test2" > /tmp/xdcp/test2/test2.txt"
+check:rc==0
+cmd:xdcp $$CN -RP /tmp/xdcp  /tmp
+check:rc==0
+cmd:ls -l /tmp/xdcp._$$CN
+check:output=~test1
+check:output=~test2
+cmd:ls -l /tmp/xdcp._$$CN/test1
+check:output=~test1.txt
+cmd:ls -l /tmp/xdcp._$$CN/test2
+check:output=~test2.txt
+cmd:cat /tmp/xdcp._$$CN/test1/test1.txt
+check:output=~test1
+cmd:cat /tmp/xdcp._$$CN/test2/test2.txt
+check:output=~test2
+cmd:xdsh $$CN "rm -rf /tmp/xdcp"
+check:rc==0
+cmd:rm -rf /tmp/xdcp._$$CN
+check:rc==0
+end
+
+start:xdcp_R
+cmd:mkdir -p /tmp/xdcp/test1
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1/test1.txt
+check:rc==0
+cmd:mkdir -p /tmp/xdcp/test2
+check:rc==0
+cmd:echo "test2" > /tmp/xdcp/test2/test2.txt
+check:rc==0
+cmd:xdcp $$CN -R /tmp/xdcp  /tmp
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~xdcp
+cmd:xdsh $$CN "ls -l /tmp/xdcp"
+check:output=~test1
+check:output=~test2
+cmd:xdsh $$CN "ls -l /tmp/xdcp/test1"
+check:output=~test1.txt
+cmd:xdsh $$CN "ls -l /tmp/xdcp/test2"
+check:output=~test2.txt
+cmd:xdsh $$CN "cat /tmp/xdcp/test1/test1.txt"
+check:output=~test1
+cmd:xdsh $$CN "cat /tmp/xdcp/test2/test2.txt"
+check:output=~test2
+cmd:xdsh $$CN "rm -rf /tmp/xdcp"
+check:rc==0
+cmd:rm -rf /tmp/xdcp
+check:rc==0
+end
+
+start:xdcp_all_files_of_dir
+cmd:mkdir -p /tmp/xdcp/
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1.txt
+check:rc==0
+cmd:echo "test2" > /tmp/xdcp/test2.txt
+check:rc==0
+cmd:xdcp $$CN /tmp/xdcp/*  /tmp
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~test1.txt
+check:output=~test2.txt
+cmd:xdsh $$CN "ls -l /tmp/test1.txt"
+check:output=~test1 
+cmd:xdsh $$CN "ls -l /tmp/test2.txt"
+check:output=~test2
+cmd:xdsh $$CN "rm -rf /tmp/test1.txt  /tmp/test2.txt"
+check:rc==0
+cmd:rm -rf /tmp/xdcp
+check:rc==0
+end
+
+
+start:xdcp_rsync
+cmd:mkdir -p /tmp/xdcp/
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1.txt
+check:rc==0
+cmd:echo "test2" > /tmp/xdcp/test2.txt
+check:rc==0
+cmd:xdcp $$CN -r /usr/bin/rsync -o "-t" /tmp/xdcp/test1.txt /tmp/xdcp/test2.txt  /tmp
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~test1.txt
+check:output=~test2.txt
+cmd:xdsh $$CN "ls -l /tmp/test1.txt"
+check:output=~test1 
+cmd:xdsh $$CN "ls -l /tmp/test2.txt"
+check:output=~test2
+cmd:xdsh $$CN "rm -rf /tmp/test1.txt  /tmp/test2.txt"
+check:rc==0
+cmd:rm -rf /tmp/xdcp
+check:rc==0
+end
+
+
+start:xdcp_rsyncfile_single_file
+cmd:mkdir -p /tmp/xdcp/
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1.txt
+check:rc==0
+cmd:echo "/tmp/xdcp/test1.txt -> /tmp/" > /tmp/myrsync
+check:rc==0
+cmd:xdcp $$CN -F /tmp/myrsync
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~test1.txt
+cmd:xdsh $$CN "ls -l /tmp/test1.txt"
+check:output=~test1 
+cmd:xdsh $$CN "rm -rf /tmp/test1.txt"
+check:rc==0
+cmd:rm -rf /tmp/xdcp /tmp/myrsync
+check:rc==0
+end
+
+
+start:xdcp_rsyncfile_files
+cmd:mkdir -p /tmp/xdcp/
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1.txt
+check:rc==0
+cmd:echo "test2" > /tmp/xdcp/test2.txt
+check:rc==0
+cmd:echo "/tmp/xdcp/* -> /tmp/" > /tmp/myrsync
+check:rc==0
+cmd:xdcp $$CN -F /tmp/myrsync
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~test1.txt
+check:output=~test2.txt
+cmd:xdsh $$CN "ls -l /tmp/test1.txt"
+check:output=~test1 
+cmd:xdsh $$CN "ls -l /tmp/test2.txt"
+check:output=~test2 
+cmd:xdsh $$CN "rm -rf /tmp/test1.txt /tmp/test2.txt"
+check:rc==0
+cmd:rm -rf /tmp/xdcp /tmp/myrsync
+check:rc==0
+end
+
+
+start:xdcp_rsyncfile_files_changename
+cmd:mkdir -p /tmp/xdcp/
+check:rc==0
+cmd:echo "test1" > /tmp/xdcp/test1.txt
+check:rc==0
+cmd:echo "test2" > /tmp/xdcp/test2.txt
+check:rc==0
+cmd:echo "/tmp/xdcp/test1.txt -> /tmp/testx.txt" > /tmp/myrsync
+check:rc==0
+cmd:echo "/tmp/xdcp/test2.txt -> /tmp/testy.txt" >> /tmp/myrsync
+check:rc==0
+cmd:xdcp $$CN -F /tmp/myrsync
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp"
+check:output=~testx.txt
+check:output=~testy.txt
+cmd:xdsh $$CN "cat /tmp/testx.txt"
+check:output=~test1 
+cmd:xdsh $$CN "cat /tmp/testy.txt"
+check:output=~test2 
+cmd:xdsh $$CN "rm -rf /tmp/testx.txt /tmp/testy.txt"
+check:rc==0
+cmd:rm -rf /tmp/xdcp /tmp/myrsync
+check:rc==0
+end
+
+

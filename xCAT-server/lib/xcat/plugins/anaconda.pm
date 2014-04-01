@@ -63,7 +63,7 @@ sub preprocess_request
     my @ents = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $site_ent = $ents[0];
     unless (  defined($site_ent)
-            and ($site_ent =~ /no/i or $site_ent =~ /0/))
+            and ($site_ent eq "no" or $site_ent eq "NO"  or $site_ent eq "0"))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
@@ -257,6 +257,7 @@ sub mknetboot
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -264,6 +265,7 @@ sub mknetboot
                             );
                 # Do not print this warning message multiple times
                 last;
+              }
             }
        }
     }
@@ -930,10 +932,6 @@ sub mknetboot
         );
     }
 
-    #my $rc = xCAT::TableUtils->create_postscripts_tar();
-    #if ( $rc != 0 ) {
-    #	xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
-    #}
 }
 
 sub mkinstall
@@ -1001,6 +999,7 @@ sub mkinstall
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -1008,6 +1007,7 @@ sub mkinstall
                             );
                 # Do not print this warning message multiple times
                 last;
+               }
             }
        }
     }
@@ -1577,6 +1577,7 @@ sub mksysclone
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -1584,6 +1585,7 @@ sub mksysclone
                             );
                 # Do not print this warning message multiple times
                 last;
+              }
             }
        }
     }

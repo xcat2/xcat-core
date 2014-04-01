@@ -435,6 +435,13 @@ Sets the command path to use on the targets. If B<DSH_PATH> is
 not set, the default path defined in  the  profile  of  the
 remote I<user_ID> is used.
 
+=item B<DSH_REMOTE_PASSWORD>
+
+If B<DSH_REMOTE_PASSWORD> is set to the password of the
+userid (usually root) that will ssh to the node, then when
+you use the -K flag, you will  not be prompted for a password.
+
+
 =item B<DSH_SYNTAX>
 
 Specifies the shell syntax to use on remote targets; B<ksh> or

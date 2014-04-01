@@ -286,9 +286,9 @@ do
        
            if [ -f /etc/sysctl.conf ]
            then
-               TMP1=`sed "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf 2>&1 1>/dev/null`
+               TMP1=`sed "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf`
 	       echo "$TMP1" > /etc/sysctl.conf
-               TMP2=`sed "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf 2>&1 1>/dev/null`
+               TMP2=`sed "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf`
 	       echo "$TMP2" > /etc/sysctl.conf
                cfg="net.ipv4.conf.$nic.arp_filter=1"
                grep "$cfg" /etc/sysctl.conf 2>&1 1>/dev/null

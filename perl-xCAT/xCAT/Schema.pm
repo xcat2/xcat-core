@@ -599,7 +599,7 @@ noderes => {
  descriptions => {
   node => 'The node name or group name.',
   servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
-  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for POWER architecture.',
+  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for POWER architecture, grub2 for RHEL7 on Power. Notice: yaboot is not supported from rhels7 on Power,use grub2 instead',
   tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
   tftpdir => 'The directory that roots this nodes contents from a tftp and related perspective.  Used for NAS offload by using different mountpoints.',
   nfsserver => 'The NFS or HTTP server for this node (as known by this node).',
@@ -1052,7 +1052,8 @@ site => {
    "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
-   "                   passwordless root access to nodes and other SN.\n\n".
+   "                   passwordless root access to nodes and other SN.\n".
+   "                   If using the zone table, this attribute in not used.\n\n".
    " -----------------\n".
    "SERVICES ATTRIBUTES\n".
    " -----------------\n".
@@ -1191,12 +1192,13 @@ performance => {
  },
   },
 zone => {
-    cols => [qw(zonename sshkeydir defaultzone comments disable)],
+    cols => [qw(zonename sshkeydir sshbetweennodes defaultzone comments disable)],
     keys => [qw(zonename)],
     table_desc => 'Defines a cluster zone for nodes that share root ssh key access to each other.',
  descriptions => {
    zonename => 'The name of the zone.',
    sshkeydir => 'Directory containing the shared root ssh RSA keys.',
+   sshbetweennodes => 'Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes. ',
    defaultzone => 'If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.',
    comments => 'Any user-provided notes.',
    disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1555,8 +1557,8 @@ hwinv => {
         node => 'The node name or group name.',
         cputype => 'The cpu model name for the node.',
         cpucount => 'The number of cpus for the node.',
-        memory => 'The size of the memory for the node.',
-        disksize => 'The size of the disks for the node.',
+        memory => 'The size of the memory for the node in MB.',
+        disksize => 'The size of the disks for the node in GB.',
         comments => 'Any user-provided notes.',
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
@@ -3081,6 +3083,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
         },
         {attr_name => 'sshkeydir',
                 tabentry => 'zone.sshkeydir',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshbetweennodes',
+                tabentry => 'zone.sshbetweennodes',
                 access_tabentry => 'zone.zonename=attr:zonename',
         },
         {attr_name => 'defaultzone',

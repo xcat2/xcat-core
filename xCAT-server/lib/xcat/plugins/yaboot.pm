@@ -13,11 +13,8 @@ use Socket;
 use Getopt::Long;
 use xCAT::Table;
 
-my $request;
 my %breaknetbootnodes;
 our %normalnodes;
-my $callback;
-my $sub_req;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 #my $dhcpver = 3;
@@ -104,7 +101,7 @@ sub setstate {
                   if (xCAT::InstUtils->is_me($sn)) {
                       my @myself = xCAT::NetworkUtils->determinehostname();
                       my $myname = $myself[(scalar @myself)-1];
-                      $::callback->(
+                      $::YABOOT_callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node on service node $sn"
@@ -116,7 +113,7 @@ sub setstate {
                   }
               }
           } else {
-              $::callback->(
+              $::YABOOT_callback->(
                           {
                           error => [
                           "$myname: Unable to determine the image server for $node"
@@ -177,7 +174,7 @@ sub setstate {
               delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
               #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
               #       node=>[$node],
-              #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+              #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
               print $pcfg "bye\n";
               close($pcfg);
             } elsif ($kern and $kern->{kernel}) {
@@ -231,13 +228,13 @@ sub setstate {
                         #to clear the filename field, so the logic is a little
                         #opposite
     #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
-    #         node=>[$node]},$callback);  #It hopefully will perform correctly
+    #         node=>[$node]},$::YABOOT_callback);  #It hopefully will perform correctly
     if ($cref and $cref->{currstate} eq "boot") {
       $breaknetbootnodes{$node}=1;
       delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
       #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
       #       node=>[$node],
-      #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+      #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
       print $pcfg "bye\n";
       close($pcfg);
     } elsif ($kern and $kern->{kernel}) {
@@ -309,7 +306,7 @@ sub pass_along {
 
 #    print Dumper($resp);
     
-    $callback->($resp);
+    $::YABOOT_callback->($resp);
     if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
         $errored=1;
     }
@@ -379,7 +376,8 @@ sub preprocess_request {
    #if they specify no sharedtftp in site table
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   if ( defined($t_entry)  and ($t_entry == 0 or $t_entry =~ /no/i)) {
+   
+   if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
       my @CN;
@@ -408,31 +406,30 @@ sub preprocess_request {
 
 
 sub process_request {
-  $request = shift;
-  $callback = shift;
-  $::callback=$callback;
-  $sub_req = shift;
-  my $command  = $request->{command}->[0];
+  $::YABOOT_request = shift;
+  $::YABOOT_callback = shift;
+  my $sub_req = shift;
+  my $command  = $::YABOOT_request->{command}->[0];
   %breaknetbootnodes=();
   %normalnodes=();
 
   my @args;
   my @nodes;
   my @rnodes;
-  if (ref($request->{node})) {
-    @rnodes = @{$request->{node}};
+  if (ref($::YABOOT_request->{node})) {
+    @rnodes = @{$::YABOOT_request->{node}};
   } else {
-    if ($request->{node}) { @rnodes = ($request->{node}); }
+    if ($::YABOOT_request->{node}) { @rnodes = ($::YABOOT_request->{node}); }
   }
   unless (@rnodes) {
-      if ($usage{$request->{command}->[0]}) {
-          $callback->({data=>$usage{$request->{command}->[0]}});
+      if ($usage{$::YABOOT_request->{command}->[0]}) {
+          $::YABOOT_callback->({data=>$usage{$::YABOOT_request->{command}->[0]}});
       }
       return;
   }
 
   #if not shared tftpdir, then filter, otherwise, set up everything
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::NetworkUtils->nodeonmynet($_)) {
@@ -451,16 +448,16 @@ sub process_request {
      return;
   }
 
-  if (ref($request->{arg})) {
-    @args=@{$request->{arg}};
+  if (ref($::YABOOT_request->{arg})) {
+    @args=@{$::YABOOT_request->{arg}};
   } else {
-    @args=($request->{arg});
+    @args=($::YABOOT_request->{arg});
   }
   
   #now run the begin part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::YABOOT_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runbeginpre'],
 		      node=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
@@ -473,14 +470,14 @@ sub process_request {
 	  my $rsp;
  	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running begin prescripts.\n";
-	  $callback->($rsp);
+	  $::YABOOT_callback->($rsp);
 	  return; 
       }
   } 
 
   #back to normal business
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (exists($::YABOOT_request->{inittime})) { $inittime= $::YABOOT_request->{inittime}->[0];}
   if (!$inittime) { $inittime=0;}
   $errored=0;
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
@@ -520,7 +517,7 @@ sub process_request {
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
-      $callback->(\%response);
+      $::YABOOT_callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       my $ent = $typehash->{$_}->[0]; 
       my $osimgname = $ent->{'provmethod'};
@@ -533,7 +530,7 @@ sub process_request {
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
+        $::YABOOT_callback->(\%response);
       }
     }
   }# end of foreach node    
@@ -570,7 +567,16 @@ sub process_request {
             $osn = $2;
             $osm = 0;   
         }
-    
+
+        #Redhat recommend to use grub2 instead of yaboot for rhels7 provision
+        if ( $osv =~ /rh/ and int($osn) == 7 ){
+            my $rsp;
+            push @{$rsp->{data}},
+                  "stop configuration because yaboot DOES NOT work for $os provision, please change noderes.netboot=grub2 instead.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);
+            return;                    
+        }
+
         if (($osv =~ /rh/ and int($osn) < 6) or 
             ($osv =~ /sles/ and int($osn) < 11)) {
             # check if yaboot-xcat installed
@@ -579,7 +585,7 @@ sub process_request {
                 my $rsp;
                 push @{$rsp->{data}},
                   "stop configuration because yaboot-xcat need to be installed for $os.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);       
+                xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);       
                 return; 
               }
         } elsif (($osv =~ /rh/ and int($osn) >= 6) or
@@ -590,7 +596,7 @@ sub process_request {
                 my $rsp;
                 push @{$rsp->{data}},
                   "stop configuration because rsync does not exist or is not executable.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);            
+                xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);            
                 return;
            }      
             my $yabootpath = $tftpdir."/yb/".$os;
@@ -612,7 +618,7 @@ sub process_request {
                 my $rsp;
                 push @{$rsp->{data}},
                   "stop configuration because Unable to find the os shipped yaboot file.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);
                 return; 
               }          
 
@@ -623,7 +629,7 @@ sub process_request {
                 my $rsp;
                 push @{$rsp->{data}},
                   "stop configuration because $synccmd failed.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);
                return; 
             } 
         }
@@ -665,42 +671,42 @@ sub process_request {
                 if (($osv =~ /rh/ and int($osn) >= 6) or 
                     ($osv =~ /sles/ and int($osn) >= 11)) {
                     my $fpath = "/yb/". $osentry."/yaboot"; 
-                    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+                    if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-l','-s','filename = \"'.$fpath.'\";']},$callback);
+                         arg=>['-l','-s','filename = \"'.$fpath.'\";']},$::YABOOT_callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-s','filename = \"'.$fpath.'\";']},$callback);
+                         arg=>['-s','filename = \"'.$fpath.'\";']},$::YABOOT_callback);
                     }
                 } else {
-                    if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+                    if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
                     $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                           node=>\@{$osimagenodehash{$osimage}}},$callback);
+                           node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$osimagenodehash{$osimage}}},$callback);
+                         node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     }
                 }
             }
         } else {
-            if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
+            if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
             $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                   node=>\@normalnodeset},$callback);
+                   node=>\@normalnodeset},$::YABOOT_callback);
             } else {
             $sub_req->({command=>['makedhcp'],
-                 node=>\@normalnodeset},$callback);
+                 node=>\@normalnodeset},$::YABOOT_callback);
             }
         }
-        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
             $sub_req->({command=>['makedhcp'],
              node=>\@breaknetboot,
-             arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+             arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
         } else {
             $sub_req->({command=>['makedhcp'],
              node=>\@breaknetboot,
-             arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+             arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
         }
      }
   }
@@ -708,7 +714,7 @@ sub process_request {
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::YABOOT_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
 	  $sub_req->({command=>['runendpre'],
 		      node=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
@@ -721,7 +727,7 @@ sub process_request {
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running end prescripts\n";
-	  $callback->($rsp);
+	  $::YABOOT_callback->($rsp);
 	  return; 
       }
   }

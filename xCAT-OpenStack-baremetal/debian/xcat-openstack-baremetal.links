@@ -1,0 +1,4 @@
+opt/xcat/bin/xcatclient opt/xcat/sbin/deploy_ops_bm_node
+opt/xcat/bin/xcatclient opt/xcat/sbin/cleanup_ops_bm_node
+opt/xcat/bin/xcatclient opt/xcat/bin/opsaddbmnode
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/opsaddimage

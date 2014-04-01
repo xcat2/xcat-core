@@ -1,0 +1,7 @@
+opt/xcat/bin
+opt/xcat/sbin
+opt/xcat/lib/perl/xCAT_plugin
+opt/xcat/lib/python/xcat/openstack/baremetal
+opt/xcat/share/xcat/openstack/postscripts
+opt/xcat/share/man/man1
+opt/xcat/share/doc/man1

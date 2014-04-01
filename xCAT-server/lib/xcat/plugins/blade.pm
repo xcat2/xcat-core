@@ -4423,7 +4423,7 @@ sub process_request {
     if ($request->{mtm} and $request->{mtm} =~ /^(\w{4})/) {
         my $group = xCAT::data::ibmhwtypes::parse_group($request->{mtm});
         if (defined($group)) {
-            xCAT::TableUtils->updatenodegroups($node, $group); 
+            xCAT::TableUtils->updatenodegroups($node, $group.",all"); 
         }
     }
     if ($mac) {

@@ -1,0 +1,66 @@
+=head1 NAME
+
+B<pushinitrd> - queries your SoftLayer account and gets attributes for each server.
+
+=head1 SYNOPSIS
+
+B<pushinitrd> [B<-v>|B<--verbose>]  [B<-w> I<waittime>] [I<noderange>]  
+
+B<pushinitrd> [B<-?> | B<-h> | B<--help>]
+
+=head1 DESCRIPTION
+
+The B<pushinitrd> command copies the initrd, kernel, params, and static IP info to nodes, so they can be net installed
+even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working
+OS is on the nodes.  Before running this command, you must run nodeset for these nodes.
+All of the nodes given to one invocation of B<pushinitrd> must be using the same osimage.
+
+Before using this command, if will be most convenient if you exchange the ssh keys using:
+
+   xdsh <noderange> -K
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-w> I<waittime>
+
+The number of seconds the initrd should wait before trying to communicate over the network.
+The default is 75.  This translates into the netwait kernel parameter and is usually needed
+in a SoftLayer environment because it can take a while for a NIC to be active after changing state.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=item B<-v|--version>
+
+Command Version.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+Configure nodes for net installing in a SoftLayer environment:
+
+ pushinitrd <noderange>
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/pushinitrd
+
+=head1 SEE ALSO
+
+L<getslnodes(1)|getslnodes.1>

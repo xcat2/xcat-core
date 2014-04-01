@@ -39,8 +39,6 @@ do
      	 export USEOPENSSLFORXCAT
          XCATSERVER=$i:3001
          export XCATSERVER
-         mv $i/postscripts /xcatpost
-         rm -rf $i
 
          # If mypostscript doesn't exist, we will get it through getpostscript.awk
          if [ ! -x /xcatpost/mypostscript ]; then

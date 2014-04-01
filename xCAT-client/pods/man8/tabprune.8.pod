@@ -6,11 +6,13 @@ B<tabprune> - Deletes records from the eventlog,auditlog,isnm_perf,isnm_perf_sum
 
 B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> |  B<-d> I<number of days> | B<-a>  
 
+B<tabprune> B<tablename> B<-a>  
+
 B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>] 
 
 =head1 DESCRIPTION
 
-The tabprune command is used to delete records from the auditlog,eventlog,isnm_perf,isnm_perf_sum tables. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format.  
+The tabprune command is used to delete records from the auditlog,eventlog,isnm_perf,isnm_perf_sum tables. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format. The all records options (-a) can be used on any xCAT table. 
 
 =head1 OPTIONS
 
@@ -27,7 +29,7 @@ you want to redirect them to a file to archive them.
 
 =item B<-a>
 
-Remove all records.
+Remove all records from the input table name.  This option can be used on any xCAT table.
 
 =item B<-i>  I<recid number>
 
