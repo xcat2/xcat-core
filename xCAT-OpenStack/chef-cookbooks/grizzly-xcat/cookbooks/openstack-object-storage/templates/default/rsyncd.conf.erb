@@ -3,7 +3,7 @@ gid = swift
 
 log file = /var/log/rsyncd.log
 pid file = /var/run/rsyncd.pid
-address = 0.0.0.0
+address = <%= @storage_local_net_ip %>
 
 [account]
 max connections = 10

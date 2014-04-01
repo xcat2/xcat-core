@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# This is modified from the standard xcat post.sles.common in that it does not set up
+# the ifcfg-eth0 file to do dhcp and it does not restart the network.  It just leaves
+# ifcfg-eth0 the way autoyast configured it, assuming we set it statically.
+
+# save what autoyast set network config to, to help with debugging
+cp /etc/sysconfig/network/ifcfg-eth0 /tmp/ifcfg-eth0.orig
+cp /etc/hosts /tmp/hosts.orig
+cp /etc/resolv.conf /tmp/resolv.conf.orig
+cp /etc/HOSTNAME /tmp/HOSTNAME.orig
+
+#cd /etc/sysconfig/network
+perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
+
+# autoyast already set hostname correctly
+
+HOSTNAME=$(hostname -s)
+echo $HOSTNAME
+

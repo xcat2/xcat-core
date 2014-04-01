@@ -76,6 +76,8 @@ try:
 				percent = 0
 				count = 0
 				numpack = 0
+				if(os.path.isfile('/tmp/packaging.log')):
+					ilog = '/tmp/packaging.log'
 				if(os.path.isfile('/mnt/sysimage/root/install.log')):
 					ilog = '/mnt/sysimage/root/install.log'
 				if(os.path.isfile('/mnt/sysimage/tmp/install.log')):

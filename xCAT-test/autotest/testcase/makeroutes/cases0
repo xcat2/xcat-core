@@ -1,0 +1,89 @@
+start:makeroutes_h
+cmd:makeroutes -h
+check:rc==0
+check:output=~Usage
+end
+
+start:makeroutes_v
+cmd:makeroutes -v
+check:rc==0
+check:output=~Version
+end
+
+start:makeroutes_r_d_node
+cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254 
+check:rc==0
+cmd: makeroutes $$CN -r testr
+check:rc==0
+cmd:xdsh $$CN route
+check:rc==0
+check:output=~10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd: makeroutes $$CN -d -r testr
+check:rc==0
+cmd:xdsh $$CN route
+check:rc==0
+check:output!=10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd:chtab -d routename=testr routes
+check:rc==0
+end
+
+
+start:makeroutes_r_d
+cmd:chtab routename=testr routes.net=10.1.0.0 routes.mask=255.255.0.0 routes.gateway=10.1.254.254 
+check:rc==0
+cmd: makeroutes -r testr
+check:rc==0
+cmd:route
+check:rc==0
+check:output=~10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd: makeroutes -d -r testr
+check:rc==0
+cmd:route
+check:rc==0
+check:output!=10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd:chtab -d routename=testr routes
+check:rc==0
+end
+
+
+start:makeroutes_use_site_mnroutenames
+cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254 
+check:rc==0
+cmd:chtab key=mnroutenames  site.value=testr
+check:rc==0 
+cmd: makeroutes 
+check:rc==0
+cmd:route
+check:rc==0
+check:output=~10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd: makeroutes -d 
+check:rc==0
+cmd:route
+check:rc==0
+check:output!=10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd:chtab -d key=mnroutenames site
+check:rc==0
+cmd:chtab -d routename=testr routes
+check:rc==0
+end
+
+start:makeroutes_use_noderes_routenames
+cmd:chtab routename=testr  routes.net=10.1.0.0  routes.mask=255.255.0.0  routes.gateway=10.1.254.254 
+check:rc==0
+cmd:chtab node=$$CN noderes.routenames=testr
+check:rc==0 
+cmd: makeroutes $$CN
+check:rc==0
+cmd:xdsh $$CN route
+check:rc==0
+check:output=~10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd: makeroutes $$CN -d 
+check:rc==0
+cmd:xdsh $$CN route
+check:rc==0
+check:output!=10.1.0.0\s*10.1.254.254\s*255.255.0.0
+cmd:chtab  node=$$CN noderes.routenames=
+check:rc==0
+cmd:chtab -d routename=testr routes
+check:rc==0
+end

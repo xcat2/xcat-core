@@ -241,7 +241,8 @@ unless ($onlyinitrd) {
    my $aptgetcmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-get $non_interactive ";
    my $aptcachecmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-cache $non_interactive ";
    my $aptcmd1 = "debootstrap";
-   my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
+   #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
+   my $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
    
    mkpath("$rootimg_dir/var/lib/dpkg");
    mkpath("$rootimg_dir/var/lib/apt");
@@ -1012,6 +1013,7 @@ fi
 
 export IFACE=\$IFACE
 
+ifconfig \$IFACE up
 netstart \$IFACE
 while ! ifconfig | grep 'inet addr'; do
     echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
@@ -1287,8 +1289,8 @@ EOMS
    close($inifile);
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
-   print $inifile "#!/sbin/sh\n";
-   print $inifile "udhcpc -n -q -i \${1}\n";
+   print $inifile "#!/bin/bash\n";
+   print $inifile "udhcpc -n -q -i \${1} -s /usr/share/udhcpc/default.script\n";
    close($inifile);
 
    open($inifile,">"."/tmp/xcatinitrd.$$/usr/share/udhcpc/default.script");
@@ -1458,6 +1460,13 @@ EOMS
 	#system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
 	#system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
         symlink("busybox","/tmp/xcatinitrd.$$/bin/pivot_root");
+        symlink("busybox", "/tmp/xcatinitrd.$$/bin/udhcpc");
+        symlink("busybox", "/tmp/xcatinitrd.$$/sbin/ifconfig");
+        symlink("busybox", "/tmp/xcatinitrd.$$/bin/hostname");
+        symlink("busybox", "/tmp/xcatinitrd.$$/bin/route");
+        symlink("bash", "/tmp/xcatinitrd.$$/bin/sh");
+        symlink("bash", "/tmp/xcatinitrd.$$/sbin/sh");
+
 	
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");

@@ -265,6 +265,7 @@ sub rackformat_to_numricformat{
                     values are attributes of a specific nic, like:
                         type : nic type
                         hostnamesuffix: hostname suffix
+                        hostnameprefix: hostname prefix
                         customscript: custom script for this nic
                         network: network name for this nic
                         ip: ip address of this nic.
@@ -276,7 +277,7 @@ sub get_nodes_nic_attrs{
     my $nodes = shift;
 
     my $nicstab = xCAT::Table->new( 'nics');
-    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
+    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'nichostnameprefixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
 
     my %nicsattrs;
     my @nicattrslist;
@@ -305,6 +306,20 @@ sub get_nodes_nic_attrs{
 					@nicattrs = split(":", $_);
 				}
                 $nicsattrs{$node}{$nicattrs[0]}{'hostnamesuffix'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nichostnameprefixes'}){
+
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nichostnameprefixes'});
+            foreach (@nicattrslist){
+                               my @nicattrs;
+                               if ($_  =~ /!/) {
+                                       @nicattrs = split("!", $_);
+                               } else {
+                                       @nicattrs = split(":", $_);
+                               }
+                $nicsattrs{$node}{$nicattrs[0]}{'hostnameprefix'} = $nicattrs[1];
             }
         }
 
@@ -733,6 +748,27 @@ sub get_imageprofile_prov_method
 
 #-------------------------------------------------------------------------------
 
+=head3 get_imageprofile_prov_osvers
+      Description : Get A node's provisioning os version and profile from its imageprofile attribute.
+      Arguments   : $imgprofilename - imageprofile name
+      Returns     : node's osversion and profile
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_imageprofile_prov_osvers
+{
+
+    my $class = shift;
+    my $imgprofilename = shift;
+    my $osimgtab = xCAT::Table->new('osimage');
+    my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$imgprofilename'", 'ALL' ))[0];
+    my $osversion = $osimgentry->{'osvers'};
+    my $profile = $osimgentry->{'profile'};
+    return ($osversion, $profile);
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 check_profile_consistent
       Description : Check if three profile consistent
       Arguments   : $imageprofile - image profile name
@@ -998,6 +1034,40 @@ sub parse_nodeinfo_file
     }
     
     return 1, "";
+}
+
+#-------------------------------------------------------
+
+=head3  update the table prodkey, in order to support windows
+        per node license key
+
+    Returns: $retcode.
+              $retcode = 1. update failed, the value is undef
+              $retcode = 0. save into db is OK..
+=cut
+#-------------------------------------------------------
+
+sub update_windows_prodkey
+{
+    my $class   = shift;
+    my $node    = shift;
+    my $product = shift;
+    my $key     = shift;
+    unless(defined($node) && defined($product) && defined($key))
+    {
+        return 1;
+    }
+    # please notice this db usage
+    my %keyhash;
+    my %updates;
+    $keyhash{'node'}             = $node;
+    $updates{'product'}          = $product;
+    $updates{'key'}              = $key;
+    my $tab = xCAT::Table->new('prodkey', -create=>1, -autocommit=>0);
+    $tab->setAttribs( \%keyhash,\%updates );
+    $tab->commit;
+    $tab->close; 
+    return 0;
 }
 
 #-------------------------------------------------------------------------------

@@ -43,6 +43,7 @@ sub process_request {
   my $path=undef;	
   my $noosimage=undef;
   my $nonoverwrite=undef;
+  my $specific=undef;
 
   $identified=0;
   $::CDMOUNTPATH="/var/run/xcat/mountpoint";
@@ -58,6 +59,7 @@ sub process_request {
     'i|inspection' => \$inspection,
     'p|path=s' => \$path, 
     'o|noosimage' => \$noosimage,
+    's|specific' => \$specific,
     'w|nonoverwrite' => \$nonoverwrite,
  );
   if ($help) {
@@ -142,6 +144,10 @@ sub process_request {
     if($path)
     {
         push @{$newreq->{arg}},("-p",$path);
+    }
+    if($specific)
+    {
+        push @{$newreq->{arg}},("-s");
     }
 
     if($inspection)

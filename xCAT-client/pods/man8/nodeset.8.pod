@@ -4,7 +4,7 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]]
+B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]|I<shell>|I<shutdown>]
 
 B<nodeset> I<noderange> I<osimage=<imagename>> [I<--noupdateinitrd>] [I<--ignorekernelchk>]
 
@@ -93,8 +93,12 @@ for basic remote access.  This causes the IP, netmask, gateway, username, and pa
 
 =item B<shell>
 
-This instructs tho node to boot to the xCAT nbfs environment, and present a shell prompt on console.
+This instructs tho node to boot to the xCAT genesis environment, and present a shell prompt on console.
 The node will also be able to be sshed into and have utilities such as wget, tftp, scp, nfs, and cifs.  It will have storage drivers available for many common systems.
+
+=item B<shutdown>
+
+To make the node to get into power off status. This status only can be used after B<runcmd> and B<runimage> to power off the node after the performing of operations.
 
 =item B<-h>|B<--help>
 

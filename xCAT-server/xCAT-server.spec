@@ -20,11 +20,14 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser grub2-xcat
 Obsoletes: atftp-xcat
 %endif
 
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
+
+%define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
+%define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
 %if %fsm
 # nothing needed here
@@ -308,14 +311,24 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
+# PCM does not need xcatws.cgi
+# xcatws.cgi causes xCAT-server requires perl-JSON, which is not shipped with PCM
+%if %pcm
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
+%endif
+
 %if %fsm
 %else
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+%if %notpcm
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+%endif
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2 >>  $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+%if %notpcm
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+%endif
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2

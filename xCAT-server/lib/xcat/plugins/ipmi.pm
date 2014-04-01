@@ -2681,7 +2681,9 @@ sub add_fruhash {
              $fru->rec_type("hw");
         }
         $fru->value($sessdata->{currfrudata});
-        $fru->desc($sessdata->{currfrusdr}->id_string);
+        if (exists($sessdata->{currfrusdr})) {
+            $fru->desc($sessdata->{currfrusdr}->id_string);
+        }
         $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
         $sessdata->{frudex} += 1;
     } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
@@ -2699,9 +2701,13 @@ sub add_fruhash {
              $fru->rec_type("hw");
         }
         $fru->value($err);
-        $fru->desc($sessdata->{currfrusdr}->id_string);
-        $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
-        $sessdata->{frudex} += 1;
+        if (exists($sessdata->{currfrusdr})) {
+            $fru->desc($sessdata->{currfrusdr}->id_string);
+        }
+        if (exists($sessdata->{frudex})) {
+            $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
+            $sessdata->{frudex} += 1;
+        }
         undef $sessdata->{currfrudata}; #skip useless calls to add more frus when parsing failed miserably anyway
 
                 #xCAT::SvrUtils::sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"],$callback);
@@ -6312,13 +6318,17 @@ sub preprocess_request {
   if ($command eq "rpower") {
       my $subcmd=$exargs[0];
 			if($subcmd eq ''){
-	  		$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+			#$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+			#Above statement will miss error code, so replaced by the below statement
+			$callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
 	  		$request = {};
 				return 0;
 
 			}
       if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
-	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+	  #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+	  #Above statement will miss error code, so replaced by the below statement
+      $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
       }

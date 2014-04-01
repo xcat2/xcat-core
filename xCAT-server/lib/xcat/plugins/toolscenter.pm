@@ -68,8 +68,9 @@ sub preprocess_request
     my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $t_entry = $entries[0];
     unless (  defined($t_entry)
-            and ($t_entry =~ /no/i or $t_entry =~ /0/))
+            and ($t_entry eq "no" or $t_entry eq "NO"  or $t_entry eq "0"))
     {
+
 
         #unless requesting no sharedtftp, don't make hierarchical call
         return [$req];

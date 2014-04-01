@@ -957,7 +957,7 @@ sub tabprune
         push @{$rsp{data}}, "       tabprune <tablename> [-V] -d <# of days>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
-        push @{$rsp{data}}, "       tables supported:eventlog,auditlog";
+        push @{$rsp{data}}, "       tables supported:eventlog,auditlog,unless -a which supports all tables";
         push @{$rsp{data}}, "       -d option only supported for eventlog,auditlog";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
@@ -997,7 +997,7 @@ sub tabprune
       
     }
     $table=~ s/\s*//g; # remove blanks 
-    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "isnm_perf") && ($table ne "isnm_perf_sum") ) {
+    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "isnm_perf") && ($table ne "isnm_perf_sum") && (! $ALL)) {
         my %rsp;
         $rsp{data}->[0] = "Table $table not supported, see tabprune -h for supported tables.";
         $rsp{errorcode} = 1; 
@@ -2654,7 +2654,7 @@ sub getTablesNodesAttribs
       my %noderecs;
       my $recs;
       # build the table name record
-      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      #@{$noderecs{table}->[0]->{tablename}} = $tablename;
       # if request for ALL attributes
       if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
         @attrs=();
@@ -2681,6 +2681,7 @@ sub getTablesNodesAttribs
        }
 
       }
+     @{$noderecs{table}->[0]->{tablename}} = $tablename;
      push @{$rsp{"table"}}, @{$noderecs{table}};
   } # end of all table processing 
 # for checkin XML created
@@ -2752,9 +2753,9 @@ sub getTablesAllRowAttribs
       my $attr    = $tabhash->{attr};
       my @attrs=@$attr;
       my $tab=xCAT::Table->new($tablename);
-      my %noderecs;
+      my %tblrecs;
       # build the table name record
-      @{$noderecs{table}->[0]->{tablename}} = $tablename;
+      @{$tblrecs{table}->[0]->{tablename}} = $tablename;
       # if request for ALL attributes
       if (grep (/ALL/,@attrs)) { # read the  schema and build array of all attrs
         @attrs=();
@@ -2767,7 +2768,6 @@ sub getTablesAllRowAttribs
       }
       # read all the attributes in this table
       my @recs        =   $tab->getAllAttribs(@attrs);
-      my %tblrecs;
       foreach my $rec (@recs) { 
          my %datseg=();
          foreach my $key (keys %$rec) {

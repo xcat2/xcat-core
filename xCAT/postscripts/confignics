@@ -282,7 +282,7 @@ do
     else
         if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
             str_nic_type="ethernet"
-        elif [ `echo $KEY | grep -E 'ib[0-9]+'` ];then
+        elif [ `echo $key | grep -E 'ib[0-9]+'` ];then
             str_nic_type="infiniband"
         else
             logger -t xcat -p local4.info "confignics: unknown nic type for $key: $str_value ."

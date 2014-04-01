@@ -94,6 +94,17 @@ template "/etc/swift/object-server.conf" do
   notifies :restart, "service[swift-object-auditor]", :immediately
 end
 
+%w[ /var/swift /var/swift/recon ].each do |path|
+  directory path do
+  # Create the swift recon cache directory and set its permissions.
+    owner "swift"
+    group "swift"
+    mode  00755
+  
+    action :create
+  end
+end
+
 cron "swift-recon" do
   minute "*/5"
   command "swift-recon-cron /etc/swift/object-server.conf"

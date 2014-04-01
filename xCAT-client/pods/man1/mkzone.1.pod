@@ -1,0 +1,121 @@
+=head1 B<NAME>
+
+B<mkzone> - Defines a new zone in the cluster. 
+
+=head1 B<SYNOPSIS>
+
+B<mkzone> <zonename>  [B<--defaultzone>] [B<-k> I<full path to the ssh RSA private key>] [B<-a> I<noderange>] [B<-g>] [B<-f>] [B<-s> I<yes|no>] [-V] 
+
+B<mkzone> [B<-h> | B<-v>]
+
+=head1 B<DESCRIPTION>
+
+The B<mkzone> command is designed to divide the xCAT cluster into multiple zones. The nodes in each zone will share common root ssh keys. This allows the nodes in a zone to be able to as root ssh to each other without password, but cannot do the same to any node in another zone. All zones share a common xCAT Management Node and database including the site table, which defines the attributes of the entire cluster.
+The mkzone command is only supported on Linux ( No AIX support).
+The nodes are not updated with the new root ssh keys by mkzone.  You must run updatenode -k  or xdsh -K to the nodes to update the root ssh keys to the new generated zone keys. This will also sync any service nodes with the zone keys, if you have a hierarchical cluster.   
+Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
+
+=head1 B<OPTIONS>
+
+=over 5
+
+=item B<-h>|B<--help> 
+
+Displays usage information. 
+
+=item B<-v>|B<--version> 
+
+Displays command version and build date. 
+
+=item B<-k | --sshkeypath> I<full path to the ssh RSA private key>
+
+This is the path to the id_rsa key that will be used to build root's ssh keys for the zone. If -k is used, it will generate the ssh public key from the input ssh RSA private key and store both in /etc/xcat/sshkeys/<zonename>/.ssh directory.
+If -f is not used,  then it will generate a set of root ssh keys for the zone and store them in /etc/xcat/sshkeys/<zonename>/.ssh.
+
+=item B<--default>
+
+if --defaultzone is input, then it will set the zone defaultzone attribute to yes; otherwise it will set to no.
+if --defaultzone is input and another zone is currently the default,
+then the -f flag must be used to force a change to the new defaultzone.
+If -f flag is not use an error will be returned and no change made. 
+Note: if any zones in the zone table, there must be one and only one defaultzone. Otherwise, errors will occur.
+
+=item B<-a | --addnoderange> I<noderange>
+
+For each node in the noderange, it will set the zonename attribute for that node to the input zonename.
+If the -g flag is also on the command, then
+it will add the group name "zonename" to each node in the noderange.
+
+=item B<-s| --sshbetweennodes> B<yes|no>
+
+If -s entered, the zone sshbetweennodes attribute will be set to yes or no. It defaults to yes. When this is set to yes, then ssh will be setup
+to allow passwordless root access between nodes.  If no, then root will be prompted for a password when running ssh between the nodes in the zone. 
+
+=item B<-f | --force> 
+
+Used with the (--defaultzone) flag to override the current default zone.
+
+=item B<-g | --assigngroup> 
+
+Used with the (-a) flag to create the group zonename for all nodes in the input noderange.
+
+=item B<-V>|B<--Verbose>
+
+Verbose mode.
+
+=back
+
+=head1 B<Examples>
+
+=over 3
+
+=item *
+
+To make a new zone1 using defaults , enter:
+
+B<mkzone> I<zone1>
+
+Note: with the first mkzone, you will automatically get the xcatdefault zone created as the default zone.  This zone uses ssh keys from
+      <roothome>/.ssh directory.  
+
+=item *
+
+To make a new zone2 using defaults and make it the default zone enter:
+
+B<mkzone> I<zone2> --defaultzone -f
+
+=item *
+
+To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
+
+B<mkzone> I<zone2A> -k /root/.ssh 
+
+=item *
+
+To make a new zone3 and assign the noderange compute3 to the zone  enter:
+
+B<mkzone> I<zone3>  -a compute3
+
+=item *
+
+To make a new zone4 and assign the noderange compute4 to the zone and add zone4 as a group to each node  enter:
+
+B<mkzone> I<zone4>  -a compute4  -g
+
+=item *
+
+To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
+
+B<mkzone> I<zone5>  -a compute5  -g -s no
+
+=back
+
+B<Files>
+
+B</opt/xcat/bin/mkzone/>
+
+Location of the mkzone command.
+
+=head1 B<SEE ALSO>
+
+L<chzone(1)|chzone.1>, L<rmzone(1)|rmzone.1>, L<xdsh(1)|xdsh.1>, L<updatenode(1)|updatenode.1>
