@@ -614,7 +614,11 @@ sub set_route {
             }
         } else {
             if (xCAT::Utils->isLinux()) {
-                $cmd="route add -net $net netmask $mask gw $gw_ip";
+	        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+		    $cmd="route add -net $net netmask $mask dev $ifname";
+		} else {
+                    $cmd="route add -net $net netmask $mask gw $gw_ip";
+		}
             } else {
                 $cmd="route add -net $net -netmask $mask $gw_ip";
             }
@@ -987,7 +991,11 @@ sub addPersistentRoute_RH {
 
         $new_config="$ifname $net/$mask $gw_ip";
     } else {
-        $new_config="any net $net netmask $mask gw $gw_ip $ifname\n";
+        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+            $new_config="any net $net netmask $mask dev $ifname\n";
+	} else {
+            $new_config="any net $net netmask $mask gw $gw_ip $ifname\n";
+        }
     }
     if (!$hasConfiged) {
 	push(@output, $new_config);
@@ -1125,7 +1133,11 @@ sub addPersistentRoute_Debian{
     }
     else { #ipv4
         $cmd = "grep \"-net $net netmask $mask gw $gw_ip\" $conf_file";
-        $route_conf = "  up route add -net $net netmask $mask gw $gw_ip \n  down route del -net $net netmask $mask gw $gw_ip \n";
+	if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+            $route_conf = "  up route add -net $net netmask $mask dev $ifname \n  down route del -net $net netmask $mask dev $ifname \n";
+	} else {
+	    $route_conf = "  up route add -net $net netmask $mask gw $gw_ip \n  down route del -net $net netmask $mask gw $gw_ip\n";
+	}
     }
 
     #fine the corresponding config in the config file
