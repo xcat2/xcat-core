@@ -1,6 +1,6 @@
 Summary: xCAT perl libraries
 Name: perl-xCAT
-Version: %(cat Version; cat LastGitCommit)
+Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 4
 License: EPL
