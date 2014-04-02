@@ -7,9 +7,10 @@ my @apigroups = (
         groupname => 'nodes', 
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage node objects.",
-        resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 
-                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstat',
+        resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'subnodes',
+                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstate',
                       'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',
+                      'nodestat', 'nodehost', 'nodedns', 'nodedhcp',
                       ]
     },
     {
@@ -23,7 +24,7 @@ my @apigroups = (
         groupname => 'services', 
         header => "Services Resources",
         desc => "The URI list which can be used to manage the dns and dhcp services on xCAT MN.",
-        resources => ['dns','dhcp']
+        resources => ['dns','dhcp','host']
     },
     {
         groupname => 'policy',
@@ -253,9 +254,14 @@ sub gendoc {
                         } else {
                             $formathdl{$format}->($URIdef->{$groupname}->{$res}->{PUT}, "PUT", $URIdef->{$groupname}->{$res});
                         }
+                        $headdone = 1;
                     }
                     if (defined ($URIdef->{$groupname}->{$res}->{POST})) {
-                        $formathdl{$format}->($URIdef->{$groupname}->{$res}->{POST}, "POST");
+                        if ($headdone) {
+                            $formathdl{$format}->($URIdef->{$groupname}->{$res}->{POST}, "POST");
+                        } else {
+                            $formathdl{$format}->($URIdef->{$groupname}->{$res}->{POST}, "POST", $URIdef->{$groupname}->{$res});
+                        }
                     }
                     if (defined ($URIdef->{$groupname}->{$res}->{DELETE})) {
                         $formathdl{$format}->($URIdef->{$groupname}->{$res}->{DELETE}, "DELETE");

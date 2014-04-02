@@ -41,6 +41,7 @@ use xCAT::Table;
 # |    `--POST - The info is used to handle the POST request
 # |    `--DELETE - The info is used to handle the DELETE request
 
+# The common messages which can be used in the %URIdef
 my %usagemsg = (
     objreturn => "Json format: An object which includes multiple \'<name> : {att:value, attr:value ...}\' pairs.",
     objchparam => "Json format: An object which includes multiple \'att:value\' pairs.",
@@ -101,12 +102,12 @@ my %URIdef = (
             },
         },
         nodeattr => {
-            desc => "[URI:/nodes/{nodename}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
-            matcher => '^/nodes/[^/]*/attr/\S+$',
+            desc => "[URI:/nodes/{nodename}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the node {nodename}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attrs/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -114,11 +115,76 @@ my %URIdef = (
             PUT_backup => {
                 desc => "Change attributes for the node {nodename}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
                 usage => "||An array of node objects.|",
-                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attr/groups;mgt;netboot||",
+                example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attrs/groups;mgt;netboot||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             }
+        },
+        nodestat => {
+            desc => "[URI:/nodes/{nodename}/nodestat}] - The attributes resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/nodestat$',
+            GET => {
+                desc => "Get the running status for the node {nodename}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|x|",
+                cmd => "nodestat",
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
+            },
+        },
+        nodehost => {
+            desc => "[URI:/nodes/{nodename}/host] - The mapping of ip and hostname for the node {nodename}",
+            matcher => '^/nodes/[^/]*/host$',
+            POST => {
+                desc => "Create the mapping of ip and hostname record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the mapping of ip and hostname record for node \'node1\'.|POST|/nodes/node1/host||",
+                cmd => "makehosts",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
+        nodedns => {
+            desc => "[URI:/nodes/{nodename}/dns] - The dns record resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/dns$',
+            POST => {
+                desc => "Create the dns record for the node {nodename}.",
+                desc1 => "The prerequisite of the POST operation is the mapping of ip and nodename for the node has been added in the /etc/hosts.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dns record for node \'node1\'.|POST|/nodes/node1/dns||",
+                cmd => "makedns",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+            DELETE => {
+                desc => "Remove the dns record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the dns record for node node1|DELETE|/nodes/node1/dns||",
+                cmd => "makedns",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
+        nodedhcp => {
+            desc => "[URI:/nodes/{nodename}/dhcp] - The dhcp record resource for the node {nodename}",
+            matcher => '^/nodes/[^/]*/dhcp$',
+            POST => {
+                desc => "Create the dhcp record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the dhcp record for node \'node1\'.|POST|/nodes/node1/dhcp||",
+                cmd => "makedhcp",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+            DELETE => {
+                desc => "Remove the dhcp record for the node {nodename}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the dhcp record for node node1|DELETE|/nodes/node1/dhcp||",
+                cmd => "makedhcp",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
         },
         power => {
             desc => "[URI:/nodes/{nodename}/power] - The power resource for the node {nodename}",
@@ -429,15 +495,19 @@ my %URIdef = (
                 outhdler => \&infoout,
             },
         },
-        subnode => {
-            desc => "[URI:/nodes/{nodename}/subnode] - The sub nodes for the node {nodename}",
-            matcher => '^/nodes/[^/]*/subnode$',
+        subnodes => {
+            desc => "[URI:/nodes/{nodename}/subnodes] - The sub-nodes resources for the node {nodename}",
+            matcher => '^/nodes/[^/]*/subnodes$',
             GET => {
-                desc => "Return the Children node for the node {nodename}.",
+                desc => "Return the Children nodes for the node {nodename}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the children nodes for node \'node1\'.|GET|/nodes/node1/subnodes|{\n   \"cmm01node09\":{\n      \"mpa\":\"ngpcmm01\",\n      \"parent\":\"ngpcmm01\",\n      \"serial\":\"1035CDB\",\n      \"mtm\":\"789523X\",\n      \"cons\":\"fsp\",\n      \"hwtype\":\"blade\",\n      \"objtype\":\"node\",\n      \"groups\":\"blade,all,p260\",\n      \"mgt\":\"fsp\",\n      \"nodetype\":\"ppc,osi\",\n      \"slotid\":\"9\",\n      \"hcp\":\"10.1.9.9\",\n      \"id\":\"1\"\n   },\n   ...\n}|",
                 cmd => "rscan",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&defout,
             },
-            PUT => {
+            # the put should be implemented by customer that using GET to get all the resources and define it with PUT /nodes/<node name>
+            PUT_bak => {
                 desc => "Update the Children node for the node {nodename}.",
                 cmd => "rscan",
                 fhandler => \&common,
@@ -472,21 +542,21 @@ my %URIdef = (
                 fhandler => \&common,
             },
         },
-        bootstat => {
-            desc => "[URI:/nodes/{nodename}/bootstat] - The boot state resource for node {nodename}.",
-            matcher => '^/nodes/[^/]*/bootstat$',
+        bootstate => {
+            desc => "[URI:/nodes/{nodename}/bootstate] - The boot state resource for node {nodename}.",
+            matcher => '^/nodes/[^/]*/bootstate$',
             GET => {
                 desc => "Get boot state.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the next boot state for the node1.|GET|/nodes/node1/bootstat|{\n   \"node1\":{\n      \"bootstat\":\"boot\"\n   }\n}|",
+                example => "|Get the next boot state for the node1.|GET|/nodes/node1/bootstate|{\n   \"node1\":{\n      \"bootstat\":\"boot\"\n   }\n}|",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
             },
             PUT => {
                 desc => "Set the boot state.",
-                usage => "|$usagemsg{objchparam} DataBody: {osimage:xxx}.|$usagemsg{non_getreturn}|",
-                example => "|Set the next boot state for the node1.|PUT|/nodes/node1/bootstat {\"osimage\":\"rhels6.4-x86_64-install-compute\"}||",
+                usage => "|$usagemsg{objchparam} DataBody: {osimage:xxx}/{state:offline}.|$usagemsg{non_getreturn}|",
+                example => "|Set the next boot state for the node1.|PUT|/nodes/node1/bootstate {\"osimage\":\"rhels6.4-x86_64-install-compute\"}||",
                 cmd => "nodeset",
                 fhandler => \&actionhdl,
                 outhdler => \&noout,
@@ -534,12 +604,12 @@ my %URIdef = (
             },
         },
         group_attr => {
-            desc => "[URI:/groups/{groupname}/attr/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}",
-            matcher => '^/groups/[^/]*/attr/\S+$',
+            desc => "[URI:/groups/{groupname}/attrs/{attr1,attr2,attr3 ...}] - The attributes resource for the group {groupname}",
+            matcher => '^/groups/[^/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the group {groupname}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the attributes {mgt,netboot} for group all|GET|/groups/all/attr/mgt,netboot|{\n   \"all\":{\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\"\n   }\n}|",
+                example => "|Get the attributes {mgt,netboot} for group all|GET|/groups/all/attrs/mgt,netboot|{\n   \"all\":{\n      \"netboot\":\"yaboot\",\n      \"mgt\":\"dfm\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -547,15 +617,27 @@ my %URIdef = (
         },
     },
 
-    #### definition for services resources: dns, dhcp
+    #### definition for services resources: dns, dhcp, hostname
     services => {
+        host => {
+            desc => "[URI:/services/host] - The hostname resource.",
+            matcher => '^/services/host$',
+            POST => {
+                desc => "Create the ip/hostname records for all the nodes to /etc/hosts.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Create the ip/hostname records for all the nodes to /etc/hosts.|POST|/services/host||",
+                cmd => "makehosts",
+                fhandler => \&nonobjhdl,
+                outhdler => \&noout,
+            }
+        },
         dns => {
             desc => "[URI:/services/dns] - The dns service resource.",
             matcher => '^/services/dns$',
             POST => {
-                desc => "Create the dns records for all the entries in the MN:/etc/hosts configuration file.",
+                desc => "Initialize the dns service.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => "|Create the dns records for all the entries in the /etc/hosts.|POST|/services/dns||",
+                example => "|Initialize the dns service.|POST|/services/dns||",
                 cmd => "makedns",
                 fhandler => \&nonobjhdl,
                 outhdler => \&noout,
@@ -618,8 +700,8 @@ my %URIdef = (
             },
         },
         network_attr => {
-            desc => "[URI:/network/{netname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
-            matcher => '^\/network\/[^\/]*/attr/\S+$',
+            desc => "[URI:/network/{netname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
+            matcher => '^\/network\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the network {netname}.",
                 cmd => "lsdef",
@@ -678,8 +760,8 @@ my %URIdef = (
             },
         },
         osimage_attr => {
-            desc => "[URI:/osimage/{imgname}/attr/attr1;attr2;attr3 ...] - The attributes resource for the osimage {imgname}",
-            matcher => '^\/osimage\/[^\/]*/attr/\S+$',
+            desc => "[URI:/osimage/{imgname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the osimage {imgname}",
+            matcher => '^\/osimage\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the osimage {imgname}.",
                 cmd => "lsdef",
@@ -768,12 +850,12 @@ my %URIdef = (
             },
         },
         policy_attr => {
-            desc => "[URI:/policy/{policyname}/attr/{attr1;attr2;attr3,...}] - The attributes resource for the policy {policy_priority}",
-            matcher => '^\/policy\/[^\/]*/attr/\S+$',
+            desc => "[URI:/policy/{policyname}/attrs/{attr1;attr2;attr3,...}] - The attributes resource for the policy {policy_priority}",
+            matcher => '^\/policy\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the policy {policy_priority}.",
                 usage => "||An array policy object, each object includes the values for each attribute.|",
-                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attr/name;rule|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
+                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attrs/name;rule|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -810,12 +892,12 @@ my %URIdef = (
             },
         },
         site => {
-            desc => "[URI:/globalconf/attr/{attr1;attr2 ...}] - The specific global configuration resource.",
-            matcher => '^\/globalconf/attr/\S+$',
+            desc => "[URI:/globalconf/attrs/{attr1;attr2 ...}] - The specific global configuration resource.",
+            matcher => '^\/globalconf/attrs/\S+$',
             GET => {
                 desc => "Get the specific configuration in global.",
                 usage => "||?|",
-                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attr/master;domain|?|",
+                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attrs/master;domain|?|",
                 cmd => "lsdef",
                 fhandler => \&sitehdl,
                 outhdler => \&defout,
@@ -823,21 +905,21 @@ my %URIdef = (
             PUT => {
                 desc => "Change the attributes for the site table. DataBody: {name:value}.",
                 usage => "|Put data: Json formatted name:value pairs.|?|",
-                example => "|Change the domain attribute.|PUT|/globalconf/attr/domain|?|",
+                example => "|Change the domain attribute.|PUT|/globalconf/attrs/domain|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
             POST => {
                 desc => "Create the global configuration entry. DataBody: {name:value}.",
                 usage => "|Put data: Json formatted name:value pairs.||",
-                example => "|Create the domain attribute|POST|/globalconf/attr/domain {\"domain\":\"cluster.com\"}|?|",
+                example => "|Create the domain attribute|POST|/globalconf/attrs/domain {\"domain\":\"cluster.com\"}|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
             DELETE => {
                 desc => "Remove the site attributes.",
                 usage => "||?|",
-                example => "|Remove the domain configure.|DELETE|/globalconf/attr/domain|?|",
+                example => "|Remove the domain configure.|DELETE|/globalconf/attrs/domain|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
             },
@@ -913,7 +995,7 @@ my %formatters = (
     #'xml'  => \&wrapXml
 );
 
-#error status codes
+# error status codes
 my $STATUS_BAD_REQUEST         = "400 Bad Request";
 my $STATUS_UNAUTH              = "401 Unauthorized";
 my $STATUS_FORBIDDEN           = "403 Forbidden";
@@ -925,13 +1007,9 @@ my $STATUS_EXPECT_FAILED       = "417 Expectation Failed";
 my $STATUS_TEAPOT              = "418 I'm a teapot";
 my $STATUS_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 
-#good status codes
+# good status codes
 my $STATUS_OK      = "200 OK";
 my $STATUS_CREATED = "201 Created";
-
-my $XCAT_PATH = '/opt/xcat/bin';
-my $VERSION   = "2.8";
-
 
 # Development notes:
 # - added this line to /etc/httpd/conf/httpd.conf to hide the cgi-bin and .cgi extension in the uri:
@@ -953,34 +1031,34 @@ my $VERSION   = "2.8";
 # print $q->end_html;       #todo: add the </body></html> tags
 # $q->url_param()      # gets url options, even when there is put/post data (unlike q->param)
 
+
+
 #### Main procedure to handle the REST request
 
+# To get the HTTP elements through perl CGI module
 my $q           = CGI->new;
-#my $url         = $q->url;      # the 1st part of the url, https, hostname, port num, and /xcatws
 my $pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
-#my $requestType = $ENV{'REQUEST_METHOD'};
 my $requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
-#my $queryString = $ENV{'QUERY_STRING'};     #todo: remove this when not used any more
-#my $userAgent = $ENV{'HTTP_USER_AGENT'};        # curl, etc.
 my $userAgent = $q->user_agent();        # the client program: curl, etc.
-#my %queryhash;          # the queryString will get put into this
-my @path = split(/\//, $pathInfo);
-#shift(@path);       # get rid of the initial /
-#my $resource    = $path[0];
-my $pageContent = '';       # global var containing the ouptut back to the rest client
-my $request     = {clienttype => 'ws'};     # global var that holds the request to send to xcatd
-my $format = 'json';
-my $pretty;
-my $xmlinstalled;
+my @path = split(/\//, $pathInfo);    # The uri path like /nodes/node1/...
 
-# Handle the command parameter for debugging and generating doc
+# Define the golbal variables which will be used through the handling process
+my $pageContent = '';       # Global var containing the ouptut back to the rest client
+my $request     = {clienttype => 'ws'};     # Global var that holds the request to send to xcatd
+my $format = 'json';    # The output format for a request invoke
+my $xmlinstalled;    # Global var to speicfy whether the xml modules have been loaded
+
+# To easy the perl debug, this script can be run directly with 'perl -d'
+# This script also support to generate the rest api doc automatically.
+# Following part of code will not be run when this script is called by http server
 my $dbgdata;
-sub dbgusage { print "Usage:\n    $0 -h\n    $0 -d\n    $0 {GET|PUT|POST|DELETE} URI user:password data\n"; }
+sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g [wiki] (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
     exit 0;
 } elsif ($ARGV[0] eq "-g") {
+    # generate the document
     require genrestapidoc;
     if (defined ($ARGV[1])) {
         genrestapidoc::gendoc(\%URIdef, $ARGV[1]);
@@ -992,6 +1070,7 @@ if ($ARGV[0] eq "-h") {
     displayUsage();
     exit 0;
 } elsif ($ARGV[0] =~ /(GET|PUT|POST|DELETE)/) {
+    # parse the parameters when run this script locally
     $requestType = $ARGV[0];
     $pathInfo= $ARGV[1];
 
@@ -1011,19 +1090,24 @@ if ($ARGV[0] eq "-h") {
 }
 
 my $JSON;       # global ptr to the json object.  Its set by loadJSON()
-#if (isPut() || isPost()) {
-    loadJSON();        # need to do this early, so we can fetch the params
-#}
+# Since the json is the only supported format, load it at beginning
+# need to do this early, so we can fetch the PUT/POST params
+loadJSON();        
 
 # the input parameters from both the url and put/post data will combined and then
 # separated into the general params (not specific to the api call) and params specific to the call
 # Note: some of the values of the params in the hash can be arrays
+# $generalparams - the general parameters like 'debug=1', 'pretty=1'
+# $paramhash - all parameters come from url or put/post data except the ones in $generalparams
 my ($generalparams, $paramhash) = fetchParameters();
 
 my $DEBUGGING = $generalparams->{debug};      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
 if ($DEBUGGING) {
     displaydebugmsg();
 }
+
+# The filter flag is used to group the nodes which have the same output 
+my $XCOLL = $generalparams->{xcoll}; 
 
 # Process the format requested
 $format = $generalparams->{format} if (defined ($generalparams->{format}));
@@ -1052,37 +1136,22 @@ $pathInfo =~ s/\/$//;
 #}
 
 if ($format eq 'json') {
-#    loadJSON();         # in case it was not loaded before
+    # make the output to be readable if 'pretty=1' is specified
     if ($generalparams->{pretty}) { $JSON->indent(1); }
 }
 
-# require XML dynamically and let them know if it is not installed
 # we need XML all the time to send request to xcat, even if thats not the return format requested by the user
 loadXML();
 
-# Match the first layer of resource URI
+# The first layer of resource URI. It should be 'nodes' for URI '/nodes/node1'
 my $uriLayer1;
 
-#bmp: why can't you just split on "/" like xcatws.cgi did?
 # Get all the layers in the URI
-my @layers;
-my $portion = index($pathInfo, '/');
-while (1) {
-    my $endportion = index($pathInfo, '/', $portion+1);
-    if ($endportion >= 0) {
-        my $layer = substr($pathInfo, $portion+1, ($endportion - $portion - 1));
-        push @layers, $layer if ($layer);
-        $portion = $endportion;
-    } else { # the last layer
-        my $layer = substr($pathInfo, $portion+1);
-        push @layers, $layer if ($layer);
-        last;
-    }
-}
+my @layers = split('\/', $pathInfo);
+shift (@layers);
 
 if ($#layers < 0) {
-    # If no resource was specified
-    #addPageContent($q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:"));
+    # If no resource was specified, list all the resource groups which have been defined in the %URIdef
     my $json;
     foreach (sort keys %URIdef) {
         push @{$json}, $_;
@@ -1096,7 +1165,7 @@ if ($#layers < 0) {
 }
 
 # set the user and password to access xcatd
-#todo: replace with using certificates or an api key
+# todo: replace with using certificates or an api key
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
@@ -1109,7 +1178,6 @@ if (defined ($URIdef{$uriLayer1})) {
     # Make sure the resource has been defined
     foreach my $res (keys %{$URIdef{$uriLayer1}}) {
         my $matcher = $URIdef{$uriLayer1}->{$res}->{matcher};
-        #bmp: if you use m|$matcher| here instead then you won't need to escape all of the /'s ?
         if ($pathInfo =~ m|$matcher|) {
             # matched to a resource
             unless (defined ($URIdef{$uriLayer1}->{$res}->{$requestType})) {
@@ -1123,17 +1191,15 @@ if (defined ($URIdef{$uriLayer1})) {
                  $params->{'layers'} = \@layers;
                  $params->{'resourcegroup'} = $uriLayer1;
                  $params->{'resourcename'} = $res;
-                 # Call the hanldle subroutine to send request to xcatd and format the output
-                 #@outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler}->($params);
-                 # get the response from xcatd
+                 # Call the handler subroutine which specified in 'fhandler' to send request to xcatd and get the response
                  $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{fhandler}->($params);
                  # Filter the output data from the response
                  $outputdata = filterData ($outputdata);
-                 # Restructure the output data
+                 # Restructure the output data with the subroutine which is specified in 'outhdler' 
                  if (defined ($URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler})) {
                      $outputdata = $URIdef{$uriLayer1}->{$res}->{$requestType}->{outhdler}->($outputdata, $params);
                  } else {
-                     # Call the appropriate formatting function stored in the formatters hash
+                     # Call the appropriate formatting function stored in the formatters hash as default output handler
                      if (exists $formatters{$format}) {
                          $formatters{$format}->($outputdata);
                      }
@@ -1145,18 +1211,18 @@ if (defined ($URIdef{$uriLayer1})) {
         }
     }
 } else {
+    # not matches to any resource group. Check the 'resource group' to improve the performance
     error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
+# the URI cannot match to any resources which are defined in %URIdef
 unless ($handled) {
     error("Unspported resource.",$STATUS_NOT_FOUND);
 }
 
 
-# all output has been added into the global varibale pageContent, call the response funcion
-#if (exists $data->[0]->{info} && $data->[0]->{info}->[0] =~ /Could not find an object/) {
-#    sendResponseMsg($STATUS_NOT_FOUND);
-#}
+# all output has been added into the global varibale pageContent, call the response funcion to generate HTTP reply and exit
+
 if (isPost()) {
     sendResponseMsg($STATUS_CREATED);
 }
@@ -1165,6 +1231,10 @@ else {
 }
 
 #### End of the Main Program
+
+
+
+
 
 #===========================================================
 # Subrutines 
@@ -1176,14 +1246,25 @@ sub isPatch { return uc($requestType) eq "PATCH"; }
 sub isDelete { return uc($requestType) eq "DELETE"; }
 
 
-# handle the input like  
+#handle the output for def command and rscan 
+#handle the input like  
+# ===raw xml input
+#  $d->{info}->[msg list] - each msg could be mulitple msg which split with '\n' 
+#  $d->{data}->[msg list]
+#
+# ===msg format
 # Object name: <objname>
 #   attr=value
+#OR
+# <objname>:
+#   attr=value
 # ---
-# TO
+#TO
 # ---
-# nodename : value
-# attr : value
+# {<objname> : {
+#   attr : value
+#   ...
+# } ... }
 sub defout {
     my $data = shift;
 
@@ -1191,12 +1272,28 @@ sub defout {
     foreach my $d (@$data) {
         #my $jsonnode;
         my $nodename;
-        my $lines = $d->{info};
+        my $lines;
+        my @alldata;
+        if (defined ($d->{info})) {
+            foreach (@{$d->{info}}) {
+                push @alldata, split ('\n', $_);
+            }
+            $lines = \@alldata;
+        } elsif (defined ($d->{data})) {
+            foreach (@{$d->{data}}) {
+                push @alldata, split ('\n', $_);
+            }
+            $lines = \@alldata;
+        }
         foreach my $l (@$lines) {
-            if ($l =~ /^Object name: /) {    # start new node
+            if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef;}     # push previous object onto array
-                $l =~ /^Object name:\s+(\S+)/;
-                $nodename = $1;
+                if ($l =~ /^Object name:\s+(\S+)/) {
+                    $nodename = $1;
+                }
+                if ($l =~ /^(\S+):$/) {
+                    $nodename = $1;
+                }
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
@@ -1207,7 +1304,9 @@ sub defout {
         }
         #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef; }     # push last object onto array
     }
-    addPageContent($JSON->encode($json));
+    if ($json) {
+        addPageContent($JSON->encode($json), 1);
+    }
 }
 # handle the input like
 # all  (node)
@@ -1235,7 +1334,7 @@ sub defout_remove_appended_type {
         #if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
     }
     if ($json) {
-        addPageContent($JSON->encode($json));
+        addPageContent($JSON->encode($json), 1);
     }
 }
 
@@ -1263,15 +1362,20 @@ sub noout {
 # hanlde the output which is node irrelevant
 sub infoout {
     my $data = shift;
+    my $param =shift;
 
     my $json;
     foreach my $d (@$data) {
         if (defined ($d->{info})) {
-            push @{$json}, @{$d->{info}};
+            foreach (@{$d->{info}}) {
+                push @{$json}, split ('\n', $_);
+            }
         }
         if (defined ($d->{data})) {
             if (ref($d->{data}->[0]) ne "HASH") {
-                push @{$json}, @{$d->{data}};
+                foreach (@{$d->{data}}) {
+                    push @{$json}, split ('\n', $_);
+                }
             } else {
                 if (defined($d->{data}->[0]->{contents})) {
                     push @{$json}, @{$d->{data}->[0]->{contents}};
@@ -1282,8 +1386,20 @@ sub infoout {
             push @{$json}, @{$d->{error}};
         }
     }
+
+    # for nodeshell (xdsh), group msg with node name
+    if ($param->{'resourcename'} eq "nodeshell") {
+        my $jsonnode;
+        foreach (@{$json}) {
+            if (/^(\S+):(.*)$/) {
+                push @{$jsonnode->{$1}}, $2;
+            }
+        }
+        addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
+        return;
+    }
     if ($json) {
-        addPageContent($JSON->encode($json));
+        addPageContent($JSON->encode($json), 1);
     }
 }
 
@@ -1312,41 +1428,8 @@ sub actionout {
         } 
     }
 
-    addPageContent($JSON->encode($jsonnode)) if ($jsonnode);
+    addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
 }
-
-sub defout_1 {
-    my $msg = shift;
-   
-    my @output;
-    my $hn; 
-    my $node;
-    foreach (@{$msg}) {
-        if (defined ($_->{info})) {
-            foreach my $line (@{$_->{info}}) {
-                if ($line =~ /Object name: (.*)/) {
-                    #if ($node) {
-                    #    push @output, $hn;
-                    #}
-                    $node = $1;
-                } elsif ($line =~ /(.*)=(.*)/) {
-                    my $n = $1;
-                    my $v = $2;
-                    $n =~ s/^\s*//;
-                    $n =~ s/\s*$//;
-                    $v =~ s/^\s*//;
-                    $v =~ s/\s*$//;
-                    $hn->{$node}->{$n} = $v;
-                }
-            }
-            push @output, $hn;
-        } else {
-            push @output, $_;
-        }
-    }
-    return \@output;
-}
-
 
 # invoke one of the def cmds
 sub defhdl {
@@ -1427,14 +1510,20 @@ sub actionhdl {
         } else {
             error("Missed Action.",$STATUS_NOT_FOUND);
         }
-    } elsif  ($params->{'resourcename'}eq "bootstat") {
+    } elsif  ($params->{'resourcename'}eq "bootstate") {
         if (isGET()) {
             push @args, 'stat';
         } elsif ($paramhash->{'action'}) {
             push @args, $paramhash->{'action'};
         } elsif ($paramhash) {
             my @params = keys(%$paramhash);
-            push @args, "$params[0]=$paramhash->{$params[0]}";
+            if ($params[0] eq "state") {
+                # hanlde the {state:offline}
+                push @args, $paramhash->{$params[0]};
+            } else {
+                # handle the {osimage:imagename}
+                push @args, "$params[0]=$paramhash->{$params[0]}";
+            }
         } else {
             error("Missed Action.",$STATUS_NOT_FOUND);
         }
@@ -1478,7 +1567,13 @@ sub actionhdl {
         }
     } elsif ($params->{'resourcename'} eq "nodeshell") {
         if (defined ($paramhash->{'command'})) {
-            push @args, join (';', @{$paramhash->{'command'}});
+            if (ref($paramhash->{'command'}) eq "ARRAY") {
+                push @args, join (';', @{$paramhash->{'command'}});
+            } else {
+                push @args, $paramhash->{'command'};
+            }
+        } else {
+            error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
         }
     } elsif ($params->{'resourcename'} eq "nodecopy") {
         if (defined ($paramhash->{'src'})) {
@@ -1487,7 +1582,15 @@ sub actionhdl {
         if (defined ($paramhash->{'target'})) {
             push @args, $paramhash->{'target'};
         }
-    } 
+    } elsif ($params->{'resourcename'} =~ /(dns|dhcp)/) {
+        if (isDelete()) {
+            push @args, '-d';
+        }
+    } elsif ($params->{'resourcename'} eq "subnodes") {
+        if (isGET()) {
+            push @args, '-z';
+        }
+    }
 
     push @{$request->{arg}}, @args;  
     my $req = genRequest();
@@ -1869,136 +1972,47 @@ sub wrapJson {
     }
 }
 
-
-#bmp: this isn't used anymore, just here for reference, right?
-# structure the json output for node resource api calls
-sub wrapJsonNodes {
-    # this is an array of responses from xcatd.  Often all the output comes back in 1 response, but not always.
-    my $data = shift;
-
-    # Divide the processing into several groups of requests, according to how they return the output
-    # At this point, these are all gets and posts.  The others were taken care of wrapJson()
-    my $json;
-    if (isGet()) {
-        if (!defined $path[2] && !defined($paramhash->{field})) {        # querying node list
-            # The data structure is: array of hashes that have a single key 'node'.  The value for that key
-            # is an array of hashes with a single key 'name'.  The value for that key
-            # is a 1-element array that contains the node name.
-            # Create a json array of node name strings.
-            $json = [];
-            foreach my $d (@$data) {
-                my $ar = $d->{node};
-                foreach my $a (@$ar) {
-                    my $nodename = $a->{name}->[0];
-                    if (!defined($nodename)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                    push @$json, $nodename;
-                }
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif (!defined $path[2] && defined($paramhash->{field})) {        # querying node attributes
-            # The data structure is: array of hashes that have a single key 'info'.  The value for that key
-            # is an array of lines of lsdef output (all nodes in the same array).
-            # Create a json array of node objects. Each node object contains the attributes/values (including
-            # the nodename) of that object.
-            $json = [];
-            foreach my $d (@$data) {
-                my $jsonnode;
-                my $lines = $d->{info};
-                foreach my $l (@$lines) {
-                    if ($l =~ /^Object name: /) {    # start new node
-                        if (defined($jsonnode)) { push @$json, $jsonnode; }     # push previous object onto array
-                        my ($nodename) = $l =~ /^Object name:\s+(\S+)/;
-                        $jsonnode = { nodename => $nodename };
-                    }
-                    else {      # just an attribute of the current node
-                        if (!defined($jsonnode)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                        my ($attr, $val) = $l =~ /^\s*(\S+)=(.*)$/;
-                        if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                        $jsonnode->{$attr} = $val;
-                    }
-                }
-                if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif (grep(/^$path[2]$/, qw(power inventory vitals energy status))) {        # querying other node info
-            # The data structure is: array of hashes that have a single key 'node'.  The value for that key
-            # is a 1-element array that has a hash with keys 'name' and 'data'.  The 'name' value is a 1-element
-            # array that has the nodename.  The 'data' value is a 1-element array of a hash that has keys 'desc'
-            # and 'content' (sometimes desc is ommited), or in the case of status it has the status directly in the array.
-            # Create a json array of node objects. Each node object contains the attributes/values (including
-            # the nodename) of that object.
-            $json = {};     # its keys are nodenames
-            foreach my $d (@$data) {
-                # each element is a complex structure that contains 1 attr and value for a node
-                my $node = $d->{node}->[0];
-                my $nodename = $node->{name}->[0];
-                my $nodedata = $node->{data}->[0];
-                if ($path[2] eq 'status') {
-                    $json->{$nodename} = $nodedata;
-                }
-                else {
-                    my $contents = $nodedata->{contents}->[0];
-                    my $desc = 'power';         # rpower doesn't output a desc tag
-                    if (defined($nodedata->{desc})) { $desc = $nodedata->{desc}->[0]; }
-                    # add this desc and content into this node's hash
-                    $json->{$nodename}->{$desc} = $contents;
-                }
-            }
-            if ($path[2] eq 'status') { addPageContent($JSON->encode($json)); }
-            else {
-                # convert this hash of hashes into an array of hashes
-                my @jsonarray;
-                foreach my $n (sort(keys(%$json))) {
-                    $json->{$n}->{nodename} = $n;       # add the key (nodename) inside of the node's hash
-                    push @jsonarray, $json->{$n};
-                }
-                addPageContent($JSON->encode(\@jsonarray));
-            }
-        }
-        else {      # querying a node subresource (rpower, rvitals, rinv, etc.)
-            addPageContent($JSON->encode($data));
-        }       # end else path[2] defined
-    }
-    elsif (isPost()) {          # dsh or dcp
-        if ($path[2] eq 'dsh') {
-            # The data structure is: array of hashes with a single key, either 'data' or 'errorcode'.  The value
-            # of 'errorcode' is a 1-element array containing the error code.  The value of 'data' is an array of
-            # output lines prefixed by the node name.  Some of the lines can be null.
-            # Create a hash with 2 keys: 'errorcode' and 'nodes'. The 'nodes' value is a hash of nodenames, each
-            # value is an array of the output for that node.
-            $json = {};     # its keys are nodenames
-            foreach my $d (@$data) {
-                # this is either an errorcode hash or data hash
-                if (defined($d->{errorcode})) {
-                    $json->{errorcode} = $d->{errorcode}->[0];
-                }
-                elsif (defined($d->{data})) {
-                    foreach my $line (@{$d->{data}}) {
-                        my ($nodename, $output) = $line =~ m/^(\S+): (.*)$/;
-                        if (defined($nodename)) { push @{$json->{$nodename}}, $output; }
-                    }
-                }
-                else { error('improperly formatted xdsh output from xcatd', $STATUS_TEAPOT); }
-            }
-            addPageContent($JSON->encode($json));
-        }
-        elsif ($path[2] eq 'dcp') {
-            # The data structure is a 1-element array of a hash with 1 key 'errorcode'.  That has a 1-element
-            # array with the code in it.  Let's simplify it.
-            $json->{errorcode} = $data->[0]->{errorcode}->[0];
-            addPageContent($JSON->encode($json));
-        }
-        else {
-            addPageContent($JSON->encode($data));
-        }
-    }       # end if isPost
-}
-
 # Append content to the global var holding the output to go back to the rest client
+# 1st param - The output message
+# 2nd param - A flag to specify the format of 1st param: 1 - json formatted standard xcat output data
 sub addPageContent {
     my $newcontent = shift;
+    my $userdata = shift;
+
+    if ($userdata && $XCOLL) {
+        my $group;
+        my $hash = $JSON->decode($newcontent);
+        if (ref($hash) eq "HASH") {
+            foreach my $node (keys %{$hash}) {
+                if (ref($hash->{$node}) eq "HASH") {
+                    my $value;
+                    foreach (sort (keys %{$hash->{$node}})) {
+                        $value .= "$_$hash->{$node}->{$_}";
+                    }
+                    push @{$group->{$value}->{node}}, $node; 
+                    $group->{$value}->{orig} = $hash->{$node};
+                } elsif (ref($hash->{$node}) eq "ARRAY") {
+                    my $value;
+                    foreach (sort (@{$hash->{$node}})) {
+                        $value .= "$_";
+                    }
+                    push @{$group->{$value}->{node}}, $node; 
+                    $group->{$value}->{orig} = $hash->{$node};
+                }
+            }
+        }
+        my $groupout;
+        foreach my $value (keys %{$group}) {
+            if (defined $group->{$value}->{node}) {
+                my $nodes = join(',', @{$group->{$value}->{node}});
+                if (defined ($group->{$value}->{orig})) {
+                    $groupout->{$nodes} = $group->{$value}->{orig};
+                }
+            }
+        }
+        $newcontent = $JSON->encode($groupout) if ($groupout);
+    }
+    
     $pageContent .= $newcontent;
 }
 
@@ -2133,8 +2147,10 @@ sub sendRequest {
 }
 
 # Put input parameters from both $q->url_param and put/post data (if it exists) into generalparams and paramhash for all to use
+# 1st output param - The params which are listed in @generalparamlis as a general parameters like 'debug=1, pretty=1'
+# 2nd output param - All the params from url params and 'PUTDATA'/'POSTDATA' except the ones in @generalparamlis
 sub fetchParameters {
-    my @generalparamlist = qw(userName password pretty debug);
+    my @generalparamlist = qw(userName password pretty debug xcoll);
     # 1st check for put/post data and put that in the hash
     my $pdata;
     if (isPut()) { $pdata = $q->param('PUTDATA'); }
