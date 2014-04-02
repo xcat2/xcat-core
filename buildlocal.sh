@@ -7,8 +7,19 @@
 
 OSNAME=$(uname)
 NAMEALL=$(uname -a)
-CURDIR=`pwd`
 
+for i in $*; do
+        # upper case the variable name
+        varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
+        export $varstring
+done
+
+if [ -z "$CURDIR" ]; then
+   echo "get current directory!"
+   CURDIR=$(pwd)
+fi
+
+echo "CURDIR is $CURDIR"
 echo "OSNAME is $OSNAME!"
 echo "NAMEALL is $NAMEALL"
 
@@ -26,9 +37,9 @@ if ! flock -n 8; then
     exit 1
 fi
 
-#used only for hard code, will change later
-
+#delete old package if there is
 rm -rf $CURDIR/build/
+cd $CURDIR
 
 echo "==============================================="
 echo $NAMEALL |  egrep "Ubuntu"
@@ -57,7 +68,7 @@ echo "This is an Ubuntu system"
                   echo "Error: $rpmname build package failed exit code $rc"
      fi
      cd -
-     mv ${rpmname_low}* /code/xcat-core/build
+     mv ${rpmname_low}* $CURDIR/build
  
  done 
      #delete all files except  .deb file
@@ -71,27 +82,32 @@ echo "This is an $OSNAME system"
      rm -rf /root/rpmbuild/RPMS/x86_64/*
      rm -rf /root/rpmbuild/RPMS/ppc64/*
      mkdir -p $CURDIR/build/
+  
+   #always build perl-xCAT
+   $CURDIR/makerpm  perl-xCAT  
+ 
+
    # Build the rest of the noarch rpms
    for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-test xCAT-buildkit; do
         if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi     
-        ./makerpm $rpmname
+        $CURDIR/makerpm $rpmname
    done
   
   #build xCAT-genesis-scripts if it is x86_64 platform
   ARCH=$(uname -p)
   if [ "$ARCH" = "x64_64" ]; then 
-      ./makerpm xCAT-genesis-scripts x86_64  
+       $CURDIR/makerpm xCAT-genesis-scripts x86_64  
   fi
 
   
   # Build the xCAT and xCATsn rpms for all platforms
   for rpmname in xCAT xCATsn; do
                 if [ "$OSNAME" = "AIX" ]; then
-                        ./makerpm $rpmname
+                        $CURDIR/makerpm $rpmname
                         if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi 
                 else
                         for arch in x86_64 ppc64 s390x; do
-                                ./makerpm $rpmname $arch
+                                $CURDIR/makerpm $rpmname $arch
                                 if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
                         done
                 fi
@@ -107,8 +123,9 @@ echo "This is an $OSNAME system"
         cat >$CURDIR/build/xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
-baseurl=file:///$CURDIR
+baseurl=file://$CURDIR/build
 enabled=1
+gpgcheck=0
 EOF
 
   cp $CURDIR/build/xCAT-core.repo /etc/yum.repos.d/
