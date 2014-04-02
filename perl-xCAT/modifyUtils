@@ -8,7 +8,7 @@ if [ -z "$2" ]
 fi
 
 VER=$1
-GITREF="git $2, "
+GITREF="git commit $2, "
 
 BUILDDATE=`date`
 #echo ". '(built $BUILDDATE)'"

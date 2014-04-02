@@ -23,7 +23,7 @@ Provides: perl-xCAT = %{epoch}:%{version}
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
-%define gitinfo %(git log -n 1 | head -n 1)
+%define gitinfo %(git log -n 1 | head -n 1 | cut -f 2 -d ' ')
 
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
