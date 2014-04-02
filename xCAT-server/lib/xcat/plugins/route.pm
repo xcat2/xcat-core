@@ -845,7 +845,7 @@ sub addPersistentRoute_Sles {
     #print "old output=" . join("\n", @output) . "\n";
     my $hasConfiged=0;
     if (@output && (@output > 0)) {
-	$hasConfiged=checkConfig_Sles($net, $mask, $gw_ip, $gw, \@output);
+	$hasConfiged=checkConfig_Sles($net, $mask, $gw_ip, $gw, $ifname, \@output);
     }
     #print "hasConfiged=$hasConfiged\n";
     my $new_config;
@@ -1141,7 +1141,7 @@ sub checkConfig_RH {
 	    }
     }
 
-	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip\n";
+	#print "net=$net1,$net mask=$mask1,$mask gw=$gw1,$gw_ip ifname=$ifname1,ifname\n";
 	if (($net1 && $net1 eq $net) && ($mask1 && $mask1 eq $mask) && (($gw1 && $gw1 eq $gw) || ($gw1 && $gw1 eq $gw_ip) || ($ifname1 && $ifname1 eq $ifname)))  {
 	    return 1;
 	}    
