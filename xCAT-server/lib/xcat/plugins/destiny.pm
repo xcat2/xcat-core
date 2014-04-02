@@ -326,7 +326,9 @@ sub setdestiny {
 		       noupdateinitrd=>$noupdateinitrd,
                        ignorekernelchk=>$ignorekernelchk,}, \&relay_response);
 	    if ($errored) { 
-		$callback->({error=>"Some nodes failed to set up $state resources, aborting"});
+                my @myself = xCAT::NetworkUtils->determinehostname();
+                my $myname = $myself[(scalar @myself)-1];
+		$callback->({error=>"Some nodes failed to set up $state resources on server $myname, aborting"});
 		return; 
 	    }
 	
