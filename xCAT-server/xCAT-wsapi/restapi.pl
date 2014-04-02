@@ -1270,7 +1270,6 @@ sub defout {
 
     my $json;
     foreach my $d (@$data) {
-        #my $jsonnode;
         my $nodename;
         my $lines;
         my @alldata;
@@ -1287,11 +1286,10 @@ sub defout {
         }
         foreach my $l (@$lines) {
             if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
-                #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef;}     # push previous object onto array
-                if ($l =~ /^Object name:\s+(\S+)/) {
+                if ($l =~ /^Object name:\s+(\S+)/) {    # handle the output of lsdef -t <type> <obj>
                     $nodename = $1;
                 }
-                if ($l =~ /^(\S+):$/) {
+                if ($l =~ /^(\S+):$/) {    # handle the output for stanza format '-z'
                     $nodename = $1;
                 }
             }
@@ -1302,23 +1300,27 @@ sub defout {
                 $json->{$nodename}->{$attr} = $val;
             }
         }
-        #if (defined($jsonnode)) { push @$json, $jsonnode; $nodename=undef; $jsonnode=undef; }     # push last object onto array
     }
     if ($json) {
         addPageContent($JSON->encode($json), 1);
     }
 }
-# handle the input like
-# all  (node)
+
+#handle the output for lsdef -t <type> command
+#handle the input like  
+# ===raw xml input
+#  $d->{info}->[msg list] - each msg could be mulitple msg which split with '\n' 
+#
+# ===msg format
 # node1  (node)
 # node2  (node)
+# node3  (node)
 # ---
-# TO
+#TO
 # ---
-# all
 # node1
 # node2
-
+# node3
 sub defout_remove_appended_type {
     my $data = shift;
 
@@ -1331,35 +1333,35 @@ sub defout_remove_appended_type {
                 push @{$json}, $1;
             }
         }
-        #if (defined($jsonnode)) { push @$json, $jsonnode;  $jsonnode=undef; }     # push last object onto array
     }
     if ($json) {
         addPageContent($JSON->encode($json), 1);
     }
 }
 
-# This is the general callback subroutine for PUT/POST/DELETE methods
-# when this subroutine is called, that means the operation has been done successfully
-# The correct output is 'null'
-sub noout {
+# hanlde the output which has the node irrelevant message (e.g. the output for updatenode command)
+# handle the input like  
+# ===raw xml input
+#  $d->{info}->[msg list] - each msg could be mulitple msg which split with '\n' 
+#  $d->{data}->[msg list]
+#  $d->{data}->{contents}->[msg list]
+#
+# ===msg format
+# "There were no syncfiles defined to process. File synchronization has completed.",
+# "Performing software maintenance operations. This could take a while, if there are packages to install.",
+# "node2: Tue Apr  2 15:55:57 CST 2013 Running postscript: ospkgs",
+# ---
+#TO
+# ---
+# [
+#   "There were no syncfiles defined to process. File synchronization has completed.",
+#   "Performing software maintenance operations. This could take a while, if there are packages to install.",
+#   "node2: Tue Apr  2 15:55:57 CST 2013 Running postscript: ospkgs",
+# ]
+#
+# An exception is to handle the output of 'xdsh'(nodeshell). Since each msg has a <node>: head, split the head out and group
+# the msg with the name in the head.
 
-### for debugging
-    my $data = shift;
-
-    addPageContent(qq(\n\n\n=======================================================\nDebug: Following message is just for debugging. It will be removed in the GAed version.\n));
-
-    my $json;
-    if ($data) {
-        addPageContent($JSON->encode($data));
-    }
-
-    addPageContent(qq(["Debug: the operation has been done successfully"]));
-### finish the debugging
-
-    
-}
-
-# hanlde the output which is node irrelevant
 sub infoout {
     my $data = shift;
     my $param =shift;
@@ -1403,7 +1405,39 @@ sub infoout {
     }
 }
 
-# handle the action against noderange
+# hanlde the output which is node relevant (rpower, rinv, rvitals ...)
+# the output must be grouped with 'node' as key
+# handle the input like  
+# ===raw xml input
+#  $d->{node}->{name}->[name] # this is must have, otherwise ignore the msg
+#  $d->{node}->{data}->[msg]
+#OR
+#  $d->{node}->{name}->[name] # this is must have, otherwise ignore the msg
+#  $d->{node}->{data}->{contents}->[msg]
+#OR
+#  $d->{node}->{name}->[name] # this is must have, otherwise ignore the msg
+#  $d->{node}->{data}->{contents}->[msg]
+#  $d->{node}->{data}->{desc}->[msg]
+#
+# Note: if does not have '$d->{node}->{data}->{desc}', use the resource name as the name of attribute.
+# e.g. Get /node/node1/power, the record is '"power":"off"'
+#
+# ===msg format
+#  <node>
+#    <data>
+#      <contents>1.41 (VVE128GUS  2013/07/22)</contents>
+#      <desc>UEFI Version</desc>
+#    </data>
+#    <name>node1</name>
+#  </node>
+# ---
+#TO
+# ---
+# {
+#   "node1":{
+#       "UEFI Version":"1.41 (VVE128GUS  2013/07/22)",
+#   }
+# }
 sub actionout {
     my $data = shift;
     my $param =shift;
@@ -1414,11 +1448,14 @@ sub actionout {
             next;
         }
         if (defined ($d->{node}->[0]->{data}) && (ref($d->{node}->[0]->{data}->[0]) ne "HASH" || ! defined($d->{node}->[0]->{data}->[0]->{contents}))) {
+            # no $d->{node}->{data}->{contents} or $d->{node}->[0]->{data} is not hash
             $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0];
         } elsif (defined ($d->{node}->[0]->{data}->[0]->{contents})) {
             if (defined($d->{node}->[0]->{data}->[0]->{desc})) {
+                # has $d->{node}->{data}->{desc}
                 $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$d->{node}->[0]->{data}->[0]->{desc}->[0]} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
             } else {
+                # use resourcename as the record name
                 if ($param->{'resourcename'} eq "eventlog") {
                     push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } else {
@@ -1431,7 +1468,26 @@ sub actionout {
     addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
 }
 
-# invoke one of the def cmds
+# This is the general callback subroutine for PUT/POST/DELETE methods
+# when this subroutine is called, that means the operation has been done successfully
+# The correct output is 'null'
+sub noout {
+### for debugging
+    my $data = shift;
+
+    addPageContent(qq(\n\n\n=======================================================\nDebug: Following message is just for debugging. It will be removed in the GAed version.\n));
+
+    my $json;
+    if ($data) {
+        addPageContent($JSON->encode($data));
+    }
+
+    addPageContent(qq(["Debug: the operation has been done successfully"]));
+### finish the debugging  
+}
+
+# The operation callback subroutine for def related resource (lsdef, chdef ...)
+# assembe the xcat request, send it to xcatd and get response
 sub defhdl {
     my $params = shift;
 
@@ -1441,7 +1497,7 @@ sub defhdl {
     # set the command name
     $request->{command} = $params->{'cmd'};
 
-    # push the -t args
+    # push the -t args for *def command
     my $resrctype = $params->{'resourcegroup'};
     $resrctype =~ s/s$//;  # remove the last 's' as the type of object
     push @args, ('-t', $resrctype);
@@ -1451,6 +1507,7 @@ sub defhdl {
         push @args, ('-o', $urilayers[1]);
     }
 
+    # For the put/post which specifies the attributes mgt=ipmi groups=all
     foreach my $k (keys(%$paramhash)) {
         push @args, "$k=$paramhash->{$k}" if ($k);
     } 
@@ -1458,6 +1515,8 @@ sub defhdl {
     if ($params->{'resourcename'} eq "allnode") {
         push @args, '-s';
     } elsif ($params->{'resourcename'} =~ /(nodeattr|osimage_attr|group_attr)/) {
+        # if /nodes/node1/attrs/attr1,att2 is specified, for get request, 
+        # use 'lsdef -i' to specify the attribute list
         my $attrs = $urilayers[3];
         $attrs =~ s/;/,/g;
 
@@ -1473,6 +1532,8 @@ sub defhdl {
     return $responses;
 }
 
+# The operation callback subroutine for any node related resource (power, energy ...)
+# assembe the xcat request, send it to xcatd and get response
 sub actionhdl {
     my $params = shift;
 
@@ -1599,7 +1660,8 @@ sub actionhdl {
     return $responses;
 }
 
-# handle the request for node irrelevant commands like makedns -n and makedhcp -n
+# The operation callback subroutine for node irrelevant commands like makedns -n and makedhcp -n
+# assembe the xcat request, send it to xcatd and get response
 sub nonobjhdl {
     my $params = shift;
 
@@ -1856,6 +1918,7 @@ sub tableout {
     addPageContent($JSON->encode($json));
 }
 
+# display the resource list when run 'restapi.pl -d'
 sub displayUsage {
     foreach my $group (keys %URIdef) {
         print "Resource Group: $group\n";
