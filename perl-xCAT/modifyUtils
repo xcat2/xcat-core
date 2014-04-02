@@ -1,20 +1,21 @@
 #!/bin/sh
 # Put the version, svn revision #, and build date into the Version function in Version.pm
 
-if [ -z "$1" ]
+if [ -z "$2" ]
 	then
 	echo "modifyUtils:  Error:  must specify the xCAT version as an argument" >&2
 	exit
 fi
 
 VER=$1
+GITREF="git $2, "
 
 BUILDDATE=`date`
 #echo ". '(built $BUILDDATE)'"
 
 if [ "$(uname)" = "AIX" ]
 then
-	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (built $BUILDDATE)'"/ xCAT/Version.pm >xCAT/Version.pm.new
+	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${GITREF}built $BUILDDATE)'"/ xCAT/Version.pm >xCAT/Version.pm.new
 	mv xCAT/Version.pm.new xCAT/Version.pm
 else
         if [ -f "/etc/debian_version" ];then
@@ -22,5 +23,5 @@ else
         else
             FILENAME="xCAT/Version.pm"
         fi
-	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (built $BUILDDATE)'"/ $FILENAME
+	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${GITREF}built $BUILDDATE)'"/ $FILENAME
 fi
