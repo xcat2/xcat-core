@@ -1,0 +1,88 @@
+#!/bin/bash
+###########
+#
+# This script call make<package>deb and create the deb packages
+# for xCAT
+#
+# Author: Leonardo Tonetto <tonetto@linux.vnet.ibm.com>
+# Revisor: Adalberto Medeiros <adalbas@linux.vnet.ibm.com>
+# Revisor2: Arif Ali <aali@ocf.co.uk>
+#
+# Input:
+#
+# $1 is the build type/location
+# $2 is the string added to the debian/changelog of each package
+# 
+############
+
+##############
+# Get input
+##############
+
+PKG_LOCATION=$1                       # local | snap | alpha
+if [ -z $PKG_LOCATION ]; then
+	PKG_LOCATION="local"
+fi
+BUILD_STRING=$2
+if [ -z $BUILD_STRING ]; then
+	BUILD_STRING="Personal Build"
+fi
+XCAT_VERSION=`cat Version`
+TRUNK_REVISION=`svnversion | cut -d ":" -f1`
+CUR_DATE=`date +%Y%m%d`
+VERSION="${XCAT_VERSION}-${PKG_LOCATION}${CUR_DATE}"
+
+function makedeb {
+	SRC_ROOT=$1
+	PKG_LOCATION=$2
+	BUILD_STRING=$3
+	VERSION=$4
+
+	#
+	# Make DEBs
+	#
+	# build perl-xCAT - deps are libsoap-lite-perl, libdigest-sha1-perl, libdbi-perl
+	#
+
+	find $SRC_ROOT -maxdepth 2 -name debian -type d | while read DEBIAN_DIR
+	do
+        	DIR=`echo ${DEBIAN_DIR} | sed -e 's/[/]debian$//'`
+        	cd ${DIR}
+		dch -v $VERSION -b -c debian/changelog "$BUILD_STRING"
+        	dpkg-buildpackage
+		cd -
+        	RC=$?
+        	if [ ${RC} -gt 0 ]
+        	then
+                	echo "Warning: ${DEBIAN_DIR} failed exit code ${RC}"
+        	fi
+	done
+
+	#	
+	# Clean up
+	#
+	# Eliminate unnecessary directories and debian/files made by dpkg-buildpackage
+
+	find $SRC_ROOT -maxdepth 3 -type d -name "xcat-*" | grep debian | xargs rm -rf	
+	find $SRC_ROOT -maxdepth 3 -type f -name "files" | grep debian | xargs rm -f
+}
+
+# build all debian packages
+packages="xCAT-client xCAT-nbroot xCAT-nbroot2 perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-IBMhpc xCAT-rmc"
+
+for file in `echo $packages`
+do
+    makedeb $file $PKG_LOCATION "$BUILD_STRING" $VERSION
+done
+
+if [ -d debs ]; then
+	rm -rf debs
+fi
+
+mkdir debs
+mv xcat* debs/
+mv perl-xcat* debs/
+
+echo $VERSION > latest_version
+
+exit 0
