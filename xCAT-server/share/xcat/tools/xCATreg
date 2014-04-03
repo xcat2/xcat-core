@@ -597,8 +597,33 @@ sub read_conf{
                     $confkeys{log} = $1;
                 }
                 if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {
-                $confkeys{mailgroup} = $1;
-        }
+                    $confkeys{mailgroup} = $1;
+                }
+                if ($line =~ /^\s*srcdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{srcdir} = $1;
+                }
+                if ($line =~ /^\s*rhpdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{rhpdir} = $1;
+                }
+                if ($line =~ /^\s*slespdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{slespdir} = $1;
+                }
+                if ($line =~ /^\s*aixdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{aixdir} = $1;
+                }
+                if ($line =~ /^\s*rhxdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{rhxdir} = $1;
+                }
+                if ($line =~ /^\s*slesxdir\s*=\s*(\S*)\s*/) {
+                    $confkeys{slesxdir} = $1;
+                }
+                if ($line =~ /^\s*ubuntudir\s*=\s*(\S*)\s*/) {
+                    $confkeys{ubuntudir} = $1;
+                }
+                if ($line =~ /^\s*xcattestconf\s*=\s*(\S*)\s*/) {
+                    $confkeys{xcattestconf} = $1;
+                }
+
     }
     return %confkeys;
 }
