@@ -35,10 +35,10 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
+
 #######################################
 # usage for arguments
 #######################################
-
 sub usage
 {
     print "Usage:xCATreg - Run xcat autotest  test cases.\n
@@ -55,10 +55,10 @@ sub usage
     print "\n";
     return;
 }
+
 #######################################
 # config for rhppc64env
 #######################################
-
 sub config_rhppc64 {
     send_msg("******************************");
     send_msg("Reading Configure");
@@ -200,10 +200,10 @@ if (exists $rhppc64config{var}){
     return 0;
 
 }
+
 #######################################
 # install xcat and init rhppc64 env
 #######################################
-
 sub init
 {
     if (exists $rhppc64config{var}){
@@ -326,6 +326,7 @@ sub init
 
 
 }
+
 #######################################
 # run all test
 #######################################
@@ -510,6 +511,9 @@ system("scp -r $MN:/autotest/result $nodedir/result");
 
 }
 
+#######################################
+# mn_install to install all mn 
+#######################################
 sub mn_install {
     my osimage="management_1408a";
     my mn="the_name_of_mn";
@@ -537,9 +541,8 @@ sub mn_install {
 #######################################
 # runcmd
 #######################################
+sub runcmd {
 
- sub runcmd
-{
     my ($cmd) = @_;
     my $rc = 0;
     $::RUNCMD_RC = 0;
@@ -555,8 +558,11 @@ sub mn_install {
 
 }
 
-sub trim
-{
+#######################################
+# trim
+#######################################
+sub trim {
+
    my $str = shift @_;
    if($str){
 #       $str =~ s/\#/__wellnumber__/g;
@@ -566,7 +572,39 @@ sub trim
    return $str;
 }
 
-########
+#######################################
+# send messages
+#######################################
+sub send_msg {
+    my $msg = shift;
+        print "xcatreg message: $msg.\n";
+}
+#######################################
+# read_conf
+#######################################
+sub read_conf{
+    my %confkeys;
+        my $keys;
+        if (!open($keys, "<$confile")) {
+            send_msg("Open configuration file error");
+        }
+        my $line;
+        while ($line = <$keys>) {
+            if ($line =~ /end/) {
+                    last;
+                }
+                if ($line =~ /^\s*log\s*=\s*(\S*)\s*/) {
+                    $confkeys{log} = $1;
+                }
+                if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {
+                $confkeys{mailgroup} = $1;
+        }
+    }
+    return %confkeys;
+}
+
+
+################################################################Main function######################################################################################
 
 
 #######################################
@@ -603,88 +641,100 @@ if ($needhelp)
     exit 0;
 }
 
-    send_msg("PARSE ARGUMENTS returns error, exit");
-my $res;
-my $confile = "regconf";
-
 #######################################
-# send messages
-#######################################
-sub send_msg {
-    my $msg = shift;
-	print "xcatreg message: $msg.\n";
-}
-#######################################
-# read_conf
-#######################################
-sub read_conf{
-    my %confkeys;
-	my $keys;
-	if (!open($keys, "<$confile")) {
-	    send_msg("Open configuration file error");
-	}
-	my $line;
-	while ($line = <$keys>) {
-	    if ($line =~ /end/) {
-		    last;
-		}
-		if ($line =~ /^\s*log\s*=\s*(\S*)\s*/) {
-		    $confkeys{log} = $1;
-		}
-		if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {	
-        	$confkeys{mailgroup} = $1;
-        }
-    }
-    return %confkeys;	
-
-
-
-#######################################
-# step 1. Parse arguments
-#######################################
-my %reghash = arg_phase();
-unless (%reghash) {
-    send_msg("PARSE ARGUMENTS returns error, exit");
-    exit;
-}
-#######################################
-# step 2. Read configuration files
+# step 1. Read configuration files
 #######################################
 my %confhash = read_conf();
 unless (%confhash) {
-    send_msg("READ CONF returns error, exit");
+    send_msg(" returns error, exit");
     exit;
 }
+
+
+#######################################
+# step 2. git update  
+#######################################
+send_msg("begin to do git update");
+
+my $gitup;
+$gitup="/tmp/gitup";
+
+#Do checkout in git repo
+$res = system(cd $confkeys{srcdir});
+if ($res !=0) {
+    send_msg("no source code directory,exit");
+    exit;
+}
+
+$res = system("git checkout $branch");
+if ($res != 0){
+    send_msg("git checkout failed");
+    exit 1;
+#}
+
+$res = system("git pull >$gitup");
+if ($res != 0){
+    send_msg("git pull failed");
+    exit 1;
+}
+
+$res = system("grep 'Already up-to-date' $gitup");
+if (($res == 0)&&( $updates_regression == 1)) {
+  send_msg("code is already at latest version. exit regresson\n");
+  exit 1;
+}
+
 
 #######################################
 # step 3. Install MNs
 #######################################
-$res = mn_install();
-if ($res) {
-    send_msg("INSTALL MNS returns error, exit");
-    exit;
-}
+#$res = mn_install();
+#if ($res) {
+#    send_msg("INSTALL MNS returns error, exit");
+#    exit;
+#}
 
 #######################################
 # step 4. Copy code to MNs
 #######################################
-$res = copy_code();
-if ($res) {
-    send_msg("COPY CODE returns error, exit");
-    exit;
+##will modify to $confkeys{srcdir};
+my $codedir = "/regression/code";
+
+##will modify to $rhppc64config{var}{MNIP} 
+my $mn="aixmn"
+
+#install dep for buildlocal
+$res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
+
+#need to copy /etc/hosts to mn
+system("scp /etc/hosts $mn:/etc");
+
+system("echo begin copy code");
+$res = system("scp -r   root\@$mn:/");
+if ($res != 0){
+    send_msg("code copy failed");
+    exit 1;
 }
+
 
 #######################################
 # step 5. Build xcat code in MNs
 #######################################
-$res = build_xcat();
-if ($res) {
-    send_msg("BUILD XCAT returns error, exit");
-    exit;
-}
+#for temp usage
+system("echo began build xcat on mn");
+#will changed /code/xcat-core to $confkeys{srcdir}  
+$res = system("xdsh $mn /code/xcat-core/buildlocal.sh CURDIR=/code/xcat-core");
+if ($res != 0){
+          send_msg("build failed on mn");
+          exit 1;
+      }
+
+system("echo build done");
+
+sleep 20;
 
 #######################################
-# step 6. Configure xCAT MN
+# step 6. Read xCAT MN's configuration
 #######################################
 mkdir $resultdir unless -d $resultdir;
 my $timestamp = `date +"%Y%m%d%H%M%S"`;
@@ -706,14 +756,11 @@ if ($res) {
 }
 
 #######################################
-# step 7. Genrate local configuration file
+# step 7. Genrate local configuration file for xcattest
 #         Do test
 #         Write log
 #######################################
-#######################################
 # step 7.1 Install xcat and init mn
-#          init
-######################################
 $res = &init;
 if ($res != 0){
     goto EXIT;
@@ -725,9 +772,8 @@ if ($res) {
     exit;
 }
 
-
 #######################################
-# step 8. Copy code and configuration
+# step 8. process result 
 #######################################
 $res = pro_result();
 if ($res) {
