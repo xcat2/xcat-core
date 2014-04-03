@@ -7,10 +7,10 @@ my @apigroups = (
         groupname => 'nodes', 
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage node objects.",
-        resources => ['allnode', 'nodeallattr', 'nodeattr', 'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'subnodes',
-                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 'bootstate',
+        resources => ['allnode', 'nodeallattr', 'nodeattr', 'nodehost', 'nodedns', 'nodedhcp', 'nodestat', 'subnodes', 
+                      'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'bootstate',
+                      'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 
                       'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',
-                      'nodestat', 'nodehost', 'nodedns', 'nodedhcp',
                       ]
     },
     {
@@ -24,7 +24,7 @@ my @apigroups = (
         groupname => 'services', 
         header => "Services Resources",
         desc => "The URI list which can be used to manage the dns and dhcp services on xCAT MN.",
-        resources => ['dns','dhcp','host']
+        resources => ['dns','dhcp','host', 'slpnodes', 'specific_slpnodes',]
     },
     {
         groupname => 'policy',

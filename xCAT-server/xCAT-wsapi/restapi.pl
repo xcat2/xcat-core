@@ -439,7 +439,7 @@ my %URIdef = (
             desc => "[URI:/nodes/{nodename}/filesyncing] - The filesyncing resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/filesyncing$',
             POST => {
-                desc => "Sync files for the node {nodename}. DataBody: {location of syncfile}",
+                desc => "Sync files for the node {nodename}.",
                 usage => "||An array of messages for performing the file syncing for the node.|",
                 example => "|Initiate an file syncing process.|POST|/nodes/node2/filesyncing|[\n   \"There were no syncfiles defined to process. File synchronization has completed.\"\n]|",
                 cmd => "updatenode",
@@ -452,8 +452,8 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*/sw$',
             POST => {
                 desc => "Perform the software maintenance process for the node {nodename}.",
-                usage => "||An array of messages for performing the software maintenance for the node.|",
-                example => "|Initiate an software maintenance process.|POST|/nodes/node2/sw|[\n   \"Performing software maintenance operations. This could take a while, if there are packages to install.\n\",\n   \"node2: Wed Mar 20 15:40:27 CST 2013 Running postscript: ospkgs\",\n   \"node2: Unable to read consumer identity\",\n   \"node2: Postscript: ospkgs exited with code 0\",\n   \"node2: Wed Mar 20 15:40:29 CST 2013 Running postscript: otherpkgs\",\n   \"node2: ./otherpkgs: no extra rpms to install\",\n   \"node2: Postscript: otherpkgs exited with code 0\",\n   \"node2: Running of Software Maintenance has completed.\"\n]|",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Initiate an software maintenance process.|POST|/nodes/node2/sw|{\n   \"node2\":[\n      \" Wed Apr  3 09:05:42 CST 2013 Running postscript: ospkgs\",\n      \" Unable to read consumer identity\",\n      \" Postscript: ospkgs exited with code 0\",\n      \" Wed Apr  3 09:05:44 CST 2013 Running postscript: otherpkgs\",\n      \" ./otherpkgs: no extra rpms to install\",\n      \" Postscript: otherpkgs exited with code 0\",\n      \" Running of Software Maintenance has completed.\"\n   ]\n}|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -463,9 +463,9 @@ my %URIdef = (
             desc => "[URI:/nodes/{nodename}/postscript] - The postscript resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/postscript$',
             POST => {
-                desc => "Run the postscripts for the node {nodename}. DataBody: {scripts:[p1,p2,p3,...]}",
-                usage => "|Put data: Json formatted scripts:[scriptname list].|An array of messages for the running postscripts for the node.|",
-                example => "|Initiate an updatenode process.|POST|/nodes/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|[\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: syslog\",\n   \"node2: Shutting down system logger: [  OK  ]\n\",\n   \"node2: Starting system logger: [  OK  ]\n\",\n   \"node2: Postscript: syslog exited with code 0\",\n   \"node2: Wed Mar 20 15:39:23 CST 2013 Running postscript: remoteshell\",\n   \"node2: \",\n   \"node2: Stopping sshd: [  OK  ]\n\",\n   \"node2: Starting sshd: [  OK  ]\n\",\n   \"node2: Postscript: remoteshell exited with code 0\",\n   \"node2: Running of postscripts has completed.\"\n]|",
+                desc => "Run the postscripts for the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {scripts:[p1,p2,p3,...]}.|$usagemsg{objreturn}|",
+                example => "|Initiate an updatenode process.|POST|/nodes/node2/postscript {\"scripts\":[\"syslog\",\"remoteshell\"]}|{\n   \"node2\":[\n      \" Wed Apr  3 09:01:33 CST 2013 Running postscript: syslog\",\n      \" Shutting down system logger: [  OK  ]\",\n      \" Starting system logger: [  OK  ]\",\n      \" Postscript: syslog exited with code 0\",\n      \" Wed Apr  3 09:01:33 CST 2013 Running postscript: remoteshell\",\n      \" Stopping sshd: [  OK  ]\",\n      \" Starting sshd: [  OK  ]\",\n      \" Postscript: remoteshell exited with code 0\",\n      \" Running of postscripts has completed.\"\n   ]\n}|",
                 cmd => "updatenode",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -475,9 +475,9 @@ my %URIdef = (
             desc => "[URI:/nodes/{nodename}/nodeshell] - The nodeshell resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/nodeshell$',
             POST => {
-                desc => "Run the command in the shell of the node {nodename}. DataBody: {command:[cmd1,cmd2]}",
-                usage => "|Put data: Json formatted command:[cmd1,cmd2].|An arry of messages for running commands on the node.|",
-                example => "|Run the \'data\' command on the node2.|POST|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|[\n   \"node2: Wed Mar 20 16:18:08 CST 2013\",\n   \"node2: anaconda-ks.cfg\nnode2: install.log\nnode2: install.log.syslog\nnode2: post.log\",\n   null\n]|",
+                desc => "Run the command in the shell of the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {command:[cmd1,cmd2]}.|$usagemsg{objreturn}|",
+                example => "|Run the \'data\' command on the node2.|POST|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|{\n   \"node2\":[\n      \" Wed Apr  3 08:30:26 CST 2013\",\n      \" testline1\",\n      \" testline2\"\n   ]\n}|",
                 cmd => "xdsh",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -487,9 +487,9 @@ my %URIdef = (
             desc => "[URI:/nodes/{nodename}/nodecopy] - The nodecopy resource for the node {nodename}",
             matcher => '^/nodes/[^/]*/nodecopy$',
             POST => {
-                desc => "Copy files to the node {nodename}. DataBody: {src:[file1,file2],target:dir}",
-                usage => "|Put data: Json formatted src file and target file or directory.|Error messages.|",
-                example => "|Copy files to the node2.|POST|/nodes/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
+                desc => "Copy files to the node {nodename}.",
+                usage => "|$usagemsg{objchparam} DataBody: {src:[file1,file2],target:dir}.|$usagemsg{non_getreturn}|",
+                example => "|Copy files /tmp/f1 and /tmp/f2 from xCAT MN to the node2:/tmp.|POST|/nodes/node2/nodecopy {\"src\":[\"/tmp/f1\",\"/tmp/f2\"],\"target\":\"/tmp\"}|no output for succeeded copy.|",
                 cmd => "xdcp",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -510,35 +510,6 @@ my %URIdef = (
             PUT_bak => {
                 desc => "Update the Children node for the node {nodename}.",
                 cmd => "rscan",
-                fhandler => \&common,
-            },
-        },
-        # for slpnode, we need use the query attribute to specify the network parameter for lsslp command
-        slpnode => {
-            desc => "[URI:/slpnode?network=xx] - The slp nodes in the xCAT cluster",
-            matcher => '^/slpnode\?.*$',
-            GET => {
-                desc => "Get all the nodes which support slp protocol in the network.",
-                cmd => "lsslp",
-                fhandler => \&common,
-            },
-            PUT => {
-                desc => "Update the discovered nodes to database.",
-                cmd => "lsslp",
-                fhandler => \&common,
-            },
-        },
-        specific_slpnode => {
-            desc => "[URI:/slpnode/{IMM;CMM;CEC;FSP...}?network=xx] - The slp nodes with specific service type in the xCAT cluster",
-            matcher => '^/slpnode/[^/]*/\?.*$',
-            GET => {
-                desc => "Get all the nodes with specific slp service type in the network.",
-                cmd => "lsslp",
-                fhandler => \&common,
-            },
-            PUT => {
-                desc => "Update the discovered nodes to database.",
-                cmd => "lsslp",
                 fhandler => \&common,
             },
         },
@@ -654,6 +625,41 @@ my %URIdef = (
                 fhandler => \&nonobjhdl,
                 outhdler => \&noout,
             }
+        },
+        # todo: for slpnode, we need use the query attribute to specify the network parameter for lsslp command
+        slpnodes => {
+            desc => "[URI:/services/slpnodes] - The nodes which support SLP in the xCAT cluster",
+            matcher => '^/services/slpnodes',
+            GET => {
+                desc => "Get all the nodes which support slp protocol in the network.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the nodes which support slp in the network.|GET|/services/slpnodes|{\n   \"ngpcmm01\":{\n      \"mpa\":\"ngpcmm01\",\n      \"otherinterfaces\":\"10.1.9.101\",\n      \"serial\":\"100037A\",\n      \"mtm\":\"789392X\",\n      \"hwtype\":\"cmm\",\n      \"side\":\"2\",\n      \"objtype\":\"node\",\n      \"nodetype\":\"mp\",\n      \"groups\":\"cmm,all,cmm-zet\",\n      \"mgt\":\"blade\",\n      \"hidden\":\"0\",\n      \"mac\":\"5c:f3:fc:25:da:99\"\n   },\n   ...\n}|",
+                cmd => "lsslp",
+                fhandler => \&nonobjhdl,
+                outhdler => \&defout,
+            },
+            PUT_bakcup => {
+                desc => "Update the discovered nodes to database.",
+                cmd => "lsslp",
+                fhandler => \&common,
+            },
+        },
+        specific_slpnodes => {
+            desc => "[URI:/services/slpnodes/{CEC|FRAME|MM|IVM|RSA|HMC|CMM|IMM2|FSP...}] - The slp nodes with specific service type in the xCAT cluster",
+            matcher => '^/services/slpnodes/[^/]*$',
+            GET => {
+                desc => "Get all the nodes with specific slp service type in the network.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the CMM nodes which support slp in the network.|GET|/services/slpnodes/CMM|{\n   \"ngpcmm01\":{\n      \"mpa\":\"ngpcmm01\",\n      \"otherinterfaces\":\"10.1.9.101\",\n      \"serial\":\"100037A\",\n      \"mtm\":\"789392X\",\n      \"hwtype\":\"cmm\",\n      \"side\":\"2\",\n      \"objtype\":\"node\",\n      \"nodetype\":\"mp\",\n      \"groups\":\"cmm,all,cmm-zet\",\n      \"mgt\":\"blade\",\n      \"hidden\":\"0\",\n      \"mac\":\"5c:f3:fc:25:da:99\"\n   },\n   \"Server--SNY014BG27A01K\":{\n      \"mpa\":\"Server--SNY014BG27A01K\",\n      \"otherinterfaces\":\"10.1.9.106\",\n      \"serial\":\"100CF0A\",\n      \"mtm\":\"789392X\",\n      \"hwtype\":\"cmm\",\n      \"side\":\"1\",\n      \"objtype\":\"node\",\n      \"nodetype\":\"mp\",\n      \"groups\":\"cmm,all,cmm-zet\",\n      \"mgt\":\"blade\",\n      \"hidden\":\"0\",\n      \"mac\":\"34:40:b5:df:0a:be\"\n   }\n}|",
+                cmd => "lsslp",
+                fhandler => \&nonobjhdl,
+                outhdler => \&defout,
+            },
+            PUT_backup => {
+                desc => "Update the discovered nodes to database.",
+                cmd => "lsslp",
+                fhandler => \&common,
+            },
         },
     },
     
@@ -1390,11 +1396,11 @@ sub infoout {
     }
 
     # for nodeshell (xdsh), group msg with node name
-    if ($param->{'resourcename'} eq "nodeshell") {
+    if ($param->{'resourcename'} =~ /(nodeshell|postscript|software_maintenance)/) {
         my $jsonnode;
         foreach (@{$json}) {
             if (/^(\S+):(.*)$/) {
-                push @{$jsonnode->{$1}}, $2;
+                push @{$jsonnode->{$1}}, $2 if ($2 !~ /^\s*$/);
             }
         }
         addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
@@ -1651,7 +1657,7 @@ sub actionhdl {
         if (isGET()) {
             push @args, '-z';
         }
-    }
+    } 
 
     push @{$request->{arg}}, @args;  
     my $req = genRequest();
@@ -1666,11 +1672,22 @@ sub nonobjhdl {
     my $params = shift;
 
     my @args;
+    my @urilayers = @{$params->{'layers'}};
 
     # set the command name
     $request->{command} = $params->{'cmd'};
     if ($params->{'resourcename'} =~ /(dns|dhcp)/) {
         push @args, '-n';
+    } elsif ($params->{'resourcename'} eq "slpnodes") {
+        if (isGET()) {
+            push @args, '-z';
+        }
+    } elsif ($params->{'resourcename'} eq "specific_slpnodes") {
+        if (isGET()) {
+            push @args, "-z";
+            push @args, "-s";
+            push @args, $urilayers[2];
+        }
     }
     
     push @{$request->{arg}}, @args;  
@@ -1961,8 +1978,7 @@ sub filterData {
 
     my $outputdata;
     my $outputerror;
-    # set the default errorcode to '1'
-    $outputerror->{errorcode} = '1';
+    my @errmsgindata; # put the out->{data} for error message output
     
     #trim the serverdone message off
     foreach (@{$data}) {
@@ -1982,7 +1998,21 @@ sub filterData {
             
             if (defined ($_->{errorcode})) {
                 $outputerror->{errorcode} = $_->{errorcode}->[0];
-            } 
+            } else {
+                # set the default errorcode to '1'
+                $outputerror->{errorcode} = '1';
+            }
+        } elsif (defined($_->{errorcode}) && $_->{errorcode}->[0] ne "0") { # defined errorcode, but not define the error msg
+            $outputerror->{errorcode} = $_->{errorcode}->[0];
+            if (defined ($_->{data}) && ref($_->{data}->[0]) ne "HASH") {
+                # to get the message in data for the case that errorcode is set but no 'error' attr
+                push @errmsgindata, $_->{data}->[0];
+            }
+            if (@errmsgindata) {
+                push @{$outputerror->{error}}, @errmsgindata;
+            } else {
+                push @{$outputerror->{error}}, "Failed with unknown reason.";
+            }
         }
 
         # handle the output like 
@@ -1997,12 +2027,15 @@ sub filterData {
             }
             if (defined ($_->{node}->[0]->{errorcode})) {
                 $outputerror->{errorcode} = $_->{node}->[0]->{errorcode}->[0];
-            } 
-        }
+            } else {
+                # set the default errorcode to '1'
+                $outputerror->{errorcode} = '1';
+            }
+        } 
 
 
         if (exists($_->{serverdone})) {
-            if (defined ($outputerror->{error})) {
+            if (defined ($outputerror->{error}) || defined ($outputerror->{error})) {
                  addPageContent($JSON->encode($outputerror));
                  #return the default http error code to be 403 forbidden
                  sendResponseMsg($STATUS_FORBIDDEN);
@@ -2011,6 +2044,10 @@ sub filterData {
                 next;
             }
         } else {
+            if (defined ($_->{data}) && ref($_->{data}->[0]) ne "HASH") {
+                # to get the message in data for the case that errorcode is set but no 'error' attr
+                push @errmsgindata, $_->{data}->[0];
+            }
             push @{$outputdata}, $_;
         }        
     }
