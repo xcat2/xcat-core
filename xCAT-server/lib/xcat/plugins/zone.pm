@@ -590,11 +590,11 @@ sub usage
     my $usagemsg2="";
     if ($command eq "mkzone") {
        $usagemsg1  = " mkzone -h \n mkzone -v \n";
-       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n        [-a <noderange>] [-g] [-f] [-s <yes/no>]";
+       $usagemsg2  = " mkzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key>] \n        [-a <noderange>] [-g] [-f] [-s <yes/no>]";
     } else {
        if ($command eq "chzone") {
            $usagemsg1  = " chzone -h \n chzone -v \n";
-           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] [-s <yes/no>]";
+           $usagemsg2  = " chzone <zonename> [-V] [--defaultzone] [-k <full path to the ssh RSA private key>] \n      [-K] [-a <noderange>] [-r <noderange>] [-g] [-s <yes/no>]";
        } else {
             if ($command eq "rmzone") {
                $usagemsg1  = " rmzone -h \n rmzone -v \n";
