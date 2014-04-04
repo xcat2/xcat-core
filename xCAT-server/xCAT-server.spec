@@ -16,18 +16,22 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 AutoReqProv: no
 %endif
 
-# AIX will build with an arch of "ppc"
-# also need to fix Requires for AIX
-%ifos linux
-BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser grub2-xcat
-Obsoletes: atftp-xcat
-%endif
-
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
 %define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
+
+# AIX will build with an arch of "ppc"
+# also need to fix Requires for AIX
+%ifos linux
+BuildArch: noarch
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
+Obsoletes: atftp-xcat
+%endif
+
+%if %notpcm
+Requires: grub2-xcat
+%endif
 
 %if %fsm
 # nothing needed here
