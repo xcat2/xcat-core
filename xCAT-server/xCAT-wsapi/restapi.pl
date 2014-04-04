@@ -729,15 +729,21 @@ my %URIdef = (
             desc => "[URI:/osimage] - The osimage resource.",
             matcher => '^\/osimage$',
             GET => {
-                desc => "Get all the osimage in xCAT.",
+                desc => "Get all the osimage in xCAT.",                usage => "||Json format: An array of osimage names.|",
+                example => "|Get all the osimage names.|GET|/osimage|[\n   \"sles11.2-x86_64-install-compute\",\n   \"sles11.2-x86_64-install-iscsi\",\n   \"sles11.2-x86_64-install-iscsiibft\",\n   \"sles11.2-x86_64-install-service\"\n]|",
+
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
             },
             POST => {
                 desc => "Create the osimage resources base on the parameters specified in the Data body. DataBody: {iso:isoname|file:filename|node:nodename,params:[{attr1:value,attr2:value2}]}",
+                usage => "|$usagemsg{objchparam} DataBody: {iso:isoname\\file:filename\\node:nodename,params:[{attr1:value,attr2:value2}]}|$usagemsg{non_getreturn}|",
+                example => "|Create osimage resouces based on the ISO specified|POST|/osimage {\"iso\":\"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso\"}||",
+
                 cmd => "copycds",
                 fhandler => \&imgophdl,
+                outhdler => \&noout,
             },
         },
         osimage_allattr => {
@@ -745,24 +751,35 @@ my %URIdef = (
             matcher => '^\/osimage\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for the osimage {imgname}.",
+                usage => "|$usagemsg{objchparam}|$usagemsg{non_getreturn}|",
+                example => "|Get the attributes for the specified osimage.|GET|/osimage/sles11.2-x86_64-install-compute|{\n   \"sles11.2-x86_64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"profile\":\"compute\",\n      \"template\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.tmpl\",\n      \"pkglist\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.pkglist\",\n      \"osvers\":\"sles11.2\",\n      \"osarch\":\"x86_64\",\n      \"osname\":\"Linux\",\n      \"imagetype\":\"linux\",\n      \"otherpkgdir\":\"/install/post/otherpkgs/sles11.2/x86_64\",\n      \"osdistroname\":\"sles11.2-x86_64\",\n      \"pkgdir\":\"/install/sles11.2/x86_64\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
                 desc => "Change the attibutes for the osimage {imgname}.",
+                usage => "|$usagemsg{objchparam}|$usagemsg{non_getreturn}|",
+                example => "|Change the 'osvers' and 'osarch' attributes for the osiamge.|PUT|/osimage/sles11.2-x86_64-install-compute/ {\"osvers\":\"sles11.3\",\"osarch\":\"ppc64\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             },
             POST => {
                 desc => "Create the osimage {imgname}. DataBody: {attr1:v1,att2:v2...}.",
+                usage => "|$usagemsg{objchparam}|$usagemsg{non_getreturn}|",
+                example => "|Create a osimage obj with the specified parameters.|POST|/osimage/mysles/ {\"osvers\":\"sles11.3\",\"osarch\":\"ppc64\",\"osname\":\"Linux\",\"provmethod\":\"install\",\"profile\":\"compute\"}||",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the osimage {imgname}.",
+                usage => "|$usagemsg{objchparam}|$usagemsg{non_getreturn}|",
+                example => "|Delete the specified osimage.|DELETE|/osimage/mysles||",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             },
         },
         osimage_attr => {

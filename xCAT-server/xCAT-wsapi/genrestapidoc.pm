@@ -45,6 +45,12 @@ my @apigroups = (
         resources => ['table_nodes', 'table_rows']
     },
     {
+        groupname => 'osimage',
+        header => "Osimage resources",
+        desc => "URI list which can be used to query, create osimage resources.",
+        resources => ['osimage', 'osimage_allattr']
+    },
+    {
     #    groupname => 'network', 
         resources => ['network', 'network_allattr']
     },
