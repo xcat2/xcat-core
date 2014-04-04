@@ -663,6 +663,11 @@ sub mkinstall
 
 	    my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
 	    my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
+            
+            # for powerkvm VM ubuntu LE#
+            if ($arch =~ /ppc64/i and $platform eq "ubuntu") {
+	        $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
+            }
 
 	    if (-r "$prescript"){
             $preerr =
@@ -687,6 +692,12 @@ sub mkinstall
             $callback->({node =>[{name => [$node], error => [$errtmp], errorcode => [1]}]});
             next;
         }
+
+        if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz")) {
+            $callback->({error => ["The netboot initrd not found in $pkgdir/install/netboot, pls download first"], 
+                         errorcode=>[1]});
+             next;
+        }
         my $tftpdir = "/tftpboot";
 
         # create the node-specific post scripts
@@ -697,7 +708,7 @@ sub mkinstall
 
         if (
 	       (
-               $arch =~ /x86/ and
+               ($arch =~ /x86/ and
 		       (
                     ( -r "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
                       and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
@@ -710,6 +721,14 @@ sub mkinstall
                       and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
                     )
 		       )
+               ) or (
+                   $arch =~ /ppc64/i and (
+                       -r "$pkgdir/install/vmlinux"
+                       and $kernpath = "$pkgdir/install/vmlinux"
+                       and -r "$pkgdir/install/netboot/initrd.gz"
+                       and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
+                   )
+               )
 
 		   )
        ){
