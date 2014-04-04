@@ -4,7 +4,7 @@ B<opsaddimage> - It adds or removes nodes for the vlan.
 
 =head1 SYNOPSIS
 
-B<opsaddimage> I<image1,image2,...> B<-n> I<new_name1,new_name2,...> [B<-c> I<controller>]  
+B<opsaddimage> I<image1,image2,...> B<-n> I<new_name1,new_name2,...> [B<-c> I<controller>] [B<-V>|B<--verbose>] 
 
 B<opsaddimage> [B<-h>|B<--help>]
 
@@ -34,6 +34,8 @@ I<image1,image1...> a comma separated xCAT images names.
 =item B<-h|--help>     Display usage message.
 
 =item B<-v|--version>  The Command Version.
+
+=item B<-V|--verbose>  Verbose output.
 
 =back
 

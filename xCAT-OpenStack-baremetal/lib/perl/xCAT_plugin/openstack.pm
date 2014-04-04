@@ -67,11 +67,13 @@ sub opsaddbmnode {
 	
 	my $help;
 	my $version;
+	my $verbose;
 	my $host;
 	
     if(!GetOptions(
             'h|help'      => \$help,
             'v|version'   => \$version,
+            'V|verbose'   => \$verbose,
             's=s'         => \$host,
        ))
     {
@@ -243,7 +245,18 @@ sub opsaddbmnode {
 			$disk = 1;
 		}				
 		
-		#print "$bmc, $bmc_user, $bmc_password, $mac, $cpu, $memory, $disk\n";
+		if ($verbose) {
+			my $rsp;
+			push @{$rsp->{data}}, "Attributes gathered from the xCAT database:";
+			push @{$rsp->{data}}, "  bmc=$bmc";
+			push @{$rsp->{data}}, "  bmc_user=$bmc_user";
+			push @{$rsp->{data}}, "  bmc_password=$bmc_password";
+			push @{$rsp->{data}}, "  mac=$mac";
+			push @{$rsp->{data}}, "  cpu=$cpu";
+			push @{$rsp->{data}}, "  memory=$memory";
+			push @{$rsp->{data}}, "  disk=$disk";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 
 		#call OpenStack command to add the node into the OpenStack as
         #a baremetal node.
@@ -264,6 +277,13 @@ sub opsaddbmnode {
 		$cmd_tmp .= " $host $cpu $memory $disk $mac";
  
 		my $cmd = qq~source \~/openrc;$cmd_tmp~;
+		if ($verbose) {
+			my $rsp;
+			push @{$rsp->{data}}, "The command to run on $host:";
+			push @{$rsp->{data}}, "  $cmd";
+			push @{$rsp->{data}}, "  ";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 		#print "cmd=$cmd\n";
 		my $output =
 			xCAT::InstUtils->xcmd($callback, $doreq, "xdsh", [$host], $cmd, 0);
@@ -271,8 +291,17 @@ sub opsaddbmnode {
 			my $rsp;
 			push @{$rsp->{data}}, "OpenStack creating baremetal node $node:";
 			push @{$rsp->{data}}, "$output";
+			push @{$rsp->{data}}, "The command was: $cmd";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
+		} else {
+			if (($verbose) && ($output)) {
+				my $rsp;
+				push @{$rsp->{data}}, "$output";
+				push @{$rsp->{data}}, "  ";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
 		}
+
 	}
 }
 
@@ -296,6 +325,7 @@ sub opsaddimage {
 	
 	my $help;
 	my $version;
+	my $verbose;
 	#my $cloud;
 	my $ops_img_names;
     my $controller;
@@ -303,6 +333,7 @@ sub opsaddimage {
     if(!GetOptions(
             'h|help'      => \$help,
             'v|version'   => \$version,
+            'V|verbose'   => \$verbose,
             'c=s'         => \$controller,
 			'n=s'         => \$ops_img_names,
        ))
@@ -391,16 +422,46 @@ sub opsaddimage {
 		}
         my $cmd_tmp = "glance image-create --name $new_name --public --disk-format qcow2 --container-format bare --property xcat_image_name=\'$image\' < /tmp/$image.qcow2";
 
-		my $cmd = qq~touch /tmp/$image.qcow2;source \~/openrc;$cmd_tmp;rm /tmp/$image.qcow2~;
-		#print "cmd=$cmd\ncontroller=$controller\n";
+		my $cmd = qq~touch /tmp/$image.qcow2;source \~/openrc;$cmd_tmp~;
+		if ($verbose) {
+			my $rsp;
+			push @{$rsp->{data}}, "The command to run on $controller:";
+			push @{$rsp->{data}}, "   $cmd";
+			push @{$rsp->{data}}, "  ";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 		my $output =
 			xCAT::InstUtils->xcmd($callback, $doreq, "xdsh", [$controller], $cmd, 0);
 		if ($::RUNCMD_RC != 0) {
 			my $rsp;
 			push @{$rsp->{data}}, "OpenStack creating image $new_name:";
 			push @{$rsp->{data}}, "$output";
+			push @{$rsp->{data}}, "The command was: $cmd";
 			xCAT::MsgUtils->message("E", $rsp, $callback);
+		} else {
+			if (($verbose) && ($output)) {
+				my $rsp;
+				push @{$rsp->{data}}, "$output";
+				push @{$rsp->{data}}, "  ";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
 		}		 
+		my $cmd1 = qq~rm /tmp/$image.qcow2~;
+		if ($verbose) {
+			my $rsp;
+			push @{$rsp->{data}}, "The command to run on $controller:";
+			push @{$rsp->{data}}, "  $cmd1";
+			push @{$rsp->{data}}, "  ";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+		my $output1 =
+			xCAT::InstUtils->xcmd($callback, $doreq, "xdsh", [$controller], $cmd1, 0);
+		if (($verbose) && ($output1)) {
+			my $rsp;
+			push @{$rsp->{data}}, "$output1";
+			push @{$rsp->{data}}, "  ";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 	}
 }
 
@@ -845,7 +906,7 @@ sub opsaddbmnode_usage {
 
     $rsp->{data}->[0]= "Usage: opsaddbmnode -h";
     $rsp->{data}->[1]= "       opsaddbmnode -v";
-    $rsp->{data}->[2]= "       opsaddbmnode <noderange> -s <service_host>";
+    $rsp->{data}->[2]= "       opsaddbmnode <noderange> -s <service_host> [-V]";
     $cb->($rsp);
 }
 
@@ -863,7 +924,7 @@ sub opsaddimage_usage {
 
     $rsp->{data}->[0]= "Usage: opsaddimage -h";
     $rsp->{data}->[1]= "       opsaddimage -v";
-    $rsp->{data}->[2]= "       opsaddimage <image1,image2...> [-n <new_name1,new_name2...> -c <controller>";
+    $rsp->{data}->[2]= "       opsaddimage <image1,image2...> [-n <new_name1,new_name2...> -c <controller> [-V]";
     $cb->($rsp);
 }
 

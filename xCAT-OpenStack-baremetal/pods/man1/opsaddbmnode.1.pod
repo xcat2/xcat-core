@@ -4,7 +4,7 @@ B<opsaddbmnode> - It adds xCAT baremetal nodes to an OpenStack cloud.
 
 =head1 SYNOPSIS
 
-B<opsaddbmnode> I<noderange> B<-s> I<service_host>
+B<opsaddbmnode> I<noderange> B<-s> I<service_host> [B<-V>|B<--verbose>]
 
 B<opsaddbmnode> [B<-h>|B<--help>]
 
@@ -58,6 +58,8 @@ I<noderage> is a comma separated node or node group names.
 =item B<-h|--help>     Display usage message.
 
 =item B<-v|--version>  The Command Version.
+
+=item B<-V|--verbose>  Verbose output.
 
 =back
 
