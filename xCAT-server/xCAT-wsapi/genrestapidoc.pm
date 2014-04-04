@@ -29,14 +29,14 @@ my @apigroups = (
     {
         groupname => 'policy',
         header => "Policy Resources",
-        desc => "URI list which can be used to create, query, change and manage policy entries.",
+        desc => "The URI list which can be used to create, query, change and manage policy entries.",
         resources => ['policy', 'policy_allattr', 'policy_attr']
     },
     {
         groupname => 'globalconf',
         header => "Global Configuration Resources",
-        desc => "URI list which can be used to create, query, change global configuration.",
-        resources => ['all_site']
+        desc => "The URI list which can be used to create, query, change global configuration.",
+        resources => ['all_site', 'site']
     },
     {
         groupname => 'table',
