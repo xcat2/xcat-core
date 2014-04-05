@@ -1,8 +1,6 @@
-start:Linux_diskless_installation_flat_ppc64
+start:Linux_diskless_installation_flat_x86_64_sles
 os:Linux
-cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
-check:rc==0
-cmd:makedns
+cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
@@ -11,17 +9,20 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 60
-cmd:getmacs $$CN -f -D
-check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:service dhcpd restart
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases| grep $$CN
+cmd:cat /var/lib/dhcp/db/dhcpd.leases| grep $$CN
 check:output=~$$CN
-cmd:copycds $$ISO
+cmd:if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi
+check:rc==0
+cmd:if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi
+check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__ synclists=/install/custom/netboot/sles/compute.synclist
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/x86_64/compute
 check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
@@ -29,9 +30,11 @@ cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:rnetboot $$CN
+cmd:rsetboot $$CN net
 check:rc==0
-cmd:sleep 300 
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 200 
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date
@@ -39,9 +42,11 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:nodeset $$CN osimage
 check:rc==0
-cmd:rnetboot $$CN
+cmd:rsetboot $$CN net
 check:rc==0
-cmd:sleep 300
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 200
 cmd:lsdef -l $$CN | grep status
 check:output=~booted
 cmd:xdsh $$CN date

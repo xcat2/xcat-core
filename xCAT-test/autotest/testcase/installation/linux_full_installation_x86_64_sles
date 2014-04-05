@@ -1,8 +1,6 @@
-start:Linux_full_installation_flat_ppc64
+start:Linux_full_installation_flat_x86_64_sles
 os:Linux
-cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
-check:rc==0
-cmd:makedns 
+cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
@@ -11,21 +9,21 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 60
-cmd:getmacs $$CN -f -D
-check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 cmd:service dhcpd restart
 check:rc==0
-cmd:copycds $$ISO
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/sles/compute.synclist
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rnetboot $$CN
+cmd:rsetboot $$CN net
 check:rc==0
-cmd:sleep 1200
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status
@@ -35,9 +33,11 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:nodeset $$CN osimage
 check:rc==0
-cmd:rnetboot $$CN
+cmd:rsetboot $$CN net
 check:rc==0
-cmd:sleep 1200
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status

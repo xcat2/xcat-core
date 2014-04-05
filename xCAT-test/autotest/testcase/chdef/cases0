@@ -22,21 +22,6 @@ cmd:rmdef -t node testnode
 check:rc==0
 end
 
-start:chdef_group_p
-cmd:chdef abcnode1 -p groups=abc
-check:rc==0
-cmd:chdef abcnode2 -p groups=abcabc
-check:rc==0
-cmd:chdef -t group abc members=abcnode2
-check:rc==0
-cmd:nodels abc
-check:output!~abcnode1
-check:output=~abcnode2
-cmd:rmdef abcnode1
-cmd:rmdef abcnode2
-end
-
-
 start:chdef_t_network
 description:chdef -t network
 cmd:chdef -t network -o testnetwork net=111.222.33.0 mask=255.255.255.254
@@ -129,6 +114,23 @@ check:rc==0
 cmd:rmdef -t node -o testnode1-testnode4
 check:rc==0
 end
+
+
+start:chdef_group_p
+cmd:chdef abcnode1 -p groups=abc
+check:rc==0
+cmd:chdef abcnode2 -p groups=abcabc
+check:rc==0
+cmd:chdef -t group abc members=abcnode2
+check:rc==0
+cmd:nodels abc
+check:output!~abcnode1
+check:output=~abcnode2
+cmd:rmdef abcnode1
+cmd:rmdef abcnode2
+end
+
+
 
 start:chdef_dynamic_group
 description:chdef with dynamic node group

@@ -30,6 +30,8 @@ cmd:xdsh $$SN df|grep /install;if [ $? -ne 0 ] ;then xdsh $$SN mount $$MN:/insta
 check:rc==0
 cmd:nodeset $$CNWITHSN osimage=__GETNODEATTR($$CNWITHSN,os)__-__GETNODEATTR($$CNWITHSN,arch)__-netboot-compute
 check:rc==0
+cmd:rsetboot $$CNWITHSN net
+check:rc==0
 cmd:rpower $$CNWITHSN reset
 check:rc==0
 cmd:sleep 200 
@@ -51,6 +53,8 @@ cmd:xdsh $$CNWITHSN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:nodeset $$CNWITHSN netboot
+check:rc==0
+cmd:rsetboot $$CNWITHSN net
 check:rc==0
 cmd:rpower $$CNWITHSN reset
 check:rc==0
