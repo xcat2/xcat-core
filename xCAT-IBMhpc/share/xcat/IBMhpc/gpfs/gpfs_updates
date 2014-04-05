@@ -41,8 +41,8 @@ if [ $OS != "AIX" ]; then
         mkdir -p /tmp/gpfs_updates
         rm -f -R /tmp/gpfs_updates/*
         cd /tmp/gpfs_updates
-#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$UPDATES_DIR/*.rpm 2> /tmp/wget.log
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=4 --reject "index.html*"  --no-parent http://$SITEMASTER$INSTALL_DIR/$UPDATES_DIR/ 2> /tmp/wget.log
+#        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=3 ftp://$MASTER/$UPDATES_DIR/*.rpm 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=4 --reject "index.html*"  --no-parent http://$MASTER$INSTALL_DIR/$UPDATES_DIR/ 2> /tmp/wget.log
         if [ -n "`ls *.rpm 2> /dev/null`" ] ; then
             rpm -Uvh *.rpm
         fi
