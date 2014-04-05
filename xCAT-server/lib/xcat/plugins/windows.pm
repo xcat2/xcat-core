@@ -412,7 +412,7 @@ sub mkinstall
                 $custmplpath = "$installroot/custom/install/hyperv";
                 $tmplpath = "$::XCATROOT/share/xcat/install/hyperv";
             }
-            my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
+            $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
             if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($tmplpath, $profile, $os, $arch); }
         }
         
