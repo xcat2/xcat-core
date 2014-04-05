@@ -276,7 +276,7 @@ sub opsaddbmnode {
 		}
 		$cmd_tmp .= " $host $cpu $memory $disk $mac";
  
-		my $cmd = qq~source \~/openrc;$cmd_tmp~;
+		my $cmd = qq~$cmd_tmp~;
 		if ($verbose) {
 			my $rsp;
 			push @{$rsp->{data}}, "The command to run on $host:";
@@ -422,7 +422,7 @@ sub opsaddimage {
 		}
         my $cmd_tmp = "glance image-create --name $new_name --public --disk-format qcow2 --container-format bare --property xcat_image_name=\'$image\' < /tmp/$image.qcow2";
 
-		my $cmd = qq~touch /tmp/$image.qcow2;source \~/openrc;$cmd_tmp~;
+		my $cmd = qq~touch /tmp/$image.qcow2;$cmd_tmp~;
 		if ($verbose) {
 			my $rsp;
 			push @{$rsp->{data}}, "The command to run on $controller:";
