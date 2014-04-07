@@ -243,6 +243,7 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xC
 	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi		# do not build xCAT-SoftLayer on aix
 	if $GREP $rpmname $GITUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		maker $rpmname
