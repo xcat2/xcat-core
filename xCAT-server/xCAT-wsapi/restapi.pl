@@ -1025,6 +1025,27 @@ my %URIdef = (
         },
     },
 
+    #### definition for tokens resources
+    tokens => {
+        tokens => {
+            desc => "[URI:/tokens] - The authentication token resource.",
+            matcher => '^\/tokens',
+            POST => {
+                desc => "Create a token.",
+                usage => "||An array of all the global configuration list.|",
+                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"password\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
+                fhandler => \&nonobjhdl,
+                outhdler => \&tokenout,
+            },
+            POST_backup => {
+                desc => "Add the site attributes. DataBody: {attr1:v1,att2:v2...}.",
+                usage => "|?|?|",
+                example => "|?|?|?|?|",
+                cmd => "chdef",
+                fhandler => \&sitehdl,
+            },
+        },
+    },
 );
 
 # supported formats
@@ -1204,11 +1225,13 @@ if ($#layers < 0) {
 }
 
 # set the user and password to access xcatd
-# todo: replace with using certificates or an api key
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
 $request->{becomeuser}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
+
+# use the token if it is specified with X_AUTH_TOKEN head
+$request->{tokens}->[0]->{tokenid}->[0] = $ENV{'HTTP_X_AUTH_TOKEN'} if (defined($ENV{'HTTP_X_AUTH_TOKEN'}));
 
 # find and invoke the correct handler and output handler functions
 my $outputdata;
@@ -1507,6 +1530,27 @@ sub actionout {
     addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
 }
 
+# hanlde the output which has the token id
+# handle the input like  
+# ===raw xml input
+#  $d->{data}->{token}->{id}
+#  $d->{data}->{token}->{expire}
+sub tokenout {
+    my $data = shift;
+
+    my $json;
+    foreach my $d (@$data) {
+        if (defined ($d->{data}) && defined ($d->{data}->[0]->{token})) {
+            $json->{token}->{id} = $d->{data}->[0]->{token}->[0]->{id}->[0];
+            $json->{token}->{expire} = $d->{data}->[0]->{token}->[0]->{expire}->[0];
+        }
+    }
+
+    if ($json) {
+        addPageContent($JSON->encode($json));
+    }
+}
+
 # This is the general callback subroutine for PUT/POST/DELETE methods
 # when this subroutine is called, that means the operation has been done successfully
 # The correct output is 'null'
@@ -1721,6 +1765,9 @@ sub nonobjhdl {
             push @args, "-s";
             push @args, $urilayers[2];
         }
+    } elsif ($params->{'resourcename'} eq "tokens") {
+        $request->{gettoken}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
+        $request->{gettoken}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
     }
     
     push @{$request->{arg}}, @args;  
@@ -2072,10 +2119,11 @@ sub filterData {
                  addPageContent($JSON->encode($outputerror));
                  #return the default http error code to be 403 forbidden
                  sendResponseMsg($STATUS_FORBIDDEN);
-            } else {
+            #} else {
                 #otherwise, ignore the 'servicedone' data
-                next;
+            #    next;
             }
+            push @{$outputdata}, $_;
         } else {
             if (defined ($_->{data}) && ref($_->{data}->[0]) ne "HASH") {
                 # to get the message in data for the case that errorcode is set but no 'error' attr

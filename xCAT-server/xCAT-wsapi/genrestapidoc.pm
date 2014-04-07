@@ -4,6 +4,12 @@ package genrestapidoc;
 
 my @apigroups = (
     {
+        groupname => 'tokens',
+        header => "Token Resources",
+        desc => "The URI list which can be used to create tokens for account .",
+        resources => ['tokens'],
+    },
+    {
         groupname => 'nodes', 
         header => "Node Resources",
         desc => "The URI list which can be used to create, query, change and manage node objects.",
