@@ -1023,7 +1023,7 @@ sub dolitesetup
         $nrange = join(',',@nodel);
     }
 
-	my @flist = xCAT::Utils->runcmd("/opt/xcat/bin/litefile $nrange", -1);
+	@flist = xCAT::Utils->runcmd("/opt/xcat/bin/litefile $nrange", -1);
     if (scalar(@flist) > 0) {
         foreach my $l (@flist) {
 			my ($j1, $j2, $file) = split /\s+/, $l;
