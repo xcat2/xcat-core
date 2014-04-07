@@ -154,6 +154,13 @@ sub preprocess_request
     #	- either the NIMprime attr of the site table or the management node
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
+    if (!defined($nimprime))
+    {
+       my $rsp={};
+       $rsp->{error}->[0] = "Could not determine nimprime. Check if nimprime defined in site table or site table master is not resolvable to the MN name.";
+       xCAT::MsgUtils->message("E", $rsp, $cb,1);
+       return undef;
+    }
     my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
     if ($nimprimeip =~ /:/) #IPv6
     {
