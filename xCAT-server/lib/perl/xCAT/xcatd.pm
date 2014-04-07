@@ -10,6 +10,7 @@ use xCAT::Table;
 use xCAT::MsgUtils;
 use Data::Dumper;
 use xCAT::NodeRange;
+use xCAT::Utils;
 #--------------------------------------------------------------------------------
 
 =head1    xCAT::XCATD
@@ -270,4 +271,67 @@ sub validate {
    xCAT::MsgUtils->message("S","Request matched no policy rule: peername=$peername, peerhost=$peerhost  ".$request->{command}->[0]);
   return 0;
 }
+
+my $tokentimeout = 86400;  # one day
+# this subroutine search the token table 
+# 1. find the existed token entry for the user and reset the expire time
+# 1.1. if not find existed token, create a new one and add it to token table
+# 2. clean up the expired token
+#
+# this subroutine is called after the account has been authorized 
+sub gettoken {
+    my $class=shift;
+    my $req = shift;
+
+    my $user = $req->{gettoken}->[0]->{username}->[0];
+    my $tokentb = xCAT::Table->new('token');
+    unless ($tokentb) {
+        return undef;
+    }
+    my $tokens = $tokentb->getAllEntries;
+    my $expiretime = time() + $tokentimeout;
+    foreach my $token (@{$tokens}) {
+        if ($token->{username} eq $user) {
+            #delete old token
+            $tokentb->delEntries({'tokenid'=>$token->{tokenid}});
+        } else {
+            #clean the expired token
+            if ($token->{expire} > $expiretime) {
+                $tokentb->delEntries({'tokenid'=>$token->{tokenid}});
+            }
+        }
+    }
+    
+    # create a new token for this request
+    my $uuid = xCAT::Utils->genUUID();
+    $tokentb->setAttribs({tokenid=>$uuid, username => $user}, {expire => $expiretime});
+    $tokentb->close();
+   
+    return ($uuid, $expiretime);
+}
+
+# verify the token has correct entry in token table and expire time is not exceeded.
+sub verifytoken {
+    my $class=shift;
+    my $req = shift;
+
+    my $tokenid = $req->{tokens}->[0]->{tokenid}->[0];
+    my $tokentb = xCAT::Table->new('token');
+    unless ($tokentb) {
+        return undef;
+    }
+    my $token = $tokentb->getAttribs({'tokenid' => $tokenid}, ('username', 'expire'));
+    if (defined ($token) && defined ($token->{'username'}) && defined ($token->{'expire'})) {
+        my $expiretime = time() + $tokentimeout;
+        if ($token->{'expire'} < time()) {
+            $tokentb->delEntries({'tokenid'=>$token->{tokenid}});
+            return undef;
+        } else {
+            return $token->{'username'};
+        }
+    } else {
+        return undef;
+    }
+}
+
 1;

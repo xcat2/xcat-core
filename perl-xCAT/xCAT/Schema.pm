@@ -1568,7 +1568,18 @@ hwinv => {
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
 },
-
+token => {
+    cols => [qw(tokenid username expire comments disable)],
+    keys => [qw(tokenid)],
+    table_desc => 'The token of users for authentication.',
+    descriptions => {
+        tokenid => 'It is a UUID as an unified identify for the user.',
+        username => 'The user name.',
+        expire => 'The expire time for this token.',
+        comments => 'Any user-provided notes.',
+        disable =>  "Set to 'yes' or '1' to comment out this row.",
+    },
+},
 ); # end of tabspec definition
 
 

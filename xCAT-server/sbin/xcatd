@@ -2096,6 +2096,40 @@ sub service_connection {
             delete($req->{becomeuser}); #Remove it to keep it from view
         }
 
+        # If the request is to aquire a token for a specific account
+        if (defined $req->{gettoken}) {
+            # authencitate the username:password
+            $peername=becomeuser($req->{gettoken}->[0]->{username}->[0],
+                                 $req->{gettoken}->[0]->{password}->[0]);
+            my $resp;
+            if ($peername) {
+                # for a valid account, get a token
+                my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
+                my ($sec,$min,$hour,$mday,$mon,$year) = localtime($exptime);
+                $year += 1900;
+                my $htime = "$year-$mon-$mday $hour:$min:$sec";
+                $resp = {data=>[{token => [{id => $tokenid, expire => $htime}]}]};
+            } else {
+                $resp={error=>["Authentication failure"],errorcode=>[1]};
+            }
+            $resp->{serverdone}=[ undef ] ;
+            send_response($resp,$sock);
+            return;
+        }
+
+        # If user trying to use 'token' to authenticate
+        if (defined $req->{tokens}) {
+            # get the valid user name by the token id
+            $peername = xCAT::xcatd->verifytoken($req);
+            unless (defined $peername) {
+                my $resp={error=>["Authentication failure"],errorcode=>[1]};
+                $resp->{serverdone}=[ undef ] ;
+                send_response($resp,$sock);
+                return;
+            }
+            delete($req->{tokenid});
+        }
+
         #we have a full request..
         #printf $request."\n";
         $request="";
