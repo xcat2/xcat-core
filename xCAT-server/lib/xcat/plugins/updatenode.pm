@@ -251,38 +251,6 @@ sub preprocess_updatenode
         $callback->($rsp);
         return;
     }
-    # Just generate mypostscripts file and get out 
-    if ($::GENMYPOST)
-    {
-        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
-        if ($entries[0] ) {
-          $entries[0] =~ tr/a-z/A-Z/;
-          if ($entries[0] =~ /^(1|YES)$/ ) {
-
-            my $notmpfiles=1;
-            my $nofiles=0;
-            xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
-            my $rsp = {};
-            $rsp->{data}->[0] = "Generated new mypostscript files";
-            $callback->($rsp);
-          } else {  # not valid unless precreatemypostscripts enabled
-            my $rsp = {};
-            $rsp->{error}->[0] =
-              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
-            $callback->($rsp);
-            return ;
-          }
-        } else { # not in the site table
-            my $rsp = {};
-            $rsp->{error}->[0] =
-             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
-            $rsp->{errorcode}->[0] =1;
-            $callback->($rsp);
-            return ;
-        }
-        return 0;
-    }
 
     # -c must work with -S for AIX node
     if ($::CMDLINE && !$::SWMAINTENANCE)
@@ -1010,27 +978,6 @@ sub updatenode
 
     }
 
-    #create each /tftpboot/mypostscript/mypostscript.<nodename> for each node
-    # This first removes the old one if precreatemypostscripts =0 or undefined
-    # call create files but no tmp files
-    my $notmpfiles=1;
-    my $nofiles=0;
-    #my $nofiles=1;
-    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
-
-    # convert the hashes back to the way they were passed in
-    my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
-    my $imgdefs;
-    my $updates;
-    if ($flatreq->{imagedef})
-    {
-        $imgdefs = $flatreq->{imagedef};
-    }
-    if ($flatreq->{updateinfo})
-    {
-        $updates = $flatreq->{updateinfo};
-    }
-
     # get the NIM primary server name
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
@@ -1043,6 +990,7 @@ sub updatenode
                     'A|updateallsw' => \$::ALLSW,
                     'c|cmdlineonly' => \$::CMDLINE,
                     'd=s'           => \$::ALTSRC,
+                    'g|genmypost'   => \$::GENMYPOST,
                     'h|help'        => \$::HELP,
                     'v|version'     => \$::VERSION,
                     'V|verbose'     => \$::VERBOSE,
@@ -1085,6 +1033,60 @@ sub updatenode
             $::attrres{$attr} = $value;
         }
     }
+    # Just generate mypostscripts file and get out 
+    if ($::GENMYPOST)
+    {
+        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0] ) {
+          $entries[0] =~ tr/a-z/A-Z/;
+          if ($entries[0] =~ /^(1|YES)$/ ) {
+
+            my $notmpfiles=1;
+            my $nofiles=0;
+            xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+            my $rsp = {};
+            $rsp->{data}->[0] = "Generated new mypostscript files";
+            $callback->($rsp);
+          } else {  # not valid unless precreatemypostscripts enabled
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+          }
+        } else { # not in the site table
+            my $rsp = {};
+            $rsp->{error}->[0] =
+             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+        }
+        return 0;
+    }
+
+    #create each /tftpboot/mypostscript/mypostscript.<nodename> for each node
+    # This first removes the old one if precreatemypostscripts =0 or undefined
+    # call create files but no tmp files
+    my $notmpfiles=1;
+    my $nofiles=0;
+    #my $nofiles=1;
+    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+
+    # convert the hashes back to the way they were passed in
+    my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
+    my $imgdefs;
+    my $updates;
+    if ($flatreq->{imagedef})
+    {
+        $imgdefs = $flatreq->{imagedef};
+    }
+    if ($flatreq->{updateinfo})
+    {
+        $updates = $flatreq->{updateinfo};
+    }
+
     # if not just using the -k flag, then set all nodes to syncing in 
     # nodelist updatestatus  for the other updatenode options
     if (!($::SECURITY)) {
