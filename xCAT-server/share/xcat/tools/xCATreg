@@ -65,6 +65,8 @@ my $snfullinst=0;
 my $dsklscnsninst=0;
 my $fullcnsninst=0;
 my $statelitecnsninst=0;
+my %confkeys;
+my $confile;
 
 #######################################
 # usage for arguments
@@ -430,8 +432,8 @@ system("scp -r $MN:/autotest/result /regression/rhppc64");
 # mn_install to install all mn 
 #######################################
 sub mn_install {
-    my osimage="management_1408a";
-    my mn="the_name_of_mn";
+    my $osimage="management_1408a";
+    my $mn="the_name_of_mn";
 
     `nodeset $mn osimage=$osimage`;
 
@@ -447,8 +449,8 @@ sub mn_install {
          $output = system("rpower $mn state");
     } while ($output =~ /on/);
 
-    do (
-         sleep 5 * 60;
+    do { 
+         sleep 300;
          $output = system("xdsh $mn date");
     } while ($output =~ /$mn/);
 }
@@ -498,7 +500,6 @@ sub send_msg {
 # read_conf
 #######################################
 sub read_conf{
-    my %confkeys;
         my $keys;
         if (!open($keys, "<$confile")) {
             send_msg("Open configuration file error");
@@ -589,7 +590,7 @@ my $gitup;
 $gitup="/tmp/gitup";
 
 #Do checkout in git repo
-$res = system(cd $confkeys{srcdir});
+$res = system("cd $confkeys{srcdir}");
 if ($res !=0) {
     send_msg("no source code directory,exit");
     exit;
@@ -599,7 +600,7 @@ $res = system("git checkout $branch");
 if ($res != 0){
     send_msg("git checkout failed");
     exit 1;
-#}
+}
 
 $res = system("git pull >$gitup");
 if ($res != 0){
@@ -630,7 +631,7 @@ if (($res == 0)&&( $updates_regression == 1)) {
 my $codedir = "/regression/code";
 
 ##will modify to $rhppc64config{var}{MNIP} 
-my $mn="aixmn"
+my $mn="aixmn";
 
 #install dep for buildlocal
 $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
@@ -666,7 +667,7 @@ sleep 20;
 # step 6. Read xCAT MN's configuration
 #######################################
 mkdir $resultdir unless -d $resultdir;
-my $timestamp = `date +"%Y%m%d%H%M%S"`;
+$timestamp = `date +"%Y%m%d%H%M%S"`;
 my @osname = &runcmd("uname -a");
 #if ( $osname [0]  =~ /^Linux\s*/  &&  -f "/etc/redhat-release" && $osname [0] =~ /ppc64/){
  #   print "ppc64 redhat env\n";

@@ -383,6 +383,10 @@ fi
 %post
 %ifos linux
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
+
+%if %pcm
+ echo "aabb" > /tmp/aabb
+%endif
  
 if [ "$1" = "1" ]; then #Only if installing for the first time..
  if [ -x /usr/lib/lsb/install_initd ]; then
