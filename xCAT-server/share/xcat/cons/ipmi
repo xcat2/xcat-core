@@ -72,12 +72,12 @@ release_lock();
 
 my ($user,$pass);
 if ($username) {
-    $user = "-U $username";
+    $user = "-U '$username'";
 } else {
     $user = '';
 }
 if ($password) {
-    $pass = "-P $password";
+    $pass = "-P '$password'";
 } else {
     $pass = '';
 }
