@@ -429,7 +429,6 @@ rmdir \"/tmp/$to_userid\" \n";
       # Need to check if nodes are in a zone.  
       my @zones;
       my $tab = xCAT::Table->new("zone"); 
-      my @zones; 
       if ($tab) 
       {
           # if we have zones, need to send the zone keys to each node in the zone
@@ -623,7 +622,7 @@ sub sendkeysTOzones
       my ($class, $ref_nodes,$expecttimeout) = @_;
       my @nodes=$ref_nodes;
       my $n_str    = $nodes[0];
-      my @nodes=  split(",", $n_str);
+      @nodes=  split(",", $n_str);
       my $rsp = ();
       my $cmd;
       my $roothome = xCAT::Utils->getHomeDir("root");
