@@ -12,6 +12,7 @@ use Getopt::Long;
 use strict;
 #This or something like this must always be available and not depend on server
 #Otherwise, can't set things to let server run in the first place
+#
 
 sub usage {
   print "Usage:\n";
