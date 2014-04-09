@@ -131,6 +131,16 @@ sub process_request
         &usage($callback,$command);
         exit 1;
     }
+    # if the ARGS still have data we have invalid input
+    if (@ARGV) {
+            my $args=join(',', @ARGV);
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "The input to the command: $command contained invalid arguments: $args.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            exit 1; 
+    }
+ 
     if ($options{'help'})
     {
         &usage($callback,$command);
@@ -169,6 +179,14 @@ sub process_request
              exit 1;
         }
       }
+    }
+    # cannot enter -K and -k
+    if (($options{'sshkeypath'}) && ($options{'gensshkeys'})) {
+      my $rsp = {};
+      $rsp->{error}->[0] =
+      "The input of -k and -K is not valid on the command : $command.";
+      xCAT::MsgUtils->message("E", $rsp, $callback);
+      exit 1;
     }
 
     # check for site.sshbetweennodes attribute, put out a warning it will not be used as long
@@ -470,6 +488,18 @@ sub rmzone
         my $rsp = {};
         $rsp->{error}->[0] =
           "zonename not specified The zonename is required.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+    # see if they input invalid flags 
+    if (($$options{'sshkeypath'}) || ($$options{'gensshkeys'}) || 
+       ( $$options{'addnoderange'}) || ( $$options{'rmnoderange'}) ||
+       ( $$options{'defaultzone'}) || 
+       ($$options{'sshbetweennodes'})) {
+        
+        my $rsp = {};
+        $rsp->{error}->[0] =
+          "The following flags are not valid input for the rmzone command: -k,-K,-a,-r,-f,-s  ";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
