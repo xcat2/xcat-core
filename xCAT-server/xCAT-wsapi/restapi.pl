@@ -664,60 +664,81 @@ my %URIdef = (
     },
     
     #### definition for network resources
-    network => {
-        network => {
-            desc => "[URI:/network] - The network resource.",
-            matcher => '^\/network$',
+    networks => {
+        allnetwork => {
+            desc => "[URI:/networks] - The network list resource.",
+            desc1 => "This resource can be used to display all the networks which have been defined in the xCAT database.",
+            matcher => '^\/networks$',
             GET => {
                 desc => "Get all the networks in xCAT.",
+                desc1 => "The attributes details for the networks will not be displayed.",
+                usage => "||Json format: An array of networks names.|",
+                example => "|Get all the networks names from xCAT database.|GET|/networks|[\n   \"network1\",\n   \"network2\",\n   \"network3\",\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
             },
             POST => {
-                desc => "Create the network resources base on the network configuration on xCAT MN.",
+                desc => "Create the networks resources base on the network configuration on xCAT MN.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Create the networks resources base on the network configuration on xCAT MN.|POST|/networks||",
                 cmd => "makenetworks",
-                fhandler => \&defhdl,
+                fhandler => \&actionhdl,
             },
         },
         network_allattr => {
-            desc => "[URI:/network/{netname}] - The network resource",
-            matcher => '^\/network\/[^\/]*$',
+            desc => "[URI:/networks/{netname}] - The network resource",
+            matcher => '^\/networks\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for the network {netname}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the attibutes for network \'network1\'.|GET|/networks/network1|{\n   \"network1\":{\n      \"gateway\":\"<xcatmaster>\",\n      \"mask\":\"255.255.255.0\",\n      \"mgtifname\":\"eth2\",\n      \"net\":\"10.0.0.0\",\n      \"tftpserver\":\"10.0.0.119\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
                 desc => "Change the attibutes for the network {netname}.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Change the attributes mgtifname=eth0 and net=10.1.0.0.|PUT|/networks/network1 {\"mgtifname\":\"eth0\",\"net\":\"10.1.0.0\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             },
             POST => {
                 desc => "Create the network {netname}. DataBody: {attr1:v1,att2:v2...}.",
+                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => "|Create a network with attributes gateway=10.1.0.1, mask=255.255.0.0 |POST|/networks/network1 {\"gateway\":\"10.1.0.1\",\"mask\":\"255.255.0.0\"}||",
                 cmd => "mkdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the network {netname}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Delete the network network1|DELETE|/networks/network1||",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
+                outhdler => \&noout
             },
         },
         network_attr => {
-            desc => "[URI:/network/{netname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the network {netname}",
-            matcher => '^\/network\/[^\/]*/attrs/\S+$',
+            desc => "[URI:/networks/{netname}/attrs/attr1,attr2,...] - The attributes resource for the network {netname}",
+            matcher => '^\/networks\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the network {netname}.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get the attributes {groups,mgt,netboot} for network network1|GET|/networks/network1/attrs/gateway,mask,mgtifname,net,tftpserver|{\n   \"network1\":{\n      \"gateway\":\"9.114.34.254\",\n      \"mask\":\"255.255.255.0\",\n         }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
-            PUT => {
+            PUT__backup => {
                 desc => "Change attributes for the network {netname}. DataBody: {attr1:v1,att2:v2,att3:v3 ...}.",
+                usage => "||An array of network objects.|",
+                example => "|Get the attributes {gateway,mask,mgtifname,net,tftpserver} for networks network1|GET|/networks/network1/attrs/gateway;mask;net||",
                 cmd => "chdef",
-                fhandler => \&defhdl,
+                fhandler => \&noout,
             }
         },
 
@@ -1615,7 +1636,7 @@ sub defhdl {
     
     if ($params->{'resourcename'} eq "allnode") {
         push @args, '-s';
-    } elsif ($params->{'resourcename'} =~ /(nodeattr|osimage_attr|group_attr|policy_attr)/) {
+    } elsif ($params->{'resourcename'} =~ /(nodeattr|osimage_attr|group_attr|policy_attr|network_attr)/) {
         # if /nodes/node1/attrs/attr1,att2 is specified, for get request, 
         # use 'lsdef -i' to specify the attribute list
         my $attrs = $urilayers[3];
