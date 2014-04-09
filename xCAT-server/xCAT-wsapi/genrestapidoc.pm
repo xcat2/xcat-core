@@ -51,10 +51,10 @@ my @apigroups = (
         resources => ['table_nodes', 'table_rows']
     },
     {
-        groupname => 'osimage',
+        groupname => 'osimages',
         header => "Osimage resources",
         desc => "URI list which can be used to query, create osimage resources.",
-        resources => ['osimage', 'osimage_allattr']
+        resources => ['osimage', 'osimage_allattr', 'osimage_attr', 'osimage_op']
     },
     {
     #    groupname => 'network', 
@@ -107,31 +107,41 @@ sub outtext {
             print "    Returns: $parts[2]\n";
         }
     }
-
-    if (defined ($def->{example})) {
-        my @parts = split ('\|', $def->{example});
-        print "    Example:\n";
-
-        if ($parts[1]) {
-            print "    $parts[1]\n";
-        } else {
-            push @errmsg, "Error format in:[".$def->{desc}."]\n";
-        }
-        
-        if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
-            my ($uri, $data);
-            if ($parts[3] =~ /\s+/) {
-                ($uri, $data) = split(/ /, $parts[3]);
-                print "        #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
-            } else {
-                print "        #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+    my @example_array = ();
+    if (defined($def->{example})) {
+        push @example_array, $def->{example};
+    } else {
+        foreach (1..10) {
+            if (defined($def->{'example'.$_})) {
+                push @example_array, $def->{'example'.$_};
             }
-            $parts[4] =~ s/\n/\n        /g;
-            print "        $parts[4]\n";
-        } else {
-            push @errmsg, "Error format in:[".$def->{desc}."]\n";
         }
+    }
+    if (@example_array) {
+        foreach my $line (@example_array) {  
+            my @parts = split ('\|', $line);
+            print "    Example:\n";
+
+            if ($parts[1]) {
+                print "    $parts[1]\n";
+            } else {
+                push @errmsg, "Error format in:[".$def->{desc}."]\n";
+            }
         
+            if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
+                my ($uri, $data);
+                if ($parts[3] =~ /\s+/) {
+                    ($uri, $data) = split(/ /, $parts[3]);
+                    print "        #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                } else {
+                    print "        #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                }
+                $parts[4] =~ s/\n/\n        /g;
+                print "        $parts[4]\n";
+            } else {
+                push @errmsg, "Error format in:[".$def->{desc}."]\n";
+            }
+        }
     } else {
         push @errmsg, "Error format in:[".$def->{desc}."]\n";
     }
@@ -185,30 +195,42 @@ sub outwiki {
         }
     }
 
-    if (defined ($def->{example})) {
-        my @parts = split ('\|', $def->{example});
-        print "'''Example:'''\n\n";
-
-        if ($parts[1]) {
-            print "$parts[1]\n";
-        } else {
-            push @errmsg, "Error format for:[".$def->{desc}."]\n";
-        }
-        
-        if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
-            my ($uri, $data);
-            if ($parts[3] =~ /\s+/) {
-                ($uri, $data) = split(/ /, $parts[3]);
-                print " #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
-            } else {
-                print " #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+    my @example_array = ();
+    if (defined($def->{example})) {
+        push @example_array, $def->{example};
+    } else {
+        foreach (1..10) {
+            if (defined($def->{'example'.$_})) {
+                push @example_array, $def->{'example'.$_};
             }
-            $parts[4] =~ s/\n/\n /g;
-            print " $parts[4]\n";
-        } else {
-            push @errmsg, "Error format for:[".$def->{desc}."]\n";
         }
+    }
+
+    if (@example_array) {
+        foreach my $line (@example_array) {
+            my @parts = split ('\|', $line);
+            print "'''Example:'''\n\n";
+
+            if ($parts[1]) {
+                print "$parts[1]\n";
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
         
+            if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
+                my ($uri, $data);
+                if ($parts[3] =~ /\s+/) {
+                    ($uri, $data) = split(/ /, $parts[3]);
+                    print " #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                } else {
+                    print " #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                }
+                $parts[4] =~ s/\n/\n /g;
+                print " $parts[4]\n";
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
+        }
     } else {
         push @errmsg, "Error format for:[".$def->{desc}."]\n";
     }
