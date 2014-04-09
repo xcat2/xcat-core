@@ -9,8 +9,8 @@ use Data::Dumper;
 use Socket;
 use IO::Socket::INET;
 use IO::Socket::SSL;
-use lib "/opt/xcat/lib/perl";
-use xCAT::Table;
+#use lib "/opt/xcat/lib/perl";
+#use xCAT::Table;
 
 # The hash %URIdef defines all the xCAT resources which can be access from Web Service.
 # This script will be called when a https request with the URI started with /xcatws/ is sent to xCAT Web Service
@@ -2122,8 +2122,12 @@ sub filterData {
             #} else {
                 #otherwise, ignore the 'servicedone' data
             #    next;
+            } else {
+                delete ($_->{serverdone});
+                if (scalar(keys %{$_}) > 0) {
+                    push @{$outputdata}, $_;
+                }
             }
-            push @{$outputdata}, $_;
         } else {
             if (defined ($_->{data}) && ref($_->{data}->[0]) ne "HASH") {
                 # to get the message in data for the case that errorcode is set but no 'error' attr
