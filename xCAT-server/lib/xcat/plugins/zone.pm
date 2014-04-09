@@ -735,6 +735,9 @@ sub addtozonetable
        my $curdefaultzone = xCAT::Zone->getdefaultzone($callback);
        if (!(defined ($curdefaultzone))) {  # no default defined
            $tb_cols{defaultzone} ="yes";
+           $tab->setAttribs({zonename => $zonename}, \%tb_cols);
+           $tab->commit();
+           $tab->close();
        } else { # already a default
           if ($$options{'force'}) {  # force the default
             $tb_cols{defaultzone} ="yes";
@@ -810,6 +813,9 @@ sub updatezonetable
          my $curdefaultzone = xCAT::Zone->getdefaultzone($callback);
          if (!(defined ($curdefaultzone))) {  # no default defined
            $tb_cols{defaultzone} ="yes";
+           $tab->setAttribs({zonename => $zonename}, \%tb_cols);
+           $tab->commit();
+           $tab->close();
          } else { # already a default
             if ($$options{'force'}) {  # force the default
               $tb_cols{defaultzone} ="yes";
