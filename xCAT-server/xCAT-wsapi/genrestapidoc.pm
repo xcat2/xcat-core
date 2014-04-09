@@ -57,8 +57,11 @@ my @apigroups = (
         resources => ['osimage', 'osimage_allattr', 'osimage_attr', 'osimage_op']
     },
     {
-    #    groupname => 'network', 
-        resources => ['network', 'network_allattr']
+        groupname => 'networks',
+        header => "Network Resources",
+        desc => "The URI list which can be used to create, query, change and manage network objects.",
+        resources => ['allnetwork', 'network_allattr','network_attr']
+
     },
 );
 
