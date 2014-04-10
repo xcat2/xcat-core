@@ -356,7 +356,7 @@ my %URIdef = (
             },
         },
         inventoryattr => {
-            desc => "[URI:/nodes/{nodename}/inventory/{pci;model...}] - The specific inventory attributes for the node {nodename}",
+            desc => "[URI:/nodes/{nodename}/inventory/{pci|model...}] - The specific inventory attributes for the node {nodename}",
             matcher => '^/nodes/[^/]*/inventory/\S+$',
             GET => {
                 desc => "Get the specific inventory attibutes.",
@@ -809,12 +809,12 @@ my %URIdef = (
             },
         },
         osimage_attr => {
-            desc => "[URI:/osimages/{imgname}/attrs/attr1;attr2;attr3 ...] - The attributes resource for the osimage {imgname}",
+            desc => "[URI:/osimages/{imgname}/attrs/attr1,attr2,attr3 ...] - The attributes resource for the osimage {imgname}",
             matcher => '^\/osimages\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the osimage {imgname}.",
                 usage => "||Json format: An array of attr:value pairs for the specified osimage.|",
-                example => "|Get the specified attributes.|GET|/osimages/sles11.2-ppc64-install-compute/attrs/imagetype;osarch;osname;provmethod|{\n   \"sles11.2-ppc64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"osname\":\"Linux\",\n      \"osarch\":\"ppc64\",\n      \"imagetype\":\"linux\"\n   }\n}|",
+                example => "|Get the specified attributes.|GET|/osimages/sles11.2-ppc64-install-compute/attrs/imagetype,osarch,osname,provmethod|{\n   \"sles11.2-ppc64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"osname\":\"Linux\",\n      \"osarch\":\"ppc64\",\n      \"imagetype\":\"linux\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
@@ -861,19 +861,12 @@ my %URIdef = (
             matcher => '^\/policy$',
             GET => {
                 desc => "Get all the policies in xCAT.",
-                desc1 => "It will dislplay all the policies defined in policy table.",
+                desc1 => "It will dislplay all the policy resource.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the policy objects.|GET|/policy|[\n   \"1\",\n   \"1.2\",\n   \"2\",\n   \"4.8\"\n]|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout_remove_appended_type,
-            },
-            POST_back => {
-                desc => "Create a new policy on xCAT MN.",
-                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Create |?|?|?|",
-                cmd => "chdef",
-                fhandler => \&defhdl,
             },
         },
         policy_allattr => {
@@ -881,61 +874,52 @@ my %URIdef = (
             matcher => '^\/policy\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for a policy {policy_priority}.",
-                desc1 => "It will display all the policy attributes for one policy entry defined in policy table.",
+                desc1 => "It will display all the policy attributes for one policy resource.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the attribute for policy 1.|GET|/policy/1|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
+                example => "|Get all the attribute for policy 1.|GET|/policy/1|{\n   \"1\":{\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
             },
             PUT => {
                 desc => "Change the attibutes for the policy {policy_priority}.",
-                desc1 => "It will change one or more attributes defined in policy table.",
+                desc1 => "It will change one or more attributes for a policy.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Set the name attribute for policy 3.|PUT|/policy/3 {\"name\":\"root\"}|[\n   \"1 object definitions have been created or modified.\"\n]|",
+                example => "|Set the name attribute for policy 3.|PUT|/policy/3 {\"name\":\"root\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
             POST => {
                 desc => "Create the policy {policyname}. DataBody: {attr1:v1,att2:v2...}.",
-                desc1 => "It will creat a new policy entry in policy table.",
+                desc1 => "It will creat a new policy resource.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Create a new policy 10.|POST|/policy/10 {\"name\":\"root\",\"commands\":\"rpower\"}|[\n   \"1 object definitions have been created or modified.\"\n]|",
+                example => "|Create a new policy 10.|POST|/policy/10 {\"name\":\"root\",\"commands\":\"rpower\"}||",
                 cmd => "chdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the policy {policy_priority}.",
-                desc1 => "Remove one or more policys defined in policy table.",
+                desc1 => "Remove one or more policy resource.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => "|Delete the policy 10.|DELETE|/policy/10|[\n   \"1 object definitions have been removed.\"\n]|",
+                example => "|Delete the policy 10.|DELETE|/policy/10||",
                 cmd => "rmdef",
                 fhandler => \&defhdl,
                 outhdler => \&noout,
             },
         },
         policy_attr => {
-            desc => "[URI:/policy/{policyname}/attrs/{attr1;attr2;attr3,...}] - The attributes resource for the policy {policy_priority}",
+            desc => "[URI:/policy/{policyname}/attrs/{attr1,attr2,attr3,...}] - The attributes resource for the policy {policy_priority}",
             matcher => '^\/policy\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the policy {policy_priority}.",
-                desc1 => "It will get one or more attributes defined in policy table.",
+                desc1 => "It will get one or more attributes of a policy.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attrs/name;rule|[\n   {\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n]|",
+                example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attrs/name,rule|{\n   \"1\":{\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&defhdl,
                 outhdler => \&defout,
-            },
-            PUT => {
-                desc => "Change the attibutes for the policy {policy_priority}.",
-                desc1 => "It will change one or more attributes defined in policy table.",
-                usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Set the name attribute for policy 3.|PUT|/policy/3 {\"name\":\"root\"}|[\n   \"1 object definitions have been created or modified.\"\n]|",
-                cmd => "chdef",
-                fhandler => \&defhdl,
-                outhdler => \&noout,
             },
         },
     },
@@ -947,16 +931,16 @@ my %URIdef = (
             matcher => '^\/globalconf$',
             GET => {
                 desc => "Get all the xCAT global configuration.",
-                desc1=> "It will display all the attributes defined in site table.",
+                desc1=> "It will display all the global attributes.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get all the global configuration|GET|/globalconf|{\n   \"clustersite\":{\n      \"xcatconfdir\":\"/etc/xcat\",\n      \"tftpdir\":\"/tftpboot\",\n      ...\n   }\n]|",
+                example => "|Get all the global configuration|GET|/globalconf|{\n   \"clustersite\":{\n      \"xcatconfdir\":\"/etc/xcat\",\n      \"tftpdir\":\"/tftpboot\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&sitehdl,
                 outhdler => \&defout,
             },
             POST_backup => {
                 desc => "Add the site attributes. DataBody: {attr1:v1,att2:v2...}.",
-                desc1 => "One or more attributes could be added/modified to site table.",
+                desc1 => "One or more global attributes could be added/modified.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
                 example => "|Add one or more attributes to xCAT database|POST|/globalconf {\"domain\":\"cluster.com\",\"mydomain\":\"mycluster.com\"}||",
                 cmd => "chdef",
@@ -970,19 +954,19 @@ my %URIdef = (
                 desc => "Get the specific configuration in global.",
                 desc1 => "It will display one or more global attributes.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attrs/master,domain|[\n   {\n      \"master\":\"192.168.1.1\",\n      \"domain\":\"/cluster.com\",\n         }\n|",
+                example => "|Get the \'master\' and \'domain\' configuration.|GET|/globalconf/attrs/master,domain|{\n   \"clustersite\":{\n      \"domain\":\"cluster.com\",\n      \"master\":\"192.168.1.15\"\n   }\n}|",
                 cmd => "lsdef",
                 fhandler => \&sitehdl,
                 outhdler => \&defout,
             },
             PUT => {
-                desc => "Change the attributes for the site table.",
+                desc => "Change the global attributes.",
                 desc1 => "It can be used for changing/adding global attributes.",
                 usage => "|$usagemsg{objchparam} DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => "|Change/Add the domain attribute.|PUT|/globalconf/attrs/domain {\"domain\":\"cluster.com\"||",
+                example => "|Change/Add the domain attribute.|PUT|/globalconf/attrs/domain {\"domain\":\"cluster.com\"}||",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
-				outhdler => \&noout,
+                outhdler => \&noout,
             },
             POST_backup => {
                 desc => "Create the global configuration entry. DataBody: {name:value}.",
@@ -990,16 +974,16 @@ my %URIdef = (
                 example => "|Create the domain attribute|POST|/globalconf/attrs/domain {\"domain\":\"cluster.com\"}|?|",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
-				outhdler => \&noout,
+                outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the site attributes.",
-                desc1 => "Used for femove one or more global attributes defined in site table.",
+                desc1 => "Used for femove one or more global attributes.",
                 usage => "||$usagemsg{non_getreturn}|",
                 example => "|Remove the domain configure.|DELETE|/globalconf/attrs/domain||",
                 cmd => "chdef",
                 fhandler => \&sitehdl,
-				outhdler => \&noout,
+                outhdler => \&noout,
             },
         },
     },
@@ -1874,13 +1858,13 @@ sub sitehdl {
     # push the -t args
     push @args, '-t';
     push @args, 'site';
-    if (isGET()) {	
+    if (isGET()) {    
         push @args, 'clustersite';
-    }			
+    }            
     if (defined ($urilayers[2])){
         if (isGET()) {
             push @args, ('-i', $urilayers[2]);
-		}	
+        }    
     }
     if (isDelete()) {
         if (defined ($urilayers[2])){

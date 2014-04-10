@@ -14,6 +14,7 @@ use xCAT::Schema;
 use Data::Dumper;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::Scope;
 use xCAT::Usage;
 use Storable qw(dclone);
 use xCAT::TableUtils;
@@ -188,6 +189,7 @@ sub preprocess_updatenode
     my @requests = ();
 
     my $installdir = xCAT::TableUtils->getInstallDir();
+    my $localhost = hostname();
 
     # subroutine to display the usage
     sub updatenode_usage
@@ -251,6 +253,59 @@ sub preprocess_updatenode
         $callback->($rsp);
         return;
     }
+
+    # preprocess generate mypostscripts files (-g) for hierarchy
+    # if no sharedtftp then we need to broadcast this updatenode -g to all service nodes inorder
+    # to be able to support service node pools
+    #
+    if ($::GENMYPOST)
+    {
+        # precreatemypostscript has to be yes/1 or do nothing
+        my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
+        if ($entries[0] ) {
+          $entries[0] =~ tr/a-z/A-Z/;
+          if ($entries[0] =~ /^(1|YES)$/ ) {
+            # now check if sharedtftp = 0, if it is we need to broadcast to all the servicenode
+            # if there are service nodes
+            my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
+            my $t_entry = $entries[0];
+            if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
+              # see if there are any servicenodes.  If so then run updatenode -g on all of them
+               my @SN;
+               my @CN;
+               my $nodes = $request->{node};
+               xCAT::ServiceNodeUtils->getSNandCPnodes(\@$nodes, \@SN, \@CN);
+               if (@CN >0 ) { # if compute nodes broadcast to all servicenodes
+                    return xCAT::Scope->get_broadcast_scope($request,@_);
+               }
+            } else {  # sharedtftp=yes, just run on MN
+              my $notmpfiles=1;
+              my $nofiles=0;
+              xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+              my $rsp = {};
+              $rsp->{data}->[0] = "Generated new mypostscript files on $localhost";
+              $callback->($rsp);
+              return 0;
+            }
+          } else {  # not valid unless precreatemypostscripts enabled
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+          }
+        } else { # precreatemypostscripts not in the site table
+            my $rsp = {};
+            $rsp->{error}->[0] =
+             "This option is only valid if site table precreatemypostscripts attribute is 1 or YES";
+            $rsp->{errorcode}->[0] =1;
+            $callback->($rsp);
+            return ;
+        }
+    }  # end GENMYPOST
+
+
 
     # -c must work with -S for AIX node
     if ($::CMDLINE && !$::SWMAINTENANCE)
@@ -1045,7 +1100,7 @@ sub updatenode
             my $nofiles=0;
             xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
             my $rsp = {};
-            $rsp->{data}->[0] = "Generated new mypostscript files";
+            $rsp->{data}->[0] = "Generated new mypostscript files on $localhostname";
             $callback->($rsp);
           } else {  # not valid unless precreatemypostscripts enabled
             my $rsp = {};
