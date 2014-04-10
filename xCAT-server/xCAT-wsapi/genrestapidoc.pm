@@ -20,37 +20,6 @@ my @apigroups = (
                       ]
     },
     {
-        groupname => 'groups', 
-        header => "Group Resources",
-        desc => "The URI list which can be used to create, query, change and manage group objects.",
-        resources => ['all_groups','group_allattr','group_attr',
-                      ]
-    },
-    {
-        groupname => 'services', 
-        header => "Services Resources",
-        desc => "The URI list which can be used to manage the dns and dhcp services on xCAT MN.",
-        resources => ['dns','dhcp','host', 'slpnodes', 'specific_slpnodes',]
-    },
-    {
-        groupname => 'policy',
-        header => "Policy Resources",
-        desc => "The URI list which can be used to create, query, change and manage policy entries.",
-        resources => ['policy', 'policy_allattr', 'policy_attr']
-    },
-    {
-        groupname => 'globalconf',
-        header => "Global Configuration Resources",
-        desc => "The URI list which can be used to create, query, change global configuration.",
-        resources => ['all_site', 'site']
-    },
-    {
-        groupname => 'table',
-        header => "Table Resources",
-        desc => "URI list which can be used to create, query, change global configuration.",
-        resources => ['table_nodes', 'table_rows']
-    },
-    {
         groupname => 'osimages',
         header => "Osimage resources",
         desc => "URI list which can be used to query, create osimage resources.",
@@ -62,6 +31,37 @@ my @apigroups = (
         desc => "The URI list which can be used to create, query, change and manage network objects.",
         resources => ['allnetwork', 'network_allattr','network_attr']
 
+    },
+    {
+        groupname => 'policy',
+        header => "Policy Resources",
+        desc => "The URI list which can be used to create, query, change and manage policy entries.",
+        resources => ['policy', 'policy_allattr', 'policy_attr']
+    },
+    {
+        groupname => 'groups', 
+        header => "Group Resources",
+        desc => "The URI list which can be used to create, query, change and manage group objects.",
+        resources => ['all_groups','group_allattr','group_attr',
+                      ]
+    },
+    {
+        groupname => 'globalconf',
+        header => "Global Configuration Resources",
+        desc => "The URI list which can be used to create, query, change global configuration.",
+        resources => ['all_site', 'site']
+    },
+    {
+        groupname => 'services', 
+        header => "Service Resources",
+        desc => "The URI list which can be used to manage the dns and dhcp services on xCAT MN.",
+        resources => ['dns','dhcp','host', 'slpnodes', 'specific_slpnodes',]
+    },
+    {
+        groupname => 'table',
+        header => "Table Resources",
+        desc => "URI list which can be used to create, query, change global configuration.",
+        resources => ['table_nodes', 'table_rows']
     },
 );
 
