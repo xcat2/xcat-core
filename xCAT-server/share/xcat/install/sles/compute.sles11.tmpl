@@ -63,25 +63,7 @@
         <surname/>
       </user>
     </users>
-    <networking>
-      <dns>
-        <dhcp_hostname config:type="boolean">true</dhcp_hostname>
-        <dhcp_resolv config:type="boolean">true</dhcp_resolv>
-        <domain>local</domain>
-        <hostname>linux</hostname>
-      </dns>
-      <interfaces config:type="list">
-        <interface>
-          <bootproto>dhcp</bootproto>
-          <device>eth0</device>
-          <startmode>onboot</startmode>
-        </interface>
-      </interfaces>
-      <routing>
-        <ip_forward config:type="boolean">false</ip_forward>
-        <routes config:type="list"/>
-      </routing>
-    </networking>
+    #YAST2NET#
     <scripts>
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sles#
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#

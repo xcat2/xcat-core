@@ -14,6 +14,7 @@ use xCAT::ADUtils; #to allow setting of one-time machine passwords
 use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::NetworkUtils;
+use XML::Simple;
 BEGIN
 {
       $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -101,6 +102,13 @@ sub subvars {
   my $tmp=$nodestatus[0];
   if( defined($tmp)  ){
 	$ENV{NODESTATUS}=$tmp;
+  }
+
+
+  my @managedaddressmode = xCAT::TableUtils->get_site_attribute("managedaddressmode");
+  my $tmp=$managedaddressmode[0];
+  if( defined($tmp)  ){
+        $ENV{MANAGEDADDRESSMODE}=$tmp;
   }
 
   #replace the env with the right value so that correct include files can be found
@@ -229,6 +237,7 @@ sub subvars {
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+  $inc =~ s/#YAST2NET#/yast2network()/eg;
   $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
   $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
   $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
@@ -652,8 +661,8 @@ sub esxipv6setup {
 }
 
 sub kickstartnetwork {
-	my $line = "network --onboot=yes --bootproto=";
-	my $hoststab;
+      my $line = "network --onboot=yes --bootproto="; 
+      my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
       my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
@@ -667,12 +676,241 @@ sub kickstartnetwork {
 		$hoststab->setNodeAttribs($node,{ip=>$ulaaddr});
 		$line .= $ulaaddr;
 	} elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/)  {
-		return "#KSNET static unsupported";
+                my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+                unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+                $line .="static  --device=$suffix --ip=$ipaddr --netmask=$netmask --gateway=$gateway --hostname=$hostname ";
+
+                my $nrtab = xCAT::Table->new('noderes',-create=>0);
+                unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
+                my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
+                unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
+                my @nameserverARR=split (",",$ent->{nameservers});
+                my @nameserversIP;
+                foreach (@nameserverARR)
+                {
+                   my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   push @nameserversIP, $ip;
+                }
+                
+                if (scalar @nameserversIP) {
+                   $line .=" --nameserver=". join(",",@nameserversIP);
+                } 
+
+
+		#return "#KSNET static unsupported";
 	} else {
 		$line .= "dhcp --device=$suffix";
 	}
 	return $line;
 }
+
+
+sub yast2network {
+      my $line;
+      my $hoststab;
+      my $mactab = xCAT::Table->new('mac',-create=>0);
+      unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+      my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
+      unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+      my $suffix = $ent->{mac};
+      $suffix = lc($suffix);
+	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
+           #TODO
+                return "#YAST2NET autoula unsupported"
+	} elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/)  {
+                my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+                unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+
+                my $nrtab = xCAT::Table->new('noderes',-create=>0);
+                unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
+                my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
+                unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
+                my @nameserverARR=split (",",$ent->{nameservers});
+                my @nameserversIP;
+                foreach (@nameserverARR)
+                {
+                   my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   push @nameserversIP, $ip;
+                }
+                
+                     
+                # get the domains for each node - one call for all nodes in hosts file
+                my $nd = xCAT::NetworkUtils->getNodeDomains([$node]);
+                my %nodedomains = %$nd;
+                my $domain=$nodedomains{$node};
+                my $networkhash={
+                   'networking' => [
+                            {
+                              'dns' => [
+                                         {
+                                           'domain' => [
+                                                         "$domain"
+                                                       ],
+                                           'dhcp_hostname' => [
+                                                                {
+                                                                  'content' => 'false',
+                                                                  'config:type' => 'boolean'
+                                                                }
+                                                              ],
+                                           'dhcp_resolv' => [
+                                                              {
+                                                                'content' => 'false',
+                                                                'config:type' => 'boolean'
+                                                              }
+                                                            ],
+                                           'nameservers' => [
+                                                              {
+                                                                'config:type' => 'list',
+                                                                'nameserver' => @nameserversIP
+                                                              }
+                                                            ],
+                                           'hostname' => [
+                                                           $hostname
+                                                         ],
+                                           'searchlist' => [
+                                                             {
+                                                               'search' => [
+                                                                             $domain
+                                                                           ],
+                                                               'config:type' => 'list'
+                                                             }
+                                                           ]
+                                         }
+                                       ],
+                              'interfaces' => [
+                                                {
+                                                  'interface' => [
+                                                                   {
+                                                                     'bootproto' => [
+                                                                                      'static'
+                                                                                    ],
+                                                                     'startmode' => [
+                                                                                      'onboot'
+                                                                                    ],
+                                                                     'netmask' => [
+                                                                                     $netmask
+                                                                                  ],
+                                                                     'device' => [
+                                                                                   'eth0'
+                                                                                 ],
+                                                                     'ipaddr' => [
+                                                                                   $ipaddr
+                                                                                 ]
+                                                                   }
+                                                                 ],
+                                                  'config:type' => 'list'
+                                                }
+                                              ],
+                              'routing' => [
+                                             {
+                                               'ip_forward' => [
+                                                                 {
+                                                                   'content' => 'false',
+                                                                   'config:type' => 'boolean'
+                                                                 }
+                                                               ],
+                                               'routes' => [
+                                                             {
+                                                               'route' => [
+                                                                            {
+                                                                              'destination' => [
+                                                                                                 'default'
+                                                                                               ],
+                                                                              'gateway' => [
+                                                                                             $gateway
+                                                                                           ],
+                                                                              'netmask' => [
+                                                                                             '-'
+                                                                                           ],
+                                                                              'device' => [
+                                                                                            '-'
+                                                                                          ]
+                                                                            }
+                                                                          ],
+                                                               'config:type' => 'list'
+                                                             }
+                                                           ]
+                                             }
+                                           ]
+                            }
+                ]
+        };
+        my  $xml = new XML::Simple(KeepRoot => 1);
+        $line=$xml->XMLout($networkhash); 
+
+		#return "#KSNET static unsupported";
+	} else {
+
+        my $networkhash={
+          'networking' => [
+                          {
+                            'dns' => [
+                                     {
+                                       'domain' => [
+                                                   'local'
+                                                 ],
+                                       'dhcp_hostname' => [
+                                                          {
+                                                            'content' => 'true',
+                                                            'config:type' => 'boolean'
+                                                          }
+                                                        ],
+                                       'hostname' => [
+                                                     'linux'
+                                                   ],
+                                       'dhcp_resolv' => [
+                                                        {
+                                                          'content' => 'true',
+                                                          'config:type' => 'boolean'
+                                                        }
+                                                      ]
+                                     }
+                                   ],
+                            'interfaces' => [
+                                            {
+                                              'interface' => [
+                                                             {
+                                                               'startmode' => [
+                                                                              'onboot'
+                                                                            ],
+                                                               'bootproto' => [
+                                                                              'dhcp'
+                                                                            ],
+                                                               'device' => [
+                                                                           'eth0'
+                                                                         ]
+                                                             }
+                                                           ],
+                                              'config:type' => 'list'
+                                            }
+                                          ],
+                            'routing' => [
+                                         {
+                                           'ip_forward' => [
+                                                           {
+                                                             'content' => 'false',
+                                                             'config:type' => 'boolean'
+                                                           }
+                                                         ],
+                                           'routes' => [
+                                                       {
+                                                         'config:type' => 'list'
+                                                       }
+                                                     ]
+                                         }
+                                       ]
+                          }
+                        ]
+        };
+
+        
+        my  $xml = new XML::Simple(KeepRoot => 1);
+        $line=$xml->XMLout($networkhash);             
+
+	}
+	return $line;
+}
+
 sub autoulaaddress {
       my $suffix = shift;
       my $prefix = $::XCATSITEVALS{autoulaprefix};
