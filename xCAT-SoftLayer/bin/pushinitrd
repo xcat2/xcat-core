@@ -45,7 +45,7 @@ copyFilesToNodes($noderange, \%bootparms);
 
 updateGrubOnNodes($noderange, \%bootparms);
 
-if (!$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
+if ($bootparms{osimageprovmethod} eq 'install' && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
 
 exit(0);
 
@@ -54,23 +54,28 @@ exit(0);
 sub getBootParms {
 	my $nr = shift @_;
 	my %bootparms;
-	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline");
+	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline nodetype.provmethod");
 
 	# the attributes can be displayed in a different order than requested, so need to grep for them
-	my @gresults;
-	foreach my $a (qw(kernel initrd kcmdline)) {
-		my $attr = "bootparams.$a";
-		@gresults = grep(/^\S+:\s+$attr:/, @output);
+	foreach my $attr (qw(bootparams.kernel bootparams.initrd bootparams.kcmdline nodetype.provmethod)) {
+		my ($a) = $attr =~ m/\.(.*)$/;
+		my @gresults = grep(/^\S+:\s+$attr:/, @output);
 		if (!scalar(@gresults)) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
 		# for now just pick the 1st one. They should all be the same, except for the node name in kcmdline
 		chomp($gresults[0]);
 		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
 		$bootparms{$a} = $gresults[0];
-		if ($a eq 'kcmdline') { $bootparms{$a} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|; }
 	}
+	$bootparms{kcmdline} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|;
+
+	# from the nodes provmethod, get the osimage provmethod, so we know the type of install
+	@output = runcmd("lsdef -t osimage $bootparms{provmethod} -ci provmethod");
+	chomp($output[0]);
+	my ($junk, $provmethod) = split(/=/, $output[0]);
+	$bootparms{osimageprovmethod} = $provmethod;
 
 	# get the mgmt node cluster-facing ip addr
-	@output = runcmd('lsdef -t site -i master -c');
+	@output = runcmd('lsdef -t site -ci master');
 	chomp($output[0]);
 	my ($junk, $ip) = split(/=/, $output[0]);
 	$bootparms{mnip} = $ip;
@@ -99,7 +104,7 @@ sub copyFilesToNodes {
 # Form the remote file name, using the last 2 parts of the path, separated by "-"
 sub remoteFilename {
 	my $f = shift @_;
-	$f =~ s|^.*/([^/]+)/([^/]+)$|$1-$2|;
+	$f =~ s|^.*?([^/]+)/([^/]+)$|$1-$2|;
 	return $f;
 }
 

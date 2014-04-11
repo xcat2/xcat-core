@@ -60,13 +60,20 @@ sub addKernelParms {
 	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
 
 	# get node ip and add it to the kernel parms
-	my ($nic, $ip, $netmask, $gateway) = getNodeIpInfo($args);
+	my ($nic, $ip, $netmask, $gateway, $mac) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
-	$args->{kernelparms} .= " hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+	# if we are booting genesis, need to add the BOOTIF parm
+	my $bootif;
+	if ($args->{kernelpath} =~ m/genesis\.kernel\.x86_64/) {
+		$bootif = $mac;
+		$bootif =~ s/:/-/g;
+		$bootif = "BOOTIF=01-$bootif";
+	}
+	$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
 }
 
 
-# get this nodes nic, ip, netmask, and gateway.  Returns them in a 4 element array.
+# get this nodes nic, ip, netmask, gateway, and mac.  Returns them in a 5 element array.
 sub getNodeIpInfo {
 	my $args = shift @_;
 	my ($ipprefix) = $args->{mnip}=~m/^(\d+\.\d+)\./;		#todo: this is a hack, just using the 1st 2 octets of the mn ip addr
@@ -74,10 +81,11 @@ sub getNodeIpInfo {
 
 	# parse ip addr show output, looking for ipprefix, to determine nic and ip
 	my @output = runcmd("ip addr show");
-	my ($nic, $ipandmask);
+	my ($nic, $mac, $ipandmask);
 	foreach my $line (@output) {
-		my ($nictmp, $iptmp);
+		my ($nictmp, $mactmp, $iptmp);
 		if (($nictmp) = $line=~m/^\d+:\s+(\S+): /) { $nic = $nictmp; }		# new stanza, remember it
+		if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) |) { $mac = $mactmp; }		# got mac, remember it
 		if (($iptmp) = $line=~m/^\s+inet\s+($ipprefix\S+) /) { $ipandmask = $iptmp; last; }		# got ip, we are done
 	}
 	my ($ip, $netmask) = convertIpAndMask($ipandmask);
@@ -88,6 +96,12 @@ sub getNodeIpInfo {
 		my @nics = grep(m/\s+master\s+$nic\s+/, @output);
 		if (!scalar(@nics)) { die "Error: can't find the NICs that are part of $nic.\n"; }
 		($realnic) = $nics[0]=~m/^\d+:\s+(\S+): /;
+		# go back thru the ip add show output and find the mac of this nic
+		foreach my $line (@output) {
+			my ($nictmp, $mactmp, $foundnic);
+			if (($nictmp) = $line=~m/^\d+:\s+(\S+): / && $nictmp eq $realnic) { $foundnic = 1; }
+			if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) | && $foundnic) { $mac = $mactmp; last; }		# got mac, we are done
+		}
 	}
 
 	# finally, find the gateway
@@ -102,8 +116,8 @@ sub getNodeIpInfo {
 		verbose("using xCAT mgmt node IP as the fall back gateway.");
 	}
 
-	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway");
-	return ($realnic, $ip, $netmask, $gateway);
+	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway, mac=$mac");
+	return ($realnic, $ip, $netmask, $gateway, $mac);
 }
 
 
