@@ -1,6 +1,10 @@
 #!/bin/sh
+export MANAGEDADDRESSMODE="#XCATVAR:MANAGEDADDRESSMODE#"
 
 cd /etc/sysconfig/network
+
+if [ "$MANAGEDADDRESSMODE" != "static"  ]
+then
 rm -f ifcfg-eth-id*
 rm -f ifcfg-myri*
 cat >ifcfg-eth0 <<EOF
@@ -8,7 +12,7 @@ DEVICE=eth0
 BOOTPROTO=dhcp
 STARTMODE=onboot
 EOF
-
+fi
 . /tmp/prinicsetting
 rm /tmp/prinicsetting
 if [ "$PRINIC" != "eth0" ]
@@ -22,7 +26,12 @@ then
 #		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
 	fi
 fi
+
+if [ "$MANAGEDADDRESSMODE" != "static"  ]
+then
 echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+fi
+
 perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
 /etc/init.d/network restart
 

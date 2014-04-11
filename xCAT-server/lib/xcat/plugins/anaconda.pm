@@ -1377,12 +1377,17 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
 
+            if ($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
+               $instserver=$ip;
+            }
 	    my $httpprefix=$pkgdir;
 	    if ($installroot =~ /\/$/) {
 	       $httpprefix =~ s/^$installroot/\/install\//;
 	    } else {
 	       $httpprefix =~ s/^$installroot/\/install/;
 	    }
+            
             my $kcmdline =
                 "quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
               . $instserver . ":". $httpport
@@ -1437,6 +1442,30 @@ sub mkinstall
              unless ($ksdev eq "bootif" and $os =~ /7/) {
                  $kcmdline .= " ksdevice=" . $ksdev;
             }
+            
+            #if site.managedaddressmode=static, specify the network configuration as kernel options 
+            #to avoid multicast dhcp
+            if($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+               unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+
+               $kcmdline .=" ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
+               my $nrtab = xCAT::Table->new('noderes',-create=>0);
+               unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
+               my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
+               unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
+               my @nameserverARR=split (",",$ent->{nameservers});
+               my @nameserversIP;
+               foreach (@nameserverARR)
+               {
+                  my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                  push @nameserversIP, $ip;
+               }
+               
+               if(scalar @nameserversIP){
+                  $kcmdline .=" dns=".join(",",@nameserversIP);
+               }
+           }
 
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))

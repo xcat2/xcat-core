@@ -1075,6 +1075,13 @@ sub mkinstall
             {
 		$netserver = $ent->{nfsserver};
             }
+
+
+            if ($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($netserver);
+               $netserver=$ip;
+            }
+
             my $httpprefix = $pkgdir;
 	    if ($installroot =~ /\/$/) { #must prepend /install/
 		$httpprefix =~ s/^$installroot/\/install\//;
@@ -1138,6 +1145,32 @@ sub mkinstall
             foreach (@dd_drivers) {
                 $kcmdline .= " dud=file:/cus_driverdisk/$_";
             }
+
+            #if site.managedaddressmode=static, specify the network configuration as kernel options 
+            #to avoid multicast dhcp
+            if($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+               unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+
+               $kcmdline .=" hostip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
+               my $nrtab = xCAT::Table->new('noderes',-create=>0);
+               unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
+               my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
+               unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
+               my @nameserverARR=split (",",$ent->{nameservers});
+               my @nameserversIP;
+               foreach (@nameserverARR)
+               {
+                  my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                  push @nameserversIP, $ip;
+               }
+
+               if(scalar @nameserversIP){
+                  $kcmdline .=" dns=".join(",",@nameserversIP);
+               }
+           }            
+
+
 
             if (defined $sent->{serialport})
             {
