@@ -267,7 +267,7 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-        system ("scp -r /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso $MNIP:/iso");
+        system ("scp -r /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso $MN:/iso");
         system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
        &runcmd("echo 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4>/etc/hosts.rhppc64");
        &runcmd( "  echo $HMCIP $HMC.$DOMAIN $HMC>>/etc/hosts.rhppc64");
@@ -283,18 +283,22 @@ sub init
        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
      $res =  system("scp -r $nodedir/xcat-dep $MN:/");
        system("scp -r  /etc/yum.repos.d/rhel6.4.repo $MN:/etc/yum.repos.d/rhel6.4.repo");        ########  redhat 6.4
-       system("scp -r default.conf $MN:$rhppc64configfile");
+#       system("scp -r default.conf $MN:$rhppc64configfile");
 #       system("xdsh $MN perl $nodedir/xcatbuild/xcat-core/mklocalrepo.sh");
-       system("xdsh $MN perl $nodedir/xcatbuild/xcat-dep/rh6/ppc64/mklocalrepo.sh");
+       system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
        print "--install XCAT .......\n";
+
+       system("xdsh $MN yum -y install createrepo");
+       system("xdsh $MN createrepo /xcat-core/build");
+       system("xdsh $MN cp /xcat-core/build/xCAT-core.repo /etc/yum.repos.d/");
        system("xdsh $MN yum clean metadata");
        system("xdsh $MN rpm --import /iso/mountpoint/RPM-GPG-KEY-redhat-release");
-       system("xdsh $MN yum -y install xCAT");
+       system("xdsh $MN yum -y install perl-xCAT xCAT-client xCAT-server xCAT");
        print "--install XCATTEST .......\n";
        system("xdsh $MN yum -y install xCAT-test");
 
         print "--install createrepo .......\n";
-        system("xdsh $MN yum -y install createrepo");
+#        system("xdsh $MN yum -y install createrepo");
         system("xdsh $MN yum -y install screen");
         system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
         system("xdsh $MN mkdir -p /autotest/result");
@@ -320,6 +324,9 @@ sub  do_test
 {
 my $MN=$rhppc64config{var}{MN};
 my $nodedir=$rhppc64config{var}{nodedir};
+print "copy config file ";
+system("scp -r default.conf $MN:$rhppc64configfile");
+
 print "Start to run diskless installation ...\n";
      send_msg("******************************");
      send_msg("start diskless test");
@@ -327,6 +334,8 @@ print "Start to run diskless installation ...\n";
 #if($dsklsinst){
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t /opt/xcat/share/xcat/tools/autotest/testcase/installation/linux_diskless_installation");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+exit 1;
+
 #}
 #if($bundlerun){
       print "Start to run the automation test bucket ....\n";
@@ -574,12 +583,13 @@ if ($needhelp)
 #######################################
 # step 1. Read configuration files
 #######################################
+$confile = $configfile;
 my %confhash = read_conf();
 unless (%confhash) {
     send_msg(" returns error, exit");
     exit;
 }
-
+send_msg("finish reading global variable");
 
 #######################################
 # step 2. git update  
@@ -590,11 +600,12 @@ my $gitup;
 $gitup="/tmp/gitup";
 
 #Do checkout in git repo
-$res = system("cd $confkeys{srcdir}");
-if ($res !=0) {
-    send_msg("no source code directory,exit");
-    exit;
-}
+#$res = system("cd $confkeys{srcdir}");
+#if ($res !=0) {
+#    send_msg("no source code directory,exit");
+#
+#    exit;
+#}
 
 $res = system("git checkout $branch");
 if ($res != 0){
@@ -627,20 +638,24 @@ if (($res == 0)&&( $updates_regression == 1)) {
 #######################################
 # step 4. Copy code to MNs
 #######################################
-##will modify to $confkeys{srcdir};
-my $codedir = "/regression/code";
+my $codedir = $confhash{srcdir};
+send_msg("src code directory is $confhash{srcdir}"); 
 
 ##will modify to $rhppc64config{var}{MNIP} 
-my $mn="aixmn";
+my $mn = $management_node;
+send_msg("mn is $mn");
 
 #install dep for buildlocal
+send_msg("begin to install build required packages on mn");
 $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
 
+
 #need to copy /etc/hosts to mn
+send_msg("copy /etc/hosts to mn");
 system("scp /etc/hosts $mn:/etc");
 
-system("echo begin copy code");
-$res = system("scp -r   root\@$mn:/");
+send_msg("begin to copy code");
+$res = system("scp -r $codedir root\@$mn:/");
 if ($res != 0){
     send_msg("code copy failed");
     exit 1;
@@ -651,21 +666,23 @@ if ($res != 0){
 # step 5. Build xcat code in MNs
 #######################################
 #for temp usage
-system("echo began build xcat on mn");
+send_msg("========= began build xcat on mn ========");
 #will changed /code/xcat-core to $confkeys{srcdir}  
-$res = system("xdsh $mn /code/xcat-core/buildlocal.sh CURDIR=/code/xcat-core");
+$res = system("xdsh $mn /xcat-core/buildlocal.sh CURDIR=/xcat-core");
 if ($res != 0){
           send_msg("build failed on mn");
           exit 1;
       }
 
-system("echo build done");
+send_msg("====================build done============================");
 
 sleep 20;
+
 
 #######################################
 # step 6. Read xCAT MN's configuration
 #######################################
+send_msg("begin read configuration file for mn");
 mkdir $resultdir unless -d $resultdir;
 $timestamp = `date +"%Y%m%d%H%M%S"`;
 my @osname = &runcmd("uname -a");
@@ -681,16 +698,20 @@ if ($res) {
 }
 #}
 
+send_msg("step 6 : reading mn configuration done=====");
+
 #######################################
 # step 7. Genrate local configuration file for xcattest
 #         Do test
 #         Write log
 #######################################
 # step 7.1 Install xcat and init mn
+send_msg("began to install xCAT and initialize mn");
 $res = &init;
 if ($res != 0){
     exit;
 }
+
 
 $res = &do_test;
 if ($res) {
