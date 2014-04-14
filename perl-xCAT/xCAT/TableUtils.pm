@@ -1177,7 +1177,9 @@ sub getAppStatus
     my ($class, $nodes_ref, $application) = @_;
     my @nodes = @$nodes_ref;
 
-    my $nltab = xCAT::Table->new('nodelist');
+    # FIXME: why autocommit matters for a read-only subroutine getNodesAttribs?
+    # but could not get the appstatus without the autocommit=0
+    my $nltab = xCAT::Table->new('nodelist', -autocommit => 0);
     my $nodeappstat = $nltab->getNodesAttribs(\@nodes,['appstatus']);
 
     my $ret_nodeappstat;
