@@ -74,21 +74,82 @@ echo '};' >> /var/lib/lldpad/lldpad.conf
 done
 echo '};' >> /var/lib/lldpad/lldpad.conf
 lldpad -d
-dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
-#we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
-#chances that we'll perform a partial discovery
-#in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
-dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
-NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
-export NICSTOBRINGUP
-for nic in $NICSTOBRINGUP; do
-	(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
-	(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf /var/lib/dhclient/dhclient6.leases $nic ) &
-done
-openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
-	
-	
+# Caclulate the broadcast address of a given IP address and mask.
+bcastcalc(){
+  read oct1 oct2 oct3 oct4 << HERE
+    $(echo "$1" | sed -e 's/\./ /g')
+HERE
+  read msk1 msk2 msk3 msk4 << HERE
+    $(echo "$2" | sed -e 's/\./ /g')
+HERE
+  ipa=$(($oct1+(255-($oct1 | $msk1))))
+  ipb=$(($oct2+(255-($oct2 | $msk2))))
+  ipc=$(($oct3+(255-($oct3 | $msk3))))
+  ipd=$(($oct4+(255-($oct4 | $msk4))))
+  echo "$ipa.$ipb.$ipc.$ipd"
+}
+
+# Calculates the number of bits in a netmask for converting something like 255.255.255.192 to 26 so
+# you can use the notation 10.0.0.1/26
+mask2prefix() {
+    nbits=0
+    old_ifs=$IFS
+    IFS=.
+    for dec in $1 ; do
+        case $dec in
+            255) let nbits+=8;;
+            254) let nbits+=7;;
+            252) let nbits+=6;;
+            248) let nbits+=5;;
+            240) let nbits+=4;;
+            224) let nbits+=3;;
+            192) let nbits+=2;;
+            128) let nbits+=1;;
+            0);;
+            *) echo "Error: $dec is not recognised"; exit 1
+        esac
+    done
+    IFS=$old_ifs
+    echo "$nbits"
+}
+
+# see if they specified static ip info, otherwise use dhcp
+for parm in `cat /proc/cmdline`; do
+    key=`echo $parm|awk -F= '{print $1}'`
+    if [ "$key" = "hostip" ]; then
+        hostip=`echo $parm|awk -F= '{print $2}'`
+    elif [ "$key" = "netmask" ]; then
+        netmask=`echo $parm|awk -F= '{print $2}'`
+    elif [ "$key" = "gateway" ]; then
+        gateway=`echo $parm|awk -F= '{print $2}'`
+    elif [ "$key" = "netdevice" ]; then
+        netdevice=`echo $parm|awk -F= '{print $2}'`
+    fi
+done
+if [[ -n $hostip && -n $netmask && -n $gateway && -n $netdevice ]]; then
+	# doing static ip
+	numbits=$(mask2prefix $netmask)
+	broadcast=$(bcastcalc $hostip $netmask)
+	echo "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway netdevice=$netdevice ..."
+	ip addr add $hostip/$numbits broadcast $broadcast dev $netdevice scope global label $netdevice
+	ip route replace to default via $gateway dev $netdevice
+else
+	echo "Setting IP via DHCP..."
+	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
+	#we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
+	#chances that we'll perform a partial discovery
+	#in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
+	dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+	export NICSTOBRINGUP
+	for nic in $NICSTOBRINGUP; do
+		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
+		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf /var/lib/dhclient/dhclient6.leases $nic ) &
+	done
+fi
+
+openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
 gripeiter=101
 echo -n "Acquiring network addresses.."
