@@ -412,13 +412,13 @@ sub create_imgconf_file {
     my $rootpw = undef;
     my $passwdtab = xCAT::Table->new('passwd');            
     if ($passwdtab) {                                      
-        my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password');
+        my $et = $passwdtab->getAttribs({key => 'vios', username => 'padmin'}, 'password');
         if ($et and defined ($et->{'password'})) {     
             $rootpw = $et->{'password'};
         }
     }
     unless (defined($rootpw)) {
-        return "Unable to find requested password from passwd, with key=system,username=root";
+        return "Unable to find requested password from passwd, with key=vios,username=padmin";
     }
     unless (-e $bootimg_root."/viobootimg") {
         return "Unable to find VIOS bootimg file";

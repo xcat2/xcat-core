@@ -33,7 +33,7 @@ cd $XCATDIR/ca
 #   - call cmds directly instead - seems safe
 # make sign
 
-openssl ca -config openssl.cnf -in `hostname`.csr -out `hostname`.cert -extensions server
+openssl ca -startdate 19600101010101Z -config openssl.cnf -in `hostname`.csr -out `hostname`.cert -extensions server
 if [ -f `hostname`.cert ]; then
     rm `hostname`.csr
 fi

@@ -219,7 +219,10 @@ if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
+    echo 'bootloader --driveorder='$instdisk >> /tmp/partitioning
 	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype vfat' >> /tmp/partitioning
+else
+    echo 'bootloader' >> /tmp/partitioning
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...

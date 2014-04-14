@@ -46,7 +46,7 @@ fi
 # remove user from index
 index=`grep $CNA /etc/xcat/ca/index  |  cut -f4  2>&1`
 for id  in $index; do
-  openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$id.pem
+  openssl ca -startdate 19600101010101Z -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$id.pem
 done
 mkdir -p $USERHOME/.xcat
 cd $USERHOME/.xcat
@@ -60,7 +60,7 @@ cd $XCATDIR/ca
 #   - seems to be a problem with the use of the wildcard in the Makefile
 #   - calling cmds directly instead - should be safe
 # make sign
-openssl ca -config openssl.cnf -in root.csr -out root.cert
+openssl ca -startdate 19600101010101Z -config openssl.cnf -in root.csr -out root.cert
 if [ -f root.cert ]; then
     rm root.csr
 fi
