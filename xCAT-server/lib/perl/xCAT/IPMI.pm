@@ -121,6 +121,7 @@ sub new {
     unless ($ipmi2support) {
         $self->{ipmi15only} = 1;
     }
+    $self->{privlevel} = 4;
     unless ($args{'bmc'} and defined $args{'userid'} and defined $args{'password'}) {
         $self->{error}="bmc, userid, and password must be specified";
         return $self;
@@ -308,7 +309,7 @@ sub session_activated {
 
 sub set_admin_level {
     my $self= shift;
-    $self->subcmd(netfn=>0x6,command=>0x3b,data=>[4],callback=>\&admin_level_set,callback_args=>$self);
+    $self->subcmd(netfn=>0x6,command=>0x3b,data=>[$self->{privlevel}],callback=>\&admin_level_set,callback_args=>$self);
 }
 sub admin_level_set {
     my $rsp = shift;
@@ -686,7 +687,7 @@ sub send_rakp3 {
     $self->{rmcptag}+=1;
     my @payload = ($self->{rmcptag},0,0,0,@{$self->{pendingsessionid}});
     my @user = unpack("C*",$self->{userid});
-    push @payload,unpack("C*",hmac_sha1(pack("C*",@{$self->{remoterandomnumber}},@{$self->{sidm}},4,scalar @user,@user),$self->{password}));
+    push @payload,unpack("C*",hmac_sha1(pack("C*",@{$self->{remoterandomnumber}},@{$self->{sidm}},$self->{privlevel},scalar @user,@user),$self->{password}));
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp3'});
 }
 
@@ -700,7 +701,7 @@ sub send_rakp1 {
         push @{$self->{randomnumber}},$randomnumber;
     }
     push @payload, @{$self->{randomnumber}};
-    push @payload,(4,0,0); # request admin
+    push @payload,($self->{privlevel},0,0); # request priv
     my @user = unpack("C*",$self->{userid});
     push @payload,scalar @user;
     push @payload,@user;
@@ -816,6 +817,13 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
+        if ($byte == 0x9 and $self->{privlevel} == 4) {
+            # this is probably an environment that wants to give us only operator
+            # try to connect again at 3.
+            $self->{privlevel} = 3;
+            $self->relog();
+            return;
+        }
 	if ($byte == 0x02) { #invalid session id is almost certainly because a retry on rmcp+ open session response rendered our session id invalid, ignore this in the hope that we'll get an answer for our retry that invalidated us..
 	    #$self->relog();
 		#TODO: probably should disable RAKP1 retry here...  high likelihood that we'll just spew a bad RAKP1 and Open Session Request retry would be more appropriate to try to discern a valid session id
@@ -840,7 +848,7 @@ sub got_rakp2 {
     #Data now represents authcode.. sha1 only..
     my @user = unpack("C*",$self->{userid});
     my $ulength = scalar @user;
-    my $hmacdata = pack("C*",(@{$self->{sidm}},@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user));
+    my $hmacdata = pack("C*",(@{$self->{sidm}},@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},$self->{privlevel},$ulength,@user));
     my @expectedhash = (unpack("C*",hmac_sha1($hmacdata,$self->{password})));
     foreach (0..(scalar(@expectedhash)-1)) {
         if ($expectedhash[$_] != $data[$_]) {
@@ -849,7 +857,7 @@ sub got_rakp2 {
             return 9;
         }
     }
-    $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
+    $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},$self->{privlevel},$ulength,@user),$self->{password});
     $self->{k1} = hmac_sha1(pack("C*",1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1),$self->{sik});
     $self->{k2} = hmac_sha1(pack("C*",2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2),$self->{sik});
     my @aeskey = unpack("C*",$self->{k2});
