@@ -222,7 +222,7 @@ my %usage = (
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
        lsvm <noderange> [-l|--long] --p775
-       lsvm <noderange> [--updatedb]
+       lsvm <noderange> 
    zVM specific:
        lsvm noderange
        lsvm noderange --getnetworknames
