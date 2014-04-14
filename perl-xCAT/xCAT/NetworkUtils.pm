@@ -1981,6 +1981,53 @@ sub isIpaddr
     }
 }
 
+
+#-------------------------------------------------------------------------------
+=head3  getSubnetGateway 
+    Description:
+        Get gateway from the networks table of the specified net. 
+
+    Arguments:
+        net: the net, ie. the "net" field of the networks table
+    Returns:
+        Return a string, of the gateway
+        undef - Failed to get the gateway
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $gateway = xCAT::NetworkUtils::getSubnetGateway('192.168.1.0');
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getSubnetGateway
+{
+   my $netname=shift;
+   if( $netname =~ /xCAT::NetworkUtils/)
+   {
+      $netname=shift;
+   }
+ 
+   my $gateway=undef;
+   my $nettab = xCAT::Table->new("networks");
+   unless($nettab) { die "No entry defined in networks"; }
+   my @nets = $nettab->getAllAttribs('net','gateway'); 
+   foreach(@nets)
+   {
+      if("$_->{net}" eq "$netname")
+      {
+         $gateway = $_->{gateway};
+         last;
+      }
+   }
+   
+   return $gateway; 
+} 
+
+
 #-------------------------------------------------------------------------------
 
 =head3   getNodeNetworkCfg 
@@ -2007,17 +2054,23 @@ sub isIpaddr
 sub getNodeNetworkCfg
 {
     my $node = shift;
-
+    if( $node =~ /xCAT::NetworkUtils/)
+    {
+       $node =shift;
+    }  
+ 
     my $nets = xCAT::NetworkUtils::my_nets();
     my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
+    my $gateway = undef;
     for my $net (keys %$nets)
     {
         my $netname;
         ($netname,$mask) = split /\//, $net;
+        $gateway=xCAT::NetworkUtils::getSubnetGateway($netname);
         last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
     }
-    return ($ip, $node, undef, xCAT::NetworkUtils::formatNetmask($mask,1,0));
+    return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,1,0));
 }
 
 #-------------------------------------------------------------------------------
