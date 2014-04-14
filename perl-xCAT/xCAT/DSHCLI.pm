@@ -598,7 +598,7 @@ sub _execute_dsh
                 }
                 else
                 {
-                    # LKV: This is where the output shows up
+                    # HERE: This is where the output shows up
                     #print STDOUT @{$output_buffers{$user_target}};
                     #print STDERR @{$error_buffers{$user_target}};
                     chomp(@{$output_buffers{$user_target}});
@@ -5310,7 +5310,8 @@ sub build_merge_rsync
             if ($syncmergescript == 0) { # don't add the xdcpmerge.sh line 
               push @::mergelines,$line;
             }
-            my $src_file  = $1; # merge file left of arror
+            my $src_file  = $1; # merge file left of arrow
+            my $orig_src_file = $1;
             # it will be sync'd to $nodesyncfiledir/$merge_file
             my $dest_file = $nodesyncfiledir;
             $dest_file .= $src_file;  
@@ -5339,7 +5340,7 @@ sub build_merge_rsync
                     # to pick up files from /var/xcat/syncfiles...
                     if ($onServiceNode == 1) {
                       my $newsrcfile = $syncdir;    # add SN syndir on front
-                      $newsrcfile .= $src_file;
+                      $newsrcfile .= $orig_src_file; 
                       $src_file=$newsrcfile;
                     }
                     # destination file name

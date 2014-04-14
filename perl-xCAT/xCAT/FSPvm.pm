@@ -48,6 +48,15 @@ sub parse_args {
 ##########################################################################
 # Parse the chvm command line for options and operands
 ##########################################################################
+my @query_array = ();
+my %param_list_map = (
+    'vmcpus' => 'part_get_lpar_processing',
+    'vmmemory' => 'part_get_lpar_memory',
+    'vmphyslots' => 'part_get_all_io_bus_info',
+    'vmnics' => 'part_get_all_vio_info',
+    'vmstorage' => 'part_get_all_vio_info',
+    'del_vadapter' => 'part_get_all_vio_info'
+);
 
 sub chvm_parse_extra_options {
 	my $args = shift;
@@ -57,6 +66,7 @@ sub chvm_parse_extra_options {
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
+    my %tmp_hash = ();
 	foreach (@$args) {
 		my ($cmd, $value) = split (/\=/, $_);
 		if (!defined($value)) {
@@ -75,14 +85,24 @@ sub chvm_parse_extra_options {
 #				return "'$value' invalid";
 #			}
         } elsif (grep(/^$cmd$/, @support_ops)) {
+            if (exists($param_list_map{$cmd})) {
+                $tmp_hash{$param_list_map{$cmd}} = 1;
+            }
             if (exists($opt->{p775})) {
                 return "'$cmd' doesn't work for Power 775 machines.";
+            } elsif ($cmd eq "del_vadapter") {
+                if ($value !~ /^\d+$/) {
+                    return "Invalid param '$value', only one slot id can be specified";
+                }
+
             } elsif ($cmd eq "vmothersetting") {
                 if ($value =~ /hugepage:\s*(\d+)/i) {
                     $opt->{huge_page} = $1;
+                    $tmp_hash{'get_huge_page'} = 1;
                 }
                 if ($value =~ /bsr:\s*(\d+)/i) {
                     $opt->{bsr} = $1;
+                    $tmp_hash{'get_cec_bsr'} = 1;
                 }
                 next;
             } elsif ($cmd eq "vmstorage") {
@@ -157,6 +177,7 @@ sub chvm_parse_extra_options {
 		}
 		$opt->{$cmd} = $value;
 	}
+    @query_array = keys(%tmp_hash);
 	return undef;
 }
 
@@ -763,7 +784,7 @@ sub do_op_extra_cmds {
     my $request = shift;
     my $hash = shift;
     my @values = ();
-
+    my %lpar_hash = ();
     while (my ($mtms, $h) = each(%$hash)) {
         my $memhash;
         while (my($name, $d) = each(%$h)) {
@@ -871,8 +892,15 @@ sub do_op_extra_cmds {
                     push @values, [$name, "Success", '0'];
                 } 
             }
+            my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
+            # need to add update db here 
+            $lpar_hash{$name} = $rethash;     
+            $lpar_hash{$name}->{parent} = @$d[4];
         }
     } 
+    if (%lpar_hash) {
+        update_vm_db($request, \%lpar_hash);
+    }
     return \@values;
 }
 sub check_node_info {
@@ -1839,11 +1867,16 @@ sub update_vm_db {
     my $lpar_hash = shift;
     my $vm_hd = xCAT::Table->new('vm');
     my %name_id_map = ();
+    my $commit = 0;
     foreach (keys (%$lpar_hash)) {
         my %db_update = ();
         my $node_hash = $lpar_hash->{$_};
-        $db_update{cpus} = "$node_hash->{lpar_cpu_min}/$node_hash->{lpar_cpu_req}/$node_hash->{lpar_cpu_max}";
-        $db_update{memory} = "$node_hash->{lpar_mem_min}/$node_hash->{lpar_mem_req}/$node_hash->{lpar_mem_max}";
+        if (exists($node_hash->{lpar_cpu_min})) {
+            $db_update{cpus} = "$node_hash->{lpar_cpu_min}/$node_hash->{lpar_cpu_req}/$node_hash->{lpar_cpu_max}";
+        }
+        if (exists($node_hash->{lpar_mem_nim})) {
+            $db_update{memory} = "$node_hash->{lpar_mem_min}/$node_hash->{lpar_mem_req}/$node_hash->{lpar_mem_max}";
+        }
         if (exists($node_hash->{lpar_vmstorage_server})) {
             $db_update{storage} = $node_hash->{lpar_vmstorage_server};
         } elsif (exists($node_hash->{lpar_vmstorage_client})) {
@@ -1863,14 +1896,23 @@ sub update_vm_db {
             }
             $db_update{storage} = join(",",@tmp_array);
         }
-        $db_update{nics} = join(",",@{$node_hash->{lpar_vmnics}});
-        $db_update{physlots} = join(",",@{$node_hash->{lpar_phy_bus}});
+        if (exists($node_hash->{lpar_vmnics})) {
+            $db_update{nics} = join(",",@{$node_hash->{lpar_vmnics}});
+        }
+        if (exists($node_hash->{lpar_phy_bus})) {
+            $db_update{physlots} = join(",",@{$node_hash->{lpar_phy_bus}});
+        }
         if (exists($node_hash->{lpar_othersetting})) {
             $db_update{othersettings} = join(",",@{$node_hash->{lpar_othersetting}});
         }
-        $vm_hd->setNodeAttribs($_,\%db_update);
+        if (%db_update) {
+            $vm_hd->setNodeAttribs($_,\%db_update);
+            $commit = 1;
+        }
     }
-    $vm_hd->commit;
+    if ($commit) {
+        $vm_hd->commit;
+    }
 }
 
 #my @partition_query_actions = qw(part_get_partition_cap part_get_num_of_lpar_slots part_get_hyp_config_process_and_mem part_get_hyp_avail_process_and_mem part_get_service_authority_lpar_id part_get_shared_processing_resource part_get_all_vio_info lpar_lhea_mac part_get_all_io_bus_info part_get_lpar_processing part_get_lpar_memory get_huge_page get_cec_bsr);
@@ -2162,6 +2204,7 @@ sub mkspeclpar {
     my $opt = $request->{opt};
     my $values;
     my @result = ();
+    my %lpar_hash = ();
     my $vmtab = xCAT::Table->new( 'vm');
     unless($vmtab) {
         return([["Error","Cannot open vm table", 1]]);
@@ -2327,9 +2370,17 @@ sub mkspeclpar {
             $tmp_ent->{logic_drc_phydrc} = $memhash->{logic_drc_phydrc};
             $values = &create_lpar($request, $name, $d, $tmp_ent); 
             push @result, $values;
+            #need to add update db here
+            my $rethash = query_cec_info_actions($request, $name, $d, 1, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
+            $lpar_hash{$name} = $rethash;     
+            $lpar_hash{$name}->{parent} = @$d[4];
+
             $name = undef;
             $d = undef;
         }
+    }
+    if (%lpar_hash) {
+        update_vm_db($request, \%lpar_hash);
     }
     return \@result;    
 }
