@@ -60,7 +60,7 @@ cd $XCATDIR/ca
 #   - seems to be a problem with the use of the wildcard in the Makefile
 #   - calling cmds directly instead - should be safe
 # make sign
-openssl ca -startdate 19600101010101Z -config openssl.cnf -in root.csr -out root.cert
+openssl ca -startdate 600101010101Z -config openssl.cnf -in root.csr -out root.cert
 if [ -f root.cert ]; then
     rm root.csr
 fi
