@@ -470,26 +470,7 @@ sub build_diskstruct {
     my $currdev;
     my @suffixes=('a','b','d'..'zzz');
     my $suffidx=0;
-    if ($cdloc) {
-        my $cdhash;
-        $cdhash->{device}='cdrom';
-        if ($cdloc =~ /^\/dev/) {
-            $cdhash->{type}='block';
-        } else {
-            $cdhash->{type}='file';
-        }
-        $cdhash->{source}->{file}=$cdloc;
-        $cdhash->{readonly};
-        $cdhash->{target}->{dev}='hdc';
-        push @returns,$cdhash;
-    } else { #give the VM an empty optical drive, to allow chvm live attach/remove
-      my $cdhash;
-      $cdhash->{device}='cdrom';
-      $cdhash->{type}='file';
-      $cdhash->{readonly};
-      $cdhash->{target}->{dev}='hdc';
-      push @returns,$cdhash;
-    }
+    my $storagemodel = $confdata->{vm}->{$node}->[0]->{storagemodel};
     my $cachemethod = "none";
     if ( $confdata->{vm}->{$node}->[0]->{storagecache}) {
         $cachemethod = $confdata->{vm}->{$node}->[0]->{storagecache};
@@ -506,7 +487,7 @@ sub build_diskstruct {
             my $model = $1;
             unless ($model) {
                 #if not defined, model will stay undefined like above
-                $model = $confdata->{vm}->{$node}->[0]->{storagemodel};
+                $model = $storagemodel;
                 unless ($model) { $model = 'ide'; } #if still not defined, ide
             }
             my $prefix='hd';
@@ -574,6 +555,34 @@ sub build_diskstruct {
             push @returns,$diskhash;
         }
     }
+    my $cdprefix='hd';
+    if ($storagemodel eq 'virtio') {
+        $cdprefix='vd';
+    } elsif ($storagemodel eq 'scsi') {
+        $cdprefix='sd';
+    }
+    $suffidx += 1;
+    if ($cdloc) {
+        my $cdhash;
+        $cdhash->{device}='cdrom';
+        if ($cdloc =~ /^\/dev/) {
+            $cdhash->{type}='block';
+        } else {
+            $cdhash->{type}='file';
+        }
+        $cdhash->{source}->{file}=$cdloc;
+        $cdhash->{readonly};
+        $cdhash->{target}->{dev}=$cdprefix.$suffixes[$suffidx];
+        push @returns,$cdhash;
+    } else { #give the VM an empty optical drive, to allow chvm live attach/remove
+      my $cdhash;
+      $cdhash->{device}='cdrom';
+      $cdhash->{type}='file';
+      $cdhash->{readonly};
+      $cdhash->{target}->{dev}=$cdprefix.$suffixes[$suffidx];
+      push @returns,$cdhash;
+    }
+
     return \@returns;
 }
 sub getNodeUUID {
@@ -654,10 +663,16 @@ sub build_xmldesc {
     my %args=@_;
     my $cdloc=$args{cd};
     my %xtree=();
+    my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
     $xtree{type}='kvm';
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
     $xtree{os} = build_oshash();
+    if (defined($hypcpumodel) and $hypcpumodel eq "ppc64") {
+        $xtree{os}->{type}->{arch} = "ppc64";
+        $xtree{os}->{type}->{machine} = "pseries";
+        delete $xtree{os}->{bios};
+    }
     if ($args{memory}) {
         $xtree{memory}->{content}=getUnits($args{memory},"M",1024);
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
@@ -723,8 +738,12 @@ sub build_xmldesc {
     } else {
 	    $xtree{devices}->{graphics}->{password}=genpassword(20);
     }
-    $xtree{devices}->{sound}->{model}='ac97';
-  
+    if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
+        $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
+    } else {
+        $xtree{devices}->{sound}->{model}='ac97';
+    }
+
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
     return XMLout(\%xtree,RootName=>"domain");
@@ -2988,7 +3007,17 @@ sub dohyp {
      	return 1,"General error establishing libvirt communication";
      }
   }
+  if (($command eq 'mkvm' or $command eq 'chvm') and $hypconn) {
+      my $nodeinfo = $hypconn->get_node_info();
+      if (exists($nodeinfo->{model})) {
+          $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
+      }
+  }
+
   foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})) {
+    if ($confdata->{$hyp}->{cpumodel} and $confdata->{$hyp}->{cpumodel} =~ /ppc64/i) {
+        $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
+    }
     my ($rc,@output) = guestcmd($hyp,$node,$command,@$args); 
 
     foreach(@output) {
