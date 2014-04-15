@@ -35,6 +35,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
+my %confhash;
 my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
 my $needhelp  = 0;
 my $branch = 0;
@@ -66,7 +67,7 @@ my $dsklscnsninst=0;
 my $fullcnsninst=0;
 my $statelitecnsninst=0;
 my %confkeys;
-my $confile;
+my %results;
 
 #######################################
 # usage for arguments
@@ -95,13 +96,13 @@ sub config_rhppc64 {
  send_msg("******************************");
     send_msg("Reading Configure");
     send_msg("******************************");
-#if(!(-e $configfile)){
- #   send_msg("Warning: The xCAT test Configure file doesn't exist!");
-  #  send_msg("Warning: The xCAT test Configure file doesn't exist!");
-   # return 0;
-   # }
-  my $type = undef;
-  my $sub_type = undef; # The string after $type_
+    #if(!(-e $configfile)){
+    #send_msg("Warning: The xCAT test Configure file doesn't exist!");
+    #send_msg("Warning: The xCAT test Configure file doesn't exist!");
+    #return 0;
+    #}
+    my $type = undef;
+    my $sub_type = undef; # The string after $type_
     # Script-->
     #       Script_Prev
     #       Script_Post
@@ -143,7 +144,7 @@ sub config_rhppc64 {
                     $name = $value;
                     $rhppc64config{table}{$sub_type}{$name}{__KEY__}=$attr;
                 }
-   }
+            }
         }elsif ($type eq "rhppc64Object") {
             ##OBJECT BLOCK##
             if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
@@ -178,8 +179,8 @@ sub config_rhppc64 {
                 print "var $1,$2\n";
             }
         }
-}
- if(exists $rhppc64config{object}){
+    }
+    if(exists $rhppc64config{object}){
         foreach my $type (keys %{$rhppc64config{object}}){
             foreach my $name (keys %{$rhppc64config{object}{$type}}){
                 send_msg("OBJECT:$name,TYPE:$type");
@@ -188,26 +189,26 @@ sub config_rhppc64 {
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$rhppc64config{object}{$type}{$name}}){
                     send_msg("    $attr = $rhppc64config{object}{$type}{$name}{$attr};");
-                     &runcmd( "  echo $attr=$rhppc64config{object}{$type}{$name}{$attr}>>default.conf");
+                    &runcmd( "  echo $attr=$rhppc64config{object}{$type}{$name}{$attr}>>default.conf");
                 }
             }
         }
     }
- if(exists $rhppc64config{table}){
-    foreach my $type (keys %{$rhppc64config{table}}){
+    if(exists $rhppc64config{table}){
+        foreach my $type (keys %{$rhppc64config{table}}){
             send_msg("TABLE:$type");
             &runcmd( "  echo [Table_$type]>>default.conf");
-              #  &runcmd( "  echo key=$type>>default.conf");
-             #&runcmd( "  echo [Table_site]>>default.conf");
-              #  &runcmd( "  echo key=$type>>default.conf");
+            #&runcmd( "  echo key=$type>>default.conf");
+            #&runcmd( "  echo [Table_site]>>default.conf");
+            #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$rhppc64config{table}{$type}}){
-                send_msg("    $rhppc64config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg("    $rhppc64config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $rhppc64config{table}{$type}{$name}{__KEY__}=$name>>default.conf");
-                foreach my $attr (keys %{$rhppc64config{table}{$type}{$name}}){
-                    if($attr ne '__KEY__'){
-                        send_msg("    $attr = $rhppc64config{table}{$type}{$name}{$attr}");
-                        &runcmd( " echo $attr=$rhppc64config{table}{$type}{$name}{$attr}>>default.conf");
-                    }
+               foreach my $attr (keys %{$rhppc64config{table}{$type}{$name}}){
+                   if($attr ne '__KEY__'){
+                       send_msg("    $attr = $rhppc64config{table}{$type}{$name}{$attr}");
+                       &runcmd( " echo $attr=$rhppc64config{table}{$type}{$name}{$attr}>>default.conf");
+                   }
                 }
                 send_msg("\n");
             }
@@ -220,31 +221,141 @@ sub config_rhppc64 {
          }
     }
 
- if(exists $rhppc64config{script_post}){
-         send_msg("Script_Post:");
+    if(exists $rhppc64config{script_post}){
+        send_msg("Script_Post:");
         foreach $cmd (@{$rhppc64config{script_post}}){
             send_msg("    $cmd");
         }
     }
-if (exists $rhppc64config{var}){
-#my $MN=$rhppc64config{var}{MN};
-#my $MNIP=$rhppc64config{var}{MNIP};
-#&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
-#print "MN is $MN\n";}
-    send_msg("Varible:");
-     &runcmd( "  echo [System]>>default.conf");
-    foreach my $varname (keys %{$rhppc64config{var}}){
-        send_msg("    $varname = $rhppc64config{var}{$varname}");
-        &runcmd( "  echo $varname=$rhppc64config{var}{$varname}>>default.conf");
-#print "var is $rhppc64config{var}\n";
+    if (exists $rhppc64config{var}){
+    #my $MN=$rhppc64config{var}{MN};
+    #my $MNIP=$rhppc64config{var}{MNIP};
+    #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
+    #print "MN is $MN\n";}
+        send_msg("Varible:");
+        &runcmd( "  echo [System]>>default.conf");
+        foreach my $varname (keys %{$rhppc64config{var}}){
+            send_msg("    $varname = $rhppc64config{var}{$varname}");
+            &runcmd( "  echo $varname=$rhppc64config{var}{$varname}>>default.conf");
+            #print "var is $rhppc64config{var}\n";
         }
-}
+    }
  
-close FILE;
+    close FILE;
     return 0;
 
 }
+#######################################
+# git update
+#######################################
+sub git_update {
+    send_msg("begin to do git update");
+    
+    my $gitup;
+    $gitup="/tmp/gitup";
+    
+    #Do checkout in git repo
+    #$res = system("cd $confkeys{srcdir}");
+    #if ($res !=0) {
+    #    send_msg("no source code directory,exit");
+    #
+    #    exit;
+    #}
+    
+    $res = system("git checkout $branch");
+    if ($res != 0){
+        send_msg("git checkout failed");
+        exit 1;
+    }
+    
+    $res = system("git pull >$gitup");
+    if ($res != 0){
+        send_msg("git pull failed");
+        exit 1;
+    }
+    
+    $res = system("grep 'Already up-to-date' $gitup");
+    if (($res == 0)&&( $updates_regression == 1)) {
+      send_msg("code is already at latest version. exit regresson\n");
+      exit 1;
+    }
+	return 0;
+}
 
+#######################################
+# copy code
+#######################################
+sub copy_code {
+    my $codedir = $confhash{srcdir};
+    send_msg("src code directory is $confhash{srcdir}"); 
+    
+    ##will modify to $rhppc64config{var}{MNIP} 
+    my $mn = $management_node;
+    send_msg("mn is $mn");
+    
+    #install dep for buildlocal
+    send_msg("begin to install build required packages on mn");
+    $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
+    
+    
+    #need to copy /etc/hosts to mn
+    send_msg("copy /etc/hosts to mn");
+    system("scp /etc/hosts $mn:/etc");
+    
+    send_msg("begin to copy code");
+    $res = system("scp -r $codedir root\@$mn:/");
+    if ($res != 0){
+        send_msg("code copy failed");
+        exit 1;
+    }
+	return 0;
+}
+
+
+
+#######################
+# build xcat 
+#######################
+sub build_xcat {
+    my $mn = shift;
+    #for temp usage
+    send_msg("========= began build xcat on mn ========");
+    #will changed /code/xcat-core to $confkeys{srcdir}  
+    $res = system("xdsh $mn /xcat-core/buildlocal.sh CURDIR=/xcat-core");
+    if ($res != 0){
+              send_msg("build failed on mn");
+              exit 1;
+          }
+    
+    send_msg("====================build done============================");
+	sleep 20;
+	return 0;
+}  
+
+#######################################
+# config mn
+#######################################
+sub config_mn {
+    my $mn = shift;
+    send_msg("begin read configuration file for mn");
+    mkdir $resultdir unless -d $resultdir;
+    $timestamp = `date +"%Y%m%d%H%M%S"`;
+    my @osname = &runcmd("uname -a");
+        #if ( $osname [0]  =~ /^Linux\s*/  &&  -f "/etc/redhat-release" && $osname [0] =~ /ppc64/){
+        #print "ppc64 redhat env\n";
+        #$os="rhels6.4";
+        #$arch="ppc64";
+        #print "os is $os,arch is $arch\n";
+        $res = &config_rhppc64();
+    if ($res) {
+        send_msg("CONFIGURE MN returns error, exit");
+        exit 1;
+    }
+    #}
+    
+    send_msg("step 6 : reading mn configuration done=====");
+	return 0;
+}      
 #######################################
 # install xcat and init rhppc64 env
 #######################################
@@ -281,10 +392,10 @@ sub init
        print "[OK]\n";
        print "--get the latest XCAT tarball.......\n";
        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
-     $res =  system("scp -r $nodedir/xcat-dep $MN:/");
+       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
        system("scp -r  /etc/yum.repos.d/rhel6.4.repo $MN:/etc/yum.repos.d/rhel6.4.repo");        ########  redhat 6.4
-#       system("scp -r default.conf $MN:$rhppc64configfile");
-#       system("xdsh $MN perl $nodedir/xcatbuild/xcat-core/mklocalrepo.sh");
+       #system("scp -r default.conf $MN:$rhppc64configfile");
+       #system("xdsh $MN perl $nodedir/xcatbuild/xcat-core/mklocalrepo.sh");
        system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
        print "--install XCAT .......\n";
 
@@ -298,143 +409,152 @@ sub init
        system("xdsh $MN yum -y install xCAT-test");
 
         print "--install createrepo .......\n";
-#        system("xdsh $MN yum -y install createrepo");
+        #system("xdsh $MN yum -y install createrepo");
         system("xdsh $MN yum -y install screen");
         system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
         system("xdsh $MN mkdir -p /autotest/result");
-  #      system("xdsh $MN sysctl -n net.ipv4.ip_forward=1");
-     $res =  system("xdsh $MN source /etc/profile.d/xcat.sh");
-     #    if ($res != 0){
-      #    send_msg("install xCAT failed on rhpmn");
-       #   exit 1;
-      #}
+        #system("xdsh $MN sysctl -n net.ipv4.ip_forward=1");
+        $res =  system("xdsh $MN source /etc/profile.d/xcat.sh");
+        #if ($res != 0){
+        #send_msg("install xCAT failed on rhpmn");
+        #exit 1;
+        #}
 
         send_msg( " rhppc64 env is ready\n");
-}
+    }
 
     return 0;
 
 
 }
+#######################################
+# do test
+#######################################
+sub do_test {
+    # step 7.1 Install xcat and init mn
+    send_msg("began to install xCAT and initialize mn");
+    $res = &init;
+    if ($res != 0){
+        exit 1;
+    }
+    
+    send_msg("Begin to do test");
+    $res = &do_test1;
+    if ($res) {
+        send_msg("DO TEST returns error, exit");
+        exit 1;
+    }
+    return 0;
 
+}
 #######################################
 # run all test
 #######################################
-sub  do_test
+sub  do_test1
 {
-my $MN=$rhppc64config{var}{MN};
-my $nodedir=$rhppc64config{var}{nodedir};
-print "copy config file ";
-system("scp -r default.conf $MN:$rhppc64configfile");
-
-print "Start to run diskless installation ...\n";
-     send_msg("******************************");
-     send_msg("start diskless test");
-     send_msg("******************************");
-#if($dsklsinst){
-    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t /opt/xcat/share/xcat/tools/autotest/testcase/installation/linux_diskless_installation");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-exit 1;
-
-#}
-#if($bundlerun){
-      print "Start to run the automation test bucket ....\n";
- #     system("xdsh $MN mkdir -p /autotest/result");
-      system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-      system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-  #    system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-#      $output = ("xdsh $MN tail /autotest/result/xcattest.log.$timestamp");
-#if($output =~ /Total: (\d+) , Failed: (\d+)/){
- #   send_msg{command}{total} = $1;
-  #  send_msg{command}{fail} = $2;
-   # send_msg{command}{timestamp} = $timestamp;
-   # if(send_msg{command}{fail} != 0){
-    #    send_msg{command}{failcase} = "|                         |        |  Failed cases:"."\n";
-     #   $output = (xdsh $MN cat /autotest/result/failedcases.$timestamp | grep END);
-      #  while($output =~ /END::(\w+)/g){
-       #     send_msg{command}{failcase} = $send_msg{command}{failcase}."|                         |        |    ".$1."\n";
-#           print "$msg{command}{failcase}";
-
-      # }
-       #     print "$send_msg{command}{failcase}";
-   #}
-#}
-#}
-#if($stateliteinst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_statelite_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-    #$output = system(" xdsh $MN tail /autotest/result/xcattest.log.$timestamp");
-    #if($output =~ /Failed: (\d+)/){
-     #   if($1 != 0){
-      #      send_msg{linux_statelite_installation_flat}{pass} = 0;
-       #     send_msg{linux_statelite_installation_flat}{timestamp} = $timestamp;
-       # } else {
-        #    send_msg{linux_statelite_installation_flat}{pass} = 1;
-        #}
+    my $MN=$rhppc64config{var}{MN};
+    my $nodedir=$rhppc64config{var}{nodedir};
+    print "copy config file ";
+    system("scp -r default.conf $MN:$rhppc64configfile");
+    
+    print "Start to run diskless installation ...\n";
+    send_msg("******************************");
+    send_msg("start diskless test");
+    send_msg("******************************");
+    #if($dsklsinst){
+        system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t /opt/xcat/share/xcat/tools/autotest/testcase/installation/linux_diskless_installation");
+        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #   exit 1;
     #}
-
-#}
-#if($fullinst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-  #  system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
- #$output = xdsh $MN tail /autotest/result/xcattest.log.$timestamp;
-  #  if($output =~ /Failed: (\d+)/){
-   #     if($1 != 0){
-    #        send_msg{linux_full_installation_flat}{pass} = 0;
-     #       send_msg{linux_full_installation_flat}{timestamp} = $timestamp;
-      #  } else {
-       #     send_msg{linux_full_installation_flat}{pass} = 1;
-        #}
+    #if($bundlerun){
+         print "Start to run the automation test bucket ....\n";
+    #    system("xdsh $MN mkdir -p /autotest/result");
+         system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
+         system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #    system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #    $output = ("xdsh $MN tail /autotest/result/xcattest.log.$timestamp");
+    #    if($output =~ /Total: (\d+) , Failed: (\d+)/){
+    #        send_msg{command}{total} = $1;
+    #        send_msg{command}{fail} = $2;
+    #        send_msg{command}{timestamp} = $timestamp;
+    #        if(send_msg{command}{fail} != 0){
+    #            send_msg{command}{failcase} = "|                         |        |  Failed cases:"."\n";
+    #            $output = (xdsh $MN cat /autotest/result/failedcases.$timestamp | grep END);
+    #            while($output =~ /END::(\w+)/g){
+    #                send_msg{command}{failcase} = $send_msg{command}{failcase}."|                         |        |    ".$1."\n";
+    #                print "$msg{command}{failcase}";
+    #            }
+    #            print "$send_msg{command}{failcase}";
+    #        }
+    #    }
+    #    }
+    #if($stateliteinst){
+        system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_statelite_installation_flat_ppc64");
+        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #   system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #   $output = system(" xdsh $MN tail /autotest/result/xcattest.log.$timestamp");
+    #   if($output =~ /Failed: (\d+)/){
+    #       if($1 != 0){
+    #         send_msg{linux_statelite_installation_flat}{pass} = 0;
+    #         send_msg{linux_statelite_installation_flat}{timestamp} = $timestamp;
+    #      } else {
+    #          send_msg{linux_statelite_installation_flat}{pass} = 1;
+    #      }
+    #   }
     #}
-
-#}
-#if($snfullinst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    #system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-   # $output = xdsh $MN tail /autotest/result/xcattest.log.$timestamp;
-   # if($output =~ /Failed: (\d+)/){
-    #    if($1 != 0){
-     #       send_msg{linux_sn_installation_flat}{pass} = 0;
-      #      send_msg{linux_sn_installation_flat}{timestamp} = $timestamp;
-       # } else {
-        #    send_msg{linux_sn_installation_flat}{pass} = 1;
-        #}
+    #if($fullinst){
+        system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
+        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #   system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #   $output = xdsh $MN tail /autotest/result/xcattest.log.$timestamp;
+    #   if($output =~ /Failed: (\d+)/){
+    #       if($1 != 0){
+    #           send_msg{linux_full_installation_flat}{pass} = 0;
+    #           send_msg{linux_full_installation_flat}{timestamp} = $timestamp;
+    #       } else {
+    #           send_msg{linux_full_installation_flat}{pass} = 1;
+    #      }
+    #   }
     #}
-
-#}
-#if($dsklscnsninst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_cn_with_sn_diskless_installation_flat_x86_vm");
-   system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-   # if($output =~ /Failed: (\d+)/){
-    #    if($1 != 0){
-     #       send_msg{linux_cn_with_sn_diskless_installation_flat}{pass} = 0;
-      #      send_msg{linux_cn_with_sn_diskless_installation_flat}{timestamp} = $timestamp;
-       # } else {
-        #    send_msg{linux_cn_with_sn_diskless_installation_flat}{pass} = 1;
-        #}
+    #if($snfullinst){
+         system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
+         system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #    system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #    $output = xdsh $MN tail /autotest/result/xcattest.log.$timestamp;
+    #    if($output =~ /Failed: (\d+)/){
+    #       if($1 != 0){
+    #           send_msg{linux_sn_installation_flat}{pass} = 0;
+    #           send_msg{linux_sn_installation_flat}{timestamp} = $timestamp;
+    #       } else {
+    #           send_msg{linux_sn_installation_flat}{pass} = 1;
+    #       }
+    #    }
     #}
-
-#}
-#if($statelitecnsninst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_cn_with_sn_statelite_installation_flat_x86_vm");
-   system(" xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    #system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-#}
-#if($fullcnsninst){
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_cn_with_sn_full_installation_flat_x86_vm");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
-
-#}
-#system("mkdir -p $nodedir/result");
-system("scp -r $MN:/autotest/result /regression/rhppc64");
-
-	
+    #if($dsklscnsninst){
+         system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_cn_with_sn_diskless_installation_flat_x86_vm");
+         system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #    system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #    if($output =~ /Failed: (\d+)/){
+    #       if($1 != 0){
+    #          send_msg{linux_cn_with_sn_diskless_installation_flat}{pass} = 0;
+    #          send_msg{linux_cn_with_sn_diskless_installation_flat}{timestamp} = $timestamp;
+    #       } else {
+    #           send_msg{linux_cn_with_sn_diskless_installation_flat}{pass} = 1;
+    #       }
+    #    }
+    #}
+    #if($statelitecnsninst){
+        system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_cn_with_sn_statelite_installation_flat_x86_vm");
+        system(" xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #   system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #}
+    #if($fullcnsninst){
+        system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_cn_with_sn_full_installation_flat_x86_vm");
+        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    #   system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
+    #}
+    #system("mkdir -p $nodedir/result");
+     system("scp -r $MN:/autotest/result /regression/rhppc64");
 }
 
 #######################################
@@ -468,7 +588,6 @@ sub mn_install {
 # runcmd
 #######################################
 sub runcmd {
-
     my ($cmd) = @_;
     my $rc = 0;
     $::RUNCMD_RC = 0;
@@ -481,7 +600,6 @@ sub runcmd {
     }
     chomp(@$outref);
     return @$outref;
-
 }
 
 #######################################
@@ -491,9 +609,9 @@ sub trim {
 
    my $str = shift @_;
    if($str){
-#       $str =~ s/\#/__wellnumber__/g;
+       #$str =~ s/\#/__wellnumber__/g;
        $str =~ s/^\s+|#.+|\s+$//g;
- #      $str =~ s/__wellnumber__/#/g;
+       #$str =~ s/__wellnumber__/#/g;
    }
    return $str;
 }
@@ -503,58 +621,60 @@ sub trim {
 #######################################
 sub send_msg {
     my $msg = shift;
-        print "xcatreg message: $msg.\n";
+    print "xcatreg message: $msg.\n";
 }
 #######################################
 # read_conf
 #######################################
 sub read_conf{
-        my $keys;
-        if (!open($keys, "<$confile")) {
-            send_msg("Open configuration file error");
-        }
-        my $line;
-        while ($line = <$keys>) {
-            if ($line =~ /end/) {
-                    last;
-                }
-                if ($line =~ /^\s*log\s*=\s*(\S*)\s*/) {
-                    $confkeys{log} = $1;
-                }
-                if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {
-                    $confkeys{mailgroup} = $1;
-                }
-                if ($line =~ /^\s*srcdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{srcdir} = $1;
-                }
-                if ($line =~ /^\s*rhpdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{rhpdir} = $1;
-                }
-                if ($line =~ /^\s*slespdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{slespdir} = $1;
-                }
-                if ($line =~ /^\s*aixdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{aixdir} = $1;
-                }
-                if ($line =~ /^\s*rhxdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{rhxdir} = $1;
-                }
-                if ($line =~ /^\s*slesxdir\s*=\s*(\S*)\s*/) {
-                    $confkeys{slesxdir} = $1;
-                }
-                if ($line =~ /^\s*ubuntudir\s*=\s*(\S*)\s*/) {
-                    $confkeys{ubuntudir} = $1;
-                }
-                if ($line =~ /^\s*xcattestconf\s*=\s*(\S*)\s*/) {
-                    $confkeys{xcattestconf} = $1;
-                }
-
+    my $keys;
+    if (!open($keys, "<$configfile")) {
+        send_msg("Open configuration file error");
     }
+    my $line;
+    while ($line = <$keys>) {
+        if ($line =~ /end/) {
+            last;
+        }
+        if ($line =~ /^\s*log\s*=\s*(\S*)\s*/) {
+            $confkeys{log} = $1;
+        }
+        if ($line =~ /^\s*mailgroup\s*=\s*(\S*)\s*/) {
+            $confkeys{mailgroup} = $1;
+        }
+        if ($line =~ /^\s*srcdir\s*=\s*(\S*)\s*/) {
+            $confkeys{srcdir} = $1;
+        }
+        if ($line =~ /^\s*rhpdir\s*=\s*(\S*)\s*/) {
+            $confkeys{rhpdir} = $1;
+        }
+        if ($line =~ /^\s*slespdir\s*=\s*(\S*)\s*/) {
+            $confkeys{slespdir} = $1;
+        }
+        if ($line =~ /^\s*aixdir\s*=\s*(\S*)\s*/) {
+            $confkeys{aixdir} = $1;
+        }
+        if ($line =~ /^\s*rhxdir\s*=\s*(\S*)\s*/) {
+            $confkeys{rhxdir} = $1;
+        }
+        if ($line =~ /^\s*slesxdir\s*=\s*(\S*)\s*/) {
+            $confkeys{slesxdir} = $1;
+        }
+        if ($line =~ /^\s*ubuntudir\s*=\s*(\S*)\s*/) {
+            $confkeys{ubuntudir} = $1;
+        }
+        if ($line =~ /^\s*xcattestconf\s*=\s*(\S*)\s*/) {
+            $confkeys{xcattestconf} = $1;
+        }
+    }
+    send_msg("finish reading global vars");
     return %confkeys;
 }
 
 
-################################################################Main function######################################################################################
+###############################################################
+# Mainfunction
+###############################################################
 
 
 #######################################
@@ -583,150 +703,103 @@ if ($needhelp)
 #######################################
 # step 1. Read configuration files
 #######################################
-$confile = $configfile;
-my %confhash = read_conf();
+%confhash = read_conf();
 unless (%confhash) {
-    send_msg(" returns error, exit");
-    exit;
+    send_msg("READ CONF returns error, exit");
+    exit 1;
 }
-send_msg("finish reading global variable");
+
 
 #######################################
 # step 2. git update  
 #######################################
-send_msg("begin to do git update");
-
-my $gitup;
-$gitup="/tmp/gitup";
-
-#Do checkout in git repo
-#$res = system("cd $confkeys{srcdir}");
-#if ($res !=0) {
-#    send_msg("no source code directory,exit");
-#
-#    exit;
-#}
-
-$res = system("git checkout $branch");
-if ($res != 0){
-    send_msg("git checkout failed");
-    exit 1;
-}
-
-$res = system("git pull >$gitup");
-if ($res != 0){
-    send_msg("git pull failed");
-    exit 1;
-}
-
-$res = system("grep 'Already up-to-date' $gitup");
-if (($res == 0)&&( $updates_regression == 1)) {
-  send_msg("code is already at latest version. exit regresson\n");
-  exit 1;
-}
-
-
-#######################################
-# step 3. Install MNs
-#######################################
-#$res = mn_install();
-#if ($res) {
-#    send_msg("INSTALL MNS returns error, exit");
-#    exit;
-#}
-
-#######################################
-# step 4. Copy code to MNs
-#######################################
-my $codedir = $confhash{srcdir};
-send_msg("src code directory is $confhash{srcdir}"); 
-
-##will modify to $rhppc64config{var}{MNIP} 
-my $mn = $management_node;
-send_msg("mn is $mn");
-
-#install dep for buildlocal
-send_msg("begin to install build required packages on mn");
-$res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
-
-
-#need to copy /etc/hosts to mn
-send_msg("copy /etc/hosts to mn");
-system("scp /etc/hosts $mn:/etc");
-
-send_msg("begin to copy code");
-$res = system("scp -r $codedir root\@$mn:/");
-if ($res != 0){
-    send_msg("code copy failed");
-    exit 1;
-}
-
-
-#######################################
-# step 5. Build xcat code in MNs
-#######################################
-#for temp usage
-send_msg("========= began build xcat on mn ========");
-#will changed /code/xcat-core to $confkeys{srcdir}  
-$res = system("xdsh $mn /xcat-core/buildlocal.sh CURDIR=/xcat-core");
-if ($res != 0){
-          send_msg("build failed on mn");
-          exit 1;
-      }
-
-send_msg("====================build done============================");
-
-sleep 20;
-
-
-#######################################
-# step 6. Read xCAT MN's configuration
-#######################################
-send_msg("begin read configuration file for mn");
-mkdir $resultdir unless -d $resultdir;
-$timestamp = `date +"%Y%m%d%H%M%S"`;
-my @osname = &runcmd("uname -a");
-#if ( $osname [0]  =~ /^Linux\s*/  &&  -f "/etc/redhat-release" && $osname [0] =~ /ppc64/){
- #   print "ppc64 redhat env\n";
-  #  $os="rhels6.4";
-   # $arch="ppc64";
-    #print "os is $os,arch is $arch\n";
-    $res = &config_rhppc64();
+$res = git_update();
 if ($res) {
-    send_msg("CONFIGURE MN returns error, exit");
-    exit;
+    send_msg("GIT UPDATE returns error, exit");
+    exit 1;
 }
-#}
-
-send_msg("step 6 : reading mn configuration done=====");
-
 #######################################
-# step 7. Genrate local configuration file for xcattest
-#         Do test
-#         Write log
+# begin child process, until return log
 #######################################
-# step 7.1 Install xcat and init mn
-send_msg("began to install xCAT and initialize mn");
-$res = &init;
-if ($res != 0){
-    exit;
-}
+my @mns;
+pipe CREAD,PWRITE;
+foreach my $mn (@mns) {
+    my $pid = fork();
+    if ( !defined($pid) ) {
+        send_msg("Fork error: $!");
+        exit 1;
+    } elsif ( $pid == 0 ) { # child process
+        close CREAD;       
+        #######################################
+        # step 3. Install MNs, 
+        #######################################      
+        #$res = mn_install();
+        #if ($res) {
+        #    send_msg("INSTALL MNS returns error, exit");
+        #    exit 1;
+        #}
+        #######################################
+        # step 4. Copy code to MNs
+        #######################################
+        $res = copy_code();
+        if ($res) {
+            send_msg("COPY CODE returns error, exit");
+            exit 1;
+        }	
+        #######################################
+        # step 5. Build xcat code in MNs
+        #######################################
+        $res = build_xcat($mn);
+        if ($res) {
+            send_msg("BUILD XCAT returns error, exit");
+            exit 1;
+        }		
+        #######################################
+        # step 6. Read xCAT MN's configuration
+        #######################################
+        $res = config_mn($mn);
+        if ($res) {
+            send_msg("CONFIGURE MN returns error, exit");
+            exit 1;
+        }	
+        #######################################
+        # step 7. Genrate local configuration file for xcattest
+        #         Do test
+        #         Write log
+        #######################################
+        $res = do_test();
+        if ($res) {
+            send_msg("DO TEST returns error, exit");
+            exit 1;
+        }
+		syswrite PWRITE,"$mn succeed\n";
+		exit 0;
+    } # end of child process	
+} #end of foreach mn, begin parent process
 
-
-$res = &do_test;
-if ($res) {
-    send_msg("DO TEST returns error, exit");
-    exit;
-}
-
+close PWRITE;
+my $time = time();
+while (1) {
+    while(<CREAD>){
+         chomp;
+         my $result = $_;
+         if ($result =~ /(\w*) succeed/){
+    	     $results{$1} = 1;
+         }
+    }		 
+    last if((keys %results) == @mns);
+    last if(time() - $time > 28800); #wait 8 hours at most	 
+}	
 #######################################
 # step 8. process result 
 #######################################
 $res = pro_result();
 if ($res) {
     send_msg("PROCESS RESULT returns error, exit");
-    exit;
+    exit 1;
 }
+exit 0;
+	
 
 
 
