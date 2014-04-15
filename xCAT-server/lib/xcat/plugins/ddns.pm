@@ -228,6 +228,9 @@ sub process_request {
             return;
         }
     }
+    if ($::XCATSITEVALS{externaldns}) {
+    	$external=1;
+    }
 
     if ($help)
     {
@@ -282,7 +285,6 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again."], $callback);
 
     }
-
     my @entries =  xCAT::TableUtils->get_site_attribute("nameservers");
     my $sitens = $entries[0];
     unless ( defined($site_entry)) {
@@ -295,7 +297,6 @@ sub process_request {
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
 
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain','domain','nameservers');
-
     # exclude the net if it is using an external dns server.
     foreach my $net (@networks)
     {
@@ -562,81 +563,84 @@ sub process_request {
                 my @nservers = split /[ ,]/,$site_entry;
                 $ctx->{dnsupdaters} = \@nservers;
         }
-        if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
-            if (xCAT::Utils->isAIX())
-            {
-                system("/usr/bin/stopsrc -s $service");
-            }
-            else
-            {
-                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
-            }
-            my $conf = get_conf();
-            unlink $conf;
-            my $DBDir = get_dbdir();
-            foreach (<$DBDir/db.*>) {
-                unlink $_;
-            }
-        }
-        #We manipulate local namedconf
-        $ctx->{dbdir} = get_dbdir();
-        $ctx->{zonesdir} = get_zonesdir();
-        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
+	unless ($external) {
+	        if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
+	            if (xCAT::Utils->isAIX())
+	            {
+	                system("/usr/bin/stopsrc -s $service");
+	            }
+	            else
+	            {
+	                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
+	            }
+	            my $conf = get_conf();
+	            unlink $conf;
+	            my $DBDir = get_dbdir();
+	            foreach (<$DBDir/db.*>) {
+	                unlink $_;
+	            }
+	        }
+	        #We manipulate local namedconf
+	        $ctx->{dbdir} = get_dbdir();
+	        $ctx->{zonesdir} = get_zonesdir();
+	        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
 
-        update_namedconf($ctx, $slave); 
+                update_namedconf($ctx, $slave); 
 
-        unless ($slave)
-        {
-            update_zones($ctx);
-        }
+                unless ($slave)
+                {
+                    update_zones($ctx);
+                }
       
-        if ($ctx->{restartneeded}) {
-            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
+	        if ($ctx->{restartneeded}) {
+	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
 
-            if (xCAT::Utils->isAIX())
-            {
-                #try to stop named
-                my $cmd = "/usr/bin/stopsrc -s $service";
-                my @output=xCAT::Utils->runcmd($cmd, 0);
+                    if (xCAT::Utils->isAIX())
+                    {
+                        #try to stop named
+                        my $cmd = "/usr/bin/stopsrc -s $service";
+                        my @output=xCAT::Utils->runcmd($cmd, 0);
 
-                $cmd = "/usr/bin/startsrc -s $service";
-                @output=xCAT::Utils->runcmd($cmd, 0);
-                my $outp = join('', @output);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return;
-                }
-            }
-            else
-            {
-                my $cmd = "service $service stop";
-                my @output=xCAT::Utils->runcmd($cmd, 0);
-                my $outp = join('', @output);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return;
-                }
+                        $cmd = "/usr/bin/startsrc -s $service";
+                        @output=xCAT::Utils->runcmd($cmd, 0);
+                        my $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        my $cmd = "service $service stop";
+                        my @output=xCAT::Utils->runcmd($cmd, 0);
+                        my $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
 
-                $cmd = "service $service start";
-                @output=xCAT::Utils->runcmd($cmd, 0);
-                $outp = join('', @output);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp = {};
-                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    return;
-                }
-            }
+                        $cmd = "service $service start";
+                        @output=xCAT::Utils->runcmd($cmd, 0);
+                        $outp = join('', @output);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            return;
+                        }
+                    }
 
-            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
-        }
+	            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
+		}
+	        
+	}
     } else {
         unless ($ctx->{privkey}) {
             xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);
@@ -684,8 +688,8 @@ sub process_request {
                 return;
             }
         }
-    }       
- 
+    }
+        
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     if ($external)
     {
@@ -1033,6 +1037,7 @@ sub update_namedconf {
         }
         push @newnamed,"};\n\n";
     }
+
     unless ($slave) {
         unless ($gotkey) {
             unless ($ctx->{privkey}) { #need to generate one
@@ -1211,9 +1216,10 @@ sub add_or_delete_records {
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
 	my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
         if( !defined $ip) {
-            xCAT::SvrUtils::sendmsg([1,"Please make sure $ctx->{nsmap}->{$zone} exist in /etc/hosts or DNS."], $callback);
+            xCAT::SvrUtils::sendmsg([1,"Please make sure $ctx->{nsmap}->{$zone} exist either in /etc/hosts or DNS."], $callback);
             return 1;
         }
+
         my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
         my $entry;
         my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
