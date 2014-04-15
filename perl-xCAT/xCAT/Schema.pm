@@ -936,6 +936,8 @@ site => {
    "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n".
    "               node that is managing it (either its service node or the management\n".
    "               node).\n\n".
+   " externaldns: To specify that external dns is used. If any value is set to externaldns,\n".
+   "               makedns command will not start the local dns on xCAT MN.\n\n".
    " -------------------------\n".
    "HARDWARE CONTROL ATTRIBUTES\n".
    " -------------------------\n".
