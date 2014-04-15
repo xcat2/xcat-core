@@ -1,135 +1,197 @@
-#!/bin/bash
-# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+#! /bin/sh
 
-# Test driver for xcatws.cgi, pass 3 arguments to it: user, password, noderange
-# This test driver will create to dummy nodes, wstest1 and wstest2, so make sure those
-# names don't conflict with your nodes on this MN.
-# You also have to pass in a noderange of 2 real system x nodes that can be used
-# to test some of the r cmds, xdsh, xdcp, nodestat.
 
-user=$1
-pw=$2
-nr=$3
-if [ -z "$3" ]; then
-	echo "Usage: chkrc <user> <pw> <noderange>"
-	exit
-fi
+# Get all the parameters
+for i in $@
+do
+  if [ "$paramname" = "USER" ]; then
+    USER=$i
+    paramname=
+  fi
+  if [ "$paramname" = "PW" ]; then
+    PW=$i
+    paramname=
+  fi
+  if [ "$paramname" = "HOST" ]; then
+    HOST=$i
+    paramname=
+  fi
 
-format='format=json&pretty=1'
-ctype='-H Content-Type:application/json'
+  if [ $i = '-u' ]; then
+    paramname=USER
+  fi
+  if [ $i = '-p' ]; then
+    paramname=PW
+  fi
+  if [ $i = '-h' ]; then
+    paramname=HOST
+  fi
+  if [ $i = '-c' ]; then
+    cert=yes
+  fi
+  if [ $i = '-t' ]; then
+    token=yes
+  fi
+ 
+done
 
-function chkrc
-{
-	rc=$?
-	{ set +x; } 2>/dev/null
-	if [[ $1 == "not" ]]; then
-		if [[ $rc -eq 0 ]]; then
-			echo "Test failed!"
-			exit
-		fi
-	else
-		if [[ $rc -gt 0 ]]; then
-			echo "Test failed!"
-			exit
-		fi
-	fi
-	echo ''
-	set -x
+# display the usage message
+function usage {
+  echo "Usage:"
+  echo "  xcatws-test.sh -u <USER> -p <pw> [-t]"
+  echo "  xcatws-test.sh -u <USER> -p <pw> -h <FQDN - Full hostname of server> [-c] [-t]"
+  echo "    -u  The username of xCAT user which is used to access xCAT resource"
+  echo "    -p  The password of username"
+  echo "    <FQDN of xCAT MN>  The fully qualified hostname of xCAT management node. It can be an IP if using -k."
+  echo "    -c  Check the server identity. The server certificate authentication must be enabled."
+  echo "    -t  Using token authentication method."
 }
 
-# pcregrep -M  'abc.*(\n|.)*efg' test.txt
+if [ "$USER" = "" ] || [ "$PW" = "" ]; then
+  echo "Error: Miss username or password"
+  usage
+  exit 1
+fi 
 
-#todo: add a test case for every api call that is documented
-set -x
-# clean up from last time
-curl -# -X DELETE -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw" >/dev/null; echo ''
+if [ "$cert" = "yes" ] && [ "$HOST" = "" ]; then
+  echo "Error: -c must be used with -h that user needs specify the FQDN of xCAT MN"
+  usage
+  exit 1
+fi
 
-# create test nodes
-curl -# -X POST -k "https://127.0.0.1/xcatws/node/wstest1-wstest2?userName=$user&password=$pw&$format" $ctype --data '{"groups":"wstest","netboot":"xnba"}' \
- | grep -q '2 object definitions have been created'; chkrc
-
-# list all nodes and make sure they are in the list
-curl -# -X GET -k "https://127.0.0.1/xcatws/node?userName=$user&password=$pw&$format" \
- | pcregrep -qM '"wstest1",\n\s*"wstest2"'; chkrc
-
-# list all node's group and netboot attributes
-curl -# -X GET -k "https://127.0.0.1/xcatws/node?userName=$user&password=$pw&field=groups&field=netboot" \
- | grep -qE '"nodename":"wstest1".*"groups":"wstest"'; chkrc
-
-# list all attributes of all nodes
-curl -# -X GET -k "https://127.0.0.1/xcatws/node?userName=$user&password=$pw&field=ALL" \
- | grep -qE '"nodename":"wstest1".*"groups":"wstest"'; chkrc
-
-# list the noderange and make sure they are in the list
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&$format" \
- | pcregrep -qM '"wstest1",\n\s*"wstest2"'; chkrc
-
-# list all node's group and netboot attributes
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&field=groups&field=netboot" \
- | grep -qE '"nodename":"wstest1".*"groups":"wstest"'; chkrc
-
-# list all attributes of all nodes
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&field=ALL" \
- | grep -qE '"nodename":"wstest1".*"groups":"wstest"'; chkrc
-
-# change some attributes
-curl -# -X PUT -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&$format" $ctype --data '{"room":"222","netboot":"pxe"}' \
- | grep -q '2 object definitions have been created or modified'; chkrc
-
-# verify they got the new values
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&field=room&field=netboot" \
- | grep -qE '"nodename":"wstest1".*"room":"222"'; chkrc
-
-# delete the nodes
-curl -# -X DELETE -k "https://127.0.0.1/xcatws/node/wstest?userName=$user&password=$pw&$format" \
- | grep -q '2 object definitions have been removed'; chkrc
-
-# list all nodes and make sure they are not in the list
-curl -# -X GET -k "https://127.0.0.1/xcatws/node?userName=$user&password=$pw&$format" \
- | pcregrep -qM '"wstest1",\n\s*"wstest2"'; chkrc not
-
-# list the power state of the noderange
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/$nr/power?userName=$user&password=$pw&$format" \
- | grep -q '"power":"on"'; chkrc
-
-# list the nodestat state of the noderange
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/$nr/status?userName=$user&password=$pw&$format" \
- | grep -q '":"sshd"'; chkrc
-
-# list the node inventory of the noderange
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/$nr/inventory?userName=$user&password=$pw&$format" \
- | grep -q '"Board manufacturer":"IBM"'; chkrc
-
-# list the node vitals of the noderange
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/$nr/vitals?userName=$user&password=$pw&$format" \
- | grep -q '"Cooling Fault":"false"'; chkrc
-
-# list the node energy settings of the noderange
-curl -# -X GET -k "https://127.0.0.1/xcatws/node/$nr/energy?userName=$user&password=$pw&$format&field=cappingstatus&field=cappingmaxmin" \
- | grep -q '"cappingstatus":"off"'; chkrc
-
-# run a cmd on the noderange
-curl -# -X POST -k "https://127.0.0.1/xcatws/node/$nr/dsh?userName=$user&password=$pw&$format" $ctype --data '{"command":"pwd"}' \
- | grep -q '"/root"'; chkrc
-
-# copy a file to the noderange
-curl -# -X POST -k "https://127.0.0.1/xcatws/node/$nr/dcp?userName=$user&password=$pw&$format" $ctype --data '{"source":"/root/.bashrc","target":"/tmp/"}' \
- | grep -q '"errorcode":"0"'; chkrc
-
-# test the table calls
-curl -# -X GET -k "https://127.0.0.1/xcatws/table/nodelist/wstest?userName=$user&password=$pw&$format"
+if [ "$HOST" = "" ]; then
+  HOST="127.0.0.1"
+fi
 
 
-exit
+ctype='-H Content-Type:application/json'
+
+# Perform the REST API request
+function REST {
+  METHOD=$1  # it should be GET/PUT/POST/DELETE
+  SRC=$2  # The resource path like /nodes/node1
+  DATA=$3 # The operation data for PUT/POST/DELETE
+  if [ "$DATA" != "" ]; then
+      datamsg="$ctype -d $DATA"
+  fi
+  if [ "$cert" = "yes" ]; then
+    if [ "$token" = "yes" ]; then
+      CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem -H X-Auth-Token:$TOKENID $datamsg https://$HOST/xcatws$SRC?pretty=1"
+    else
+      CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&password=$PW"
+    fi
+  else 
+    if [ "$token" = "yes" ]; then
+      CMD="curl -X $METHOD -k -H X-Auth-Token:$TOKENID $datamsg https://$HOST/xcatws$SRC?pretty=1"
+    else 
+      CMD="curl -X $METHOD -k $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&password=$PW"
+    fi
+  fi
+
+  echo "-------------------------------------------------------------------------------"
+  echo "Run: [$RESTMSG]"
+  echo "  $CMD"
+  echo "Output:"
+  `$CMD 2>/dev/null >/tmp/xcatws-test.log`
+  cat "/tmp/xcatws-test.log"
+  echo ""
+
+  ERROR=`grep "errorcode" "/tmp/xcatws-test.log"`
+  if [ "$ERROR" != "" ]; then
+     echo "FAILED to continue. See the error message in 'error' section."
+     echo ""
+     exit 2
+  fi
+}
+
+function PUT {
+  SRC=$1
+}
+
+# echo debug message
+echo "***********************************************************"
+echo "** Username: $USER"
+echo "** Password: $PW"
+echo "** Hostname: $HOST" 
 
 
-#curl -X GET -k "https://127.0.0.1/xcatws/groups?userName=$user&password=$pw&$format"
+# get the CA of server certificate
+if [ "$cert" = "yes" ]; then
+  rm -f /tmp/ca-cert.pem
+  cd /tmp
+  wget http://$HOST/install/postscripts/ca/ca-cert.pem  2>1 1>/dev/null
+  echo "** Using CA /tmp/ca-cert.pem for server certificate checking" 
+fi
 
-#curl -X GET -k "https://127.0.0.1/xcatws/images?userName=$user&password=$pw&$format"
-#curl -X GET -k "https://127.0.0.1/xcatws/images?userName=$user&password=$pw&$format&field=osvers"
-#curl -X GET -k "https://127.0.0.1/xcatws/images/bp-netboot?userName=$user&password=$pw&$format"
-#curl -X GET -k "https://127.0.0.1/xcatws/images/bp-netboot?userName=$user&password=$pw&$format&field=osvers"
+# get a token
+if [ "$token" = "yes" ]; then
+  TOKENID=$(curl -X POST -k "https://$HOST/xcatws/tokens?pretty=1" -H Content-Type:application/json --data "{\"userName\":\"$USER\",\"password\":\"$PW\"}" 2>/dev/null | grep '"id"' | awk -F: {'print $2'} | awk -F \" {'print $2'})
+  echo "** Using Token: $TOKENID to authenticate"
+fi
 
-#todo: remove when these test cases are in xcatws-test.pl
-#./xcatws-test.pl -u "https://127.0.0.1/xcatws/node/test001?userName=$user&password=$pw" -m GET
-#./xcatws-test.pl -u "https://127.0.0.1/xcatws/node/test001?userName=$user&password=$pw" -m PUT "nodepos.room=foo"
+echo "***********************************************************"
+echo ""
+
+# clean the env
+rmdef -t node restapinode[1-9] 1>/dev/null 2>1
+rmdef -t group restapi 1>/dev/null 2>1
+
+# get all resources
+RESTMSG="Get all available resource"
+REST GET "/"
+
+# test global conf
+RESTMSG="Get all global configuration resource"
+REST GET "/globalconf"
+
+RESTMSG="Change the global configuration domain to cluster.com"
+REST PUT "/globalconf/attrs/domain" '{"domain":"cluster.com"}'
+
+RESTMSG="Get the global configuration domain"
+REST GET "/globalconf/attrs/domain"
+
+# test node create/change/list/delete
+RESTMSG="Create node restapinode1"
+REST POST "/nodes/restapinode1" '{"groups":"restapi","arch":"x86_64","mgt":"ipmi","netboot":"xnba"}'
+
+RESTMSG="Display the node restapinode1"
+REST GET "/nodes/restapinode1"
+
+RESTMSG="Change the attributes for node restapinode1"
+REST PUT "/nodes/restapinode1" '{"mgt":"fsp","netboot":"yaboot"}'
+
+RESTMSG="Display the node restapinode1"
+REST GET "/nodes/restapinode1"
+
+RESTMSG="Delete node restapinode1"
+REST DELETE "/nodes/restapinode1"
+
+# test multiple nodes manipulation
+RESTMSG="Create node restapinode1 and restapinode2"
+REST POST "/nodes/restapinode1,restapinode2" '{"groups":"restapi","arch":"x86_64","mgt":"ipmi","netboot":"xnba"}'
+
+RESTMSG="Display the node restapinode1 and restapinode2"
+REST GET "/nodes/restapinode1,restapinode2"
+
+RESTMSG="Change the attributes for node restapinode1 and restapinode2"
+REST PUT "/nodes/restapinode1,restapinode2" '{"mgt":"hmc","netboot":"grub2"}'
+
+RESTMSG="Display the node restapinode1 and restapinode2"
+REST GET "/nodes/restapinode1,restapinode2"
+
+RESTMSG="Display all the nodes in the cluster"
+REST GET "/nodes"
+
+# test group 
+RESTMSG="Display the group restapi"
+REST GET "/groups/restapi"
+
+RESTMSG="Change attributes for group restapi"
+REST PUT "/groups/restapi" '{"os":"rh7"}'
+
+RESTMSG="Display the group restapi"
+REST GET "/groups/restapi"
+
+RESTMSG="Display the nodes in group restapi"
+REST GET "/nodes/restapi"
+
