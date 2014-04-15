@@ -4972,7 +4972,8 @@ sub parse_rsync_input_file_on_MN
     $::process_line = 0;
     my $destfileisdir;
     my $clause=0;
-    
+    my $addmergescript =0;
+    my $addappendscript =0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -5013,12 +5014,16 @@ sub parse_rsync_input_file_on_MN
                   # this triggers the running of the appendscript
                   $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
                 }
+
                 # add the append script to the sync
-                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                my $appendscriptline = "$appscript -> $appscript"; 
-                $syncappendscript=1;  # syncing the xdcpappend.sh script
-                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-               }
+                if ($addappendscript == 0) {  # only add once
+                  my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                  my $appendscriptline = "$appscript -> $appscript"; 
+                  $syncappendscript=1;  # syncing the xdcpappend.sh script
+                   &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+                   $addappendscript=1;
+                 } 
+               }  # end APPEND clause
                if ($clause =~ /MERGE:/) {
                  # location of the base merge script
                  # for MERGE we have to sync the mergescript and the
@@ -5030,12 +5035,16 @@ sub parse_rsync_input_file_on_MN
                   # this triggers the running of the mergescript
                   $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
                 }
+                
                 # add the merge script to the sync
-                my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
-                my $mergescriptline = "$mergescript -> $mergescript"; 
-                $syncmergescript=1;  # syncing the xdcpmerge.sh script
-                 &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-               }
+                if ($addmergescript == 0) {  # only add once
+                  my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                  my $mergescriptline = "$mergescript -> $mergescript"; 
+                  $syncmergescript=1;  # syncing the xdcpmerge.sh script
+                  &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
+                  $addmergescript=1;
+                }
+               }  # end MERGE clause
            
            }
          } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
