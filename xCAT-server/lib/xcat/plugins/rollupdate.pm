@@ -250,7 +250,7 @@ sub runrollupdate_usage {
 sub processArgs {
     my $gotattrs = 0;
 
-    if ( defined( @{$::args} ) ) {
+    if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     }
     else {
