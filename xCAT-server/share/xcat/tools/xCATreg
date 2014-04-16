@@ -68,7 +68,7 @@ my $fullcnsninst=0;
 my $statelitecnsninst=0;
 my %confkeys;
 my %results;
-
+my %mns;
 #######################################
 # usage for arguments
 #######################################
@@ -93,7 +93,7 @@ sub usage
 # config for rhppc64env
 #######################################
 sub config_rhppc64 {
- send_msg("******************************");
+    send_msg("******************************");
     send_msg("Reading Configure");
     send_msg("******************************");
     #if(!(-e $configfile)){
@@ -279,7 +279,7 @@ sub git_update {
       send_msg("code is already at latest version. exit regresson\n");
       exit 1;
     }
-	return 0;
+    return 0;
 }
 
 #######################################
@@ -308,7 +308,7 @@ sub copy_code {
         send_msg("code copy failed");
         exit 1;
     }
-	return 0;
+    return 0;
 }
 
 
@@ -328,8 +328,8 @@ sub build_xcat {
           }
     
     send_msg("====================build done============================");
-	sleep 20;
-	return 0;
+    sleep 20;
+    return 0;
 }  
 
 #######################################
@@ -354,7 +354,7 @@ sub config_mn {
     #}
     
     send_msg("step 6 : reading mn configuration done=====");
-	return 0;
+    return 0;
 }      
 #######################################
 # install xcat and init rhppc64 env
@@ -621,7 +621,10 @@ sub trim {
 #######################################
 sub send_msg {
     my $msg = shift;
-    print "xcatreg message: $msg.\n";
+    my $data = `date`;
+    open (LOGFILE, ">> xcatreg.lob");
+    print LOGFILE "$data : $msg.\n";
+    close LOGFILE;
 }
 #######################################
 # read_conf
@@ -666,6 +669,31 @@ sub read_conf{
         if ($line =~ /^\s*xcattestconf\s*=\s*(\S*)\s*/) {
             $confkeys{xcattestconf} = $1;
         }
+        if ($line =~ /^\s*rhpmn\s*=\s*(\S*)\s*/) {
+            $confkeys{rhpmn} = $1;
+            $mns{rhpmn} = $confkeys{rhpmn};
+        }
+        if ($line =~ /^\s*slespmn\s*=\s*(\S*)\s*/) {
+            $confkeys{slespmn} = $1;
+            $mns{slespmn} = $confkeys{slespmn};
+        }
+        if ($line =~ /^\s*aixmn\s*=\s*(\S*)\s*/) {
+            $confkeys{aixmn} = $1;
+			$mns{aixmn} = $confkeys{aixmn};
+            
+        }
+        if ($line =~ /^\s*rhxmn\s*=\s*(\S*)\s*/) {
+            $confkeys{rhxmn} = $1;
+			$mns{rhxmn} = $confkeys{rhxmn};
+        }
+        if ($line =~ /^\s*slesxmn\s*=\s*(\S*)\s*/) {
+            $confkeys{slesxmn} = $1;
+			$mns{slesxmn} = $confkeys{slesxmn};
+        }
+        if ($line =~ /^\s*ubuntumn\s*=\s*(\S*)\s*/) {
+            $confkeys{ubuntumn} = $1;
+			$mns{ubuntumn} = $confkeys{ubuntumn};
+        }
     }
     send_msg("finish reading global vars");
     return %confkeys;
@@ -680,6 +708,7 @@ sub read_conf{
 #######################################
 # step 0. Parse input arguments
 #######################################
+send_msg("\n\n\n== Running step 0...............");
 if (
     !GetOptions("h|?"  => \$needhelp,
                 "f=s" => \$configfile,
@@ -700,9 +729,19 @@ if ($needhelp)
     exit 0;
 }
 
+# begin to find which mn should be used
+if ($management_node) {
+   foreach my $k (keys %confkeys) {
+       if ($confkeys{$k} eq $management_node) {
+           $mns{$k} = $management_node;
+           send_msg("specify mn $management_node");
+       }       
+   }
+}
 #######################################
 # step 1. Read configuration files
 #######################################
+send_msg("\n\n\n== Running read_conf...............");
 %confhash = read_conf();
 unless (%confhash) {
     send_msg("READ CONF returns error, exit");
@@ -713,6 +752,7 @@ unless (%confhash) {
 #######################################
 # step 2. git update  
 #######################################
+send_msg("\n\n\n== Running git_update...............");
 $res = git_update();
 if ($res) {
     send_msg("GIT UPDATE returns error, exit");
@@ -720,19 +760,88 @@ if ($res) {
 }
 #######################################
 # begin child process, until return log
-#######################################
-my @mns;
-pipe CREAD,PWRITE;
-foreach my $mn (@mns) {
-    my $pid = fork();
-    if ( !defined($pid) ) {
-        send_msg("Fork error: $!");
-        exit 1;
-    } elsif ( $pid == 0 ) { # child process
-        close CREAD;       
+####################################### 
+unless ($ENV{'REGDEBUG'}) { #used for debug.
+    pipe CREAD,PWRITE;
+    foreach my $m (keys %mns) {
+        my $mn = $mns{$m};
+        my $pid = fork();
+        if ( !defined($pid) ) {
+            send_msg("Fork error: $!");
+            exit 1;
+        } elsif ( $pid == 0 ) { # child process
+            close CREAD;    
+            #######################################
+            # step 3. Install MNs, 
+            ####################################### 
+            #send_msg("\n\n\n== Running mn_install...............");            
+            #$res = mn_install();
+            #if ($res) {
+            #    send_msg("INSTALL MNS returns error, exit");
+            #    exit 1;
+            #}
+            #######################################
+            # step 4. Copy code to MNs
+            #######################################
+            send_msg("\n\n\n== Running copy_code...............");
+            $res = copy_code();
+            if ($res) {
+                send_msg("COPY CODE returns error, exit");
+                exit 1;
+            }    
+            #######################################
+            # step 5. Build xcat code in MNs
+            #######################################
+            send_msg("\n\n\n== Running build_xcat...............");
+            $res = build_xcat($mn);
+            if ($res) {
+                send_msg("BUILD XCAT returns error, exit");
+                exit 1;
+            }        
+            #######################################
+            # step 6. Read xCAT MN's configuration
+            #######################################
+            send_msg("\n\n\n== Running config_mn...............");
+            $res = config_mn($mn);
+            if ($res) {
+                send_msg("CONFIGURE MN returns error, exit");
+                exit 1;
+            }    
+            #######################################
+            # step 7. Genrate local configuration file for xcattest
+            #         Do test
+            #         Write log
+            #######################################
+            send_msg("\n\n\n== Running do_test...............");
+            $res = do_test();
+            if ($res) {
+                send_msg("DO TEST returns error, exit");
+                exit 1;
+            }
+            syswrite PWRITE,"$mn succeed\n";
+            exit 0;
+        } # end of child process
+	} # end of foreach	
+    close PWRITE;
+    my $time = time();
+    while (1) {
+        while(<CREAD>){
+             chomp;
+             my $result = $_;
+             if ($result =~ /(\w*) succeed/){
+                 $results{$1} = 1;
+             }
+        }         
+        last if((keys %results) == keys %mns);
+        last if(time() - $time > 28800); #wait 8 hours at most    
+    }
+} else {
+    foreach my $m (keys %mns) {
+        my $mn = $mns{$m};
         #######################################
         # step 3. Install MNs, 
-        #######################################      
+        #######################################   
+        #send_msg("\n\n\n== Running mn_install...............");                       
         #$res = mn_install();
         #if ($res) {
         #    send_msg("INSTALL MNS returns error, exit");
@@ -741,65 +850,55 @@ foreach my $mn (@mns) {
         #######################################
         # step 4. Copy code to MNs
         #######################################
+        send_msg("\n\n\n== Running copy_code...............");
         $res = copy_code();
         if ($res) {
             send_msg("COPY CODE returns error, exit");
             exit 1;
-        }	
+        }    
         #######################################
         # step 5. Build xcat code in MNs
         #######################################
+        send_msg("\n\n\n== Running build_xcat...............");
         $res = build_xcat($mn);
         if ($res) {
             send_msg("BUILD XCAT returns error, exit");
             exit 1;
-        }		
+        }        
         #######################################
         # step 6. Read xCAT MN's configuration
         #######################################
+        send_msg("\n\n\n== Running config_mn...............");
         $res = config_mn($mn);
         if ($res) {
             send_msg("CONFIGURE MN returns error, exit");
             exit 1;
-        }	
+        }
         #######################################
         # step 7. Genrate local configuration file for xcattest
         #         Do test
         #         Write log
         #######################################
+        send_msg("\n\n\n== Running do_test...............");
         $res = do_test();
         if ($res) {
             send_msg("DO TEST returns error, exit");
             exit 1;
         }
-		syswrite PWRITE,"$mn succeed\n";
-		exit 0;
-    } # end of child process	
-} #end of foreach mn, begin parent process
-
-close PWRITE;
-my $time = time();
-while (1) {
-    while(<CREAD>){
-         chomp;
-         my $result = $_;
-         if ($result =~ /(\w*) succeed/){
-    	     $results{$1} = 1;
-         }
-    }		 
-    last if((keys %results) == @mns);
-    last if(time() - $time > 28800); #wait 8 hours at most	 
-}	
+    }# end of foreach mn, begin parent process
+}# end of debug 
+   
 #######################################
 # step 8. process result 
 #######################################
+send_msg("\n\n\n== Running pro_result...............");
 $res = pro_result();
 if ($res) {
     send_msg("PROCESS RESULT returns error, exit");
     exit 1;
 }
 exit 0;
-	
+    
 
 
 
