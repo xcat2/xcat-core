@@ -941,8 +941,12 @@ site => {
    "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n".
    "               node that is managing it (either its service node or the management\n".
    "               node).\n\n".
-   " externaldns: To specify that an external dns is used. If externaldns is set to any value then ,\n".
-   "               makedns command will not start the local nameserver on xCAT MN. Default is to start local nameserver.\n\n".
+   " externaldns:  To specify that external dns is used. If externaldns is set to any value\n".
+   "               then, makedns command will not start the local nameserver on xCAT MN. \n".
+   "               Default is to start the local nameserver.\n\n".
+   " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n".
+   "               section. This is an interface for user to add configuration entries to\n". 
+   "               the zone sections in named.conf.\n\n".
    " -------------------------\n".
    "HARDWARE CONTROL ATTRIBUTES\n".
    " -------------------------\n".
@@ -1098,6 +1102,10 @@ site => {
    "                   will not interfere.\n\n".
    " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
    "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
+   " persistkvmguests:  Keep the kvm definition on the kvm hypervisor when you power off\n".
+   "                    the kvm guest node. This is useful for you to manually change the \n".
+   "                    kvm xml definition file in virsh for debugging. Set anything means\n".
+   "                    enable.\n\n".
    " --------------------\n".
    "XCAT DAEMON ATTRIBUTES\n".
    " --------------------\n".
