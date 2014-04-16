@@ -3993,8 +3993,7 @@ sub parse_and_run_dsh
     {
         $options{'user'} = $ENV{'DSH_TO_USERID'};
     }
-
-    if ((!(@$nodes)) && (!(defined($options{'rootimg'}))))
+    if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
@@ -4405,7 +4404,7 @@ sub parse_and_run_dcp
             return;
         }
     }
-    if ((!(@$nodes)) && (!(defined($options{'rootimg'}))))
+    if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = {};
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
