@@ -3994,7 +3994,7 @@ sub parse_and_run_dsh
         $options{'user'} = $ENV{'DSH_TO_USERID'};
     }
 
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    if ((!(@$nodes)) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
@@ -4033,7 +4033,7 @@ sub parse_and_run_dsh
         {    # from sinv, discard this name
             undef @$nodes;
         }
-        if (defined(@$nodes))
+        if (@$nodes)
         {
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4405,7 +4405,7 @@ sub parse_and_run_dcp
             return;
         }
     }
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    if ((!(@$nodes)) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = {};
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
@@ -4502,7 +4502,7 @@ sub parse_and_run_dcp
     #
     # build list of nodes
     my @nodelist;
-    if (defined(@$nodes))
+    if (@$nodes)
     {    # there are nodes
         @nodelist = @$nodes;
         $options{'nodes'} = join(',', @nodelist);
