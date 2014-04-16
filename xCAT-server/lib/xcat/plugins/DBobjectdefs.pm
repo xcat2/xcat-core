@@ -380,7 +380,7 @@ sub processArgs
 {
     my $gotattrs = 0;
 
-    if (defined(@{$::args})) {
+   if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     } else {
         if ($::command eq "lsdef") {
@@ -391,8 +391,9 @@ sub processArgs
             return 2;
         }
     }
-    if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
-    {
+    if ( defined ($::args) && @{$::args} ) {
+      if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+      {
         if ($::command eq "lsdef") {
             push @ARGV, "-t";
             push @ARGV, "node";
@@ -400,6 +401,7 @@ sub processArgs
         } else {
             return 2;
         }
+      }
     }
 
     if ($::command eq "lsdef") {
