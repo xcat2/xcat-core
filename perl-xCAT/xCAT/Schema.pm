@@ -921,6 +921,11 @@ site => {
    "                 '0' value means include all the nodes in the subnet.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
+   " managedaddressmode: The mode of networking configuration during node provision.\n".
+   "                     If set to 'static', the network configuration will be configured \n".
+   "                     in static mode based on the node and network definition on MN.\n".
+   "                     If set to 'dhcp', the network will be configured with dhcp protocol.\n".
+   "                     The default is 'dhcp'.\n\n".
    " ------------\n".
    "DNS ATTRIBUTES\n".
    " ------------\n".
