@@ -192,7 +192,7 @@ sub lskmodules_usage {
 #-----------------------------------------------------------------------------
 sub processArgs {
 
-    if ( defined( @{$::args} ) ) {
+    if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     }
 

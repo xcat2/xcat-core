@@ -199,7 +199,7 @@ sub prexcat2nim
 	my @nodelist=();  # pass back list of nodes - if applicable
 	my @servicenodes=();  # pass back list of service nodes - if applicable
 
-    if (defined(@{$::args})) {
+    if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     } else {
 		&xcat2nim_usage($callback);
@@ -359,7 +359,7 @@ sub processArgs
 
     my $gotattrs = 0;
 
-	if (defined(@{$::args})) {
+	if ( defined ($::args) && @{$::args} ) {
     	@ARGV = @{$::args};
 	} else {
 		return 3;

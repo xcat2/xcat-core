@@ -1332,7 +1332,7 @@ sub fpc_firmxfer_watch {
         return;
     }
     my $percent = 0;
-    if ($rsp->{data} and (length(@{$rsp->{data}}) > 0)) {
+    if ($rsp->{data} and (scalar(@{$rsp->{data}}) > 0)) {
         $percent = $rsp->{data}->[0];
     }
     #$callback->({sinfo=>"$percent%"});

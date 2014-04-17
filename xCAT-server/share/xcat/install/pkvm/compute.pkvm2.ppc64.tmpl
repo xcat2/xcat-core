@@ -27,7 +27,7 @@ rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 #partition / --ondisk=/dev/mapper/ibmpkvm_vg_root-ibmpkvm_lv_root
 partition / --ondisk=/dev/sda
-network --device eth0 --bootproto dhcp
+network --bootproto dhcp
 
 %post
 touch "/startpost"

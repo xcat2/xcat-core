@@ -51,7 +51,7 @@ sub getzonesfornet {
             die "Not supporting having a mask like $mask on an ipv6 network like $net";
         }
         my $netnum= getipaddr($net,GetNumber=>1);
-	unless ($netnum) { return (); }
+    unless ($netnum) { return (); }
         $netnum->brsft(128-$maskbits);
         my $prefix=$netnum->as_hex();
         my $nibbs=$maskbits/4;
@@ -229,7 +229,7 @@ sub process_request {
         }
     }
     if ($::XCATSITEVALS{externaldns}) {
-    	$external=1;
+        $external=1;
     }
 
     if ($help)
@@ -325,73 +325,73 @@ sub process_request {
     if ($allnodes) {
         #read all nodelist specified nodes
     } else { 
-	if (not $request->{node} and $deletemode) {
-		#when this was permitted, it really ruined peoples' days
-		xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
-        umask($oldmask);
-		return;
-	}
-	my @contents;
-		my $domain;
-	if ($request->{node}) { #leverage makehosts code to flesh out the options
-		require xCAT_plugin::hosts;
-                my @content1;
-                my @content2;
-		xCAT_plugin::hosts::add_hosts_content(nodelist=>$request->{node},callback=>$callback,hostsref=>\@content1);
-		xCAT_plugin::hosts::donics(nodes=>$request->{node},callback=>$callback,hostsref=>\@content2);
+        if (not $request->{node} and $deletemode) {
+            #when this was permitted, it really ruined peoples' days
+            xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
+            umask($oldmask);
+            return;
+        }
+        my @contents;
+        my $domain;
+        if ($request->{node}) { #leverage makehosts code to flesh out the options
+        require xCAT_plugin::hosts;
+        my @content1;
+        my @content2;
+        xCAT_plugin::hosts::add_hosts_content(nodelist=>$request->{node},callback=>$callback,hostsref=>\@content1);
+        xCAT_plugin::hosts::donics(nodes=>$request->{node},callback=>$callback,hostsref=>\@content2);
                 @contents = (@content1, @content2);
-	} else {
-	        #legacy behavior, read from /etc/hosts
-	        my $hostsfile;
-	        open($hostsfile,"<","/etc/hosts");
-	        flock($hostsfile,LOCK_SH);
-	        @contents = <$hostsfile>;
-	        flock($hostsfile,LOCK_UN);
-	        close($hostsfile);
-	}
+        } else {
+        #legacy behavior, read from /etc/hosts
+        my $hostsfile;
+        open($hostsfile,"<","/etc/hosts");
+        flock($hostsfile,LOCK_SH);
+        @contents = <$hostsfile>;
+        flock($hostsfile,LOCK_UN);
+        close($hostsfile);
+        }
         my $addr;
         my $name;
         my $canonical;
         my $aliasstr;
         my @aliases;
         my $names;
-		my @hosts;
-		my %nodehash;
-
+        my @hosts;
+        my %nodehash;
+    
         foreach (@contents) {
-            chomp; #no newline
-            s/#.*//; #strip comments;
-            s/^[ \t\n]*//; #remove leading whitespace
-            next unless ($_); #skip empty lines
-            ($addr,$names) = split /[ \t]+/,$_,2;
+        chomp; #no newline
+        s/#.*//; #strip comments;
+        s/^[ \t\n]*//; #remove leading whitespace
+        next unless ($_); #skip empty lines
+        ($addr,$names) = split /[ \t]+/,$_,2;
+        
+        if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/ and $addr !~ /^[abcdef0123456789:]+$/) {
+            xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, address seems malformed.", $callback);
+            next;
+        }
+        unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
+            xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
+            next;
+        }
+        
+        my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($addr);
+        push @hosts, $host;
+        $nodehash{$addr}{names}=$names;
+        $nodehash{$addr}{host}=$host;
+        }
 
-            if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/ and $addr !~ /^[abcdef0123456789:]+$/) {
-                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, address seems malformed.", $callback);
-                next;
-            }
-            unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
-                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
-                next;
-            }
-
-			my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($addr);
-			push @hosts, $host;
-			$nodehash{$addr}{names}=$names;
-			$nodehash{$addr}{host}=$host;
-		}
-
-		# get the domains for each node - one call for all nodes in hosts file
-		my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
-		my %nodedomains = %$nd;
-
-		foreach my $n (keys %nodehash) {
-			$addr=$n;
-			$names=$nodehash{$n}{names};
-			# - need domain for this node
-			my $host = $nodehash{$n}{host};
-			$domain=$nodedomains{$host};
-			# remove the first . at domain name since it's not accepted by high dns parser
-			if ($domain =~ /^\./) { $domain =~ s/^\.//;; } 
+        # get the domains for each node - one call for all nodes in hosts file
+        my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+        my %nodedomains = %$nd;
+        
+        foreach my $n (keys %nodehash) {
+            $addr=$n;
+            $names=$nodehash{$n}{names};
+            # - need domain for this node
+            my $host = $nodehash{$n}{host};
+            $domain=$nodedomains{$host};
+            # remove the first . at domain name since it's not accepted by high dns parser
+            if ($domain =~ /^\./) { $domain =~ s/^\.//;; } 
 
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
             if ($aliasstr) {
@@ -407,7 +407,7 @@ sub process_request {
             unless ($canonical =~ /$domain/) {
                 $canonical.=".".$domain;
             }
-			# for only the sake of comparison, ensure consistant dot suffix
+            # for only the sake of comparison, ensure consistant dot suffix
             unless ($canonical =~ /\.\z/) { $canonical .= '.' }
             foreach my $alias (@aliases) {
                 unless ($alias =~ /$domain/) {
@@ -419,13 +419,13 @@ sub process_request {
                 if ($alias eq $canonical) {
                     next;
                 }
-				# remember alias for CNAM records later
+                # remember alias for CNAM records later
                 $ctx->{aliases}->{$node}->{$alias}=1;
             }
-
+            
             # exclude the nodes not belong to any nets defined in networks table
             # 	because only the nets defined in networks table will be add 
-			#	zones later.
+            #	zones later.
             my $found = 0;
             foreach (@networks)
             {
@@ -508,13 +508,13 @@ sub process_request {
 
     $ctx->{domain} =~ s/^\.//; # remove . if it's the first char of domain name
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
-	foreach (@networks) {
-		if ($_->{domain}) {
-		    $_->{domain} =~ s/^\.//; # remove . if it's the first char of domain name
-			$ctx->{zonestotouch}->{$_->{domain}}=1;
-		}
-	}
-	
+    foreach (@networks) {
+        if ($_->{domain}) {
+            $_->{domain} =~ s/^\.//; # remove . if it's the first char of domain name
+            $ctx->{zonestotouch}->{$_->{domain}}=1;
+        }
+    }
+    
     xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes for a large cluster.", $callback);
     
     foreach (@nodes) {
@@ -528,10 +528,10 @@ sub process_request {
     xCAT::SvrUtils::sendmsg("Completed getting reverse zones.", $callback);
     
     if (1) { 
-		#TODO: function to detect and return 1 if the master server is 
-		#	DNS SOA for all the zones we care about here, we are examining 
+        #TODO: function to detect and return 1 if the master server is 
+        #	DNS SOA for all the zones we care about here, we are examining 
         #   files to assure that our key is in named.conf, the zones we 
-		#	care about are there, and that if active directory is in use,
+        #	care about are there, and that if active directory is in use,
         #  	 allow the domain controllers to update specific zones
         @entries =  xCAT::TableUtils->get_site_attribute("directoryprovider");
         $site_entry = $entries[0];
@@ -541,13 +541,13 @@ sub process_request {
             if ( defined($site_entry)) {
                 my @dservers = split /[ ,]/,$site_entry;
                 $ctx->{adservers} = \@dservers;
-
-				############################
-				# - should this include all domains?
-				# - multi-domains not supported with activedirectory
-				#  	- TODO in future release
-				###################
-
+                
+                ############################
+                # - should this include all domains?
+                # - multi-domains not supported with activedirectory
+                #  	- TODO in future release
+                ###################
+                
                 $ctx->{adzones} = {
                     "_msdcs.". $ctx->{domain} => 1,
                     "_sites.". $ctx->{domain} => 1,
@@ -556,51 +556,51 @@ sub process_request {
                 };
             }
         }
-
+    
         @entries =  xCAT::TableUtils->get_site_attribute("dnsupdaters");
         $site_entry = $entries[0];
         if ( defined($site_entry) ) {
-                my @nservers = split /[ ,]/,$site_entry;
-                $ctx->{dnsupdaters} = \@nservers;
+            my @nservers = split /[ ,]/,$site_entry;
+            $ctx->{dnsupdaters} = \@nservers;
         }
-	unless ($external) {
-	        if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
-	            if (xCAT::Utils->isAIX())
-	            {
-	                system("/usr/bin/stopsrc -s $service");
-	            }
-	            else
-	            {
-	                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
-	            }
-	            my $conf = get_conf();
-	            unlink $conf;
-	            my $DBDir = get_dbdir();
-	            foreach (<$DBDir/db.*>) {
-	                unlink $_;
-	            }
-	        }
-	        #We manipulate local namedconf
-	        $ctx->{dbdir} = get_dbdir();
-	        $ctx->{zonesdir} = get_zonesdir();
-	        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
-
-                update_namedconf($ctx, $slave); 
-
-                unless ($slave)
+        unless ($external) { # only generate the named.conf and zone files for xCAT dns when NOT using external dns
+            if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
+                if (xCAT::Utils->isAIX())
                 {
-                    update_zones($ctx);
+                    system("/usr/bin/stopsrc -s $service");
                 }
+                else
+                {
+                    system("service $service stop"); #named may otherwise hold on to stale journal filehandles
+                }
+                my $conf = get_conf();
+                unlink $conf;
+                my $DBDir = get_dbdir();
+                foreach (<$DBDir/db.*>) {
+                    unlink $_;
+                }
+            }
+            #We manipulate local namedconf
+            $ctx->{dbdir} = get_dbdir();
+            $ctx->{zonesdir} = get_zonesdir();
+            chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
+    
+            update_namedconf($ctx, $slave); 
+            
+            unless ($slave)
+            {
+                update_zones($ctx);
+            }
       
-	        if ($ctx->{restartneeded}) {
-	            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
-
+            if ($ctx->{restartneeded}) {
+                xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
+    
                     if (xCAT::Utils->isAIX())
                     {
                         #try to stop named
                         my $cmd = "/usr/bin/stopsrc -s $service";
                         my @output=xCAT::Utils->runcmd($cmd, 0);
-
+    
                         $cmd = "/usr/bin/startsrc -s $service";
                         @output=xCAT::Utils->runcmd($cmd, 0);
                         my $outp = join('', @output);
@@ -624,7 +624,7 @@ sub process_request {
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                             return;
                         }
-
+    
                         $cmd = "service $service start";
                         @output=xCAT::Utils->runcmd($cmd, 0);
                         $outp = join('', @output);
@@ -636,56 +636,57 @@ sub process_request {
                             return;
                         }
                     }
-
-	            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
-		}
-	        
-	}
+    
+                xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
+            }
+        }
     } else {
         unless ($ctx->{privkey}) {
             xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);
         }
     }
-
+    
     if ($slave)
     {
         return;
     }
 
     # check if named is active before update dns records.
-    if (xCAT::Utils->isAIX())
-    {
-        my $cmd = "/usr/bin/lssrc -s $service |grep active";
-        my @output=xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
+    unless ($external) { # only start xCAT local dns when NOT using external dns
+        if (xCAT::Utils->isAIX())
         {
-            $cmd = "/usr/bin/startsrc -s $service";
-            @output=xCAT::Utils->runcmd($cmd, 0);
-            my $outp = join('', @output);
+            my $cmd = "/usr/bin/lssrc -s $service |grep active";
+            my @output=xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return;
+                $cmd = "/usr/bin/startsrc -s $service";
+                @output=xCAT::Utils->runcmd($cmd, 0);
+                my $outp = join('', @output);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return;
+                }
             }
         }
-    }
-    else
-    {
-        my $cmd = "service $service status|grep running";
-        my @output=xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
+        else
         {
-            $cmd = "service $service start";
-            @output=xCAT::Utils->runcmd($cmd, 0);
-            my $outp = join('', @output);
+            my $cmd = "service $service status|grep running";
+            my @output=xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return;
+                $cmd = "service $service start";
+                @output=xCAT::Utils->runcmd($cmd, 0);
+                my $outp = join('', @output);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return;
+                }
             }
         }
     }
@@ -693,12 +694,12 @@ sub process_request {
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     if ($external)
     {
-		# based on /etc/resolv.conf
+        # based on /etc/resolv.conf
         $ctx->{resolver} = Net::DNS::Resolver->new(); 
     }
     else
     {
-		# default to localhost
+        # default to localhost
         $ctx->{resolver} = Net::DNS::Resolver->new(nameservers=>['127.0.0.1']); 
     }
 
@@ -716,9 +717,9 @@ sub get_zonesdir {
     my @entries =  xCAT::TableUtils->get_site_attribute("bindzones");
     my $site_entry = $entries[0];
 
-	if ( defined($site_entry) ) {
-		$ZonesDir= $site_entry;
-	}
+    if ( defined($site_entry) ) {
+        $ZonesDir= $site_entry;
+    }
 
     return "$ZonesDir";
 }
@@ -727,16 +728,16 @@ sub get_conf {
     my $conf="/etc/named.conf";
 
     # is this ubuntu ?
-	if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         $conf="/etc/bind/named.conf";
     }
 
     my @entries =  xCAT::TableUtils->get_site_attribute("bindconf");
     my $site_entry = $entries[0];
 
-	if ( defined($site_entry) ) {
-		$conf= $site_entry;
-	}
+    if ( defined($site_entry) ) {
+        $conf= $site_entry;
+    }
 
     return "$conf";
 }
@@ -746,9 +747,9 @@ sub get_dbdir {
 
     my @entries =  xCAT::TableUtils->get_site_attribute("binddir");
     my $site_entry = $entries[0];
-	if ( defined($site_entry) ) {
-		$DBDir = $site_entry;
-	}
+    if ( defined($site_entry) ) {
+        $DBDir = $site_entry;
+    }
 
     if ( -d "$DBDir" ) {
         return "$DBDir"
@@ -789,13 +790,13 @@ sub update_zones {
     my $name = hostname;
     my $node = $name;
 
-	# get the domain for the node - which is the local hostname
-	my ($host, $nip) = xCAT::NetworkUtils->gethostnameandip($node);
-	my @hosts;
-	push (@hosts, $host);
-	my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
-	my %nodedomains = %$nd;
-	my $domain = $nodedomains{$host};
+    # get the domain for the node - which is the local hostname
+    my ($host, $nip) = xCAT::NetworkUtils->gethostnameandip($node);
+    my @hosts;
+    push (@hosts, $host);
+    my $nd = xCAT::NetworkUtils->getNodeDomains(\@hosts);
+    my %nodedomains = %$nd;
+    my $domain = $nodedomains{$host};
 
     xCAT::SvrUtils::sendmsg("Updating zones.", $callback);
 
@@ -829,7 +830,7 @@ sub update_zones {
     my $serial = ($mday * 100) + (($mon + 1) * 10000) + (($year + 1900) * 1000000);
 
     foreach $currzone (@neededzones) {
-		my $zonefilename = $currzone;
+        my $zonefilename = $currzone;
         if ($currzone =~ /IN-ADDR\.ARPA/) {
             $currzone =~ s/\.IN-ADDR\.ARPA.*//;
             my @octets = split/\./,$currzone;
@@ -853,7 +854,7 @@ sub update_zones {
             }
             flock($zonehdl,LOCK_UN);
             close($zonehdl);
-			if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+            if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
                 chown(scalar(getpwnam('root')),scalar(getgrnam('bind')),$dbdir."/db.$zonefilename");
             }
             else{
@@ -889,7 +890,7 @@ sub update_namedconf {
                 $gotoptions=1;
                 my $skip=0;
                 do {
-		    #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
+                    #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
                     if ($ctx->{forwarders} and $line =~ /forwarders {/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
@@ -1005,11 +1006,11 @@ sub update_namedconf {
         }
     }
     unless ($gotoptions) {
-           push @newnamed,"options {\n";
+        push @newnamed,"options {\n";
         unless ($slave && xCAT::Utils->isLinux()) {
            push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
         }
-	 push @newnamed,"\t\t//listen-on-v6 { any; };\n";
+        push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
@@ -1128,7 +1129,7 @@ sub update_namedconf {
     for my $l  (@newnamed) { print $newnameconf $l; }
     flock($newnameconf,LOCK_UN);
     close($newnameconf);
-	if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
         chown (scalar(getpwnam('root')),scalar(getgrnam('bind')),$namedlocation);
     }
     else{
@@ -1156,9 +1157,9 @@ sub add_or_delete_records {
     $ctx->{nsmap} = {}; #will store a map to known NS records to avoid needless redundant queries to sort nodes into domains
     $ctx->{updatesbyzone}={}; #sort all updates into their respective zones for bulk update for fewer DNS transactions
 
-	# get node domains
-	my $nd = xCAT::NetworkUtils->getNodeDomains(\@{$ctx->{nodes}});
-	my %nodedomains = %{$nd};
+    # get node domains
+    my $nd = xCAT::NetworkUtils->getNodeDomains(\@{$ctx->{nodes}});
+    my %nodedomains = %{$nd};
 
     foreach $node (@{$ctx->{nodes}}) {
         my $name = $node;
@@ -1168,8 +1169,8 @@ sub add_or_delete_records {
             next;
         }
 
-		my $domain = $nodedomains{$node};
-		if ($domain =~ /^\./) { $domain =~ s/^\.//; } # remove . if it's the first char of domain name
+        my $domain = $nodedomains{$node};
+        if ($domain =~ /^\./) { $domain =~ s/^\.//; } # remove . if it's the first char of domain name
 
         unless ($name =~ /$domain/) { $name .= ".".$domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
 
@@ -1177,9 +1178,9 @@ sub add_or_delete_records {
             @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
         } else {
             @ips = getipaddr($node,GetAllAddresses=>1);
-	    if (not @ips and keys %{$ctx->{nodeips}->{$node}}) {
-	    	@ips = keys %{$ctx->{nodeips}->{$node}};
-	    }
+            if (not @ips and keys %{$ctx->{nodeips}->{$node}}) {
+                @ips = keys %{$ctx->{nodeips}->{$node}};
+            }
             if (!defined($ips[0])) {
                 xCAT::SvrUtils::sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts)"], $callback);
                 next;
@@ -1214,7 +1215,7 @@ sub add_or_delete_records {
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
-	my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
+        my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
         if( !defined $ip) {
             xCAT::SvrUtils::sendmsg([1,"Please make sure $ctx->{nsmap}->{$zone} exist either in /etc/hosts or DNS."], $callback);
             return 1;
@@ -1296,9 +1297,9 @@ sub find_nameserver_for_dns {
     }
 
     if (defined $ctx->{aliases}->{$node}) {
-    	foreach (keys %{$ctx->{aliases}->{$node}}) {
-    		push @rrcontent, "$_ IN CNAME $name";
-    	}
+    foreach (keys %{$ctx->{aliases}->{$node}}) {
+        push @rrcontent, "$_ IN CNAME $name";
+    }
     }
     if ($ctx->{deletemode}) {
         push @rrcontent,"$name TXT";
@@ -1311,7 +1312,7 @@ sub find_nameserver_for_dns {
        unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
            if ($zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
                 $ctx->{nsmap}->{$zone} = 0; #ignore zones that are likely to appear, but probably not ours
-	   } elsif ($::XCATSITEVALS{ddnsserver}) {
+           } elsif ($::XCATSITEVALS{ddnsserver}) {
                 $ctx->{nsmap}->{$zone} = $::XCATSITEVALS{ddnsserver};
            } else {
                my $reply = $ctx->{resolver}->query($zone,'NS');
@@ -1392,9 +1393,9 @@ sub get_dns_slave
     foreach my $sn (@ents)
     {
         if ($sn->{'nameserver'} == 2)
-	{
+        {
             push @sns, $sn->{'node'};
-	}
+        }
     }
 
     @slaves = xCAT::NodeRange::noderange(join(',',@sns));

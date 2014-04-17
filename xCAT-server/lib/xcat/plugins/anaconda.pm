@@ -1382,8 +1382,10 @@ sub mkinstall
 	    }
 
             if ($::XCATSITEVALS{managedaddressmode} =~ /static/){
-               my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
-               $instserver=$ip;
+               unless($instserver eq '!myipfn!'){
+                  my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
+                  $instserver=$ip;
+               }
             }
 	    my $httpprefix=$pkgdir;
 	    if ($installroot =~ /\/$/) {
@@ -1455,20 +1457,38 @@ sub mkinstall
             #to avoid multicast dhcp
             if($::XCATSITEVALS{managedaddressmode} =~ /static/){
                my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
-               unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+               unless($ipaddr) { 
+                    $callback->(
+                        {
+                         error => [
+                             "cannot resolve the ip address of $node"
+                         ],
+                         errorcode => [1]
+                        }
+                        );
+               }         
+
+               if($gateway eq '<xcatmaster>'){
+                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+               }
 
                $kcmdline .=" ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
-               my $nrtab = xCAT::Table->new('noderes',-create=>0);
-               unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
-               my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
-               unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
-               my @nameserverARR=split (",",$ent->{nameservers});
-               my @nameserversIP;
-               foreach (@nameserverARR)
-               {
-                  my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
-                  push @nameserversIP, $ip;
-               }
+
+
+                my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
+                my @nameserverARR=split (",",$nameservers{$node});
+                my @nameserversIP;
+                foreach (@nameserverARR)
+                {
+                   my $ip;
+                   if($_ eq '<xcatmaster>'){
+                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                   }else{
+                      (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   }
+                   push @nameserversIP, $ip;
+
+                }
                
                if(scalar @nameserversIP){
                   $kcmdline .=" dns=".join(",",@nameserversIP);

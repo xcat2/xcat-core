@@ -232,8 +232,7 @@ sub parse_args
     my $args = $request->{arg}; 
     my $gotattrs = 0;
     my %opt      =();
-
-    if (defined(@{$args})) {
+    if ( defined ($args) && @{$args}) { 
         @ARGV = @{$args};
     } else {
             return 2;

@@ -27,10 +27,9 @@ AutoReqProv: no
 BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 Obsoletes: atftp-xcat
-%endif
-
 %if %notpcm
 Requires: grub2-xcat
+%endif
 %endif
 
 %if %fsm
