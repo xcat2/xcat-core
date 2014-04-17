@@ -119,6 +119,28 @@ Wake up the target nodes which is in B<suspend> state.
 
 Don't try to run B<wake> against the 'on' state node, it would cause the node gets to 'off' state.
 
+For some of xCAT hardware such as NeXtScale, it may need to enable S3 before using B<wake>. The following steps can be used to enable S3. Please reference L<pasu(1)|pasu.1> for "pasu" usage.
+
+ [root@xcatmn home]# echo "set Power.S3Enable Enable" > power-setting
+ [root@xcatmn home]# pasu -b power-setting feihunode02
+ feihunode02: Batch mode start.
+ feihunode02: [set Power.S3Enable Enable]
+ feihunode02: Power.S3Enable=Enable
+ feihunode02:
+ feihunode02: Beginning intermediate batch update.
+ feihunode02: Waiting for command completion status.
+ feihunode02: Command completed successfully.
+ feihunode02: Completed intermediate batch update.
+ feihunode02: Batch mode completed successfully.
+
+ [root@xcatmn home]# pasu feihunode02 show all|grep -i s3
+ feihunode02: IMM.Community_HostIPAddress3.1=
+ feihunode02: IMM.Community_HostIPAddress3.2=
+ feihunode02: IMM.Community_HostIPAddress3.3=
+ feihunode02: IMM.DNS_IP_Address3=0.0.0.0
+ feihunode02: IMM.IPv6DNS_IP_Address3=::
+ feihunode02: Power.S3Enable=Enable
+
 =item B<stat>|B<state>
 
 Print the current power state/status.
