@@ -482,6 +482,8 @@ Usage:
         $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr);
     }
+    # setup node provisioning status.
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>\@nodelist, arg=>['defined']}, $request_command, -1, 2);
 
     setrsp_progress("Configuring nodes...");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
@@ -726,9 +728,6 @@ Usage:
     # Update nodes' attributes
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
-        if ($profile_status){
-            $updatenodeshash{$_}{'status'} = $profile_status;
-        }
     }    
     
     #update DataBase.
@@ -736,6 +735,11 @@ Usage:
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
+
+    #update node's status:
+    if($profile_status eq "defined"){
+        xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>$nodes, arg=>['defined']}, $request_command, -1, 2);
+    }
 
     my $retref;
     my $retstrref;
@@ -1154,17 +1158,7 @@ Usage:
 
     # Update node's status.
     setrsp_progress("Updating node status...");
-    my $nodelisttab = xCAT::Table->new('nodelist',-create=>1);
-    my (
-      $sec,  $min,  $hour, $mday, $mon,
-      $year, $wday, $yday, $isdst
-    ) = localtime(time);
-    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-                         $mon + 1, $mday, $year + 1900,
-                         $hour, $min, $sec);
-
-    $nodelisttab->setNodeAttribs($hostname, {status=>'defined', statustime=>$currtime});
-    $nodelisttab->close();
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>[$hostname], arg=>['defined']}, $request_command, -1, 2);
 
     setrsp_progress("Updated MAC address.");
 }
@@ -1440,7 +1434,9 @@ Usage:
     my $mactab = xCAT::Table->new("mac");
     my $macsref = $mactab->getNodesAttribs(\@nodes, ['mac']);
     my $nodelisttab = xCAT::Table->new("nodelist");
-    my $statusref = $nodelisttab->getNodesAttribs(\@nodes, ['status']);
+    # Get node current provisioning status.
+    my $provisionapp = "provision";
+    my $provision_status = xCAT::TableUtils->getAppStatus(\@nodes,$provisionapp);
 
     my $rspentry;
     my $i = 0;
@@ -1461,8 +1457,8 @@ Usage:
             }
         }
 
-        if ($statusref->{$_}->[0]){
-            $rspentry->{node}->[$i]->{"status"} = $statusref->{$_}->[0]->{status};
+        if ($provision_status->{$_}){
+            $rspentry->{node}->[$i]->{"status"} = $provision_status->{$_};
         } else{
             $rspentry->{node}->[$i]->{"status"} = "defined";
         }
@@ -1626,6 +1622,9 @@ sub findme{
     }
 
     my @nodelist = keys %hostinfo_dict;
+    # setup node provisioning status.
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>\@nodelist, arg=>['defined']}, $request_command, -1, 2);
+
     # call makehosts to get the IP by resolving the name
     my $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>\@nodelist, sequential=>[1]}, $request_command, 0, 2);
     
