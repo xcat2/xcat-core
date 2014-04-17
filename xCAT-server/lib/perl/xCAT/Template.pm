@@ -641,6 +641,9 @@ sub esxipv6setup {
  return 'esxcfg-vmknic -i '.$v6addr.'/64 "Management Network"'." #ESXISTATICV6\n";
 }
 
+
+
+
 sub kickstartnetwork {
       my $line = "network --onboot=yes --bootproto="; 
       my $hoststab;
@@ -659,18 +662,26 @@ sub kickstartnetwork {
 	} elsif ($::XCATSITEVALS{managedaddressmode} =~ /static/)  {
                 my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
                 unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
+            
+                if($gateway eq '<xcatmaster>'){
+                   $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                }
+
                 $line .="static  --device=$suffix --ip=$ipaddr --netmask=$netmask --gateway=$gateway --hostname=$hostname ";
 
-                my $nrtab = xCAT::Table->new('noderes',-create=>0);
-                unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
-                my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
-                unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
-                my @nameserverARR=split (",",$ent->{nameservers});
+                my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
+                my @nameserverARR=split (",",$nameservers{$node});
                 my @nameserversIP;
                 foreach (@nameserverARR)
                 {
-                   my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   my $ip;
+                   if($_ eq '<xcatmaster>'){
+                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                   }else{
+                      (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   }
                    push @nameserversIP, $ip;
+
                 }
                 
                 if (scalar @nameserversIP) {
@@ -702,19 +713,27 @@ sub yast2network {
                 my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
                 unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
 
-                my $nrtab = xCAT::Table->new('noderes',-create=>0);
-                unless ($nrtab) { die "noderes table should always exist prior to template processing"; }
-                my $ent = $nrtab->getNodeAttribs($node,['nameservers'],prefetchcache=>1);
-                unless ($ent and $ent->{nameservers}) { die "attribute nameservers not set for $node"; }
-                my @nameserverARR=split (",",$ent->{nameservers});
+                if($gateway eq '<xcatmaster>'){
+                   $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                }
+
+                my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
+
+                my @nameserverARR=split (",",$nameservers{$node});
+
                 my @nameserversIP;
                 foreach (@nameserverARR)
                 {
-                   my ($host,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   my $ip;
+                   if($_ eq '<xcatmaster>'){
+                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                   }else{
+                      (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   }
                    push @nameserversIP, $ip;
+
                 }
-                
-                     
+ 
                 # get the domains for each node - one call for all nodes in hosts file
                 my $nd = xCAT::NetworkUtils->getNodeDomains([$node]);
                 my %nodedomains = %$nd;
@@ -742,7 +761,7 @@ sub yast2network {
                                            'nameservers' => [
                                                               {
                                                                 'config:type' => 'list',
-                                                                'nameserver' => @nameserversIP
+                                                                'nameserver' => [@nameserversIP]
                                                               }
                                                             ],
                                            'hostname' => [
@@ -889,6 +908,7 @@ sub yast2network {
         $line=$xml->XMLout($networkhash);             
 
 	}
+
 	return $line;
 }
 

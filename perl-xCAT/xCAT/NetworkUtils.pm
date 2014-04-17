@@ -19,6 +19,7 @@ use File::Path;
 use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
+use Data::Dumper;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
@@ -2027,6 +2028,61 @@ sub getSubnetGateway
    return $gateway; 
 } 
 
+
+#-------------------------------------------------------------------------------
+=head3  getNodeNameservers 
+    Description:
+        Get nameservers of  specified nodes. 
+        The priority: noderes.nameservers > networks.nameservers > site.nameservers
+    Arguments:
+        node: node name list
+    Returns:
+        Return a hash ref, of the $nameservers{$node}
+        undef - Failed to get the nameservers
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $nameservers = xCAT::NetworkUtils::getNodeNameservers(\@node);
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getNodeNameservers{
+    my $nodes=shift;
+    if( $nodes =~ /xCAT::NetworkUtils/)
+    {
+      $nodes=shift;
+    }
+    my @nodelist = @$nodes;
+    my %nodenameservers;
+    my $nrtab = xCAT::Table->new('noderes',-create=>0);
+    my %nrhash = %{$nrtab->getNodesAttribs(\@nodelist,['nameservers'])};
+    
+    my $nettab = xCAT::Table->new("networks");
+    my %nethash = xCAT::DBobjUtils->getNetwkInfo( \@nodelist );
+
+    my @nameservers = xCAT::TableUtils->get_site_attribute("nameservers");
+    my $sitenameservers=$nameservers[0];
+
+
+    foreach my $node (@nodelist){
+       if ($nrhash{$node} and $nrhash{$node}->[0] and $nrhash{$node}->[0]->{nameservers})
+       {
+           $nodenameservers{$node}=$nrhash{$node}->[0]->{nameservers};
+       }elsif($nethash{$node}{nameservers})
+       {
+           $nodenameservers{$node}=$nethash{$node}{nameservers};
+       }elsif($sitenameservers)
+       {
+           $nodenameservers{$node}=$sitenameservers;
+       }
+    }
+
+    return \%nodenameservers;
+}
 
 #-------------------------------------------------------------------------------
 
