@@ -378,22 +378,16 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-        system ("scp -r /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso $MN:/iso");
+        system ("scp -r /iso/*.iso $MN:/iso");
         system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
-       &runcmd("echo 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4>/etc/hosts.rhppc64");
-       &runcmd( "  echo $HMCIP $HMC.$DOMAIN $HMC>>/etc/hosts.rhppc64");
-       &runcmd( "  echo $MNIP $MN.$DOMAIN $MN>>/etc/hosts.rhppc64");
-       &runcmd( "  echo $CNIP $CN.$DOMAIN $CN>>/etc/hosts.rhppc64");
-       &runcmd( "  echo $SNCNIP $SNCN.$DOMAIN $SNCN>>/etc/hosts.rhppc64");
-       system ("scp -r /etc/hosts.rhppc64 $MN:/etc/hosts");
-       &runcmd(" cp /etc/resolv.conf /etc/resolv.rhppc64");
-       &runcmd(" echo nameserver $MNIP >>/etc/resolv.rhppc64");
-       system ("scp -r /etc/resolv.rhppc64 $MN:/etc/resolv.conf");
+       system ("scp -r /etc/hosts $MN:/etc/hosts");
+       system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
        print "[OK]\n";
        print "--get the latest XCAT tarball.......\n";
        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
-       system("scp -r  /etc/yum.repos.d/rhel6.4.repo $MN:/etc/yum.repos.d/rhel6.4.repo");        ########  redhat 6.4
+        &repo();
+       system("scp -r  rhel6.4.repo $MN:/etc/yum.repos.d/rhel6.4.repo");   
        #system("scp -r default.conf $MN:$rhppc64configfile");
        #system("xdsh $MN perl $nodedir/xcatbuild/xcat-core/mklocalrepo.sh");
        system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
@@ -407,6 +401,7 @@ sub init
        system("xdsh $MN yum -y install perl-xCAT xCAT-client xCAT-server xCAT");
        print "--install XCATTEST .......\n";
        system("xdsh $MN yum -y install xCAT-test");
+       system("scp -r default.conf $MN:$rhppc64configfile");
 
         print "--install createrepo .......\n";
         #system("xdsh $MN yum -y install createrepo");
@@ -462,7 +457,7 @@ sub  do_test1
     send_msg("start diskless test");
     send_msg("******************************");
     #if($dsklsinst){
-        system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t /opt/xcat/share/xcat/tools/autotest/testcase/installation/linux_diskless_installation");
+        system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_diskless_installation_flat_ppc64");
         system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     #   exit 1;
     #}
@@ -812,6 +807,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
             #         Do test
             #         Write log
             #######################################
+            exit 1;
             send_msg("\n\n\n== Running do_test...............");
             $res = do_test();
             if ($res) {
