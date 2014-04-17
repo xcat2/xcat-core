@@ -617,7 +617,7 @@ sub trim {
 sub send_msg {
     my $msg = shift;
     my $data = `date`;
-    open (LOGFILE, ">> xcatreg.lob");
+    open (LOGFILE, ">> /home/xcatreg.lob");
     print LOGFILE "$data : $msg.\n";
     close LOGFILE;
 }
