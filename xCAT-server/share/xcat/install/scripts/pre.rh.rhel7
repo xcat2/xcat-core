@@ -159,7 +159,7 @@ if [ -z "$instdisk" ]; then
 		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
 			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
 			;;
-		"mptsas"|"mpt2sas") #*PROBABLY* not SAN, but SAS SAN is possible
+		"mptsas"|"mpt2sas"|"mpt3sas") #*PROBABLY* not SAN, but SAS SAN is possible
 			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
 			;;
 		*)
