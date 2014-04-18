@@ -33,7 +33,7 @@ Obsoletes: atftp-xcat
 %if %notpcm
 %ifos linux
 %ifnarch s390x
-# PCM does not use or ship conserver
+# PCM does not use or ship grub2-xcat
 Requires: grub2-xcat
 %endif
 %endif
