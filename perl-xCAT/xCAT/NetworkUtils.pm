@@ -1621,8 +1621,10 @@ sub gethost_ips
             else
             {
                 my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-                @ip = split(":", $addr1);
-                push @ipaddress, $ip[1];
+                #@ip = split(":", $addr1);
+                #push @ipaddress, $ip[1];
+                $addr1 =~ s/.*://;
+                push @ipaddress, $addr1;
             }
         }
         else
