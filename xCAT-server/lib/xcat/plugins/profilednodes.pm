@@ -54,6 +54,7 @@ my $command;
 my $args;
 # Put arguments in a hash.
 my %args_dict;
+my %general_arg;
 
 #-------------------------------------------------------
 
@@ -100,6 +101,8 @@ sub process_request {
     $command = $request->{command}->[0];
     $args = $request->{arg};
 
+    my $gereral_arg = get_general_args();
+
     # There is no need to acquire lock for command nodediscoverstatus, nodediscoverls and noderegenips.
     if ($command eq "nodediscoverstatus"){
         nodediscoverstatus();
@@ -112,7 +115,11 @@ sub process_request {
         return;
     }
 
-    my $lock = xCAT::Utils->acquire_lock("nodemgmt", 1);
+    my $non_block = 1;
+    if ( $general_arg{'blockmode'} == 1) {
+        $non_block = 0;
+    }
+    my $lock = xCAT::Utils->acquire_lock("nodemgmt", $non_block);
     if (! $lock){
         setrsp_errormsg("Cannot acquire lock, another process is already running.");
         return;
@@ -131,7 +138,7 @@ sub process_request {
             );  
                 
             setrsp_errormsg("Cannot $errormsg_dict{$command} while node discovery is running.");
-            xCAT::Utils->release_lock($lock, 1);
+            xCAT::Utils->release_lock($lock, $non_block);
             return;
         }
     }
@@ -156,7 +163,32 @@ sub process_request {
         nodechmac();
     }
 
-    xCAT::Utils->release_lock($lock, 1);
+    xCAT::Utils->release_lock($lock, $non_block);
+}
+
+sub get_general_args
+{
+    my ($help, $ver, $blockmode);
+    %general_arg = ();
+    @ARGV = ();
+    if($args) {
+        @ARGV = @$args;
+    }
+    GetOptions(
+        'h|help' => \$help,
+        'v|version' => \$ver,
+        'b|block' => \$blockmode,
+    );
+
+    if($help){
+        $general_arg{'help'} = 1;
+    }
+    if($ver){
+        $general_arg{'version'} = 1;
+    }
+    if ($blockmode) {
+        $general_arg{'blockmode'} = 1;
+    }
 }
 
 #-------------------------------------------------------
@@ -202,37 +234,21 @@ sub validate_args{
     my $enabledparamsref = shift;
     my $mandatoryparamsref = shift;
 
-    # The -h -v are handled by seqdiscovery.pm
-    # -t -u -l only works for nodediscoverls, and them only handled by seqdiscovery.pm
-    my ($help, $ver, $type, $uuid, $long);
+    if ($general_arg{'help'} == 1){
+        my %process_help_commands = (
+            'nodediscoverstart' => 1,
+            'nodediscoverstop' => 1,
+            'nodediscoverls' => 1,
+            'nodediscoverstatus' => 1,
+        );
 
-    @ARGV = ();
-    if($args) {
-        @ARGV = @$args;
-    }
-    GetOptions(
-        'h|help' => \$help,
-        'v|version' => \$ver,
-        't=s' => \$type,
-        'u=s' => \$uuid,
-        'l' => \$long,
-    );
-
-    if($help){
-        # just return to make sequential discovery to handle it
-        return 0;
+        # do not process help message for these noddiscover* commands, cover them in seqdiscovery.pm
+        unless ($process_help_commands{$command} == 1) {
+            setrsp_infostr($helpmsg);
+            return 0;
+        }
     }
 
-    if($ver){
-        # just return to make sequential discovery to handle it
-        return 0;
-    }
-
-    if ($type || $uuid || $long) {
-        # these args for general discovery, return directly
-        return 0;
-    }
-    
     my $parseret = parse_args();
     if ($parseret){
         setrsp_errormsg($parseret);
