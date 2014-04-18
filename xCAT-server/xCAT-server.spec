@@ -27,8 +27,15 @@ AutoReqProv: no
 BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 Obsoletes: atftp-xcat
+%endif
+
+# The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
+%ifos linux
+%ifnarch s390x
+# PCM does not use or ship conserver
 Requires: grub2-xcat
+%endif
 %endif
 %endif
 
