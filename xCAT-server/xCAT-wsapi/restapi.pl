@@ -45,7 +45,7 @@ use IO::Socket::SSL;
 my %usagemsg = (
     objreturn => "Json format: An object which includes multiple \'<name> : {att:value, attr:value ...}\' pairs.",
     objchparam => "Json format: An object which includes multiple \'att:value\' pairs.",
-    non_getreturn => "No output for succeeded execution. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
+    non_getreturn => "No output when execution is successfull. Otherwise output the error information in the Standard Error Format: {error:[msg1,msg2...],errocode:errornum}."
 );
 
 my %URIdef = (
@@ -991,60 +991,56 @@ my %URIdef = (
     #### definition for database/table resources
     table => {
         table_nodes => {
-            desc => "[URI:/table/{tablelist}/nodes/{noderange}/{attrlist}] - The node table resource",
-            matcher => '^/table/[^/]+/nodes(/[^/]+){0,2}$',
+            desc => "[URI:/table/{tablelist}/nodes] - The node table resource",
+            desc1 => "For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.",
+            matcher => '^/table(/[^/]+)?/nodes(/[^/]+){0,2}$',
             GET => {
-                desc => "Get table attibutes for a noderange. {noderange} and {attrlist} are optional.",
-                usage => "||An object for the specific attributes.|",
-                example => "|Get |GET|/table/mac/nodes/node1/mac|{\n   \"mac\":[\n      {\n         \"name\":\"node1\",\n         \"mac\":\"mac=6c:ae:8b:41:3f:53\"\n      }\n   ]\n}|",
-                cmd => "getTablesNodesAttribs",     # not used
+                desc => "[URI:/table/{tablelist}/nodes/{noderange}/{attrlist}] - Get table attibutes for a noderange.",
+                desc1 => "If {attrlist} is omitted, all non-blank attributes will be returned.  If {noderange} is omitted, attributes for all nodes will be returned.",
+                usage => "||An object containing each table.  Within each table object is an array of node objects containing the attributes.|",
+                example => qq(|Get |GET|/table/ipmi/nodes/node1/bmc|{\n   "ipmi":[\n      {\n         "name":"node1",\n         "bmc":"10.0.0.1"\n      }\n   ]\n}|),
+                #cmd => "getTablesNodesAttribs",
                 fhandler => \&tablenodehdl,
                 outhdler => \&tableout,
             },
-            #PUT => {
-            #    desc => "Change the attibutes for the table {table}.",
-            #    cmd => "chdef",
-            #    fhandler => \&defhdl,
-                #outhdler => \&defout,
-            #},
-            #POST => {
-            #    desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
-            #    cmd => "mkdef",
-            #    fhandler => \&defhdl,
-            #},
-            #DELETE => {
-            #    desc => "Remove the table {table}.",
-            #    cmd => "rmdef",
-            #    fhandler => \&defhdl,
-            #},
+            PUT => {
+                desc => "[URI:/table/nodes/{noderange}] - Change the node table attibutes for the {noderange}.",
+                usage => "|A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
+                example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/table/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
+                #cmd => "setNodesAttribs",
+                fhandler => \&tablenodeputhdl,
+                outhdler => \&noout,
+            },
         },
         table_rows => {
-            desc => "[URI:/table/{tablelist}/row/{keys}/{attrlist}] - The non-node table resource",
-            matcher => '^/table/[^/]+/row(/[^/]+){0,2}$',
+            desc => "[URI:/table/{tablelist}/rows/{keys}/{attrlist}] - The non-node table resource",
+            desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
+            matcher => '^/table/[^/]+/rows(/[^/]+){0,2}$',
             GET => {
-                desc => "Get attibutes for rows of non-node tables. {rows} and {attrlist} are optional.",
-                usage => "||?|",
+                desc => "Get attibutes for rows of non-node tables.",
+                desc1 => "If {attrlist} is omitted, all non-blank attributes will be returned. If {keys} is omitted, all rows will be returned. If {keys} is specified, only rows that have those key values will be returned. If {keys} is specified, only 1 table name can be specified in {tablelist}.",
+                usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
                 example => qq(|Get|GET|/table/networks/row/net=192.168.122.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   "mgtifname":"virbr0",\n   "tftpserver":"192.168.122.1"\n}|),
-                cmd => "getTablesAllRowAttribs",        # not used
+                #cmd => "getTablesAllRowAttribs",
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
-            #PUT => {
-            #    desc => "Change the attibutes for the table {table}.",
-            #    cmd => "chdef",
-            #    fhandler => \&defhdl,
-                #outhdler => \&defout,
-            #},
-            #POST => {
-            #    desc => "Create the table {table}. DataBody: {attr1:v1,att2:v2...}.",
-            #    cmd => "mkdef",
-            #    fhandler => \&defhdl,
-            #},
-            #DELETE => {
-            #    desc => "Remove the table {table}.",
-            #    cmd => "rmdef",
-            #    fhandler => \&defhdl,
-            #},
+            PUT => {
+                desc => "[URI:/table/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
+                usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+                example => '|Create a route row in the routes table.|PUT|/table/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
+                #cmd => "setAttribs",
+                fhandler => \&tablerowputhdl,
+                outhdler => \&noout,
+            },
+            DELETE => {
+                desc => "[URI:/table/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => '|Delete a route row in the routes table.|PUT|/table/routes/rows/routename=privnet||',
+                #cmd => "delEntries",
+                fhandler => \&tablerowdelhdl,
+                outhdler => \&noout,
+            },
         },
     },
 
@@ -1177,11 +1173,11 @@ my $JSON;       # global ptr to the json object.  Its set by loadJSON()
 # need to do this early, so we can fetch the PUT/POST params
 loadJSON();        
 
-# the input parameters from both the url and put/post data will combined and then
+# the input parameters from both the url and put/post data will be combined and then
 # separated into the general params (not specific to the api call) and params specific to the call
 # Note: some of the values of the params in the hash can be arrays
 # $generalparams - the general parameters like 'debug=1', 'pretty=1'
-# $paramhash - all parameters come from url or put/post data except the ones in $generalparams
+# $paramhash - all parameters that come from the url or put/post data except the ones that are put in $generalparams
 my ($generalparams, $paramhash) = fetchParameters();
 
 my $DEBUGGING = $generalparams->{debug};      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
@@ -1613,7 +1609,7 @@ sub defhdl {
         push @args, ('-o', $urilayers[1]);
     }
 
-    # For the put/post which specifies the attributes mgt=ipmi groups=all
+    # For the put/post which specifies attributes like mgt=ipmi groups=all
     foreach my $k (keys(%$paramhash)) {
         push @args, "$k=$paramhash->{$k}" if ($k);
     } 
@@ -1891,7 +1887,7 @@ sub tablenodehdl {
     # the array elements for @urilayers are:
     # 0 - 'table'
     # 1 - <tablelist>
-    # 2 - 'node'
+    # 2 - 'nodes'
     # 3 - <noderange>  (optional)
     # 4 - <attrlist>  (optional)
 
@@ -1904,6 +1900,23 @@ sub tablenodehdl {
         $request->{command} = 'getTablesNodesAttribs';
         $request->{noderange} = $urilayers[3];
     }
+
+    # For both getTablesAllNodeAttribs and getTablesNodesAttribs, the rest of the request strucutre looks like this:
+    # table => [
+    #   {
+    #       tablename => nodehm,
+    #       attr => [
+    #           mgmt,
+    #           cons
+    #       ]
+    #   },
+    #   {
+    #       tablename => ipmi,
+    #       attr => [
+    #           ALL
+    #       ]
+    #   }
+    # ]
 
     # if they specified attrs, sort/group them by table
     my $attrlist = $urilayers[4];
@@ -1947,7 +1960,7 @@ sub tablerowhdl {
     # the array elements for @urilayers are:
     # 0 - 'table'
     # 1 - <tablelist>
-    # 2 - 'row'
+    # 2 - 'rows'
     # 3 - <key-val-list>  (optional)
     # 4 - <attrlist>  (optional)
 
@@ -1960,6 +1973,22 @@ sub tablerowhdl {
     # get all rows for potentially multiple tables
     if (!defined($urilayers[3]) || $urilayers[3] eq 'ALLROWS') {
         $request->{command} = 'getTablesAllRowAttribs';
+        # For getTablesAllRowAttribs, the rest of the request strucutre needs to look like this:
+        # table => [
+        #   {
+        #       tablename => nodehm,
+        #       attr => [
+        #           mgmt,
+        #           cons
+        #       ]
+        #   },
+        #   {
+        #       tablename => ipmi,
+        #       attr => [
+        #           ALL
+        #       ]
+        #   }
+        # ]
 
         # if they specified attrs, sort/group them by table
         my %attrhash;
@@ -1986,6 +2015,18 @@ sub tablerowhdl {
     else {
         if (scalar(@tables) > 1) { error('currently you can only specify keys for a single table.', $STATUS_BAD_REQUEST); }
         $request->{command} = 'getAttribs';
+        # For getAttribs, the rest of the request strucutre needs to look like this:
+        #   {
+        #       table => networks,
+        #       keys => {
+        #           net => 11.35.0.0,
+        #           mask => 255.255.0.0
+        #       }
+        #       attr => [
+        #           netname,
+        #           dhcpserver
+        #       ]
+        #   },
         $request->{table} = $tables[0];
         if (defined($urilayers[3])) {
             my @keyvals = split(/,/, $urilayers[3]);
@@ -2005,13 +2046,13 @@ sub tablerowhdl {
     return $responses;
 }
 
-# parse the output of all attrs of tables.  This is used for both node-oriented tables
+# parse the output of all attrs of tables for the GET calls.  This is used for both node-oriented tables
 # and non-node-oriented tables.
 #todo: investigate a converter straight from xml to json
 sub tableout {
     my $data = shift;
     my $json = {};
-    # For the table calls, we turned off ForceArray and KeyAttr for XMLin(), so the output is a little
+    # For the table get calls, we turned off ForceArray and KeyAttr for XMLin(), so the output is a little
     # different than usual.  Each element is a hash with key "table" that is either a hash or array of hashes.
     # Each element of that is a hash with 2 keys called "tablename" and "node". The latter has either: an array of node hashes,
     # or (if there is only 1 node returned) the node hash directly.
@@ -2019,7 +2060,7 @@ sub tableout {
     foreach my $d (@$data) {
         my $table = $d->{table};
         if (!defined($table)) {     # special case for the getAttribs cmd
-            $json = $d;
+            $json->{$request->{table}}->[0] = $d;
             last;
         }
         #debug(Dumper($d)); debug (Dumper($jsonnode));
@@ -2038,6 +2079,159 @@ sub tableout {
     }
     addPageContent($JSON->encode($json));
 }
+
+# set attrs of nodes in tables
+sub tablenodeputhdl {
+    my $params = shift;
+
+    # from the %URIdef:
+    # desc => "[URI:/table/nodes/{noderange}] - Change the table attibutes for the {noderange}.",
+    # usage => "|An array of table objects.  Each table object contains the table name and an object of attribute values. DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
+    # example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/table/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    # the array elements for @urilayers are:
+    # 0 - 'table'
+    # 1 - 'nodes'
+    # 2 - <noderange>
+
+    # set the command name
+    $request->{command} = 'setNodesAttribs';
+    $request->{noderange} = $urilayers[2];
+
+    # For setNodesAttribs, the rest of the request strucutre looks like this:
+    # arg => {
+    # table => [
+    #   {
+    #       name => nodehm,
+    #       attr => {
+    #           mgmt => ipmi
+    #       }
+    #   },
+    #   {
+    #       name => noderes,
+    #       attr => {
+    #           netboot => xnba
+    #       }
+    #   }
+    # ]
+    # }
+
+    # Go thru the list of tables (which are the top level keys in paramhash)
+    my $tables = [];
+    $request->{arg}->{table} = $tables;
+    foreach my $k (keys(%$paramhash)) {
+        my $intable = $k;
+        my $attrhash = $paramhash->{$k};
+        my $outtable = { name=>$intable, attr=>$attrhash };
+        push @$tables, $outtable;
+    } 
+
+    my $req = genRequest();
+    # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
+    # out of the node hash and make it the key
+    my $responses = sendRequest($req, {SuppressEmpty => undef, ForceArray => 1, KeyAttr => []});
+
+    return $responses;
+}
+
+# set attrs of a row in a non-node table
+sub tablerowputhdl {
+    my $params = shift;
+
+    # from %URIdef:
+    # desc => "[URI:/table/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
+    # usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
+    # example => '|Creat a route row in the routes table.|PUT|/table/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    # the array elements for @urilayers are:
+    # 0 - 'table'
+    # 1 - <tablename>
+    # 2 - 'rows'
+    # 3 - <keys>
+
+    # set the command name
+    $request->{command} = 'setAttribs';
+
+    # For setAttribs, the rest of the xml request strucutre looks like this:
+    # <table>routes</table>
+    # <keys>
+    #   <routename>foo</routename>  
+    # </keys>
+    # <attr>
+    #  <net>10.0.1.0</net>  
+    #  <comments>This is a test</comments>  
+    # </attr>
+
+    # set the table name and keys
+    $request->{table} = $urilayers[1];
+    my @keyvals = split(/,/, $urilayers[3]);
+    foreach my $kv (@keyvals) {
+        my ($key, $value) = split(/\s*=\s*/, $kv, 2);
+        $request->{keys}->{$key} = $value; 
+    }
+
+    # the attribute/value hash is already in paramhash
+    $request->{attr} = $paramhash;
+
+    my $req = genRequest();
+    # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
+    # out of the node hash and make it the key
+    my $responses = sendRequest($req, {SuppressEmpty => undef, ForceArray => 1, KeyAttr => []});
+
+    return $responses;
+}
+
+# delete rows in a non-node table
+sub tablerowdelhdl {
+    my $params = shift;
+
+    # from %URIdef:
+    # desc => "[URI:/table/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
+    # usage => "||$usagemsg{non_getreturn}|",
+    # example => '|Delete a route row in the routes table.|PUT|/table/routes/rows/routename=privnet||',
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    # the array elements for @urilayers are:
+    # 0 - 'table'
+    # 1 - <tablename>
+    # 2 - 'rows'
+    # 3 - <attrvals>
+
+    # set the command name
+    $request->{command} = 'delEntries';
+
+    # For delEntries, the rest of the xml request strucutre looks like this:
+    # <table>
+    #       <name>nodelist</name>
+    #       <attr>
+    #          <groups>compute1,lissa</groups>
+    #          <status>down</status>
+    #       </attr>
+    # </table>
+
+    # set the table name and attr/vals
+    my $table = {};     # will hold the name and attr/vals
+    $request->{table}->[0] = $table;        #todo: the xcat delEntries cmd supports multiple tables in 1 request. We could support this if the attr names were table.attr
+    $table->{name} = $urilayers[1];
+    my @attrvals = split(/,/, $urilayers[3]);
+    foreach my $av (@attrvals) {
+        my ($attr, $value) = split(/\s*=\s*/, $av, 2);
+        $table->{attr}->{$attr} = $value; 
+    }
+
+    my $req = genRequest();
+    # disabling the KeyAttr option is important in this case, so xmlin doesn't pull the name attribute
+    # out of the node hash and make it the key
+    my $responses = sendRequest($req, {SuppressEmpty => undef, ForceArray => 1, KeyAttr => []});
+
+    return $responses;
+}
+
 
 # display the resource list when run 'restapi.pl -d'
 sub displayUsage {
@@ -2373,7 +2567,7 @@ sub fetchParameters {
         $phash = eval { $JSON->decode($pdata); };
         if ($@) { 
             # remove the code location information to make the output looks better
-            if ($@ =~ / at \//) {
+            if ($@ =~ m/ at \//) {
                 $@ =~ s/ at \/.*$//;
             }
             error("$@",$STATUS_BAD_REQUEST); 

@@ -133,6 +133,7 @@ if [[ -n $hostip && -n $netmask && -n $gateway && -n $netdevice ]]; then
 	broadcast=$(bcastcalc $hostip $netmask)
 	echo "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway netdevice=$netdevice ..."
 	ip addr add $hostip/$numbits broadcast $broadcast dev $netdevice scope global label $netdevice
+	ip link set $netdevice up
 	ip route replace to default via $gateway dev $netdevice
 else
 	echo "Setting IP via DHCP..."
