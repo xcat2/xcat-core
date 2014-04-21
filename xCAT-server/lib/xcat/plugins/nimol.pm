@@ -412,7 +412,7 @@ sub create_imgconf_file {
     my $rootpw = undef;
     my $passwdtab = xCAT::Table->new('passwd');            
     if ($passwdtab) {                                      
-        my $et = $passwdtab->getAttribs({key => 'vios' username => 'padmin'}, 'password');
+        my $et = $passwdtab->getAttribs({key => 'vios', username => 'padmin'}, 'password');
         if ($et and defined ($et->{'password'})) {     
             $rootpw = $et->{'password'};
         }
