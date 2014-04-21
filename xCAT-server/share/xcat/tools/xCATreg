@@ -292,7 +292,7 @@ sub copy_code {
     
     ##will modify to $rhppc64config{var}{MNIP} 
     #my $mn = $management_node;
-    send_msg("mn is $mn");
+    #send_msg("mn is $mn");
     
     #install dep for buildlocal
     send_msg("begin to install build required packages on mn $mn");
@@ -880,7 +880,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 4. Copy code to MNs
         #######################################
         send_msg("\n\n\n== Running copy_code...............");
-        #$res = copy_code($mn);
+        $res = copy_code($mn);
         if ($res) {
             send_msg("COPY CODE returns error, exit");
             exit 1;
@@ -889,7 +889,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 5. Build xcat code in MNs
         #######################################
         send_msg("\n\n\n== Running build_xcat...............");
-        #$res = build_xcat($mn);
+        $res = build_xcat($mn);
         if ($res) {
             send_msg("BUILD XCAT returns error, exit");
             exit 1;
@@ -898,7 +898,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 6. Read xCAT MN's configuration
         #######################################
         send_msg("\n\n\n== Running config_mn...............");
-        #$res = config_mn($mn);
+        $res = config_mn($mn);
         if ($res) {
             send_msg("CONFIGURE MN returns error, exit");
             exit 1;
