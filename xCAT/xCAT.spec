@@ -163,6 +163,7 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 
 
 %post
+%ifos linux
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
 if expr match $(rpm -q --queryformat "%{VERSION}" httpd)  '^2.4[\.0-9]*$' >/dev/null 2>&1  
 then
@@ -178,6 +179,7 @@ then
 else
     ln -s -f /etc/apache2/conf.d/xcat.conf.apach22 /etc/apache2/conf.d/xcat.conf 
 fi
+%endif
 
 # create dir for the current pid
 mkdir -p /var/run/xcat
