@@ -58,7 +58,7 @@ my @apigroups = (
         resources => ['dns','dhcp','host', 'slpnodes', 'specific_slpnodes',]
     },
     {
-        groupname => 'table',
+        groupname => 'tables',
         header => "Table Resources",
         desc => "URI list which can be used to create, query, change global configuration.",
         resources => ['table_nodes', 'table_rows']
