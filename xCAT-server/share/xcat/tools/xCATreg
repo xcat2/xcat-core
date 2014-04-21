@@ -751,12 +751,20 @@ if ($needhelp)
 
 # begin to find which mn should be used
 if ($management_node) {
-   foreach my $k (keys %confkeys) {
-       if ($confkeys{$k} eq $management_node) {
-           $mns{$k} = $management_node;
-           send_msg("specify mn $management_node");
-       }       
+   my @all;
+   if ($management_node =~ /,/) {
+       @all = split /,/, $management_node;
+   } else {
+       push @all, $management_node;
    }
+   foreach my $mn (@all) {
+       foreach my $k (keys %confkeys) {
+           if ($confkeys{$k} eq $mn) {
+               $mns{$k} = $mn;
+               send_msg("specify mn $mn");
+           }       
+        }   
+    }
 }
 #######################################
 # step 1. Read configuration files
