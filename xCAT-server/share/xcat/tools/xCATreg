@@ -101,7 +101,7 @@ sub config_rhppc64 {
     #send_msg("Warning: The xCAT test Configure file doesn't exist!");
     #return 0;
     #}
-    my $type = undef;
+    my $type = "";
     my $sub_type = undef; # The string after $type_
     # Script-->
     #       Script_Prev
@@ -353,7 +353,6 @@ sub config_mn {
         exit 1;
     }
     #}
-    
     send_msg("step 6 : reading mn configuration done=====");
     return 0;
 }      
@@ -381,14 +380,14 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-        system ("scp -r /iso/*.iso $MN:/iso");
-       system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
+#        system ("scp -r /iso/*.iso $MN:/iso");
+#       system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
        system ("scp -r /etc/hosts $MN:/etc/hosts");
        system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
        print "[OK]\n";
        print "--get the latest XCAT tarball.......\n";
        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
-       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
+#       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
        system("scp -r  rhel6.4.repo $MN:/etc/yum.repos.d/rhel6.4.repo");   
        #system("scp -r default.conf $MN:$rhppc64configfile");
@@ -463,8 +462,8 @@ sub  do_test1
     send_msg("start diskless test");
     send_msg("******************************");
     #if($dsklsinst){
-        system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_diskless_installation_flat_ppc64");
-        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+#        system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_diskless_installation_flat_ppc64");
+#        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     #   exit 1;
     #}
     #if($bundlerun){
@@ -504,8 +503,8 @@ sub  do_test1
     #   }
     #}
     #if($fullinst){
-    #    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-    #    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+        system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
+        system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     #   system("xdsh $MN cp /autotest/result/xcattest.log.$timestamp /autotest/result/log/xcattest.log.$timestamp.current");
     #   $output = xdsh $MN tail /autotest/result/xcattest.log.$timestamp;
     #   if($output =~ /Failed: (\d+)/){
@@ -822,7 +821,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
             # step 4. Copy code to MNs
             #######################################
             send_msg("\n\n\n== Running copy_code...............");
-            $res = copy_code($mn);
+#            $res = copy_code($mn);
             if ($res) {
                 send_msg("COPY CODE returns error, exit");
                 exit 1;
@@ -831,7 +830,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
             # step 5. Build xcat code in MNs
             #######################################
             send_msg("\n\n\n== Running build_xcat...............");
-            $res = build_xcat($mn);
+#            $res = build_xcat($mn);
             if ($res) {
                 send_msg("BUILD XCAT returns error, exit");
                 exit 1;
@@ -890,7 +889,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 4. Copy code to MNs
         #######################################
         send_msg("\n\n\n== Running copy_code...............");
-        $res = copy_code($mn);
+#        $res = copy_code($mn);
         if ($res) {
             send_msg("COPY CODE returns error, exit");
             exit 1;
@@ -899,7 +898,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 5. Build xcat code in MNs
         #######################################
         send_msg("\n\n\n== Running build_xcat...............");
-        $res = build_xcat($mn);
+#        $res = build_xcat($mn);
         if ($res) {
             send_msg("BUILD XCAT returns error, exit");
             exit 1;
