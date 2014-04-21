@@ -114,6 +114,7 @@ sub run_remote_shell_api {
     my $rc=1;
     if ($t) {
 	#Wait for command prompt
+    $t->print("\t");
 	my ($prematch, $match) = $t->waitfor(Match => '/login[: ]*$/i',
 					     Match => '/username[: ]*$/i',
 					     Match => '/password[: ]*$/i',
