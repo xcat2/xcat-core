@@ -989,54 +989,54 @@ my %URIdef = (
     },
 
     #### definition for database/table resources
-    table => {
+    tables => {
         table_nodes => {
-            desc => "[URI:/table/{tablelist}/nodes] - The node table resource",
+            desc => "[URI:/tables/{tablelist}/nodes] - The node table resource",
             desc1 => "For a large number of nodes, this API call can be faster than using the corresponding nodes resource.  The disadvantage is that you need to know the table names the attributes are stored in.",
-            matcher => '^/table(/[^/]+)?/nodes(/[^/]+){0,2}$',
+            matcher => '^/tables(/[^/]+)?/nodes(/[^/]+){0,2}$',
             GET => {
-                desc => "[URI:/table/{tablelist}/nodes/{noderange}/{attrlist}] - Get table attibutes for a noderange.",
+                desc => "[URI:/tables/{tablelist}/nodes/{noderange}/{attrlist}] - Get table attibutes for a noderange.",
                 desc1 => "If {attrlist} is omitted, all non-blank attributes will be returned.  If {noderange} is omitted, attributes for all nodes will be returned.",
                 usage => "||An object containing each table.  Within each table object is an array of node objects containing the attributes.|",
-                example => qq(|Get |GET|/table/ipmi/nodes/node1/bmc|{\n   "ipmi":[\n      {\n         "name":"node1",\n         "bmc":"10.0.0.1"\n      }\n   ]\n}|),
+                example => qq(|Get |GET|/tables/ipmi/nodes/node1/bmc|{\n   "ipmi":[\n      {\n         "name":"node1",\n         "bmc":"10.0.0.1"\n      }\n   ]\n}|),
                 #cmd => "getTablesNodesAttribs",
                 fhandler => \&tablenodehdl,
                 outhdler => \&tableout,
             },
             PUT => {
-                desc => "[URI:/table/nodes/{noderange}] - Change the node table attibutes for the {noderange}.",
+                desc => "[URI:/tables/nodes/{noderange}] - Change the node table attibutes for the {noderange}.",
                 usage => "|A hash of table names and attribute objects.  DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
-                example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/table/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
+                example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/tables/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
                 #cmd => "setNodesAttribs",
                 fhandler => \&tablenodeputhdl,
                 outhdler => \&noout,
             },
         },
         table_rows => {
-            desc => "[URI:/table/{tablelist}/rows/{keys}/{attrlist}] - The non-node table resource",
+            desc => "[URI:/tables/{tablelist}/rows/{keys}/{attrlist}] - The non-node table resource",
             desc1 => "Use this for tables that don't have node name as the key of the table, for example: passwd, site, networks, polciy, etc.",
-            matcher => '^/table/[^/]+/rows(/[^/]+){0,2}$',
+            matcher => '^/tables/[^/]+/rows(/[^/]+){0,2}$',
             GET => {
                 desc => "Get attibutes for rows of non-node tables.",
                 desc1 => "If {attrlist} is omitted, all non-blank attributes will be returned. If {keys} is omitted, all rows will be returned. If {keys} is specified, only rows that have those key values will be returned. If {keys} is specified, only 1 table name can be specified in {tablelist}.",
                 usage => "||An object containing each table.  Within each table object is an array of row objects containing the attributes.|",
-                example => qq(|Get|GET|/table/networks/row/net=192.168.122.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   "mgtifname":"virbr0",\n   "tftpserver":"192.168.122.1"\n}|),
+                example => qq(|Get|GET|/tables/networks/row/net=192.168.122.0,mask=255.255.255.0/mgtifname,tftpserver|{\n   "mgtifname":"virbr0",\n   "tftpserver":"192.168.122.1"\n}|),
                 #cmd => "getTablesAllRowAttribs",
                 fhandler => \&tablerowhdl,
                 outhdler => \&tableout,
             },
             PUT => {
-                desc => "[URI:/table/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
+                desc => "[URI:/tables/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
                 usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-                example => '|Create a route row in the routes table.|PUT|/table/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
+                example => '|Create a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
                 #cmd => "setAttribs",
                 fhandler => \&tablerowputhdl,
                 outhdler => \&noout,
             },
             DELETE => {
-                desc => "[URI:/table/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
+                desc => "[URI:/tables/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
                 usage => "||$usagemsg{non_getreturn}|",
-                example => '|Delete a route row in the routes table.|PUT|/table/routes/rows/routename=privnet||',
+                example => '|Delete a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet||',
                 #cmd => "delEntries",
                 fhandler => \&tablerowdelhdl,
                 outhdler => \&noout,
@@ -2085,9 +2085,9 @@ sub tablenodeputhdl {
     my $params = shift;
 
     # from the %URIdef:
-    # desc => "[URI:/table/nodes/{noderange}] - Change the table attibutes for the {noderange}.",
+    # desc => "[URI:/tables/nodes/{noderange}] - Change the table attibutes for the {noderange}.",
     # usage => "|An array of table objects.  Each table object contains the table name and an object of attribute values. DataBody: {table1:{attr1:v1,att2:v2,...}}.|$usagemsg{non_getreturn}|",
-    # example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/table/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
+    # example => '|Change the nodehm.mgmt and noderes.netboot attributes for nodes node1-node5.|PUT|/tables/nodes/node1-node5 {"nodehm":{"mgmt":"ipmi"},"noderes":{"netboot":"xnba"}}||',
 
     my @args;
     my @urilayers = @{$params->{'layers'}};
@@ -2141,9 +2141,9 @@ sub tablerowputhdl {
     my $params = shift;
 
     # from %URIdef:
-    # desc => "[URI:/table/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
+    # desc => "[URI:/tables/{table}/rows/{keys}] - Change the non-node table attibutes for the row that matches the {keys}.",
     # usage => "|A hash of attribute names and values.  DataBody: {attr1:v1,att2:v2,...}.|$usagemsg{non_getreturn}|",
-    # example => '|Creat a route row in the routes table.|PUT|/table/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
+    # example => '|Creat a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet {"net":"10.0.1.0","mask":"255.255.255.0","gateway":"10.0.1.254","ifname":"eth1"}||',
 
     my @args;
     my @urilayers = @{$params->{'layers'}};
@@ -2190,9 +2190,9 @@ sub tablerowdelhdl {
     my $params = shift;
 
     # from %URIdef:
-    # desc => "[URI:/table/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
+    # desc => "[URI:/tables/{table}/rows/{attrvals}] - Delete rows from a non-node table that have the attribute values specified in {attrvals}.",
     # usage => "||$usagemsg{non_getreturn}|",
-    # example => '|Delete a route row in the routes table.|PUT|/table/routes/rows/routename=privnet||',
+    # example => '|Delete a route row in the routes table.|PUT|/tables/routes/rows/routename=privnet||',
 
     my @args;
     my @urilayers = @{$params->{'layers'}};
