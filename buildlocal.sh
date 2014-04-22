@@ -119,7 +119,8 @@ echo "This is an $OSNAME system"
 
   #begin to create repo for redhat platform
 
-  if [ "$OSNAME" != "AIX" ]; then  
+   grep -i 'Red' /etc/issue;
+   if [ "$OSNAME" != "AIX" -a $? -eq 0 ]; then
         cat >$CURDIR/build/xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
