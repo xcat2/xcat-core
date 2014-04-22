@@ -454,11 +454,11 @@ sub process_request {
                   if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                       $sub_req->({command=>['makedhcp'],
                                   node=> [$node],
-                                  arg=>['-l','-s','conf-file = \"'.$fpath.'\";']},$callback);
+                                  arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
                   } else {
                       $sub_req->({command=>['makedhcp'],
                                   node=> [$node],
-                                  arg=>['-s','conf-file = \"'.$fpath.'\";']},$callback);
+                                  arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);
                   }
               }
           } 

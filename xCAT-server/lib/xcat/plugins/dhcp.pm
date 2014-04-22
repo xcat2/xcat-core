@@ -2647,6 +2647,7 @@ sub newconfig
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
     push @dhcpconf, "authoritative;\n";
+    push @dhcpconf, "option conf-file code 209 = text;\n";
     push @dhcpconf, "option space isan;\n";
     push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";
     push @dhcpconf, "option isan.iqn code 203 = string;\n";
