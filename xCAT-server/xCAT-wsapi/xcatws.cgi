@@ -2339,7 +2339,11 @@ sub filterData {
             }
             
             if (defined ($_->{errorcode})) {
-                $outputerror->{errorcode} = $_->{errorcode}->[0];
+                if (ref($_->{errorcode}) eq 'ARRAY') {
+                    $outputerror->{errorcode} = $_->{errorcode}->[0];
+                } else {
+                    $outputerror->{errorcode} = $_->{errorcode};
+                }
             } else {
                 # set the default errorcode to '1'
                 $outputerror->{errorcode} = '1';
