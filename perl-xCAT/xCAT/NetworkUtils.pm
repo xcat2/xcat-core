@@ -697,19 +697,26 @@ sub get_nic_ip
         #      Base address:0x2600 Memory:fbfe0000-fc0000080
         #
         # eth1 ...
+        # Redhat7
+        #eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        # inet 10.1.0.178  netmask 255.255.0.0  broadcast 10.1.255.255
         #
         ##############################################################
         my @adapter= split /\n{2,}/, $result;
         foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and
-                   $_ =~ /UP / and
-                   $_ =~ /$mode / ) {
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP( |,|>)/ and 
+                   $_ =~ /$mode/ ) {
                 my @ip = split /\n/;
                 for my $ent ( @ip ) {
                     if ($ent =~ /^(eth\d|ib\d|hf\d)\s+/) {
                         $nic = $1;
-                    }    
-                    if ( $ent =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                    }   
+                    if ($ent =~ /^(eth\d:|ib\d:|hf\d:)\s+/) {
+                        $nic = $1;
+                    }   
+                    $ent=~ s/addr://;   # works for Redhat7 also
+                    if ( $ent =~ /^\s*inet \s*(\d+\.\d+\.\d+\.\d+)/ ) {
                         $iphash{$nic} = $1; 
                         next;
                     }
@@ -1837,6 +1844,100 @@ sub validate_ip
     return([0]);
 }
 
+#-------------------------------------------------------------------------------
+
+=head3   getFacingIP
+       Gets the ip address of the adapter of the localhost that is facing the
+    the given node.
+       Assume it is the same as my_ip_facing...
+    Arguments:
+       The name of the node that is facing the localhost.
+    Returns:
+       The ip address of the adapter that faces the node.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub getFacingIP
+{
+    my ($class, $node) = @_;
+    my $ip;
+    my $cmd;
+    my @ipaddress;
+
+    my $nodeip = inet_ntoa(inet_aton($node));
+    unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
+    {
+        return 0;    #Not supporting IPv6 here IPV6TODO
+    }
+
+    $cmd = "ifconfig" . " -a";
+    $cmd = $cmd . "| grep \"inet \"";
+    my @result = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+        exit $::RUNCMD_RC;
+    }
+
+    # split node address
+    my ($n1, $n2, $n3, $n4) = split('\.', $nodeip);
+
+    foreach my $addr (@result)
+    {
+        my $ip;
+        my $mask;
+        if (xCAT::Utils->isLinux())
+        {
+            my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+            if ((!$addr1) || (!$Mask)) { next; }
+            my @ips   = split(":", $addr1);
+            my @masks = split(":", $Mask);
+            $ip   = $ips[1];
+            $mask = $masks[1];
+        }
+        else
+        {    #AIX
+            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+              split(" ", $addr);
+            if ((!$addr1) && (!$mask1)) { next; }
+            $ip = $addr1;
+            $mask1 =~ s/0x//;
+            $mask =
+              `printf "%d.%d.%d.%d" \$(echo "$mask1" | sed 's/../0x& /g')`;
+        }
+
+        if ($ip && $mask)
+        {
+
+            # split interface IP
+            my ($h1, $h2, $h3, $h4) = split('\.', $ip);
+
+            # split mask
+            my ($m1, $m2, $m3, $m4) = split('\.', $mask);
+
+            # AND this interface IP with the netmask of the network
+            my $a1 = ((int $h1) & (int $m1));
+            my $a2 = ((int $h2) & (int $m2));
+            my $a3 = ((int $h3) & (int $m3));
+            my $a4 = ((int $h4) & (int $m4));
+
+            # AND node IP with the netmask of the network
+            my $b1 = ((int $n1) & (int $m1));
+            my $b2 = ((int $n2) & (int $m2));
+            my $b3 = ((int $n3) & (int $m3));
+            my $b4 = ((int $n4) & (int $m4));
+
+            if (($b1 == $a1) && ($b2 == $a2) && ($b3 == $a3) && ($b4 == $a4))
+            {
+                return $ip;
+            }
+        }
+    }
+
+    xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
+    return 0;
+}
 
 #-------------------------------------------------------------------------------
 
@@ -2211,6 +2312,7 @@ sub isValidHostname
     }
     return 0;
 }
+
 
 #-------------------------------------------------------------------------------
 
