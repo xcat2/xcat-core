@@ -2975,6 +2975,21 @@ sub getAttribs
 #  <comments>This is a comment</comments>
 #</xcatrequest>
 #
+#
+#<xcatrequest>
+#<clienttype>PCM</clienttype>
+#<command>setAttribs</command>
+#<table>networks</table>
+#<keys>
+#  <net>10.0.1.0</net>
+#  <mask>255.255.255.0</mask>
+#</keys>
+#<attr>
+#  <netname>mynet</netname>
+#  <gateway>10.0.1.254</gateway>
+#</attr>
+#</xcatrequest>
+
 sub setAttribs 
 {
     my $request      = shift;
