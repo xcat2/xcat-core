@@ -253,9 +253,6 @@ dracut_install /usr/share/zoneinfo/posix/America/Knox_IN
 dracut_install /usr/share/zoneinfo/posix/America/Goose_Bay
 dracut_install /usr/share/zoneinfo/posix/EET
 dracut_install /usr/share/zoneinfo/posix/EST5EDT
-dracut_install /usr/share/zoneinfo/posix/Mideast/Riyadh89
-dracut_install /usr/share/zoneinfo/posix/Mideast/Riyadh88
-dracut_install /usr/share/zoneinfo/posix/Mideast/Riyadh87
 dracut_install /usr/share/zoneinfo/posix/MST
 dracut_install /usr/share/zoneinfo/posix/Iceland
 dracut_install /usr/share/zoneinfo/posix/Atlantic/Faeroe
@@ -396,7 +393,6 @@ dracut_install /usr/share/zoneinfo/posix/NZ-CHAT
 dracut_install /usr/share/zoneinfo/posix/Asia/Istanbul
 dracut_install /usr/share/zoneinfo/posix/Asia/Kuwait
 dracut_install /usr/share/zoneinfo/posix/Asia/Saigon
-dracut_install /usr/share/zoneinfo/posix/Asia/Riyadh89
 dracut_install /usr/share/zoneinfo/posix/Asia/Urumqi
 dracut_install /usr/share/zoneinfo/posix/Asia/Brunei
 dracut_install /usr/share/zoneinfo/posix/Asia/Ujung_Pandang
@@ -438,7 +434,6 @@ dracut_install /usr/share/zoneinfo/posix/Asia/Tokyo
 dracut_install /usr/share/zoneinfo/posix/Asia/Macao
 dracut_install /usr/share/zoneinfo/posix/Asia/Riyadh
 dracut_install /usr/share/zoneinfo/posix/Asia/Rangoon
-dracut_install /usr/share/zoneinfo/posix/Asia/Riyadh88
 dracut_install /usr/share/zoneinfo/posix/Asia/Jakarta
 dracut_install /usr/share/zoneinfo/posix/Asia/Aden
 dracut_install /usr/share/zoneinfo/posix/Asia/Calcutta
@@ -476,7 +471,6 @@ dracut_install /usr/share/zoneinfo/posix/Asia/Tel_Aviv
 dracut_install /usr/share/zoneinfo/posix/Asia/Taipei
 dracut_install /usr/share/zoneinfo/posix/Asia/Kabul
 dracut_install /usr/share/zoneinfo/posix/Asia/Macau
-dracut_install /usr/share/zoneinfo/posix/Asia/Riyadh87
 dracut_install /usr/share/zoneinfo/posix/Asia/Choibalsan
 dracut_install /usr/share/zoneinfo/posix/Asia/Vientiane
 dracut_install /usr/share/zoneinfo/posix/Asia/Dacca
