@@ -204,7 +204,7 @@ for bmcu in $BMCUS; do
     if [ "$bmcu" = "" ]; then continue; fi
 DISABLEUSERS="1 2 3 4"
 if [ ! -z "$LOCKEDUSERS" ]; then
-    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep " $BMCUS"|awk '{print $1}'`
+    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep -w "$BMCUS"|awk '{print $1}'`
     if [ -z "$USERSLOT" ]; then
         USERSLOT=4
     fi
@@ -239,7 +239,7 @@ done
 TRIES=0
 # Last param in ipmitool user priv is the channel to set it on.
 # Penguin boxes are all channel 2
-CURRPRIV=`ipmitool -d $idev user list 1|grep ^$USERSLOT|awk '{print $6}'`
+CURRPRIV=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $6}'`
 if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
     while ! ipmitool -d $idev user priv $USERSLOT 4 $LANCHAN; do
         sleep 1
