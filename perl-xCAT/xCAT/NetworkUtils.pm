@@ -697,19 +697,26 @@ sub get_nic_ip
         #      Base address:0x2600 Memory:fbfe0000-fc0000080
         #
         # eth1 ...
+        # Redhat7
+        #eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        # inet 10.1.0.178  netmask 255.255.0.0  broadcast 10.1.255.255
         #
         ##############################################################
         my @adapter= split /\n{2,}/, $result;
         foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and
-                   $_ =~ /UP / and
-                   $_ =~ /$mode / ) {
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP( |,|>)/ and 
+                   $_ =~ /$mode/ ) {
                 my @ip = split /\n/;
                 for my $ent ( @ip ) {
                     if ($ent =~ /^(eth\d|ib\d|hf\d)\s+/) {
                         $nic = $1;
-                    }    
-                    if ( $ent =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                    }   
+                    if ($ent =~ /^(eth\d:|ib\d:|hf\d:)\s+/) {
+                        $nic = $1;
+                    }   
+                    $ent=~ s/addr://;   # works for Redhat7 also
+                    if ( $ent =~ /^\s*inet \s*(\d+\.\d+\.\d+\.\d+)/ ) {
                         $iphash{$nic} = $1; 
                         next;
                     }
@@ -2305,6 +2312,7 @@ sub isValidHostname
     }
     return 0;
 }
+
 
 #-------------------------------------------------------------------------------
 

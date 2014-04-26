@@ -23,6 +23,13 @@ echo "CURDIR is $CURDIR"
 echo "OSNAME is $OSNAME!"
 echo "NAMEALL is $NAMEALL"
 
+grep -i 'SUSE' /etc/issue
+if [ $? -eq 0 ]; then
+   echo "This is a SUSE system!"
+   OS="SUSE";
+fi
+
+
 ls $CURDIR/makerpm
 
 if [ $? -gt 0 ]; then
@@ -78,9 +85,16 @@ else
 #This is not an Ubuntu system
 echo "This is an $OSNAME system"
 
-     rm -rf /root/rpmbuild/RPMS/noarch/*
-     rm -rf /root/rpmbuild/RPMS/x86_64/*
-     rm -rf /root/rpmbuild/RPMS/ppc64/*
+     if [ "$OS" = "SUSE" ]; then
+         rm -rf /usr/src/packages/RPMS/noarch/*
+         rm -rf /usr/src/packages/RPMS/x86_64/*
+         rm -rf /usr/src/packages/RPMS/ppc64/*
+     else
+         rm -rf /root/rpmbuild/RPMS/noarch/*
+         rm -rf /root/rpmbuild/RPMS/x86_64/*
+         rm -rf /root/rpmbuild/RPMS/ppc64/*
+     fi
+
      mkdir -p $CURDIR/build/
   
    #always build perl-xCAT
@@ -113,13 +127,20 @@ echo "This is an $OSNAME system"
                 fi
   done
 
-  cp /root/rpmbuild/RPMS/noarch/* $CURDIR/build/
-  cp  /root/rpmbuild/RPMS/x86_64/* $CURDIR/build/
-  cp /root/rpmbuild/RPMS/ppc64/* $CURDIR/build/
+  if [ "$OS" = "SUSE" ]; then
+      cp /usr/src/packages/RPMS/noarch/* $CURDIR/build/
+      cp /usr/src/packages/RPMS/x86_64/* $CURDIR/build/
+      cp /usr/src/packages/RPMS/ppc64/* $CURDIR/build/ 
+  else
+      cp /root/rpmbuild/RPMS/noarch/* $CURDIR/build/
+      cp /root/rpmbuild/RPMS/x86_64/* $CURDIR/build/
+      cp /root/rpmbuild/RPMS/ppc64/* $CURDIR/build/
+  fi
 
   #begin to create repo for redhat platform
 
-  if [ "$OSNAME" != "AIX" ]; then  
+   grep -i 'Red' /etc/issue;
+   if [ "$OSNAME" != "AIX" -a $? -eq 0 ]; then
         cat >$CURDIR/build/xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
@@ -129,7 +150,9 @@ gpgcheck=0
 EOF
 
   cp $CURDIR/build/xCAT-core.repo /etc/yum.repos.d/
-
+  else
+     rm -f /etc/zypp/repos.d/xCAT-core.repo
+     zypper ar file://$CURDIR/build xCAT-core
   fi
    
 fi

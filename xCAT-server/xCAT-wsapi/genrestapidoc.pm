@@ -54,14 +54,14 @@ my @apigroups = (
     {
         groupname => 'services', 
         header => "Service Resources",
-        desc => "The URI list which can be used to manage the dns and dhcp services on xCAT MN.",
+        desc => "The URI list which can be used to manage the host, dns and dhcp services on xCAT MN.",
         resources => ['dns','dhcp','host', 'slpnodes', 'specific_slpnodes',]
     },
     {
         groupname => 'tables',
         header => "Table Resources",
-        desc => "URI list which can be used to create, query, change global configuration.",
-        resources => ['table_nodes', 'table_rows']
+        desc => "URI list which can be used to create, query, change table entries.",
+        resources => ['table_nodes', 'table_nodes_attrs', 'table_all_rows', 'table_rows', 'table_rows_attrs']
     },
 );
 

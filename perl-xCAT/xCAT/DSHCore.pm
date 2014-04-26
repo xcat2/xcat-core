@@ -253,64 +253,6 @@ use strict;
 
 
 
-#---------------------------------------------------------------------------
-
-=head3
-        ifconfig_inet
-
-        Builds a list of all IP Addresses bound to the local host and
-        stores them in a global list
-
-        Arguments:
-        	None
-
-        Returns:
-        	None
-                
-        Globals:
-        	@local_inet
-    
-        Error:
-        	None
-    
-        Example:
-        	xCAT::DSHCore->ifconfig_inet;
-
-        Comments:
-        	Internal routine only
-
-=cut
-
-#---------------------------------------------------------------------------
-
-sub ifconfig_inet
-{
-    my @local_inet = ();
-
-    if ($^O eq 'aix')
-    {
-        my @ip_address = ();
-        my @output     = `/usr/sbin/ifconfig -a`;
-
-        foreach my $line (@output)
-        {
-            ($line =~ /inet ((\d{1,3}?\.){3}(\d){1,3})\s/o)
-              && (push @local_inet, $1);
-        }
-    }
-
-    elsif ($^O eq 'linux')
-    {
-        my @ip_address = ();
-        my @output     = `/sbin/ifconfig -a`;
-
-        foreach my $line (@output)
-        {
-            ($line =~ /inet addr:((\d{1,3}?\.){3}(\d){1,3})\s/o)
-              && (push @local_inet, $1);
-        }
-    }
-}
 
 #---------------------------------------------------------------------------
 
