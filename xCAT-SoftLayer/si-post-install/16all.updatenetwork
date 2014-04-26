@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Configure network settings after SI has installed the OS
+
+. /tmp/post-install/variables.txt
+
+# determine if we should be using a static ip or dhcp
+staticIP () {
+    # Eventually we should use the SI variable IP_ASSIGNMENT_METHOD below to determine this.
+    # But this requires a patch in both xcat/sysclone (to set si_getimage -ip-assignment method)
+    # and SI (to set IP_ASSIGNMENT_METHOD as a result of that).  Until both of those patches
+    # are in the main releases, assume that if we have set the IPADDR kernel parm for the boot
+    # kernel to use static ip, that the final OS should use static ip too.
+    # Note: the IPADDR environment variable will be set by SI, even if it got it thru dhcp, so
+    #       that is not a reliable way to decide.
+    str=`cat /proc/cmdline`
+    #str='netmask=255.255.255.192 IPADDR=10.54.51.11 GATEWAY=10.54.51.1 dns=10.54.51.2 hostname=sap64-4 DEVICE=eth0'
+    for parm in $str; do
+        key=`echo $parm|awk -F= '{print $1}'`
+        value=`echo $parm|awk -F= '{print $2}'`
+        if [[ $key == "IPADDR" || $key == "ipaddr" ]]; then
+            return 0    # yes, we should use static ip
+        fi
+    done
+    if [[ -n $IP_ASSIGNMENT_METHOD && ${IP_ASSIGNMENT_METHOD,,} == "static" ]]; then
+        return 0    # this means yes/true
+    fi
+    return 1
+}
+
+#delete the udev rule in the image
+rule_file=`ls /etc/udev/rules.d/*net_persistent_names.rules 2>/dev/null`
+if [ -n "$rule_file" ];then
+    rm -f $rule_file
+fi
+
+hostname $HOSTNAME
+
+device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
+str_cfg_file=''
+if [ -d "/etc/sysconfig/network-scripts/" ];then
+    #redhat
+    grep -i HOSTNAME /etc/sysconfig/network
+    if [ $? -eq 0 ];then
+        sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+    else
+        echo "HOSTNAME=$HOSTNAME" >> /etc/sysconfig/network
+    fi
+    if staticIP; then
+        # set static ip from variables in variables.txt
+        i="$DEVICE"
+        str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=static" >> $str_cfg_file
+        echo "ONBOOT=yes" >> $str_cfg_file
+        echo "IPADDR=$IPADDR" >> $str_cfg_file
+        echo "NETMASK=$NETMASK" >> $str_cfg_file
+        echo "NETWORK=$NETWORK" >> $str_cfg_file
+        echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
+    else
+        # use dhcp for all nics
+        for i in $device_names;do
+            str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$i"
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=dhcp" >> $str_cfg_file
+            echo "NM_CONTROLLED=yes" >> $str_cfg_file
+            echo "ONBOOT=yes" >> $str_cfg_file
+        done
+    fi
+elif [ -d "/etc/sysconfig/network/" ];then
+    #suse
+    echo "$HOSTNAME" > /etc/HOSTNAME
+    if staticIP; then
+        # set static ip from variables in variables.txt
+        i="$DEVICE"
+        str_cfg_file="/etc/sysconfig/network/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=static" >> $str_cfg_file
+        echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "IPADDR=$IPADDR" >> $str_cfg_file
+        echo "NETMASK=$NETMASK" >> $str_cfg_file
+        echo "NETWORK=$NETWORK" >> $str_cfg_file
+        echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
+    else
+        # use dhcp for all nics
+        for i in $device_names;do
+            str_cfg_file="/etc/sysconfig/network/ifcfg-$i"
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=dhcp" >> $str_cfg_file
+            echo "STARTMODE=onboot" >> $str_cfg_file
+            echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+        done
+    fi
+else
+    #ubuntu
+    echo "Does not support ubuntu."
+    exit 1
+fi
+

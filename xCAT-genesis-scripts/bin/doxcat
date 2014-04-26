@@ -4,11 +4,13 @@
 #     Bug reported by Jeff Lang <jrlang@uwyo.edu>.  Thanks, Jeff!
 #
 
-modprobe acpi_cpufreq
+modprobe acpi_cpufreq 2>/dev/null		# on some machines this fails
 modprobe cpufreq_ondemand
-for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-	echo -n ondemand > $gov
-done
+if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor &>/dev/null; then
+	for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+		echo -n ondemand > $gov
+	done
+fi
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
@@ -117,14 +119,15 @@ mask2prefix() {
 # see if they specified static ip info, otherwise use dhcp
 for parm in `cat /proc/cmdline`; do
     key=`echo $parm|awk -F= '{print $1}'`
-    if [ "$key" = "hostip" ]; then
-        hostip=`echo $parm|awk -F= '{print $2}'`
-    elif [ "$key" = "netmask" ]; then
-        netmask=`echo $parm|awk -F= '{print $2}'`
-    elif [ "$key" = "gateway" ]; then
-        gateway=`echo $parm|awk -F= '{print $2}'`
-    elif [ "$key" = "netdevice" ]; then
-        netdevice=`echo $parm|awk -F= '{print $2}'`
+    value=`echo $parm|awk -F= '{print $2}'`
+    if [[ ${key,,} == "hostip" || ${key,,} == "ipaddr" ]]; then
+        hostip=$value
+    elif [[ ${key,,} == "netmask" ]]; then
+        netmask=$value
+    elif [[ ${key,,} == "gateway" ]]; then
+        gateway=$value
+    elif [[ ${key,,} == "netdevice" || ${key,,} == "device" ]]; then
+        netdevice=$value
     fi
 done
 if [[ -n $hostip && -n $netmask && -n $gateway && -n $netdevice ]]; then
@@ -135,6 +138,12 @@ if [[ -n $hostip && -n $netmask && -n $gateway && -n $netdevice ]]; then
 	ip addr add $hostip/$numbits broadcast $broadcast dev $netdevice scope global label $netdevice
 	ip link set $netdevice up
 	ip route replace to default via $gateway dev $netdevice
+	# in softlayer it takes up to 60 seconds for the nic to actually be able to communicate
+	echo -n Waiting to reach xCAT mgmt node $gateway.
+	xcatretries=60
+	while [ $((xcati+=1)) -le $xcatretries ] && ! ping -c2 -w3 $gateway >/dev/null 2>&1; do echo -n .; done
+	if [ $xcati -le $xcatretries ]; then echo " success"; else echo " failed"; fi
+	sleep 3
 else
 	echo "Setting IP via DHCP..."
 	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &

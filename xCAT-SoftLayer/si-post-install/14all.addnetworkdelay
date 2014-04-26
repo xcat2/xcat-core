@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Add a script that will run when the network is brought up to wait until the
+# xcat mn can be pinged.
+
+. /tmp/post-install/variables.txt
+
+if [ -d "/etc/sysconfig/network-scripts/" ];then
+    #redhat
+    NETDIR=/etc/sysconfig/network-scripts
+    filename=/sbin/ifup-local
+elif [ -d "/etc/sysconfig/network/" ];then
+    #suse
+    NETDIR=/etc/sysconfig/network
+    filename=/etc/sysconfig/network/if-up.d/xcat-sl-wait
+else
+    #ubuntu
+    echo "Does not support ubuntu."
+    exit 1
+fi
+
+# Create the wait script, overwriting a copy that may have come from the golden client
+# (in case the mn/image server is different).
+# this part of the file we want to expand the variables in the content
+cat >$filename << EOF1
+MNIP=$IMAGESERVER
+NETDIR=$NETDIR
+EOF1
+
+# this part of the file we do NOT want to expand the variables in the content
+cat >>$filename << 'EOF2'
+NIC="$1"
+# look in this ifcfg script to get the nics ip to see if this is the one we should be waiting on
+NICIP=`awk -F= '/^IPADDR/ {print $2}' $NETDIR/ifcfg-$NIC | tr -d \' `
+if [ "${NICIP%.*.*}" != "${MNIP%.*.*}" ]; then exit; fi     # hack: compare the 1st 2 octets
+echo -n Waiting to reach xCAT mgmt node $MNIP.
+xcatretries=60
+while [ $((xcati+=1)) -le $xcatretries ] && ! ping -c2 -w3 $MNIP >/dev/null 2>&1; do echo -n .; done
+if [ $xcati -le $xcatretries ]; then echo " success"; else echo " failed"; fi
+sleep 3
+EOF2
+
+chmod +x $filename

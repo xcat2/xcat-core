@@ -47,6 +47,8 @@ updateGrubOnNodes($noderange, \%bootparms);
 
 if ($bootparms{osimageprovmethod} eq 'install' && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
 
+if ($bootparms{osimageprovmethod} eq 'sysclone') { copySyscloneFiles(); }
+
 exit(0);
 
 
@@ -118,7 +120,7 @@ sub updateGrubOnNodes {
 	my @output = runcmd('which modifygrub');
 	my $modifygrub = $output[0];
 	chomp($modifygrub);
-	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME " . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
 	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
 	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
 	# is to quote each of the outer single quotes with double quotes.
@@ -143,14 +145,54 @@ sub modifyAutoinstFiles {
 	# Edit each file to have chroot.sles insert a wait at the end of /etc/init.d/network
 	# this finds the end of boot.sh script (which is chroot.sles)
 	my $search = '\n\]\]>\s*</source>\s*</script>\s*</chroot-scripts>';
+
+	# hack the /etc/init.d/network script to put a wait in it
 	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
 	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
-	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escape for sed
-	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 60 \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .'; do echo i=\$xcati ; done; sleep 10';
+	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escaped for sed
+	my $waitstring = 'echo -n Waiting to reach xCAT mgmt node ' . $bootparms->{mnip} . '.;xcatretries=60;while \[ \$\(\(xcati+=1\)\) -le \$xcatretries \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .' \>\/dev\/null 2\>\&1; do echo -n .; done; if \[ \$xcati -le \$xcatretries \]; then echo success; else echo failed; fi; sleep 3';
 	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
 	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
 	# finally create the perl replace string that will be used to modify the autoinst file
 	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
+
+	# Now instead we add a script that gets invoked by the OS after the nic is brought up
+    # these are specific to SLES
+    #my $netdir = '/etc/sysconfig/network';
+    #my $filename = '/etc/sysconfig/network/if-up.d/xcat-sl-wait';
+    #my $mnip = $bootparms->{mnip};
+    #todo: to support rhel, use these values instead
+    #my $netdir='/etc/sysconfig/network-scripts';
+    #my $filename='/sbin/ifup-local';
+
+    # this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
+    # so autoyast fails to get he media
+	#my $replace = qq(
+#FILENAME=$filename
+#NETDIR=$netdir
+#MNIP=$mnip
+#);
+#	$replace .= q(
+#cat >$FILENAME << EOF1
+#MNIP=$MNIP
+#NETDIR=$NETDIR
+#EOF1
+#
+# this part of the file we do NOT want to expand the variables in the content
+#cat >>$FILENAME << 'EOF2'
+#NIC="$1"
+# look in this ifcfg script to get the nics ip to see if this is the one we should be waiting on
+#NICIP=`awk -F= '/^IPADDR/ {print $2}' $NETDIR/ifcfg-$NIC | tr -d \' `
+#if [ "${NICIP%.*.*}" != "${MNIP%.*.*}" ]; then exit; fi     # hack: compare the 1st 2 octets
+#echo -n Waiting to reach xCAT mgmt node $MNIP.
+#xcatretries=60
+#while [ $((xcati+=1)) -le $xcatretries ] && ! ping -c2 -w3 $MNIP >/dev/null 2>&1; do echo -n .; done
+#if [ $xcati -le $xcatretries ]; then echo " success"; else echo " failed"; fi
+#sleep 3
+#EOF2
+#
+#chmod +x $FILENAME
+#);
 
 	# now actually update the file
 	print "Updating /install/autoinst files.\n";
@@ -159,6 +201,15 @@ sub modifyAutoinstFiles {
 		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
 		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
 	}
+}
+
+
+# Copy softlayer specific systemimager post-install scripts to the systemimager location.
+# These cause si to use static ip and insert a wait into the bring up of the network.
+sub copySyscloneFiles {
+	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/* /install/sysclone/scripts/post-install";
+	print "Copying SoftLayer-specific post scripts to the SystemImager post-install directory.\n";
+	runcmd($cmd);
 }
 
 

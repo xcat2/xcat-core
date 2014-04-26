@@ -47,6 +47,7 @@ mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/post-install
 
 cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 
@@ -55,6 +56,9 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
 cp -d postscripts/* $RPM_BUILD_ROOT/install/postscripts
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
+
+cp -d post-install/* $RPM_BUILD_ROOT/share/xcat/sysclone/post-install
+chmod 755 $RPM_BUILD_ROOT/share/xcat/sysclone/post-install/*
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer/*

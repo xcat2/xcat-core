@@ -13,11 +13,12 @@ use Socket;
 my $HELP;
 my $VERBOSE;
 my $WAITTIME;
+my $PROVMETHOD;
 my $XCATNETBOOTTITLE = 'xCAT network boot kernel and initrd';
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w <waittime>] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
+   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w <waittime>] [-p <provmethod] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
    	if (!$exitcode) {
    		print "Modify the grub config file on the node to boot the specified kernel and initrd.\n";
    	}
@@ -30,7 +31,7 @@ if (-f '/etc/os-release') { die "This script doesn't support ubuntu yet.\n"; }
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME, 'p|provmethod=s' => \$PROVMETHOD)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 4) { $usage->(1); }
@@ -60,7 +61,7 @@ sub addKernelParms {
 	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
 
 	# get node ip and add it to the kernel parms
-	my ($nic, $ip, $netmask, $gateway, $mac) = getNodeIpInfo($args);
+	my ($nic, $ip, $netmask, $network, $broadcast, $gateway, $mac) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
 	# if we are booting genesis, need to add the BOOTIF parm
 	my $bootif;
@@ -69,7 +70,16 @@ sub addKernelParms {
 		$bootif =~ s/:/-/g;
 		$bootif = "BOOTIF=01-$bootif";
 	}
-	$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+
+	if (defined($PROVMETHOD) && $PROVMETHOD eq 'sysclone') {
+		# add additional parms for sysclone
+		# DEVICE=eth0 IPADDR=10.0.0.99 NETMASK=255.255.255.0 NETWORK=10.0.0.0 BROADCAST=10.0.0.255 GATEWAY=10.0.0.1 GATEWAYDEV=eth0
+		#todo:  should we also add ETHER_SLEEP=$WAITTIME textmode=1 dns=$mnip ?
+		$args->{kernelparms} .= " $bootif IPADDR=$ip NETMASK=$netmask NETWORK=$network BROADCAST=$broadcast GATEWAY=$gateway HOSTNAME=$nodename DEVICE=$nic GATEWAYDEV=$nic";
+	}
+	else {			# scripted install or genesis shell
+		$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+	}
 }
 
 
@@ -88,7 +98,7 @@ sub getNodeIpInfo {
 		if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) |) { $mac = $mactmp; }		# got mac, remember it
 		if (($iptmp) = $line=~m/^\s+inet\s+($ipprefix\S+) /) { $ipandmask = $iptmp; last; }		# got ip, we are done
 	}
-	my ($ip, $netmask) = convertIpAndMask($ipandmask);
+	my ($ip, $netmask, $network, $broadcast) = convertIpAndMask($ipandmask);
 
 	# if the nic is a bonded nic (common on sl), then find the 1st real nic that is part of it
 	my $realnic = $nic;
@@ -117,18 +127,36 @@ sub getNodeIpInfo {
 	}
 
 	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway, mac=$mac");
-	return ($realnic, $ip, $netmask, $gateway, $mac);
+	return ($realnic, $ip, $netmask, $network, $broadcast, $gateway, $mac);
 }
 
 
-# Convert an ip/mask in slash notation (like 10.0.0.1/26) to separate ip and netmask like 10.0.0.1 and 255.255.255.192
+# Convert an ip/mask in slash notation (like 10.1.1.1/26) to separate ip, netmask, network, and broadcast values,
+# like: 10.1.1.1, 255.255.255.192, 10.1.1.0, 10.1.1.63
 sub convertIpAndMask {
 	my $ipandmask = shift @_;
 	my ($ip, $masknum) = split('/', $ipandmask);
-	my $netbin = oct("0b" . '1' x $masknum . '0' x (32-$masknum));	# create a str like '1111100', then convert to binary
-	my @netarr=unpack('C4',pack('N',$netbin));		# separate into the 4 octets
-	my $netmask=join('.',@netarr);			# put them together into the normal looking netmask
-	return ($ip, $netmask);
+
+	# build the netmask
+	my $nmbin = oct("0b" . '1' x $masknum . '0' x (32-$masknum));	# create a str like '1111100', then convert to binary
+	my @nmarr=unpack('C4',pack('N',$nmbin));		# separate into the 4 octets
+	my $netmask=join('.',@nmarr);			# put them together into the normal looking netmask
+
+	# create binary form of ip
+	my @iparr=split(/\./,$ip);
+	my ( $ipbin ) = unpack('N', pack('C4',@iparr ) );
+
+	# Calculate network address by logical AND operation of ip & netmask and convert network address to IP address format
+	my $netbin = ( $ipbin & $nmbin );
+	my @netarr=unpack('C4', pack('N',$netbin ) );
+	my $network=join(".",@netarr);
+
+	# Calculate broadcast address by inverting the netmask and adding it to the network address
+	my $bcbin = ( $ipbin & $nmbin ) + ( ~ $nmbin );
+	my @bcarr=unpack('C4', pack('N',$bcbin ) ) ;
+	my $broadcast=join(".",@bcarr);
+
+	return ($ip, $netmask, $network, $broadcast);
 }
 
 
