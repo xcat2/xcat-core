@@ -477,10 +477,11 @@ sub loadcase
                 $j = -1;
                 $cases[$i]={};
                 $cases[$i]->{name}=$name;
-		$cases[$i]->{filename}=$file;
+                $cases[$i]->{filename}=$file;
                 if(!$needshow){
                     $cases[$i]->{cmd}=[];
                     $cases[$i]->{check}=[];
+                    $cases[$i]->{cmdcheck}=[];
                     push(@rightcase, $name);
                 }else{
                     $skip = 1;
@@ -541,6 +542,14 @@ sub loadcase
                 next if $skip;
                 $cases[$i]->{check}->[$j][$z] = &getvar($1);
                 if($cases[$i]->{check}->[$j][$z] eq ''){
+                    close(FILE);
+                    return 1;
+                }
+                $z = $z + 1;
+            }elsif($line =~ /^cmdcheck\s*:\s*(\w.+)/){
+                next if $skip;
+                $cases[$i]->{cmdcheck}->[$j][$z] = &getvar($1);
+                if($cases[$i]->{cmdcheck}->[$j][$z] eq ''){
                     close(FILE);
                     return 1;
                 }
@@ -755,6 +764,9 @@ sub runcase
                         push(@record, "CHECK:output $op $rvalue\t[Pass]");
                     }
                 }
+            }
+            foreach my $cmdcheck (@{$$case{cmdcheck}->[$j]}){
+                &runcmd($cmdcheck);
             }
             $j = $j + 1;
         }
