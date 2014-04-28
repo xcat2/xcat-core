@@ -1681,6 +1681,7 @@ my @partition_query_actions = qw(part_get_partition_cap part_get_hyp_process_and
 sub parse_part_get_info {
     my $hash = shift;
     my $data = shift;
+    my $lparid = shift;
     my @array = split /\n/, $data;
     foreach my $line (@array) {
         chomp($line);
@@ -1701,7 +1702,9 @@ sub parse_part_get_info {
             $hash->{bus}->{$3}->{cur_lparid} = $1;
             $hash->{bus}->{$3}->{bus_slot} = $2;
             $hash->{bus}->{$3}->{des} = $4;
-            push @{$hash->{lpar_phy_bus}}, $3;
+            if ($lparid and $lparid eq $1) {
+                push @{$hash->{lpar_phy_bus}}, $3;
+            }
         } elsif ($line =~ /Phy drc_index:(\w+), Port group: (\w+), Phy port id: (\w+)/) {
             $hash->{phy_drc_group_port}->{$1}->{$2}->{$3} = '1';
         #} elsif ($line =~ /adapter_id=(\w+),lpar_id=([\d|-]+).*port_group=(\d+),phys_port_id=(\d+).*drc_index=(\w+),.*/) {
@@ -1785,13 +1788,13 @@ sub query_cec_info_actions {
         chomp(@$values[1]);
         #if ($action eq "part_get_partition_cap" and (@$values[1] =~ /Error:/i or @$values[2] ne 0)) {
         if (@$values[1] =~ /Error:/i or @$values[2] ne 0) {
-            return ([[@$values]]);
+            next; #return ([[@$values]]);
         }
         if (@$values[1] =~ /^$/) {
             next;
         }
         if ($usage eq 1 or $usage eq 2) {
-            &parse_part_get_info(\%hash, @$values[1]);
+            &parse_part_get_info(\%hash, @$values[1], $lparid);
         }
 
         if ($usage eq 0 or $usage eq 2) {
@@ -1874,7 +1877,7 @@ sub update_vm_db {
         if (exists($node_hash->{lpar_cpu_min})) {
             $db_update{cpus} = "$node_hash->{lpar_cpu_min}/$node_hash->{lpar_cpu_req}/$node_hash->{lpar_cpu_max}";
         }
-        if (exists($node_hash->{lpar_mem_nim})) {
+        if (exists($node_hash->{lpar_mem_min})) {
             $db_update{memory} = "$node_hash->{lpar_mem_min}/$node_hash->{lpar_mem_req}/$node_hash->{lpar_mem_max}";
         }
         if (exists($node_hash->{lpar_vmstorage_server})) {
