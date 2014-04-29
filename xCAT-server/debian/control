@@ -7,6 +7,6 @@ Standards-Version: 3.7.2
 
 Package: xcat-server
 Architecture: all
-Depends: ${perl:Depends},grub2-xcat, perl-xcat (>= 2.5.0-1), xcat-client (>= 2.5.0-1), libsys-syslog-perl, libio-socket-ssl-perl, libxml-simple-perl, make, libdbd-sqlite3-perl, libexpect-perl, libnet-dns-perl, libsoap-lite-perl, libxml-libxml-perl, libsnmp-perl, debootstrap
+Depends: ${perl:Depends}, perl-xcat (>= 2.5.0-1), xcat-client (>= 2.5.0-1), libsys-syslog-perl, libio-socket-ssl-perl, libxml-simple-perl, make, libdbd-sqlite3-perl, libexpect-perl, libnet-dns-perl, libsoap-lite-perl, libxml-libxml-perl, libsnmp-perl, debootstrap,libcrypt-rijndael-perl,libcrypt-cbc-perl
 Description: Server and configuration utilities of the xCAT management project
  xCAT-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server

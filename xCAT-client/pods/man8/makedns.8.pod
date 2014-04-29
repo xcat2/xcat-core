@@ -49,6 +49,8 @@ Remove the DNS records.
 
 Update DNS records to the external DNS server listed in /etc/resolv.conf.
 
+Enabling the site attribute I<externaldns> means use 'external' DNS by default. If setting I<externaldns> to 1, you need NOT use B<-e> flag in every makedns call.
+
 =item B<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
