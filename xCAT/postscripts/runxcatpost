@@ -68,6 +68,4 @@ echo "$TMP" > /tmp/xcatenv
 . /tmp/xcatenv
 /xcatpost/addsiteyum
 
-if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
-        /xcatpost/updateflag.awk $MASTER 3002
-fi
+/xcatpost/updateflag.awk $MASTER 3002
