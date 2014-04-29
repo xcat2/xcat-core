@@ -27,6 +27,10 @@ function configipv4(){
             echo "NETWORK_${num_v4num}=${str_v4net}" >> $str_conf_file
             echo "LABEL_${num_v4num}=${num_v4num}" >> $str_conf_file
         fi
+
+        if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
+            echo "VLAN=yes" >> $str_conf_file
+        fi
     #debian ubuntu
     elif [ "$str_os_type" = "debian" ];then
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
@@ -40,6 +44,10 @@ function configipv4(){
         echo "  address ${str_v4ip}" >> $str_conf_file
         echo "  netmask ${str_v4mask}" >> $str_conf_file
         echo "  network ${str_v4net}" >> $str_conf_file
+        if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
+            parent_device=`echo ${str_if_name} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
+            echo "  vlan-raw-device ${parent_device}" >> $str_conf_file
+        fi
     else
         # Write the info to the ifcfg file for redhat
         str_conf_file=""
@@ -56,6 +64,9 @@ function configipv4(){
         echo "IPADDR=${str_v4ip}" >> $str_conf_file
         echo "NETMASK=${str_v4mask}" >> $str_conf_file
         echo "ONBOOT=yes" >> $str_conf_file
+        if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
+            echo "VLAN=yes" >> $str_conf_file
+        fi
     fi
 }
 
