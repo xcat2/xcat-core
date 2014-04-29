@@ -6039,11 +6039,11 @@ sub run_always_rsync_postscripts
         # if on the service node need to add the $syncdir directory 
         # to the path
         if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $ps;
-         $ps=$tmpp;
+         my $tmps=$syncdir . $ps;
+         push @args, $tmps;
+        } else{
+          push @args, $ps;
         }
-        push @args, $ps;
-
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
          
         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
