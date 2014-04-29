@@ -34,7 +34,7 @@ Obsoletes: atftp-xcat
 %ifos linux
 %ifnarch s390x
 # PCM does not use or ship grub2-xcat
-Requires: grub2-xcat
+#Requires: grub2-xcat
 %endif
 %endif
 %endif
