@@ -2464,15 +2464,21 @@ sub defch
 
             #  give results
             my $rsp;
-            $rsp->{data}->[0] =
-              "The database was updated for the following objects:";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            my $nodenum = scalar(keys %::FINALATTRS);
+            if ($nodenum) {
+                $rsp->{data}->[0] =
+                  "The database was updated for the following objects:";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
 
-            my $n = 1;
-            foreach my $o (sort(keys %::FINALATTRS))
-            {
-                $rsp->{data}->[$n] = "$o\n";
-                $n++;
+                my $n = 1;
+                foreach my $o (sort(keys %::FINALATTRS))
+                {
+                    $rsp->{data}->[$n] = "$o\n";
+                    $n++;
+                }
+            } else {
+                $rsp->{data}->[0] = 
+                "No database was updated";
             }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
@@ -2480,8 +2486,13 @@ sub defch
         {
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
-            $rsp->{data}->[0] =
-              "$nodenum object definitions have been created or modified.";
+            if ($nodenum) {
+                $rsp->{data}->[0] =
+                  "$nodenum object definitions have been created or modified.";
+            } else {
+               $rsp->{data}->[0] =
+                  "No object definitions have been created or modified.";
+            }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
@@ -2629,6 +2640,9 @@ sub setFINALattrs
     {
         # special case for the nic* attributes
         # merge nic*.eth0, nic*.eth1
+        unless(exists($::CLIATTRS{$objname})) {
+            next;
+        }
         if ($::CLIATTRS{$objname}{objtype} eq 'node')
         {
             # Even if only the nicips.eth0 is specified with CLI,
