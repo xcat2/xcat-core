@@ -8,10 +8,9 @@
 
 
 
- This is script is called after the installation or upgrade of MySQL 
-   on xCAT.  It will automate the setup of the MySQL and xCAT to run
-   xCAT on the MySQL DB.
-   Note: if will setup an xcatdb,a xcatadmin, and a MySQL root password. 
+ This script  automates the setup of the MySQL/MariaDB server  and creates the xCAT database to run
+  xCAT on MySQL/MariaDB.
+   Note: it will setup an xcat database (xcatdb),a xcatadmin id , and a MySQL root password. 
    It will interact for the
    password to assign, unless the XCATMYSQLADMIN_PW and the XCATMYSQLROOT_PW 
    env variables are set to the admin and mysql root password, resp.   
@@ -150,8 +149,8 @@ $::linuxos = xCAT::Utils->osver();
 
 #
 # check to see if mysql is installed
-#
-my $cmd = "rpm -qa | grep mysql";
+ #
+my $cmd = "rpm -qa | grep -i perl-DBD-mysql";
 if ( $::debianflag ){
     $cmd = "dpkg -l | grep mysql-server";
 }
@@ -159,9 +158,16 @@ xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
 {
     my $message =
-      "\nMySQL is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
+      "\nMySQL perl DBD is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before running this command.\n If on Linux, install from the OS CDs.";
     xCAT::MsgUtils->message("E", " $cmd failed. $message");
     exit(1);
+}
+# is this MariaDB or MySQL
+$::MariaDB=0;
+$cmd = "rpm -qa | grep -i mariadb";  # check this is MariaDB not MySQL
+xCAT::Utils->runcmd($cmd, 0);
+if ($::RUNCMD_RC == 0) {
+   $::MariaDB=1;
 }
 
 # check to see if  MySQL  is running
@@ -328,7 +334,6 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
     # MySQL not running, then initialize the database
     if ($::mysqlrunning == 0)
     {
-
         # Add mysql user and group for AIX
         # Correct directory permissions
         #
@@ -436,7 +441,7 @@ sub usage
 {
     xCAT::MsgUtils->message(
         'I',
-        "Usage:\nmysqlsetup - Performs the setup of MySQL for xCAT to use as its database. See man mysqlsetup for more information."
+        "Usage:\nmysqlsetup - Performs the setup of MySQL or MariaDB for xCAT to use as its database. See man mysqlsetup for more information."
         );
     my $msg =
       "mysqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-f|hostfile] [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-u|--update> <-f|hostfile> [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]\n           <-L|--LL> [-V|--verbose]";
@@ -870,14 +875,20 @@ sub mysqlstart
     }
     else
     {
-        if ($::linuxos =~ /rh.*/)
-        {
+        if ($::MariaDB==1) {    # running MariaDB
+            $cmd = "service mariadb start";
+           
+        } else {   # it is mysql
+
+          if ($::linuxos =~ /rh.*/)
+          {
             $cmd = "service mysqld start";
-        }
-        else
-        {    # sles
+          }
+          else
+          {    # sles
             $cmd = "service mysql start";
-        }
+          }
+       }
     }
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -973,16 +984,21 @@ sub mysqlreboot
     }
     else    # linux
     {
-        if ($::linuxos =~ /rh.*/)
-        {
-            $cmd = "chkconfig mysqld on";
-        }
-        else
-        {    # sles
-            $cmd = "chkconfig mysql on";
-            if ( $::debianflag ){
-                $cmd = "update-rc.d mysql defaults";
-            }
+        if ($::MariaDB==1 ) {  # MariaDB not MySQL
+         
+            $cmd = "chkconfig mariadb on";
+        } else { # mysql
+           if ($::linuxos =~ /rh.*/)
+           {
+              $cmd = "chkconfig mysqld on";
+           }
+           else
+           {    # sles
+              $cmd = "chkconfig mysql on";
+              if ( $::debianflag ){
+                  $cmd = "update-rc.d mysql defaults";
+              }
+           }
         }
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -1058,7 +1074,12 @@ sub setupxcatdb
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
     my $pwd_prompt   = 'Enter password: ';
-    my $mysql_prompt = 'mysql> ';
+    my $mysql_prompt;
+    if ($::MariaDB == 1) {  # setup MariaDB
+     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    } else {
+     $mysql_prompt = 'mysql> ';
+    }
     my $expect_log   = undef;
     my $debug        = 0;
     #if ($::VERBOSE)
@@ -1178,7 +1199,12 @@ sub setupLL
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
     my $pwd_prompt   = 'Enter password: ';
-    my $mysql_prompt = 'mysql> ';
+    my $mysql_prompt;
+    if ($::MariaDB == 1) {  # setup MariaDB
+     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    } else {
+     $mysql_prompt = 'mysql> ';
+    }
     my $expect_log   = undef;
     my $debug        = 0;
     #if ($::VERBOSE)
@@ -1308,7 +1334,12 @@ sub addhosts
     my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
     my $pwd_sent = 0;
     my $pwd_prompt   = 'Enter password: ';
-    my $mysql_prompt = 'mysql> ';
+    my $mysql_prompt;
+    if ($::MariaDB == 1) {  # setup MariaDB
+     $mysql_prompt = 'MariaDB \[\(none\)\]> ';
+    } else {
+     $mysql_prompt = 'mysql> ';
+    }
     my $expect_log   = undef;
 
     foreach my $host (@hosts)
