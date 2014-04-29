@@ -5,6 +5,7 @@ clear
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bashrc
 echo PS1="'"'[xCAT Genesis running on \H \w]\$ '"'" > /.bash_profile
 mkdir -p /etc/ssh
+mkdir -p /var/tmp/
 mkdir -p /var/empty/sshd
 echo root:x:0:0::/:/bin/bash >> /etc/passwd
 echo sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin >> /etc/passwd
