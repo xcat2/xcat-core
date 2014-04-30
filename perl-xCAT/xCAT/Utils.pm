@@ -3487,4 +3487,60 @@ sub fullpathbin
 
   return $fullpath;
 }
+#--------------------------------------------------------------------------------
+
+=head3   gettimezone
+    returns the name of the timezone defined on the Linux distro.
+    This routine was written to replace the use of /etc/sysconfig/clock which in no
+    longer supported on future Linux releases such as RHEL7.  It is suppose to be a routine
+    that can find the timezone on any Linux OS or AIX.
+    Arguments:
+      none
+    Returns:
+      Name of timezone,  for example US/Eastern
+    Globals:
+        none
+    Error:
+      None
+    Example:
+         my $timezone = xCAT::Utils->gettimezone();
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub gettimezone
+{
+  my ($class) = @_;
+
+  my $tz;
+  if (xCAT::Utils->isAIX()) {
+    $tz= $ENV{'TZ'};
+  } else {   # all linux
+        my $localtime = "/etc/localtime";
+        my $zoneinfo = "/usr/share/zoneinfo";
+        my $cmd = "find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV";
+        my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+           $tz="Could not determine timezone checksum";
+            return $tz;
+        }
+        my @zones = split /\n/, $zone_result;
+
+        $zones[0] =~ s/$zoneinfo\///;
+        if (!$zones[0]) {  # if we still did not get one, then default
+                $tz = `cat /etc/timezone`;
+                chomp $tz;
+        } else {
+             $tz=$zones[0];
+        }
+
+
+  }
+  return $tz;
+
+
+}
+
 1;

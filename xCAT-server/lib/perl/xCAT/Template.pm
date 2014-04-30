@@ -281,7 +281,9 @@ sub subvars {
                 my $tempstr = "%include /tmp/partitionfile\n";
                 $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
                 #modify the content in the file, and write into %pre part
-                $partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
+               
                 $partcontent .= "chmod 755 /tmp/partscript\n";
                 $partcontent .= "/tmp/partscript\n";
                 #replace the #XCA_PARTITION_SCRIPT#
@@ -291,7 +293,8 @@ sub subvars {
             elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
                 my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
                 $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
-                $partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
                 $partcontent .= "chmod 755 /tmp/partscript\n";
                 $partcontent .= "/tmp/partscript\n";
                 $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
