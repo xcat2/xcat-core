@@ -849,17 +849,17 @@ sub do_op_extra_cmds {
                             if ($2 == "G" or $2 == '') {
                                 $min = $min * 1024;
                             } 
-                            $min = $min/$memsize;
+                            $min = int($min/$memsize);
                             my $cur = $3;
                             if ($4 == "G" or $4 == '') {
                                 $cur = $cur * 1024;
                             }
-                            $cur = $cur/$memsize;
+                            $cur = int($cur/$memsize);
                             my $max = $5;
                             if ($6 == "G" or $6 == '') {
                                 $max = $max * 1024;
                             }
-                            $max = $max/$memsize;
+                            $max = int($max/$memsize);
                             $request->{opt}->{$op} ="$min/$cur/$max";
                             $param = $request->{opt}->{$op};
                         } else {
@@ -895,7 +895,7 @@ sub do_op_extra_cmds {
             my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
             # need to add update db here 
             $lpar_hash{$name} = $rethash;     
-            $lpar_hash{$name}->{parent} = @$d[4];
+            $lpar_hash{$name}->{parent} = @$d[3];
         }
     } 
     if (%lpar_hash) {
@@ -2280,9 +2280,9 @@ sub mkspeclpar {
                     return([[$name, "Parameter for 'vmmemory' is invalid", 1]]);
                 }
                 my $memsize = $memhash->{mem_region_size};
-                $mmin = ($mmin + $memsize - 1) / $memsize;
-                $mcur = ($mcur + $memsize - 1) / $memsize;
-                $mmax = ($mmax + $memsize - 1) / $memsize;
+                $mmin = int(($mmin + $memsize - 1) / $memsize);
+                $mcur = int(($mcur + $memsize - 1) / $memsize);
+                $mmax = int(($mmax + $memsize - 1) / $memsize);
                 $tmp_ent->{memory} = "$mmin/$mcur/$mmax";
                 $tmp_ent->{mem_region_size} = $memsize;
             } else {
@@ -2376,7 +2376,7 @@ sub mkspeclpar {
             #need to add update db here
             my $rethash = query_cec_info_actions($request, $name, $d, 1, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
             $lpar_hash{$name} = $rethash;     
-            $lpar_hash{$name}->{parent} = @$d[4];
+            $lpar_hash{$name}->{parent} = @$d[3];
 
             $name = undef;
             $d = undef;
