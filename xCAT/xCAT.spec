@@ -165,20 +165,27 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %post
 %ifos linux
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
-if expr match $(rpm -q --queryformat "%{VERSION}" httpd)  '^2.4[\.0-9]*$' >/dev/null 2>&1  
+if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then
-    ln -s -f /etc/httpd/conf.d/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf 
+   rm -rf /etc/httpd/conf.d/xcat.conf
+   cp /etc/httpd/conf.d/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+elif [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then 
+   rm -rf /etc/httpd/conf.d/xcat.conf
+   cp /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 else
-    ln -s -f /etc/httpd/conf.d/xcat.conf.apach22 /etc/httpd/conf.d/xcat.conf 
+   rm -rf /etc/httpd/conf.d/xcat.conf
+   cp /etc/httpd/conf.d/xcat.conf.apach22 /etc/httpd/conf.d/xcat.conf
+
+   rm -rf /etc/apache2/conf.d/xcat.conf
+   cp /etc/apache2/conf.d/xcat.conf.apach22 /etc/apache2/conf.d/xcat.conf
 fi
 
+rm -rf /etc/apache2/conf.d/xcat.conf.apach22
+rm -rf /etc/apache2/conf.d/xcat.conf.apach24
+rm -rf /etc/httpd/conf.d/xcat.conf.apach22
+rm -rf /etc/httpd/conf.d/xcat.conf.apach24
 
-if expr match $(rpm -q --queryformat "%{VERSION}" apache2)  '^2.4[\.0-9]*$' >/dev/null 2>&1  
-then
-    ln -s -f /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf 
-else
-    ln -s -f /etc/apache2/conf.d/xcat.conf.apach22 /etc/apache2/conf.d/xcat.conf 
-fi
 %endif
 
 # create dir for the current pid
@@ -213,11 +220,10 @@ exit 0
 %files
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
-/etc/httpd/conf.d/xcat.conf.apach22
-/etc/httpd/conf.d/xcat.conf.apach24
-
 /etc/apache2/conf.d/xcat.conf.apach22
 /etc/apache2/conf.d/xcat.conf.apach24
+/etc/httpd/conf.d/xcat.conf.apach22
+/etc/httpd/conf.d/xcat.conf.apach24
 
 /etc/xCATMN
 /install/postscripts
@@ -232,8 +238,6 @@ exit 0
 
 if [ "$1" = "0" ]; then
 
-rm /etc/httpd/conf.d/xcat.conf 
-rm /etc/apache2/conf.d/xcat.conf
 
 %ifnos linux
 if grep "^xcatd" /etc/inittab >/dev/null
