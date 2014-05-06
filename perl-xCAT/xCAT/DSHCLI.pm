@@ -1020,6 +1020,7 @@ sub fork_fanout_dsh
         }
     }
     # save the original exports,  we are going to add the unique node name below
+    my $firstpass=0;
     while (@$targets_waiting
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
@@ -1046,6 +1047,7 @@ sub fork_fanout_dsh
         }
         if ($$options{'environment'})
         {
+          if ($firstpass ==0) {   # do the servicenode stuff only once
             # if we are on a servicenode need to get the environment file
             # from the SNsyncfiledir, not local
             if (xCAT::Utils->isServiceNode()) {
@@ -1068,8 +1070,10 @@ sub fork_fanout_dsh
                $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             }
-            # build the xdsh command
-            push @dsh_command,
+            $firstpass=1;
+           }
+           # build the xdsh command
+           push @dsh_command,
               "$exportnode$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
         }
 
