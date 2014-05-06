@@ -180,7 +180,7 @@ if [ "$str_temp" = "mac" ];then
             fi
         done
     else
-        str_inst_nic=`ifconfig -a | grep -i "$MACADDRESS" | awk '{print $1;}'`
+       str_inst_nic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://` 
     fi
 elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
     str_inst_nic=$str_temp
