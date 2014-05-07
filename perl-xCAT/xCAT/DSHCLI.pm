@@ -242,6 +242,11 @@ sub execute_dcp
                         \@targets_waiting, \%targets_active
                         );
     }
+    if (scalar(@targets_failed) > 0)
+      {
+          #$::DCP_NODES_FAILED = join ",", @targets_failed;
+          @::DCP_NODES_FAILED =  @targets_failed;
+      }
 
     return (scalar(@targets_failed) + scalar(keys(%unresolved_targets)));
 }
