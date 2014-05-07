@@ -278,18 +278,16 @@ sub process_servicenodes_xdcp
     my $synfiledir = shift;
     my @snodes     = @$sn;
     my @snoderange = @$snrange;
-    my $args;
     $::RUNCMD_RC = 0;
     my $cmd = $req->{command}->[0];
-
     # if xdcp -F command (input $syncsnfile) and the original synclist need
-    # to be rsync to the $synfiledir  directory on the service nodes first 
+    # to be rsync to the $synfiledir  directory on the service nodes first
     if ($::syncsnfile)
     {
         if (!-f $::syncsnfile)
         {    # syncfile does not exist,  quit
             my $rsp = {};
-            $rsp->{data}->[0] = "File:$::syncsnfile does not exist.";
+            $rsp->{error}->[0] = "File:$::syncsnfile does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
             return (1);    # process no service nodes
         }
@@ -298,45 +296,64 @@ sub process_servicenodes_xdcp
         # original synclist input on the -F flag to
         # the service node first to the site.SNsyncfiledir directory
         #change noderange to the service nodes
-        # sync each one and check for error
-        # if error do not add to good_SN array, add to bad_SN
+        # sync  and check for error
+
+        my @sn = ();
+        #build the array of all service nodes
         foreach my $node (@snodes)
         {
 
-            # run the command to each servicenode
-            # xdcp <sn> -s -F <syncfile>
-            my @sn = ();
             # handle multiple servicenodes for one node
             my @sn_list = split ',', $node;
             foreach my $snode (@sn_list) {
              push @sn, $snode;
             }
-            # don't use runxcmd, because can go straight to process_request,
-            # these are all service nodes. Also servicenode is taken from
-            # the noderes table and may not be the same name as in the nodelist
-            # table, for example may be an ip address.
-            # here on the MN
-            my $addreq;
-            $addreq->{'_xcatdest'}  = $::mnname;
-            $addreq->{node}         = \@sn;
-            $addreq->{noderange}    = \@sn;
-            $addreq->{arg}->[0]     = "-s";
-            $addreq->{arg}->[1]     = "-F";
-            $addreq->{arg}->[2]     = $::syncsnfile;
-            $addreq->{command}->[0] = $cmd;
-            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-            $addreq->{env}          = $req->{env};
-            &process_request($addreq, $callback, $sub_req);
+        }
+        @::good_SN = @sn;  # initialize all good
 
-            if ($::FAILED_NODES == 0)
+        # run the command to the servicenodes
+        # xdcp <sn> -s -F <syncfile>
+        # don't use runxcmd, because can go straight to process_request,
+        # these are all service nodes. Also servicenode is taken from
+        # the noderes table and may not be the same name as in the nodelist
+        # table, for example may be an ip address.
+        # here on the MN
+        my $addreq;
+        $addreq->{'_xcatdest'}  = $::mnname;
+        $addreq->{node}         = \@sn;
+        $addreq->{noderange}    = \@sn;
+        # check input request for --nodestatus
+        my $args=$req->{arg};   # argument
+        if (grep(/^--nodestatus$/, @$args)) {
+          push (@{$addreq->{arg}},"--nodestatus"); # return nodestatus
+        }
+         push (@{$addreq->{arg}},"-v");
+         push (@{$addreq->{arg}},"-s");
+         push (@{$addreq->{arg}},"-F");
+         push (@{$addreq->{arg}},$::syncsnfile);
+        $addreq->{command}->[0] = $cmd;
+        $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+        $addreq->{env}          = $req->{env};
+        &process_request($addreq, $callback, $sub_req);
+
+        if ($::FAILED_NODES == 0)
+        {
+            @::good_SN = @sn;   # all servicenodes were sucessful
+
+        }
+        else
+        {
+          @::bad_SN = @::DCP_NODES_FAILED;
+          # remove all failing nodes from the good list
+          my @tmpgoodnodes;
+          foreach my $gnode (@::good_SN) {
+            if (!grep(/$gnode/,@::bad_SN ))  # if not a bad node
             {
-                push @::good_SN, $node;
+               push @tmpgoodnodes, $gnode;
             }
-            else
-            {
-                push @::bad_SN, $node;
-            }
-        }    # end foreach good servicenode
+          }
+          @::good_SN = @tmpgoodnodes;
+        }
 
     }    # end  xdcp -F
     else
@@ -359,75 +376,86 @@ sub process_servicenodes_xdcp
         my $SNdir;
         $SNdir = dirname($::SNpath);    # get directory
 
+        my @sn = ();
+        # build list of servicenodes
         foreach my $node (@snodes)
         {
-            my @sn = ();
             # handle multiple servicenodes for one node
             my @sn_list = split ',', $node;
             foreach my $snode (@sn_list) {
              push @sn, $snode;
             }
-
-            # run the command to each servicenode
-            # to make the directory under the temporary
-            # SNsyncfiledir to hold the files that will be
-            # sent to the service nodes
-            # xdsh <sn> mkdir -p <SNsyncfiledir>/$::SNpath
-            my $addreq;
-            $addreq->{'_xcatdest'}  = $::mnname;
-            $addreq->{node}         = \@sn;
-            $addreq->{noderange}    = \@sn;
-            $addreq->{arg}->[0]     = "mkdir ";
-            $addreq->{arg}->[1]     = "-p ";
-            $addreq->{arg}->[2]     = $SNdir;
-            $addreq->{command}->[0] = 'xdsh';
-            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
-            $addreq->{env}          = $req->{env};
-            &process_request($addreq, $callback, $sub_req);
-
-            if ($::FAILED_NODES == 0)
+        }
+        @::good_SN = @sn;  # initialize all good
+        # run the command to all servicenodes
+        # to make the directory under the temporary
+        # SNsyncfiledir to hold the files that will be
+        # sent to the service nodes
+        # xdsh <sn> mkdir -p <SNsyncfiledir>/$::SNpath
+        my $addreq;
+        $addreq->{'_xcatdest'}  = $::mnname;
+        $addreq->{node}         = \@sn;
+        $addreq->{noderange}    = \@sn;
+        $addreq->{arg}->[0]     = "-v";
+        $addreq->{arg}->[1]     = "mkdir ";
+        $addreq->{arg}->[2]     = "-p ";
+        $addreq->{arg}->[3]     = $SNdir;
+        $addreq->{command}->[0] = 'xdsh';
+        $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+        $addreq->{env}          = $req->{env};
+        &process_request($addreq, $callback, $sub_req);
+        if ($::FAILED_NODES == 0)
+        {
+                @::good_SN = @sn;
+        }
+        else
+        {
+          @::bad_SN = @::DCP_NODES_FAILED;
+          # remove all failing nodes from the good list
+          my @tmpgoodnodes;
+          foreach my $gnode (@::good_SN) {
+            if (!grep(/$gnode/,@::bad_SN ))  # if not a bad node
             {
-                push @::good_SN, $node;
+               push @tmpgoodnodes, $gnode;
             }
-            else
-            {
-                push @::bad_SN, $node;
-            }
-        }    # end foreach good servicenode
+          }
+          @::good_SN = @tmpgoodnodes;
+        }
 
         # now xdcp file to the service node to the new
         # tmp path
 
         # for all the service nodes that are still good
-        my @good_SN2 = @::good_SN;
-        @::good_SN = ();
-        foreach my $node (@good_SN2)
+        my @sn = @::good_SN;
+
+        # copy the file to each good servicenode
+        # xdcp <sn> <file> <SNsyncfiledir/../file>
+        my $addreq = dclone($req);    # get original request
+        $addreq->{arg}->[-1] = $SNdir;    # change to tmppath on servicenode
+        $addreq->{'_xcatdest'} = $::mnname;
+        $addreq->{node}        = \@sn;
+        $addreq->{noderange}   = \@sn;
+        &process_request($addreq, $callback, $sub_req);
+        if ($::FAILED_NODES == 0)
         {
-            my @sn;
-            push @sn, $node;
-
-            # copy the file to each good servicenode
-            # xdcp <sn> <file> <SNsyncfiledir/../file>
-            my $addreq = dclone($req);    # get original request
-            $addreq->{arg}->[-1] = $SNdir;    # change to tmppath on servicenode
-            $addreq->{'_xcatdest'} = $::mnname;
-            $addreq->{node}        = \@sn;
-            $addreq->{noderange}   = \@sn;
-            &process_request($addreq, $callback, $sub_req);
-
-            if ($::FAILED_NODES == 0)
+                 @::good_SN = @sn ;
+        }
+        else
+        {
+          @::bad_SN = @::DCP_NODES_FAILED;
+          # remove all failing nodes from the good list
+          my @tmpgoodnodes;
+          foreach my $gnode (@::good_SN) {
+            if (!grep(/$gnode/,@::bad_SN ))  # if not a bad node
             {
-                push @::good_SN, $node;
+               push @tmpgoodnodes, $gnode;
             }
-            else
-            {
-                push @::bad_SN, $node;
-            }
+          }
+          @::good_SN = @tmpgoodnodes;
+        }
 
-        }    # end foreach good service node
     }
-
-    # report bad service nodes]
+    # report bad service nodes
     if (@::bad_SN)
     {
         my $rsp = {};
@@ -444,6 +472,7 @@ sub process_servicenodes_xdcp
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
     return (0);
+
 }
 #-------------------------------------------------------
 
