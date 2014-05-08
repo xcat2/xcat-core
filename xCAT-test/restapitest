@@ -246,7 +246,7 @@ sub run_restapi
         $cmd .= "'";
     }
     if($d) {
-        $cmd .= " --data '$d'";
+        $cmd .= " -H Content-Type:application/json --data '$d'";
     }
     $cmd .= " -D /tmp/err.log";
     log_me("Begin to run restapi test with $cmd");
@@ -394,17 +394,22 @@ sub check_result
 
     my @expectvalue = split /:/, $expect; #@expectvalue = ANY, ANY, x86_64
     $flag = 0;
-    foreach my $actual (@$actuals) { # $actual = nodetype:arch:x86_64
-        foreach my $expval (@expectvalue) { # $expval = ANY
+    foreach my $expval (@expectvalue) { # $expval = ANY
+        foreach my $actual (@$actuals) { # $actual = nodetype:arch:x86_64
+            if($flaghash{$actual} eq "none"){
+               next;
+            }
             my @actualvalue = split /:/, $actual; # @actualvalue = nodetype, arch, x86_64
+            print_debug("begin to compare $expval and $actualvalue[$flag]");
+
             if(($expval eq $actualvalue[$flag]) or ($expval eq "ANY")) { #ANY =~ nodetype
                 $flaghash{$actual} = "eq";
-            } elsif ($expval =~ $actualvalue[$flag] or $expval == "ANY") {
+            } elsif (($expval =~ $actualvalue[$flag]) or ($expval eq "ANY")) {
                 $flaghash{$actual} = "match";
             } else {
                 $flaghash{$actual} = "none";
-                next;
             }
+           print_debug(", compare result is $flaghash{$actual}\n");
         }
         $flag++;
     }
