@@ -279,7 +279,7 @@ __EOF__
     cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
-echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
+echo deb [arch=amd64] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
 __EOF__
 
     chmod 775 mklocalrepo.sh
@@ -380,7 +380,7 @@ __EOF__
     cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
-echo deb file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
+echo deb [arch=amd64] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
 __EOF__
 
     chmod 775 mklocalrepo.sh
