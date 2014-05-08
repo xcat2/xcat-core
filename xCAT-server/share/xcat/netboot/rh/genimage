@@ -583,8 +583,8 @@ if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") 
     my $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
-        if (($dracutver >= "009") and ($dracutver < "033")) {
-            $dracutdir = "dracut_009";
+        if ($dracutver >= "033") {
+            $dracutdir = "dracut_033";
         } else {
             $dracutdir = "dracut";  # The default directory
         }
@@ -924,7 +924,11 @@ sub mkinitrd_dracut {
 	$additional_options= qq{--include /tmp/cmdline /etc/cmdline};
     }
 
-    system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver");
+    # force the dracut run in non-hostonly mode for dracut higher than version 033
+    if ($dracutver > "033") {
+        $additional_options .= " -N";
+    }
+    system("chroot $rootimg_dir dracut -N $additional_options -f /tmp/initrd.$$.gz $kernelver");
     print "the initial ramdisk for $mode is generated successfully.\n";
     move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz"); 
 }
@@ -1665,7 +1669,11 @@ sub using_systemd {
     my $os = shift;
     if ($os =~ /fedora(\d+)/) {
         if ($1 >= 15) {
-          return 1;
+            return 1;
+        }
+    }elsif ($os =~ /rhels(\d+)/) {
+        if ($1 >= 7) {
+            return 1;
         }
     }
 
