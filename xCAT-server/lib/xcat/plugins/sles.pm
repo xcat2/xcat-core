@@ -1183,11 +1183,19 @@ sub mkinstall
                 }
 
                if(scalar @nameserversIP){
-                  $kcmdline .=" dns=".join(",",@nameserversIP);
+                  $kcmdline .=" Nameserver=".join(",",@nameserversIP);
                }
+
+               my $nd = xCAT::NetworkUtils->getNodeDomains([$node]);
+               my %nodedomains = %$nd;
+               my $domain=$nodedomains{$node};
+
+               $kcmdline .=" Domain=$domain ";
            }            
 
+           
 
+ 
 
             if (defined $sent->{serialport})
             {
