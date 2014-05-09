@@ -1,16 +1,8 @@
 #
-# Setup hostname and resov.conf
+# Setup hostname
 #
 echo "post scripts" >/root/post.log
 
-#there is no network option to set dns search domain in kickstart file, 
-#the search domain in /etc/resolv.conf is set in the post installation script
-export MANAGEDADDRESSMODE=#MANAGEDADDRESSMODE#
-export SEARCHDOMAIN=#GETNODEDOMAIN:THISNODE#
-
-if [ "$MANAGEDADDRESSMODE" == "static" ]; then
- echo "search $SEARCHDOMAIN" >> /etc/resolv.conf
-fi
 
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
