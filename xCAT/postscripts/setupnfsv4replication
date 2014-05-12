@@ -10,7 +10,7 @@
 
 # Change these two parameters according to your requirements
 $::NFSRETRIES = 3;
-$::NFSTIMEO = 10;
+$::NFSTIMEO = 50;
 
 # Candidate commands: mount, df, lsfs, nfs4cl showfs
 # Only the mount command could list all file systems
