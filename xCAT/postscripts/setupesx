@@ -43,9 +43,9 @@ cat >/tmp/esxcfg.sh <<EOF1
 # Configure ESX Server.  You'll need to put your own IP address
 # in here. We assume eth0 is your nic.  Change if needed.
 NIC=eth0
-IPADDRMASK=`ip addr show dev $NIC | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
-IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
-NETMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`
+IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}' | head -1`
+NETMASK=`ifconfig $NIC |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+
 #esxcfg-vswitch -U vmnic0 vSwitch0
 esxcfg-vswitch -L vmnic0 vSwitch0
 esxcfg-vswif -i \$IPADDR -n \$NETMASK vswif0
