@@ -884,10 +884,15 @@ sub check_options
     # if not help and not -n,  dhcpd needs to be running
     if (!($opt->{h})&& (!($opt->{n}))) {
      if (xCAT::Utils->isLinux()) {
-       my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
+       my $DHCPSERVER="dhcpd";
+       if( -e "/etc/init.d/isc-dhcp-server" ){
+              $DHCPSERVER="isc-dhcp-server";
+       } 
+
+       my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
        if ($::RUNCMD_RC != 0)  { # not running
           my $rsp = {};
-          $rsp->{data}->[0] = "dhcpd is not running.  Run service dhcpd start and rerun your command.";
+          $rsp->{data}->[0] = "$DHCPSERVER is not running.  Run service $DHCPSERVER start and rerun your command.";
           xCAT::MsgUtils->message("E", $rsp, $callback, 1);
           return 1;
        }

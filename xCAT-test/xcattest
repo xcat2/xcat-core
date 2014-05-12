@@ -25,10 +25,10 @@ my $string1 = undef;
 if (
     !GetOptions("h|?"  => \$needhelp,
                 "f=s" => \$configfile,
-		"b=s" => \$bundle_list,
-		"t=s" => \$case_list,
-		"c=s" => \$cmd_list,
-		"l" => \$needshow,
+                "b=s" => \$bundle_list,
+                "t=s" => \$case_list,
+                "c=s" => \$cmd_list,
+                "l" => \$needshow,
                 "restore"=>\$restore)
   )
 {
@@ -221,7 +221,7 @@ sub getConfig
             }
         }
     }
-    
+
     if(exists $config{object}){
         foreach my $type (keys %{$config{object}}){
             foreach my $name (keys %{$config{object}{$type}}){
@@ -344,7 +344,7 @@ sub init
             log_this("No compute node defined,can't get ARCH of compute node");
         } else {
             $config{var}{ARCH} = getnodeattr($config{var}{CN},"arch");
-	    if($config{var}{ARCH} =~ /ppc/){
+            if($config{var}{ARCH} =~ /ppc/){
                 $config{var}{ARCH} = 'ppc';
             }elsif($config{var}{ARCH}=~/86/){
                 $config{var}{ARCH} = 'x86';
@@ -432,7 +432,7 @@ sub loadcase
     my $j = -1;
     my $z = 0;
     my $skip = 0;
-    
+
     my @caserange = ();
     my @rightcase = ();
     my @notrightcase = ();
@@ -452,7 +452,7 @@ sub loadcase
         }
     }
     if($case_list){
-       @caserange = split /,/, $case_list; 
+       @caserange = split /,/, $case_list;
     }
     foreach $file (@files){
         if(!open(FILE, "<$file")){
@@ -498,13 +498,13 @@ sub loadcase
                  $cases[$i]->{os}=$string1;
 
                 }
-                 
+
                 if($cases[$i]->{os} !~ /$config{var}{OS}/){
                     push(@notrightcase, $cases[$i]->{name});
                     pop(@rightcase);
                     $skip = 1;
                 }
-              
+
             }elsif($line =~ /^arch\s*:\s*(\w[\w\,]+)/){
                 next if $skip;
                 $cases[$i]->{arch}=$1;
@@ -631,7 +631,7 @@ sub getfunc
         $func = $1;
         $parameter = $2;
         @para = split /\s*,\s*/, trim($parameter);
-        if($func eq "GETNODEATTR"){     
+        if($func eq "GETNODEATTR"){
             $value= getnodeattr(@para);
             if($value eq "Unknown"){
                 $value = '';
@@ -669,9 +669,9 @@ sub runcase
         my $time1=gmtime $now1;
         log_this("------START:$$case{name}::Time:$time1------");
         push @record, "------START:$$case{name}::Time:$time1------";
-	push @record, "FILENAME:$$case{filename}";
+        push @record, "FILENAME:$$case{filename}";
         foreach my $cmd (@{$$case{cmd}}){
-	    $cmd = getfunc($cmd);
+            $cmd = getfunc($cmd);
 
 #by
             my $runstart=timelocal(localtime());
@@ -684,10 +684,10 @@ sub runcase
             my $diffduration=$runstop-$runstart;
             log_this("\n[$cmd] Running Time:$diffduration sec");
             push(@record,("\n[$cmd] Running Time:$diffduration sec"));
-         
+
             log_this("RETURN: rc = $rc","OUTPUT:",@output);
             push(@record,("RETURN rc = $rc","OUTPUT:",@output));
-            
+
 
             foreach my $check (@{$$case{check}->[$j]}){
                 if($failed){
@@ -766,7 +766,17 @@ sub runcase
                 }
             }
             foreach my $cmdcheck (@{$$case{cmdcheck}->[$j]}){
-                &runcmd($cmdcheck);
+                if($cmdcheck) {
+                    &runcmd($cmdcheck);
+                    $rc = $::RUNCMD_RC;
+                    if($rc == 1) {
+                        log_this("CMDCHECK:output $cmdcheck\t[Failed]");
+                        push(@record, "CHECK:output $cmdcheck\t[Failed]");
+                    } elsif ($rc == 0) {
+                        log_this("CMDCHECK:output $cmdcheck\t[Pass]");
+                        push(@record, "CHECK:output $cmdcheck\t[Pass]");
+                    }
+                }
             }
             $j = $j + 1;
         }
@@ -798,6 +808,7 @@ sub runcmd
     if ($?)
     {
         $rc = $? ;
+        $rc = $rc >> 8;
         $::RUNCMD_RC = $rc;
     }
     chomp(@$outref);
@@ -835,3 +846,5 @@ sub getreport
 close(FD);
 close(STDOUT);
 }
+
+

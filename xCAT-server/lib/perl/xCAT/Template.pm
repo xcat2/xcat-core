@@ -105,11 +105,6 @@ sub subvars {
   }
 
 
-  my @managedaddressmode = xCAT::TableUtils->get_site_attribute("managedaddressmode");
-  my $tmp=$managedaddressmode[0];
-  if( defined($tmp)  ){
-        $ENV{MANAGEDADDRESSMODE}=$tmp;
-  }
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -249,6 +244,7 @@ sub subvars {
   $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
   $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
+  $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
 
   my $nrtab = xCAT::Table->new("noderes");
   my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
@@ -638,6 +634,22 @@ sub get_win_prodkey {
 sub managed_address_mode {
 	return $::XCATSITEVALS{managedaddressmode};
 }
+
+
+sub get_node_domain {
+    my $lcnode=shift;
+    if ( $lcnode eq 'THISNODE' ){
+       $lcnode=$node;
+    }
+
+    my $nd = xCAT::NetworkUtils->getNodeDomains([$lcnode]);
+    my %nodedomains = %$nd;
+    my $domain=$nodedomains{$lcnode};
+
+    return $domain;
+
+}
+
 sub esxipv6setup {
  if (not $::XCATSITEVALS{managedaddressmode} or $::XCATSITEVALS{managedaddressmode} =~ /v4/) { return ""; } # blank line for ipv4 schemes
  my $v6addr;
@@ -705,7 +717,7 @@ sub kickstartnetwork {
                    push @nameserversIP, $ip;
 
                 }
-                
+                #there is no network option to set dns search domain in kickstart, it will be set in %post
                 if (scalar @nameserversIP) {
                    $line .=" --nameserver=". join(",",@nameserversIP);
                 } 
