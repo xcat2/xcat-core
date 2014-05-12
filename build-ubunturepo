@@ -86,7 +86,7 @@ if [ "$c_flag" -a "$d_flag" ];then
     exit 2
 fi
 
-uploader="bp-sawyers"
+uploader="ligc"
 # Find where this script is located to set some build variables
 old_pwd=`pwd`
 cd `dirname $0`
