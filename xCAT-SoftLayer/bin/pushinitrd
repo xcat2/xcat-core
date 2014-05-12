@@ -207,7 +207,7 @@ sub modifyAutoinstFiles {
 # Copy softlayer specific systemimager post-install scripts to the systemimager location.
 # These cause si to use static ip and insert a wait into the bring up of the network.
 sub copySyscloneFiles {
-	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/* /install/sysclone/scripts/post-install";
+	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/16all.updatenetwork /install/sysclone/scripts/post-install";
 	print "Copying SoftLayer-specific post scripts to the SystemImager post-install directory.\n";
 	runcmd($cmd);
 }
