@@ -14,7 +14,7 @@
 #     -n hostname
 # Flags are used for check output:
 #     -o expected output
-#     -l logical operator
+#     -O logical operator
 #
 # Expected result format is '{ANY:{ANY:content}}'
 # These steps are used to explain how to scan result
@@ -64,7 +64,7 @@ if (
                 "c=s" => \$cert,
                 "n=s" => \$hostname,
                 "o=s" => \$output,
-                "l=s" => \$loperator,
+                "O=s" => \$loperator,
                 "debug" => \$debug,
                 )
   ) {
@@ -181,7 +181,7 @@ sub usage
     print "  testrestapi [-m method] [-r resource] [-t tocken]\n";
     print "  [-h host] [-P port][-u user] [-p passwd]\n";
     print "  [-d data] [-c cert] [-n hostname]\n";
-    print "  [-o expect_output] [-l logical_operator] [-debug]\n";
+    print "  [-o expect_output] [-O logical_operator] \n";
     print "  [-debug]\n";
     print "\n";
     return;
