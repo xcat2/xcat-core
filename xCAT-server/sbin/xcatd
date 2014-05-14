@@ -1998,7 +1998,7 @@ sub service_connection {
                 $resp={error=>["Authentication failure"],errorcode=>[1]};
             }
             $resp->{serverdone}=[ undef ] ;
-            send_response($resp,$sock);
+            print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
             return;
         }
 
@@ -2009,7 +2009,7 @@ sub service_connection {
             unless (defined $peername) {
                 my $resp={error=>["Authentication failure"],errorcode=>[1]};
                 $resp->{serverdone}=[ undef ] ;
-                send_response($resp,$sock);
+                print $sock XMLout($resp,RootName => 'xcatresponse',NoAttr=>1);
                 return;
             }
             delete($req->{tokenid});

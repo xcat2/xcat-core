@@ -1,0 +1,503 @@
+#!/usr/bin/env perl
+###############################################################################
+# This script is used for rest-api automation test
+# Flags are used for test input:
+#     -m method. Should be GET, POST, PUT, DELETE
+#     -r resource
+#     -t token
+#     -h host
+#     -u user
+#     -p passwd
+#     -P port (BC)
+#     -d data
+#     -c cert
+#     -n hostname
+# Flags are used for check output:
+#     -o expected output
+#     -l logical operator
+#
+# Expected result format is '{ANY:{ANY:content}}'
+# These steps are used to explain how to scan result
+#     step 1. go through to see if content can be found
+#     step 2. compare content if found
+# options are used as followed:
+#    == returns 0 if found and equal, returns 1 if not found or found but not equal
+#    != returns 0 if found, returns 1 if not found
+#    =~ returns 0 if match, returns 1 if not match
+#    !=~ returns 0 if not match, returns 1 if match
+################################################################################
+BEGIN
+{
+      $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use Getopt::Long;
+use Data::Dumper;
+use strict;
+my $help;
+my $method;
+my $token;
+my $resource;
+my $host;
+my $user;
+my $passwd;
+my $port;
+my $data;
+my $cert;
+my $hostname;
+my $output;
+my $loperator;
+my $debug;
+my $defaulthash;
+my $defaulthttpresult = 0;
+my $outputfile = "/tmp/testrestapiresult";
+
+if (
+    !GetOptions("h|?"  => \$help,
+                "m=s" => \$method,
+                "t=s" => \$token,
+                "r=s" => \$resource,
+                "h=s" => \$host,
+                "u=s" => \$user,
+                "p=s" => \$passwd,
+                "P=s" => \$port,
+                "d=s" => \$data,
+                "c=s" => \$cert,
+                "n=s" => \$hostname,
+                "o=s" => \$output,
+                "l=s" => \$loperator,
+                "debug" => \$debug,
+                )
+  ) {
+    &usage;
+    exit 1;
+}
+
+##############################################################
+# check result
+##############################################################
+if ($output) {
+    if ($method or $resource) {
+        &usage;
+        exit 1;
+    }
+
+    my $res = check_result($output,$loperator,$outputfile);
+    print_debug( "check result runs with $output and $loperator, result is $res\n" );
+    exit $res;
+}
+##############################################################
+# return help
+##############################################################
+if ($help) {
+    &usage;
+    exit 0;
+}
+##############################################################
+# Give default values for optional vars.
+###############################################################
+my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
+my $resultdir = "$rootdir/result";
+my $logfile = "$rootdir/result/restapitest.log"; #/opt/xcat/share/xcat/tools/autotest/result/restapitest.log
+my $cert1 = "/root/ca-cert.pem";
+# get token
+my $gettoken = `curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&password=cluster' -H Content-Type:application/json --data '{"userName":"root","password":"cluster"}' 2>/dev/null`;
+my $reshash = parse_json($gettoken);
+my $token1 = $$reshash{token}{id};
+
+
+# get hostname
+unless ($hostname) {
+   $hostname = `hostname`;
+    chomp($hostname);
+
+}
+
+# keey default test result for save
+my $res = run_restapi($method, $resource, $data, "", $port, "127.0.0.1", "root", "cluster");
+$defaulthash = parse_json($res);
+$defaulthttpresult = check_errcode();
+
+# debug info
+print_debug( "get token $token1. \n" );
+print_debug( "get hostname $hostname.\n");
+print_debug( "default result is $res. \n" );
+print_debug( "default resulthash is: \n" );
+print_debug($defaulthash);
+print_debug( "default errcode is $defaulthttpresult \n" );
+
+
+####################################################
+# Begin to run test cases
+####################################################
+my @users = ("root","wsuser", $user);
+my @passwds = ("cluster","cluster", $passwd);
+my @tokens = ("", $token1, $token);
+my @certs = ("", $cert1, $cert);
+unless ($host) {
+    $host = "127.0.0.1";
+}
+log_me("**************begin restapi test***************");
+my $i = 0;
+for my $u (@users) {
+    next unless($u);
+    my $p = $passwds[$i];
+    $i++;
+    for my $t (@tokens) {
+        for my $c (@certs){
+            my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
+        if($res){
+            my $reshash = parse_json($res);
+            print_debug("parse curl result and got:\n");
+            print_debug($reshash);
+            if (%$reshash != %$defaulthash) {
+                log_me("restapi test cases run different result");
+                print_debug( "restapi test cases run different result with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
+                exit 1;
+            }
+        }
+            my $errcode = check_errcode();
+            print_debug("get curl error code: $errcode\n");
+            if ($errcode != $defaulthttpresult) {
+                log_me("restapi test cases run different errcode");
+                print_debug( "restapi test cases run different error code with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
+                exit 1;
+            }
+        }
+    }
+}
+exit  $defaulthttpresult;
+
+################################################
+# begin subroutine
+################################################
+
+##########
+# usage  #
+##########
+sub usage
+{
+    print "Usage:testrestapi - Run xcat test cases.\n";
+    print "  testrestapi [-?|-h]\n";
+    print "  testrestapi [-m method] [-r resource] [-t tocken]\n";
+    print "  [-h host] [-P port][-u user] [-p passwd]\n";
+    print "  [-d data] [-c cert] [-n hostname]\n";
+    print "  [-o expect_output] [-l logical_operator] [-debug]\n";
+    print "  [-debug]\n";
+    print "\n";
+    return;
+}
+
+###############
+# record log  #
+###############
+sub log_me
+{
+    my $msg = shift;
+    open (LOG, ">>$logfile")
+       or  return 1;
+    my $date = `date`;
+    print LOG "$date\: $msg\n";
+}
+
+#####################
+# print debug infor #
+#####################
+sub print_debug
+{
+    my $msg = shift;
+    return 0 unless($debug);
+    if(ref($msg) eq 'HASH') {
+        print Dumper($msg);
+    } elsif( ref($msg) eq 'ARRAY') {
+        print Dumper($msg);
+    } else {
+        print "$msg";
+    }
+}
+#########################
+# run rest-api command  #
+#########################
+sub run_restapi
+{
+    my ($m,$r,$d,$c,$p,$h,$u,$a,$t) = @_;
+    my $cmd = "curl";
+    $cmd .= " -X $m";
+    unless ($c) {
+        $cmd .= " -k ";
+    }else {
+        $cmd .= " --cacert $c";
+    }
+    if($t){
+        $cmd .= " -H X-Auth-Token:$t ";
+    }
+    if($t or $c){
+        $cmd .= " 'https://$hostname";
+    } else {
+        $cmd .= " 'https://$h";
+    }
+    if ($p) {
+        $cmd .= ":$p";
+    }
+    $cmd .= "/xcatws";
+    $cmd .= "$r?";
+    unless($t){
+        $cmd .= "userName=$u&password=$a'";
+    }else {
+        $cmd .= "'";
+    }
+    if($d) {
+        $cmd .= " -H Content-Type:application/json --data '$d'";
+    }
+    $cmd .= " -D /tmp/err.log";
+    log_me("Begin to run restapi test with $cmd");
+    my $res = `$cmd 2>/dev/null`;
+    print_debug("run curl: $cmd\n");
+    print_debug("result is $res\n");
+    if (!open (RESULT, ">$outputfile")) {
+        log_me("wirte outputfile error");
+    }
+    print RESULT $res;
+    close RESULT;
+    return $res;
+}
+
+############################
+# transfer json into hash  #
+############################
+sub parse_json
+{
+    my $input = shift;
+    my %hash;
+    if ($input =~ /:/) {
+        # for those who look like:
+        # {"networks":[{"mgtifname":"eth1","mask":"255.255.255.0"},{"mgtifname":"eth1","mask":"255.255.255.0"}]}
+        if ($input =~ /^\[(.*)\]$/s) {
+            my $content = $1;
+            print "[:] content is $content \n" if($debug);
+            parse_json($content);
+        }
+        # for those who look like
+        # {"clustersite":{"domain":"cluster.com","master":"192.168.1.15"}}
+        elsif ($input =~ /^\s*{(.*)}\s*$/s) {
+            my $content = $1;
+            print "{} content is $content \n" if($debug);
+            parse_json($content);
+        }
+        # for those who look like
+        # "domain":"cluster.com","master":"192.168.1.15"
+        elsif ($input =~ /,/ and !($input =~ /}/)) {
+            my @contents = split /,/, $input;
+            my @reval;
+            # record result
+            foreach my $t (@contents) {
+               print ", content is $t \n" if($debug);
+               my $re = parse_json($t);
+               push @reval, $re;
+            }
+            # merge hash
+            foreach my $t (@reval) {
+                if(ref($t) =~ "HASH") {
+                    foreach my $k (keys %$t){
+                        $hash{$k} = $$t{$k};
+                    }
+                }
+            }
+            return \%hash;
+
+        }
+        # for those who look like:
+        # "clustersite":{"domain":"cluster.com","master":"192.168.1.15"}
+        # "domain":"cluster.com"
+        elsif ($input =~ /\"(\S+?)\":(.+)/s) {
+            my $key = $1;
+            my $value = $2;
+            if ($value =~ /{/) {
+                # "clustersite":{"domain":"cluster.com","master":"192.168.1.15"}
+                print "{ content is $value \n" if($debug);
+                $hash{$key} =  parse_json($value, $key);
+                return \%hash;
+            } else {
+                # "domain":"cluster.com"
+                $value =~ /\"(\S+)\"/;
+                $hash{$key} = $1;
+                return \%hash;
+            }
+        }
+    }
+    # for those who look like
+    # ["10.1.255.250","192.168.200.16","192.168.200.19","192.168.200.22"]
+    else {
+        if ($input =~ /^\[(.*)\]/s) {
+            my $content = $1;
+            print "[] content is $content \n" if($debug);
+            my @all = split /,/, $content;
+            foreach my $n (@all) {
+                $n =~ /\"(.*)\"/;
+                $hash{$1} = 1;
+            }
+            return \%hash;
+        }
+    }
+}
+
+############################
+# check curl running code  #
+############################
+sub check_errcode
+{
+    if(!open (ERRLOG, "</tmp/err.log")) {
+        log_me("can't open err.log in tmp");
+        return 1;
+    }
+    my $num;
+    while (<ERRLOG>){
+        if (/HTTP\/\w*\.*\w* (\w+) (\w+)/) {
+           $num = $1;
+           last;
+        }
+    }
+    close ERRLOG;
+    print_debug("can't get errorcode\n") unless($num);
+    return $num;
+}
+
+############################
+# check curl return result #
+############################
+sub check_result
+{
+    my $data = shift;
+    my $opterator = shift;
+    my $output = shift;
+    if ( !open (OUTPUT, "<$output")) {
+        log_me("can't read output file");
+        return 1;
+    }
+    my $res;
+    while (<OUTPUT>) {
+        $res .= $_;
+    }
+    close OUTPUT;
+
+
+    my $expects = transf_hash(parse_json($data)); # one entry
+    my $actuals = transf_hash(parse_json($res)); # serval entries
+
+    print_debug("expected result is:\n");
+    print_debug($expects);
+    print_debug("testcase run result is \n");
+    print_debug($actuals);
+
+    my $flag = 0;
+    my %flaghash;
+    my $expect = $$expects[0]; # $expect = ANY:ANY:x86_64
+
+    my @expectvalue = split /:/, $expect; #@expectvalue = ANY, ANY, x86_64
+    $flag = 0;
+    foreach my $expval (@expectvalue) { # $expval = ANY
+        foreach my $actual (@$actuals) { # $actual = nodetype:arch:x86_64
+            if($flaghash{$actual} eq "none"){
+               next;
+            }
+            my @actualvalue = split /:/, $actual; # @actualvalue = nodetype, arch, x86_64
+            print_debug("begin to compare $expval and $actualvalue[$flag]");
+
+            if(($expval eq $actualvalue[$flag]) or ($expval eq "ANY")) { #ANY =~ nodetype
+                $flaghash{$actual} = "eq";
+            } elsif (($expval =~ $actualvalue[$flag]) or ($expval eq "ANY")) {
+                $flaghash{$actual} = "match";
+            } else {
+                $flaghash{$actual} = "none";
+            }
+           print_debug(", compare result is $flaghash{$actual}\n");
+        }
+        $flag++;
+    }
+    print_debug("search result is \n");
+    print_debug(\%flaghash);
+
+    if ($opterator eq "!="){
+        foreach my $val (keys %flaghash) {
+            if ($flaghash{$val} eq "eq") {
+               print_debug("compare result: failed\n");
+               return 1; # fail
+            }
+       }
+       print_debug("compare result: succeed\n");
+       return 0; #succeed
+    }
+    if ($opterator eq "=="){
+        foreach my $val (keys %flaghash) {
+            if ($flaghash{$val} eq "eq") {
+                print_debug("compare result: succeed\n");
+                return 0; # succeed
+            }
+       }
+       print_debug("compare result: failed\n");
+       return 1; #fail
+    }
+
+    if ($opterator eq "=~"){
+        foreach my $val (keys %flaghash) {
+            if ($flaghash{$val} eq "match") {
+                print_debug("compare result: succeed\n");
+                return 0; # succeed
+            }
+       }
+       print_debug("compare result: failed\n");
+       return 1; #fail
+    }
+    if ($opterator eq "!=~"){
+        foreach my $val (keys %flaghash) {
+            if ($flaghash{$val} eq "match") {
+                print_debug("compare result: failed\n");
+                return 1; # fail
+            }
+       }
+       print_debug("compare result: succeed\n");
+       return 0; #succeed
+    }
+
+}
+
+####################################
+# help to transfer hash into array #
+####################################
+sub find_key
+{
+    my $input = shift;
+    my $en = shift;
+    my $ou = shift;
+    if( ref($input) =~ "HASH") {
+        foreach my $val (keys %$input) {
+           my $tmp = $$en; # keey head
+            $$en .= "$val:";
+            my $t1 = find_key($$input{$val}, $en, $ou);
+            if ($$en == ""){
+                $$en = $tmp; #restore head
+            }
+        }
+    } else {
+        $$en .= $input;
+        push @$ou, $$en;
+        $$en = "";  # clear entry;
+    }
+}
+
+############################
+# transfer hash into array #
+############################
+sub transf_hash
+{
+    my $input = shift;
+    my $entry;
+    my @array;
+    find_key($input, \$entry, \@array);
+    return \@array;
+}
+
+
+
+
+
+
