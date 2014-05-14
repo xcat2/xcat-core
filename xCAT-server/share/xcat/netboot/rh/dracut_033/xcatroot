@@ -218,6 +218,25 @@ else
 fi
 cd /
 
+function getdevfrommac() {
+    boothwaddr=$1
+    ip link show | while read line
+    do
+        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
+        if [ "X$dev" != "X" ]; then
+            devname=$dev
+        fi
+
+        if [ "X$devname" != "X" ]; then
+            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
+            if [ "X$hwaddr" = "X$boothwaddr" ]; then
+                echo $devname
+            fi
+        fi
+    done
+}
+
+
 if [ -z $STATEMNT ]; then
   for lf in /tmp/dhclient.*.lease; do
     netif=${lf#*.}
@@ -233,7 +252,7 @@ if [ -z $STATEMNT ]; then
     MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
   elif [ ! -z "$BOOTIF" ]; then
     MACX=$BOOTIF
-    ETHX=`ifconfig |grep -i $BOOTIF | awk '{print $1}'`
+    ETHX=$(getdevfrommac $BOOTIF)
   fi
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
