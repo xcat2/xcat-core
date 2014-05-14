@@ -115,7 +115,11 @@ else
         length=`expr $index2 - $index1`
         length=`expr $length - 1`
         cons_ip=`expr substr "$result" $pos $length`
-        ifconfig |grep "$cons_ip"
+        if [ "$os" == "AIX" ]; then
+          ifconfig |grep "$cons_ip"
+        else
+          ip addr |grep "$cons_ip"
+        fi
         if [ $? -eq 0 ]; then
            CONSERVER=""
         fi

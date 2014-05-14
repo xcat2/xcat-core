@@ -106,12 +106,13 @@ sub getNodeIpInfo {
 		my @nics = grep(m/\s+master\s+$nic\s+/, @output);
 		if (!scalar(@nics)) { die "Error: can't find the NICs that are part of $nic.\n"; }
 		($realnic) = $nics[0]=~m/^\d+:\s+(\S+): /;
-		# go back thru the ip add show output and find the mac of this nic
-		foreach my $line (@output) {
-			my ($nictmp, $mactmp, $foundnic);
-			if (($nictmp) = $line=~m/^\d+:\s+(\S+): / && $nictmp eq $realnic) { $foundnic = 1; }
-			if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) | && $foundnic) { $mac = $mactmp; last; }		# got mac, we are done
-		}
+		# do not need to go back thru the ip addr show output and find the mac of this nic because the mac
+		# of the bond nic is the same.  Plus the code below does not work right for some reason anyway.
+		#foreach my $line (@output) {
+		#	my ($nictmp, $mactmp, $foundnic);
+		#	if (($nictmp) = $line=~m/^\d+:\s+(\S+): / && $nictmp eq $realnic) { $foundnic = 1; }
+		#	if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) | && $foundnic) { $mac = $mactmp; last; }		# got mac, we are done
+		#}
 	}
 
 	# finally, find the gateway

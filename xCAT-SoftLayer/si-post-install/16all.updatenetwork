@@ -1,8 +1,11 @@
 #!/bin/bash
 
-# Configure network settings after SI has installed the OS
+# SI post-install script to configure network settings after SI has installed the OS
+# SI post-install scripts run in a chroot environment of the final OS image
 
 . /tmp/post-install/variables.txt
+
+bondingopts='mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1'
 
 # determine if we should be using a static ip or dhcp
 staticIP () {
@@ -35,11 +38,13 @@ if [ -n "$rule_file" ];then
 fi
 
 hostname $HOSTNAME
+bond=bond0
 
 device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
 str_cfg_file=''
 if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat
+    dir="/etc/sysconfig/network-scripts"
     grep -i HOSTNAME /etc/sysconfig/network
     if [ $? -eq 0 ];then
         sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
@@ -47,21 +52,44 @@ if [ -d "/etc/sysconfig/network-scripts/" ];then
         echo "HOSTNAME=$HOSTNAME" >> /etc/sysconfig/network
     fi
     if staticIP; then
+        # delete all nic cfg files left over from the golden node
+        for i in $device_names;do
+            rm -f "$dir/ifcfg-$i"
+        done
+
         # set static ip from variables in variables.txt
-        i="$DEVICE"
-        str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$i"
+        # write ifcfg-bond0.  For now we assume the installnic should be part of bond0,
+        # because in SL i think that is always the case.
+        i="$bond"
+        str_cfg_file="$dir/ifcfg-$i"
         echo "DEVICE=$i" > $str_cfg_file
-        echo "BOOTPROTO=static" >> $str_cfg_file
+        echo "BOOTPROTO=none" >> $str_cfg_file
         echo "ONBOOT=yes" >> $str_cfg_file
+        echo "USERCTL=no" >> $str_cfg_file
+        echo 'BONDING_OPTS="'$bondingopts'"' >> $str_cfg_file
         echo "IPADDR=$IPADDR" >> $str_cfg_file
         echo "NETMASK=$NETMASK" >> $str_cfg_file
         echo "NETWORK=$NETWORK" >> $str_cfg_file
         echo "BROADCAST=$BROADCAST" >> $str_cfg_file
         #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
+
+        # write ifcfg-eth0
+        i="$DEVICE"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=none" >> $str_cfg_file
+        echo "MASTER=$bond" >> $str_cfg_file
+        echo "ONBOOT=yes" >> $str_cfg_file
+        echo "SLAVE=yes" >> $str_cfg_file
+        echo "USERCTL=no" >> $str_cfg_file
+
+        # write modprobe alias config
+        str_cfg_file="/etc/modprobe.d/$bond.conf"
+        echo "alias $bond bonding" > $str_cfg_file
     else
         # use dhcp for all nics
         for i in $device_names;do
-            str_cfg_file="/etc/sysconfig/network-scripts/ifcfg-$i"
+            str_cfg_file="$dir/ifcfg-$i"
             echo "DEVICE=$i" > $str_cfg_file
             echo "BOOTPROTO=dhcp" >> $str_cfg_file
             echo "NM_CONTROLLED=yes" >> $str_cfg_file
@@ -70,23 +98,54 @@ if [ -d "/etc/sysconfig/network-scripts/" ];then
     fi
 elif [ -d "/etc/sysconfig/network/" ];then
     #suse
+    dir="/etc/sysconfig/network"
     echo "$HOSTNAME" > /etc/HOSTNAME
     if staticIP; then
+        # delete all nic cfg files left over from the golden node
+        for i in $device_names;do
+            rm -f "$dir/ifcfg-$i"
+        done
+
         # set static ip from variables in variables.txt
-        i="$DEVICE"
-        str_cfg_file="/etc/sysconfig/network/ifcfg-$i"
-        echo "DEVICE=$i" > $str_cfg_file
-        echo "BOOTPROTO=static" >> $str_cfg_file
+        # write ifcfg-bond0.  For now we assume the installnic should be part of bond0,
+        # because in SL i think that is always the case.
+        i="$bond"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "BOOTPROTO=static" > $str_cfg_file
         echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "BONDING_MASTER=yes" >> $str_cfg_file
+        echo "BONDING_MODULE_OPTS='$bondingopts'" >> $str_cfg_file
+        echo "NAME='Bonded Interface'" >> $str_cfg_file
         echo "IPADDR=$IPADDR" >> $str_cfg_file
         echo "NETMASK=$NETMASK" >> $str_cfg_file
         echo "NETWORK=$NETWORK" >> $str_cfg_file
         echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        echo "USERCONTROL=no" >> $str_cfg_file
+        echo "BONDING_SLAVE_0=$DEVICE" >> $str_cfg_file
+
+        # write ifcfg-eth0
+        i="$DEVICE"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "BOOTPROTO=none" > $str_cfg_file
+        echo "STARTMODE=hotplug" >> $str_cfg_file
+
+        # write modprobe alias config
+        str_cfg_file="/etc/modprobe.d/$bond.conf"
+        echo "alias $bond bonding" > $str_cfg_file
+
+        # this was the original config of the eth0 nic (without bonding)
+        #echo "DEVICE=$i" > $str_cfg_file
+        #echo "BOOTPROTO=static" >> $str_cfg_file
+        #echo "STARTMODE=onboot" >> $str_cfg_file
+        #echo "IPADDR=$IPADDR" >> $str_cfg_file
+        #echo "NETMASK=$NETMASK" >> $str_cfg_file
+        #echo "NETWORK=$NETWORK" >> $str_cfg_file
+        #echo "BROADCAST=$BROADCAST" >> $str_cfg_file
         #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
     else
         # use dhcp for all nics
         for i in $device_names;do
-            str_cfg_file="/etc/sysconfig/network/ifcfg-$i"
+            str_cfg_file="$dir/ifcfg-$i"
             echo "DEVICE=$i" > $str_cfg_file
             echo "BOOTPROTO=dhcp" >> $str_cfg_file
             echo "STARTMODE=onboot" >> $str_cfg_file

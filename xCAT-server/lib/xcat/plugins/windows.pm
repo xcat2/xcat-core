@@ -742,6 +742,12 @@ sub copycd
 			$darch = "x86_64";
 		} elsif (/BuildBranch=win7_rtm/){
 			$distname = "win7";
+		} elsif (/BuildBranch=winblue_rtm/){
+			if (-r  $mntpath . "/sources/background_svr.bmp") {
+                if (! -r $mntpath . "/sources/EI.CFG") {
+					$distname = "win2012r2";
+                }
+            }
 		} elsif (/BuildBranch=win8_rtm/){
 			if (-r $mntpath . "/sources/background_cli.bmp") {
 				$distname = "win8";

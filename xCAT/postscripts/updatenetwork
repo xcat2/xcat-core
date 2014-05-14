@@ -11,7 +11,8 @@ hostname $HOSTNAME
 
 #write the config files, the device name may change after reboot
 #so use the dhcp for all interface
-device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
+#device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
+device_names=`ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`
 str_cfg_file=''
 if [ -d "/etc/sysconfig/network-scripts/" ];then
     #redhat

@@ -1,4 +1,4 @@
-#!/bin/sh 
+PREFIXMASK#!/bin/sh 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -8,6 +8,18 @@ pmatch ()
   esac
 
   return 1          # non-zero return code means string not matched by pattern
+}
+# converts netmask CIDR fromat to  x.x.x.x mask value
+maskfromprefix ()
+{
+ prefixlen=$1
+ maskval=$((0xffffffff>>(32-prefixlen)<<(32-prefixlen)))
+ mask1=$((maskval >> 24))
+ mask2=$((maskval >> 16 & 0xff))
+ mask3=$((maskval >> 8 & 0xff))
+ mask4=$((maskval & 0xff))
+ echo $mask1.$mask2.$mask3.$mask4
+ NETMASK=$mask1.$mask2.$mask3.$mask4
 }
 
 network_ipv4calc ()
@@ -56,9 +68,12 @@ else
         echo "GATEWAY=$defgw" >> /etc/sysconfig/network
     fi
 fi
-for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep -v -- --|grep -v lo`; do
-    IPADDR=`ifconfig $nic |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
-    NETMASK=`ifconfig $nic |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
+    IPADDRMASK=`ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
+    IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
+    PREFIXMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`
+    # converts to x.x.x.x mask value
+    maskfromprefix $PREFIXMASK
     if ( pmatch $OSVER "ubuntu*" )
     then
         NETWORK=`network_ipv4calc $IPADDR $NETMASK`
@@ -69,7 +84,7 @@ for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep 
         else
             gateway_line=""
         fi
-
+        # add info to interfaces file on ubuntu, TBD does unbuntu change to systemd, this will not exist
         cat >>/etc/network/interfaces <<EOF
 auto $nic
 iface $nic inet static
@@ -81,12 +96,14 @@ iface $nic inet static
 
 
 EOF
+    # not ubuntu
     else
         if [ -f ${NICFILEPRE}${nic} ]
         then
             NICFILE=${NICFILEPRE}${nic}
         else
-            mac=`ifconfig $nic|grep HWaddr|awk '{print $5}'|tr "[A-Z]" "[a-z]"`
+            #mac=`ifconfig $nic|grep HWaddr|awk '{print $5}'|tr "[A-Z]" "[a-z]"`
+            mac=`ip link show $nic | grep ether | awk '{print $2}'`
             NICFILE=${NICFILEPRE}eth-id-${mac}
         fi
         sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE
