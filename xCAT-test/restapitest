@@ -30,7 +30,7 @@ BEGIN
 {
       $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
-use Getopt::Long qw{:config bundling bundling no_ignore_case};
+use Getopt::Long qw{:config  bundling no_ignore_case};
 use Data::Dumper;
 use strict;
 my $help;
