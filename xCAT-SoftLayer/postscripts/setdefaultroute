@@ -1,6 +1,28 @@
 #!/bin/bash
 
 # set the default route of the node to the ip address and nic passed in
+# this should be added to the postbootscripts, NOT postscripts
 
-set -x
-ip route replace to default via $1 dev $2
+gateway="$1"
+nic="$2"
+
+# set it temporarily
+echo "ip route replace to default via $gateway dev $nic"
+ip route replace to default via $gateway dev $nic
+
+# set it permanently
+#todo: this is only for sles right now
+file=/etc/sysconfig/network/routes
+if grep -q -E '^default ' $file; then
+	# replace the default route that is already in there
+	sed -i 's/^default .*$/default '$gateway' - -/' $file
+else
+	# no default route yet, append to file
+	echo "default $gateway - -" >>$file
+fi
+
+# While we are here, clean up the network wait hack, if it is still there.
+# (It was added during scripted install, because autoyast will not use the bond
+# configuration for 1 part of the process.)  Do not know a better place to clean
+# this up.
+sed -i '/Waiting to reach xCAT mgmt node/d' /etc/init.d/network

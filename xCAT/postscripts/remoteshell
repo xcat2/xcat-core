@@ -47,7 +47,8 @@ then
         echo "KeyRegenerationInterval 0" >>/etc/ssh/sshd_config
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
- 
+        sed -i 's/^\s*\(PermitRootLogin\s*\).*/\1yes/' /etc/ssh/sshd_config
+
     if [ "$SETUPFORPCM" = "1" ];then
          sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
          echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config

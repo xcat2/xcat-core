@@ -40,12 +40,9 @@ case "$1" in
 	else
 	    xcatconfig -i -d -s
 	fi
-        ver=$(cat /etc/issue |awk '{print $2}')
-        num=${ver%.*}
-        file="xcat.conf.apach24"
-        if [ $num -gt 12 ];then
-            mv /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf-enabled/
-        fi
+
+#        [ -e /etc/apache2/conf-enabled/xcat.conf ] && rm /etc/apache2/conf-enabled/xcat.conf
+#        mv /etc/apache2/conf-enabled/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
 
 	/etc/init.d/apache2 restart
     ;;

@@ -1,0 +1,228 @@
+#!/usr/bin/perl
+
+# xCAT postscript for configuring bonding of nics.
+#  Usage:  configbond bond1 eth1 [eth3]
+#
+# Note: this postscript currently has some assumptions that are specific to the softlayer environment.
+#       It is only used to configure bond1, because bond0 gets configured by the node provisioning process.
+
+use strict;
+# Check number of args
+
+my $nargs = $#ARGV + 1;
+if (scalar(@ARGV) < 2 || scalar(@ARGV) > 3) {
+   system("logger -t xcat -p local4.err  'Usage: configbond bond dev0 [dev1]'");
+   exit 1;
+}
+
+my $bond = shift(@ARGV);
+my $nic = $ARGV[0];  
+my @devs = ();
+push(@devs,$ARGV[0]);
+if (defined($ARGV[1])) { push(@devs,$ARGV[1]); }
+my $nicips = $ENV{NICIPS};
+my $nicnetworks = $ENV{NICNETWORKS};
+my $net_cnt = $ENV{NETWORKS_LINES};
+
+#todo: these are specific to softlayer.  They should be another attribute or argument
+my $bondingopts = 'mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1';
+
+my $netmask ='';
+my $ipaddr = '';
+my $nic_num = '';
+my $subnet = '';
+my $nic_net = '';
+my $net_name = '';
+my @nic_nets = (); # array of networks for this nic
+my @nic_ips =();   # array of ipaddresses for this nic
+my @networks = (); # array of all networks from networks table.
+                   # { network_name, subnet, netmask }
+
+system("logger -t xcat -p local4.err  'configbond: Master: $bond'");
+system("logger -t xcat -p local4.err  'configbond: Slaves: @devs'");
+#system("logger -t xcat -p local4.err  'configbond: NIC:           $nic'");
+system("logger -t xcat -p local4.err  'configbond: NICNETWORKS:   $nicnetworks'");
+system("logger -t xcat -p local4.err  'configbond: NICIPS:        $nicips'");
+
+# Update modprobe
+my $file = "/etc/modprobe.d/$bond.conf";
+if (!open(FILE, ">$file")) { system("logger -t xcat -p local4.err 'configbond: cannot open $file.'"); exit 1; }
+
+print FILE "alias $bond bonding\n";
+# the bonding options are put in the ifcfg file instead
+#print FILE "options $bond mode=balance-rr miimon=100\n";
+close FILE;
+
+# create array of network info. Needed in case where there are 
+# more than one ip address per nic and shouldn't be many networks.
+my $net_info;
+my $cnt = 1;
+
+while ( $cnt <= $net_cnt ) {
+    $net_info = $ENV{"NETWORKS_LINE$cnt"};
+    $net_info =~ /^netname=([^\|]*)\|\|/; 
+    $net_name = $1;
+    $net_info =~ /net=([^\|]*)\|\|/;
+    $subnet = $1;
+    $net_info =~ /mask=([^\|]*)\|\|/;
+    $netmask = $1;
+    push @{ $networks[$cnt-1] }, ($net_name, $subnet, $netmask);
+    $cnt +=1; 
+}
+
+# get network or networks for this nic from NICNETWORKS: 
+# eth0:1_0_0_0-255_255_0_0|network2,eth1:1_1_0_0
+# create array of networks for this nic
+foreach my $nic_networks (split(/,/,$nicnetworks)) {
+    my @net = ();
+    if ( $nic_networks =~ /!/ ) {
+        @net = split(/!/,$nic_networks);
+    } else {
+        @net = split(/:/,$nic_networks);
+    }
+    if ($net[0] eq $nic) {
+        @nic_nets = split(/\|/,$net[1]);
+        last;
+    }
+}
+
+# get all nic ipaddress from $nicips: i.e. eth0:1.0.0.1|2.0.0.1,eth1:1.1.1.1
+# Then get all ips for this specific nic, i.e. eth0.
+foreach my $ips (split(/,/,$nicips)) {
+    my @ip = ();
+    if ( $ips =~ /!/ ) {
+        @ip = split(/!/,$ips);
+    } else {
+        @ip = split(/:/,$ips);
+    }
+    if ($ip[0] eq $nic ) {
+        @nic_ips = split(/\|/,$ip[1]);
+    }
+}
+
+
+my $i;
+for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
+
+    # Time to create the interfaces.
+    # loop through the nic networks, find the matching networks to get the
+    # subnet and netmask and then create the appropriate ifcfg file for linux
+    my $specific_nic = $nic;
+    if ($i > 0) {
+       $specific_nic = $nic . ":" . ($i);
+    }
+
+    #todo: support case in which nicnetworks is not specified, find the correct network by calculation
+    $cnt = 0;
+    $subnet = "";
+    $netmask = "";
+    $net_name = "";
+    while ( $cnt < $net_cnt ) {
+        if ( $networks[$cnt][0] eq $nic_nets[$i] ) {
+        
+            $subnet = $networks[$cnt][1];
+            $netmask = $networks[$cnt][2];
+            $cnt = $net_cnt; # found match - get out.
+        } 
+        else {
+            $cnt++; 
+        }
+    }
+
+    # check that there is a subnet and netmask set
+    if ( !(length($subnet) > 0) || !(length($netmask) > 0) ) {
+        system("logger -t xcat -p local4.err  'configbond: network subnet or netmask not set.'");
+        exit 1;
+    }
+        system("logger -t xcat -p local4.err  'configbond: network subnet and netmask: $subnet, $netmask'");
+        system("logger -t xcat -p local4.err  'configbond: $specific_nic, $nic_ips[$i]'");
+
+    # Write the master info to the ifcfg file
+    if (-d "/etc/sysconfig/network-scripts") {
+        # rhel/centos/fedora
+        my $dir = "/etc/sysconfig/network-scripts";
+        if (!open(FILE, ">$dir/ifcfg-$bond")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$bond.'"); exit 1; }
+
+        print FILE "DEVICE=$bond\n";
+        print FILE "BOOTPROTO=none\n";
+        print FILE "IPADDR=$nic_ips[$i]\n";
+        print FILE "NETMASK=$netmask\n";
+        print FILE "ONBOOT=yes\n";
+        print FILE "USERCTL=no\n";
+        print FILE qq(BONDING_OPTS="$bondingopts"\n);
+        close FILE;
+
+        # Configure slaves
+        foreach my $dev (@devs) {
+            system("logger -t xcat -p local4.err  'configbond: slave dev: $dev'");
+            if (!open(FILE, ">$dir/ifcfg-$dev")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$dev'"); exit 1; }
+            print FILE "DEVICE=$dev\n";
+            print FILE "BOOTPROTO=none\n";
+            print FILE "MASTER=$bond\n";
+            print FILE "ONBOOT=yes\n";
+            print FILE "SLAVE=yes\n";
+            print FILE "USERCTL=no\n";
+            close FILE;
+        }
+        }
+    elsif (-d "/etc/sysconfig/network") {
+        # sles
+        my $dir = "/etc/sysconfig/network";
+        if (!open(FILE, ">$dir/ifcfg-$bond")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$bond.'"); exit 1; }
+
+        print FILE "BOOTPROTO=static\n";
+        print FILE "BONDING_MASTER=yes\n";
+        print FILE "BONDING_MODULE_OPTS='$bondingopts'\n";
+        print FILE "NAME='Bonded Interface'\n";
+        print FILE "IPADDR=$nic_ips[$i]\n";
+        print FILE "NETMASK=$netmask\n";
+        print FILE "STARTMODE=onboot\n";
+        print FILE "USERCONTROL=no\n";
+        my $devnum = 0;
+        foreach my $dev (@devs) {
+            print FILE "BONDING_SLAVE_$devnum=$dev\n";
+            $devnum++;
+        }
+        close FILE;
+
+        # Configure slaves
+        foreach my $dev (@devs) {
+            system("logger -t xcat -p local4.err  'configbond: slave dev: $dev'");
+            if (!open(FILE, ">$dir/ifcfg-$dev")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$dev'"); exit 1; }
+            print FILE "BOOTPROTO=none\n";
+            print FILE "STARTMODE=hotplug\n";
+            close FILE;
+        }
+        }
+    else {
+        # do not recognize this distro
+        system("logger -t xcat -p local4.err 'configbond: network directory is not either the Red Hat or SuSE format.'");
+        exit 1;
+    }
+
+    # Apply the changes.  Since we are only doing bond1 right now, lets not restart the whole network
+    # so we dont disrupt the installnic connection.  Instead we just need to bring down the slave nics,
+    # and then bring up the bond nic.
+    #runcmd("service network restart");
+    foreach my $dev (@devs) {
+        runcmd("ifdown $dev");
+    }
+    runcmd("ifdown $bond");     # in case it was already up
+    runcmd("ifup $bond");       # note: this wont reload the bonding kernel module, so we are depending on the provisioning process to already have set the correct bonding options
+    system("logger -t xcat -p local4.info 'configbond: successfully configured $specific_nic.'");
+
+}
+exit 0;
+
+sub runcmd {
+	my $cmd = shift @_;
+	$cmd .= ' 2>&1';
+	my @output = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc) {
+		system("logger -t xcat -p local4.err 'configeth: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		my $errout= "configeth: command $cmd failed with rc $rc.";
+                `echo $errout`;
+		exit $rc;
+	}
+}

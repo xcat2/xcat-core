@@ -1901,7 +1901,7 @@ sub make_files {
     }
     if ( $hasplugin ) {
     # Issue xcatd reload to load the new plugins
-         system("/etc/init.d/xcatd reload");
+         system("/etc/init.d/xcatd restart");
          $hasplugin=0;
     }
 

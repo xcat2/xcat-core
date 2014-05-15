@@ -612,7 +612,25 @@ sub rflash {
     # run the cmd on the host to flash the mic
     my @args = ("-s", "-v", "-e");
     push @args, "$::XCATROOT/sbin/flashmic";
-    my $master = $request->{'_xcatdest'};
+    # assume that all hosts are on the same network connected to this master
+    # (otherwise, will need to move this call into loop above for each host
+    #  and build separate miccfg calls for each unique returned value from
+    #  my_ip_facing)
+    my $ipfn = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    if ($ipfn) {
+        $master = $ipfn;
+    } else { 
+        my $hostname = "";
+        my $hostnamecmd = "/bin/hostname";
+        my @thostname = xCAT::Utils->runcmd($hostnamecmd, 0);
+        if ($::RUNCMD_RC = 0) {
+            $hostname = "from server $thostname[0]";
+        }
+        xCAT::MsgUtils->message("E", {error=>["Cannot detect an active network interface $hostname to @hosts[0]."], errorcode=>["1"]}, $callback);
+        return;
+    }
+
+}
     push @args, ("-m", "$master");
     push @args, ("-p", "$tftpdir/xcat/miccfg");
 
@@ -912,7 +930,23 @@ sub nodeset {
     # run the cmd on the host to configure the mic
     my @args = ("-s", "-v", "-e");
     push @args, "$::XCATROOT/sbin/configmic";
-    my $master = $request->{'_xcatdest'};
+    # assume that all hosts are on the same network connected to this master
+    # (otherwise, will need to move this call into loop above for each host
+    #  and build separate miccfg calls for each unique returned value from
+    #  my_ip_facing)
+    my $ipfn = xCAT::NetworkUtils->my_ip_facing(@hosts[0]);
+    if ($ipfn) {
+        $master = $ipfn;
+    } else {
+        my $hostname = "";
+        my $hostnamecmd = "/bin/hostname";
+        my @thostname = xCAT::Utils->runcmd($hostnamecmd, 0);
+        if ($::RUNCMD_RC = 0) {
+            $hostname = "from server $thostname[0]";
+        }
+        xCAT::MsgUtils->message("E", {error=>["Cannot detect an active network interface $hostname to @hosts[0]."], errorcode=>["1"]}, $callback);
+        return;
+    }
     push @args, ("-m", "$master");
     push @args, ("-p", "$tftpdir/xcat/miccfg");
 

@@ -14,6 +14,17 @@ if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
 fi
 
 
+#there is no boot option to set dns search domain in kickstart file,
+#the search domain in /etc/resolv.conf is set in the pre installation script
+export MANAGEDADDRESSMODE=#MANAGEDADDRESSMODE#
+export SEARCHDOMAIN=#GETNODEDOMAIN:THISNODE#
+
+if [ "$MANAGEDADDRESSMODE" == "static" ]; then
+ echo "#appended by %pre " >> /etc/resolv.conf
+ echo "search $SEARCHDOMAIN" >> /etc/resolv.conf
+fi
+
+
 
 cat >/tmp/baz.py <<EOF
 #!/usr/bin/python
