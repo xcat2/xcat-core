@@ -131,8 +131,7 @@ sub updateGrubOnNodes {
 }
 
 
-# Hack the autoinst files to wait in a key spot to make them work even tho it takes
-# the NICs almost a min before they can transmit after a state change.
+# Hack the autoinst files to overcome the nic coming up delay.
 #todo: this has only been tested with SLES nodes
 sub modifyAutoinstFiles {
 	my $nr = shift @_;
@@ -142,21 +141,28 @@ sub modifyAutoinstFiles {
 	my @nodes = runcmd("nodels $nr");
 	chomp(@nodes);
 
+	# Modify chroot.sles to insert a wait in the /etc/init.d/network of each node.  This is
+	# necessary because even tho compute.sles11.softlayer.tmpl configures bonding, when autoyast
+	# reboots the node after installing the rpms, it does not bring up the network in the normal way
+	# at first and seems to skip any bonding and the if-up.d scripts.  So we are left doing this.
+	# (After autoyast is done with all of its post-configuration, it brings up the network in the
+	# normal way, so bonding gets done then, which is good at least.)
+
 	# Edit each file to have chroot.sles insert a wait at the end of /etc/init.d/network
 	# this finds the end of boot.sh script (which is chroot.sles)
 	my $search = '\n\]\]>\s*</source>\s*</script>\s*</chroot-scripts>';
-
 	# hack the /etc/init.d/network script to put a wait in it
 	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
-	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
 	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escaped for sed
-	my $waitstring = 'echo -n Waiting to reach xCAT mgmt node ' . $bootparms->{mnip} . '.;xcatretries=60;while \[ \$\(\(xcati+=1\)\) -le \$xcatretries \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .' \>\/dev\/null 2\>\&1; do echo -n .; done; if \[ \$xcati -le \$xcatretries \]; then echo success; else echo failed; fi; sleep 3';
+	my $waitstring = 'echo -n Waiting to reach xCAT mgmt node ' . $bootparms->{mnip} . '.;xcatretries=60;while \[ \$\(\(xcati+=1\)\) -le \$xcatretries \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .' \>\/dev\/null 2\>\&1; do echo -n .; done; if \[ \$xcati -le \$xcatretries \]; then echo success; else echo failed; fi';
 	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
 	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
 	# finally create the perl replace string that will be used to modify the autoinst file
 	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
 
-	# Now instead we add a script that gets invoked by the OS after the nic is brought up
+	# Add a script that gets invoked by the OS after the nic is brought up
+    # Note: this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
+    # so autoyast fails to get the media
     # these are specific to SLES
     #my $netdir = '/etc/sysconfig/network';
     #my $filename = '/etc/sysconfig/network/if-up.d/xcat-sl-wait';
@@ -164,9 +170,6 @@ sub modifyAutoinstFiles {
     #todo: to support rhel, use these values instead
     #my $netdir='/etc/sysconfig/network-scripts';
     #my $filename='/sbin/ifup-local';
-
-    # this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
-    # so autoyast fails to get he media
 	#my $replace = qq(
 #FILENAME=$filename
 #NETDIR=$netdir
@@ -194,10 +197,15 @@ sub modifyAutoinstFiles {
 #chmod +x $FILENAME
 #);
 
-	# now actually update the file
+	# The compute.sles11.softlayer.tmpl file contains 2 variables (node ip and netmask) that are
+	# not replaced by Template.pm.  Substitute those in the autoinst files now.
+	# Also use our own multiline sed to put the network script hack in.
 	print "Updating /install/autoinst files.\n";
 	foreach my $n (@nodes) {
 		my $f = "/install/autoinst/$n";
+		my ($ip, $netmask, $gateway) = getNodeIpInfo($n);
+		runcmd("sed -i 's/#NODEIPADDR#/$ip/;s/#NODENETMASK#/$netmask/;s/#NODEGATEWAY#/$gateway/' $f");
+
 		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
 		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
 	}
@@ -207,14 +215,71 @@ sub modifyAutoinstFiles {
 # Copy softlayer specific systemimager post-install scripts to the systemimager location.
 # These cause si to use static ip and insert a wait into the bring up of the network.
 sub copySyscloneFiles {
-	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/16all.updatenetwork /install/sysclone/scripts/post-install";
+	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/* /install/sysclone/scripts/post-install";
 	print "Copying SoftLayer-specific post scripts to the SystemImager post-install directory.\n";
 	runcmd($cmd);
 }
 
 
+# Get IP and network of a node
+sub getNodeIpInfo {
+	my $node = shift;
+
+	# get ip for the node
+	my @output = runcmd("nodels $node hosts.ip");
+	chomp($output[0]);
+	my ($junk, $ip) = split(/\s+/, $output[0]);
+	#todo: also support getting the ip from name resolution
+	if (!$ip) { die "Error: the ip attribute must be set for $node.\n"; }
+
+	# find relevant network in the networks table
+	# first get the networks in a hash
+	my %networks;
+	@output = runcmd("lsdef -t network -ci net,mask,gateway");
+	foreach my $line (@output) {
+		chomp($line);
+		my ($netname, $attr, $val) = $line =~ m/^(.+):\s+(.+?)=(.+)$/;
+		$networks{$netname}->{$attr} = $val;
+	}
+	# now go thru the networks looking for the correct one
+	my ($netmask, $gateway);
+	foreach my $key (keys %networks) {
+		if (isIPinNet($ip, $networks{$key}->{net}, $networks{$key}->{mask})) {		# found it
+			$netmask = $networks{$key}->{mask};
+			$gateway = $networks{$key}->{gateway};
+			last;
+		}
+	}
+	if (!$netmask) { die "Error: could not find a network in the networks table that $node $ip is part of.\n"; }
+	if (!$gateway) { die "Error: gateway not specified in the networks table for the network that $node $ip is part of.\n"; }
+
+	verbose("IP info for $node: ip=$ip, netmask=$netmask, gateway=$gateway");
+	return ($ip, $netmask, $gateway);
+}
+
+
+# Is the IP in the network/netmask combo
+sub isIPinNet {
+	my ($ip, $net, $mask) = @_;
+	my $ipbin = convert2bin($ip);
+	my $netbin = convert2bin($net);
+	my $maskbin = convert2bin($mask);
+    $ipbin &= $maskbin;
+    if ($ipbin && $netbin && ($ipbin == $netbin)) { return 1; } 
+    else { return 0; }
+}
+
+
+# Convert dotted decimal format (1.2.3.4) to a binary number
+sub convert2bin {
+	my @arr=split(/\./, shift);
+	my ($bin) = unpack('N', pack('C4',@arr ) );
+	return $bin;
+}
+
+
 # this is like multi-line sed replace function
-# Args: filename, search-string, replace-string
+# Args: filename, search-string, replace-string, options (mode=>{insertbefore,insertafter,replace})
 sub sed {
 	my ($file, $search, $replace, %options) = @_;
 	#my $opts = 's';

@@ -67,7 +67,6 @@
       </user>
     </users>
     <networking>
-      <keep_install_network config:type="boolean">true</keep_install_network>
       <dns>
         <domain>#TABLE:site:key=domain:value#</domain>
         <hostname>#TABLE:nodelist:$NODE:node#</hostname>
@@ -78,10 +77,46 @@
           <search>#TABLE:site:key=domain:value#</search>
         </searchlist>
       </dns>
+      <interfaces config:type="list">
+        <interface>
+          <bonding_master>yes</bonding_master>
+          <bonding_module_opts>mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1</bonding_module_opts>
+          <bonding_slave0>eth0</bonding_slave0>
+          <device>bond0</device>
+          <bootproto>static</bootproto>
+          <startmode>auto</startmode>
+          <ipaddr>#NODEIPADDR#</ipaddr>
+          <netmask>#NODENETMASK#</netmask>
+          <usercontrol>no</usercontrol>
+        </interface>
+        <interface>
+          <bootproto>none</bootproto>
+          <device>eth0</device>
+          <name>Ethernet Card 0</name>
+          <startmode>off</startmode>
+        </interface>
+      </interfaces>
       <routing>
         <ip_forward config:type="boolean">false</ip_forward>
+        <routes config:type="list">
+          <route>
+            <destination>default</destination>
+            <device>-</device>
+            <gateway>#NODEGATEWAY#</gateway>
+            <netmask>-</netmask>
+          </route>
+        </routes>
       </routing>
     </networking>
+    <files config:type="list">
+      <file>
+        <file_contents><![CDATA[alias bond0 bonding
+]]></file_contents>
+        <file_owner>root</file_owner>
+        <file_path>/etc/modprobe.d/bond0.conf</file_path>
+        <file_permissions>644</file_permissions>
+      </file>
+    </files>
     <scripts>
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.sles#
    #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/chroot.sles#

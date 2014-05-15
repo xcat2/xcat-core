@@ -86,7 +86,7 @@ sub addKernelParms {
 # get this nodes nic, ip, netmask, gateway, and mac.  Returns them in a 5 element array.
 sub getNodeIpInfo {
 	my $args = shift @_;
-	my ($ipprefix) = $args->{mnip}=~m/^(\d+\.\d+)\./;		#todo: this is a hack, just using the 1st 2 octets of the mn ip addr
+	my ($ipprefix) = $args->{mnip}=~m/^(\d+)\./;		#todo: this is a hack, just using the 1st octet of the mn ip addr
 	verbose("using IP prefix $ipprefix");
 
 	# parse ip addr show output, looking for ipprefix, to determine nic and ip
