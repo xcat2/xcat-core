@@ -779,8 +779,8 @@ system("chroot $rootimg_dir depmod $kernelver");
 # the other one is for statelite
 
 if ($dracutmode) {
-    mkinitrd_dracut("statelite");
     mkinitrd_dracut("stateless");
+    mkinitrd_dracut("statelite");
 } else {
     mkinitrd("statelite");
     mkinitrd("stateless");
