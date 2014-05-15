@@ -51,12 +51,14 @@ sub process_request {
    my $rootimg_dir;
    my $destdir;
    my $imagename;
+   my $dotorrent;
 
    GetOptions(
       "profile|p=s" => \$profile,
       "arch|a=s" => \$arch,
       "osver|o=s" => \$osver,
       "method|m=s" => \$method,
+      "tracker=s" => \$dotorrent,
       "help|h" => \$help,
       "version|v" => \$version
       );
@@ -386,6 +388,14 @@ sub process_request {
     `$excludestr`;
     if ($method =~ /cpio/) {
         chmod 0644,"$destdir/rootimg.gz";
+        if ($dotorrent) {
+            my $currdir = getcwd;
+            chdir($destdir);
+            unlink("rootimg.gz.metainfo");
+            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg.gz.metainfo rootimg.gz");
+            chmod 0644, "rootimg.gz.metainfo";
+            chdir($currdir);
+        }
         umask $oldmask;
     } elsif ($method =~ /squashfs/) {
        my $flags;

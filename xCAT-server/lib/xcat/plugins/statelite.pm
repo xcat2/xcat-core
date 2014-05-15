@@ -67,6 +67,7 @@ sub process_request {
     my $exlist; # it is used when rootfstype = ramdisk
 	my $destdir;
 	my $imagename;
+    my $dotorrent;
 
 	GetOptions(
         "rootfstype|t=s" => \$rootfstype,
@@ -74,6 +75,7 @@ sub process_request {
 		"arch|a=s" => \$arch,
 		"osver|o=s" => \$osver,
 		"help|h" => \$help,
+        "tracker" => \$dotorrent,
 		"version|v" => \$version,
 		"verbose|V" => \$verbose
 	);
@@ -534,6 +536,14 @@ sub process_request {
         chdir("$rootimg_dir");
         xCAT::Utils->runcmd("$excludestr");
         chmod 0644, "$destdir/rootimg-statelite.gz";
+        if ($dotorrent) {
+            my $currdir = getcwd;
+            chdir($destdir);
+            unlink("rootimg-statelite.gz.metainfo");
+            system("ctorrent -t -u $dotorrent -l 1048576 -s rootimg-statelite.gz.metainfo rootimg.gz");
+            chmod 0644, "rootimg-statelite.gz.metainfo";
+            chdir($currdir);
+        }
         umask $oldmask;
         
         system("rm -f $xcat_packimg_tmpfile");

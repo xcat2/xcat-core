@@ -45,6 +45,9 @@ if [ ! -z "$imgurl" ]; then
 fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
 
+if [ -r /*.metainfo ]; then
+    ctorrent /*.metainfo -e 0
+fi
 if [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
