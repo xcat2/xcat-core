@@ -11,9 +11,6 @@ use Getopt::Long;
 require xCAT::Utils;
 require xCAT::TableUtils;
 use xCAT::ServiceNodeUtils;
-my $addkcmdlinehandled;
-my $request;
-my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 #my $dhcpver = 3;
@@ -93,7 +90,7 @@ sub setstate {
   my $imgaddkcmdline=($linuximghash{'boottarget'})? undef:$linuximghash{'addkcmdline'};
 
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if (not $addkcmdlinehandled->{$node} and ($kern->{addkcmdline} or  ($imgaddkcmdline))) {
+  if (not $::PXE_addkcmdlinehandled->{$node} and ($kern->{addkcmdline} or  ($imgaddkcmdline))) {
 
 #Implement the kcmdline append here for
 #most generic, least code duplication
@@ -129,7 +126,7 @@ sub setstate {
             $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
         } else {
             my $msg =  "Table key of $2 not yet supported by boottarget mini-template";
-            $::callback->({
+            $::PXE_callback->({
                 error => ["$msg"],
                 errorcode => [1]
             });
@@ -148,7 +145,7 @@ sub setstate {
       unless ($ipfn) {
         my @myself = xCAT::NetworkUtils->determinehostname();
         my $myname = $myself[(scalar @myself)-1];
-         $::callback->(
+         $::PXE_callback->(
                 {
                  error => [
                      "$myname: Unable to determine or reasonably guess the image server for $node"
@@ -263,11 +260,11 @@ sub pass_along {
           $errored=1;
        }
        if ($_->{_addkcmdlinehandled}) {
-           $addkcmdlinehandled->{$_->{name}->[0]}=1;
+           $::PXE_addkcmdlinehandled->{$_->{name}->[0]}=1;
            return; #Don't send back to client this internal hint
        }
     }
-    $callback->($resp);
+    $::PXE_callback->($resp);
 }
 
 
@@ -328,7 +325,7 @@ sub preprocess_request {
    #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   if ( defined($t_entry) and ($t_entry == 0 or $t_entry =~ /no/i)) {
+   if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
       my @CN;
@@ -356,28 +353,28 @@ sub preprocess_request {
 }
 
 sub process_request {
-  $request = shift;
-  $callback = shift;
+  $::PXE_request = shift;
+  $::PXE_callback = shift;
   my $sub_req = shift;
-  $::callback=$callback;
+  undef $::PXE_addkcmdlinehandled;
   my @args;
   my @nodes;
   my @rnodes;
-  if (ref($request->{node})) {
-    @rnodes = @{$request->{node}};
+  if (ref($::PXE_request->{node})) {
+    @rnodes = @{$::PXE_request->{node}};
   } else {
-    if ($request->{node}) { @rnodes = ($request->{node}); }
+    if ($::PXE_request->{node}) { @rnodes = ($::PXE_request->{node}); }
   }
 
   unless (@rnodes) {
-      if ($usage{$request->{command}->[0]}) {
-          $callback->({data=>$usage{$request->{command}->[0]}});
+      if ($usage{$::PXE_request->{command}->[0]}) {
+          $::PXE_callback->({data=>$usage{$::PXE_request->{command}->[0]}});
       }
       return;
   }
 
   #if not shared, then help sync up
-  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+  if ($::PXE_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
    @nodes = ();
    foreach (@rnodes) {
      if (xCAT::NetworkUtils->nodeonmynet($_)) {
@@ -396,16 +393,16 @@ sub process_request {
      return;
   }
 
-  if (ref($request->{arg})) {
-      @args=@{$request->{arg}};
+  if (ref($::PXE_request->{arg})) {
+      @args=@{$::PXE_request->{arg}};
   } else {
-      @args=($request->{arg});
+      @args=($::PXE_request->{arg});
   }
 
    #now run the begin part of the prescripts
    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
        $errored=0;
-       if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+       if ($::PXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
            $sub_req->({command=>['runbeginpre'],
            node=>\@nodes,
            arg=>[$args[0], '-l']},\&pass_along);
@@ -418,7 +415,7 @@ sub process_request {
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running begin prescripts\n";
-	  $callback->($rsp);
+	  $::PXE_callback->($rsp);
 	  return; 
        }
    }
@@ -426,7 +423,7 @@ sub process_request {
 #end prescripts code
   if (! -r "$tftpdir/pxelinux.0") {
     unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-       $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
+       $::PXE_callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
        return;
     }
     if (-r "/usr/lib/syslinux/pxelinux.0") {
@@ -437,14 +434,14 @@ sub process_request {
      chmod(0644,"$tftpdir/pxelinux.0");
   }
   unless ( -r "$tftpdir/pxelinux.0" ) {
-     $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
+     $::PXE_callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
      return;
   }
 
       
   $errored=0;
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];}
+  if (exists($::PXE_request->{inittime})) { $inittime= $::PXE_request->{inittime}->[0];}
   if (!$inittime) { $inittime=0;}
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
     $sub_req->({command=>['setdestiny'],
@@ -476,7 +473,7 @@ sub process_request {
     $response{node}->[0]->{name}->[0]=$_;
     if ($args[0] eq 'stat') {
       $response{node}->[0]->{data}->[0]= getstate($_,$tftpdir);
-      $callback->(\%response);
+      $::PXE_callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
       my $ent = $nthash{$_}->[0];
       my $osimgname = $ent->{'provmethod'};
@@ -488,13 +485,13 @@ sub process_request {
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
-        $callback->(\%response);
+        $::PXE_callback->(\%response);
       }
     }
   }
 
   my $inittime=0;
-  if (exists($request->{inittime})) { $inittime= $request->{inittime}->[0];} 
+  if (exists($::PXE_request->{inittime})) { $inittime= $::PXE_request->{inittime}->[0];} 
   if (!$inittime) { $inittime=0;}
 
   #dhcp stuff -- inittime is set when xcatd on sn is started
@@ -511,12 +508,12 @@ sub process_request {
       #}
       
       if ($do_dhcpsetup) {
-        if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+        if ($::PXE_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
             $sub_req->({command=>['makedhcp'],arg=>['-l'],
-                        node=>\@nodes},$callback);
+                        node=>\@nodes},$::PXE_callback);
         } else {
             $sub_req->({command=>['makedhcp'],
-                       node=>\@nodes},$callback);
+                       node=>\@nodes},$::PXE_callback);
         }
      }  
 
@@ -568,7 +565,7 @@ sub process_request {
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
-      if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+      if ($::PXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
          $sub_req->({command=>['runendpre'],
                      node=>\@nodes,
                      arg=>[$args[0], '-l']},\&pass_along);
@@ -581,7 +578,7 @@ sub process_request {
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
 	  $rsp->{error}->[0]="Failed in running end prescripts\n";
-	  $callback->($rsp);
+	  $::PXE_callback->($rsp);
 	  return; 
       }
   }

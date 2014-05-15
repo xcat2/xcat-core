@@ -154,6 +154,13 @@ sub preprocess_request
     #	- either the NIMprime attr of the site table or the management node
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
+    if (!defined($nimprime))
+    {
+       my $rsp={};
+       $rsp->{error}->[0] = "Could not determine nimprime. Check if nimprime defined in site table or site table master is not resolvable to the MN name.";
+       xCAT::MsgUtils->message("E", $rsp, $cb,1);
+       return undef;
+    }
     my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
     if ($nimprimeip =~ /:/) #IPv6
     {
@@ -617,7 +624,7 @@ sub nimnodeset
 
     my $Sname = xCAT::InstUtils->myxCATname();
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -1793,7 +1800,7 @@ sub chkosimage
 
 	my $image_name;
 
-	if (defined(@{$::args}))
+        if ( defined ($::args) && @{$::args} ) 
 	{
 		@ARGV = @{$::args};
 	}
@@ -2260,7 +2267,7 @@ sub mknimimage
     my $dump_name;
 	my $install_dir = xCAT::TableUtils->getInstallDir();
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -5698,7 +5705,7 @@ sub prermnimimage
     my @servicenodes = ();    # pass back list of service nodes
     my %imagedef;             # pass back image def hash
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -6208,7 +6215,7 @@ sub rmnimimage
         %allsn = %{$nodehash};
     }
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -7815,7 +7822,7 @@ sub prenimnodecust
         @nodelist = @$nodes;
     }
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -8053,7 +8060,7 @@ sub nimnodecust
         @nodelist = @$nodes;
     }
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -8210,7 +8217,7 @@ sub prenimnodeset
     my $subreq   = shift;
     my $error    = 0;
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -9937,7 +9944,7 @@ sub define_SN_resource
     }
 
     my %attrs;
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -10976,7 +10983,7 @@ sub mkdsklsnode
     #	- just set global for now
     $::callback = $callback;
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -12986,7 +12993,7 @@ sub make_SN_resource
 	}
 
 	my %attrs;
-	if (defined(@{$::args}))
+        if ( defined ($::args) && @{$::args} ) 
 	{
 		@ARGV = @{$::args};
 	}
@@ -13646,7 +13653,7 @@ sub prermdsklsnode
 {
     my $callback = shift;
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }
@@ -13756,7 +13763,7 @@ sub rmdsklsnode
     #   - just set global for now
     $::callback = $callback;
 
-    if (defined(@{$::args}))
+    if ( defined ($::args) && @{$::args} ) 
     {
         @ARGV = @{$::args};
     }

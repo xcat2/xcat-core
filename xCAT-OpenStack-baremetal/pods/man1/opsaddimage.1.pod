@@ -1,0 +1,67 @@
+=head1 NAME
+
+B<opsaddimage> - It adds or removes nodes for the vlan.
+
+=head1 SYNOPSIS
+
+B<opsaddimage> I<image1,image2,...> B<-n> I<new_name1,new_name2,...> [B<-c> I<controller>] [B<-V>|B<--verbose>] 
+
+B<opsaddimage> [B<-h>|B<--help>]
+
+B<opsaddimage> [B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<opsaddimage> command adds a list of xCAT images into the OpenStack cloud. 
+
+Under the cover, it creates a fake image and registers the fake image into OpenStack with command B<glance image-create>. It sets the property in the image to indicate that this is an xCAT image and also stores the original xCAT image name in the property for further reference. 
+
+The xCAT image names can be listed using B<lsdef -t osimage> command.      
+
+=head1 Parameters
+
+I<image1,image1...> a comma separated xCAT images names. 
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-n>    a comma separated new image names in the OpenStack. If omitted, the default is the original xCAT image nanme.  
+
+=item B<-c>  the node name of the OpenStack controller. This node must be an xCAT managed node.
+
+=item B<-h|--help>     Display usage message.
+
+=item B<-v|--version>  The Command Version.
+
+=item B<-V|--verbose>  Verbose output.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To register xCAT image rhels6.3-x86_64-install-compute into OpenStack.
+
+  opsaddimage rhels6.3-x86_64-install-compute -c sv2
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/opsaddimage
+
+=head1 SEE ALSO
+
+L<opsaddbmnode(1)|opsaddbmnode.1>
+

@@ -26,8 +26,7 @@ sub preprocess_request
 	my @requests = ({%$req}); #first element is local instance
 
 	$::args = $req->{arg};
-
-	if (defined(@{$::args})) {
+    if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     } 
 
@@ -88,7 +87,7 @@ sub process_request
 
 	$::args     = $request->{arg};
 
-    if (defined(@{$::args})) {
+    if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     }
 

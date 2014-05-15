@@ -1,0 +1,120 @@
+#!/usr/bin/perl
+
+# Query the softlayer account for info about all of the bare metal servers and
+# put the info in mkdef stanza format, so the node can be defined in the xcat db
+# so that xcat can manage/deploy them.
+
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+#$Data::Dumper::Maxdepth=2;
+
+# Globals - these are set once and then only read.
+my $HELP;
+my $VERBOSE;
+my %CONFIG;		# attributes read from config file
+
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: getslnodes [-?|-h|--help] [-v|--verbose] [<hostname-match>]\n\n";
+   	if (!$exitcode) {
+   		print "getslnodes queries your SoftLayer account and gets attributes for each\n";
+   		print "server.  The attributes can be piped to 'mkdef -z' to define the nodes\n";
+   		print "in the xCAT DB so that xCAT can manage them.  getslnodes\n";
+   		print "requires a .slconfig file in your home directory that contains your\n";
+   		print "SoftLayer userid, API key, and location of API perl module, in attr=val format.\n";
+   	}
+	exit $exitcode;
+};
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE)) { $usage->(1); }
+
+if ($HELP) { $usage->(0); }
+if (scalar(@ARGV)>1) { $usage->(1); }
+my $hnmatch = $ARGV[0];		# if they specified a hostname match, only show svrs that start with that
+
+readconf("$ENV{HOME}/.slconfig");		# get the userid and api key from the config file
+#my $api_username = 'SL276540';
+#my $api_key = '799d5d9267a927a330ec016f00bfe17e6fc532d203cf68b3b0d997b2d27a3ce1';
+
+my $slinstalled = eval { push @INC, $CONFIG{apidir}; require SoftLayer::API::SOAP; };
+if (!$slinstalled) { die "Error: the SoftLayer::API::SOAP perl module is not installed. Download it using 'git clone https://github.com/softlayer/softlayer-api-perl-client' and put the directory in ~/.slconfig ."; }
+
+my $client = SoftLayer::API::SOAP->new('SoftLayer_Account', undef, $CONFIG{userid}, $CONFIG{apikey});
+
+my $mask = "mask[operatingSystem.passwords,remoteManagementAccounts,remoteManagementComponent,backendNetworkComponents]";
+$client->setObjectMask($mask);
+
+#print $client->fault;
+#print $client->faultstring;
+#print "\n";
+	
+my $hw = $client->getHardware();
+my $servers = $hw->result;
+foreach my $server (@$servers) {
+	if ($server->{fullyQualifiedDomainName} =~ m/$hnmatch/) {
+		print "\n".$server->{hostname}.":\n";
+		print "\tobjtype=node\n";
+		print "\tgroups=slnode,ipmi,all\n";
+		print "\tmgt=ipmi\n";
+		print "\tbmc=".$server->{remoteManagementComponent}->{ipmiIpAddress}."\n";
+		print "\tbmcusername=".$server->{remoteManagementAccounts}->[0]->{username}."\n";
+		print "\tbmcpassword=".$server->{remoteManagementAccounts}->[0]->{password}."\n";
+		print "\tmac=".$server->{backendNetworkComponents}->[0]->{macAddress}."\n";
+		print "\tip=".$server->{privateIpAddress}."\n";
+		print "\tnetboot=xnba\n";
+		print "\tarch=x86_64\n";
+		print "\tusercomment=hostname:".$server->{fullyQualifiedDomainName}.", user:".$server->{operatingSystem}->{passwords}->[0]->{username}.", pw:".$server->{operatingSystem}->{passwords}->[0]->{password}."\n";
+
+		#print Dumper($server->{remoteManagementAccounts});
+		#print "#Softlayer_account_info_for ".$server->{fullyQualifiedDomainName} . " Username: ";
+		#print $server->{operatingSystem}->{passwords}->[0]->{username} . " Password: ";
+		#print $server->{operatingSystem}->{passwords}->[0]->{password}. "\n";
+		#print "nodeadd ".$server->{hostname}." groups=saptest ipmi.password=".$server->{remoteManagementAccounts}->[0]->{password}." ipmi.bmc=".$server->{remoteManagementComponent}->{ipmiIpAddress};
+		#print " mac.mac=".$server->{backendNetworkComponents}->[0]->{macAddress};
+		#print " hosts.ip=".$server->{privateIpAddress} ."\n";
+	}
+}
+exit(0);
+
+
+# Pring msg only if -v was specified
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+# Read the config file.  Format is attr=val on each line.  Should contain at leas the userid and apikey.
+# This function fills in the global %CONFIG hash.
+sub readconf {
+	my $conffile = shift @_;
+	open(FILE, $conffile) || die "Error: can not open config file $conffile: $!\n";
+	while (<FILE>) {
+		my $line = $_;
+		chomp($line);
+		if ($line =~ /^#/ || $line =~/^\s*$/) { next; }	# skip comment lines
+		my ($key, $value) = split(/\s*=\s*/, $line, 2);
+		if (!defined($value)) { die "Error: line '$line' does not have format attribute=value\n"; }
+		$CONFIG{$key} = $value;
+	}
+	close FILE;
+	verbose('%CONFIG hash: ' . Dumper(\%CONFIG));
+
+	# the config file needs to contain at least the userid and api key
+	if (!defined($CONFIG{userid}) || !defined($CONFIG{apikey}) || !defined($CONFIG{apidir})) {
+		die "Error: the config file must contain values for userid, apikey, and apidir.\n";
+	}
+}
+
+#$mask = "mask[operatingSystem.passwords]";
+#$client->setObjectMask($mask);
+#my $vs = $client->getVirtualGuests();
+#my $servers = $vs->result;
+#foreach my $server (@$servers) {
+#	if ($server->{fullyQualifiedDomainName} eq "xcat1-sap.saptest.ibm.com") {
+#		print $server->{primaryIpAddress}."\n";
+#		print $server->{operatingSystem}->{passwords}->[0]->{password}."\n";
+#	}
+#}

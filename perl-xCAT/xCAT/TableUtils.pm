@@ -19,6 +19,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 use strict;
 require xCAT::Table;
+require xCAT::Zone;
 use File::Path;
 #-----------------------------------------------------------------------
 
@@ -271,7 +272,7 @@ sub bldnonrootSSHFiles
         Error:
              0=good,  1=error
         Example:
-                xCAT::TableUtils->setupSSH(@target_nodes);
+                xCAT::TableUtils->setupSSH(@target_nodes,$expecttimeout);
         Comments:
 			Does not setup known_hosts.  Assumes automatically
 			setup by SSH  ( ssh config option StrictHostKeyChecking no should
@@ -335,21 +336,21 @@ sub setupSSH
 
     $::REMOTE_SHELL = "/usr/bin/ssh";
     my $rsp = {};
+    
 
     # Get the home directory
     my $home = xCAT::Utils->getHomeDir($from_userid);
     $ENV{'DSH_FROM_USERID_HOME'} = $home;
-
     if ($from_userid eq "root")
     {
-
         # make the directory to hold keys to transfer to the nodes
         if (!-d $SSHdir)
         {
             mkpath("$SSHdir", { mode => 0755 });
         }
 
-        # generates new keys for root, if they do not already exist
+        # generates new keys for root, if they do not already exist ~/.ssh
+
         # nodes not used on this option but in there to preserve the interface
         my $rc=
           xCAT::RemoteShellExp->remoteshellexp("k",$::CALLBACK,$::REMOTE_SHELL,$n_str,$expecttimeout);
@@ -374,7 +375,10 @@ else
 fi
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
+cat /tmp/$to_userid/.ssh/id_rsa.pub >> \$home/.ssh/authorized_keys 2>&1
+rm -f \$home/.ssh/id_rsa 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
+cp /tmp/$to_userid/.ssh/id_rsa.pub  \$home/.ssh/id_rsa.pub 2>&1
 chmod 0600 \$home/.ssh/id_* 2>&1
 rm -f /tmp/$to_userid/.ssh/* 2>&1
 rmdir \"/tmp/$to_userid/.ssh\"
@@ -386,6 +390,7 @@ rmdir \"/tmp/$to_userid\" \n";
     my $auth_key2=0;
     if ($from_userid eq "root")
     {
+       # this will put the root/.ssh/id_rsa.pub key in the authorized keys file to put on the node
        my $rc = xCAT::TableUtils->cpSSHFiles($SSHdir);
        if ($rc != 0)
        {    # error
@@ -418,50 +423,46 @@ rmdir \"/tmp/$to_userid\" \n";
             xCAT::TableUtils->bldnonrootSSHFiles($from_userid);
     }
 
-    # send the keys to the nodes   for root or some other id
-    #
-    # This environment variable determines whether to setup 
-    # node to node ssh
-    # The nodes must be checked against the site.sshbetweennodes attribute
+    # send the keys 
     # For root user and not to devices only to nodes 
     if (($from_userid eq "root") && (!($ENV{'DEVICETYPE'}))) {
-      my $enablenodes;
-      my $disablenodes;
-      my @nodelist=  split(",", $n_str);
-      foreach my $n (@nodelist)
+      # Need to check if nodes are in a zone.  
+      my @zones;
+      my $tab = xCAT::Table->new("zone"); 
+      if ($tab) 
       {
-         my $enablessh=xCAT::TableUtils->enablessh($n);
-         if ($enablessh == 1) {
-           $enablenodes .= $n;
-           $enablenodes .= ","; 
-         } else {
-           $disablenodes .= $n;
-           $disablenodes .= ","; 
-         }
-
+          # if we have zones, need to send the zone keys to each node in the zone
+          my @attribs = ("zonename");
+          @zones = $tab->getAllAttribs(@attribs);
+          $tab->close();
+      } else {
+         $rsp->{data}->[0] = "Could not open zone table.\n";
+         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+         return 1;
       }
-      my $cmd;
-      if ($enablenodes) {  # node on list to setup nodetonodessh
-         chop $enablenodes;  # remove last comma
-         $ENV{'DSH_ENABLE_SSH'} = "YES";
-         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes,$expecttimeout);
+      # check for zones,  key send is different if zones defined or not
+      
+      if (@zones) {  # we have zones defined
+         my $rc = xCAT::TableUtils->sendkeysTOzones($ref_nodes,$expecttimeout);
          if ($rc != 0)
-         {
-          $rsp->{data}->[0] = "remoteshellexp failed sending keys to enablenodes.";
-          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-          }
-      }
-      if ($disablenodes) {  # node on list to setup nodetonodessh
-         chop $disablenodes;  # remove last comma
-         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes,$expecttimeout);
-         if ($rc != 0)
-         {
-          $rsp->{data}->[0] = "remoteshellexp failed sending keys to disablenodes.";
-          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+         {   
+                $rsp->{data}->[0] = "Error sending ssh keys to the zones.\n";
+                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+                exit 1;
 
          }
+      } else { # no zones
+      
+         #  if no zone table  defined, do it the old way , keys are in  ~/.ssh 
+         my $rc = xCAT::TableUtils->sendkeysNOzones($ref_nodes,$expecttimeout);
+         if ($rc != 0)
+         {   
+            $rsp->{data}->[0] = "Error sending ssh keys to the nodes.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+         }
       }
+
     } else { # from user is not root or it is a device , always send private key
        $ENV{'DSH_ENABLE_SSH'} = "YES";
        my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$n_str,$expecttimeout);
@@ -501,6 +502,235 @@ rmdir \"/tmp/$to_userid\" \n";
     }
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  sendkeysNOzones 
+
+        Transfers the ssh keys 
+		for the root id on the nodes no zones 
+          key from ~/.ssh   site.sshbetweennodes honored
+
+
+        Arguments:
+               Array of nodes
+               Timeout for expect call (optional)
+        Returns:
+
+        Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
+          the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+               must be obtained by
+		         the calling script or from the xdsh client
+
+        Globals:
+              $::XCATROOT  ,  $::CALLBACK
+        Error:
+             0=good,  1=error
+        Example:
+                xCAT::TableUtils->sendkeysNOzones($ref_nodes,$expecttimeout);
+        Comments:
+			Does not setup known_hosts.  Assumes automatically
+			setup by SSH  ( ssh config option StrictHostKeyChecking no should
+			   be set in the ssh config file).
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub sendkeysNOzones 
+{
+      my ($class, $ref_nodes,$expecttimeout) = @_;
+      my @nodes=$ref_nodes;
+      my $enablenodes;
+      my $disablenodes;
+      my $n_str    = $nodes[0];
+      my @nodelist=  split(",", $n_str);
+      my $rsp = ();
+      foreach my $n (@nodelist)
+      {
+         my $enablessh=xCAT::TableUtils->enablessh($n);
+         if ($enablessh == 1) {
+           $enablenodes .= $n;
+           $enablenodes .= ","; 
+         } else {
+           $disablenodes .= $n;
+           $disablenodes .= ","; 
+         }
+
+      }
+      if ($enablenodes) {  # node on list to setup nodetonodessh
+         chop $enablenodes;  # remove last comma
+         $ENV{'DSH_ENABLE_SSH'} = "YES";
+         # send the keys to the nodes
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$enablenodes,$expecttimeout);
+         if ($rc != 0)
+         {
+          $rsp->{data}->[0] = "remoteshellexp failed sending keys to enablenodes.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+          }
+      }
+      if ($disablenodes) {  # node on list to disable nodetonodessh
+         chop $disablenodes;  # remove last comma
+         # send the keys to the nodes
+         my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",$disablenodes,$expecttimeout);
+         if ($rc != 0)
+         {
+          $rsp->{data}->[0] = "remoteshellexp failed sending keys to disablenodes.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+         }
+      }
+}
+#--------------------------------------------------------------------------------
+
+=head3  sendkeysTOzones 
+
+        Transfers the ssh keys 
+		for the root id on the nodes using the zone table.
+       If in a zone, then root ssh keys for the node will be taken from the zones ssh keys not ~/.ssh
+       zones are only supported on nodes that are not a service node.
+       Also for the call to  RemoteShellExp,  we must group the nodes that are in the same zone 
+
+
+        Arguments:
+               Array of nodes
+               Timeout for expect call (optional)
+        Returns:
+
+        Env Variables: $DSH_FROM_USERID,  $DSH_TO_USERID, $DSH_REMOTE_PASSWORD
+          the ssh keys are transferred from the $DSH_FROM_USERID to the $DSH_TO_USERID
+          on the node(s).  The DSH_REMOTE_PASSWORD and the DSH_FROM_USERID 
+               must be obtained by
+		         the calling script or from the xdsh client
+
+        Globals:
+              $::XCATROOT  ,  $::CALLBACK
+        Error:
+             0=good,  1=error
+        Example:
+                xCAT::TableUtils->sendkeysTOzones($ref_nodes,$expecttimeout);
+        Comments:
+			Does not setup known_hosts.  Assumes automatically
+			setup by SSH  ( ssh config option StrictHostKeyChecking no should
+			   be set in the ssh config file).
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub sendkeysTOzones 
+{
+      my ($class, $ref_nodes,$expecttimeout) = @_;
+      my @nodes=$ref_nodes;
+      my $n_str    = $nodes[0];
+      @nodes=  split(",", $n_str);
+      my $rsp = ();
+      my $cmd;
+      my $roothome = xCAT::Utils->getHomeDir("root");
+      my $zonehash =xCAT::Zone->getzoneinfo($::CALLBACK,\@nodes);
+      foreach my $zonename (keys %$zonehash) {
+        # build list of nodes
+        my $zonenodelist="";
+        foreach my $node (@{$zonehash->{$zonename}->{nodes}}) {
+          $zonenodelist .= $node;
+          $zonenodelist .= ",";
+               
+        }
+        $zonenodelist =~ s/,$//;   # remove last comma
+        # if any nodes defined for the zone
+        if ($zonenodelist) {
+          # check to see if we enable passwordless ssh between the nodes
+          if (!(defined($zonehash->{$zonename}->{sshbetweennodes}))|| 
+            (($zonehash->{$zonename}->{sshbetweennodes} =~ /^yes$/i )
+             || ($zonehash->{$zonename}->{sshbetweennodes} eq "1"))) {
+ 
+             $ENV{'DSH_ENABLE_SSH'} = "YES";
+          } else { 
+             delete $ENV{'DSH_ENABLE_SSH'};  # do not enable passwordless ssh
+          }
+          # point to the ssh keys to send for this zone
+          my $keydir = $zonehash->{$zonename}->{sshkeydir} ;
+
+          # check to see if the id_rsa and id_rsa.pub key is in the directory
+          my $key="$keydir/id_rsa";
+          my $key2="$keydir/id_rsa.pub";
+          # Check to see if empty
+          if (!(-e $key)) {
+            my $rsp = {};
+             $rsp->{error}->[0] =
+            "The $key file does not exist for $zonename. Need to use chzone to regenerate the keys.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return 1;
+          }
+          if (!(-e $key2)) {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+             "The $key2 file does not exist for $zonename. Need to use chzone to regenerate the keys.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+             return 1;
+
+          }
+          
+          # now put copy.sh in the zone directory from ~/.ssh
+          my $rootkeydir="$roothome/.ssh";
+          if ($rootkeydir ne $keydir) {  # the zone keydir is not the same as ~/.ssh.  
+            $cmd="cp $rootkeydir/copy.sh $keydir";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+               my $rsp = {};
+               $rsp->{error}->[0] =
+               "Could not copy copy.sh to the zone key dir";
+               xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+               return 1;
+            }
+          }
+          # Also create  $keydir/tmp and put root's id_rsa.pub (in authorized_keys) for the transfer
+          $cmd="mkdir -p $keydir/tmp";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+             my $rsp = {};
+             $rsp->{error}->[0] =
+             "Could not mkdir the zone $keydir/tmp";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+             return 1;
+          }
+          # create authorized_keys file 
+          if (xCAT::Utils->isMN()) {    # if on Management Node
+             $cmd = " cp $roothome/.ssh/id_rsa.pub $keydir/tmp/authorized_keys";
+          } else {  # SN
+             $cmd = " cp $roothome/.ssh/authorized_keys $keydir/tmp/authorized_keys";
+          }
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+            $rsp->{data}->[0] = "$cmd failed.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return (1);
+          }
+          else
+          {
+             chmod 0600, "$keydir/.ssh/tmp/authorized_keys";
+          }
+          # strip off .ssh
+          my ($newkeydir,$ssh) = (split(/\.ssh/, $keydir));
+          $ENV{'DSH_ZONE_SSHKEYS'} =$newkeydir ;
+          # send the keys to the nodes
+           my $rc=xCAT::RemoteShellExp->remoteshellexp("s",$::CALLBACK,"/usr/bin/ssh",
+           $zonenodelist,$expecttimeout);
+           if ($rc != 0)
+           {
+             $rsp = {};
+             $rsp->{data}->[0] = "remoteshellexp failed sending keys to $zonename.";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+           }
+        } # end nodes in the zone
+          
+       }  # end for each zone
+
+    return (0);
+}
 #--------------------------------------------------------------------------------
 
 =head3    cpSSHFiles
@@ -947,7 +1177,9 @@ sub getAppStatus
     my ($class, $nodes_ref, $application) = @_;
     my @nodes = @$nodes_ref;
 
-    my $nltab = xCAT::Table->new('nodelist');
+    # FIXME: why autocommit matters for a read-only subroutine getNodesAttribs?
+    # but could not get the appstatus without the autocommit=0
+    my $nltab = xCAT::Table->new('nodelist', -autocommit => 0);
     my $nodeappstat = $nltab->getNodesAttribs(\@nodes,['appstatus']);
 
     my $ret_nodeappstat;
@@ -1594,8 +1826,8 @@ sub enableSSH
        
     } else { 
         # if not a service node we need to check, before enabling
-        if (defined($groups_hash)) {
-            if ($groups_hash->{ALLGROUPS} == 1)
+          if (keys %$groups_hash) {   # not empty
+            if  ($groups_hash->{ALLGROUPS} == 1)
             {
               $enablessh=1;
             }
@@ -1769,7 +2001,7 @@ sub updatenodegroups {
         }
     }
     my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
-    my @list = qw(all);
+    my @list = ();
     if (defined($ent) and $ent->{groups}) {
         push @list, split(/,/,$ent->{groups});
     }   
@@ -1782,6 +2014,55 @@ sub updatenodegroups {
     @saw{@list} = ();
     @list = keys %saw;
     $tabhd->setNodeAttribs($node, {groups=>join(",",@list)});
+}
+#-----------------------------------------------------------------------------
+
+
+=head3 rmnodegroups
+    remove groups from the group attribute for the specified node
+
+    Arguments:
+      node
+      tabhd: the handler of 'nodelist' table, 
+      groups: the groups that need to be removed.
+              Can be an array or string. 
+    Globals:
+        none
+    Error:
+    Example:
+         xCAT::TableUtils->rmnodegroups($node, $tab, $groups);
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub rmnodegroups {
+    my ($class, $node, $tabhd, $groups) = @_;
+    my ($ent) = $tabhd->getNodeAttribs($node, ['groups']);
+    my @definedgroups;
+    my @removegroups;
+    my @newgroups;
+    if (defined($ent) and $ent->{groups}) {
+        push @definedgroups, split(/,/,$ent->{groups});
+    }   
+    if (ref($groups) eq 'ARRAY') {
+        push @removegroups, @$groups;
+    } else {
+        push @removegroups, split(/,/,$groups);
+    }
+    # take out any groups that match the input list of groups to remove
+    foreach my $dgrp (@definedgroups){
+       if (grep(/^$dgrp$/, @removegroups)) { # is the group to be removed
+          next;
+       } else {  # keep this group
+         push @newgroups,$dgrp;
+       } 
+    }
+    my %saw;
+    @saw{@newgroups} = ();
+    @newgroups = keys %saw;
+    
+    $tabhd->setNodeAttribs($node, {groups=>join(",",@newgroups)});
 }
 
 1;

@@ -107,7 +107,8 @@ route_exists()
                     net1=`echo $x|cut -d',' -f1`
                     gw1=`echo $x|cut -d',' -f2`
                     mask1=`echo $x|cut -d',' -f3`
-                    if [ "$net" = "$net1" ] && [ "$mask" = "$mask1" ] && [ "$gw" = "$gw1" ]; then
+                    ifname1=`echo $x|cut -d',' -f8`
+                    if [ "$net" = "$net1" ] && [ "$mask" = "$mask1" ] && [ "$gw" = "$gw1" ] && [ "$ifname" = "$ifname1"  ]; then
                         ret=1
                         break
                     fi
@@ -174,11 +175,21 @@ add_persistent_route()
         filename="/etc/sysconfig/network/routes";
         if echo $net | grep : 2>&1 1>/dev/null
         then
-            route="$net/$mask $gw - -"
-            route1="$net\/$mask $gw - -";
+	    if [ $gw_ip = "" -o $gw_ip = "::" ] ; then
+                route="$net/$mask :: - $ifname"
+                route1="$net\/$mask :: - $ifname";
+	    else
+                route="$net/$mask $gw - -"
+                route1="$net\/$mask $gw - -";
+	    fi
         else
-            route="$net $gw $mask $ifname";
-            route1="$net $gw $mask $ifname";
+	    if [ $gw_ip = "" -o $gw_ip = "0.0.0.0" ] ; then
+                route="$net 0.0.0.0 $mask $ifname";
+                route1="$net 0.0.0.0 $mask $ifname";
+	    else
+                route="$net $gw $mask $ifname";
+                route1="$net $gw $mask $ifname";
+	    fi
         fi
         if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
@@ -221,10 +232,18 @@ add_persistent_route()
             echo $net | grep : 2>&1 1>/dev/null
             #ipv6
             if [ $? -eq 0 ];then
-                matchstr="$net/$mask gw $gw"
+		if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                    matchstr="$net/$mask dev $ifname"
+		else
+                    matchstr="$net/$mask gw $gw"
+                fi
                 v6flag=1
             else
-                matchstr="net $net netmask $mask gw $gw"
+		if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+                    matchstr="net $net netmask $mask dev $ifname"
+		else
+                    matchstr="net $net netmask $mask gw $gw"
+		fi
             fi
 
             grep "$matchstr" $filename 2>&1 1>/dev/null
@@ -237,11 +256,21 @@ add_persistent_route()
                     if [ $? -eq 0 -a $foundflag -eq 1 ];then
                         foundflag=0
                         if [ $v6flag -eq 1 ];then
-                            echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
-                            echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+		            if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                                echo "  up route -A inet6 add $net/$mask dev $ifname" >> $tempfile
+                                echo "  down route -A inet6 del $net/$mask dev $ifname" >> $tempfile
+			    else
+                                echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
+                                echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+		            fi
                         else
-                            echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
-                            echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+		            if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+			        echo "  up route add -net $net netmask $mask dev $ifname" >> $tempfile
+			        echo "  down route del -net $net netmask $mask dev $ifname" >> $tempfile
+			    else
+                                echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
+                                echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+			    fi
                         fi
                     fi
                     echo $LINE | grep "iface $ifname " 2>&1 1>/dev/null
@@ -255,11 +284,21 @@ add_persistent_route()
                 #the insert place is the last line of the config file
                 if [ $foundflag -eq 1 ];then
                     if [ $v6flag -eq 1 ];then
-                        echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
-                        echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+		        if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                            echo "  up route -A inet6 add $net/$mask dev $ifname" >> $tempfile
+                            echo "  down route -A inet6 del $net/$mask dev $ifname" >> $tempfile
+			else
+                            echo "  up route -A inet6 add $net/$mask gw $gw" >> $tempfile
+                            echo "  down route -A inet6 del $net/$mask gw $gw" >> $tempfile
+			fi
                     else
-                        echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
-                        echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+		        if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+			    echo "  up route add -net $net netmask $mask dev $ifname" >> $tempfile
+			    echo "  down route del -net $net netmask $mask dev $ifname" >> $tempfile
+			else
+                            echo "  up route add -net $net netmask $mask gw $gw" >> $tempfile
+                            echo "  down route del -net $net netmask $mask gw $gw" >> $tempfile
+			fi
                     fi 
                 fi
                 mv -f $tempfile $filename
@@ -273,14 +312,22 @@ add_persistent_route()
         # ipv6 net
         if echo $net | grep : 2>&1 1>/dev/null
         then
+            if [ "$gw" = "" ] ; then
+	        $gw = "::";
+            fi
             filename="/etc/sysconfig/static-routes-ipv6";
             route="$ifname $net/$mask $gw";
             # $net/mask does not work with sed cmd
             route1="$ifname $net\/$mask $gw";
         else
             filename="/etc/sysconfig/static-routes";
-            route="any net $net netmask $mask gw $gw $ifname";
-            route1="any net $net netmask $mask gw $gw $ifname";
+            if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+               route="any net $net netmask $mask dev $ifname";
+               route1="any net $net netmask $mask dev $ifname";
+	    else
+               route="any net $net netmask $mask gw $gw $ifname";
+               route1="any net $net netmask $mask gw $gw $ifname";
+	    fi
         fi
         if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
@@ -340,15 +387,23 @@ rm_persistent_route()
         # ipv6 net
         if echo $net | grep : 2>&1 1>/dev/null
         then
-            route="$net/$mask $gw - -";
-            route1="$net\/$mask $gw - -";
+	    if [ $gw = "" -o $gw = "::" ] ; then
+                route="$net/$mask :: - $ifname";
+                route1="$net\/$mask :: - $ifname";
+	    else
+                route="$net/$mask $gw - -";
+                route1="$net\/$mask $gw - -";
+	    fi
         else
+	    if [ $gw = "" ] ; then
+	        $gw = "0.0.0.0";
+            fi
             if [ -n "$ifname" ]; then
                 route="$net $gw $mask $ifname";
                 route1="$net $gw $mask $ifname";
             else
-                route="$net $gw $mask";
-                route1="$net $gw $mask";
+                route="$net $gw $mask -";
+                route1="$net $gw $mask -";
             fi
         fi
         if [ -f $filename ]; then
@@ -376,10 +431,18 @@ rm_persistent_route()
             echo $net | grep : 2>&1 1>/dev/null
             #ipv6
             if [ $? -eq 0 ];then
-                matchstr="$net/$mask gw $gw"
+	        if [ $gw = "" -o $gw = "::" ] ; then
+                    matchstr="$net/$mask dev $ifname"
+		else
+                    matchstr="$net/$mask gw $gw"
+		fi
                 v6flag=1
             else
-                matchstr="net $net netmask $mask gw $gw"
+	        if [ $gw = "" -o $gw = "0.0.0.0" ] ; then
+                    matchstr="net $net netmask $mask dev $ifname"
+		else
+                    matchstr="net $net netmask $mask gw $gw"
+		fi
             fi
 
             grep "$matchstr" $filename
@@ -397,12 +460,22 @@ rm_persistent_route()
         then
             filename="/etc/sysconfig/static-routes-ipv6";
             # $net/$mask does not work with sed
-            route="$ifname $net\/$mask $gw"
-            route1="$ifname $net/$mask $gw"
+            if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                route="$ifname $net\/$mask ::"
+                route1="$ifname $net/$mask ::"
+	    else
+                route="$ifname $net\/$mask $gw"
+                route1="$ifname $net/$mask $gw"
+	    fi
         else
             filename="/etc/sysconfig/static-routes";
-            route="any net $net netmask $mask gw $gw $ifname";
-            route1="any net $net netmask $mask gw $gw $ifname";
+            if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+               route="any net $net netmask $mask dev $ifname";
+               route1="any net $net netmask $mask dev $ifname";
+            else
+               route="any net $net netmask $mask gw $gw $ifname";
+               route1="any net $net netmask $mask gw $gw $ifname";
+            fi
         fi
         if [ -f $filename ]; then
             grep "$route" $filename 2>&1 1>/dev/null
@@ -431,14 +504,22 @@ if [ "$op" = "add" ]; then
         if echo $net | grep : 2>&1 1>/dev/null
         then
             if [ "$(uname -s)" = "Linux" ]; then
-                cmd="ip -6 route add $net/$mask via $gw"
+	        if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                    cmd="ip -6 route add $net/$mask dev $ifname"
+		else
+                    cmd="ip -6 route add $net/$mask via $gw"
+		fi
             else 
                 # AIX TODO 
                 cmd="ip -6 route add $net/$mask via $gw"
             fi
         else
             if [ "$(uname -s)" = "Linux" ]; then
-                cmd="route add -net $net netmask $mask gw $gw"
+	        if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+                    cmd="route add -net $net netmask $mask dev $ifname"
+		else
+                    cmd="route add -net $net netmask $mask gw $gw"
+		fi
             else 
                 cmd="route add -net $net -netmask $mask $gw"
             fi
@@ -472,14 +553,22 @@ elif [ "$op" = "delete" ]; then
         if echo $net | grep : 2>&1 1>/dev/null
         then
             if [ "$(uname -s)" = "Linux" ]; then
-                cmd="ip -6 route delete $net/$mask via $gw"
+	        if [ "$gw" = "" -o "$gw" = "::" ] ; then
+                    cmd="ip -6 route delete $net/$mask dev $ifname"
+		else
+                    cmd="ip -6 route delete $net/$mask via $gw"
+		fi
             else 
                 # AIX TODO
                 cmd="ip -6 route delete $net/$mask via $gw"
             fi
         else
             if [ "$(uname -s)" = "Linux" ]; then
-                cmd="route delete -net $net netmask $mask gw $gw"
+	        if [ "$gw" = "" -o "$gw" = "0.0.0.0" ] ; then
+                    cmd="route delete -net $net netmask $mask dev $ifname"
+		else
+                    cmd="route delete -net $net netmask $mask gw $gw"
+		fi
             else 
                 cmd="route delete -net $net -netmask $mask $gw"
             fi

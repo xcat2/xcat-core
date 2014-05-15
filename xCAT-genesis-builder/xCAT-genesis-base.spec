@@ -59,4 +59,4 @@ fi
 
 %Files
 %defattr(-,root,root)
-/
+/opt/xcat/share/xcat/netboot/genesis/%{tarch}

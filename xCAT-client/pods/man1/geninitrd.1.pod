@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<genimage> - Generate an initrd (initial ramfs) which to be used for statefull install or stateless netboot.
+B<geninitrd> - Generate an initrd (initial ramfs) which to be used for statefull install or stateless netboot.
 
 =head1 SYNOPSIS
 

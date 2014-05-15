@@ -8,6 +8,8 @@ B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--sns
 
 B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t timeout>]
 
+B<updatenode> B<noderange> [B<-g>|B<--genmypost>] 
+
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-t timeout>] [B<script1,script2...>]
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
@@ -326,6 +328,11 @@ The function is not supported for NFS-based statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
 litefile table with source location specified in the litetree table.
+
+=item B<-g|--genmypost>
+
+Will generate a new mypostscript file for the
+nodes in the noderange, if site precreatemypostscripts is 1 or YES.
 
 
 =item B<-h|--help>

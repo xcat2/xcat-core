@@ -190,16 +190,17 @@ sub copycd {
                 'n=s' => \$distname,
               );
     unless($distname && $file && $mntpath && $arch) {
-        $callback->({error=>"distname, file or mntpath not specified, $distname, $file, $mntpath"});
+        #$callback->({error=>"distname, file or mntpath not specified, $distname, $file, $mntpath"});
         return ;
     }
     if ($distname && $distname !~ /^vios/i) {
-        $callback->({error=>"distname incorrect"});
+        #$callback->({error=>"distname incorrect"});
         return ;
     } elsif ($arch !~ /^ppc64/i) {
-        $callback->({error=>"arch incorrect"});
+        #$callback->({error=>"arch incorrect"});
+        return ;
     } elsif (!$file) {
-        $callback->({error=>"Only suport to use the iso file vios"});
+        #$callback->({error=>"Only suport to use the iso file vios"});
         return;
     }
     #print __LINE__."=====>vios=====.\n";
@@ -411,13 +412,13 @@ sub create_imgconf_file {
     my $rootpw = undef;
     my $passwdtab = xCAT::Table->new('passwd');            
     if ($passwdtab) {                                      
-        my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password');
+        my $et = $passwdtab->getAttribs({key => 'vios', username => 'padmin'}, 'password');
         if ($et and defined ($et->{'password'})) {     
             $rootpw = $et->{'password'};
         }
     }
     unless (defined($rootpw)) {
-        return "Unable to find requested password from passwd, with key=system,username=root";
+        return "Unable to find requested password from passwd, with key=vios,username=padmin";
     }
     unless (-e $bootimg_root."/viobootimg") {
         return "Unable to find VIOS bootimg file";

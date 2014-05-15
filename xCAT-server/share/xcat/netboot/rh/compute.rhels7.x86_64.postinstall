@@ -1,0 +1,45 @@
+#!/bin/sh
+#-- Do not remove following line if you want to make use of CVS version tracking
+#-- $Id: compute.postinstall,v 1.21 2008/09/04 12:05:45 sikorsky Exp $
+#-- jurij.sikorsky@t-systems.cz
+#--
+#-- this script is run after all packages from $profile.pkglist are installed
+#-- 
+#-- it gets these arguments:
+#-- 
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#-- 
+#-- 
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+#-- Example how /etc/fstab can be automatically generated during image generation:
+cat <<END >$installroot/etc/fstab
+proc            /proc    proc   rw 0 0
+sysfs           /sys     sysfs  rw 0 0
+devpts          /dev/pts devpts rw,gid=5,mode=620 0 0
+${profile}_${arch}      /        tmpfs  rw 0 1
+none            /tmp     tmpfs  defaults,size=10m 0 2
+none            /var/tmp tmpfs  defaults,size=10m 0 2
+END
+
+#-- Uncomment the line contains "cons" in /etc/inittab
+#cons:12345:respawn:/sbin/smart_agetty -L 38400 console
+#echo "co:2345:respawn:/sbin/agetty -L 38400 console" >> $installroot/etc/inittab
+
+
+#-- Example of booted image versioning
+#-- We want to know, with what configuration (version of the image) each node was booted.
+#-- Hence, we keep image definition files and postscripts in CVS. During image generation we create file /etc/IMGVERSION and fill it with CVS "$Id$" of files with image definition (.pkglist, .exlist, .repolist, .postinstall). Then, during boot, each  "CVS enabled" postscript (see /install/postscripts/cvs_template.sh and /install/postscripts/cvs_template.pl) adds one line to /etc/IMGVERSION. Then you can determine in any time what image you are running and what postscipts in which versions were run.
+#cat /dev/null > $installroot/etc/IMGVERSION
+#for ext in pkglist exlist postinstall repolist; do
+#  [ -r $workdir/$profile.$ext ] && cat $workdir/$profile.$ext | grep -E '^[[:space:]]*#.*[[:space:]]\$Id' >> $installroot/etc/IMGVERSION
+#done
+

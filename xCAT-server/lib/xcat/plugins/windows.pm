@@ -412,7 +412,7 @@ sub mkinstall
                 $custmplpath = "$installroot/custom/install/hyperv";
                 $tmplpath = "$::XCATROOT/share/xcat/install/hyperv";
             }
-            my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
+            $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($custmplpath, $profile, $os, $arch);
             if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name($tmplpath, $profile, $os, $arch); }
         }
         
@@ -736,6 +736,12 @@ sub copycd
 			$darch = "x86_64";
 		} elsif (/BuildBranch=win7_rtm/){
 			$distname = "win7";
+		} elsif (/BuildBranch=winblue_rtm/){
+			if (-r  $mntpath . "/sources/background_svr.bmp") {
+                if (! -r $mntpath . "/sources/EI.CFG") {
+					$distname = "win2012r2";
+                }
+            }
 		} elsif (/BuildBranch=win8_rtm/){
 			if (-r $mntpath . "/sources/background_cli.bmp") {
 				$distname = "win8";

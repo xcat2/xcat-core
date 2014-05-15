@@ -14,6 +14,17 @@ if [ -r /tmp/updates/etc/pki/tls/certs/ca-bundle.crt ]; then
 fi
 
 
+#there is no boot option to set dns search domain in kickstart file,
+#the search domain in /etc/resolv.conf is set in the pre installation script
+export MANAGEDADDRESSMODE=#MANAGEDADDRESSMODE#
+export SEARCHDOMAIN=#GETNODEDOMAIN:THISNODE#
+
+if [ "$MANAGEDADDRESSMODE" == "static" ]; then
+ echo "#appended by %pre " >> /etc/resolv.conf
+ echo "search $SEARCHDOMAIN" >> /etc/resolv.conf
+fi
+
+
 
 cat >/tmp/baz.py <<EOF
 #!/usr/bin/python
@@ -76,6 +87,8 @@ try:
 				percent = 0
 				count = 0
 				numpack = 0
+				if(os.path.isfile('/tmp/packaging.log')):
+					ilog = '/tmp/packaging.log'
 				if(os.path.isfile('/mnt/sysimage/root/install.log')):
 					ilog = '/mnt/sysimage/root/install.log'
 				if(os.path.isfile('/mnt/sysimage/tmp/install.log')):
@@ -182,7 +195,7 @@ if [ -z "$instdisk" ]; then
 		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
 			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
 			;;
-		"mptsas"|"mpt2sas") #*PROBABLY* not SAN, but SAS SAN is possible
+		"mptsas"|"mpt2sas"|"mpt3sas") #*PROBABLY* not SAN, but SAS SAN is possible
 			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
 			;;
 		*)
@@ -217,7 +230,10 @@ if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
+    echo 'bootloader --driveorder='$instdisk >> /tmp/partitioning
 	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype vfat' >> /tmp/partitioning
+else
+    echo 'bootloader' >> /tmp/partitioning
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...

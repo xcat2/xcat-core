@@ -554,7 +554,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime comments disable)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden updatestatus updatestatustime zonename comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS32K',
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
@@ -569,6 +569,7 @@ nodelist => {
      hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
      updatestatus => "The current node update status. Valid states are synced out-of-sync,syncing,failed.",
      updatestatustime => "The date and time when the updatestatus was updated.",
+     zonename => "The name of the zone to which the node is currently assigned. If undefined, then it is not assigned to any zone. ",
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
     },
@@ -598,7 +599,7 @@ noderes => {
  descriptions => {
   node => 'The node name or group name.',
   servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
-  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for POWER architecture.',
+  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for POWER architecture, grub2 for RHEL7 on Power. Notice: yaboot is not supported from rhels7 on Power,use grub2 instead',
   tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
   tftpdir => 'The directory that roots this nodes contents from a tftp and related perspective.  Used for NAS offload by using different mountpoints.',
   nfsserver => 'The NFS or HTTP server for this node (as known by this node).',
@@ -915,6 +916,11 @@ site => {
    "                 '0' value means include all the nodes in the subnet.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
+   " managedaddressmode: The mode of networking configuration during node provision.\n".
+   "                     If set to 'static', the network configuration will be configured \n".
+   "                     in static mode based on the node and network definition on MN.\n".
+   "                     If set to 'dhcp', the network will be configured with dhcp protocol.\n".
+   "                     The default is 'dhcp'.\n\n".
    " ------------\n".
    "DNS ATTRIBUTES\n".
    " ------------\n".
@@ -935,6 +941,12 @@ site => {
    "               \"<xcatmaster>\" to mean the DNS server for each node should be the\n".
    "               node that is managing it (either its service node or the management\n".
    "               node).\n\n".
+   " externaldns:  To specify that external dns is used. If externaldns is set to any value\n".
+   "               then, makedns command will not start the local nameserver on xCAT MN. \n".
+   "               Default is to start the local nameserver.\n\n".
+   " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n".
+   "               section. This is an interface for user to add configuration entries to\n". 
+   "               the zone sections in named.conf.\n\n".
    " -------------------------\n".
    "HARDWARE CONTROL ATTRIBUTES\n".
    " -------------------------\n".
@@ -1051,7 +1063,8 @@ site => {
    "                   Set to NOGROUPS,if you do not wish to enabled any group of compute nodes.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
-   "                   passwordless root access to nodes and other SN.\n\n".
+   "                   passwordless root access to nodes and other SN.\n".
+   "                   If using the zone table, this attribute in not used.\n\n".
    " -----------------\n".
    "SERVICES ATTRIBUTES\n".
    " -----------------\n".
@@ -1089,6 +1102,10 @@ site => {
    "                   will not interfere.\n\n".
    " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
    "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
+   " persistkvmguests:  Keep the kvm definition on the kvm hypervisor when you power off\n".
+   "                    the kvm guest node. This is useful for you to manually change the \n".
+   "                    kvm xml definition file in virsh for debugging. Set anything means\n".
+   "                    enable.\n\n".
    " --------------------\n".
    "XCAT DAEMON ATTRIBUTES\n".
    " --------------------\n".
@@ -1185,6 +1202,19 @@ performance => {
    node => 'The node name.',
    attrname => 'The metric name.',
    attrvalue => 'The metric value.',
+   comments => 'Any user-provided notes.',
+   disable => "Set to 'yes' or '1' to comment out this row.",
+ },
+  },
+zone => {
+    cols => [qw(zonename sshkeydir sshbetweennodes defaultzone comments disable)],
+    keys => [qw(zonename)],
+    table_desc => 'Defines a cluster zone for nodes that share root ssh key access to each other.',
+ descriptions => {
+   zonename => 'The name of the zone.',
+   sshkeydir => 'Directory containing the shared root ssh RSA keys.',
+   sshbetweennodes => 'Indicates whether passwordless ssh will be setup between the nodes of this zone. Values are yes/1 or no/0. Default is yes. ',
+   defaultzone => 'If nodes are not assigned to any other zone, they will default to this zone. If value is set to yes or 1.',
    comments => 'Any user-provided notes.',
    disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1325,7 +1355,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1343,6 +1373,13 @@ nics => {
                             <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                         The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                         Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
+            nichostnameprefixes  => 'Comma-separated list of hostname prefixes per NIC. 
+                        If only one ip address is associated with each NIC:
+                            <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
+                        If multiple ip addresses are associcated with each NIC:
+                            <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
+                        The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
+                        Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention',
             nictypes => 'Comma-separated list of NIC types per NIC. <nic1>!<type1>,<nic2>!<type2>, e.g. eth0!Ethernet,ib0!Infiniband. The xCAT object definition commands support to use nictypes.<nicname> as the sub attributes.', 
             niccustomscripts => 'Comma-separated list of custom scripts per NIC.  <nic1>!<script1>,<nic2>!<script2>, e.g. eth0!configeth eth0, ib0!configib ib0. The xCAT object definition commands support to use niccustomscripts.<nicname> as the sub attribute
 .',
@@ -1535,8 +1572,20 @@ hwinv => {
         node => 'The node name or group name.',
         cputype => 'The cpu model name for the node.',
         cpucount => 'The number of cpus for the node.',
-        memory => 'The size of the memory for the node.',
-        disksize => 'The size of the disks for the node.',
+        memory => 'The size of the memory for the node in MB.',
+        disksize => 'The size of the disks for the node in GB.',
+        comments => 'Any user-provided notes.',
+        disable =>  "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+token => {
+    cols => [qw(tokenid username expire comments disable)],
+    keys => [qw(tokenid)],
+    table_desc => 'The token of users for authentication.',
+    descriptions => {
+        tokenid => 'It is a UUID as an unified identify for the user.',
+        username => 'The user name.',
+        expire => 'The expire time for this token.',
         comments => 'Any user-provided notes.',
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
@@ -1618,6 +1667,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   rack => { attrs => [], attrhash => {}, objkey => 'rackname' },
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
   osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
+  zone=> { attrs => [], attrhash => {}, objkey => 'zonename' },
   
 );
 
@@ -2244,6 +2294,10 @@ my @nodeattrs = (
                 tabentry => 'nics.nichostnamesuffixes',
                 access_tabentry => 'nics.node=attr:node',
         },
+        {attr_name => 'nichostnameprefixes',
+                tabentry => 'nics.nichostnameprefixes',
+                access_tabentry => 'nics.node=attr:node',
+        },
         {attr_name => 'nictypes',
                 tabentry => 'nics.nictypes',
                 access_tabentry => 'nics.node=attr:node',
@@ -2587,6 +2641,10 @@ my @nodeattrs = (
              },             
 		{attr_name => 'updatestatustime',
                  tabentry => 'nodelist.updatestatustime',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },             
+		{attr_name => 'zonename',
+                 tabentry => 'nodelist.zonename',
                  access_tabentry => 'nodelist.node=attr:node',
              },             
 		{attr_name => 'usercomment',
@@ -3042,6 +3100,36 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'rack.rackname=attr:rackname',
         },
    );
+####################
+#  zone table      #
+####################
+@{$defspec{zone}->{'attrs'}} = (
+        {attr_name => 'zonename',
+                tabentry => 'zone.zonename',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshkeydir',
+                tabentry => 'zone.sshkeydir',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'sshbetweennodes',
+                tabentry => 'zone.sshbetweennodes',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'defaultzone',
+                tabentry => 'zone.defaultzone',
+                access_tabentry => 'zone.zonename=attr:zonename',
+        },
+        {attr_name => 'usercomment',
+                 tabentry => 'zone.comments',
+                 access_tabentry => 'zone.zonename=attr:zonename',
+        },
+   );
+#########################
+#  route data object  #
+#########################
+#     routes table    #
+#########################
 #########################
 #  route data object  #
 #########################

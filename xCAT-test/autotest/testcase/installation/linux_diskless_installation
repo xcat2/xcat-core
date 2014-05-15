@@ -2,7 +2,7 @@ start:Linux_diskless_installation_flat_ppc64
 os:Linux
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
-cmd:makedns -n
+cmd:makedns
 check:rc==0
 cmd:service named restart
 check:rc==0
@@ -25,7 +25,7 @@ cmd:copycds $$ISO
 check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0

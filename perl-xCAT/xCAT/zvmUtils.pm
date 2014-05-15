@@ -2405,7 +2405,7 @@ sub getFreeRepoSpace {
     if ($master eq $ip) {
         # If the master IP and node IP match, then it is the management node
         my $out = `$sudo /bin/df -h /install | sed 1d`;
-        $out =~ s/\h+/ /g;
+        # causing problems on other platforms $out =~ s/\h+/ /g;
         my @results = split(' ', $out);
         if ( $results[3] eq "0" ) {
             $results[3] = "0M";

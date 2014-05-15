@@ -54,6 +54,7 @@ my $command;
 my $args;
 # Put arguments in a hash.
 my %args_dict;
+my %general_arg;
 
 #-------------------------------------------------------
 
@@ -100,6 +101,8 @@ sub process_request {
     $command = $request->{command}->[0];
     $args = $request->{arg};
 
+    my $gereral_arg = get_general_args();
+
     # There is no need to acquire lock for command nodediscoverstatus, nodediscoverls and noderegenips.
     if ($command eq "nodediscoverstatus"){
         nodediscoverstatus();
@@ -112,7 +115,11 @@ sub process_request {
         return;
     }
 
-    my $lock = xCAT::Utils->acquire_lock("nodemgmt", 1);
+    my $non_block = 1;
+    if ( $general_arg{'blockmode'} == 1) {
+        $non_block = 0;
+    }
+    my $lock = xCAT::Utils->acquire_lock("nodemgmt", $non_block);
     if (! $lock){
         setrsp_errormsg("Cannot acquire lock, another process is already running.");
         return;
@@ -131,7 +138,7 @@ sub process_request {
             );  
                 
             setrsp_errormsg("Cannot $errormsg_dict{$command} while node discovery is running.");
-            xCAT::Utils->release_lock($lock, 1);
+            xCAT::Utils->release_lock($lock, $non_block);
             return;
         }
     }
@@ -156,7 +163,32 @@ sub process_request {
         nodechmac();
     }
 
-    xCAT::Utils->release_lock($lock, 1);
+    xCAT::Utils->release_lock($lock, $non_block);
+}
+
+sub get_general_args
+{
+    my ($help, $ver, $blockmode);
+    %general_arg = ();
+    @ARGV = ();
+    if($args) {
+        @ARGV = @$args;
+    }
+    GetOptions(
+        'h|help' => \$help,
+        'v|version' => \$ver,
+        'b|block' => \$blockmode,
+    );
+
+    if($help){
+        $general_arg{'help'} = 1;
+    }
+    if($ver){
+        $general_arg{'version'} = 1;
+    }
+    if ($blockmode) {
+        $general_arg{'blockmode'} = 1;
+    }
 }
 
 #-------------------------------------------------------
@@ -202,37 +234,21 @@ sub validate_args{
     my $enabledparamsref = shift;
     my $mandatoryparamsref = shift;
 
-    # The -h -v are handled by seqdiscovery.pm
-    # -t -u -l only works for nodediscoverls, and them only handled by seqdiscovery.pm
-    my ($help, $ver, $type, $uuid, $long);
+    if ($general_arg{'help'} == 1){
+        my %process_help_commands = (
+            'nodediscoverstart' => 1,
+            'nodediscoverstop' => 1,
+            'nodediscoverls' => 1,
+            'nodediscoverstatus' => 1,
+        );
 
-    @ARGV = ();
-    if($args) {
-        @ARGV = @$args;
-    }
-    GetOptions(
-        'h|help' => \$help,
-        'v|version' => \$ver,
-        't=s' => \$type,
-        'u=s' => \$uuid,
-        'l' => \$long,
-    );
-
-    if($help){
-        # just return to make sequential discovery to handle it
-        return 0;
+        # do not process help message for these noddiscover* commands, cover them in seqdiscovery.pm
+        unless ($process_help_commands{$command} == 1) {
+            setrsp_infostr($helpmsg);
+            return 0;
+        }
     }
 
-    if($ver){
-        # just return to make sequential discovery to handle it
-        return 0;
-    }
-
-    if ($type || $uuid || $long) {
-        # these args for general discovery, return directly
-        return 0;
-    }
-    
     my $parseret = parse_args();
     if ($parseret){
         setrsp_errormsg($parseret);
@@ -482,6 +498,8 @@ Usage:
         $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr);
     }
+    # setup node provisioning status.
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>\@nodelist, arg=>['defined']}, $request_command, -1, 2);
 
     setrsp_progress("Configuring nodes...");
     my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@nodelist, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
@@ -726,9 +744,6 @@ Usage:
     # Update nodes' attributes
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
-        if ($profile_status){
-            $updatenodeshash{$_}{'status'} = $profile_status;
-        }
     }    
     
     #update DataBase.
@@ -736,6 +751,11 @@ Usage:
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
+
+    #update node's status:
+    if($profile_status eq "defined"){
+        xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>$nodes, arg=>['defined']}, $request_command, -1, 2);
+    }
 
     my $retref;
     my $retstrref;
@@ -1154,17 +1174,7 @@ Usage:
 
     # Update node's status.
     setrsp_progress("Updating node status...");
-    my $nodelisttab = xCAT::Table->new('nodelist',-create=>1);
-    my (
-      $sec,  $min,  $hour, $mday, $mon,
-      $year, $wday, $yday, $isdst
-    ) = localtime(time);
-    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-                         $mon + 1, $mday, $year + 1900,
-                         $hour, $min, $sec);
-
-    $nodelisttab->setNodeAttribs($hostname, {status=>'defined', statustime=>$currtime});
-    $nodelisttab->close();
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>[$hostname], arg=>['defined']}, $request_command, -1, 2);
 
     setrsp_progress("Updated MAC address.");
 }
@@ -1440,7 +1450,9 @@ Usage:
     my $mactab = xCAT::Table->new("mac");
     my $macsref = $mactab->getNodesAttribs(\@nodes, ['mac']);
     my $nodelisttab = xCAT::Table->new("nodelist");
-    my $statusref = $nodelisttab->getNodesAttribs(\@nodes, ['status']);
+    # Get node current provisioning status.
+    my $provisionapp = "provision";
+    my $provision_status = xCAT::TableUtils->getAppStatus(\@nodes,$provisionapp);
 
     my $rspentry;
     my $i = 0;
@@ -1461,8 +1473,8 @@ Usage:
             }
         }
 
-        if ($statusref->{$_}->[0]){
-            $rspentry->{node}->[$i]->{"status"} = $statusref->{$_}->[0]->{status};
+        if ($provision_status->{$_}){
+            $rspentry->{node}->[$i]->{"status"} = $provision_status->{$_};
         } else{
             $rspentry->{node}->[$i]->{"status"} = "defined";
         }
@@ -1626,13 +1638,19 @@ sub findme{
     }
 
     my @nodelist = keys %hostinfo_dict;
+    # setup node provisioning status.
+    xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>\@nodelist, arg=>['defined']}, $request_command, -1, 2);
 
+    # call makehosts to get the IP by resolving the name
+    my $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>\@nodelist, sequential=>[1]}, $request_command, 0, 2);
+    
     # call discover to notify client.
     xCAT::MsgUtils->message('S', "Call discovered request.\n");
     $request->{"command"} = ["discovered"];
     $request->{"node"} = \@nodelist;
     $request->{discoverymethod} = ['profile'];
-    my $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
+    $retref = "";
+    $retref = xCAT::Utils->runxcmd($request, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
 
     xCAT::MsgUtils->message('S', "Call nodemgmt plugins.\n");

@@ -598,7 +598,7 @@ sub _execute_dsh
                 }
                 else
                 {
-                    # LKV: This is where the output shows up
+                    # HERE: This is where the output shows up
                     #print STDOUT @{$output_buffers{$user_target}};
                     #print STDERR @{$error_buffers{$user_target}};
                     chomp(@{$output_buffers{$user_target}});
@@ -1020,6 +1020,7 @@ sub fork_fanout_dsh
         }
     }
     # save the original exports,  we are going to add the unique node name below
+    my $firstpass=0;
     while (@$targets_waiting
            && (keys(%$targets_active) < $$options{'fanout'}))
     {
@@ -1046,6 +1047,7 @@ sub fork_fanout_dsh
         }
         if ($$options{'environment'})
         {
+          if ($firstpass ==0) {   # do the servicenode stuff only once
             # if we are on a servicenode need to get the environment file
             # from the SNsyncfiledir, not local
             if (xCAT::Utils->isServiceNode()) {
@@ -1068,8 +1070,10 @@ sub fork_fanout_dsh
                $rsp->{error}->[0] = "File $$options{'environment'} does not exist";
                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
             }
-            # build the xdsh command
-            push @dsh_command,
+            $firstpass=1;
+           }
+           # build the xdsh command
+           push @dsh_command,
               "$exportnode$$options{'pre-command'} . $$options{'environment'} ; $$options{'command'}$$options{'post-command'}";
         }
 
@@ -3993,8 +3997,7 @@ sub parse_and_run_dsh
     {
         $options{'user'} = $ENV{'DSH_TO_USERID'};
     }
-
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = ();
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
@@ -4033,7 +4036,7 @@ sub parse_and_run_dsh
         {    # from sinv, discard this name
             undef @$nodes;
         }
-        if (defined(@$nodes))
+        if (@$nodes)
         {
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4405,7 +4408,7 @@ sub parse_and_run_dcp
             return;
         }
     }
-    if ((!(defined(@$nodes))) && (!(defined($options{'rootimg'}))))
+    if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
         my $rsp = {};
         $rsp->{error}->[0] = "Unless using -i option,  noderange is required.";
@@ -4502,7 +4505,7 @@ sub parse_and_run_dcp
     #
     # build list of nodes
     my @nodelist;
-    if (defined(@$nodes))
+    if (@$nodes)
     {    # there are nodes
         @nodelist = @$nodes;
         $options{'nodes'} = join(',', @nodelist);
@@ -4972,7 +4975,8 @@ sub parse_rsync_input_file_on_MN
     $::process_line = 0;
     my $destfileisdir;
     my $clause=0;
-    
+    my $addmergescript =0;
+    my $addappendscript =0;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -5013,12 +5017,16 @@ sub parse_rsync_input_file_on_MN
                   # this triggers the running of the appendscript
                   $::appendscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
                 }
+
                 # add the append script to the sync
-                my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
-                my $appendscriptline = "$appscript -> $appscript"; 
-                $syncappendscript=1;  # syncing the xdcpappend.sh script
-                 &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
-               }
+                if ($addappendscript == 0) {  # only add once
+                  my  $appscript ="/opt/xcat/share/xcat/scripts/xdcpappend.sh";
+                  my $appendscriptline = "$appscript -> $appscript"; 
+                  $syncappendscript=1;  # syncing the xdcpappend.sh script
+                   &build_append_rsync($appendscriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncappendscript);
+                   $addappendscript=1;
+                 } 
+               }  # end APPEND clause
                if ($clause =~ /MERGE:/) {
                  # location of the base merge script
                  # for MERGE we have to sync the mergescript and the
@@ -5030,12 +5038,16 @@ sub parse_rsync_input_file_on_MN
                   # this triggers the running of the mergescript
                   $::mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
                 }
+                
                 # add the merge script to the sync
-                my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
-                my $mergescriptline = "$mergescript -> $mergescript"; 
-                $syncmergescript=1;  # syncing the xdcpmerge.sh script
-                 &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
-               }
+                if ($addmergescript == 0) {  # only add once
+                  my  $mergescript ="/opt/xcat/share/xcat/scripts/xdcpmerge.sh";
+                  my $mergescriptline = "$mergescript -> $mergescript"; 
+                  $syncmergescript=1;  # syncing the xdcpmerge.sh script
+                  &build_merge_rsync($mergescriptline,$nodes, $options, $input_file,$rsyncSN, $syncdir,$nodesyncfiledir,$onServiceNode,$syncmergescript);
+                  $addmergescript=1;
+                }
+               }  # end MERGE clause
            
            }
          } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
@@ -5199,6 +5211,7 @@ sub build_append_rsync
               push @::appendlines,$line;
             }
             my $src_file  = $1; # append file left of arror
+            my $orig_src_file  = $1; # append file left of arror
             # it will be sync'd to $nodesyncfiledir/$append_file
             my $dest_file = $nodesyncfiledir;
             $dest_file .= $src_file;  
@@ -5227,7 +5240,7 @@ sub build_append_rsync
                     # to pick up files from /var/xcat/syncfiles...
                     if ($onServiceNode == 1) {
                       my $newsrcfile = $syncdir;    # add SN syndir on front
-                      $newsrcfile .= $src_file;
+                      $newsrcfile .= $orig_src_file;
                       $src_file=$newsrcfile;
                     }
                     # destination file name
@@ -5310,7 +5323,8 @@ sub build_merge_rsync
             if ($syncmergescript == 0) { # don't add the xdcpmerge.sh line 
               push @::mergelines,$line;
             }
-            my $src_file  = $1; # merge file left of arror
+            my $src_file  = $1; # merge file left of arrow
+            my $orig_src_file = $1;
             # it will be sync'd to $nodesyncfiledir/$merge_file
             my $dest_file = $nodesyncfiledir;
             $dest_file .= $src_file;  
@@ -5339,7 +5353,7 @@ sub build_merge_rsync
                     # to pick up files from /var/xcat/syncfiles...
                     if ($onServiceNode == 1) {
                       my $newsrcfile = $syncdir;    # add SN syndir on front
-                      $newsrcfile .= $src_file;
+                      $newsrcfile .= $orig_src_file; 
                       $src_file=$newsrcfile;
                     }
                     # destination file name
@@ -6029,11 +6043,11 @@ sub run_always_rsync_postscripts
         # if on the service node need to add the $syncdir directory 
         # to the path
         if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $ps;
-         $ps=$tmpp;
+         my $tmps=$syncdir . $ps;
+         push @args, $tmps;
+        } else{
+          push @args, $ps;
         }
-        push @args, $ps;
-
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
          
         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],

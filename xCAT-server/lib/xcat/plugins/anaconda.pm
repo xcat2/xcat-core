@@ -63,7 +63,7 @@ sub preprocess_request
     my @ents = xCAT::TableUtils->get_site_attribute("sharedtftp");
     my $site_ent = $ents[0];
     unless (  defined($site_ent)
-            and ($site_ent =~ /no/i or $site_ent =~ /0/))
+            and ($site_ent eq "no" or $site_ent eq "NO"  or $site_ent eq "0"))
     {
 
         #unless requesting no sharedtftp, don't make hierarchical call
@@ -257,6 +257,7 @@ sub mknetboot
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -264,6 +265,7 @@ sub mknetboot
                             );
                 # Do not print this warning message multiple times
                 last;
+              }
             }
        }
     }
@@ -930,10 +932,6 @@ sub mknetboot
         );
     }
 
-    #my $rc = xCAT::TableUtils->create_postscripts_tar();
-    #if ( $rc != 0 ) {
-    #	xCAT::MsgUtils->message( "S", "Error creating postscripts tar file." );
-    #}
 }
 
 sub mkinstall
@@ -1001,6 +999,7 @@ sub mkinstall
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -1008,6 +1007,7 @@ sub mkinstall
                             );
                 # Do not print this warning message multiple times
                 last;
+               }
             }
        }
     }
@@ -1377,12 +1377,19 @@ sub mkinstall
 	    	$instserver=$ent->{nfsserver};
 	    }
 
+            if ($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               unless($instserver eq '!myipfn!'){
+                  my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
+                  $instserver=$ip;
+               }
+            }
 	    my $httpprefix=$pkgdir;
 	    if ($installroot =~ /\/$/) {
 	       $httpprefix =~ s/^$installroot/\/install\//;
 	    } else {
 	       $httpprefix =~ s/^$installroot/\/install/;
 	    }
+            
             my $kcmdline =
                 "quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
               . $instserver . ":". $httpport
@@ -1434,7 +1441,51 @@ sub mkinstall
              if($esxi){
                  $ksdev =~ s/eth/vmnic/g;
              }
-             $kcmdline .= " ksdevice=" . $ksdev;
+             unless ($ksdev eq "bootif" and $os =~ /7/) {
+                 $kcmdline .= " ksdevice=" . $ksdev;
+            }
+            
+            #if site.managedaddressmode=static, specify the network configuration as kernel options 
+            #to avoid multicast dhcp
+            if($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+               unless($ipaddr) { 
+                    $callback->(
+                        {
+                         error => [
+                             "cannot resolve the ip address of $node"
+                         ],
+                         errorcode => [1]
+                        }
+                        );
+               }         
+
+               if($gateway eq '<xcatmaster>'){
+                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+               }
+
+               $kcmdline .=" ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
+
+
+                my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
+                my @nameserverARR=split (",",$nameservers{$node});
+                my @nameserversIP;
+                foreach (@nameserverARR)
+                {
+                   my $ip;
+                   if($_ eq '<xcatmaster>'){
+                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                   }else{
+                      (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   }
+                   push @nameserversIP, $ip;
+
+                }
+               
+               if(scalar @nameserversIP){
+                  $kcmdline .=" dns=".join(",",@nameserversIP);
+               }
+           }
 
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))
@@ -1575,6 +1626,7 @@ sub mksysclone
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
+               if (!defined($::DISABLENODESETWARNING)) {  # set by AAsn.pm
                 $callback->(
                             {
                              warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
@@ -1582,6 +1634,7 @@ sub mksysclone
                             );
                 # Do not print this warning message multiple times
                 last;
+              }
             }
        }
     }
@@ -2023,6 +2076,18 @@ sub copycd
         unless ($distname)
         {
             $distname = "ol$1.$2";
+        }
+    }
+    elsif ($desc =~ /^RHEL-(\d)\.(\d) ([^.]*)\./) {
+        my $edition = "";
+        my $version = "$1.$2";
+        my %editionmap = (
+            "Server" => "s",
+            );
+        $edition = $editionmap{$3};
+        unless ($distname)
+        {
+            $distname = "rhel$edition$version";
         }
     }
     elsif ($desc =~ /^Red Hat Enterprise Linux (\d)\.(\d)/)

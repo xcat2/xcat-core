@@ -16,7 +16,7 @@ use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::FSPUtils;
 use xCAT::VMCommon;
-#use Data::Dumper;
+use Data::Dumper;
 use xCAT::MsgUtils qw(verbose_message);
 ##############################################
 # Globals
@@ -48,6 +48,15 @@ sub parse_args {
 ##########################################################################
 # Parse the chvm command line for options and operands
 ##########################################################################
+my @query_array = ();
+my %param_list_map = (
+    'vmcpus' => 'part_get_lpar_processing',
+    'vmmemory' => 'part_get_lpar_memory',
+    'vmphyslots' => 'part_get_all_io_bus_info',
+    'vmnics' => 'part_get_all_vio_info',
+    'vmstorage' => 'part_get_all_vio_info',
+    'del_vadapter' => 'part_get_all_vio_info'
+);
 
 sub chvm_parse_extra_options {
 	my $args = shift;
@@ -57,6 +66,7 @@ sub chvm_parse_extra_options {
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
+    my %tmp_hash = ();
 	foreach (@$args) {
 		my ($cmd, $value) = split (/\=/, $_);
 		if (!defined($value)) {
@@ -75,14 +85,24 @@ sub chvm_parse_extra_options {
 #				return "'$value' invalid";
 #			}
         } elsif (grep(/^$cmd$/, @support_ops)) {
+            if (exists($param_list_map{$cmd})) {
+                $tmp_hash{$param_list_map{$cmd}} = 1;
+            }
             if (exists($opt->{p775})) {
                 return "'$cmd' doesn't work for Power 775 machines.";
+            } elsif ($cmd eq "del_vadapter") {
+                if ($value !~ /^\d+$/) {
+                    return "Invalid param '$value', only one slot id can be specified";
+                }
+
             } elsif ($cmd eq "vmothersetting") {
                 if ($value =~ /hugepage:\s*(\d+)/i) {
                     $opt->{huge_page} = $1;
+                    $tmp_hash{'get_huge_page'} = 1;
                 }
                 if ($value =~ /bsr:\s*(\d+)/i) {
                     $opt->{bsr} = $1;
+                    $tmp_hash{'get_cec_bsr'} = 1;
                 }
                 next;
             } elsif ($cmd eq "vmstorage") {
@@ -103,6 +123,53 @@ sub chvm_parse_extra_options {
                         return "'$value' is invalid, must be in form of 'Server_name:slotnum'";
                     }
                 }
+            } elsif ($cmd eq "vmcpus") {
+                if ($value =~ /^(\d+)\/(\d+)\/(\d+)$/) {
+                    unless ($1 <= $2 and $2 <= $3) {
+                        return "'$value' is invalid, must be in order";
+                    }
+                } else {
+                    return "'$value' is invalid, must be integer";
+                }
+            } elsif ($cmd eq "vmmemory") {
+                if ($value =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
+                    my ($mmin, $mcur, $mmax);
+                    if ($2 == "G" or $2 == '') {
+                        $mmin = $1 * 1024;
+                    } 
+                    if ($4 == "G" or $4 == '') {
+                        $mcur = $3 * 1024;
+                    }
+                    if ($6 == "G" or $6 == '') {
+                        $mmax = $5 * 1024;
+                    }
+                    unless ($mmin <= $mcur and $mcur <= $mmax) {
+                        return "'$value' is invalid, must be in order";
+                    }
+                } else {
+                    return "'$value' is invalid";
+                }
+            } elsif ($cmd eq "vmphyslots") {
+                my @tmp_array = split ",",$value;
+                foreach (@tmp_array) {
+                    unless (/(0x\w{8})/) {
+                        return "'$_' is invalid";
+                    }
+                }
+            } elsif ($cmd eq "vmothersetting") {
+                my @tmp_array = split ",", $value;
+                foreach (@tmp_array) {
+                    unless (/^(bsr|hugepage):\d+$/) {
+                        return "'$_' is invalid";
+                    }
+                }
+            } elsif ($cmd eq "vmnics") {
+                my @tmp_array = split ",", $value;
+                foreach (@tmp_array) {
+                    unless (/^vlan\d+$/i) {
+                        return "'$_' is invalid";
+                    }
+                }
             }
 
         } else {
@@ -110,6 +177,7 @@ sub chvm_parse_extra_options {
 		}
 		$opt->{$cmd} = $value;
 	}
+    @query_array = keys(%tmp_hash);
 	return undef;
 }
 
@@ -672,7 +740,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose l|long p775) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose l|long p775 updatedb) )) {
         return( usage() );
     }
     if (exists($opt{l}) && !exists($opt{p775})) {
@@ -711,11 +779,12 @@ sub modify {
     return op_extra_cmds ($request, $hash) if ($request->{opt}->{lparname} || $request->{opt}->{huge_page});
     return ([["Error", "Miss argument\n".$usage_string, 1]]);
 }
+
 sub do_op_extra_cmds {
     my $request = shift;
     my $hash = shift;
     my @values = ();
-
+    my %lpar_hash = ();
     while (my ($mtms, $h) = each(%$hash)) {
         my $memhash;
         while (my($name, $d) = each(%$h)) {
@@ -780,17 +849,17 @@ sub do_op_extra_cmds {
                             if ($2 == "G" or $2 == '') {
                                 $min = $min * 1024;
                             } 
-                            $min = $min/$memsize;
+                            $min = int($min/$memsize);
                             my $cur = $3;
                             if ($4 == "G" or $4 == '') {
                                 $cur = $cur * 1024;
                             }
-                            $cur = $cur/$memsize;
+                            $cur = int($cur/$memsize);
                             my $max = $5;
                             if ($6 == "G" or $6 == '') {
                                 $max = $max * 1024;
                             }
-                            $max = $max/$memsize;
+                            $max = int($max/$memsize);
                             $request->{opt}->{$op} ="$min/$cur/$max";
                             $param = $request->{opt}->{$op};
                         } else {
@@ -823,8 +892,15 @@ sub do_op_extra_cmds {
                     push @values, [$name, "Success", '0'];
                 } 
             }
+            my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
+            # need to add update db here 
+            $lpar_hash{$name} = $rethash;     
+            $lpar_hash{$name}->{parent} = @$d[3];
         }
     } 
+    if (%lpar_hash) {
+        update_vm_db($request, \%lpar_hash);
+    }
     return \@values;
 }
 sub check_node_info {
@@ -1605,6 +1681,7 @@ my @partition_query_actions = qw(part_get_partition_cap part_get_hyp_process_and
 sub parse_part_get_info {
     my $hash = shift;
     my $data = shift;
+    my $lparid = shift;
     my @array = split /\n/, $data;
     foreach my $line (@array) {
         chomp($line);
@@ -1625,9 +1702,12 @@ sub parse_part_get_info {
             $hash->{bus}->{$3}->{cur_lparid} = $1;
             $hash->{bus}->{$3}->{bus_slot} = $2;
             $hash->{bus}->{$3}->{des} = $4;
+            if ($lparid and $lparid eq $1) {
+                push @{$hash->{lpar_phy_bus}}, $3;
+            }
         } elsif ($line =~ /Phy drc_index:(\w+), Port group: (\w+), Phy port id: (\w+)/) {
             $hash->{phy_drc_group_port}->{$1}->{$2}->{$3} = '1';
-        } elsif ($line =~ /adapter_id=(\w+),lpar_id=([\d|-]+).*port_group=(\d+),phys_port_id=(\d+).*drc_index=(\w+),.*/) {
+        #} elsif ($line =~ /adapter_id=(\w+),lpar_id=([\d|-]+).*port_group=(\d+),phys_port_id=(\d+).*drc_index=(\w+),.*/) {
             if (($2 == -1) && ($4 == 255)) {
                 $hash->{logic_drc_phydrc}->{$3}->{$5} = $1;
                 #$hash->{logic_drc_phydrc}->{$5}->{$1} = [$2,$3,$4];
@@ -1640,12 +1720,49 @@ sub parse_part_get_info {
             $hash->{lpar0_used_mem} = $2;
             $hash->{phy_min_mem_req} = $3;
             #print "===>lpar0_used_mem:$hash->{lpar0_used_mem}.\n";
-        } elsif ($line =~ /Curr Memory Req:[^\(]*\((\d+)\s*regions\)/) {
-            $hash->{lpar_used_regions} = $1;
+        } elsif ($line =~ /Curr Memory (Min|Req|Max):\s*([\d]*)[^\(]*\((\d+)\s*regions\)/) {
+            if ($1 eq 'Min') {
+                $hash->{lpar_mem_min} = $2
+            } elsif ($1 eq 'Max') {
+                $hash->{lpar_mem_max} = $2;
+            } else {
+                $hash->{lpar_mem_req} = $2;
+                $hash->{lpar_used_regions} = $3;
+            }
+        } elsif ($line =~ /Curr Processor (Min|Req|Max):\s*(\d+)/) {
+            if ($1 eq 'Min') {
+                $hash->{lpar_cpu_min} = $2;
+            } elsif ($1 eq 'Max') {
+                $hash->{lpar_cpu_max} = $2;
+            } else {
+                $hash->{lpar_cpu_req} = $2;
+            }
+        } elsif ($line =~ /\s*lpar_id=(\d+),type=vSCSI,slot=(\d+),attr=(\d+).*remote_lpar_id=0x(\w+),remote_slot_num=0x(\w+)/) {
+            if ($3 eq '0') {
+                my $lparid = hex($4);
+                my $slotid = hex($5);
+                push @{$hash->{lpar_vmstorage_client}}, "$lparid:$slotid";
+            } else {
+                if (exists($hash->{lpar_vmstorage_server})) {
+                    $hash->{lpar_vmstorage_server}++;
+                } else {
+                    $hash->{lpar_vmstorage_server} = 1;
+                }
+            }
+        } elsif ($line =~ /\s*lpar_id=(\d+),type=(vEth),slot=(\d+).*port_vlan_id=(\d+),mac_addr=(\w+)/) {
+            push @{$hash->{lpar_vmnics}}, "vlan$4";
         } elsif ($line =~ /Available huge page memory\(in pages\):\s*(\d+)/) {
             $hash->{huge_page_avail} = $1;
         } elsif ($line =~ /Available BSR array:\s*(\d+)/) {
             $hash->{cec_bsr_avail} = $1;
+        } elsif ($line =~ /^\d+\/(\d+)\/\d+$/) {
+            if ($1 ne 0) {
+                push @{$hash->{lpar_othersetting}}, "hugepage:$1";
+            }
+        } elsif ($line =~ /^(\d+)\.$/) {
+            if ($1 ne 0) {
+                push @{$hash->{lpar_othersetting}}, "bsr:$1";
+            }
         }
     }
 }
@@ -1656,6 +1773,7 @@ sub query_cec_info_actions {
     my $td = shift;
     my $usage = shift;
     my $action_array = shift;
+    my $lpar_hash = shift;
     my $lparid = @$td[0];
     my $data;
     my @array = ();
@@ -1670,12 +1788,16 @@ sub query_cec_info_actions {
         chomp(@$values[1]);
         #if ($action eq "part_get_partition_cap" and (@$values[1] =~ /Error:/i or @$values[2] ne 0)) {
         if (@$values[1] =~ /Error:/i or @$values[2] ne 0) {
-            return ([[@$values]]);
+            next; #return ([[@$values]]);
         }
         if (@$values[1] =~ /^$/) {
             next;
         }
-        if ($usage eq 0) {
+        if ($usage eq 1 or $usage eq 2) {
+            &parse_part_get_info(\%hash, @$values[1], $lparid);
+        }
+
+        if ($usage eq 0 or $usage eq 2) {
             if ($lparid) {
                 if ($action eq "lpar_lhea_mac") {
                     my @output = split /\n/,@$values[1];
@@ -1730,15 +1852,69 @@ sub query_cec_info_actions {
             }
 	    #$data .= "@$values[1]\n\n";
             push @array, [$name, @$values[1], @$values[2]];
-        } else {
-            &parse_part_get_info(\%hash, @$values[1]);
-        }
+        } 
     }
-    if ($usage eq 0) {
+    if ($usage eq 0 or $usage eq 2) {
         #return $data;
+        if ($usage eq 2) {
+            %$lpar_hash = %hash;
+        }
         return \@array;
     } else {
         return \%hash; 
+    }
+}
+
+sub update_vm_db {
+    my $request = shift;
+    my $lpar_hash = shift;
+    my $vm_hd = xCAT::Table->new('vm');
+    my %name_id_map = ();
+    my $commit = 0;
+    foreach (keys (%$lpar_hash)) {
+        my %db_update = ();
+        my $node_hash = $lpar_hash->{$_};
+        if (exists($node_hash->{lpar_cpu_min})) {
+            $db_update{cpus} = "$node_hash->{lpar_cpu_min}/$node_hash->{lpar_cpu_req}/$node_hash->{lpar_cpu_max}";
+        }
+        if (exists($node_hash->{lpar_mem_min})) {
+            $db_update{memory} = "$node_hash->{lpar_mem_min}/$node_hash->{lpar_mem_req}/$node_hash->{lpar_mem_max}";
+        }
+        if (exists($node_hash->{lpar_vmstorage_server})) {
+            $db_update{storage} = $node_hash->{lpar_vmstorage_server};
+        } elsif (exists($node_hash->{lpar_vmstorage_client})) {
+            my @tmp_array = ();
+            foreach (@{$node_hash->{lpar_vmstorage_client}}) {
+                if (/(\d+):(\d+)/) {
+                    if (exists($name_id_map{$1})) {
+                        push @tmp_array, "$name_id_map{$1}:$2";
+                    } else {
+                        my $vios_name = &find_lpar_name($request, $node_hash->{parent}, $1);
+                        if (defined($vios_name)) {
+                            $name_id_map{$1} = $vios_name;
+                            push @tmp_array, "$vios_name:$2";
+                        }
+                    }
+                }
+            }
+            $db_update{storage} = join(",",@tmp_array);
+        }
+        if (exists($node_hash->{lpar_vmnics})) {
+            $db_update{nics} = join(",",@{$node_hash->{lpar_vmnics}});
+        }
+        if (exists($node_hash->{lpar_phy_bus})) {
+            $db_update{physlots} = join(",",@{$node_hash->{lpar_phy_bus}});
+        }
+        if (exists($node_hash->{lpar_othersetting})) {
+            $db_update{othersettings} = join(",",@{$node_hash->{lpar_othersetting}});
+        }
+        if (%db_update) {
+            $vm_hd->setNodeAttribs($_,\%db_update);
+            $commit = 1;
+        }
+    }
+    if ($commit) {
+        $vm_hd->commit;
     }
 }
 
@@ -1749,24 +1925,35 @@ sub query_cec_info {
     my $args    = $request->{opt};
     my @td = ();
     my @result = ();
+    my $usage = 0;
+    my %lpar_hash = ();
     #print Dumper($request);
     #print Dumper($hash);
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name, $d) = each (%$h)) {
+            my %tmp_hash = ();
             @td = @$d;
             if (@$d[0] == 0 && @$d[4] !~ /lpar|vios/) {
                 last;
             }
             #my $rethash = query_cec_info_actions($request, $name, $d, 0, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","lpar_lhea_mac","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
-            my $rethash = query_cec_info_actions($request, $name, $d, 0, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","part_get_all_vio_info","get_huge_page","get_cec_bsr"]);
+            if ($args->{updatedb}) {
+                $usage = 2;
+            }
+            my $rethash = query_cec_info_actions($request, $name, $d, $usage, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","part_get_all_vio_info","get_huge_page","get_cec_bsr"], \%tmp_hash);
 	        #push @result, [$name, $rethash, 0];
 	        push @result, @$rethash;
+                $lpar_hash{$name} = \%tmp_hash;
+                $lpar_hash{$name}->{parent} = @$d[3];
         }
         if (@td[0] == 0) {
-            my $rethash = query_cec_info_actions($request, @td[3],\@td, 0);
+            my $rethash = query_cec_info_actions($request, @td[3],\@td, $usage);
             #push @result, [@td[3], $rethash, 0];
             push @result, @$rethash;
         }  
+    }
+    if ($args->{updatedb} and %lpar_hash) {
+        update_vm_db($request, \%lpar_hash);
     }
     return \@result;
 }
@@ -1859,7 +2046,8 @@ sub deal_with_avail_mem {
             }
             #xCAT::MsgUtils->verbose_message($request, "====****====used:$used_regions,avail:$cur_avail,($min:$cur:$max)."); 
             if ($cur_avail < $min) {
-                return([$name, "Parse reserverd regions failed, no enough memory, available:$lparhash->{hyp_avail_mem}.", 1]);
+                my $cur_mem_in_G = $lparhash->{hyp_avail_mem} * $lparhash->{mem_region_size} * 1.0 / 1024;
+                return([$name, "Parse reserverd regions failed, no enough memory, available:$cur_mem_in_G GB.", 1]);
             }           
             if ($cur > $cur_avail) {
                 my $new_cur = $cur_avail;
@@ -1879,6 +2067,19 @@ sub find_lpar_id {
     my %mapping = %{$request->{ppc}->{$parent}->{mapping}};
     if (exists($mapping{$name})) {
         return $mapping{$name};
+    }
+    return undef;
+}
+
+sub find_lpar_name {
+    my $request = shift;
+    my $parent = shift;
+    my $id = shift;
+    my %mapping = %{$request->{ppc}->{$parent}->{mapping}};
+    foreach (keys %mapping) {
+        if ($mapping{$_} eq $id) {
+            return $_;
+        }
     }
     return undef;
 }
@@ -1999,12 +2200,14 @@ sub create_lpar {
     }
     return ([$name, "Done", 0]);
 }
+
 sub mkspeclpar {
     my $request = shift;
     my $hash = shift;
     my $opt = $request->{opt};
     my $values;
     my @result = ();
+    my %lpar_hash = ();
     my $vmtab = xCAT::Table->new( 'vm');
     unless($vmtab) {
         return([["Error","Cannot open vm table", 1]]);
@@ -2044,6 +2247,75 @@ sub mkspeclpar {
             if (exists($opt->{vmnics})) {
                 $tmp_ent->{nics} = $opt->{vmnics};
             }
+
+
+            if (!defined($tmp_ent) ) {
+                return ([[$name, "Not find params", 1]]);
+            #} elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
+            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory})) {
+                return ([[$name, "The attribute 'vmcpus', 'vmmemory' are needed to be specified.", 1]]);
+            }
+	    # FIX bug 3873 [FVT]DFM illegal action could work
+	    #
+
+	    if ($tmp_ent->{cpus} =~ /^(\d+)\/(\d+)\/(\d+)$/) {
+                unless ($1 <= $2 and $2 <= $3) {
+                    return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
+                }
+            } else {
+                return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
+            }
+            if ($tmp_ent->{memory} =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
+                my ($mmin, $mcur, $mmax);
+                if ($2 == "G" or $2 == '') {
+                    $mmin = $1 * 1024;
+                } 
+                if ($4 == "G" or $4 == '') {
+                    $mcur = $3 * 1024;
+                }
+                if ($6 == "G" or $6 == '') {
+                    $mmax = $5 * 1024;
+                }
+                unless ($mmin <= $mcur and $mcur <= $mmax) {
+                    return([[$name, "Parameter for 'vmmemory' is invalid", 1]]);
+                }
+                my $memsize = $memhash->{mem_region_size};
+                $mmin = int(($mmin + $memsize - 1) / $memsize);
+                $mcur = int(($mcur + $memsize - 1) / $memsize);
+                $mmax = int(($mmax + $memsize - 1) / $memsize);
+                $tmp_ent->{memory} = "$mmin/$mcur/$mmax";
+                $tmp_ent->{mem_region_size} = $memsize;
+            } else {
+                return([[$name, "Parameter for 'vmmemory' is invalid", 1]]);
+            }
+            
+            if (exists($tmp_ent->{physlots})) {
+                my @tmp_array = split ",",$tmp_ent->{physlots};
+                foreach (@tmp_array) {
+                    unless (/(0x\w{8})/i) {
+                        return([[$name, "Parameter:$_ for 'vmphyslots' is invalid", 1]]);
+                    }
+                }
+            }
+            if (exists($tmp_ent->{othersettings})) {
+                my @tmp_array = split ",",$tmp_ent->{othersettings};
+                foreach (@tmp_array) {
+                    unless (/^(bsr|hugepage):\d+$/) {
+                        return([[$name, "Parameter:$_ for 'vmothersetting' is invalid", 1]]);
+                    }
+                }
+            }
+            
+            if (exists($tmp_ent->{nics})) {
+                my @tmp_array = split ",",$tmp_ent->{nics};
+                foreach (@tmp_array) {
+                    unless (/^vlan\d+$/i) {
+                        return([[$name, "Parameter:$_ for 'vmnics' is invalid", 1]]);
+                    }
+                }
+            }
+
+
             if (exists($opt->{vios})) {
                 if (!exists($tmp_ent->{physlots})) {
                     my @phy_io_array = keys(%{$memhash->{bus}});
@@ -2060,65 +2332,58 @@ sub mkspeclpar {
                     $tmp_ent->{storage} = \@array;
                 }
             } else {
-                if (exists($tmp_ent->{storage}) and $tmp_ent->{storage} !~ /^[\w_-]*:\d+$/) {
-                    return ([[$name, "Parameter for 'vmstorage' is invalid", 1]]);
-                } elsif (exists($tmp_ent->{storage})) {
-                    if ($tmp_ent->{storage} =~ /([\w_-]*):(\d+)/) {
-                        my $vios = &find_lpar_id($request, @$d[3], $1);
-                        my $r_slotid = $2;
-                        if (!defined($vios)) {
-                            return ([[$name, "Cannot find lparid for Server lpar:$1"]]);
+                if (exists($tmp_ent->{storage})) {
+                    my @tmp_array = split ",",$tmp_ent->{storage};
+                    my $storage_array = undef;
+                    foreach (@tmp_array) {
+                        if (/([\w_-]*):(\d+)/) {
+                            my $vios = &find_lpar_id($request, @$d[3], $1);
+                            my $r_slotid = $2;
+                            if (defined($vios)) {
+                                push @$storage_array, "0,$vios,$r_slotid";
+                            } else {
+                                return ([[$name, "Cannot find lparid for Server lpar:$1"]]);
+                            }
+                        } else {
+                            return ([[$name, "Parameter for 'vmstorage' is invalid", 1]]);
                         }
-                        $tmp_ent->{storage} = ["0,$vios,$r_slotid"];
                     }
+                    $tmp_ent->{storage} = $storage_array;
+                    
                 }
             }
-            if (!defined($tmp_ent) ) {
-                return ([[$name, "Not find params", 1]]);
-            #} elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory}) || !exists($tmp_ent->{physlots})) {
-            } elsif (!exists($tmp_ent->{cpus}) || !exists($tmp_ent->{memory})) {
-                return ([[$name, "The attribute 'vmcpus', 'vmmemory' are needed to be specified.", 1]]);
-            }
-            if ($tmp_ent->{memory} =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
-                my $memsize = $memhash->{mem_region_size};
-                my $min = $1;
-                if ($2 == "G" or $2 == '') {
-                    $min = $min * 1024;
-                }
-                $min = $min/$memsize;
-                my $cur = $3;
-                if ($4 == "G" or $4 == '') {
-                    $cur = $cur * 1024;
-                }
-                $cur = $cur/$memsize;
-                my $max = $5;
-                if ($6 == "G" or $6 == '') {
-                    $max = $max * 1024;
-                }
-                $max = $max/$memsize;
-                $tmp_ent->{memory} = "$min/$cur/$max";
-            }
+
             $tmp_ent->{hyp_config_mem} = $memhash->{hyp_config_mem};
             $tmp_ent->{hyp_avail_mem} = $memhash->{hyp_avail_mem};
-            $tmp_ent->{huge_page} = "0/0/0"; 
-            $tmp_ent->{bsr_num} = "0";
             if (exists($tmp_ent->{othersettings}))  {
                 my $setting = $tmp_ent->{othersettings};
                 if ($setting =~ /hugepage:(\d+)/) {
                     my $tmp = $1;
-                    $tmp_ent->{huge_page} = "1/".$tmp."/".$tmp;
+                    if ($tmp >= 1) {
+                        $tmp_ent->{huge_page} = "1/".$tmp."/".$tmp;
+                    }
                 }
                 if ($setting =~ /bsr:(\d+)/) {
-                    $tmp_ent->{bsr_num} = $1;
+                    if ($1 >= 1) {
+                        $tmp_ent->{bsr_num} = $1;
+                    }
                 }
             }
             $tmp_ent->{phy_hea} = $memhash->{phy_drc_group_port};
             $tmp_ent->{logic_drc_phydrc} = $memhash->{logic_drc_phydrc};
             $values = &create_lpar($request, $name, $d, $tmp_ent); 
             push @result, $values;
+            #need to add update db here
+            my $rethash = query_cec_info_actions($request, $name, $d, 1, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
+            $lpar_hash{$name} = $rethash;     
+            $lpar_hash{$name}->{parent} = @$d[3];
+
             $name = undef;
             $d = undef;
         }
+    }
+    if (%lpar_hash) {
+        update_vm_db($request, \%lpar_hash);
     }
     return \@result;    
 }

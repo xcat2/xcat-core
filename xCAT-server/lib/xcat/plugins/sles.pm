@@ -957,6 +957,8 @@ sub mkinstall
         my $tmppkgdir=$pkgdir;
         my @srcdirs = split(",", $pkgdir);
         $pkgdir = $srcdirs[0];
+        # trim the "/" in /install/sles11.3/x86_64/
+        $pkgdir =~ s/\/$//;
         if( $pkgdir =~/^($installroot\/$os\/$arch)$/) {
             $srcdirs[0]="$pkgdir/1";
             $tmppkgdir=join(",", @srcdirs);
@@ -1073,6 +1075,14 @@ sub mkinstall
             {
 		$netserver = $ent->{nfsserver};
             }
+
+            if ($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               unless($netserver eq '!myipfn!'){
+                  my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($netserver);
+                  $netserver=$ip;
+               }
+            }
+
             my $httpprefix = $pkgdir;
 	    if ($installroot =~ /\/$/) { #must prepend /install/
 		$httpprefix =~ s/^$installroot/\/install\//;
@@ -1136,6 +1146,56 @@ sub mkinstall
             foreach (@dd_drivers) {
                 $kcmdline .= " dud=file:/cus_driverdisk/$_";
             }
+
+            #if site.managedaddressmode=static, specify the network configuration as kernel options 
+            #to avoid multicast dhcp
+            if($::XCATSITEVALS{managedaddressmode} =~ /static/){
+               my ($ipaddr,$hostname,$gateway,$netmask)=xCAT::NetworkUtils->getNodeNetworkCfg($node);
+               unless($ipaddr) { 
+                    $callback->(
+                        {
+                         error => [
+                             "cannot resolve the ip address of $node"
+                         ],
+                         errorcode => [1]
+                        }
+                        );
+               }
+               if($gateway eq '<xcatmaster>'){
+                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+               }
+               $kcmdline .=" hostip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
+
+
+                my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
+                my @nameserverARR=split (",",$nameservers{$node});
+                my @nameserversIP;
+                foreach (@nameserverARR)
+                {
+                   my $ip;
+                   if($_ eq '<xcatmaster>'){
+                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                   }else{
+                      (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
+                   }
+                   push @nameserversIP, $ip;
+
+                }
+
+               if(scalar @nameserversIP){
+                  $kcmdline .=" Nameserver=".join(",",@nameserversIP);
+               }
+
+               my $nd = xCAT::NetworkUtils->getNodeDomains([$node]);
+               my %nodedomains = %$nd;
+               my $domain=$nodedomains{$node};
+
+               $kcmdline .=" Domain=$domain ";
+           }            
+
+           
+
+ 
 
             if (defined $sent->{serialport})
             {

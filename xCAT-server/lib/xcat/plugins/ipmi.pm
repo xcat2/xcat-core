@@ -1332,7 +1332,7 @@ sub fpc_firmxfer_watch {
         return;
     }
     my $percent = 0;
-    if ($rsp->{data} and (length(@{$rsp->{data}}) > 0)) {
+    if ($rsp->{data} and (scalar(@{$rsp->{data}}) > 0)) {
         $percent = $rsp->{data}->[0];
     }
     #$callback->({sinfo=>"$percent%"});
@@ -2971,12 +2971,13 @@ sub parsefru {
         my $currsize;
 	if ($bytes->[$curridx] <= 5) { #don't even try to parse unknown stuff
 			#some records don't comply to any SPEC
-	        while (not $last) {
+	        while (not $last and $curridx < (scalar @$bytes)) {
 	            if ($bytes->[$curridx+1] & 128) {
 	                $last=1;
 	            }
 	            $currsize=$bytes->[$curridx+2];
-	            push @{$fruhash->{extra}},$bytes->[$curridx..$curridx+4+$currsize-1];
+	            push @{$fruhash->{extra}},@{$bytes}[$curridx..$curridx+4+$currsize-1];
+                $curridx += 5 + $currsize;
         	}
         }
     }
@@ -6318,13 +6319,17 @@ sub preprocess_request {
   if ($command eq "rpower") {
       my $subcmd=$exargs[0];
 			if($subcmd eq ''){
-	  		$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+			#$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+			#Above statement will miss error code, so replaced by the below statement
+			$callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
 	  		$request = {};
 				return 0;
 
 			}
       if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
-	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+	  #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+	  #Above statement will miss error code, so replaced by the below statement
+      $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
       }

@@ -16,6 +16,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use xCAT::Template;
 use xCAT::SvrUtils;
+use xCAT::Zone;
 #use Data::Dumper;
 use File::Basename;
 use Socket;
@@ -186,10 +187,16 @@ sub makescript {
   if($entries[0]) {
        $installroot = $entries[0];
   }
+  # Location of the customized template
   my $tmpl="$installroot/postscripts/mypostscript.tmpl";
-    
+  
+  # if not customized template use the default  
   unless ( -r $tmpl) {
        $tmpl="$::XCATROOT/share/xcat/templates/mypostscript/mypostscript.tmpl";
+  } else {  # using customized template
+     # need to update with new added exports for this release
+     addexports($tmpl,$callback);  
+     
   }
     
   unless ( -r "$tmpl") {
@@ -367,6 +374,16 @@ sub makescript {
       } 
       $cloudinfo_hash = getcloudinfo($cloud_module_name, $cloud_exists); 
   }
+
+  # see if we are using zones.  If we are then sshbetweennodes comes from the zone table not
+  # from the site table
+  my $usingzones;
+  if (xCAT::Zone->usingzones) {
+     $usingzones=1;
+  } else {
+     $usingzones=0;
+  }
+
  
   foreach my $n (@$nodes ) {
       $node = $n; 
@@ -477,9 +494,21 @@ sub makescript {
     # for #INCLUDE_POSTBOOTSCRIPTS_LIST#
     my $postbootscripts;
     $postbootscripts = getPostbootScripts($node, $osimgname, $script_hash);
+    
+    # if using zones then must go to the zone.sshbetweennodes
+    # else go to site.sshbetweennodes
+    my $enablesshbetweennodes;
+    my $zonename="\'\'";
+    if ($usingzones) {
+       $enablesshbetweennodes = enableSSHbetweennodeszones($node,$callback); 
+       my $tmpzonename = xCAT::Zone->getmyzonename($node,$callback); 
+       $zonename="\'";
+       $zonename .= $tmpzonename;
+       $zonename .="\'";
 
-    my $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
-
+    } else {  
+       $enablesshbetweennodes = enableSSHbetweennodes($node, \%::GLOBAL_SN_HASH, $groups_hash); 
+    }
     my @clients;
     my $cfgres;
     my $cloudres;
@@ -512,6 +541,7 @@ sub makescript {
   $inc =~ s/#CLOUDINFO_EXPORT#/$cloudres/eg; 
   
   $inc =~ s/\$ENABLESSHBETWEENNODES/$enablesshbetweennodes/eg; 
+  $inc =~ s/\$ZONENAME/$zonename/eg; 
   $inc =~ s/\$NSETSTATE/$nodesetstate/eg; 
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
@@ -566,6 +596,69 @@ sub makescript {
   }
 }
 
+#----------------------------------------------------------------------------
+
+=head3  addexports 
+
+        
+   As we change the default mypostscript.tmpl, this routine will update
+   and existing customized template with the information 
+     addexports($tmpl, $callback);
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub addexports 
+{
+
+    my $tmplfile = shift;
+    my $callback = shift;
+    # check for ZONENAME
+    my $cmd="cat $tmplfile \| grep ZONENAME";
+    my $result = xCAT::Utils->runcmd($cmd, -1); 
+    if ($::RUNCMD_RC != 0) {  # ZONENAME not in the customized template
+      $cmd = "cp $tmplfile $tmplfile.backup";  # backup the original
+      xCAT::Utils->runcmd($cmd, -1);
+      my $insertstr='ZONENAME=$ZONENAME';
+      my $insertstr2="export ZONENAME";
+
+      $cmd = "awk '{gsub(\"export ENABLESSHBETWEENNODES\",\"export ENABLESSHBETWEENNODES\\n$insertstr\\n$insertstr2 \"); print}'   $tmplfile > $tmplfile.xcat";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " Update of the $tmplfile file failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd = "cp -p  $tmplfile.xcat  $tmplfile  ";  # copy back the modified file 
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+         return 1;
+      }
+      $cmd =  "rm  $tmplfile.xcat ";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+
+         my $rsp;
+         $rsp->{data}->[0] =
+          " $cmd failed.";
+         xCAT::MsgUtils->message("SE", $rsp, $callback);
+      }
+
+    }
+    return 0; 
+}
 sub getservicenode
 {
     # reads all nodes from the service node table
@@ -792,7 +885,7 @@ sub getsshbetweennodes
     Error:
         none
     Example:
-        my $enable = xCAT::TableUtils->enableSSH($node);
+        my $enable = xCAT::TableUtils->enableSSHbetweennodes($node,$sn_hash, $groups_hash);
     Comments:
 
 =cut
@@ -816,6 +909,48 @@ sub enableSSHbetweennodes
  
     return $result;
 }
+
+
+#-------------------------------------------------------------------------------
+
+=head3  enableSSHbetweennodeszones 
+    Description:  return how to fill in the ENABLESSHBETWEENNODES  export in the mypostscript file
+                  based on the setting in the zone table sshbetweennodes attribute
+    Arguments:
+     $node
+     $callback
+    Returns:
+       1 = enable ssh
+       0 = do not enable ssh 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $enable = xCAT::TableUtils->enableSSHbetweennodeszones($node);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub enableSSHbetweennodeszones
+{
+
+    my $node   = shift;
+    my $callback   = shift;
+    my $result;
+  
+    my $enablessh=xCAT::Zone->enableSSHbetweennodes($node,$callback);
+    if ($enablessh == 1) {
+       $result = "'YES'";
+    } else {
+       $result = "'NO'";
+    }
+ 
+    return $result;
+}
+
 
 
 
@@ -1259,7 +1394,9 @@ sub  collect_all_attribs_for_tables_in_template
                                   $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $ent->{$node}->[0]->{$attrib};
                                   
                                   #for noderes.xcatmaster
-                                  if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ && ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}))
+                                  if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ && 
+                                     ( ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
+                                       $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} == ""        ) )
                                   {
                                       my $value;
                                       $value = xCAT::NetworkUtils->my_ip_facing($node);

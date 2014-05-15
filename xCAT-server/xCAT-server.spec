@@ -16,6 +16,11 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 AutoReqProv: no
 %endif
 
+%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
+
+%define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
+%define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
+
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
 %ifos linux
@@ -24,7 +29,15 @@ Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser
 Obsoletes: atftp-xcat
 %endif
 
-%define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
+# The aix rpm cmd forces us to do this outside of ifos type stmts
+%if %notpcm
+%ifos linux
+%ifnarch s390x
+# PCM does not use or ship grub2-xcat
+#Requires: grub2-xcat
+%endif
+%endif
+%endif
 
 %if %fsm
 # nothing needed here
@@ -152,7 +165,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/sbin/stopstartxcatd
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/blade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpblade.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/hpilo.pm
-#rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/ipmi.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/nodediscover.pm
 #rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
@@ -308,14 +321,24 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
+# PCM does not need xcatws.cgi
+# xcatws.cgi causes xCAT-server requires perl-JSON, which is not shipped with PCM
+%if %pcm
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
+%endif
+
 %if %fsm
 %else
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+%if %notpcm
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+%endif
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2 >>  $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 
 echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+%if %notpcm
 echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+%endif
 cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
 %endif
 rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2

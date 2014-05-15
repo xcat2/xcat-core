@@ -881,6 +881,42 @@ sub check_options
         xCAT::MsgUtils->message("I", $rsp, $callback, 0);
         return 0;
     }
+    # if not help and not -n,  dhcpd needs to be running
+    if (!($opt->{h})&& (!($opt->{n}))) {
+     if (xCAT::Utils->isLinux()) {
+       my $DHCPSERVER="dhcpd";
+       if( -e "/etc/init.d/isc-dhcp-server" ){
+              $DHCPSERVER="isc-dhcp-server";
+       } 
+
+       my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
+       if ($::RUNCMD_RC != 0)  { # not running
+          my $rsp = {};
+          $rsp->{data}->[0] = "$DHCPSERVER is not running.  Run service $DHCPSERVER start and rerun your command.";
+          xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+          return 1;
+       }
+      } else {   # AIX
+          my @output = xCAT::Utils->runcmd("lssrc -s dhcpsd ", -1);
+          if ($::RUNCMD_RC != 0)  { # not running
+             my $rsp = {};
+             $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd  and rerun your command.";
+             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+             return 1;
+          } else {  # check the status
+              # the return output varies, sometime status is the third sometimes the 4th col 
+              if (grep /inoperative/, @output) 
+              {
+                 my $rsp = {};
+                 $rsp->{data}->[0] = "dhcpsd is not running. Run startsrc -s dhcpsd and rerun your command.";
+                 xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                 return 1;
+
+              }
+          }
+       }
+    }
+     
 
     # check to see if -q is listed with any other options which is not allowed
     if ($opt->{q} and ($opt->{a} || $opt->{d} || $opt->{n} || $opt->{r} || $opt->{l} || $statements)) {
@@ -956,7 +992,7 @@ sub preprocess_request
     if ( $rc ) {
         return [];
     }
- 
+    
     my $snonly=0;
     my @entries =  xCAT::TableUtils->get_site_attribute("disjointdhcps");
     my $t_entry = $entries[0];
@@ -1442,7 +1478,7 @@ sub process_request
                     next;
                 }
             }
-            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\d+|em\d+)/)
+            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\S*\d+|em\S*\d+)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
                 $activenics{$ent[1]} = 1;
             }

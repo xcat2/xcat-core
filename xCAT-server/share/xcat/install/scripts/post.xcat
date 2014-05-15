@@ -39,8 +39,6 @@ do
      	 export USEOPENSSLFORXCAT
          XCATSERVER=$i:3001
          export XCATSERVER
-         mv $i/postscripts /xcatpost
-         rm -rf $i
 
          # If mypostscript doesn't exist, we will get it through getpostscript.awk
          if [ ! -x /xcatpost/mypostscript ]; then
@@ -184,9 +182,10 @@ addsiteyum
 /xcatpost/mypostscript
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
 sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
-if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
-	updateflag.awk $MASTER 3002
-fi
+
+#the following command should always be run to prevent infinite installation loops
+updateflag.awk $MASTER 3002
+
 cd /
 #rm -Rf /xcatpost
 #rm -f /xcatpost/mypostscript

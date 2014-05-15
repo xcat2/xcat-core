@@ -19,6 +19,7 @@ use File::Path;
 use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
+use Data::Dumper;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
@@ -696,19 +697,26 @@ sub get_nic_ip
         #      Base address:0x2600 Memory:fbfe0000-fc0000080
         #
         # eth1 ...
+        # Redhat7
+        #eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        # inet 10.1.0.178  netmask 255.255.0.0  broadcast 10.1.255.255
         #
         ##############################################################
         my @adapter= split /\n{2,}/, $result;
         foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK / ) and
-                   $_ =~ /UP / and
-                   $_ =~ /$mode / ) {
+            if ( !($_ =~ /LOOPBACK/ ) and
+                   $_ =~ /UP( |,|>)/ and 
+                   $_ =~ /$mode/ ) {
                 my @ip = split /\n/;
                 for my $ent ( @ip ) {
                     if ($ent =~ /^(eth\d|ib\d|hf\d)\s+/) {
                         $nic = $1;
-                    }    
-                    if ( $ent =~ /^\s*inet addr:\s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                    }   
+                    if ($ent =~ /^(eth\d:|ib\d:|hf\d:)\s+/) {
+                        $nic = $1;
+                    }   
+                    $ent=~ s/addr://;   # works for Redhat7 also
+                    if ( $ent =~ /^\s*inet \s*(\d+\.\d+\.\d+\.\d+)/ ) {
                         $iphash{$nic} = $1; 
                         next;
                     }
@@ -1620,8 +1628,10 @@ sub gethost_ips
             else
             {
                 my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-                @ip = split(":", $addr1);
-                push @ipaddress, $ip[1];
+                #@ip = split(":", $addr1);
+                #push @ipaddress, $ip[1];
+                $addr1 =~ s/.*://;
+                push @ipaddress, $addr1;
             }
         }
         else
@@ -1981,6 +1991,108 @@ sub isIpaddr
     }
 }
 
+
+#-------------------------------------------------------------------------------
+=head3  getSubnetGateway 
+    Description:
+        Get gateway from the networks table of the specified net. 
+
+    Arguments:
+        net: the net, ie. the "net" field of the networks table
+    Returns:
+        Return a string, of the gateway
+        undef - Failed to get the gateway
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $gateway = xCAT::NetworkUtils::getSubnetGateway('192.168.1.0');
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getSubnetGateway
+{
+   my $netname=shift;
+   if( $netname =~ /xCAT::NetworkUtils/)
+   {
+      $netname=shift;
+   }
+ 
+   my $gateway=undef;
+   my $nettab = xCAT::Table->new("networks");
+   unless($nettab) { die "No entry defined in networks"; }
+   my @nets = $nettab->getAllAttribs('net','gateway'); 
+   foreach(@nets)
+   {
+      if("$_->{net}" eq "$netname")
+      {
+         $gateway = $_->{gateway};
+         last;
+      }
+   }
+   
+   return $gateway; 
+} 
+
+
+#-------------------------------------------------------------------------------
+=head3  getNodeNameservers 
+    Description:
+        Get nameservers of  specified nodes. 
+        The priority: noderes.nameservers > networks.nameservers > site.nameservers
+    Arguments:
+        node: node name list
+    Returns:
+        Return a hash ref, of the $nameservers{$node}
+        undef - Failed to get the nameservers
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $nameservers = xCAT::NetworkUtils::getNodeNameservers(\@node);
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getNodeNameservers{
+    my $nodes=shift;
+    if( $nodes =~ /xCAT::NetworkUtils/)
+    {
+      $nodes=shift;
+    }
+    my @nodelist = @$nodes;
+    my %nodenameservers;
+    my $nrtab = xCAT::Table->new('noderes',-create=>0);
+    my %nrhash = %{$nrtab->getNodesAttribs(\@nodelist,['nameservers'])};
+    
+    my $nettab = xCAT::Table->new("networks");
+    my %nethash = xCAT::DBobjUtils->getNetwkInfo( \@nodelist );
+
+    my @nameservers = xCAT::TableUtils->get_site_attribute("nameservers");
+    my $sitenameservers=$nameservers[0];
+
+
+    foreach my $node (@nodelist){
+       if ($nrhash{$node} and $nrhash{$node}->[0] and $nrhash{$node}->[0]->{nameservers})
+       {
+           $nodenameservers{$node}=$nrhash{$node}->[0]->{nameservers};
+       }elsif($nethash{$node}{nameservers})
+       {
+           $nodenameservers{$node}=$nethash{$node}{nameservers};
+       }elsif($sitenameservers)
+       {
+           $nodenameservers{$node}=$sitenameservers;
+       }
+    }
+
+    return \%nodenameservers;
+}
+
 #-------------------------------------------------------------------------------
 
 =head3   getNodeNetworkCfg 
@@ -2007,17 +2119,23 @@ sub isIpaddr
 sub getNodeNetworkCfg
 {
     my $node = shift;
-
+    if( $node =~ /xCAT::NetworkUtils/)
+    {
+       $node =shift;
+    }  
+ 
     my $nets = xCAT::NetworkUtils::my_nets();
     my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
+    my $gateway = undef;
     for my $net (keys %$nets)
     {
         my $netname;
         ($netname,$mask) = split /\//, $net;
+        $gateway=xCAT::NetworkUtils::getSubnetGateway($netname);
         last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
     }
-    return ($ip, $node, undef, xCAT::NetworkUtils::formatNetmask($mask,1,0));
+    return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,1,0));
 }
 
 #-------------------------------------------------------------------------------

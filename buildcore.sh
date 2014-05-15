@@ -41,11 +41,13 @@ UPLOADUSER=bp-sawyers
 FRS=/home/frs/project/x/xc/xcat
 
 # These are the rpms that should be built for each kind of xcat build
-ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-OpenStack"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-OpenStack xCAT-SoftLayer xCAT-OpenStack-baremetal"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
-PCMBUILD="xCAT"
-PCMLINK="perl-xCAT xCAT-client xCAT-server xCAT-buildkit xCAT-genesis-scripts-x86_64"
+# xCAT has PCM specific configuration - conserver-xcat, syslinux-xcat
+# xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
+PCMBUILD="xCAT xCAT-server"
+PCMLINK="perl-xCAT xCAT-client xCAT-buildkit xCAT-genesis-scripts-x86_64"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
@@ -237,10 +239,11 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer; do
 	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi		# do not build xCAT-SoftLayer on aix
 	if $GREP $rpmname $GITUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		maker $rpmname
@@ -272,19 +275,19 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
-for rpmname in xCAT xCATsn xCAT-OpenStack; do
+for rpmname in xCAT xCATsn xCAT-OpenStack xCAT-OpenStack-baremetal; do
 	#if [ "$EMBED" = "zvm" ]; then break; fi
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
 		UPLOAD=1
 		ORIGFAILEDRPMS="$FAILEDRPMS"
 		if [ "$OSNAME" = "AIX" ]; then
-			if [ "$rpmname" = "xCAT-OpenStack" ]; then continue; fi 		# do not bld openstack on aix
+			if [ "$rpmname" = "xCAT-OpenStack" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" ]; then continue; fi 		# do not bld openstack on aix
 			./makerpm $rpmname "$EMBED"
 			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
 		else
 			for arch in x86_64 ppc64 s390x; do
-				if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ]; then continue; fi 		# only bld openstack for x86_64 for now
+				if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi 		# only bld openstack for x86_64 for now
 				./makerpm $rpmname $arch "$EMBED"
 				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
 			done
@@ -496,6 +499,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ];
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
+	rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
 	i=0
 	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
 	do : ; done

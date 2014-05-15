@@ -1,0 +1,236 @@
+#!/usr/bin/perl
+
+# Copy the initrd, kernel, params, and static IP info to nodes, so they can net install
+# even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working
+# OS is on the node.  This script is primarily meant to be used in the softlayer environment.
+
+#todo: site attr for using static ip?
+
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+
+# Globals - these are set once and then only read.
+my $HELP;
+my $VERBOSE;
+my $WAITTIME;
+my $NOAUTOINST;
+
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [-w <waittime>] <noderange>\n\n";
+   	if (!$exitcode) {
+   		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
+		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
+		print "OS is on the node, that you've run nodeset for these nodes, and that all of the nodes\n";
+		print "are using the same osimage.\n";
+   	}
+	exit $exitcode;
+};
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
+
+if ($HELP) { $usage->(0); }
+if (scalar(@ARGV) != 1) { $usage->(1); }
+if (!defined($WAITTIME)) { $WAITTIME = 75; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
+my $noderange = $ARGV[0];
+
+my %bootparms = getBootParms($noderange);
+
+copyFilesToNodes($noderange, \%bootparms);
+
+updateGrubOnNodes($noderange, \%bootparms);
+
+if (!$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
+
+exit(0);
+
+
+# Query the db for the kernel, initrd, and kcmdline attributes of the 1st node in the noderange
+sub getBootParms {
+	my $nr = shift @_;
+	my %bootparms;
+	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline");
+
+	# the attributes can be displayed in a different order than requested, so need to grep for them
+	my @gresults;
+	foreach my $a (qw(kernel initrd kcmdline)) {
+		my $attr = "bootparams.$a";
+		@gresults = grep(/^\S+:\s+$attr:/, @output);
+		if (!scalar(@gresults)) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
+		# for now just pick the 1st one. They should all be the same, except for the node name in kcmdline
+		chomp($gresults[0]);
+		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
+		$bootparms{$a} = $gresults[0];
+		if ($a eq 'kcmdline') { $bootparms{$a} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|; }
+	}
+
+	# get the mgmt node cluster-facing ip addr
+	@output = runcmd('lsdef -t site -i master -c');
+	chomp($output[0]);
+	my ($junk, $ip) = split(/=/, $output[0]);
+	$bootparms{mnip} = $ip;
+
+	verbose(Dumper(\%bootparms));
+	return %bootparms;
+}
+
+
+# Copy the kernel and initrd to the nodes
+# Args: noderange, reference to the bootparms hash
+sub copyFilesToNodes {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+	foreach my $a (qw(kernel initrd)) {
+		my $file = $bootparms->{$a};
+		my $localfile = "/tftpboot/$file";
+		# for the 
+		my $remotefile = '/boot/' . remoteFilename($file);
+		print "Copying $localfile to $nr:$remotefile\n";
+		runcmd("xdcp $nr -p $localfile $remotefile");
+	}
+}
+
+
+# Form the remote file name, using the last 2 parts of the path, separated by "-"
+sub remoteFilename {
+	my $f = shift @_;
+	$f =~ s|^.*/([^/]+)/([^/]+)$|$1-$2|;
+	return $f;
+}
+
+
+# Run the modifygrub script on the nodes to update the grub config file
+# Args: noderange, reference to the bootparms hash
+sub updateGrubOnNodes {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+	my $vtxt = ($VERBOSE ? '-v' : '');
+	my @output = runcmd('which modifygrub');
+	my $modifygrub = $output[0];
+	chomp($modifygrub);
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME " . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
+	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
+	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
+	# is to quote each of the outer single quotes with double quotes.
+	$cmd .= q("'"') . $bootparms->{kcmdline} . q('"'");
+	$cmd .= ' ' . $bootparms->{mnip};
+	print "Running modifygrub on $nr to update the grub configuration.\n";
+	runcmd($cmd);
+}
+
+
+# Hack the autoinst files to wait in a key spot to make them work even tho it takes
+# the NICs almost a min before they can transmit after a state change.
+#todo: this has only been tested with SLES nodes
+sub modifyAutoinstFiles {
+	my $nr = shift @_;
+	my $bootparms = shift @_;
+
+	# expand the noderange into a list of nodes
+	my @nodes = runcmd("nodels $nr");
+	chomp(@nodes);
+
+	# Edit each file to have chroot.sles insert a wait at the end of /etc/init.d/network
+	# this finds the end of boot.sh script (which is chroot.sles)
+	my $search = '\n\]\]>\s*</source>\s*</script>\s*</chroot-scripts>';
+	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
+	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
+	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escape for sed
+	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 60 \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .'; do echo i=\$xcati ; done; sleep 10';
+	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
+	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
+	# finally create the perl replace string that will be used to modify the autoinst file
+	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
+
+	# now actually update the file
+	print "Updating /install/autoinst files.\n";
+	foreach my $n (@nodes) {
+		my $f = "/install/autoinst/$n";
+		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
+		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
+	}
+}
+
+
+# this is like multi-line sed replace function
+# Args: filename, search-string, replace-string
+sub sed {
+	my ($file, $search, $replace, %options) = @_;
+	#my $opts = 's';
+	#if ($options{global}) { $opts .= 'g'; }
+
+	# open the file for reading
+	verbose("reading $file");
+	open(FILE, $file) || die "Error: can not open file $file for reading: $!\n";
+	my $lines;
+	while (<FILE>) { $lines .= $_; }
+	#verbose('file length is '.length($lines));
+	close FILE;
+
+	# we also need to look for this string 1st
+	my $replacecopy = $replace;				# a search string can't have special chars in it
+	$replacecopy =~ s/(\W)/\\$1/g;			# so escape all of the meta characters
+	#print "replacecopy=$replacecopy\n";
+	# check to see if the replace string is already in the file
+	if ($lines =~ m/$replacecopy/s) {
+		print "$file did not need updating.\n";
+		return 1;
+	}
+
+	# search/replace and see if there were any matches
+	my $matches;
+	if ($options{mode} eq 'insertbefore') { $matches = $lines =~ s/($search)/\n$replace\n$1/s; }
+	elsif ($options{mode} eq 'insertafter') { $matches = $lines =~ s/($search)/$1\n$replace\n/s; }
+	elsif ($options{mode} eq 'replace') { $matches = $lines =~ s/$search/$replace/s; }
+	else { die "Internal error: don't suppor sed mode of $options{mode}.\n"; }
+
+
+	# write file if necessary
+	if ($matches) {
+		verbose("updating $file");
+		open(FILE, '>', $file) || die "Error: can not open file $file for writing: $!\n";
+		print FILE $lines;
+		close FILE;
+	}
+	return $matches;
+}
+
+
+# Pring msg only if -v was specified
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+
+# Run a command.  If called in the context of return an array, it will capture the output
+# of the cmd and return it.  Otherwise, it will display the output to stdout.
+# If the cmd has a non-zero rc, this function will die with a msg.
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc;
+
+    $cmd .= ' 2>&1' ;
+    verbose($cmd);
+
+   	my @output;
+   	if (wantarray) {
+		@output = `$cmd`;
+		$rc = $?;
+	}
+	else {
+		system($cmd);
+		$rc = $?;
+	}
+
+    if ($rc) {
+        $rc = $rc >> 8;
+        if ($rc > 0) { die "Error: rc $rc return from cmd: $cmd\n"; }
+        else { die "Error: system error returned from cmd: $cmd\n"; }
+    }
+    elsif (wantarray) { return @output; }
+}

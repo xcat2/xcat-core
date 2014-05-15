@@ -368,7 +368,7 @@ sub parse_args {
             ###################################
             my (@octets) = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
             if ( scalar(@octets) != 4 ) {
-                return( [1,"Invalid IP address: $ip"] );
+                return( usage("Invalid IP address: $ip") );
             }
             foreach my $octet ( @octets ) {
                 if (( $octet < 0 ) or ( $octet > 255 )) {

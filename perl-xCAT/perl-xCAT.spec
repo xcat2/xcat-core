@@ -23,6 +23,8 @@ Provides: perl-xCAT = %{epoch}:%{version}
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
 Includes xCAT::Table, xCAT::NodeRange, among others.
 
+%define gitinfo %(git log -n 1 | head -n 1 | cut -f 2 -d ' ')
+
 %define zvm %(if [ "$zvm" = "1" ];then echo 1; else echo 0; fi)
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
@@ -36,7 +38,7 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 %if %fsm
 %else
 # Modify the Version() function in xCAT/Utils.pm to automatically have the correct version
-./modifyUtils %{version}
+./modifyUtils %{version} %{gitinfo}
 
 # Build the pod version of the man pages for each DB table.  It puts them in the man5 and man7 subdirs.
 # Then convert the pods to man pages and html pages.

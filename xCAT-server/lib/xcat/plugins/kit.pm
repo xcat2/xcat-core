@@ -3563,8 +3563,7 @@ sub create_error_response {
 
 #-----------------------------------------------------------------------------
 sub lskit_processargs {
-
-    if ( defined( @{$::args} ) ) {
+    if ( defined ($::args) && @{$::args} ){
         @ARGV = @{$::args};
     }
 
@@ -3665,7 +3664,7 @@ sub lskit_processargs {
 #-----------------------------------------------------------------------------
 sub lskitcomp_processargs {
 
-    if ( defined( @{$::args} ) ) {
+    if ( defined ($::args) && @{$::args} ){
         @ARGV = @{$::args};
     }
 
@@ -3758,7 +3757,7 @@ sub lskitcomp_processargs {
 #-----------------------------------------------------------------------------
 sub lskitdeployparam_processargs {
 
-    if ( defined( @{$::args} ) ) {
+    if ( defined ($::args) && @{$::args} ){
         @ARGV = @{$::args};
     }
 

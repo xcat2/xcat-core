@@ -42,12 +42,16 @@ download_postscripts()
 	return 1;
     fi
 
-    if [ -f /opt/xcat/xcatinfo ]; then
-       INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
-    fi
+    # Do not override the parameter --installdir
     if [ -z "$INSTALLDIR" ]; then
-    INSTALLDIR="/install"
+        if [ -f /opt/xcat/xcatinfo ]; then
+           INSTALLDIR=`grep 'INSTALLDIR' /opt/xcat/xcatinfo |cut -d= -f2`
+        fi
+        if [ -z "$INSTALLDIR" ]; then
+            INSTALLDIR="/install"
+        fi
     fi
+
     max_retries=5
     retry=0
     rc=1  # this is a fail return 

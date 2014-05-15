@@ -380,7 +380,7 @@ sub processArgs
 {
     my $gotattrs = 0;
 
-    if (defined(@{$::args})) {
+   if ( defined ($::args) && @{$::args} ) {
         @ARGV = @{$::args};
     } else {
         if ($::command eq "lsdef") {
@@ -391,8 +391,9 @@ sub processArgs
             return 2;
         }
     }
-    if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
-    {
+    if ( defined ($::args) && @{$::args} ) {
+      if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+      {
         if ($::command eq "lsdef") {
             push @ARGV, "-t";
             push @ARGV, "node";
@@ -400,6 +401,7 @@ sub processArgs
         } else {
             return 2;
         }
+      }
     }
 
     if ($::command eq "lsdef") {
@@ -538,7 +540,7 @@ sub processArgs
 
     # --nics is the equivalent of -i nicips,nichostnamesuffixes...
     if ($::opt_nics) {
-        $::opt_i="nicips,nichostnamesuffixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
+        $::opt_i="nicips,nichostnamesuffixes,nichostnameprefixes,nictypes,niccustomscripts,nicnetworks,nicaliases";
     }
 
     # -i and -s cannot be used together
@@ -622,7 +624,8 @@ sub processArgs
 
             # if it has an "=" sign its an attr=val - we hope
             #   - this will handle "attr= "
-            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+            # The attribute itself might contain "space", like "nics.Local Connection Adapter 1" on windows
+            my ($attr, $value) = $a =~ /^\s*(.*?)\s*=\s*(\S*.*)$/;
             if (!defined($attr) || !defined($value))
             {
                 my $rsp;
@@ -644,7 +647,7 @@ sub processArgs
         my $nicattrs = 0;
         foreach my $kattr (keys %::ATTRS)
         {
-            if ($kattr =~ /^nic\w+\.\w+$/)
+            if ($kattr =~ /^nic\w+\..*$/)
             {
                 $nicattrs = 1;
             }
@@ -850,7 +853,7 @@ sub processArgs
                 foreach my $dattr (@dispattrs)
                 {
                     # lsdef -t node -h -i nicips.eth0
-                    if($dattr =~ /^(nic\w+)\.\w+$/)
+                    if($dattr =~ /^(nic\w+)\..*$/)
                     {
                         $dattr = $1;
                     }
@@ -1148,7 +1151,7 @@ sub processArgs
         my $i = 0;
         for ($i=0; $i < (scalar @::AttrList) ; $i++ )
         {
-            if($::AttrList[$i] =~ /^(nic\w+)\.(\w+)$/)
+            if($::AttrList[$i] =~ /^(nic\w+)\.(.*)$/)
             {
                 $::AttrList[$i] = $1; 
                 push @{$::NicsAttrHash{$::AttrList[$i]}}, $2;
@@ -1306,7 +1309,7 @@ sub defmk
             {
                 my $attrorig = $attr;
                 # nicips.eth0 => nicips
-                if ($attr =~ /^(nic\w+)\.\w+$/)
+                if ($attr =~ /^(nic\w+)\..*$/)
                 {
                     $attr = $1;
                 }
@@ -1950,7 +1953,7 @@ sub defch
             {
                 my $attrorig = $attr;
                 # nicips.eth0 => nicips
-                if ($attr =~ /^(nic\w+)\.\w+$/)
+                if ($attr =~ /^(nic\w+)\..*$/)
                 {
                     $attr = $1;
                 }
@@ -2465,15 +2468,21 @@ sub defch
 
             #  give results
             my $rsp;
-            $rsp->{data}->[0] =
-              "The database was updated for the following objects:";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            my $nodenum = scalar(keys %::FINALATTRS);
+            if ($nodenum) {
+                $rsp->{data}->[0] =
+                  "The database was updated for the following objects:";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
 
-            my $n = 1;
-            foreach my $o (sort(keys %::FINALATTRS))
-            {
-                $rsp->{data}->[$n] = "$o\n";
-                $n++;
+                my $n = 1;
+                foreach my $o (sort(keys %::FINALATTRS))
+                {
+                    $rsp->{data}->[$n] = "$o\n";
+                    $n++;
+                }
+            } else {
+                $rsp->{data}->[0] = 
+                "No database was updated";
             }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
@@ -2481,8 +2490,13 @@ sub defch
         {
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
-            $rsp->{data}->[0] =
-              "$nodenum object definitions have been created or modified.";
+            if ($nodenum) {
+                $rsp->{data}->[0] =
+                  "$nodenum object definitions have been created or modified.";
+            } else {
+               $rsp->{data}->[0] =
+                  "No object definitions have been created or modified.";
+            }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
@@ -2630,6 +2644,9 @@ sub setFINALattrs
     {
         # special case for the nic* attributes
         # merge nic*.eth0, nic*.eth1
+        unless(exists($::CLIATTRS{$objname})) {
+            next;
+        }
         if ($::CLIATTRS{$objname}{objtype} eq 'node')
         {
             # Even if only the nicips.eth0 is specified with CLI,
@@ -2638,7 +2655,7 @@ sub setFINALattrs
             my %tmphash = ();
             foreach my $nodeattr (keys %{$::CLIATTRS{$objname}})
             {
-                if ($nodeattr =~ /^(nic\w+)\.\w+$/)
+                if ($nodeattr =~ /^(nic\w+)\..*$/)
                 {
                     my $tmpnicattr = $1;
                     if (!defined($tmphash{$tmpnicattr}))
@@ -3411,7 +3428,7 @@ sub defls
                     my $rsp;
                     $rsp->{data}->[0] =
                       "Could not find an object named \'$obj\' of type \'$type\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                     next;
                 }
              }
@@ -4027,7 +4044,7 @@ sub defmk_usage
     $rsp->{data}->[4] =
       "      [-f | --force] [noderange] [attr=val [attr=val...]]";
     $rsp->{data}->[5] = 
-      "      [-u provmethod=<install|netboot|statelite> profile=<xxx> [attr=value]]\n";
+      "      [-u provmethod=<install|netboot|statelite> profile=<xxx> [osvers=value] [osarch=value]]\n";
     $rsp->{data}->[6] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 7;
@@ -4077,7 +4094,7 @@ sub defch_usage
     $rsp->{data}->[5] =
       "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
     $rsp->{data}->[6] = 
-      "    [-u [provmethod=<install|netboot|statelite>]|[profile=<xxx>]|[attr=value]]";
+      "    [-u [provmethod=<install|netboot|statelite>]|[profile=<xxx>]|[osvers=value]|[osarch=value]]";
     $rsp->{data}->[7] =
       "\nThe following data object types are supported by xCAT.\n";
     my $n = 8;
