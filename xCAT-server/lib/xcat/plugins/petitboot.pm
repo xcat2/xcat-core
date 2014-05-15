@@ -10,6 +10,10 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 my %usage = (
     "nodeset" => "Usage: nodeset <noderange> osimage[=<imagename>]",
 );
+
+my $httpmethod="http";
+my $httpport = "80";
+
 sub handled_commands {
   return {
     nodeset => "noderes:netboot"
@@ -79,7 +83,21 @@ sub setstate {
   my %nrhash = %{shift()};
   my $linuximghash = shift();
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if ($kern->{kcmdline} =~ /!myipfn!/) {
+   #my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir','xcatmaster','nfsserver', 'servicenode']);
+  if ($kern->{kernel} !~ /^$tftpdir/) {
+      my $nodereshash = $nrhash{$node}->[0];
+      my $installsrv;
+      if ($nodereshash and $nodereshash->{nfsserver} ) {
+          $installsrv = $nodereshash->{nfsserver};
+      } elsif ($nodereshash->{xcatmaster}) {
+          $installsrv = $nodereshash->{xcatmaster};
+      } else {
+          $installsrv = '!myipfn!';
+      }
+      $kern->{kernel} = "$httpmethod://$installsrv:$httpport$tftpdir/".$kern->{kernel};
+      $kern->{initrd} = "$httpmethod://$installsrv:$httpport$tftpdir/".$kern->{initrd};
+  }
+  if ($kern->{kcmdline} =~ /!myipfn!/ or $kern->{kernel} =~ /!myipfn!/) {
       my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
       unless ($ipfn) {
           my $servicenodes = $nrhash{$node}->[0];
@@ -118,6 +136,8 @@ sub setstate {
           $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
       }
   }
+
+
   if ($kern->{addkcmdline}) {
       $kern->{kcmdline} .= " ".$kern->{addkcmdline};
   }
@@ -303,6 +323,8 @@ sub process_request {
   my $command  = $request->{command}->[0];
   %breaknetbootnodes=();
   %normalnodes=();
+  if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
+  if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
 
   my @args;
   my @nodes;
@@ -384,11 +406,9 @@ sub process_request {
   my $chaintab=xCAT::Table->new('chain',-create=>1);
   my $chainhash=$chaintab->getNodesAttribs(\@nodes,['currstate']);
   my $noderestab=xCAT::Table->new('noderes',-create=>1);
-  my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir']);
+  my $nodereshash=$noderestab->getNodesAttribs(\@nodes,['tftpdir','xcatmaster','nfsserver', 'servicenode']);
   my $mactab=xCAT::Table->new('mac',-create=>1);
   my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
-  my $nrtab=xCAT::Table->new('noderes',-create=>1);
-  my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode']);
   my $typetab=xCAT::Table->new('nodetype',-create=>1);
   my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod','arch','profile']);
   my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
@@ -415,7 +435,7 @@ sub process_request {
       my $linuximghash = $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
      
 
-      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nrhash,$linuximghash);
+      ($rc,$errstr) = setstate($_,$bphash,$chainhash,$machash,$tftpdir,$nodereshash,$linuximghash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;

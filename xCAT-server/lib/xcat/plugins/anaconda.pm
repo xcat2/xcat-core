@@ -1539,9 +1539,9 @@ sub mkinstall
                 foreach(@addfiles){
                     $kcmdline .= " --- $rtftppath/$_";
                 }
-            }elsif ($pkvm) {
-                $k = "$httpmethod://$instserver:$httpport$tftppath/vmlinuz";
-                $i = "$httpmethod://$instserver:$httpport$tftppath/initrd.img";
+            #}elsif ($pkvm) {
+            #    $k = "$httpmethod://$instserver:$httpport$tftppath/vmlinuz";
+            #    $i = "$httpmethod://$instserver:$httpport$tftppath/initrd.img";
             }else{
                     $k = "$rtftppath/vmlinuz";
                     $i = "$rtftppath/initrd.img";
