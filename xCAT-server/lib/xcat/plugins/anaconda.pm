@@ -662,7 +662,11 @@ sub mknetboot
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
                 }
             } else {
-                $kcmdline =  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                if (-r "$rootimgdir/rootimg-statelite.gz.metainfo") {
+                    $kcmdline =  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz.metainfo STATEMNT=";
+                } else {
+                    $kcmdline =  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg-statelite.gz STATEMNT=";
+                }
             }
 
             # add support for subVars in the value of "statemnt"
@@ -724,8 +728,13 @@ sub mknetboot
             $kcmdline .= "NODE=$node ";
         }
         else {
-            $kcmdline =
-              "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
+            if (-r "$rootimgdir/rootimg.$suffix.metainfo") {
+                $kcmdline =
+                  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix.metainfo ";
+            } else {
+                $kcmdline =
+                  "imgurl=$httpmethod://$imgsrv:$httpport/$rootimgdir/rootimg.$suffix ";
+            }
               $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
             $kcmdline .= "NODE=$node ";
             # add flow control setting
