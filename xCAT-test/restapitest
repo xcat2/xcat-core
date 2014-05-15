@@ -182,7 +182,7 @@ sub usage
     print "  [-h host] [-P port][-u user] [-p passwd]\n";
     print "  [-d data] [-c cert] [-n hostname]\n";
     print "  [-o expect_output] [-O logical_operator] \n";
-    print "  [-debug]\n";
+    print "  [--debug]\n";
     print "\n";
     return;
 }
@@ -333,7 +333,7 @@ sub parse_json
             my @all = split /,/, $content;
             foreach my $n (@all) {
                 $n =~ /\"(.*)\"/;
-                $hash{$1} = 1;
+                $hash{$1} = "restapiarray";
             }
             return \%hash;
         }
@@ -402,9 +402,13 @@ sub check_result
             my @actualvalue = split /:/, $actual; # @actualvalue = nodetype, arch, x86_64
             print_debug("begin to compare $expval and $actualvalue[$flag]");
 
+            if(($expval eq "restapiarray" ) and ($actualvalue[$flag] eq "restapiarray")){
+      next;
+     }
+
             if(($expval eq $actualvalue[$flag]) or ($expval eq "ANY")) { #ANY =~ nodetype
                 $flaghash{$actual} = "eq";
-            } elsif (($expval =~ $actualvalue[$flag]) or ($expval eq "ANY")) {
+            } elsif (($actualvalue[$flag] =~ $expval) or ($expval eq "ANY")) {
                 $flaghash{$actual} = "match";
             } else {
                 $flaghash{$actual} = "none";
