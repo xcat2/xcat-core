@@ -116,6 +116,54 @@ mount -n --bind /dev $NEWROOT/dev
 mount -n --bind /proc $NEWROOT/proc
 mount -n --bind /sys $NEWROOT/sys
 
+function getdevfrommac() {
+    boothwaddr=$1
+    ip link show | while read line
+    do
+        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
+        if [ "X$dev" != "X" ]; then
+            devname=$dev
+        fi
+
+        if [ "X$devname" != "X" ]; then
+            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
+            if [ "X$hwaddr" = "X$boothwaddr" ]; then
+                echo $devname
+            fi
+        fi
+    done
+}
+
+
+for lf in /tmp/dhclient.*.lease; do
+    netif=${lf#*.}
+    netif=${netif%.*}
+    cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+done
+
+if [ ! -z "$ifname" ]; then
+    MACX=${ifname#*:}
+    ETHX=${ifname%:$MACX*}
+elif [ ! -z "$netdev" ]; then
+    ETHX=$netdev
+    MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
+elif [ ! -z "$BOOTIF" ]; then
+    MACX=$BOOTIF
+    ETHX=$(getdevfrommac $BOOTIF)
+fi
+
+if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+    if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
+        touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    fi
+    echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+fi
+
+cp /etc/resolv.conf "$NEWROOT/etc/"
+
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
     echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
