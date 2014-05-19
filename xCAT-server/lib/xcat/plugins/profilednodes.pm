@@ -2120,6 +2120,7 @@ sub validate_node_entry{
                 $errmsg .= "MAC address $node_entry{$_} is invalid. You must use a valid MAC address.\n";
             }else{
                 $allmacs{$node_entry{$_}} = 0;
+                $allmacsupper{uc($node_entry{$_})} = 0;
             }
         }elsif ($_ eq "ip"){
             if (exists $allips{$node_entry{$_}}){
