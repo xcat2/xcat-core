@@ -508,7 +508,7 @@ if [ ! -x /$xcatpost/mypostscript ]; then
       useflowcontrol=0
    fi 
   fi
-  /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+  /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" >  /$xcatpost/mypostscript;
 
 
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
@@ -539,7 +539,7 @@ if [ ! -x /$xcatpost/mypostscript ]; then
         useflowcontrol=0
       fi 
     fi
-    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
+    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" >  /$xcatpost/mypostscript;
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
