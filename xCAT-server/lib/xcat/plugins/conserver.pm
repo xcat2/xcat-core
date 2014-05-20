@@ -7,6 +7,7 @@ use xCAT::Utils;
 use xCAT::TableUtils;
 use Getopt::Long;
 use Sys::Hostname;
+use xCAT::SvrUtils;
 
 use strict;
 use Data::Dumper;
