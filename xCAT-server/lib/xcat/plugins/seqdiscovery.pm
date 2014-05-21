@@ -25,6 +25,7 @@ use xCAT::NodeRange;
 use xCAT::Table;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
+use xCAT::Utils;
 use xCAT::DiscoveryUtils;
 use xCAT::NodeRange qw/noderange/;
 require xCAT::data::ibmhwtypes;
@@ -701,7 +702,7 @@ Usage:
         return;
     }
     
-
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     # Go thought discoverydata table and display the sequential disocvery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
@@ -710,7 +711,12 @@ Usage:
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
     }
-    my @disdata = $distab->getAllAttribsWhere("method='sequential'", 'node', 'mtm', 'serial');
+    my @disdata;
+    if ($DBname =~ /^DB2/) {
+     @disdata = $distab->getAllAttribsWhere("\"method\" = 'sequential'", 'node', 'mtm', 'serial');
+    } else {
+     @disdata = $distab->getAllAttribsWhere("method='sequential'", 'node', 'mtm', 'serial');
+    }
     my @discoverednodes;
 
     foreach (@disdata) {
@@ -817,6 +823,7 @@ Usage:
         }
     }
 
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     # Go thought discoverydata table and display the disocvery entries
     my $distab = xCAT::Table->new('discoverydata');
     unless ($distab) {
@@ -837,10 +844,18 @@ Usage:
             @disdata = $distab->getAllAttribs(@disattrs);
         } else {
             $type = "sequential" if ($type =~ /^seq/);
-            @disdata = $distab->getAllAttribsWhere("method='$type'", @disattrs);
+            if ($DBname =~ /^DB2/) {
+              @disdata = $distab->getAllAttribsWhere("\"method\" = '$type'", @disattrs);
+            } else {
+              @disdata = $distab->getAllAttribsWhere("method='$type'", @disattrs);
+            }
         }
     } elsif ($uuid) {
-        @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", @disattrs);
+        if ($DBname =~ /^DB2/) {
+          @disdata = $distab->getAllAttribsWhere("\"uuid\" = '$uuid'", @disattrs);
+        } else {
+          @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", @disattrs);
+        }
     }
     my $discoverednum = $#disdata + 1;
     
@@ -1002,6 +1017,7 @@ Usage:
         return;
     }
 
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     # open the discoverydata table for the subsequent using
     my $distab = xCAT::Table->new("discoverydata");
     unless ($distab) {
@@ -1022,7 +1038,12 @@ Usage:
         
         if ($uuid) {
             # handle the -r -u <uuid>
-            my @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", 'method');
+            my @disdata;
+            if ($DBname =~ /^DB2/) {
+             @disdata = $distab->getAllAttribsWhere("\"uuid\" = '$uuid'", 'method');
+            } else {
+             @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", 'method');
+            }
             unless (@disdata) {
                 xCAT::MsgUtils->message("E", {data=>["Cannot find discovery entry with uuid equals [$uuid]."]}, $callback);
                 return;
@@ -1089,7 +1110,12 @@ Usage:
 
         # get all the attributes for the entry from the discoverydata table
         my @disattrs = ('uuid', 'node', 'method', 'discoverytime', 'arch', 'cpucount', 'cputype', 'memory', 'mtm', 'serial', 'nicdriver', 'nicipv4', 'nichwaddr', 'nicpci', 'nicloc', 'niconboard', 'nicfirm', 'switchname', 'switchaddr', 'switchdesc', 'switchport', 'otherdata');
-        my @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", @disattrs);
+        my @disdata ;
+        if ($DBname =~ /^DB2/) {
+         @disdata = $distab->getAllAttribsWhere("\"uuid\" = '$uuid'", @disattrs);
+        } else {
+         @disdata = $distab->getAllAttribsWhere("uuid='$uuid'", @disattrs);
+        }
         unless (@disdata) {
             xCAT::MsgUtils->message("E", {data=>["Cannot find discovery entry with uuid equals $uuid"]}, $callback);
             return;
