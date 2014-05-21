@@ -48,7 +48,7 @@ binary-arch: build install
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man5/*
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/man/man7/*
 	chmod 644 `pwd`/debian/perl-xcat/opt/xcat/share/doc/man7/*
-	./modifyUtils `cat ../Version` `svn info | grep Revision | cut -d" " -f 2`
+	./modifyUtils `cat ../Version` `git log -n 1 | head -n 1 | cut -f 2 -d ' '`
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
