@@ -609,11 +609,11 @@ sub nextdestiny {
      my $args;
      if($noupdate_flag)
      {
-	     $args = ['enact'];
+	     $args = ['enact', '--noupdateinitrd'];
      } 
      else
      {
-	     $args = ['enact', '--noupdateinitrd'];
+	     $args = ['enact'];
      }
      $subreq->({command=>['nodeset'],
                node=> \@nodes,
