@@ -1,32 +1,32 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 #TODO: delete entries not being refreshed if no noderange
-package xCAT_plugin::conserver;
+package xCAT_plugin::confluent;
 use strict;
+use warnings;
+use xCAT::PasswordUtils;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::TableUtils;
 use Getopt::Long;
 use Sys::Hostname;
 use xCAT::SvrUtils;
+use Confluent::Client;
 
 use strict;
-use Data::Dumper;
-my @cservers = qw(mrv cyclades);
 my %termservers; #list of noted termservers
-my $siteondemand; # The site value for consoleondemand
 
 my $usage_string=
-"  makeconservercf [-d|--delete] noderange
-  makeconservercf [-l|--local]
-  makeconservercf [-c|--conserver]
-  makeconservercf 
-  makeconservercf -h|--help
-  makeconservercf -v|--version
-    -c|--conserver   The conserver gets set up only on the conserver host.
-                     The default goes down to all the conservers on
+"  makeconfluentcfg [-d|--delete] noderange
+  makeconfluentcf [-l|--local]
+  makeconfluentcf [-c|--confluent]
+  makeconfluentcf 
+  makeconfluentcf -h|--help
+  makeconfluentcf -v|--version
+    -c|--confluent   Configure confluent only on the host.
+                     The default goes down to all the confluent instances on
                      the server nodes and set them up
-    -l|--local       The conserver gets set up only on the local host.
-                     The default goes down to all the conservers on
+    -l|--local       Configure confluent only on the local system.
+                     The default goes down to all the confluent instances on
                      the server nodes and set them up
     -d|--delete      Conserver has the relevant entries for the given noderange removed immediately from configuration
     -h|--help        Display this usage statement.
@@ -37,7 +37,7 @@ my $version_string=xCAT::Utils->Version();
 
 sub handled_commands {
   return {
-    makeconservercf => "conserver"
+    makeconfluentcfg => "confluent"
   }
 }
 
@@ -65,7 +65,7 @@ sub preprocess_request {
   $Getopt::Long::ignorecase=0;
   #$Getopt::Long::pass_through=1;
   if(!GetOptions(
-      'c|conserver' => \$::CONSERVER,
+      'c|confluent' => \$::CONSERVER,
       'l|local'     => \$::LOCAL,
       'h|help'     => \$::HELP,
       'D|debug'     => \$::DEBUG,
@@ -92,7 +92,7 @@ sub preprocess_request {
     }
   }
   if ($::CONSERVER && $::LOCAL) {
-      $callback->({data=>"Can not specify -l or --local together with -c or --conserver."});
+      $callback->({data=>"Can not specify -l or --local together with -c or --confluent."});
       $request = {};
       return;
   }
@@ -102,7 +102,6 @@ sub preprocess_request {
   my $master=xCAT::TableUtils->get_site_Master();
   if (!$master) { $master=hostname(); }
 
-  # get conserver for each node
   my %cons_hash=();
   my $hmtab = xCAT::Table->new('nodehm');
   my @items;
@@ -131,7 +130,7 @@ sub preprocess_request {
   if (!$isSN && !$::CONSERVER) { #If -c flag is set, do not add the all nodes to the management node
     if ($::VERBOSE) {
         my $rsp;
-        $rsp->{data}->[0] = "Setting the nodes into /etc/conserver.cf on the management node";
+        $rsp->{data}->[0] = "Configuring nodes in confluent on the management node";
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
     my $reqcopy = {%$request};
@@ -177,119 +176,13 @@ sub preprocess_request {
 sub process_request {
   my $req = shift;
   my $cb = shift;
-  if ($req->{command}->[0] eq "makeconservercf") {
-    makeconservercf($req,$cb);
+  if ($req->{command}->[0] eq "makeconfluentcfg") {
+    makeconfluentcfg($req,$cb);
   }
-}
-
-# Add the initial/global entries to the beginning of the file
-sub docfheaders {
-# Put in standard headers common to all conserver.cf files
-  my $content = shift;
-  my @newheaders=();
-  my $numlines = @$content;
-  my $idx = 0;
-  my $skip = 0;
-  my @meat = grep(!/^#/,@$content);
-  unless (grep(/^config \* {/,@meat)) {
-    # do not add the ssl configurations 
-    # if conserver is not compiled with ssl support
-    my $cmd = "console -h 2>&1";
-    my $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($output !~ "encryption not compiled")
-    {
-        push @newheaders,"config * {\n";
-        push @newheaders,"  sslrequired yes;\n";
-        push @newheaders,"  sslauthority /etc/xcat/cert/ca.pem;\n";
-        push @newheaders,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
-        push @newheaders,"}\n";
-    }
-  }
-  unless (grep(/^default cyclades/,@meat)) {
-    push @newheaders,"default cyclades { type host; portbase 7000; portinc 1; }\n"
-  }
-  unless (grep(/^default mrv/,@meat)) {
-    push @newheaders,"default mrv { type host; portbase 2000; portinc 100; }\n"
-  }
-  #Go through and delete that which would match access and default
-  while($idx < @$content){
-    if (($content->[$idx] =~ /^access \*/)
-      ||($content->[$idx] =~ /^default \*/)) {
-      $skip = 1;
-    }
-    if ($skip == 1){
-      splice(@$content, $idx, 1);
-    } else {
-      $idx++;
-    }
-    if($skip and $content->[$idx] =~ /\}/){
-      splice(@$content, $idx, 1);
-      $skip = 0;
-    }
-  }
-  #push @$content,"#xCAT BEGIN ACCESS\n";
-  push @newheaders,"access * {\n";
-  push @newheaders,"  trusted 127.0.0.1;\n";
-  my $master=xCAT::TableUtils->get_site_Master();
-  push @newheaders, "  trusted $master;\n";
-  # trust all the ip addresses configured on this node
-  my @allips = xCAT::NetworkUtils->gethost_ips();
-  my @ips = ();
-  #remove $xcatmaster and duplicate entries
-  foreach my $ip (@allips) {
-      if (($ip eq "127.0.0.1") || ($ip eq $master)) {
-          next;
-      }
-      if(!grep(/^$ip$/, @ips)) {
-          push @ips,$ip;
-      }
-  }
-  if ($::TRUSTED_HOST)
-  {
-      my @trusted_host = (split /,/, $::TRUSTED_HOST);
-      foreach my $tip (@trusted_host)
-      {
-          if(!grep(/^$tip$/, @ips)) {
-              push @ips,$tip;
-          }
-      }
-  }
-  if(scalar(@ips) > 0) {
-      my $ipstr = join(',', @ips);
-      push @newheaders, "  trusted $ipstr;\n";
-  }
-
-  push @newheaders,"}\n";
-  #push @$content,"#xCAT END ACCESS\n";
-
-  push @newheaders,"default * {\n";
-  push @newheaders,"  logfile /var/log/consoles/&;\n";
-  push @newheaders,"  timestamp 1hab;\n";
-  push @newheaders,"  rw *;\n";
-  push @newheaders,"  master localhost;\n";
-
-  #-- if option "conserverondemand" in site table is set to yes
-  #-- then start all consoles on demand
-  #-- this helps eliminate many ssh connections to blade AMM
-  #-- which seems to kill AMMs occasionally
-  #my $sitetab  = xCAT::Table->new('site');
-  #my $vcon = $sitetab->getAttribs({key => "consoleondemand"}, 'value');
-  my @entries =  xCAT::TableUtils->get_site_attribute("consoleondemand");
-  my $site_entry = $entries[0];
-  if ( defined($site_entry) and $site_entry eq "yes" ) {
-    push @newheaders,"  options ondemand;\n";
-    $siteondemand=1;
-  }
-  else {
-    $siteondemand=0;
-  }
-
-  push @newheaders,"}\n";
-  unshift @$content,@newheaders;
 }
 
 # Read the file, get db info, update the file contents, and then write the file
-sub makeconservercf {
+sub makeconfluentcfg {
   my $req = shift;
   %termservers = (); #clear hash of existing entries
   my $cb = shift;
@@ -303,19 +196,11 @@ sub makeconservercf {
   #$Getopt::Long::pass_through=1;
   my $delmode;
   GetOptions('d|delete'  => \$delmode,
-             't|trust=s' => \$::TRUSTED_HOST
             );
   my $nodes = $req->{node};
   my $svboot=0;
   if (exists($req->{svboot})) { $svboot=1;}
-  my $cfile;
-  my @filecontent;
-  open $cfile,'/etc/conserver.cf';
-  while (<$cfile>) {
-    push @filecontent,$_;
-  }
-  close $cfile;
-  docfheaders(\@filecontent);
+  my $confluent = Confluent::Client->new();  # just the local form for now..
 
   my $isSN=xCAT::Utils->isServiceNode();
   my @hostinfo=xCAT::NetworkUtils->determinehostname();
@@ -366,15 +251,16 @@ sub makeconservercf {
   # if nodes defined, it is either on the service node or makeconserver was called with noderange on mn
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
     # strip all xCAT configured nodes from config if the original command was for all nodes
-    if (($req->{_allnodes}) && ($req->{_allnodes}->[0]==1)) {zapcfg(\@filecontent);}
+    #if (($req->{_allnodes}) && ($req->{_allnodes}->[0]==1)) {} #TODO: identify nodes that will be removed 
     # call donodeent to add all node entries into the file.  It will return the 1st node in error.
     my $node;
-    if ($node=donodeent(\%cfgenthash,\@filecontent,$delmode)) {
+    if ($node=donodeent(\%cfgenthash,$confluent,$delmode, $cb)) {
       #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
       xCAT::SvrUtils::sendmsg([1,"Bad configuration, check attributes under the nodehm category"],$cb,$node);
     }
   } else { #no nodes specified, do em all up
-    zapcfg(\@filecontent); # strip all xCAT configured nodes from config
+    #zapcfg(\@filecontent); # strip all xCAT configured nodes from config
+    #TODO: identify nodes to be removed
 
     # get nodetype so we can filter out node types without console support
     my $typetab = xCAT::Table->new('nodetype');
@@ -395,8 +281,7 @@ sub makeconservercf {
       if (!$isSN) { $keepdoing=1;} #handle all for MN
       if ($keepdoing) {
         if ($_->{termserver} and not $termservers{$_->{termserver}}) {
-          # add a terminal server entry to file
-          dotsent($_,\@filecontent);
+          die "confluent does not currently support termserver";
           $termservers{$_->{termserver}}=1; # dont add this one again
         }
         if ( $type{$_->{node}} =~ /fsp|bpa|hmc|ivm/ ) {
@@ -408,84 +293,23 @@ sub makeconservercf {
 
     # Now add into the file all the node entries that we kept
     my $node;
-    if ($node=donodeent(\%cfgenthash,\@filecontent)) {
+    if ($node=donodeent(\%cfgenthash,$confluent, undef, $cb)) {
       # donodeent will return the 1st node in error
       #$cb->({node=>[{name=>$node,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
       xCAT::SvrUtils::sendmsg([1,"Bad configuration, check attributes under the nodehm category"],$cb,$node);
     }
   }
-
-  # Write out the file contents
-  open $cfile,'>','/etc/conserver.cf';
-  if ($::VERBOSE) {
-      my $rsp;
-      $rsp->{data}->[0] = "Setting the following lines into /etc/conserver.cf:\n @filecontent";
-      xCAT::MsgUtils->message("I", $rsp, $cb);
-  }
-  foreach (@filecontent) {
-    print $cfile $_;
-  }
-  close $cfile;
-
-  # restart conserver
-  if (!$svboot) {
-    #restart conserver daemon
-    my $cmd;
-    if(xCAT::Utils->isAIX()){
-        $cmd = "stopsrc -s conserver";
-        xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "startsrc -s conserver";
-        xCAT::Utils->runcmd($cmd, 0);
-    } else {
-        $cmd = "/etc/init.d/conserver stop";
-        xCAT::Utils->runcmd($cmd, 0);
-        $cmd = "/etc/init.d/conserver start";
-        xCAT::Utils->runcmd($cmd, 0);
-    }
-  }
 }
 
-# Put a terminal server entry in the file - not used much any more
-sub dotsent {
-  my $cfgent = shift;
-  my $tserv = $cfgent->{termserver};
-  my $content = shift;
-  my $idx = 0;
-  my $toidx = -1;
-  my $skip = 0;
-  my $skipnext = 0;
-
-  while ($idx < $#$content) { # Go through and delete that which would match my entry
-    if ($content->[$idx] =~ /^#xCAT BEGIN $tserv TS/) {
-      $toidx=$idx; #TODO put it back right where I found it
-      $skip = 1;
-      $skipnext=1;
-    } elsif ($content->[$idx] =~ /^#xCAT END $tserv TS/) {
-      $skipnext = 0;
-    }
-    if ($skip) {
-      splice (@$content,$idx,1);
-    } else {
-      $idx++;
-    }
-    $skip = $skipnext;
-  }
-  push @$content,"#xCAT BEGIN $tserv TS\n";
-  push @$content,"default $tserv {\n";
-  push @$content,"  include ".$cfgent->{cons}.";\n";
-  push @$content,"  host $tserv;\n";
-  push @$content,"}\n";
-  push @$content,"#xCAT END $tserv TS\n";
-
-}
 
 # Add entries in the file for each node.  This function used to do 1 node at a time, but was changed to do
 # all nodes at once for performance reasons.  If there is a problem with a nodes config, this
 # function will return that node name as the one in error.
 sub donodeent {
   my $cfgenthash = shift;
-  my $content = shift;
+  my $confluent = shift;
   my $delmode = shift;
+  my $cb = shift;
   my $idx=0;
   my $toidx=-1;
   my $skip = 0;
@@ -495,92 +319,88 @@ sub donodeent {
   my $isSN=xCAT::Utils->isServiceNode();
   my $curnode;
   # Loop till find the start of a node stanza and remove lines till get to the end of the stanza
-  while ($idx <= $#$content) { # Go through and delete that which would match my entry
-    my ($begorend, $node) = $content->[$idx] =~ /^#xCAT (\S+) (\S+) CONS/;
-    if ($begorend eq 'BEGIN') {
-      if ($cfgenthash->{$node}) {
-        $toidx=$idx; #TODO put it back right where I found it
-        $skip = 1;    # delete this line
-        $skipnext=1;  # put us in skip mode until we find the end of the stanza
-        $curnode = $node;
-      }
-    } elsif ($begorend eq 'END' && $node eq $curnode) {
-      $skipnext = 0;
+  my %currnodes;
+  $confluent->read('/nodes/');
+  my $listitem = $confluent->next_result();
+  while ($listitem) {
+    if (exists $listitem->{item}) {
+        my $name = $listitem->{item}->{href};
+        $name =~ s/\/$//;
+        $currnodes{$name} = 1;
     }
-    if ($skip) {
-      splice (@$content,$idx,1);
-    } else {
-      $idx++;
-    }
-    $skip = $skipnext;
+    $listitem = $confluent->next_result();
   }
-if ($delmode) {
-      # dont need to add node entries, so we are done
+  if ($delmode) {
+      foreach my $confnode (keys %currnodes) {
+        if ($cfgenthash->{$confnode}) {
+            $confluent->delete('/nodes/' . $confnode);
+        }
       return;
+      }
   }
+  my @toconfignodes = keys %{$cfgenthash};
+  my $ipmitab = xCAT::Table->new('ipmi', -create=>0);
+  my $ipmientries = {};
+  if ($ipmitab) {
+    $ipmientries = $ipmitab->getNodesAttribs(\@toconfignodes,
+                                             [qw/bmc username password/]);
+  }
+  my $ipmiauthdata = xCAT::PasswordUtils::getIPMIAuth(
+        noderange=>\@toconfignodes, ipmihash=>$ipmientries);
 
 # Go thru all nodes specified to add them to the file
 foreach my $node (sort keys %$cfgenthash) {
   my $cfgent = $cfgenthash->{$node};
   my $cmeth=$cfgent->{cons};
-  if (not $cmeth or (grep(/^$cmeth$/,@cservers) and (not $cfgent->{termserver} or not $cfgent->{termport}))) {
-      # either there is no console method (shouldnt happen) or not one of the supported terminal servers
+  if (not $cmeth) {
       return $node;
   }
-  push @$content,"#xCAT BEGIN $node CONS\n";
-  push @$content,"console $node {\n";
-  if (grep(/^$cmeth$/,@cservers)) {
-    push @$content," include ".$cfgent->{termserver}.";\n";
-    push @$content," port ".$cfgent->{termport}.";\n";
-    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::NetworkUtils->thishostisnot($cfgent->{conserver})) { # let the master handle it
-      push @$content,"  master ".$cfgent->{conserver}.";\n";
-    }
-  } else { #a script method...
-    push @$content,"  type exec;\n";
-    if ((!$isSN) && ($cfgent->{conserver}) && xCAT::NetworkUtils->thishostisnot($cfgent->{conserver})) { # let the master handle it
-      push @$content,"  master ".$cfgent->{conserver}.";\n";
-    } else { # handle it here
-      my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
-      push @$content,"  exec $locerror".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
-    }
+  if ($cmeth ne 'ipmi') {
+    die 'TODO: non ipmi consoles...'
+  }
+  my %parameters;
+  $parameters{'console.method'} = $cmeth;
+  if ($cmeth eq 'ipmi') {
+    $parameters{'secret.hardwaremanagementuser'} =
+            $ipmiauthdata->{$node}->{username};
+      $parameters{'secret.hardwaremanagementpassphrase'} =
+            $ipmiauthdata->{$node}->{password};
+      my $bmc = $ipmientries->{$node}->[0]->{bmc};
+      $bmc =~ s/,.*//;
+      $parameters{'hardwaremanagement.manager'} = $bmc;
   }
   if (defined($cfgent->{consoleondemand})) {
-    if ($cfgent->{consoleondemand} && !$siteondemand ) {
-      push @$content,"  options ondemand;\n";
+    if ($cfgent->{consoleondemand}) {
+        $parameters{'console.logging'} = 'none';
     }
-    elsif (!$cfgent->{consoleondemand} && $siteondemand ) {
-      push @$content,"  options !ondemand;\n";
+    else {
+        $parameters{'console.logging'} = 'full';
+    }
+  } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
+    $parameters{'console.logging'} = 'none';
+  }
+  if (exists $currnodes{$node}) {
+    $confluent->update('/nodes/'.$node.'/attributes/current', parameters=>\%parameters);
+    my $rsp = $confluent->next_result();
+    while ($rsp) {
+        if (exists $rsp->{error}) {
+            xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb,$node);
+        }
+        $rsp = $confluent->next_result();
+    }
+  } else {
+    $parameters{name} = $node;
+    $confluent->create('/nodes/bob/', parameters=>\%parameters);
+    my $rsp = $confluent->next_result();
+    while ($rsp) {
+        if (exists $rsp->{error}) {
+            xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb,$node);
+        }
+        $rsp = $confluent->next_result();
     }
   }
-  push @$content,"}\n";
-  push @$content,"#xCAT END $node CONS\n";
 }
 return 0;
 }
-
-# Delete any xcat added node entries from the file
-sub zapcfg {
-  my $content = shift;
-  my $idx=0;
-  my $toidx=-1;
-  my $skip = 0;
-  my $skipnext = 0;
-  while ($idx <= $#$content) { # Go through and delete that which would match my entry
-    if ($content->[$idx] =~ /^#xCAT BEGIN/) {
-      $toidx=$idx; #TODO put it back right where I found it
-      $skip = 1;
-      $skipnext=1;
-    } elsif ($content->[$idx] =~ /^#xCAT END/) {
-      $skipnext = 0;
-    }
-    if ($skip) {
-      splice (@$content,$idx,1);
-    } else {
-      $idx++;
-    }
-    $skip = $skipnext;
-  }
-}
-
 
 1;

@@ -722,6 +722,25 @@ sub read_conf{
 # pro_result 
 #######################################
 sub pro_result{
+    my $result = shift;
+    my $mailprog = "/bin/mail";
+    my $subject = "[xcat-autotest] autotest result ";
+    my $message = "\n Host:172.20.0.21[Redhat 6.4 RC2]\n";
+    $message = $message."---------------------------------------------------------------------------------------------------------------\n";
+    $message = $message."                              | RESULT |    Remark                                                                 \n";
+    $message = $message."---------------------------------------------------------------------------------------------------------------\n";
+    if($result){
+        $message = $message."| full installation       |  PASS  |\n";
+    } else{
+        $message = $message."| full installation       |  FAIL  |";
+    }
+    $message = $message."---------------------------------------------------------------------------------------------------------------\n";
+
+    $message = $message."Note: This message is sent by Automated test system, Please don't reply it\n";
+    my $sendmail = "echo \"$message\"";
+    my $email = "litingt\@cn.ibm.com";
+    $sendmail = $sendmail." | $mailprog -s \"$subject\" \"$email\" ";
+    system($sendmail);
 
 return 0;
 

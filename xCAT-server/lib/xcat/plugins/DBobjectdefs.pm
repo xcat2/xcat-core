@@ -2582,7 +2582,7 @@ sub setFINALattrs
 
             # special case for the nic* attributes
             # merge nic*.eth0, nic*.eth1
-            if ($::FILEATTRS{$objname}{objtype} eq 'node')
+            if (($::FILEATTRS{$objname}{objtype} eq 'node') || ($::FILEATTRS{$objname}{objtype} eq 'group'))
             {
                 xCAT::DBobjUtils->collapsenicsattr($::FILEATTRS{$objname}, $objname);
             }
@@ -2643,7 +2643,7 @@ sub setFINALattrs
         unless(exists($::CLIATTRS{$objname})) {
             next;
         }
-        if ($::CLIATTRS{$objname}{objtype} eq 'node')
+        if (($::CLIATTRS{$objname}{objtype} eq 'node') || ($::CLIATTRS{$objname}{objtype} eq 'group'))
         {
             # Even if only the nicips.eth0 is specified with CLI,
             # need to read the whole nicips attribute from the nics table,

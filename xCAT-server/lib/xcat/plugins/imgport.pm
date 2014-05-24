@@ -17,7 +17,7 @@ use warnings;
 #use xCAT::Table;
 #use xCAT::Schema;
 #use xCAT::NodeRange qw/noderange abbreviate_noderange/;
-#use xCAT::Utils;
+use xCAT::Utils;
 use xCAT::TableUtils;
 use Data::Dumper;
 use XML::Simple;
@@ -316,6 +316,7 @@ sub get_image_info {
         my $kitlist;
         my $kitrepolist;
         my $kitcomplist;
+        my $DBname = xCAT::Utils->get_DBName;   # support for DB2
         foreach my $kitcomponent (split ',', $attrs0->{kitcomponents}) {
             (my $kitcomphash) = $kitcomponenttab->getAttribs({kitcompname => $kitcomponent},'kitname');
             if (!$kitcomphash) {
@@ -325,15 +326,24 @@ sub get_image_info {
 
             if ($kitcomphash->{kitname}) {
                 $kitlist->{$kitcomphash->{kitname}} = 1;
-
-                my @kitrepohash = $kitrepotab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitreponame');
+                my  @kitrepohash;
+                if ($DBname =~ /^DB2/) {
+                 @kitrepohash = $kitrepotab->getAllAttribsWhere( "\"kitname\" = '$kitcomphash->{kitname}'", 'kitreponame');
+                } else {
+                 @kitrepohash = $kitrepotab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitreponame');
+                }
                 foreach my $kitrepo (@kitrepohash) {
                     if ($kitrepo->{kitreponame}) {
                         $kitrepolist->{$kitrepo->{kitreponame}} = 1;
                     }
                 }
 
-                my @kitcomponents = $kitcomponenttab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitcompname');
+                my @kitcomponents;
+                if ($DBname =~ /^DB2/) {
+                 @kitcomponents = $kitcomponenttab->getAllAttribsWhere( "\"kitname\" = '$kitcomphash->{kitname}'", 'kitcompname');
+                } else {
+                 @kitcomponents = $kitcomponenttab->getAllAttribsWhere( "kitname = '$kitcomphash->{kitname}'", 'kitcompname');
+                }
                 foreach my $kitcomp (@kitcomponents) {
                     if ($kitcomp->{kitcompname}) {
                         $kitcomplist->{$kitcomp->{kitcompname}} = 1;

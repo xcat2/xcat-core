@@ -1,6 +1,7 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget cpio gzip dash  modprobe touch echo cut wc
+dracut_install wget cpio gzip dash  modprobe touch echo cut wc 
+dracut_install -o ctorrent
 dracut_install grep ifconfig hostname awk egrep grep dirname expr
 dracut_install mount.nfs
 dracut_install parted mke2fs bc mkswap swapon chmod
