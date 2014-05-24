@@ -82,6 +82,7 @@
           <bonding_master>yes</bonding_master>
           <bonding_module_opts>mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1</bonding_module_opts>
           <bonding_slave0>eth0</bonding_slave0>
+          <bonding_slave1>eth2</bonding_slave1>
           <device>bond0</device>
           <bootproto>static</bootproto>
           <startmode>auto</startmode>
@@ -93,6 +94,12 @@
           <bootproto>none</bootproto>
           <device>eth0</device>
           <name>Ethernet Card 0</name>
+          <startmode>off</startmode>
+        </interface>
+        <interface>
+          <bootproto>none</bootproto>
+          <device>eth2</device>
+          <name>Ethernet Card 2</name>
           <startmode>off</startmode>
         </interface>
       </interfaces>

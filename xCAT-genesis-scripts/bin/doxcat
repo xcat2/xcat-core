@@ -126,18 +126,17 @@ for parm in `cat /proc/cmdline`; do
         netmask=$value
     elif [[ ${key,,} == "gateway" ]]; then
         gateway=$value
-    elif [[ ${key,,} == "netdevice" || ${key,,} == "device" ]]; then
-        netdevice=$value
     fi
 done
-if [[ -n $hostip && -n $netmask && -n $gateway && -n $netdevice ]]; then
+if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 	# doing static ip
+	# the device was determined above from the bootif mac, and put in bootnic
 	numbits=$(mask2prefix $netmask)
 	broadcast=$(bcastcalc $hostip $netmask)
-	echo "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway netdevice=$netdevice ..."
-	ip addr add $hostip/$numbits broadcast $broadcast dev $netdevice scope global label $netdevice
-	ip link set $netdevice up
-	ip route replace to default via $gateway dev $netdevice
+	echo "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway device=$bootnic BOOTIF=$BOOTIF ..."
+	ip addr add $hostip/$numbits broadcast $broadcast dev $bootnic scope global label $bootnic
+	ip link set $bootnic up
+	ip route replace to default via $gateway dev $bootnic
 	# in softlayer it takes up to 60 seconds for the nic to actually be able to communicate
 	echo -n Waiting to reach xCAT mgmt node $gateway.
 	xcatretries=60

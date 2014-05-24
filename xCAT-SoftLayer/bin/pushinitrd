@@ -13,12 +13,13 @@ use Data::Dumper;
 # Globals - these are set once and then only read.
 my $HELP;
 my $VERBOSE;
+my $DRYRUN;
 my $WAITTIME;
 my $NOAUTOINST;
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [-w <waittime>] <noderange>\n\n";
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [--dryrun] [-w <waittime>] <noderange>\n\n";
    	if (!$exitcode) {
    		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
 		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
@@ -32,7 +33,7 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'dryrun' => \$DRYRUN, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 1) { $usage->(1); }
@@ -44,6 +45,8 @@ my %bootparms = getBootParms($noderange);
 copyFilesToNodes($noderange, \%bootparms);
 
 updateGrubOnNodes($noderange, \%bootparms);
+
+if ($DRYRUN) { exit(0); }
 
 if ($bootparms{osimageprovmethod} eq 'install' && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
 
@@ -66,6 +69,8 @@ sub getBootParms {
 		# for now just pick the 1st one. They should all be the same, except for the node name in kcmdline
 		chomp($gresults[0]);
 		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
+		#print "gresults='$gresults[0]'\n";
+		if ($gresults[0] !~ m/\S/) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
 		$bootparms{$a} = $gresults[0];
 	}
 	$bootparms{kcmdline} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|;
@@ -73,6 +78,7 @@ sub getBootParms {
 	# from the nodes provmethod, get the osimage provmethod, so we know the type of install
 	@output = runcmd("lsdef -t osimage $bootparms{provmethod} -ci provmethod");
 	chomp($output[0]);
+	if ($output[0] =~ m/^Could not find/) { die "Error: provmethod $bootparms{provmethod} is set for the node, but there is no osimage definition by that name."; }
 	my ($junk, $provmethod) = split(/=/, $output[0]);
 	$bootparms{osimageprovmethod} = $provmethod;
 
@@ -97,8 +103,13 @@ sub copyFilesToNodes {
 		my $localfile = "/tftpboot/$file";
 		# for the 
 		my $remotefile = '/boot/' . remoteFilename($file);
-		print "Copying $localfile to $nr:$remotefile\n";
-		runcmd("xdcp $nr -p $localfile $remotefile");
+		if ($DRYRUN) {
+			print "Dry run: would copy $localfile to $nr:$remotefile\n";
+		}
+		else {
+			print "Copying $localfile to $nr:$remotefile\n";
+			runcmd("xdcp $nr -p $localfile $remotefile");
+		}
 	}
 }
 
@@ -117,10 +128,11 @@ sub updateGrubOnNodes {
 	my $nr = shift @_;
 	my $bootparms = shift @_;
 	my $vtxt = ($VERBOSE ? '-v' : '');
+	my $dtxt = ($DRYRUN ? '--dryrun' : '');
 	my @output = runcmd('which modifygrub');
 	my $modifygrub = $output[0];
 	chomp($modifygrub);
-	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt $dtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
 	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
 	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
 	# is to quote each of the outer single quotes with double quotes.

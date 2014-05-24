@@ -39,6 +39,9 @@ fi
 
 hostname $HOSTNAME
 bond=bond0
+if [[ $DEVICE == "eth0" ]]; then
+    $DEVICE2=eth2
+fi
 
 device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
 str_cfg_file=''
@@ -83,9 +86,23 @@ if [ -d "/etc/sysconfig/network-scripts/" ];then
         echo "SLAVE=yes" >> $str_cfg_file
         echo "USERCTL=no" >> $str_cfg_file
 
+        if [[ $DEVICE2 != "" ]]; then
+            # write ifcfg-eth0
+            i="$DEVICE2"
+            str_cfg_file="$dir/ifcfg-$i"
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=none" >> $str_cfg_file
+            echo "MASTER=$bond" >> $str_cfg_file
+            echo "ONBOOT=yes" >> $str_cfg_file
+            echo "SLAVE=yes" >> $str_cfg_file
+            echo "USERCTL=no" >> $str_cfg_file
+        fi
+
         # write modprobe alias config
         str_cfg_file="/etc/modprobe.d/$bond.conf"
         echo "alias $bond bonding" > $str_cfg_file
+
+        #todo: figure out how to set the default gateway in rhel
     else
         # use dhcp for all nics
         for i in $device_names;do
@@ -122,6 +139,9 @@ elif [ -d "/etc/sysconfig/network/" ];then
         echo "BROADCAST=$BROADCAST" >> $str_cfg_file
         echo "USERCONTROL=no" >> $str_cfg_file
         echo "BONDING_SLAVE_0=$DEVICE" >> $str_cfg_file
+        if [[ $DEVICE2 != "" ]]; then
+            echo "BONDING_SLAVE_1=$DEVICE2" >> $str_cfg_file
+        fi
 
         # write ifcfg-eth0
         i="$DEVICE"
@@ -129,9 +149,27 @@ elif [ -d "/etc/sysconfig/network/" ];then
         echo "BOOTPROTO=none" > $str_cfg_file
         echo "STARTMODE=hotplug" >> $str_cfg_file
 
+        if [[ $DEVICE2 != "" ]]; then
+            # write ifcfg-eth2
+            i="$DEVICE2"
+            str_cfg_file="$dir/ifcfg-$i"
+            echo "BOOTPROTO=none" > $str_cfg_file
+            echo "STARTMODE=hotplug" >> $str_cfg_file
+        fi
+
         # write modprobe alias config
         str_cfg_file="/etc/modprobe.d/$bond.conf"
         echo "alias $bond bonding" > $str_cfg_file
+
+        # set the default gateway (at this point this is the private nic gateway, to handle provision across vlans)
+        file=/etc/sysconfig/network/routes
+        if grep -q -E '^default ' $file; then
+            # replace the default route that is already in there
+            sed -i 's/^default .*$/default '$GATEWAY' - -/' $file
+        else
+            # no default route yet, append to file
+            echo "default $GATEWAY - -" >>$file
+        fi
 
         # this was the original config of the eth0 nic (without bonding)
         #echo "DEVICE=$i" > $str_cfg_file
