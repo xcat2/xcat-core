@@ -609,8 +609,8 @@ sub nextdestiny {
   }
   
   if ($callnodeset) {
-     $args;
-	 if($noupdate_flag)
+     my $args;
+     if($noupdate_flag)
      {
          $args = ['enact', '--noupdateinitrd'];
      }
