@@ -1,0 +1,42 @@
+start:globalconf_get
+description: globalconf_get
+cmd:restapitest -m GET -r /globalconf
+check:rc==200
+cmdcheck:restapitest -o '{"clustersite":{"xcatdport":"3001"}}' -O ==
+end
+
+start:globalconf_get_attr
+description: globalconf_get_attr
+cmd:restapitest -m GET -r /globalconf/attrs/xcatdport,xcatiport
+check:rc==200
+cmdcheck:restapitest -o '{"clustersite":{"xcatdport":"3001"}}' -O ==
+cmdcheck:restapitest -o '{"clustersite":{"xcatiport":"3002"}}' -O ==
+end
+
+start:globalconf_put
+description: globalconf_put
+cmd:restapitest -m PUT -r /globalconf/attrs/domain -d '{"domain":"cluster1.com"}'
+check:rc==200
+end
+
+start:globalconf_put_checkresult
+description: globalconf_put_checkresult
+cmd:restapitest -m GET -r /globalconf/attrs/domain
+check:rc==200
+cmdcheck:restapitest -o '{"clustersite":{"domain":"cluster1.com"}}' -O ==
+end
+
+start:globalconf_delete
+description: globalconf_delete
+cmd:restapitest -m DELETE -r /globalconf/attrs/domain
+check:rc==200
+end
+
+start:globalconf_delete_checkresult
+description: globalconf_delete_checkresult
+cmd:restapitest -m GET -r /globalconf/attrs/domain
+check:rc==200
+cmdcheck:restapitest -o '{"clustersite":{"domain":"cluster1.com"}}' -O !=
+end
+
+
