@@ -217,14 +217,13 @@ sub is_me
     #my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
     # get all the possible IPs for the node I'm running on
-    my $ifcmd = "ifconfig -a | grep 'inet'";
-    my $result = xCAT::Utils->runcmd($ifcmd, -1, 1);
+    my $ipcmd = "ip addr | grep 'inet'";
+    my $result = xCAT::Utils->runcmd($ipcmd, -1, 1);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp;
-        #	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
-        #    xCAT::MsgUtils->message("E", $rsp, $callback);
-		$::VERBOSE = $verb;
+        my $str="Error running ipcmd";
+        xCAT::MsgUtils->message("S", $str);
+        $::VERBOSE = $verb;
         return 0;
     }
 
@@ -232,7 +231,6 @@ sub is_me
     {
         my ($inet, $myIP, $str) = split(" ", $int);
         chomp $myIP;
-        $myIP =~ s/addr://;
         $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
         $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
