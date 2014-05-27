@@ -95,6 +95,7 @@ sub getOSdistroref
 	{
 		return undef;
 	}
+        # verified this does work on DB2
 
 	my @clause=();
 	

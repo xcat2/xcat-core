@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# This SI post-install script is needed because the initrd that autoyast builds when installing
+# sles on the golden node may not have the drivers when that initrd runs on the node that is
+# being deployed with this image (specifically, drivers to be able to mount the disk).
+# So rebuild the initrd on the to-node after putting the image on the disk, but before rebooting.
+
+#todo: this same issue could occur on other distros too.  Make this script work on red hat by
+#      checking for dracut and using that if it exists.
+
+mkinitrd

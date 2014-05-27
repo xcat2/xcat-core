@@ -124,7 +124,7 @@ my %URIdef = (
             GET => {
                 desc => "Get the running status for the node {noderange}.",
                 usage => "||$usagemsg{objreturn}|",
-                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|x|",
+                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|{\n   \"node1\":{\n      \"nodestat\":\"noping\"\n   }\n}|",
                 cmd => "nodestat",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
@@ -1401,6 +1401,9 @@ sub defout {
             $lines = \@alldata;
         }
         foreach my $l (@$lines) {
+            if ($l =~ /No responses/) { # handle the case that no output from lsslp command
+                return;
+            }
             if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 if ($l =~ /^Object name:\s+(\S+)/) {    # handle the output of lsdef -t <type> <obj>
                     $nodename = $1;

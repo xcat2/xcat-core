@@ -1,0 +1,5 @@
+[main]
+ssh-setup-command=echo
+[xdsh]
+pre-command=NULL
+post-command=NULL

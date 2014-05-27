@@ -4,25 +4,28 @@
 #  Usage:  configbond bond1 eth1 [eth3]
 #
 # Note: this postscript currently has some assumptions that are specific to the softlayer environment.
-#       It is only used to configure bond1, because bond0 gets configured by the node provisioning process.
+#       We only use this to configure bond1, because bond0 gets configured by the node provisioning process.
+#       (altho this script would work for bond0)
 
 use strict;
 # Check number of args
 
 my $nargs = $#ARGV + 1;
 if (scalar(@ARGV) < 2 || scalar(@ARGV) > 3) {
-   system("logger -t xcat -p local4.err  'Usage: configbond bond dev0 [dev1]'");
+   system("logger -t xcat -p local4.err  'Usage: configbond <bond> <dev0> [<dev1>]'");
    exit 1;
 }
 
 my $bond = shift(@ARGV);
 my $nic = $ARGV[0];  
-my @devs = ();
-push(@devs,$ARGV[0]);
-if (defined($ARGV[1])) { push(@devs,$ARGV[1]); }
+my @devs;
+push(@devs,@ARGV);
 my $nicips = $ENV{NICIPS};
 my $nicnetworks = $ENV{NICNETWORKS};
 my $net_cnt = $ENV{NETWORKS_LINES};
+
+#todo: change this script so they dont need to specify nicnetworks
+if (!$nicips || !$nicnetworks) { system("logger -t xcat -p local4.err 'configbond: must specify attributes nicips and nicnetworks in the xcat db for this node.'"); exit 1; }
 
 #todo: these are specific to softlayer.  They should be another attribute or argument
 my $bondingopts = 'mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1';

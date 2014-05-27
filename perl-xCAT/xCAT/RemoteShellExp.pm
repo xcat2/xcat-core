@@ -810,6 +810,10 @@ sub senddeviceskeys
     # add to the command
     $setupcmd .=$key; 
     $setupcmd .="\"";
+    # Special case for vios
+    if ($ENV{DEVICETYPE} eq 'vios') {
+        $setupcmd = "\"echo $key | tee -a ~/.ssh/authorized_keys2\"";
+    }
     # For each input device
     my @nodelist=split(/,/,$nodes);
     foreach my $node (@nodelist) {

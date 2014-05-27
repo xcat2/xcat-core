@@ -144,6 +144,11 @@ for my $u (@users) {
     $i++;
     for my $t (@tokens) {
         for my $c (@certs){
+            if ($method eq "POST" and ($resource =~ /^\/nodes\/(\w+)$/)) {
+                 `/opt/xcat/bin/rmdef $1`;
+                 print_debug("restapi test rmdef $1\n");
+            }
+
             my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
         if($res){
             my $reshash = parse_json($res);
@@ -276,6 +281,49 @@ sub parse_json
             print "[:] content is $content \n" if($debug);
             parse_json($content);
         }
+        # for those who look like:
+        # {"Vc68m4hsp01":{"parent":"Server-9119-590-SN02C5F9E","pprofile":"Vc68m4hsp01"},"p5ih_c75vios":{"parent":"P5IH-SN02012EB-A","mgt":"hmc","id":"2"},"p5ih_lpar04":{"parent":"P5IH-SN02013EB-A","pprofile":"p5ih_lpar04"}}
+        elsif($input =~ /^"(\S+?)\":{\S+},/){
+            $input =~ s/},/}%/;
+            my @contents = split /%/, $input;
+            my @reval;
+            # record result
+            foreach my $t (@contents) {
+               print ":{}, content is $t \n" if($debug);
+               my $re = parse_json($t);
+               push @reval, $re;
+            }
+            # merge hash
+            foreach my $t (@reval) {
+                if(ref($t) =~ "HASH") {
+                    foreach my $k (keys %$t){
+                        $hash{$k} = $$t{$k};
+                    }
+                }
+            }
+            return \%hash;
+        }
+        elsif( $input =~ /^{\S+},{\S+}/ and !($input =~ /]/)){
+            $input =~ s/},{/}%{/;
+            my @contents = split /%/, $input;
+            my @reval;
+            # record result
+             foreach my $t (@contents) {
+               print "{},{}, content is $t \n" if($debug);
+               my $re = parse_json($t);
+               push @reval, $re;
+            }
+            # merge hash
+            foreach my $t (@reval) {
+                if(ref($t) =~ "HASH") {
+                    foreach my $k (keys %$t){
+                        $hash{$k} = $$t{$k};
+                    }
+                }
+            }
+            return \%hash;
+        }
+
         # for those who look like
         # {"clustersite":{"domain":"cluster.com","master":"192.168.1.15"}}
         elsif ($input =~ /^\s*{(.*)}\s*$/s) {
@@ -283,6 +331,26 @@ sub parse_json
             print "{} content is $content \n" if($debug);
             parse_json($content);
         }
+        elsif( $input =~ /],\"\S+\":/)){
+            $input =~ s/],\"\S+\":/]%\"\S+\":/;
+            my @contents = split /%/, $input;
+            my @reval;
+            # record result
+             foreach my $t (@contents) {
+               print "],:, content is $t \n" if($debug);
+               my $re = parse_json($t);
+               push @reval, $re;
+            }
+            # merge hash
+            foreach my $t (@reval) {
+                if(ref($t) =~ "HASH") {
+                    foreach my $k (keys %$t){
+                        $hash{$k} = $$t{$k};
+                    }
+                }
+            }
+            return \%hash;
+        }       
         # for those who look like
         # "domain":"cluster.com","master":"192.168.1.15"
         elsif ($input =~ /,/ and !($input =~ /}/)) {
@@ -499,6 +567,8 @@ sub transf_hash
     find_key($input, \$entry, \@array);
     return \@array;
 }
+
+
 
 
 

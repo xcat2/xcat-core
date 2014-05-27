@@ -636,15 +636,20 @@ sub sysclone_createosimgdef{
     my ($node, $server, $osimage, $callback, $subreq) = @_;
     my $createnew = 0;
     my %osimgdef;
-
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     my $osimgtab  = xCAT::Table->new('osimage');
-    my $entry = ($osimgtab->getAllAttribsWhere("imagename = '$osimage'", 'ALL' ))[0];
-     if($entry){
+    my $entry;
+    if ($DBname =~ /^DB2/) {
+     $entry = ($osimgtab->getAllAttribsWhere("\"imagename\" = '$osimage'", 'ALL' ))[0];
+    } else {
+     $entry = ($osimgtab->getAllAttribsWhere("imagename = '$osimage'", 'ALL' ))[0];
+    }
+    if($entry){
         my $rsp = {};
         $rsp->{data}->[0] = qq{Using the existing osimage "$osimage" defined on $server.};
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
-     }
+    }
     
     # try to see if we can get the osimage def from golden client.
     my $nttab  = xCAT::Table->new('nodetype');
