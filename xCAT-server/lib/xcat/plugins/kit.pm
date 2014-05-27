@@ -1411,7 +1411,7 @@ sub addkit
 
         if ( $hasplugin ) {
             # Issue xcatd reload to load the new plugins
-            system("/etc/init.d/xcatd reload");
+            system("/etc/init.d/xcatd restart");
         }
     }
 }
@@ -1494,6 +1494,7 @@ sub rmkit
     my %kitnames;
     my $des = shift @ARGV;
     my @kits = split ',', $des;
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     foreach my $kit (@kits) {
 
         # Check if it is a kitname or basename
@@ -1508,7 +1509,12 @@ sub rmkit
             }
             $kitnames{$kit} = 1;
         } else {
-            my @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname', 'isinternal');
+            my @entries;
+            if ($DBname =~ /^DB2/) {
+             @entries = $tabs{kit}->getAllAttribsWhere( "\"basename\" = '$kit'", 'kitname', 'isinternal');
+            } else {
+             @entries = $tabs{kit}->getAllAttribsWhere( "basename = '$kit'", 'kitname', 'isinternal');
+            }
             unless (@entries) {
                 my %rsp;
                 push@{ $rsp{data} }, "Kit $kit could not be found in DB $t";
@@ -1545,8 +1551,12 @@ sub rmkit
 
         # Find all the components in this kit.
         my $kitcompnames;
-        my @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
-
+         my @kitcomphash;
+        if ($DBname =~ /^DB2/) {
+         @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "\"kitname\" = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
+        } else {
+         @kitcomphash = $tabs{kitcomponent}->getAllAttribsWhere( "kitname = '$kitname'", 'kitcompname', 'postbootscripts', 'genimage_postinstall');
+        }
         if (@entries && (@entries > 0)) {  
 
             if($::VERBOSE and !$test){
@@ -1682,7 +1692,12 @@ sub rmkit
         }
 
         # Remove kitrepo
-        my @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere( "kitname = '$kitname'", 'kitreponame');
+        my @kitrepohash;
+        if ($DBname =~ /^DB2/) {
+         @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere( "\"kitname\" = '$kitname'", 'kitreponame');
+        } else {
+         @kitrepohash = $tabs{kitrepo}->getAllAttribsWhere( "kitname = '$kitname'", 'kitreponame');
+        }
         foreach my $kitrepo ( @kitrepohash ) {
             my $kitreponame =  $kitrepo->{kitreponame};
             $tabs{kitrepo}->delEntries({kitreponame => $kitreponame});
@@ -1716,7 +1731,7 @@ sub rmkit
 
     if ( $hasplugin ) {
         # Issue xcatd reload to load the new plugins
-        system("/etc/init.d/xcatd reload");
+        system("/etc/init.d/xcatd restart");
     }
 
 }
@@ -1878,7 +1893,7 @@ sub addkitcomp
         return 1;
     }
 
-
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     my %tabs = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
     foreach my $t ( @tables ) {
@@ -1911,7 +1926,12 @@ sub addkitcomp
             $kitcomps{$kitcomponent}{name} = $kitcomponent;
             $kitcomps{$kitcomponent}{basename} = $kitcomptable->{'basename'};
         } else {
-            my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            my @entries;
+            if ($DBname =~ /^DB2/) {
+             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            } else {
+             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            }        
             unless (@entries) {
                 my %rsp;
                 push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
@@ -2101,7 +2121,12 @@ sub addkitcomp
                 my @kitcompdeps = split ',', $kitcomptable->{'kitcompdeps'};
                 foreach my $kitcompdependency ( @kitcompdeps ) {
                     my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
-                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
+                    my @entries;
+                    if ($DBname =~ /^DB2/) {
+                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
+                    } else {
+                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitreponame', 'kitname', 'kitcompname' , 'serverroles', 'kitcompdeps', 'version', 'prerequisite', 'release');
+                    }
                     unless (@entries) {
                         my %rsp;
                         push@{ $rsp{data} }, "Cannot find any matched kit component for kit component $kitcomp dependency $kitcompdep";
@@ -2413,7 +2438,7 @@ sub rmkitcomp
         return 1;
     }
 
-
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     my %tabs = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
     foreach my $t ( @tables ) {
@@ -2456,7 +2481,12 @@ sub rmkitcomp
             $kitcomps{$kitcomponent}{driverpacks} = $kitcomptable->{driverpacks};
             $kitcomps{$kitcomponent}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
         } else {
-            my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            my @entries;
+            if ($DBname =~ /^DB2/) {
+               @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            } else {
+               @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            }
             unless (@entries) {
                 my %rsp;
                 push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
@@ -2530,7 +2560,12 @@ sub rmkitcomp
 
                     my ($kitcompdep, $vers) = split /<=|>=|=|<|>/, $kitcompdependency;
                     # Get the kit component full name from basename.
-                    my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                    my @entries;
+                    if ($DBname =~ /^DB2/) {
+                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                    } else {
+                     @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcompdep'", 'kitcompname' , 'version', 'release');
+                    }
                     unless (@entries) {
                         my %rsp;
                         push@{ $rsp{data} }, "kitcomponent $kitcompdep basename does not exist";
@@ -3214,7 +3249,7 @@ sub chkkitcomp
         create_version_response('chkkitcomp');
         return 1;    # no usage - just exit
     }
-
+    my $DBname = xCAT::Utils->get_DBName;   # support for DB2
     my %tabs = ();
     my @tables = qw(kit kitrepo kitcomponent osimage osdistro linuximage);
     foreach my $t ( @tables ) {
@@ -3248,7 +3283,12 @@ sub chkkitcomp
             $kitcomps{$kitcomponent}{serverroles} = $kitcomptable->{serverroles};
             $kitcompbasename{$kitcomptable->{basename}} = 1;
         } else {
-            my @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            my @entries;
+            if ($DBname =~ /^DB2/) {
+             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "\"basename\" = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            } else {
+             @entries = $tabs{kitcomponent}->getAllAttribsWhere( "basename = '$kitcomponent'", 'kitcompname' , 'version', 'release');
+            }
             unless (@entries) {
                 my %rsp;
                 push@{ $rsp{data} }, "$kitcomponent kitcomponent does not exist";
@@ -4660,6 +4700,7 @@ sub db_get_table_rows {
 
     my $table = xCAT::Table->new($tablename);
     my @table_rows = ();
+    # todo fix for DB2 support
     if (defined($filter_stmt)) {
         if (length($filter_stmt) > 0) {
             @table_rows = $table->getAllAttribsWhere($filter_stmt, @{$attrs});

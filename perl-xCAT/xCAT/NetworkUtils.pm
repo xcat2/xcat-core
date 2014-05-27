@@ -1992,50 +1992,6 @@ sub isIpaddr
 }
 
 
-#-------------------------------------------------------------------------------
-=head3  getSubnetGateway 
-    Description:
-        Get gateway from the networks table of the specified net. 
-
-    Arguments:
-        net: the net, ie. the "net" field of the networks table
-    Returns:
-        Return a string, of the gateway
-        undef - Failed to get the gateway
-    Globals:
-        none
-    Error:
-        none
-    Example:
-        my $gateway = xCAT::NetworkUtils::getSubnetGateway('192.168.1.0');
-    Comments:
-        none
-
-=cut
-#-------------------------------------------------------------------------------
-sub getSubnetGateway
-{
-   my $netname=shift;
-   if( $netname =~ /xCAT::NetworkUtils/)
-   {
-      $netname=shift;
-   }
- 
-   my $gateway=undef;
-   my $nettab = xCAT::Table->new("networks");
-   unless($nettab) { die "No entry defined in networks"; }
-   my @nets = $nettab->getAllAttribs('net','gateway'); 
-   foreach(@nets)
-   {
-      if("$_->{net}" eq "$netname")
-      {
-         $gateway = $_->{gateway};
-         last;
-      }
-   }
-   
-   return $gateway; 
-} 
 
 
 #-------------------------------------------------------------------------------
@@ -2094,6 +2050,50 @@ sub getNodeNameservers{
 }
 
 #-------------------------------------------------------------------------------
+=head3  getNodeGateway 
+    Description:
+        Get gateway from the networks table of the node. 
+
+    Arguments:
+        ip: the ip address of the node
+    Returns:
+        Return a string, of the gateway
+        undef - Failed to get the gateway
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $gateway = xCAT::NetworkUtils::getNodeGateway('192.168.1.0');
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getNodeGateway
+{
+   my $ip=shift;
+   if( $ip =~ /xCAT::NetworkUtils/)
+   {
+      $ip=shift;
+   }
+   my $gateway=undef;
+
+   my $nettab = xCAT::Table->new("networks");
+   if ($nettab) {
+      my @nets = $nettab->getAllAttribs('net','mask','gateway');
+      foreach my $net (@nets) {
+         if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+               $gateway=$net->{'gateway'};
+            }
+        }
+    }
+
+
+   return $gateway;
+}
+
+#-------------------------------------------------------------------------------
 
 =head3   getNodeNetworkCfg 
     Description:
@@ -2122,8 +2122,8 @@ sub getNodeNetworkCfg
     if( $node =~ /xCAT::NetworkUtils/)
     {
        $node =shift;
-    }  
- 
+    }
+
     my $nets = xCAT::NetworkUtils::my_nets();
     my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
@@ -2132,11 +2132,13 @@ sub getNodeNetworkCfg
     {
         my $netname;
         ($netname,$mask) = split /\//, $net;
-        $gateway=xCAT::NetworkUtils::getSubnetGateway($netname);
         last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
     }
+    $gateway=xCAT::NetworkUtils::getNodeGateway($ip);
     return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,1,0));
 }
+
+
 
 #-------------------------------------------------------------------------------
 

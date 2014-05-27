@@ -1385,6 +1385,13 @@ sub updatenoderunps
 
         foreach my $snkey (keys %servernodes)
         {
+            if ((!defined($snkey)) or ($snkey eq "")) {  # if we could not find the xcatmaster 
+                
+                my $rsp = {};
+                $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
+                $callback->($rsp);
+                next;
+            }
             my $nodestring = join(',', @{$servernodes{$snkey}});
             my $args;
             my $mode;

@@ -571,6 +571,7 @@ sub nextdestiny {
   }
 
   my $node;
+  my $noupdate_flag = 0;
   $chaintab = xCAT::Table->new('chain');
   my $chainents = $chaintab->getNodesAttribs(\@nodes,[qw(currstate currchain chain)]);
   foreach $node (@nodes) {
@@ -598,13 +599,28 @@ sub nextdestiny {
     my %requ;
     $requ{node}=[$node];
     $requ{arg}=[$ref->{currstate}];
+    if($ref->{currstate} =~ /noupdateinitrd$/)
+    {
+        my @items = split /[:]/,$ref->{currstate};
+        $requ{arg}= \@items;
+        $noupdate_flag = 1;
+    }
     setdestiny(\%requ, $flag+1);
   }
   
   if ($callnodeset) {
+     my $args;
+     if($noupdate_flag)
+     {
+         $args = ['enact', '--noupdateinitrd'];
+     }
+     else
+     {
+         $args = ['enact'];
+     }
      $subreq->({command=>['nodeset'],
                node=> \@nodes,
-               arg=>['enact']});
+               arg=>$args});
   }
 
 }

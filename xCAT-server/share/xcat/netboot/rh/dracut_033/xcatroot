@@ -1,0 +1,278 @@
+#!/bin/sh
+NEWROOT=$3
+RWDIR=.statelite
+XCATMASTER=$XCAT
+
+. /lib/dracut-lib.sh
+rootlimit="$(getarg rootlimit=)"
+
+
+getarg nonodestatus
+NODESTATUS=$?
+
+MASTER=`echo $XCATMASTER |awk -F: '{print $1}'`
+XCATIPORT="$(getarg XCATIPORT=)"
+if [ $? -ne 0 ]; then
+XCATIPORT="3002"
+fi
+
+
+if [ $NODESTATUS -ne 0 ];then
+/tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
+fi
+
+if [ ! -z "$imgurl" ]; then
+	if [ xhttp = x${imgurl%%:*} ]; then
+		NFS=0
+		FILENAME=${imgurl##*/}
+		while [ ! -r "$FILENAME" ]; do
+			echo Getting $imgurl...
+			if ! wget $imgurl; then
+				rm -f $FILENAME
+				sleep 27
+			fi
+		done
+	elif [ xnfs = x${imgurl%%:*} ]; then
+		NFS=1
+		SERVER=${imgurl#nfs:}
+		SERVER=${SERVER#/}
+		SERVER=${SERVER#/}
+		ROOTDIR=$SERVER
+		SERVER=${SERVER%%/*}
+		SERVER=${SERVER%:}
+		ROOTDIR=/${ROOTDIR#*/} 
+	fi
+fi
+#echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
+
+if [ -r /rootimg.sfs ]; then
+  echo Setting up squashfs with ram overlay.
+  mknod /dev/loop0 b 7 0
+  mkdir -p /ro
+  mkdir -p /rw
+  mount -t squashfs /rootimg.sfs /ro
+  mount -t tmpfs rw /rw
+  mount -t aufs -o dirs=/rw:/ro mergedroot $NEWROOT
+  mkdir -p $NEWROOT/ro
+  mkdir -p $NEWROOT/rw
+  mount --move /ro $NEWROOT/ro
+  mount --move /rw $NEWROOT/rw
+elif [ -r /rootimg.gz ]; then
+  echo Setting up RAM-root tmpfs.
+  if [ -z $rootlimit ];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
+  cd $NEWROOT
+  echo -n "Extracting root filesystem:"
+  if [ -x /bin/cpio ]; then
+    gzip -cd /rootimg.gz |/bin/cpio -idum
+  else
+    gzip -cd /rootimg.gz |cpio -idum
+  fi
+  $NEWROOT/etc/init.d/localdisk
+  echo Done
+elif [ -r /rootimg-statelite.gz ]; then
+  echo Setting up RAM-root tmpfs for statelite mode.
+ 
+  if [ -z $rootlimit];then
+    mount -t tmpfs -o mode=755 rootfs $NEWROOT
+  else
+    mount -t tmpfs -o mode=755,size=$rootlimit rootfs $NEWROOT
+  fi
+
+  cd $NEWROOT
+  echo -n "Extracting root filesystem:"
+  if [ -x /bin/cpio ]; then
+    gzip -cd /rootimg-statelite.gz |/bin/cpio -idum
+  else
+    gzip -cd /rootimg-statelite.gz |cpio -idum
+  fi
+  echo Done
+  # then, the statelite staffs will be processed
+  echo Setting up Statelite 
+  modprobe nfs
+  MAXTRIES=7
+  ITER=0
+  if [ ! -e "$NEWROOT/$RWDIR" ]; then
+    echo ""
+    echo "The /$RWDIR directory doesn't exist in the rootimg... "
+    echo ""
+    /bin/sh
+  fi
+
+  if [ ! -e "$NEWROOT/etc/init.d/statelite" ]; then
+    echo ""
+    echo "$NEWROOT/etc/init.d/statelite doesn't exist... "
+    echo ""
+    /bin/sh
+  fi
+
+  mount -t tmpfs rw $NEWROOT/$RWDIR
+  mkdir -p $NEWROOT/$RWDIR/tmpfs
+  ME=`hostname`
+  if [ ! -z $NODE ]; then
+      ME=$NODE
+  fi
+
+
+  # mount the SNAPSHOT directory here for persistent use.
+  if [ ! -z $STATEMNT ]; then
+    SNAPSHOTSERVER=${STATEMNT%:*}
+    SNAPSHOTROOT=${STATEMNT#*/}
+    if [ -z $SNAPSHOTROOT ]; then
+        SNAPSHOTROOT=$SNAPSHOTSERVER
+        SNAPSHOTSERVER=
+    fi
+  fi
+
+  if [ ! -z $SNAPSHOTSERVER ]; then
+    mkdir -p $NEWROOT/$RWDIR/persistent
+    MAXTRIES=5
+    ITER=0
+	if [ -z $MNTOPTS ]; then
+		MNT_OPTIONS="nolock,rsize=32768,tcp,nfsvers=3,timeo=14"
+	else
+		MNT_OPTIONS=$MNTOPTS
+	fi
+    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
+        ITER=$(( ITER + 1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "You are dead, rpower $ME boot to play again."
+            echo "Possible problems:
+1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
+2.  Is DNS set up? Maybe that's why I can't mount $SNAPSHOTSERVER."
+            /bin/sh
+            exit
+        fi
+        RS=$(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds ..."
+        sleep $RS
+    done
+
+    # create directory which is named after my node name
+    mkdir -p $NEWROOT/$RWDIR/persistent/$ME
+    ITER=0
+    # umount current persistent mount
+    while ! umount -l $NEWROOT/$RWDIR/persistent; do
+        ITER=$(( ITER + 1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "Your are dead, rpower $ME boot to play again."
+            echo "Cannot umount $NEWROOT/$RWDIR/persistent."
+            /bin/sh
+            exit
+        fi
+        RS= $(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds..."
+        sleep $RS
+    done
+
+    # mount persistent to server:/rootpath/nodename
+    ITER=0
+    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
+        ITER=$(( ITER + 1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "Your are dead, rpower $ME boot to play again."
+            echo "Possible problems: cannot mount to $SNAPSHOTSERVER:/$SNAPSHOTROOT/$ME."
+            /bin/sh
+            exit
+        fi
+        RS= $(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds..."
+        sleep $RS
+    done
+  fi
+
+  $NEWROOT/etc/init.d/localdisk
+  $NEWROOT/etc/init.d/statelite
+  fastboot=yes
+  export fastboot
+  keep_old_ip=yes
+  export keep_old_ip
+
+  mount -n --bind /dev $NEWROOT/dev
+  mount -n --bind /proc $NEWROOT/proc
+  mount -n --bind /sys $NEWROOT/sys
+
+else
+  echo -n Failed to download image, panicing in 5...
+  for i in 4 3 2 1 0; do
+    /bin/sleep 1
+    echo -n $i...
+  done
+  echo
+  echo "You're dead.  rpower nodename reset to play again.
+
+* Did you packimage with -m cpio, -m squashfs, or -m nfs?
+* If using -m squashfs did you include aufs.ko with geninitrd?
+  e.g.:  -n tg3,squashfs,aufs,loop
+* If using -m nfs did you export NFS and sync rootimg?  And
+  did you include the aufs and nfs modules in the proper order:
+  e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs
+
+"
+  /bin/dash
+  exit
+fi
+cd /
+
+function getdevfrommac() {
+    boothwaddr=$1
+    ip link show | while read line
+    do
+        dev=`echo $line | egrep "^[0-9]+: [0-9A-Za-z]+" | cut -d ' ' -f 2 | cut -d ':' -f 1`
+        if [ "X$dev" != "X" ]; then
+            devname=$dev
+        fi
+
+        if [ "X$devname" != "X" ]; then
+            hwaddr=`echo $line | egrep "^[ ]*link" | awk '{print $2}'`
+            if [ "X$hwaddr" = "X$boothwaddr" ]; then
+                echo $devname
+            fi
+        fi
+    done
+}
+
+
+if [ -z $STATEMNT ]; then
+  for lf in /tmp/dhclient.*.lease; do
+    netif=${lf#*.}
+    netif=${netif%.*}
+    cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+  done
+
+  if [ ! -z "$ifname" ]; then
+    MACX=${ifname#*:}
+    ETHX=${ifname%:$MACX*}
+  elif [ ! -z "$netdev" ]; then
+    ETHX=$netdev
+    MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
+  elif [ ! -z "$BOOTIF" ]; then
+    MACX=$BOOTIF
+    ETHX=$(getdevfrommac $BOOTIF)
+  fi
+
+  if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+    if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
+        touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    fi
+    echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+  fi
+fi
+
+cp /etc/resolv.conf "$NEWROOT/etc/"
+
+if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
+	echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
+fi
+
+# inject new exit_if_exists
+echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
+# force udevsettle to break
+> $hookdir/initqueue/work
