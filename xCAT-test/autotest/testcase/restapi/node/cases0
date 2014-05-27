@@ -1,0 +1,243 @@
+start:node_post
+description: node_post
+cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
+check:rc==201
+end
+
+start:node_post2
+description: node_post2
+cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
+check:rc==403
+cmdcheck:restapitest -o '{"errorcode":"1","error":["\nA definition for 'node1' already exists."]}' -O =~
+end
+
+
+start:node_put
+description: node_put
+cmd:restapitest -m PUT -r /nodes/node1 -d '{"mgt":"hmc","netboot":"xnba"}'
+check:rc==200
+end
+
+
+
+start:nodes_get
+description: nodes_get
+cmd:restapitest -m GET -r /nodes
+check:rc==200
+cmdcheck:restapitest -o '["node1"]' -O ==
+end
+
+start:node_get
+description: node_get
+cmd:restapitest -m GET -r /nodes/node1
+check:rc==200
+cmdcheck:restapitest -o '{"node1":{"netboot":"xnba"}}' -O ==
+end
+
+start:node_delete
+description: node_delete
+cmd:restapitest -m GET -r /nodes/node1
+check:rc==200
+end
+
+start:nodes_get2
+description: nodes_get2
+cmd:restapitest -m GET -r /nodes
+check:rc==200
+cmdcheck:restapitest -o '["node1"]' -O !=
+end
+
+start:node_get2
+description: node_get2
+cmd:restapitest -m GET -r /nodes/node1
+check:rc==403
+cmdcheck:restapitest -o '{"errorcode":"1","error":["Could not find an object named 'node1' of type 'node'."]}' -O =~
+end
+
+start:node_post3_for_get_test
+description: node_post3_for_get_test
+cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
+check:rc==201
+end
+
+start:node_attr_get
+description: node_get2
+cmd:restapitest -m GET -r /nodes/node1/attrs/mgt,groups,netboot
+check:rc==200
+cmdcheck:restapitest -o '{"node1":{"netboot":"yaboot"}}' -O ==
+end
+
+###########此次需先添加networks表和hosts表的net和ip属性
+start:node_makehosts
+description: node_makehosts
+cmd:restapitest -m POST -r /nodes/node1/host
+check:rc==201
+end
+
+start:node_makedns
+description: node_makehosts
+cmd:restapitest -m POST -r /nodes/node1/dns
+check:rc==201
+end
+
+
+start:node_delete_dns
+description: node_delete_dns
+cmd:restapitest -m DELETE -r /nodes/node1/dns
+check:rc==200
+end
+
+start:node_put
+description: node_put
+cmd:restapitest -m PUT -r /nodes/node1 -d '{"mac":"00:1a:64:54:14:80"}'
+check:rc==200
+end
+
+start:node_makedhcp
+description: node_makedhcp
+cmd:restapitest -m POST -r /nodes/node1/dhcp
+check:rc==201
+end
+
+start:node_delete_dhcp
+description: node_delete_dhcp
+cmd:restapitest -m DELETE -r /nodes/node1/dhcp
+check:rc==200
+end
+
+start:node_state
+description: node_state
+cmd:restapitest -m GET -r /nodes/node1/nodestat
+check:rc==200
+cmdcheck:restapitest -o '{"node1":{"nodestat":"ANY"}}' -O ==
+end
+
+
+#start:node_post4_for_scan_test
+#description: node_post4_for_scan_test
+#cmd:restapitest -m POST -r /nodes/e108m6hmc02 -d '{"groups":"all,hmc","mgt":"hmc","hwtype":"hmc","mtm":"7042CR4","serial":"1050FBB","nodetype":"ppc"}'
+#check:rc==201
+#end
+
+start:node_scan
+description: node_scan
+cmd:restapitest -m GET -r /nodes/e108m6hmc02/subnodes
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m4hsp01":{"parent":"Server-9119-590-SN02C5F9E"}}' -O ==
+end
+
+
+start:node_power_get
+description: node_power_get
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/power
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"power":"ANY"}}' -O ==
+end
+
+start:node_power_put
+description: node_power_put
+cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/power -d '{"action":"on"}'
+check:rc==200
+end
+
+start:node_energy_put
+description: node_energy_put
+cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/energy -d '{"cappingstatus":"on"}'
+check:rc==200
+end
+
+start:node_energy_get
+description: node_energy_get
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy 
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"on"}}' -O ==
+end
+
+start:node_energy_get_attr
+description: node_energy_get_attr
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy/cappingmaxmin,cappingstatus 
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"ANY"}}' -O ==
+end
+
+start:node_get_attr
+description: node_get_attr
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/sp/community
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"SP SNMP Community":"public"}}' -O ==
+end
+
+start:node_put_attr
+description: node_put_attr
+cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/sp/community -d '{"value":"mycommunity"}''
+check:rc==200
+end
+
+start:node_put_nextboot
+description: node_put_nextboot
+cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/nextboot -d '{"order":"net"}'
+check:rc==201
+end
+
+start:node_get_nextboot
+description: node_get_nextboot
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nextboot 
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"nextboot":"net"}}' -O ==
+end
+
+start:node_put_bootstate
+description: node_put_bootstate
+cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/bootstate -d '{"osimage":"rhels6.4-x86_64-install-compute"}'
+check:rc==201
+end
+
+start:node_get_bootstate
+description: node_get_bootstate
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/bootstate 
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"bootstat":"boot"}}' -O ==
+end
+
+start:node_get_vitals
+description: node_get_vitals
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/vitals 
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"SysBrd Fault":"0"}}' -O ==
+end
+
+start:node_get_vitals_attr
+description: node_get_vitals_attr
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/vitals/fanspeed
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"Fan 1A Tach":"3219 RPM"}}' -O ==
+end
+
+start:node_get_inventory
+description: node_get_inventory
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/inventory
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"Power Supply 2 Board FRU Number":"94Y8105"}}' -O ==
+end
+
+start:node_get_inventory_attr
+description: node_get_inventory_attr
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/inventory/model
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"System Description":"System x3650 M4"}}' -O ==
+end
+
+start:node_get_eventlog
+description: node_get_eventlog
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/eventlog
+check:rc==200
+cmdcheck:restapitest -o '{"Vc68m5sn01":{"eventlog":"ANY"}}' -O ==
+end
+
+start:node_post_nodecopy
+description: node_post_nodecopy
+cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nodecopy -d '{"src":["/tmp/f1","/tmp/f2"],"target":"/tmp"}'
+check:rc==201
+end
+
+
