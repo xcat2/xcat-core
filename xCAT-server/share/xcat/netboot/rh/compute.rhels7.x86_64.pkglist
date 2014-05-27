@@ -6,8 +6,6 @@ dhclient
 kernel 
 openssh-server 
 openssh-clients
-busybox
-dash
 iputils
 bc
 irqbalance

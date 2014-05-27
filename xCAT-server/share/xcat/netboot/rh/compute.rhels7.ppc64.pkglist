@@ -5,10 +5,8 @@ dhclient
 kernel 
 openssh-server 
 openssh-clients
-busybox
 wget
 rsyslog
-dash
 vim-minimal
 ntp
 rsyslog
