@@ -39,8 +39,15 @@ fi
 
 hostname $HOSTNAME
 bond=bond0
+# this is a softlayer assumption that the two devices on the private net will be eth0 and eth2
 if [[ $DEVICE == "eth0" ]]; then
-    $DEVICE2=eth2
+    DEVICE2=eth2
+elif [[ $DEVICE == "eth2" ]]; then
+    DEVICE2=eth0
+fi
+ip addr show|grep -q -E "^[0-9]+:\s+$DEVICE2:"          # make sure it exists on the system
+if [[ $? == 0 ]]; then
+    DEVICE2EXISTS="yes"
 fi
 
 device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
@@ -86,16 +93,18 @@ if [ -d "/etc/sysconfig/network-scripts/" ];then
         echo "SLAVE=yes" >> $str_cfg_file
         echo "USERCTL=no" >> $str_cfg_file
 
-        if [[ $DEVICE2 != "" ]]; then
-            # write ifcfg-eth0
-            i="$DEVICE2"
-            str_cfg_file="$dir/ifcfg-$i"
+        i="$DEVICE2"
+        str_cfg_file="$dir/ifcfg-$i"
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
+            # write ifcfg-eth2
             echo "DEVICE=$i" > $str_cfg_file
             echo "BOOTPROTO=none" >> $str_cfg_file
             echo "MASTER=$bond" >> $str_cfg_file
             echo "ONBOOT=yes" >> $str_cfg_file
             echo "SLAVE=yes" >> $str_cfg_file
             echo "USERCTL=no" >> $str_cfg_file
+        else
+            rm -f $str_cfg_file         # in case it was left over in the image that was captured
         fi
 
         # write modprobe alias config
@@ -139,7 +148,7 @@ elif [ -d "/etc/sysconfig/network/" ];then
         echo "BROADCAST=$BROADCAST" >> $str_cfg_file
         echo "USERCONTROL=no" >> $str_cfg_file
         echo "BONDING_SLAVE_0=$DEVICE" >> $str_cfg_file
-        if [[ $DEVICE2 != "" ]]; then
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
             echo "BONDING_SLAVE_1=$DEVICE2" >> $str_cfg_file
         fi
 
@@ -149,12 +158,14 @@ elif [ -d "/etc/sysconfig/network/" ];then
         echo "BOOTPROTO=none" > $str_cfg_file
         echo "STARTMODE=hotplug" >> $str_cfg_file
 
-        if [[ $DEVICE2 != "" ]]; then
+        i="$DEVICE2"
+        str_cfg_file="$dir/ifcfg-$i"
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
             # write ifcfg-eth2
-            i="$DEVICE2"
-            str_cfg_file="$dir/ifcfg-$i"
             echo "BOOTPROTO=none" > $str_cfg_file
             echo "STARTMODE=hotplug" >> $str_cfg_file
+        else
+            rm -f $str_cfg_file         # in case it was left over in the image that was captured
         fi
 
         # write modprobe alias config

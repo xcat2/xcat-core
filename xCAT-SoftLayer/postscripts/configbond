@@ -156,7 +156,15 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
         close FILE;
 
         # Configure slaves
+        my @output = `ip addr show 2>&1`;       # to check for existance of the device later
         foreach my $dev (@devs) {
+            # as a convenience, make sure the device exists before adding it to the bond
+            if (!grep(m/^\d+:\s+$dev:/, @output)) {
+                system("logger -t xcat -p local4.err  'configbond: not configuring $dev because it does not exist.'");
+                unlink("$dir/ifcfg-$dev");          # in case it was left over in the image we are cloning
+                next;
+            }
+
             system("logger -t xcat -p local4.err  'configbond: slave dev: $dev'");
             if (!open(FILE, ">$dir/ifcfg-$dev")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$dev'"); exit 1; }
             print FILE "DEVICE=$dev\n";
@@ -182,7 +190,9 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
         print FILE "STARTMODE=onboot\n";
         print FILE "USERCONTROL=no\n";
         my $devnum = 0;
+        my @output = `ip addr show 2>&1`;       # to check for existance of the device later
         foreach my $dev (@devs) {
+            if (!grep(m/^\d+:\s+$dev:/, @output)) { next; }
             print FILE "BONDING_SLAVE_$devnum=$dev\n";
             $devnum++;
         }
@@ -190,6 +200,13 @@ for ($i=0; $i < (scalar @nic_ips) ; $i++ ) {
 
         # Configure slaves
         foreach my $dev (@devs) {
+            # as a convenience, make sure the device exists before adding it to the bond
+            if (!grep(m/^\d+:\s+$dev:/, @output)) {
+                system("logger -t xcat -p local4.err  'configbond: not configuring $dev because it does not exist.'");
+                unlink("$dir/ifcfg-$dev");          # in case it was left over in the image we are cloning
+                next;
+            }
+            
             system("logger -t xcat -p local4.err  'configbond: slave dev: $dev'");
             if (!open(FILE, ">$dir/ifcfg-$dev")) { system("logger -t xcat -p local4.err 'configbond: cannot open $dir/ifcfg-$dev'"); exit 1; }
             print FILE "BOOTPROTO=none\n";

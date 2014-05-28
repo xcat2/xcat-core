@@ -17,6 +17,8 @@ BuildArch: noarch
 Requires: xCAT-server
 #Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
+Requires: perl-ExtUtils-MakeMaker perl-CPAN perl-Test-Harness perl-SOAP-Lite
+
 Provides: xCAT-SoftLayer = %{epoch}:%{version}
 
 %description

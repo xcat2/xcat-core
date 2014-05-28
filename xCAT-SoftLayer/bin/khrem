@@ -15,6 +15,7 @@ my $file = '~/.ssh/known_hosts';
 my $usage = sub {
    	my $exitcode = shift @_;
    	print "Usage: khrem <node>\n";
+    print "       Removes the entries in the .ssh/known_hosts file associated with this node.\n";
 	exit $exitcode;
 };
 
