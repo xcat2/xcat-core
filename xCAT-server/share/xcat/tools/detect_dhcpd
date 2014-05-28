@@ -39,12 +39,19 @@ my $start = Time::HiRes::gettimeofday();
 $start =~ s/(\d.*)\.(\d.*)/$1/;
 
 if (!$nic) { print "specify a nic\n"; print $::USAGE;  exit 1;}
-my $IP = `ifconfig $nic | grep "inet addr" | awk '{print \$2}' | awk -F: '{print \$2}'`;
+#my $IP = `ifconfig $nic | grep "inet addr" | awk '{print \$2}' | awk -F: '{print \$2}'`;
+my $IPADDRMASK = `ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print \$2}' | head -n 1`;
+my ($IP,$MASK)= split (/\//,$IPADDRMASK);
 my $MAC;
+my $tmpMAC;
+my @ipoutput;
 if ($::MACADD) {
   $MAC = $::MACADD;
 } else {
-  $MAC = `ifconfig $nic | grep "HWaddr" | /usr/bin/awk '{print \$5}'`;
+#  $MAC = `ifconfig $nic | grep "HWaddr" | /usr/bin/awk '{print \$5}'`;
+  $tmpMAC = `ip link show $nic | grep ether`;
+  @ipoutput= split (' ',$tmpMAC);
+  $MAC=$ipoutput[1];
 }
 
 chomp($IP);
@@ -313,4 +320,3 @@ sub kill_child {
     #print "try to kill $cpid\n";
   }
 }
-
