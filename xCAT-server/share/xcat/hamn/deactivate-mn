@@ -251,7 +251,11 @@ then
     then
         BOOT_HOSTNAME=$(lsattr -El inet0 -a hostname | awk '{print $2}')
     else # Linux
-        BOOT_HOSTNAME=`grep HOSTNAME /etc/sysconfig/network | cut -f 2 -d "="`
+        if [ -f "/etc/hostname" ]; then
+            BOOT_HOSTNAME=`cat /etc/hostname`
+        else
+            BOOT_HOSTNAME=`grep HOSTNAME /etc/sysconfig/network | cut -f 2 -d "="`
+        fi
     fi
     hostname ${BOOT_HOSTNAME}
 fi

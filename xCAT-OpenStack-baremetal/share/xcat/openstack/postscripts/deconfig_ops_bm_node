@@ -36,8 +36,8 @@ change_host_name()
 
     if [ "$str_os_type" = "sles" ];then
         echo "Persistently changing the hostname not implemented yet."
-    #debian ubuntu
-    elif [ "$str_os_type" = "debian" ];then
+    #debian ubuntu and rh7
+    elif [ -f "/etc/hostname" ];then 
         conf_file="/etc/hostname"
         echo "$str_hostname" > $conf_file
     else
