@@ -585,13 +585,15 @@ sub copy_code {
     #send_msg("mn is $mn");
     
     #install dep for buildlocal
-    send_msg("begin to install build required packages on mn $mn");
-    $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
-    
+#    if(($confhash{rhpmn}==$mn)||($confhash{rhxmn}==$mn)){
+#    send_msg("begin to install build required packages on mn $mn");
+#    $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
+#    } 
     
     #need to copy /etc/hosts to mn
     send_msg("copy /etc/hosts to mn $mn");
     system("scp /etc/hosts $mn:/etc");
+    
     
     send_msg("begin to copy code to $mn");
     $res = system("scp -r $codedir root\@$mn:/");
@@ -650,10 +652,11 @@ sub config_mn {
 # install xcat and init rhppc64 env
 #######################################
 sub gettestinfo {
+my $mn = shift;
 my $testenvinfo = undef;
-my @osname = runcmd("xdsh mn uname -a ");
-my @release = runcmd("xdsh mn  cat /etc/*release");
-my @osinfo = runcmd("xdsh mn lsb_release -a");
+my @osname = runcmd("xdsh $mn uname -a ");
+my @release = runcmd("xdsh $mn  cat /etc/*release");
+my @osinfo = runcmd("xdsh $mn lsb_release -a");
 if ( $osname [0]  =~ /Linux/  && $osname [0] =~ /ppc64/ && $release [1] =~ /Red Hat Enterprise Linux Server release 6.5/){
    print "MN info is redhat ppc 64 ";
    $testenvinfo = "rhppc64";
@@ -682,14 +685,14 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-#        system ("scp -r /iso/*.iso $MN:/iso");
-#       system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
+        system ("scp -r /iso/*.iso $MN:/iso");
+       system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
        system ("scp -r /etc/hosts $MN:/etc/hosts");
        system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
        print "[OK]\n";
        print "--get the latest XCAT tarball.......\n";
        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
-#       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
+       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
        system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");   
        #system("scp -r default.conf $MN:$testconfigfile");
@@ -721,6 +724,8 @@ sub init
 
         send_msg( " rhppc64 env is ready\n");
     }elsif ($envoutput eq 'slesppc64'){
+        #my $MN=$slesppc64config{var}{MN}; 
+        my $nodedir=$slesppc64config{var}{nodedir};
         system(" xdsh $MN  mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
         system("scp -r /iso/SLES-11-SP3-DVD-ppc64-GM-DVD1.iso $MN:/iso/");
@@ -734,7 +739,7 @@ sub init
 
         print "--get the latest XCAT tarball.......\n";
         system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
-#       $res =  system("scp -r $nodedir/xcat-dep $MN:/");
+        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         
         print "[OK]\n--deploy zypper....";
         system("xdsh $MN rm  -rf /etc/zypp/repos.d/*");
@@ -938,7 +943,7 @@ sub  do_test1
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-
+   }
 }
 
 #######################################
@@ -1293,11 +1298,12 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 5. Build xcat code in MNs
         #######################################
         send_msg("\n\n\n== Running build_xcat...............");
-#        $res = build_xcat($mn);
+        $res = build_xcat($mn);
         if ($res) {
             send_msg("BUILD XCAT returns error, exit");
             exit 1;
         }        
+exit 1;
         #######################################
         # step 6. Read xCAT MN's configuration
         #######################################
