@@ -393,11 +393,15 @@ elif [ "$1" = "-s" ];then
             fi
         fi
         hostname $NODE
-        grep -i "HOSTNAME" /etc/sysconfig/network
-        if [ $? -eq 0 ];then
-            sed -i "s/.*HOSTNAME.*/HOSTNAME=${NODE}/i" /etc/sysconfig/network
+        if [ -f "/etc/hostname" ]; then
+            echo $NODE > /etc/hostname
         else
-            echo "HOSTNAME=${NODE}" >> /etc/sysconfig/network
+            grep -i "HOSTNAME" /etc/sysconfig/network
+            if [ $? -eq 0 ];then
+                sed -i "s/.*HOSTNAME.*/HOSTNAME=${NODE}/i" /etc/sysconfig/network
+            else
+                echo "HOSTNAME=${NODE}" >> /etc/sysconfig/network
+            fi
         fi
     fi
     exit 0
