@@ -1,0 +1,93 @@
+start:get_images_all
+description: get_images_all
+cmd:restapitest -m GET -r /osimages
+check:rc==200
+cmdcheck:restapitest -o '["rhels6.5-x86_64-install-compute"]' -O ==
+end
+
+start:post_images
+description: post_images
+cmd:restapitest -m POST -r /osimages -d '{"iso":"/iso/RHEL6.5-20131111.0-Server-x86_64-DVD1.iso"}'
+check:rc==201
+end
+
+start:get_images
+description: get_images
+cmd:restapitest -m GET -r /osimages/rhels6.5-x86_64-install-compute
+check:rc==200
+cmdcheck:restapitest -o '{"rhels6.5-x86_64-install-compute":{"provmethod":"install"}}' -O ==
+end
+
+start:put_images_attr
+description: put_images_attr
+cmd:restapitest -m PUT -r /osimages/rhels6.5-x86_64-install-hpc -d '{"osvers":"sles11.3","osarch":"x86_64"}'
+check:rc==200
+end
+
+start:get_images_for_put
+description: get_images_for_put
+cmd:restapitest -m GET -r /osimages/rhels6.5-x86_64-install-hpc
+check:rc==200
+cmdcheck:restapitest -o '{"rhels6.5-x86_64-install-hpc":{"osvers":"sles11.3"}}' -O ==
+end
+
+start:create_images
+description: create_images
+cmd:restapitest -m POST -r /osimages/rhels6.5-x86_64-install-hpc -d '{"profile":"compute","osarch":"x86_64"}'
+check:rc==200
+end
+
+start:get_images_for_post
+description: get_images_for_post
+cmd:restapitest -m GET -r /osimages/rhels6.5-x86_64-install-hpc
+check:rc==200
+cmdcheck:restapitest -o '{"rhels6.5-x86_64-install-hpc":{"profile":"compute"}}' -O ==
+end
+
+start:delete_images
+description: delete_images
+cmd:restapitest -m DELETE -r /osimages/rhels6.5-x86_64-install-hpc
+check:rc==200
+end
+
+start:get_images_all_for_delete
+description: get_images_all_for_delete
+cmd:restapitest -m GET -r /osimages
+check:rc==200
+cmdcheck:restapitest -o '["rhels6.5-x86_64-install-hpc"]' -O !=
+end
+
+start:get_images_attr
+description: get_images_attr
+cmd:restapitest -m GET -r /osimages/rhels6.5-x86_64-install-compute/attrs/imagetype,osarch,osname,provmethod
+check:rc==200
+cmdcheck:restapitest -o '{"sles11.2-ppc64-install-compute":{osarch":"x86_64"}}' -O ==
+end
+
+start:post_images_attr_genimage
+description: post_images_attr_genimage
+cmd:restapitest -m POST -r /osimages/rhels6.5-x86_64-statelite-service/instance -d  '{"action":"gen"}'
+check:rc==200
+end
+
+start:post_images_attr_packimage
+description: post_images_attr
+cmd:restapitest -m POST -r /osimages/rhels6.5-x86_64-statelite-service/instance -d  '{"action":"pack"}'
+check:rc==200
+end
+
+start:post_images_attr_exportimage
+description: post_images_attr
+cmd:restapitest -m POST -r /osimages/rhels6.5-x86_64-statelite-service/instance -d  '{"action":"export"}'
+check:rc==200
+end
+
+start:delete_images
+description: delete_images
+cmd:restapitest -m DELETE -r /osimages/rhels6.5-x86_64-statelite-service/instance 
+check:rc==200
+end
+
+
+
+

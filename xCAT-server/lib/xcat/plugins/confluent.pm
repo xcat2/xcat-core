@@ -390,7 +390,7 @@ foreach my $node (sort keys %$cfgenthash) {
     }
   } else {
     $parameters{name} = $node;
-    $confluent->create('/nodes/bob/', parameters=>\%parameters);
+    $confluent->create('/nodes/', parameters=>\%parameters);
     my $rsp = $confluent->next_result();
     while ($rsp) {
         if (exists $rsp->{error}) {
