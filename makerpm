@@ -85,6 +85,7 @@ function makexcat {
 			cd `dirname $0`/$RPMNAME
 			tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
 			cp xcat.conf $RPMROOT/SOURCES
+			cp xcat.conf.apach24 $RPMROOT/SOURCES
 			cp xCATSN $RPMROOT/SOURCES
 			cd - >/dev/null
 		elif [ "$RPMNAME" = "xCAT-buildkit" ]; then

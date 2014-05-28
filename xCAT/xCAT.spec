@@ -171,7 +171,7 @@ then
    cp /etc/httpd/conf.d/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
 elif [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
 then 
-   rm -rf /etc/httpd/conf.d/xcat.conf
+   rm -rf /etc/apache2/conf.d/xcat.conf
    cp /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 else
    rm -rf /etc/httpd/conf.d/xcat.conf
