@@ -156,6 +156,7 @@ cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE7} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
 cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -213,6 +214,7 @@ exit 0
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
 /etc/xcat/conf.orig/xcat.conf.apach24
+/etc/xcat/conf.orig/xcat.conf.apach22
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 /etc/xCATMN
