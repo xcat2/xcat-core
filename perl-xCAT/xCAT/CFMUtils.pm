@@ -500,6 +500,7 @@ sub setCFMPkglistFile {
     Arguments:
       $imagename - the specified linuximage name
       @curospkgs - the currently selected OS packages list
+      $mode      - using Fuzzy Matching or Exact Matching to check packages
     Returns:
       0 - update successfully
       1 - update failed
@@ -509,13 +510,22 @@ sub setCFMPkglistFile {
       none
     Example:
       my $ret = CAT::CFMUtils->updateCFMPkglistFile($imagename, @cur_selected_pkgs);
+      my $ret = CAT::CFMUtils->updateCFMPkglistFile($imagename, @cur_selected_pkgs, 1);
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub updateCFMPkglistFile {
-    my ($class, $img, $ospkgs) = @_;
-     
+    my ($class, $img, $ospkgs, $mode) = @_;
+    
+    if(defined($mode)){
+        # Exact Matching
+        $mode = 1;
+    }else {
+        # Fuzzy Matching
+        $mode = 0;
+    }
+    
     my @cur_selected = @$ospkgs;
     my $cfmpkglist = "/install/osimages/$img/pkglist.cfm";
 
@@ -548,6 +558,14 @@ sub updateCFMPkglistFile {
         my ($selected_ref, $removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($inc);
         my @selected = @$selected_ref;
         @basepkgs = xCAT::CFMUtils->arrayops("U", \@basepkgs, \@selected);
+    }
+    
+    # Fuzzy Matching
+    if (not $mode){
+        my ($ref1, $ref2, $ref3) = xCAT::CFMUtils->updateSelectedPkgs(\@pre_selected, \@pre_removed, \@cur_selected);
+        @pre_selected = @$ref1;
+        @pre_removed = @$ref2;
+        @cur_selected = @$ref3;
     }
 
     # get diff between previous and current selected OS packages lists    
@@ -660,6 +678,48 @@ sub getPreOSpkgsList {
 
     return (\@selected, \@removed);
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 getPreBaseOSpkgsList
+    Get previously selected and removed base OS packages lists from pkglist file. Packages named with "example.xxx" should be the base name "example"
+
+    Arguments:
+      $ospkglist - the path for ospkglist file
+    Returns:
+      refs for selected and removed OS packages arrays
+    Globals:
+      none
+    Error:
+      none
+    Example:
+      my $pre_selected_ref = xCAT::CFMUtils->getPreOSpkgsList($ospkglist);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub getPreBaseOSpkgsList {
+    my ($class, $pkglist) = @_;
+    
+    my ($pre_selected_ref, $pre_removed_ref) = xCAT::CFMUtils->getPreOSpkgsList($pkglist); 
+    
+    my %pre_selected_hash = ();
+    foreach (@$pre_selected_ref) {
+        my @names = split(/\./, $_);
+        my $basename = $names[0];
+        
+        if ($_ =~ /^$basename\.([^\.]+)$/) {
+            $pre_selected_hash{$basename} = 1;
+        }else {
+            $pre_selected_hash{$_} = 1;
+        }
+    }
+    
+    @pre_selected = keys %pre_selected_hash;
+
+    return \@pre_selected;
+}
+
 
 #-----------------------------------------------------------------------------
 
@@ -818,4 +878,67 @@ sub arrayops {
     if ($ops eq "D") { return @difference; }
 
     #return (\@union, \@intersection, \@difference);
+}
+
+
+#-----------------------------------------------------------------------------
+
+=head3 updateSelectedPkgs
+    Update previous selected, previous removed and current selected packages based on fuzzy matching rules. Packages named with "example.i686" should be same with package "example"
+
+    Arguments:
+      \@pre_selected - reference to previous selected packages
+      \@pre_removed - reference to previous removed packages
+      \@cur_selected - reference to current selected packages
+    Returns:
+      new previous selected, previous removed, current selected packages
+    Globals:
+      none
+    Error:
+      none
+    Example:
+      my ($ref1, $ref2, $ref3) = xCAT::CFMUtils->arrayops(\@pre_selected, \@pre_removed, \@cur_selected);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updateSelectedPkgs() {
+    my ($class, $pre_selected_ref, $pre_removed_ref, $cur_selected_ref) = @_; 
+    
+    my %pre_selected_hash = map{$_ => 1} @$pre_selected_ref;
+    my %pre_removed_hash = map{$_ => 1} @$pre_removed_ref;
+    my %cur_selected_hash = map{$_ => 1} @$cur_selected_ref;
+    
+    my %new_pre_selected_hash = %pre_selected_hash;
+    my %new_pre_removed_hash = %pre_removed_hash;
+    my %new_cur_selected_hash = %cur_selected_hash;
+    
+    foreach (keys %cur_selected_hash) {
+        my $father = $_;
+        my $flag = 0;
+        foreach (keys %pre_selected_hash) {
+            my $child = $_;
+            if ($child =~ /^$father\.([^\.]+)$/) {
+                $new_cur_selected_hash{$child} = 1;
+                $flag = 1;
+            }
+        }
+        if ($flag and not exists $pre_selected_hash{$father}){
+            delete $new_cur_selected_hash{$father} if exists $new_cur_selected_hash{$father};
+        }
+        
+        foreach (keys %pre_removed_hash) {
+            my $child = $_;
+            if ($child =~ /^$father\.([^\.]+)$/) {
+                delete $new_pre_removed_hash{$child} if exists $new_pre_removed_hash{$child};
+            }
+        }
+    }
+    
+    my @new_cur_selected = keys %new_cur_selected_hash;
+    my @new_pre_selected = keys %new_pre_selected_hash;
+    my @new_pre_removed = keys %new_pre_removed_hash;
+    
+    
+    return (\@new_pre_selected, \@new_pre_removed, \@new_cur_selected);  
 }
