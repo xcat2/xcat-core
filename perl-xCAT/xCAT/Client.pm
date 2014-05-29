@@ -29,7 +29,7 @@ if ($inet6support) {
 
 if ($^O =~ /^linux/i) {
     # Is IPv6 enabled on the MN or xcat client node at all?
-    my $ipv6enabled = `ip addr | grep inet6`;
+    my $ipv6enabled = `ip addr 2> /dev/null | grep inet6`;
     if (!$ipv6enabled) {
         $inet6support = 0;
     }
