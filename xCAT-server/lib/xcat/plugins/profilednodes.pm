@@ -771,10 +771,30 @@ Usage:
     }
 
     # If network profile specified. Need re-generate IPs for all nodess again.
+     # As new design, ignore BMC/FSP NIC while reinstall nodes
     if(exists $args_dict{'networkprofile'}){
+        my $newNetProfileName = $args_dict{'networkprofile'};
+        my $oldNetProfileName = $nodeoldprofiles{'networkprofile'};
+        
+        my $newNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$newNetProfileName])->{$newNetProfileName};
+        my $oldNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$oldNetProfileName])->{$oldNetProfileName};
+        
+        my %updateNicsHash = ();
+        foreach my $newNic (keys %$newNicsRef) {
+            if ($newNicsRef->{$newNic}->{'type'} ne 'BMC' and $newNicsRef->{$newNic}->{'type'} ne 'FSP'){
+                $updateNicsHash{$newNic} = 1;
+            }
+        }
+        foreach my $oldNic (keys %$oldNicsRef) {
+            if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP'){
+                $updateNicsHash{$oldNic} = 1;
+            }
+        }
+        
+        my $updateNics = join(",", keys %updateNicsHash);
         setrsp_progress("Regenerate IP addresses for nodes...");
         $retref = "";
-        $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
+        $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, arg=>["nics=$updateNics"], sequential=>[1]}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
             setrsp_progress("Warning: failed to generate IPs for nodes.");
@@ -843,6 +863,7 @@ Usage:
     $netProfileNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$netProfileName]);
     my $nicsref = $netProfileNicsRef->{$netProfileName};
     my @nicslist = keys %$nicsref;
+    
     #3. validate specified nics 
     if(exists $args_dict{'nics'}){
         @updateNics = split(",", $args_dict{'nics'});
@@ -910,7 +931,9 @@ Usage:
             unless (grep {$_ eq $nicname} @updateNics){
                 # if the nic not specified, just keep the old IP&NIC record in nics table.
                 my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
-                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+                if ($oldip) {
+                    $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+                }
             }else{
                 my $ipsref = $freeIPsHash{$nicname};
                 my $nextip = shift @$ipsref;
@@ -932,7 +955,7 @@ Usage:
             }
         }
     }
-
+    
     #8. Update database.
     setrsp_progress("Updating database records...");
     my $nicstab = xCAT::Table->new('nics',-create=>1);
