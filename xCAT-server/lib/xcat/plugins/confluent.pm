@@ -356,7 +356,7 @@ foreach my $node (sort keys %$cfgenthash) {
       return $node;
   }
   if ($cmeth ne 'ipmi') {
-    die 'TODO: non ipmi consoles...'
+    $cmeth = 'xcat' . $cmeth;
   }
   my %parameters;
   $parameters{'console.method'} = $cmeth;
