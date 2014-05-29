@@ -81,6 +81,7 @@ sub addKernelParms {
 		$args->{kernelparms} .= " $bootif IPADDR=$ip NETMASK=$netmask NETWORK=$network BROADCAST=$broadcast GATEWAY=$gateway HOSTNAME=$nodename DEVICE=$nic GATEWAYDEV=$nic";
 	}
 	else {			# scripted install
+		#todo: the parameters for kickstart are likely different
 		$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
 	}
 }
@@ -93,7 +94,6 @@ sub getNodeIpInfo {
 	verbose("using IP prefix $ipprefix");
 
 	# parse ip addr show output, looking for ipprefix, to determine nic, ip, mac
-	#todo: is there a way to find the actual/individual mac of the nic? When 2 nics are bonded, they both display the same mac.
 	my @output = runcmd("ip addr show");
 	my ($nic, $mac, $ipandmask);
 	foreach my $line (@output) {
