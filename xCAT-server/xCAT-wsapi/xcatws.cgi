@@ -1414,7 +1414,7 @@ sub defout {
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                my ($attr, $val) = $l =~ /^\s*(\S+)=(.*)$/;
+                my ($attr, $val) = $l =~ /^\s*(\S+?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 $json->{$nodename}->{$attr} = $val;
             }
