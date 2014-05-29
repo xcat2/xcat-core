@@ -15,6 +15,7 @@ Source1: xcat.conf
 Source2: license.tar.gz
 Source3: xCATSN 
 Source5: templates.tar.gz
+Source6: xcat.conf.apach24
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client perl-DBD-SQLite 
 
@@ -80,6 +81,7 @@ tar -xf license.tar
 
 %install
 %ifos linux
+mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
@@ -87,6 +89,8 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
 cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
+cp %{SOURCE1} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach22
+cp %{SOURCE6} $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat.conf.apach24
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -122,6 +126,23 @@ fi
 %endif
 
 %post
+%ifos linux
+#Apply the correct httpd/apache configuration file according to the httpd/apache version
+if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then
+   rm -rf /etc/httpd/conf.d/xcat.conf
+   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+fi
+
+if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then
+   rm -rf /etc/apache2/conf.d/xcat.conf
+   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+fi
+
+
+%endif
+
 # create dir for the current pid and move the original ones from /tmp/xcat to /var/run/xcat
 mkdir -p /var/run/xcat
 if [ -r "/tmp/xcat/installservice.pid" ]; then
@@ -161,7 +182,6 @@ if [ -e "/etc/redhat-release" ]; then
 else # SuSE
     apachedaemon='apache2'
 fi
-
 # start xcatd on linux
     chkconfig $apachedaemon on
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
@@ -199,6 +219,8 @@ fi
 %{prefix}
 # one for sles, one for rhel. yes, it's ugly...
 %ifos linux
+/etc/xcat/conf.orig/xcat.conf.apach24
+/etc/xcat/conf.orig/xcat.conf.apach22
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 %endif
