@@ -1009,6 +1009,7 @@ sub update_namedconf {
         push @newnamed,"options {\n";
         unless ($slave && xCAT::Utils->isLinux()) {
            push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
+           push @newnamed, "\tallow-recursion { any; };\n";
         }
         push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
