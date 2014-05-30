@@ -1541,6 +1541,7 @@ sub power_with_context {
 		return;
 	} elsif ($subcommand eq "wake") {
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,0],callback=>\&power_response,callback_args=>$sessdata);
+        return;
 	} elsif (not $argmap{$subcommand}) {
 		xCAT::SvrUtils::sendmsg([1,"unsupported command power $subcommand"],$callback);
 		return;
