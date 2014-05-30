@@ -1966,7 +1966,7 @@ sub got_bios_pending_buildid {
     my %res = @_;
    my $sessdata = $res{sessdata};
     $sessdata->{biosbuildpending} = 0;
-   if ($res{data}) {
+   if ($res{data} and $res{data} ne '  ') {
         $sessdata->{biosbuildpending} = 1;
     }
 	get_imm_property(property=>"/v2/bios/build_version",callback=>\&got_bios_version,sessdata=>$sessdata);
