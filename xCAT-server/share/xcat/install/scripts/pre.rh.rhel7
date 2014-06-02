@@ -206,7 +206,9 @@ fi
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
 echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitioning
 echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
-echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
+echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitioning
+echo "volgroup system pv.01" >> /tmp/partitioning
+echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
 	
 #XCA_PARTITION_SCRIPT#
 
