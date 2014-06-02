@@ -12,12 +12,14 @@ use Socket;
 # Globals - these are set once and then only read.
 my $HELP;
 my $VERBOSE;
+my $DRYRUN;
 my $WAITTIME;
+my $PROVMETHOD;
 my $XCATNETBOOTTITLE = 'xCAT network boot kernel and initrd';
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [-w <waittime>] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
+   	print "Usage: modifygrub [-?|-h|--help] [-v|--verbose] [--dryrun] [-w <waittime>] [-p <provmethod] <kernel-path> <initrd-path> <kernel-parms> <mn-ip>\n\n";
    	if (!$exitcode) {
    		print "Modify the grub config file on the node to boot the specified kernel and initrd.\n";
    	}
@@ -30,7 +32,7 @@ if (-f '/etc/os-release') { die "This script doesn't support ubuntu yet.\n"; }
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'dryrun' => \$DRYRUN, 'w|waittime=s' => \$WAITTIME, 'p|provmethod=s' => \$PROVMETHOD)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 4) { $usage->(1); }
@@ -60,35 +62,89 @@ sub addKernelParms {
 	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
 
 	# get node ip and add it to the kernel parms
-	my ($nic, $ip, $netmask, $gateway) = getNodeIpInfo($args);
+	my ($nic, $ip, $netmask, $network, $broadcast, $gateway, $mac) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
-	$args->{kernelparms} .= " hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+	# if we are booting genesis, need to add the BOOTIF parm
+	my $bootif;
+	if ($args->{kernelpath} =~ m/genesis\.kernel\.x86_64/) {
+		$bootif = $mac;
+		$bootif =~ s/:/-/g;
+		$bootif = "BOOTIF=01-$bootif";
+	}
+
+	#todo: if you are running genesis shell (nodeset <node> shell), this if-else will depend on the nodeset done before that.
+	#		really should check for currstate=shell, or something like that
+	if (defined($PROVMETHOD) && $PROVMETHOD eq 'sysclone') {
+		# add additional parms for sysclone
+		# DEVICE=eth0 IPADDR=10.0.0.99 NETMASK=255.255.255.0 NETWORK=10.0.0.0 BROADCAST=10.0.0.255 GATEWAY=10.0.0.1 GATEWAYDEV=eth0
+		#todo:  should we also add ETHER_SLEEP=$WAITTIME textmode=1 dns=$mnip ?
+		$args->{kernelparms} .= " $bootif IPADDR=$ip NETMASK=$netmask NETWORK=$network BROADCAST=$broadcast GATEWAY=$gateway HOSTNAME=$nodename DEVICE=$nic GATEWAYDEV=$nic";
+	}
+	else {			# scripted install
+		#todo: the parameters for kickstart are likely different
+		$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+	}
 }
 
 
-# get this nodes nic, ip, netmask, and gateway.  Returns them in a 4 element array.
+# get this nodes nic, ip, netmask, gateway, and mac.  Returns them in a 5 element array.
 sub getNodeIpInfo {
 	my $args = shift @_;
-	my ($ipprefix) = $args->{mnip}=~m/^(\d+\.\d+)\./;		#todo: this is a hack, just using the 1st 2 octets of the mn ip addr
+	my ($ipprefix) = $args->{mnip}=~m/^(\d+)\./;		#todo: this is a hack, just using the 1st octet of the mn ip addr
 	verbose("using IP prefix $ipprefix");
 
-	# parse ip addr show output, looking for ipprefix, to determine nic and ip
+	# parse ip addr show output, looking for ipprefix, to determine nic, ip, mac
 	my @output = runcmd("ip addr show");
-	my ($nic, $ipandmask);
+	my ($nic, $mac, $ipandmask);
 	foreach my $line (@output) {
-		my ($nictmp, $iptmp);
+		my ($nictmp, $mactmp, $iptmp);
 		if (($nictmp) = $line=~m/^\d+:\s+(\S+): /) { $nic = $nictmp; }		# new stanza, remember it
+		if (($mactmp) = $line=~m|^\s+link/ether\s+(\S+) |) { $mac = $mactmp; }		# got mac, remember it
 		if (($iptmp) = $line=~m/^\s+inet\s+($ipprefix\S+) /) { $ipandmask = $iptmp; last; }		# got ip, we are done
 	}
-	my ($ip, $netmask) = convertIpAndMask($ipandmask);
+	if (!defined($ipandmask)) { die "Error: can't find a NIC with a prefix $ipprefix that communicates with".$args->{mnip}.".\n"; }
+	my ($ip, $netmask, $network, $broadcast) = convertIpAndMask($ipandmask);
 
-	# if the nic is a bonded nic (common on sl), then find the 1st real nic that is part of it
-	my $realnic = $nic;
+	# if the nic is a bonded nic (common on sl), then find the 1st real nic that is up that is part of it.
+	# also find that real nics real mac
+	my $realnic;
 	if ($nic =~ /^bond/) {
 		my @nics = grep(m/\s+master\s+$nic\s+/, @output);
 		if (!scalar(@nics)) { die "Error: can't find the NICs that are part of $nic.\n"; }
-		($realnic) = $nics[0]=~m/^\d+:\s+(\S+): /;
+		foreach my $line (@nics) {
+			my ($nictmp, $state) = $line=~m/^\d+:\s+(\S+): .* state\s+(\S+)/;
+			if (defined($nictmp) && defined($state) && $state eq 'UP') { $realnic = $nictmp; last; }		# got ip, we are done
+		}
+		if (!defined($realnic)) { die "Error: can't find a physical NIC that is up and part of $nic.\n"; }
+
+		# now get the real mac of this real nic (when 2 nics are bonded, ip addr show displays one of the nics
+		# macs for both nics and the bond).  So we have to depend on /proc/net/bonding/$bond instead.
+		my @bondout = runcmd("cat /proc/net/bonding/$nic");
+		my $foundnic;
+		foreach my $line (@bondout) {
+			my $mactmp;
+			if ($line=~m/^Slave Interface:\s+$realnic/) { $foundnic = 1; }		# found the stanza for this nic, remember it
+			if ($foundnic && (($mactmp) = $line=~m/^Permanent HW addr:\s+(\S+)/)) { $mac = $mactmp; last; }
+		}
 	}
+	else { $realnic = $nic; }
+
+	# centos/redhat seems to name the nic in a different order than sles on some svrs.
+	# sles seems to name them in the same order as 'ip addr show' displays them, centos does not.
+	# so if we are on centos right now, we need to count down to determine the number that sles
+	# will give the nic that we have selected, because it is the sles naming that we care about,
+	# because that is the initrd that will be running in the scripted install case.
+	# For the sysclone case, genesis doxcat should be changed to use the mac to find the nic.
+	if (isRedhat()) {
+		my @nics = grep(m/^\d+:\s+eth/, @output);
+		my $i = 0;
+		foreach my $line (@nics) {
+			my ($nictmp) = $line=~m/^\d+:\s+(\S+):/;
+			if (defined($nictmp) && $nictmp eq $realnic) { $realnic = "eth$i"; last; }		# got ip, we are done
+			$i++;
+		}
+	}
+	print "Determined that SLES will call the install NIC $realnic (it has mac $mac)\n";
 
 	# finally, find the gateway
 	my $gateway;
@@ -102,19 +158,37 @@ sub getNodeIpInfo {
 		verbose("using xCAT mgmt node IP as the fall back gateway.");
 	}
 
-	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway");
-	return ($realnic, $ip, $netmask, $gateway);
+	verbose("IP info: realnic=$realnic, ip=$ip, netmask=$netmask, gateway=$gateway, mac=$mac");
+	return ($realnic, $ip, $netmask, $network, $broadcast, $gateway, $mac);
 }
 
 
-# Convert an ip/mask in slash notation (like 10.0.0.1/26) to separate ip and netmask like 10.0.0.1 and 255.255.255.192
+# Convert an ip/mask in slash notation (like 10.1.1.1/26) to separate ip, netmask, network, and broadcast values,
+# like: 10.1.1.1, 255.255.255.192, 10.1.1.0, 10.1.1.63
 sub convertIpAndMask {
 	my $ipandmask = shift @_;
 	my ($ip, $masknum) = split('/', $ipandmask);
-	my $netbin = oct("0b" . '1' x $masknum . '0' x (32-$masknum));	# create a str like '1111100', then convert to binary
-	my @netarr=unpack('C4',pack('N',$netbin));		# separate into the 4 octets
-	my $netmask=join('.',@netarr);			# put them together into the normal looking netmask
-	return ($ip, $netmask);
+
+	# build the netmask
+	my $nmbin = oct("0b" . '1' x $masknum . '0' x (32-$masknum));	# create a str like '1111100', then convert to binary
+	my @nmarr=unpack('C4',pack('N',$nmbin));		# separate into the 4 octets
+	my $netmask=join('.',@nmarr);			# put them together into the normal looking netmask
+
+	# create binary form of ip
+	my @iparr=split(/\./,$ip);
+	my ( $ipbin ) = unpack('N', pack('C4',@iparr ) );
+
+	# Calculate network address by logical AND operation of ip & netmask and convert network address to IP address format
+	my $netbin = ( $ipbin & $nmbin );
+	my @netarr=unpack('C4', pack('N',$netbin ) );
+	my $network=join(".",@netarr);
+
+	# Calculate broadcast address by inverting the netmask and adding it to the network address
+	my $bcbin = ( $ipbin & $nmbin ) + ( ~ $nmbin );
+	my @bcarr=unpack('C4', pack('N',$bcbin ) ) ;
+	my $broadcast=join(".",@bcarr);
+
+	return ($ip, $netmask, $network, $broadcast);
 }
 
 
@@ -155,6 +229,11 @@ sub updateGrub {
 		"\tkernel " . $fileprefix . $args->{kernelpath} . ' ' . $args->{kernelparms} . "\n",
 		"\tinitrd " . $fileprefix . $args->{initrdpath} . "\n",
 		);
+	if ($DRYRUN) {
+		print "Dry run:  would add this stanza to $grubfile:\n";
+		foreach my $l (@entry) { print $l; }
+		return;
+	}
 
 	my $needtowritefile = 1;
 	if (grep(/^title\s+$XCATNETBOOTTITLE/, @lines)) { $needtowritefile = updateGrubEntry(\@lines, \@entry); }		# there is already an entry in there

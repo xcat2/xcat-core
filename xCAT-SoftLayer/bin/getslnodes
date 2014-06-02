@@ -38,8 +38,6 @@ if (scalar(@ARGV)>1) { $usage->(1); }
 my $hnmatch = $ARGV[0];		# if they specified a hostname match, only show svrs that start with that
 
 readconf("$ENV{HOME}/.slconfig");		# get the userid and api key from the config file
-#my $api_username = 'SL276540';
-#my $api_key = '799d5d9267a927a330ec016f00bfe17e6fc532d203cf68b3b0d997b2d27a3ce1';
 
 my $slinstalled = eval { push @INC, $CONFIG{apidir}; require SoftLayer::API::SOAP; };
 if (!$slinstalled) { die "Error: the SoftLayer::API::SOAP perl module is not installed. Download it using 'git clone https://github.com/softlayer/softlayer-api-perl-client' and put the directory in ~/.slconfig ."; }
@@ -64,12 +62,23 @@ foreach my $server (@$servers) {
 		print "\tbmc=".$server->{remoteManagementComponent}->{ipmiIpAddress}."\n";
 		print "\tbmcusername=".$server->{remoteManagementAccounts}->[0]->{username}."\n";
 		print "\tbmcpassword=".$server->{remoteManagementAccounts}->[0]->{password}."\n";
-		print "\tmac=".$server->{backendNetworkComponents}->[0]->{macAddress}."\n";
-		print "\tip=".$server->{privateIpAddress}."\n";
+
+		# find the 1st active private nic that is not the bmc
+		foreach my $nic (@{$server->{backendNetworkComponents}}) {
+			#print "nic:\n"; foreach my $key (keys(%$nic)) { print "  $key = ", $nic->{$key}, "\n"; }
+			if ($nic->{status} eq 'ACTIVE' && $nic->{name} eq 'eth' && $nic->{macAddress} && $nic->{primaryIpAddress}) {
+				# found it
+				print "\tmac=".$nic->{macAddress}."\n";
+				print "\tip=".$nic->{primaryIpAddress}."\n";
+			}
+		}
+		#print "\tip=".$server->{privateIpAddress}."\n";	# getting this from the backendNetworkComponents instead
+		print "\tserial=".$server->{manufacturerSerialNumber}."\n";
 		print "\tnetboot=xnba\n";
 		print "\tarch=x86_64\n";
 		print "\tusercomment=hostname:".$server->{fullyQualifiedDomainName}.", user:".$server->{operatingSystem}->{passwords}->[0]->{username}.", pw:".$server->{operatingSystem}->{passwords}->[0]->{password}."\n";
 
+		verbose('SoftLayer API bare metal server entry: ' . Dumper($server));
 		#print Dumper($server->{remoteManagementAccounts});
 		#print "#Softlayer_account_info_for ".$server->{fullyQualifiedDomainName} . " Username: ";
 		#print $server->{operatingSystem}->{passwords}->[0]->{username} . " Password: ";
