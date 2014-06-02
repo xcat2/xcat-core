@@ -178,14 +178,6 @@ if [ -z "$instdisk" ]; then
 		instdisk=$firstdisk 
 	fi
 fi
-BOOTFSTYPE=ext3
-EFIFSTYPE=vfat
-
-if uname -r|grep ^3.*el7 > /dev/null; then
-    BOOTFSTYPE=xfs
-    FSTYPE=xfs
-    EFIFSTYPE=efi
-fi
 modprobe ext4 >& /dev/null
 modprobe ext4dev >& /dev/null
 if grep ext4dev /proc/filesystems > /dev/null; then
@@ -195,12 +187,20 @@ elif grep ext4 /proc/filesystems > /dev/null; then
 else
 	FSTYPE=ext3
 fi
+BOOTFSTYPE=ext3
+EFIFSTYPE=vfat
+
+if uname -r|grep '^3.*el7' > /dev/null; then
+    BOOTFSTYPE=xfs
+    FSTYPE=xfs
+    EFIFSTYPE=efi
+fi
 
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype efi' >> /tmp/partitioning
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitioning
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
