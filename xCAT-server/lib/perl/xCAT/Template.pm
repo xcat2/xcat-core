@@ -219,6 +219,8 @@ sub subvars {
   }
 
   #ok, now do everything else..
+  my $shortname = $node;
+  $shortname =~ s/\..*//;
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
@@ -244,6 +246,7 @@ sub subvars {
   $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
   $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
   $inc =~ s/#HOSTNAME#/$node/g;
+  $inc =~ s/#SHORTNAME#/$shortname/g;
   $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
 
   my $nrtab = xCAT::Table->new("noderes");
