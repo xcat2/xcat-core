@@ -12,7 +12,7 @@ if [ -f "/etc/SuSE-release" ];then
     fi
 fi
 
-# SI starts klogd in the chroot, but does not kill it
+# SI starts klogd in the chroot, but does not kill it.  Remove this line when SI fixes their bug.
 killall klogd
 
 # flush all write buffers, just in case SI can not umount /a

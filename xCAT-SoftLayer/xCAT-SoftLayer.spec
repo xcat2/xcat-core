@@ -17,6 +17,9 @@ BuildArch: noarch
 Requires: xCAT-server
 #Requires: xCAT-server  >= %{epoch}:%(cat Version|cut -d. -f 1,2)
 
+# perl-ExtUtils-MakeMaker, perl-CPAN, perl-Test-Harness are only available in rhel.
+# When this rpm supports being installed in sles, need to add these to xcat-dep.
+# perl-SOAP-Lite is already in xcat-dep
 Requires: perl-ExtUtils-MakeMaker perl-CPAN perl-Test-Harness perl-SOAP-Lite
 
 Provides: xCAT-SoftLayer = %{epoch}:%{version}
@@ -45,7 +48,7 @@ xCAT-SoftLayer provides Utilities to make xCAT work in a SoftLayer environment. 
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
-mkdir -p $RPM_BUILD_ROOT/install/postscripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
@@ -56,8 +59,8 @@ cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
-cp -d postscripts/* $RPM_BUILD_ROOT/install/postscripts
-chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
+cp -d postscripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
+chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts/*
 
 cp -d si-post-install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/post-install
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/post-install/*
@@ -77,4 +80,8 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 #%doc LICENSE.html
 %{prefix}
-/install/postscripts
+
+%post
+# We are shipping the postscripts in a sysclone dir and then copying them to /install/postscripts here,
+# because we want to allow base xcat to eventually ship them and not conflict on the file name/path
+cp -f /%{prefix}/share/xcat/sysclone/postscripts/* /install/postscripts
