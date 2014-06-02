@@ -20,6 +20,7 @@
 #
 
 NR=$1
+THINGY=$2
 
 offer_help() {
 
@@ -31,9 +32,17 @@ offer_help() {
     cat <<EOF
 $PROGNAME (part of the BEF_Scripts for xCAT) v$VERSION
 
-Usage: $PROGNAME NODERANGE | xcoll
+Usage: $PROGNAME NODERANGE [FILTER] | xcoll
 
     --help  Display this help output.
+
+    NODERANGE
+        An xCAT noderange on which to operate.
+
+    FILTER
+        A string to match in the output, filtering out everything else.  This
+        is passed to "egrep" and can be a simple string or a regular
+        expression.
 
 EOF
 
@@ -52,52 +61,68 @@ Purpose:
 
 Example output:
 
-    In the output below, note the following discrepancies for the node
-    storage1 (as compared with all of the other nodes): "rate",
-    "PortRcvErrors", and "IB HCA FW Active".  Looks like that guy may
-    need a restart of the OFED stack to engage his newly installed
-    firmware. ;-)
+    #
+    # This example shows that all of rack 14 has the same settings.
+    #
+    root@mgt1:~ # test_hca_state rack14 | xcoll
+    ====================================
+    rack14
+    ====================================
+    OFED Version: MLNX_OFED_LINUX-2.0-3.0.0.3 (OFED-2.0-3.0.0):
+    mlx4_0
+      PCI: Gen3
+      Firmware installed: 2.30.3200
+      Firmware active:    2.30.3200
+      log_num_mtt:      20
+      log_mtts_per_seg: 3
+      Port 1: InfiniBand    phys_state: 5: LinkUp
+        state: 4: ACTIVE
+        rate: 40 Gb/sec (4X FDR10)
+        symbol_error: 0
+        port_rcv_errors: 0
+      Port 2: InfiniBand    phys_state: 3: Disabled
+        state: 1: DOWN
+        rate: 10 Gb/sec (4X)
+        symbol_error: 0
+        port_rcv_errors: 0
+    
+      IPoIB
+        recv_queue_size: 8192
+        send_queue_size: 8192
+        ib0:
+          Mode: datagram
+          MTU:  4092
+          Mode: up
+        ib1:
+          Mode: datagram
+          MTU:  4092
+          Mode: up
 
-    [root]# test_hca_state compute,storage | xcoll
+
+    #
+    # This example uses a FILTER on the word 'firmware'.  In this case, we've
+    # upgraded the firmware across rack11 and rack12.  
+    #
+    #   - On rack11, we've also restarted the IB stack (/etc/init.d/openibd
+    #     restart) to activate the new firmware.  
+    #
+    #   - Rack 12 has also been updated, as we can see from the 'Firmware
+    #     installed' line, but it's nodes are still running with their prior
+    #     level of firmware and must reload the IB stack to have it take effect.
+    #
+    root@mgt1:~ # test_hca_state rack11,rack12 firmware | xcoll
     ====================================
-    storage1
+    rack11
     ====================================
-    OFED: MLNX_OFED_LINUX-1.5.3-4.0.22.3 (OFED-1.5.3-4.0.22):
-    mlx4_0/1:
-     phys state:     5: LinkUp
-     rate:       40 Gb/sec (4X FDR10)
-    PCI: Gen3
-    SymbolErrorCounter: 0
-    PortRcvErrors: 31
-    IB HCA FW Installed: 2.11.500
-    IB HCA FW Active:    2.10.2372
-    mlx4_core set_4k_mtu: 0
-    mlx4_core log_num_mtt: 20
-    mlx4_core log_mtts_per_seg: 7
-    IPoIB Mode: connected
-    IPoIB MTU:  65520
-    IPoIB recv_queue_size: 8192
-    IPoIB send_queue_size: 8192
+      Firmware installed: 2.30.3200
+      Firmware active:    2.30.3200
     
     ====================================
-    compute,storage2,storage3,storage4
+    rack12
     ====================================
-    OFED: MLNX_OFED_LINUX-1.5.3-4.0.22.3 (OFED-1.5.3-4.0.22):
-    mlx4_0/1:
-     phys state:     5: LinkUp
-     rate:       56 Gb/sec (4X FDR)
-    PCI: Gen3
-    SymbolErrorCounter: 0
-    PortRcvErrors: 0
-    IB HCA FW Installed: 2.11.500
-    IB HCA FW Active:    2.11.500
-    mlx4_core set_4k_mtu: 0
-    mlx4_core log_num_mtt: 20
-    mlx4_core log_mtts_per_seg: 7
-    IPoIB Mode: connected
-    IPoIB MTU:  65520
-    IPoIB recv_queue_size: 8192
-    IPoIB send_queue_size: 8192
+      Firmware installed: 2.30.3200
+      Firmware active:    2.11.1260
+
 
 Author:  Brian Finley
 EOF
@@ -120,43 +145,89 @@ case "$NR" in
     ;;
 esac
 
+if [ -z $THINGY ]; then
+    # Match everything if nothing is specified
+    THINGY="."
+fi
 
 xdsh $NR -t3 ' 
-echo -n "OFED: " ; ofed_info | head -n 1
-ibstatus | grep -B7 InfiniBand | egrep "(phys state|rate|device)" | perl -pi -e "s/^\s+/ /; s|Infiniband device .(.*). port (\d+).*|\$1/\$2:|;"
-HCA_PCI_ID=$(lspci | egrep "Network controller.*Mellanox" | sed "s/ .*//")
-PCI_SPEED=$(lspci -vvvxxx -s $HCA_PCI_ID | egrep "^70: " | perl -pi -e "s/^70: [0-9]+ [0-9]+ (\d+).*/\$1/")
-echo -n "PCI: "
-if [ "$PCI_SPEED" == 83 ]; then
-    echo -n Gen3
-elif [ "$PCI_SPEED" == 82 ]; then
-    echo -n Gen2
+
+echo -n "OFED Version: " ; ofed_info | head -n 1
+if [ ! -d /sys/class/infiniband ]; then
+	echo "No InfiniBand devices found."
 else
-    echo -n Dunno
+	HCAs=$(cd /sys/class/infiniband && /bin/ls)
+	for HCA in $HCAs
+	do
+		echo $HCA
+
+    HCA_PCI_ID=$(lspci | egrep "Network controller.*Mellanox" | sed "s/ .*//")
+    PCI_SPEED=$(lspci -vvvxxx -s $HCA_PCI_ID | egrep "^70: " | perl -pi -e "s/^70: [0-9]+ [0-9]+ (\d+).*/\$1/")
+    echo -n "  PCI: "
+    if [ "$PCI_SPEED" == 83 ]; then
+        echo Gen3
+    elif [ "$PCI_SPEED" == 82 ]; then
+        echo Gen2
+    else
+        echo Dunno
+    fi
+
+	  echo -n "  Firmware installed: "; mstflint -d $HCA q | grep "FW Version" | sed "'s/FW Version: *//'"
+	  echo -n "  Firmware active:    "; cat /sys/class/infiniband/$HCA/fw_ver
+
+		MODULE=mlx4_core
+		echo -n "  log_num_mtt:      " ; cat /sys/module/$MODULE/parameters/log_num_mtt
+		echo -n "  log_mtts_per_seg: " ; cat /sys/module/$MODULE/parameters/log_mtts_per_seg
+
+	  for PORT in $(cd /sys/class/infiniband/$HCA/ports/ && /bin/ls)
+		do
+		  LINK_LAYER=$(cat /sys/class/infiniband/$HCA/ports/$PORT/link_layer)
+      echo -n "  Port $PORT: $LINK_LAYER"
+			if [ "$LINK_LAYER" = "InfiniBand" ]; then
+
+		  	for i in phys_state state rate
+				do
+	  			echo -n "    $i: "
+					cat /sys/class/infiniband/$HCA/ports/$PORT/$i
+				done
+		  	for i in symbol_error port_rcv_errors
+				do
+	  			echo -n "    $i: "
+					cat /sys/class/infiniband/$HCA/ports/$PORT/counters/$i
+				done
+
+			else
+		  	for i in phys_state state rate
+				do
+	  			echo -n "    $i: "
+					cat /sys/class/infiniband/$HCA/ports/$PORT/$i
+				done
+			fi
+		done
+	done
+
+
+	echo
+	echo "  IPoIB"
+	file=recv_queue_size ; echo -n "    $file: " ; cat /sys/module/ib_ipoib/parameters/$file
+	file=send_queue_size ; echo -n "    $file: " ; cat /sys/module/ib_ipoib/parameters/$file
+
+  for IFACE in $(cd /sys/class/net/ && /bin/ls -d ib*)
+  do
+    echo    "    $IFACE:"
+    echo -n "      Mode: " ; cat /sys/class/net/ib0/mode
+    echo -n "      MTU:  " ; cat /sys/class/net/ib0/mtu 
+    echo -n "      Mode: " ; cat /sys/class/net/ib0/operstate
+  done
 fi
-echo
+' | perl -pi -e 's/(ssh: connect to host) \S+ (.*)/$1 $2/' | egrep -i "$THINGY"
 
-perfquery | egrep "(PortRcvErrors|SymbolErrorCounter)" | perl -pi -e "s/\.+/ /g"
+#for HCA in $( lspci -xxxvvv | grep Net | grep Mell | sed "'s/ .*//'" )
+#do
+#  echo -n "IB HCA FW Installed: " ; mstflint -d $HCA q | grep FW | sed "'s/.*: *//'"
+#done
+#for CA in $( ibstat -l )
+#do
+#  ibstat $CA | grep -q InfiniBand && ibstat $CA | grep Firmware | sed "'s/.*: *//'" | xargs echo "IB HCA FW Active:   "
+#done
 
-for HCA in $( lspci -xxxvvv | grep Net | grep Mell | sed "'s/ .*//'" )
-do
-  echo -n "IB HCA FW Installed: " ; mstflint -d $HCA q | grep FW | sed "'s/.*: *//'"
-done
-for CA in $( ibstat -l )
-do
-  ibstat $CA | grep -q InfiniBand && ibstat $CA | grep Firmware | sed "'s/.*: *//'" | xargs echo "IB HCA FW Active:   "
-done
-
-# mlx4_core
-MODULE=mlx4_core
-MLX4_CORE_PARAMS="set_4k_mtu log_num_mtt log_mtts_per_seg"
-for param in $MLX4_CORE_PARAMS
-do
-  echo -n "mlx4_core $param: " ; cat /sys/module/$MODULE/parameters/$param
-done
-
-echo -n "IPoIB Mode: " ; cat /sys/class/net/ib0/mode
-echo -n "IPoIB MTU:  " ; cat /sys/class/net/ib0/mtu 
-file=recv_queue_size ; echo -n "IPoIB $file: " ; cat /sys/module/ib_ipoib/parameters/$file
-file=send_queue_size ; echo -n "IPoIB $file: " ; cat /sys/module/ib_ipoib/parameters/$file
-' | perl -pi -e 's/(ssh: connect to host) \S+ (.*)/$1 $2/'
