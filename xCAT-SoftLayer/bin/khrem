@@ -1,0 +1,88 @@
+#!/usr/bin/perl
+
+# remove entries from the .ssh/known_hosts file for a node
+
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+#$Data::Dumper::Maxdepth=2;
+
+# Globals - these are set once and then only read.
+my $HELP;
+my $VERBOSE;
+my $file = '~/.ssh/known_hosts';
+
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: khrem <node>\n";
+    print "       Removes the entries in the .ssh/known_hosts file associated with this node.\n";
+	exit $exitcode;
+};
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE)) { $usage->(1); }
+
+if ($HELP) { $usage->(0); }
+if (scalar(@ARGV)!=1) { $usage->(1); }
+my $node = $ARGV[0];		# if they specified a hostname match, only show svrs that start with that
+
+my @output = runcmd("host $node");
+my $hostname;
+my $line = shift @output;
+#print "line=$line\n";
+if ($line =~ m/is an alias for /) {
+    ($hostname) = $line =~ m/is an alias for ([^\.]+)/;
+    #print "hostname=$hostname\n";
+    $line = shift @output;
+  }
+#print "line=$line\n";
+my ($ip) = $line =~ m/has address (.+)$/;
+if (defined($hostname)) {
+    print "Removing entries from $file for: $node, $hostname, $ip\n";
+    runcmd("sed -i '/^$node/d;/^$hostname/d;/^$ip/d' $file");
+  }
+else {
+    print "Removing entries from $file for: $node, $ip\n";
+    runcmd("sed -i '/^$node/d;/^$ip/d' $file");
+}
+
+exit(0);
+
+
+# Pring msg only if -v was specified
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
+
+
+
+# Run a command.  If called in the context of return an array, it will capture the output
+# of the cmd and return it.  Otherwise, it will display the output to stdout.
+# If the cmd has a non-zero rc, this function will die with a msg.
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc;
+
+    $cmd .= ' 2>&1' ;
+    verbose($cmd);
+
+   	my @output;
+   	if (wantarray) {
+		@output = `$cmd`;
+		$rc = $?;
+	}
+	else {
+		system($cmd);
+		$rc = $?;
+	}
+
+    if ($rc) {
+        $rc = $rc >> 8;
+        if ($rc > 0) { die "Error: rc $rc return from cmd: $cmd\n"; }
+        else { die "Error: system error returned from cmd: $cmd\n"; }
+    }
+    elsif (wantarray) { return @output; }
+}

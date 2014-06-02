@@ -1,0 +1,209 @@
+#!/bin/bash
+
+# SI post-install script to configure network settings after SI has installed the OS
+# SI post-install scripts run in a chroot environment of the final OS image
+
+. /tmp/post-install/variables.txt
+
+bondingopts='mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1'
+
+# determine if we should be using a static ip or dhcp
+staticIP () {
+    # Eventually we should use the SI variable IP_ASSIGNMENT_METHOD below to determine this.
+    # But this requires a patch in both xcat/sysclone (to set si_getimage -ip-assignment method)
+    # and SI (to set IP_ASSIGNMENT_METHOD as a result of that).  Until both of those patches
+    # are in the main releases, assume that if we have set the IPADDR kernel parm for the boot
+    # kernel to use static ip, that the final OS should use static ip too.
+    # Note: the IPADDR environment variable will be set by SI, even if it got it thru dhcp, so
+    #       that is not a reliable way to decide.
+    str=`cat /proc/cmdline`
+    #str='netmask=255.255.255.192 IPADDR=10.54.51.11 GATEWAY=10.54.51.1 dns=10.54.51.2 hostname=sap64-4 DEVICE=eth0'
+    for parm in $str; do
+        key=`echo $parm|awk -F= '{print $1}'`
+        value=`echo $parm|awk -F= '{print $2}'`
+        if [[ $key == "IPADDR" || $key == "ipaddr" ]]; then
+            return 0    # yes, we should use static ip
+        fi
+    done
+    if [[ -n $IP_ASSIGNMENT_METHOD && ${IP_ASSIGNMENT_METHOD,,} == "static" ]]; then
+        return 0    # this means yes/true
+    fi
+    return 1
+}
+
+#delete the udev rule in the image
+rule_file=`ls /etc/udev/rules.d/*net_persistent_names.rules 2>/dev/null`
+if [ -n "$rule_file" ];then
+    rm -f $rule_file
+fi
+
+hostname $HOSTNAME
+bond=bond0
+# this is a softlayer assumption that the two devices on the private net will be eth0 and eth2
+if [[ $DEVICE == "eth0" ]]; then
+    DEVICE2=eth2
+elif [[ $DEVICE == "eth2" ]]; then
+    DEVICE2=eth0
+fi
+ip addr show|grep -q -E "^[0-9]+:\s+$DEVICE2:"          # make sure it exists on the system
+if [[ $? == 0 ]]; then
+    DEVICE2EXISTS="yes"
+fi
+
+device_names=`ifconfig -a | grep -i hwaddr | grep -i 'Ethernet' | grep -v usb| awk '{print $1}'`
+str_cfg_file=''
+if [ -d "/etc/sysconfig/network-scripts/" ];then
+    #redhat
+    dir="/etc/sysconfig/network-scripts"
+    grep -i HOSTNAME /etc/sysconfig/network
+    if [ $? -eq 0 ];then
+        sed -i "s/HOSTNAME=.*/HOSTNAME=$HOSTNAME/g" /etc/sysconfig/network
+    else
+        echo "HOSTNAME=$HOSTNAME" >> /etc/sysconfig/network
+    fi
+    if staticIP; then
+        # delete all nic cfg files left over from the golden node
+        for i in $device_names;do
+            rm -f "$dir/ifcfg-$i"
+        done
+
+        # set static ip from variables in variables.txt
+        # write ifcfg-bond0.  For now we assume the installnic should be part of bond0,
+        # because in SL i think that is always the case.
+        i="$bond"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=none" >> $str_cfg_file
+        echo "ONBOOT=yes" >> $str_cfg_file
+        echo "USERCTL=no" >> $str_cfg_file
+        echo 'BONDING_OPTS="'$bondingopts'"' >> $str_cfg_file
+        echo "IPADDR=$IPADDR" >> $str_cfg_file
+        echo "NETMASK=$NETMASK" >> $str_cfg_file
+        echo "NETWORK=$NETWORK" >> $str_cfg_file
+        echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
+
+        # write ifcfg-eth0
+        i="$DEVICE"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "DEVICE=$i" > $str_cfg_file
+        echo "BOOTPROTO=none" >> $str_cfg_file
+        echo "MASTER=$bond" >> $str_cfg_file
+        echo "ONBOOT=yes" >> $str_cfg_file
+        echo "SLAVE=yes" >> $str_cfg_file
+        echo "USERCTL=no" >> $str_cfg_file
+
+        i="$DEVICE2"
+        str_cfg_file="$dir/ifcfg-$i"
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
+            # write ifcfg-eth2
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=none" >> $str_cfg_file
+            echo "MASTER=$bond" >> $str_cfg_file
+            echo "ONBOOT=yes" >> $str_cfg_file
+            echo "SLAVE=yes" >> $str_cfg_file
+            echo "USERCTL=no" >> $str_cfg_file
+        else
+            rm -f $str_cfg_file         # in case it was left over in the image that was captured
+        fi
+
+        # write modprobe alias config
+        str_cfg_file="/etc/modprobe.d/$bond.conf"
+        echo "alias $bond bonding" > $str_cfg_file
+
+        #todo: figure out how to set the default gateway in rhel
+    else
+        # use dhcp for all nics
+        for i in $device_names;do
+            str_cfg_file="$dir/ifcfg-$i"
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=dhcp" >> $str_cfg_file
+            echo "NM_CONTROLLED=yes" >> $str_cfg_file
+            echo "ONBOOT=yes" >> $str_cfg_file
+        done
+    fi
+elif [ -d "/etc/sysconfig/network/" ];then
+    #suse
+    dir="/etc/sysconfig/network"
+    echo "$HOSTNAME" > /etc/HOSTNAME
+    if staticIP; then
+        # delete all nic cfg files left over from the golden node
+        for i in $device_names;do
+            rm -f "$dir/ifcfg-$i"
+        done
+
+        # set static ip from variables in variables.txt
+        # write ifcfg-bond0.  For now we assume the installnic should be part of bond0,
+        # because in SL i think that is always the case.
+        i="$bond"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "BOOTPROTO=static" > $str_cfg_file
+        echo "STARTMODE=onboot" >> $str_cfg_file
+        echo "BONDING_MASTER=yes" >> $str_cfg_file
+        echo "BONDING_MODULE_OPTS='$bondingopts'" >> $str_cfg_file
+        echo "NAME='Bonded Interface'" >> $str_cfg_file
+        echo "IPADDR=$IPADDR" >> $str_cfg_file
+        echo "NETMASK=$NETMASK" >> $str_cfg_file
+        echo "NETWORK=$NETWORK" >> $str_cfg_file
+        echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        echo "USERCONTROL=no" >> $str_cfg_file
+        echo "BONDING_SLAVE_0=$DEVICE" >> $str_cfg_file
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
+            echo "BONDING_SLAVE_1=$DEVICE2" >> $str_cfg_file
+        fi
+
+        # write ifcfg-eth0
+        i="$DEVICE"
+        str_cfg_file="$dir/ifcfg-$i"
+        echo "BOOTPROTO=none" > $str_cfg_file
+        echo "STARTMODE=hotplug" >> $str_cfg_file
+
+        i="$DEVICE2"
+        str_cfg_file="$dir/ifcfg-$i"
+        if [[ $DEVICE2EXISTS == "yes" ]]; then
+            # write ifcfg-eth2
+            echo "BOOTPROTO=none" > $str_cfg_file
+            echo "STARTMODE=hotplug" >> $str_cfg_file
+        else
+            rm -f $str_cfg_file         # in case it was left over in the image that was captured
+        fi
+
+        # write modprobe alias config
+        str_cfg_file="/etc/modprobe.d/$bond.conf"
+        echo "alias $bond bonding" > $str_cfg_file
+
+        # set the default gateway (at this point this is the private nic gateway, to handle provision across vlans)
+        file=/etc/sysconfig/network/routes
+        if grep -q -E '^default ' $file; then
+            # replace the default route that is already in there
+            sed -i 's/^default .*$/default '$GATEWAY' - -/' $file
+        else
+            # no default route yet, append to file
+            echo "default $GATEWAY - -" >>$file
+        fi
+
+        # this was the original config of the eth0 nic (without bonding)
+        #echo "DEVICE=$i" > $str_cfg_file
+        #echo "BOOTPROTO=static" >> $str_cfg_file
+        #echo "STARTMODE=onboot" >> $str_cfg_file
+        #echo "IPADDR=$IPADDR" >> $str_cfg_file
+        #echo "NETMASK=$NETMASK" >> $str_cfg_file
+        #echo "NETWORK=$NETWORK" >> $str_cfg_file
+        #echo "BROADCAST=$BROADCAST" >> $str_cfg_file
+        #todo: add gateway config?  Not sure, because the boot kernels gateway might not be the final OS gateway
+    else
+        # use dhcp for all nics
+        for i in $device_names;do
+            str_cfg_file="$dir/ifcfg-$i"
+            echo "DEVICE=$i" > $str_cfg_file
+            echo "BOOTPROTO=dhcp" >> $str_cfg_file
+            echo "STARTMODE=onboot" >> $str_cfg_file
+            echo "DHCLIENT_PRIMARY_DEVICE=yes" >> $str_cfg_file
+        done
+    fi
+else
+    #ubuntu
+    echo "Does not support ubuntu."
+    exit 1
+fi
+
