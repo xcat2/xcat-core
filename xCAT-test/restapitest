@@ -72,19 +72,7 @@ if (
     exit 1;
 }
 
-##############################################################
-# check result
-##############################################################
-if ($output) {
-    if ($method or $resource) {
-        &usage;
-        exit 1;
-    }
 
-    my $res = check_result($output,$loperator,$outputfile);
-    print_debug( "check result runs with $output and $loperator, result is $res\n" );
-    exit $res;
-}
 ##############################################################
 # return help
 ##############################################################
@@ -93,83 +81,143 @@ if ($help) {
     exit 0;
 }
 ##############################################################
+# flag check
+##############################################################
+if  ($method ) {
+    unless( $resource ) {
+        print "-m must be used with -r \n";
+        &usage;
+        exit 0;
+    }
+}
+if  ($resource ) {
+    unless($method) {
+        print "-r must be used with -m \n";
+        &usage;
+        exit 0;
+    }
+}
+
+
+##############################################################
+# ONLY check result,exit immediately
+##############################################################
+if ($output and !defined($method)) {
+    my $res = check_result($output,$loperator,$outputfile);
+    log_debug(2, "check result runs with $output and $loperator, result is $res\n" );
+    exit $res;
+}
+
+##############################################################
 # Give default values for optional vars.
 ###############################################################
 my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
 my $resultdir = "$rootdir/result";
-my $logfile = "$rootdir/result/restapitest.log"; #/opt/xcat/share/xcat/tools/autotest/result/restapitest.log
-my $cert1 = "/root/ca-cert.pem";
+my $logfile = "$rootdir/result/restapitest.log";
+#/opt/xcat/share/xcat/tools/autotest/result/restapitest.log
+my $confile = "$rootdir/default.conf";
+
+
+# read configuration file
+if (!open (CONF, "<$confile")) {
+        log_debug(1,"can't open configuration file $confile");
+        exit 1;
+}
+my %confhash;
+while (<CONF>){
+    if (/restapi-(\w+)=(\S+)/) {
+       $confhash{$1}=$2;
+    }
+}
+
 # get token
-my $gettoken = `curl -X POST -k 'https://127.0.0.1/xcatws/tokens?userName=root&password=cluster' -H Content-Type:application/json --data '{"userName":"root","password":"cluster"}' 2>/dev/null`;
+my $defaultserver = $confhash{DefaultServer};
+my $defaultuser = $confhash{DefaultUser1};
+my $DefaultPasswd = $confhash{DefaultPasswd1};
+my $gettoken = `curl -X POST -k 'https://$defaultserver/xcatws/tokens?userName=$defaultuser&password=$DefaultPasswd' -H Content-Type:application/json --data '{"userName":"$defaultuser","password":"$DefaultPasswd"}' 2>/dev/null`;
 my $reshash = parse_json($gettoken);
 my $token1 = $$reshash{token}{id};
-
 
 # get hostname
 unless ($hostname) {
    $hostname = `hostname`;
     chomp($hostname);
-
+}
+unless ($defaultserver) {
+    $host = "127.0.0.1";
+} else {
+    $host = $defaultserver;
 }
 
 # keey default test result for save
-my $res = run_restapi($method, $resource, $data, "", $port, "127.0.0.1", "root", "cluster");
+my $res = run_restapi($method, $resource, $data, "", $port, "$host", "$defaultuser", "$DefaultPasswd");
 $defaulthash = parse_json($res);
 $defaulthttpresult = check_errcode();
 
-# debug info
-print_debug( "get token $token1. \n" );
-print_debug( "get hostname $hostname.\n");
-print_debug( "default result is $res. \n" );
-print_debug( "default resulthash is: \n" );
-print_debug($defaulthash);
-print_debug( "default errcode is $defaulthttpresult \n" );
+# debug and log info
+log_debug(3, "get token $token1. \n" );
+log_debug(3, "get first default user $confhash{DefaultUser1} \n" );
+log_debug(3, "get first default user's passwd is $confhash{DefaultPasswd1} \n" );
+log_debug(3, "get second default user $confhash{DefaultUser2} \n" );
+log_debug(3, "get second default user's passwd is $confhash{DefaultPasswd2} \n" );
+log_debug(3, "get path of ca $confhash{Cert} \n" );
+log_debug(3, "get server $defaultserver from configuration file and it is $host\n" );
+log_debug(3, "get hostname $hostname.\n");
+log_debug(3, "default result is $res. \n" );
+log_debug(3, "default resulthash is: \n" );
+log_debug(3,$defaulthash);
+log_debug(3, "default errcode is $defaulthttpresult \n" );
+log_debug(3,"**************begin to run more restapi test, stop when post***************");
 
 
 ####################################################
 # Begin to run test cases
 ####################################################
-my @users = ("root","wsuser", $user);
-my @passwds = ("cluster","cluster", $passwd);
+my @users = ($confhash{DefaultUser1},$confhash{DefaultUser2}, $user);
+my @passwds = ($confhash{DefaultPasswd1},$confhash{DefaultPasswd2}, $passwd);
 my @tokens = ("", $token1, $token);
-my @certs = ("", $cert1, $cert);
-unless ($host) {
-    $host = "127.0.0.1";
-}
-log_me("**************begin restapi test***************");
+my @certs = ("", $confhash{Cert}, $cert);
 my $i = 0;
-for my $u (@users) {
-    next unless($u);
-    my $p = $passwds[$i];
-    $i++;
-    for my $t (@tokens) {
-        for my $c (@certs){
-            if ($method eq "POST" and ($resource =~ /^\/nodes\/(\w+)$/)) {
-                 `/opt/xcat/bin/rmdef $1`;
-                 print_debug("restapi test rmdef $1\n");
-            }
-
-            my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
-        if($res){
-            my $reshash = parse_json($res);
-            print_debug("parse curl result and got:\n");
-            print_debug($reshash);
-            if (%$reshash != %$defaulthash) {
-                log_me("restapi test cases run different result");
-                print_debug( "restapi test cases run different result with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
-                exit 1;
-            }
-        }
-            my $errcode = check_errcode();
-            print_debug("get curl error code: $errcode\n");
-            if ($errcode != $defaulthttpresult) {
-                log_me("restapi test cases run different errcode");
-                print_debug( "restapi test cases run different error code with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
-                exit 1;
+unless ($method eq "POST") { # Should not post sevral times
+    for my $u (@users) {
+        next unless($u);
+        my $p = $passwds[$i];
+        $i++;
+        for my $t (@tokens) {
+            for my $c (@certs){
+                #if ($method eq "POST" and ($resource =~ /^\/nodes\/(\w+)$/)) {
+                #     `/opt/xcat/bin/rmdef $1`;
+                #     log_debug(2,"restapi test rmdef $1\n");
+                #}
+                my $res = run_restapi($method, $resource, $data, $c, $port, $host, $u, $p, $t);
+                if($res){
+                    my $reshash = parse_json($res);
+                    log_debug(2,"parse curl result and got:\n");
+                    log_debug(2,$reshash);
+                    if (%$reshash != %$defaulthash) {
+                        log_debug(3, "restapi test cases run different result with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
+                        exit 1;
+                    }
+                }
+                my $errcode = check_errcode();
+                log_debug(2,"get curl error code: $errcode\n");
+                if ($errcode != $defaulthttpresult) {
+                    log_debug(3, "restapi test cases run different error code with $method, $resource, $data, $c, $port, $host, $u, $p, $t\n" );
+                    exit 1;
+                }
             }
         }
     }
 }
+##############################################################
+# check result
+##############################################################
+if ($output) {
+    my $res = check_result($output,$loperator,$res);
+    log_debug(2, "check result runs with $output and $loperator, result is $res\n" );
+    exit $res;
+}
+
 exit  $defaulthttpresult;
 
 ################################################
@@ -192,31 +240,33 @@ sub usage
     return;
 }
 
-###############
-# record log  #
-###############
-sub log_me
-{
-    my $msg = shift;
-    open (LOG, ">>$logfile")
-       or  return 1;
-    my $date = `date`;
-    print LOG "$date\: $msg\n";
-}
 
-#####################
-# print debug infor #
-#####################
-sub print_debug
+#######################
+# print debug infor   #
+# 1 for only log      #
+# 2 for only debug    #
+# 3 for log and debug #
+#######################
+sub log_debug
 {
+    my $flag = shift;
     my $msg = shift;
-    return 0 unless($debug);
-    if(ref($msg) eq 'HASH') {
-        print Dumper($msg);
-    } elsif( ref($msg) eq 'ARRAY') {
-        print Dumper($msg);
-    } else {
-        print "$msg";
+    if ($flag & 0x2) {
+        if($debug){
+            if(ref($msg) eq 'HASH') {
+                print Dumper($msg);
+            } elsif( ref($msg) eq 'ARRAY') {
+                print Dumper($msg);
+            } else {
+                print "$msg";
+            }
+        }
+    }
+    if ($flag & 0x1) {
+        open (LOG, ">>$logfile")
+           or  return 1;
+        my $date = `date`;
+        print LOG "$date\: $msg\n";
     }
 }
 #########################
@@ -254,12 +304,12 @@ sub run_restapi
         $cmd .= " -H Content-Type:application/json --data '$d'";
     }
     $cmd .= " -D /tmp/err.log";
-    log_me("Begin to run restapi test with $cmd");
+    log_debug(1,"Begin to run restapi test with $cmd");
     my $res = `$cmd 2>/dev/null`;
-    print_debug("run curl: $cmd\n");
-    print_debug("result is $res\n");
+    log_debug(2,"run curl: $cmd\n");
+    log_debug(2,"result is $res\n");
     if (!open (RESULT, ">$outputfile")) {
-        log_me("wirte outputfile error");
+        log_debug(1,"wirte outputfile error");
     }
     print RESULT $res;
     close RESULT;
@@ -278,7 +328,7 @@ sub parse_json
         # {"networks":[{"mgtifname":"eth1","mask":"255.255.255.0"},{"mgtifname":"eth1","mask":"255.255.255.0"}]}
         if ($input =~ /^\[(.*)\]$/s) {
             my $content = $1;
-            print "[:] content is $content \n" if($debug);
+            log_debug(2, "[:] content is $content \n" );
             parse_json($content);
         }
         # for those who look like:
@@ -289,7 +339,7 @@ sub parse_json
             my @reval;
             # record result
             foreach my $t (@contents) {
-               print ":{}, content is $t \n" if($debug);
+               log_debug(2, ":{}, content is $t \n" );
                my $re = parse_json($t);
                push @reval, $re;
             }
@@ -309,7 +359,7 @@ sub parse_json
             my @reval;
             # record result
              foreach my $t (@contents) {
-               print "{},{}, content is $t \n" if($debug);
+               log_debug(2, "{},{}, content is $t \n" );
                my $re = parse_json($t);
                push @reval, $re;
             }
@@ -328,16 +378,16 @@ sub parse_json
         # {"clustersite":{"domain":"cluster.com","master":"192.168.1.15"}}
         elsif ($input =~ /^\s*{(.*)}\s*$/s) {
             my $content = $1;
-            print "{} content is $content \n" if($debug);
+            log_debug(2, "{} content is $content \n" );
             parse_json($content);
         }
-        elsif( $input =~ /],\"\S+\":/)){
-            $input =~ s/],\"\S+\":/]%\"\S+\":/;
+        elsif( $input =~ /],\"\S+\":/){
+            $input =~ s/],\"(\S+)\":/]%\"$1\":/;
             my @contents = split /%/, $input;
             my @reval;
             # record result
              foreach my $t (@contents) {
-               print "],:, content is $t \n" if($debug);
+               log_debug(2, "],:, content is $t \n" );
                my $re = parse_json($t);
                push @reval, $re;
             }
@@ -350,7 +400,7 @@ sub parse_json
                 }
             }
             return \%hash;
-        }       
+        }
         # for those who look like
         # "domain":"cluster.com","master":"192.168.1.15"
         elsif ($input =~ /,/ and !($input =~ /}/)) {
@@ -358,7 +408,7 @@ sub parse_json
             my @reval;
             # record result
             foreach my $t (@contents) {
-               print ", content is $t \n" if($debug);
+               log_debug(2, ", content is $t \n");
                my $re = parse_json($t);
                push @reval, $re;
             }
@@ -381,7 +431,7 @@ sub parse_json
             my $value = $2;
             if ($value =~ /{/) {
                 # "clustersite":{"domain":"cluster.com","master":"192.168.1.15"}
-                print "{ content is $value \n" if($debug);
+                log_debug(2, "{ content is $value \n" );
                 $hash{$key} =  parse_json($value, $key);
                 return \%hash;
             } else {
@@ -397,7 +447,7 @@ sub parse_json
     else {
         if ($input =~ /^\[(.*)\]/s) {
             my $content = $1;
-            print "[] content is $content \n" if($debug);
+            log_debug(2, "[] content is $content \n");
             my @all = split /,/, $content;
             foreach my $n (@all) {
                 $n =~ /\"(.*)\"/;
@@ -414,7 +464,7 @@ sub parse_json
 sub check_errcode
 {
     if(!open (ERRLOG, "</tmp/err.log")) {
-        log_me("can't open err.log in tmp");
+        log_debug(1,"can't open err.log in tmp");
         return 1;
     }
     my $num;
@@ -425,7 +475,7 @@ sub check_errcode
         }
     }
     close ERRLOG;
-    print_debug("can't get errorcode\n") unless($num);
+    log_debug(2,"can't get errorcode\n") unless($num);
     return $num;
 }
 
@@ -438,7 +488,7 @@ sub check_result
     my $opterator = shift;
     my $output = shift;
     if ( !open (OUTPUT, "<$output")) {
-        log_me("can't read output file");
+        log_debug(1,"can't read output file");
         return 1;
     }
     my $res;
@@ -447,14 +497,15 @@ sub check_result
     }
     close OUTPUT;
 
-
+    log_debug(2, "\nbegin to parse json for expected value: \n");
     my $expects = transf_hash(parse_json($data)); # one entry
+    log_debug(2, "\nbegin to parse json for actual result: \n");
     my $actuals = transf_hash(parse_json($res)); # serval entries
 
-    print_debug("expected result is:\n");
-    print_debug($expects);
-    print_debug("testcase run result is \n");
-    print_debug($actuals);
+    log_debug(2,"expected result is:\n");
+    log_debug(2,$expects);
+    log_debug(2,"testcase run result is \n");
+    log_debug(2,$actuals);
 
     my $flag = 0;
     my %flaghash;
@@ -468,7 +519,7 @@ sub check_result
                next;
             }
             my @actualvalue = split /:/, $actual; # @actualvalue = nodetype, arch, x86_64
-            print_debug("begin to compare $expval and $actualvalue[$flag]");
+            log_debug(2,"begin to compare $expval and $actualvalue[$flag]");
 
             if(($expval eq "restapiarray" ) and ($actualvalue[$flag] eq "restapiarray")){
       next;
@@ -481,52 +532,52 @@ sub check_result
             } else {
                 $flaghash{$actual} = "none";
             }
-           print_debug(", compare result is $flaghash{$actual}\n");
+           log_debug(2,", compare result is $flaghash{$actual}\n");
         }
         $flag++;
     }
-    print_debug("search result is \n");
-    print_debug(\%flaghash);
+    log_debug(2,"search result is \n");
+    log_debug(2,\%flaghash);
 
     if ($opterator eq "!="){
         foreach my $val (keys %flaghash) {
             if ($flaghash{$val} eq "eq") {
-               print_debug("compare result: failed\n");
+               log_debug(2,"compare result: failed\n");
                return 1; # fail
             }
        }
-       print_debug("compare result: succeed\n");
+       log_debug(2,"compare result: succeed\n");
        return 0; #succeed
     }
     if ($opterator eq "=="){
         foreach my $val (keys %flaghash) {
             if ($flaghash{$val} eq "eq") {
-                print_debug("compare result: succeed\n");
+                log_debug(2,"compare result: succeed\n");
                 return 0; # succeed
             }
        }
-       print_debug("compare result: failed\n");
+       log_debug(2,"compare result: failed\n");
        return 1; #fail
     }
 
     if ($opterator eq "=~"){
         foreach my $val (keys %flaghash) {
             if ($flaghash{$val} eq "match") {
-                print_debug("compare result: succeed\n");
+                log_debug(2,"compare result: succeed\n");
                 return 0; # succeed
             }
        }
-       print_debug("compare result: failed\n");
+       log_debug(2,"compare result: failed\n");
        return 1; #fail
     }
     if ($opterator eq "!=~"){
         foreach my $val (keys %flaghash) {
             if ($flaghash{$val} eq "match") {
-                print_debug("compare result: failed\n");
+                log_debug(2,"compare result: failed\n");
                 return 1; # fail
             }
        }
-       print_debug("compare result: succeed\n");
+       log_debug(2,"compare result: succeed\n");
        return 0; #succeed
     }
 
@@ -567,11 +618,5 @@ sub transf_hash
     find_key($input, \$entry, \@array);
     return \@array;
 }
-
-
-
-
-
-
 
 

@@ -1,3 +1,9 @@
+#Restapi configuration
+[Restapi]
+restapi-DefaultNRUser=wsuser
+restapi-DefaultNRpasswd=cluster
+restapi-Cert=/root/ca-cert.pem
+
 #Table configuration
 [Table_passwd]
 key=system
