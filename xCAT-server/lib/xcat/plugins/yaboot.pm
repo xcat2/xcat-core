@@ -469,9 +469,8 @@ sub process_request {
       if ($errored) {
 	  my $rsp;
  	  $rsp->{errorcode}->[0]=1;
-	  $rsp->{error}->[0]="Failed in running begin prescripts.\n";
+	  $rsp->{error}->[0]="Failed in running begin prescripts.  Processing will still continue.\n";
 	  $::YABOOT_callback->($rsp);
-	  return; 
       }
   } 
 
@@ -726,9 +725,14 @@ sub process_request {
       if ($errored) { 
 	  my $rsp;
 	  $rsp->{errorcode}->[0]=1;
+<<<<<<< HEAD
 	  $rsp->{error}->[0]="Failed in running end prescripts\n";
 	  $::YABOOT_callback->($rsp);
 	  return; 
+=======
+	  $rsp->{error}->[0]="Failed in running end prescripts.  Processing will still continue.\n";
+	  $callback->($rsp);
+>>>>>>> 78b8d21... defect 4147 - allow nodeset to continue if prescript errors
       }
   }
 }
