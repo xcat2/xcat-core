@@ -2782,7 +2782,7 @@ sub readcurrfrudevice {
         shift @data;
         push @{$sessdata->{currfrudata}},@data;
         if ($sessdata->{currfrudone}) {
-	    if ($sessdata->{isite}) {
+	    if ($sessdata->{isite} and $sessdata->{currfrusdr} and ($sessdata->{currfrusdr}->fru_oem & 0x80)) {
 		#IBM OEM command, d0,51,0 further qualifies the command name, we'll first take a stop at block 0, offset 2, one byte, to get VPD version number
 		#command structured as:
 		#d0,51,0 = command set identifier
