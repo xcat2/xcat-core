@@ -95,7 +95,7 @@ sub preprocess_request
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     GetOptions('l'  => \$::LOCAL);
-    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash($nodes, $service, "MN");
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes, $service, "MN");
     my @requests;
     if ($::LOCAL) { #only handle the local nodes
         #print "process local nodes: @$nodes\n";
