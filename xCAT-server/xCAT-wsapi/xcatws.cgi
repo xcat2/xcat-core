@@ -1414,7 +1414,7 @@ sub defout {
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                my ($attr, $val) = $l =~ /^\s*(\S+?)=(.*)$/;
+                my ($attr, $val) = $l =~ /^\s*(\S+.*?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 $json->{$nodename}->{$attr} = $val;
             }
@@ -1645,7 +1645,14 @@ sub defhdl {
 
     # push the object name - node/noderange
     if (defined ($urilayers[1])) {
-        push @args, ('-o', $urilayers[1]);
+        if ($urilayers[1] eq "ALLRESOURCES") {
+            unless (isGET()) {
+                error("Keyword ALLRESOURCES is only supported for GET Action.",$STATUS_NOT_FOUND);
+            }
+            push @args, '-l';
+        } else {
+            push @args, ('-o', $urilayers[1]);
+        }
     }
 
     # For the put/post which specifies attributes like mgt=ipmi groups=all
