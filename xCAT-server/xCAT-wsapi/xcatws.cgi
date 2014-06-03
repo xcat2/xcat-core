@@ -2339,7 +2339,7 @@ sub filterData {
                 foreach my $msg (@{$_->{error}}) {
                     if ($msg =~ /(Permission denied|Authentication failure)/) {
                         # return 401 Unauthorized
-                        sendResponseMsg($STATUS_UNAUTH);
+                        error("Authentication failure", $STATUS_UNAUTH);
                     } else {
                         push @{$outputerror->{error}}, $msg;
                     }
