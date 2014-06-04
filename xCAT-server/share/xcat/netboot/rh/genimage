@@ -928,7 +928,7 @@ sub mkinitrd_dracut {
     if ($dracutver > "033") {
         $additional_options .= " -N";
     }
-    system("chroot $rootimg_dir dracut -N $additional_options -f /tmp/initrd.$$.gz $kernelver");
+    system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver");
     print "the initial ramdisk for $mode is generated successfully.\n";
     move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz"); 
 }
