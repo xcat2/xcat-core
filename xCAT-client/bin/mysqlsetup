@@ -165,7 +165,7 @@ if ($::RUNCMD_RC != 0)
 # is this MariaDB or MySQL
 $::MariaDB=0;
 $cmd = "rpm -qa | grep -i mariadb";  # check this is MariaDB not MySQL
-xCAT::Utils->runcmd($cmd, 0);
+xCAT::Utils->runcmd($cmd, -1);
 if ($::RUNCMD_RC == 0) {
    $::MariaDB=1;
 }
