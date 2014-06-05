@@ -1412,7 +1412,7 @@ sub create_symlink {
                     }
               } 
           } else {
-              $callback->({error => ["osimage table or kitcomponent do not exist"],errorcode=>[1]});
+              $callback->({warning => ["osimage table or kitcomponent do not exist"],errorcode=>[1]});
               return 1;
           }
      } 
