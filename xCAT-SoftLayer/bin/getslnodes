@@ -40,7 +40,7 @@ my $hnmatch = $ARGV[0];		# if they specified a hostname match, only show svrs th
 readconf("$ENV{HOME}/.slconfig");		# get the userid and api key from the config file
 
 my $slinstalled = eval { push @INC, $CONFIG{apidir}; require SoftLayer::API::SOAP; };
-if (!$slinstalled) { die "Error: the SoftLayer::API::SOAP perl module is not installed. Download it using 'git clone https://github.com/softlayer/softlayer-api-perl-client' and put the directory in ~/.slconfig ."; }
+if (!$slinstalled) { die "$@\nError: either the SoftLayer::API::SOAP perl module is not installed, or some dependencies are missing.  Download it using 'git clone https://github.com/softlayer/softlayer-api-perl-client', put the directory in ~/.slconfig , and ensure its dependencies are installed."; }
 
 my $client = SoftLayer::API::SOAP->new('SoftLayer_Account', undef, $CONFIG{userid}, $CONFIG{apikey});
 
