@@ -120,6 +120,38 @@ This program module file, is a set of utilities used by xCAT commands.
 
 #-------------------------------------------------------------
 
+=head3   clroptionvars
+
+	- use this routine to clear GetOptions global option variables
+		before calling GetOptions.
+
+	- this may be needed because a "command" may be called twice
+		from the same process - and global options may have been
+		set the first time through. (ex. from a plugin using runxcmd() )
+
+	- should really avoid global vars but this provides a quick fix
+		for now
+
+		ex.  my $rc = xCAT::Utils->clroptionvars($::opt1, $::opt2 ...)
+
+=cut
+
+#-------------------------------------------------------
+sub clroptionvars
+{
+	# skip the class arg and set the rest to undef
+	my $skippedclass=0;
+	foreach (@_) {
+		if ($skippedclass) {
+			$_ = undef;
+		}
+		$skippedclass=1;
+	}
+	return 0;
+}
+
+#-------------------------------------------------------------
+
 =head3 genUUID
     Returns an RFC 4122 compliant UUIDv4 or UUIDv1
     Arguments:
@@ -940,15 +972,14 @@ sub runcmd
     my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
     $::RUNCMD_RC = 0;
     # redirect stderr to stdout
-   
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
-    my $hostname = `/bin/hostname`;
-    chomp $hostname;
 
-
-    if ($::VERBOSE)
-	 {
-      my $msg="Running command on $hostname: $cmd";
+	if ($::VERBOSE)
+	{
+		# get this systems name as known by xCAT management node
+      my $hostname = `/bin/hostname`;
+      chomp $hostname;
+		my $msg="Running command on $hostname: $cmd";
 
 		if ($::CALLBACK){
 			my $rsp    = {};
@@ -957,7 +988,7 @@ sub runcmd
 		} else {
 			xCAT::MsgUtils->message("I", "$msg\n");
 		}
-	 }
+	}
 
     my $outref = [];
     if (!defined($stream) || (length($stream) == 0)) { # do not stream
@@ -3139,7 +3170,7 @@ sub isSELINUX
     Input:
       array of nodes in the noderange
     Example:
-    my $mn=xCAT::Utils->noderangecontainsMN($noderange);
+    my @mn=xCAT::Utils->noderangecontainsMN($noderange);
     Comments:
 =cut
 
@@ -3283,7 +3314,7 @@ sub filter_nodes{
             push @{$mpnodes}, @ngpbmc;
         } else {
             push @{$bmcnodes}, @ngpbmc;
-        } 
+        }
     } elsif($cmd eq "getmacs") {
         if (@args && (grep /^-D$/,@args)) {
           push @{$fspnodes}, @ngpfsp;
@@ -3348,8 +3379,8 @@ sub filter_nostatusupdate{
     if ($nodetypetab) {
            $nttabdata     = $nodetypetab->getNodesAttribs(\@allnodes, ['node', 'os']);
            $nodetypetab->close();
-    }    
-    
+    }
+
     #filter out the nodes which support the node provision status feedback
     my @nodesfiltered=();
     if(exists $inref->{$::STATUS_INSTALLING}){
@@ -3359,7 +3390,7 @@ sub filter_nostatusupdate{
         @{$inref->{$::STATUS_INSTALLING}}=@nodesfiltered;
       }
     }
-    
+
     @nodesfiltered=();
     if(exists $inref->{$::STATUS_NETBOOTING}){
       map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
@@ -3368,7 +3399,7 @@ sub filter_nostatusupdate{
         @{$inref->{$::STATUS_NETBOOTING}}=@nodesfiltered;
       }
     }
-     
+
 }
 
 sub version_cmp {
@@ -3416,26 +3447,23 @@ sub version_cmp {
     return ( $len_a <=> $len_b )
 }
 
-
 #--------------------------------------------------------------------------------
-
 =head3    fullpathbin
     returns the full path of a specified binary executable file
     Arguments:
       string of the bin file name
     Returns:
       string of the full path name of the binary executable file
-      string of the bin file name in the argument if failed
     Globals:
         none
     Error:
-        none
+      string of the bin file name in the argument
     Example:
          my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
     Comments:
         none
-=cut
 
+=cut
 #--------------------------------------------------------------------------------
 sub fullpathbin
 {
@@ -3459,22 +3487,21 @@ sub fullpathbin
 
   return $fullpath;
 }
-
 #--------------------------------------------------------------------------------
 
-=head3   gettimezone 
-    returns the name of the timezone defined on the Linux distro. 
+=head3   gettimezone
+    returns the name of the timezone defined on the Linux distro.
     This routine was written to replace the use of /etc/sysconfig/clock which in no
     longer supported on future Linux releases such as RHEL7.  It is suppose to be a routine
-    that can find the timezone on any Linux OS or AIX. 
+    that can find the timezone on any Linux OS or AIX.
     Arguments:
-      none 
+      none
     Returns:
-      Name of timezone,  for example US/Eastern 
+      Name of timezone,  for example US/Eastern
     Globals:
         none
     Error:
-      None 
+      None
     Example:
          my $timezone = xCAT::Utils->gettimezone();
     Comments:
@@ -3482,21 +3509,21 @@ sub fullpathbin
 =cut
 
 #--------------------------------------------------------------------------------
-sub gettimezone 
+sub gettimezone
 {
   my ($class) = @_;
 
   my $tz;
   if (xCAT::Utils->isAIX()) {
     $tz= $ENV{'TZ'};
-  } else {   # all linux 
+  } else {   # all linux
         my $localtime = "/etc/localtime";
         my $zoneinfo = "/usr/share/zoneinfo";
         my $cmd = "find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-           $tz="Could not determine timezone checksum"; 
+           $tz="Could not determine timezone checksum";
             return $tz;
         }
         my @zones = split /\n/, $zone_result;
@@ -3515,6 +3542,8 @@ sub gettimezone
 
 
 }
+
+1;
 
 
 #--------------------------------------------------------------------------------
