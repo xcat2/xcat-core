@@ -3609,6 +3609,10 @@ sub servicemap{
                  0=>["apache2","httpd"],
                  1=>["httpd.service"],
                },
+     "ntpserver" =>  {
+                 0=>["ntpd","ntp"],
+                 1=>["ntpd.service"],
+               },
   );
 
   my $path=undef;
