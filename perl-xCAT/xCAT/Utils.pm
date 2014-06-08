@@ -120,38 +120,6 @@ This program module file, is a set of utilities used by xCAT commands.
 
 #-------------------------------------------------------------
 
-=head3   clroptionvars
-
-	- use this routine to clear GetOptions global option variables
-		before calling GetOptions.
-
-	- this may be needed because a "command" may be called twice
-		from the same process - and global options may have been
-		set the first time through. (ex. from a plugin using runxcmd() )
-
-	- should really avoid global vars but this provides a quick fix
-		for now
-
-		ex.  my $rc = xCAT::Utils->clroptionvars($::opt1, $::opt2 ...)
-
-=cut
-
-#-------------------------------------------------------
-sub clroptionvars
-{
-	# skip the class arg and set the rest to undef
-	my $skippedclass=0;
-	foreach (@_) {
-		if ($skippedclass) {
-			$_ = undef;
-		}
-		$skippedclass=1;
-	}
-	return 0;
-}
-
-#-------------------------------------------------------------
-
 =head3 genUUID
     Returns an RFC 4122 compliant UUIDv4 or UUIDv1
     Arguments:
@@ -972,14 +940,15 @@ sub runcmd
     my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
     $::RUNCMD_RC = 0;
     # redirect stderr to stdout
+   
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
+    my $hostname = `/bin/hostname`;
+    chomp $hostname;
 
-	if ($::VERBOSE)
-	{
-		# get this systems name as known by xCAT management node
-      my $hostname = `/bin/hostname`;
-      chomp $hostname;
-		my $msg="Running command on $hostname: $cmd";
+
+    if ($::VERBOSE)
+	 {
+      my $msg="Running command on $hostname: $cmd";
 
 		if ($::CALLBACK){
 			my $rsp    = {};
@@ -988,7 +957,7 @@ sub runcmd
 		} else {
 			xCAT::MsgUtils->message("I", "$msg\n");
 		}
-	}
+	 }
 
     my $outref = [];
     if (!defined($stream) || (length($stream) == 0)) { # do not stream
@@ -3170,7 +3139,7 @@ sub isSELINUX
     Input:
       array of nodes in the noderange
     Example:
-    my @mn=xCAT::Utils->noderangecontainsMN($noderange);
+    my $mn=xCAT::Utils->noderangecontainsMN($noderange);
     Comments:
 =cut
 
@@ -3314,7 +3283,7 @@ sub filter_nodes{
             push @{$mpnodes}, @ngpbmc;
         } else {
             push @{$bmcnodes}, @ngpbmc;
-        }
+        } 
     } elsif($cmd eq "getmacs") {
         if (@args && (grep /^-D$/,@args)) {
           push @{$fspnodes}, @ngpfsp;
@@ -3379,8 +3348,8 @@ sub filter_nostatusupdate{
     if ($nodetypetab) {
            $nttabdata     = $nodetypetab->getNodesAttribs(\@allnodes, ['node', 'os']);
            $nodetypetab->close();
-    }
-
+    }    
+    
     #filter out the nodes which support the node provision status feedback
     my @nodesfiltered=();
     if(exists $inref->{$::STATUS_INSTALLING}){
@@ -3390,7 +3359,7 @@ sub filter_nostatusupdate{
         @{$inref->{$::STATUS_INSTALLING}}=@nodesfiltered;
       }
     }
-
+    
     @nodesfiltered=();
     if(exists $inref->{$::STATUS_NETBOOTING}){
       map{ if($nttabdata->{$_}->[0]->{os} !~ /(fedora|rh|centos|sles|ubuntu)/) {push @nodesfiltered,$_;} } @{$inref->{$::STATUS_NETBOOTING}};
@@ -3399,7 +3368,7 @@ sub filter_nostatusupdate{
         @{$inref->{$::STATUS_NETBOOTING}}=@nodesfiltered;
       }
     }
-
+     
 }
 
 sub version_cmp {
@@ -3447,23 +3416,26 @@ sub version_cmp {
     return ( $len_a <=> $len_b )
 }
 
+
 #--------------------------------------------------------------------------------
+
 =head3    fullpathbin
     returns the full path of a specified binary executable file
     Arguments:
       string of the bin file name
     Returns:
       string of the full path name of the binary executable file
+      string of the bin file name in the argument if failed
     Globals:
         none
     Error:
-      string of the bin file name in the argument
+        none
     Example:
          my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
     Comments:
         none
-
 =cut
+
 #--------------------------------------------------------------------------------
 sub fullpathbin
 {
@@ -3487,21 +3459,22 @@ sub fullpathbin
 
   return $fullpath;
 }
+
 #--------------------------------------------------------------------------------
 
-=head3   gettimezone
-    returns the name of the timezone defined on the Linux distro.
+=head3   gettimezone 
+    returns the name of the timezone defined on the Linux distro. 
     This routine was written to replace the use of /etc/sysconfig/clock which in no
     longer supported on future Linux releases such as RHEL7.  It is suppose to be a routine
-    that can find the timezone on any Linux OS or AIX.
+    that can find the timezone on any Linux OS or AIX. 
     Arguments:
-      none
+      none 
     Returns:
-      Name of timezone,  for example US/Eastern
+      Name of timezone,  for example US/Eastern 
     Globals:
         none
     Error:
-      None
+      None 
     Example:
          my $timezone = xCAT::Utils->gettimezone();
     Comments:
@@ -3509,21 +3482,21 @@ sub fullpathbin
 =cut
 
 #--------------------------------------------------------------------------------
-sub gettimezone
+sub gettimezone 
 {
   my ($class) = @_;
 
   my $tz;
   if (xCAT::Utils->isAIX()) {
     $tz= $ENV{'TZ'};
-  } else {   # all linux
+  } else {   # all linux 
         my $localtime = "/etc/localtime";
         my $zoneinfo = "/usr/share/zoneinfo";
         my $cmd = "find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
-           $tz="Could not determine timezone checksum";
+           $tz="Could not determine timezone checksum"; 
             return $tz;
         }
         my @zones = split /\n/, $zone_result;
@@ -3543,4 +3516,464 @@ sub gettimezone
 
 }
 
+
+#--------------------------------------------------------------------------------
+
+=head3   servicemap 
+    returns the name of service unit(for systemd) or service daemon(for SYSVinit). 
+    Arguments:
+      $svcname: the name of the service
+      $svcmgrtype: the service manager type:
+                   0: SYSVinit
+                   1: systemd 
+    Returns:
+      the name of service unit or service daemon
+      undef on fail
+    Globals:
+        none
+    Error:
+      None 
+    Example:
+         my $svc = xCAT::Utils->servicemap($svcname,1);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub servicemap{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+  
+  my $svcmgrtype=shift;
+
+
+  #hash structure: 
+  #"service name $svcname" =>{
+  #"service manager name(SYSVinit/systemd) $svcmgrtype" 
+  #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
+  # }
+  my %svchash=(
+     "dhcp" => {
+                 0=>["dhcpd","isc-dhcp-server"],
+                 1=>["dhcpd.service"],
+               },
+     "nfs" =>  {
+                 0=>["nfsserver","nfs","nfs-kernel-server"],
+                 1=>["nfs-server.service"],
+               },
+     "named" =>  {
+                 0=>["named","bind9"],
+                 1=>["named.service"],
+               },
+     "syslog" =>  {
+                 0=>["syslog","syslogd","rsyslog"],
+                 1=>["rsyslog.service"],
+               },
+     "firewall" =>  {
+                 0=>["iptables","firewalld","SuSEfirewall2_setup"],
+                 1=>["firewalld.service"],
+               },
+     "http" =>  {
+                 0=>["apache2","httpd"],
+                 1=>["httpd.service"],
+               },
+  );
+
+  my $path=undef;
+  my $retdefault=$svcname;
+  if($svcmgrtype == 0){
+     $path="/etc/init.d/";
+  }elsif ($svcmgrtype == 1){
+     $path="/usr/lib/systemd/system/";
+     $retdefault=$svcname.".service";
+  }
+
+  
+  my $ret=undef;
+  if($svchash{$svcname} and $svchash{$svcname}{$svcmgrtype}){
+    foreach my $file (@{$svchash{$svcname}{$svcmgrtype}}){
+       if(-e $path.$file ){
+             $ret=$file;
+             last;
+          }
+    }      
+  }else{
+    if(-e $path.$retdefault){
+        $ret=$retdefault;
+    } 
+ }
+
+ return $ret;  
+
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  startservice  
+    start a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->startservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub startservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl start $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd start";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  stopservice  
+    stop a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->stopservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub stopservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl stop $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd stop";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  restartservice  
+    restart a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->restartservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub restartservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl restart $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd restart";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   checkservicestatus 
+    returns theservice status. 
+    Arguments:
+      $svcname: the name of the service
+      $outputoption[optional]:
+                   the output option
+                   1: return a hashref with the keys:"retcode","retmsg"
+           otherwise: return retcode only
+    Returns:
+      undef on fail
+      a hashref if $outputoption is 1,the hash structure is:
+                  {"retcode"=>(status code, 0 for running/active,1 for stopped/inactive,2 for failed)
+                   "retmsg" =>(status string, running/active/stopped/inactive/failed)
+                  }
+      the status code otherwise
+
+    Globals:
+        none
+    Error:
+      None 
+    Example:
+         my $ret = xCAT::Utils-checkservicestatus($svcname,1);
+         my $retcode = xCAT::Utils-checkservicestatus($svcname);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub checkservicestatus{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $outputoption=shift;
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+  my %ret;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  my $output=undef;
+
+  if($svcunit)
+  {
+      #for systemd, parse the output since it is formatted
+      $cmd="systemctl show --property=ActiveState $svcunit|awk -F '=' '{print \$2}'";
+      $output=xCAT::Utils->runcmd($cmd, -1);
+      if($output =~ /^active$/i){
+         $ret{retcode}=0;
+         print "xxx$output\n";
+      }elsif($output =~ /^failed$/i){
+         $ret{retcode}=2;
+       
+      }elsif($output =~ /^inactive$/i){
+         $ret{retcode}=1;
+      }
+  }
+  elsif( $svcd )
+  {
+      #for SYSVinit, check the return value since the "service" command output is confused
+      $cmd="service $svcd status";
+      $output=xCAT::Utils->runcmd($cmd, -1);
+      $ret{retcode}=$::RUNCMD_RC; 
+#      if($output =~ /stopped|not running/i){
+#        $ret{retcode}=1;
+#      }elsif($output =~ /running/i){
+#        $ret{retcode}=0;
+#      }
+  }
+  if($output)
+  {
+     $ret{retmsg}=$output;
+  }
+  
+
+  if(defined $outputoption and $outputoption == 1 ){
+     return \%ret;
+  }elsif(exists $ret{retcode}){
+     return $ret{retcode};
+  }
+
+   return undef;
+
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  enableservice 
+   enable a service to start it on the system bootup
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->enableservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub enableservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+
+  }
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl enable $svcunit";
+  }
+  elsif( $svcd )
+  {
+      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+      if($CHKCONFIG ne "chkconfig"){
+          $cmd="$CHKCONFIG $svcd on";
+      }else{
+        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+        if($CHKCONFIG ne "update-rc.d"){
+            $cmd="$CHKCONFIG $svcd defaults";
+        }
+      }
+  }
+  print "$cmd\n";
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  disableservice  
+    disable a service to prevent it from starting on system bootup
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->disableservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub disableservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+
+  }
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl disable $svcunit";
+  }
+  elsif( $svcd )
+  {
+      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+      if($CHKCONFIG ne "chkconfig"){
+          $cmd="$CHKCONFIG $svcd off";
+      }else{
+        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+        if($CHKCONFIG ne "update-rc.d"){
+            $cmd="$CHKCONFIG -f $svcd remove";
+        }
+      }
+  }
+  print "$cmd\n";
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
 1;
