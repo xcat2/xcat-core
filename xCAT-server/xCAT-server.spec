@@ -103,6 +103,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/Confluent
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT
 
@@ -186,6 +187,9 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp/*
+
+cp -r lib/xcat/Confluent/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/Confluent
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/Confluent/*
 
 cp -r lib/xcat/schema/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/*
