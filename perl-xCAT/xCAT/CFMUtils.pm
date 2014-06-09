@@ -715,7 +715,7 @@ sub getPreBaseOSpkgsList {
         }
     }
     
-    @pre_selected = keys %pre_selected_hash;
+    my @pre_selected = keys %pre_selected_hash;
 
     return \@pre_selected;
 }
