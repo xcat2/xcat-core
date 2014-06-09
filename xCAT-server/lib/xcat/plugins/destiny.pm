@@ -503,9 +503,8 @@ sub setdestiny {
 			} 
 		    }
 		}
-		#if ($provmethod ne 'install') {
-		#fix bug: in sysclone, provmethod attribute gets cleared
-         if ($provmethod ne 'install' &&  $provmethod ne 'sysclone') {
+                #don't clean up provmethod if osimage.provmethod is install or sysclone
+                if ($provmethod ne 'install' &&  $provmethod ne 'sysclone') {
 		    push(@nodestoblank, $_);
 		}
 	    }
