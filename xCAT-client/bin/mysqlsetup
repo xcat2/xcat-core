@@ -608,13 +608,16 @@ sub shutdownxcatd
     if ($::osname eq 'AIX')
     {
         $xcmd = "stopsrc -s xcatd";
+        system($xcmd);
 
     }
     else
     {
-        $xcmd = "service xcatd stop";
+        #$xcmd = "service xcatd stop";
+        my $ret=xCAT::Utils->stopservice("xcatd");
+        return $ret; 
     }
-    system($xcmd);
+
 }
 
 #-----------------------------------------------------------------------------
@@ -861,6 +864,7 @@ sub initmysqldb
 sub mysqlstart
 {
     my $cmd;
+    my $ret=0;
     if ($::osname eq 'AIX')
     {
         my $hostname = `hostname`;
@@ -872,28 +876,32 @@ sub mysqlstart
         $cmd = $cmd2;
         $cmd .=
           "$::installdir/bin/mysqld --user=mysql --basedir=$::installdir --datadir=/var/lib/mysql --user=mysql --log-error=/var/lib/mysql/$hostname.err --pid-file=/var/lib/mysql/$hostname.pid --socket=/tmp/mysql.sock --port=3306 &";
+        $ret=xCAT::Utils->runcmd($cmd, 0);
+        
+        
     }
     else
     {
         if ($::MariaDB==1) {    # running MariaDB
-            $cmd = "service mariadb start";
+            #$cmd = "service mariadb start";
+            $ret=xCAT::Utils->startservice("mariadb");
            
         } else {   # it is mysql
 
-          if ($::linuxos =~ /rh.*/)
-          {
-            $cmd = "service mysqld start";
-          }
-          else
-          {    # sles
-            $cmd = "service mysql start";
-          }
+          #if ($::linuxos =~ /rh.*/)
+          #{
+          #  $cmd = "service mysqld start";
+          #}
+          #else
+          #{    # sles
+          #  $cmd = "service mysql start";
+          #}
+          $ret=xCAT::Utils->startservice("mysql");
        }
     }
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
+    if ($ret != 0)
     {
-        xCAT::MsgUtils->message("E", " $cmd failed.");
+        xCAT::MsgUtils->message("E", " failed to start mysql/mariadb.");
         exit(1);
     }
 
@@ -1809,12 +1817,14 @@ sub restorexcatdb
     if ($::osname eq 'AIX')
     {
         $xcmd = "$::XCATROOT/sbin/restartxcatd";
-
+        system($xcmd);
     }
     else
     {
-        $xcmd = "service xcatd restart";
+        #$xcmd = "service xcatd restart";
+        my $ret=xCAT::Utils->restartservie("xcatd");
+        return $ret;
     }
-    system($xcmd);
+
 }
 

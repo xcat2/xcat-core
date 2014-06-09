@@ -444,13 +444,16 @@ sub shutdownxcatd
     if ($::osname eq 'AIX')
     {
         $xcmd = "stopsrc -s xcatd";
+        system($xcmd);
 
     }
     else
     {
-        $xcmd = "service xcatd stop";
+       # $xcmd = "service xcatd stop";
+       my $ret=xCAT::Utils->stopservice("xcatd");
+       return $ret;
     }
-    system($xcmd);
+
 }
 
 #-----------------------------------------------------------------------------
@@ -832,6 +835,7 @@ sub initpgdb
 sub pgstart
 {
     my $cmd;
+    my $ret=0;
     xCAT::MsgUtils->message("I", "Starting the PosgreSQL Server");
     if ($::osname eq 'AIX')
     {
@@ -843,27 +847,35 @@ sub pgstart
     else    # linux
     {
         if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
-          $cmd = "service postgresql-9.$::postgres9 start";
+          #$cmd = "service postgresql-9.$::postgres9 start";
+          $cmd = "postgresql-9.$::postgres9";
         } else {
-          $cmd = "service postgresql start";
+          #$cmd = "service postgresql start";
+          $cmd = "postgresql";
         }
-        system($cmd);
-        if ($? > 0) {
-            xCAT::MsgUtils->message("E", " $cmd failed.");
+        #system($cmd)
+        #if ($? > 0) {
+        $ret=xCAT::Utils->startservice($cmd);
+        if ($ret != 0) {
+            xCAT::MsgUtils->message("E", " failed to start $cmd.");
             exit(1);
         }
         # check to see if running before continuing
         my $retries =0;
         my $pgstarted =0;
-        if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
-            $cmd = "service postgresql-9.$::postgres9 status";
-        } else {
-            $cmd = "service postgresql status";
-        }
+        #if (defined($::postgres9)) { # set to the PTF level of postgresql 9.X
+        #    #$cmd = "service postgresql-9.$::postgres9 status";
+        #    $ret=xCAT::Utils->checkservicestatus("postgresql-9.$::postgres9");
+        #} else {
+        #    #$cmd = "service postgresql status";
+        #    $ret=xCAT::Utils->checkservicestatus("postgresql");
+        #}
         while ($retries < 30) {
           $retries++;
-          my @status=xCAT::Utils->runcmd($cmd, -1);
-          if (grep(/[r|R]unning/, @status)) {
+          #my @status=xCAT::Utils->runcmd($cmd, -1);
+          #if (grep(/[r|R]unning/, @status)) {
+          $ret=xCAT::Utils->checkservicestatus($cmd);
+          if($ret == 0){ 
             $pgstarted=1;
             last;
           }
@@ -903,15 +915,19 @@ sub pgreboot
     else    # linux
     {
         if (defined($::postgres9)) { # set to the postgresql ptf level
-            $cmd = "chkconfig postgresql-9.$::postgres9 on";
+        #    $cmd = "chkconfig postgresql-9.$::postgres9 on";
+            $cmd = "postgresql-9.$::postgres9";
         } else {
-            $cmd = "chkconfig postgresql on";
+            #$cmd = "chkconfig postgresql on";
+            $cmd = "postgresql";
         }
-        if ($debianflag){
-            $cmd = "update-rc.d postgresql defaults";
-        }
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
+        #if ($debianflag){
+            #$cmd = "update-rc.d postgresql defaults";
+        #}
+        #xCAT::Utils->runcmd($cmd, 0);
+        #if ($::RUNCMD_RC != 0)
+        my $ret=xCAT::Utils->enableservice($cmd);
+        if($cmd !=0 )
         {
             xCAT::MsgUtils->message("E",
                         " $cmd failed. PostgreSQL will not restart on reboot.");
@@ -1347,12 +1363,15 @@ sub restorexcatdb
     if ($::osname eq 'AIX')
     {
         $xcmd = "startsrc -s xcatd";
+        system($xcmd);
 
     }
     else
     {
-        $xcmd = "service xcatd start";
+        #$xcmd = "service xcatd start";
+        my $ret=xCAT::Utils->startservice("xcatd");
+        return $ret;
     }
-    system($xcmd);
+
 }
 
