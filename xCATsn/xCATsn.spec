@@ -179,14 +179,17 @@ fi
 %ifos linux
 if [ -e "/etc/redhat-release" ]; then
     apachedaemon='httpd'
+    apacheserviceunit='httpd.service'
 else # SuSE
     apachedaemon='apache2'
 fi
 # start xcatd on linux
-    chkconfig $apachedaemon on
+[ -e "/etc/init.d/$apachedaemon" ] && chkconfig $apachedaemon on
+[ -e "/usr/lib/systemd/system/$apacheserviceunit"  ] && systemctl enable $apacheserviceunit 
 if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
-    	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
-		/etc/init.d/$apachedaemon reload 
+          XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd restart
+          [ -e "/etc/init.d/$apachedaemon" ] && /etc/init.d/$apachedaemon reload 
+          [ -e "/usr/lib/systemd/system/$apacheserviceunit"  ] && systemctl reload $apacheserviceunit 
 fi
     echo "xCATsn is now installed"
 %else
