@@ -3613,6 +3613,10 @@ sub servicemap{
                  0=>["ntpd","ntp"],
                  1=>["ntpd.service"],
                },
+     "mysql" =>  {
+                 0=>["mysqld","mysql"],
+                 1=>["mysqld.service"],
+               },
   );
 
   my $path=undef;
