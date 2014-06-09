@@ -930,7 +930,7 @@ sub pgreboot
         if($cmd !=0 )
         {
             xCAT::MsgUtils->message("E",
-                        " $cmd failed. PostgreSQL will not restart on reboot.");
+                        "enable service $cmd failed. PostgreSQL will not restart on reboot.");
         }
     }
 
