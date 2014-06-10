@@ -2,6 +2,12 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
+
 #-------------------------------------------------------------------------------
 #=head1  configure_chef_server
 #=head2  This command configures the chef server on a xCAT node.
@@ -35,7 +41,8 @@ then
     then
         echo -e "\n/etc/chef-server *(rw,no_root_squash,sync,no_subtree_check)\n" >> /etc/exports
     fi
-    sudo /etc/init.d/nfs-kernel-server restart
+    #sudo /etc/init.d/nfs-kernel-server restart
+    sudo restartservice nfs-kernel-server
     if [ $? -ne 0 ]
     then
         errmsg="Failed to run sudo /etc/init.d/nfs-kernel-server restart on $node"
@@ -43,7 +50,8 @@ then
         echo $errmsg
         exit 1
     fi
-    service portmap restart
+    #service portmap restart
+    startservice portmap
     if [ $? -ne 0 ]
     then
         errmsg="Failed to run service portmap restart on $node"

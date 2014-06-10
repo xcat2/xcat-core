@@ -11,6 +11,12 @@
 #      id.rsa
 #
 # if on the Management Node, exit
+
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 if [ -e /etc/xCATMN ]; then
 	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
    exit 0
@@ -377,10 +383,12 @@ then
 	chmod 0755 /var/run/sshd
 	/usr/sbin/sshd -f /etc/ssh/sshd_config
     else
-	service ssh restart
+	#service ssh restart
+        restartservice ssh
     fi
 else
-    service sshd restart
+    #service sshd restart
+    restartservice sshd
 fi
 
 kill -9 $CREDPID

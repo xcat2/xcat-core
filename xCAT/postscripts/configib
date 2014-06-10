@@ -18,6 +18,10 @@
 # NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 
 
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 #This is the number of ports for each ib adpator.
 portnum=1
 if [ -n "$NIC_IBAPORTS" ]; then
@@ -68,15 +72,19 @@ PLTFRM=`uname`
 if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* ]]
 then
     ib_driver="rdma"
-    /sbin/service $ib_driver status
-    if [ $? -eq 1 ]
+    #/sbin/service $ib_driver status
+    checkservicestatus $ib_driver
+    #if [ $? -eq 1 ]
+    if [ $? -ne 0 ]
     then
         ib_driver="openibd"
-        /sbin/service $ib_driver status
-        if [ $? -eq 1 ]
+        #/sbin/service $ib_driver status
+        checkservicestatus $ib_driver
+        #if [ $? -eq 1 ]
+        if [ $? -ne 0 ]
         then
             echo "Not found the driver dameon: rdma or openibd"
-        logger -p local4.info -t xcat "Not found the driver dameon: rdma or openibd"
+            logger -p local4.info -t xcat "Not found the driver dameon: rdma or openibd"
             exit
         fi
     fi   
@@ -111,8 +119,10 @@ then
 	echo "$TMP3" > /etc/modprobe.conf
         echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf
     fi
-    /sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
-    /sbin/service $ib_driver restart
+    #/sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
+    enableservice $ib_driver > /dev/null 2>&1
+    #/sbin/service $ib_driver restart
+    restartservice $ib_driver 
     sysctl -p
 fi
 
@@ -490,7 +500,8 @@ done # end for nic
 if [ $PLTFRM == "Linux" ]
 then
 
-    /sbin/service $ib_driver restart
+    #/sbin/service $ib_driver restart
+    restartservice $ib_driver
     for nic in `echo "$goodnics" | tr "," "\n"`
     do     
         sleep 5

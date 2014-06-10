@@ -14,6 +14,11 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 master=$MASTER
 conf_file="/etc/syslog.conf"
 sysconfig="/etc/sysconfig/syslog"
@@ -23,7 +28,7 @@ isSN=0
 isLinux=1
 isRsyslog=0
 isC3=0
-systemdEnabled=0
+#systemdEnabled=0
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
@@ -115,19 +120,19 @@ if [ "$NTYPE" = service ]; then
   isSN=1
 fi
 
-if [ -e /etc/systemd ]; then
-  systemdEnabled=1
-fi
+#if [ -e /etc/systemd ]; then
+#  systemdEnabled=1
+#fi
 
 if [ "$(uname -s)" = "Linux" ]; then
   if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
-      init="/etc/init.d/rsyslog"
-      if [ $systemdEnabled -eq 1 ]; then
-         init="rsyslog"
-      fi
+      #init="/etc/init.d/rsyslog"
+      #if [ $systemdEnabled -eq 1 ]; then
+      #   init="rsyslog"
+      #fi
       isRsyslog=1
       if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
         sysconfig="/etc/default/rsyslog"
@@ -328,11 +333,12 @@ if [ $isLinux -eq 0 ]; then
       fi
   done
 else
-  if [ $systemdEnabled -eq 1 ]; then 
-    systemctl restart $init.service 
-  else
-    $init restart
-  fi
+  #if [ $systemdEnabled -eq 1 ]; then 
+  #  systemctl restart $init.service 
+  #else
+  #  $init restart
+  #fi
+  restartservice syslog
 fi
 
 #keep a record
