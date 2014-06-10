@@ -2,6 +2,10 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 #-------------------------------------------------------------------------------
 #=head1  install_puppet_server
 #=head2  This command installs the puppet server on a xCAT server or node.
@@ -82,9 +86,11 @@ if [ "$os" == "Ubuntu" ]; then
     ${result}/config_puppet_server "$@"
     
     #restart puppet master
-    service puppetmaster stop
+    #service puppetmaster stop
+    stopservice puppetmaster
     kill $(ps auxww | grep puppet | grep master | grep -v grep | awk '{print $2}') 
-    service puppetmaster start
+    #service puppetmaster start
+    startservice puppetmaster
     
 elif [ "$os" == "RedHat" ]; then
      echo "Puppet server installation with xCAT on RedHat is through a kit. Please refer to ... for details.".

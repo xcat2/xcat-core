@@ -5,6 +5,12 @@
 # setup NTP configuration on the compute nodes
 #
 #---------------------------------------------------------------------------
+
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 # if on the Management Node, exit
 if [ -e /etc/xCATMN ]; then
    logger -t xcat -p local4.info "setupntp:Running on the Management Node ,  exiting "
@@ -120,15 +126,17 @@ if [ $OS_TYPE = Linux ]; then
 disable auth
 restrict 127.0.0.1" >>$conf_file
     # default service for redhat/fedora
-    SERVICE=ntpd
-    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
-        SERVICE=ntp
-    fi
+    #SERVICE=ntpd
+    #if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
+    #    SERVICE=ntp
+    #fi
 
     #ntpdate/sntp conflict with ntpd, stop the service first
-    service $SERVICE status
+#    service $SERVICE status
+    checkservicestatus ntpserver
     if [ $? -eq 0 ];then
-        service $SERVICE stop
+#        service $SERVICE stop
+         stopservice ntpserver
     fi
     #ntpdate program is deprecated on SuSE
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
@@ -178,23 +186,27 @@ restrict 127.0.0.1" >>$conf_file
             echo "#!/bin/sh" > $cron_file
             echo "/sbin/hwclock --systohc --utc" >> $cron_file
             chmod a+x $cron_file
-            service cron restart
+            #service cron restart
+            restartservice cron
         fi
     fi
-    service $SERVICE start 
+    #service $SERVICE start 
+    startservice ntpserver
 
     #start ntp and crontab automaticlly
-    if [ -f "/etc/debian_version" ];then
-        update-rc.d cron defaults
-        update-rc.d $SERVICE defaults
-    else
-        chkconfig --add  $SERVICE >/dev/null 2>&1
-        chkconfig --level 345 $SERVICE on >/dev/null 2>&1
-        if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-            chkconfig --add cron >/dev/null 2>&1
-            chkconfig --level 345 cron on >/dev/null 2>&1
-        fi
-    fi
+    #if [ -f "/etc/debian_version" ];then
+    #    update-rc.d cron defaults
+    #    update-rc.d $SERVICE defaults
+    #else
+    #    chkconfig --add  $SERVICE >/dev/null 2>&1
+    #    chkconfig --level 345 $SERVICE on >/dev/null 2>&1
+    #    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
+    #        chkconfig --add cron >/dev/null 2>&1
+    #        chkconfig --level 345 cron on >/dev/null 2>&1
+    #    fi
+    #fi
+    enableservice cron
+    enableservice ntpserver
 else
 # stop and start AIX ntp
   echo "driftfile /etc/ntp.drift

@@ -1,7 +1,15 @@
 #!/usr/bin/perl
 
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use strict;
 use Getopt::Long;
+
+use xCAT::Utils;
 
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
@@ -83,12 +91,14 @@ if (-f "/etc/redhat-release")
     system($cmd);
 
     # restart iptables
-    $cmd = "service iptables restart";
-    system($cmd);
+    #$cmd = "service iptables restart";
+    #system($cmd);
+    xCAT::Utils->restartservice("firewall");
 
     # iptables should be stared on reboot
-    $cmd = "chkconfig iptables on";
-    system($cmd);
+    #$cmd = "chkconfig iptables on";
+    #system($cmd);
+    xCAT::Utils->enableservice("firewall");
 }
 elsif (-f "/etc/SuSE-release")
 {
@@ -129,14 +139,18 @@ elsif (-f "/etc/SuSE-release")
     close(CONFFILE);
 
     # restart firewall 
-    my $cmd = "service SuSEfirewall2_setup restart";
-    system($cmd);
+    #my $cmd = "service SuSEfirewall2_setup restart";
+    #system($cmd);
+    xCAT::Utils->restartservice("SuSEfirewall2_setup");
 
     # SuSEfirewall2_setup should be stared on reboot
-    $cmd = "chkconfig SuSEfirewall2_init on";
-    system($cmd);
-    $cmd = "chkconfig SuSEfirewall2_setup on";
-    system($cmd);
+    #$cmd = "chkconfig SuSEfirewall2_init on";
+    #system($cmd);
+    #$cmd = "chkconfig SuSEfirewall2_setup on";
+    #system($cmd);
+    xCAT::Utils->enableservice("SuSEfirewall2_init");
+    xCAT::Utils->enableservice("SuSEfirewall2_setup");
+
 }
 else
 {

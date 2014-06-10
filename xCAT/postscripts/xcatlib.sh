@@ -273,7 +273,7 @@ function servicemap {
    local svcmgrtype=$2
    local svclistname=   
 
-   INIT_dhcp="dhcpd isc-dhcp-server";
+   INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
    SYSTEMD_dhcp="dhcpd.service";
 
    INIT_nfs="nfsserver nfs nfs-kernel-server";
@@ -290,6 +290,15 @@ function servicemap {
 
    INIT_http="apache2 httpd";
    SYSTEMD_http="httpd.service";
+
+   INIT_ntpserver="ntpd ntp";
+   SYSTEMD_ntpserver="ntpd.service";
+
+   INIT_mysql="mysqld mysql";
+   SYSTEMD_mysql="mysqld.service";
+
+   INIT_ssh="sshd ssh";
+   SYSTEMD_ssh="sshd.service";
 
    local path=
    local retdefault=$svcname
