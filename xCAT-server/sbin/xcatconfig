@@ -453,8 +453,8 @@ if ($::INITIALINSTALL || $::FORCE)
      &setuphttp;
 
      # chkconfig dhcpd on
-     system("chkconfig dhcpd on");
-
+     #system("chkconfig dhcpd on");
+     xCAT::Utils->enableservice("dhcp");
 
      # Turn off selinux on RedHat
      if (-f "/etc/redhat-release")
