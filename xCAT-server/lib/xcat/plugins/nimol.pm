@@ -25,6 +25,7 @@ Getopt::Long::Configure("pass_through");
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::DBobjUtils;
+use xCAT::Utils;
 
 sub handled_commands {
     return {
@@ -376,7 +377,9 @@ sub update_export {
     for my $l  (@new_export) { print $new_export_fd $l; }
     flock($new_export_fd,LOCK_UN);
     close($new_export_fd);
-    system("service nfs restart");
+    #system("service nfs restart");
+    my $retcode=xCAT::Utils->restartservice("nfs");
+    return $retcode;
 }
 
 sub update_syslog {
@@ -391,7 +394,9 @@ sub update_syslog {
         open($new_syslog_fd, ">>", "/etc/exports");
         print $new_syslog_fd "local2.* /var/log/nimol.log\n";
         close($new_syslog_fd);
-        system("service rsyslog restart");
+        #system("service rsyslog restart");
+	my $retcode=xCAT::Utils->restartservice("rsyslog");
+	return $retcode;
     } else {
         print "Don't need to update syslog configure file.\n";
     }
