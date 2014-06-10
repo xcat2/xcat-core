@@ -509,8 +509,13 @@ sub setup_CONS
           "conserver cannot be started because the file $ca_file2 cannot be found\n";
     }
     else
-    {
-        my $rc = xCAT::Utils->startService("conserver");
+    {  
+        if (xCAT::Utils->isAIX()){
+           $rc=xCAT::Utils->startService("conserver");  
+        }elsif(xCAT::Utils->isLinux()){
+        #my $rc = xCAT::Utils->startService("conserver");
+           $rc=xCAT::Utils->startservice("conserver");
+        }
         if ($rc != 0)
         {
             return 1;
@@ -537,9 +542,11 @@ sub setup_DHCP
     my $snonly = 0;
     # if on the MN check to see if dhcpd is running, and start it if not.
     if (xCAT::Utils->isMN()) { # on the MN
-        my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
-        if ($::RUNCMD_RC != 0)  { # not running
-          $rc = xCAT::Utils->startService("dhcpd");
+        #my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
+        #if ($::RUNCMD_RC != 0)  { # not running
+        my $retcode= xCAT::Utils->checkservicestatus("dhcpd");
+        if($retcode!=0){
+          $rc = xCAT::Utils->startservice("dhcpd");
           if ($rc != 0)
           {
             return 1;
@@ -573,12 +580,18 @@ sub setup_DHCP
       ->($cmdref, \&xCAT::Client::handle_response);
 
     my $distro = xCAT::Utils->osver();
-    my $serv = "dhcpd";
-    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
-        $serv = "isc-dhcp-server";	
-    }
+    #my $serv = "dhcpd";
+    #if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+    #    $serv = "isc-dhcp-server";	
+    #}
 
-    my $rc = xCAT::Utils->startService($serv);
+    #my $rc = xCAT::Utils->startService($serv);
+    my $rc=0;
+    if(xCAT::Utils->isAIX()){
+       $rc = xCAT::Utils->startService("dhcpd");
+    } elsif(xCAT::Utils->isLinux()){
+       $rc = xCAT::Utils->startservice("dhcp");
+    }
     if ($rc != 0)
     {
         return 1;
@@ -672,7 +685,13 @@ sub setup_FTP
 
     # start ftp
 
-    my $rc = xCAT::Utils->startService("vsftpd");
+    #my $rc = xCAT::Utils->startService("vsftpd");
+    my $rc = 0;
+    if(xCAT::Utils->isAIX()){
+       $rc = xCAT::Utils->startService("vsftpd");
+    }elsif(xCAT::Utils->isLinux()){
+       $rc = xCAT::Utils->startservice("vsftpd");
+    }
     if ($rc != 0)
     {
         return 1;
@@ -723,12 +742,19 @@ sub setup_DNS
     # turn DNS on
 
     my $distro = xCAT::Utils->osver();
-    my $serv = "named";
-    if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
-        $serv = "bind9";
+    #my $serv = "named";
+    #if ( $distro =~ /ubuntu.*/i || $distro =~ /debian.*/i ){
+    #    $serv = "bind9";
+    #}
+
+    #my $rc = xCAT::Utils->startService($serv);
+    my $rc = 0;
+    if(xCAT::Utils->isAIX()){
+       $rc = xCAT::Utils->startService("named"); 
+    }elsif(xCAT::Utils->isLinux()){
+       $rc=xCAT::Utils->startservice("named");
     }
 
-    my $rc = xCAT::Utils->startService($serv);
     if ($rc != 0)
     {
         return 1;
@@ -751,15 +777,17 @@ sub setup_DNS
     else
     {
         #chkconfig
-        my $cmd = "/sbin/chkconfig $serv on";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+        #my $cmd = "/sbin/chkconfig $serv on";
+        #my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        #if ($::RUNCMD_RC != 0)
+        my $retcode=xCAT::Utils->enableservice("named");
+        if($retcode!=0)
         {
-            xCAT::MsgUtils->message("SE", " Error: Could not enable $serv.");
+            xCAT::MsgUtils->message("SE", " Error: Could not enable dns server.");
         }
         else
         {
-            xCAT::MsgUtils->message("SI", " $serv has been enabled on boot.");
+            xCAT::MsgUtils->message("SI", " dns server has been enabled on boot.");
         }
     }
     
@@ -778,7 +806,14 @@ sub setup_DNS
 sub setup_LDAP
 {
 
-    my $rc = xCAT::Utils->startService("ldap");
+    #my $rc = xCAT::Utils->startService("ldap");
+    my $rc = 0;
+ 
+    if(xCAT::Utils->isAIX()){
+       $rc = xCAT::Utils->startService("ldap");
+    }elsif(xCAT::Utils->isLinux()){
+       $rc=xCAT::Utils->startservice("ldap");
+    }
     if ($rc != 0)
     {
         return 1;
@@ -805,16 +840,17 @@ sub setup_NFS
     my $rc = 0;
     if (xCAT::Utils->isLinux())
     {
-        my $os = xCAT::Utils->osver();
-        if ($os =~ /sles.*/)
-        {
-            $rc = xCAT::Utils->startService("nfs");
-            $rc = xCAT::Utils->startService("nfsserver");
-        }
-        else
-        {
-            $rc = xCAT::Utils->startService("nfs");
-        }
+        #my $os = xCAT::Utils->osver();
+        #if ($os =~ /sles.*/)
+        #{
+        #    $rc = xCAT::Utils->startService("nfs");
+        #    $rc = xCAT::Utils->startService("nfsserver");
+        #}
+        #else
+        #{
+        #    $rc = xCAT::Utils->startService("nfs");
+        #}
+        $rc = xCAT::Utils->startservice("nfs");
     }
     else
     {    #AIX
@@ -944,7 +980,14 @@ sub setup_NTPmn
 sub start_NTP
 {
 
-    my $rc = xCAT::Utils->startService("ntpd");
+    my $rc =0;
+    if (xCAT::Utils->isAIX()){
+        $rc=xCAT::Utils->startService("ntpd");  
+    }elsif(xCAT::Utils->isLinux()){
+        #my $rc = xCAT::Utils->startService("conserver");
+        $rc=xCAT::Utils->startservice("ntpd");
+    }
+    
     if ($rc != 0)
     {
         return 1;
@@ -1271,15 +1314,16 @@ sub setup_HTTP
 
     if (xCAT::Utils->isLinux())
     {
-        my $os = xCAT::Utils->osver();
-        if ($os =~ /sles.*/)
-        {
-            $rc = xCAT::Utils->startService("apache2");
-        }
-        else
-        {
-            $rc = xCAT::Utils->startService("httpd");
-        }
+        #my $os = xCAT::Utils->osver();
+        #if ($os =~ /sles.*/)
+        #{
+        #    $rc = xCAT::Utils->startService("apache2");
+        #}
+        #else
+        #{
+        #    $rc = xCAT::Utils->startService("httpd");
+        #}
+        $rc=xCAT::Utils->startservice("http");
     }
     return $rc;
 }
@@ -1385,24 +1429,33 @@ sub enable_TFTPhpa
       }
       print FILE @newcfgfile;
       close (FILE);
-      my @output = xCAT::Utils->runcmd("service xinetd status", -1);
-      if ($::RUNCMD_RC == 0) {
-        if (grep(/running/, @output))
-        {
-          print ' ';              # indent service output to separate it from the xcatd service output
-          system "service xinetd stop";
-          if ($? > 0)
-          {    # error
+      #my @output = xCAT::Utils->runcmd("service xinetd status", -1);
+      #if ($::RUNCMD_RC == 0) {}
+      my $retcode=xCAT::Utils->checkservicestatus("xinetd");
+      if($retcode==0){
+        my $retcode=xCAT::Utils->restartservice("xinetd");
+        if($retcode !=0 )
+          {
               xCAT::MsgUtils->message("S",
-                                        "Error on command: service xinetd stop\n");
+                                        "Error on restart xinetd\n");
+    
           }
-          system "service xinetd start";
-          if ($? > 0)
-          {    # error
-              xCAT::MsgUtils->message("S",
-                                        "Error on command: service xinetd start\n");
-          }
-        }
+        #if (grep(/running/, @output))
+        #{
+        #  print ' ';              # indent service output to separate it from the xcatd service output
+        #  system "service xinetd stop";
+        #  if ($? > 0)
+        #  {    # error
+        #      xCAT::MsgUtils->message("S",
+        #                                "Error on command: service xinetd stop\n");
+        #  }
+        #  system "service xinetd start";
+        #  if ($? > 0)
+        #  {    # error
+        #      xCAT::MsgUtils->message("S",
+        #                                "Error on command: service xinetd start\n");
+        #  }
+        #}
       }
     }
   }
@@ -1449,7 +1502,8 @@ sub enable_TFTPhpa
         sleep 1;
         my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
         if (@checkproc){
-            system("service tftpd-hpa stop");
+            #system("service tftpd-hpa stop");
+            xCAT::Utils->stopservice("tftpd-hpa");
         }
     }
     my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;

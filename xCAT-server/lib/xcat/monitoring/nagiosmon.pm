@@ -66,12 +66,14 @@ sub start {
     my $mychildren_cfg="/etc/nagios/objects/mychildren.cfg";
     if ($isSN) { #start nagios daemon only when mychildren exists on the sn
 	if (-f $mychildren_cfg) {
-	    my $rc=`service nagios restart 2>&1`;
+	    #my $rc=`service nagios restart 2>&1`;
+	    my $rc=xCAT::Utils->restartservice("nagios");
 	    reportError("$localhostname: $rc", $callback);
 	}
     }
     else { #always start nagios daemon on mn
-	my $rc=`service nagios restart 2>&1`;
+	#my $rc=`service nagios restart 2>&1`;
+	my $rc=xCAT::Utils->restartservice("nagios");
 	reportError("$localhostname: $rc", $callback);
     }
     

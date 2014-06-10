@@ -884,15 +884,19 @@ sub check_options
     # if not help and not -n,  dhcpd needs to be running
     if (!($opt->{h})&& (!($opt->{n}))) {
      if (xCAT::Utils->isLinux()) {
-       my $DHCPSERVER="dhcpd";
-       if( -e "/etc/init.d/isc-dhcp-server" ){
-              $DHCPSERVER="isc-dhcp-server";
-       } 
+       #my $DHCPSERVER="dhcpd";
+       #if( -e "/etc/init.d/isc-dhcp-server" ){
+       #       $DHCPSERVER="isc-dhcp-server";
+       #} 
 
-       my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
-       if ($::RUNCMD_RC != 0)  { # not running
+       #my @output = xCAT::Utils->runcmd("service $DHCPSERVER status", -1);
+       #if ($::RUNCMD_RC != 0)  { # not running
+       my $ret=0;
+       $ret=xCAT::Utils->checkservicestatus("dhcp");
+       if($ret!=0)
+       {
           my $rsp = {};
-          $rsp->{data}->[0] = "$DHCPSERVER is not running.  Run service $DHCPSERVER start and rerun your command.";
+          $rsp->{data}->[0] = "dhcp server is not running.  please start the dhcp server.";
           xCAT::MsgUtils->message("E", $rsp, $callback, 1);
           return 1;
        }
@@ -1840,25 +1844,29 @@ sub process_request
         {
             restart_dhcpd_aix();
         }
-        elsif ( $distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
-        {
-            if (-e '/etc/dhcp/dhcpd.conf') {
-                system("chmod a+r /etc/dhcp/dhcpd.conf");
-                system("/etc/init.d/isc-dhcp-server restart");
-            }
-            else {
-                #ubuntu config
-                system("chmod a+r /etc/dhcp3/dhcpd.conf");
-                system("/etc/init.d/dhcp3-server restart");
-            }
-        }
-        else
-        {
-            system("/etc/init.d/dhcpd restart");
-            # should not chkconfig dhcpd on every makedhcp invoation
-            # it is not appropriate and will cause problem for HAMN
-            # do it in xcatconfig instead
-            #system("chkconfig dhcpd on");
+        else {
+            if ( $distro =~ /ubuntu.*/ || $distro =~ /debian.*/i)
+		{
+		    if (-e '/etc/dhcp/dhcpd.conf') {
+			system("chmod a+r /etc/dhcp/dhcpd.conf");
+			#system("/etc/init.d/isc-dhcp-server restart");
+		    }
+		    else {
+			#ubuntu config
+			system("chmod a+r /etc/dhcp3/dhcpd.conf");
+			#system("/etc/init.d/dhcp3-server restart");
+		    }
+		}
+		#else
+		#{
+		#    system("/etc/init.d/dhcpd restart");
+		#    # should not chkconfig dhcpd on every makedhcp invoation
+		#    # it is not appropriate and will cause problem for HAMN
+		#    # do it in xcatconfig instead
+		#    #system("chkconfig dhcpd on");
+		#}
+            xCAT::Utils->restartservice("dhcp");
+        print "xx";
         }
     }
     flock($dhcplockfd,LOCK_UN);
