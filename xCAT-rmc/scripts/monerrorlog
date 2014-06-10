@@ -10,12 +10,17 @@
   checks for errors.
 =cut
 #------------------------------------------------------------------------------#
-
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use strict;
 use locale;
 use Getopt::Long;
 use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
 use IPC::Msg;
+use xCAT::Utils;
 
 BEGIN
 {
@@ -109,8 +114,9 @@ if (&first_time_run)
   			    runcmd("/usr/bin/mkfifo $fifo");
                         }
 			runcmd("echo \"$embedinfo\" >> $syslogconf");
-			my $cmd = service("syslog", "restart");
-			runcmd($cmd);
+			#my $cmd = service("syslog", "restart");
+			#runcmd($cmd);
+			xCAT::Utils->restartservice("syslog");
 		}
 		touchFile($runfile);
 	}
@@ -512,6 +518,9 @@ sub createRandomName
                     'stop' or 'status'. 
     Returns:
         A full cli for the service script.
+    Comment:
+        this subroutine is deprecated, use service subroutines in xCAT::Utils
+        instead   
 =cut
 
 #--------------------------------------------------------------------------------

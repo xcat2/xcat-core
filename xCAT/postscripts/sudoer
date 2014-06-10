@@ -7,6 +7,12 @@
 #
 #------------------------------------------------------------------------------
 
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
+
 # Configuration for the sudoer
 SUDOER="xcat"
 SUDOERPW="rootpw"
@@ -53,8 +59,9 @@ chown $SUDOER:users $HOME/.ssh/authorized_keys
 
 # Restart the SSHD for syncfiles postscript to do the sync work
 logger -t xCAT -p local4.info "Restarting SSHD"
-if [ -f "/etc/debian_version" ];then
-    service ssh restart
-else
-    service sshd restart
-fi
+#if [ -f "/etc/debian_version" ];then
+#    service ssh restart
+#else
+#    service sshd restart
+#fi
+restartservice ssh

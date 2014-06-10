@@ -122,7 +122,8 @@ sub start_RRD_server
 		print FILE "\tserver_args = - /var/rrd\n";
 		print FILE "}\n";
 		close FILE;
-		xCAT::Utils->runcmd("service xinetd restart", 0);
+		#xCAT::Utils->runcmd("service xinetd restart", 0);
+		xCAT::Utils->restartservice("xinetd");
 	}
 	return 0;
 }
@@ -188,7 +189,8 @@ sub stop_RRD_server
 		} else {
 			xCAT::Utils->runcmd("rm -f /etc/xinetd.d/rrdsrv", 0);
 		}
-		xCAT::Utils->runcmd("service xinetd restart", 0);
+		#xCAT::Utils->runcmd("service xinetd restart", 0);
+		xCAT::Utils->restartservice("xinetd");
 	}
 	return 0;
 }

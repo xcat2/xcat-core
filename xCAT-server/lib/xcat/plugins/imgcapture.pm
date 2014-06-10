@@ -130,7 +130,7 @@ sub process_request {
         my $shortname = xCAT::InstUtils->myxCATname();
 
         my $rc;
-        $rc  = sysclone_configserver($shortname, $callback, $doreq);
+        $rc  = sysclone_configserver($shortname, $osimg, $callback, $doreq);
         if($rc){
             my $rsp = {};
             $rsp->{data}->[0] = qq{Can not configure Imager Server on $shortname.};
@@ -467,7 +467,7 @@ sub getplatform {
 }
 
 sub sysclone_configserver{
-    my ($server, $callback, $subreq) = @_;
+    my ($server, $osimage, $callback, $subreq) = @_;
     
     # check if systemimager is installed on the imager server
     my $rsp = {};
@@ -514,9 +514,40 @@ sub sysclone_configserver{
     {
         mkpath($sysclone_overrides);
     }
+	
+    my $imagedir;
+    my $osimgtab  = xCAT::Table->new('osimage');
+    my $entry = ($osimgtab->getAllAttribsWhere("imagename = '$osimage'", 'ALL' ))[0];
+    if(!$entry){
+        $imagedir = $sysclone_home . "/images/" . $osimage;  
+    }else{
+        my $osimagetab = xCAT::Table->new('linuximage');
+        my $osimageentry  = $osimagetab->getAttribs({imagename => $osimage}, 'rootimgdir');
+        if($osimageentry){
+            $imagedir = $osimageentry->{rootimgdir};
+            if (!(-e $imagedir)){
+		        mkpath($imagedir);
+            }
+        }else{
+            $imagedir = $sysclone_home . "/images/" . $osimage;   
+            $cmd = "chdef -t osimage $osimage rootimgdir=$imagedir";
+            $rc = `$cmd`;
+        }
+    }
 
+    $imagedir =~ s/^(\/.*)\/.+\/?$/$1/;
+    $imagedir =~ s/\//\\\\\//g;
+    $imagedir = "DEFAULT_IMAGE_DIR = ".$imagedir;
+				
+    my $olddir = `more /etc/systemimager/systemimager.conf |grep DEFAULT_IMAGE_DIR`;
+    $olddir =~ s/\//\\\\\//g;
+    chomp($olddir);
+		
+    $cmd= "sed -i \"s/$olddir/$imagedir/\"  /etc/systemimager/systemimager.conf";
+    $rc = `$cmd`;
+	
     # update /etc/systemimager/rsync_stubs/10header to generate new /etc/systemimager/rsyncd.conf
-    my $rc = `sed -i "s/\\/var\\/lib\\/systemimager/\\/install\\/sysclone/g" /etc/systemimager/rsync_stubs/10header`;
+    $rc = `sed -i "s/\\/var\\/lib\\/systemimager/\\/install\\/sysclone/g" /etc/systemimager/rsync_stubs/10header`;
     $rc = `export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_mkrsyncd_conf`;
     
     return 0;
@@ -678,6 +709,22 @@ sub sysclone_createosimgdef{
             $osimgdef{$osimage}{template} = "";
             $osimgdef{$osimage}{otherpkglist} = "";
             $osimgdef{$osimage}{pkglist} = "";
+			
+            if(!($imagedef{$oldimg}{rootimgdir})){
+                $imagedef{$oldimg}{rootimgdir} = $sysclone_home . "/images/" . $osimage;      
+				
+                my $imagedir = $imagedef{$oldimg}{rootimgdir};
+                $imagedir =~ s/^(\/.*)\/.+\/?$/$1/;
+                $imagedir =~ s/\//\\\\\//g;
+                $imagedir = "DEFAULT_IMAGE_DIR = ".$imagedir;
+				
+                my $olddir = `more /etc/systemimager/systemimager.conf |grep DEFAULT_IMAGE_DIR`;
+                $olddir =~ s/\//\\\\\//g;
+                chomp($olddir);
+		
+                my $cmd= "sed -i \"s/$olddir/$imagedir/\"  /etc/systemimager/systemimager.conf";
+                my $rc = `$cmd`;
+            }
         }
     } else {
         $createnew = 1;
@@ -701,6 +748,18 @@ sub sysclone_createosimgdef{
         $osimgdef{$osimage}{osname} = "Linux";
         $osimgdef{$osimage}{osvers} =  $osver;
         $osimgdef{$osimage}{osdistroname} =  "$osver-$arch";
+		
+        $osimgdef{$osimage}{rootimgdir} = $sysclone_home . "/images/" . $osimage;
+        my $imagedir = $osimgdef{$osimage}{rootimgdir};
+        $imagedir =~ s/^(\/.*)\/.+\/?$/$1/;
+        $imagedir =~ s/\//\\\\\//g;
+        $imagedir = "DEFAULT_IMAGE_DIR = ".$imagedir;
+        my $olddir = `more /etc/systemimager/systemimager.conf |grep DEFAULT_IMAGE_DIR`;
+        $olddir =~ s/\//\\\\\//g;
+        chomp($olddir);
+        my $cmd= "sed -i \"s/$olddir/$imagedir/\"  /etc/systemimager/systemimager.conf";
+        my $rc = `$cmd`;
+		
         #$osimgdef{$osimage}{pkgdir} =  "/install/$osver/$arch";
         #$osimgdef{$osimage}{otherpkgdir} =  "/install/post/otherpkgs/$osver/$arch";
     }

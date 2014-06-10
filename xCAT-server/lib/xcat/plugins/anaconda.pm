@@ -1978,20 +1978,51 @@ sub mksysclone
         }
 
         my $cmd =qq{echo "$node:compute:$imagename:" >> $clusterfile};
-        my $out = xCAT::Utils->runcmd($cmd, -1);
+        my $rc = xCAT::Utils->runcmd($cmd, -1);
+		
+        my $imagedir;
+        my $osimagetab = xCAT::Table->new('linuximage');
+        my $osimageentry  = $osimagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
+        if($osimageentry){
+            $imagedir = $osimageentry->{rootimgdir};
+            $imagedir =~ s/^(\/.*)\/.+\/?$/$1/;
+        }else{
+            $imagedir = "$installroot/sysclone/images";
+            $cmd = "chdef -t osimage $imagename rootimgdir=$imagedir/$imagename";
+            $rc = `$cmd`;
+        }
+		
+        my $cfgimagedir = `cat /etc/systemimager/rsync_stubs/40$imagename|grep path`;
+        chomp($cfgimagedir);
+        $cfgimagedir  =~ s/^\s+path=(\/.*)\/.+$/$1/g;
+			
+        if($imagedir ne $cfgimagedir){
+            my $oldstr = `cat /etc/systemimager/rsync_stubs/40$imagename|grep path`;
+            chomp($oldstr);
+            $oldstr =~ s/\//\\\\\//g;
 
-        unless (-r "$installroot/sysclone/images/$imagename/opt/xcat/xcatdsklspost")
+            my $targetstr="\tpath=".$imagedir."/".$imagename;
+            $targetstr =~ s/\//\\\\\//g;
+            $cmd= "sed -i \"s/$oldstr/$targetstr/\"  /etc/systemimager/rsync_stubs/40$imagename";
+            $rc = `$cmd`;
+        }
+
+        $rc = `export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_mkrsyncd_conf`;
+
+        unless (-r "$imagedir/$imagename/opt/xcat/xcatdsklspost")
         {
-            mkpath("$installroot/sysclone/images/$imagename/opt/xcat/");
-            copy("$installroot/postscripts/xcatdsklspost","$installroot/sysclone/images/$imagename/opt/xcat/");
+            mkpath("$imagedir/$imagename/opt/xcat/");
+            copy("$installroot/postscripts/xcatdsklspost","$imagedir/$imagename/opt/xcat/");
         }
 
     }
 
     # check systemimager-server-rsyncd to make sure it's running.
-    my $out = xCAT::Utils->runcmd("service systemimager-server-rsyncd status", -1);
-     if ($::RUNCMD_RC != 0)  { # not running
-         my $rc = xCAT::Utils->startService("systemimager-server-rsyncd");
+    #my $out = xCAT::Utils->runcmd("service systemimager-server-rsyncd status", -1);
+    # if ($::RUNCMD_RC != 0)  { # not running
+    my $retcode=xCAT::Utils->checkservicestatus("systemimager-server-rsyncd");
+    if($retcode!=0){
+         my $rc = xCAT::Utils->startservice("systemimager-server-rsyncd");
          if ($rc != 0) {
             return 1;
          }

@@ -1850,7 +1850,9 @@ sub get_image_name
     Example:
          if (xCAT::Utils->startService("named") { ...}
     Comments:
-        none
+         this subroutine is deprecated,
+         will be used as an internal function to process AIX service,
+         for linux, use xCAT::Utils->startservice instead
 
 =cut
 
@@ -3557,7 +3559,7 @@ sub servicemap{
   # }
   my %svchash=(
      "dhcp" => {
-                 0=>["dhcpd","isc-dhcp-server"],
+                 0=>["dhcp3-server","dhcpd","isc-dhcp-server"],
                  1=>["dhcpd.service"],
                },
      "nfs" =>  {
