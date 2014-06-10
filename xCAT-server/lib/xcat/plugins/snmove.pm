@@ -414,13 +414,8 @@ sub process_request
                     )
                   )
                 {
-
-                    # get the short hostname
-                    my $xcatmaster = xCAT::NetworkUtils->gethostname($IP);
-                    $xcatmaster =~ s/\..*//;
-
                     # add the value to the hash
-                    $newxcatmaster{$node} = $xcatmaster;
+                    $newxcatmaster{$node} = $IP;
                     last;
                 }
             }
@@ -1338,10 +1333,11 @@ sub process_request
                                    $sub_req, -1, 1
                                    );
 
-            		if ($::RUNCMD_RC != 0)
+            		if (($::RUNCMD_RC != 0) &&
+                            !grep(/ File exists/,@$ret) )  # ignore already set error 
             		{
 						my $rsp;
-						push @{$rsp->{data}}, $ret;
+                                                $rsp->{data} = $ret;
 						push @{$rsp->{data}}, "Could not set default route.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
 						$error++;
@@ -1558,12 +1554,14 @@ sub process_request
 
             my $pos_nodes = $pos_hash->{$scripts};
 
+    # need to run updatenode -s first as a separate call
+    # before running updatenode -P. The flags cannot be run together.
             my $ret =
               xCAT::Utils->runxcmd(
                                    {
                                     command => ['updatenode'],
                                     node    => $pos_nodes,
-                                    arg     => ["-P", "$scripts", "-s"],
+                                    arg     => ["-s"],
                                    },
                                    $sub_req, -1, 1
                                    );
@@ -1572,8 +1570,24 @@ sub process_request
                 $error++;
 
             }
-
             my $rsp;
+            $rsp->{data} = $ret;
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+
+            $ret =
+              xCAT::Utils->runxcmd(
+                                   {
+                                    command => ['updatenode'],
+                                    node    => $pos_nodes,
+                                    arg     => ["-P", "$scripts"],
+                                   },
+                                   $sub_req, -1, 1
+                                   );
+            if ($::RUNCMD_RC != 0)
+            {
+                $error++;
+
+            }
             $rsp->{data} = $ret;
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
