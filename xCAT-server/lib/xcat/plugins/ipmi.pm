@@ -1146,6 +1146,12 @@ sub getrvidparms_imm2 {
     	$response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0'.')');
      	#arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     	$jnlp = $response->content;
+	if ($jnlp =~ /Failed to parse ip format for request/) {
+           $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0@0'.')');
+           #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode,  'notwin32', and one more (unknown)
+           $jnlp = $response->content;
+       }
+
     }
     $response = $browser->request(GET $baseurl."data/logout");
     my $currnode = $sessdata->{node};
