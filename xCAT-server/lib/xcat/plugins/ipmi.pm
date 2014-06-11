@@ -940,12 +940,40 @@ sub setboot_timerdisabled {
             xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
             return;
         } elsif ($rsp->{code} == 0x80) {
-            xCAT::SvrUtils::sendmsg("Unable to disable countdown timer, boot device may revert in 60 seconds",$callback,$sessdata->{node},%allerrornodes);
+            #xCAT::SvrUtils::sendmsg("Unable to disable countdown timer, boot device may revert in 60 seconds",$callback,$sessdata->{node},%allerrornodes);
         } else {
             xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
             return;
         }
     }
+    my $subcommand = undef;
+    if (@{$sessdata->{extraargs}}) {
+        $subcommand = @{$sessdata->{extraargs}}[0];
+    }
+    if (!defined($subcommand) or $subcommand =~ m/^stat/) {
+        setboot_stat("NOQUERY",$sessdata);
+        return;
+    } elsif ($subcommand !~ /net|hd|cd|floppy|def|setup/) {
+        xCAT::SvrUtils::sendmsg([1,"unsupported command setboot $subcommand"],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+        $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>[0, 1],callback=>\&setboot_setstart,callback_args=>$sessdata);
+    }
+}
+sub setboot_setstart {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
+            return;
+        } elsif ($rsp->{code} == 0x80) {
+            xCAT::SvrUtils::sendmsg("Unable to set boot param",$callback,$sessdata->{node},%allerrornodes);
+            return;
+        } elsif ($rsp->{code} == 0x81) {
+            xCAT::SvrUtils::sendmsg("Attemp to set the 'set in process' value",$callback,$sessdata->{node},%allerrornodes);
+        }
+    }
+
     my $error;
     @ARGV=@{$sessdata->{extraargs}};
     my $persistent=0;
@@ -987,7 +1015,25 @@ sub setboot_timerdisabled {
     else {
         xCAT::SvrUtils::sendmsg([1,"unsupported command setboot $subcommand"],$callback,$sessdata->{node},%allerrornodes);
     }
-    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>\@cmd,callback=>\&setboot_stat,callback_args=>$sessdata);
+    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>\@cmd,callback=>\&setboot_done,callback_args=>$sessdata);
+}
+
+sub setboot_done {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if (ref $rsp) {
+        if ($rsp->{error}) { xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes); }
+        elsif ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            xCAT::SvrUtils::sendmsg([1,sprintf("setboot_stat Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
+        }
+        return;
+        }
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>[0,0],callback=>\&setboot_stat,callback_args=>$sessdata);
+
 }
 sub setboot_stat {
     my $rsp = shift;
