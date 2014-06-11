@@ -109,7 +109,12 @@ use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
 openlog("xcatd",,"local4");
+# turn off warnings for call to setlogsock.  puts out warning message if
+#   syslog tcp port not defined in /etc/services.  this can safely be ignored.
+no warnings qw(Sys::Syslog);
 setlogsock(["tcp","unix","stream"]);
+use warnings qw(Sys::Syslog);
+
 use xCAT::NotifHandler;
 use xCAT_monitoring::monitorctrl;
 
