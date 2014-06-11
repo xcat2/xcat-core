@@ -326,7 +326,10 @@ sub config_test {
             }
         }
     }
-
+    &runcmd ("touch default.conf");
+    &runcmd ("touch defaultslesppc64.conf");
+    &runcmd ("touch defaultrhx8664.conf");
+    &runcmd ("touch defaultslesx8664.conf");
     if(exists $rhppc64config{object}){
         foreach my $type (keys %{$rhppc64config{object}}){
             foreach my $name (keys %{$rhppc64config{object}{$type}}){
@@ -633,13 +636,7 @@ sub config_mn {
     send_msg("begin read configuration file for mn");
     mkdir $resultdir unless -d $resultdir;
     $timestamp = `date +"%Y%m%d%H%M%S"`;
-    my @osname = &runcmd("uname -a");
-        #if ( $osname [0]  =~ /^Linux\s*/  &&  -f "/etc/redhat-release" && $osname [0] =~ /ppc64/){
-        #print "ppc64 redhat env\n";
-        #$os="rhels6.4";
-        #$arch="ppc64";
-        #print "os is $os,arch is $arch\n";
-        $res = &config_rhppc64();
+    $res = &config_test();
     if ($res) {
         send_msg("CONFIGURE MN returns error, exit");
         exit 1;
@@ -678,10 +675,10 @@ sub init
 {
     my $mn = shift;
     my $MN=$mn;
-    my $envoutput = &gettestinfo;
+    system("xdsh $MN mkdir -p /autotest/result");
+    my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
-        #my $MN=$rhppc64config{var}{MN};
-        my $nodedir=$rhppc64config{var}{nodedir};
+        my $nodedir=$confkeys{rhpdir};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
@@ -709,7 +706,7 @@ sub init
        print "--install XCATTEST .......\n";
        system("xdsh $MN yum -y install xCAT-test");
        system("scp -r default.conf $MN:$testconfigfile");
-
+       system("rm -rf default.conf");
         print "--install createrepo .......\n";
         #system("xdsh $MN yum -y install createrepo");
         system("xdsh $MN yum -y install screen");
@@ -725,7 +722,7 @@ sub init
         send_msg( " rhppc64 env is ready\n");
     }elsif ($envoutput eq 'slesppc64'){
         #my $MN=$slesppc64config{var}{MN}; 
-        my $nodedir=$slesppc64config{var}{nodedir};
+        my $nodedir=$confkeys{slespdir};
         system(" xdsh $MN  mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
         system("scp -r /iso/SLES-11-SP3-DVD-ppc64-GM-DVD1.iso $MN:/iso/");
@@ -742,8 +739,7 @@ sub init
         $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         
         print "[OK]\n--deploy zypper....";
-        system("xdsh $MN rm  -rf /etc/zypp/repos.d/*");
-       # system(xdsh $MN zypper ar file:///autotest/wjx/xcat-core  xCAT-core);
+        system("xdsh $MN rm  -rf /etc/zypp/repos.d/*dep*");
         system("xdsh $MN zypper ar file:///xcat-dep/sles11/ppc64  xCAT-dep");
         system("xdsh $MN zypper ar file:///iso/mountpoint  sles11");
 
@@ -753,9 +749,11 @@ sub init
         system("xdsh $MN zypper -n install xCAT");
         system("xdsh $MN zypper -n install xCAT-test");
         system("scp -r defaultslesppc64.conf $MN:$testconfigfile");
+        system("rm -rf defaultslesppc64.conf");
         print "--prepare test environment....\n";
         print "[OK]\n";
 }elsif ($envoutput eq 'rhx8664'){
+        my $nodedir=$confkeys{rhxdir};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "[OK]\n--copy ISO file.....";
@@ -765,7 +763,7 @@ sub init
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
         print "[OK]\n";
         print "--get the latest XCAT tarball.......\n";
-        #system("scp -r $nodedir/xcat-dep $MN:/");
+        system("scp -r $nodedir/xcat-dep $MN:/");
         system("xdsh $MN rm -rf /etc/yum.repos.d/*");
         &repo();
         system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/");
@@ -782,7 +780,9 @@ sub init
         system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
         system("xdsh $MN yum -y install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64 ");
         system("scp -r defaultrhx8664.conf $MN:$testconfigfile");
+        system("rm -rf defaultrhx8664.conf");
 }elsif ($envoutput eq 'slesx8664'){
+        my $nodedir=$confkeys{slesxdir};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
         system(" scp -r /iso/SLES-11-SP3-DVD-x86_64-GM-DVD1.iso $MN:/iso");
@@ -794,8 +794,9 @@ sub init
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
         print "[OK]\n";
         print "--get the latest XCAT tarball.......\n";
+        system("scp -r $nodedir/xcat-dep $MN:/");
         print "[OK]\n--deploy zypper....";
-        system("xdsh $MN rm  -rf /etc/zypp/repos.d/*");
+        system("xdsh $MN rm  -rf /etc/zypp/repos.d/*dep*");
         system("xdsh $MN zypper ar file:///xcat-dep/sles11/x86_64  xCAT-dep");
         system("xdsh $MN zypper ar file:///iso/mountpoint  sles11");
         print "[OK]\n--install xcat....";
@@ -806,6 +807,7 @@ sub init
         print "--prepare test environment....\n";
         system("xdsh $MN zypper  -n install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64");
         system("scp -r defaultslesx8664.conf $MN:$testconfigfile");
+        system("rm -rf defaultslesx8664.conf");
         print "--prepare vmtest environment....\n";
         print "[OK]\n";}
         return 0;
@@ -817,10 +819,6 @@ sub do_test {
     my $mn = shift;
     # step 7.1 Install xcat and init mn
     send_msg("began to install xCAT and initialize mn");
-    $res = &config_test();
-     if ($res != 0){
-        exit 1;
-    }
     $res = &init($mn);
     if ($res != 0){
         exit 1;
@@ -843,11 +841,8 @@ sub  do_test1
     my $mn = shift;
     #my $MN=$rhppc64config{var}{MN};
     my $MN=$mn;
-    my $envoutput = &gettestinfo;
+    my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
-    my $nodedir=$rhppc64config{var}{nodedir};
-    print "copy config file ";
-    system("scp -r default.conf $MN:$testconfigfile");
     
     send_msg("******************************");
     send_msg("start  test");
@@ -889,9 +884,6 @@ sub  do_test1
     #system("mkdir -p $nodedir/result");
     # system("scp -r $MN:/autotest/result /regression/rhppc64");
  }elsif ($envoutput eq 'slesppc64'){
-    my $nodedir=$slesppc64config{var}{nodedir};
-    print "copy config file ";
-    system("scp -r defaultslesppc64.conf $MN:$testconfigfile");
     send_msg("******************************");
     send_msg("start  test");
     send_msg("******************************");
@@ -907,9 +899,6 @@ sub  do_test1
   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
 }elsif ($envoutput eq 'rhx8664'){
-    my $nodedir=$rhx8664config{var}{nodedir};
-    print "copy config file ";
-    system("scp -r defaultrhx8664.conf $MN:$testconfigfile");
     send_msg("******************************");
     send_msg("start  test");
     send_msg("******************************");
@@ -926,9 +915,6 @@ sub  do_test1
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
 }elsif ($envoutput eq 'slesx8664'){
-    my $nodedir=$slesx8664config{var}{nodedir};
-    print "copy config file ";
-    system("scp -r defaultslesx8664.conf $MN:$testconfigfile");
     send_msg("******************************");
     send_msg("start  test");
     send_msg("******************************");
@@ -1289,7 +1275,7 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
         # step 4. Copy code to MNs
         #######################################
         send_msg("\n\n\n== Running copy_code...............");
-#        $res = copy_code($mn);
+        $res = copy_code($mn);
         if ($res) {
             send_msg("COPY CODE returns error, exit");
             exit 1;
@@ -1303,7 +1289,6 @@ unless ($ENV{'REGDEBUG'}) { #used for debug.
             send_msg("BUILD XCAT returns error, exit");
             exit 1;
         }        
-exit 1;
         #######################################
         # step 6. Read xCAT MN's configuration
         #######################################
