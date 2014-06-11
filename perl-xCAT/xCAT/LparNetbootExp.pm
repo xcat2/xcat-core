@@ -1240,6 +1240,12 @@ sub  ping_server{
     $msg[3] = "Status: ping return code now on stack\n";
     $newstate[3] = 4;
 
+    # get the timeout for ping test
+    my $to4pt;
+    if ( $ENV{TIMEOUT4PINGTEST} =~ /^\d+$/ ) {
+        $to4pt = ",$ENV{TIMEOUT4PINGTEST}";
+    } 
+
     #IPv6
     if ( $server_ip =~ /:/ ) {
         #::1, calculate link local address
@@ -1249,9 +1255,9 @@ sub  ping_server{
         } else {
             $linklocal_ip = $client_ip;
         }
-        $cmd[3] = "ping $full_path_name:ipv6,$server_ip,$linklocal_ip,$gateway_ip\r";
+        $cmd[3] = "ping $full_path_name:ipv6,$server_ip,$linklocal_ip,$gateway_ip$to4pt\r";
     } else {
-        $cmd[3] = "ping $full_path_name:$server_ip,$client_ip,$gateway_ip\r";
+        $cmd[3] = "ping $full_path_name:$server_ip,$client_ip,$gateway_ip$to4pt\r";
     }
     $pattern[3] = ".*ping(.*)ok(.*)0 >(.*)";
 
