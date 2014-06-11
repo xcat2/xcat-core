@@ -1191,6 +1191,7 @@ sub mkinstall
                my $domain=$nodedomains{$node};
 
                $kcmdline .=" Domain=$domain ";
+               $kcmdline .=" netwait=10 ";
            }            
 
            
