@@ -1333,12 +1333,12 @@ sub process_request
                                    $sub_req, -1, 1
                                    );
 
-            		if (($::RUNCMD_RC != 0) &&
-                            !grep(/ File exists/,@$ret) )  # ignore already set error 
+            		if ( ($::RUNCMD_RC != 0) &&
+                             !grep(/ File exists/,@$ret) )  # ignore already set error 
             		{
-						my $rsp;
-                                                $rsp->{data} = $ret;
-						push @{$rsp->{data}}, "Could not set default route.\n";
+	                    my $rsp;
+                        $rsp->{data} = $ret;
+                        push @{$rsp->{data}}, "Could not set default route.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
 						$error++;
             		}
@@ -1554,14 +1554,12 @@ sub process_request
 
             my $pos_nodes = $pos_hash->{$scripts};
 
-    # need to run updatenode -s first as a separate call
-    # before running updatenode -P. The flags cannot be run together.
             my $ret =
               xCAT::Utils->runxcmd(
                                    {
                                     command => ['updatenode'],
                                     node    => $pos_nodes,
-                                    arg     => ["-s"],
+                                    arg     => ["-P", "$scripts", "-s"],
                                    },
                                    $sub_req, -1, 1
                                    );
@@ -1570,24 +1568,8 @@ sub process_request
                 $error++;
 
             }
+
             my $rsp;
-            $rsp->{data} = $ret;
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-
-            $ret =
-              xCAT::Utils->runxcmd(
-                                   {
-                                    command => ['updatenode'],
-                                    node    => $pos_nodes,
-                                    arg     => ["-P", "$scripts"],
-                                   },
-                                   $sub_req, -1, 1
-                                   );
-            if ($::RUNCMD_RC != 0)
-            {
-                $error++;
-
-            }
             $rsp->{data} = $ret;
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
