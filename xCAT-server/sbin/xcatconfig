@@ -418,12 +418,14 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     if ($::osname eq 'AIX')
     {
         $xcmd = "$::XCATROOT/sbin/restartxcatd";
+        system($xcmd);
     }
     else
     {
-        $xcmd = "/etc/init.d/xcatd restart";
+        #$xcmd = "/etc/init.d/xcatd restart";
+        xCAT::Utils->restartservice("xcatd");
     }
-    system($xcmd);
+
 }
 
 # more  config needed after xcatd start
