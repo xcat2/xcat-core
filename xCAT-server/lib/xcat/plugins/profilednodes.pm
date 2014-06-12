@@ -42,6 +42,8 @@ my %allchassis;
 my %allswitches;
 my %all_switchports;
 
+my @switch_records;
+
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
 my %allothernics;
@@ -116,8 +118,10 @@ sub process_request {
     }
 
     my $non_block = 1;
-    if ( $general_arg{'blockmode'} == 1) {
-        $non_block = 0;
+    if (defined $general_arg{'blockmode'}){
+        if ( $general_arg{'blockmode'} == 1) {
+            $non_block = 0;
+        }
     }
     my $lock = xCAT::Utils->acquire_lock("nodemgmt", $non_block);
     if (! $lock){
@@ -234,18 +238,20 @@ sub validate_args{
     my $enabledparamsref = shift;
     my $mandatoryparamsref = shift;
 
-    if ($general_arg{'help'} == 1){
-        my %process_help_commands = (
-            'nodediscoverstart' => 1,
-            'nodediscoverstop' => 1,
-            'nodediscoverls' => 1,
-            'nodediscoverstatus' => 1,
-        );
+    if (defined $general_arg{'help'}){
+        if($general_arg{'help'} == 1){
+            my %process_help_commands = (
+                'nodediscoverstart' => 1,
+                'nodediscoverstop' => 1,
+                'nodediscoverls' => 1,
+                'nodediscoverstatus' => 1,
+            );
 
-        # do not process help message for these noddiscover* commands, cover them in seqdiscovery.pm
-        unless ($process_help_commands{$command} == 1) {
-            setrsp_infostr($helpmsg);
-            return 0;
+            # do not process help message for these noddiscover* commands, cover them in seqdiscovery.pm
+            unless ($process_help_commands{$command} == 1) {
+                setrsp_infostr($helpmsg);
+                return 0;
+            }
         }
     }
 
@@ -428,6 +434,8 @@ Usage:
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_chassis(1,'cmm');
     %allcmmchassis = %$recordsref;
 
+    @switch_records = ();
+
     # Generate temporary hostnames for hosts entries in hostfile. 
     xCAT::MsgUtils->message('S', "Generate temporary hostnames.");
     my ($retcode_read, $retstr_read) = read_and_generate_hostnames($args_dict{'file'});
@@ -469,17 +477,18 @@ Usage:
         {
             $mac_addr_mode = 1;
         }
-        if(defined($hostinfo_dict{$mynode}{'switch'}))
+        if(defined($hostinfo_dict{$mynode}{'switches'}))
         {
             $switch_mode = 1;
         }
-        # cannot mix switch discovery with mac import
-        if(($mac_addr_mode == 1) && ($switch_mode == 1))
-        {
-            setrsp_progress("Failed to validate node information file.");
-            setrsp_errormsg("Cannot define mac import node in switch discovery hostinfo file.");
-            return;
-        }
+    }
+    
+    # cannot mix switch discovery with mac import
+    if(($mac_addr_mode == 1) && ($switch_mode == 1))
+    {
+        setrsp_progress("Failed to validate node information file.");
+        setrsp_errormsg("Cannot define mac import node in switch discovery hostinfo file.");
+        return;
     }
 
     # Create the full hostinfo dict.
@@ -498,6 +507,21 @@ Usage:
         $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr);
     }
+    # create switch, port, interface relationship.
+    if($switch_mode){
+        #debug message.
+        my $swstr = Dumper(@switch_records);
+        xCAT::MsgUtils->message('S',"node-switch-port-interface relationship: @switch_records");
+
+        my $swtab1 = xCAT::Table->new( 'switch', -create=>1, -autocommit=>0 );
+        for my $key_n_value (@switch_records){
+            my $keyref = (@$key_n_value)[0];
+            my $valueref = (@$key_n_value)[1];
+            $swtab1->setAttribs($keyref, $valueref);
+        }
+        $swtab1->commit;
+    }
+
     # setup node provisioning status.
     xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>\@nodelist, arg=>['defined']}, $request_command, -1, 2);
 
@@ -1720,6 +1744,27 @@ sub gen_new_hostinfo_dict{
     foreach my $item (sort(keys %hostinfo_dict)){       
         # Set Nodes's type:
         $hostinfo_dict{$item}{"objtype"} = 'node';
+
+        # Setup switches hash as switch table is a special one: 
+        # We can not set values in table switch through hostinfo_dict,
+        # but must do that through $swtab1->setAttribs.
+        if (defined $hostinfo_dict{$item}{switches}){
+            my @switchlist = split(/,/, $hostinfo_dict{$item}{switches});
+            foreach my $spi (@switchlist){
+                if($spi){
+                    my @spilist = split(/!/, $spi);
+                    my %keyshash = ();
+                    my %valueshash = ();
+                    $keyshash{'node'} = $item;
+                    $keyshash{'switch'}= $spilist[0];
+                    $keyshash{'port'} = $spilist[1];
+                    $valueshash{'interface'} = $spilist[2];
+                    push @switch_records, [\%keyshash, \%valueshash];
+                }
+            }
+            delete ($hostinfo_dict{$item}{switches});
+        }
+
         # Generate IPs for other interfaces defined in MAC file.
         my %ipshash;
         foreach (keys %netprofileattr){            
@@ -2097,9 +2142,9 @@ sub validate_node_entry{
     }
     # Must specify either MAC or switch + port.
     if (exists $node_entry{"mac"} ||
-        exists $node_entry{"switch"} && exists $node_entry{"switchport"}){
+        exists $node_entry{"switches"} ){
     } else{
-        $errmsg .= "MAC address, switch and port is not specified. You must specify the MAC address or switch and port.\n";
+        $errmsg .= "MAC address or switches is not specified. You must specify the MAC address or switches.\n";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
@@ -2145,26 +2190,34 @@ sub validate_node_entry{
             }
             #Transfer to capital
             $node_entry{$_} = uc $node_entry{$_}; 
-        }elsif ($_ eq "switch"){
-            #TODO: xCAT switch discovery enhance: verify whether switch exists.
-            if (! exists $allswitches{$node_entry{$_}}){
-                $errmsg .= "Specified switch $node_entry{$_} is not defined\n";
-            }
-        }elsif ($_ eq "switchport"){
-            if (! exists $node_entry{"switchport"}){
-                $errmsg .= "Specified switch must be used with port.\n";
-            }
-            # Not a valid number.
-            if (!($node_entry{$_} =~ /^\d+$/)){
-                $errmsg .= "Specified port $node_entry{$_} is invalid\n";
-            }
-            # now, we need to check "swith_switchport" string list to avoid duplicate config
-            my $switch_port = $node_entry{'switch'} . "_" . $node_entry{$_};
-            if (exists $all_switchports{$switch_port}){
-                $errmsg .= "Specified switch port $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
-            }else{
-            # after checking, add this one into all_switchports 
-            $all_switchports{$switch_port} = 0;
+        }elsif ($_ eq "switches"){
+            # switches=switch1!1!eth0,switch2!2!eth1
+            my @interfaceslist = ();
+            my @switchlist = split(/,/, $node_entry{$_});
+            foreach my $spi (@switchlist){
+                if($spi){
+                    my @spilist = split(/!/, $spi);
+                    if(@spilist != 3) {
+                        $errmsg .= "Invalid 'switches' value $node_entry{$_} specified.\n";
+                        next;
+                    }
+
+                    if (! exists $allswitches{$spilist[0]}){
+                        $errmsg .= "Specified switch $spilist[0] is not defined\n";
+                    }
+                    # Not a valid number.
+                    if (!($spilist[1] =~ /^\d+$/)){
+                        $errmsg .= "Specified port $spilist[1] is invalid\n";
+                    }
+                    # now, we need to check "swith_switchport" string list to avoid duplicate config
+                    my $switch_port = $spilist[0] . "_" . $spilist[1];
+                    if (exists $all_switchports{$switch_port}){
+                        $errmsg .= "Specified switch $spilist[0] and port $spilist[1] already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
+                    }else{
+                        # after checking, add this one into all_switchports
+                        $all_switchports{$switch_port} = 0;
+                    }
+                }
             }
         }elsif ($_ eq "rack"){
             if (! exists $allracks{$node_entry{$_}}){
