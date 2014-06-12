@@ -154,163 +154,153 @@ sub subvars {
   #do *all* includes, recursive and all
   my $doneincludes=0;
   while (not $doneincludes) {
-    $doneincludes=1;
-    if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
-      $doneincludes=0;
-      $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
-    }
-    if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
-      $doneincludes=0;
-      $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
-    }
-    if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
-      $doneincludes=0;
-      $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
-    }
-    if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
-      $doneincludes=0;
-      $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
-    }
-  }
-
-  #support multiple paths of osimage in rh/sles diskfull installation
-  my @pkgdirs;
-  if ( defined($media_dir) ) {
-      @pkgdirs = split(",", $media_dir);
-      my $source;
-      my $source_in_pre;
-      my $c = 0; 
-      foreach my $pkgdir(@pkgdirs) {
-          if( $platform =~ /^(rh|SL|centos|fedora)$/ ) {
-              if ( $c == 0 ) {
-                  # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
-                  # the rhels5.9 will not be installed successfully. So put in kickstart directly.
-                  $source_in_pre .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
-                  $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #For rhels5.9
-              } else {
-                  $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";  
-                  $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";  #for rhels5.9
+      #support multiple paths of osimage in rh/sles diskfull installation
+      my @pkgdirs;
+      if ( defined($media_dir) ) {
+          @pkgdirs = split(",", $media_dir);
+          my $source;
+          my $source_in_pre;
+          my $c = 0; 
+          foreach my $pkgdir(@pkgdirs) {
+              if( $platform =~ /^(rh|SL|centos|fedora)$/ ) {
+                  if ( $c == 0 ) {
+                      # After some tests, if we put the repo in  pre scripts in the kickstart like for rhels6.x
+                      # the rhels5.9 will not be installed successfully. So put in kickstart directly.
+                      $source_in_pre .=  "echo 'url --url http://'\$nextserver'/$pkgdir' >> /tmp/repos";
+                      $source .=  "url --url http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n"; #For rhels5.9
+                  } else {
+                      $source_in_pre .=  "\necho 'repo --name=pkg$c --baseurl=http://'\$nextserver'/$pkgdir' >> /tmp/repos";  
+                      $source .=  "repo --name=pkg$c --baseurl=http://#TABLE:noderes:\$NODE:nfsserver#/$pkgdir\n";  #for rhels5.9
+                  }
+              } elsif ($platform =~ /^(sles|suse)/) {
+                  my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
+                  $source .=  "         <listentry>
+               <media_url>$http</media_url>
+               <product>SuSE-Linux-pkg$c</product>
+               <product_dir>/</product_dir>
+               <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
+               <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
+             </listentry>";
+               $source_in_pre .="<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
               }
-          } elsif ($platform =~ /^(sles|suse)/) {
-              my $http = "http://#TABLE:noderes:\$NODE:nfsserver#$pkgdir";
-              $source .=  "         <listentry>
-           <media_url>$http</media_url>
-           <product>SuSE-Linux-pkg$c</product>
-           <product_dir>/</product_dir>
-           <ask_on_error config:type=\"boolean\">false</ask_on_error> <!-- available since openSUSE 11.0 -->
-           <name>SuSE-Linux-pkg$c</name> <!-- available since openSUSE 11.1/SLES11 (bnc#433981) -->
-         </listentry>";
-           $source_in_pre .="<listentry><media_url>http://'\$nextserver'$pkgdir</media_url><product>SuSE-Linux-pkg$c</product><product_dir>/</product_dir><ask_on_error config:type=\"boolean\">false</ask_on_error><name>SuSE-Linux-pkg$c</name></listentry>";
+              $c++;
           }
-          $c++;
+    
+          $inc =~ s/#INSTALL_SOURCES#/$source/g;
+          $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
+      }
+    
+      #ok, now do everything else..
+      my $shortname = $node;
+      $shortname =~ s/\..*//;
+      $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
+      $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
+      $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
+      $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
+      $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+      $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
+      $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
+      $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
+      $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+      $inc =~ s/#YAST2NET#/yast2network()/eg;
+      $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
+      $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
+      $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
+      $inc =~ s/#WINNETCFG#/windows_net_cfg()/eg;
+      $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
+      $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
+      $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
+      $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
+      $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
+      $inc =~ s/#HOSTNAME#/$node/g;
+      $inc =~ s/#SHORTNAME#/$shortname/g;
+      $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
+    
+      my $nrtab = xCAT::Table->new("noderes");
+      my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
+      my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
+      
+      $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
+    
+      #if user specify the partion file, replace the default partition strategy
+      if ($partitionfile){
+          #if the content of the partition file is definition replace the default is ok
+          my $partcontent = '';
+          my $scriptflag = 0;
+      
+          if ($partitionfile =~ /^s:(.*)/){
+              $scriptflag = 1;
+              $partitionfile = $1;
+          }
+      
+          if (-r $partitionfile){
+              open ($inh, "<", $partitionfile);
+              while (<$inh>){
+                  $partcontent .= $_;
+              }
+              close ($inh);
+      
+              #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
+              if ($scriptflag){
+                  #for redhat/sl/centos/kvm/fedora
+                  if ($inc =~ /#XCAT_PARTITION_START#/) {
+                      my $tempstr = "%include /tmp/partitionfile\n";
+                      $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
+                      #modify the content in the file, and write into %pre part
+                      #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                      $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
+                     
+                      $partcontent .= "chmod 755 /tmp/partscript\n";
+                      $partcontent .= "/tmp/partscript\n";
+                      #replace the #XCA_PARTITION_SCRIPT#
+                      $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+                  }
+                  #for sles/suse
+                  elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                      my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
+                      $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
+                      #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                      $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
+                      $partcontent .= "chmod 755 /tmp/partscript\n";
+                      $partcontent .= "/tmp/partscript\n";
+                      $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+                  }
+              }
+              else{
+                  $partcontent =~ s/\s$//;
+                  if ($inc =~ /#XCAT_PARTITION_START#/){
+                      $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+                  }
+                  elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                      $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
+                  }
+              }
+          }
       }
 
-      $inc =~ s/#INSTALL_SOURCES#/$source/g;
-      $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
-  }
-
-
-
-
-  #Support hierarchical include
-  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-  if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
-     $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
-  }
-
-  #ok, now do everything else..
-  $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
-  $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
-  $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
-  $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
-  $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
-  $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
-  $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
-  $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
-  $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
-  $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
-  $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
-  $inc =~ s/#YAST2NET#/yast2network()/eg;
-  $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
-  $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
-  $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
-  $inc =~ s/#WINNETCFG#/windows_net_cfg()/eg;
-  $inc =~ s/#WINADJOIN#/windows_join_data()/eg;
-  $inc =~ s/#WINDNSCFG#/windows_dns_cfg()/eg;
-  $inc =~ s/#WINACCOUNTDATA#/windows_account_data()/eg;
-  $inc =~ s/#WINDISABLENULLADMIN#/windows_disable_null_admin()/eg;
-  $inc =~ s/#MANAGEDADDRESSMODE#/managed_address_mode()/eg;
-  $inc =~ s/#HOSTNAME#/$node/g;
-  $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
-
-  my $nrtab = xCAT::Table->new("noderes");
-  my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
-  my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
-  
-  $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
-
-  #if user specify the partion file, replace the default partition strategy
-  if ($partitionfile){
-    #if the content of the partition file is definition replace the default is ok
-    my $partcontent = '';
-    my $scriptflag = 0;
-
-    if ($partitionfile =~ /^s:(.*)/){
-        $scriptflag = 1;
-        $partitionfile = $1;
-    }
-
-    if (-r $partitionfile){
-        open ($inh, "<", $partitionfile);
-        while (<$inh>){
-            $partcontent .= $_;
-        }
-        close ($inh);
-
-        #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
-        if ($scriptflag){
-            #for redhat/sl/centos/kvm/fedora
-            if ($inc =~ /#XCAT_PARTITION_START#/) {
-                my $tempstr = "%include /tmp/partitionfile\n";
-                $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
-                #modify the content in the file, and write into %pre part
-                #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
-                $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
-               
-                $partcontent .= "chmod 755 /tmp/partscript\n";
-                $partcontent .= "/tmp/partscript\n";
-                #replace the #XCA_PARTITION_SCRIPT#
-                $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
-            }
-            #for sles/suse
-            elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
-                my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
-                $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
-                #$partcontent = "cat > /tmp/partscript << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
-                $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
-                $partcontent .= "chmod 755 /tmp/partscript\n";
-                $partcontent .= "/tmp/partscript\n";
-                $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
-            }
-        }
-        else{
-            $partcontent =~ s/\s$//;
-            if ($inc =~ /#XCAT_PARTITION_START#/){
-                $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
-            }
-            elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
-                $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
-            }
-        }
-    }
+      $doneincludes=1;
+      if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
+      }
+      if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
+      }
+      if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
+      }
+      if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+      }
   }
 
   if ($tmplerr) {
-     close ($outh);
-     return $tmplerr;
-   }
+      close ($outh);
+      return $tmplerr;
+  }
   print $outh $inc;
   close($outh);
   return 0;

@@ -335,7 +335,8 @@ elif [ "$1" = "-s" ];then
     if [ -n "$MACADDRESS" ];then
         str_inst_mac=$MACADDRESS
     else
-        str_inst_mac=`ifconfig $str_inst_nic | grep HWaddr | awk -F'HWaddr' '{print $2}' | sed 's/\s*//'`
+        #str_inst_mac=`ifconfig $str_inst_nic | grep HWaddr | awk -F'HWaddr' '{print $2}' | sed 's/\s*//'`
+        str_inst_mac=`ip link show $netdev | grep ether | awk '{print $2}'`
     fi
 
     if [ -z "$str_inst_ip" -o -z "$str_inst_mask" ];then
@@ -392,11 +393,15 @@ elif [ "$1" = "-s" ];then
             fi
         fi
         hostname $NODE
-        grep -i "HOSTNAME" /etc/sysconfig/network
-        if [ $? -eq 0 ];then
-            sed -i "s/.*HOSTNAME.*/HOSTNAME=${NODE}/i" /etc/sysconfig/network
+        if [ -f "/etc/hostname" ]; then
+            echo $NODE > /etc/hostname
         else
-            echo "HOSTNAME=${NODE}" >> /etc/sysconfig/network
+            grep -i "HOSTNAME" /etc/sysconfig/network
+            if [ $? -eq 0 ];then
+                sed -i "s/.*HOSTNAME.*/HOSTNAME=${NODE}/i" /etc/sysconfig/network
+            else
+                echo "HOSTNAME=${NODE}" >> /etc/sysconfig/network
+            fi
         fi
     fi
     exit 0

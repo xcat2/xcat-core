@@ -178,8 +178,6 @@ if [ -z "$instdisk" ]; then
 		instdisk=$firstdisk 
 	fi
 fi
-		
-
 modprobe ext4 >& /dev/null
 modprobe ext4dev >& /dev/null
 if grep ext4dev /proc/filesystems > /dev/null; then
@@ -189,18 +187,28 @@ elif grep ext4 /proc/filesystems > /dev/null; then
 else
 	FSTYPE=ext3
 fi
+BOOTFSTYPE=ext3
+EFIFSTYPE=vfat
+
+if uname -r|grep '^3.*el7' > /dev/null; then
+    BOOTFSTYPE=xfs
+    FSTYPE=xfs
+    EFIFSTYPE=efi
+fi
 
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype vfat' >> /tmp/partitioning
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitioning
 fi
 
 #TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-echo "part /boot --size 256 --fstype ext3 --ondisk $instdisk" >> /tmp/partitioning
+echo "part /boot --size 256 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitioning
 echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
-echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitioning
+echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitioning
+echo "volgroup system pv.01" >> /tmp/partitioning
+echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
 	
 #XCA_PARTITION_SCRIPT#
 

@@ -13,12 +13,13 @@ use Data::Dumper;
 # Globals - these are set once and then only read.
 my $HELP;
 my $VERBOSE;
+my $DRYRUN;
 my $WAITTIME;
 my $NOAUTOINST;
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [-w <waittime>] <noderange>\n\n";
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [--dryrun] [-w <waittime>] <noderange>\n\n";
    	if (!$exitcode) {
    		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
 		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
@@ -32,7 +33,7 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'dryrun' => \$DRYRUN, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
 
 if ($HELP) { $usage->(0); }
 if (scalar(@ARGV) != 1) { $usage->(1); }
@@ -45,7 +46,11 @@ copyFilesToNodes($noderange, \%bootparms);
 
 updateGrubOnNodes($noderange, \%bootparms);
 
-if (!$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
+if ($DRYRUN) { exit(0); }
+
+if ($bootparms{osimageprovmethod} eq 'install' && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
+
+if ($bootparms{osimageprovmethod} eq 'sysclone') { copySyscloneFiles(); }
 
 exit(0);
 
@@ -54,23 +59,31 @@ exit(0);
 sub getBootParms {
 	my $nr = shift @_;
 	my %bootparms;
-	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline");
+	my @output = runcmd("nodels $nr bootparams.kernel bootparams.initrd bootparams.kcmdline nodetype.provmethod");
 
 	# the attributes can be displayed in a different order than requested, so need to grep for them
-	my @gresults;
-	foreach my $a (qw(kernel initrd kcmdline)) {
-		my $attr = "bootparams.$a";
-		@gresults = grep(/^\S+:\s+$attr:/, @output);
+	foreach my $attr (qw(bootparams.kernel bootparams.initrd bootparams.kcmdline nodetype.provmethod)) {
+		my ($a) = $attr =~ m/\.(.*)$/;
+		my @gresults = grep(/^\S+:\s+$attr:/, @output);
 		if (!scalar(@gresults)) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
 		# for now just pick the 1st one. They should all be the same, except for the node name in kcmdline
 		chomp($gresults[0]);
 		$gresults[0] =~ s/^\S+:\s+$attr:\s*//;
+		#print "gresults='$gresults[0]'\n";
+		if ($gresults[0] !~ m/\S/) { die "Error: attribute $attr not defined for the noderange. Did you run 'nodeset <noderange> osimage=<osimage>' ?\n"; }
 		$bootparms{$a} = $gresults[0];
-		if ($a eq 'kcmdline') { $bootparms{$a} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|; }
 	}
+	$bootparms{kcmdline} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|;
+
+	# from the nodes provmethod, get the osimage provmethod, so we know the type of install
+	@output = runcmd("lsdef -t osimage $bootparms{provmethod} -ci provmethod");
+	chomp($output[0]);
+	if ($output[0] =~ m/^Could not find/) { die "Error: provmethod $bootparms{provmethod} is set for the node, but there is no osimage definition by that name."; }
+	my ($junk, $provmethod) = split(/=/, $output[0]);
+	$bootparms{osimageprovmethod} = $provmethod;
 
 	# get the mgmt node cluster-facing ip addr
-	@output = runcmd('lsdef -t site -i master -c');
+	@output = runcmd('lsdef -t site -ci master');
 	chomp($output[0]);
 	my ($junk, $ip) = split(/=/, $output[0]);
 	$bootparms{mnip} = $ip;
@@ -90,8 +103,13 @@ sub copyFilesToNodes {
 		my $localfile = "/tftpboot/$file";
 		# for the 
 		my $remotefile = '/boot/' . remoteFilename($file);
-		print "Copying $localfile to $nr:$remotefile\n";
-		runcmd("xdcp $nr -p $localfile $remotefile");
+		if ($DRYRUN) {
+			print "Dry run: would copy $localfile to $nr:$remotefile\n";
+		}
+		else {
+			print "Copying $localfile to $nr:$remotefile\n";
+			runcmd("xdcp $nr -p $localfile $remotefile");
+		}
 	}
 }
 
@@ -99,7 +117,7 @@ sub copyFilesToNodes {
 # Form the remote file name, using the last 2 parts of the path, separated by "-"
 sub remoteFilename {
 	my $f = shift @_;
-	$f =~ s|^.*/([^/]+)/([^/]+)$|$1-$2|;
+	$f =~ s|^.*?([^/]+)/([^/]+)$|$1-$2|;
 	return $f;
 }
 
@@ -110,10 +128,11 @@ sub updateGrubOnNodes {
 	my $nr = shift @_;
 	my $bootparms = shift @_;
 	my $vtxt = ($VERBOSE ? '-v' : '');
+	my $dtxt = ($DRYRUN ? '--dryrun' : '');
 	my @output = runcmd('which modifygrub');
 	my $modifygrub = $output[0];
 	chomp($modifygrub);
-	my $cmd = "xdsh $nr -e $modifygrub $vtxt -w $WAITTIME " . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
+	my $cmd = "xdsh $nr -e $modifygrub $vtxt $dtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
 	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
 	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
 	# is to quote each of the outer single quotes with double quotes.
@@ -124,8 +143,7 @@ sub updateGrubOnNodes {
 }
 
 
-# Hack the autoinst files to wait in a key spot to make them work even tho it takes
-# the NICs almost a min before they can transmit after a state change.
+# Hack the autoinst files to overcome the nic coming up delay.
 #todo: this has only been tested with SLES nodes
 sub modifyAutoinstFiles {
 	my $nr = shift @_;
@@ -135,30 +153,145 @@ sub modifyAutoinstFiles {
 	my @nodes = runcmd("nodels $nr");
 	chomp(@nodes);
 
+	# Modify chroot.sles to insert a wait in the /etc/init.d/network of each node.  This is
+	# necessary because even tho compute.sles11.softlayer.tmpl configures bonding, when autoyast
+	# reboots the node after installing the rpms, it does not bring up the network in the normal way
+	# at first and seems to skip any bonding and the if-up.d scripts.  So we are left doing this.
+	# (After autoyast is done with all of its post-configuration, it brings up the network in the
+	# normal way, so bonding gets done then, which is good at least.)
+
 	# Edit each file to have chroot.sles insert a wait at the end of /etc/init.d/network
 	# this finds the end of boot.sh script (which is chroot.sles)
 	my $search = '\n\]\]>\s*</source>\s*</script>\s*</chroot-scripts>';
+	# hack the /etc/init.d/network script to put a wait in it
 	my $file = '/mnt/etc/init.d/network';			# at this point in the installation, the permanent file system is just mounted
-	#my $waitstring = 'echo Sleeping for 55s;sleep 55';
-	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escape for sed
-	my $waitstring = 'echo Waiting to reach xCAT mgmt node...;while \[ \$\(\(xcati+=1\)\) -le 60 \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .'; do echo i=\$xcati ; done; sleep 10';
+	# this is the string to insert in the nodes /etc/init.d/network script.  It is a while loop pinging the mn, but some of the chars need to be escaped for sed
+	my $waitstring = 'echo -n Waiting to reach xCAT mgmt node ' . $bootparms->{mnip} . '.;xcatretries=60;while \[ \$\(\(xcati+=1\)\) -le \$xcatretries \] \&\& ! ping -c2 -w3 ' . $bootparms->{mnip} .' \>\/dev\/null 2\>\&1; do echo -n .; done; if \[ \$xcati -le \$xcatretries \]; then echo success; else echo failed; fi';
 	# this crazy sed string is from google.  It gathers up the whole file into the hold buffer, and then the substitution is done on the whole file
 	my $sedstring = q|sed -n '1h;1!H;${;g;s/\(\t\treload_firewall\n\)\n/\1\t\t| . $waitstring . q(\n\n/g;p;}') . " $file  > $file.new";
 	# finally create the perl replace string that will be used to modify the autoinst file
 	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
 
-	# now actually update the file
+	# Add a script that gets invoked by the OS after the nic is brought up
+    # Note: this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
+    # so autoyast fails to get the media
+    # these are specific to SLES
+    #my $netdir = '/etc/sysconfig/network';
+    #my $filename = '/etc/sysconfig/network/if-up.d/xcat-sl-wait';
+    #my $mnip = $bootparms->{mnip};
+    #todo: to support rhel, use these values instead
+    #my $netdir='/etc/sysconfig/network-scripts';
+    #my $filename='/sbin/ifup-local';
+	#my $replace = qq(
+#FILENAME=$filename
+#NETDIR=$netdir
+#MNIP=$mnip
+#);
+#	$replace .= q(
+#cat >$FILENAME << EOF1
+#MNIP=$MNIP
+#NETDIR=$NETDIR
+#EOF1
+#
+# this part of the file we do NOT want to expand the variables in the content
+#cat >>$FILENAME << 'EOF2'
+#NIC="$1"
+# look in this ifcfg script to get the nics ip to see if this is the one we should be waiting on
+#NICIP=`awk -F= '/^IPADDR/ {print $2}' $NETDIR/ifcfg-$NIC | tr -d \' `
+#if [ "${NICIP%.*.*}" != "${MNIP%.*.*}" ]; then exit; fi     # hack: compare the 1st 2 octets
+#echo -n Waiting to reach xCAT mgmt node $MNIP.
+#xcatretries=60
+#while [ $((xcati+=1)) -le $xcatretries ] && ! ping -c2 -w3 $MNIP >/dev/null 2>&1; do echo -n .; done
+#if [ $xcati -le $xcatretries ]; then echo " success"; else echo " failed"; fi
+#sleep 3
+#EOF2
+#
+#chmod +x $FILENAME
+#);
+
+	# The compute.sles11.softlayer.tmpl file contains 2 variables (node ip and netmask) that are
+	# not replaced by Template.pm.  Substitute those in the autoinst files now.
+	# Also use our own multiline sed to put the network script hack in.
 	print "Updating /install/autoinst files.\n";
 	foreach my $n (@nodes) {
 		my $f = "/install/autoinst/$n";
+		my ($ip, $netmask, $gateway) = getNodeIpInfo($n);
+		runcmd("sed -i 's/#NODEIPADDR#/$ip/;s/#NODENETMASK#/$netmask/;s/#NODEGATEWAY#/$gateway/' $f");
+
 		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
 		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
 	}
 }
 
 
+# Copy softlayer specific systemimager post-install scripts to the systemimager location.
+# These cause si to use static ip and insert a wait into the bring up of the network.
+sub copySyscloneFiles {
+	my $cmd = "cp -f /opt/xcat/share/xcat/sysclone/post-install/* /install/sysclone/scripts/post-install";
+	print "Copying SoftLayer-specific post scripts to the SystemImager post-install directory.\n";
+	runcmd($cmd);
+}
+
+
+# Get IP and network of a node
+sub getNodeIpInfo {
+	my $node = shift;
+
+	# get ip for the node
+	my @output = runcmd("nodels $node hosts.ip");
+	chomp($output[0]);
+	my ($junk, $ip) = split(/\s+/, $output[0]);
+	#todo: also support getting the ip from name resolution
+	if (!$ip) { die "Error: the ip attribute must be set for $node.\n"; }
+
+	# find relevant network in the networks table
+	# first get the networks in a hash
+	my %networks;
+	@output = runcmd("lsdef -t network -ci net,mask,gateway");
+	foreach my $line (@output) {
+		chomp($line);
+		my ($netname, $attr, $val) = $line =~ m/^(.+):\s+(.+?)=(.+)$/;
+		$networks{$netname}->{$attr} = $val;
+	}
+	# now go thru the networks looking for the correct one
+	my ($netmask, $gateway);
+	foreach my $key (keys %networks) {
+		if (isIPinNet($ip, $networks{$key}->{net}, $networks{$key}->{mask})) {		# found it
+			$netmask = $networks{$key}->{mask};
+			$gateway = $networks{$key}->{gateway};
+			last;
+		}
+	}
+	if (!$netmask) { die "Error: could not find a network in the networks table that $node $ip is part of.\n"; }
+	if (!$gateway) { die "Error: gateway not specified in the networks table for the network that $node $ip is part of.\n"; }
+
+	verbose("IP info for $node: ip=$ip, netmask=$netmask, gateway=$gateway");
+	return ($ip, $netmask, $gateway);
+}
+
+
+# Is the IP in the network/netmask combo
+sub isIPinNet {
+	my ($ip, $net, $mask) = @_;
+	my $ipbin = convert2bin($ip);
+	my $netbin = convert2bin($net);
+	my $maskbin = convert2bin($mask);
+    $ipbin &= $maskbin;
+    if ($ipbin && $netbin && ($ipbin == $netbin)) { return 1; } 
+    else { return 0; }
+}
+
+
+# Convert dotted decimal format (1.2.3.4) to a binary number
+sub convert2bin {
+	my @arr=split(/\./, shift);
+	my ($bin) = unpack('N', pack('C4',@arr ) );
+	return $bin;
+}
+
+
 # this is like multi-line sed replace function
-# Args: filename, search-string, replace-string
+# Args: filename, search-string, replace-string, options (mode=>{insertbefore,insertafter,replace})
 sub sed {
 	my ($file, $search, $replace, %options) = @_;
 	#my $opts = 's';

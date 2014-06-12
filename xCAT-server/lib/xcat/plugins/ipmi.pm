@@ -1146,6 +1146,12 @@ sub getrvidparms_imm2 {
     	$response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0'.')');
      	#arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     	$jnlp = $response->content;
+	if ($jnlp =~ /Failed to parse ip format for request/) {
+           $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0@0'.')');
+           #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode,  'notwin32', and one more (unknown)
+           $jnlp = $response->content;
+       }
+
     }
     $response = $browser->request(GET $baseurl."data/logout");
     my $currnode = $sessdata->{node};
@@ -1541,6 +1547,7 @@ sub power_with_context {
 		return;
 	} elsif ($subcommand eq "wake") {
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,0],callback=>\&power_response,callback_args=>$sessdata);
+        return;
 	} elsif (not $argmap{$subcommand}) {
 		xCAT::SvrUtils::sendmsg([1,"unsupported command power $subcommand"],$callback);
 		return;
@@ -1956,10 +1963,19 @@ sub got_bios_buildid {
    my $sessdata = $res{sessdata};
    if ($res{data}) {
         $sessdata->{biosbuildid} = $res{data};
-	get_imm_property(property=>"/v2/bios/build_version",callback=>\&got_bios_version,sessdata=>$sessdata);
+	get_imm_property(property=>"/v2/bios/pending_build_version",callback=>\&got_bios_pending_buildid,sessdata=>$sessdata);
    } else {
         initfru_with_mprom($sessdata);
    }
+}
+sub got_bios_pending_buildid {
+    my %res = @_;
+   my $sessdata = $res{sessdata};
+    $sessdata->{biosbuildpending} = 0;
+   if ($res{data} and $res{data} ne '  ') {
+        $sessdata->{biosbuildpending} = 1;
+    }
+	get_imm_property(property=>"/v2/bios/build_version",callback=>\&got_bios_version,sessdata=>$sessdata);
 }
 sub got_bios_version {
    my %res = @_;
@@ -1979,7 +1995,12 @@ sub got_bios_date {
 	my $fru = FRU->new();
 	$fru->rec_type("bios,uefi,firmware");
 	$fru->desc("UEFI Version");
-	$fru->value($sessdata->{biosbuildversion}." (".$sessdata->{biosbuildid}." ".$sessdata->{biosbuilddate}.")");
+    my $pending = "";
+    if ($sessdata->{biosbuildpending}) {
+        $pending = " [PENDING]";
+    }
+	my $value = $sessdata->{biosbuildversion}." (".$sessdata->{biosbuildid}." ".$sessdata->{biosbuilddate}.")$pending";
+	$fru->value($value);
 	$sessdata->{fru_hash}->{uefi} = $fru;
 	get_imm_property(property=>"/v2/fpga/build_id",callback=>\&got_fpga_buildid,sessdata=>$sessdata);
    } else {
@@ -2767,7 +2788,7 @@ sub readcurrfrudevice {
         shift @data;
         push @{$sessdata->{currfrudata}},@data;
         if ($sessdata->{currfrudone}) {
-	    if ($sessdata->{isite}) {
+	    if ($sessdata->{isite} and $sessdata->{currfrusdr} and ($sessdata->{currfrusdr}->fru_oem & 0x80)) {
 		#IBM OEM command, d0,51,0 further qualifies the command name, we'll first take a stop at block 0, offset 2, one byte, to get VPD version number
 		#command structured as:
 		#d0,51,0 = command set identifier

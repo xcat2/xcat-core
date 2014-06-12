@@ -3,6 +3,11 @@
 #(C)IBM Corp
 # 
 
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 # create /etc/sysconfig/network-scripts/
 pmatch ()
 {
@@ -175,7 +180,8 @@ EOF
                 /usr/bin/find . | cpio -H newc -o|gzip -9 -c - > /boot/${KDUMPINIT}
                 cd /
                 /bin/rm -rf "/var/tmp/tempinit"
-                service kdump restart
+                #service kdump restart
+                restartservice kdump
             else
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 	        KDTEMPPATH=${KDPATH//\//\\\/}
@@ -208,7 +214,8 @@ EOF
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
                 echo "link_delay 180" >> /etc/kdump.conf
-		/etc/init.d/kdump restart
+		#/etc/init.d/kdump restart
+		restartservice kdump
 	    fi
 	fi
     fi

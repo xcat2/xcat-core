@@ -418,12 +418,14 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     if ($::osname eq 'AIX')
     {
         $xcmd = "$::XCATROOT/sbin/restartxcatd";
+        system($xcmd);
     }
     else
     {
-        $xcmd = "/etc/init.d/xcatd restart";
+        #$xcmd = "/etc/init.d/xcatd restart";
+        xCAT::Utils->restartservice("xcatd");
     }
-    system($xcmd);
+
 }
 
 # more  config needed after xcatd start
@@ -453,8 +455,8 @@ if ($::INITIALINSTALL || $::FORCE)
      &setuphttp;
 
      # chkconfig dhcpd on
-     system("chkconfig dhcpd on");
-
+     #system("chkconfig dhcpd on");
+     xCAT::Utils->enableservice("dhcp");
 
      # Turn off selinux on RedHat
      if (-f "/etc/redhat-release")
@@ -505,66 +507,74 @@ if ($::INITIALINSTALL || $::FORCE)
             xCAT::MsgUtils->message('E', "Failed to update /etc/ntp.conf");
         }
 
-        my $ntpserv;
-        if (-f "/etc/redhat-release")
-        {
-            $ntpserv = "ntpd";
-        }
-        else
-        {
-            $ntpserv = "ntp";
-        }
-        $cmd = "service $ntpserv restart";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+        #my $ntpserv;
+        #if (-f "/etc/redhat-release")
+        #{
+        #    $ntpserv = "ntpd";
+        #}
+        #else
+        #{
+        #    $ntpserv = "ntp";
+        #}
+        #$cmd = "service $ntpserv restart";
+        #$outref = xCAT::Utils->runcmd("$cmd", 0);
+        #if ($::RUNCMD_RC != 0)
+        my $ret=xCAT::Utils->restartservice("ntpserver");
+        if($ret !=0)
         {
             xCAT::MsgUtils->message('E', "Failed to start ntp service");
         }
-        if (-f "/sbin/chkconfig")
-        {
-            $cmd = "chkconfig $ntpserv on";
-            $outref = xCAT::Utils->runcmd("$cmd", 0);
-            if ($::RUNCMD_RC != 0)
+        #if (-f "/sbin/chkconfig")
+        #{
+        #    $cmd = "chkconfig $ntpserv on";
+        #    $outref = xCAT::Utils->runcmd("$cmd", 0);
+        $ret=xCAT::Utils->enableservice("ntpserver");
+        #    if ($::RUNCMD_RC != 0)
+        if($ret!=0)  
             {
                 xCAT::MsgUtils->message('E', "Failed to enable ntp service on every boot");
             }
-        }
+        #}
     }
 
     # Disable firewall
-    my $fwserv;
-    if(-f "/etc/SuSE-release")
-    {
-       $fwserv = "SuSEfirewall2_setup";
-    }
-    elsif(-f "/etc/redhat-release")
-    {
-        $fwserv = "iptables";
-        if( -f "/usr/sbin/firewalld" )
-        {
-           $fwserv = "firewalld";
-        }
-    }
-    else
-    {
-        #Ubuntu: FIXME
-    }
+    #my $fwserv;
+    #if(-f "/etc/SuSE-release")
+    #{
+    #   $fwserv = "SuSEfirewall2_setup";
+    #}
+    #elsif(-f "/etc/redhat-release")
+    #{
+    #    $fwserv = "iptables";
+    #    if( -f "/usr/sbin/firewalld" )
+    #    {
+    #       $fwserv = "firewalld";
+    #    }
+    #}
+    #else
+    #{
+    #    #Ubuntu: FIXME
+    #}
 
-    if($fwserv)
-    {
-        my $cmd = "service $fwserv stop";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+    #if($fwserv)
+    #{
+    #    my $cmd = "service $fwserv stop";
+    #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    #    if ($::RUNCMD_RC != 0)
+    my $ret=xCAT::Utils->stopservice("firewall");
+    if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Failed to stop firewall");
         }
-        $cmd = "chkconfig $fwserv off";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+    #    $cmd = "chkconfig $fwserv off";
+    #    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    #    if ($::RUNCMD_RC != 0)
+    $ret=xCAT::Utils->disableservice("firewall");
+    if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Failed to disable firewall on boot");
         }
-     }
+    #}
 
      # Enable ip forwarding. In most cases,
      # the MN itself will act as the default gateway for the compute nodes,
@@ -1020,44 +1030,6 @@ sub genSSHNodeHostKey
 
 }
 
-# is_lsb_ubuntu return value indicates whether system appears to be Ubuntu.
-# Using required /etc/lsb-release file, instead of optional lsb_release command.
-
-sub is_lsb_ubuntu
-{
-    if (open(my $relfile, "<", "/etc/lsb-release")) {
-        my @text = <$relfile>;
-        close($relfile);
-        chomp(@text);
-        my $distrib_id = '';
-
-        foreach (@text) {
-            if ( $_ =~ /^\s*DISTRIB_ID=(.*)$/ ) {
-                $distrib_id = $1;                   # last DISTRIB_ID value in file used
-            }
-        }
-
-        if ( $distrib_id =~ /^(Ubuntu|"Ubuntu")\s*$/ ) {
-            return 1;                               # return "true"
-        }
-    }
-
-    return 0;                   # return "false"
-}
-
-sub is_debian
-{
-    if ( -e "/etc/debian_version" && -e "/etc/issue"){
-        open(my $relfile, "<", "/etc/issue");
-        my $line = <$relfile>;
-        close($relfile);
-        if ( $line =~ /debian.*/i ){
-            return 1;
-        }
-    }
-    return 0;
-}
-
 sub is_redhat6sp4
 {
     if( -e "/etc/redhat-release" ){
@@ -1072,21 +1044,6 @@ sub is_redhat6sp4
 }
 
 
-# on Ubuntu need to painstakingly compare /etc/localtime with files under
-# /usr/share/zoneinfo since /etc/localtime # isn't always a symbolic link
-sub discover_timezone_ubuntu
-{
-	my $localtime = "/etc/localtime";
-	my $zoneinfo = "/usr/share/zoneinfo";
-
-	my $zone_result = `find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV`;
-
-	my @zones = split /\n/, $zone_result;
-
-	$zones[0] =~ s/$zoneinfo\///;
-
-	return $zones[0];
-}
 
 #-----------------------------------------------------------------------------
 
@@ -1158,6 +1115,7 @@ sub initDB
 
     # set value based on OS
     my ($domain, $timezone);
+    my $timezone = xCAT::Utils->gettimezone();
     if ($::osname eq 'AIX')
     {
         my ($name, $rest) = split('\.', $hname);
@@ -1170,35 +1128,10 @@ sub initDB
             $domain = "";
         }
 
-        $timezone = $ENV{'TZ'};
     }
     else    # linux
     {
         $domain = `hostname -d`;
-        my $tz;
-        if (-f "/etc/redhat-release")
-        {
-
-            # on Redhat look for "ZONE"
-            $tz =
-              `grep ^ZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
-        }
-        elsif ( is_lsb_ubuntu() || is_debian() )
-        {
-            $tz = discover_timezone_ubuntu;
-            if (!$tz){
-                $tz = `cat /etc/timezone`;
-                chomp $tz;
-            }
-        }
-        else
-        {
-
-            # on SuSE look for "TIMEZONE"
-            $tz =
-              `grep ^TIMEZONE /etc/sysconfig/clock|cut -d= -f 2|sed -e 's/"//g'`;
-        }
-        $timezone = $tz;
     }
 
     chomp $timezone;
@@ -1858,16 +1791,18 @@ sub setupLinuxexports
     {
 
         # restart nfs
-        my $cmd;
-        my $os = xCAT::Utils->osver();
-        my $SERVICE = xCAT::Utils->fullpathbin("service");
-        if ($os =~ /sles/) {
-           $cmd = "$SERVICE nfsserver restart";
-        } else {
-           $cmd = "$SERVICE nfs restart";
-        }
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+    #    my $cmd;
+    #    my $os = xCAT::Utils->osver();
+    #    my $SERVICE = xCAT::Utils->fullpathbin("service");
+    #    if ($os =~ /sles/) {
+    #       $cmd = "$SERVICE nfsserver restart";
+    #    } else {
+    #       $cmd = "$SERVICE nfs restart";
+    #    }
+    #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+    #    if ($::RUNCMD_RC != 0)
+        my $ret=xCAT::Utils->restartservice("nfs");
+        if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Could not restart NFS.");
         }
@@ -1876,14 +1811,18 @@ sub setupLinuxexports
             xCAT::MsgUtils->message('I', "NFS has been restarted.");
         }
 
-        my $CHKCONFIG=xCAT::Utils->fullpathbin("chkconfig");
-        if ($os =~ /sles/) {
-          $cmd = "$CHKCONFIG nfsserver on";
-        } else {
-          $cmd = "$CHKCONFIG nfs on";
-        }  
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+        #my $CHKCONFIG=xCAT::Utils->fullpathbin("chkconfig");
+        #if ($os =~ /sles/) {
+        #  $cmd = "$CHKCONFIG nfsserver on";
+        #} else {
+        #  $cmd = "$CHKCONFIG nfs on";
+        #}  
+        #$outref = xCAT::Utils->runcmd("$cmd", 0);
+        #if ($::RUNCMD_RC != 0)
+
+
+        $ret=xCAT::Utils->enableservice("nfs");
+        if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Could not enable NFS.");
         }
@@ -1972,23 +1911,26 @@ sub makenetworks
 sub setuphttp 
 {
 
-    my $cmd;
-    # restart httpd
-    if (-e "/etc/init.d/apache2")
-    {    #for sles/ubuntu
-        $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
-    }
-    elsif  (-e "/etc/init.d/httpd") 
-    {
-        $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
-    }
-    else
-    {
-        $cmd = "service httpd stop; service httpd start";
-    }
+#    my $cmd;
+#    my $distro = xCAT::Utils->osver(); 
+#    # restart httpd
+#    if (-e "/etc/init.d/apache2")
+#    {    #for sles/ubuntu
+#        $cmd = "/etc/init.d/apache2 stop; /etc/init.d/apache2 start";
+#    }
+#    elsif  (-e "/etc/init.d/httpd") 
+#    {
+#        $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
+#    }
+#    else
+#    {
+#        $cmd = "service httpd stop; service httpd start";
+#    }
 
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
+#    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+#    if ($::RUNCMD_RC != 0)
+    my $ret=xCAT::Utils->restartservice("http");
+    if($ret!=0)
     {
         xCAT::MsgUtils->message('E', "Could not restart httpd.");
     }
@@ -1998,39 +1940,28 @@ sub setuphttp
     }
 
     # enable httpd
-    if (-e "/etc/init.d/apache2")
-    {
-        if (is_lsb_ubuntu() || is_debian() ) 
-        {   # for ubuntu
-            $cmd = "/usr/sbin/update-rc.d apache2 enable";
-        }
-        else
-        {   # for sles
-            $cmd = "/sbin/chkconfig apache2 on";
-        }
-    }
-#    elsif (-e "/sbin/chkconfig")
-#    {
-#        $cmd = "/sbin/chkconfig httpd on";
-#    }
-#    elsif (-e "/usr/sbin/chkconfig")
-#    {
-#        $cmd = "/usr/sbin/chkconfig httpd on";        
-#    }
-#    else
-#    {
-#        $cmd = "chkconfig httpd on";
-#    }
-    else
-    {
-         my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
-         $cmd = "$CHKCONFIG httpd on";
-    }
+    #if (-e "/etc/init.d/apache2")
+    #{
+    #    if ( $distro =~ /ubuntu.*/ || $distro =~ /debian.*/i) {
+    #        $cmd = "/usr/sbin/update-rc.d apache2 enable";
+    #    }
+    #    else
+    #    {   # for sles
+    #        $cmd = "/sbin/chkconfig apache2 on";
+    #    }
+    #}
+    #else
+    #{
+    #     my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+    #     $cmd = "$CHKCONFIG httpd on";
+    #}
     
 
 
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
+    #$outref = xCAT::Utils->runcmd("$cmd", 0);
+    #if ($::RUNCMD_RC != 0)
+    $ret=xCAT::Utils->enableservice("http");
+    if($ret!=0)
     {
         xCAT::MsgUtils->message('E', "Could not enable httpd.");
     }
@@ -2253,6 +2184,7 @@ sub setupMNinDB
 sub startnamedonboot
 {
     # start named on boot
+    my $distro = xCAT::Utils->osver(); 
     if (xCAT::Utils->isAIX())
     {
         #/etc/inittab
@@ -2270,12 +2202,12 @@ sub startnamedonboot
     else
     {
         #chkconfig
-        my $serv = "named";
-        my $cmd = "/sbin/chkconfig $serv on";
-        if ( is_lsb_ubuntu() || is_debian() ){
-            $serv = "bind9";
-            $cmd = "update-rc.d $serv enable";
-        }
+        #my $serv = "named";
+        #my $cmd = "/sbin/chkconfig $serv on";
+        #if ( $distro =~ /ubuntu.*/ || $distro =~ /debian.*/i) {
+        #    $serv = "bind9";
+        #    $cmd = "update-rc.d $serv enable";
+        #}
 
         #"service named start" is very slowly,sometimes hang in rhels6.4 after installation
         #a work around is to generate /etc/rndc-key during xCAT installation
@@ -2283,14 +2215,16 @@ sub startnamedonboot
            system("rndc-confgen -a -r /dev/urandom");
         }
 
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
+        #my $outref = xCAT::Utils->runcmd("$cmd", 0);
+        #if ($::RUNCMD_RC != 0)
+        my $ret=xCAT::Utils->enableservice("named");
+        if($ret!=0)
         {
-            xCAT::MsgUtils->message("E", "Could not enable $serv.");
+            xCAT::MsgUtils->message("E", "Could not enable dns server.");
         }
         else
         {
-            xCAT::MsgUtils->message("I", "$serv has been enabled on boot.");
+            xCAT::MsgUtils->message("I", "dns server has been enabled on boot.");
         }
     }
 }

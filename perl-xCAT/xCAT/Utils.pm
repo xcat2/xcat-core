@@ -1850,7 +1850,9 @@ sub get_image_name
     Example:
          if (xCAT::Utils->startService("named") { ...}
     Comments:
-        none
+         this subroutine is deprecated,
+         will be used as an internal function to process AIX service,
+         for linux, use xCAT::Utils->startservice instead
 
 =cut
 
@@ -3425,10 +3427,11 @@ sub version_cmp {
       string of the bin file name
     Returns:
       string of the full path name of the binary executable file
+      string of the bin file name in the argument if failed
     Globals:
         none
     Error:
-      string of the bin file name in the argument
+        none
     Example:
          my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
     Comments:
@@ -3516,4 +3519,471 @@ sub gettimezone
 }
 
 
+#--------------------------------------------------------------------------------
+
+=head3   servicemap 
+    returns the name of service unit(for systemd) or service daemon(for SYSVinit). 
+    Arguments:
+      $svcname: the name of the service
+      $svcmgrtype: the service manager type:
+                   0: SYSVinit
+                   1: systemd 
+    Returns:
+      the name of service unit or service daemon
+      undef on fail
+    Globals:
+        none
+    Error:
+      None 
+    Example:
+         my $svc = xCAT::Utils->servicemap($svcname,1);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub servicemap{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+  
+  my $svcmgrtype=shift;
+
+
+  #hash structure: 
+  #"service name $svcname" =>{
+  #"service manager name(SYSVinit/systemd) $svcmgrtype" 
+  #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
+  # }
+  my %svchash=(
+     "dhcp" => {
+                 0=>["dhcp3-server","dhcpd","isc-dhcp-server"],
+                 1=>["dhcpd.service"],
+               },
+     "nfs" =>  {
+                 0=>["nfsserver","nfs","nfs-kernel-server"],
+                 1=>["nfs-server.service"],
+               },
+     "named" =>  {
+                 0=>["named","bind9"],
+                 1=>["named.service"],
+               },
+     "syslog" =>  {
+                 0=>["syslog","syslogd","rsyslog"],
+                 1=>["rsyslog.service"],
+               },
+     "firewall" =>  {
+                 0=>["iptables","firewalld","SuSEfirewall2_setup"],
+                 1=>["firewalld.service"],
+               },
+     "http" =>  {
+                 0=>["apache2","httpd"],
+                 1=>["httpd.service"],
+               },
+     "ntpserver" =>  {
+                 0=>["ntpd","ntp"],
+                 1=>["ntpd.service"],
+               },
+     "mysql" =>  {
+                 0=>["mysqld","mysql"],
+                 1=>["mysqld.service"],
+               },
+  );
+
+  my $path=undef;
+  my $retdefault=$svcname;
+  if($svcmgrtype == 0){
+     $path="/etc/init.d/";
+  }elsif ($svcmgrtype == 1){
+     $path="/usr/lib/systemd/system/";
+     $retdefault=$svcname.".service";
+  }
+
+  
+  my $ret=undef;
+  if($svchash{$svcname} and $svchash{$svcname}{$svcmgrtype}){
+    foreach my $file (@{$svchash{$svcname}{$svcmgrtype}}){
+       if(-e $path.$file ){
+             $ret=$file;
+             last;
+          }
+    }      
+  }else{
+    if(-e $path.$retdefault){
+        $ret=$retdefault;
+    } 
+ }
+
+ return $ret;  
+
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  startservice  
+    start a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->startservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub startservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl start $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd start";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  stopservice  
+    stop a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->stopservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub stopservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl stop $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd stop";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  restartservice  
+    restart a service
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->restartservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub restartservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl restart $svcunit";
+  }
+  elsif( $svcd )
+  {
+      $cmd="service $svcd restart";
+  }
+  print "$cmd\n"; 
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+ 
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+#--------------------------------------------------------------------------------
+
+=head3   checkservicestatus 
+    returns theservice status. 
+    Arguments:
+      $svcname: the name of the service
+      $outputoption[optional]:
+                   the output option
+                   1: return a hashref with the keys:"retcode","retmsg"
+           otherwise: return retcode only
+    Returns:
+      undef on fail
+      a hashref if $outputoption is 1,the hash structure is:
+                  {"retcode"=>(status code, 0 for running/active,1 for stopped/inactive,2 for failed)
+                   "retmsg" =>(status string, running/active/stopped/inactive/failed)
+                  }
+      the status code otherwise
+
+    Globals:
+        none
+    Error:
+      None 
+    Example:
+         my $ret = xCAT::Utils-checkservicestatus($svcname,1);
+         my $retcode = xCAT::Utils-checkservicestatus($svcname);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub checkservicestatus{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+  }
+
+  my $outputoption=shift;
+
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+  my %ret;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  my $output=undef;
+
+  if($svcunit)
+  {
+      #for systemd, parse the output since it is formatted
+      $cmd="systemctl show --property=ActiveState $svcunit|awk -F '=' '{print \$2}'";
+      $output=xCAT::Utils->runcmd($cmd, -1);
+      if($output =~ /^active$/i){
+         $ret{retcode}=0;
+         print "xxx$output\n";
+      }elsif($output =~ /^failed$/i){
+         $ret{retcode}=2;
+       
+      }elsif($output =~ /^inactive$/i){
+         $ret{retcode}=1;
+      }
+  }
+  elsif( $svcd )
+  {
+      #for SYSVinit, check the return value since the "service" command output is confused
+      $cmd="service $svcd status";
+      $output=xCAT::Utils->runcmd($cmd, -1);
+      $ret{retcode}=$::RUNCMD_RC; 
+#      if($output =~ /stopped|not running/i){
+#        $ret{retcode}=1;
+#      }elsif($output =~ /running/i){
+#        $ret{retcode}=0;
+#      }
+  }
+  if($output)
+  {
+     $ret{retmsg}=$output;
+  }
+  
+
+  if(defined $outputoption and $outputoption == 1 ){
+     return \%ret;
+  }elsif(exists $ret{retcode}){
+     return $ret{retcode};
+  }
+
+   return undef;
+
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  enableservice 
+   enable a service to start it on the system bootup
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->enableservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub enableservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+
+  }
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl enable $svcunit";
+  }
+  elsif( $svcd )
+  {
+      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+      if($CHKCONFIG ne "chkconfig"){
+          $cmd="$CHKCONFIG $svcd on";
+      }else{
+        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+        if($CHKCONFIG ne "update-rc.d"){
+            $cmd="$CHKCONFIG $svcd defaults";
+        }
+      }
+  }
+  print "$cmd\n";
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
+
+
+#--------------------------------------------------------------------------------
+
+=head3  disableservice  
+    disable a service to prevent it from starting on system bootup
+    Arguments:
+      service name
+    Returns:
+      0 on success
+      nonzero otherwise
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->disableservice("nfs");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub disableservice{
+  my $svcname=shift;
+  if( $svcname =~ /xCAT::Utils/)
+  {
+     $svcname=shift;
+
+  }
+  my $cmd="";
+  my $svcunit=undef;
+  my $svcd=undef;
+
+  $svcunit=servicemap($svcname,1);
+  $svcd=servicemap($svcname,0);
+  if($svcunit)
+  {
+      $cmd="systemctl disable $svcunit";
+  }
+  elsif( $svcd )
+  {
+      my $CHKCONFIG = xCAT::Utils->fullpathbin("chkconfig");
+      if($CHKCONFIG ne "chkconfig"){
+          $cmd="$CHKCONFIG $svcd off";
+      }else{
+        $CHKCONFIG = xCAT::Utils->fullpathbin("update-rc.d");
+        if($CHKCONFIG ne "update-rc.d"){
+            $cmd="$CHKCONFIG -f $svcd remove";
+        }
+      }
+  }
+  print "$cmd\n";
+  if( $cmd eq "" )
+  {
+     return -1;
+  }
+
+  xCAT::Utils->runcmd($cmd, -1);
+  return $::RUNCMD_RC;
+}
 1;

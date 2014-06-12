@@ -86,6 +86,7 @@ $ret = &init;
 if($ret != 0){
     goto EXIT;
 }
+my @filespath = ();
 #loading and check cases
 $ret = &loadcase;
 if($ret != 0){
@@ -410,6 +411,34 @@ sub uninit
     &runcmd("rm -rf /tmp/xCATdbbackup");
     return 0;
 }
+sub Get_Files_Recursive
+{
+        my $dir = $_[0];
+        foreach $dir (@_)
+        {
+                opendir(my $d, $dir)  ;
+                for (;;)
+                {
+                        my $direntry = readdir($d);
+                        last unless defined $direntry;
+                        next if $direntry =~ m/^\.\w*/;
+                        next if $direntry eq '..';
+                        if ( -d $dir."/".$direntry)
+                        {
+                                Get_Files_Recursive ($dir."/".$direntry);
+                        }
+                        else
+                        {       my $dirpath = $dir.'/'.$direntry."\n";
+                                print $dir.'/'.$direntry."\n";
+                                #print $dir."\n";
+                                 push (@filespath, glob("$dirpath"));
+
+                        }
+                }
+                closedir($d);
+        }
+}
+
 
 sub loadcase
 {
@@ -418,14 +447,30 @@ sub loadcase
     log_this("******************************");
     my $casedir = "/opt/xcat/share/xcat/tools/autotest/testcase";
     my @files = ();
-    if($cmd_list){
-        my @cmds = split /,/,$cmd_list;
-        for my $cmd (@cmds){
-             push (@files, glob("$casedir/$cmd/*"));
-        }
-    } else {
-        @files = glob("$casedir/*/*");
-    }
+    #if($cmd_list){
+    #    my @cmds = split /,/,$cmd_list;
+    #    for my $cmd (@cmds){
+    #         push (@files, glob("$casedir/$cmd/*"));
+    #    }
+    #} else {
+    #    @files = glob("$casedir/*/*");
+    #}
+    Get_Files_Recursive("$casedir");
+    for(my $countfile = 0; $countfile<@filespath; $countfile++)
+    { 
+        if ($cmd_list){
+            my @cmds = split /,/,$cmd_list;
+            for( my $countcmd = 0; $countcmd<@cmds; $countcmd++){
+                if ($filespath[$countfile] =~ m/\/$cmds[$countcmd]\/case/){
+                    push (@files, glob("$filespath[$countfile]"));
+                 }
+             }
+          } else{
+               push (@files, glob("$filespath[$countfile]"));
+          }
+       }
+
+
     my $file;
     my $line;
     my $i = 0;

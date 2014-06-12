@@ -4,11 +4,13 @@
 # This plugin is used to handle the command requests for Xeon Phi (mic) support
 #
 
+
 package xCAT_plugin::mic;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
+use lib "$::XCATROOT/lib/perl";
 
 use strict;
 use Getopt::Long;
@@ -612,6 +614,11 @@ sub rflash {
     # run the cmd on the host to flash the mic
     my @args = ("-s", "-v", "-e");
     push @args, "$::XCATROOT/sbin/flashmic";
+    my $master = $request->{'_xcatdest'};
+    # in case there are multiple servicenode entries, assume the first entry
+    # is the master
+    ($master) = split (/,/,$master);
+
     # assume that all hosts are on the same network connected to this master
     # (otherwise, will need to move this call into loop above for each host
     #  and build separate miccfg calls for each unique returned value from
@@ -630,7 +637,6 @@ sub rflash {
         return;
     }
 
-}
     push @args, ("-m", "$master");
     push @args, ("-p", "$tftpdir/xcat/miccfg");
 
@@ -930,6 +936,11 @@ sub nodeset {
     # run the cmd on the host to configure the mic
     my @args = ("-s", "-v", "-e");
     push @args, "$::XCATROOT/sbin/configmic";
+    my $master = $request->{'_xcatdest'};
+    # in case there are multiple servicenode entries, assume the first entry
+    # is the master
+    ($master) = split (/,/,$master);
+
     # assume that all hosts are on the same network connected to this master
     # (otherwise, will need to move this call into loop above for each host
     #  and build separate miccfg calls for each unique returned value from

@@ -590,13 +590,16 @@ sub startxcatd
       } else {
         $xcmd = "$::XCATROOT/sbin/restartxcatd";
       }
+      system($xcmd);
 
    }
    else
    {
-     $xcmd = "service xcatd restart";
+     #$xcmd = "service xcatd restart";
+     my $ret=xCAT::Utils->restartservice("xcatd");
+     return $ret;
    }
-   system($xcmd);
+
 }
 
 #-----------------------------------------------------------------------------
@@ -618,13 +621,16 @@ sub shutdownxcatd
     if ($::osname eq 'AIX')
     {
         $xcmd = "stopsrc -s xcatd";
+        system($xcmd);
 
     }
     else
     {
-        $xcmd = "service xcatd stop";
+        #$xcmd = "service xcatd stop";
+        my $ret=xCAT::Utils->stopservice("xcatd");
+        return $ret;
     }
-    system($xcmd);
+
 }
 
 #-----------------------------------------------------------------------------
@@ -2073,11 +2079,12 @@ sub adddb2paths
 #-----------------------------------------------------------------------------
 sub remove
 {
-	my $cmd;
-	my @output;
-	my $error = 0;
-	#see if DB2 is installed
-	if (!(-e ($::installdb2dir)))
+    my $cmd; 
+    my @output;
+    my $error = 0;
+    my $retcode=0;
+    #see if DB2 is installed
+    if (!(-e ($::installdb2dir)))
     {
         my $message =
           "\nDB2 is not installed.";
@@ -2120,18 +2127,23 @@ sub remove
             	
             	my $cmd = "ps -elf|grep xcatd";
                 my @output = xCAT::Utils->runcmd($cmd, 0);
+
                 if ($::RUNCMD_RC == 0)
                 {      
                     if ($::osname eq 'AIX')
                     {
                     	my $cmd = "startsrc -s xcatd";
+                        xCAT::Utils->runcmd($cmd, -1);
+                        $retcode=$::RUNCMD_RC;
                     }
                     else
                     {           
-                    	my $cmd = "service xcatd start";
+                    	#my $cmd = "service xcatd start";
+                    	$retcode=xCAT::Utils->startservice("xcatd");
                     }
-                    xCAT::Utils->runcmd($cmd, -1);
-            	    if ($::RUNCMD_RC !=0)
+                    #xCAT::Utils->runcmd($cmd, -1);
+            	    #if ($::RUNCMD_RC !=0)
+            	    if($retcode!=0)
             	    {
             	    	my $message = "can't start xcatd";
             	    	$error += 1;
@@ -2155,13 +2167,17 @@ sub remove
             if ($::osname eq 'AIX')
             {
             	my $cmd = "stopsrc -s xcatd";
+                xCAT::Utils->runcmd($cmd, -1);
+                $retcode=$::RUNCMD_RC;
             }
             else
             {           
-            	my $cmd = "service xcatd stop";
+            	#my $cmd = "service xcatd stop";
+            	$retcode=xCAT::Utils->stopservice("xcatd");
             }
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC !=0)
+            #xCAT::Utils->runcmd($cmd, -1);
+            #if ($::RUNCMD_RC !=0)
+            if($retcode!=0)
             {
             	my $message = "can't stop xcatd";
             	xCAT::MsgUtils->message("E", "$message");
@@ -2198,13 +2214,17 @@ sub remove
             if ($::osname eq 'AIX')
             {
             	my $cmd = "startsrc -s xcatd";
+                xCAT::Utils->runcmd($cmd, -1);
+                $retcode=$::RUNCMD_RC; 
             }
             else
             {           
-            	my $cmd = "service xcatd start";
+            	#my $cmd = "service xcatd start";
+            	$retcode=xCAT::Utils->startservice("xcatd");
             }
-            xCAT::Utils->runcmd($cmd, -1);
-            if ($::RUNCMD_RC !=0)
+            #xCAT::Utils->runcmd($cmd, -1);
+            #if ($::RUNCMD_RC !=0)
+            if($retcode!=0)
             {
             	my $message = "can't start xcatd";
             	xCAT::MsgUtils->message("E", "$message");

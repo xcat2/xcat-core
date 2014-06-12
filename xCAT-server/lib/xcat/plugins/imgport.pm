@@ -1412,7 +1412,7 @@ sub create_symlink {
                     }
               } 
           } else {
-              $callback->({error => ["osimage table or kitcomponent do not exist"],errorcode=>[1]});
+              $callback->({warning => ["osimage table or kitcomponent do not exist"],errorcode=>[1]});
               return 1;
           }
      } 
@@ -1802,7 +1802,7 @@ sub make_files {
     }
     if ( $hasplugin ) {
     # Issue xcatd reload to load the new plugins
-         system("/etc/init.d/xcatd reload");
+         system("/etc/init.d/xcatd restart");
          $hasplugin=0;
     }
 

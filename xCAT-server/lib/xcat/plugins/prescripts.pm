@@ -46,8 +46,39 @@ sub preprocess_request
     #if already preprocessed, go straight to request
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    my $nodes   = $req->{node};
-    if (!$nodes) { return;}
+    my $req_nodes   = $req->{node};
+    if (!$req_nodes) { return;}
+
+    my @nodes;
+    my $command  = $req->{command}->[0];
+    my $column;
+    if    ($command eq 'runbeginpre') { $column = 'begin'; }
+    elsif ($command eq 'runendpre')   { $column = 'end'; }
+    else  { $column = ''; }
+
+    # See if anything in the prescripts table for the nodes.  If not, skip. 
+    #   Nothing to do.
+    my $tab = xCAT::Table->new('prescripts');
+    #first check if xcatdefaults entry
+    if ( $tab->getAttribs({node=>"xcatdefaults"},$column) ) {
+        # yes - process all nodes
+        @nodes = @$req_nodes;
+    } else {
+        # no xcatdefaults, check for node entries
+        my $tabdata=$tab->getNodesAttribs($req_nodes,['node', $column]);
+        if ($tabdata) {
+            foreach my $node (@$req_nodes) {
+                if (($tabdata->{$node}) &&
+                    ($tabdata->{$node}->[0]) &&
+                    ($tabdata->{$node}->[0]->{$column}) )  {
+                    push (@nodes,$node);
+                }
+            }
+        }
+    }
+    
+    # if no nodes left to process, we are done
+    if (! @nodes) { return; }
 
     my $service = "xcat";
     my @args=();
@@ -64,7 +95,7 @@ sub preprocess_request
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
     GetOptions('l'  => \$::LOCAL);
-    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash($nodes, $service, "MN");
+    my $sn = xCAT::ServiceNodeUtils->getSNformattedhash(\@nodes, $service, "MN");
     my @requests;
     if ($::LOCAL) { #only handle the local nodes
         #print "process local nodes: @$nodes\n";

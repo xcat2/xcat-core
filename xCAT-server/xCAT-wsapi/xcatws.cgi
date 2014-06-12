@@ -67,6 +67,7 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*$',
             GET => {
                 desc => "Get all the attibutes for the node {noderange}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {noderange} which means to get node attributes for all the nodes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the attibutes for node \'node1\'.|GET|/nodes/node1|{\n   \"node1\":{\n      \"profile\":\"compute\",\n      \"netboot\":\"xnba\",\n      \"arch\":\"x86_64\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
@@ -103,6 +104,7 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the node {noderange}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {noderange} which means to get node attributes for all the nodes.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the attributes {groups,mgt,netboot} for node node1|GET|/nodes/node1/attrs/groups,mgt,netboot|{\n   \"node1\":{\n      \"netboot\":\"xnba\",\n      \"mgt\":\"ipmi\",\n      \"groups\":\"all\"\n   }\n}|",
                 cmd => "lsdef",
@@ -123,8 +125,8 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*/nodestat$',
             GET => {
                 desc => "Get the running status for the node {noderange}.",
-                usage => "||$usagemsg{objreturn}|",
-                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|x|",
+                usage => "||An object which includes multiple entries like: <nodename> : { nodestat : <node state> }|",
+                example => "|Get the running status for node node1|GET|/nodes/node1/nodestat|{\n   \"node1\":{\n      \"nodestat\":\"noping\"\n   }\n}|",
                 cmd => "nodestat",
                 fhandler => \&actionhdl,
                 outhdler => \&actionout,
@@ -188,7 +190,7 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*/power$',
             GET => {
                 desc => "Get the power status for the node {noderange}.",
-                usage => "||$usagemsg{objreturn}|",
+                usage => "||An object which includes multiple entries like: <nodename> : { power : <powerstate> }|",
                 example => "|Get the power status.|GET|/nodes/node1/power|{\n   \"node1\":{\n      \"power\":\"on\"\n   }\n}|",
                 cmd => "rpower",
                 fhandler => \&actionhdl,
@@ -688,6 +690,7 @@ my %URIdef = (
             matcher => '^\/networks\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for the network {netname}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {netname} which means to get network attributes for all the networks.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the attibutes for network \'network1\'.|GET|/networks/network1|{\n   \"network1\":{\n      \"gateway\":\"<xcatmaster>\",\n      \"mask\":\"255.255.255.0\",\n      \"mgtifname\":\"eth2\",\n      \"net\":\"10.0.0.0\",\n      \"tftpserver\":\"10.0.0.119\",\n      ...\n   }\n}|",
                 cmd => "lsdef",
@@ -724,6 +727,7 @@ my %URIdef = (
             matcher => '^\/networks\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the network {netname}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {netname} which means to get network attributes for all the networks.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the attributes {groups,mgt,netboot} for network network1|GET|/networks/network1/attrs/gateway,mask,mgtifname,net,tftpserver|{\n   \"network1\":{\n      \"gateway\":\"9.114.34.254\",\n      \"mask\":\"255.255.255.0\",\n         }\n}|",
                 cmd => "lsdef",
@@ -773,6 +777,7 @@ my %URIdef = (
             matcher => '^\/osimages\/[^\/]*$',
             GET => {
                 desc => "Get all the attibutes for the osimage {imgname}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {imgname} which means to get image attributes for all the osimages.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the attributes for the specified osimage.|GET|/osimages/sles11.2-x86_64-install-compute|{\n   \"sles11.2-x86_64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"profile\":\"compute\",\n      \"template\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.tmpl\",\n      \"pkglist\":\"/opt/xcat/share/xcat/install/sles/compute.sles11.pkglist\",\n      \"osvers\":\"sles11.2\",\n      \"osarch\":\"x86_64\",\n      \"osname\":\"Linux\",\n      \"imagetype\":\"linux\",\n      \"otherpkgdir\":\"/install/post/otherpkgs/sles11.2/x86_64\",\n      \"osdistroname\":\"sles11.2-x86_64\",\n      \"pkgdir\":\"/install/sles11.2/x86_64\"\n   }\n}|",
                 cmd => "lsdef",
@@ -810,6 +815,7 @@ my %URIdef = (
             matcher => '^\/osimages\/[^\/]*/attrs/\S+$',
             GET => {
                 desc => "Get the specific attributes for the osimage {imgname}.",
+                desc1 => "The keyword ALLRESOURCES can be used as {imgname} which means to get image attributes for all the osimages.",
                 usage => "||Json format: An array of attr:value pairs for the specified osimage.|",
                 example => "|Get the specified attributes.|GET|/osimages/sles11.2-ppc64-install-compute/attrs/imagetype,osarch,osname,provmethod|{\n   \"sles11.2-ppc64-install-compute\":{\n      \"provmethod\":\"install\",\n      \"osname\":\"Linux\",\n      \"osarch\":\"ppc64\",\n      \"imagetype\":\"linux\"\n   }\n}|",
                 cmd => "lsdef",
@@ -872,6 +878,7 @@ my %URIdef = (
             GET => {
                 desc => "Get all the attibutes for a policy {policy_priority}.",
                 desc1 => "It will display all the policy attributes for one policy resource.",
+                desc2 => "The keyword ALLRESOURCES can be used as {policy_priority} which means to get policy attributes for all the policies.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get all the attribute for policy 1.|GET|/policy/1|{\n   \"1\":{\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n}|",
                 cmd => "lsdef",
@@ -912,6 +919,7 @@ my %URIdef = (
             GET => {
                 desc => "Get the specific attributes for the policy {policy_priority}.",
                 desc1 => "It will get one or more attributes of a policy.",
+                desc2 => "The keyword ALLRESOURCES can be used as {policy_priority} which means to get policy attributes for all the policies.",
                 usage => "||$usagemsg{objreturn}|",
                 example => "|Get the name and rule attributes for policy 1.|GET|/policy/1/attrs/name,rule|{\n   \"1\":{\n      \"name\":\"root\",\n      \"rule\":\"allow\"\n   }\n}|",
                 cmd => "lsdef",
@@ -1401,6 +1409,9 @@ sub defout {
             $lines = \@alldata;
         }
         foreach my $l (@$lines) {
+            if ($l =~ /No responses/) { # handle the case that no output from lsslp command
+                return;
+            }
             if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 if ($l =~ /^Object name:\s+(\S+)/) {    # handle the output of lsdef -t <type> <obj>
                     $nodename = $1;
@@ -1411,7 +1422,7 @@ sub defout {
             }
             else {      # just an attribute of the current node
                 if (! $nodename) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
-                my ($attr, $val) = $l =~ /^\s*(\S+)=(.*)$/;
+                my ($attr, $val) = $l =~ /^\s*(\S+.*?)=(.*)$/;
                 if (!defined($attr)) { error('improperly formatted lsdef output from xcatd', $STATUS_TEAPOT); }
                 $json->{$nodename}->{$attr} = $val;
             }
@@ -1642,7 +1653,14 @@ sub defhdl {
 
     # push the object name - node/noderange
     if (defined ($urilayers[1])) {
-        push @args, ('-o', $urilayers[1]);
+        if ($urilayers[1] eq "ALLRESOURCES") {
+            unless (isGET()) {
+                error("Keyword ALLRESOURCES is only supported for GET Action.",$STATUS_NOT_FOUND);
+            }
+            push @args, '-l';
+        } else {
+            push @args, ('-o', $urilayers[1]);
+        }
     }
 
     # For the put/post which specifies attributes like mgt=ipmi groups=all
@@ -2329,7 +2347,7 @@ sub filterData {
                 foreach my $msg (@{$_->{error}}) {
                     if ($msg =~ /(Permission denied|Authentication failure)/) {
                         # return 401 Unauthorized
-                        sendResponseMsg($STATUS_UNAUTH);
+                        error("Authentication failure", $STATUS_UNAUTH);
                     } else {
                         push @{$outputerror->{error}}, $msg;
                     }

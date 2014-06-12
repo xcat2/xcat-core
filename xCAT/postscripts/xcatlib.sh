@@ -266,3 +266,216 @@ function v6calcnet(){
     str_v6net=`echo $str_v6net | sed 's/.$//'`
     echo "$str_v6net"
 }
+
+
+function servicemap {
+   local svcname=$1
+   local svcmgrtype=$2
+   local svclistname=   
+
+   INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
+   SYSTEMD_dhcp="dhcpd.service";
+
+   INIT_nfs="nfsserver nfs nfs-kernel-server";
+   SYSTEMD_nfs="nfs-server.service";
+
+   INIT_named="named bind9";
+   SYSTEMD_named="named.service";
+
+   INIT_syslog="syslog syslogd rsyslog";
+   SYSTEMD_syslog="rsyslog.service";
+ 
+   INIT_firewall="iptables firewalld SuSEfirewall2_setup";
+   SYSTEMD_firewall="firewalld.service";
+
+   INIT_http="apache2 httpd";
+   SYSTEMD_http="httpd.service";
+
+   INIT_ntpserver="ntpd ntp";
+   SYSTEMD_ntpserver="ntpd.service";
+
+   INIT_mysql="mysqld mysql";
+   SYSTEMD_mysql="mysqld.service";
+
+   INIT_ssh="sshd ssh";
+   SYSTEMD_ssh="sshd.service";
+
+   local path=
+   local retdefault=$svcname
+   local svcvar=${svcname//[-.]/_}
+   if [ "$svcmgrtype" = "0"  ];then
+      svclistname=INIT_$svcvar
+      path="/etc/init.d/"
+   elif [ "$svcmgrtype" = "1"  ];then
+      svclistname=SYSTEMD_$svcvar
+      retdefault=$svcname.service
+      path="/usr/lib/systemd/system/"
+   fi
+   
+
+   local svclist=$(eval echo \$$svclistname)      
+
+   if [ -z "$svclist" ];then
+      svclist="$retdefault"
+   fi
+
+   for name in `echo $svclist`
+   do
+      if [ -e "$path$name"  ];then
+         echo $name
+         break
+      fi
+   done
+   
+}
+
+function startservice {
+   local svcname=$1
+   local cmd=
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+  
+   if [ -n "$svcunit"  ];then
+      cmd="systemctl start $svcunit"
+   elif [ -n "$svcd"  ];then
+      cmd="service $svcd start";
+   fi
+
+   if [ -z "$cmd"  ];then
+      return 127
+   fi
+   
+   eval $cmd
+}
+
+
+
+function stopservice {
+   local svcname=$1
+   local cmd=
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+  
+   if [ -n "$svcunit"  ];then
+      cmd="systemctl stop $svcunit"
+   elif [ -n "$svcd"  ];then
+      cmd="service $svcd stop";
+   fi
+
+   if [ -z "$cmd"  ];then
+      return 127
+   fi
+   
+   eval $cmd
+}
+
+
+function restartservice {
+   local svcname=$1
+   local cmd=
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+  
+   if [ -n "$svcunit"  ];then
+      cmd="systemctl restart $svcunit"
+   elif [ -n "$svcd"  ];then
+      cmd="service $svcd restart";
+   fi
+
+   if [ -z "$cmd"  ];then
+      return 127
+   fi
+   
+   eval $cmd
+}
+
+
+function checkservicestatus {
+   local svcname=$1
+
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+ 
+   local output= 
+   local retcode=3  
+
+   if [ -n "$svcunit"  ];then
+      output=$(systemctl show --property=ActiveState $svcunit|awk -F '=' '{print $2}')
+      if echo $output|grep -E -i "^active$";then
+         retcode=0
+      elif echo $output|grep -E -i "^inactive$";then
+         retcode=1
+      elif echo $output|grep -E -i "^failed$";then
+         retcode=2
+      fi
+   elif [ -n "$svcd"  ];then
+      output=$(service $svcd status)
+      retcode=$?
+      echo $output 
+#      if echo $output|grep -E -i "(stopped|not running)";then
+#         retcode=1
+#      elif echo $output|grep -E -i "running";then
+#         retcode=0
+#      fi
+   else
+      retcode=127
+   fi
+   
+   return $retcode
+    
+}
+
+function enableservice {
+   local svcname=$1
+   local cmd=
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+  
+   if [ -n "$svcunit"  ];then
+      cmd="systemctl enable  $svcunit"
+   elif [ -n "$svcd"  ];then
+     command -v chkconfig >/dev/null 2>&1
+     if [ $? -eq 0 ];then
+        cmd="chkconfig $svcd on";
+     else
+        command -v update-rc.d >/dev/null 2>&1
+        if [ $? -eq 0 ];then
+           cmd="update-rc.d $svcd defaults"
+        fi  
+     fi
+   fi
+
+   if [ -z "$cmd"  ];then
+      return 127
+   fi
+   
+   eval $cmd
+}
+
+
+function disableservice {
+   local svcname=$1
+   local cmd=
+   local svcunit=`servicemap $svcname 1`
+   local svcd=`servicemap $svcname 0`
+  
+   if [ -n "$svcunit"  ];then
+      cmd="systemctl disable  $svcunit"
+   elif [ -n "$svcd"  ];then
+     command -v chkconfig >/dev/null 2>&1
+     if [ $? -eq 0 ];then
+        cmd="chkconfig $svcd off";
+     else
+        command -v update-rc.d >/dev/null 2>&1
+        if [ $? -eq 0 ];then
+           cmd="update-rc.d -f $svcd remove"
+        fi  
+     fi
+   fi
+
+   if [ -z "$cmd"  ];then
+      return 127
+   fi
+   
+   eval $cmd
+}

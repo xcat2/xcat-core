@@ -643,16 +643,11 @@ sub get_nic_ip
 {
     my $nic;
     my %iphash;
-    my $cmd     = "ifconfig -a";
-    my $result  = `$cmd`;
     my $mode    = "MULTICAST";
+        my $payingattention=0;
+        my $interface;
+        my $keepcurrentiface;
 
-    #############################################
-    # Error running command
-    #############################################
-    if ( !$result ) {
-        return undef;
-    }
 
     if (xCAT::Utils->isAIX()) {
         ##############################################################
@@ -664,6 +659,14 @@ sub get_nic_ip
         # en1: ...
         #
         ##############################################################
+        my $cmd     = "ifconfig -a";
+        my $result  = `$cmd`;
+        #############################################
+        # Error running command
+        #############################################
+        if ( !$result ) {
+          return undef;
+        }
         my @adapter = split /(\w+\d+):\s+flags=/, $result;
         foreach ( @adapter ) {
             if ($_ =~ /^(en\d)/) {
@@ -683,44 +686,39 @@ sub get_nic_ip
             }
         }
     }
-    else {
-        ##############################################################
-        # Should look like this for Linux:
-        # eth0 Link encap:Ethernet  HWaddr 00:02:55:7B:06:30
-        #      inet addr:9.114.154.193  Bcast:9.114.154.223
-        #      inet6 addr: fe80::202:55ff:fe7b:630/64 Scope:Link
-        #      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-        #      RX packets:1280982 errors:0 dropped:0 overruns:0 frame:0
-        #      TX packets:3535776 errors:0 dropped:0 overruns:0 carrier:0
-        #      collisions:0 txqueuelen:1000
-        #      RX bytes:343489371 (327.5 MiB)  TX bytes:870969610 (830.6 MiB)
-        #      Base address:0x2600 Memory:fbfe0000-fc0000080
-        #
-        # eth1 ...
-        # Redhat7
-        #eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        # inet 10.1.0.178  netmask 255.255.0.0  broadcast 10.1.255.255
-        #
-        ##############################################################
-        my @adapter= split /\n{2,}/, $result;
-        foreach ( @adapter ) {
-            if ( !($_ =~ /LOOPBACK/ ) and
-                   $_ =~ /UP( |,|>)/ and 
-                   $_ =~ /$mode/ ) {
-                my @ip = split /\n/;
-                for my $ent ( @ip ) {
-                    if ($ent =~ /^(eth\d|ib\d|hf\d)\s+/) {
-                        $nic = $1;
-                    }   
-                    if ($ent =~ /^(eth\d:|ib\d:|hf\d:)\s+/) {
-                        $nic = $1;
-                    }   
-                    $ent=~ s/addr://;   # works for Redhat7 also
-                    if ( $ent =~ /^\s*inet \s*(\d+\.\d+\.\d+\.\d+)/ ) {
-                        $iphash{$nic} = $1; 
-                        next;
-                    }
+    else {   # linux
+        my @ipoutput = `ip addr`;
+        #############################################
+        # Error running command
+        #############################################
+        if ( !@ipoutput ) {
+          return undef;
+        }
+        foreach my $line (@ipoutput) {
+            if ($line =~ /^\d/) { # new interface, new context..
+                if ($interface and not $keepcurrentiface) {
+                    #don't bother reporting unusable nics
+                    delete $iphash{$interface};
                 }
+                $keepcurrentiface=0;
+                if ( !($line =~ /LOOPBACK/ ) and
+                   $line =~ /UP( |,|>)/ and 
+                   $line =~ /$mode/ ) {
+                
+                    $payingattention=1;
+                    $line =~ /^([^:]*): ([^:]*):/;
+                    $interface=$2;
+               } else {
+                    $payingattention=0;
+                    next;
+               }
+            }
+            unless ($payingattention) { next; } 
+            if ($line =~ /inet/) {
+                $keepcurrentiface=1;
+            }
+            if ( $line =~ /^\s*inet \s*(\d+\.\d+\.\d+\.\d+)/ ) {
+                 $iphash{$interface} = $1;
             }
         }
     }
@@ -1843,102 +1841,6 @@ sub validate_ip
     }
     return([0]);
 }
-
-#-------------------------------------------------------------------------------
-
-=head3   getFacingIP
-       Gets the ip address of the adapter of the localhost that is facing the
-    the given node.
-       Assume it is the same as my_ip_facing...
-    Arguments:
-       The name of the node that is facing the localhost.
-    Returns:
-       The ip address of the adapter that faces the node.
-
-=cut
-
-#-------------------------------------------------------------------------------
-sub getFacingIP
-{
-    my ($class, $node) = @_;
-    my $ip;
-    my $cmd;
-    my @ipaddress;
-
-    my $nodeip = inet_ntoa(inet_aton($node));
-    unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
-    {
-        return 0;    #Not supporting IPv6 here IPV6TODO
-    }
-
-    $cmd = "ifconfig" . " -a";
-    $cmd = $cmd . "| grep \"inet \"";
-    my @result = xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message("S", "Error from $cmd\n");
-        exit $::RUNCMD_RC;
-    }
-
-    # split node address
-    my ($n1, $n2, $n3, $n4) = split('\.', $nodeip);
-
-    foreach my $addr (@result)
-    {
-        my $ip;
-        my $mask;
-        if (xCAT::Utils->isLinux())
-        {
-            my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-            if ((!$addr1) || (!$Mask)) { next; }
-            my @ips   = split(":", $addr1);
-            my @masks = split(":", $Mask);
-            $ip   = $ips[1];
-            $mask = $masks[1];
-        }
-        else
-        {    #AIX
-            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
-              split(" ", $addr);
-            if ((!$addr1) && (!$mask1)) { next; }
-            $ip = $addr1;
-            $mask1 =~ s/0x//;
-            $mask =
-              `printf "%d.%d.%d.%d" \$(echo "$mask1" | sed 's/../0x& /g')`;
-        }
-
-        if ($ip && $mask)
-        {
-
-            # split interface IP
-            my ($h1, $h2, $h3, $h4) = split('\.', $ip);
-
-            # split mask
-            my ($m1, $m2, $m3, $m4) = split('\.', $mask);
-
-            # AND this interface IP with the netmask of the network
-            my $a1 = ((int $h1) & (int $m1));
-            my $a2 = ((int $h2) & (int $m2));
-            my $a3 = ((int $h3) & (int $m3));
-            my $a4 = ((int $h4) & (int $m4));
-
-            # AND node IP with the netmask of the network
-            my $b1 = ((int $n1) & (int $m1));
-            my $b2 = ((int $n2) & (int $m2));
-            my $b3 = ((int $n3) & (int $m3));
-            my $b4 = ((int $n4) & (int $m4));
-
-            if (($b1 == $a1) && ($b2 == $a2) && ($b3 == $a3) && ($b4 == $a4))
-            {
-                return $ip;
-            }
-        }
-    }
-
-    xCAT::MsgUtils->message("S", "Cannot find master for the node $node\n");
-    return 0;
-}
-
 #-------------------------------------------------------------------------------
 
 =head3    isIpaddr
@@ -1992,50 +1894,6 @@ sub isIpaddr
 }
 
 
-#-------------------------------------------------------------------------------
-=head3  getSubnetGateway 
-    Description:
-        Get gateway from the networks table of the specified net. 
-
-    Arguments:
-        net: the net, ie. the "net" field of the networks table
-    Returns:
-        Return a string, of the gateway
-        undef - Failed to get the gateway
-    Globals:
-        none
-    Error:
-        none
-    Example:
-        my $gateway = xCAT::NetworkUtils::getSubnetGateway('192.168.1.0');
-    Comments:
-        none
-
-=cut
-#-------------------------------------------------------------------------------
-sub getSubnetGateway
-{
-   my $netname=shift;
-   if( $netname =~ /xCAT::NetworkUtils/)
-   {
-      $netname=shift;
-   }
- 
-   my $gateway=undef;
-   my $nettab = xCAT::Table->new("networks");
-   unless($nettab) { die "No entry defined in networks"; }
-   my @nets = $nettab->getAllAttribs('net','gateway'); 
-   foreach(@nets)
-   {
-      if("$_->{net}" eq "$netname")
-      {
-         $gateway = $_->{gateway};
-         last;
-      }
-   }
-   
-   return $gateway; 
-} 
 
 
 #-------------------------------------------------------------------------------
@@ -2094,6 +1952,50 @@ sub getNodeNameservers{
 }
 
 #-------------------------------------------------------------------------------
+=head3  getNodeGateway 
+    Description:
+        Get gateway from the networks table of the node. 
+
+    Arguments:
+        ip: the ip address of the node
+    Returns:
+        Return a string, of the gateway
+        undef - Failed to get the gateway
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $gateway = xCAT::NetworkUtils::getNodeGateway('192.168.1.0');
+    Comments:
+        none
+
+=cut
+#-------------------------------------------------------------------------------
+sub getNodeGateway
+{
+   my $ip=shift;
+   if( $ip =~ /xCAT::NetworkUtils/)
+   {
+      $ip=shift;
+   }
+   my $gateway=undef;
+
+   my $nettab = xCAT::Table->new("networks");
+   if ($nettab) {
+      my @nets = $nettab->getAllAttribs('net','mask','gateway');
+      foreach my $net (@nets) {
+         if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+               $gateway=$net->{'gateway'};
+            }
+        }
+    }
+
+
+   return $gateway;
+}
+
+#-------------------------------------------------------------------------------
 
 =head3   getNodeNetworkCfg 
     Description:
@@ -2122,8 +2024,8 @@ sub getNodeNetworkCfg
     if( $node =~ /xCAT::NetworkUtils/)
     {
        $node =shift;
-    }  
- 
+    }
+
     my $nets = xCAT::NetworkUtils::my_nets();
     my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
@@ -2132,11 +2034,13 @@ sub getNodeNetworkCfg
     {
         my $netname;
         ($netname,$mask) = split /\//, $net;
-        $gateway=xCAT::NetworkUtils::getSubnetGateway($netname);
         last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
     }
+    $gateway=xCAT::NetworkUtils::getNodeGateway($ip);
     return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,1,0));
 }
+
+
 
 #-------------------------------------------------------------------------------
 

@@ -209,27 +209,28 @@ sub preprocess_updatenode
     }
 
     # parse the options
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'A|updateallsw' => \$::ALLSW,
-                    'c|cmdlineonly' => \$::CMDLINE,
-                    'd=s'           => \$::ALTSRC,
-                    'h|help'        => \$::HELP,
-                    'v|version'     => \$::VERSION,
-                    'V|verbose'     => \$::VERBOSE,
-                    'F|sync'        => \$::FILESYNC,
-                    'g|genmypost'   => \$::GENMYPOST,
-                    'l|user:s'      => \$::USER,
-                    'f|snsync'      => \$::SNFILESYNC,
-                    'S|sw'          => \$::SWMAINTENANCE,
-                    's|sn'          => \$::SETSERVER,
-                    'P|scripts:s'   => \$::RERUNPS,
-                    'k|security'    => \$::SECURITY,
-                    'o|os:s'        => \$::OS,
-                    'fanout=i'      => \$::fanout,
-                    't|timetout=i'  => \$::timeout,
+                    'A|updateallsw' => \$ALLSW,
+                    'c|cmdlineonly' => \$CMDLINE,
+                    'd=s'           => \$ALTSRC,
+                    'h|help'        => \$HELP,
+                    'v|version'     => \$VERSION,
+                    'V|verbose'     => \$VERBOSE,
+                    'F|sync'        => \$FILESYNC,
+                    'g|genmypost'   => \$GENMYPOST,
+                    'l|user:s'      => \$USER,
+                    'f|snsync'      => \$SNFILESYNC,
+                    'S|sw'          => \$SWMAINTENANCE,
+                    's|sn'          => \$SETSERVER,
+                    'P|scripts:s'   => \$RERUNPS,
+                    'k|security'    => \$SECURITY,
+                    'o|os:s'        => \$OS,
+                    'fanout=i'      => \$fanout,
+                    't|timetout=i'  => \$timeout,
 
         )
       )
@@ -237,16 +238,55 @@ sub preprocess_updatenode
         &updatenode_usage($callback);
         return;
     }
+    # These globals are used in the updatenode subroutines,
+    #  need to undefine them if not defined in GetOpts
+    # to make updatenode be able to be called multiple times in one process.
+    # $RERUNPS can be set later in the logic based on other input 
+    if (defined($VERBOSE)) {
+       $::VERBOSE=$VERBOSE;
+    } else {
+       undef $::VERBOSE;
+    }
+    if (defined($timeout)) {
+       $::timeout=$timeout;
+    } else {
+       undef $::timeout;
+    }
+    if (defined($fanout)) {
+       $::fanout=$fanout;
+    } else {
+       undef $::fanout;
+    }
+    if (defined($USER)) {
+       $::USER=$USER;
+    } else {
+       undef $::USER;
+    }
+    if (defined($ALTSRC)) {
+       $::ALTSRC=$ALTSRC;
+    } else {
+       undef $::ALTSRC;
+    }
+    if (defined($ALLSW)) {
+       $::ALLSW=$ALLSW;
+    } else {
+       undef $::ALLSW;
+    }
+    if (defined($SETSERVER)) {
+       $::SETSERVER=$SETSERVER;
+    } else {
+       undef $::SETSERVER;
+    }
 
     # display the usage if -h or --help is specified
-    if ($::HELP)
+    if ($HELP)
     {
         &updatenode_usage($callback);
         return;
     }
 
     # display the version statement if -v or --verison is specified
-    if ($::VERSION)
+    if ($VERSION)
     {
         my $rsp = {};
         $rsp->{data}->[0] = xCAT::Utils->Version();
@@ -258,7 +298,7 @@ sub preprocess_updatenode
     # if no sharedtftp then we need to broadcast this updatenode -g to all service nodes inorder
     # to be able to support service node pools
     #
-    if ($::GENMYPOST)
+    if ($GENMYPOST)
     {
         # precreatemypostscript has to be yes/1 or do nothing
         my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
@@ -308,7 +348,7 @@ sub preprocess_updatenode
 
 
     # -c must work with -S for AIX node
-    if ($::CMDLINE && !$::SWMAINTENANCE)
+    if ($CMDLINE && !$SWMAINTENANCE)
     {
         my $rsp = {};
         $rsp->{data}->[0] =
@@ -318,7 +358,7 @@ sub preprocess_updatenode
     }
 
     # -s must not be with any other flag, this updates xcatinfo and run setuppostbootscripts 
-    if ($::SETSERVER && ($::SWMAINTENANCE || $::RERUNPS || $::SECURITY))
+    if ($SETSERVER && ($SWMAINTENANCE || $RERUNPS || $SECURITY))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
@@ -328,11 +368,11 @@ sub preprocess_updatenode
         return;
     } 
     # For -s flag just run this one script
-    if ($::SETSERVER) {
-       $::RERUNPS            = "setuppostbootscripts";
+    if ($SETSERVER) {
+       $RERUNPS            = "setuppostbootscripts";
     }
     # -f or -F not both
-    if (($::FILESYNC) && ($::SNFILESYNC))
+    if (($FILESYNC) && ($SNFILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] = "You can not specify both the -f and -F flags.";
@@ -340,7 +380,7 @@ sub preprocess_updatenode
         return;
     }
     # -f must not be with any other flag, this updates service nodes syncfiles 
-    if ($::SNFILESYNC && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS) || $::SECURITY || $::FILESYNC))
+    if ($SNFILESYNC && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $SECURITY || $FILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
@@ -351,8 +391,8 @@ sub preprocess_updatenode
     } 
 
     # --security cannot work with -S -P -F -f
-    if ($::SECURITY
-        && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS) || $::FILESYNC || $::SNFILESYNC))
+    if ($SECURITY
+        && ($SWMAINTENANCE || $RERUNPS || defined($RERUNPS) || $FILESYNC || $SNFILESYNC))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
@@ -371,11 +411,11 @@ sub preprocess_updatenode
         if (
             $#ARGV == 0
             && !(
-                    $::FILESYNC
-                 || $::SNFILESYNC
-                 || $::SWMAINTENANCE
-                 || defined($::RERUNPS)
-                 || $::SECURITY
+                    $FILESYNC
+                 || $SNFILESYNC
+                 || $SWMAINTENANCE
+                 || defined($RERUNPS)
+                 || $SECURITY
             )
           )
         {
@@ -384,7 +424,7 @@ sub preprocess_updatenode
             # if it doesn't contain an = sign then it must be postscripts
             if (!($ARGV[0] =~ /=/))
             {
-                $::RERUNPS = $ARGV[0];
+                $RERUNPS = $ARGV[0];
                 $ARGV[0] = "";
             }
 
@@ -394,22 +434,22 @@ sub preprocess_updatenode
     {
 
         # if not syncing Service Node
-        if (!($::SNFILESYNC))
+        if (!($SNFILESYNC))
         {
 
             # no flags and no operands, set defaults
             if (
                 !(
-                      $::FILESYNC
-                   || $::SWMAINTENANCE
-                   || defined($::RERUNPS)
-                   || $::SECURITY
+                      $FILESYNC
+                   || $SWMAINTENANCE
+                   || defined($RERUNPS)
+                   || $SECURITY
                 )
               )
             {
-                $::FILESYNC      = 1;
-                $::SWMAINTENANCE = 1;
-                $::RERUNPS       = "";
+                $FILESYNC      = 1;   # these are the defaults when no flags input to updatenode 
+                $SWMAINTENANCE = 1;
+                $RERUNPS       = "";
             }
         }
     }
@@ -424,7 +464,7 @@ sub preprocess_updatenode
         $callback->($rsp);
         return;
     }
-    if ($::SECURITY)
+    if ($SECURITY)
     {
 
         # check to see if the Management Node is in the noderange and
@@ -456,7 +496,7 @@ sub preprocess_updatenode
         {
             $request->{node}      = \@CN;
             $request->{noderange} = \@CN;
-            $::RERUNPS            = "remoteshell";
+            $RERUNPS            = "remoteshell";
         }
         else
         {    # no more nodes
@@ -473,7 +513,7 @@ sub preprocess_updatenode
     #  - put attr=val operands in %attrvals hash
 
     my %attrvals;
-    if ($::SWMAINTENANCE)
+    if ($SWMAINTENANCE)
     {
         while (my $a = shift(@ARGV))
         {
@@ -501,7 +541,7 @@ sub preprocess_updatenode
     my $postscripts;
 
     # Handle updating operating system
-    if (defined($::OS))
+    if (defined($OS))
     {
         my $reqcopy = {%$request};
         $reqcopy->{os}->[0] = "yes";
@@ -515,15 +555,15 @@ sub preprocess_updatenode
     # postscripts-start-here,postbootscripts-start-here,
     # defaults-postbootscripts-start-here, osimage-postbootscripts-start-here,
     # etc
-    if (defined($::RERUNPS))
+    if (defined($RERUNPS))
     {
-        if ($::RERUNPS eq "")
+        if ($RERUNPS eq "")
         {
             $postscripts = "";
         }
         else
         {
-            $postscripts = $::RERUNPS;
+            $postscripts = $RERUNPS;
             my @posts = split(',', $postscripts);
             if (!grep(/start-here/, @posts))
             {
@@ -560,11 +600,11 @@ sub preprocess_updatenode
 
     # If -F or -f  option specified, sync files to the noderange and their
     # service nodes.
-    if ($::FILESYNC)
+    if ($FILESYNC)
     {
         $request->{FileSyncing}->[0] = "yes";
     }
-    if ($::SNFILESYNC)    # either sync service node
+    if ($SNFILESYNC)    # either sync service node
     {
         $request->{SNFileSyncing}->[0] = "yes";
     }
@@ -572,7 +612,7 @@ sub preprocess_updatenode
     # If -F  or -f then,  call CFMUtils  to check if any PCM CFM data is to be
     # built for the node.   This will also create the synclists attribute in
     # the osimage for each node in the noderange
-    if (($::FILESYNC) || ($::SNFILESYNC))
+    if (($FILESYNC) || ($SNFILESYNC))
     {
 
         # determine the list of osimages names in the noderange to pass into
@@ -602,7 +642,7 @@ sub preprocess_updatenode
 
     # for AIX nodes we need to copy software to SNs first - if needed
     my ($imagedef, $updateinfo);
-    if (defined($::SWMAINTENANCE) && scalar(@aixnodes))
+    if (defined($SWMAINTENANCE) && scalar(@aixnodes))
     {
         ($rc, $imagedef, $updateinfo) =
           &doAIXcopy($callback, \%attrvals, $AIXnodes, $subreq);
@@ -649,7 +689,7 @@ sub preprocess_updatenode
        }
     }
     # check if no servicenodes for noderange and using the -f flag
-    if ($::SNFILESYNC) {
+    if ($SNFILESYNC) {
       if (!(scalar(@sns))) {
         my $rsp;
         $rsp->{data}->[0] =
@@ -659,12 +699,12 @@ sub preprocess_updatenode
       }
     }
     # process the -F or -f flags 
-    if (($::FILESYNC) || ($::SNFILESYNC))
+    if (($FILESYNC) || ($SNFILESYNC))
     {
        # If it is only -F or -f  in the command, which are always run on the MN, 
        # then run it now and you are
        # finished.
-       if ((!defined($::SWMAINTENANCE))  && (!defined($::RERUNPS))) {
+       if ((!defined($SWMAINTENANCE))  && (!defined($RERUNPS))) {
         $request->{_xcatpreprocessed}->[0] = 1;
         &updatenode($request, $callback, $subreq);
         return;
@@ -690,7 +730,7 @@ sub preprocess_updatenode
     }
 
     
-    if (defined($::SWMAINTENANCE))
+    if (defined($SWMAINTENANCE))
     {
             $request->{swmaintenance}->[0] = "yes";
 
@@ -706,7 +746,7 @@ sub preprocess_updatenode
                 $request->{updateinfo} = [$updateinfo];
             }
      }
-     if (defined($::RERUNPS))
+     if (defined($RERUNPS))
      {
             $request->{rerunps}->[0] = "yes";
             $request->{postscripts} = [$postscripts];
@@ -716,7 +756,7 @@ sub preprocess_updatenode
             }
      }
 
-     if (defined($::SECURITY))
+     if (defined($SECURITY))
      {
             $request->{security}->[0] = "yes";
      }
@@ -724,7 +764,7 @@ sub preprocess_updatenode
      #
      # Handle updating OS
      #
-     if (defined($::OS))
+     if (defined($OS))
      {
             $request->{os}->[0] = "yes";
      }
@@ -821,11 +861,11 @@ sub update_SN_security
         # setup the ssh keys on the service nodes
         # run the postscripts: remoteshell, servicenode
         # These are all servicenodes
-        $::RERUNPS = "remoteshell,servicenode";
+        my $RERUNPS = "remoteshell,servicenode";
 
         my $req_rs = {%$request};
         my $ps;
-        $ps                              = $::RERUNPS;
+        $ps                              = $RERUNPS;
         $req_rs->{rerunps}->[0]          = "yes";
         $req_rs->{security}->[0]         = "yes";
         $req_rs->{rerunps4security}->[0] = "yes";
@@ -1038,30 +1078,69 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'A|updateallsw' => \$::ALLSW,
-                    'c|cmdlineonly' => \$::CMDLINE,
-                    'd=s'           => \$::ALTSRC,
-                    'g|genmypost'   => \$::GENMYPOST,
-                    'h|help'        => \$::HELP,
-                    'v|version'     => \$::VERSION,
-                    'V|verbose'     => \$::VERBOSE,
-                    'F|sync'        => \$::FILESYNC,
-                    'l|user:s'      => \$::USER,
-                    'f|snsync'      => \$::SNFILESYNC,
-                    'S|sw'          => \$::SWMAINTENANCE,
-                    's|sn'          => \$::SETSERVER,
-                    'P|scripts:s'   => \$::RERUNPS,
-                    'k|security'    => \$::SECURITY,
-                    'o|os:s'        => \$::OS,
-                    'fanout=i'      => \$::fanout,
-                    't|timetout=i'  => \$::timeout,
+                    'A|updateallsw' => \$ALLSW,
+                    'c|cmdlineonly' => \$CMDLINE,
+                    'd=s'           => \$ALTSRC,
+                    'g|genmypost'   => \$GENMYPOST,
+                    'h|help'        => \$HELP,
+                    'v|version'     => \$VERSION,
+                    'V|verbose'     => \$VERBOSE,
+                    'F|sync'        => \$FILESYNC,
+                    'l|user:s'      => \$USER,
+                    'f|snsync'      => \$SNFILESYNC,
+                    'S|sw'          => \$SWMAINTENANCE,
+                    's|sn'          => \$SETSERVER,
+                    'P|scripts:s'   => \$RERUNPS,
+                    'k|security'    => \$SECURITY,
+                    'o|os:s'        => \$OS,
+                    'fanout=i'      => \$fanout,
+                    't|timetout=i'  => \$timeout,
         )
       )
     {
+    }
+    # These globals are used in the updatenode subroutines,
+    #  need to undefine them if not defined in GetOpts
+    # to make updatenode be able to be called multiple times in one process.
+    if (defined($VERBOSE)) {
+       $::VERBOSE=$VERBOSE;
+    } else {
+       undef $::VERBOSE;
+    }
+    if (defined($timeout)) {
+       $::timeout=$timeout;
+    } else {
+       undef $::timeout;
+    }
+    if (defined($fanout)) {
+       $::fanout=$fanout;
+    } else {
+       undef $::fanout;
+    }
+    if (defined($USER)) {
+       $::USER=$USER;
+    } else {
+       undef $::USER;
+    }
+    if (defined($ALTSRC)) {
+       $::ALTSRC=$ALTSRC;
+    } else {
+       undef $::ALTSRC;
+    }
+    if (defined($ALLSW)) {
+       $::ALLSW=$ALLSW;
+    } else {
+       undef $::ALLSW;
+    }
+    if (defined($SETSERVER)) {
+       $::SETSERVER=$SETSERVER;
+    } else {
+       undef $::SETSERVER;
     }
 
     #
@@ -1089,7 +1168,7 @@ sub updatenode
         }
     }
     # Just generate mypostscripts file and get out 
-    if ($::GENMYPOST)
+    if ($GENMYPOST)
     {
         my @entries =  xCAT::TableUtils->get_site_attribute("precreatemypostscripts");
         if ($entries[0] ) {
@@ -1385,6 +1464,13 @@ sub updatenoderunps
 
         foreach my $snkey (keys %servernodes)
         {
+            if ((!defined($snkey)) or ($snkey eq "")) {  # if we could not find the xcatmaster 
+                
+                my $rsp = {};
+                $rsp->{error}->[0] = "Could not find xcatmaster for @{$servernodes{$snkey}}. Will skip this node. ";
+                $callback->($rsp);
+                next;
+            }
             my $nodestring = join(',', @{$servernodes{$snkey}});
             my $args;
             my $mode;

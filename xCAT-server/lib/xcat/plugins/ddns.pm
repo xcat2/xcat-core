@@ -571,7 +571,8 @@ sub process_request {
                 }
                 else
                 {
-                    system("service $service stop"); #named may otherwise hold on to stale journal filehandles
+                    #system("service $service stop"); #named may otherwise hold on to stale journal filehandles
+                    xCAT::Utils->stopservice("named");
                 }
                 my $conf = get_conf();
                 unlink $conf;
@@ -614,24 +615,31 @@ sub process_request {
                     }
                     else
                     {
-                        my $cmd = "service $service stop";
-                        my @output=xCAT::Utils->runcmd($cmd, 0);
-                        my $outp = join('', @output);
-                        if ($::RUNCMD_RC != 0)
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            return;
-                        }
+                        #my $cmd = "service $service stop";
+                        #my @output=xCAT::Utils->runcmd($cmd, 0);
+                        #my $outp = join('', @output);
+                        #if ($::RUNCMD_RC != 0)
+                        #{
+                        #    my $rsp = {};
+                        #    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                        #    xCAT::MsgUtils->message("E", $rsp, $callback);
+                        #    return;
+                        #}
     
-                        $cmd = "service $service start";
-                        @output=xCAT::Utils->runcmd($cmd, 0);
-                        $outp = join('', @output);
-                        if ($::RUNCMD_RC != 0)
-                        {
+                        #$cmd = "service $service start";
+                        #@output=xCAT::Utils->runcmd($cmd, 0);
+                        #$outp = join('', @output);
+                        #if ($::RUNCMD_RC != 0)
+                        #{
+                        #    my $rsp = {};
+                        #    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                        #    xCAT::MsgUtils->message("E", $rsp, $callback);
+                        #    return;
+                        #}
+                        my $retcode=xCAT::Utils->restartservice("named");
+                        if($retcode!=0){
                             my $rsp = {};
-                            $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                            $rsp->{data}->[0] = "failed to start named.\n";
                             xCAT::MsgUtils->message("E", $rsp, $callback);
                             return;
                         }
@@ -673,20 +681,29 @@ sub process_request {
         }
         else
         {
-            my $cmd = "service $service status|grep running";
-            my @output=xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
+            #my $cmd = "service $service status|grep running";
+            #my @output=xCAT::Utils->runcmd($cmd, 0);
+            #if ($::RUNCMD_RC != 0)
+            #{
+            #    $cmd = "service $service start";
+            #    @output=xCAT::Utils->runcmd($cmd, 0);
+            #    my $outp = join('', @output);
+            #    if ($::RUNCMD_RC != 0)
+            #    {
+            #        my $rsp = {};
+            #        $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+            #        xCAT::MsgUtils->message("E", $rsp, $callback);
+            #        return;
+            #    }
+            #}
+            my $retcode=xCAT::Utils->startservice("named");
+            if($retcode!=0)
             {
-                $cmd = "service $service start";
-                @output=xCAT::Utils->runcmd($cmd, 0);
-                my $outp = join('', @output);
-                if ($::RUNCMD_RC != 0)
-                {
                     my $rsp = {};
-                    $rsp->{data}->[0] = "Command failed: $cmd. Error message: $outp.\n";
+                    $rsp->{data}->[0] = "failed to start named.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return;
-                }
+                
             }
         }
     }
@@ -1009,6 +1026,7 @@ sub update_namedconf {
         push @newnamed,"options {\n";
         unless ($slave && xCAT::Utils->isLinux()) {
            push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
+           push @newnamed, "\tallow-recursion { any; };\n";
         }
         push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {

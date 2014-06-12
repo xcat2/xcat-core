@@ -503,7 +503,8 @@ sub setdestiny {
 			} 
 		    }
 		}
-		if ($provmethod ne 'install') {
+                #don't clean up provmethod if osimage.provmethod is install or sysclone
+                if ($provmethod ne 'install' &&  $provmethod ne 'sysclone') {
 		    push(@nodestoblank, $_);
 		}
 	    }
@@ -609,8 +610,8 @@ sub nextdestiny {
   }
   
   if ($callnodeset) {
-     $args;
-	 if($noupdate_flag)
+     my $args;
+     if($noupdate_flag)
      {
          $args = ['enact', '--noupdateinitrd'];
      }
