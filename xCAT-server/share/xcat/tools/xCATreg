@@ -57,6 +57,7 @@ my %rhppc64config=();
 my %slesppc64config=();
 my %rhx8664config=();
 my %slesx8664config=();
+my %ubux8664config=();
 my %rhppc64mnconfig=();
 my $fullinst=0;
 my $dsklsinst=0;
@@ -142,6 +143,10 @@ sub config_test {
         }elsif($line =~ /\[\s*slesx8664System|Custom\s*\]/){
 
          $type = "slesx8664Varible";
+        }elsif($line =~ /\[\s*ubux8664System|Custom\s*\]/){
+
+         $type = "ubux8664Varible";
+
         }elsif ($type eq "rhppc64Table") {
             ##TABLE BLOCK##
             if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
@@ -190,7 +195,18 @@ sub config_test {
                     $slesx8664config{table}{$sub_type}{$name}{__KEY__}=$attr;
                 }
             }
-
+        }elsif ($type eq "ubux8664Table") {
+            ##TABLE BLOCK##
+            if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
+                $attr = $1;
+                $value = $2;
+                if($name&&($ubux8664config{table}{$sub_type}{$name}{__KEY__} ne $attr)){
+                    $ubux8664config{table}{$sub_type}{$name}{$attr}=$value;
+                } else {
+                    $name = $value;
+                    $ubux8664config{table}{$sub_type}{$name}{__KEY__}=$attr;
+                }
+            }
         }elsif ($type eq "rhppc64Object") {
             ##OBJECT BLOCK##
             if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
@@ -259,6 +275,23 @@ sub config_test {
                    $slesx8664config{object}{$sub_type}{$name}{$attr}=$value;
                }
             }
+        }elsif ($type eq "ubux8664Object") {
+            ##OBJECT BLOCK##
+            if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
+               $attr = $1;
+               $value = $2;
+               #print "ubux8664node attr is $attr\n";
+               #print "ubux8664node value is $value\n";
+               if($attr eq "Name"){
+                   $name = $value;
+               } elsif(!defined($name)){
+                   print "Please give name for Object\n";
+                   close FILE;
+                   return 1;
+               } else {
+                   $ubux8664config{object}{$sub_type}{$name}{$attr}=$value;
+               }
+            }
 
         }elsif ($type eq "rhppc64Script") {
             ##SCRIPT_BLOCK##
@@ -300,6 +333,16 @@ sub config_test {
                 $slesx8664config{script_post}->[$c] = $line;
                 $c = $c + 1;
             }
+        }elsif ($type eq "ubux8664Script") {
+            ##SCRIPT_BLOCK##
+            if($sub_type eq "Prev") {
+                $ubux8664config{script_prev}->[$c] = $line;
+                $c = $c + 1;
+            }
+            elsif ($sub_type eq "ubux8664Post") {
+                $ubux8664config{script_post}->[$c] = $line;
+                $c = $c + 1;
+            }
 
         } elsif ($type eq "rhppc64Varible") {
             ##NODE_BLOCK##
@@ -324,12 +367,20 @@ sub config_test {
                 $slesx8664config{var}{$1} = $2;
                 print "var $1,$2\n";
             }
+
+        } elsif ($type eq "ubux8664Varible") {
+            ##NODE_BLOCK##
+            if($line =~ /(\w+)\s*=\s*([\w\.\-\/]+)/) {
+                $ubux8664config{var}{$1} = $2;
+                print "var $1,$2\n";
+            }
         }
     }
     &runcmd ("touch default.conf");
     &runcmd ("touch defaultslesppc64.conf");
     &runcmd ("touch defaultrhx8664.conf");
     &runcmd ("touch defaultslesx8664.conf");
+    &runcmd ("touch defaultubux8664.conf");
     if(exists $rhppc64config{object}){
         foreach my $type (keys %{$rhppc64config{object}}){
             foreach my $name (keys %{$rhppc64config{object}{$type}}){
@@ -382,6 +433,20 @@ sub config_test {
                 foreach my $attr (keys %{$slesx8664config{object}{$type}{$name}}){
                     send_msg("    $attr = $slesx8664config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$slesx8664config{object}{$type}{$name}{$attr}>>defaultslesx8664.conf");
+                }
+            }
+        }
+    }
+    if(exists $ubux8664config{object}){
+        foreach my $type (keys %{$ubux8664config{object}}){
+            foreach my $name (keys %{$ubux8664config{object}{$type}}){
+                send_msg("OBJECT:$name,TYPE:$type");
+                &runcmd( "  echo [Object_$type]>>defaultubux8664.conf");
+                &runcmd( "  echo Name=$name>>defaultubux8664.conf");
+                #print "$name,TYPE:$type \n";
+                foreach my $attr (keys %{$ubux8664config{object}{$type}{$name}}){
+                    send_msg("    $attr = $ubux8664config{object}{$type}{$name}{$attr};");
+                    &runcmd( "  echo $attr=$ubux8664config{object}{$type}{$name}{$attr}>>defaultubux8664.conf");
                 }
             }
         }
@@ -467,6 +532,26 @@ sub config_test {
             }
         }
     }
+    if(exists $ubux8664config{table}){
+        foreach my $type (keys %{$ubux8664config{table}}){
+            send_msg("TABLE:$type");
+            &runcmd( "  echo [Table_$type]>>defaultubux8664.conf");
+            #&runcmd( "  echo key=$type>>default.conf");
+            #&runcmd( "  echo [Table_site]>>default.conf");
+            #&runcmd( "  echo key=$type>>default.conf");
+            foreach my $name (keys %{$ubux8664config{table}{$type}}){
+               send_msg("    $ubux8664config{table}{$type}{$name}{__KEY__} = $name");
+               &runcmd( "  echo $ubux8664config{table}{$type}{$name}{__KEY__}=$name>>defaultubux8664.conf");
+               foreach my $attr (keys %{$ubux8664config{table}{$type}{$name}}){
+                   if($attr ne '__KEY__'){
+                       send_msg("    $attr = $ubux8664config{table}{$type}{$name}{$attr}");
+                       &runcmd( " echo $attr=$ubux8664config{table}{$type}{$name}{$attr}>>defaultubux8664.conf");
+                   }
+                }
+                send_msg("\n");
+            }
+        }
+    }
 
     if(exists $rhppc64config{script_prev}){
          send_msg("Script_Prev:");
@@ -530,6 +615,19 @@ sub config_test {
         foreach my $varname (keys %{$slesx8664config{var}}){
             send_msg("    $varname = $slesx8664config{var}{$varname}");
             &runcmd( "  echo $varname=$slesx8664config{var}{$varname}>>defaultslesx8664.conf");
+            #print "var is $rhppc64config{var}\n";
+        }
+    }
+    if (exists $ubux8664config{var}){
+    #my $MN=$rhppc64config{var}{MN};
+    #my $MNIP=$rhppc64config{var}{MNIP};
+    #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
+    #print "MN is $MN\n";}
+        send_msg("Varible:");
+        &runcmd( "  echo [System]>>defaultubux8664.conf");
+        foreach my $varname (keys %{$ubux8664config{var}}){
+            send_msg("    $varname = $ubux8664config{var}{$varname}");
+            &runcmd( "  echo $varname=$ubux8664config{var}{$varname}>>defaultubux8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
     }
@@ -666,6 +764,10 @@ if ( $osname [0]  =~ /Linux/  && $osname [0] =~ /ppc64/ && $release [1] =~ /Red 
 }elsif ( $osinfo [0]  =~ /amd64/ && $osinfo [2]  =~ /Red Hat Enterprise Linux Server release 6.5/){
    print "MN info is redhat 6.5  x86_64 \n";
    $testenvinfo = "rhx8664";
+
+}elsif ( $osinfo [1]  =~ /Ubuntu/ && $osinfo [1]  =~ /12.04/){
+   print "MN info is Ubuntu 12.04   x86_64 \n";
+   $testenvinfo = "ubux8664";
 }else
    {print "no machine info ";}
   return $testenvinfo;
@@ -707,6 +809,7 @@ sub init
        system("xdsh $MN yum -y install xCAT-test");
        system("scp -r default.conf $MN:$testconfigfile");
        system("rm -rf default.conf");
+
         print "--install createrepo .......\n";
         #system("xdsh $MN yum -y install createrepo");
         system("xdsh $MN yum -y install screen");
@@ -808,8 +911,45 @@ sub init
         system("xdsh $MN zypper  -n install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64");
         system("scp -r defaultslesx8664.conf $MN:$testconfigfile");
         system("rm -rf defaultslesx8664.conf");
-        print "--prepare vmtest environment....\n";
+        print "--prepare vmslestest environment....\n";
+        print "[OK]\n";
+}elsif ($envoutput eq 'ubux8664'){
+        my $nodedir=$confkeys{ubuntudir};
+        system("xdsh $MN mkdir -p /iso/mountpoint");
+        print "--prepareing ubu iso file.......\n";
+        system(" scp -r /iso/ubuntu-12.04.1-server-amd64.iso $MN:/iso");
+        print "--prepareing /etc/hosts  /etc/resolv.conf.......";
+        system ("scp -r /etc/hosts $MN:/etc/hosts");
+        system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
+        print "[OK]\n";
+        print "--get the latest XCAT tarball.......\n";
+        system("scp -r $nodedir/xcat-dep $MN:/");
+        print "[OK]\n--deploy sources.list....";
+        system ("scp -r $MN:/etc/apt/sources.list .");
+        &runcmd( "  echo deb http://us.archive.ubuntu.com/ubuntu/ precise main>>sources.list");
+        &runcmd( "  echo deb http://us.archive.ubuntu.com/ubuntu/ precise-updates main>>sources.list");
+        &runcmd( "  echo deb http://us.archive.ubuntu.com/ubuntu/ precise universe>>sources.list");
+        &runcmd( "  echo deb http://us.archive.ubuntu.com/ubuntu/ precise-updates universe>>sources.list");
+        system ("scp -r sources.list $MN:/etc/apt/sources.list");
+        print "[OK]\n--install xcat....";
+        &runcmd("   echo deb [arch=amd64] file:///xcat-dep precise main>>xcat-dep.list");
+        system ("scp -r xcat-dep.list $MN:/etc/apt/sources.list.d");
+        &runcmd("   echo deb [arch=amd64] file:///xcat-core precise main>>xcat-core.list");
+        system ("scp -r xcat-core.list $MN:/etc/apt/sources.list.d");
+        &runcmd("wget -c http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download");
+        system("scp -r apt.key $MN:/tmp");
+        system("xdsh $MN apt-key add /tmp/apt.key");
+        &runcmd( "rm -rf apt.key");
+        system("xdsh $MN apt-get clean all");
+        system("xdsh $MN apt-get update");
+        system("xdsh $MN apt-get --allow-unauthenticated install xcat");
+        system("xdsh $MN source /etc/profile.d/xcat.sh");
+         system("xdsh $MN apt-get install xcat-test");
+        print "--prepare test environment....\n";
+        system("scp -r defaultubux8664.conf $MN:$testconfigfile");
+        print "--prepare vmubuntu test environment....\n";
         print "[OK]\n";}
+
         return 0;
 }
 #######################################
@@ -843,7 +983,6 @@ sub  do_test1
     my $MN=$mn;
     my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
-    
     send_msg("******************************");
     send_msg("start  test");
     send_msg("******************************");
@@ -929,7 +1068,23 @@ sub  do_test1
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+}elsif ($envoutput eq 'ubux8664'){
+    send_msg("******************************");
+    send_msg("start  test");
+    send_msg("******************************");
+    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Ubuntu_full_installation_flat_x86_vm ");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+
+    #system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
+    #system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Ubuntu_diskless_installation_flat_x86_vm");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
+   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
+   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    }
+
 }
 
 #######################################
