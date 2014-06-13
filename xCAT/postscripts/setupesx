@@ -1,12 +1,18 @@
 # esx setup
 # example on how to set up ESX.  We setup ssh and also add a basic
 # VLAN configuration 
+
+str_dir_name=`dirname $0`
+
+. $str_dir_name/xcatlib.sh
+
 logger -t xcat -p local4.info setupesx
 # Enable SSH access to root and exchange keys
 
 sed -e 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config.new
 mv -f /etc/ssh/sshd_config.new /etc/ssh/sshd_config
-/etc/init.d/sshd restart
+#/etc/init.d/sshd restart
+restartservice ssh
 
 if [ -r /etc/ssh/sshd_config ]
 then
@@ -43,8 +49,11 @@ cat >/tmp/esxcfg.sh <<EOF1
 # Configure ESX Server.  You'll need to put your own IP address
 # in here. We assume eth0 is your nic.  Change if needed.
 NIC=eth0
-IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}' | head -1`
-NETMASK=`ifconfig $NIC |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+#IPADDR=`ifconfig $NIC |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}' | head -1`
+IPADDR=`ip -4 -oneline addr show $NIC|grep inet|awk -F ' ' '{print $4}'|awk -F '/' '{print $1}'`
+#NETMASK=`ifconfig $NIC |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+NETMASK=`ip -4 -oneline addr show $NIC|grep inet|awk -F ' ' '{print $4}'|awk -F '/' '{print $2}'`
+NETMASK=`v4prefix2mask $NETMASK`
 
 #esxcfg-vswitch -U vmnic0 vSwitch0
 esxcfg-vswitch -L vmnic0 vSwitch0
@@ -56,7 +65,8 @@ esxcfg-firewall -o 123,udp,out,ntpServer
 esxcfg-firewall -o 514,udp,out,syslog
 esxcfg-firewall -l
 logger -t xcat -p local4.info "Install: restart syslog"
-service syslog restart
+#service syslog restart
+restartservice syslog
 
 EOF1
 
