@@ -44,8 +44,10 @@ while [ $WAITING -gt 0 ]; do
     done
     WAITING=0
     if [ ! -z "$FORCENICS" ]; then
-        for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep "$FORCENICS"`; do
-            if ! ifconfig $nic|grep "inet addr" > /dev/null; then
+        #for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep "$FORCENICS"`; do
+        for nic in `ip  -oneline link show |grep -i ether |awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"|egrep "$FORCENICS"`; do
+        #    if ! ifconfig $nic|grep "inet addr" > /dev/null; then
+            if ! ip -4 -oneline addr show $nic|grep -i inet > /dev/null; then
                 WAITING=1
             fi
         done
