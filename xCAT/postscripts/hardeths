@@ -81,7 +81,8 @@ for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
     if ( pmatch $OSVER "ubuntu*" )
     then
         NETWORK=`network_ipv4calc $IPADDR $NETMASK`
-        BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
+        #BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
+        BROADCAST=`ip -4 -oneline addr show $nic|grep brd| awk -F ' ' '{print $6}'`
         
         if [ ! -z "$defgw" ]; then
             gateway_line="gateway $defgw"
