@@ -436,9 +436,9 @@ sub sshcfg {
     #####################################
     # userid@host not found in key file
     #####################################
-    if ( $sshkey !~ /\s+(\S+\@\S+$)/ ) {
-        return( [[$server,"Cannot find userid\@host in '$fname'",RC_ERROR]] );
-    }
+    #if ( $sshkey !~ /\s+(\S+\@\S+$)/ ) {
+    #    return( [[$server,"Cannot find userid\@host in '$fname'",RC_ERROR]] );
+    #}
     my $logon = $1;
 
     #####################################
