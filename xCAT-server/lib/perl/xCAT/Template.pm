@@ -173,6 +173,25 @@ sub subvars {
   #do *all* includes, recursive for all
   my $doneincludes=0;
   while (not $doneincludes) {
+      $doneincludes=1;
+      $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;  # handle the variable in #INCLUDE
+      if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
+      }
+      if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
+      }
+      if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
+      }
+      if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
+          $doneincludes=0;
+          $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+      }
+
       #support multiple paths of osimage in rh/sles diskfull installation
       my @pkgdirs;
       if ( defined($media_dir) ) {
