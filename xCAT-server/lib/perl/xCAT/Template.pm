@@ -148,7 +148,29 @@ sub subvars {
     }
   }
 
-  #do *all* includes, recursive and all
+  #if user specify the partion file, replace the default partition strategy
+  my $partcontent;
+  my $scriptflag = 0;
+  if ($partitionfile){
+      if ($partitionfile =~ /^s:(.*)/){
+          $scriptflag = 1;
+          $partitionfile = $1;
+      }
+  
+      if (-r $partitionfile){
+          open ($inh, "<", $partitionfile);
+          while (<$inh>){
+              $partcontent .= $_;
+          }
+          close ($inh);
+      }
+  }
+
+  # append the partition file into the $inc to do the replacement
+  $inc .= "\nFFFFFFFFFFFFPARTITIONFILESTART\n".$partcontent;
+
+
+  #do *all* includes, recursive for all
   my $doneincludes=0;
   while (not $doneincludes) {
       #support multiple paths of osimage in rh/sles diskfull installation
@@ -213,76 +235,54 @@ sub subvars {
       my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
       
       $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
-    
-      #if user specify the partion file, replace the default partition strategy
-      if ($partitionfile){
-        #if the content of the partition file is definition replace the default is ok
-        my $partcontent = '';
-        my $scriptflag = 0;
-    
-        if ($partitionfile =~ /^s:(.*)/){
-            $scriptflag = 1;
-            $partitionfile = $1;
-        }
-    
-        if (-r $partitionfile){
-            open ($inh, "<", $partitionfile);
-            while (<$inh>){
-                $partcontent .= $_;
-            }
-            close ($inh);
-    
-            #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
-            if ($scriptflag){
-                #for redhat/sl/centos/kvm/fedora
-                if ($inc =~ /#XCAT_PARTITION_START#/) {
-                    my $tempstr = "%include /tmp/partitionfile\n";
-                    $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
-                    #modify the content in the file, and write into %pre part
-                    $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
-                    $partcontent .= "chmod 755 /tmp/partscript\n";
-                    $partcontent .= "/tmp/partscript\n";
-                    #replace the #XCA_PARTITION_SCRIPT#
-                    $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
-                }
-                #for sles/suse
-                elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
-                    my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
-                    $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
-                    $partcontent = "echo " . "'". $partcontent . "'" . ">/tmp/partscript\n";
-                    $partcontent .= "chmod 755 /tmp/partscript\n";
-                    $partcontent .= "/tmp/partscript\n";
-                    $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
-                }
-            }
-            else{
-                $partcontent =~ s/\s$//;
-                if ($inc =~ /#XCAT_PARTITION_START#/){
-                    $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
-                }
-                elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
-                    $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
-                }
-            }
-        }
-      }
-      
-      $doneincludes=1;
-      if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
-          $doneincludes=0;
-          $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
-      }
-      if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
-          $doneincludes=0;
-          $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
-      }
-      if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
-          $doneincludes=0;
-          $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
-      }
-      if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
-          $doneincludes=0;
-          $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+
+      if ($partitionfile && $doneincludes) {
+          #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
+          # split the partition file out from the $inc
+          ($inc, $partcontent) = split(/FFFFFFFFFFFFPARTITIONFILESTART/, $inc);
+          if ($scriptflag){
+              # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
+              # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
+              # %pre and decode it out during the running time.
+              use MIME::Base64;
+              $partcontent = encode_base64($partcontent);
+              $partcontent =~ s/\n//g;
+              
+              #for redhat/sl/centos/kvm/fedora
+              if ($inc =~ /#XCAT_PARTITION_START#/) {
+                  my $tempstr = "%include /tmp/partitionfile\n";
+                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$tempstr/;
+                  # Put the base64 coded partitionfile into %pre part
+                  $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  # Put the code to decode the partitionfile
+                  $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
+                  $partcontent .= "chmod 755 /tmp/partscript\n";
+                  $partcontent .= "/tmp/partscript\n";
+                  #replace the #XCA_PARTITION_SCRIPT#
+                  $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+              }
+              #for sles/suse
+              elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                  my $tempstr = "<drive><device>XCATPARTITIONTEMP</device></drive>";
+                  $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$tempstr/;
+                  # Put the base64 coded partitionfile into %pre part
+                  $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  # Put the code to decode the partitionfile
+                  $partcontent .= "perl -ne 'use MIME::Base64; print decode_base64(\$_)' </tmp/partscript.enc > /tmp/partscript\n";
+                  $partcontent .= "chmod 755 /tmp/partscript\n";
+                  $partcontent .= "/tmp/partscript\n";
+                  $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
+              }
+          }
+          else{
+              $partcontent =~ s/\s$//;
+              if ($inc =~ /#XCAT_PARTITION_START#/){
+                  $inc =~ s/#XCAT_PARTITION_START#[\s\S]*#XCAT_PARTITION_END#/$partcontent/;
+              }
+              elsif ($inc =~ /<!-- XCAT-PARTITION-START -->/){
+                  $inc =~ s/<!-- XCAT-PARTITION-START -->[\s\S]*<!-- XCAT-PARTITION-END -->/$partcontent/;
+              }
+          }
       }
   }
 
