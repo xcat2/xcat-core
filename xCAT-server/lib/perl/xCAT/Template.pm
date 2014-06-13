@@ -164,10 +164,10 @@ sub subvars {
           }
           close ($inh);
       }
-  }
 
-  # append the partition file into the $inc to do the replacement
-  $inc .= "\nFFFFFFFFFFFFPARTITIONFILESTART\n".$partcontent;
+      # append the partition file into the $inc to do the replacement
+      $inc .= "\nFFFFFFFFFFFFPARTITIONFILESTART\n".$partcontent;
+  }
 
 
   #do *all* includes, recursive for all
