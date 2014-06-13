@@ -752,15 +752,19 @@ sub mknetboot
         my $useifname=0;
         #for rhels5.x-ppc64, if installnic="mac", BOOTIF=<mac> should be appended 
         my $usemac=0;
+        my $nicname="";
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
             $useifname=1;
-            $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
+            #$kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
+            $nicname=$reshash->{$node}->[0]->{installnic};
         } elsif ($nodebootif) {
             $useifname=1;
-            $kcmdline .= "ifname=$nodebootif:";
+            #$kcmdline .= "ifname=$nodebootif:";
+            $nicname=$nodebootif;
         } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $useifname=1;
-            $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
+            #$kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
+            $nicname=$reshash->{$node}->[0]->{primarynic};
         }else{
 	    if($arch=~ /ppc/)
 	    {
@@ -790,24 +794,32 @@ sub mknetboot
 #            }
         }
 
-        if ($useifname && $mac) {
-            $kcmdline .= "$mac ";
+        if( ($nicname ne "") and  (not xCAT::NetworkUtils->isValidMAC($nicname) )){
+		if ($useifname && $mac) {
+		    $kcmdline .= "ifname=$nicname:$mac ";
+		}
+                $kcmdline .= "netdev=$nicname ";
+        }else {
+               if($mac){
+                    $kcmdline .= "BOOTIF=$mac "; 
+               }
         }
 
+       
         # add "netdev=<eth0>" or "BOOTIF=<mac>" 
         # which are used for other scenarios
-        my $netdev = "";
-        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
-            $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
-        } elsif ($nodebootif) {
-            $kcmdline .= "netdev=" . $nodebootif . " ";
-        } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
-            $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
-        } else {
-            if ( ($usemac || $useifname) && $mac) {
-                $kcmdline .= "BOOTIF=" . $mac . " ";
-            }
-        }
+        #my $netdev = "";
+        #if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
+        #    $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
+        #} elsif ($nodebootif) {
+        #    $kcmdline .= "netdev=" . $nodebootif . " ";
+        #} elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
+        #    $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
+        #} else {
+        #    if ( ($usemac || $useifname) && $mac) {
+        #        $kcmdline .= "BOOTIF=" . $mac . " ";
+        #    }
+        #}
 
         my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
         if ( $client_nethash{$node}{mgtifname} =~ /hf/ )
