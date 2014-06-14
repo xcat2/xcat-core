@@ -20,7 +20,8 @@ TIMESTAMP=$(printf "%08X:%08X" $SECONDS $NTPTICKS)
 
 #next, get a mac address and convert to eui64
 EUIPAD="FF:FE"
-MAC=$(/sbin/ifconfig|grep HWaddr|grep -v usb|grep -v 00:00:00:00:00:00|head -n 1|awk '{print $NF}')
+#MAC=$(/sbin/ifconfig|grep HWaddr|grep -v usb|grep -v 00:00:00:00:00:00|head -n 1|awk '{print $NF}')
+MAC=$(ip -oneline link show|grep  -v usb|grep -v 00:00:00:00:00:00|head -n 1|sed -ne "s/.*link\/ether //p"|awk -F ' ' '{print $1}')
 FIRSTBYTE=${MAC%%:*}
 FIRSTBYTE=$(printf %02X $((0x$FIRSTBYTE|2)))
 OTHERMANUF=${MAC%%:??:??:??}

@@ -166,7 +166,8 @@ if [ -z $STATEMNT ]; then
     MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
   elif [ ! -z "$BOOTIF" ]; then
     MACX=$BOOTIF
-    ETHX=`ifconfig |grep -i $BOOTIF | awk '{print $1}'`
+    #ETHX=`ifconfig |grep -i $BOOTIF | awk '{print $1}'`
+    ETHX=` ip  -oneline link show |grep -i $BOOTIF|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
   fi
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
