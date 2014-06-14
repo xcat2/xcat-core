@@ -1154,7 +1154,8 @@ for i in `cat /proc/cmdline`; do
         NETDEV=`echo \$i |awk -F= '{print \$2}'`
     elif [ "\$KEY" == 'BOOTIF' ]; then
         VALUE=`echo \$i |awk -F= '{print \$2}'|sed -e s/^01-// -e s/-/:/g`
-        BOOTIF=`ifconfig -a|grep -i "hwaddr \$VALUE"|awk '{print \$1}'`
+        #BOOTIF=`ifconfig -a|grep -i "hwaddr \$VALUE"|awk '{print \$1}'`
+        BOOTIF=\`ip  -oneline link show |grep -i \$VALUE|awk -F ':' '{print \$2}'|grep -o \"[^ ]\+\( \+[^ ]\+\)*\"\`
     elif [ "\$KEY" == 'XCAT' ]; then
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:3001
