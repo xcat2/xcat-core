@@ -1822,7 +1822,7 @@ sub restorexcatdb
     else
     {
         #$xcmd = "service xcatd restart";
-        my $ret=xCAT::Utils->restartservie("xcatd");
+        my $ret=xCAT::Utils->restartservice("xcatd");
         return $ret;
     }
 

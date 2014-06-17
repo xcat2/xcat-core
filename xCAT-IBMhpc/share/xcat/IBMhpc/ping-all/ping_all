@@ -62,7 +62,8 @@ else
    file=$1
 fi
 
-ifconfig -a  | grep 'inet ' | awk ' { print $2 } ' | grep -v 127.0.0.1 | 
+#ifconfig -a  | grep 'inet ' | awk ' { print $2 } ' | grep -v 127.0.0.1 | 
+ip -4 -oneline addr show 2>/dev/null |grep inet | sed -ne "s/.*inet //p"|awk -F ' ' '{print $1}'|awk -F '/' '{print $1}'|
 while read my_address ; do
     ##print "checking $my_address"
     grep -q " ${my_address}$" $file

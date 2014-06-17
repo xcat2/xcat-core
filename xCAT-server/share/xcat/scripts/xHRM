@@ -7,13 +7,15 @@ function get_def_interface {
     #we are, however, presuming ipv4 for the moment
     retval=$(ping -c 1 `hostname`|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
     if [ -z "$retval" -o "127.0.0.1" = "$retval" ]; then #ok, that didn't pan out, now we grab the first address that looks sane
-        retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
+        #retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
+        retval=`ip -4 -oneline addr show|grep -v "127.0.0.1"|grep -v '169.254'|head -n 1|awk -F 'inet ' '{print $2}'|awk -F '/' '{print $1}'`
     fi
     if [ -z "$retval" ]; then 
         echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
         exit 1
     fi
-    iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
+    #iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
+    iface=`ip -4 -oneline addr show|grep -i $retval|awk -F ':' '{print $2}'|awk -F ' ' '{print $1}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
     if [ -z "$iface" ]; then
         echo "ERROR: Unable to reasonably guess the default interface" >&2
         exit 1
@@ -118,7 +120,8 @@ elif [ "bridgeprereq" = "$1" ]; then
     # get the port for installation
     if [ -n "$INSTALLNIC" ]; then
         if [[ "$INSTALLNIC" = mac ]] || [[ "$INSTALLNIC" = MAC ]]; then
-            INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`
+            #INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`
+            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
         else
             INSPORT=$INSTALLNIC
         fi

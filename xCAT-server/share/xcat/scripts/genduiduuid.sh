@@ -13,7 +13,8 @@ if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
         duid=$duid$octnum
     done
     duid=$duid'";'
-    for interface in `ifconfig -a|grep HWaddr|awk '{print $1}'`; do
+    #for interface in `ifconfig -a|grep HWaddr|awk '{print $1}'`; do
+    for interface in `ip -4 -oneline link show|grep -i ether |awk -F ":" '{print $2}'| grep -o "[^ ]\+\( \+[^ ]\+\)*"`; do
         echo $duid > /var/lib/dhclient/dhclient6-$interface.leases
     done
     echo $duid  > /var/lib/dhclient/dhclient6.leases

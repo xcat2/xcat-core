@@ -1590,7 +1590,8 @@ send_monitor_msg() {
 
     # Get the client mac address.
     if [ -z "$mac" ]; then
-        mac=`ifconfig $DEVICE 2>/dev/null | sed -ne "s/.*HWaddr //p" | sed "s/ //g" | sed s/:/./g`
+        #mac=`ifconfig $DEVICE 2>/dev/null | sed -ne "s/.*HWaddr //p" | sed "s/ //g" | sed s/:/./g`
+        mac=`ip -4 -oneline link show $DEVICE 2>/dev/null|grep -i ether|sed -ne "s/.*ether //p"|awk -F ' ' '{print $1}'|sed s/:/./g`
     fi
 
     # Collect some special info only after proc file system is mounted.
