@@ -120,8 +120,7 @@ To import nodes using a profile, follow the following steps:
   # hostinfo begin
   # This entry defines a blade.
   __hostname__:
-     switch=myswitch 
-     switchport=9
+     switches=eth0!switch1!1,eth0!switch2!1!eth1
 
   Example of a node information file that specifies a CEC-based rack-mounted Power node that uses direct FSP management:
   # Node information file begins
@@ -141,13 +140,9 @@ B<mac=<mac-address>>  This is a mandatory item.
 
 Description: Specify the MAC address for the NIC used by the provisionging node, where <mac-address> is the NICs MAC address.
 
-B<switch=<switch-name>>  This is a mandatory item, when define a switch auto discovery node.
+B<switches=<nic-name!switch-name!switch-port>>  This is a mandatory item, when define switch, switchport and node nic name relationship.
 
-Description: Specify switch name that the provisionging node is connected, where <switch-name> is the switch name.
-
-B<switchport=<switch-port>>  This is a mandatory item, when define a switch auto discovery node.
-
-Description: Specify switch port that the provisionging node is connected, where <switch-port> is the connected port.
+Description: Specify nic name, switch name and switch port to define node and switch relationship. We can define multi nic-switch-port relations here, looks like: switches=eth0!switch1!1,eth1!switch1,2
 
 B<slotid=<slot-id>>  This is a mandatory item while define a PureFlex node.
 

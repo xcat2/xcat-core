@@ -1779,9 +1779,9 @@ sub gen_new_hostinfo_dict{
                     my %keyshash = ();
                     my %valueshash = ();
                     $keyshash{'node'} = $item;
-                    $keyshash{'switch'}= $spilist[0];
-                    $keyshash{'port'} = $spilist[1];
-                    $valueshash{'interface'} = $spilist[2];
+                    $valueshash{'interface'} = $spilist[0];
+                    $keyshash{'switch'}= $spilist[1];
+                    $keyshash{'port'} = $spilist[2];
                     push @switch_records, [\%keyshash, \%valueshash];
                 }
             }
@@ -2225,17 +2225,17 @@ sub validate_node_entry{
                         next;
                     }
 
-                    if (! exists $allswitches{$spilist[0]}){
-                        $errmsg .= "Specified switch $spilist[0] is not defined\n";
+                    if (! exists $allswitches{$spilist[1]}){
+                        $errmsg .= "Specified switch $spilist[1] is not defined\n";
                     }
                     # Not a valid number.
-                    if (!($spilist[1] =~ /^\d+$/)){
-                        $errmsg .= "Specified port $spilist[1] is invalid\n";
+                    if (!($spilist[2] =~ /^\d+$/)){
+                        $errmsg .= "Specified port $spilist[2] is invalid\n";
                     }
                     # now, we need to check "swith_switchport" string list to avoid duplicate config
-                    my $switch_port = $spilist[0] . "_" . $spilist[1];
+                    my $switch_port = $spilist[1] . "_" . $spilist[2];
                     if (exists $all_switchports{$switch_port}){
-                        $errmsg .= "Specified switch $spilist[0] and port $spilist[1] already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
+                        $errmsg .= "Specified switch $spilist[1] and port $spilist[2] already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
                     }else{
                         # after checking, add this one into all_switchports
                         $all_switchports{$switch_port} = 0;
