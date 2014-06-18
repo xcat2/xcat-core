@@ -1,10 +1,7 @@
 start:Ubuntu_full_installation_flat_x86_vm
 os:Linux
-cmd:makedns
+cmd:makedns -n
 check:rc==0
-cmd:service named restart
-check:rc==0
-cmd:chdef $$CN servicenode= xcatmaster=
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
