@@ -2,7 +2,7 @@ start:Linux_full_installation_flat_ppc64
 os:Linux
 cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
 check:rc==0
-cmd:makedns
+cmd:makedns -n
 check:rc==0
 cmd:service named restart
 check:rc==0
