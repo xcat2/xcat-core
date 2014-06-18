@@ -4,10 +4,6 @@ cmd:makedns -n
 check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
-cmd:chdef $$CN servicenode= xcatmaster=
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
-cmd:sleep 60
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
