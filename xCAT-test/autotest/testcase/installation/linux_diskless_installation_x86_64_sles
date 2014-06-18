@@ -21,7 +21,7 @@ cmd:if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netb
 check:rc==0
 cmd:if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi
 check:rc==0
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__ synclists=/install/custom/netboot/sles/compute.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/sles/compute.synclist
 cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/x86_64/compute
 check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
