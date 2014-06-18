@@ -40,13 +40,13 @@ cmd:service dhcpd restart
 check:rc==0
 cmd:copycds $$ISO
 check:rc==0
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__ synclists=/install/custom/netboot/sles/compute.synclist
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute synclists=/install/custom/netboot/sles/compute.synclist
 check:rc==0
-cmd:genimage -n $$NETDRIVER __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__
+cmd:genimage -n $$NETDRIVER __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
-cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__
+cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:rnetboot $$CN
 check:rc==0
@@ -56,11 +56,11 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__ rootfstype=ramdisk
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=ramdisk
 check:rc==0
-cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__
+cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-__GETNODEATTR($$CN,provmethod)__-__GETNODEATTR($$CN,profile)__
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:rnetboot $$CN
 check:rc==0
