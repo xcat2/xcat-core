@@ -761,7 +761,7 @@ Usage:
     }
     # make sure there are something changed, otherwise we should quit without any changes.
     unless ($changeflag){
-        setrsp_errormsg("No profile changes detect.");
+        setrsp_infostr("Warning: no profile changes detect.");
         return;
     }
     
@@ -931,11 +931,15 @@ Usage:
 
     #6. Generate new free IPs for each network.
     my @allknownips = keys %allips;
+    my %netFreeIPsHash = ();
     foreach my $updnic (@updateNics){
         #No need generate for removed nics.
         unless (grep {$_ eq $updnic} @removedNics){
             my $netname = $netProfileNicsRef->{$netProfileName}->{$updnic}->{"network"};
-            $freeIPsHash{$updnic} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname, \@allknownips);
+            if ( not exists $netFreeIPsHash{$netname} ){
+                $netFreeIPsHash{$netname} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname, \@allknownips); 
+            }
+            $freeIPsHash{$updnic} = $netFreeIPsHash{$netname};
         }
     }
     
