@@ -1,11 +1,15 @@
 #!/bin/bash
+#Used only by sysclone
 
-if [ "$NODESETSTATE" != "sysclone" ];then
+installmethods=`cat /etc/xcat/xcatinstallinfo`
+if [ "$installmethods" != "sysclone" ];then
+    echo "This node didn't be installed by sysclone"
     exit 0
 fi
+
 #update the exclude configuration file
 #do not sync the following files
-for filename in /etc/fstab /boot/grub /etc/grub.conf /boot/efi /etc/elilo.conf /xcatpost
+for filename in /etc/fstab /boot/grub /etc/grub.conf /boot/efi /etc/elilo.conf /xcatpost /etc/xcat
 do
     if [ ! -e $filename ];then
         continue
@@ -33,5 +37,15 @@ fi
 
 str_server_ip=`echo $str_server_ip | sed "s/'//g"`
 #call system imager command to update the image
-echo "si_updateclient --server $str_server_ip --no-bootloader --yes"
-export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --no-bootloader --yes
+echo "si_updateclient --server $str_server_ip --yes"
+export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes
+
+if [[ -f /sbin/dracut ]]; then
+    #redhat or centos
+    echo "Running dracut to regenerate the initrd with the drivers needed by this node:"
+    dracut  --force
+else
+    # suse/sles
+    echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
+    mkinitrd
+fi
