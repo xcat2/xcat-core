@@ -1,3 +1,6 @@
+#!/bin/bash
+#Used only by sysclone
+
 if [ -d /sys/firmware/efi ]; then
     echo "Setting Boot Manager for the next boot."
     echo "delete all sysclone boot list"
