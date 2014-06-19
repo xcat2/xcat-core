@@ -1,0 +1,66 @@
+start:Linux_statelite_installation_flat_x86_64_redhat
+os:Linux
+cmd:makedns -n
+check:rc==0
+cmd:service named restart
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:cat /var/lib/dhcp/db/dhcpd.leases| grep $$CN
+check:output=~$$CN
+cmd:tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:mkdir -p /nodedata
+check:rc==0
+cmd:chmod 755 /etc/exports
+check:rc==0
+cmd:cat /etc/exports|grep nodedata; if [ "$?" -ne "0" ]; then echo "/nodedata *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi
+check:rc==0
+cmd:cd /etc; export exports;cd -
+check:rc==0
+cmd:service nfs restart
+check:rc==0
+cmd:chtab node=$$CN statelite.statemnt="$$MN:/nodedata"
+check:rc==0
+cmd:chtab priority=4.7 policy.commands=litefile policy.rule=allow
+check:rc==0
+cmd:chtab priority=4.8 policy.commands=litetree policy.rule=allow
+check:rc==0
+cmd:liteimg  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 200 
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=ramdisk
+check:rc==0
+cmd:liteimg -p compute -a __GETNODEATTR($$CN,arch)__ -o  __GETNODEATTR($$CN,os)__ -t ramdisk
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 200
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
