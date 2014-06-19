@@ -1,0 +1,35 @@
+#Please make sure there is a space between @ and group name
+@ Network Infrastructure Server
+@ System administration tools
+@ System Management
+@ X Window System
+@ Development Tools
+autofs
+ksh
+tcsh
+ntp
+tftp
+xinetd
+rsh
+rsh-server
+psacct
+nfs-utils
+net-snmp
+rsync
+yp-tools
+ypserv
+ypbind
+m4
+sendmail-cf
+gdb
+binutils
+openssh-server
+openssl098e.ppc
+openssl098e.ppc64
+util-linux
+perl-DBD-MySQL
+perl-Socket6
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc
+perl-DBD-Pg
