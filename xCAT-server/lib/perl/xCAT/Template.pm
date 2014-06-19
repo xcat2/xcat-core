@@ -175,19 +175,21 @@ sub subvars {
   while (not $doneincludes) {
       $doneincludes=1;
       $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;  # handle the variable in #INCLUDE
-      if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
+      if ($inc =~ /#INCLUDE_PKGLIST:[^\n]+#/) {
+          # get in this section but might not do the replace since it needs wait
+          # for the replace of sting inside the #INCLUDE_PKGLIST:xx#
           $doneincludes=0;
           $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
       }
-      if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
+      if ($inc =~ /#INCLUDE_PTRNLIST:[^\n]+#/) {
           $doneincludes=0;
           $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
       }
-      if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
+      if ($inc =~ /#INCLUDE_RMPKGLIST:[^\n]+#/) {
           $doneincludes=0;
           $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
       }
-      if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
+      if ($inc =~ /#INCLUDE:[^\n]+#/) {
           $doneincludes=0;
           $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
       }
