@@ -1,4 +1,5 @@
 #!/bin/bash
+#Used only by sysclone
 
 if [ ! -f "/opt/xcat/xcatdsklspost" ];then
     echo "sysclone require /opt/xcat/xcatdsklspost, but it can not be found. return error!"
@@ -26,6 +27,11 @@ fi
 . /opt/xcat/xcatinfo
 XCATSERVER="$XCATSERVER:3001"
 export XCATSERVER
+
+if [ ! -d "/etc/xcat/" ];then
+    mkdir -p /etc/xcat
+fi
+echo "sysclone" > /etc/xcat/xcatinstallinfo
 
 cd /xcatpost/
 #save the postboot scripts to /xcatpost/mypostscript.post
@@ -68,4 +74,6 @@ echo "$TMP" > /tmp/xcatenv
 . /tmp/xcatenv
 /xcatpost/addsiteyum
 
-/xcatpost/updateflag.awk $MASTER 3002
+if [ -z "$NODESTATUS" ] || [ "$NODESTATUS" != "0" -a   "$NODESTATUS" != "N"  -a  "$NODESTATUS" != "n" ]; then
+        /xcatpost/updateflag.awk $MASTER 3002
+fi
