@@ -1682,6 +1682,7 @@ sub mksysclone
     copy("$installroot/postscripts/$script1","$pspath/15all.$script1");
     copy("$installroot/postscripts/$script2","$pspath/16all.$script2");
     copy("$installroot/postscripts/runxcatpost","$pspath/17all.runxcatpost");
+    copy("$installroot/postscripts/makeinitrd","$pspath/20all.makeinitrd");
 
     unless (-r "$pspath/10all.fix_swap_uuids")
     {
