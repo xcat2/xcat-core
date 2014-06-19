@@ -1,4 +1,6 @@
 #!/bin/bash
+#Used only by sysclone
+
 . /tmp/post-install/variables.txt
 
 #delete the udev rule in the image
