@@ -239,7 +239,7 @@ fi
 echo "alias $str_bond_name bonding" > /etc/modprobe.d/$str_bond_name.conf
 
 # Bring down the salve devices first
-for slave in ${array_bond_slaves[*]}; do
+for slave in ${str_bond_name} ${array_bond_slaves[*]}; do
     $(ifdown $slave &>/dev/null)
 done
 
