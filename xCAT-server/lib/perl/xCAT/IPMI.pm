@@ -321,6 +321,14 @@ sub admin_level_set {
             0x82 => "Cannot disable User Level authentication",
             );
     my $code = $rsp->{code};
+    if (($code == 0x80 or $code == 0x81) and $self->{privlevel} == 4) {
+            $self->{privlevel} = 3;
+            $self->{logged}=1;
+            $self->logout();
+            $self->relog();
+            return;
+    }
+
     if ($code) {
         my $errtxt = sprintf("ERROR: Failed requesting  administrator privilege %02xh",$code);
         if ($localcodes{$code}) {
@@ -711,6 +719,8 @@ sub send_rakp1 {
 }
 sub init {
     my $self = shift;
+    $self->{confalgo} = undef;
+    $self->{integrityalgo}=undef;
     $self->{sessionestablishmentcontext} = 0;
     $self->{'sequencenumber'} = 0; #init sequence number
     $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
@@ -818,7 +828,7 @@ sub got_rakp2 {
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
-        if ($byte == 0x9 and $self->{privlevel} == 4) {
+        if (($byte == 0x9 or $byte == 0xd) and $self->{privlevel} == 4) {
             # this is probably an environment that wants to give us only operator
             # try to connect again at 3.
             $self->{privlevel} = 3;
