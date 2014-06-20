@@ -470,8 +470,7 @@ fi
 # We need to call getpostscript.awk .
 
 if [ ! -x /$xcatpost/mypostscript ]; then
-  /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/
-g" >  /$xcatpost/mypostscript;
+  /$xcatpost/getpostscript.awk | egrep  '<data>' | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
  MYCONT=`grep MASTER /$xcatpost/mypostscript`
  MAX_RETRIES=10
  RETRY=0
@@ -485,9 +484,7 @@ g" >  /$xcatpost/mypostscript;
     SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
     SLI=$((10 + $SLI))
     sleep $SLI
-    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /$xcatpost/mypostscript;
-    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost
-/mypostscript;
+    /$xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" >  /$xcatpost/mypostscript;
     MYCONT=`grep MASTER /$xcatpost/mypostscript`
     if [ ! -z "$MYCONT" ]; then
         break;
