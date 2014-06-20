@@ -2271,7 +2271,7 @@ sub initfru_zero {
 	    $fru = FRU->new();
     	$fru->rec_type("misc");
     	$fru->desc("System Manufacturer");
-        if ($fruhash->{product}->{product}->{encoding}==3) {
+        if ($fruhash->{product}->{manufacturer}->{encoding}==3) {
         	$fru->value($fruhash->{product}->{manufacturer}->{value});
         } else {
         	$fru->value(phex($fruhash->{product}->{manufacturer}->{value}));
