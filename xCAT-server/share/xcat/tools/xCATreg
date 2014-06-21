@@ -70,8 +70,8 @@ my $fullcnsninst=0;
 my $statelitecnsninst=0;
 my %confkeys;
 my %totalresult;
-my $resultformn;
 my %mns;
+my $commitinfo="";
 #######################################
 # usage for arguments
 #######################################
@@ -1263,106 +1263,91 @@ sub pro_result{
     my $cmd = "/bin/ls $logfiledir 2>/dev/null";
     my $output = `$cmd`;
     my @logfilelist = split(/\n/, $output);
-    my %cases;
-    if ($starttime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
-        @start = @_;
-    } else {
+    my @cases;
+    my $total = 0;
+    my $pass = 0;
+    my $fail = 0;
+    unless (@start = $starttime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
         send_msg(0,"pro_result for $mn can't distinguish starttime");
-        return 1;
-    }        
-    #foreach my $file (@logfilelist) {
-    #    my $flag = 0;
-    #    my $location = $logfiledir.$file;
-    #    if ($file =~ /xcattest\.log\.(\w+)/) {
-    #        my $holetime = $1;
-    #        if ($holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
-    #            #my $year = $1;
-    #            #my $mon = $2;
-    #            #my $day = $3;
-    #            #my $hour = $4;
-    #            #my $min = $5;
-    #            #my $sec = $6;
-    #            my @this = @_;
-    #            for my $start (@start) {
-    #                my $this = shift @this {
-    #                    if ($start > $this) {
-    #                        $flag = 1;
-    #                        last;
-    #                    } elsif ($start < $this) {
-    #                        last;
-    #                    }
-    #                }                        
-    #            }
-    #        } else {
-    #            next; # do something here.
-    #        }
-    #    } else {
-    #        next; # useless log
-    #    }
-      #    next if ($flag); # old log    
-    #    
-    #    # begin to process
-    #    if (!open(LOGOFAT, "<$location")) {
-    #       send_msg(0, "$mn pro_result can't open log file");
-    #        return 1;
-    #    }
-    #    my $casename;
-    #    while(my $line = <FILE>) {
-    #         if ($line =~ /^------START/){
-    #         
-    #         }elsif ($line =~ /^FILENAME/){
-    #         
-    #         } elsif($line =~ /^\[(\w*)\]/) {
-    #             $casename = $1;
-    #         } elsif ($line =~ /^RETURN:/){
-    #
-    #         } elsif ($line =~ /^OUTPUT:/){
-    #
-    #         } elsif ($line =~ /^CHECK:.*\[(\w*)\]/){
-    #             $cases{$casename}{check} = $1;
-    #         } elsif ($line =~ /^CMDCHECK:.*\[(\w*)\]/){    
-    #             $cases{$casename}{cmdcheck} = $1; 
-    #         } elsif ($line =~ /^------END/){
-    #             $casename = "unknown case"; #should not be null
-    #         } else {
-    #             $cases{$casename}{unknown} = $_;
-    #         }                 
-    #    }                  
-    #}
-    #
-    ## begin to calculate
-    #my $pass = 0;
-    #my $fail = 0;
-    #my $total = 0;
-    #foreach my $record (keys %cases) {
-    #    my $flag;
-    #    if ($record eq "unknown case") {
-    #        #do something here
-    #        next;
-    #    }
-    #    if ($cases{$casename}{check} ) {
-    #        if ($cases{$casename}{check} eq "PASS"){
-    #            $flag = 1;
-    #        } else {
-    #            $flag = 0;
-    #        }
-    #    }            
-    #    if ($cases{$casename}{cmdcheck} ){
-    #        if ($cases{$casename}{cmdcheck} eq "PASS"){
-    #            $flag = 1;
-    #        } else {
-    #            $flag = 0;            
-    #        }
-    #        $pass++ if ($flag == 1);
-    #        $fail++ if ($flag == 0);    
-    #        $total++;        
-    #     }
-    #}
-    #$resultformn = "Total cases:$total,Pass cases: $pass,Fail cases: $fail";
-    return 0;
+        return "error";
+    }
+    foreach my $file (@logfilelist) {
+        my $flag = 0;
+        my $location = $logfiledir.$file;
+        if ($file =~ /xcattest\.log\.(\w+)/) {
+            my $holetime = $1;
+            if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
+                for my $start (@start) {
+                    my $this = shift @this;
+                    if ($start > $this) {
+                        $flag = 1;
+                        last;
+                    } elsif ($start < $this) {
+                        last;
+                    }
+                }
+            } else {
+                next; # do something here.
+            }
+        } else {
+            next; # useless log
+        }
+        next if ($flag); # old log
 
+        # begin to process
+        if (!open(LOGOFAT, "<$location")) {
+           send_msg(0, "$mn pro_result can't open log file");
+            return "error";
+        }
+        my $casename;
+        my $judge = "pass";
+        #my $begin = 0;
+        while(my $line = <LOGOFAT>) {
+             if ($line =~ /^------START/){
+                # $begin = 1;
+             }elsif ($line =~ /^FILENAME/){
+
+             } elsif($line =~ /^\[(.*)\]/) {
+                 $casename = $1;
+                 send_msg(2,"begin to check case $casename");
+                 $total ++;
+             } elsif ($line =~ /^RETURN:/){
+
+             } elsif ($line =~ /^OUTPUT:/){
+
+             } elsif ($line =~ /^CHECK:.*\[(\w*)\]/){
+                 if ($1 =~ /Failed/){
+                    $judge = "fail";
+                    push @cases, "CASE:$casename  IN:$location with $line\n";
+                 }
+                 send_msg(2,"check result is $judge");
+             } elsif ($line =~ /^CMDCHECK:.*\[(\w*)\]/){
+                if ($1 =~ /Failed/){
+                    $judge = "fail";
+                    push @cases, "CASE:$casename  IN:$location with $line\n";
+                 }
+             } elsif ($line =~ /^------END/){
+                    if($judge =~ /fail/){
+                        $fail++;
+                        send_msg(2,"case failed");
+                    }else {
+                         $pass++;
+                         send_msg(2,"case passed");
+                    }
+             } else {
+                 next;
+             }
+        }
+    }
+
+    my $result1 = "Total cases: $total, Pass cases: $pass, Fail cases: $fail, ";
+    if ($pass+$fail != $total){
+         $result1 .= "case log is imcomplete, please check\n";
+    }
+    $result1 .= "FATALERROR";
+    $result1 .= join ";", @cases;
+    return $result1;
 }
-
 sub send_mail {
     my $num = shift;
     my $msg = shift;
@@ -1370,13 +1355,14 @@ sub send_mail {
     if($num == 0) {
         $head = "xCATreg got fital error with:  ";
     } elsif ($num == 1) {
-        $head = "xCATreg report:";
+        $head = "AUTOMATED REGRESSION TEST REPORT\n";
     }
     my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
     my $content = sprintf "%02d:%02d:%02d %s %s", $hour,$min,$sec,$head,$msg;
     my $subject = "[xcat-autotest] autotest result ";
     my $mailprog = "/bin/mail";
     my $sendmail = "echo \"$content\"";
+print " $$ content is $content \n";    
     my $send = $sendmail." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
     system($send);    
     return 0;
@@ -1497,6 +1483,7 @@ my $failcase = 0;
 
     pipe CREAD,PWRITE;
     foreach my $m (keys %mns) {
+        send_msg(2, "fork process for $m");
         my $mn = $mns{$m};
         my $pid = fork();
         if ( !defined($pid) ) {
@@ -1510,16 +1497,16 @@ my $failcase = 0;
             send_msg(2, "step 3, Running mn_install...............");                       
             $res = mn_install();
             if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in mn_install\n";
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
                 exit;
             }
             #######################################
             # step 4. Copy code to MNs
             #######################################
             send_msg(2, "step 4, Running copy_code...............");
-            $res = copy_code($mn);
+            $res =  copy_code($mn);
             if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in copy_code\n";
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in copy_code\n";
                 exit;
             }    
             #######################################
@@ -1528,7 +1515,7 @@ my $failcase = 0;
             send_msg(2, "step 5, Running build_xcat...............");
             $res = build_xcat($mn);
             if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in build_xcat\n";
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in build_xcat\n";
                 exit;
             }        
             #######################################
@@ -1537,7 +1524,7 @@ my $failcase = 0;
             send_msg(2, "step 6, Running config_mn...............");
             $res = config_mn($mn);
             if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in config_mn\n";
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in config_mn\n";
                 exit;
             }
             #######################################
@@ -1550,7 +1537,7 @@ my $failcase = 0;
             send_msg(2, "step 7, Running do_test...............");
             $res = do_test($mn);
             if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in do_test\n";
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in do_test\n";
                 exit;
             }
             
@@ -1558,13 +1545,14 @@ my $failcase = 0;
             # step 8. process result 
             #######################################
             send_msg(2, "step 8, Running pro_result...............");
-            $res = pro_result($mn, $runtime);
-            if ($res) {
-                syswrite PWRITE,"Error--$mn: failed in pro_result\n";
+            my $resultformn = pro_result($mn, $runtime);
+            if ($resultformn eq "error") {
+                syswrite PWRITE,"REPORTFROM:$mn--: failed in pro_result\n";
                 exit;
             }                    
-            syswrite PWRITE,"Succeed--$mn: \n";
-            syswrite PWRITE,"Result--$resultformn";
+            send_msg(2, "result for $mn is $resultformn");
+print "$$:result for $mn is $resultformn \n";
+            syswrite PWRITE,"REPORTFROM:$mn--: $resultformn\n";
             exit 0;
         } # end of child process
     } # end of foreach    
@@ -1574,25 +1562,57 @@ my $failcase = 0;
         while(<CREAD>){
              chomp;
              my $result = $_;
-             if ($result =~ /Succeed--(\w*)/){
-                 $totalresult{$1} = "Succeed: ";
-             } elsif ($result =~ /Error--(\w*)/){
-                 $totalresult{$1} = $1;
-             } elsif ($result =~ /Total cases:\w*,Pass cases: \w*,Fail cases: \w*/){
-                 $totalresult{$1} .= $_;
-             }
+             if ($result =~ /^REPORTFROM:(\w*)--:(.*)/){
+                 $totalresult{$1} .= $2;
+             } 
         }  
         last if(keys %totalresult == keys %mns and (keys %totalresult != 0) );
         last if(time() - $time > 28800); #wait 8 hours at most    
     }
+print "finish \n";
+my $consumption = time() - $startpoint;
+my %summary;
+my %fatal;
+for my $m (keys %totalresult) {
 
+    if ($totalresult{$m} =~ /(.*)FATALERROR(.*)/){
+        $summary{$m} = $1;
+        $fatal{$m} = $2;
+    }
+} 
 # phase result
 send_msg(2, "Autotest has run sucessfully, begin to send mail");
-#foreach my $m (keys %totalresult) {
-#
-#}
+my $mailreport;
+$mailreport .= "\n================================\n";
+$mailreport .= "            SUMMARY\n";
+$mailreport .= "================================\n";
+$mailreport .= "\n";
+$mailreport .= "Commit: \n";
+$mailreport .= "---------------\n";
+$mailreport .= "$commitinfo \n";
+$mailreport .= "\n\n";
+$mailreport .= "Time consumption: \n";
+$mailreport .= "---------------------\n";
+$mailreport .= "$consumption\n";
+$mailreport .= "\n\n";
+$mailreport .= "Result: \n";
+$mailreport .= "---------------\n";
+for my $m (keys %totalresult) {
+    $mailreport .= "$m \n".$summary{$m}."\n";
+} 
 
-send_mail(1, "Automate regression has ran completely");
+$mailreport .= "\n\n\n";
+$mailreport .= "\n================================\n";
+$mailreport .= "          FATAL ERROR\n";
+$mailreport .= "================================\n";
+$mailreport .= "\n";
+$mailreport .= "Result: \n";
+$mailreport .= "---------------\n";
+for my $m (keys %totalresult) {
+    $mailreport .= "$m \n".$fatal{$m}."\n";
+} 
+#print "=======$mailreport \n";
+send_mail(1, $mailreport);
 exit 0;
     
 
