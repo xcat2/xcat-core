@@ -1,5 +1,7 @@
 start:Linux_full_installation_flat_x86_64_sles
 os:Linux
+cmd:makedhcp -n
+check:rc==0
 cmd:makedns -n
 check:rc==0
 cmd:service named restart
@@ -8,20 +10,16 @@ cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
+cmd:getmacs $$CN -f -D
+check:rc==0
 cmd:sleep 60
-cmd:makedhcp -n
-check:rc==0
 cmd:makedhcp -a
-check:rc==0
-cmd:service dhcpd restart
 check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/sles/compute.synclist
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rsetboot $$CN net
-check:rc==0
-cmd:rpower $$CN reset
+cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 2000
 cmd:ping $$CN -c 3
@@ -33,9 +31,7 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:nodeset $$CN osimage
 check:rc==0
-cmd:rsetboot $$CN net
-check:rc==0
-cmd:rpower $$CN reset
+cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 2000
 cmd:ping $$CN -c 3
