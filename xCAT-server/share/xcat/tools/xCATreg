@@ -96,9 +96,9 @@ sub usage
 # config for rhppc64env
 #######################################
 sub config_test {
-    send_msg(0, "******************************");
-    send_msg(0, "Reading Configure");
-    send_msg(0, "******************************");
+    send_msg(2, "******************************");
+    send_msg(2, "Reading Configure");
+    send_msg(2, "******************************");
     #if(!(-e $configfile)){
     #send_msg(0, "Warning: The xCAT test Configure file doesn't exist!");
     #send_msg(0, "Warning: The xCAT test Configure file doesn't exist!");
@@ -386,12 +386,12 @@ sub config_test {
     if(exists $rhppc64config{object}){
         foreach my $type (keys %{$rhppc64config{object}}){
             foreach my $name (keys %{$rhppc64config{object}{$type}}){
-                send_msg(0, "OBJECT:$name,TYPE:$type");
+                send_msg(2, "OBJECT:$name,TYPE:$type");
                 &runcmd( "  echo [Object_$type]>>default.conf");
                 &runcmd( "  echo Name=$name>>default.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$rhppc64config{object}{$type}{$name}}){
-                    send_msg(0, "    $attr = $rhppc64config{object}{$type}{$name}{$attr};");
+                    send_msg(2, "    $attr = $rhppc64config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$rhppc64config{object}{$type}{$name}{$attr}>>default.conf");
                 }
             }
@@ -400,12 +400,12 @@ sub config_test {
     if(exists $slesppc64config{object}){
         foreach my $type (keys %{$slesppc64config{object}}){
             foreach my $name (keys %{$slesppc64config{object}{$type}}){
-                send_msg(0, "OBJECT:$name,TYPE:$type");
+                send_msg(2, "OBJECT:$name,TYPE:$type");
                 &runcmd( "  echo [Object_$type]>>defaultslesppc64.conf");
                 &runcmd( "  echo Name=$name>>defaultslesppc64.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$slesppc64config{object}{$type}{$name}}){
-                    send_msg(0, "    $attr = $slesppc64config{object}{$type}{$name}{$attr};");
+                    send_msg(2, "    $attr = $slesppc64config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$slesppc64config{object}{$type}{$name}{$attr}>>defaultslesppc64.conf");
                 }
             }
@@ -414,12 +414,12 @@ sub config_test {
     if(exists $rhx8664config{object}){
         foreach my $type (keys %{$rhx8664config{object}}){
             foreach my $name (keys %{$rhx8664config{object}{$type}}){
-                send_msg(0, "OBJECT:$name,TYPE:$type");
+                send_msg(2, "OBJECT:$name,TYPE:$type");
                 &runcmd( "  echo [Object_$type]>>defaultrhx8664.conf");
                 &runcmd( "  echo Name=$name>>defaultrhx8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$rhx8664config{object}{$type}{$name}}){
-                    send_msg(0, "    $attr = $rhx8664config{object}{$type}{$name}{$attr};");
+                    send_msg(2, "    $attr = $rhx8664config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$rhx8664config{object}{$type}{$name}{$attr}>>defaultrhx8664.conf");
                 }
             }
@@ -428,12 +428,12 @@ sub config_test {
     if(exists $slesx8664config{object}){
         foreach my $type (keys %{$slesx8664config{object}}){
             foreach my $name (keys %{$slesx8664config{object}{$type}}){
-                send_msg(0, "OBJECT:$name,TYPE:$type");
+                send_msg(2, "OBJECT:$name,TYPE:$type");
                 &runcmd( "  echo [Object_$type]>>defaultslesx8664.conf");
                 &runcmd( "  echo Name=$name>>defaultslesx8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$slesx8664config{object}{$type}{$name}}){
-                    send_msg(0, "    $attr = $slesx8664config{object}{$type}{$name}{$attr};");
+                    send_msg(2, "    $attr = $slesx8664config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$slesx8664config{object}{$type}{$name}{$attr}>>defaultslesx8664.conf");
                 }
             }
@@ -442,12 +442,12 @@ sub config_test {
     if(exists $ubux8664config{object}){
         foreach my $type (keys %{$ubux8664config{object}}){
             foreach my $name (keys %{$ubux8664config{object}{$type}}){
-                send_msg(0, "OBJECT:$name,TYPE:$type");
+                send_msg(2, "OBJECT:$name,TYPE:$type");
                 &runcmd( "  echo [Object_$type]>>defaultubux8664.conf");
                 &runcmd( "  echo Name=$name>>defaultubux8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$ubux8664config{object}{$type}{$name}}){
-                    send_msg(0, "    $attr = $ubux8664config{object}{$type}{$name}{$attr};");
+                    send_msg(2, "    $attr = $ubux8664config{object}{$type}{$name}{$attr};");
                     &runcmd( "  echo $attr=$ubux8664config{object}{$type}{$name}{$attr}>>defaultubux8664.conf");
                 }
             }
@@ -456,116 +456,116 @@ sub config_test {
 
     if(exists $rhppc64config{table}){
         foreach my $type (keys %{$rhppc64config{table}}){
-            send_msg(0, "TABLE:$type");
+            send_msg(2, "TABLE:$type");
             &runcmd( "  echo [Table_$type]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$rhppc64config{table}{$type}}){
-               send_msg(0, "    $rhppc64config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg(2, "    $rhppc64config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $rhppc64config{table}{$type}{$name}{__KEY__}=$name>>default.conf");
                foreach my $attr (keys %{$rhppc64config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
-                       send_msg(0, "    $attr = $rhppc64config{table}{$type}{$name}{$attr}");
+                       send_msg(2, "    $attr = $rhppc64config{table}{$type}{$name}{$attr}");
                        &runcmd( " echo $attr=$rhppc64config{table}{$type}{$name}{$attr}>>default.conf");
                    }
                 }
-                send_msg(0, "\n");
+                send_msg(2, "\n");
             }
         }
     }
     if(exists $slesppc64config{table}){
         foreach my $type (keys %{$slesppc64config{table}}){
-            send_msg(0, "TABLE:$type");
+            send_msg(2, "TABLE:$type");
             &runcmd( "  echo [Table_$type]>>defaultslesppc64.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$slesppc64config{table}{$type}}){
-               send_msg(0, "    $slesppc64config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg(2, "    $slesppc64config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $slesppc64config{table}{$type}{$name}{__KEY__}=$name>>defaultslesppc64.conf");
                foreach my $attr (keys %{$slesppc64config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
-                       send_msg(0, "    $attr = $slesppc64config{table}{$type}{$name}{$attr}");
+                       send_msg(2, "    $attr = $slesppc64config{table}{$type}{$name}{$attr}");
                        &runcmd( " echo $attr=$slesppc64config{table}{$type}{$name}{$attr}>>defaultslesppc64.conf");
                    }
                 }
-                send_msg(0, "\n");
+                send_msg(2, "\n");
             }
         }
     }
     if(exists $rhx8664config{table}){
         foreach my $type (keys %{$rhx8664config{table}}){
-            send_msg(0, "TABLE:$type");
+            send_msg(2, "TABLE:$type");
             &runcmd( "  echo [Table_$type]>>defaultrhx8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$rhx8664config{table}{$type}}){
-               send_msg(0, "    $rhx8664config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg(2, "    $rhx8664config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $rhx8664config{table}{$type}{$name}{__KEY__}=$name>>defaultrhx8664.conf");
                foreach my $attr (keys %{$rhx8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
-                       send_msg(0, "    $attr = $rhx8664config{table}{$type}{$name}{$attr}");
+                       send_msg(2, "    $attr = $rhx8664config{table}{$type}{$name}{$attr}");
                        &runcmd( " echo $attr=$rhx8664config{table}{$type}{$name}{$attr}>>defaultrhx8664.conf");
                    }
                 }
-                send_msg(0, "\n");
+                send_msg(2, "\n");
             }
         }
     }
     if(exists $slesx8664config{table}){
         foreach my $type (keys %{$slesx8664config{table}}){
-            send_msg(0, "TABLE:$type");
+            send_msg(2, "TABLE:$type");
             &runcmd( "  echo [Table_$type]>>defaultslesx8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$slesx8664config{table}{$type}}){
-               send_msg(0, "    $slesx8664config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg(2, "    $slesx8664config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $slesx8664config{table}{$type}{$name}{__KEY__}=$name>>defaultslesx8664.conf");
                foreach my $attr (keys %{$slesx8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
-                       send_msg(0, "    $attr = $slesx8664config{table}{$type}{$name}{$attr}");
+                       send_msg(2, "    $attr = $slesx8664config{table}{$type}{$name}{$attr}");
                        &runcmd( " echo $attr=$slesx8664config{table}{$type}{$name}{$attr}>>defaultslesx8664.conf");
                    }
                 }
-                send_msg(0, "\n");
+                send_msg(2, "\n");
             }
         }
     }
     if(exists $ubux8664config{table}){
         foreach my $type (keys %{$ubux8664config{table}}){
-            send_msg(0, "TABLE:$type");
+            send_msg(2, "TABLE:$type");
             &runcmd( "  echo [Table_$type]>>defaultubux8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$ubux8664config{table}{$type}}){
-               send_msg(0, "    $ubux8664config{table}{$type}{$name}{__KEY__} = $name");
+               send_msg(2, "    $ubux8664config{table}{$type}{$name}{__KEY__} = $name");
                &runcmd( "  echo $ubux8664config{table}{$type}{$name}{__KEY__}=$name>>defaultubux8664.conf");
                foreach my $attr (keys %{$ubux8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
-                       send_msg(0, "    $attr = $ubux8664config{table}{$type}{$name}{$attr}");
+                       send_msg(2, "    $attr = $ubux8664config{table}{$type}{$name}{$attr}");
                        &runcmd( " echo $attr=$ubux8664config{table}{$type}{$name}{$attr}>>defaultubux8664.conf");
                    }
                 }
-                send_msg(0, "\n");
+                send_msg(2, "\n");
             }
         }
     }
 
     if(exists $rhppc64config{script_prev}){
-         send_msg(0, "Script_Prev:");
+         send_msg(2, "Script_Prev:");
          foreach $cmd (@{$rhppc64config{script_prev}}){
-            send_msg(0, "    $cmd");
+            send_msg(2, "    $cmd");
          }
     }
 
     if(exists $rhppc64config{script_post}){
-        send_msg(0, "Script_Post:");
+        send_msg(2, "Script_Post:");
         foreach $cmd (@{$rhppc64config{script_post}}){
-            send_msg(0, "    $cmd");
+            send_msg(2, "    $cmd");
         }
     }
     if (exists $rhppc64config{var}){
@@ -573,10 +573,10 @@ sub config_test {
     #my $MNIP=$rhppc64config{var}{MNIP};
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
-        send_msg(0, "Varible:");
+        send_msg(2, "Varible:");
         &runcmd( "  echo [System]>>default.conf");
         foreach my $varname (keys %{$rhppc64config{var}}){
-            send_msg(0, "    $varname = $rhppc64config{var}{$varname}");
+            send_msg(2, "    $varname = $rhppc64config{var}{$varname}");
             &runcmd( "  echo $varname=$rhppc64config{var}{$varname}>>default.conf");
             #print "var is $rhppc64config{var}\n";
         }
@@ -586,10 +586,10 @@ sub config_test {
     #my $MNIP=$rhppc64config{var}{MNIP};
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
-        send_msg(0, "Varible:");
+        send_msg(2, "Varible:");
         &runcmd( "  echo [System]>>defaultslesppc64.conf");
         foreach my $varname (keys %{$slesppc64config{var}}){
-            send_msg(0, "    $varname = $slesppc64config{var}{$varname}");
+            send_msg(2, "    $varname = $slesppc64config{var}{$varname}");
             &runcmd( "  echo $varname=$slesppc64config{var}{$varname}>>defaultslesppc64.conf");
             #print "var is $slesppc64config{var}\n";
         }
@@ -599,10 +599,10 @@ sub config_test {
     #my $MNIP=$rhppc64config{var}{MNIP};
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
-        send_msg(0, "Varible:");
+        send_msg(2, "Varible:");
         &runcmd( "  echo [System]>>defaultrhx8664.conf");
         foreach my $varname (keys %{$rhx8664config{var}}){
-            send_msg(0, "    $varname = $rhx8664config{var}{$varname}");
+            send_msg(2, "    $varname = $rhx8664config{var}{$varname}");
             &runcmd( "  echo $varname=$rhx8664config{var}{$varname}>>defaultrhx8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
@@ -612,10 +612,10 @@ sub config_test {
     #my $MNIP=$rhppc64config{var}{MNIP};
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
-        send_msg(0, "Varible:");
+        send_msg(2, "Varible:");
         &runcmd( "  echo [System]>>defaultslesx8664.conf");
         foreach my $varname (keys %{$slesx8664config{var}}){
-            send_msg(0, "    $varname = $slesx8664config{var}{$varname}");
+            send_msg(2, "    $varname = $slesx8664config{var}{$varname}");
             &runcmd( "  echo $varname=$slesx8664config{var}{$varname}>>defaultslesx8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
@@ -625,10 +625,10 @@ sub config_test {
     #my $MNIP=$rhppc64config{var}{MNIP};
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
-        send_msg(0, "Varible:");
+        send_msg(2, "Varible:");
         &runcmd( "  echo [System]>>defaultubux8664.conf");
         foreach my $varname (keys %{$ubux8664config{var}}){
-            send_msg(0, "    $varname = $ubux8664config{var}{$varname}");
+            send_msg(2, "    $varname = $ubux8664config{var}{$varname}");
             &runcmd( "  echo $varname=$ubux8664config{var}{$varname}>>defaultubux8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
@@ -733,7 +733,7 @@ sub build_xcat {
 #######################################
 sub config_mn {
     my $mn = shift;
-    send_msg(0, "begin read configuration file for mn");
+    send_msg(2, "begin read configuration file for mn");
     mkdir $resultdir unless -d $resultdir;
     $timestamp = `date +"%Y%m%d%H%M%S"`;
     $res = &config_test();
@@ -742,7 +742,7 @@ sub config_mn {
         exit;
     }
     #}
-    send_msg(0, "step 6 : reading mn configuration done=====");
+    send_msg(2, "step 6 : reading mn configuration done=====");
     return 0;
 }      
 #######################################
@@ -783,16 +783,16 @@ sub init
     my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
         my $nodedir=$confkeys{rhpdir};
+        my $iso=$rhppc64config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-        system ("scp -r /iso/*.iso $MN:/iso");
-       system("xdsh $MN mount -o loop /iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso /iso/mountpoint");
+        system ("scp -r /iso/$iso $MN:/iso");
+       system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint");
        system ("scp -r /etc/hosts $MN:/etc/hosts");
        system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
        print "[OK]\n";
        print "--get the latest XCAT tarball.......\n";
-       system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
        system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");   
@@ -824,14 +824,14 @@ sub init
         #exit;
         #}
 
-        send_msg( " rhppc64 env is ready\n");
+        send_msg(2, " rhppc64 env is ready\n");
     }elsif ($envoutput eq 'slesppc64'){
-        #my $MN=$slesppc64config{var}{MN}; 
+        my $iso=$slesppc64config{var}{ISO}; 
         my $nodedir=$confkeys{slespdir};
         system(" xdsh $MN  mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
-        system("scp -r /iso/SLES-11-SP3-DVD-ppc64-GM-DVD1.iso $MN:/iso/");
-        system("xdsh $MN mount -o loop /iso/SLES-11-SP3-DVD-ppc64-GM-DVD1.iso /iso/mountpoint");   ####
+        system("scp -r /iso/$iso $MN:/iso/");
+        system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint");   ####
         print "[OK]\n";
 
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
@@ -840,7 +840,6 @@ sub init
         print "[OK]\n";
 
         print "--get the latest XCAT tarball.......\n";
-        system("xdsh $MN  rm -rf /etc/yum.repos.d/*");
         $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         
         print "[OK]\n--deploy zypper....";
@@ -859,17 +858,18 @@ sub init
         print "[OK]\n";
 }elsif ($envoutput eq 'rhx8664'){
         my $nodedir=$confkeys{rhxdir};
+        my $iso=$rhx8664config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "[OK]\n--copy ISO file.....";
-        system(" scp -r /iso/RHEL6.5-20131111.0-Server-x86_64-DVD1.iso $MN:/iso");
+        system(" scp -r /iso/$iso $MN:/iso");
+        system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint"); 
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
         print "[OK]\n";
         print "--get the latest XCAT tarball.......\n";
         system("scp -r $nodedir/xcat-dep $MN:/");
-        system("xdsh $MN rm -rf /etc/yum.repos.d/*");
         &repo();
         system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/");
         system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
@@ -888,11 +888,12 @@ sub init
         system("rm -rf defaultrhx8664.conf");
 }elsif ($envoutput eq 'slesx8664'){
         my $nodedir=$confkeys{slesxdir};
+         my $iso=$slesx8664config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
-        system(" scp -r /iso/SLES-11-SP3-DVD-x86_64-GM-DVD1.iso $MN:/iso");
+        system(" scp -r /iso/$iso $MN:/iso");
         print "[OK]\n--mount ISO file.....";
-        system("mount -o loop /iso/SLES-11-SP3-DVD-x86_64-GM-DVD1.iso /iso/mountpoint");   ####
+        system("mount -o loop /iso/$iso /iso/mountpoint");   ####
         print "[OK]\n";
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
@@ -917,9 +918,10 @@ sub init
         print "[OK]\n";
 }elsif ($envoutput eq 'ubux8664'){
         my $nodedir=$confkeys{ubuntudir};
+        my $iso=$ubux8664config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing ubu iso file.......\n";
-        system(" scp -r /iso/ubuntu-12.04.1-server-amd64.iso $MN:/iso");
+        system(" scp -r /iso/$iso $MN:/iso");
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
@@ -960,13 +962,13 @@ sub init
 sub do_test {
     my $mn = shift;
     # step 7.1 Install xcat and init mn
-    send_msg(0, "began to install xCAT and initialize mn");
+    send_msg(2, "began to install xCAT and initialize mn");
     $res = &init($mn);
     if ($res != 0){
         exit;
     }
     
-    send_msg(0, "Begin to do test");
+    send_msg(2, "Begin to do test");
     $res = &do_test1($mn);
     if ($res) {
         send_msg(0, "DO TEST returns error, exit");
@@ -985,17 +987,17 @@ sub  do_test1
     my $MN=$mn;
     my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
-    send_msg(0, "******************************");
-    send_msg(0, "start  test");
-    send_msg(0, "******************************");
-    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_diskless_installation_flat_ppc64");
+    send_msg(2, "******************************");
+    send_msg(2, "start  test");
+    send_msg(2, "******************************");
+    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_statelite_installation_flat_ppc64");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_ppc64");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_ppc64");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
@@ -1025,55 +1027,55 @@ sub  do_test1
     #system("mkdir -p $nodedir/result");
     # system("scp -r $MN:/autotest/result /regression/rhppc64");
  }elsif ($envoutput eq 'slesppc64'){
-    send_msg(0, "******************************");
-    send_msg(0, "start  test");
-    send_msg(0, "******************************");
-    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_diskless_installation_ppc64_flat");
+    send_msg(2, "******************************");
+    send_msg(2, "start  test");
+    send_msg(2, "******************************");
+    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_statelite_installation_flat_ppc64");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_diskless_installation_ppc64_flat");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_statelite_installation_flat_ppc64");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
 }elsif ($envoutput eq 'rhx8664'){
-    send_msg(0, "******************************");
-    send_msg(0, "start  test");
-    send_msg(0, "******************************");
-   #system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_diskless_installation_flat_ppc64");
-   #system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    send_msg(2, "******************************");
+    send_msg(2, "start  test");
+    send_msg(2, "******************************");
+    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_x86_redhat");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_statelite_installation_flat_ppc64");
-   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_x86_redhat");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_x86_64_redhat");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
 }elsif ($envoutput eq 'slesx8664'){
-    send_msg(0, "******************************");
-    send_msg(0, "start  test");
-    send_msg(0, "******************************");
-   #system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t ");
-   #system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    send_msg(2, "******************************");
+    send_msg(2, "start  test");
+    send_msg(2, "******************************");
+    system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_x86_64_sles ");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   #system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_statelite_installation_flat_ppc64");
-   #system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_x86_64_sles");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_x86_64_sles");
+    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 }elsif ($envoutput eq 'ubux8664'){
-    send_msg(0, "******************************");
-    send_msg(0, "start  test");
-    send_msg(0, "******************************");
+    send_msg(2, "******************************");
+    send_msg(2, "start  test");
+    send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Ubuntu_full_installation_flat_x86_vm ");
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
