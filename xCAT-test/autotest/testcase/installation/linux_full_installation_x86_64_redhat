@@ -7,20 +7,16 @@ check:rc==0
 cmd:sleep 60
 cmd:makedhcp -n
 check:rc==0
-cmd:makedhcp -a
-check:rc==0
-cmd:service dhcpd restart
-check:rc==0
-cmd:makedns -a
-check:rc==0
 cmd:service named restart
 check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
+cmd:getmacs $$CN -f -D
+check:rc==0
 cmd:sleep 60
-cmd:makedhcp -n
+cmd:makedns -a
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
