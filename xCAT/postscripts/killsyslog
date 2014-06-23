@@ -1,6 +1,10 @@
 #!/bin/bash
 #Used only by sysclone
 
+# SI post-install script, run after SI has installed the OS, to kill processes SI does not kill
+# (so /a can be umounted cleanly)
+# SI post-install scripts run in a chroot environment of the final OS image
+
 if [ -f "/etc/SuSE-release" ];then
     str_out=`ps -ef | grep -v grep | grep syslog-ng`
     if [ $? -eq 0 ];then
@@ -8,3 +12,15 @@ if [ -f "/etc/SuSE-release" ];then
         kill -9 $str_id
     fi
 fi
+
+# SI starts klogd in the chroot, but does not kill it.  Remove this line when SI fixes their bug.
+killall klogd
+
+# flush all write buffers, just in case SI can not umount /a
+echo "Syncing file systems"
+sync
+
+#todo: remove
+#echo "Processes still using /:"
+#fuser -v /
+#sleep 30
