@@ -1190,6 +1190,7 @@ sub read_conf{
     my $keys;
     if (!open($keys, "<$configfile")) {
         send_msg(0, "Open configuration file error");
+        return undef;
     }
     my $line;
     while ($line = <$keys>) {
