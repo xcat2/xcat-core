@@ -1497,12 +1497,12 @@ my $failcase = 0;
             #######################################
             # step 3. Install MNs, 
             #######################################   
-            send_msg(2, "step 3, Running mn_install...............");                       
-            $res = mn_install();
-            if ($res) {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
-                exit;
-            }
+           # send_msg(2, "step 3, Running mn_install...............");                       
+           # $res = mn_install();
+           # if ($res) {
+           #     syswrite PWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
+           #     exit;
+           # }
             #######################################
             # step 4. Copy code to MNs
             #######################################
