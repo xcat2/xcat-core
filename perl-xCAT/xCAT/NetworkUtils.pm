@@ -19,7 +19,7 @@ use File::Path;
 use Math::BigInt;
 use Socket;
 use xCAT::GlobalDef;
-use Data::Dumper;
+#use Data::Dumper;
 use strict;
 use warnings "all";
 my $socket6support = eval { require Socket6 };
@@ -1591,7 +1591,7 @@ sub thishostisnot
 #-----------------------------------------------------------------------------
 
 =head3 gethost_ips  (AIX and Linux)
-     Will use ifconfig or ip addr to determine all possible ip addresses for the
+     Will use ifconfig to determine all possible ip addresses for the
 	 host it is running on and then gethostbyaddr to get all possible hostnames
 
      input:
@@ -1601,63 +1601,124 @@ sub thishostisnot
 =cut
 
 #-----------------------------------------------------------------------------
+#sub gethost_ips1
+#{
+#    my ($class) = @_;
+#    my $cmd;
+#    my @ipaddress;
+#    $cmd = "ifconfig" . " -a";
+#    $cmd = $cmd . "| grep \"inet\"";
+#    my @result = xCAT::Utils->runcmd($cmd, 0);
+#    if ($::RUNCMD_RC != 0)
+#    {
+#        xCAT::MsgUtils->message("S", "Error from $cmd\n");
+#        exit $::RUNCMD_RC;
+#    }
+#    foreach my $addr (@result)
+#    {
+#        my @ip;
+#        if (xCAT::Utils->isLinux())
+#        {
+#            if ($addr =~ /inet6/)
+#            {
+#               #TODO, Linux ipv6 
+#            }
+#            else
+#            {
+#                my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+#                #@ip = split(":", $addr1);
+#                #push @ipaddress, $ip[1];
+#                $addr1 =~ s/.*://;
+#                push @ipaddress, $addr1;
+#            }
+#        }
+#        else
+#        {    #AIX
+#            if ($addr =~ /inet6/)
+#            {
+#               $addr =~ /\s*inet6\s+([\da-fA-F:]+).*\/(\d+)/;
+#               my $v6ip = $1;
+#               my $v6mask = $2;
+#               if ($v6ip)
+#               {
+#                   push @ipaddress, $v6ip;
+#               }
+#            }
+#            else
+#            {
+#                my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+#                  split(" ", $addr);
+#                push @ipaddress, $addr1;
+#            }
+#
+#        }
+#    }
+#    my @names = @ipaddress;
+#    foreach my $ipaddr (@names)
+#    {
+#        my $hostname = xCAT::NetworkUtils->gethostname($ipaddr);
+#        if ($hostname)
+#        {
+#            my @shorthost = split(/\./, $hostname);
+#            push @ipaddress, $shorthost[0];
+#        }
+#    }
+#
+#    return @ipaddress;
+#}
+
+
 sub gethost_ips
 {
     my ($class) = @_;
     my $cmd;
     my @ipaddress;
-    if (xCAT::Utils->isLinux()) {
-      $cmd = "ip addr ";
-      $cmd = $cmd . "| grep \"inet\"";
-    }  else { # AIX
-      $cmd = "ifconfig" . " -a";
-      $cmd = $cmd . "| grep \"inet\"";
-    }
-    my @result = xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
+    if (xCAT::Utils->isLinux())
     {
-        xCAT::MsgUtils->message("S", "Error from $cmd\n");
-        exit $::RUNCMD_RC;
+       $cmd="ip -4 --oneline addr show |awk -F ' ' '{print \$4}'|awk -F '/' '{print \$1}'";
+       my @result =xCAT::Utils->runcmd($cmd);
+       if ($::RUNCMD_RC != 0)
+       {
+           xCAT::MsgUtils->message("S", "Error from $cmd\n");
+           exit $::RUNCMD_RC;
+       }   
+       
+       push @ipaddress, @result;
     }
-    if (xCAT::Utils->isLinux()) {
-      foreach  (@result)
-      {
-        my @ip;
-        if (/inet6/)
-        {
-             #TODO, Linux ipv6 
-        }
-        else
-        {
-                my @ents = split(/\s+/);
-                my $ip   = $ents[2];
-                $ip =~ s/\/.*//;
-                $ip =~ s/\%.*//;
-                push @ipaddress, $ip;
-        }
-      }
-    } else { #AIX
-      foreach my $addr (@result)
-      {
-        if ($addr =~ /inet6/)
-        {
-           $addr =~ /\s*inet6\s+([\da-fA-F:]+).*\/(\d+)/;
-            my $v6ip = $1;
-            my $v6mask = $2;
-            if ($v6ip)
-            {
-                   push @ipaddress, $v6ip;
-            }
-        }
-        else
-        {
-           my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
-           split(" ", $addr);
-           push @ipaddress, $addr1;
-        }
+    else
+    {    #AIX
+    
+       $cmd = "ifconfig" . " -a";
+       $cmd = $cmd . "| grep \"inet\"";
+       my @result = xCAT::Utils->runcmd($cmd, 0);
+       if ($::RUNCMD_RC != 0)
+       {
+           xCAT::MsgUtils->message("S", "Error from $cmd\n");
+           exit $::RUNCMD_RC;
+       }
+       
+       foreach my $addr (@result)
+       {
+          if ($addr =~ /inet6/)
+          {
+             $addr =~ /\s*inet6\s+([\da-fA-F:]+).*\/(\d+)/;
+             my $v6ip = $1;
+             my $v6mask = $2;
+             if ($v6ip)
+             {
+                 push @ipaddress, $v6ip;
+             }
+          }
+          else
+          {
+              my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+                split(" ", $addr);
+              push @ipaddress, $addr1;
+          }
 
-      }
+       }
     }
+
     my @names = @ipaddress;
     foreach my $ipaddr (@names)
     {
@@ -1668,9 +1729,9 @@ sub gethost_ips
             push @ipaddress, $shorthost[0];
         }
     }
-
     return @ipaddress;
 }
+
 #-------------------------------------------------------------------------------
 
 =head3 get_subnet_aix 
@@ -1846,8 +1907,6 @@ sub validate_ip
     }
     return([0]);
 }
-
-
 #-------------------------------------------------------------------------------
 
 =head3    isIpaddr
