@@ -10,7 +10,7 @@ B<rinstall> [I<-O>|I<--osimage>] [I<-c>|I<--console>] [I<noderange>]
 
 =head1 B<Description>
 
-B<rinstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<rinstall>), and B<rpower> to begin a boot cycle.
+B<rinstall> is a convenience command that will change tables as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<rinstall>), and B<rpower> to begin a boot cycle.
 
 If [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
 
