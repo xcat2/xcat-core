@@ -1,4 +1,5 @@
 #!/bin/bash
+#Used only by sysclone
 
 # This SI post-install script is needed because the initrd that autoyast/kickstart/ubuntu builds when installing
 # sles/rh/ubuntu on the golden node may not have the drivers when that initrd runs on the node that is
@@ -9,10 +10,11 @@
 #		And do whatever is necessary on ubuntu.
 
 if [[ -f /sbin/dracut ]]; then
-	#todo: implement rh case using dracut
-	echo "Note: not regenerating the initrd, because dracut is not supported by this node yet."
+    # redhat/centos
+    echo "Running dracut to regenerate the initrd with the drivers needed by this node:"
+    dracut  --force
 else
-	# suse/sles
-	echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
-	mkinitrd
+    # suse/sles
+    echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
+    mkinitrd
 fi
