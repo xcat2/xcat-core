@@ -1,53 +1,64 @@
 =head1 Name
 
-B<winstall> - Begin OS provision on a noderange and display in wcons
+B<winstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<winstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<-O>|I<--osimage>] [I<noderange>]
+B<winstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<noderange>]
+
+B<winstall> [I<-O>|I<--osimage>] [I<noderange>]
 
 =head1 B<Description>
 
-B<winstall> is a convience command that will change tables as requested for operating system version, profile, and architecture, call nodeset to modify the network boot configuration, and rpower to begin a boot cycle.  
+B<winstall> is a convenience tool that will change attributes as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes
+with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<winstall>), and B<rpower> to begin a boot cycle.
 
-If [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified
+If [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
 
-It will then commence a wcons command to the noderange for monitoring.
+It  will then run wcons on the nodes. 
 
 =head1 B<Options>
 
 =over 7
 
+=item B<-h>|B<--help>
+
+Display usage message. 
+
+=item B<-v>|B<--version>
+
+Display version. 
+
 =item B<-o>|B<--osver>
 
-Specifies which os version to provision.  If unspecified, the current table values are used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
+Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
 
 =item B<-p>|B<--profile>
 
-Specifies what profile should be used of the operating system.  If not specified the tables are used as is. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
+Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
 
 
 =item B<-a>|B<--arch>
 
-Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning betweer x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
+Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
 
 =item B<-O>|B<--osimage>
 
-Specifies the osimage to provision.
+Specifies the osimage to provision. 
 
 =back
 
 =head1 B<Examples>
 
-B<rinstall> I<node1-node20>
+B<winstall> I<node1-node20>
 
-Provison nodes 1 through 20, using configuration as is from tables.
+Provison nodes 1 through 20, using their current configuration.
 
-B<rinstall> -o rhels5.1 -p compute I<node1-node20>
+B<winstall> I<node1-node20> -o rhels5.1 -p compute
 
 Provision nodes 1 through 20, forcing rhels5.1 and compute profile.
 
-B<rinstall> -O rhels6.4-ppc64-netboot-compute I<node1-node20>
+B<winstall> I<node1-node20> -O rhels6.4-ppc64-netboot-compute
 
 Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
 
