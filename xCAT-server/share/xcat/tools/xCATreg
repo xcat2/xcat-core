@@ -779,7 +779,6 @@ sub init
 {
     my $mn = shift;
     my $MN=$mn;
-    system("xdsh $MN mkdir -p /autotest/result");
     my $envoutput = &gettestinfo($mn);
     if ($envoutput eq 'rhppc64'){
         my $nodedir=$confkeys{rhpdir};
@@ -787,8 +786,8 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "--mount NF .......";
-        system ("scp -r /iso/$iso $MN:/iso");
-       system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint");
+        system ("scp -r $iso $MN:/iso");
+       system("xdsh $MN mount -o loop $iso /iso/mountpoint");
        system ("scp -r /etc/hosts $MN:/etc/hosts");
        system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
        print "[OK]\n";
@@ -796,27 +795,19 @@ sub init
        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
        system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");   
-       #system("scp -r default.conf $MN:$testconfigfile");
-       #system("xdsh $MN perl $nodedir/xcatbuild/xcat-core/mklocalrepo.sh");
        system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
        print "--install XCAT .......\n";
-
-       system("xdsh $MN yum -y install createrepo");
-       system("xdsh $MN createrepo /xcat-core/build");
-       system("xdsh $MN cp /xcat-core/build/xCAT-core.repo /etc/yum.repos.d/");
-       system("xdsh $MN yum clean metadata");
        system("xdsh $MN rpm --import /iso/mountpoint/RPM-GPG-KEY-redhat-release");
+       system("xdsh $MN yum -y install createrepo");
+       system("xdsh $MN yum clean metadata");
        system("xdsh $MN yum -y install perl-xCAT xCAT-client xCAT-server xCAT");
        print "--install XCATTEST .......\n";
        system("xdsh $MN yum -y install xCAT-test");
        system("scp -r default.conf $MN:$testconfigfile");
        system("rm -rf default.conf");
-
-        print "--install createrepo .......\n";
-        #system("xdsh $MN yum -y install createrepo");
+       system("rm -rf rhel6.5.repo");
         system("xdsh $MN yum -y install screen");
         system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
-        system("xdsh $MN mkdir -p /autotest/result");
         #system("xdsh $MN sysctl -n net.ipv4.ip_forward=1");
         $res =  system("xdsh $MN source /etc/profile.d/xcat.sh");
         #if ($res != 0){
@@ -830,8 +821,8 @@ sub init
         my $nodedir=$confkeys{slespdir};
         system(" xdsh $MN  mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
-        system("scp -r /iso/$iso $MN:/iso/");
-        system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint");   ####
+        system("scp -r $iso $MN:/iso");
+        system("xdsh $MN mount -o loop $iso /iso/mountpoint");   ####
         print "[OK]\n";
 
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
@@ -863,8 +854,8 @@ sub init
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing redhat iso file.......\n";
         print "[OK]\n--copy ISO file.....";
-        system(" scp -r /iso/$iso $MN:/iso");
-        system("xdsh $MN mount -o loop /iso/$iso /iso/mountpoint"); 
+        system(" scp -r $iso $MN:/iso");
+        system("xdsh $MN mount -o loop $iso /iso/mountpoint"); 
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
@@ -887,14 +878,15 @@ sub init
         system("xdsh $MN yum -y install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64 ");
         system("scp -r defaultrhx8664.conf $MN:$testconfigfile");
         system("rm -rf defaultrhx8664.conf");
+        system("rm -rf rhel6.5.repo");
 }elsif ($envoutput eq 'slesx8664'){
         my $nodedir=$confkeys{slesxdir};
          my $iso=$slesx8664config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
-        system(" scp -r /iso/$iso $MN:/iso");
+        system(" scp -r $iso $MN:/iso");
         print "[OK]\n--mount ISO file.....";
-        system("mount -o loop /iso/$iso /iso/mountpoint");   ####
+        system("mount -o loop $iso /iso/mountpoint");   ####
         print "[OK]\n";
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
@@ -922,7 +914,7 @@ sub init
         my $iso=$ubux8664config{var}{ISO};
         system("xdsh $MN mkdir -p /iso/mountpoint");
         print "--prepareing ubu iso file.......\n";
-        system(" scp -r /iso/$iso $MN:/iso");
+        system(" scp -r $iso $MN:/iso");
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
@@ -992,16 +984,11 @@ sub  do_test1
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
 
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     #if($dsklscnsninst){
     #     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_cn_with_sn_diskless_installation_flat_x86_vm");
     #     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
@@ -1027,73 +1014,58 @@ sub  do_test1
     #}
     #system("mkdir -p $nodedir/result");
     # system("scp -r $MN:/autotest/result /regression/rhppc64");
-    system("scp -r $MN:/autotest/result/* /regression/result/$MN");
+    system("mkdir -p /regression/result/$MN");
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");
  }elsif ($envoutput eq 'slesppc64'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_diskless_installation_ppc64_flat");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_statelite_installation_flat_ppc64");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-  system("scp -r $MN:/autotest/result/* /regression/result/$MN");
+    system("mkdir -p /regression/result/$MN");
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");
 
 }elsif ($envoutput eq 'rhx8664'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_x86_redhat");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_x86_redhat");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_x86_64_redhat");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-     system("scp -r $MN:/autotest/result/* /regression/result/$MN");
-
+    system("mkdir -p /regression/result/$MN");
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");
 }elsif ($envoutput eq 'slesx8664'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_x86_64_sles ");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-
     system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_x86_64_sles");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_x86_64_sles");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-    system("scp -r $MN:/autotest/result/* /regression/result/$MN");
+    system("mkdir -p /regression/result/$MN");
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");
 }elsif ($envoutput eq 'ubux8664'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Ubuntu_full_installation_flat_x86_vm ");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-
-    #system("xdsh $MN /opt/xcat/bin/xcattest -b /opt/xcat/share/xcat/tools/autotest/bundle/bat.bundle");
-    #system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Ubuntu_diskless_installation_flat_x86_vm");
-    system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
-   system("scp -r $MN:/autotest/result/* /regression/result/$MN");
-   }
+    system("mkdir -p /regression/result/$MN");
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");   
+}
 
 }
 
