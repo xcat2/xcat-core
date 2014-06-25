@@ -1924,7 +1924,7 @@ sub updatenodesoftware
             my $cmd;
             my $args1;
             $cmd =
-                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
+                  "$installdir/postscripts/xcatdsklspost 2 -m $snkey 'ospkgs,otherpkgs,syscloneimgupdate' --tftp $tftpdir --installdir $installdir --nfsv4 $nfsv4 -c";
             # add flowcontrol flag
             if ($flowcontrol == 1){
                $cmd .= " -F";

@@ -1,3 +1,9 @@
+#!/bin/bash
+#Used only by sysclone
+
+# SI post-install script to configure the efi boot mgr or grub after SI has installed the OS
+# SI post-install scripts run in a chroot environment of the final OS image
+
 if [ -d /sys/firmware/efi ]; then
     echo "Setting Boot Manager for the next boot."
     echo "delete all sysclone boot list"
@@ -25,32 +31,50 @@ else
     if [ -f "/etc/systemconfig/systemconfig.conf" ];then
         boot_device=`cat /etc/systemconfig/systemconfig.conf | grep BOOTDEV | awk '{print $3}'`
     else
-        str_temp=`mount | awk '{print $1","$3}'`
-        for line in $str_temp
-        do
-            mp=`echo $line | awk -F, '{print $2}'`
-            if [ "$mp" = "/" ];then
-                boot_device=`echo $line | awk -F, '{print $1}' | sed -e 's/[0-9]*$//'`
-                break
-            fi
-        done
+        boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
+        boot_device=`echo $boot_root | sed -e 's/[0-9]*$//'`
+
+        #str_temp=`mount | awk '{print $1","$3}'`
+        #for line in $str_temp
+        #do
+        #    mp=`echo $line | awk -F, '{print $2}'`
+        #    if [ "$mp" = "/" ];then
+        #        boot_device=`echo $line | awk -F, '{print $1}' | sed -e 's/[0-9]*$//'`
+        #        break
+        #    fi
+        #done
     fi
 
     if [ -n "$boot_device" ];then
-        echo "the boot device is $boot_device"
+        echo "The boot device is $boot_device"
+        echo "The boot root device is $boot_root"
     else
         echo "Can not find the boot device, return error"
         exit 1
     fi
     
-    #for sles10, should run grub-install with parameters
-    echo "grub-install --no-floppy --recheck $boot_device"
-    grub-install --no-floppy --recheck $boot_device
-    if [ $? -ne 0 ];then
+    # set grub to use this boot device
+    if grep -qe '^VERSION\s*=\s*11' /etc/SuSE-release; then
         #sles11, run grub-install.unsupported directly
+        echo "grub-install.unsupported --no-floppy --recheck $boot_device"
         grub-install.unsupported --no-floppy --recheck $boot_device
+        # note: the error about grub-set-default not existing is harmless, because we want the default to be 0 anyway
+    else
+        #for sles10, should run grub-install with parameters
+        echo "grub-install --no-floppy --recheck $boot_device"
+        grub-install --no-floppy --recheck $boot_device
     fi
-   
+
+    # change the entries in the grub conf file to use the correct boot root device
+    # (not the one leftover from the golden image)
+    if [ -f "/boot/grub/grub.conf" ];then
+        conffile="/boot/grub/grub.conf"
+    else
+        conffile="/boot/grub/menu.lst"
+    fi
+    sed -i 's| root=\S*| root='$boot_root'|' $conffile
+    sed -i 's| resume=\S*| noresume|' $conffile
+
     if [ -e /etc/mtab.bak ];then
         mv -f /etc/mtab.bak /etc/mtab
     else

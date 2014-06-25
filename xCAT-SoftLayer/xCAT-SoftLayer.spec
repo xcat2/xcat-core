@@ -84,4 +84,9 @@ rm -rf $RPM_BUILD_ROOT
 %post
 # We are shipping the postscripts in a sysclone dir and then copying them to /install/postscripts here,
 # because we want to allow base xcat to eventually ship them and not conflict on the file name/path
-cp -f /%{prefix}/share/xcat/sysclone/postscripts/* /install/postscripts
+# But base xcat now has a newer/better configbond written in bash, so if that is there do not overwrite it.
+head /install/postscripts/configbond | grep -q -E '^#! */bin/bash'
+if [[ $? != 0 ]]; then
+    # the new configbond from xcat 2.8.5 is not there, so copy ours
+	cp -f /%{prefix}/share/xcat/sysclone/postscripts/* /install/postscripts
+fi

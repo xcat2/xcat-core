@@ -19,7 +19,7 @@ if (scalar(@ARGV) < 2 || scalar(@ARGV) > 3) {
 my $bond = shift(@ARGV);
 my $nic = $ARGV[0];  
 my @devs;
-push(@devs,@ARGV);
+foreach my $a (@ARGV) { push(@devs,split('@',$a)); }    # support the new syntax in the xcat configbond postscript
 my $nicips = $ENV{NICIPS};
 my $nicnetworks = $ENV{NICNETWORKS};
 my $net_cnt = $ENV{NETWORKS_LINES};

@@ -1339,11 +1339,30 @@ sub runxcmd_output
                 }
             }
         }
+        if (defined($node->{error}))
+        {
+            if (ref(\($node->{error}->[0])) eq 'SCALAR')
+            {
+                $desc = $desc . ": " . $node->{error}->[0];
+            }
+        }
+        if (defined($node->{errorcode}))
+        { 
+            if (ref(\($node->{errorcode}->[0])) eq 'SCALAR')
+            {
+                $::RUNCMD_RC |=  $node->{errorcode}->[0];
+            }
+        }
         push @$::xcmd_outref, $desc;
     }
     if (defined($resp->{error}))
     {
-        push @$::xcmd_outref, @{$resp->{error}};
+        if (ref($resp->{error}) eq 'ARRAY')
+        { 
+          push @$::xcmd_outref, @{$resp->{error}};
+        } else {
+          push @$::xcmd_outref, $resp->{error};
+        }
     }
     if (defined($resp->{errorcode}))
     {
