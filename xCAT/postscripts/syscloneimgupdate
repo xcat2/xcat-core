@@ -9,7 +9,7 @@ fi
 
 #update the exclude configuration file
 #do not sync the following files
-for filename in /etc/fstab /boot/grub /etc/grub.conf /boot/efi /etc/elilo.conf /xcatpost /etc/xcat
+for filename in /etc/fstab /boot/grub /etc/grub.conf /boot/efi /etc/elilo.conf /xcatpost /etc/xcat /etc/hosts /etc/udev/rules.d  /etc/modprobe.d/bond0.conf /etc/modprobe.d/bond1.conf /etc/ssh /etc/sysconfig/syslog /etc/syslog-ng/syslog-ng.conf /opt/xcat /root/.ssh /var/cache /var/lib
 do
     if [ ! -e $filename ];then
         continue
