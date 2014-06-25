@@ -186,7 +186,7 @@ if [ "$str_temp" = "mac" ];then
     else
         str_inst_nic=`ip -o link | grep -i "$MACADDRESS" | awk '{print $2;}' | sed s/://`
     fi
-elif [ `echo $str_temp | grep -E "e(n|th)[0-9]+"` ];then
+elif [ `echo $str_temp | grep -E "e(n|th)[0-9a-z]+"` ];then
     str_inst_nic=$str_temp
 fi
 
@@ -229,7 +229,7 @@ if [ $bool_remove -eq 1 ];then
     for str_temp_nic in ${array_nics_temp[@]}
     do
         #the nic type should be ethernet
-        echo $str_temp_nic | grep -E "e(n|th)[0-9]+"
+        echo $str_temp_nic | grep -E "e(n|th)[0-9a-z]+"
         if [ $? -ne 0 ];then
             continue
         fi
@@ -284,7 +284,7 @@ do
         echo "confignics on $NODE: processing custom scripts: ${array_temp[1]} for interface $key"
         ${array_temp[1]}
     else
-        if [ `echo $key | grep -E '(eth|en)[0-9]+'` ];then
+        if [ `echo $key | grep -E 'e(n|th)[0-9a-z]+'` ];then
             str_nic_type="ethernet"
         elif [ `echo $key | grep -E 'ib[0-9]+'` ];then
             str_nic_type="infiniband"
