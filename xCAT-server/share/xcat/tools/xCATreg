@@ -37,7 +37,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 my %confhash;
 my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
-my $logfiledir = "$rootdir/result/";
+my $logfiledir = "/regression/result/";
 my $needhelp  = 0;
 my $branch = 0;
 my $testconfigfile = "$rootdir/default.conf";
@@ -1263,6 +1263,7 @@ sub pro_result{
     my $mn = shift;
     my $starttime = shift;
     my @start;
+    $logfiledir .= $mn;
     my $cmd = "/bin/ls $logfiledir 2>/dev/null";
     my $output = `$cmd`;
     my @logfilelist = split(/\n/, $output);
@@ -1276,7 +1277,8 @@ sub pro_result{
     }
     foreach my $file (@logfilelist) {
         my $flag = 0;
-        my $location = $logfiledir.$file;
+        my $location = $logfiledir."/".$file;
+        send_msg(2, "begin to process log $location \n");
         if ($file =~ /xcattest\.log\.(\w+)/) {
             my $holetime = $1;
             if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
