@@ -852,6 +852,7 @@ sub init
         system("xdsh $MN zypper --gpg-auto-import-keys search --match-exact -s screen");
         system("xdsh $MN zypper -n install xCAT");
         system("xdsh $MN zypper -n install xCAT-test");
+        system("xdsh $MN zypper -n install lsb");
         system("scp -r defaultslesppc64.conf $MN:$testconfigfile");
         system("rm -rf defaultslesppc64.conf");
         print "--prepare test environment....\n";
@@ -1026,6 +1027,7 @@ sub  do_test1
     #}
     #system("mkdir -p $nodedir/result");
     # system("scp -r $MN:/autotest/result /regression/rhppc64");
+    system("scp -r $MN:/autotest/result/* /regression/result/$MN");
  }elsif ($envoutput eq 'slesppc64'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
@@ -1040,6 +1042,7 @@ sub  do_test1
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+  system("scp -r $MN:/autotest/result/* /regression/result/$MN");
 
 }elsif ($envoutput eq 'rhx8664'){
     send_msg(2, "******************************");
@@ -1056,6 +1059,7 @@ sub  do_test1
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+     system("scp -r $MN:/autotest/result/* /regression/result/$MN");
 
 }elsif ($envoutput eq 'slesx8664'){
     send_msg(2, "******************************");
@@ -1072,6 +1076,7 @@ sub  do_test1
     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+    system("scp -r $MN:/autotest/result/* /regression/result/$MN");
 }elsif ($envoutput eq 'ubux8664'){
     send_msg(2, "******************************");
     send_msg(2, "start  test");
@@ -1087,6 +1092,7 @@ sub  do_test1
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
+   system("scp -r $MN:/autotest/result/* /regression/result/$MN");
    }
 
 }
