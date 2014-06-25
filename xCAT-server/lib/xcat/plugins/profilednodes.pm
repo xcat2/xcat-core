@@ -939,7 +939,7 @@ Usage:
             if ( not exists $netFreeIPsHash{$netname} ){
                 $netFreeIPsHash{$netname} = xCAT::ProfiledNodeUtils->get_allocable_staticips_innet($netname, \@allknownips); 
             }
-            $freeIPsHash{$updnic} = $netFreeIPsHash{$netname};
+            $freeIPsHash{$updnic} = $netFreeIPsHash{$netname};    
         }
     }
     
@@ -1051,11 +1051,10 @@ Usage:
     foreach my $command (@kitcommands) {
         my $retref;
         if ($command eq 'removenodes'){
-            # Not run makedns -d as it costs too much time
-            #setrsp_progress("Updating DNS entries");
-            #$retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+            setrsp_progress("Updating DNS entries");
+            $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
 
-            #setrsp_progress("Updating hosts entries");
+            setrsp_progress("Updating hosts entries");
             $retref = "";
             $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
             next;
