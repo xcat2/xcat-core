@@ -25,6 +25,9 @@ Conflicts: xCAT
 %define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
 %ifos linux
+# on RHEL7, need to specify it explicitly
+Requires: net-tools
+Requires: /usr/bin/killall
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
