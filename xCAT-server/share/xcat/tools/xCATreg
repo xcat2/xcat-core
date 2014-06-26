@@ -643,7 +643,11 @@ sub config_test {
 #######################################
 sub git_update {
     send_msg(0, "begin to do git update");
-    
+      
+    my $lastcommit;
+    my $commitlog1;
+    my $lastcommitfile;
+ 
     my $gitup;
     $gitup="/tmp/gitup";
     
@@ -672,6 +676,44 @@ sub git_update {
       send_msg(0, "code is already at latest version. exit regresson\n");
       exit;
     }
+
+    #get the lastest commit number information from a file
+    $lastcommitfile="/tmp/lastcommitfile";
+    $commitlog1="/tmp/commitlog1";
+    if (! open(FILE, " $lastcommitfile")) {
+        $res = system("git log --pretty=format:\"%cn %ce %H %s %ad\" --since=\"2 days ago\" >$commitlog1");
+        if ($res != 0){
+           $commitinfo="get commit information failed\n";
+           send_msg(0, "get commit information failed");
+           exit;
+        }else{
+           $commitinfo=`cat $commitlog1`;
+        }
+
+    }else{
+        $lastcommit=`cat $lastcommitfile`;
+        chomp($lastcommit);;
+        print "Here is last commit checkin $lastcommit\n";
+
+        $res = system("git log $lastcommit..master --pretty=format:\"%cn %ce %H %s %ad\" >$commitlog1");
+        if ($res != 0){
+           $commitinfo="get commit information failed\n";
+           send_msg(0, "get commit information failed");
+           exit;
+        }else{
+          $commitinfo=`cat $commitlog1`;
+        }
+    }
+
+    #get the lastest commit number and save it in the file for next usage
+    $res = system("git log -n 1|grep -i commit|awk '{print \$2}' >$lastcommitfile");
+    if ($res != 0){
+        send_msg(0, "get latest commit number failed");
+        exit;
+    }
+
+    print "Here is what's in commitinfo for mail $commitinfo\n";
+
     return 0;
 }
 
@@ -1021,9 +1063,9 @@ sub  do_test1
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-    system("xdsh $MN /opt/xcat/bin/xcattest -b bat.bundle");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_diskless_installation_ppc64_flat");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_statelite_installation_flat_ppc64");
+  #  system("xdsh $MN /opt/xcat/bin/xcattest -b bat.bundle");
+  #  system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_diskless_installation_ppc64_flat");
+  #  system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_statelite_installation_flat_ppc64");
   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
   # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("mkdir -p /regression/result/$MN");
