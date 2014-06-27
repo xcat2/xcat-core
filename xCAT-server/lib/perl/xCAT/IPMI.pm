@@ -323,9 +323,7 @@ sub admin_level_set {
     my $code = $rsp->{code};
     if (($code == 0x80 or $code == 0x81) and $self->{privlevel} == 4) {
             $self->{privlevel} = 3;
-            $self->{logged}=1;
-            $self->logout();
-            $self->relog();
+            $self->subcmd(netfn=>0x6,command=>0x3b,data=>[$self->{privlevel}],callback=>\&admin_level_set,callback_args=>$self);
             return;
     }
 
