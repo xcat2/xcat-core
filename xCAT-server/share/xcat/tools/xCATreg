@@ -1612,6 +1612,14 @@ for my $m (keys %totalresult) {
         $fatal{$m} = $2;
     }
 } 
+
+if (-f "/tmp/commitlog1" and -z _)
+{
+    $commitinfo="No code updates\n";
+}else{
+    $commitinfo=`cat /tmp/commitlog1`;
+}
+
 # phase result
 send_msg(2, "Autotest has run sucessfully, begin to send mail");
 my $mailreport;
