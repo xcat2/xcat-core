@@ -697,16 +697,23 @@ sub git_update {
 
         $res = system("git log $lastcommit..master --pretty=format:\"%cn %ce %H %s %ad\" >$commitlog1");
         if ($res != 0){
+           print "Execute ..master failed\n";
            $commitinfo="get commit information failed\n";
            send_msg(0, "get commit information failed");
            exit;
         }else{
-          $commitinfo=`cat $commitlog1`;
+            print "get commit log $commitlog1\n";
+            if (-f $commitlog1 and -z _)
+                 {
+                 $commitinfo="No code updates\n";
+                 }else{
+                    $commitinfo=`cat $commitlog1`;
+                 }
         }
     }
 
     #get the lastest commit number and save it in the file for next usage
-    $res = system("git log -n 1|grep -i commit|awk '{print \$2}' >$lastcommitfile");
+    $res = system("git log -n 1|awk 'NR==1'|awk '{print \$2}' >$lastcommitfile");
     if ($res != 0){
         send_msg(0, "get latest commit number failed");
         exit;
