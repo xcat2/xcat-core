@@ -150,6 +150,7 @@ gpgcheck=0
 EOF
 
   cp $CURDIR/build/xCAT-core.repo /etc/yum.repos.d/
+  createrepo $CURDIR/build
   else
      rm -f /etc/zypp/repos.d/xCAT-core.repo
      zypper ar file://$CURDIR/build xCAT-core
