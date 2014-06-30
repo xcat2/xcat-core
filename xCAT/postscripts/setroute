@@ -2,8 +2,11 @@
 # IBM(c) 2011 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
-#=head1  setroute 
-#=head2  setrout command adds the routes to the node according to 
+#=head1  setroute [add]
+#        [add] - The operation to manipulate the route entry. It is optional. 
+#            The default is 'replace' if ignoring it.
+#        
+#=head2  setrout command replaces/adds the routes to the node according to 
 #        what is specified in the xCAT tables. 
 #        The route name for the node is defined in noderes.routenames.
 #        The route itself is defined in the routes table.
@@ -12,6 +15,12 @@
 
 if [ -z "$NODEROUTENAMES" ]; then
     exit 0
+fi
+
+OP="replace"
+
+if [ -n "$1" ] && [ "$1" = "add" ]; then
+    OP="add"
 fi
 
 for rn in `echo "$NODEROUTENAMES" | tr "," "\n"`
@@ -34,7 +43,7 @@ do
         mask=`echo $mask | awk -F'/' '{print $2}'`
     fi
 
-    cmd="routeop add $net $mask $gw $ifname"
+    cmd="routeop $OP $net $mask $gw $ifname"
     result=`$cmd 2>&1`
     echo $result
 done
