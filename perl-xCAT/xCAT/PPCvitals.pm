@@ -203,7 +203,7 @@ sub voltage {
             # Voltages available in frame
             ################################# 
             if ( @$d[4] ne "bpa" ) {
-                push @result, [$name,"$text Only available for BPA",1];
+                push @result, [$name,"$text Only available for BPA",0];
                 next;
             }
             my $volt = enumerate_volt( $exp, $d );
@@ -256,7 +256,7 @@ sub temp {
             # No frame commands for IVM 
             ################################# 
             if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",1];
+                push @result, [$name,"$prefix Not available (No BPA)",0];
                 next;
             }
             ################################# 
@@ -264,14 +264,14 @@ sub temp {
             ################################# 
             if ( @$d[4] !~ /^(fsp|cec|lpar)$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
-                push @result, [$name,$text,1];
+                push @result, [$name,$text,0];
                 next;
             }
             ################################# 
             # Error - No frame 
             #################################
             if ( $mtms eq "0" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",1];
+                push @result, [$name,"$prefix Not available (No BPA)",0];
                 next;
             }
             #################################

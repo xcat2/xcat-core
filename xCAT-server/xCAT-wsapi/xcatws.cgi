@@ -1585,6 +1585,9 @@ sub actionout {
                 # use resourcename as the record name
                 if ($param->{'resourcename'} eq "eventlog") {
                     push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
+                } elsif ($param->{'resourcename'} =~ /(vitals|inventory)/) {
+                    # handle output of rvital and rinv for ppc node
+                    push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } else {
                     $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 }
@@ -1756,6 +1759,8 @@ sub actionhdl {
         if (defined($urilayers[3])) {
             my @attrs = split(';', $urilayers[3]);
             push @args, @attrs;
+        } else { # default, get all attrs
+            push @args, "all";
         }
     } elsif ($params->{'resourcename'} eq "serviceprocessor") {
         if (isGET()) {
