@@ -264,7 +264,7 @@ sub temp {
             # No frame commands for IVM 
             ################################# 
             if ( $hwtype eq "ivm" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",1];
+                push @result, [$name,"$prefix Not available (No BPA)",0];
                 next;
             }
             ################################# 
@@ -272,14 +272,14 @@ sub temp {
             ################################# 
             if ( @$d[4] !~ /^(fsp|lpar|cec)$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
-                push @result, [$name,$text,1];
+                push @result, [$name,$text,0];
                 next;
             }
             ################################# 
             # Error - No frame 
             #################################
             if ( $mtms eq "0" ) {
-                push @result, [$name,"$prefix Not available (No BPA)",1];
+                push @result, [$name,"$prefix Not available (No BPA)",0];
                 next;
             }
             #################################
@@ -352,7 +352,7 @@ sub rackenv {
             ################################# 
             if ( @$d[4] !~ /^(bpa|frame)$/ ) {
                 my $text = "$prefix Only available for BPA/Frame";
-                push @result, [$name,$text,1];
+                push @result, [$name,$text,0];
                 next;
             }
             

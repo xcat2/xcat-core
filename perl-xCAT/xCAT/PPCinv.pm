@@ -347,7 +347,7 @@ sub bus {
             #################################
             # Output header 
             #################################
-            push @result, [$name,"I/O Bus Information"];
+            push @result, [$name,"I/O Bus Information", 0];
 
             #################################
             # Output error 
@@ -532,7 +532,7 @@ sub config {
             #################################
             # Output header
             #################################
-            push @result, [$name,"Machine Configuration Info"];
+            push @result, [$name,"Machine Configuration Info", 0];
             my $i;
 
             foreach ( @prefix ) {
