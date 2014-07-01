@@ -277,6 +277,10 @@ sub copycd
     {
         $darch = "x86";
     }
+    elsif ($darch and $darch =~ /ppc64el/)
+    {
+        $darch = "ppc64el";
+    }
     elsif ($darch and $darch =~ /ppc/)
     {
         $darch = "ppc64";

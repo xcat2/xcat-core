@@ -175,6 +175,8 @@ if ($netdriver) {
 } else {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
+    } elsif ($arch eq 'ppc64el') {
+        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {   
@@ -242,8 +244,12 @@ unless ($onlyinitrd) {
    my $aptcachecmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-cache $non_interactive ";
    my $aptcmd1 = "debootstrap";
    #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
-   my $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
-   
+   my $aptcmd2;
+   if ($uarch eq 'ppc64el') {
+       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
+   } else {
+       $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
+   }
    mkpath("$rootimg_dir/var/lib/dpkg");
    mkpath("$rootimg_dir/var/lib/apt");
 
