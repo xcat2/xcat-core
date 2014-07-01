@@ -3540,7 +3540,7 @@ sub gettimezone
   } else {   # all linux
         my $localtime = "/etc/localtime";
         my $zoneinfo = "/usr/share/zoneinfo";
-        my $cmd = "find $zoneinfo -type f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV";
+        my $cmd = "find $zoneinfo -xtype f -exec cmp -s $localtime {} \\; -print | grep -v posix | grep -v SystemV | grep -v right | grep -v localtime ";
         my $zone_result = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
