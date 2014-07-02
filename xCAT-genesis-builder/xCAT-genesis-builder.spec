@@ -4,7 +4,7 @@ BuildArch: noarch
 Release: snap%(date +"%Y%m%d%H%M")
 Epoch: 1
 AutoReq: false
-Requires: efibootmgr ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33
+Requires: ipmitool screen btrfs-progs lldpad rpm-build compat-libstdc++-33
 Prefix: /opt/xcat
 AutoProv: false
 
