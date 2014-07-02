@@ -1,9 +1,13 @@
 #!/bin/bash
 #Used only by sysclone
 
-installmethods=`cat /etc/xcat/xcatinstallinfo`
+installmethods=''
+if [ -f "/etc/xcat/xcatinstallinfo" ];then
+    installmethods=`cat /etc/xcat/xcatinstallinfo`
+fi
+
 if [ "$installmethods" != "sysclone" ];then
-    echo "This node didn't be installed by sysclone"
+#    echo "This node didn't be installed by sysclone"
     exit 0
 fi
 
