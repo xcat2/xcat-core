@@ -29,6 +29,7 @@ else
     grep -v rootfs /proc/mounts > /etc/mtab
     boot_device=''
     if [ -f "/etc/systemconfig/systemconfig.conf" ];then
+        boot_root=`cat /etc/systemconfig/systemconfig.conf | grep ROOTDEV | awk '{print $3}'`
         boot_device=`cat /etc/systemconfig/systemconfig.conf | grep BOOTDEV | awk '{print $3}'`
     else
         boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
