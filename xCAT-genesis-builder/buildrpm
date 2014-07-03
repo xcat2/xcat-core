@@ -13,6 +13,17 @@ DIR=`readlink -f $DIR`
 DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
+# For ppc64 platform, needs to remove some files,
+# and some files are in different directories
+if [ `uname -m` = "ppc64" ]; then
+        sed -i 's/dracut_install efibootmgr//' $DRACUTMODDIR/install
+        sed -i 's/ dmidecode//' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libncurses.so.5.7/\/lib64\/libncurses.so.5.7/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.13/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libgcc_s.so.1/\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
+fi
+
 if [ "$HOSTOS" = "mcp" ]; then
 	sed -i 's/mkfs.btrfs//' $DRACUTMODDIR/install
 	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
