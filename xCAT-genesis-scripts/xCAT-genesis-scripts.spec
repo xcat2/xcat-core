@@ -48,10 +48,10 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 cd $RPM_BUILD_ROOT
 tar jxf %{SOURCE1}
-mkdir -p opt/xcat/share/xcat/netboot/genesis/x86_64/
-mv xCAT-genesis-scripts opt/xcat/share/xcat/netboot/genesis/x86_64/fs
-rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/*.spec
-rm opt/xcat/share/xcat/netboot/genesis/x86_64/fs/LICENSE.html
+mkdir -p opt/xcat/share/xcat/netboot/genesis/%{tarch}/
+mv xCAT-genesis-scripts opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
+rm opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/*.spec
+rm opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs/LICENSE.html
 cd -
 
 
@@ -73,4 +73,4 @@ touch /etc/xcat/genesis-scripts-updated
 
 %Files
 %defattr(-,root,root)
-/opt/xcat/share/xcat/netboot/genesis/x86_64/fs
+/opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
