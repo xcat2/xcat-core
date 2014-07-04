@@ -3546,7 +3546,8 @@ sub gettimezone
       $svcname: the name of the service
       $svcmgrtype: the service manager type:
                    0: SYSVinit
-                   1: systemd 
+                   1: systemd
+                   2: upstart  
     Returns:
       the name of service unit or service daemon
       undef on fail
@@ -3577,64 +3578,45 @@ sub servicemap{
   #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
   # }
   my %svchash=(
-     "dhcp" => {
-                 0=>["dhcp3-server","dhcpd","isc-dhcp-server"],
-                 1=>["dhcpd.service"],
-               },
-     "nfs" =>  {
-                 0=>["nfsserver","nfs","nfs-kernel-server"],
-                 1=>["nfs-server.service"],
-               },
-     "named" =>  {
-                 0=>["named","bind9"],
-                 1=>["named.service"],
-               },
-     "syslog" =>  {
-                 0=>["syslog","syslogd","rsyslog"],
-                 1=>["rsyslog.service"],
-               },
-     "firewall" =>  {
-                 0=>["iptables","firewalld","SuSEfirewall2_setup"],
-                 1=>["firewalld.service"],
-               },
-     "http" =>  {
-                 0=>["apache2","httpd"],
-                 1=>["httpd.service"],
-               },
-     "ntpserver" =>  {
-                 0=>["ntpd","ntp"],
-                 1=>["ntpd.service"],
-               },
-     "mysql" =>  {
-                 0=>["mysqld","mysql"],
-                 1=>["mysqld.service"],
-               },
+     "dhcp"  =>    ["dhcp3-server","dhcpd","isc-dhcp-server"],
+     "nfs"   =>    ["nfsserver","nfs-server","nfs","nfs-kernel-server"],
+     "named" =>    ["named","bind9"],
+     "syslog" =>   ["syslog","syslogd","rsyslog"],
+     "firewall" => ["iptables","firewalld","SuSEfirewall2_setup","ufw"],
+     "http" =>     ["apache2","httpd"],
+     "ntpserver" =>["ntpd","ntp"],
+     "mysql" =>    ["mysqld","mysql"],
   );
 
   my $path=undef;
+  my $postfix="";
   my $retdefault=$svcname;
   if($svcmgrtype == 0){
      $path="/etc/init.d/";
   }elsif ($svcmgrtype == 1){
      $path="/usr/lib/systemd/system/";
+     $postfix=".service";
      $retdefault=$svcname.".service";
+  }elsif ($svcmgrtype == 2){
+     $path="/etc/init/";
+     $postfix=".conf";
   }
 
   
   my $ret=undef;
-  if($svchash{$svcname} and $svchash{$svcname}{$svcmgrtype}){
-    foreach my $file (@{$svchash{$svcname}{$svcmgrtype}}){
-       if(-e $path.$file ){
+  if($svchash{$svcname}){
+    foreach my $file (@{$svchash{$svcname}}){
+       if(-e $path.$file.$postfix ){
              $ret=$file;
              last;
           }
     }      
   }else{
-    if(-e $path.$retdefault){
+    if(-e $path.$retdefault.$postfix){
         $ret=$retdefault;
     } 
  }
-
+ 
  return $ret;  
 
 }
@@ -3668,20 +3650,30 @@ sub startservice{
   }
 
   my $cmd="";
+  #for Systemd
   my $svcunit=undef;
+  #for sysVinit
   my $svcd=undef;
+  #for upstart
+  my $svcjob=undef;
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   if($svcunit)
   {
       $cmd="systemctl start $svcunit";
   }
+  elsif( $svcjob )
+  {
+      $cmd="initctl start $svcjob";
+  }
   elsif( $svcd )
   {
       $cmd="service $svcd start";
   }
-  print "$cmd\n"; 
+
+  #print "$cmd\n"; 
   if( $cmd eq "" )
   {
      return -1;
@@ -3722,18 +3714,26 @@ sub stopservice{
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
+  my $svcjob=undef; 
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   if($svcunit)
   {
       $cmd="systemctl stop $svcunit";
   }
+  elsif( $svcjob )
+  {
+      $cmd="initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl  stop $svcjob ; fi";
+  }
   elsif( $svcd )
   {
       $cmd="service $svcd stop";
   }
-  print "$cmd\n"; 
+
+
+  #print "$cmd\n"; 
   if( $cmd eq "" )
   {
      return -1;
@@ -3774,8 +3774,10 @@ sub restartservice{
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
+  my $svcjob=undef; 
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   if($svcunit)
   {
@@ -3785,7 +3787,12 @@ sub restartservice{
   {
       $cmd="service $svcd restart";
   }
-  print "$cmd\n"; 
+  elsif( $svcjob )
+  {
+      $cmd="initctl status $svcjob |grep stop; if [ \"\$?\" != \"0\"  ]; then initctl restart $svcjob ; else initctl start $svcjob; fi";
+  }
+
+  #print "$cmd\n"; 
   if( $cmd eq "" )
   {
      return -1;
@@ -3837,9 +3844,11 @@ sub checkservicestatus{
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
+  my $svcjob=undef;
   my %ret;
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   my $output=undef;
 
@@ -3850,13 +3859,24 @@ sub checkservicestatus{
       $output=xCAT::Utils->runcmd($cmd, -1);
       if($output =~ /^active$/i){
          $ret{retcode}=0;
-         print "xxx$output\n";
       }elsif($output =~ /^failed$/i){
          $ret{retcode}=2;
        
       }elsif($output =~ /^inactive$/i){
          $ret{retcode}=1;
       }
+  }
+  elsif ( $svcjob  )
+  {
+      #for upstart, parse the output 
+      $cmd="initctl status $svcjob";
+      $output=xCAT::Utils->runcmd($cmd, -1);
+      if($output =~ /waiting/i){
+         $ret{retcode}=2;
+      }elsif($output =~ /running/i){
+         $ret{retcode}=0;
+      }
+      
   }
   elsif( $svcd )
   {
@@ -3917,12 +3937,19 @@ sub enableservice{
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
+  my $svcjob=undef;
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   if($svcunit)
   {
       $cmd="systemctl enable $svcunit";
+  }
+  elsif($svcjob)
+  {
+      $cmd="update-rc.d $svcjob defaults";
+  
   }
   elsif( $svcd )
   {
@@ -3936,7 +3963,6 @@ sub enableservice{
         }
       }
   }
-  print "$cmd\n";
   if( $cmd eq "" )
   {
      return -1;
@@ -3976,13 +4002,20 @@ sub disableservice{
   }
   my $cmd="";
   my $svcunit=undef;
+  my $svcjob=undef;
   my $svcd=undef;
 
   $svcunit=servicemap($svcname,1);
+  $svcjob=servicemap($svcname,2);
   $svcd=servicemap($svcname,0);
   if($svcunit)
   {
       $cmd="systemctl disable $svcunit";
+  }
+  elsif($svcjob)
+  {
+      $cmd="update-rc.d -f $svcjob remove";
+    
   }
   elsif( $svcd )
   {
@@ -3996,7 +4029,8 @@ sub disableservice{
         }
       }
   }
-  print "$cmd\n";
+
+#  print "$cmd\n";
   if( $cmd eq "" )
   {
      return -1;
