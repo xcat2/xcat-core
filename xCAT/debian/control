@@ -6,7 +6,7 @@ Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 
 Package: xcat
-Architecture: all
-Depends: ${perl:Depends}, xcat-server, xcat-client, libdbd-sqlite3-perl, isc-dhcp-server, apache2, nfs-kernel-server, nmap, bind9, libxml-parser-perl, xinetd, tftpd-hpa, tftp-hpa, conserver-xcat, libnet-telnet-perl, ipmitool-xcat (>=1.8.9), syslinux, libsys-virt-perl, syslinux-xcat, xnba-undi, xcat-genesis-scripts-amd64, elilo-xcat
+Architecture: amd64 ppc64el
+Depends: ${perl:Depends}, xcat-server, xcat-client, libdbd-sqlite3-perl, isc-dhcp-server, apache2, nfs-kernel-server, nmap, bind9, libxml-parser-perl, xinetd, tftpd-hpa, tftp-hpa, conserver-xcat, libnet-telnet-perl, ipmitool-xcat (>=1.8.9), syslinux[any-amd64], libsys-virt-perl, syslinux-xcat[any-amd64], xnba-undi[any-amd64], xcat-genesis-scripts-amd64[any-amd64], elilo-xcat[any-amd64]
 Description: Server and configuration utilities of the xCAT management project
  xcat-server provides the core server and configuration management components of xCAT.  This package should be installed on your management server

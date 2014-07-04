@@ -43,7 +43,7 @@ binary-arch:
 	dh_installdocs
 #	dh_installexamples
 	dh_install -X".svn"
-	chmod 755 `pwd`/debian/xcat/install/postscripts/*
+#	chmod 755 `pwd`/debian/xcat/install/postscripts/*
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
@@ -54,8 +54,9 @@ binary-arch:
 #	dh_installinit
 #	dh_installcron
 #	dh_installinfo
+	dh_installdirs
 	dh_installman
-#	dh_link
+	dh_link
 #	dh_strip
 	dh_compress
 #	dh_fixperms

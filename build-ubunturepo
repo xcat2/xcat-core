@@ -195,26 +195,38 @@ then
             mkdir -p "../../$package_dir_name"
         fi
         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack xCAT-OpenStack-baremetal"
-
+        target_archs=(amd64 ppc64el)
         for file in `echo $packages`
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
-            if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
-                rm -f ../../$package_dir_name/${file_low}_*.deb
-                #only for genesis package
-                rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
-                cd $file
-                dch -v $pkg_version -b -c debian/changelog $build_string
-                dpkg-buildpackage -uc -us
-                rc=$?
-                if [ $rc -gt 0 ]; then
-                    echo "Error: $file build package failed exit code $rc"
-                fi
-                cd -
-                find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
-                find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
-                mv ${file_low}* ../../$package_dir_name/
+            if [ "$file" = "xCAT" ]; then
+                target_archs="amd64 ppc64el"
+            else
+                target_archs="all"
             fi
+            for target_arch in `echo $target_archs`
+            do
+                if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
+                    rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
+                    #only for genesis package
+                    rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
+                    cd $file
+                    dch -v $pkg_version -b -c debian/changelog $build_string
+                    if [ "$target_arch" = "all" ]; then
+                        dpkg-buildpackage -uc -us
+                    else
+                        dpkg-buildpackage -uc -us -a$target_arch
+                    fi
+                    rc=$?
+                    if [ $rc -gt 0 ]; then
+                        echo "Error: $file build package failed exit code $rc"
+                    fi
+                    cd -
+                    find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
+                    find $file -maxdepth 3 -type f -name "files" | grep debian | xargs rm -rf
+                    mv ${file_low}* ../../$package_dir_name/
+                fi
+            done
         done
 
         find ../../$package_dir_name/* ! -name *.deb | xargs rm -f
@@ -250,11 +262,16 @@ then
     mkdir conf
 
     for dist in $dists; do
+       if [ "$dist" = "trusty" ]; then
+           tmp_out_arch="amd64 ppc64el"
+       else
+           tmp_out_arch="amd64"
+       fi
        cat << __EOF__ >> conf/distributions
 Origin: xCAT internal repository
 Label: xcat-core bazaar repository
 Codename: $dist
-Architectures: amd64 
+Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf 
 SignWith: yes
@@ -269,17 +286,29 @@ basedir .
 __EOF__
 
     #import the deb packages into the repo
+    amd_files=`ls ../$package_dir_name/*.deb | grep -v "ppc64el"`
+    all_files=`ls ../$package_dir_name/*.deb`
     for dist in $dists; do
-      for file in `ls ../$package_dir_name/*.deb`; do
+      if [ "$dist" = "trusty" ]; then
+          deb_files=$all_files
+      else
+          deb_files=$amd_files
+      fi
+      for file in $deb_files; do
 	reprepro -b ./ includedeb $dist $file;
       done
     done
-
     #create the mklocalrepo script
     cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
-echo deb [arch=amd64] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
+host_arch=`uname -m`
+if [ "$host_arch" != "ppc64le" ];then
+    host_arch="amd64"
+else
+    host_arch="ppc64el"
+fi
+echo deb [arch=$host_arch] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-core.list
 __EOF__
 
     chmod 775 mklocalrepo.sh
@@ -353,11 +382,16 @@ then
 
     #create the conf/distributions file
     for dist in $dists; do
+       if [ "$dist" = "trusty" ]; then
+           tmp_out_arch="amd64 ppc64el"
+       else 
+           tmp_out_arch="amd64"
+       fi
         cat << __EOF__ >> conf/distributions
 Origin: xCAT internal repository
 Label: xcat-dep bazaar repository
 Codename: $dist
-Architectures: amd64 
+Architectures: $tmp_out_arch
 Components: main
 Description: Repository automatically genereted conf 
 SignWith: yes
@@ -371,8 +405,16 @@ ask-passphrase
 basedir .
 __EOF__
 
+    #import the deb packages into the repo
+    amd_files=`ls ../debs/*.deb | grep -v "ppc64el"`
+    all_files=`ls ../debs/*.deb`
     for dist in $dists; do
-      for file in `ls ../debs/*.deb`; do
+      if [ "$dist" = "trusty" ]; then
+          deb_files=$all_files
+      else
+          deb_files=$amd_files
+      fi
+      for file in $deb_files; do
 	reprepro -b ./ includedeb $dist $file;
       done
     done
@@ -380,7 +422,13 @@ __EOF__
     cat << '__EOF__' > mklocalrepo.sh
 . /etc/lsb-release
 cd `dirname $0`
-echo deb [arch=amd64] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
+host_arch=`uname -m`
+if [ "$host_arch" != "ppc64le" ];then
+    host_arch="amd64"
+else
+    host_arch="ppc64el"
+fi
+echo deb [arch=$host_arch] file://"`pwd`" $DISTRIB_CODENAME main > /etc/apt/sources.list.d/xcat-dep.list
 __EOF__
 
     chmod 775 mklocalrepo.sh
