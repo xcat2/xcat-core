@@ -643,14 +643,14 @@ sub config_test {
 #######################################
 sub git_update {
     send_msg(0, "begin to do git update");
-      
+
     my $lastcommit;
     my $commitlog1;
     my $lastcommitfile;
- 
+
     my $gitup;
     $gitup="/tmp/gitup";
-    
+
     #Do checkout in git repo
     #$res = system("cd $confkeys{srcdir}");
     #if ($res !=0) {
@@ -658,19 +658,19 @@ sub git_update {
     #
     #    exit;
     #}
-    
+
     $res = system("git checkout $branch");
     if ($res != 0){
         send_msg(0, "git checkout failed");
         exit;
     }
-    
+
     $res = system("git pull >$gitup");
     if ($res != 0){
         send_msg(0, "git pull failed");
         exit;
     }
-    
+
     $res = system("grep 'Already up-to-date' $gitup");
     if (($res == 0)&&( $updates_regression == 1)) {
       send_msg(0, "code is already at latest version. exit regresson\n");
@@ -730,23 +730,23 @@ sub git_update {
 sub copy_code {
     my $mn = shift;
     my $codedir = $confhash{srcdir};
-    send_msg(0, "src code directory is $confhash{srcdir}"); 
-    
-    ##will modify to $rhppc64config{var}{MNIP} 
+    send_msg(0, "src code directory is $confhash{srcdir}");
+
+    ##will modify to $rhppc64config{var}{MNIP}
     #my $mn = $management_node;
     #send_msg(0, "mn is $mn");
-    
+
     #install dep for buildlocal
 #    if(($confhash{rhpmn}==$mn)||($confhash{rhxmn}==$mn)){
 #    send_msg(0, "begin to install build required packages on mn $mn");
 #    $res = system("xdsh $mn yum install -y rpm-build perl-Time-HiRes perl-DBI createrepo");
-#    } 
-    
+#    }
+
     #need to copy /etc/hosts to mn
     send_msg(0, "copy /etc/hosts to mn $mn");
     system("scp /etc/hosts $mn:/etc");
-    
-    
+
+
     send_msg(0, "begin to copy code to $mn");
     $res = system("scp -r $codedir root\@$mn:/");
     if ($res != 0){
@@ -759,23 +759,23 @@ sub copy_code {
 
 
 #######################
-# build xcat 
+# build xcat
 #######################
 sub build_xcat {
     my $mn = shift;
     #for temp usage
     send_msg(0, "========= began build xcat on mn ========");
-    #will changed /code/xcat-core to $confkeys{srcdir}  
+    #will changed /code/xcat-core to $confkeys{srcdir}
     $res = system("xdsh $mn /xcat-core/buildlocal.sh CURDIR=/xcat-core");
     if ($res != 0){
               send_msg(0, "build failed on mn $mn");
               exit;
           }
-    
+
     send_msg(0, "====================build done============================");
     sleep 20;
     return 0;
-}  
+}
 
 #######################################
 # config mn
@@ -793,7 +793,7 @@ sub config_mn {
     #}
     send_msg(2, "step 6 : reading mn configuration done=====");
     return 0;
-}      
+}
 #######################################
 # install xcat and init rhppc64 env
 #######################################
@@ -843,7 +843,7 @@ sub init
        print "--get the latest XCAT tarball.......\n";
        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
-       system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");   
+       system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");
        system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
        print "--install XCAT .......\n";
        system("xdsh $MN rpm --import /iso/mountpoint/RPM-GPG-KEY-redhat-release");
@@ -866,7 +866,7 @@ sub init
 
         send_msg(2, " rhppc64 env is ready\n");
     }elsif ($envoutput eq 'slesppc64'){
-        my $iso=$slesppc64config{var}{ISO}; 
+        my $iso=$slesppc64config{var}{ISO};
         my $nodedir=$confkeys{slespdir};
         system(" xdsh $MN  mkdir -p /iso/mountpoint");
         print "--prepareing SLES iso file.......\n";
@@ -881,7 +881,7 @@ sub init
 
         print "--get the latest XCAT tarball.......\n";
         $res =  system("scp -r $nodedir/xcat-dep $MN:/");
-        
+
         print "[OK]\n--deploy zypper....";
         system("xdsh $MN rm  -rf /etc/zypp/repos.d/*dep*");
         system("xdsh $MN zypper ar file:///xcat-dep/sles11/ppc64  xCAT-dep");
@@ -904,7 +904,7 @@ sub init
         print "--prepareing redhat iso file.......\n";
         print "[OK]\n--copy ISO file.....";
         system(" scp -r $iso $MN:/iso");
-        system("xdsh $MN mount -o loop $iso /iso/mountpoint"); 
+        system("xdsh $MN mount -o loop $iso /iso/mountpoint");
         print "--prepareing /etc/hosts  /etc/resolv.conf.......";
         system ("scp -r /etc/hosts $MN:/etc/hosts");
         system ("scp -r /etc/resolv.conf $MN:/etc/resolv.conf");
@@ -1009,7 +1009,7 @@ sub do_test {
     if ($res != 0){
         exit;
     }
-    
+
     send_msg(2, "Begin to do test");
     $res = &do_test1($mn);
     if ($res) {
@@ -1113,13 +1113,13 @@ sub  do_test1
    # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
    # system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
     system("mkdir -p /regression/result/$MN");
-    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");   
+    system("scp -r $MN:/opt/xcat/share/xcat/tools/autotest/result/* /regression/result/$MN");
 }
 
 }
 
 #######################################
-# mn_install to install all mn 
+# mn_install to install all mn
 #######################################
 sub mn_install {
     my $osimage="management_1408a";
@@ -1139,7 +1139,7 @@ sub mn_install {
          $output = system("rpower $mn state");
     } while ($output =~ /on/);
 
-    do { 
+    do {
          sleep 300;
          $output = system("xdsh $mn date");
     } while ($output =~ /$mn/);
@@ -1284,7 +1284,7 @@ sub read_conf{
 }
 
 #######################################
-# pro_result 
+# pro_result
 #######################################
 sub pro_result{
     my $mn = shift;
@@ -1302,11 +1302,87 @@ sub pro_result{
         send_msg(0,"pro_result for $mn can't distinguish starttime");
         return "error";
     }
+
+
+
+
+    #foreach my $file (@logfilelist) {
+    #    my $flag = 0;
+    #    my $location = $logfiledir."/".$file;
+    #    send_msg(2, "begin to process log $location \n");
+    #    if ($file =~ /xcattest\.log\.(\w+)/) {
+    #        my $holetime = $1;
+    #        if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
+    #            for my $start (@start) {
+    #                my $this = shift @this;
+    #                if ($start > $this) {
+    #                    $flag = 1;
+    #                    last;
+    #                } elsif ($start < $this) {
+    #                    last;
+    #                }
+    #            }
+    #        } else {
+    #            next; # do something here.
+    #        }
+    #    } else {
+    #        next; # useless log
+    #    }
+    #    next if ($flag); # old log
+    #
+    #    # begin to process
+    #    if (!open(LOGOFAT, "<$location")) {
+    #       send_msg(0, "$mn pro_result can't open log file");
+    #        return "error";
+    #    }
+    #    my $casename;
+    #    my $judge = "pass";
+    #    #my $begin = 0;
+    #    while(my $line = <LOGOFAT>) {
+    #         if ($line =~ /^------START/){
+    #            # $begin = 1;
+    #         }elsif ($line =~ /^FILENAME/){
+    #
+    #         } elsif($line =~ /^\[(.*)\]/) {
+    #             $casename = $1;
+    #             send_msg(2,"begin to check case $casename");
+    #             $total ++;
+    #         } elsif ($line =~ /^RETURN:/){
+    #
+    #         } elsif ($line =~ /^OUTPUT:/){
+    #
+    #         } elsif ($line =~ /^CHECK:.*\[(\w*)\]/){
+    #             if ($1 =~ /Failed/){
+    #                $judge = "fail";
+    #                push @cases, "CASE:$casename  IN:$location with $line\n";
+    #             }
+    #             send_msg(2,"check result is $judge");
+    #         } elsif ($line =~ /^CMDCHECK:.*\[(\w*)\]/){
+    #            if ($1 =~ /Failed/){
+    #                $judge = "fail";
+    #                push @cases, "CASE:$casename  IN:$location with $line\n";
+    #             }
+    #         } elsif ($line =~ /^------END/){
+    #                if($judge =~ /fail/){
+    #                    $fail++;
+    #                    send_msg(2,"case failed");
+    #                }else {
+    #                     $pass++;
+    #                     send_msg(2,"case passed");
+    #                }
+    #         } else {
+    #             next;
+    #         }
+    #    }
+    #}
+
+    send_msg(2, "begin to process log file\n");
     foreach my $file (@logfilelist) {
         my $flag = 0;
         my $location = $logfiledir."/".$file;
-        send_msg(2, "begin to process log $location \n");
+
         if ($file =~ /xcattest\.log\.(\w+)/) {
+            send_msg(2, "checking log $location \n");
             my $holetime = $1;
             if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
                 for my $start (@start) {
@@ -1328,54 +1404,69 @@ sub pro_result{
 
         # begin to process
         if (!open(LOGOFAT, "<$location")) {
-           send_msg(0, "$mn pro_result can't open log file");
+           send_msg(0, "$mn pro_result can't open log file $location");
             return "error";
         }
-        my $casename;
-        my $judge = "pass";
-        #my $begin = 0;
+
+        send_msg(2, "begin to process log file $location\n");
         while(my $line = <LOGOFAT>) {
-             if ($line =~ /^------START/){
-                # $begin = 1;
-             }elsif ($line =~ /^FILENAME/){
+             if ($line =~ /------Total: (\w*) , Failed: (\w*)------/){
+                 $total += $1;
+                 $fail += $2;
+             } else {
+                 next;
+             }
+        }
+        send_msg(2, "done with file $location, total is $total, fail is $fail\n");
+    }
 
-             } elsif($line =~ /^\[(.*)\]/) {
-                 $casename = $1;
-                 send_msg(2,"begin to check case $casename");
-                 $total ++;
-             } elsif ($line =~ /^RETURN:/){
+    send_msg(2, "begin to process failedcases file\n");
+    foreach my $file (@logfilelist) {
+        my $flag = 0;
+        my $location = $logfiledir."/".$file;
 
-             } elsif ($line =~ /^OUTPUT:/){
-
-             } elsif ($line =~ /^CHECK:.*\[(\w*)\]/){
-                 if ($1 =~ /Failed/){
-                    $judge = "fail";
-                    push @cases, "CASE:$casename  IN:$location with $line\n";
-                 }
-                 send_msg(2,"check result is $judge");
-             } elsif ($line =~ /^CMDCHECK:.*\[(\w*)\]/){
-                if ($1 =~ /Failed/){
-                    $judge = "fail";
-                    push @cases, "CASE:$casename  IN:$location with $line\n";
-                 }
-             } elsif ($line =~ /^------END/){
-                    if($judge =~ /fail/){
-                        $fail++;
-                        send_msg(2,"case failed");
-                    }else {
-                         $pass++;
-                         send_msg(2,"case passed");
+        if ($file =~ /failedcases\.(\w+)/) {
+            send_msg(2, "checking log $location \n");
+            my $holetime = $1;
+            if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
+                for my $start (@start) {
+                    my $this = shift @this;
+                    if ($start > $this) {
+                        $flag = 1;
+                        last;
+                    } elsif ($start < $this) {
+                        last;
                     }
+                }
+            } else {
+                next; # do something here.
+            }
+        } else {
+            next; # useless log
+        }
+        next if ($flag); # old log
+
+        # begin to process
+        if (!open(LOGOFAT, "<$location")) {
+           send_msg(0, "$mn pro_result can't open failedcases file $location");
+            return "error";
+        }
+
+        send_msg(2, "begin to process failedcases file $location\n");
+        while(my $line = <LOGOFAT>) {
+             if ($line =~ /-----START:(.*)------/){
+                 push @cases, $_;
              } else {
                  next;
              }
         }
     }
 
+    $pass = $total - $fail;
     my $result1 = "Total cases: $total, Pass cases: $pass, Fail cases: $fail, ";
-    if ($pass+$fail != $total){
-         $result1 .= "case log is imcomplete, please check\n";
-    }
+    #if ($pass+$fail != $total){
+    #     $result1 .= "case log is imcomplete, please check\n";
+    #}
     $result1 .= "FATALERROR";
     $result1 .= join ";", @cases;
     return $result1;
@@ -1394,17 +1485,25 @@ sub send_mail {
     my $subject = "[xcat-autotest] autotest result ";
     my $mailprog = "/bin/mail";
     my $sendmail = "echo \"$content\"";
-print " $$ content is $content \n";    
+    send_msg(2, "$$ process returns content with $content \n");
     my $send = $sendmail." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
-    system($send);    
+    system($send);
     return 0;
 }
 
 ###############################################################
 # Mainfunction
 ###############################################################
-
-
+send_msg(2,"........................");
+send_msg(2,"........................");
+send_msg(2,".....ooooO..............");
+send_msg(2,"....(....)....Ooooo.....");
+send_msg(2,".....\\..(.....(....)....");
+send_msg(2,"......\\__).....)../.....");
+send_msg(2,"..............(_ /......");
+send_msg(2,"........................");
+send_msg(2,".........START .........");
+send_msg(2,"........................");
 #######################################
 # step 0. Parse input arguments
 #######################################
@@ -1445,8 +1544,8 @@ if ($management_node) {
            if ($confkeys{$k} eq $mn) {
                $mns{$k} = $mn;
                send_msg(2, "step 0, specify mn $mn");
-           }       
-        }   
+           }
+        }
     }
 }
 
@@ -1469,12 +1568,12 @@ if ( !defined($pid) ) {
     send_mail(0, "fork error");
     exit;
 } elsif ( $pid == 0 ) { # child process
-    close PREAD; 
+    close PREAD;
     #######################################
-    # step 2. git update  
+    # step 2. git update
     #######################################
     send_msg(2, "step 2, Running git_update...............");
-    $res = git_update();
+    #$res = git_update();
     if ($res) {
         send_msg(0, "git_update returns error, child process exit");
         syswrite CWRITE,"Failed with git update, child process exit\n";
@@ -1499,21 +1598,16 @@ if ( !defined($pid) ) {
              if ($result =~ /succeed/) {
                  $flag = 1;
                  last;
-             }         
+             }
         }
-        last if($flag);# pass        
-        last if(time() - $startpoint > 7200); # wait 2 hours at most    
+        last if($flag);# pass
+        last if(time() - $startpoint > 7200); # wait 2 hours at most
     }
-    close PREAD;    
-}    
+    close PREAD;
+}
 
 # begin child process
-my $totalcase = 0;
-my $passcase = 0;
-my $failcase = 0;
-
-
-    pipe CREAD,PWRITE;
+    pipe CONTROLREAD,MNWRITE;
     foreach my $m (keys %mns) {
         send_msg(2, "fork process for $m");
         my $mn = $mns{$m};
@@ -1522,14 +1616,14 @@ my $failcase = 0;
             send_mail(0, "fork error");
             exit;
         } elsif ( $pid == 0 ) { # child process
-            close CREAD;   
+            close CONTROLREAD;
             #######################################
-            # step 3. Install MNs, 
-            #######################################   
-           # send_msg(2, "step 3, Running mn_install...............");                       
+            # step 3. Install MNs,
+            #######################################
+           # send_msg(2, "step 3, Running mn_install...............");
            # $res = mn_install();
            # if ($res) {
-           #     syswrite PWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
+           #     syswrite MNWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
            #     exit;
            # }
             #######################################
@@ -1538,25 +1632,25 @@ my $failcase = 0;
             send_msg(2, "step 4, Running copy_code...............");
             $res =  copy_code($mn);
             if ($res) {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in copy_code\n";
+                syswrite MNWRITE,"REPORTFROM:$mn--: failed in copy_code\n";
                 exit;
-            }    
+            }
             #######################################
             # step 5. Build xcat code in MNs
             #######################################
             send_msg(2, "step 5, Running build_xcat...............");
-            $res = build_xcat($mn);
+            $res =  build_xcat($mn);
             if ($res) {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in build_xcat\n";
+                syswrite MNWRITE,"REPORTFROM:$mn--: failed in build_xcat\n";
                 exit;
-            }        
+            }
             #######################################
             # step 6. Read xCAT MN's configuration
             #######################################
             send_msg(2, "step 6, Running config_mn...............");
             $res = config_mn($mn);
             if ($res) {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in config_mn\n";
+                syswrite MNWRITE,"REPORTFROM:$mn--: failed in config_mn\n";
                 exit;
             }
             #######################################
@@ -1569,95 +1663,111 @@ my $failcase = 0;
             send_msg(2, "step 7, Running do_test...............");
             $res = do_test($mn);
             if ($res) {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in do_test\n";
+                syswrite MNWRITE,"REPORTFROM:$mn--: failed in do_test\n";
                 exit;
             }
-            
+
             #######################################
-            # step 8. process result 
+            # step 8. process result
             #######################################
             send_msg(2, "step 8, Running pro_result...............");
             my $resultformn = pro_result($mn, $runtime);
             if ($resultformn eq "error") {
-                syswrite PWRITE,"REPORTFROM:$mn--: failed in pro_result\n";
+                syswrite MNWRITE,"REPORTFROM:$mn--: failed in pro_result\n";
                 exit;
-            }                    
-            send_msg(2, "result for $mn is $resultformn");
-print "$$:result for $mn is $resultformn \n";
-            syswrite PWRITE,"REPORTFROM:$mn--: $resultformn\n";
+            }
+            send_msg(2, "$$ result for $mn is $resultformn");
+            syswrite MNWRITE,"REPORTFROM:$mn--: $resultformn\n";
             exit 0;
         } # end of child process
-    } # end of foreach    
-    close PWRITE;
+    } # end of foreach
+
+    # fork process to get result
+    $SIG{CHLD} = sub { exit 0; };
+    my $controlpid = fork();
+    if ( !defined($controlpid) ) {
+        send_mail(0, "fork error");
+        exit;
+    } elsif ( $controlpid == 0 ) { # child process
+	    close MNWRITE;	
+	    while(1) {
+            while(<CONTROLREAD>){
+                 chomp;
+                 my $result = $_;
+                 if ($result =~ /^REPORTFROM:(\w*)--:(.*)/){
+                     $totalresult{$1} .= $2;
+                     }
+                }
+                last if(keys %totalresult == keys %mns and (keys %totalresult != 0) );	
+            }   
+        print "finish \n";
+        my $consumption = time() - $startpoint;
+        my %summary;
+        my %fatal;
+        for my $m (keys %totalresult) {
+        
+            if ($totalresult{$m} =~ /(.*)FATALERROR(.*)/){
+                $summary{$m} = $1;
+                $fatal{$m} = $2;
+            }
+        }
+        
+        if (-f "/tmp/commitlog1" and -z _)
+        {
+            $commitinfo="No code updates\n";
+        }else{
+            $commitinfo=`cat /tmp/commitlog1`;
+        }
+        
+        # phase result
+        send_msg(2, "Autotest has run sucessfully, begin to send mail");
+        my $mailreport;
+        $mailreport .= "\n======================================\n";
+        $mailreport .= "            SUMMARY\n";
+        $mailreport .= "======================================\n";
+        $mailreport .= "\n";
+        $mailreport .= "Commit: \n";
+        $mailreport .= "---------------\n";
+        $mailreport .= "$commitinfo \n";
+        $mailreport .= "\n\n";
+        $mailreport .= "Time consumption: \n";
+        $mailreport .= "---------------------\n";
+        my $hour = (int($consumption)-(int($consumption)%3600))/3600;
+        my $minutes = (int($consumption))% $hour;
+        $minutes = ($minutes-$minutes%60)/60;
+        $mailreport .= "$hour hour, $minutes minutes\n";
+        $mailreport .= "\n\n";
+        $mailreport .= "Result: \n";
+        $mailreport .= "---------------\n";
+        for my $m (keys %totalresult) {
+            $mailreport .= "$m \n".$summary{$m}."\n";
+        }
+        
+        $mailreport .= "\n\n\n";
+        $mailreport .= "\n======================================\n";
+        $mailreport .= "          FATAL ERROR\n";
+        $mailreport .= "======================================\n";
+        $mailreport .= "\n";
+        $mailreport .= "Result: \n";
+        $mailreport .= "---------------\n";
+        for my $m (keys %totalresult) {
+            $mailreport .= "$m \n".$fatal{$m}."\n";
+        }
+        #print "=======$mailreport \n";
+        send_mail(1, $mailreport);
+        exit 0;
+}	
+	
+    close MNWRITE;	
+    close CONTROLREAD;
     my $time = time();
     while (1) {
-        while(<CREAD>){
-             chomp;
-             my $result = $_;
-             if ($result =~ /^REPORTFROM:(\w*)--:(.*)/){
-                 $totalresult{$1} .= $2;
-             } 
-        }  
-        last if(keys %totalresult == keys %mns and (keys %totalresult != 0) );
-        last if(time() - $time > 28800); #wait 8 hours at most    
+        print ".";
+        if(time() - $time > 28800) {
+		   send_mail(0, "!!!xCATreg hangs at running test case and return forcibly");
+           last; #wait 8 hours at most
+        }
     }
-print "finish \n";
-my $consumption = time() - $startpoint;
-my %summary;
-my %fatal;
-for my $m (keys %totalresult) {
-
-    if ($totalresult{$m} =~ /(.*)FATALERROR(.*)/){
-        $summary{$m} = $1;
-        $fatal{$m} = $2;
-    }
-} 
-
-if (-f "/tmp/commitlog1" and -z _)
-{
-    $commitinfo="No code updates\n";
-}else{
-    $commitinfo=`cat /tmp/commitlog1`;
-}
-
-# phase result
-send_msg(2, "Autotest has run sucessfully, begin to send mail");
-my $mailreport;
-$mailreport .= "\n================================\n";
-$mailreport .= "            SUMMARY\n";
-$mailreport .= "================================\n";
-$mailreport .= "\n";
-$mailreport .= "Commit: \n";
-$mailreport .= "---------------\n";
-$mailreport .= "$commitinfo \n";
-$mailreport .= "\n\n";
-$mailreport .= "Time consumption: \n";
-$mailreport .= "---------------------\n";
-$mailreport .= "$consumption\n";
-$mailreport .= "\n\n";
-$mailreport .= "Result: \n";
-$mailreport .= "---------------\n";
-for my $m (keys %totalresult) {
-    $mailreport .= "$m \n".$summary{$m}."\n";
-} 
-
-$mailreport .= "\n\n\n";
-$mailreport .= "\n================================\n";
-$mailreport .= "          FATAL ERROR\n";
-$mailreport .= "================================\n";
-$mailreport .= "\n";
-$mailreport .= "Result: \n";
-$mailreport .= "---------------\n";
-for my $m (keys %totalresult) {
-    $mailreport .= "$m \n".$fatal{$m}."\n";
-} 
-#print "=======$mailreport \n";
-send_mail(1, $mailreport);
 exit 0;
-    
-
-
-
-
 
 
