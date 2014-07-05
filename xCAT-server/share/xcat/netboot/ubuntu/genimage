@@ -99,6 +99,7 @@ if (@ARGV > 0) {
     $imagename=$ARGV[0];
 }
 
+
 my %updates_os = (); # the hash for updating osimage table
 my %updates = (); # the hash for updating linuximage table
 
@@ -793,7 +794,6 @@ sub mkinitrd_dracut {
 
 sub mkinitrd {
     my ($mode) = @_; # statelite or stateless
-
     if($mode eq "statelite") {
         push @ndrivers, "fscache.ko";
         push @ndrivers, "sunrpc.ko";
@@ -1444,6 +1444,12 @@ EOMS
     if ( -d "$rootimg_dir/lib/firmware/" ){
         system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
     }
+
+    if ( -d "$rootimg_dir/lib/modules/$kernelver/" ){
+        system("cp  $rootimg_dir/lib/modules/$kernelver/modules.builtin /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.builtin");
+        system("cp  $rootimg_dir/lib/modules/$kernelver/modules.order /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.order");
+    }
+
     system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
 	# Copy udev and network scripts into initrd for s390x, which also works for other platforms
 	# udev
@@ -1470,6 +1476,7 @@ EOMS
         symlink("busybox", "/tmp/xcatinitrd.$$/sbin/ifconfig");
         symlink("busybox", "/tmp/xcatinitrd.$$/bin/hostname");
         symlink("busybox", "/tmp/xcatinitrd.$$/bin/route");
+        symlink("busybox", "/tmp/xcatinitrd.$$/bin/nc");
         symlink("bash", "/tmp/xcatinitrd.$$/bin/sh");
         symlink("bash", "/tmp/xcatinitrd.$$/sbin/sh");
 
