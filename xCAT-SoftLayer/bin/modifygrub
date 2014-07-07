@@ -59,8 +59,13 @@ sub addKernelParms {
 
 	# replace <nodename> with the nodename
 	my $nodename = $ENV{NODE};			# this env var is set by xdsh
+        if (!$nodename){
+             my $tmpstr=$args->{kernelparms};
+             my @strhost=split(' ',$tmpstr);
+             my @tempname=split('=',$strhost[7]);
+             $nodename=$tempname[1];
+        }
 	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
-
 	# get node ip and add it to the kernel parms
 	my ($nic, $ip, $netmask, $network, $broadcast, $gateway, $mac) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
@@ -83,6 +88,7 @@ sub addKernelParms {
 	else {			# scripted install
 		#todo: the parameters for kickstart are likely different
 		$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
+              # print Dumper($args->{kernelparms})
 	}
 }
 
@@ -94,7 +100,7 @@ sub getNodeIpInfo {
 	verbose("using IP prefix $ipprefix");
 
 	# parse ip addr show output, looking for ipprefix, to determine nic, ip, mac
-	my @output = runcmd("ip addr show");
+	my @output = runcmd("/sbin/ip addr show");
 	my ($nic, $mac, $ipandmask);
 	foreach my $line (@output) {
 		my ($nictmp, $mactmp, $iptmp);
@@ -148,7 +154,7 @@ sub getNodeIpInfo {
 
 	# finally, find the gateway
 	my $gateway;
-	my @output = runcmd("ip route");
+	my @output = runcmd("/sbin/ip route");
 	# we are looking for a line like: 10.0.0.0/8 via 10.54.51.1 dev bond0
 	my @networks = grep(m/ via .* $nic\s*$/, @output);
 	if (scalar(@networks)) { ($gateway) = $networks[0]=~m/ via\s+(\S+)/; }
