@@ -25,6 +25,7 @@ B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
 B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
                [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
                [B<vmnics=vlan1[,vlan2..]]> [B<vmstorage=<N|viosnode:slotid>>] [B<--vios>]
+               [B<del_physlots=drc_index1,drc_index2...>]
                [B<del_vadapter=slotid>]
                
 =head2 VMware/KVM specific:
@@ -205,9 +206,13 @@ To specify the parameters that will be modified.
 
 To create new virtual adapter for the specified node. 
 
-=item B<del_vadapter=value>
+=item B<del_physlots=drc_index1,drc_index2...>
 
-To specify the slot id of the virtual adapter will be deleted.
+To delete physical slots which are specified by the I<drc_index1,drc_index2...>.
+
+=item B<del_vadapter=slotid>
+
+To delete a virtual adapter specified by the I<slotid>.
 
 =back
 

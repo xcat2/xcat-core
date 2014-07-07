@@ -53,6 +53,7 @@ my %param_list_map = (
     'vmcpus' => 'part_get_lpar_processing',
     'vmmemory' => 'part_get_lpar_memory',
     'vmphyslots' => 'part_get_all_io_bus_info',
+    'del_physlots' => 'part_get_all_io_bus_info',
     'vmnics' => 'part_get_all_vio_info',
     'vmstorage' => 'part_get_all_vio_info',
     'del_vadapter' => 'part_get_all_vio_info'
@@ -62,7 +63,7 @@ sub chvm_parse_extra_options {
 	my $args = shift;
 	my $opt = shift;
     # Partition used attributes #
-    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting vmstorage vmnics del_vadapter);
+    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting vmstorage vmnics del_vadapter del_physlots);
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
@@ -94,7 +95,13 @@ sub chvm_parse_extra_options {
                 if ($value !~ /^\d+$/) {
                     return "Invalid param '$value', only one slot id can be specified";
                 }
-
+            } elsif ($cmd eq "del_physlots") {
+                my @tmp_array = split ",",$value;
+                foreach (@tmp_array) {
+                    unless (/(0x\w{8})/) {
+                        return "'$_' is invalid";
+                    }
+                }
             } elsif ($cmd eq "vmothersetting") {
                 if ($value =~ /hugepage:\s*(\d+)/i) {
                     $opt->{huge_page} = $1;
@@ -797,7 +804,7 @@ sub do_op_extra_cmds {
 		    $action = "set_huge_page";
 	        } elsif ($op eq "vmcpus") {
                     $action = "part_set_lpar_pending_proc";
-                } elsif ($op eq "vmphyslots") {
+                } elsif ($op eq "vmphyslots" or $op eq "del_physlots") {
                     $action = "set_io_slot_owner_uber";
                 } elsif ($op eq "del_vadapter") {
                     $action = "part_clear_vslot_config";
@@ -885,7 +892,11 @@ sub do_op_extra_cmds {
                 }
                 my $tmp_value = ($param eq '*') ? $name : $param;
                 xCAT::MsgUtils->verbose_message($request, "$request->{command} $action for node:$name, parm:$tmp_value."); 
-                my $value = xCAT::FSPUtils::fsp_api_action($request, $name, $d, $action, 0, $tmp_value);
+                my @tmpd = @$d;
+                if ($op eq "del_physlots") {
+                    @tmpd[0] = "-1";
+                }
+                my $value = xCAT::FSPUtils::fsp_api_action($request, $name, \@tmpd, $action, 0, $tmp_value);
                 if (@$value[1] && ((@$value[1] =~ /Error/i) && (@$value[2] ne '0'))) {
                     return ([[$name, @$value[1], '1']]) ;
                 } else {
