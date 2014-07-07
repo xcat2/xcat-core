@@ -133,17 +133,7 @@ sub updateGrubOnNodes {
 	my @output = runcmd('which modifygrub');
 	my $modifygrub = $output[0];
 	chomp($modifygrub);
-        my @auser = runcmd('whoami');
-        chop(@auser);
-        my $cmd;
-        if($auser[0] eq "root")
-        {
-        $cmd = "xdsh $nr -e $modifygrub $vtxt $dtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
-        }
-        else
-        {
-	$cmd = "xdsh $nr -l $auser[0] --sudo -e $modifygrub $vtxt $dtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
-        }
+	my $cmd = "xdsh $nr --sudo -e $modifygrub $vtxt $dtxt -w $WAITTIME -p " . $bootparms->{osimageprovmethod} . ' ' . remoteFilename($bootparms->{kernel}) . ' ' . remoteFilename($bootparms->{initrd}) . ' ';
 	# we need to quote the kernel parms, both here when passing it to xdsh, and on the node
 	# when xdsh is passing it to modifygrub. The way to get single quotes inside single quotes
 	# is to quote each of the outer single quotes with double quotes.
@@ -227,16 +217,7 @@ sub modifyAutoinstFiles {
 	foreach my $n (@nodes) {
 		my $f = "/install/autoinst/$n";
 		my ($ip, $netmask, $gateway) = getNodeIpInfo($n);
-                my @auser = runcmd('whoami');
-                chop(@auser);
-                if($auser[0] eq "root")
-                {
-                runcmd("sed -i 's/#NODEIPADDR#/$ip/;s/#NODENETMASK#/$netmask/;s/#NODEGATEWAY#/$gateway/' $f");
-                }
-                else
-                {
 		runcmd("sudo sed -i 's/#NODEIPADDR#/$ip/;s/#NODENETMASK#/$netmask/;s/#NODEGATEWAY#/$gateway/' $f");
-                }
 		my $matches = sed($f, $search, $replace, mode=>'insertbefore');
 		if (!$matches) { die "Error: could not find the right place in $f to insert the sed of the network wait.\n"; }
 	}
