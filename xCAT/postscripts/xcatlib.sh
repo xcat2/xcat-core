@@ -274,45 +274,39 @@ function servicemap {
    local svclistname=   
 
    INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
-   SYSTEMD_dhcp="dhcpd.service";
 
-   INIT_nfs="nfsserver nfs nfs-kernel-server";
-   SYSTEMD_nfs="nfs-server.service";
+   INIT_nfs="nfsserver nfs-server nfs nfs-kernel-server";
 
    INIT_named="named bind9";
-   SYSTEMD_named="named.service";
 
    INIT_syslog="syslog syslogd rsyslog";
-   SYSTEMD_syslog="rsyslog.service";
  
-   INIT_firewall="iptables firewalld SuSEfirewall2_setup";
-   SYSTEMD_firewall="firewalld.service";
+   INIT_firewall="iptables firewalld SuSEfirewall2_setup ufw";
 
    INIT_http="apache2 httpd";
-   SYSTEMD_http="httpd.service";
 
    INIT_ntpserver="ntpd ntp";
-   SYSTEMD_ntpserver="ntpd.service";
 
    INIT_mysql="mysqld mysql";
-   SYSTEMD_mysql="mysqld.service";
 
    INIT_ssh="sshd ssh";
-   SYSTEMD_ssh="sshd.service";
 
    local path=
+   local postfix=""
    local retdefault=$svcname
    local svcvar=${svcname//[-.]/_}
    if [ "$svcmgrtype" = "0"  ];then
-      svclistname=INIT_$svcvar
       path="/etc/init.d/"
    elif [ "$svcmgrtype" = "1"  ];then
-      svclistname=SYSTEMD_$svcvar
       retdefault=$svcname.service
       path="/usr/lib/systemd/system/"
+      postfix=".service"
+   elif [ "$svcmgrtype" = "2"  ];then
+      path="/etc/init/"
+      postfix=".conf"
    fi
    
-
+   svclistname=INIT_$svcvar
    local svclist=$(eval echo \$$svclistname)      
 
    if [ -z "$svclist" ];then
@@ -321,7 +315,7 @@ function servicemap {
 
    for name in `echo $svclist`
    do
-      if [ -e "$path$name"  ];then
+      if [ -e "$path$name$postfix"  ];then
          echo $name
          break
       fi
@@ -333,10 +327,13 @@ function startservice {
    local svcname=$1
    local cmd=
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl start $svcunit"
+   elif [ -n "$svcjob"  ];then
+      cmd="initctl start $svcjob";
    elif [ -n "$svcd"  ];then
       cmd="service $svcd start";
    fi
@@ -354,13 +351,23 @@ function stopservice {
    local svcname=$1
    local cmd=
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl stop $svcunit"
+   elif [ -n "$svcjob"  ];then
+      initctl status $svcjob | grep stop
+      if [ "$?" = "0" ] ; then
+         return 0
+      else
+         cmd="initctl stop $svcjob"       
+      fi
    elif [ -n "$svcd"  ];then
-      cmd="service $svcd stop";
+      cmd="service $svcd stop"
    fi
+    
+   echo $cmd
 
    if [ -z "$cmd"  ];then
       return 127
@@ -374,12 +381,20 @@ function restartservice {
    local svcname=$1
    local cmd=
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl restart $svcunit"
+   elif [ -n "$svcjob"  ];then
+      initctl status $svcjob | grep stop
+      if [ "$?" = "0" ];then 
+         cmd= "initctl start $svcjob"
+      else
+         cmd="initctl restart $svcjob"
+      fi 
    elif [ -n "$svcd"  ];then
-      cmd="service $svcd restart";
+      cmd="service $svcd restart"
    fi
 
    if [ -z "$cmd"  ];then
@@ -394,6 +409,7 @@ function checkservicestatus {
    local svcname=$1
 
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
  
    local output= 
@@ -408,6 +424,13 @@ function checkservicestatus {
       elif echo $output|grep -E -i "^failed$";then
          retcode=2
       fi
+   elif [ -n "$svcjob"  ];then
+      output=$(initctl status $svcjob)
+      if echo $output|grep -i "waiting";then
+         retcode=2
+      elif echo $output|grep -i "running";then 
+         retcode=0
+      fi 
    elif [ -n "$svcd"  ];then
       output=$(service $svcd status)
       retcode=$?
@@ -420,7 +443,7 @@ function checkservicestatus {
    else
       retcode=127
    fi
-   
+#echo $svcunit-----$svcd   
    return $retcode
     
 }
@@ -429,14 +452,17 @@ function enableservice {
    local svcname=$1
    local cmd=
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl enable  $svcunit"
+   elif [ -n "$svcjob"  ];then
+      cmd="update-rc.d $svcjob defaults"
    elif [ -n "$svcd"  ];then
      command -v chkconfig >/dev/null 2>&1
      if [ $? -eq 0 ];then
-        cmd="chkconfig $svcd on";
+        cmd="chkconfig $svcd on"
      else
         command -v update-rc.d >/dev/null 2>&1
         if [ $? -eq 0 ];then
@@ -457,10 +483,13 @@ function disableservice {
    local svcname=$1
    local cmd=
    local svcunit=`servicemap $svcname 1`
+   local svcjob=`servicemap $svcname 2`
    local svcd=`servicemap $svcname 0`
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl disable  $svcunit"
+   elif [ -n "svcjob"  ];then
+      cmd="update-rc.d -f $svcd remove"
    elif [ -n "$svcd"  ];then
      command -v chkconfig >/dev/null 2>&1
      if [ $? -eq 0 ];then

@@ -42,7 +42,7 @@ case "$1" in
 	fi
         
 #        [ -e /etc/apache2/conf-enabled/xcat.conf ] && rm /etc/apache2/conf-enabled/xcat.conf
-#        mv /etc/apache2/conf-enabled/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
+         ln -s -f /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
 
 	/etc/init.d/apache2 restart
     ;;
