@@ -1879,8 +1879,7 @@ sub get_image_name
 #-------------------------------------------------------------------------------
 
 =head3   StartService
-	Supports AIX and Linux as long as the service is registered with
-	lssrc or startsrc.  
+	Supports AIX only, use startservice for Linux 
 	Used by the service node plugin (AAsn.pm) to start requested services. 
     Checks to see if the input service is already started. If it is started
 	it stops and  starts the service. Otherwise
@@ -1900,7 +1899,7 @@ sub get_image_name
     Example:
          if (xCAT::Utils->startService("named") { ...}
     Comments:
-         this subroutine is deprecated,
+         this subroutine is deprecated for Linux,
          will be used as an internal function to process AIX service,
          for linux, use xCAT::Utils->startservice instead
 
@@ -3707,9 +3706,11 @@ sub startservice{
   {
      return -1;
   }
- 
-  xCAT::Utils->runcmd($cmd, -1);
+  #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
+  system($cmd);
+  $::RUNCMD_RC=$?;
   return $::RUNCMD_RC;
+ 
 }
 
 
@@ -3768,7 +3769,9 @@ sub stopservice{
      return -1;
   }
  
-  xCAT::Utils->runcmd($cmd, -1);
+  #xCAT::Utils->runcmd($cmd, -1);   # do not use runcmd (backtics), must use system to not fork
+  system($cmd);
+  $::RUNCMD_RC=$?;
   return $::RUNCMD_RC;
 }
 
