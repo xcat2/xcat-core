@@ -59,12 +59,6 @@ sub addKernelParms {
 
 	# replace <nodename> with the nodename
 	my $nodename = $ENV{NODE};			# this env var is set by xdsh
-        if (!$nodename){
-             my $tmpstr=$args->{kernelparms};
-             my @strhost=split(' ',$tmpstr);
-             my @tempname=split('=',$strhost[7]);
-             $nodename=$tempname[1];
-        }
 	$args->{kernelparms} =~ s/<nodename>/$nodename/g;
 	# get node ip and add it to the kernel parms
 	my ($nic, $ip, $netmask, $network, $broadcast, $gateway, $mac) = getNodeIpInfo($args);
