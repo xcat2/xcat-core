@@ -26,7 +26,7 @@ B<rpower> I<noderange> [B<softoff>]
 
 B<rpower> I<noderange> [B<onstandby>|B<stat>|B<state>] [B<-T tooltype>]
 
-B<rpower> I<noderange> [B<on>|B<off>|B<lowpower>|B<resetsp>]
+B<rpower> I<noderange> [B<on>|B<off>|B<resetsp>]
 
 =head2 Frame (using Direct FSP Management) specific:
 
@@ -63,10 +63,6 @@ Turn power on to standby state
 =item B<-T>
 
 The value could be B<lpar> or B<fnm>. The tooltype value B<lpar> is for xCAT and B<fnm> is for CNM. The default value is "B<lpar>". For cold start in the large cluster, it will save a lot of time if the admins use "B<rpower> I<noderange> B<onstandby> B<-T> B<fnm>" to power on all the CECs from the management node through the B<fnm> connections.
-
-=item B<lowpower>
-
-Turn CEC to low power state (state EOCT). This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode. And we can use power off command to get out of lowepower state.
 
 =item B<rackstandby>
 
