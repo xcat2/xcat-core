@@ -11,8 +11,8 @@
 #          routeop replace net mask gateway ifname   #NOTE: it only works for sles so far
 #                 net - IP of net like 192.168.1.0. The keyword
 #                       'default' is used to set the default route.
-#                 mask - The length of the netmask (CIDR) like 8,16,24
-#                       dotted-decimal format like 255.255.0.0 is not supported.
+#                 mask - The length of the netmask (CIDR) like 8,16,24 OR
+#                       the dotted-decimal format like 255.255.0.0
 #                 gateway - The next hop. It could be set to 0.0.0.0 for omitting
 #                 ifname - The interface to route to the next hop
 #=head3 example
@@ -22,6 +22,9 @@
 #        routeop replace 70.1.1.0 24 10.1.0.211    #NOTE: this is NOT supported for redhat
 #=cut
 #-------------------------------------------------------------------------------
+
+str_dir_name=`dirname $0`
+. $str_dir_name/xcatlib.sh
 
 op=$1
 
@@ -881,8 +884,7 @@ elif [ "$op" = "delete" ]; then
     rm_persistent_route $net $mask $gw $ifname
 elif [ "$op" = "replace" ]; then
     if [ $nummask -ne 1 ]; then
-        echo "Error: [routeop replace] only supports the CIDR formatted netmask like 16, 24."
-        exit 1
+        mask=$(v4mask2prefix $mask)
     fi
     
     if echo $net | grep : 2>&1 1>/dev/null
