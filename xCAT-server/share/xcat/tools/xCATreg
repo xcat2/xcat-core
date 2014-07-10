@@ -1485,7 +1485,6 @@ sub send_mail {
     my $subject = "[xcat-autotest] autotest result ";
     my $mailprog = "/bin/mail";
     my $sendmail = "echo \"$content\"";
-    send_msg(2, "$$ process returns content with $content \n");
     my $send = $sendmail." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
     system($send);
     return 0;
