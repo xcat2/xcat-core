@@ -860,6 +860,11 @@ sub check_profile_consistent{
             return 0, "$nictype networkprofile must use with hardwareprofile.";
         }
     }
+
+    if ($mgt eq 'vm') 
+    {
+        return 1, "";
+    }  
        
     # For nodetype is lpar node, not need to check the nictype as it is not required for lpar node
     if (not $nictype and $mgt and $nodetype ne 'lpar' ) { 
