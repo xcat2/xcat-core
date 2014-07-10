@@ -721,28 +721,6 @@ sub get_nodes_profiles
 
 #-------------------------------------------------------------------------------
 
-=head3 get_imageprofile_prov_osvers
-      Description : Get A node's provisioning os version and profile from its imageprofile attribute.
-      Arguments   : $imgprofilename - imageprofile name
-      Returns     : node's osversion and profile
-=cut
-
-#-------------------------------------------------------------------------------
-sub get_imageprofile_prov_osvers
-{
-
-    my $class = shift;
-    my $imgprofilename = shift;
-    my $osimgtab = xCAT::Table->new('osimage');
-    my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$imgprofilename'", 'ALL' ))[0];
-    my $osversion = $osimgentry->{'osvers'};
-    my $profile = $osimgentry->{'profile'};
-    return ($osversion, $profile);
-}
-
-
-#-------------------------------------------------------------------------------
-
 =head3 get_imageprofile_prov_method
       Description : Get A node's provisioning method from its imageprofile attribute.
       Arguments   : $imgprofilename - imageprofile name
@@ -766,6 +744,27 @@ sub get_imageprofile_prov_method
     #my $osimgtab = xCAT::Table->new('osimage');
     #my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$osimgname'", 'ALL' ))[0];
     #return $osimgentry->{'provmethod'};
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_imageprofile_prov_osvers
+      Description : Get A node's provisioning os version and profile from its imageprofile attribute.
+      Arguments   : $imgprofilename - imageprofile name
+      Returns     : node's osversion and profile
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_imageprofile_prov_osvers
+{
+
+    my $class = shift;
+    my $imgprofilename = shift;
+    my $osimgtab = xCAT::Table->new('osimage');
+    my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$imgprofilename'", 'ALL' ))[0];
+    my $osversion = $osimgentry->{'osvers'};
+    my $profile = $osimgentry->{'profile'};
+    return ($osversion, $profile);
 }
 
 #-------------------------------------------------------------------------------
@@ -861,6 +860,11 @@ sub check_profile_consistent{
             return 0, "$nictype networkprofile must use with hardwareprofile.";
         }
     }
+
+    if ($mgt eq 'vm') 
+    {
+        return 1, "";
+    }  
        
     # For nodetype is lpar node, not need to check the nictype as it is not required for lpar node
     if (not $nictype and $mgt and $nodetype ne 'lpar' ) { 
