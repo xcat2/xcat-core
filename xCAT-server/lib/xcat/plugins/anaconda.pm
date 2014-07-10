@@ -2208,6 +2208,13 @@ sub copycd
             $distname = "rhels5";
         }
     }
+    elsif ($desc =~ /^Scientific Linux (\d)\.(\d)/)
+    {
+        unless ($distname)
+        {
+            $distname = "SL$1.$2";
+        }
+    }
     elsif ($desc =~ /^LTS$/)
     {
         unless ($distname)

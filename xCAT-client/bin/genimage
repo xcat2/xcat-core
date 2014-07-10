@@ -176,7 +176,8 @@ if ((!$imagename) && (!$os)){
     my @dircontents = `ls $installdir`;
     chomp(@dircontents);
     foreach (@dircontents) {
-	if($_ =~ /(rhel|fedora|sl|centos|suse)/){
+	# SL matches Scientific Linux, sl matches sles amd sled
+	if($_ =~ /(rhel|fedora|SL|centos|sl|suse)/){
 	    push @oses,$_;
 	}
     } 
