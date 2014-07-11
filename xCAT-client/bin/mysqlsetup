@@ -888,15 +888,14 @@ sub mysqlstart
            
         } else {   # it is mysql
 
-          #if ($::linuxos =~ /rh.*/)
-          #{
-          #  $cmd = "service mysqld start";
-          #}
-          #else
-          #{    # sles
-          #  $cmd = "service mysql start";
-          #}
-          $ret=xCAT::Utils->startservice("mysql");
+          if ($::linuxos =~ /rh.*/)
+          {
+            $ret=xCAT::Utils->startservice("mysqld");
+          }
+          else
+          {    # sles
+            $ret=xCAT::Utils->startservice("mysql");
+          }
        }
     }
     if ($ret != 0)
