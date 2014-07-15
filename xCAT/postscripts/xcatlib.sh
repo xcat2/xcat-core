@@ -298,7 +298,7 @@ function servicemap {
    if [ "$svcmgrtype" = "0"  ];then
       path="/etc/init.d/"
    elif [ "$svcmgrtype" = "1"  ];then
-      retdefault=$svcname.service
+      #retdefault=$svcname.service
       path="/usr/lib/systemd/system/"
       postfix=".service"
    elif [ "$svcmgrtype" = "2"  ];then

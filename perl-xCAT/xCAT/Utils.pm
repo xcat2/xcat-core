@@ -3624,7 +3624,7 @@ sub servicemap{
   }elsif ($svcmgrtype == 1){
      $path="/usr/lib/systemd/system/";
      $postfix=".service";
-     $retdefault=$svcname.".service";
+#     $retdefault=$svcname.".service";
   }elsif ($svcmgrtype == 2){
      $path="/etc/init/";
      $postfix=".conf";
