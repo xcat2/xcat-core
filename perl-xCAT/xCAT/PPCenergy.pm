@@ -296,42 +296,37 @@ sub renergy {
 	    $deadnodes{$_}=1;
 	}	 
 	open (NMAP, "nmap -PE --system-dns --send-ip -sP ". join(' ',@hcps_ip) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
-	my $node1;
-	my $msg1;
+	my $node;
 	while (<NMAP>) {
 	    #print "$_\n";
 	    if (/Host (.*) \((.*)\) appears to be up/) {
-		$node1=$2;
-		unless ($deadnodes{$node1}) {
+		$node=$2;
+		unless ($deadnodes{$node}) {
 		    foreach (keys %deadnodes) {
-			if ($node1 =~ /^$_\./) {
-			    $node1 = $_;
+			if ($node =~ /^$_\./) {
+			    $node = $_;
 			    last;
 			}
 		    }
 		}
-		delete $deadnodes{$node1};
+		delete $deadnodes{$node};
 		if ($verbose) {
 		    push @return_msg, [$node, $_, 0];
 		}
-		push(@pingable_hcp, $node1);
-	    } elsif (/Nmap scan report for ([^ ]*) \((.*)\)/) {
-		$node1=$2;
-		$msg1=$_;
+		push(@pingable_hcp, $node);
+	    } elsif (/Nmap scan report for ([^ ]*)/) {
+		$node=$1;
 	    } elsif (/Host is up./) {
-		unless ($deadnodes{$node1}) {
+		unless ($deadnodes{$node}) {
 		    foreach (keys %deadnodes) {
-			if ($node1 =~ /^$_\./) {
-			    $node1 = $_;
+			if ($node =~ /^$_\./) {
+			    $node = $_;
 			    last;
 			}
 		    }
 		}
-		delete $deadnodes{$node1};
-		if ($verbose) {
-		    push @return_msg, [$node, "$msg1$_", 0];
-		}
-		push(@pingable_hcp, $node1);
+		delete $deadnodes{$node};
+		push(@pingable_hcp, $node);
 	    }
 	}	
     } else {
