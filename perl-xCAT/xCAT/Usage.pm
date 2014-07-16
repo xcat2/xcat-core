@@ -241,8 +241,9 @@ my %usage = (
        chvm <noderange> --p775 -i <id> [-m <memory_interleaving>] -r <partition_rule>
        chvm <noderange> [lparname=<*|name>]
        chvm <noderange> [vmcpus=min/req/max] [vmmemory=min/req/max]
-                        [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
-                        [vmnics=vlan1,vlan2] [vmstorage=<N|viosnode:slotid>] [--vios]
+                        [vmothersetting=hugepage:N,bsr:N]
+                        [add_physlots=drc_index1,drc_index2...] 
+                        [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
    VMware specific:

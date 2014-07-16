@@ -23,8 +23,9 @@ B<chvm> I<noderange> I<--p775> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<p
 B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
 
 B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
-               [B<vmphyslots=drc_index1,drc_index2...>] [B<vmothersetting=hugepage:N,bsr:N>]
-               [B<vmnics=vlan1[,vlan2..]]> [B<vmstorage=<N|viosnode:slotid>>] [B<--vios>]
+               [B<vmothersetting=hugepage:N,bsr:N>]
+               [B<add_physlots=drc_index1,drc_index2...>]
+               [B<add_vmnics=vlan1[,vlan2..]]> [B<add_vmstorage=<N|viosnode:slotid>>] [B<--vios>]
                [B<del_physlots=drc_index1,drc_index2...>]
                [B<del_vadapter=slotid>]
                
@@ -114,7 +115,7 @@ The administrator should use lsvm to get the profile content, and then edit the 
 
 For normal power machine:
 
-chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options I<vmcpus>, I<vmmemory>, I<vmphyslots>, I<vmothersetting>, I<vmnics> and/or I<vmstorage>. If nothing specified, nothing will be returned. 
+chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options I<vmcpus>, I<vmmemory>, I<add_physlots>, I<vmothersetting>, I<add_vmnics> and/or I<add_vmstorage>. If nothing specified, nothing will be returned. 
 
 =head2 VMware/KVM specific:
 
@@ -198,11 +199,11 @@ Name of I/O slots assignment profile. Shall work with option B<--p775>.
 
 Set LPAR name for the specified lpars. If '*' specified, it means to get names from xCAT database and then set them for the specified lpars. If a string is specified, it only supports single node and the string will be set for the specified lpar. The user can use lsvm to check the lparnames for lpars. 
 
-=item B<vmcpus=value> B<vmmemory=value> B<vmphyslots=value> B<vmothersetting=value>
+=item B<vmcpus=value> B<vmmemory=value> B<add_physlots=value> B<vmothersetting=value>
 
 To specify the parameters that will be modified.
 
-=item B<vmnics=value> B<vmstorage=value> [B<--vios>]
+=item B<add_vmnics=value> B<add_vmstorage=value> [B<--vios>]
 
 To create new virtual adapter for the specified node. 
 
@@ -509,7 +510,7 @@ The output is similar to:
 
 To modify the resource assignment:
 
- chvm lpar1 vmcpus=1/2/16 vmmemory=1G/8G/32G vmphyslots=0x21010202
+ chvm lpar1 vmcpus=1/2/16 vmmemory=1G/8G/32G add_physlots=0x21010202
 
 The output is similar to:
  
@@ -531,7 +532,7 @@ The resource information after modification is similar to:
  lpar1: 1/2/2
  lpar1: 128.
 
-Note: The physical I/O resources specified with I<vmphyslots> will be appended to the specified partition. The physical I/O resources which are not specified but belonged to the partition will not be removed. For more information about I<vmphyslots>, please refer to L<lsvm(1)|lsvm.1>.  
+Note: The physical I/O resources specified with I<add_physlots> will be appended to the specified partition. The physical I/O resources which are not specified but belonged to the partition will not be removed. For more information about I<add_physlots>, please refer to L<lsvm(1)|lsvm.1>.  
 
 =head2 VMware/KVM specific:
 
