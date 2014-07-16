@@ -52,10 +52,10 @@ my @query_array = ();
 my %param_list_map = (
     'vmcpus' => 'part_get_lpar_processing',
     'vmmemory' => 'part_get_lpar_memory',
-    'vmphyslots' => 'part_get_all_io_bus_info',
+    'add_physlots' => 'part_get_all_io_bus_info',
     'del_physlots' => 'part_get_all_io_bus_info',
-    'vmnics' => 'part_get_all_vio_info',
-    'vmstorage' => 'part_get_all_vio_info',
+    'add_vmnics' => 'part_get_all_vio_info',
+    'add_vmstorage' => 'part_get_all_vio_info',
     'del_vadapter' => 'part_get_all_vio_info'
 );
 
@@ -63,7 +63,7 @@ sub chvm_parse_extra_options {
 	my $args = shift;
 	my $opt = shift;
     # Partition used attributes #
-    my @support_ops = qw(vmcpus vmmemory vmphyslots vmothersetting vmstorage vmnics del_vadapter del_physlots);
+    my @support_ops = qw(vmcpus vmmemory add_physlots vmothersetting add_vmstorage add_vmnics del_vadapter del_physlots);
 	if (ref($args) ne 'ARRAY') {
 		return "$args";
 	}	
@@ -112,7 +112,7 @@ sub chvm_parse_extra_options {
                     $tmp_hash{'get_cec_bsr'} = 1;
                 }
                 next;
-            } elsif ($cmd eq "vmstorage") {
+            } elsif ($cmd eq "add_vmstorage") {
                 if (exists($opt->{vios})) {
                     if ($value !~ /\d+/) {
                         return "'$value' is invalid, must be numbers";
@@ -156,7 +156,7 @@ sub chvm_parse_extra_options {
                 } else {
                     return "'$value' is invalid";
                 }
-            } elsif ($cmd eq "vmphyslots") {
+            } elsif ($cmd eq "add_physlots") {
                 my @tmp_array = split ",",$value;
                 foreach (@tmp_array) {
                     unless (/(0x\w{8})/) {
@@ -170,7 +170,7 @@ sub chvm_parse_extra_options {
                         return "'$_' is invalid";
                     }
                 }
-            } elsif ($cmd eq "vmnics") {
+            } elsif ($cmd eq "add_vmnics") {
                 my @tmp_array = split ",", $value;
                 foreach (@tmp_array) {
                     unless (/^vlan\d+$/i) {
@@ -804,11 +804,11 @@ sub do_op_extra_cmds {
 		    $action = "set_huge_page";
 	        } elsif ($op eq "vmcpus") {
                     $action = "part_set_lpar_pending_proc";
-                } elsif ($op eq "vmphyslots" or $op eq "del_physlots") {
+                } elsif ($op eq "add_physlots" or $op eq "del_physlots") {
                     $action = "set_io_slot_owner_uber";
                 } elsif ($op eq "del_vadapter") {
                     $action = "part_clear_vslot_config";
-                } elsif ($op eq "vmnics") {
+                } elsif ($op eq "add_vmnics") {
                     my @vlans = split /,/,$param;
                     foreach (@vlans) {
                         if (/vlan(\d+)/i) {
@@ -827,7 +827,7 @@ sub do_op_extra_cmds {
                         }
                     }
                     next;
-                } elsif ($op eq "vmstorage") {
+                } elsif ($op eq "add_vmstorage") {
                     foreach my $v_info (@$param) {
                         if ($v_info =~ /(\d+),([\w_-]*):(\d+)/) {
                             my $vios = &find_lpar_id($request, @$d[3], $2);
