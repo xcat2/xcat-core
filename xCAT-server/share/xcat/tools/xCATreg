@@ -1206,7 +1206,9 @@ sub send_msg {
     }
     my $timestamp = `date +"%Y%m%d%H%M%S"`;
     chomp($timestamp);
-    open (LOGFILE, ">> /home/xcatreg.log");
+    if ( !open (LOGFILE, ">> /home/xcatreg.log") ) {
+       return 1;
+    }
     print LOGFILE "$content $timestamp: $msg.\n";
     close LOGFILE;
 }
@@ -1604,10 +1606,11 @@ if ( !defined($pid) ) {
     }
     close PREAD;
 }
-
+    my $totalfork = 1;
 # begin child process
     pipe CONTROLREAD,MNWRITE;
     foreach my $m (keys %mns) {
+        $totalfork += 1;
         send_msg(2, "fork process for $m");
         my $mn = $mns{$m};
         my $pid = fork();
@@ -1682,7 +1685,14 @@ if ( !defined($pid) ) {
     } # end of foreach
 
     # fork process to get result
-    $SIG{CHLD} = sub { exit 0; };
+    my $allflag = 0;
+    $SIG{CHLD} = sub { 
+    $allflag ++;
+    if ($allflag == $totalfork) {
+        send_msg(2, " All the forked processes exit, main process begin to exit.");
+        exit 0;
+     } 
+  };
     my $controlpid = fork();
     if ( !defined($controlpid) ) {
         send_mail(0, "fork error");
