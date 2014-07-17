@@ -3605,6 +3605,13 @@ sub servicemap{
   #"service manager name(SYSVinit/systemd) $svcmgrtype" 
   #=> ["list of possible service file names for the specified $svcname under the specified $svcmgrtype "]
   # }
+  #
+  #
+  # if there are more than 1 possible service names for a service among 
+  # different os distributions and os releases, the service should be 
+  # specified in %svchash with structure 
+  # (general service name) => {list of possible service names}
+  #
   my %svchash=(
      "dhcp"  =>    ["dhcp3-server","dhcpd","isc-dhcp-server"],
      "nfs"   =>    ["nfsserver","nfs-server","nfs","nfs-kernel-server"],

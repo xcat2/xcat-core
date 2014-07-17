@@ -273,6 +273,11 @@ function servicemap {
    local svcmgrtype=$2
    local svclistname=   
 
+  # if there are more than 1 possible service names for a service among 
+  # different os distributions and os releases, the service should be 
+  # specified with structure 
+  # INIT_(general service name) = "list of possible service names"
+  #  
    INIT_dhcp="dhcp3-server dhcpd isc-dhcp-server";
 
    INIT_nfs="nfsserver nfs-server nfs nfs-kernel-server";
