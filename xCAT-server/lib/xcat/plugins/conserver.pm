@@ -13,6 +13,7 @@ use strict;
 use Data::Dumper;
 my @cservers = qw(mrv cyclades);
 my %termservers; #list of noted termservers
+my $siteondemand; # The site value for consoleondemand
 
 my $usage_string=
 "  makeconservercf [-d|--delete] noderange
@@ -277,6 +278,10 @@ sub docfheaders {
   my $site_entry = $entries[0];
   if ( defined($site_entry) and $site_entry eq "yes" ) {
     push @newheaders,"  options ondemand;\n";
+    $siteondemand=1;
+  }
+  else {
+    $siteondemand=0;
   }
 
   push @newheaders,"}\n";
@@ -323,7 +328,7 @@ sub makeconservercf {
   my $hmtab = xCAT::Table->new('nodehm');
   my @cfgents1;# = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
   if (($nodes and @$nodes > 0) or $req->{noderange}->[0]) {
-      @cfgents1 = $hmtab->getNodesAttribs($nodes,['node','cons','serialport','mgt','conserver','termserver','termport']);
+      @cfgents1 = $hmtab->getNodesAttribs($nodes,['node','cons','serialport','mgt','conserver','termserver','termport','consoleondemand']);
       # Adjust the data structure to make the result consistent with the getAllNodeAttribs() call we make if a noderange was not specified
       my @tmpcfgents1;
       foreach my $ent (@cfgents1)
@@ -336,7 +341,7 @@ sub makeconservercf {
       @cfgents1 = @tmpcfgents1
 
   } else {
-    @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport']);
+    @cfgents1 = $hmtab->getAllNodeAttribs(['cons','serialport','mgt','conserver','termserver','termport','consoleondemand']);
   }
 
 
@@ -537,6 +542,14 @@ foreach my $node (sort keys %$cfgenthash) {
     } else { # handle it here
       my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
       push @$content,"  exec $locerror".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
+    }
+  }
+  if (defined($cfgent->{consoleondemand})) {
+    if ($cfgent->{consoleondemand} && !$siteondemand ) {
+      push @$content,"  options ondemand;\n";
+    }
+    elsif (!$cfgent->{consoleondemand} && $siteondemand ) {
+      push @$content,"  options !ondemand;\n";
     }
   }
   push @$content,"}\n";

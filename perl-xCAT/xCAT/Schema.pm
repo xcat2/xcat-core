@@ -571,7 +571,7 @@ nodegroup => {
  },
   },
 nodehm => {
-    cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping comments disable)],
+    cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac cmdmapping consoleondemand comments disable)],
     keys => [qw(node)],
     tablespace =>'XCATTBS16K',
     table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
@@ -588,6 +588,7 @@ nodehm => {
   serialflow => "The flow control value of the serial port for this node.  For SOL this is typically 'hard'.",
   getmac => 'The method to use to get MAC address of the node with the getmac command. If not set, the mgt attribute will be used.  Valid values: same as values for mgmt attribute.',
   cmdmapping => 'The fully qualified name of the file that stores the mapping between PCM hardware management commands and xCAT/third-party hardware management commands for a particular type of hardware device.  Only used by PCM.',
+  consoleondemand => 'This overrides the value from site.consoleondemand; (0=no, 1=yes). Default is the result from site.consoleondemand.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1971,6 +1972,10 @@ my @nodeattrs = (
   },
         {attr_name => 'serialflow',
                  tabentry => 'nodehm.serialflow',
+                 access_tabentry => 'nodehm.node=attr:node',
+  },
+        {attr_name => 'consoleondemand',
+                 tabentry => 'nodehm.consoleondemand',
                  access_tabentry => 'nodehm.node=attr:node',
   },
 ##################
