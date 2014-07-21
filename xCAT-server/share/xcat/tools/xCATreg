@@ -1741,10 +1741,10 @@ if ( !defined($pid) ) {
         $mailreport .= "\n\n";
         $mailreport .= "Time consumption: \n";
         $mailreport .= "---------------------\n";
-        my $hour = (int($consumption)-(int($consumption)%3600))/3600;
-        my $minutes = (int($consumption))% $hour;
-        $minutes = ($minutes-$minutes%60)/60;
-        $mailreport .= "$hour hour, $minutes minutes\n";
+        my $hour = int(int($consumption)/3600);
+        my $minutes = int((int($consumption))%3600/60);
+        my $secondes = int($consumption)%60;
+        $mailreport .= "$hour hours, $minutes minutes, $secondes seconds\n";
         $mailreport .= "\n\n";
         $mailreport .= "Result: \n";
         $mailreport .= "---------------\n";
