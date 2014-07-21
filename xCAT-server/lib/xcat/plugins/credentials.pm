@@ -198,6 +198,17 @@ sub process_request
             `logger -t xCAT -p local4.info "credentials: Unable to read private RSA key"` ;
              next;
           }
+       } elsif ($parm =~ /ssh_ecdsa_hostkey/) {
+          `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
+          if (-r "/etc/xcat/hostkeys/$client/ssh_host_ecdsa_key") {
+	  	 $tfilename="/etc/xcat/hostkeys/$client/ssh_host_ecdsa_key";
+	  } elsif (-r "/etc/xcat/hostkeys/ssh_host_ecdsa_key") {   
+	  	 $tfilename="/etc/xcat/hostkeys/ssh_host_ecdsa_key";
+	  } else {
+             push @{$rsp->{'error'}},"Unable to read private ECDSA key from /etc/xcat/hostkeys";
+            `logger -t xCAT -p local4.info "credentials: Unable to read private ECDSA key"` ;
+             next;
+          }
        } elsif ($parm =~ /xcat_cfgloc/) {
           `logger -t xCAT -p local4.info "credentials: sending $parm"` ;
           unless (-r "/etc/xcat/cfgloc") {
