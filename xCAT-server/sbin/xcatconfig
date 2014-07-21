@@ -916,10 +916,12 @@ sub settunables
   If node private node hostkeys do not exist in either directory or force option
    or generate host key option, we need to generate them
    These keys are installed on the nodes in /etc/ssh directory and allow the
-   node to ssh without password node to node.   
+   node to ssh to the other nodes and the MN or SN to be able to ssh to the node
+   Without known_hosts warning messages.   
    They are store in /etc/xcat/hostkeys on the MN.
-   This also includes some migration to /install/postscripts/hostkeys
+   The public key is also installed in  /install/postscripts/hostkeys
    for the install process 
+   The private key  is downloaded by remoteshell postscript using the credentials.pm interface
 
 =cut
 
@@ -956,7 +958,7 @@ sub genSSHNodeHostKey
             }
     }
 
-    # remove the old keys
+    # remove the old keys  from the /intall/postscripts/hostkeys directroy
     if (-r $hostkey)
     {
             my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host*";
@@ -970,7 +972,7 @@ sub genSSHNodeHostKey
             }
     }
 
-    # remove the old keys
+    # remove the old keys from the /etc/xcat/hostkeys directory
     if (-r $hostkey2)
     {
             my $cmd = "/bin/rm /etc/xcat/hostkeys/ssh_host*";
@@ -1014,6 +1016,18 @@ sub genSSHNodeHostKey
     {
             xCAT::MsgUtils->message('E', "Could not generate SSH2 DSA key.");
     }
+    # see if this system supports the ecdsa
+    if (-e "/etc/ssh/ssh_host_ecdsa_key") {
+      xCAT::MsgUtils->message('I', "Generating SSH2 ECDSA Key...");
+      $cmd =
+          "/usr/bin/ssh-keygen -t ecdsa -f /etc/xcat/hostkeys/ssh_host_ecdsa_key -C '' -N ''";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+      if ($::RUNCMD_RC != 0)
+      {
+            xCAT::MsgUtils->message('E', "Could not generate SSH2 ECDSA key.");
+      }
+    }
+
 
     # copy the public keys to install directory
     $cmd =
