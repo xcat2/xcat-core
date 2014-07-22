@@ -221,7 +221,7 @@ fi
 rm /tmp/ssh_rsa_hostkey
 
 # if there is a ecdsa host key on the node then download the replacement from the MN/SN
-if [ -f ssh_host_ecdsa_key ]; then
+if [ -f /etc/ssh/ssh_host_ecdsa_key ]; then
   # download the host ecdsa key
   if [ $useflowcontrol = "1" ]; then
     #first contact daemon  xcatflowrequest <server> 3001
