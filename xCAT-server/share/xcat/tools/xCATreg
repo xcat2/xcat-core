@@ -1420,6 +1420,7 @@ sub pro_result{
              }
         }
         send_msg(2, "done with file $location, total is $total, fail is $fail\n");
+        close LOGOFAT;
     }
 
     send_msg(2, "begin to process failedcases file\n");
@@ -1449,19 +1450,20 @@ sub pro_result{
         next if ($flag); # old log
 
         # begin to process
-        if (!open(LOGOFAT, "<$location")) {
+        if (!open(FAILLOGOFAT, "<$location")) {
            send_msg(0, "$mn pro_result can't open failedcases file $location");
             return "error";
         }
 
-        send_msg(2, "begin to process failedcases file $location\n");
-        while(my $line = <LOGOFAT>) {
-             if ($line =~ /-----START:(.*)------/){
-                 push @cases, $_;
+        send_msg(2, "$mn begin to process failedcases file $location\n");
+        while(my $line = <FAILLOGOFAT>) {
+             if ($line =~ /-----START:(.*)::(.*)------/){
+                 push @cases, $1;
              } else {
                  next;
              }
         }
+        close FAILLOGOFAT;
     }
 
     $pass = $total - $fail;
@@ -1574,7 +1576,7 @@ if ( !defined($pid) ) {
     # step 2. git update
     #######################################
     send_msg(2, "step 2, Running git_update...............");
-    #$res = git_update();
+    $res = git_update();
     if ($res) {
         send_msg(0, "git_update returns error, child process exit");
         syswrite CWRITE,"Failed with git update, child process exit\n";
@@ -1771,7 +1773,7 @@ if ( !defined($pid) ) {
     close CONTROLREAD;
     my $time = time();
     while (1) {
-        print ".";
+#        print ".";
         if(time() - $time > 28800) {
 		   send_mail(0, "!!!xCATreg hangs at running test case and return forcibly");
            last; #wait 8 hours at most
