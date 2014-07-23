@@ -1411,7 +1411,8 @@ sub addkit
 
         if ( $hasplugin ) {
             # Issue xcatd reload to load the new plugins
-            system("/etc/init.d/xcatd restart");
+            #system("/etc/init.d/xcatd restart");
+            system("XCATRELOAD=yes xcatd -p /var/run/xcatd.pid");
         }
     }
 }
@@ -1731,7 +1732,8 @@ sub rmkit
 
     if ( $hasplugin ) {
         # Issue xcatd reload to load the new plugins
-        system("/etc/init.d/xcatd restart");
+        #system("/etc/init.d/xcatd restart");
+        system("XCATRELOAD=yes xcatd -p /var/run/xcatd.pid");
     }
 
 }
