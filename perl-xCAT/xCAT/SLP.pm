@@ -287,7 +287,7 @@ sub dodiscover {
                     if ($rethash{$peername}) {
                             next; #got a dupe, discard
                     }
-                    my $result = process_slp_packet(packet=>$slpkg,sockaddr=>$pkg,'socket'=>$args{'socket'});
+                    my $result = process_slp_packet(packet=>$slpkg,sockaddr=>$pkg,'socket'=>$args{'socket'}, peername=>$peername, callback=>$args{reqcallback});
                     if ($result) {
                         if ($peername =~ /\./) { #ipv4
                             $peername =~ s/::ffff://;
@@ -371,9 +371,10 @@ sub process_slp_packet {
         if ($parsedpacket->{FunctionId} == 2) {#Service Reply
             parse_service_reply($parsedpacket->{payload},$parsedpacket);
             unless (ref $parsedpacket->{service_urls} and scalar @{$parsedpacket->{service_urls}}) { return undef; }
-            if ($parsedpacket->{attributes}) { #service reply had ext
-
-                    return $parsedpacket; #don't bother sending attrrequest, already got it in first packet
+            if ($parsedpacket->{attributes} && get_mac_for_addr($args{peername})) {
+                #service reply had ext. Stop here if has gotten attributes and got mac. 
+                #continue the unicast request for service attributes if cannot find mac for peernode
+                return $parsedpacket; #don't bother sending attrrequest, already got it in first packet
             }
             my $srvtype = $xid_to_srvtype_map{$parsedpacket->{Xid}};
             my $packet = generate_attribute_request(%args,SrvType=>$srvtype);
