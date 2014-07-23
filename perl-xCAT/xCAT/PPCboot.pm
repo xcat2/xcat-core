@@ -350,6 +350,27 @@ sub do_rnetboot {
             last;
         }
     }
+
+    # Set the boot mode to norm from 'of' (open firmware)
+    # NOW, only necessary for IVM
+    my $hwtype = @$exp[2];
+    if ($hwtype eq "ivm") {
+        my $server = @$exp[3];
+
+        # creat connection first
+        my @newexp = xCAT::PPCcli::connect( $request, $hwtype, $server );
+        if (ref($newexp[0]) eq "Expect" ) {
+            my $cfg = "lpar_id=@$d[0],boot_mode=norm";
+            # change the boot mode to 'norm'
+            xCAT::PPCcli::chsyscfg(\@newexp, "prof", $d, $cfg);
+            xCAT::PPCcli::disconnect(\@newexp);
+        } else {
+            my $rsp;
+            $rsp->{data} = ["Failed to set the boot mode to normal. For rnetboot command, you have to rpower off and then on the node after finishing the OS deployment."];
+            xCAT::MsgUtils->message("E", $rsp, $request->{callback});
+        }
+    }
+
     return  $result;
 }
 
