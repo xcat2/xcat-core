@@ -2,9 +2,11 @@
 # example on how to set up ESX.  We setup ssh and also add a basic
 # VLAN configuration 
 
-str_dir_name=`dirname $0`
 
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 logger -t xcat -p local4.info setupesx
 # Enable SSH access to root and exchange keys

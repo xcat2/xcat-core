@@ -34,9 +34,11 @@
 #   NETWORKS_LINE2=netname=10_0_2_0-255_255_255_0||net=10.0.2.0||mask=255.255.255.0||mgtifname=eth0||gateway=10.0.2.2||dhcpserver=||tftpserver=10.0.2.15||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=
 
 
-# locd library for network caculation
-str_dir_name=`dirname $0`
-. $str_dir_name/xcatlib.sh
+# load library for network caculation
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 # Subroutine to display message and pass it to syslog
 # Usage: showmsg "message to putput" ["error"]
