@@ -1,7 +1,10 @@
 #!/bin/bash
-str_dir_name=`dirname $0`
 
-. $str_dir_name/xcatlib.sh
+
+f [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 function configipv4(){
     str_if_name=$1

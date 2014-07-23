@@ -2,9 +2,10 @@
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 
-str_dir_name=`dirname $0`
-
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 #-------------------------------------------------------------------------------
 #=head1  install_puppet_server

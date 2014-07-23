@@ -7,9 +7,11 @@
 #---------------------------------------------------------------------------
 
 
-str_dir_name=`dirname $0`
 
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 # if on the Management Node, exit
 if [ -e /etc/xCATMN ]; then
