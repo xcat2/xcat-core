@@ -1097,6 +1097,7 @@ sub parse_responses {
             $atthash{id} = ${$attributes->{'lparid'}}[0];
             $atthash{ip} = ${$attributes->{'ip-address'}}[0];
             $atthash{hostname} = get_host_from_url($request, $attributes);
+            $atthash{hostname} =~ s/^Server/ivm/;
             my @ips = @{$attributes->{'ip-address'}};
             foreach my $tmpip (@ips) {
                 if (exists($::OLD_DATA_CACHE{"ivm*".$atthash{mtm}."*".$atthash{serial}})){
@@ -1568,6 +1569,9 @@ sub format_stanza {
         #}
         if ($type =~ /^fsp|bpa|cmm$/){
             $result .= "\totherinterfaces=${$outhash->{$name}}{otherinterfaces}\n";
+        }
+        if ($type eq "ivm") {
+            $result .= "\tip=${$outhash->{$name}}{ip}\n";
         }
         $result .= "\thwtype=$globalhwtype{$type}\n";
     }
