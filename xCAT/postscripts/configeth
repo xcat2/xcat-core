@@ -1,4 +1,5 @@
 #!/bin/bash
+<<<<<<< HEAD
 
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 
@@ -9,8 +10,14 @@
 #-------------------------------------------------------------------------------
 
 str_dir_name=`dirname $0`
+=======
+>>>>>>> 08d923735c2c134b7bcd2a2b976706c10bc2f1cc
 
-. $str_dir_name/xcatlib.sh
+
+f [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 function configipv4(){
     str_if_name=$1

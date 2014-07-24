@@ -1090,6 +1090,30 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
+       }  elsif ($type eq SERVICE_IVM) {
+            $atthash{type} = $service_slp{$type};
+            $atthash{mtm} = ${$attributes->{'machinetype-model'}}[0];
+            $atthash{serial} = ${$attributes->{'serial-number'}}[0];
+            $atthash{id} = ${$attributes->{'lparid'}}[0];
+            $atthash{ip} = ${$attributes->{'ip-address'}}[0];
+            $atthash{hostname} = get_host_from_url($request, $attributes);
+            $atthash{hostname} =~ s/^Server/ivm/;
+            my @ips = @{$attributes->{'ip-address'}};
+            foreach my $tmpip (@ips) {
+                if (exists($::OLD_DATA_CACHE{"ivm*".$atthash{mtm}."*".$atthash{serial}})){
+                    $atthash{hostname} = $::OLD_DATA_CACHE{"ivm*".$atthash{mtm}."*".$atthash{serial}};
+                    push  @matchnode, 'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
+                    $atthash{ip} = $tmpip;
+                }
+            }
+            $atthash{mac} = $rsp;
+            $atthash{url} =  ${$searchmacs{$rsp}}{payload};
+            $atthash{otherinterfaces} = ${$attributes->{'ip-address'}}[0];
+            $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
+            $$length = length( $atthash{ip}) if ( length( $atthash{ip} ) > $$length );
+            trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
+			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
+			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
         }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457|7954/ )) {
             # Skip this entry if "-s CEC" was specified - we do not list FSP entries for Flex when only CECs were requested
 	    next unless ($option_s ne "CEC");  
@@ -1545,6 +1569,9 @@ sub format_stanza {
         #}
         if ($type =~ /^fsp|bpa|cmm$/){
             $result .= "\totherinterfaces=${$outhash->{$name}}{otherinterfaces}\n";
+        }
+        if ($type eq "ivm") {
+            $result .= "\tip=${$outhash->{$name}}{ip}\n";
         }
         $result .= "\thwtype=$globalhwtype{$type}\n";
     }

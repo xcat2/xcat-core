@@ -17,10 +17,10 @@
 # NETWORKS_LINE2='netname=ib1||net=15.0.1.0||mask=255.255.255.0||mgtifname=||gateway=15.0.1.254||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 # NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 
-
-str_dir_name=`dirname $0`
-
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 #This is the number of ports for each ib adpator.
 portnum=1

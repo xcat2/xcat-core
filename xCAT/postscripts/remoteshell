@@ -4,7 +4,7 @@
 #  This script adds xCAT specific setup to the /etc/ssh/sshd_config and ssh_config file
 #  It calls getcredentials.awk to get from the xcatmaster  ssh host keys from the 
 #  /etc/xcat/hostkeys directory and puts in  /etc/ssh on the node the following keys
-#     ssh_host_dsa_key,ssh_host_rsa_key 
+#     ssh_host_dsa_key,ssh_host_rsa_key, ssh_host_ecdsa_key (if supported) 
 #  It calls getcredentials.awk to get from the xcatmaster root ssh keys from the
 #  ~/.ssh directory on the xcatmaster and put in ~/.ssh on the node the following keys:
 #   If site.enablesshbetweennodes is yes
@@ -13,9 +13,10 @@
 # if on the Management Node, exit
 
 
-str_dir_name=`dirname $0`
-
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 if [ -e /etc/xCATMN ]; then
 	logger -t xcat -p local4.info "remoteshell:Running on the Management Node ,  exiting "
@@ -87,6 +88,7 @@ allowcred.awk &
 CREDPID=$!
 sleep 1
 
+#download the ssh host dsa private keys
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
   logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
@@ -153,6 +155,7 @@ else
 fi
 rm /tmp/ssh_dsa_hostkey
 
+# download the host rsa key
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
   logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
@@ -164,6 +167,7 @@ if [ $useflowcontrol = "1" ]; then
       useflowcontrol=0
   fi
 fi
+
 getcredentials.awk ssh_rsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_rsa_hostkey
 
 #check whether the message is an error or not
@@ -216,6 +220,75 @@ else
 	logger -t xCAT -p local4.err Error: $ERR_MSG
 fi
 rm /tmp/ssh_rsa_hostkey
+
+# if there is a ecdsa host key on the node then download the replacement from the MN/SN
+if [ -f /etc/ssh/ssh_host_ecdsa_key ]; then
+  # download the host ecdsa key
+  if [ $useflowcontrol = "1" ]; then
+    #first contact daemon  xcatflowrequest <server> 3001
+    logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+    /$xcatpost/xcatflowrequest $master 3001
+    rc=$? 
+    logger -t xCAT -p local4.info "remoteshell:xcatflowrequest return=$rc" 
+    if [ $rc -ne 0 ]; then
+      logger -t xCAT -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+      useflowcontrol=0
+    fi
+  fi
+
+  getcredentials.awk ssh_ecdsa_hostkey | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_ecdsa_hostkey
+
+  #check whether the message is an error or not
+  grep -E '<error>' /tmp/ssh_ecdsa_hostkey
+  if [ $? -ne 0 ]; then
+	#the message received is the data we request
+	cat /tmp/ssh_ecdsa_hostkey | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >/etc/ssh/ssh_host_ecdsa_key
+	logger -t xCAT -p local4.info ssh_ecdsa_hostkey
+	MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
+   MAX_RETRIES=10
+   RETRY=0
+	while [ -z "$MYCONT" ]; do
+              # not using flow control , need to sleep         
+              if [ $useflowcontrol = "0" ]; then
+                let SLI=$RANDOM%10
+                let SLI=SLI+10
+                sleep $SLI
+              fi
+                RETRY=$(($RETRY+1))
+                if [ $RETRY -eq $MAX_RETRIES ]
+                then
+                  break
+                fi
+                if [ $useflowcontrol = "1" ]; then
+                  #first contact daemon  xcatflowrequest <server> 3001
+                  logger -t xCAT -p local4.info "remoteshell: sending xcatflowrequest $master 3001"
+                  /$xcatpost/xcatflowrequest $master 3001
+                  rc=$? 
+                  logger -t xCAT -p local4.info "remoteshell:xcatflowrequest return=$rc" 
+                  if [ $rc -ne 0 ]; then
+                      logger -t xCAT -p local4.info "remoteshell: error from xcatflowrequest, will not use flow control"
+                      useflowcontrol=0
+                  fi
+                fi
+
+    		getcredentials.awk ssh_ecdsa_hostkey | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/ssh/ssh_host_ecdsa_key
+    		MYCONT=`cat /etc/ssh/ssh_host_ecdsa_key`
+	done
+	chmod 600 /etc/ssh/ssh_host_ecdsa_key
+	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ecdsa_key > /dev/null 2>&1 ; then
+   		rm /etc/ssh/ssh_host_ecdsa_key
+	else
+		ssh-keygen -y -f /etc/ssh/ssh_host_ecdsa_key > /etc/ssh/ssh_host_ecdsa_key.pub
+		chmod 644 /etc/ssh/ssh_host_ecdsa_key.pub
+		chown root /etc/ssh/ssh_host_ecdsa_key.pub
+	fi
+  else
+	#This is an error message
+	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_ecdsa_hostkey`
+	logger -t xCAT -p local4.err Error: $ERR_MSG
+  fi
+  rm /tmp/ssh_ecdsa_hostkey
+fi
 
 if [[ $NTYPE = service ]]; then
    mkdir -p /etc/xcat/hostkeys

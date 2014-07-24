@@ -14,10 +14,10 @@
 #=cut
 #-------------------------------------------------------------------------------
 
-
-str_dir_name=`dirname $0`
-
-. $str_dir_name/xcatlib.sh
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 
 master=$MASTER
 conf_file="/etc/syslog.conf"
