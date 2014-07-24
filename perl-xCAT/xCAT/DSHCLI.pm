@@ -4407,6 +4407,14 @@ sub parse_and_run_dcp
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
+        if ($nodes)
+        {
+            my $rsp = {};
+            $rsp->{error}->[0] =
+              "Input noderange:@$nodes and any other xdsh flags or environment variables are not valid with -i flag.";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
+            return;
+        }
     }
     if ((!(defined($nodes))) && (!(defined($options{'rootimg'}))))
     {    #  no nodes and not -i option, error
