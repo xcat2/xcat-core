@@ -1,7 +1,7 @@
 #!/bin/sh 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
-
-# xCAT post script for configuring ib adaptors.
+# Internal script used by confignics only
+# xCAT post script for configuring ib adapters.
 # Work for both IPv4 and IPv6
 # The following are a sample of the env used:
 # NIC_IBNICS=ib0,ib1

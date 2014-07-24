@@ -1,7 +1,9 @@
 #!/bin/bash
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+# Internal script used by confignics only.
+# It configs the Ethernet adpaters on the node
 
-
-f [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
 fi

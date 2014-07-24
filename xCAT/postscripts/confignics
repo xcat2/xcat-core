@@ -1,4 +1,17 @@
 #!/bin/bash 
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  confignics
+#=head2  Used on Linux only. Config the Ethernet or InfiniBand adapters on the nodes
+#
+#  You can run the following commands on MN:
+#       updatenode noderange confignics
+#       updatenode noderange "confignics -s" (this one configures the installation nic also)
+#
+#
+#=cut
+#-------------------------------------------------------------------------------
 
 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
