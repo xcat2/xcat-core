@@ -397,7 +397,6 @@ sub copycd
     {
         my $osdistoname = $distname . "-" . $arch;
         my $temppath = "$installroot/$distname/$arch";
-        $callback->({data => "Media copy operation successful"});
         my @ret=xCAT::SvrUtils->update_osdistro_table($distname, $arch, $temppath, $osdistroname);
         if ($ret[0] != 0) {
             $callback->({data => "Error when updating the osdistro tables: " . $ret[1]});
