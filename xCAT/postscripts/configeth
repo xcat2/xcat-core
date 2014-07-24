@@ -1,17 +1,4 @@
 #!/bin/bash
-<<<<<<< HEAD
-
-# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
-
-#-------------------------------------------------------------------------------
-# configeth 
-#    Internal script used by confignics only. It configs the Ethernet adpaters on the node
-#
-#-------------------------------------------------------------------------------
-
-str_dir_name=`dirname $0`
-=======
->>>>>>> 08d923735c2c134b7bcd2a2b976706c10bc2f1cc
 
 
 f [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
