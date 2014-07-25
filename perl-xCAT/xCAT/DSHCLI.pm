@@ -4036,7 +4036,7 @@ sub parse_and_run_dsh
         {    # from sinv, discard this name
             undef @$nodes;
         }
-        if ($nodes)
+        if (@$nodes[0])
         {
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4407,7 +4407,7 @@ sub parse_and_run_dcp
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
         }
-        if ($nodes)
+        if (@$nodes[0])
         {
             my $rsp = {};
             $rsp->{error}->[0] =
@@ -4513,7 +4513,7 @@ sub parse_and_run_dcp
     #
     # build list of nodes
     my @nodelist;
-    if ($nodes)
+    if (@$nodes[0])
     {    # there are nodes
         @nodelist = @$nodes;
         $options{'nodes'} = join(',', @nodelist);
