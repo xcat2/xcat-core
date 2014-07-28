@@ -16,12 +16,11 @@ my %termservers; #list of noted termservers
 my $siteondemand; # The site value for consoleondemand
 
 my $usage_string=
-"  makeconservercf [-d|--delete] noderange
-  makeconservercf [-l|--local]
-  makeconservercf [-c|--conserver]
-  makeconservercf 
-  makeconservercf -h|--help
-  makeconservercf -v|--version
+"   makeconservercf [-V|--verbose] [-d|--delete] noderange
+   makeconservercf [-V|--verbose] [-l|--local] [noderange]
+   makeconservercf [-V|--verbose] [-c|--conserver] [noderange]
+   makeconservercf [-V|--verbose] noderange [-t|--trust] hosts
+   makeconservercf [-h|--help|-v|--version]
     -c|--conserver   The conserver gets set up only on the conserver host.
                      The default goes down to all the conservers on
                      the server nodes and set them up
@@ -29,6 +28,7 @@ my $usage_string=
                      The default goes down to all the conservers on
                      the server nodes and set them up
     -d|--delete      Conserver has the relevant entries for the given noderange removed immediately from configuration
+    -t|--trust       Add additional trusted hosts.
     -h|--help        Display this usage statement.
     -V|--verbose     Verbose mode.
     -v|--version     Display the version number.";

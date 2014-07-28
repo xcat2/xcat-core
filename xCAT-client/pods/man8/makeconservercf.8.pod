@@ -6,9 +6,9 @@ B<makeconservercf> - creates the conserver configuration file from info in the x
 
 B<makeconservercf> [B<-V|--verbose>] [B<-d|--delete>] I<noderange>
 
-B<makeconservercf> [B<-V|--verbose>] [B<-l|--local>]
+B<makeconservercf> [B<-V|--verbose>] [B<-l|--local>] [I<noderange>]
 
-B<makeconservercf> [B<-V|--verbose>] [B<-c|--conserver>] I<noderange>
+B<makeconservercf> [B<-V|--verbose>] [B<-c|--conserver>] [I<noderange>]
 
 B<makeconservercf> [B<-V|--verbose>] I<noderange> [B<-t|--trust>] I<hosts>
 
