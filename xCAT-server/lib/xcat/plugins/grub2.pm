@@ -248,7 +248,7 @@ sub setstate {
     }
   
     if ($nodemac =~ /:/) {
-        my $tmp = $nodemac;
+        my $tmp = lc($nodemac);
         $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
         my $pname = "grub.cfg-01-" . $tmp;
         unlink($tftpdir."/boot/grub2/".$pname);
