@@ -35,3 +35,4 @@ mysql-connector-odbc
 perl-DBD-Pg
 wget
 util-linux-ng
+net-tools
