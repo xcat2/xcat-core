@@ -67,6 +67,7 @@ cd -
 # should run mknb.  Tried to use rpm triggers, but in several cases the trigger would
 # get run multiple times.
 #echo "touching /etc/xcat/genesis-scripts-updated"
+echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch> manually'"
 mkdir -p /etc/xcat
 touch /etc/xcat/genesis-scripts-updated
 
