@@ -13,7 +13,7 @@ if [ "$os" == "AIX" ]; then
     export HOME
 fi
 
-if [ -z "$1" ] || [ "$1" = "-h"  ]; then
+if [ -z "$1" ] || [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "rcons - remotely accesses the serial console of a node"
     echo "rcons <singlenode> [conserver] [-f]"
     echo "rcons <singlenode> [conserver] [-s]"
