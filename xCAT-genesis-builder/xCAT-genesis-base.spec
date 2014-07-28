@@ -53,7 +53,10 @@ cd -
 if [ "$1" == "2" ]; then #only on upgrade, as on install it's probably not going to work...
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
    		. /etc/profile.d/xcat.sh
-   		mknb %{tarch}
+   		#mknb %{tarch}
+        echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch> manually'"
+        mkdir -p /etc/xcat
+        touch /etc/xcat/genesis-base-updated
    	fi
 fi
 

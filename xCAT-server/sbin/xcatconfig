@@ -31,7 +31,6 @@ use Socket;
 
 #-----------------------------------------------------------------------------
 # Main
-
 $::progname = "xcatconfig";
 my $args = join ' ', @ARGV;
 $::command = "$0 $args";
@@ -1869,22 +1868,34 @@ sub setupLinuxexports
 #-----------------------------------------------------------------------------
 sub mknb
 {
-  # The xCAT-genesis-scripts.spec file touches /etc/xcat/genesis-scripts-updated so we know to run
-  # mknb here.
-  if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-scripts-updated') ) {
-    unlink '/etc/xcat/genesis-scripts-updated';
-    my $cmd = "$::XCATROOT/sbin/mknb $::arch";
-    xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...");
+    # The xCAT-genesis-scripts.spec file touches /etc/xcat/genesis-scripts-updated or
+    # the xCAT-genesis-base.spec file touches /etc/xcat/genesis-base-updated, 
+    # so we know to run mknb here.
+    my $cmd;
+    if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-scripts-updated') ) {
+      unlink '/etc/xcat/genesis-scripts-updated';
+      # Do not print messages or run command twice
+      if (-f '/etc/xcat/genesis-base-updated') {
+          unlink '/etc/xcat/genesis-base-updated';
+      }
+      $cmd = "$::XCATROOT/sbin/mknb $::arch";
+      xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-scripts-x86_64 ...");
+    }
+
+    if ($::arch eq "x86_64" && (-f '/etc/xcat/genesis-base-updated')) {
+        unlink '/etc/xcat/genesis-base-updated';
+        $cmd = "$::XCATROOT/sbin/mknb $::arch";
+        xCAT::MsgUtils->message('I', "Running '$cmd', triggered by the installation/update of xCAT-genesis-base-x86_64 ...");
+    }
     #my $outref = xCAT::Utils->runcmd("$cmd", 0);
     system($cmd);
     if ($? != 0) {
-      my $rc = $? >> 8;
-      xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
+        my $rc = $? >> 8;
+        xCAT::MsgUtils->message('E', "The 'mknb $::arch' command returned error code: $rc.");
     }
     else {
       xCAT::MsgUtils->message('I', "The 'mknb $::arch' command completed successfully.");
     }
-  }
 }
 
 #-----------------------------------------------------------------------------
