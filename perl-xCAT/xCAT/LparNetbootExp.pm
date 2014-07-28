@@ -2634,7 +2634,7 @@ sub lparnetbootexp
             sub {
                 $rc = 2;
                 $rconsole->clear_accum();
-                nc_msg($verbose, "Please make sure rcons $node works.\n");
+                nc_msg(1, "Please make sure rcons $node works.\n");
             }
         ],
     );
