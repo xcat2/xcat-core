@@ -31,7 +31,7 @@ Only entries in /etc/hosts or the hosts specified by B<noderange> that have a co
 By default, B<makedns> sets up the B<named> service and updates the DNS records on the local system (management node). If the -e flag is specified, it will also update the DNS records on any external DNS server that is listed in the /etc/resolv.conf on the management node. (Assuming the external DNS server can recognize the xCAT key as authentication.)
 
 For more information on Cluster Name Resolution:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolution
+read the following doc:Cluster_Name_Resolution
 
 =head1 OPTIONS
 
