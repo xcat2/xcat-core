@@ -749,6 +749,8 @@ sleep 0.05;
 
 sub scan_plugins {
   my $serialdest = shift;
+  my $rescan = shift;
+  %cmd_handlers=();
   my @plugins=glob($plugins_dir."/*.pm");
   foreach (@plugins) {
     /.*\/([^\/]*).pm$/;
@@ -784,14 +786,16 @@ sub scan_plugins {
       }
     }
   }
-  foreach (@plugins) {
-    no strict 'refs';
-    /.*\/([^\/]*).pm$/;
-    my $modname = $1;
-    unless (defined(${"xCAT_plugin::".$modname."::"}{init_plugin})) {
-        next;
+  if ( ! $rescan ) {
+    foreach (@plugins) {
+      no strict 'refs';
+      /.*\/([^\/]*).pm$/;
+      my $modname = $1;
+      unless (defined(${"xCAT_plugin::".$modname."::"}{init_plugin})) {
+          next;
+      }
+      ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
     }
-    ${"xCAT_plugin::".$modname."::"}{init_plugin}->(\&do_request);
   }
   if ($serialdest) { store_fd(\%cmd_handlers,$serialdest); }; #print $serialdest freeze(\%cmd_handlers); };
 }
@@ -977,6 +981,17 @@ xCAT::NotifHandler::setup($$, $dbmaster);
 #start the monitoring process
 xCAT_monitoring::monitorctrl::start($$);
 
+# Set up communication pipe to have subcommand process be able to reload the
+# cmd_handlers hash and pass it back to this parent when rescanplugins requested
+my $chreadpipe;
+my $chwritepipe;
+if ( !(socketpair($chreadpipe, $chwritepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) ) {
+    xCAT::MsgUtils->message("S", "socketpair failed: $!");
+}
+my $chrselect = new IO::Select;
+$chrselect->add($chreadpipe);
+
+
 my $peername;
 my $ssltimeout;
 my $retry=1;
@@ -1074,6 +1089,14 @@ until ($quit) {
   if ($sslclients > $maxsslclients) { #we have enough children, wait for some to exit before spawning more
       $listenwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
       next; #just keep pulling things off listen queue onto our own
+  }
+  # before we fork, check to see if rescanplugins was previously processed and
+  #   we now have a new cmd_handlers hash to refresh
+  my @chdata;
+  if (@chdata = $chrselect->can_read(0)) {
+   foreach my $chd (@chdata) {
+      %cmd_handlers = %{fd_retrieve($chd)};
+   }
   }
   #we have a pending connection and we are under the threshold, grab one from the list and process it...
   my $cnnection=shift @pendingconnections;
@@ -1421,7 +1444,13 @@ sub plugin_command {
     	        dispatch_request($req,$callback,$modname);
             } else {
                $SIG{CHLD}='DEFAULT';
-               ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+               # Call the plugin to process the command request
+               #    rescanplugins request gets handled directly here in xcatd
+               if ($req->{command}->[0] eq 'rescanplugins') { 
+                 scan_plugins($chwritepipe,'1');
+               } else {
+                 ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+               }
             }
             $$progname=$oldprogname;
             }; #REMOVEEVALFORDEBUG
@@ -1509,7 +1538,13 @@ sub plugin_command {
 	        dispatch_request($req,$callback,$modname);
         } else {
            $SIG{CHLD}='DEFAULT';
-           ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+           # Call the plugin to process the command request
+           #    rescanplugins request gets handled directly here in xcatd
+           if ($req->{command}->[0] eq 'rescanplugins') { 
+             scan_plugins($chwritepipe,'1');
+           } else {
+             ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
+           }
         }
         $$progname=$oldprogname;
         $parent_fd = $org_parent_fd;
@@ -1735,7 +1770,13 @@ sub dispatch_request {
         $SIG{CHLD}='DEFAULT';
         "" =~ m/()/; #clear $1 that we may have sitting around
 	if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
-        ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+        # Call the plugin to process the command request
+        #    rescanplugins request gets handled directly here in xcatd
+        if ($_->{command}->[0] eq 'rescanplugins') {
+          scan_plugins($chwritepipe,'1');
+        } else {
+          ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
+        }
         return;
     }
 
@@ -1818,7 +1859,13 @@ sub dispatch_request {
          } else {
             $$progname.=": locally executing";
             $SIG{CHLD}='DEFAULT';
-            ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+            # Call the plugin to process the command request
+            #    rescanplugins request gets handled directly here in xcatd
+            if ($_->{command}->[0] eq 'rescanplugins') {
+              scan_plugins($chwritepipe,'1');
+            } else {
+              ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
+            }
             last;
         }
      }
@@ -1851,6 +1898,7 @@ sub do_request {
       $sock = $second;
     }
   }
+
 
   #my $sock = shift; #If no sock, will return a response hash
   if ($cmd_handlers{$req->{command}->[0]}) {
