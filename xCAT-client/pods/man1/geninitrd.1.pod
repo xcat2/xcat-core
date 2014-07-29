@@ -38,7 +38,7 @@ B<osupdatename> - comma separated 'osdistroupdate' object. Each 'osdistroupdate'
 Linux distro update. When run geninitrd, 'kernel-*.rpm' will be searched from osdistroupdate.dirpath 
 to get all the rpm packages and then search the drivers from the rpm packages. 
 
-Refer to the doc: https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Using_Linux_Driver_Update_Disk
+Refer to the doc: Using_Linux_Driver_Update_Disk
 
 =back
 

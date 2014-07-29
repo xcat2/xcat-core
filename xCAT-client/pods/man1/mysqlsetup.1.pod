@@ -20,7 +20,7 @@ B<mysqlsetup> {B<-L>|B<--LL>} [-V|--verbose]
 =head1 DESCRIPTION
 
 B<mysqlsetup> - Sets up the MySQL or MariaDB database (linux only for MariaDB) for xCAT to use. The mysqlsetup script is run on the Management Node as root after the MySQL code or MariaDB code has been installed. Before running the init option, the MySQL server should be stopped, if it is running.  The xCAT daemon, xcatd, must be running, do not stop it. No xCAT commands should be run during the init process, because we will be migrating the xCAT database to MySQL or MariaDB and restarting the xcatd daemon as well as the MySQL daemon. For full information on all the steps that will be done, read the "Configure MySQL and Migrate xCAT Data to MySQL" sections in 
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_MySQL_as_the_xCAT_DB
+Setting_Up_MySQL_as_the_xCAT_DB
 Two passwords must be supplied for the setup,  a password for the xcatadmin id and a password for the root id in the MySQL database.  These will be prompted for interactively, unless the environment variables XCATMYSQLADMIN_PW and  XCATMYSQLROOT_PW are set to the passwords for the xcatadmin id and root id in the database,resp. 
 Note below we refer to MySQL but it works the same for MariaDB.
 
@@ -57,13 +57,13 @@ This option runs during update, it will take all the host from the input file (p
 
 This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb MySQL database.
 See "Add ODBC Support" in
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_MySQL_as_the_xCAT_DB
+Setting_Up_MySQL_as_the_xCAT_DB
 
 =item B<-L|--LL>
 
 Additional database configuration specifically for the LoadLeveler product. 
 See "Add ODBC Support" in
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_MySQL_as_the_xCAT_DB
+Setting_Up_MySQL_as_the_xCAT_DB
 
 =back
 

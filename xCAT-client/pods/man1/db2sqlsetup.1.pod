@@ -24,7 +24,7 @@ The xcatd daemon will be stopped during migration on the MN.  No xCAT commands s
 
 The db2sqlsetup script must be  run on each Service Node, after the DB2 Client code has been installed, to setup the DB2 Client (-C). There are two postscripts that are provided ( db2install and odbcsetup) that will automatically setup you Service Node  as a DB2 client. 
 
-For full information on the setup of DB2,  see http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_DB2_as_the_xCAT_DB.
+For full information on the setup of DB2,  see Setting_Up_DB2_as_the_xCAT_DB.
 
 When running of db2sqlsetup on the MN:
 One password must be supplied for the setup,  a password for the xcatdb unix id which will be used as the DB2 instance id and database name.  The password will be prompted for interactively or can be input with the XCATDB2PW  environment variable.
