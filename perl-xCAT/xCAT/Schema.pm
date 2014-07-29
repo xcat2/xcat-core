@@ -1156,9 +1156,9 @@ site => {
    "               locking out admin interactive use. This value works with the\n".
    "               xcatmaxconnections and xcatmaxbatch attributes. Is not supported on AIX.\n".
    "               If the value is no, nodes sleep for a random time before contacting\n".
-   "               xcatd, and retry. On a new install of xcat, this value will be set to yes.\n".
+   "               xcatd, and retry. The default is no.\n".
    "               See the following document for details:\n".
-   "               https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Hints_and_Tips_for_Large_Scale_Clusters\n\n".
+   "               Hints_and_Tips_for_Large_Scale_Clusters\n\n".
    " xcatmaxconnections:  Number of concurrent xCAT protocol requests before requests\n".
    "                      begin queueing. This applies to both client command requests\n".
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
