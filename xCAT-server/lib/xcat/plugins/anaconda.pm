@@ -2237,10 +2237,13 @@ sub copycd
 
     if($inspection)
     {
+            my $retinfo="DISTNAME:$distname\n"."ARCH:$arch\n";
+            if($dno) {
+               $retinfo=$retinfo."DISCNO:$dno\n";
+            }
             $callback->(
                 {
-                 info =>
-                   "DISTNAME:$distname\n"."ARCH:$arch\n"."DISCNO:$dno\n"
+                 info =>"$retinfo"
                 }
                 );
             return;
