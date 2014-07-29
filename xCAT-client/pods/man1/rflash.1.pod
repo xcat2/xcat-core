@@ -60,8 +60,8 @@ If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the
 
 In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and supports B<disruptive> and B<deferred>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
 
-The B<deferred> option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the link to get more details:
-  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Perform_Deferred_Firmware_upgrades_for_frame.2FCEC_on_Power_775
+The B<deferred> option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details:
+  XCAT_Power_775_Hardware_Management
 
 In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute: 
 
@@ -71,12 +71,12 @@ For one GFW rpm package and one power code rpm package , if the GFW rpm package 
 For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
 
 For more details about the Firmware Update using Direct FSP/BPA Management, refer to:
-  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
+  XCAT_Power_775_Hardware_Management#Updating_the_BPA_and_FSP_firmware_using_xCAT_DFM
 
 =head2 NeXtScale FPC specific:
 
-The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the link to get more details:
- https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_NeXtScale_Clusters#Update_the_FPC_firmware_.28optional.29 
+The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details:
+ XCAT_NeXtScale_Clusters 
 
 
 =head1 B<Options>
