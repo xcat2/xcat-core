@@ -12,6 +12,7 @@ BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
+use lib "$::XCATROOT/lib/perl";
 
 use xCAT::Table;
 use xCAT::Utils;
@@ -1410,9 +1411,10 @@ sub addkit
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
         if ( $hasplugin ) {
-            # Issue xcatd reload to load the new plugins
-            #system("/etc/init.d/xcatd restart");
-            system("XCATRELOAD=yes xcatd -p /var/run/xcatd.pid");
+            # Issue rescanplugins to have xcatd load the new plugins
+            xCAT::Utils->runxcmd( { command => ['rescanplugins'],},
+                                  $request_command, 0,1);
+
         }
     }
 }
@@ -1731,9 +1733,9 @@ sub rmkit
     xCAT::MsgUtils->message( "I", \%rsp, $callback );
 
     if ( $hasplugin ) {
-        # Issue xcatd reload to load the new plugins
-        #system("/etc/init.d/xcatd restart");
-        system("XCATRELOAD=yes xcatd -p /var/run/xcatd.pid");
+        # Issue rescanplugins to have xcatd load the new plugins
+        xCAT::Utils->runxcmd( { command => ['rescanplugins'],},
+                              $request_command, 0,1);
     }
 
 }
