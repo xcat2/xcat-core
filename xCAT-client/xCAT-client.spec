@@ -238,6 +238,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodechprofile
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderegenips
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderefresh
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodechmac
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/rescanplugins
 
 
 %clean
