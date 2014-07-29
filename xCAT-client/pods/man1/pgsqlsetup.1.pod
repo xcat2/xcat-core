@@ -40,7 +40,7 @@ The init option is used to setup an installed PostgreSQL database so that xCAT c
 On AIX, it additionally setup the xcatadm unix id and the postgres id and group. For AIX, you should be using the PostgreSQL rpms available from the xCAT website. For Linux, you should use the PostgreSQL rpms shipped with the OS. You can chose the -o option, to run after the init.
 To add additional nodes to access the PostgreSQL server, setup on the Management Node,  edit the pg_hba.conf file.   
 
-For more documentation see:https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_PostgreSQL_as_the_xCAT_DB
+For more documentation see the following documentation: Setting_Up_PostgreSQL_as_the_xCAT_DB
 
 =item B<-N|--nostart>
 

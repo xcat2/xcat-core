@@ -89,7 +89,7 @@ Files may be distributed and synchronized for both diskless and
 diskfull nodes.  Syncing files to NFS-based statelite nodes is not supported. 
 
 More information on using the  synchronization file function is in  
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Using_Updatenode.
+ the following doc: Using_Updatenode.
 
 =head3 Create the synclist file
 
@@ -100,7 +100,7 @@ and the destination location for the files on the target node.
 
 For more information on creating your synclist files and where to put them, read:
 
-http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files_to_Nodes
+Sync-ing_Config_Files_to_Nodes
 
 
 =head3 Run updatenode to synchronize the files
@@ -111,7 +111,7 @@ http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files
 =head2 To install or update software
 
 updatenode can be use to install or update software on the nodes. See the following documentation for setting up otherpkgs:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Install_Additional_Packages
+Install_Additional_Packages
 
 To install/update the packages, run:
 
@@ -136,9 +136,9 @@ B<For AIX systems:>
 Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
 For information on updating software on AIX cluster:
 For diskful installs, read:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_RTE_Diskfull_Nodes
+XCAT_AIX_RTE_Diskfull_Nodes
 For diskless installs, read:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_Diskless_Nodes
+XCAT_AIX_Diskless_Nodes
 
 
 =head2 To run postscripts

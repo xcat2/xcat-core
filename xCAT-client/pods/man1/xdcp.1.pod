@@ -205,7 +205,7 @@ For example, your rsynclist file may look like this:
 
 Note: no order can be assumed by the order that the EXECUTE,EXECUTEALWAYS and APPEND clause fall in the synclist file. 
 
-For more information on syncing files to node, read https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files_to_Nodes
+For more information on syncing files to node, read Sync-ing_Config_Files_to_Nodes
 
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 

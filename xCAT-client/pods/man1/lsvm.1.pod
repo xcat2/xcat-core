@@ -41,8 +41,8 @@ The Memory Interleaving Mode has 3 valid options:
   1 - interleaved
   2 - non-interleaved
 
-More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the link below. 
-  https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Power_775_Hardware_Management
+More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the following doc: 
+  XCAT_Power_775_Hardware_Management
 
 =head2 For KVM and Vmware
 

@@ -24,8 +24,8 @@ The B<configfpc> command discovers the FPCs and collects the MAC address. The MA
 
 This process is repeated until no more FPCs are discovered. 
 
-For more information on xCAT support of NeXtScale and configfpc see:
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_NeXtScale_Clusters
+For more information on xCAT support of NeXtScale and configfpc see the following doc:
+XCAT_NeXtScale_Clusters
 
 =head1 OPTIONS
 
