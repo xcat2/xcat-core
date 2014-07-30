@@ -68,6 +68,7 @@ my @apigroups = (
 my %formathdl = (
     text => \&outtext,
     wiki => \&outwiki,
+    mediawiki => \&outmediawiki,
 );
 
 
@@ -150,7 +151,105 @@ sub outtext {
     }
 }
 
+# The subroutine is used to generate restapi doc in sourceforage markdown wiki
 sub outwiki {
+    my $def = shift;
+    my $opt = shift;
+    my $res = shift;
+
+    if ($res) {
+        if (defined ($res->{'desc'})) {
+            # add \ for [ and ]
+            $res->{'desc'} =~ s/\[/\\\[/;
+            $res->{'desc'} =~ s/\]/\\\]/;
+            print "##$res->{'desc'}##\n";
+        }
+        foreach (1..10) {
+            if (defined ($res->{'desc'.$_})) {
+                print $res->{'desc'.$_}."\n\n";
+            }
+        }
+    }
+
+    my $postfix = "?userName=root&password=cluster&pretty=1";
+
+    if (defined ($def->{desc})) {
+        print "###$opt - $def->{desc}###\n";
+    }
+    foreach (1..10) {
+        if (defined ($def->{'desc'.$_})) {
+            print $def->{'desc'.$_}."\n\n";
+        }
+    }
+
+    if (defined ($def->{cmd})) {
+        my $manpath = search_manpage($def->{cmd});
+        $manpath =~ s/\.gz//;
+
+        if ($manpath) {
+            print "Refer to the man page:[$def->{cmd}](http://xcat.sourceforge.net".$manpath.".html).\n\n";
+        } else {
+            print "Refer to the man page of ".$def->{cmd}." command.\n\n";
+        }
+
+    }
+
+    if (defined ($def->{usage})) {
+        $def->{usage} =~ s/\[/\\\[/;
+        $def->{usage} =~ s/\]/\\\]/;
+        my @parts = split ('\|', $def->{usage});
+        if ($parts[1]) {
+            print "**Parameters:**\n\n* $parts[1]\n\n";
+        }
+        if ($parts[2]) {
+            print "**Returns:**\n\n* $parts[2]\n\n";
+        }
+    }
+
+    my @example_array = ();
+    if (defined($def->{example})) {
+        push @example_array, $def->{example};
+    } else {
+        foreach (1..10) {
+            if (defined($def->{'example'.$_})) {
+                push @example_array, $def->{'example'.$_};
+            }
+        }
+    }
+
+    if (@example_array) {
+        foreach my $line (@example_array) {
+            my @parts = split ('\|', $line);
+            print "**Example:**\n";
+
+            if ($parts[1]) {
+                print "$parts[1]\n";
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
+        
+            if ($parts[2] && $parts[3] && ($parts[4] || $opt ne "GET")) {
+                my ($uri, $data);
+                if ($parts[3] =~ /\s+/) {
+                    ($uri, $data) = split(/ /, $parts[3]);
+                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$uri$postfix\' -H Content-Type:application/json --data \'$data\'\n";
+                } else {
+                    print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
+                }
+                $parts[4] =~ s/\n/\n    /g;
+                print "    $parts[4]\n\n---\n";
+            } else {
+                push @errmsg, "Error format for:[".$def->{desc}."]\n";
+            }
+        }
+    } else {
+        push @errmsg, "Error format for:[".$def->{desc}."]\n";
+    }
+}
+
+
+# outmediawiki is the backup subroutine to generate restapi doc for mediawiki which has been obsoleted from sourceforge
+sub outmediawiki {
     my $def = shift;
     my $opt = shift;
     my $res = shift;
@@ -264,6 +363,9 @@ sub gendoc {
         $format = "text";
     }
 
+    if ($format eq "wiki") {
+        print "\n[TOC]\n";
+    }
 
     foreach my $group (@apigroups) {
         my $groupname = $group->{'groupname'};
@@ -275,6 +377,10 @@ sub gendoc {
                 print $group->{'desc'}."\n";
                 print "############################################\n";
             } elsif ($format eq "wiki") {
+                print "#".$group->{'header'}."#\n";
+                print $group->{'desc'}."\n";
+                print "\n\n---\n\n---\n";
+            } elsif ($format eq "mediawiki") {
                 print "==".$group->{'header'}."==\n";
                 print $group->{'desc'}."\n";
             }
