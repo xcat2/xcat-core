@@ -1237,7 +1237,7 @@ sub resolve {
             #############################
             # Find MTMS in vpd database
             #############################
-            if ( exists( $att->{parent} )) {
+            if ( $att->{parent}) {
                 my @attrs = qw(mtm serial);
                 my ($vpd) = $tabs->{vpd}->getNodeAttribs($att->{parent},\@attrs);
 
