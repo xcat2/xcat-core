@@ -140,7 +140,10 @@ XCAT_AIX_RTE_Diskfull_Nodes
 For diskless installs, read:
 XCAT_AIX_Diskless_Nodes
 
+updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes.
 
+  updatenode <targetnoderange> -S
+  
 =head2 To run postscripts
 
 The scripts must be copied to the /install/postscripts 
@@ -362,7 +365,7 @@ be run during install.  You should use updatenode <noderange> -F instead.
 
 =item B<-S|--sw>
 
-Specifies that node software should be updated. 
+Specifies that node software should be updated. In Sysclone environment, specifies pushing the delta changes to target nodes.
 
 =item B<-s|--sn>
 
@@ -566,6 +569,12 @@ To run updatenode with the non-root userid "user1" that has been setup as an xCA
 See  Granting_Users_xCAT_privileges for required sudo setup.
 
 B<updatenode node1 -l user1 -P syslog>
+
+=item 22
+
+In Sysclone environment, after capturing the delta changes from golden client to management node, to run updatenode to push these delta changes to target nodes.
+
+B<updatenode target-node -S>
 
 
 =back
