@@ -8,6 +8,8 @@ B<rnetboot> [B<-V>|B<--verbose>] [B<-s> I<boot_device_order>] [B<-F>] [B<-f>] I<
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
+=head2 zVM specific:
+
 B<rnetboot> noderange [B<ipl=> I<address>]
 
 
