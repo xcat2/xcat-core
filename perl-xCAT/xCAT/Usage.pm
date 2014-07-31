@@ -131,7 +131,7 @@ my %usage = (
            textid=<*>|
            frame=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>
-   FSP/BPA Common:
+   FSP/CEC (using ASM Interface) Specific:
        rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump|network|hostname]
        rspconfig <noderange> autopower=<enable|disable>|
            iocap=<enable|disable>|
