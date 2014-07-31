@@ -119,7 +119,7 @@ sub add_ppc {
         
         # Specify CEC and Frame's mgt as fsp and bpa
         if ( $type =~ /^cec$/)  {
-            $mgt = "fsp";
+            $mgt = "hmc";
         }
         if ( $type =~ /^frame$/)  {
             $mgt = "bpa";
