@@ -363,7 +363,7 @@ foreach my $node (sort keys %$cfgenthash) {
   if ($cmeth eq 'ipmi') {
     $parameters{'secret.hardwaremanagementuser'} =
             $ipmiauthdata->{$node}->{username};
-      $parameters{'secret.hardwaremanagementpassphrase'} =
+      $parameters{'secret.hardwaremanagementpassword'} =
             $ipmiauthdata->{$node}->{password};
       my $bmc = $ipmientries->{$node}->[0]->{bmc};
       $bmc =~ s/,.*//;
