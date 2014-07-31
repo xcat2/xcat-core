@@ -21,7 +21,6 @@ sub parse_args {
     my %opt     = ();
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
-    my @VERSION = qw( 2.1 );
 
     #############################################
     # Responds with usage statement
@@ -60,7 +59,8 @@ sub parse_args {
     # Option -v for version
     ####################################
     if ( exists( $opt{v} )) {
-        return( \@VERSION );
+        my $version = xCAT::Utils->Version();
+        return ([$version]);
     }
 
     if ( exists( $opt{s} ) ){
