@@ -2197,9 +2197,10 @@ sub process_request {
     #if( $request->{hwtype} ne 'hmc' ) {
     if( $request->{hwtype} !~ /hmc|ivm/ ) {
         $request->{fsp_api} = 1;
-        #For using rspconfig to disable/enable dev/celogin1 through ASMI
-        my $arg = $request->{arg};
-        if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1)/, @$arg)) {
+        #For using rspconfig options through ASMI
+        #my $arg = $request->{arg};
+        #if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1)/, @$arg)) {
+        if($request->{command} eq "rspconfig" and ref($request->{method}) eq 'HASH') {
            $request->{fsp_api} = 0;
         }
     } else {

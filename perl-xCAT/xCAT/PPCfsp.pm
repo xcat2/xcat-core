@@ -144,12 +144,16 @@ sub connect {
     ##################################
     # Set options
     ##################################
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    if ( $hosttab) {
-        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(ip otherinterfaces)]);
-        if ( $hostshash ) {
-            $server = $hostshash->{ip};
-        }
+    #my $hosttab  = xCAT::Table->new( 'hosts' );
+    #if ( $hosttab) {
+    #    my $hostshash = $hosttab->getNodeAttribs( $server, [qw(ip otherinterfaces)]);
+    #    if ( $hostshash ) {
+    #        $server = $hostshash->{ip};
+    #    }
+    #}
+    $server = xCAT::NetworkUtils::getNodeIPaddress( $server );
+    unless ($server) {
+             return( "Unable to get IP address for $server" );
     }
 #    my $serverip = inet_ntoa(inet_aton($server));
     my $url = "https://$server/cgi-bin/cgi?form=2";
