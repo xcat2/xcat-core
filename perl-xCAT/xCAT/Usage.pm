@@ -28,8 +28,10 @@ my %usage = (
        rpower <noderange> [boot] [ -c <path to iso> ]
      PPC (with IVM or HMC) specific:
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
-     PPC (HMC) specific:
-       rpower <noderange> [onstandby] [-V|--verbose]
+     CEC (with HMC) specific:
+       rpower <noderange> [on|off|reset|boot|onstandby]
+     LPAR(with HMC) specific:
+       rpower <noderange> [on|off|reset|stat|state|boot|of|sms|softoff]
      CEC(using Direct FSP Management) specific:
        rpower <noderange> [on|onstandby|off|stat|state|lowpower|resetsp]
      Frame(using Direct FSP Management) specific:

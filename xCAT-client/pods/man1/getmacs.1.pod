@@ -26,9 +26,13 @@ The getmacs command collects MAC address from a single or range of nodes.
 Note that on AIX systems, the returned MAC address is not colon-seperated (for example 8ee2245cf004), while on Linux systems the MAC address is colon-seperated (for example 8e:e2:24:5c:f0:04).
 If no ping test performed,  getmacs writes the first adapter MAC to the xCAT database.  If ping test performed, getmacs will write the first successfully pinged MAC to xCAT database.
 
-For PPC (without HMC, using Direct FSP Management) specific:
+For PPC (using Direct FSP Management) specific:
 
 Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
+
+For PPC (using HMC) specific:
+
+Note: The option "B<-D>" B<must> be used to get MAC addresses of LPARs.
 
 For IBM Flex Compute Node (Compute Node for short) specific:
 

@@ -16,11 +16,13 @@ B<rpower> I<noderange> [B<on>|B<off>|B<softoff>|B<reset>|B<boot>|B<stat>|B<state
 
 B<rpower> I<noderange> [B<--nodeps>] {B<of>}
 
-=head2 PPC (with HMC) specific:
+=head2 CEC (with HMC) specific:
 
-B<rpower> I<noderange> [B<onstandby>]
+B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<boot>|B<onstandby>]
 
-B<rpower> I<noderange> [B<softoff>]
+=head2 LPAR (with HMC) specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<sms>|B<softoff>]
 
 =head2 CEC (using Direct FSP Management) specific:
 
