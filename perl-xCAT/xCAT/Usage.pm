@@ -18,8 +18,9 @@ use xCAT::Utils;
 my %usage = (
     "rnetboot" => 
 "Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
-       rnetboot <noderange> [ipl= address]
-       rnetboot [-h|--help|-v|--version]",
+       rnetboot [-h|--help|-v|--version]
+     zVM specific:
+       rnetboot <noderange> [ipl= address]",
     "rpower" => 
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rpower [-h|--help|-v|--version]
