@@ -106,7 +106,23 @@ function makexcat {
 	fi
 }
 
-
+# make ironic rpm for ironic baremetal driver
+function makeironic {
+	RPMNAME="$1"
+	ARCH="$2"
+	cd `dirname $0`/$RPMNAME    
+	cp -rf ironic_baremetal /tmp/
+	cd /tmp/ironic_baremetal
+	git init
+	git add *
+	git commit -a -m "generate rpm"
+	python setup.py bdist_rpm
+	rm -rf $RPMROOT/RPMS/$ARCH/
+	mkdir -p $RPMROOT/RPMS/$ARCH/
+	cp -rf dist/*.rpm $RPMROOT/RPMS/$ARCH/
+	rm -rf /tmp/ironic_baremetal
+}	
+	
 
 # Make the xCAT-nbroot-core rpm
 function makenbroot {
@@ -206,7 +222,6 @@ else	# linux
 	fi
 fi
 
-
 if [ "$1" = "xCAT" -o "$1" = "xCATsn" -o "$1" = "xCAT-buildkit" -o "$1" = "xCAT-OpenStack" ]; then
 	exportEmbed $3
 	makexcat $1 $2
@@ -219,6 +234,8 @@ elif [ "$1" = "xCAT-genesis-builder" ]; then
 elif [ "$1" = "xCAT-genesis-scripts" ]; then
 	exportEmbed $3
 	makegenesisscripts $1 $2
+elif [ "$1" = "xCAT-OpenStack-ironic" ]; then
+	makeironic $1 $2    
 else	# must be one of the noarch rpms
 	exportEmbed $2
 	makenoarch $1
