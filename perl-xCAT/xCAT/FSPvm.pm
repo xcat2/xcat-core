@@ -878,7 +878,11 @@ sub do_op_extra_cmds {
                     $memhash->{lpar_used_regions} = 0;
                     my $ret = &deal_with_avail_mem($request, $name, $d, $memhash);
                     if (ref($ret) eq "ARRAY") {
-                        return ([[@$ret]]);
+                        if (@$ret[2]) {
+                            return ([[@$ret]]);
+	                 } else {
+                            push @values, $ret;
+                        }
                     }
                     $param = $memhash->{memory};
                     $action = "part_set_lpar_pending_mem";
@@ -2060,9 +2064,12 @@ sub deal_with_avail_mem {
                 my $cur_mem_in_G = $lparhash->{hyp_avail_mem} * $lparhash->{mem_region_size} * 1.0 / 1024;
                 return([$name, "Parse reserverd regions failed, no enough memory, available:$cur_mem_in_G GB.", 1]);
             }           
-            if ($cur > $cur_avail) {
-                my $new_cur = $cur_avail;
-                $lparhash->{memory} = "$min/$new_cur/$max";
+            if (($cur_avail > 0) and ($cur > $cur_avail)) {
+                my $cur_avail_in_G = $cur_avail * $lparhash->{mem_region_size} * 1.0 / 1024;
+                $lparhash->{memory} = "$min/$cur_avail/$max";
+		 unless ($lparhash->{full_par}) {
+                     return([$name, "Available memory is less than required, allocate $cur_avail_in_G GB.", 0]);
+		 }
             }
         } else {
             return ([$name, "Failed to get hypervisor reserved memory regions.", 1]);
@@ -2100,6 +2107,7 @@ sub create_lpar {
     my $name = shift;
     my $d = shift;
     my $lparhash = shift;
+    my @ret = ();
     my $values;
     if (exists($request->{opt}->{vios})) {
         $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_def_state", 0, 0x03);
@@ -2112,7 +2120,7 @@ sub create_lpar {
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_lpar_name", 0, $name);
     if (@$values[2] ne 0) {
         &set_lpar_undefined($request, $name, $d);
-        return ([$name, @$values[1], @$values[0]]);
+        return ([[$name, @$values[1], @$values[0]]]);
     }
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_shared_pool_util_auth");
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_group_id");
@@ -2123,7 +2131,7 @@ sub create_lpar {
         #$values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "set_io_slot_owner", 0, join(",",@phy_io_array)); 
         if (@$values[2] ne 0) {
             &set_lpar_undefined($request, $name, $d);
-            return ([$name, @$values[1], @$values[2]]);
+            return ([[$name, @$values[1], @$values[2]]]);
         }
     }
     if (exists($lparhash->{nics})) {
@@ -2139,7 +2147,7 @@ sub create_lpar {
                 $values = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_veth_slot_config",0,"0,$vlanid,$mac");
                 if (@$values[2] ne 0) {
                     &set_lpar_undefined($request, $name, $d);
-                    return ([$name, @$values[1], @$values[2]]);
+                    return ([[$name, @$values[1], @$values[2]]]);
                 }
             }
         }
@@ -2149,7 +2157,7 @@ sub create_lpar {
             $values = xCAT::FSPUtils::fsp_api_action($request,$name, $d, "part_set_vscsi_slot_config",0,$v_info);
             if (@$values[2] ne 0) {
                 &set_lpar_undefined($request, $name, $d);
-                return ([$name, @$values[1], @$values[2]]);
+                return ([[$name, @$values[1], @$values[2]]]);
             }
         }
     }
@@ -2180,19 +2188,23 @@ sub create_lpar {
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_proc", 0, $lparhash->{cpus});
     if (@$values[2] ne 0) {
         &set_lpar_undefined($request, $name, $d);
-        return ([$name, @$values[1], @$values[2]]);
+        return ([[$name, @$values[1], @$values[2]]]);
     }
     $values = &deal_with_avail_mem($request, $name, $d,$lparhash);
     if (ref($values) eq "ARRAY") {
-        &set_lpar_undefined($request, $name, $d);
-        return ([@$values]);
+        if (@$values[2]) {
+            &set_lpar_undefined($request, $name, $d);
+            return ([[@$values]]);
+	 } else {
+            push @ret, $values;
+        }
     }
 
     #print "======>memory:$lparhash->{memory}.\n";
     $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_pending_mem", 0, $lparhash->{memory});
     if (@$values[2] ne 0) {
         &set_lpar_undefined($request, $name, $d);
-        return ([$name, @$values[1], @$values[2]]);
+        return ([[$name, @$values[1], @$values[2]]]);
     }
     
     xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_comp_modes"); 
@@ -2207,9 +2219,11 @@ sub create_lpar {
         $values = xCAT::FSPUtils::fsp_api_action($request, $name, $d, "part_set_lpar_def_state", 0, 0x02);
     }
     if (@$values[2] ne 0) {
-        return ([$name, @$values[1], @$values[2]]);
+        return ([[$name, @$values[1], @$values[2]]]);
     }
-    return ([$name, "Done", 0]);
+    push @ret, [$name, "Done", 0];
+    #return ([$name, "Done", 0]);
+    return \@ret;
 }
 
 sub mkspeclpar {
@@ -2232,11 +2246,12 @@ sub mkspeclpar {
                 push @result, [$name, "Node must be LPAR", 1];
                 last;
             }
-            if (!exists($memhash->{run})) {
+            #if (!exists($memhash->{run})) 
+            {
                 my @td = @$d;
                 @td[0] = 0;
                 $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem","lpar_lhea_mac","part_get_all_io_bus_info"]);
-                $memhash->{run} = 1; 
+                #$memhash->{run} = 1; 
             }
             my $tmp_ent = $ent->{$name}->[0];
             if (exists($opt->{vmcpus})) {
@@ -2272,11 +2287,23 @@ sub mkspeclpar {
 	    if ($tmp_ent->{cpus} =~ /^(\d+)\/(\d+)\/(\d+)$/) {
                 unless ($1 <= $2 and $2 <= $3) {
                     return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
+	        } elsif ($memhash->{process_units_avail} eq '0') {
+                    push @result, [$name, "No process available", 1];
+                    next;
+                } elsif ($2 > $memhash->{process_units_avail}) {
+                    my $cur = $memhash->{process_units_avail};
+                    my $min = $1 > $cur ? $cur : $1;
+                    $tmp_ent->{cpus} = "$min/$cur/$3";
+                    push @result, [$name, "Available processor is less than required, allocate $cur processors.", 0];
                 }
             } else {
                 return([[$name, "Parameter for 'vmcpus' is invalid", 1]]);
             }
             if ($tmp_ent->{memory} =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
+                if ($memhash->{hyp_avail_mem} eq '0') {
+                    push @result, [$name, "No memory available", 1];
+                    next;
+                }
                 my ($mmin, $mcur, $mmax);
                 if ($2 == "G" or $2 == '') {
                     $mmin = $1 * 1024;
@@ -2383,7 +2410,7 @@ sub mkspeclpar {
             $tmp_ent->{phy_hea} = $memhash->{phy_drc_group_port};
             $tmp_ent->{logic_drc_phydrc} = $memhash->{logic_drc_phydrc};
             $values = &create_lpar($request, $name, $d, $tmp_ent); 
-            push @result, $values;
+            push @result, @$values;
             #need to add update db here
             my $rethash = query_cec_info_actions($request, $name, $d, 1, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
             $lpar_hash{$name} = $rethash;     
@@ -2426,15 +2453,17 @@ sub mkfulllpar {
             $lpar_param{memory} = "1/".$rethash->{hyp_avail_mem}."/".$rethash->{hyp_config_mem};
             $lpar_param{hyp_config_mem} = $rethash->{hyp_config_mem};
             $lpar_param{hyp_avail_mem} = $rethash->{hyp_avail_mem};
+            $lpar_param{mem_region_size} = $rethash->{mem_region_size};
             my @phy_io_array = keys(%{$rethash->{bus}});
             $lpar_param{physlots} = join(",", @phy_io_array);
             $lpar_param{huge_page} = "1/".$rethash->{huge_page_avail}."/".$rethash->{huge_page_avail};
             $lpar_param{bsr_num} = $rethash->{cec_bsr_avail};
             $lpar_param{phy_hea} = $rethash->{phy_drc_group_port};
             $lpar_param{logic_drc_phydrc} = $rethash->{logic_drc_phydrc}; 
+            $lpar_param{full_par} = 1;
             $values = &create_lpar($request, $name, $d, \%lpar_param);
             $rethash->{logic_drc_phydrc} = $lpar_param{logic_drc_phydrc};
-            push @result, $values;
+            push @result, @$values;
             $name = undef;
             $d = undef;
         }    
