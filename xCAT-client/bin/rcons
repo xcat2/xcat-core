@@ -66,14 +66,17 @@ if [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
 
     #Detect console support of SSL, only fixup consolerc if encryption is detected
     if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
-	if [ ! -f $HOME/.consolerc ]; then
-	    echo 'config * {' > $HOME/.consolerc
-	    echo "	port 782;" >> $HOME/.consolerc
-	    echo "	sslenabled yes;" >> $HOME/.consolerc
-	    echo "	sslauthority $HOME/.xcat/ca.pem;" >> $HOME/.consolerc
-	    echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
-	    echo '}' >> $HOME/.consolerc
-	fi
+        # generate .consolerc if it does not exist or is empty
+        if [ ! -s $HOME/.consolerc ]; then
+            cat > $HOME/.consolerc << EOF
+config * {
+      port 782;
+      sslenabled yes;
+      sslauthority $HOME/.xcat/ca.pem;
+      sslcredentials $HOME/.xcat/client-cred.pem;
+}
+EOF
+        fi
     else
         # ssl is not enabled, comment out the ssl settings in .consolerc
 	if [ -f $HOME/.consolerc ]; then
