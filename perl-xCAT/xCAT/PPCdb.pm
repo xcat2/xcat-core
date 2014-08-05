@@ -75,6 +75,7 @@ sub add_ppc {
     my $values   = shift;
     my $not_overwrite = shift;
     my $otherinterfaces = shift;
+    my $callfile = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype hosts mac); 
     my %db       = ();
     ###################################
@@ -119,7 +120,12 @@ sub add_ppc {
         
         # Specify CEC and Frame's mgt as fsp and bpa
         if ( $type =~ /^cec$/)  {
-            $mgt = "hmc";
+            if ( $callfile eq "PPC" )  {
+                $mgt = "hmc";
+            }
+            if ( $callfile eq "FSP" )   {
+                $mgt = "fsp";
+            }
         }
         if ( $type =~ /^frame$/)  {
             $mgt = "bpa";
@@ -320,7 +326,7 @@ sub update_lpar {
             }
     }
     if (defined($write)) {
-        &add_ppc($hwtype, \@write_list);
+        &add_ppc($hwtype, \@write_list,'','',"FSP");
         return ([@update_list,@write_list]);
     } else {
         foreach ( @tabs ) {
