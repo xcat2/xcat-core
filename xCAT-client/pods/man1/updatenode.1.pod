@@ -89,7 +89,7 @@ Files may be distributed and synchronized for both diskless and
 diskfull nodes.  Syncing files to NFS-based statelite nodes is not supported. 
 
 More information on using the  synchronization file function is in  
-Using_Updatenode.
+ the following doc: Using_Updatenode.
 
 =head3 Create the synclist file
 
@@ -345,7 +345,8 @@ Display usage message.
 =item B<-k|--security>
 
 Update the ssh keys and host keys for the service nodes and compute nodes;
-Update the ca and credentials to the service nodes.  Never run this command to the Management Node, it will take down xcatd. 
+Update the ca and credentials to the service nodes.  Never run this command to the Management Node, it will take down xcatd.
+You must be running updatenode as root to use the -k flag. 
 
 =item B<-l>|B<--user> I<user_ID>
 
@@ -365,7 +366,7 @@ be run during install.  You should use updatenode <noderange> -F instead.
 
 =item B<-S|--sw>
 
-Specifies that node software should be updated. In Sysclone environment, specifies pushing the delta changes to target nodes.
+Specifies that node software should be updated.  In Sysclone environment, specifies pushing the delta changes to target nodes.
 
 =item B<-s|--sn>
 
