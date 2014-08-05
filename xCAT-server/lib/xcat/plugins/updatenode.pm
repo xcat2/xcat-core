@@ -1057,7 +1057,7 @@ sub updatenode
     my $installdir = xCAT::TableUtils->getInstallDir();
 
     #if the postscripts directory exists then make sure it is
-    # world readable and executable by root
+    # world readable  by root
     my $postscripts = "$installdir/postscripts";
     if (-e $postscripts)
     {
