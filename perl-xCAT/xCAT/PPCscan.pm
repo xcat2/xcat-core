@@ -411,7 +411,7 @@ sub format_output {
         # Strip errors for results
         #######################################
         my @val = grep( !/^#.*: ERROR /, @$values );
-        xCAT::PPCdb::add_ppc( $hwtype, \@val );
+        xCAT::PPCdb::add_ppc( $hwtype, \@val ,'','',"PPC");
     }
 
     ###########################################

@@ -1682,7 +1682,7 @@ sub xCATdB {
                 $profile,
                 $parent ); 
         
-        return( xCAT::PPCdb::add_ppc( $hwtype, [$values] )); 
+        return( xCAT::PPCdb::add_ppc( $hwtype, [$values],'','',"FSP" )); 
     }
     return undef;
 }
