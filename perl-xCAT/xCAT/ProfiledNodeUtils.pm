@@ -800,13 +800,10 @@ sub check_profile_consistent{
         }
     }
 
-    # Profile consistent keys, arch=>netboot,  mgt=>nictype
-    my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => 'yaboot',
-                        'fsp' => 'FSP', 'ipmi' => 'BMC');
-                        
     # Get Imageprofile arch
     my $nodetypetab = xCAT::Table->new('nodetype');
-    my $nodetypeentry = $nodetypetab->getNodeAttribs($imageprofile, ['arch']);
+    my $nodetypeentry = $nodetypetab->getNodeAttribs($imageprofile, ['os','arch']);
+    my $os = $nodetypeentry->{'os'};
     my $arch = $nodetypeentry->{'arch'};
     $nodetypetab->close();
     
@@ -847,6 +844,13 @@ sub check_profile_consistent{
         return 0, "Provisioning network not defined for network profile."
     }
 
+    # Profile consistent keys, arch=>netboot,  mgt=>nictype
+    my $ppc_netboot = 'yaboot';
+    if( $os =~ /rhels7/ ){
+        $ppc_netboot = 'grub2';
+    }
+    my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => $ppc_netboot,
+                        'fsp' => 'FSP', 'ipmi' => 'BMC');
     # Check if imageprofile is consistent with networkprofile
     if ($profile_dict{$arch} ne $netboot) {
         return 0, "Imageprofile's arch is not consistent with networkprofile's netboot."
