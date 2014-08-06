@@ -1209,7 +1209,7 @@ sub send_msg {
     if ( !open (LOGFILE, ">> /home/xcatreg.log") ) {
        return 1;
     }
-    print LOGFILE "$content $timestamp: $msg.\n";
+    print LOGFILE "$content $timestamp $$: $msg.\n";
     close LOGFILE;
 }
 #######################################
@@ -1384,7 +1384,7 @@ sub pro_result{
         my $location = $logfiledir."/".$file;
 
         if ($file =~ /xcattest\.log\.(\w+)/) {
-            send_msg(2, "checking log $location \n");
+            #send_msg(2, "checking log $location \n");
             my $holetime = $1;
             if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
                 for my $start (@start) {
@@ -1429,7 +1429,7 @@ sub pro_result{
         my $location = $logfiledir."/".$file;
 
         if ($file =~ /failedcases\.(\w+)/) {
-            send_msg(2, "checking log $location \n");
+            #send_msg(2, "checking log $location \n");
             my $holetime = $1;
             if (my @this = $holetime =~ /(\w\w\w\w)(\w\w)(\w\w)(\w\w)(\w\w)(\w\w)/){
                 for my $start (@start) {
@@ -1489,8 +1489,10 @@ sub send_mail {
     my $subject = "[xcat-autotest] autotest result ";
     my $mailprog = "/bin/mail";
     my $sendmail = "echo \"$content\"";
+    send_msg(2, "begin to send  mail , the contents is $sendmail\n");
     my $send = $sendmail." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
     system($send);
+    send_msg(2, "finish sending mail, $send\n");
     return 0;
 }
 
@@ -1575,6 +1577,7 @@ if ( !defined($pid) ) {
     #######################################
     # step 2. git update
     #######################################
+    send_msg(2, "................fork for first process.....................");
     send_msg(2, "step 2, Running git_update...............");
     $res = git_update();
     if ($res) {
@@ -1582,9 +1585,10 @@ if ( !defined($pid) ) {
         syswrite CWRITE,"Failed with git update, child process exit\n";
         exit;
     }
-    send_msg(2, "first child process succeed, exit");
+
     syswrite CWRITE,"succeed\n";
     close CWRITE;
+    send_msg(2, "..............first child finished, exit.....................");
     exit 0;
 } else { # parent process
     close CWRITE;
@@ -1607,178 +1611,186 @@ if ( !defined($pid) ) {
         last if(time() - $startpoint > 7200); # wait 2 hours at most
     }
     close PREAD;
+    send_msg(2, "first child process succeed");
 }
-    my $totalfork = 1;
+my $totalfork = 0;
 # begin child process
-    pipe CONTROLREAD,MNWRITE;
-    foreach my $m (keys %mns) {
-        $totalfork += 1;
-        send_msg(2, "fork process for $m");
-        my $mn = $mns{$m};
-        my $pid = fork();
-        if ( !defined($pid) ) {
-            send_mail(0, "fork error");
-            exit;
-        } elsif ( $pid == 0 ) { # child process
-            close CONTROLREAD;
-            #######################################
-            # step 3. Install MNs,
-            #######################################
-           # send_msg(2, "step 3, Running mn_install...............");
-           # $res = mn_install();
-           # if ($res) {
-           #     syswrite MNWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
-           #     exit;
-           # }
-            #######################################
-            # step 4. Copy code to MNs
-            #######################################
-            send_msg(2, "step 4, Running copy_code...............");
-            $res =  copy_code($mn);
-            if ($res) {
-                syswrite MNWRITE,"REPORTFROM:$mn--: failed in copy_code\n";
-                exit;
-            }
-            #######################################
-            # step 5. Build xcat code in MNs
-            #######################################
-            send_msg(2, "step 5, Running build_xcat...............");
-            $res =  build_xcat($mn);
-            if ($res) {
-                syswrite MNWRITE,"REPORTFROM:$mn--: failed in build_xcat\n";
-                exit;
-            }
-            #######################################
-            # step 6. Read xCAT MN's configuration
-            #######################################
-            send_msg(2, "step 6, Running config_mn...............");
-            $res = config_mn($mn);
-            if ($res) {
-                syswrite MNWRITE,"REPORTFROM:$mn--: failed in config_mn\n";
-                exit;
-            }
-            #######################################
-            # step 7. Genrate local configuration file for xcattest
-            #         Do test
-            #         Write log
-            #######################################
-            # read time before run test
-            my $runtime = `date +"%Y%m%d%H%M%S"`;
-            send_msg(2, "step 7, Running do_test...............");
-            $res = do_test($mn);
-            if ($res) {
-                syswrite MNWRITE,"REPORTFROM:$mn--: failed in do_test\n";
-                exit;
-            }
-
-            #######################################
-            # step 8. process result
-            #######################################
-            send_msg(2, "step 8, Running pro_result...............");
-            my $resultformn = pro_result($mn, $runtime);
-            if ($resultformn eq "error") {
-                syswrite MNWRITE,"REPORTFROM:$mn--: failed in pro_result\n";
-                exit;
-            }
-            send_msg(2, "$$ result for $mn is $resultformn");
-            syswrite MNWRITE,"REPORTFROM:$mn--: $resultformn\n";
-            exit 0;
-        } # end of child process
-    } # end of foreach
-
-    # fork process to get result
-    my $allflag = 0;
-    $SIG{CHLD} = sub { 
-    $allflag ++;
-    if ($allflag == $totalfork) {
-        send_msg(2, " All the forked processes exit, main process begin to exit.");
-        exit 0;
-     } 
-  };
-    my $controlpid = fork();
-    if ( !defined($controlpid) ) {
+pipe CONTROLREAD,MNWRITE;
+foreach my $m (keys %mns) {
+    $totalfork += 1;
+    send_msg(2, "......................fork process for $m............................");
+    my $mn = $mns{$m};
+    my $pid = fork();
+    if ( !defined($pid) ) {
         send_mail(0, "fork error");
         exit;
-    } elsif ( $controlpid == 0 ) { # child process
-	    close MNWRITE;	
-	    while(1) {
-            while(<CONTROLREAD>){
-                 chomp;
-                 my $result = $_;
-                 if ($result =~ /^REPORTFROM:(\w*)--:(.*)/){
-                     $totalresult{$1} .= $2;
-                     }
-                }
-                last if(keys %totalresult == keys %mns and (keys %totalresult != 0) );	
-            }   
-        print "finish \n";
-        my $consumption = time() - $startpoint;
-        my %summary;
-        my %fatal;
-        for my $m (keys %totalresult) {
-        
-            if ($totalresult{$m} =~ /(.*)FATALERROR(.*)/){
-                $summary{$m} = $1;
-                $fatal{$m} = $2;
+    } elsif ( $pid == 0 ) { # child process
+        close CONTROLREAD;
+        #######################################
+        # step 3. Install MNs,
+        #######################################
+       # send_msg(2, "step 3, Running mn_install...............");
+       # $res = mn_install();
+       # if ($res) {
+       #     syswrite MNWRITE,"REPORTFROM:$mn--: failed in mn_install\n";
+       #     exit;
+       # }
+        #######################################
+        # step 4. Copy code to MNs
+        #######################################
+        send_msg(2, "step 4, Running copy_code...............");
+        $res =  copy_code($mn);
+        if ($res) {
+            syswrite MNWRITE,"REPORTFROM:$mn--: failed in copy_code\n";
+            exit;
+        }
+        #######################################
+        # step 5. Build xcat code in MNs
+        #######################################
+        send_msg(2, "step 5, Running build_xcat...............");
+        $res =  build_xcat($mn);
+        if ($res) {
+            syswrite MNWRITE,"REPORTFROM:$mn--: failed in build_xcat\n";
+            exit;
+        }
+        #######################################
+        # step 6. Read xCAT MN's configuration
+        #######################################
+        send_msg(2, "step 6, Running config_mn...............");
+        $res = config_mn($mn);
+        if ($res) {
+            syswrite MNWRITE,"REPORTFROM:$mn--: failed in config_mn\n";
+            exit;
+        }
+        #######################################
+        # step 7. Genrate local configuration file for xcattest
+        #         Do test
+        #         Write log
+        #######################################
+        # read time before run test
+        my $runtime = `date +"%Y%m%d%H%M%S"`;
+        send_msg(2, "step 7, Running do_test...............");
+        $res = do_test($mn);
+        if ($res) {
+            syswrite MNWRITE,"REPORTFROM:$mn--: failed in do_test\n";
+            exit;
+        }
+
+        #######################################
+        # step 8. process result
+        #######################################
+        send_msg(2, "step 8, Running pro_result...............");
+        my $resultformn = pro_result($mn, $runtime);
+        if ($resultformn eq "error") {
+            syswrite MNWRITE,"REPORTFROM:$mn--: failed in pro_result\n";
+            exit;
+        }
+        send_msg(2, " result for $mn is $resultformn");
+        syswrite MNWRITE,"REPORTFROM:$mn--: $resultformn\n";
+        send_msg(2, ".......................exit..................");
+        exit 0;
+    } # end of child process
+} # end of foreach
+
+# fork process to get result
+my $controlpid = fork();
+if ( !defined($controlpid) ) {
+    send_mail(0, "fork error");
+    exit;
+} elsif ( $controlpid == 0 ) { # child process
+        send_msg(2, "......................child process froked.............................");
+        close MNWRITE;
+        while(1) {
+        while(<CONTROLREAD>){
+             chomp;
+             my $result = $_;
+             if ($result =~ /^REPORTFROM:(\w*)--:(.*)/){
+                 $totalresult{$1} .= $2;
+                 }
             }
+            last if(keys %totalresult == keys %mns and (keys %totalresult != 0) );
         }
-        
-        if (-f "/tmp/commitlog1" and -z _)
-        {
-            $commitinfo="No code updates\n";
-        }else{
-            $commitinfo=`cat /tmp/commitlog1`;
+    print "finish \n";
+    send_msg(2, "finish");
+    my $consumption = time() - $startpoint;
+    my %summary;
+    my %fatal;
+    for my $m (keys %totalresult) {
+
+        if ($totalresult{$m} =~ /(.*)FATALERROR(.*)/){
+            $summary{$m} = $1;
+            $fatal{$m} = $2;
         }
-        
-        # phase result
-        send_msg(2, "Autotest has run sucessfully, begin to send mail");
-        my $mailreport;
-        $mailreport .= "\n======================================\n";
-        $mailreport .= "            SUMMARY\n";
-        $mailreport .= "======================================\n";
-        $mailreport .= "\n";
-        $mailreport .= "Commit: \n";
-        $mailreport .= "---------------\n";
-        $mailreport .= "$commitinfo \n";
-        $mailreport .= "\n\n";
-        $mailreport .= "Time consumption: \n";
-        $mailreport .= "---------------------\n";
-        my $hour = int(int($consumption)/3600);
-        my $minutes = int((int($consumption))%3600/60);
-        my $secondes = int($consumption)%60;
-        $mailreport .= "$hour hours, $minutes minutes, $secondes seconds\n";
-        $mailreport .= "\n\n";
-        $mailreport .= "Result: \n";
-        $mailreport .= "---------------\n";
-        for my $m (keys %totalresult) {
-            $mailreport .= "$m \n".$summary{$m}."\n";
-        }
-        
-        $mailreport .= "\n\n\n";
-        $mailreport .= "\n======================================\n";
-        $mailreport .= "          FATAL ERROR\n";
-        $mailreport .= "======================================\n";
-        $mailreport .= "\n";
-        $mailreport .= "Result: \n";
+    }
+
+    if (-f "/tmp/commitlog1" and -z _)
+    {
+        $commitinfo="No code updates\n";
+    }else{
+        $commitinfo=`cat /tmp/commitlog1`;
+    }
+
+    # phase result
+    send_msg(2, "Autotest has run sucessfully, begin to send mail");
+    my $mailreport;
+    $mailreport .= "\n======================================\n";
+    $mailreport .= "            SUMMARY\n";
+    $mailreport .= "======================================\n";
+    $mailreport .= "\n";
+    $mailreport .= "Commit: \n";
+    $mailreport .= "---------------\n";
+    $mailreport .= "$commitinfo \n";
+    $mailreport .= "\n\n";
+    $mailreport .= "Time consumption: \n";
+    $mailreport .= "---------------------\n";
+    my $hour = int(int($consumption)/3600);
+    my $minutes = int((int($consumption))%3600/60);
+    my $secondes = int($consumption)%60;
+    $mailreport .= "$hour hours, $minutes minutes, $secondes seconds\n";
+    $mailreport .= "\n\n";
+    $mailreport .= "Result: \n";
+    $mailreport .= "---------------\n";
+    for my $m (keys %totalresult) {
+        $mailreport .= "$m \n".$summary{$m}."\n";
+    }
+
+    $mailreport .= "\n\n\n";
+    $mailreport .= "\n======================================\n";
+    $mailreport .= "          FATAL ERROR\n";
+    $mailreport .= "======================================\n";
+    $mailreport .= "\n";
+    $mailreport .= "Result: \n";
         $mailreport .= "---------------\n";
         for my $m (keys %totalresult) {
             $mailreport .= "$m \n".$fatal{$m}."\n";
         }
-        #print "=======$mailreport \n";
+        print "=======$mailreport \n";
         send_mail(1, $mailreport);
+        send_msg(2,"........................exit....................");
         exit 0;
-}	
-	
-    close MNWRITE;	
+} else {   #parent process
+    $totalfork += 1;
+    send_msg(2, "fork child to do process");
+    close MNWRITE;
     close CONTROLREAD;
+    my $allflag = 0;
+    $SIG{CHLD} = sub {
+      $allflag ++;
+      if ($allflag == $totalfork) {
+          send_msg(2, " All $allflag the forked processes exit, main process begin to exit.");
+          exit 0;
+       }
+    };
+
     my $time = time();
     while (1) {
 #        print ".";
         if(time() - $time > 28800) {
-		   send_mail(0, "!!!xCATreg hangs at running test case and return forcibly");
+                   send_mail(0, "!!!xCATreg hangs at running test case and return forcibly");
            last; #wait 8 hours at most
         }
     }
+}
 exit 0;
 
 
