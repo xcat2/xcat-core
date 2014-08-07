@@ -219,7 +219,7 @@ class PXEDeploy(base.DeployInterface):
         self._config_host_file(d_info,task.node.instance_info.get('fixed_ip_address'))
         self._make_dhcp()
         self._nodeset_osimage(d_info,task.node.instance_info.get('image_name'))
-        manager_utils.node_set_boot_device(task, 'pxe', persistent=True)
+        manager_utils.node_set_boot_device(task, 'net', persistent=True)
         manager_utils.node_power_action(task, states.REBOOT)
         try:
             self._wait_for_node_deploy(task)
