@@ -122,7 +122,7 @@ function checknetwork(){
             echo "$str_networkname"
             return
         fi
-        str_ret="${str_ret}${str_networkname},"
+        str_ret="${str_ret}${str_networkname}|"
 
         num_index=$((num_index+1))
     done
@@ -300,7 +300,7 @@ do
         echo "confignics on $NODE: processing custom scripts: ${array_temp[1]} for interface $key"
         ${array_temp[1]}
     else
-        if [ `echo $key | grep -E 'e(n|th)[0-9a-z]+'` ];then
+        if [ `echo $key | grep -E 'e(n|th|m)[0-9a-z]+'` ];then
             str_nic_type="ethernet"
         elif [ `echo $key | grep -E 'ib[0-9]+'` ];then
             str_nic_type="infiniband"
