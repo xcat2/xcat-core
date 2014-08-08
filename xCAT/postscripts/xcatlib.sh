@@ -493,7 +493,7 @@ function disableservice {
   
    if [ -n "$svcunit"  ];then
       cmd="systemctl disable  $svcunit"
-   elif [ -n "svcjob"  ];then
+   elif [ -n "$svcjob"  ];then
       cmd="update-rc.d -f $svcd remove"
    elif [ -n "$svcd"  ];then
      command -v chkconfig >/dev/null 2>&1
