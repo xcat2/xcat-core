@@ -286,7 +286,7 @@ function servicemap {
 
    INIT_syslog="syslog syslogd rsyslog";
  
-   INIT_firewall="iptables firewalld SuSEfirewall2_setup ufw";
+   INIT_firewall="iptables firewalld ufw";
 
    INIT_http="apache2 httpd";
 
@@ -328,8 +328,58 @@ function servicemap {
    
 }
 
+#some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
+#Notice:
+# return value: 
+# 127 :         if the service $svcname cannot be processed in this function
+# otherwise:    the return value of the service action
+
+function specialservicemgr {
+   local svcname=$1
+   local action=$2
+
+   if [ "$svcname" = "firewall"  ];then
+      type -P SuSEfirewall2 >/dev/null 2>&1
+      if [ "$?" = "0" ] ;then
+         case "$action" in
+              "start"|"stop")
+              SuSEfirewall2 $action
+              ;;
+              "restart")
+              SuSEfirewall2 stop
+              SuSEfirewall2 start
+              ;;
+              "disable")
+              SuSEfirewall2 off
+              ;;
+              "enable")
+              SuSEfirewall2 on
+              ;;
+              "status")
+              service SuSEfirewall2_setup status
+              ;;
+              *)
+              return 127 
+              ;;
+         esac
+         return $?
+      fi
+   fi
+
+   return 127
+}
+
 function startservice {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" start 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
+
    local cmd=
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
@@ -354,6 +404,14 @@ function startservice {
 
 function stopservice {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" stop 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
    local cmd=
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
@@ -384,6 +442,15 @@ function stopservice {
 
 function restartservice {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" restart 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
+
    local cmd=
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
@@ -412,6 +479,14 @@ function restartservice {
 
 function checkservicestatus {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" status 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
 
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
@@ -455,6 +530,15 @@ function checkservicestatus {
 
 function enableservice {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" enable 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
+
    local cmd=
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
@@ -486,6 +570,14 @@ function enableservice {
 
 function disableservice {
    local svcname=$1
+
+   local retval
+   specialservicemgr "$svcname" disable 
+   retval=$?
+   if [ "$retval" != "127"  ]; then
+      return $retval
+   fi
+
    local cmd=
    local svcunit=`servicemap $svcname 1`
    local svcjob=`servicemap $svcname 2`
