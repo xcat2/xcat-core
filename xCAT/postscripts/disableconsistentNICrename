@@ -1,0 +1,5 @@
+#/bin/sh
+#modify the grub.cfg to prevent nic consistent network  renameing
+grep -E -q "net.ifnames=0" /etc/sysconfig/grub  || sed -i '/^GRUB_CMDLINE_LINUX=.*/{s/"$/ net.ifnames=0"/}' /etc/sysconfig/grub
+grep -E -q "net.ifnames=0" /etc/default/grub || sed -i '/^GRUB_CMDLINE_LINUX=.*/{s/"$/ net.ifnames=0"/}' /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
