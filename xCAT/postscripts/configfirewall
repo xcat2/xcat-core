@@ -141,16 +141,14 @@ elsif (-f "/etc/SuSE-release")
     # restart firewall 
     #my $cmd = "service SuSEfirewall2_setup restart";
     #system($cmd);
-    xCAT::Utils->restartservice("SuSEfirewall2_setup");
+    xCAT::Utils->restartservice("firewall");
 
     # SuSEfirewall2_setup should be stared on reboot
     #$cmd = "chkconfig SuSEfirewall2_init on";
     #system($cmd);
     #$cmd = "chkconfig SuSEfirewall2_setup on";
     #system($cmd);
-    xCAT::Utils->enableservice("SuSEfirewall2_init");
-    xCAT::Utils->enableservice("SuSEfirewall2_setup");
-
+    xCAT::Utils->enableservice("firewall");
 }
 else
 {
