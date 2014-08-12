@@ -491,6 +491,16 @@ Usage:
         return;
     }
 
+    # Get no mac address nodes when user only defined CEC in NIF for 7R2 support.
+    my @nomacnodes = ();
+    foreach my $nomacnode(@nodelist){
+        if(defined($hostinfo_dict{$nomacnode}{'cec'}) &&
+            not (defined($hostinfo_dict{$nomacnode}{'mac'})) &&
+            not (defined($hostinfo_dict{$nomacnode}{'switch'}))){
+            push @nomacnodes, $nomacnode;
+        }
+    }
+
     # Create the full hostinfo dict.
     xCAT::MsgUtils->message('S', "Generating new hostinfo string.");
     my ($retcode_gen, $retstr_gen) = gen_new_hostinfo_dict(\%hostinfo_dict);
@@ -533,6 +543,75 @@ Usage:
         if ($retstrref->[1]) {
             $warnstr .= "Details: $retstrref->[1]";
         }
+    }
+
+    # Use xcat command: getmacs <noderanges> -D to automatically get node mac address
+    # If some of nodes can not get mac address, then finally remove them with warning msg.
+    if(@nomacnodes){
+        # Sleep 10 seconds to ensure the basic node attributes are effected
+        sleep 10;
+        $retref = xCAT::Utils->runxcmd({command=>["getmacs"], node=>\@nomacnodes, arg=>['-D']}, $request_command, 0, 2);
+        $retstrref = parse_runxcmd_ret($retref);
+        if($::RUNCMD_RC != 0){
+            $warnstr .= "Warning: Can not discover MAC address by getmacs command for some node(s).";
+        }
+
+        # Parse the output of "getmacs <noderange> -D" to filter success and failed nodes.
+        my @successnodes = ();
+        my @failednodes  = ();
+        my $nodelistref  = $retref->{'node'};
+        my $index = 0;
+        my $name = '';
+        my $contents = '';
+        if($nodelistref){
+            foreach(@$nodelistref){
+                # Get node name.
+                if($nodelistref->[$index]->{'name'}){
+                    $name = $nodelistref->[$index]->{'name'}->[0];
+                }
+                # Get node data contents.
+                if($nodelistref->[$index]->{'data'}->[0]->{'contents'}){
+                    $contents = $nodelistref->[$index]->{'data'}->[0]->{'contents'}->[0];
+                }
+                # Get success and failed nodes list.
+                if(defined($name) and $contents =~ /[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}/){
+                    push @successnodes, $name;
+                }else{
+                    push @failednodes, $name;
+                }
+                $index++;
+            }
+        }
+
+        # Reconfigure the nodes that MAC address discovered by getmacs command
+        if(@successnodes){
+            $mac_addr_mode = 1;
+            my $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>\@successnodes, sequential=>[1], macflag=>[$mac_addr_mode]}, $request_command, 0, 2);
+            my $retstrref = parse_runxcmd_ret($retref);
+            if ($::RUNCMD_RC != 0){
+                $warnstr .= "Warning: failed to run command kitnodeadd.";
+                if ($retstrref->[1]) {
+                    $warnstr .= "Details: $retstrref->[1]";
+                }
+            }
+        }
+
+        # Remove these nodes that can not get mac address by xcat command: getmacs <noderange> -D.
+        if(@failednodes){
+            my $nodermretref = xCAT::Utils->runxcmd({command=>["noderm"], node=>\@failednodes}, $request_command, 0, 2);
+            my $nodermretstrref = parse_runxcmd_ret($nodermretref);
+            if($::RUNCMD_RC != 0){
+                $warnstr .= "Warning: Cannot remove some of nodes that not MAC address discovered by getmacs command.";
+                if($nodermretstrref->[1]){
+                    $warnstr .= "Details: $nodermretstrref->[1]";
+                }
+            }
+        }
+
+        # Push the success nodes to nodelist and remove the failed nodes from nodelist.
+        @nodelist = xCAT::CFMUtils->arrayops("U", \@nodelist, \@successnodes);
+        @failednodes = xCAT::CFMUtils->arrayops("I", \@nodelist, \@failednodes);
+        @nodelist = xCAT::CFMUtils->arrayops("D", \@nodelist, \@failednodes);
     }
 
     setrsp_progress("Imported nodes.");
@@ -2198,11 +2277,12 @@ sub validate_node_entry{
     if (exists $allhostnames{$node_name}) {
         $errmsg .= "Node name $node_name already exists. You must use a new node name.\n";
     }
-    # Must specify either MAC or switch + port.
+    # Must specify either MAC, CEC or switch + port.
     if (exists $node_entry{"mac"} ||
-        exists $node_entry{"switches"} ){
+        exists $node_entry{"switch"} && exists $node_entry{"switchport"} ||
+        exists $node_entry{"cec"}){
     } else{
-        $errmsg .= "MAC address or switches is not specified. You must specify the MAC address or switches.\n";
+        $errmsg .= "MAC address, cec, switch and port is not specified. You must specify the MAC address, CEC name or switch and port.\n";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){

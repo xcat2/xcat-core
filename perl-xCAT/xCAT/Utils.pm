@@ -3542,6 +3542,98 @@ sub gettimezone
 
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  specialservicemgr 
+    some special services cannot be processed in sysVinit, upstart and systemd framework, should be process here...
+    Arguments:
+      service name: 
+      action:        start/stop/restart/status/enable/disable
+      outputoption:  
+                     1:        return a hashref with the keys:"retcode","retmsg"
+                     otherwise: return retcode only
+    Returns:
+      
+                     a hashref if $outputoption is 1,the hash structure is:
+                                 {"retcode"=>(status code, 0 for running/active,1 for stopped/inactive,2 for failed)
+                                  "retmsg" =>(status string, running/active/stopped/inactive/failed)
+                                 }
+                     the status code otherwise
+
+                     retcode:   127 if the service specified is not processed
+                                the exit code of the service operation if the service specified is processed
+    
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $ret=xCAT::Utils->specialservicemgr("firewall","start");
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub specialservicemgr{
+    my $svcname=shift;
+    my $action=shift;
+    my $outputoption=shift;
+    my %ret; 
+ 
+    $ret{retcode}=127;
+    if($svcname eq "firewall") 
+    {
+
+       my $cmd="type -P SuSEfirewall2 >/dev/null 2>&1";
+       xCAT::Utils->runcmd($cmd,-1);
+       if($::RUNCMD_RC)
+       {
+          $ret{retcode}=127;
+          if(defined $outputoption and $outputoption == 1){
+             return \%ret;
+          }else{
+             return $ret{retcode};
+          }
+       }else{
+          if(($action eq "start") || ($action eq "stop")) 
+          {
+             $cmd="SuSEfirewall2 $action";
+          }elsif($action eq "restart"){
+             $cmd="SuSEfirewall2 stop;SuSEfirewall2 start";
+          }elsif($action eq "disable"){
+             $cmd="SuSEfirewall2 off";
+          }elsif($action eq "enable"){
+             $cmd="SuSEfirewall2 on";
+          }elsif($action eq "status"){
+             $cmd="service SuSEfirewall2_setup status";
+          }else{
+            
+             $ret{retcode}=127;
+             if(defined $outputoption and $outputoption == 1){
+                return \%ret;
+             }else{
+                return $ret{retcode};
+             }
+          }
+      
+          $ret{retmsg}=xCAT::Utils->runcmd($cmd,-1);
+          $ret{retcode}= $::RUNCMD_RC;
+          if(defined $outputoption and $outputoption == 1){
+             return \%ret;
+          }else{
+             return $ret{retcode};
+          }
+       }
+
+    }
+
+    if(defined $outputoption and $outputoption == 1){
+       return \%ret;
+    }else{
+       return $ret{retcode};
+    }
+}
+
 
 #--------------------------------------------------------------------------------
 
@@ -3594,7 +3686,7 @@ sub servicemap{
      "nfs"   =>    ["nfsserver","nfs-server","nfs","nfs-kernel-server"],
      "named" =>    ["named","bind9"],
      "syslog" =>   ["syslog","syslogd","rsyslog"],
-     "firewall" => ["iptables","firewalld","SuSEfirewall2_setup","ufw"],
+     "firewall" => ["iptables","firewalld","ufw"],
      "http" =>     ["apache2","httpd"],
      "ntpserver" =>["ntpd","ntp"],
      "mysql" =>    ["mysqld","mysql"],
@@ -3661,6 +3753,13 @@ sub startservice{
      $svcname=shift;
   }
 
+  my $retval=0;
+  $retval=specialservicemgr($svcname,"start");
+  if($retval != 127)
+  {
+     return $retval;
+  }
+
   my $cmd="";
   #for Systemd
   my $svcunit=undef;
@@ -3725,6 +3824,16 @@ sub stopservice{
      $svcname=shift;
   }
 
+
+  my $retval=0;
+  $retval=specialservicemgr($svcname,"stop");
+  if($retval != 127)
+  {
+     return $retval;
+  }
+
+
+
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
@@ -3785,6 +3894,14 @@ sub restartservice{
   if( $svcname =~ /xCAT::Utils/)
   {
      $svcname=shift;
+  }
+
+
+  my $retval=0;
+  $retval=specialservicemgr($svcname,"restart");
+  if($retval != 127)
+  {
+     return $retval;
   }
 
   my $cmd="";
@@ -3856,6 +3973,18 @@ sub checkservicestatus{
   }
 
   my $outputoption=shift;
+
+  my $retval;
+  $retval=specialservicemgr($svcname,"status",1);
+  if($retval->{retcode} != 127)
+  {
+     if(defined $outputoption and $outputoption == 1 ){
+        return $retval;
+     }elsif(exists $retval->{retcode}){
+        return $retval->{retcode};
+     }
+  }
+
 
   my $cmd="";
   my $svcunit=undef;
@@ -3950,6 +4079,16 @@ sub enableservice{
      $svcname=shift;
 
   }
+
+  my $retval=0;
+  $retval=specialservicemgr($svcname,"enable");
+  if($retval != 127)
+  {
+     return $retval;
+  }
+
+
+
   my $cmd="";
   my $svcunit=undef;
   my $svcd=undef;
@@ -4016,6 +4155,17 @@ sub disableservice{
      $svcname=shift;
 
   }
+
+
+
+  my $retval=0;
+  $retval=specialservicemgr($svcname,"disable");
+  if($retval != 127)
+  {
+     return $retval;
+  }
+
+
   my $cmd="";
   my $svcunit=undef;
   my $svcjob=undef;
