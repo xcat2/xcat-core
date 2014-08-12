@@ -46,7 +46,7 @@ ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT has PCM specific configuration - conserver-xcat, syslinux-xcat
 # xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
-PCMBUILD="xCAT xCAT-server"
+PCMBUILD="xCAT xCAT-server xCATsn"
 PCMLINK="perl-xCAT xCAT-client xCAT-buildkit xCAT-genesis-scripts-x86_64"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
