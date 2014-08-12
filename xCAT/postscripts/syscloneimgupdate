@@ -42,7 +42,7 @@ fi
 str_server_ip=`echo $str_server_ip | sed "s/'//g"`
 #call system imager command to update the image
 echo "si_updateclient --server $str_server_ip --yes"
-export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes
+export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes --no-bootloader
 
 if [[ -f /sbin/dracut ]]; then
     #redhat or centos
