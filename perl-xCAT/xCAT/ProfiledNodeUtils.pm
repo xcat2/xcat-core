@@ -690,6 +690,7 @@ sub get_nodes_profiles
 {
     my $class = shift;
     my $nodelistref = shift;
+    my $groupnamemode = shift;
     my %profile_dict;
 
     my $nodelisttab = xCAT::Table->new('nodelist');
@@ -709,8 +710,12 @@ sub get_nodes_profiles
                 if ( $idx == 2 ){
                     # The group string will like @NetworkProfile_<profile name>
                     # So, index should +3, 2 for '__', 1 for _.
-                    my $append_index = length($profile) + 3;
-                    $profile_dict{$_}{$profile} = substr $group, $append_index;
+                    if ($groupnamemode) { 
+                        $profile_dict{$_}{$profile} = $group;
+                    } else{
+                        my $append_index = length($profile) + 3;
+                        $profile_dict{$_}{$profile} = substr $group, $append_index;
+                    }
                     last;
                 }
             }
@@ -739,7 +744,7 @@ sub get_imageprofile_prov_method
 
     my $nodetypestab = xCAT::Table->new('nodetype');
     my $entry = ($nodetypestab->getAllAttribsWhere("node = '$imgprofilename'", 'ALL' ))[0];
-    my $osimgname = $entry->{'provmethod'};
+    return $entry->{'provmethod'};
 
     #my $osimgtab = xCAT::Table->new('osimage');
     #my $osimgentry = ($osimgtab->getAllAttribsWhere("imagename = '$osimgname'", 'ALL' ))[0];
@@ -1148,3 +1153,70 @@ sub check_nicips{
     return (0, \%nics_hash, "");
 }
 
+#-------------------------------------------------------------------------------
+=head3 gen_chain_for_profiles
+    Description: Generate a chain string based on Network/Hardware/Image profiles.
+    Arguments: $profiles_hash: The reference for profiles hash.
+             For example: 
+             $profiles_hash = { 'HardwareProfile' => 'IBM_NeXtScale_M4',
+                                'ImageProfile' => 'rhels6.5-x86_64-stateful-compute',
+                                'NetworkProfile' => 'default_network_profile',
+                              }
+             $hw_reconfig: the flag shows whether we need re-configure all hardware
+                           relative settings or not: like runcmds, runimg...etc
+    Returns: ($retcode, $chain)
+              $retcode = 1. Generate chain failed, $chain stands for error message.
+              $retcode = 0. Generate chain OK. $chain stands for the chain string.
+
+=cut
+#-------------------------------------------------------------------------------
+sub gen_chain_for_profiles{
+    my $class = shift;
+    my $profiles_hashref = shift;
+    my $hw_reconfig = shift;
+    my $final_chain = "";
+    if (! $profiles_hashref){
+        return (1, "Missing parameter for gen_chain_for_profiles.");
+    }
+    # A node must have at least imageprofile and network profile.
+    unless (defined $profiles_hashref->{'ImageProfile'}){
+        return (1, "No imageprofile specified in profiles hash.");
+    }
+    unless (defined $profiles_hashref->{'NetworkProfile'}){
+        return (1, "No networkprofile specified in profiles hash.");
+    }
+    my $hwprofile = $profiles_hashref->{'HardwareProfile'};
+    my $imgprofile = $profiles_hashref->{'ImageProfile'};
+    my $netprofile = $profiles_hashref->{'NetworkProfile'};
+
+    # Get node's provisioning method
+    my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($imgprofile);
+    unless ($provmethod ){
+        return (1, "Can not get provisioning method for image profile $imgprofile");
+    }
+    my $netprofileattr = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$netprofile])->{$netprofile};
+    unless ($netprofileattr){
+        return (1, "Can not get attributes for network profile $netprofile");
+    }
+
+    $final_chain = 'osimage='.$provmethod.":--noupdateinitrd";
+    # get the chain attribute from hardwareprofile and insert it to node.
+    if (defined $hwprofile and $hwprofile and $hw_reconfig){
+        my $chaintab = xCAT::Table->new('chain');
+        my $chain = $chaintab->getNodeAttribs($hwprofile, ['chain']);
+        if (exists $chain->{'chain'}) {
+               my $hw_chain = $chain->{'chain'};
+               $final_chain = $hw_chain.',osimage='.$provmethod.":--noupdateinitrd";
+        }
+    }
+    #run bmcsetups.
+    if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig){ 
+        if (index($final_chain, "runcmd=bmcsetup") == -1){
+            $final_chain = 'runcmd=bmcsetup,'.$final_chain.':reboot4deploy';
+        }
+        else{
+            $final_chain = $final_chain.':reboot4deploy';
+        }
+    }
+    return (0, $final_chain);
+}

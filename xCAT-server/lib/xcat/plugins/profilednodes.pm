@@ -862,19 +862,9 @@ Usage:
 
     my $retref;
     my $retstrref;
-    # Call update plugins first.
-    if(exists $args_dict{'hardwareprofile'} || exists $args_dict{'imageprofile'}){
-        setrsp_progress("Configuring nodes...");
-        $retref = "";
-        $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
-        $retstrref = parse_runxcmd_ret($retref);
-        if ($::RUNCMD_RC != 0){
-            setrsp_progress("Warning: failed to call kit commands.");
-        }
-    }
 
     # If network profile specified. Need re-generate IPs for all nodess again.
-     # As new design, ignore BMC/FSP NIC while reinstall nodes
+    # As new design, ignore BMC/FSP NIC while reinstall nodes
     if(exists $args_dict{'networkprofile'}){
         my $newNetProfileName = $args_dict{'networkprofile'};
         my $oldNetProfileName = $nodeoldprofiles{'networkprofile'};
@@ -903,7 +893,73 @@ Usage:
             setrsp_progress("Warning: failed to generate IPs for nodes.");
         }
     }
-    
+
+    # Update node's chain table if we need to re-provisioning OS...
+    # We need to re-provision OS if:
+    # hardware profile changed  or
+    # image profile changed or
+    # network profile changed.
+    if ((exists $args_dict{'networkprofile'}) or 
+        (exists $args_dict{'hardwareprofile'}) or
+        (exists $args_dict{'imageprofile'})){
+
+        my $nodetypetab = xCAT::Table->new('nodetype');
+        my $firstnode = $nodes->[0];
+        my $profiles = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode], 1);
+        unless ($profiles){
+            setrsp_errormsg("Can not get node profiles.");
+            return;
+        }
+
+        # If we have hardware changes, reconfigure everything including BMC.
+        my $chainret = 0;
+        my $chainstr = "";
+        if(exists $args_dict{'hardwareprofile'}){
+            ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 1);
+        } else {
+            ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 0);
+        }
+        if ($chainret != 0){
+            setrsp_errormsg("Failed to generate chain string for nodes.");
+            return;
+        }
+
+        # DB update: chain table.
+        my %chainAttr = {};
+        foreach my $node (@$nodes){
+            $chainAttr{$node}{'chain'} = $chainstr;
+        }
+        my $chaintab = xCAT::Table->new('chain', -create=>1);
+        $chaintab->setNodesAttribs(\%chainAttr);
+        $chaintab->close();
+
+
+        # Run node plugins to refresh node relateive configurations.
+        $retref = {};
+        setrsp_progress("Updating DNS entries");
+        $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+        my $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
+
+        $retref = {};
+        setrsp_progress("Updating hosts entries");
+        $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
+        $retref = {};
+        $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
+
+        setrsp_progress("Re-creating nodes...");
+        $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>$nodes, macflag=>[1]}, $request_command, 0, 2);
+        $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
+        
+    }
     setrsp_progress("Updated the image/network/hardware profiles used by nodes.");
     setrsp_success($nodes);
 }
@@ -1088,65 +1144,6 @@ Usage:
         $ppctab->close();
     }
     
-    #9. If provisioning NIC ip or BMC ip changed for nodes, update chain table
-    # If FSP ip changed for nodes, push the new ip to fsp and establish hardware connection
-    my @kitcommands = ();
-    if ( $provision_flag or  $bmc_flag) {
-        #Get node's provmethod. 
-        my $nodetypetab = xCAT::Table->new('nodetype');
-        my $firstnode = $nodes->[0];
-        my $records = $nodetypetab->getNodeAttribs($firstnode, ['node', 'provmethod']);
-        my $imgname = $records->{provmethod};
-        
-        my $chainstr = "osimage=$imgname";
-        if ( $bmc_flag ) {
-           $chainstr = "runcmd=bmcsetup,osimage=$imgname:reboot4deploy";
-        }
-        
-        # Update chain table
-        my %chainAttr = {};
-        foreach my $node (@$nodes){
-            $chainAttr{$node}{'chain'} = $chainstr;
-        }
-        my $chaintab = xCAT::Table->new('chain', -create=>1);
-        $chaintab->setNodesAttribs(\%chainAttr);
-        $chaintab->close();
-        
-        # Remove all nodes information
-        push(@kitcommands, "removenodes");
-        # Add all nodes information back
-        push(@kitcommands, "kitnodeadd");  
-        
-    } elsif ( $fsp_flag ) {
-        # Remove all nodes information
-        push(@kitcommands, "removenodes");
-        # Add all nodes information back
-        push(@kitcommands, "kitnodeadd");
-    } else {
-        push(@kitcommands, "kitnoderefresh");
-    }    
-
-    #10. Call plugins.   
-    foreach my $command (@kitcommands) {
-        my $retref;
-        if ($command eq 'removenodes'){
-            setrsp_progress("Updating DNS entries");
-            $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
-
-            setrsp_progress("Updating hosts entries");
-            $retref = "";
-            $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>$nodes, arg=>['-d']}, $request_command, 0, 2);
-            next;
-        }
-        $retref = "";
-        $retref = xCAT::Utils->runxcmd({command=>[$command], node=>$nodes, sequential=>[1]}, $request_command, 0, 2);
-        my $retstrref = parse_runxcmd_ret($retref);
-        if ($::RUNCMD_RC != 0){
-            setrsp_progress("Warning: failed to call kit commands.");
-            last;
-        }
-    }
-
     setrsp_progress("Re-generated node's IPs for specified nics.");
     setrsp_success($nodes);
 }
@@ -1287,16 +1284,55 @@ Usage:
         return;
     }
 
+    # re-create the chain record as updating mac may means for replacing a new brand hardware...
+    # Call Plugins.
+    my $profiles = xCAT::ProfiledNodeUtils->get_nodes_profiles([$hostname], 1);
+    unless ($profiles){
+        setrsp_errormsg("Can not get node profiles.");
+        return;
+    }
+
+    (my $chainret, my $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$hostname}, 1);
+    if ($chainret != 0){
+        setrsp_errormsg("Failed to generate chain string for nodes.");
+        return;
+    }
+
     # Update database records.
     setrsp_progress("Updating database...");
+    # MAC table
     my $mactab = xCAT::Table->new('mac',-create=>1);
     $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
     $mactab->close();
 
-    # Call Plugins.
+    # DB update: chain table.
+    my $chaintab = xCAT::Table->new('chain', -create=>1);
+    $mactab->setNodeAttribs($hostname, {chain=>$chainstr});
+    $chaintab->close();
+
+
+    # Run node plugins to refresh node relateive configurations.
     setrsp_progress("Configuring nodes...");
-    my $retref = xCAT::Utils->runxcmd({command=>["kitnodeupdate"], node=>[$hostname], sequential=>[1]}, $request_command, 0, 2);
+    my $retref = {};
+    setrsp_progress("Updating DNS entries");
+    $retref = xCAT::Utils->runxcmd({command=>["makedns"], node=>[$hostname], arg=>['-d']}, $request_command, 0, 2);
     my $retstrref = parse_runxcmd_ret($retref);
+    if ($::RUNCMD_RC != 0){
+        setrsp_progress("Warning: failed to call kit commands.");
+    }
+
+    $retref = {};
+    setrsp_progress("Updating hosts entries");
+    $retref = xCAT::Utils->runxcmd({command=>["makehosts"], node=>[$hostname], arg=>['-d']}, $request_command, 0, 2);
+    $retref = {};
+    $retstrref = parse_runxcmd_ret($retref);
+    if ($::RUNCMD_RC != 0){
+        setrsp_progress("Warning: failed to call kit commands.");
+    }
+
+    setrsp_progress("Re-creating nodes...");
+    $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>[$hostname], macflag=>[1]}, $request_command, 0, 2);
+    $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call kit commands.");
     }
@@ -1834,6 +1870,15 @@ sub gen_new_hostinfo_dict{
     # Get node's provisioning method
     my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($args_dict{'imageprofile'});
 
+    # Generate node's chain.
+    my %nodeprofiles = ('NetworkProfile' => $args_dict{'networkprofile'}, 
+                        'ImageProfile' => $args_dict{'imageprofile'});
+    if (defined $args_dict{'hardwareprofile'}) {$nodeprofiles{'HardwareProfile'} =  $args_dict{'hardwareprofile'}}
+    (my $errcode, my $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles(\%nodeprofiles, 1);
+    if ($errcode != 0){
+        return (0, "Failed to generate chain for nodes.");
+    }
+
     # start to check windows nodes, product will indicate it is a windows node:  win2k8r2.enterprise
     my ($osvers, $osprofile) = xCAT::ProfiledNodeUtils->get_imageprofile_prov_osvers($provmethod);
     my $product = undef;
@@ -1978,23 +2023,10 @@ sub gen_new_hostinfo_dict{
         my $hardwareprofile = $args_dict{'hardwareprofile'};
         my $chain = $chaintab->getNodeAttribs($hardwareprofile, ['chain']);
 
-        if (exists $chain->{'chain'}) {
-           my $hardwareprofile_chain = $chain->{'chain'};
-           $hostinfo_dict{$item}{"chain"} = $hardwareprofile_chain.',osimage='.$provmethod.":--noupdateinitrd";
-        }
-
-        else {
-           $hostinfo_dict{$item}{"chain"} = 'osimage='.$provmethod.":--noupdateinitrd";
-        }
+        $hostinfo_dict{$item}{"chain"} = $chainstr;
 
         if (exists $netprofileattr{"bmc"}){ # Update BMC records.
             $hostinfo_dict{$item}{"mgt"} = "ipmi";
-            if (index($hostinfo_dict{$item}{"chain"}, "runcmd=bmcsetup") == -1){
-                $hostinfo_dict{$item}{"chain"} = 'runcmd=bmcsetup,'.$hostinfo_dict{$item}{"chain"}.':reboot4deploy';
-            }
-            else{
-                $hostinfo_dict{$item}{"chain"} = $hostinfo_dict{$item}{"chain"}.':reboot4deploy';
-            }
 
             if (exists $ipshash{"bmc"}){
                 $hostinfo_dict{$item}{"bmc"} = $ipshash{"bmc"};
