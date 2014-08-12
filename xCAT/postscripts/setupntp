@@ -166,11 +166,15 @@ restrict 127.0.0.1" >>$conf_file
     elif [ -f "/etc/debian_version" ];then
         sed -i 's/.*UTC.*/UTC=yes/' /etc/default/rcS
     else
-        grep -i "utc" /etc/sysconfig/clock
-        if [ $? -eq 0 ];then
-            sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock
-        else
-            echo "UTC=yes" >> /etc/sysconfig/clock
+        if [ -f "/etc/sysconfig/clock" ];then
+           grep -i "utc" /etc/sysconfig/clock
+           if [ $? -eq 0 ];then
+              sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock
+           else
+              echo "UTC=yes" >> /etc/sysconfig/clock
+           fi
+        elif type -P timedatectl >/dev/null 2>&1 ;then
+           timedatectl set-local-rtc 0
         fi
     fi
 
