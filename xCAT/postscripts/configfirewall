@@ -73,6 +73,48 @@ if ($::opt_ports)
 
 if (-f "/etc/redhat-release")
 {
+
+    #From Redhat7, firewalld is used as the default firewall service, 
+    #however, it does not support complex firewall rules. 
+    #So we'd better disable firewalld and use iptables service
+    #iptables service is shiped in iptables-services package in rhels7 iso,
+    #which is not installed by default, it should be installed
+
+    if ( -f "/usr/lib/systemd/system/firewalld.service" ){
+          if (system("systemctl is-active firewalld > /dev/null 2>&1") == 0){
+             print "firewalld is running, stopping firewalld service \n";
+             if(system ("service firewalld stop") ==0 )
+                {
+                   print "\n[success]\n";
+                }
+             else
+                {
+                   print "\n[failed]\n";
+                   exit 1
+                }
+          }
+
+          if (system("systemctl is-enabled firewalld > /dev/null 2>&1") == 0){
+             print "disabling firewalld service \n";
+             if( system("systemctl disable firewalld") ==0)
+               {
+                   print "\n[success]\n";
+               }
+             else
+               {
+                   print "\n[failed]\n";
+                   exit 1
+               }
+          }
+    }
+
+    if ( (! -f "/usr/lib/systemd/system/iptables.service") && (! -f "/etc/init.d/iptables")){
+       print "please install iptables-services (for redhat 7) or iptables package first by running:\n";
+       print "on redhat7:\tyum install iptables-services\n";
+       print "    others:\tyum install iptables\n";
+       exit 1
+    }
+
     if($::opt_private && $::opt_public)
     {
         &setup_ip_forwarding();
@@ -93,12 +135,12 @@ if (-f "/etc/redhat-release")
     # restart iptables
     #$cmd = "service iptables restart";
     #system($cmd);
-    xCAT::Utils->restartservice("firewall");
+    xCAT::Utils->restartservice("iptables");
 
     # iptables should be stared on reboot
     #$cmd = "chkconfig iptables on";
     #system($cmd);
-    xCAT::Utils->enableservice("firewall");
+    xCAT::Utils->enableservice("iptables");
 }
 elsif (-f "/etc/SuSE-release")
 {
