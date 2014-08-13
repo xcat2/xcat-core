@@ -128,6 +128,7 @@ To import nodes using a profile, follow the following steps:
   __hostname__:
      mac=b8:ac:6f:37:59:28
      cec=mycec
+     lpaid=1
   # Node information file ends.
 
 The node information file includes the following items:
@@ -151,6 +152,10 @@ Description: The node position in the PureFlex Chassis.
 B<cec=<cec-name>>  This is a mandatory option for defining Power rack-mounted nodes.
 
 Description: Specifies the name of a Power rack-mount central electronic complex (CEC).
+
+B<lparid=<lpar-id>>  This is a optional option for defining Power rack-mounted nodes.
+
+Description: Specifies the LPAR id of Power rack-mounted node.
 
 B<ip=<ip-address>> This is an optional item.
 
