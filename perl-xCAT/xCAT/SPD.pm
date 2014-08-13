@@ -650,7 +650,8 @@ sub decode_spd {
         8 => "DDR2 SDRAM",
         9 => "DDR2 SDRAM FB-DIMM",
         10 => "DDR2 SDRAM FB-DIMM PROBE",
-        11 => "DDR3 SDRAM"
+        11 => "DDR3 SDRAM",
+        12 => "DDR4 SDRAM",
     );
     
     my %modtypes = (
@@ -668,33 +669,35 @@ sub decode_spd {
         1333 => 10600,
         1600 => 12800,
         1867 => 14900,
+        2132 => 17000,
         2133 => 17000,
         2134 => 17000,
     );
 
-    my %ddr3modcap = (
+    my %ddrmodcap = (
         0 => 256,
         1 => 512,
         2 => 1024,
         3 => 2048,
         4 => 4096,
         5 => 8192,
-        6 => 16384
+        6 => 16384,
+        7 => 32768,
     );
 
-    my %ddr3devwidth = (
+    my %ddrdevwidth = (
         0 => 4,
         1 => 8,
         2 => 16,
         3 => 32
     );
-    my %ddr3ranks = (
+    my %ddrranks = (
         0 => 1,
         1 => 2,
         2 => 3,
         3 => 4
     );
-    my %ddr3buswidth = (
+    my %ddrbuswidth = (
         0 => 8,
         1 => 16,
         2 => 32,
@@ -728,10 +731,10 @@ sub decode_spd {
             $rethash->{product}->{name} .= " ECC";
         }
         $rethash->{product}->{name}.=" ".$modtypes{$spd[3]&0x0f};
-        my $sdramcap=$ddr3modcap{$spd[4]&0xf};
-        my $buswidth=$ddr3buswidth{$spd[8]&0b111};
-        my $sdramwidth=$ddr3devwidth{$spd[7]&0b111};
-        my $ranks = $ddr3ranks{($spd[7]&0b111000)>>3};
+        my $sdramcap=$ddrmodcap{$spd[4]&0xf};
+        my $buswidth=$ddrbuswidth{$spd[8]&0b111};
+        my $sdramwidth=$ddrdevwidth{$spd[7]&0b111};
+        my $ranks = $ddrranks{($spd[7]&0b111000)>>3};
 
 
         my $capacity = $sdramcap/8*$buswidth/$sdramwidth*$ranks;
@@ -764,6 +767,61 @@ sub decode_spd {
 				push @{$rethash->{product}->{extra}},"CRC Invalid!";
 		}
 	}
+	#my $rawspd="SPD Dump: ";
+	#foreach (@spd) {
+	#	$rawspd .= sprintf("%02X ",$_);
+	#}
+	#push @{$rethash->{product}->{extra}},$rawspd;
+    } elsif  ($spd[2] == 12) { #DDR4 spec applies
+        # spd[125] spd[18] spd[18is sdram min cycle time .. spd125 is fine offset for min time
+        # mtb and ftb are fixed in ddr4 spd spec.. mtb is always 0.125 ns and ftb is always 0.001 ns
+        my $speed;
+        my $clock;
+        if ($spd[17] == 0) {
+            my $fineoffset = $spd[125];
+            if ($fineoffset & 0b10000000) {
+                #negative value, twos complement
+                $fineoffset = 0-(($fineoffset ^ 0xff) + 1);
+            }
+            $clock = int(2/((0.125*$spd[18] + $fineoffset*0.001)*0.001));
+            $speed = $speedfromclock{$clock};
+            unless ($speed) { $speed = "UNKNOWN"; }
+        } else { # this would mean a different MTB and FTB than spec indicated..
+            $clock = "UNKNOWN";
+            $speed = "UNKNOWN";
+        }
+        $rethash->{product}->{name}="PC4-".$speed." ($clock MT/s)";
+        if ($spd[13]&0b11000 == 0b1000) {
+            $rethash->{product}->{name} .= " ECC";
+        }
+        $rethash->{product}->{name}.=" ".$modtypes{$spd[3]&0x0f};
+        my $sdramcap=$ddrmodcap{$spd[4]&0xf};
+        my $buswidth=$ddrbuswidth{$spd[13]&0b111};
+        my $sdramwidth=$ddrdevwidth{$spd[12]&0b111};
+        my $ranks = $ddrranks{($spd[12]&0b111000)>>3};
+
+
+        my $capacity = $sdramcap/8*$buswidth/$sdramwidth*$ranks;
+        if ($capacity < 1024) {
+            $capacity = $capacity."MB";
+        } else {
+            $capacity = ($capacity/1024)."GB";
+        }
+        $rethash->{product}->{name} = $capacity." ".$rethash->{product}->{name};
+
+        $rethash->{product}->{manufacturer} = decode_manufacturer($spd[320],$spd[321]);
+        $rethash->{product}->{buildlocation} = sprintf("%02x",$spd[322]);
+        if ($spd[120] != 0 or $spd[121] != 0) {
+            $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x",$spd[323],$spd[324]);
+        }
+        foreach (@spd[329..348]) {
+            if ($_ & 0b10000000) {
+                $rethash->{product}->{model}="Malformed SPD";
+            }
+        }
+        unless ($rethash->{product}->{model}) {
+            $rethash->{product}->{model}=pack("C*",@spd[329..348]);
+        }
 	#my $rawspd="SPD Dump: ";
 	#foreach (@spd) {
 	#	$rawspd .= sprintf("%02X ",$_);
