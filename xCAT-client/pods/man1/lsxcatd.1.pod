@@ -68,13 +68,13 @@ To display all information:
 
 Output is similar to: 
 
-Version 2.7 (svn r, built Tue Jan 17 15:16:33 EST 2012)
- This is a Management Node
- cfgloc=mysql:dbname=xcatdb;host=10.6.0.1|xcatadmin
- dbengine=mysql
- dbname=xcatdb
- dbhost=10.6.0.1
- dbadmin=xcatadmin
+Version 2.8.5 (git commit 0d4888af5a7a96ed521cb0e32e2c918a9d13d7cc, built Tue Jul 29 02:22:47 EDT 2014)
+This is a Management Node
+cfgloc=mysql:dbname=xcatdb;host=9.114.34.44|xcatadmin
+dbengine=mysql
+dbname=xcatdb
+dbhost=9.114.34.44
+dbadmin=xcatadmin
 
 
 =back
