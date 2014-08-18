@@ -85,10 +85,10 @@ gmond_conf_old="/etc/gmond.conf"
            /bin/cp -f $gmond_conf /etc/ganglia/gmond.conf.orig
            sed -i 's/setuid = yes/setuid = no/1' $gmond_conf
            sed -i 's/name = "unspecified"/name='$CLUSTER'/1' $gmond_conf
-           sed -e "1,40s/mcast_join = .*/host = $MASTER/" $gmond_conf > /etc/temp.conf
+           sed -e "1,50s/^ *mcast_join = .*/host = $MASTER/" $gmond_conf > /etc/temp.conf
            /bin/cp -f /etc/temp.conf $gmond_conf
-           sed -i 's/mcast_join/#/g' $gmond_conf
-           sed -i 's/bind/#/g' $gmond_conf
+           sed -i 's/^ *mcast_join/#mcast_join/g' $gmond_conf
+           sed -i 's/^ *bind/#bind/g' $gmond_conf
            echo "# xCAT gmond settings done sh" >> $gmond_conf
          fi
        fi

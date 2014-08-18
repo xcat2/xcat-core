@@ -312,39 +312,46 @@ sub confGmond {
         return (0);
     }
 
-    my @raw_data = <CONF>;
-    close(CONF);
-    my $str = join( '', @raw_data );
-    $str =~ s/setuid = yes/setuid = no/;
-    if ( !( $str =~ m/#bind/ ) ) {
-        $str =~ s/bind/#bind/; # Comment out bind
-    }
-    $str =~ s/mcast_join = .*/host = $hostname/;
-
-    foreach my $key ( keys(%$pPairHash) ) {
-        my @key_a = split( ':', $key );
-        if ( !$iphash{ $key_a[0] } ) {
-            next;
+    my $hasdone_udp_send_channel;
+    while (<CONF>) {
+        my $str = $_;
+        $str =~ s/setuid = yes/setuid = no/;
+        if ( $str =~ /^\s*bind / ) {
+            $str =~ s/bind/#bind/; # Comment out bind
         }
-        
-        my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
-        if ( $key_a[0] !~ /$pattern/ ) {
-            my $cluster = $key_a[0];
-            if ( -e "/etc/xCATSN" ) {
-                $str =~ s/name = "unspecified"/name="$cluster"/;
+     
+        # replace the mcast_join in the udp_send_channel section
+        if (!$hasdone_udp_send_channel && $str =~ /^\s*mcast_join =/) {
+            $str =~ s/mcast_join = .*/host = $hostname/;
+            $hasdone_udp_send_channel = 1;
+        }
+    
+        foreach my $key ( keys(%$pPairHash) ) {
+            my @key_a = split( ':', $key );
+            if ( !$iphash{ $key_a[0] } ) {
+                next;
+            }
+            
+            my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
+            if ( $key_a[0] !~ /$pattern/ ) {
+                my $cluster = $key_a[0];
+                if ( -e "/etc/xCATSN" ) {
+                    $str =~ s/name = "unspecified"/name="$cluster"/;
+                }
             }
         }
-    }
-
-    $str =~ s/name = "unspecified"/name="$hostname"/;
-
-    if ( !( $str =~ m/#mcast_join/ ) ) {
-        $str =~ s/mcast_join/#mcast_join/; # Comment out mcast_join
-    }
     
-    $str =~ s/# xCAT gmond settings done//; # Remove old message
-    print FILE $str;
+        $str =~ s/name = "unspecified"/name="$hostname"/;
+    
+        if ( $hasdone_udp_send_channel && $str =~ m/^\s*mcast_join/ ) {
+            $str =~ s/mcast_join/#mcast_join/; # Comment out mcast_join in the udp_recv_channel section
+        }
+        
+        $str =~ s/# xCAT gmond settings done//; # Remove old message
+        print FILE $str;
+    }
     print FILE "# xCAT gmond settings done\n";
+    close(CONF);
     close(FILE);
 
     if ($scope) {
@@ -515,7 +522,7 @@ sub confGmetad {
     } else {
         for ( my $j = 0 ; $j < $num ; $j++ ) {
             print( OUTFILE
-                "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n"
+                "data_source \"$children[ $j ]\" $children[ $j ]  \n"
             );
         }
     }
