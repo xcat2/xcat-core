@@ -67,6 +67,13 @@ CONF.register_opts(pxe_opts, group='pxe')
 CONF.register_opts(xcat_opts, group='xcat')
 CONF.import_opt('use_ipv6', 'ironic.netconf')
 
+REQUIRED_PROPERTIES = {
+    'pxe_deploy_kernel': _("UUID (from Glance) of the deployment kernel. "
+                           "Required."),
+    'pxe_deploy_ramdisk': _("UUID (from Glance) of the ramdisk that is "
+                            "mounted at boot time. Required."),
+}
+COMMON_PROPERTIES = REQUIRED_PROPERTIES
 EM_SEMAPHORE = 'xcat_pxe'
 
 def _check_for_missing_params(info_dict, param_prefix=''):
@@ -173,6 +180,8 @@ def _validate_glance_image(ctx, deploy_info):
 
 class PXEDeploy(base.DeployInterface):
     """PXE Deploy Interface: just a stub until the real driver is ported."""
+    def get_properties(self):
+        return COMMON_PROPERTIES
 
     def validate(self, task):
         """Validate the deployment information for the task's node.
@@ -219,7 +228,7 @@ class PXEDeploy(base.DeployInterface):
         self._config_host_file(d_info,task.node.instance_info.get('fixed_ip_address'))
         self._make_dhcp()
         self._nodeset_osimage(d_info,task.node.instance_info.get('image_name'))
-        manager_utils.node_set_boot_device(task, 'net', persistent=True)
+        manager_utils.node_set_boot_device(task, 'pxe', persistent=True)
         manager_utils.node_power_action(task, states.REBOOT)
         try:
             self._wait_for_node_deploy(task)

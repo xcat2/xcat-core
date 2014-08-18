@@ -23,8 +23,5 @@ class XCATBaremetalDriver(base.BaseDriver):
         self.power = xcat_rpower.XcatPower()
         self.console = ipmitool.IPMIShellinaboxConsole()
         self.deploy = xcat_pxe.PXEDeploy()
-        self.pxe_vendor = pxe.VendorPassthru()
-        self.ipmi_vendor = ipmitool.VendorPassthru()
-        self.mapping = {'pass_deploy_info': self.pxe_vendor,
-                        'set_boot_device': self.ipmi_vendor}
-        self.vendor = utils.MixinVendorInterface(self.mapping)
+        self.management = ipmitool.IPMIManagement()
+        self.vendor = pxe.VendorPassthru()
