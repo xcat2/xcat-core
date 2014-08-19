@@ -91,6 +91,16 @@ Output will be similar to:
 
 For the attributes that are not recognized, the value will be blank.
 
+=item *
+
+To copy the packages from a supplemental DVD ISO file:
+
+ copycds -n /isodir/RHEL6.5/RHEL6.5-Supplementary-20131114.2-Server-ppc64-DVD1.iso -n rhels6.5-supp
+
+Also, remember to add the new directory to your osimage definition:
+
+ chdef -t osimage myosimage -p pkgdir=/install/rhels6.5-supp/ppc64
+
 =back
  
 =head1 SEE ALSO
