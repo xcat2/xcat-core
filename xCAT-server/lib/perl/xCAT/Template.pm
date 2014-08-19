@@ -690,9 +690,9 @@ sub kickstartnetwork {
       my $line = "network --onboot=yes --bootproto="; 
       my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
-      unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
+      unless ($mactab) { $tmplerr ="mac table should always exist prior to template processing when doing autoula"; return;}
       my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
-      unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
+      unless ($ent and $ent->{mac}) { $tmplerr ="missing mac data for $node"; return;}
       my $suffix = $ent->{mac};
       $suffix = lc($suffix);
 	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
