@@ -96,7 +96,7 @@ Retrieves deconfigured resources. Deconfigured resources are hw components (cpus
 
 =item B<-x>
 
-To output the information of deconfigured resources in XML format.
+To output the raw information of deconfigured resources for CEC.
 
 =item B<asset>
 
@@ -223,7 +223,7 @@ To retrieve all information available from blade node4, enter:
 
 =item *
 
-To output the information of deconfigured resources in XML format for CEC cec01, enter:
+To output the raw information of deconfigured resources for CEC cec01, enter:
 
  rinv cec01 deconfig -x
 
