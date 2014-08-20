@@ -16,5 +16,13 @@ if [[ -f /sbin/dracut ]]; then
 else
     # suse/sles
     echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
-    mkinitrd
+    osvers=`cat /etc/*release|sed -e 's/.*\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/'`
+    if [[ $osvers == 5\.* ]];then
+        initrdfile=`find /boot -name "initrd-*.img"`
+        kernelversion=`echo $initrdfile |sed -e 's:/boot/initrd-\(.*\)\.img:\1:g'`
+        mv $initrdfile $initrdfile.org
+        mkinitrd $initrdfile $kernelversion
+    else
+        mkinitrd
+    fi
 fi
