@@ -41,4 +41,4 @@ cd -
 %Files
 %defattr(-,root,root)
 %doc LICENSE.html
-/
+/opt/xcat/share/xcat/netboot/genesis/builder
