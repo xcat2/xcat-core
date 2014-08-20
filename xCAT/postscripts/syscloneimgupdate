@@ -42,14 +42,22 @@ fi
 str_server_ip=`echo $str_server_ip | sed "s/'//g"`
 #call system imager command to update the image
 echo "si_updateclient --server $str_server_ip --yes"
-export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes --no-bootloader
+export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes 
 
 if [[ -f /sbin/dracut ]]; then
-    #redhat or centos
+    # redhat6.x/centos6.x
     echo "Running dracut to regenerate the initrd with the drivers needed by this node:"
     dracut  --force
 else
-    # suse/sles
+    # suse/sles and redhat5.x/centos5.x
     echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
-    mkinitrd
+    osvers=`cat /etc/*release|sed -e 's/.*\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/'`
+    if [[ $osvers == 5\.* ]];then
+        initrdfile=`find /boot -name "initrd-*.img"`
+        kernelversion=`echo $initrdfile |sed -e 's:/boot/initrd-\(.*\)\.img:\1:g'`
+        mv $initrdfile $initrdfile.org
+        mkinitrd $initrdfile $kernelversion
+    else
+        mkinitrd
+    fi
 fi
