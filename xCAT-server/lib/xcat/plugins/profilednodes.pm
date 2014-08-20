@@ -2137,6 +2137,9 @@ sub validate_node_entries{
     foreach my $hostname (@::profiledNodeObjNames){
         if (exists $hostnamedict{$hostname}){
             push @invalid_records, [$hostname, "Duplicated hostname defined"];
+        } elsif (length($hostname) > 63){
+            # As the rule of IDN encoding, the length of hostname should less than 64 characters.
+            push @invalid_records, [$hostname, "The length of hostname is more than 63 characters"];    
         } else{
             $hostnamedict{$hostname} = 0;
         }
