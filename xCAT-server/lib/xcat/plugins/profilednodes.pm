@@ -873,21 +873,26 @@ Usage:
         my $oldNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$oldNetProfileName])->{$oldNetProfileName};
         
         my %updateNicsHash = ();
+        my %reserveNicsHash = ();
         foreach my $newNic (keys %$newNicsRef) {
             if ($newNicsRef->{$newNic}->{'type'} ne 'BMC' and $newNicsRef->{$newNic}->{'type'} ne 'FSP'){
                 $updateNicsHash{$newNic} = 1;
             }
         }
+        # Add BMC/FSP as reserve NICs and not remove it form nics table
         foreach my $oldNic (keys %$oldNicsRef) {
             if ($oldNicsRef->{$oldNic}->{'type'} ne 'BMC' and $oldNicsRef->{$oldNic}->{'type'} ne 'FSP'){
                 $updateNicsHash{$oldNic} = 1;
+            } else {
+                $reserveNicsHash{$oldNic} = 1;
             }
         }
         
         my $updateNics = join(",", keys %updateNicsHash);
+        my $reserveNics = join(",", keys %reserveNicsHash);
         setrsp_progress("Regenerate IP addresses for nodes...");
         $retref = "";
-        $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, arg=>["nics=$updateNics"], sequential=>[1]}, $request_command, 0, 2);
+        $retref = xCAT::Utils->runxcmd({command=>["noderegenips"], node=>$nodes, arg=>["nics=$updateNics", "reservenics=$reserveNics"], sequential=>[1]}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
             setrsp_progress("Warning: failed to generate IPs for nodes.");
@@ -986,7 +991,7 @@ Usage:
         setrsp_infostr($helpmsg);
         return;
     }
-    my @enabledparams = ('nics');
+    my @enabledparams = ('nics', 'reservenics');
     my $ret = validate_args($helpmsg, \@enabledparams);
     if (! $ret){
         return;
@@ -994,6 +999,7 @@ Usage:
 
     my @updateNics = ();
     my @removedNics = ();
+    my @reserveNics = ();
     my $netProfileName = '';
     my $netProfileNicsRef;
     my %freeIPsHash = ();
@@ -1026,6 +1032,9 @@ Usage:
     #3. validate specified nics 
     if(exists $args_dict{'nics'}){
         @updateNics = split(",", $args_dict{'nics'});
+    }
+    if (exists $args_dict{'reservenics'}){
+        @reserveNics = split(",", $args_dict{'reservenics'});
     }
     foreach (@updateNics){
         unless ($netProfileNicsRef->{$netProfileName}->{$_}){
@@ -1115,6 +1124,13 @@ Usage:
                     $fsp_flag = 1;
                     $fspipsAttr{$node}{"hcp"} = $nextip;
                 }
+            }
+        }
+        # Add reserve nics
+        foreach my $nicname (@reserveNics){
+            my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+            if ($oldip) {
+                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
             }
         }
     }
