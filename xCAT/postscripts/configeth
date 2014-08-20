@@ -628,7 +628,7 @@ else
     str_nic_status='down'
     str_his_file=${str_cfg_dir}xcat_history_important
 
-    str_history=`ip addr show dev $str_nic_name | grep inet | grep -iv dynamic | grep -iv link | awk '{print $2}'`
+    str_history=`ip addr show dev $str_nic_name | grep inet | grep -iv dynamic | grep -iv link | grep  $str_nic_name | awk '{print $2}'`
     old_ifs=$IFS
     IFS=$'\n'
     array_ip_old_temp=($str_history)
