@@ -1,6 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc
+dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
 dracut_install netstat # broadcom update requires
 dracut_install uniq # mellanox update requires
 dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr

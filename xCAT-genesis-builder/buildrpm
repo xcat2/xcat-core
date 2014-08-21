@@ -10,7 +10,15 @@ DIR=`dirname $0`
 DIR=`readlink -f $DIR`
 
 # get the input files for dracut in the right place
-DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
+# Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
+# CentOS 7 probably uses /usr/lib/dracut/modules.d also
+if [ -f "/usr/share/dracut/modules.d/97xcat" ]
+then
+    DRACUTMODDIR=/usr/share/dracut/modules.d/97xcat
+else
+    DRACUTMODDIR=/usr/lib/dracut/modules.d/97xcat
+fi
+
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
 # For ppc64 platform, needs to remove some files,
@@ -22,6 +30,20 @@ if [ `uname -m` = "ppc64" ]; then
         sed -i 's/\/usr\/lib\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.13/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libgcc_s.so.1/\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 20 ppc64
+        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libc.so.6/\/lib64\/libc.so.6/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libdl.so.2/\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libm.so.6/\/lib64\/libm.so.6/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libpthread.so.0/\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
+        sed -i 's/\/lib64\/libncurses.so.5.7/\/lib64\/libncurses.so.5.9/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        sed -i 's/\/lib64\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.9/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libsasl2.so.2/\/usr\/lib64\/libsasl2.so.3/' $DRACUTMODDIR/install
+        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi
 
 if [ "$HOSTOS" = "mcp" ]; then
@@ -55,7 +77,7 @@ if [ "$HOSTOS" = "mcp" ]; then
 else
 	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut ...
 fi
-dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
+dracut -m "xcat base" -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 
 echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs ...
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 

@@ -12,10 +12,23 @@ echo sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin >> /etc/passwd
 echo rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin >> /etc/passwd
 echo rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin >> /etc/passwd
 echo qemu:x:107:107:qemu user:/:/sbin/nologin >> /etc/passwd
-echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
+# Fedora 20 ppc64 uses /lib/dracut/hooks/initqueue/finished
+# CentOS 7 probably uses /lib/dracut/hooks/initqueue/finished also
+if [ -d "/initqueue-finished" ]; then
+    echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
+else
+    #echo 'if [ -e /proc ]; then /bin/doxcat; fi' > /lib/dracut/hooks/initqueue/finished/xcatroot.sh
+    echo '[ -e /proc ]' > /lib/dracut/hooks/initqueue/finished/xcatroot.sh
+fi
 mkdir /dev/cgroup
 mount -t cgroup -o cpu,memory,devices cgroup /dev/cgroup
-udevd --daemon
+# Fedora 20 ppc64 does not udevd
+# CentOS 7 probably does not have udevd either
+if [ -f "/sbin/udevd" ]; then
+    udevd --daemon
+else
+    /usr/lib/systemd/systemd-udevd --daemon
+fi
 udevadm trigger
 mkdir -p /var/lib/dhclient/
 mkdir -p /var/log
