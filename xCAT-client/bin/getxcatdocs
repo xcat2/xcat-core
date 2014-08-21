@@ -1,140 +1,214 @@
 #!/usr/bin/perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Downloads/converts the xCAT docs on the sourceforge wiki to local HTML and PDF.
+
+# Downloads/converts the xCAT docs on the sourceforge Allura wiki to local HTML and PDF.
 # This script is not dependent on other xCAT code, so you can copy it to a machine
 # that has internet access to run it.  Before running this command, you must have
-# wget, python, and pisa installed.  See: https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
+# curl, pandoc, and latex installed.  See: http://sourceforge.net/p/xcat/wiki/Editing_and_Downloading_xCAT_Documentation/#converting-wiki-pages-to-html-and-pdfs
+
 
 # Note: do not use the --upload option, unless your machine has authority to write to http://xcat.sourceforge.net/doc/ .
-#       You also need to set $UPLOADUSER to your sourceforge user.
+#       You also need to set $UPLOADUSER to your sourceforge user:
+my $UPLOADUSER = 'mellor';
 
-#BEGIN
-#{
-#    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-#}
 use strict;
-#use lib "$::XCATROOT/lib/perl";
-#use xCAT::Utils;
 use Getopt::Long;
-#use Data::Dumper;
+use Cwd;
+use JSON;
 
-#my $VERSION;
+# URL for the xCAT Allura wiki API markdown on SourceForge
+my $sf_url='http://sourceforge.net/rest';
+my $wiki_url=$sf_url.'/p/xcat/wiki/';
+
+# Update this list if you group any xcat docs on a separate page such that they
+# are no longer linked from the main doc page:
+my @indexdocs = ('XCAT_Documentation', 
+                 'Power_775_Cluster_Documentation', 
+                 'Highly_Available_Management_Node', 
+                 'Mixed_Cluster_Support', 
+                 'IBM_HPC_Stack_in_an_xCAT_Cluster');
+
+
 my $HELP;
 my $UPLOAD;
 my $UPLOADONLY;
- 
+my $IGNOREERRORS;
+my $SINGLE_DOC;
+my $VERBOSE;
+
+sub verbose { if ($VERBOSE) { print shift, "\n"; } }
+
 my $usage = sub {
-   	my $exitcode = shift @_;
-   	print "Usage: getxcatdocs [-?|-h|--help] [-u|--upload] [--uploadonly] [<destination-dir>]\n";
-	exit $exitcode;
+    my $exitcode = shift @_;
+    print "Usage: getxcatdocs [-?|-h|--help] \n";
+    print "Usage: getxcatdocs [-v|--verbose] [-u|--upload] [--uploadonly] [-i|--ignoreerrors] [<destination-dir>]\n";
+    print "Usage: getxcatdocs [-v|--verbose] [-d|--doc single_doc] [-i|--ignoreerrors] [<destination-dir>]\n";
+    exit $exitcode;
 };
 
-# Process the cmd line args
-Getopt::Long::Configure("bundling");
-#Getopt::Long::Configure("pass_through");
-Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'u|upload' => \$UPLOAD, 'uploadonly' => \$UPLOADONLY )) { $usage->(1); }
 
-if ($HELP) { $usage->(0); }
+# Main processing
 
-#if ($VERSION) {
-    #print xCAT::Utils->Version(), "\n";
-#    exit;
-#}
+    # Process the cmd line args
+    Getopt::Long::Configure("bundling");
+    #Getopt::Long::Configure("pass_through");
+    Getopt::Long::Configure("no_pass_through");
+    if (!GetOptions(
+         'h|?|help'    => \$HELP, 
+         'v|verbose'   => \$VERBOSE, 
+         'u|upload'    => \$UPLOAD, 
+         'uploadonly'  => \$UPLOADONLY, 
+         'i|ignoreerrors'    => \$IGNOREERRORS, 
+         'd|doc=s'     => \$SINGLE_DOC ))
+          { $usage->(1); }
 
-if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
+    if ($HELP) { $usage->(0); }
 
-my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
-chdir($destdir) or die "Can not cd to $destdir: $!\n";
-#my $docdir = $ENV{'PWD'};
+    if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
 
-# Download the HTML
-my @dir;
-if (!$UPLOADONLY) {
-	mkdir('html');
-	chdir('html');
-	#system('pwd');
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	#system('rm -rf nfs skins');
-	#system('ls');
-	print "Downloading the xCAT wiki documentation...\n";
-	#    --html-extension --restrict-file-names=windows  --cut-dirs=3
-	# options that do not work:  --relative
-	my $wgetcmd = q(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --execute robots=off --post-data='printable=yes' --reject '*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support' 'https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation&printable=yes');
-	runwget($wgetcmd);
-	# remove the dir portion of links to other docs
-	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
-	my $sedcmd = q(sed -i 's/<a href="index.php?title/<a href="index.php%3Ftitle/' *);
-	print "$sedcmd\n";
-	system($sedcmd);
-	# get the list of docs
-	opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
-	@dir = grep /^index.php\?title=/, readdir(DIR);		# /
-	close(DIR);
-	chdir('..');
+    my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
+    chdir($destdir) or die "Can not cd to $destdir: $!\n";
+
+    my $json = JSON->new(); 
+
+    if ($SINGLE_DOC) {
+      my $scurlcmd = "curl -X GET $wiki_url$SINGLE_DOC";
+      verbose($scurlcmd);
+      my $pagecontent = `$scurlcmd`;
+      if ($? && !$IGNOREERRORS) { die "error encountered in $scurlcmd \n";}
+      my $pageout = $json->decode($pagecontent);
+      foreach my $pageatt (@{$pageout->{attachments}}) {
+         my $swgetcmd = "wget $pageatt->{url}";
+         verbose($swgetcmd);
+         system($swgetcmd);
+         if ($? && !$IGNOREERRORS) { die "error encountered in $swgetcmd \n";}
+      }
+      convert_doc($SINGLE_DOC,$pageout->{text},'.','.','.','.');
+      exit;
+    }      
+   
+    # Download the HTML docs and convert them all to pdfs
+    if (!$UPLOADONLY) { gethtmldocs('md','html','pdf','images'); }
+
+    # tar/compress
+    my $date=`date +%Y%m%d%H%M`;
+    chop $date;
+    my $docname="xcat-docs-snap$date.tar.gz";
+    chdir($destdir) or die "Can not cd to $destdir: $!\n";
+
+    my $cmd = "tar -zcf $docname html pdf images 2>&1";
+    verbose($cmd);
+    system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
+
+    # Optionally upload the tarball to sourceforge
+    if ($UPLOAD || $UPLOADONLY) {
+        my $count = 1;
+        #my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
+        my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/doc/';
+        print "$cmd\n";
+        while ($count<=5 && system("$cmd 2>&1")) { $count++; }
+    }
+    exit 0;
+
+
+
+sub gethtmldocs {
+
+    my $mddir = shift;
+    my $htmldir = shift;
+    my $pdfdir = shift;
+    my $imagedir = shift;
+    my $savedir = getcwd();
+    mkdir($mddir);
+    mkdir($htmldir);
+    mkdir($pdfdir);
+    mkdir($imagedir);
+    #delete all the files in the dirs in case they previously ran this
+    unlink <$mddir/*>;   
+    unlink <$htmldir/*>;   
+    unlink <$pdfdir/*>;   
+    unlink <$imagedir/*>;   
+                                    
+   print "\nDownloading and converting the xCAT wiki document list from $wiki_url ...\n";
+    my @doclist;
+    my %donelist;
+    foreach my $index (@indexdocs) {
+      if ( $donelist{$index} ) { next; }
+      my $indexcmd = "curl -X GET $wiki_url/$index";
+      verbose($indexcmd);
+      my $indexmd = `$indexcmd`;
+      if ($? && !$IGNOREERRORS) { die "error encountered in $indexcmd \n";}
+      my $jsout = $json->decode($indexmd); 
+      push @doclist,@{$jsout->{related_artifacts}};
+      foreach my $att (@{$jsout->{attachments}}) {
+        my $iwgetcmd = "wget -P $imagedir/ $att->{url}";
+        verbose($iwgetcmd);
+        system($iwgetcmd);
+        if ($? && !$IGNOREERRORS) { die "error encountered in $iwgetcmd \n";}
+      }
+      convert_doc($index,$jsout->{text},$mddir,$htmldir,$pdfdir,$imagedir);
+      $donelist{$index}=1;
+    }
+    print "\nDownloading and converting the xCAT wiki documentation to $savedir ...\n";
+
+    foreach my $doc (@doclist) {
+      my $doc_name = $doc;
+      $doc_name =~ s/\/.*\/(.+)\/$/$1/;
+      if ( $donelist{$doc_name} ) { next; }
+      verbose("processing $doc");
+      my $doc_url=$sf_url.$doc;
+      my $curlcmd = "curl -X GET $doc_url";
+      verbose($curlcmd);
+      my $pagecontent = `$curlcmd`;
+      my $pageout = $json->decode($pagecontent);
+      foreach my $pageatt (@{$pageout->{attachments}}) {
+         my $wgetcmd = "wget -P $imagedir/ $pageatt->{url}";
+         system($wgetcmd);
+         if ($? && !$IGNOREERRORS) { die "error encountered in $wgetcmd \n";}
+      }
+      convert_doc($doc_name,$pageout->{text},$mddir,$htmldir,$pdfdir,$imagedir);
+      $donelist{$doc_name}=1;
+    }
+  
+    chdir($savedir);
 }
 
-# Convert to pdf
-if (!$UPLOADONLY) {
-	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
-	mkdir('pdf');
-	chdir('pdf');
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	foreach my $file (@dir) {
-		if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
-		my ($docname) = $file =~ /^index.php\?title=(.+)$/;
-		print "Converting $docname to PDF format...\n";
-		my $url = "https://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
-		my $destfile = "$docname.pdf";
-		my $cmd = "xhtml2pdf '$url' '$destfile' ";
-		#print "$cmd\n";
-		runh2p($cmd);
-	}
-	chdir('..');
+sub convert_doc {
+   my $doc_name = shift;
+   my $doc_text = shift;
+   my $mddir = shift;
+   my $htmldir = shift;
+   my $pdfdir = shift;
+   my $imagedir = shift;
+
+  ## Make image refs local
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.png\)/\!\[\]\(\.\.\/$imagedir\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.PNG\)/\!\[\]\(\.\.\/$imagedir\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.jpg\)/\!\[\]\(\.\.\/$imagedir\/$1\.jpg\)/g;
+   open(MDFILE, ">$mddir/${doc_name}.md") or die;
+   print MDFILE $doc_text;
+   close MDFILE;
+
+   my $pandoccmd = "pandoc -s --toc $mddir/${doc_name}.md -o $htmldir/${doc_name}.html";
+   verbose($pandoccmd);
+   system($pandoccmd);
+   if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd \n";}
+   # This rename is probably a hack, but I didn't want to take the time to
+   # figure out what was going on:
+   #   pandoc does different processing if target filetype is html
+   #   but all internal refs only work in browser when there is no html filetype
+   rename "$htmldir/${doc_name}.html","$htmldir/${doc_name}";
+
+   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.png\)/\!\[\]\(\.\/$imagedir\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.PNG\)/\!\[\]\(\.\/$imagedir\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.jpg\)/\!\[\]\(\.\/$imagedir\/$1\.jpg\)/g;
+   open(MDFILE, ">$mddir/${doc_name}.md") or die;
+   print MDFILE $doc_text;
+   close MDFILE;
+   my $pandoccmd2 = "pandoc --toc $mddir/${doc_name}.md -o $pdfdir/${doc_name}.pdf";
+   verbose($pandoccmd2);
+   system($pandoccmd2);
+   if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd2 \n";}
+
 }
 
-# tar/compress
-my $date=`date +%Y%m%d%H%M`;
-chop $date;
-my $docname="xcat-docs-snap$date.tar.gz";
-#system('pwd');
-system("tar -zcf $docname html pdf 2>&1");
-
-# Optionally upload the tarball to sourceforge
-if ($UPLOAD || $UPLOADONLY) {
-	my $UPLOADUSER = 'bp-sawyers';
-	my $count = 1;
-	#my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
-	my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/doc/';
-	print "$cmd\n";
-	while ($count<=5 && system("$cmd 2>&1")) { $count++; }
-}
-exit 0;
-
-
-# Run the wget cmd and filter out some of the silly output
-sub runwget {
-	my $cmd = shift;
-	#print "$cmd\n";
-	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
-	while (<OUT>) {
-		if (/URL:https*:\/\/sourceforge\.net.+\s+->\s+\"(\S+)\"\s+\[/) { print "Downloaded $1.\n"; }
-		else { print; }
-	}
-	close OUT || die "Error running $cmd: $! $?";
-}
-
-# Run the xhtml2pdf cmd and filter out some of the silly output
-sub runh2p {
-	my $cmd = shift;
-	#print "$cmd\n";
-	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
-	while (<OUT>) {
-		next if /DeprecationWarning:\sthe sets module is deprecated/;
-		next if /from sets import ImmutableSet/;
-		next if /^Converting\ssourceforge.net/;
-		print;
-	}
-	close OUT || die "Error running $cmd: $! $?";
-}
