@@ -94,7 +94,7 @@ cd /xcatpost
 export PATH=$PATH:/xcatpost
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
@@ -125,12 +125,12 @@ run_ps () {
 
 " > /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript 
 
 
 #save the postboot scripts to /xcatpost/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript.post
 chmod 755 /xcatpost/mypostscript.post
 
@@ -173,7 +173,7 @@ EOF
 chmod 755 /opt/xcat/xcatdsklspost
 
 #only run the prebooot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
+TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
 
 export NODE=#TABLE:nodelist:THISNODE:node#
