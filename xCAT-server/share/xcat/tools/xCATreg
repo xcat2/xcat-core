@@ -1480,7 +1480,7 @@ sub send_mail {
     my $msg = shift;
     my $head;
     if($num == 0) {
-        $head = "xCATreg got fital error with:  ";
+        $head = "xCATreg got fatal error with:  ";
     } elsif ($num == 1) {
         $head = "AUTOMATED REGRESSION TEST REPORT\n";
     }
