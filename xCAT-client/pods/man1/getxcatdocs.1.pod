@@ -4,19 +4,23 @@ B<getxcatdocs> - downloads the xCAT documentation and converts to HTML and PDF
 
 =head1 SYNOPSIS
 
-B<getxcatdocs> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>] [I<destination-dir>]
+B<getxcatdocs> [B<-?> | B<-h> | B<--help>]
+B<getxcatdocs> [B<-v> | B<--verbose>] [I<destination-dir>]
+B<getxcatdocs> [B<-v> | B<--verbose>] [B<-d> | B<--doc> I<single_doc>] [I<destination-dir>]
 
 =head1 DESCRIPTION
 
 The B<getxcatdocs> command downloads the xCAT documentation from the wiki and converts it to both HTML and PDF.
 This enables reading the documentation when you do not have internet access.  Note that this command does not
-download/convert the entire xCAT wiki - only the "official" xCAT documentation linked from https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation .
+download/convert the entire xCAT wiki - only the "official" xCAT documentation linked from http://sourceforge.net/p/xcat/wiki/XCAT_Documentation.
 
-If I<destination-dir> is specified, B<getxcatdocs> will put the converted documentation in that directory, in 2 sub-directories: html, pdf.
-Otherwise, it will put it in the current directory (in the same two sub-directories).
+If I<destination-dir> is specified, B<getxcatdocs> will put the converted documentation in that directory, in 3 sub-directories: html, pdf, images.
+Otherwise, it will put it in the current directory (in the same three sub-directories).
 
-B<getxcatdocs> uses wget to do the download the documents and xhtml2pdf to convert them to PDF.  To install xhtml2pdf, see: 
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
+If B<--doc> I<single_doc> is specified, only that one wiki page will be downloaded and converted.  
+
+B<getxcatdocs> uses curl to run the Allura wiki API to download the document markdown text, and Pandoc with LaTex them to PDF.  You must have all of these functions installed to run B<getxcatdocs>.  See:
+http://sourceforge.net/p/xcat/wiki/Editing_and_Downloading_xCAT_Documentation/#converting-wiki-pages-to-html-and-pdfs 
 
 =head2 Limitations:
 
@@ -26,23 +30,23 @@ https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documen
 
 This command does not run on AIX or Windows.
 
-=item *
-
-The conversion to HTML does not yet honor the xCAT wiki style sheet.
-
 =back
 
 =head1 OPTIONS
 
 =over 10
 
-=item B<-v|--version>
+=item B<-v|--verbose>
 
-Command Version.
+Run the command in verbose mode.
 
 =item B<-?|-h|--help>
 
 Display usage message.
+
+=item B<-d|--doc> I<single_doc>
+
+Run this command for a single document only.  If you get errors about Official-xcat-doc.png not found, either download this image directly from http://sourceforge.net/p/xcat/wiki/XCAT_Documentation/attachment/Official-xcat-doc.png or run B<getxcatdocs -d XCAT_Documentation> first.
 
 =back
 
