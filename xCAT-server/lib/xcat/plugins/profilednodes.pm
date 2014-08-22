@@ -933,6 +933,7 @@ Usage:
         my %chainAttr = {};
         foreach my $node (@$nodes){
             $chainAttr{$node}{'chain'} = $chainstr;
+            $chainAttr{$node}{'currchain'} = '';
         }
         my $chaintab = xCAT::Table->new('chain', -create=>1);
         $chaintab->setNodesAttribs(\%chainAttr);
@@ -1124,8 +1125,9 @@ Usage:
                     $fsp_flag = 1;
                     $fspipsAttr{$node}{"hcp"} = $nextip;
                 }
-            }
+            }    
         }
+        
         # Add reserve nics
         foreach my $nicname (@reserveNics){
             my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
@@ -1323,7 +1325,7 @@ Usage:
 
     # DB update: chain table.
     my $chaintab = xCAT::Table->new('chain', -create=>1);
-    $mactab->setNodeAttribs($hostname, {chain=>$chainstr});
+    $chaintab->setNodeAttribs($hostname, {chain=>$chainstr, currchain=>''});
     $chaintab->close();
 
 
