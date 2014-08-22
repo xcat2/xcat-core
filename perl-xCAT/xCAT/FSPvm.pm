@@ -801,6 +801,19 @@ sub do_op_extra_cmds {
 	        if ($op eq "lparname") {
 		    $action = "set_lpar_name";
 	        } elsif ($op eq "huge_page") {
+                    my @td = @$d;
+                    @td[0] = 0;
+                    my $tmphash = &query_cec_info_actions($request, $name, \@td, 1, ["get_huge_page"]);
+                    if ($tmphash->{huge_page_avail}) {
+                        if ($param > $tmphash->{huge_page_avail}) {
+                            push @values, [$name, "No enough huge pages, only $tmphash->{huge_page_avail} pages available", 0];
+                            $param = $tmphash->{huge_page_avail};
+                        }
+                        $param = "1/$param/$param";
+                    } else {
+                        push @values, [$name, "No huge page available to configure", 0];
+                        next;
+                    }
 		    $action = "set_huge_page";
 	        } elsif ($op eq "vmcpus") {
                     $action = "part_set_lpar_pending_proc";
