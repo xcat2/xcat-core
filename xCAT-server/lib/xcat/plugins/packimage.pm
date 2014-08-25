@@ -246,6 +246,13 @@ sub process_request {
         }
     }
 
+    #restore the install.netboot of xcat dracut module 
+    if(-e "$rootimg_dir/usr/lib/dracut/modules.d/97xcat/install"){
+         xCAT::Utils->runcmd("mv $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install $rootimg_dir/.statebackup/install", 0, 1);
+    }
+    xCAT::Utils->runcmd("cp /opt/xcat/share/xcat/netboot/rh/dracut_033/install.netboot $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
+    
+
     my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
     my $excludestr = "find . -xdev ";
     my $includestr;
@@ -439,6 +446,8 @@ sub process_request {
                 xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);
             }
         }
+
+         xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/install $rootimg_dir/usr/lib/dracut/modules.d/97xcat/install", 0, 1);
         xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/statelite $rootimg_dir/etc/init.d/statelite", 0, 1);
         xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
     }
