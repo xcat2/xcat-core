@@ -7,6 +7,7 @@
 %ifarch ppc ppc64
 %define tarch ppc64
 %endif
+%define rpminstallroot /opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
 BuildArch: noarch
 %define name	xCAT-genesis-scripts-%{tarch}
 %define __spec_install_post :
@@ -74,4 +75,33 @@ touch /etc/xcat/genesis-scripts-updated
 
 %Files
 %defattr(-,root,root)
-/opt/xcat/share/xcat/netboot/genesis/%{tarch}/fs
+#%dir %attr(-,root,root) %{rpminstallroot}
+%{rpminstallroot}/bin/allowcred.awk
+%{rpminstallroot}/bin/bmcsetup
+%{rpminstallroot}/bin/dodiscovery
+%{rpminstallroot}/bin/dosysclone
+%{rpminstallroot}/bin/doxcat
+%{rpminstallroot}/bin/getcert
+%{rpminstallroot}/bin/getdestiny
+%{rpminstallroot}/bin/getipmi
+%{rpminstallroot}/bin/ifup
+%{rpminstallroot}/bin/minixcatd.awk
+%{rpminstallroot}/bin/nextdestiny
+%{rpminstallroot}/bin/remoteimmsetup
+%{rpminstallroot}/bin/udpcat.awk
+%{rpminstallroot}/bin/updateflag.awk
+%{rpminstallroot}/debian/changelog
+%{rpminstallroot}/debian/compat
+%{rpminstallroot}/debian/control
+%{rpminstallroot}/debian/copyright
+%{rpminstallroot}/debian/dirs
+%{rpminstallroot}/debian/docs
+%{rpminstallroot}/debian/install
+%{rpminstallroot}/debian/postinst
+%{rpminstallroot}/debian/postrm
+%{rpminstallroot}/debian/preinst
+%{rpminstallroot}/debian/prerm
+%{rpminstallroot}/debian/rules
+%{rpminstallroot}/etc/init.d/functions
+%{rpminstallroot}/etc/udev/rules.d/99-imm.rules
+%{rpminstallroot}/sbin/setupimmnic
