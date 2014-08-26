@@ -6,6 +6,6 @@ instmods mptctl #LSI firmware management requires this
 instmods mlx4_ib ib_umad #make the mellanox ib available enough to examine /sys
 instmods reiserfs #reiserfs on sysclone
 instmods ibmveth # ppc64 virtual ethernet
-instmods ibmvscsic # ppc64 virtual disk
+instmods ibmvscsi # ppc64 virtual disk
 instmods ehea      # ppc64 hea ethernet
 instmods dm-mod  #support LVM for sysclone
