@@ -33,6 +33,7 @@ my %allhostnames;
 my %allbmcips;
 my %allmacs;
 my %allcecs;
+my %alllparids;
 my %allmacsupper;
 my %allips;
 my %allinstallips;
@@ -425,6 +426,10 @@ Usage:
     # Get all CEC names
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_cecs(1);
     %allcecs = %$recordsref;
+    
+    # Get all LPAR ids
+    $recordsref = xCAT::ProfiledNodeUtils->get_all_lparids(\%allcecs);
+    %alllparids = %$recordsref;
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -2435,11 +2440,21 @@ sub validate_node_entry{
         }elsif ($_ eq "lparid"){
             if (not exists $node_entry{"cec"}){
                 $errmsg .= "The lparid option must be used with the cec option.\n";
-            }
+            }           
         }elsif ($_ eq "cec"){
+            my $cec_name = $node_entry{"cec"};
+            my $lpar_id = 1;
             # Check the specified CEC is existing
             if (! exists $allcecs{$node_entry{$_}}){
                 $errmsg .= "The CEC name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
+            }elsif (exists $node_entry{"lparid"}){
+                $lpar_id = $node_entry{"lparid"};
+            }
+            
+            if (exists $alllparids{$cec_name}{$lpar_id}){
+                $errmsg .= "The CEC name $cec_name and LPAR id $lpar_id already exist in the database or in the nodeinfo file. You must use a new CEC name and LPAR id.\n";
+            }else{
+                $alllparids{$cec_name}{$lpar_id} = 0;
             }
         }elsif ($_ eq "nicips"){
             # Check Multi-Nic's ip
