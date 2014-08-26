@@ -128,7 +128,11 @@ To import nodes using a profile, follow the following steps:
   __hostname__:
      mac=b8:ac:6f:37:59:28
      cec=mycec
-     lparid=1
+  
+  __hostname__:
+     mac=b8:ac:6f:37:59:28
+     cec=mycec
+     lparid=2
   # Node information file ends.
 
 The node information file includes the following items:
@@ -155,7 +159,7 @@ Description: Specifies the name of a Power rack-mount central electronic complex
 
 B<lparid=<lpar-id>>  This is a optional option for defining Power rack-mounted nodes.
 
-Description: Specifies the LPAR id of Power rack-mounted node.
+Description: Specifies the LPAR ID of a Power rack-mounted node, where <lpar-id> is the ID number. The default value is 1 if it is not defined.
 
 B<ip=<ip-address>> This is an optional item.
 

@@ -654,6 +654,39 @@ sub get_all_cecs
 }
 
 #-------------------------------------------------------------------------------
+ 
+=head3 get_all_lparids
+      Description : Get all LPAR ids  in system.
+      Arguments   : ref of all cecs
+      Returns     : ref for LPAR ids hash.
+      Example     : 
+                    my $arrayref = xCAT::ProfiledNodeUtils->get_all_lparids(\%allcecs);
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_all_lparids
+{
+    my $class= shift;
+    my $cecsref = shift;
+    my %allcecs = %$cecsref;
+    my %lparids;
+
+    my $ppctab = xCAT::Table->new('ppc');
+    foreach my $cec (keys  %allcecs) {
+        my @ids = $ppctab->getAllAttribsWhere("hcp = '$cec'", 'id');
+        foreach (@ids) {
+            if ( $_->{'id'} ){
+                $lparids{$cec}{$_->{'id'}} = 0;
+            }
+        }
+    }
+    $ppctab->close();
+    
+    return \%lparids;
+}
+
+
+#-------------------------------------------------------------------------------
 
 =head3 is_discover_started
       Description : Judge whether profiled nodes discovering is running or not.
