@@ -2305,10 +2305,10 @@ sub validate_node_entry{
     }
     # Must specify either MAC, CEC or switch + port.
     if (exists $node_entry{"mac"} ||
-        exists $node_entry{"switch"} && exists $node_entry{"switchport"} ||
+        exists $node_entry{"switches"} ||
         exists $node_entry{"cec"}){
     } else{
-        $errmsg .= "MAC address, cec, switch and port is not specified. You must specify the MAC address, CEC name or switch and port.\n";
+        $errmsg .= "MAC address, cec, switches is not specified. You must specify the MAC address, CEC name or switches.\n";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
