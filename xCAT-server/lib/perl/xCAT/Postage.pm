@@ -1858,8 +1858,8 @@ sub getPostScripts
         $result .=  "setbootfromnet\n";
     }
 
-    # add setbootfromdisk if the nodesetstate is install and arch is ppc64
-    if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64"))
+    # add setbootfromdisk if the nodesetstate is install or sysclone and arch is ppc64
+    if (($nodesetstate) && (($nodesetstate eq "install") || ($nodesetstate eq "sysclone")) && ($arch eq "ppc64"))
     {
         $result .=  "setbootfromdisk\n";
     }
