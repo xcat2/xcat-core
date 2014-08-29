@@ -1864,6 +1864,7 @@ sub getPostScripts
         $result .=  "setbootfromdisk\n";
     }
 
+    
 
     #for redhat 7, append "disableconsistentNICrename" to default postscripts 
     #if "net.ifnames=0" is specified in kcmdline/addkcmdline of node or osimage 
@@ -1874,7 +1875,7 @@ sub getPostScripts
     my $nrret = $::GLOBAL_TAB_HASH{noderes}{$node};
     my $netboot = $nrret->{'netboot'};
 
-    if( ($os =~ "rhel7*") || ($os =~ "rhels7*")  )
+    if( (($os =~ "rhel7*") || ($os =~ "rhels7*")) && ($nodesetstate) && ($nodesetstate eq "install") )
     {
        my $nodecfg;
        if($netboot eq "grub2")
