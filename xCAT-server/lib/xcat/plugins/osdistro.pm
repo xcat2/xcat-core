@@ -258,7 +258,7 @@ sub rmosdistro
 		#remove the osdistro entry			
                 $osdistrotab->delEntries(\%keyhash);
    		$osdistrotab->commit;
-        	$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
+                $callback->({info=>["rmosdistro: remove $_ success"],errorcode=>[0]})
 				
 	}
 
