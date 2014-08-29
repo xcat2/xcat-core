@@ -95,7 +95,6 @@ sub getOSdistroref
 	{
 		return undef;
 	}
-        # verified this does work on DB2
 
 	my @clause=();
 	
@@ -259,7 +258,7 @@ sub rmosdistro
 		#remove the osdistro entry			
                 $osdistrotab->delEntries(\%keyhash);
    		$osdistrotab->commit;
-        	$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
+                $callback->({info=>["rmosdistro: remove $_ success"],errorcode=>[0]})
 				
 	}
 
