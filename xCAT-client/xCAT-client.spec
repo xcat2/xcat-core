@@ -13,6 +13,8 @@ Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %define fsm %(if [ "$fsm" = "1" ];then echo 1; else echo 0; fi)
 
+%define pcm %(if [ "$pcm" = "1" ];then echo 1; else echo 0; fi)
+%define notpcm %(if [ "$pcm" = "1" ];then echo 0; else echo 1; fi)
 
 # AIX will build with an arch of "ppc"
 %ifos linux
@@ -114,6 +116,14 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-client/*
 cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 #cp usr/share/xcat/scripts/setup-local-client.sh $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
 #chmod 755 $RPM_BUILD_ROOT/usr/share/xcat/scripts/setup-local-client.sh
+
+# PCM does not need getxcatdocs
+# getxcatdocs causes xCAT-client requires perl-JSON, which is not shipped with PCM
+%if %pcm
+rm -f $RPM_BUILD_ROOT/%{prefix}/bin/getxcatdocs
+rm -f $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/getxcatdocs.1.html
+rm -f $RPM_BUILD_ROOT/%{prefix}/share/man/man1/getxcatdocs.1
+%endif
 
 # These links get made in the RPM_BUILD_ROOT/prefix area
 ln -sf xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rpower

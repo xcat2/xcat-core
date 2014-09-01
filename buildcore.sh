@@ -44,10 +44,11 @@ FRS=/home/frs/project/x/xc/xcat
 ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-OpenStack xCAT-SoftLayer xCAT-OpenStack-baremetal"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
-# xCAT has PCM specific configuration - conserver-xcat, syslinux-xcat
+# xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
 # xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
-PCMBUILD="xCAT xCAT-server xCATsn"
-PCMLINK="perl-xCAT xCAT-client xCAT-buildkit xCAT-genesis-scripts-x86_64"
+# xCAT-client has PCM specific configuration - getxcatdocs(perl-JSON) 
+PCMBUILD="xCAT xCAT-server xCAT-client xCATsn"
+PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
