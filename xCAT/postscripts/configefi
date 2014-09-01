@@ -92,14 +92,14 @@ elif [ "$arch" = "ppc64" ]; then
        dd if=/usr/lib/yaboot/yaboot of=/dev/sda1 bs=4096
       
        # Set 0x41 as the partition type of the first partition
-       echo A | dd of=/dev/sda bs=1 count=1 seek=450
+       # echo A | dd of=/dev/sda bs=1 count=1 seek=450
     elif [ -f "/lib/lilo/pmac/yaboot" ]; then
         # set bootloader
         echo "dd if=/lib/lilo/pmac/yaboot of=/dev/sda1 bs=4096"
         dd if=/lib/lilo/pmac/yaboot of=/dev/sda1 bs=4096
 
        # Set 0x41 as the partition type of the first partition
-       echo A | dd of=/dev/sda bs=1 count=1 seek=450
+       # echo A | dd of=/dev/sda bs=1 count=1 seek=450
     else
        echo "there isn't yaboot bootloader"
     fi     
