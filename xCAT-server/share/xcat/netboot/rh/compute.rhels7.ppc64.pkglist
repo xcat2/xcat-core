@@ -20,6 +20,6 @@ e2fsprogs
 bc
 lsvpd
 irqbalance
-procps
+procps-ng
 parted
 net-tools
