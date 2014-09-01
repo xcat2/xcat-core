@@ -809,38 +809,55 @@ Usage:
         }
     }
     
+    #fix 241844 issue, use local variable to store args_dict value
+    my $imageprofile = undef;
+    my $networkprofile = undef;
+    my $hardwareprofile = undef;
+
+    if(exists $args_dict{'imageprofile'}){
+        $imageprofile = $args_dict{'imageprofile'};
+    }
+
+    if(exists $args_dict{'networkprofile'}){
+        $networkprofile = $args_dict{'networkprofile'};
+    }
+
+    if(exists $args_dict{'hardwareprofile'}){
+        $hardwareprofile = $args_dict{'hardwareprofile'};
+    }
+
     # After checking, all nodes' profile should be same
     # Get the new profile with specified ones in args_dict
     my $changeflag = 0;
     my $profile_groups;
     my $profile_status;
-    if(exists $args_dict{'networkprofile'}){
-        $profile_groups .= $args_dict{'networkprofile'}.",";
-        if ($args_dict{'networkprofile'} ne $nodeoldprofiles{'networkprofile'}){
+    if($networkprofile){
+        $profile_groups .= $networkprofile . ",";
+        if ($networkprofile ne $nodeoldprofiles{'networkprofile'}){
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
-            delete($args_dict{'networkprofile'});
+            $networkprofile = undef;
         }
     }
-    if(exists $args_dict{'hardwareprofile'}){
-        $profile_groups .= $args_dict{'hardwareprofile'}.",";
-        if ($args_dict{'hardwareprofile'} ne $nodeoldprofiles{'hardwareprofile'}){
+    if($hardwareprofile){
+        $profile_groups .= $hardwareprofile . ",";
+        if ($hardwareprofile ne $nodeoldprofiles{'hardwareprofile'}){
             $profile_status = 'defined';
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
-            delete($args_dict{'hardwareprofile'});
+            $hardwareprofile = undef;
         }
     }
-    if(exists $args_dict{'imageprofile'}){
-        $profile_groups .= $args_dict{'imageprofile'}.",";
-        if ($args_dict{'imageprofile'} ne $nodeoldprofiles{'imageprofile'}){
+    if($imageprofile){
+        $profile_groups .= $imageprofile . ",";
+        if ($imageprofile ne $nodeoldprofiles{'imageprofile'}){
             $profile_status = 'defined';
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
-            delete($args_dict{'imageprofile'});
+            $imageprofile = undef;
         }
     }
     # make sure there are something changed, otherwise we should quit without any changes.
@@ -870,8 +887,8 @@ Usage:
 
     # If network profile specified. Need re-generate IPs for all nodess again.
     # As new design, ignore BMC/FSP NIC while reinstall nodes
-    if(exists $args_dict{'networkprofile'}){
-        my $newNetProfileName = $args_dict{'networkprofile'};
+    if($networkprofile){
+        my $newNetProfileName = $networkprofile;
         my $oldNetProfileName = $nodeoldprofiles{'networkprofile'};
         
         my $newNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$newNetProfileName])->{$newNetProfileName};
@@ -909,10 +926,7 @@ Usage:
     # hardware profile changed  or
     # image profile changed or
     # network profile changed.
-    if ((exists $args_dict{'networkprofile'}) or 
-        (exists $args_dict{'hardwareprofile'}) or
-        (exists $args_dict{'imageprofile'})){
-
+    if (($imageprofile) or ($networkprofile) or ($hardwareprofile)){
         my $nodetypetab = xCAT::Table->new('nodetype');
         my $firstnode = $nodes->[0];
         my $profiles = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode], 1);
@@ -924,7 +938,7 @@ Usage:
         # If we have hardware changes, reconfigure everything including BMC.
         my $chainret = 0;
         my $chainstr = "";
-        if(exists $args_dict{'hardwareprofile'}){
+        if($hardwareprofile){
             ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 1);
         } else {
             ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 0);
@@ -2440,7 +2454,7 @@ sub validate_node_entry{
         }elsif ($_ eq "lparid"){
             if (not exists $node_entry{"cec"}){
                 $errmsg .= "The lparid option must be used with the cec option.\n";
-            }           
+            }
         }elsif ($_ eq "cec"){
             my $cec_name = $node_entry{"cec"};
             my $lpar_id = 1;
@@ -2455,7 +2469,7 @@ sub validate_node_entry{
                 $errmsg .= "The CEC name $cec_name and LPAR id $lpar_id already exist in the database or in the nodeinfo file. You must use a new CEC name and LPAR id.\n";
             }else{
                 $alllparids{$cec_name}{$lpar_id} = 0;
-            }
+            }    
         }elsif ($_ eq "nicips"){
             # Check Multi-Nic's ip
             my $othernics = $node_entry{$_};
