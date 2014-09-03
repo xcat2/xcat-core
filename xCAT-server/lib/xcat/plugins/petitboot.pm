@@ -4,6 +4,7 @@ package xCAT_plugin::petitboot;
 use File::Path;
 use Getopt::Long;
 use xCAT::Table;
+use Sys::Syslog;
 
 my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
