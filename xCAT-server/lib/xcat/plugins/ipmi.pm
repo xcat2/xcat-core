@@ -510,7 +510,11 @@ sub on_bmc_connect {
 	} elsif($command eq "rspconfig") {
        shift @{$sessdata->{extraargs}};
        if ($sessdata->{subcommand} =~ /=/) {
-           setnetinfo($sessdata);
+           if ($sessdata->{subcommand} =~ /password/) {
+               setpassword($sessdata);
+           } else {
+               setnetinfo($sessdata);
+           }
        } else {
            getnetinfo($sessdata);
        }
@@ -634,6 +638,55 @@ sub resetedbmc {
         $sessdata->{ipmisession} = undef; #throw away now unusable session
 	}
 }
+
+sub setpassword {
+    my $sessdata = shift;
+    my $subcommand = $sessdata->{subcommand};
+    my $argument;
+    ($subcommand, $argument) = split(/=/, $subcommand);
+    my $netfun = 0x06;
+    my $command = 0x47;
+    my @data = ();
+    @data = unpack("C*", $argument);
+    if ($#data > 19 or $#data < 0) {
+        xCAT::SvrUtils::sendmsg([1, "The new password is invalid"],$callback,$sessdata->{node},%allerrornodes);
+        return(1,"The new password is invalid.");
+    }
+    $sessdata->{newpassword}=$argument;
+    my $index = $#data;
+    while($index < 19) { # Password must be padded with 0 to 20 bytes for IPMI 2.0
+        push @data, 0;
+        $index += 1;
+    }
+    unshift @data, 0x02; # byte 2, operation: 0x00 disable user, 0x01 enable user, 0x02 set password, 0x03 test password
+    unshift @data, 0x01; # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
+    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+}
+
+sub password_set {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
+        }
+        return;
+    }
+    my $ipmitab = xCAT::Table->new('ipmi');
+    if (!$ipmitab)  {
+        xCAT::SvrUtils::sendmsg([1, "Failed to update ipmi table."],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+        $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
+        xCAT::SvrUtils::sendmsg("Done",$callback,$sessdata->{node},%allerrornodes);
+    }
+    return;
+} 
 
 sub setnetinfo {
     my $sessdata = shift;
