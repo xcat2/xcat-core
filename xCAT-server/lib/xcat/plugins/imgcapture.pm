@@ -623,8 +623,7 @@ sub sysclone_prepclient {
     my $nthash = $nodetypetab->getNodesAttribs(\@nodes, ['arch']);
     my $tmp = $nthash->{$node}->[0]->{arch};
     if ( $tmp eq 'ppc64'){
-        $cmd  = qq(if ! cat /etc/systemimager/autoinstallscript.conf |grep 'part  num=\\\"1\\\"' |grep 'id=' >/dev/null ;then sed -i 's:\\(.*<part  num=\\\"1\\\".*\\)\\(/>\\
-):\\1 id=\\\"41\\\" \\2:' /etc/systemimager/autoinstallscript.conf;fi);
+        $cmd  = qq(if ! cat /etc/systemimager/autoinstallscript.conf |grep 'part  num=\\\"1\\\"' |grep 'id=' >/dev/null ;then sed -i 's:\\(.*<part  num=\\\"1\\\".*\\)\\(/>\\):\\1 id=\\\"41\\\" \\2:' /etc/systemimager/autoinstallscript.conf;fi);
         $output = xCAT::Utils->runxcmd(
                                             {
                                             command => ["xdsh"],
