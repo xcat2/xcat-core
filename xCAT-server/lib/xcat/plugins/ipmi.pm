@@ -1937,7 +1937,7 @@ sub got_bmc_fw_info {
         my @returnd = (@{$rsp->{data}});
 			my @a = ($fw_rev2);
             my $prefix = pack("C*",@returnd[0..3]);
-            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i) { #we have an imm
+            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i or $prefix =~ /tcoo/i) { #we have an imm
                 $isanimm=1;
             }
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));
