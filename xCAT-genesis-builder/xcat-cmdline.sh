@@ -38,4 +38,23 @@ if grep console=ttyS /proc/cmdline > /dev/null; then
 	while :; do sleep 1; screen -x console < /dev/tty1 > /dev/tty1 2>&1; clear; done &
 fi
 while :; do screen -ln < /dev/tty2 > /dev/tty2 2>&1; done &
+
+# The section below is just for System P LE hardware discovery
+
+# Need to wait for NIC initialization
+sleep 20
+ARCH=`uname -m`
+if [ $ARCH == 'ppc64' ]; then
+
+    ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
+    for tmp in $ALL_NICS; do
+        tmp_data=`ip link show $tmp | grep -v "^ " | grep "UP"`
+        if [ "$tmp_data" == "" ]; then
+            ip link set $tmp up
+        fi
+        tmp_data="UP"
+        sleep 1
+    done
+fi
+
 while :; do screen -L -ln doxcat; done 

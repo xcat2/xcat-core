@@ -145,6 +145,15 @@ if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 	sleep 3
 else
 	echo "Setting IP via DHCP..."
+# This section is for System P hardware discovery, which won't have a BOOTIF value set
+        if [ -z "$bootnic" ]; then
+            ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo`
+            for tmp1 in $ALLUP_NICS; do
+                bootnic=$tmp1
+                break
+            done
+        fi
+
 	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
 	#we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
 	#chances that we'll perform a partial discovery
