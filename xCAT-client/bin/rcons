@@ -21,7 +21,11 @@ if [ -z "$1" ] || [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  
     exit 0
 fi
 if [ "$1" = "-v"  ]; then
-    echo "Version 2.8"
+    echo "Version 2.9"
+    exit 0
+fi
+if [ "$1" = "--version"  ]; then
+    echo "Version 2.9"
     exit 0
 fi
 
