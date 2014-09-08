@@ -24,6 +24,10 @@ if [ "$1" = "-v"  ]; then
     echo "Version 2.8"
     exit 0
 fi
+if [ "$1" = "--version"  ]; then
+    echo "Version 2.8"
+    exit 0
+fi
 
 if [ -n "$3" ] && [ "$3" = "-f" ]; then
     FORCE=-f
