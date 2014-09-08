@@ -1,4 +1,4 @@
-PREFIXMASK#!/bin/sh 
+#!/bin/sh 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
