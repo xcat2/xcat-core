@@ -15,14 +15,16 @@ use strict;
 use Getopt::Long;
 use Cwd;
 use JSON;
+use List::Util qw[max];
+
 
 # URL for the xCAT Allura wiki API markdown on SourceForge
-my $sf_url='http://sourceforge.net/rest';
-my $wiki_url=$sf_url.'/p/xcat/wiki/';
+my $SF_URL='http://sourceforge.net/rest';
+my $WIKI_URL=$SF_URL.'/p/xcat/wiki/';
 
 # Update this list if you group any xcat docs on a separate page such that they
 # are no longer linked from the main doc page:
-my @indexdocs = ('XCAT_Documentation', 
+my @INDEXDOCS = ('XCAT_Documentation', 
                  'Power_775_Cluster_Documentation', 
                  'Highly_Available_Management_Node', 
                  'Mixed_Cluster_Support', 
@@ -33,8 +35,15 @@ my $HELP;
 my $UPLOAD;
 my $UPLOADONLY;
 my $IGNOREERRORS;
+my $CONTINUE;
 my $SINGLE_DOC;
 my $VERBOSE;
+
+my $MDDIR;
+my $HTMLDIR;
+my $PDFDIR;
+my $IMAGEDIR;
+my %LOADEDDOCS;
 
 sub verbose { if ($VERBOSE) { print shift, "\n"; } }
 
@@ -42,7 +51,7 @@ my $usage = sub {
     my $exitcode = shift @_;
     print "Usage: getxcatdocs [-?|-h|--help] \n";
     print "Usage: getxcatdocs [-v|--verbose] [-u|--upload] [--uploadonly] [-i|--ignoreerrors] [<destination-dir>]\n";
-    print "Usage: getxcatdocs [-v|--verbose] [-d|--doc single_doc] [-i|--ignoreerrors] [<destination-dir>]\n";
+    print "Usage: getxcatdocs [-v|--verbose] [-c|--continue] [-d|--doc single_doc] [-i|--ignoreerrors] [<destination-dir>]\n";
     exit $exitcode;
 };
 
@@ -58,6 +67,7 @@ my $usage = sub {
          'v|verbose'   => \$VERBOSE, 
          'u|upload'    => \$UPLOAD, 
          'uploadonly'  => \$UPLOADONLY, 
+         'c|continue'    => \$CONTINUE,
          'i|ignoreerrors'    => \$IGNOREERRORS, 
          'd|doc=s'     => \$SINGLE_DOC ))
           { $usage->(1); }
@@ -66,35 +76,28 @@ my $usage = sub {
 
     if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
 
-    my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
-    chdir($destdir) or die "Can not cd to $destdir: $!\n";
+    my $DESTDIR = scalar(@ARGV) ? $ARGV[0] : '.';
+    chdir($DESTDIR) or die "Can not cd to $DESTDIR: $!\n";
 
     my $json = JSON->new(); 
 
     if ($SINGLE_DOC) {
-      my $scurlcmd = "curl -X GET $wiki_url$SINGLE_DOC";
-      verbose($scurlcmd);
-      my $pagecontent = `$scurlcmd`;
-      if ($? && !$IGNOREERRORS) { die "error encountered in $scurlcmd \n";}
-      my $pageout = $json->decode($pagecontent);
-      foreach my $pageatt (@{$pageout->{attachments}}) {
-         my $swgetcmd = "wget $pageatt->{url}";
-         verbose($swgetcmd);
-         system($swgetcmd);
-         if ($? && !$IGNOREERRORS) { die "error encountered in $swgetcmd \n";}
-      }
-      convert_doc($SINGLE_DOC,$pageout->{text},'.','.','.','.');
+      $MDDIR = '.';
+      $HTMLDIR = '.';
+      $PDFDIR = '.';
+      $IMAGEDIR = '.';
+      download_doc($SINGLE_DOC);
+      convert_doc($SINGLE_DOC);
       exit;
     }      
    
     # Download the HTML docs and convert them all to pdfs
-    if (!$UPLOADONLY) { gethtmldocs('md','html','pdf','images'); }
+    if (!$UPLOADONLY) { gethtmldocs(); }
 
     # tar/compress
     my $date=`date +%Y%m%d%H%M`;
     chop $date;
     my $docname="xcat-docs-snap$date.tar.gz";
-    chdir($destdir) or die "Can not cd to $destdir: $!\n";
 
     my $cmd = "tar -zcf $docname html pdf images 2>&1";
     verbose($cmd);
@@ -114,82 +117,119 @@ my $usage = sub {
 
 sub gethtmldocs {
 
-    my $mddir = shift;
-    my $htmldir = shift;
-    my $pdfdir = shift;
-    my $imagedir = shift;
-    my $savedir = getcwd();
-    mkdir($mddir);
-    mkdir($htmldir);
-    mkdir($pdfdir);
-    mkdir($imagedir);
-    #delete all the files in the dirs in case they previously ran this
-    unlink <$mddir/*>;   
-    unlink <$htmldir/*>;   
-    unlink <$pdfdir/*>;   
-    unlink <$imagedir/*>;   
-                                    
-   print "\nDownloading and converting the xCAT wiki document list from $wiki_url ...\n";
-    my @doclist;
-    my %donelist;
-    foreach my $index (@indexdocs) {
-      if ( $donelist{$index} ) { next; }
-      my $indexcmd = "curl -X GET $wiki_url/$index";
-      verbose($indexcmd);
-      my $indexmd = `$indexcmd`;
-      if ($? && !$IGNOREERRORS) { die "error encountered in $indexcmd \n";}
-      my $jsout = $json->decode($indexmd); 
-      push @doclist,@{$jsout->{related_artifacts}};
-      foreach my $att (@{$jsout->{attachments}}) {
-        my $iwgetcmd = "wget -P $imagedir/ $att->{url}";
-        verbose($iwgetcmd);
-        system($iwgetcmd);
-        if ($? && !$IGNOREERRORS) { die "error encountered in $iwgetcmd \n";}
-      }
-      convert_doc($index,$jsout->{text},$mddir,$htmldir,$pdfdir,$imagedir);
-      $donelist{$index}=1;
-    }
-    print "\nDownloading and converting the xCAT wiki documentation to $savedir ...\n";
+    $MDDIR = 'md';
+    $HTMLDIR = 'html';
+    $PDFDIR = 'pdf';
+    $IMAGEDIR = 'images';
 
-    foreach my $doc (@doclist) {
-      my $doc_name = $doc;
-      $doc_name =~ s/\/.*\/(.+)\/$/$1/;
-      if ( $donelist{$doc_name} ) { next; }
-      verbose("processing $doc");
-      my $doc_url=$sf_url.$doc;
-      my $curlcmd = "curl -X GET $doc_url";
-      verbose($curlcmd);
-      my $pagecontent = `$curlcmd`;
-      my $pageout = $json->decode($pagecontent);
-      foreach my $pageatt (@{$pageout->{attachments}}) {
-         my $wgetcmd = "wget -P $imagedir/ $pageatt->{url}";
-         system($wgetcmd);
-         if ($? && !$IGNOREERRORS) { die "error encountered in $wgetcmd \n";}
-      }
-      convert_doc($doc_name,$pageout->{text},$mddir,$htmldir,$pdfdir,$imagedir);
-      $donelist{$doc_name}=1;
+    mkdir($MDDIR);
+    mkdir($HTMLDIR);
+    mkdir($PDFDIR);
+    mkdir($IMAGEDIR);
+    #delete all the files in the dirs in case they previously ran this
+     if ($CONTINUE) {
+        print "CONTINUING with files already in $MDDIR";
+        my @mdfiles = glob "$MDDIR/*.md";
+        foreach my $mdf (@mdfiles) {
+            $mdf =~ s/^$MDDIR\///;
+            $mdf =~ s/\.md//;
+            $LOADEDDOCS{$mdf}=1;
+         }
+     } else {
+         unlink <$MDDIR/*>;   
+         unlink <$HTMLDIR/*>;   
+         unlink <$PDFDIR/*>;   
+         unlink <$IMAGEDIR/*>;   
     }
-  
-    chdir($savedir);
+                                    
+   print "\nDownloading and converting the xCAT wiki document list from $WIKI_URL ...\n";
+    foreach my $index (@INDEXDOCS) {
+      my @related_docs = download_doc($index);
+      foreach my $docref (@related_docs) {
+        my $docref_name = $docref;
+        $docref_name =~ s/\/.*\/(.+)\/$/$1/;
+        download_doc($docref_name);
+      }
+    }
+
+    foreach my $doc (keys %LOADEDDOCS) {
+      convert_doc($doc);
+    }
+    return;
 }
+
+
+
+sub download_doc {
+    my $doc_name = shift;
+
+    if ( $LOADEDDOCS{$doc_name} ) { return; }
+    verbose("processing $doc_name");
+    $LOADEDDOCS{$doc_name}=1;
+
+    my $curlcmd = "curl --retry 5 -X GET $WIKI_URL/$doc_name";
+    verbose($curlcmd);
+    my $docjson = `$curlcmd`;
+    if ($? && !$IGNOREERRORS) { die "error encountered in $curlcmd \n";}
+
+    my $jsout = $json->decode($docjson); 
+
+    foreach my $att (@{$jsout->{attachments}}) {
+      my $wgetcmd = "wget -P $IMAGEDIR/ $att->{url}";
+      verbose($wgetcmd);
+      system($wgetcmd);
+      if ($? && !$IGNOREERRORS) { die "error encountered in $wgetcmd \n";}
+    }
+
+    open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+    print MDFILE $jsout->{text};
+    close MDFILE;
+
+    return @{$jsout->{related_artifacts}};
+}   
+
+
 
 sub convert_doc {
    my $doc_name = shift;
-   my $doc_text = shift;
-   my $mddir = shift;
-   my $htmldir = shift;
-   my $pdfdir = shift;
-   my $imagedir = shift;
+
+   open(MDFILE, "<$MDDIR/${doc_name}.md") or die "Could not open <$MDDIR/${doc_name}.md";
+   my @doc_lines = <MDFILE>;
+   close MDFILE;
+   my $doc_text = join('',@doc_lines);
+
+   $doc_text = process_includes($doc_text,0);
+
+   if ($doc_text =~ /begin_xcat_table/) {
+       open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+       print MDFILE $doc_text;
+       close MDFILE;
+
+       convert_tables($doc_name);
+
+       open(MDFILE, "<$MDDIR/${doc_name}.md") or die "Could not open <$MDDIR/${doc_name}.md";
+       @doc_lines = <MDFILE>;
+       close MDFILE;
+       $doc_text = join('',@doc_lines);
+   }
 
   ## Make image refs local
-   $doc_text =~ s/\!\[\]\(.+\/(.+)\.png\)/\!\[\]\(\.\.\/$imagedir\/$1\.png\)/g;
-   $doc_text =~ s/\!\[\]\(.+\/(.+)\.PNG\)/\!\[\]\(\.\.\/$imagedir\/$1\.PNG\)/g;
-   $doc_text =~ s/\!\[\]\(.+\/(.+)\.jpg\)/\!\[\]\(\.\.\/$imagedir\/$1\.jpg\)/g;
-   open(MDFILE, ">$mddir/${doc_name}.md") or die;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.png\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.PNG\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.jpg\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.jpg\)/g;
+   $doc_text =~ s/\[img src=(.+)\.png\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\[img src=(.+)\.PNG\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\[img src=(.+)\.jpg\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.jpg\)/g;
+
+   ## Remove [TOC] entries
+   $doc_text =~ s/\[TOC\]//g;
+    
+
+   open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
    print MDFILE $doc_text;
    close MDFILE;
 
-   my $pandoccmd = "pandoc -s --toc $mddir/${doc_name}.md -o $htmldir/${doc_name}.html";
+   my $pandoccmd = "pandoc -s --toc $MDDIR/${doc_name}.md -o $HTMLDIR/${doc_name}.html";
    verbose($pandoccmd);
    system($pandoccmd);
    if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd \n";}
@@ -197,18 +237,160 @@ sub convert_doc {
    # figure out what was going on:
    #   pandoc does different processing if target filetype is html
    #   but all internal refs only work in browser when there is no html filetype
-   rename "$htmldir/${doc_name}.html","$htmldir/${doc_name}";
+   rename "$HTMLDIR/${doc_name}.html","$HTMLDIR/${doc_name}";
 
-   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.png\)/\!\[\]\(\.\/$imagedir\/$1\.png\)/g;
-   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.PNG\)/\!\[\]\(\.\/$imagedir\/$1\.PNG\)/g;
-   $doc_text =~ s/\!\[\]\(\.\.\/$imagedir\/(.+)\.jpg\)/\!\[\]\(\.\/$imagedir\/$1\.jpg\)/g;
-   open(MDFILE, ">$mddir/${doc_name}.md") or die;
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.png\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.PNG\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.jpg\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.jpg\)/g;
+   open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
    print MDFILE $doc_text;
    close MDFILE;
-   my $pandoccmd2 = "pandoc --toc $mddir/${doc_name}.md -o $pdfdir/${doc_name}.pdf";
+   my $pandoccmd2 = "pandoc --toc $MDDIR/${doc_name}.md -o $PDFDIR/${doc_name}.pdf";
    verbose($pandoccmd2);
    system($pandoccmd2);
    if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd2 \n";}
 
 }
 
+
+
+sub process_includes {
+    my $doc_text = shift;
+    my $include_nest = shift;
+ 
+    if ($include_nest++ > 10) { die "nested include processing greater than 10.  Infinite recursion???"; }
+
+    while (1) {
+        if ($doc_text =~ /\[\[(\s*)include (\s*)ref=(\s*)(.+)(\s*)\]\]/) {
+            my $next_include = $4;
+            download_doc($next_include);
+
+            open(INCLDFILE, "<$MDDIR/${next_include}.md") or die "Could not open <$MDDIR/${next_include}.md";
+            my @include_lines = <INCLDFILE>;
+            close INCLDFILE;
+
+#            my $include_text = join('\n', @include_lines);
+            my $include_text = join('', @include_lines);
+            $include_text = process_includes($include_text,$include_nest);
+
+            $doc_text =~ s/\[\[(\s*)include (\s*)ref=(\s*)$next_include(\s*)\]\]/$include_text/g;
+
+        } else {
+            last;
+        }
+    }
+   
+    return $doc_text;
+}
+
+
+sub convert_tables {
+  my $doc_name=shift;
+  my $infile="$MDDIR/${doc_name}.md";
+  my $outfile=$infile;
+
+  open(MDFILE, "<$infile") or die "Could not open <$infile";
+  my @inlines=<MDFILE>;
+  close MDFILE;
+  my @outlines;
+  my @tablines;
+
+  my $in_comment=0;
+  my $xcat_table=0;
+  my $numcols=1;
+  my @colwidths=(0);
+  my $tabcount=0;
+
+  verbose("converting tables in $doc_name");
+  foreach my $line (@inlines) {
+      if ($line =~ /\<\!---/) { $in_comment=1; next; } 
+      if ($in_comment) {
+         if ($line =~ /begin_xcat_table/) {$xcat_table=1; next;}
+         if ($xcat_table) {
+            if ($line =~ /numcols=(\d+)/) { $numcols=$1; next;}
+            if ($line =~ /colwidths=([\d,]+)/) { @colwidths=split(',',$1); next;}
+         }
+         if ($line =~ /end_xcat_table/) {
+             my $separator = '+';
+             foreach my $c (@colwidths) {
+                if ($c > 0) { $separator .= '-' x $c; }   
+                $separator .= '+';
+             }
+             $separator .= "\n";
+             my $headsep = $separator;
+             $headsep =~ s/-/=/g;
+             my $rowline = $separator;
+             $rowline =~ s/-/ /g;
+
+             my $nosep=0;
+             foreach my $tabline(@tablines) {
+               if ($tabline =~ /^\s*$/) { next;}
+               if ($tabline =~ /^\-\-/) { 
+                 push (@outlines,$headsep);
+                 $nosep = 1;
+                 next;
+               }
+               if ($nosep) { $nosep=0;} else {push (@outlines,$separator);}
+               $tabline =~ s/^\s*\|//;
+               my @vals = split (/\|/,$tabline);
+               my $last_cell_line=0;
+               my $colnum=0;
+               my @tabrow;
+               foreach my $c (@colwidths) {
+                 if ($c > 0) {
+                     my $colval=$vals[$colnum];
+                     $colval =~ s/(\s*)$//;
+                     my $vallen = length($colval);
+                     my $cell_line=0;
+                     while ($vallen >  $c) {
+                       $tabrow[$cell_line++][$colnum] = substr($colval,0,$c);
+                       $vallen -= $c;
+                       $colval = substr($colval,$c,$vallen);
+                     }
+                     $tabrow[$cell_line][$colnum] = substr($colval,0,$vallen);
+                     if ($vallen < $c) {
+                        $tabrow[$cell_line][$colnum] .= " " x ($c-$vallen);
+                     }
+                     $last_cell_line = max($cell_line,$last_cell_line);  
+                 }   
+                 $colnum++; 
+               }
+
+               my @rowlines;
+               for (my $i=0;$i<=$last_cell_line;$i++) {
+                 for (my $j=0;$j<=$numcols-1;$j++) {
+                   $rowlines[$i] .= "|";
+           if ($tabrow[$i][$j]) { $rowlines[$i] .= $tabrow[$i][$j]; }
+                   else { $rowlines[$i] .= " " x $colwidths[$j]; }
+                 }
+                 $rowlines[$i] .= "|\n";
+               }
+               push (@outlines,@rowlines);
+            }
+            push (@outlines,$separator);
+
+            # reset to process next table
+            @tablines = ();
+            $xcat_table=0; $numcols=1;@colwidths=(0);next;
+         }
+         if ($line =~ /--\>/) {$in_comment=0;next;}
+         next;
+      }
+      if ($xcat_table) { push (@tablines,$line); next; }
+
+      push (@outlines,$line);
+      next;
+  }
+
+  open(MD2FILE, ">$outfile") or die "Could not open >$outfile";
+  print MD2FILE @outlines;
+  close MD2FILE;
+
+  return;
+
+
+
+
+
+
+}
