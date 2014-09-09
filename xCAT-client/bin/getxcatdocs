@@ -9,7 +9,7 @@
 
 # Note: do not use the --upload option, unless your machine has authority to write to http://xcat.sourceforge.net/doc/ .
 #       You also need to set $UPLOADUSER to your sourceforge user:
-my $UPLOADUSER = 'mellor';
+my $UPLOADUSER = 'bp-sawyers';
 
 use strict;
 use Getopt::Long;
@@ -50,7 +50,7 @@ sub verbose { if ($VERBOSE) { print shift, "\n"; } }
 my $usage = sub {
     my $exitcode = shift @_;
     print "Usage: getxcatdocs [-?|-h|--help] \n";
-    print "Usage: getxcatdocs [-v|--verbose] [-u|--upload] [--uploadonly] [-i|--ignoreerrors] [<destination-dir>]\n";
+    print "Usage: getxcatdocs [-v|--verbose] [-u|--upload] [--uploadonly] [-U|--uploaduser sourceforge_id] [-i|--ignoreerrors] [<destination-dir>]\n";
     print "Usage: getxcatdocs [-v|--verbose] [-c|--continue] [-d|--doc single_doc] [-i|--ignoreerrors] [<destination-dir>]\n";
     exit $exitcode;
 };
@@ -67,6 +67,7 @@ my $usage = sub {
          'v|verbose'   => \$VERBOSE, 
          'u|upload'    => \$UPLOAD, 
          'uploadonly'  => \$UPLOADONLY, 
+         'uploaduser'  => \$UPLOADUSER, 
          'c|continue'    => \$CONTINUE,
          'i|ignoreerrors'    => \$IGNOREERRORS, 
          'd|doc=s'     => \$SINGLE_DOC ))
