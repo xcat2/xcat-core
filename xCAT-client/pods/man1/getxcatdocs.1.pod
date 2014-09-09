@@ -6,7 +6,7 @@ B<getxcatdocs> - downloads the xCAT documentation and converts to HTML and PDF
 
 B<getxcatdocs> [B<-?> | B<-h> | B<--help>]
 B<getxcatdocs> [B<-v> | B<--verbose>] [I<destination-dir>]
-B<getxcatdocs> [B<-v> | B<--verbose>] [B<-d> | B<--doc> I<single_doc>] [I<destination-dir>]
+B<getxcatdocs> [B<-v> | B<--verbose>] [B<-c> | B<--continue>] [B<-d> | B<--doc> I<single_doc>] [I<destination-dir>]
 
 =head1 DESCRIPTION
 
@@ -36,13 +36,17 @@ This command does not run on AIX or Windows.
 
 =over 10
 
+=item B<-?|-h|--help>
+
+Display usage message.
+
 =item B<-v|--verbose>
 
 Run the command in verbose mode.
 
-=item B<-?|-h|--help>
+=item B<-c|--continue>
 
-Display usage message.
+If a previous run of this command failed (which often happens if you lose your network connection), continue processing using files already downloaded to your markdown directory.
 
 =item B<-d|--doc> I<single_doc>
 
