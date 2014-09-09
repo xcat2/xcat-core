@@ -1266,6 +1266,9 @@ sub getrvidparms_with_buildid {
     my $rsp = shift;
     my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
+    if ($build_id[1]==0x54 and $build_id[2]==0x43 and $build_id[3]==0x4f and $build_id[4]==0x4f) { ##Lenovo IMM2
+       return getrvidparms_imm2($rsp,$sessdata);
+    }
     if ($build_id[1]==0x31 and $build_id[2]==0x41 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
        return getrvidparms_imm2($rsp,$sessdata);
     }
