@@ -58,6 +58,7 @@ MTM=unknown
 SERIAL=unknown
 ARCH=unknown
 ARCH=`uname -m` #32-bit only is old news
+PLATFORM=unknown
 if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 	PRODNAME=`cat /sys/devices/virtual/dmi/id/product_name`
 	IAMAVM=0
@@ -82,6 +83,7 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 	#MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
 	MTM=`cat /proc/device-tree/model | sed -e 's/\^.*,//'`
         CPUCOUNT=`cat /proc/cpuinfo |grep -e "^cpu\s*:"|wc -l`
+        PLATFORM=`cat /proc/cpuinfo | grep -e "^platform\s*:" | awk '{print \$3}'`
         grep -e "^cpu\s*:" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
 	    echo $line > /tmp/cpumod
         done
@@ -126,6 +128,9 @@ if [ "$MTM" != "unknown" ]; then
 fi
 if [ "$SERIAL" != "unknown" ]; then
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
+fi
+if [ "$PLATFORM" != "unknown" ]; then
+        echo "<platform>$PLATFORM</platform>" >> /tmp/discopacket
 fi
 #so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
 #so for each onboard device, we record it.  If it is also the first function, we'll seek out other function numbers and append
