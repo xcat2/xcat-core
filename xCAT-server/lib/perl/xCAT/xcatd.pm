@@ -29,7 +29,7 @@ This program module file, is a set of utilities used by xCAT daemon.
   Here is where we check if  $peername is allowed to do $request in policy tbl.
    $peername, if set signifies client has a cert that the xCAT CA accepted.
    Logs to syslog and auditlog table all user commands, see site.auditskipcmds
-   attribute. 
+   attribute and auditnosyslog attribute. 
     
     Arguments:
         
@@ -205,9 +205,15 @@ sub validate {
       if($peername) { $logst .= " for " . $request->{username}->[0]};
       if ($peerhost) { $logst .= " from " . $peerhost };
 
-      # read site.auditskipcmds attribute,
+      # read site.auditskipcmds and auditnosyslog attributes,
       # if set skip commands else audit all cmds.
-      my @skipcmds=($::XCATSITEVALS{auditskipcmds}); #xCAT::Utils->get_site_attribute('auditskipcmds');
+      # is auditnosyslog, then only write to auditlog table and not to syslog
+      my @skipcmds=($::XCATSITEVALS{auditskipcmds}); 
+      my $auditnosyslog=($::XCATSITEVALS{auditnosyslog});
+      my $skipsyslog = 0;  # default is to write all commands to auditlog and syslog
+      if (defined($auditnosyslog)) { 
+        $skipsyslog = $auditnosyslog; # take setting from site table,  1 means no syslog
+      }
       # if not "ALL" and not a command from site.auditskipcmds 
       # and not getcredentials and not getcredentials ,
       # put in syslog and  auditlog
@@ -232,9 +238,12 @@ sub validate {
       @$deferredmsgargs=(); #should be redundant, but just in case
       if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials") && ($skip == 0)) {
       
-        # put in audit Table and syslog
+        # put in audit Table and syslog unless site.noauditsyslog=1
         my $rsp = {};
-        $rsp->{syslogdata}->[0] = $logst;
+        
+        if ($skipsyslog == 0){  # write to syslog and auditlog
+          $rsp->{syslogdata}->[0] = $logst;  # put in syslog data
+        }
         if ($peername) {
            $rsp->{userid} ->[0] = $request->{username}->[0];
         }
@@ -256,7 +265,11 @@ sub validate {
         }
         $rsp->{args} -> [0] =$arglist; 
         $rsp->{status} -> [0] = $status;
-        @$deferredmsgargs = ("SA",$rsp);
+        if ($skipsyslog == 0){  # write to syslog and auditlog
+          @$deferredmsgargs = ("SA",$rsp);
+        } else{  # only auditlog
+          @$deferredmsgargs = ("A",$rsp);
+        }
       } else { # getpostscript or getcredentials, just syslog
           unless ($::XCATSITEVALS{skipvalidatelog}) { @$deferredmsgargs=("S",$logst); }
       }
