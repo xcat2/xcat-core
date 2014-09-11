@@ -2138,6 +2138,33 @@ sub parse_args
 }
 
 
+sub findme {
+    my $request = shift;
+    my $callback = shift;
+    my $subreq = shift;
+    my $vpdtab = xCAT::Table->new('vpd');
+    if (!defined $request->{'mtm'} or !defined $request->{'serial'}) {
+        xCAT::MsgUtils->message("S", "Discovery Error: 'mtm' or 'serial' not found.");
+        return;
+    }
+    unless ($vpdtab)  {
+        xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: vpd.");
+        return;
+    }
+    my @attr_array = ();
+    push @attr_array, "mtm==$request->{mtm}->[0]";
+    push @attr_array, "serial==$request->{serial}->[0]";
+
+    my @nodes = $vpdtab->getAllAttribsWhere(\@attr_array, 'node');
+    foreach (@nodes) {
+        my $req = {%$request};
+        $req->{command} = ['discovered'];
+        $req->{noderange} = [$_->{node}];
+        $req->{discoverymethod} = ['mtms'];
+        $subreq->($req);
+        %{$req} = ();
+    }
+}
 ##########################################################################
 # Process request from xCat daemon
 ##########################################################################
@@ -2153,6 +2180,17 @@ sub process_request {
     ####################################
     $package =~ s/xCAT_plugin:://;
 
+    ####################################
+    # Deal with findme request
+    ####################################
+    if ($req->{command}->[0] eq 'findme') {
+        # The arch of the node shall be check first to makesure it is a power machine
+        if (!defined $req->{'arch'} or $req->{'arch'}->[0] ne 'ppc64') {
+            return;
+        }
+        &findme($req, $callback, $subreq);
+        return;
+    }
     ####################################
     # Build hash to pass around 
     ####################################

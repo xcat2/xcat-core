@@ -206,6 +206,8 @@ sub process_request {
         }
         if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
             $nrtab->setNodeAttribs($node,{netboot=>'xnba'});
+        } elsif ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
+            $nrtab->setNodeAttribs($node,{netboot=>'petitboot'});
         } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot  !~ /yaboot/) {
             $nrtab->setNodeAttribs($node,{netboot=>'yaboot'});
         }
