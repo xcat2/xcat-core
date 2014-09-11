@@ -297,7 +297,9 @@ sub message
     {    # if SA ( syslog and auditlog) or A ( only auditlog)then need to pull first entry from $rsp
          # for syslog, to preserve old interface
         $newrsp = $rsp;
+       if ($sev eq 'SA'){  # syslog and auditlog
         $rsp    = $newrsp->{syslogdata}->[0];
+       }
     }
     my $stdouterrf = \*STDOUT;
     my $stdouterrd = '';
