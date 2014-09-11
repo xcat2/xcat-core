@@ -138,8 +138,9 @@ This program module file, supports the xcat messaging and logging
                 N - Node informational  goes to STDOUT
                 S - Message will be logged to syslog ( severe error)
                      Note S can be combined with other flags for example
-					 SE logs message to syslog and is sent to STDERR.
-					 SA logs message to syslog and to the auditlog DB table 
+		            SE logs message to syslog and is sent to STDERR.
+			        SA logs message to syslog and to the auditlog DB table. (only xcatd)
+		        A logs message auditlog DB table only. (only for xcatd) 
                 V - verbose.  This flag is not valid, the calling routine
 				should check for verbose mode before calling the message
 
@@ -175,7 +176,7 @@ This program module file, supports the xcat messaging and logging
         # Message to Syslog 
         xCAT::MsgUtils->message('S', "Host $host not responding\n");
 		
-        # Message to Syslog and auditlog table 
+        # Message to Syslog and auditlog table (only used by xcatd) 
 		# see tabdump -d auditlog
         my $rsp = {};
 		$rsp->{syslogdata}->[0] = "$host not responding\n"; # for syslog
@@ -189,6 +190,18 @@ This program module file, supports the xcat messaging and logging
 		$rsp->{status} -> [0] = $status; 
         xCAT::MsgUtils->message('SA', $rsp);
 		
+        # Message to only  auditlog table (only used by xcatd) 
+		# see tabdump -d auditlog
+        my $rsp = {};
+		$rsp->{userid} ->[0] = $user; 
+		$rsp->{clientname} -> [0] = $client; 
+		$rsp->{clienttype} -> [0] = $clienttype; 
+		$rsp->{command} -> [0] = $command; 
+		$rsp->{noderange} -> [0] = $noderange; 
+		$rsp->{args} -> [0] = $arguments; 
+		$rsp->{status} -> [0] = $status; 
+        xCAT::MsgUtils->message('A', $rsp);
+		
         # Message to Log and Syslog 
         xCAT::MsgUtils->message('LS', "Host $host not responding\n");
 		
@@ -197,44 +210,44 @@ This program module file, supports the xcat messaging and logging
 
     Use with callback
         # Message to callback
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{data}->[0] = "Job did not run. \n";
 	    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{error}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
-      my $rsp = {};
-     $rsp->{node}->[0]->{name}->[0] ="mynode";
-     $rsp->{node}->[0]->{data}->[0] ="mydata";
-     xCAT::MsgUtils->message("N", $rsp, $callback);
+        my $rsp = {};
+        $rsp->{node}->[0]->{name}->[0] ="mynode";
+        $rsp->{node}->[0]->{data}->[0] ="mydata";
+        xCAT::MsgUtils->message("N", $rsp, $callback);
 
-      my $rsp = {};
+         my $rsp = {};
 		$rsp->{info}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{sinfo}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("IS", $rsp, $::CALLBACK);
 
 
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{warning}->[0] = "No hosts in node list\n";
 	    xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
 
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{error}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("S", $rsp, $::CALLBACK);
 
 
         # Message to Syslog and callback
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{error}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("SE", $rsp, $::CALLBACK);
 
         # Message to Syslog and callback
-      my $rsp = {};
+        my $rsp = {};
 		$rsp->{info}->[0] = "Host not responding\n";
 	    xCAT::MsgUtils->message("SI", $rsp, $::CALLBACK);
 
@@ -274,15 +287,15 @@ sub message
     my $call_back = shift;    # optional
     my $exitcode  = shift;    # optional
 
-    # should be I,IS, D, E, S, SA ,LS, W , L,N
+    # should be I,IS, D, E, S, SA,A ,LS, W , L,N
     #  or S(I, D, E, S, W, L,N)
     #
-    # if new SA option need to split syslog messages from auditlog entry
+    # if  SA option need to split syslog messages from auditlog entry
     #
     my $newrsp;
-    if ($sev eq 'SA')
-    {    # if SA then need to pull first entry from $rsp
-            # for syslog, to preserve old interface
+    if (($sev eq 'SA') || ($sev eq 'A'))
+    {    # if SA ( syslog and auditlog) or A ( only auditlog)then need to pull first entry from $rsp
+         # for syslog, to preserve old interface
         $newrsp = $rsp;
         $rsp    = $newrsp->{syslogdata}->[0];
     }
@@ -449,11 +462,10 @@ sub message
         }
     }
 
-    # is syslog requested
+    # is syslog option requested 
 
     if ($sev =~ /S/)
     {
-
         # If they want this msg to also go to syslog, do that now
         eval {
             openlog("xCAT", "nofatal,pid", "local4");
@@ -474,7 +486,7 @@ sub message
 
     # if write to auditlog table requested, if not on service node
     if (xCAT::Utils->isMN()){
-     if ($sev eq 'SA')
+     if (($sev eq 'SA') || ($sev eq 'A'))
      {
         require xCAT::Table;
         my $auditlogentry;

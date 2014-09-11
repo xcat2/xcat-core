@@ -924,8 +924,10 @@ site => {
    " -----------------\n".
    "DATABASE ATTRIBUTES\n".
    " -----------------\n".
+   " auditnosyslog: If set to 1, then commands will only be written to the auditlog table".
+   "                Default is to write to both the auditlog table and syslog.\n".
    " auditskipcmds: List of commands and/or client types that will not be\n".
-   "                written to the auditlog table.\n".
+   "                written to the auditlog table and syslog. See auditnosyslog.\n".
    "                'ALL' means all cmds will be skipped. If attribute is null, all\n".
    "                commands will be written.\n". 
    "                clienttype:web would skip all commands from the web client\n". 
