@@ -650,6 +650,8 @@ sub git_update {
     my $lastcommit;
     my $commitlog1;
     my $lastcommitfile;
+    my $codedir;
+    $codedir="/regression/code/xcat-core";
 
     my $gitup;
     $gitup="/tmp/gitup";
@@ -662,6 +664,8 @@ sub git_update {
     #    exit;
     #}
 
+    chdir $codedir;
+ 
     $res = system("git checkout $branch");
     if ($res != 0){
         send_msg(0, "git checkout failed");
