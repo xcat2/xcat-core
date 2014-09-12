@@ -99,8 +99,10 @@ if [ ! -z "$DUMP" ]; then
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
     MOUNTPATH=""
-    if (pmatch $OSVER "*6\.*" ); then
+    if ((pmatch $OSVER "*6\.*")); then
 	MOUNTPATH="/tmp"
+    elif (pmatch $OSVER "*7\.*"); then
+        MOUNTPATH="/mnt"
     else
 	MOUNTPATH="/var/tmp"
     fi 
@@ -214,7 +216,8 @@ EOF
             fi
 	else
             if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
-               /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+               /bin/mount -o vers=3 $KDIP:$KDPATH $MOUNTPATH
+               #/bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
                [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
                echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf 
                echo "default shell" >> /etc/kdump.conf
