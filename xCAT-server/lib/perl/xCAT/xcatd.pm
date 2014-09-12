@@ -271,7 +271,14 @@ sub validate {
           @$deferredmsgargs = ("A",$rsp);
         }
       } else { # getpostscript or getcredentials, just syslog
-          unless ($::XCATSITEVALS{skipvalidatelog}) { @$deferredmsgargs=("S",$logst); }
+         if (($request->{command}->[0] eq "getpostscript")
+            || ($request->{command}->[0] eq "getcredentials")) {
+            unless ($::XCATSITEVALS{skipvalidatelog}) { @$deferredmsgargs=("S",$logst); }
+         } else { #other skipped command syslog unless auditnosyslog
+           if ($skipsyslog == 0){  # write to syslog
+              @$deferredmsgargs=("S",$logst); 
+           }
+         }
       }
      } # end getbladecons,etc check
       return $rc;
