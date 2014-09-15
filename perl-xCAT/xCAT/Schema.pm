@@ -946,7 +946,7 @@ site => {
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations. The default is to update.\n\n".
    " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n\n".
-   " skipvalidatelog:  If set, then getcredential and getpostscript call will not be logged.\n\n".
+   " skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not be logged in syslog.\n\n".
    " -------------\n".
    "DHCP ATTRIBUTES\n".
    " -------------\n".
