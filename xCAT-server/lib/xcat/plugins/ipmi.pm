@@ -1167,6 +1167,9 @@ sub getrvidparms_with_buildid {
     my $rsp = shift;
     my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
+    if ($build_id[1]==0x54 and $build_id[2]==0x43 and $build_id[3]==0x4f and $build_id[4]==0x4f) { ##Lenovo IMM2
+       return getrvidparms_imm2($rsp,$sessdata);
+    }
     if ($build_id[1]==0x31 and $build_id[2]==0x41 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
        return getrvidparms_imm2($rsp,$sessdata);
     }
@@ -1937,7 +1940,7 @@ sub got_bmc_fw_info {
         my @returnd = (@{$rsp->{data}});
 			my @a = ($fw_rev2);
             my $prefix = pack("C*",@returnd[0..3]);
-            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i) { #we have an imm
+            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i or $prefix =~ /tcoo/i) { #we have an imm
                 $isanimm=1;
             }
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));
