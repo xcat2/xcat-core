@@ -24,7 +24,7 @@ lib/xcat/plugins/* opt/xcat/lib/perl/xCAT_plugin/
 lib/xcat/schema/* opt/xcat/lib/perl/xCAT_schema/
 lib/xcat/monitoring/* opt/xcat/lib/perl/xCAT_monitoring/
 lib/xcat/dsh/Context/* opt/xcat/xdsh/Context
-lib/xcat/Confluent/* lib/perl/Confluent/
+lib/xcat/Confluent/* opt/xcat/lib/perl/Confluent/
 
 lib/xcat/shfunctions opt/xcat/lib
 etc/init.d/xcatd etc/init.d
