@@ -1149,10 +1149,13 @@ Usage:
         
         # Add reserve nics
         foreach my $nicname (@reserveNics){
-            my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
-            if ($oldip) {
-                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
-            }
+            my $count = index($nicipsAttr{$node}{nicips}, $nicname);
+			if($count < 0) {
+                my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+                if ($oldip) {
+                    $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+                }
+			}
         }
     }
     
