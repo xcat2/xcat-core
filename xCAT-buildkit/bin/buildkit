@@ -1147,6 +1147,13 @@ sub edit_bldkitconf
     my $osarch=`uname -p`;
     my $kitcomponent_basename = $kitname."_compute";
 
+    if ($debianflag==1) {
+       if($osarch == "ppc64le"){
+       $osarch="ppc64el";
+       }
+       $kitcomponent_basename = $kitname."-compute";
+    }
+
     for (@lines) {
         s/<<<INSERT_kitbasename_HERE>>>/$kitname/;
         s/<<<INSERT_kitrepoid_HERE>>>/$kitrepoid/;
