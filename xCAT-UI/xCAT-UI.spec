@@ -101,15 +101,13 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webportal
 # Inspect whether PHP related RPM packages are installed
 %ifos linux
 	if [ -e "/etc/redhat-release" ]; then
-		rpm -q php >/dev/null
-		if [ $? != 0 ]; then
+		if [ ! -e "/etc/httpd/conf.d/php.conf" ]; then
 			echo ""
 			echo "Error! php has not been installed. Please run 'yum install php' before installing xCAT-UI.";
 			exit -1;
 		fi
 	else 	# SUSE
-		rpm -q apache2-mod_php5 php5 >/dev/null
-		if [ $? != 0 ]; then
+		if [ ! -e "/etc/apache2/conf.d/php5.conf" ]; then
 			echo ""
 			echo "Error! apache2-mod_php5 and php5 have not been installed. Please run 'zypper install apache2-mod_php5 php5' before installing xCAT-UI."
 			exit -1;
