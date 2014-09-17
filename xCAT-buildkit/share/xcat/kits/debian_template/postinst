@@ -21,7 +21,7 @@ set -e
 case "$1" in
     configure)
     <<<INSERT_kitcomponent_postinstall_script_HERE>>>
-    if [ -f /tmp/<<<INSERT_kitcomponent_upgrade_flag_HERE>>> ]
+    if [ -f /tmp/<<<INSERT_kitcomponent_upgrade_flag_HERE>>> ]; then
     <<<INSERT_kitcomponent_postupgrade_script_HERE>>>
     rm /tmp/<<<INSERT_kitcomponent_upgrade_flag_HERE>>>
     fi
