@@ -776,7 +776,7 @@ sub kit_buildrepo1
                 return 1;
             }
         }
-        if ( system("dpkg-scanpackages $repodir > $repodir/Packages") ) {
+         if ( system("cd $repo;dpkg-scanpackages . > Packages") ) {
             print "Error building the repository meta-data with the dpkg-scanpackages command \n";
             return 1;
         }
