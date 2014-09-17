@@ -160,6 +160,7 @@ my %globalhwtype = (
     cec   => $::NODETYPE_CEC,
     cmm   => $::NODETYPE_CMM,
     imm2   => $::NODETYPE_IMM2,
+    pbmc  => "pbmc",
 );
 my %globalnodetype = (
     fsp   => $::NODETYPE_PPC,
@@ -170,6 +171,7 @@ my %globalnodetype = (
     ivm   => $::NODETYPE_PPC,
     cmm   => $::NODETYPE_MP,
     lpar  =>"$::NODETYPE_PPC,$::NODETYPE_OSI",
+    pbmc  => $::NODETYPE_PPC,
 );
 my %globalmgt = (
     fsp   => "fsp",
@@ -182,6 +184,7 @@ my %globalmgt = (
     cmm   => "blade",
     imm2  => "blade",
     hmc   => "hmc",
+    pbmc  => "ipmi",
 );
 my %globalid = (
      fsp   => "cid",
@@ -249,7 +252,8 @@ sub parse_args {
         RSA   => HARDWARE_SERVICE.":".SERVICE_RSA.":",
         CMM   => HARDWARE_SERVICE.":".SERVICE_CMM,
         IMM2  => HARDWARE_SERVICE.":".SERVICE_IMM2,
-        MM    => HARDWARE_SERVICE.":".SERVICE_MM.":"
+        MM    => HARDWARE_SERVICE.":".SERVICE_MM.":",
+        PBMC  => HARDWARE_SERVICE.":".SERVICE_FSP
     );
     #############################################
     # Responds with usage statement
@@ -1116,6 +1120,16 @@ sub parse_responses {
             trace( $request, "Discover node $atthash{hostname}: type is $atthash{type},\
 			mtm is $atthash{mtm},sn is $atthash{serial},  ip is $atthash{ip},\
 			mac is $atthash{mac}, otherinterfaces is $atthash{otherinterfaces}" );
+        } elsif (($type eq SERVICE_FSP) && ($option_s eq "PBMC")) {
+            my %tmphash;
+            $atthash{type} = "pbmc";
+            $atthash{mtm} = ${$attributes->{'machinetype-model'}}[0];
+            $atthash{serial} = ${$attributes->{'serial-number'}}[0];
+            $atthash{ip} = ${$searchmacs{$rsp}}{peername};
+            $atthash{url} =  ${$searchmacs{$rsp}}{payload};
+            $atthash{hostname} =  'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
+            $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
+
         }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457|7954/ )) {
             # Skip this entry if "-s CEC" was specified - we do not list FSP entries for Flex when only CECs were requested
 	    next unless ($option_s ne "CEC");  
@@ -1179,7 +1193,7 @@ sub parse_responses {
 			        otherinterfaces is $tmphash1{otherinterfaces}" );
                 }
 	}
-        }else  {
+            }else  {
             #begin to define fsp and bpa
             my %tmphash;
             $tmphash{type} = ($type eq SERVICE_BPA) ? TYPE_BPA : TYPE_FSP;
@@ -1447,6 +1461,7 @@ sub xCATdB {
     my %hostshash;
     my %machash;
     my %mphash;
+    my %ipmihash;
     foreach my $nodeentry ( keys %$outhash ) {
         my $type       = ${$outhash->{$nodeentry}}{type};
         my $model      = ${$outhash->{$nodeentry}}{mtm};
@@ -1479,6 +1494,13 @@ sub xCATdB {
             $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
             $hostshash{$hostname} = {otherinterfaces=>$otherif} if ($type =~ /fsp|bpa/);
             $machash{$hostname} = {mac=>$mac} if ($type =~ /^fsp|bpa$/);           
+        } elsif ( $type =~ /^pbmc$/) {
+            $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
+            $ppchash{$hostname} = {nodetype=>$globalhwtype{$type}};
+            $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
+            $nodehmhash{$hostname} = {mgt=>$globalmgt{$type}};
+            $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
+            $ipmihash{$hostname} = {bmc=>$ip};
         } elsif ( $type =~ /^(rsa|mm)$/ ) {
             my @data = ($type, $model, $serial, $side, $ip, $frameid, $cageid, $parent, $mac);
             xCAT::PPCdb::add_systemX( $type, $hostname, \@data );
@@ -1512,7 +1534,7 @@ sub xCATdB {
     $dbhash{hosts} = \%hostshash, if (%hostshash);
     $dbhash{mac} = \%machash, if (%machash);
     $dbhash{mp} = \%mphash, if (%mphash);
-  
+    $dbhash{ipmi} = \%ipmihash, if (%ipmihash);
     
     for my $tab (keys %dbhash) {
         my $db = xCAT::Table->new($tab);
@@ -1553,6 +1575,8 @@ sub format_stanza {
         $result .= "$hostname:\n\tobjtype=node\n";
         if ($type =~ /^cmm$/){
             $result .= "\tmpa=${$outhash->{$name}}{hostname}\n";
+        } elsif ($type =~ /^pbmc$/) {
+            $result .= "\tbmc=${$outhash->{$name}}{ip}\n";
         }else{
             $result .= "\thcp=${$outhash->{$name}}{hostname}\n";
         }
@@ -1571,7 +1595,7 @@ sub format_stanza {
         if ($type =~ /^fsp|bpa|cec$/ and exists(${$outhash->{$name}}{parent})) {
             $result .= "\tparent=${$outhash->{$name}}{parent}\n";
         }
-        unless ($type =~ /^frame|cec$/){
+        unless ($type =~ /^frame|cec$/ or !exists(${$outhash->{$name}}{mac})){
             $result .= "\tmac=${$outhash->{$name}}{mac}\n";
         }
         if ($type =~ /^fsp|bpa$/){
