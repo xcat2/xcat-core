@@ -4,7 +4,7 @@
 # even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working
 # OS is on the node.  This script is primarily meant to be used in the softlayer environment.
 
-#todo: site attr for using static ip?
+#todo: work with site.managedaddressmode=static for sles
 
 use strict;
 use Getopt::Long;
@@ -19,12 +19,12 @@ my $NOAUTOINST;
 
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [--dryrun] [-w <waittime>] <noderange>\n\n";
+   	print "Usage: pushinitrd [-?|-h|--help] [-v|--verbose] [--dryrun] [-w <waittime>] [--noautoinst] <noderange>\n\n";
    	if (!$exitcode) {
    		print "Copy the initrd, kernel, params, and static IP info to nodes, so they can net install\n";
 		print "even across vlans (w/o setting up pxe/dhcp broadcast relay).  This assumes a working\n";
 		print "OS is on the node, that you've run nodeset for these nodes, and that all of the nodes\n";
-		print "are using the same osimage.\n";
+		print "in this noderange are using the same osimage.\n";
    	}
 	exit $exitcode;
 };
@@ -48,7 +48,7 @@ updateGrubOnNodes($noderange, \%bootparms);
 
 if ($DRYRUN) { exit(0); }
 
-if ($bootparms{osimageprovmethod} eq 'install' && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
+if ($bootparms{osimageprovmethod} eq 'install' && $bootparms{osimageosvers}=~ m/^sles/ && !$NOAUTOINST) { modifyAutoinstFiles($noderange, \%bootparms); }
 
 if ($bootparms{osimageprovmethod} eq 'sysclone') { copySyscloneFiles(); }
 
@@ -77,11 +77,20 @@ sub getBootParms {
 	$bootparms{kcmdline} =~ s|/install/autoinst/\S+|/install/autoinst/<nodename>|;
 
 	# from the nodes provmethod, get the osimage provmethod, so we know the type of install
-	@output = runcmd("lsdef -t osimage $bootparms{provmethod} -ci provmethod");
-	chomp($output[0]);
-	if ($output[0] =~ m/^Could not find/) { die "Error: provmethod $bootparms{provmethod} is set for the node, but there is no osimage definition by that name."; }
-	my ($junk, $provmethod) = split(/=/, $output[0]);
-	$bootparms{osimageprovmethod} = $provmethod;
+	@output = runcmd("lsdef -t osimage $bootparms{provmethod} -ci provmethod,osvers");
+	foreach my $line (@output) {
+		chomp($line);
+		if ($line =~ m/^Could not find/) { die "Error: provmethod $bootparms{provmethod} is set for the node, but there is no osimage definition by that name."; }
+		if ($line =~ m/ provmethod=/) {
+			my ($junk, $provmethod) = split(/=/, $line);
+			$bootparms{osimageprovmethod} = $provmethod;
+		}
+		if ($line =~ m/ osvers=/) {
+			my ($junk, $osvers) = split(/=/, $line);
+			$bootparms{osimageosvers} = $osvers;
+		}
+	}
+	#print "provmethod=$bootparms{osimageprovmethod}, osvers=$bootparms{osimageosvers}\n"; exit;
 
 	# get the mgmt node cluster-facing ip addr
 	@output = runcmd('lsdef -t site -ci master');

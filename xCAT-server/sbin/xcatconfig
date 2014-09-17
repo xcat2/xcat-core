@@ -1063,7 +1063,7 @@ sub is_redhat6sp4
 =head3    initDB 
 	
     Will initialize the DB if it does not already exist,  also updates with
-	new data needed or database changes during xCAT update install.
+	new data needed or database changes during xCAT  install.
 
 =cut
 
@@ -1210,6 +1210,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=n;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
 
         if ($::osname eq 'AIX')

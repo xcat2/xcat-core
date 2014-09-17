@@ -60,6 +60,7 @@ binary-arch:
 	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/samples/*
 	chmod 755 $(rootdir)/lib/perl/xCAT_monitoring/pcp
 	chmod 644 $(rootdir)/lib/perl/xCAT_monitoring/pcp/*
+	chmod 644 $(rootdir)/lib/perl/Confluent/*
 	chmod 644 $(rootdir)/lib/perl/xCAT_schema/*
 	chmod 755 $(rootdir)/lib/perl/xCAT_schema/samples
 	chmod 644 $(rootdir)/lib/perl/xCAT_schema/samples/*

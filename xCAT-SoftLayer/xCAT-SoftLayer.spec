@@ -48,7 +48,7 @@ xCAT-SoftLayer provides Utilities to make xCAT work in a SoftLayer environment. 
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
+#mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
@@ -59,8 +59,8 @@ cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 
-cp -d postscripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts/*
+#cp -d postscripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
+#chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts/*
 
 cp -d si-post-install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/post-install
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/post-install/*
@@ -84,9 +84,3 @@ rm -rf $RPM_BUILD_ROOT
 %post
 # We are shipping the postscripts in a sysclone dir and then copying them to /install/postscripts here,
 # because we want to allow base xcat to eventually ship them and not conflict on the file name/path
-# But base xcat now has a newer/better configbond written in bash, so if that is there do not overwrite it.
-head /install/postscripts/configbond | grep -q -E '^#! */bin/bash'
-if [[ $? != 0 ]]; then
-    # the new configbond from xcat 2.8.5 is not there, so copy ours
-	cp -f /%{prefix}/share/xcat/sysclone/postscripts/* /install/postscripts
-fi

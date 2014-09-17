@@ -88,4 +88,12 @@ opt/xcat/bin/xcatclient opt/xcat/bin/lshwconn
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/makeroutes
 opt/xcat/bin/xcatclientnnr opt/xcat/sbin/snmove
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/lsxcatd
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/lskit
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/addkit
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/rmkit
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/lskitcomp
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/addkitcomp
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/rmkitcomp
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/chkkitcomp
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/lskitdeployparam
 opt/xcat/bin/xcatclient opt/xcat/bin/postage

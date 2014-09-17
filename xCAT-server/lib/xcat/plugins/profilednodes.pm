@@ -1149,10 +1149,13 @@ Usage:
         
         # Add reserve nics
         foreach my $nicname (@reserveNics){
-            my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
-            if ($oldip) {
-                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
-            }
+            my $count = index($nicipsAttr{$node}{nicips}, $nicname);
+			if($count < 0) {
+                my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+                if ($oldip) {
+                    $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+                }
+			}
         }
     }
     
@@ -1299,26 +1302,50 @@ Usage:
     my $nodelist = $request->{node};
     my $hostname = $nodelist->[0];
 
-    # Validate MAC address
-    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
-    %allmacs = %$recordsref;
-    foreach (keys %allmacs){
-        my @hostentries = split(/\|/, $_);
-        foreach my $hostandmac ( @hostentries){
-            my ($macstr, $machostname) = split("!", $hostandmac);
-            $allmacs{$macstr} = 0;
+    if("__NOMAC__" eq $args_dict{"mac"}) {
+        # Validate if node is bind on a switch
+        my $switch_table = xCAT::Table->new("switch");
+        my @item = $switch_table->getAttribs({'node' => $hostname}, 'switch', 'port');
+        my $item_num = @item;
+        my $switch_valid = 0;
+        unless($item[0])
+        {
+            setrsp_errormsg("Failed to replace node <$hostname>.  Switch information cannot be retrieved. Ensure that the switch is configured correctly.");
+            return;
+        } else {
+            foreach my $switch_item (@item){
+                if($switch_item->{'switch'} && $switch_item->{'port'}){
+                    $switch_valid = 1;
+                }
+            }
         }
-    }
-    %allmacsupper = ();
-    foreach (keys %allmacs){
-        $allmacsupper{uc($_)} = 0;
-    }
-    if (exists $allmacsupper{uc($args_dict{"mac"})}){
-        setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
-        return;
-    } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})){
-        setrsp_errormsg("The specified MAC address $args_dict{'mac'} is invalid. You must use a valid MAC address.");
-        return;
+        unless ($switch_valid)
+        {
+            setrsp_errormsg("Failed to replace node <$hostname>. Switch information cannot be retrieved. Ensure that the switch is configured correctly.");
+            return;
+        }
+    } else {
+        #Validate MAC address
+        my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
+        %allmacs = %$recordsref;
+        foreach (keys %allmacs){
+            my @hostentries = split(/\|/, $_);
+            foreach my $hostandmac ( @hostentries){
+                my ($macstr, $machostname) = split("!", $hostandmac);
+                $allmacs{$macstr} = 0;
+            }
+        }
+        %allmacsupper = ();
+        foreach (keys %allmacs){
+            $allmacsupper{uc($_)} = 0;
+        }
+        if (exists $allmacsupper{uc($args_dict{"mac"})}){
+            setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
+            return;
+        } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})) {
+            setrsp_errormsg("The specified MAC address $args_dict{'mac'} is invalid. You must use a valid MAC address.");
+            return;
+        }
     }
 
     # re-create the chain record as updating mac may means for replacing a new brand hardware...
@@ -1338,9 +1365,19 @@ Usage:
     # Update database records.
     setrsp_progress("Updating database...");
     # MAC table
-    my $mactab = xCAT::Table->new('mac',-create=>1);
-    $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
-    $mactab->close();
+    if("__NOMAC__" eq $args_dict{"mac"})
+	{
+        my $mactab = xCAT::Table->new('mac',-create=>1);
+        my %keyhash;
+        $keyhash{'node'} = $hostname;
+        $mactab->delEntries(\%keyhash);
+        $mactab->commit();
+        $mactab->close();
+	} else {
+        my $mactab = xCAT::Table->new('mac',-create=>1);
+        $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
+        $mactab->close();
+	}
 
     # DB update: chain table.
     my $chaintab = xCAT::Table->new('chain', -create=>1);
@@ -1365,6 +1402,17 @@ Usage:
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call kit commands.");
+    }
+
+    if("__NOMAC__" eq $args_dict{"mac"})
+    {
+        setrsp_progress("Updating DHCP entries");
+        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>[$hostname], arg=>['-d']}, $request_command, 0, 2);
+        $retref = {};
+        $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
     }
 
     setrsp_progress("Re-creating nodes...");

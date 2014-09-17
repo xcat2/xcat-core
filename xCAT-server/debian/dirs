@@ -22,6 +22,7 @@ opt/xcat/share/xcat/ib/netboot/sles
 opt/xcat/share/xcat/ib/netboot/rh
 opt/xcat/lib
 opt/xcat/lib/perl
+opt/xcat/lib/perl/Confluent
 opt/xcat/lib/perl/xCAT
 opt/xcat/lib/perl/xCAT_plugin
 opt/xcat/lib/perl/xCAT_schema
