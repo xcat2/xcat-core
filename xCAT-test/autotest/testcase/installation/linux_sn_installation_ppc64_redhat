@@ -1,0 +1,63 @@
+start:Linux_sn_installation_ppc64_redhat
+os:Linux
+cmd:chdef -t node -p $$SN groups=lpar,all
+check:rc==0
+cmd:chdef -t group -o service arch=PPC64  os=$$SNOS nodetype=osi profile=service netboot=yaboot installnic=mac primarynic=mac setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1
+check:rc==0
+cmd:chdef -t group -p service postscripts=servicenode,odbcsetup
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 20
+cmd:getmacs -D $$SN
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:cat /var/lib/dhcpd/dhcpd.leases| grep $$SN
+check:output=~$$SN
+cmd:chdef -t site clustersite installloc="/install"
+check:rc==0
+cmd:mkdir -p /install/post/otherpkgs/$$SNOS/ppc64/xcat
+check:rc==0
+cmd:cp -r $$XCATCORE  /install/post/otherpkgs/$$SNOS/ppc64/xcat
+check:rc==0
+cmd:cp -r $$XCATDEP  /install/post/otherpkgs/$$SNOS/ppc64/xcat
+check:rc==0
+cmd:cd /install/post/otherpkgs/$$SNOS/ppc64/xcat/xcat-core && createrepo .
+check:rc==0
+cmd:cd /install/post/otherpkgs/$$SNOS/ppc64/xcat/xcat-dep/rh6/ppc64 && createrepo .
+check:rc==0
+cmd:cd /install/$$SNOS/ppc64/Server/repodata && createrepo -g *comps-rhel6-Server.xml.gz .
+check:rc==0
+cmd:nodeset service osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+cmd:rnetboot service
+check:rc==0
+cmd:sleep 1200
+cmd:ping $$SN -c 3
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$SN "lsdef"
+check:rc==0
+check:output=~$$SN: $$SN
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/install on /install
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/tftpboot on /tftpbootl
+end
+
