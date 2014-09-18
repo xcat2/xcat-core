@@ -1,6 +1,6 @@
 start:copycds_iso
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -11,7 +11,7 @@ end
 
 start:copycds_n
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds -n __GETNODEATTR($$CN,os)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -22,7 +22,7 @@ end
 
 start:copycds_a
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -33,7 +33,7 @@ end
 
 start:copycds_n_a
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds -n __GETNODEATTR($$CN,os)__ -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
@@ -44,14 +44,14 @@ end
 
 start:copycds_a_err
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds  -a 386 $$ISO
 check:output=~Error
 end
 
 start:copycds_n_err
 os:Linux
-cmd:umount /mnt/xcat
+#cmd:umount /mnt/xcat
 cmd:copycds  -n aix $$ISO
 check:rc!=0
 check:output=~Error
