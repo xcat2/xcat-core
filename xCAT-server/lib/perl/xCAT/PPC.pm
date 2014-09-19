@@ -2155,11 +2155,28 @@ sub findme {
     push @attr_array, "mtm==$request->{mtm}->[0]";
     push @attr_array, "serial==$request->{serial}->[0]";
 
-    my @nodes = $vpdtab->getAllAttribsWhere(\@attr_array, 'node');
+    my @tmp_nodes = $vpdtab->getAllAttribsWhere(\@attr_array, 'node');
+    my @nodes = ();
+    my %nodes_hash = ();
+    foreach (@tmp_nodes) {
+        $nodes_hash{$_->{node}} = '1';
+    }
+    @nodes = keys (%nodes_hash);
+    # remove the pbmc node defined by lsslp from the node groups
+    my $ppctab = xCAT::Table->new('ppc');
+    if ($ppctab) {
+        my $ppchash = $ppctab->getNodesAttribs(\@nodes, ['node', 'nodetype']);
+        foreach (@nodes) {
+            if (defined($ppchash->{$_}->[0]) && defined($ppchash->{$_}->[0]->{'nodetype'}) && $ppchash->{$_}->[0]->{'nodetype'} eq 'pbmc') {
+                delete $nodes_hash{$_};
+            }
+        }
+        @nodes = keys (%nodes_hash);
+    }
     foreach (@nodes) {
         my $req = {%$request};
         $req->{command} = ['discovered'];
-        $req->{noderange} = [$_->{node}];
+        $req->{noderange} = [$_];
         $req->{discoverymethod} = ['mtms'];
         $subreq->($req);
         %{$req} = ();
