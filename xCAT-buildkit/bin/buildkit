@@ -776,8 +776,8 @@ sub kit_buildrepo1
                 return 1;
             }
         }
-         if ( system("cd $repo;dpkg-scanpackages . > Packages") ) {
-            print "Error building the repository meta-data with the dpkg-scanpackages command \n";
+     if ( system("cd $repodir;dpkg-scanpackages . > Packages") ) {  
+             print "Error building the repository meta-data with the dpkg-scanpackages command \n";
             return 1;
         }
     }
@@ -1145,6 +1145,7 @@ sub edit_bldkitconf
     my ($osbasename,$osmore) = split(/\,/, $osinfo);
     my ($osmajorversion,$osminorversion) = split(/\./, $osmore);
     my $osarch=`uname -p`;
+    
     my $kitcomponent_basename = $kitname."_compute";
 
     if ($debianflag==1) {
@@ -3594,9 +3595,13 @@ sub NEW_kit_addpkgs
         if ($kp->{isexternalpkg} eq 'yes') {
            my $ext_filename = $kp->{filename};
            my $ext_reponames = $kp->{kitreponame};
-
-           my $files = xCAT::BuildKitUtils->find_latest_pkg(\@pkgdirlist, $ext_filename);
-
+           my $files;
+           if($debianflag){
+           $files = xCAT::BuildKitUtils->find_latest_pkg_deb(\@pkgdirlist, $ext_filename);
+           }
+           else { 
+           $files = xCAT::BuildKitUtils->find_latest_pkg(\@pkgdirlist, $ext_filename);
+           }
            if (!defined($files) ) {
              print  "Error: The product package file $ext_filename was not found in the package directory(s) @pkgdirlist.\n";
              # Cleanup
