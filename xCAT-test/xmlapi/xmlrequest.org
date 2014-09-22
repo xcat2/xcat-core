@@ -1,0 +1,6 @@
+<xcatrequest>
+<clienttype>cli</clienttype>
+<command>nodels</command>
+<cwd>/svn/xcat-core/2.6/perl-xCAT/xCAT</cwd>
+<noderange>service</noderange>
+</xcatrequest>

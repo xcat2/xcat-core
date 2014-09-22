@@ -1,0 +1,12 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getTablesAllRowAttribs</command>
+<table>
+<tablename>passwd</tablename>
+<attr>username</attr>
+</table>
+<table>
+<tablename>rack</tablename>
+<attr>rackname</attr>
+</table>
+</xcatrequest>

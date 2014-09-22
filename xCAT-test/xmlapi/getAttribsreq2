@@ -1,0 +1,11 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getAttribs</command>
+<table>networks</table>
+<keys>
+  <net>11.35.0.0</net>
+  <mask>255.255.0.0</mask>
+</keys>
+<attr>netname</attr>
+<attr>dhcpserver</attr>    
+</xcatrequest>

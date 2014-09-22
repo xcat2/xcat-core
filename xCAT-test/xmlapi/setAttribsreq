@@ -1,0 +1,12 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>setAttribs</command>
+<table>site</table>
+<keys>
+  <key>domain</key>  
+</keys>
+<attr>
+ <value>pok.com</value>  
+ <comments>This is a test</comments>  
+</attr>
+</xcatrequest>

@@ -1,0 +1,9 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getTablesNodesAttribs</command>
+<noderange>test</noderange>
+<table>
+<tablename>noderes</tablename>
+<attr>ALL</attr>
+</table>
+</xcatrequest>
