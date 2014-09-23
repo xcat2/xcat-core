@@ -776,6 +776,7 @@ sub kit_buildrepo1
                 return 1;
             }
         }
+      #  if ( system("dpkg-scanpackages $repodir > $repodir/Packages") ) {
      if ( system("cd $repodir;dpkg-scanpackages . > Packages") ) {  
              print "Error building the repository meta-data with the dpkg-scanpackages command \n";
             return 1;
@@ -1872,12 +1873,13 @@ sub validate_os
     my ($osbasename,$osmore) = split(/\,/, $osinfo);
     my ($osmajorversion,$osminorversion) = split(/\./, $osmore);
     my $osarch=`uname -p`;
+    chomp($osarch);
+
     if ($debianflag==1) {
        if($osarch == "ppc64le"){
        $osarch="ppc64el";
        }
     }
-    chomp($osarch);
     $osinfo =~ s/\,//;
     my $repo_osinfo = "$repo->{osbasename}$repo->{osmajorversion}";
     if (defined($repo->{osminorversion})){
@@ -2420,14 +2422,45 @@ sub build_kitcomp_debian{
         }
     }
 
+
     #run the dpkg-buildpackage command
     my $curdir = $::workdir;
     my $cmd = "rm -Rf $debbuilddir";
     system($cmd);
     mkpath($debbuilddir);
 
-    #Create debian directory for this kit component
-    if ( &gen_kitcomp_debdir($comp,\%repo) ) { return 1; }
+    $::VALID_PRER_COMPONENT = 0;
+
+    if ( !$::PREREQUISITE ) {
+        if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} || $comp->{preuninstall} ) {
+            
+            #Create debian directory for this kit component
+
+            if ( &gen_kitcomp_debdir_prep($comp,\%repo) ) { return 1; }
+            $::VALID_PRER_COMPONENT = 1;
+            # build prep deb
+            my $prep_compversion = $comp->{version} . "-" . $comp->{release};
+            my $prep_buildstring = "Prep Kit component build package.";
+            my $prep_debbuilddir = $::workdir."/debbuild/"."prep-".$comp->{kitcompname};
+            my $prep_debianbuildcmd = "cd $prep_debbuilddir;dch -v $prep_compversion -b -c debian/changelog $prep_buildstring;dpkg-buildpackage -uc -us";
+
+            if ( system($prep_debianbuildcmd) ) {
+                print "Error running \"dpkg-buildpackage -uc -us\" command for kit component prep-$comp->{kitcompname} meta package\n";
+                return 1;
+            }
+        }
+        #Create debian directory for this kit component
+
+        if ( &gen_kitcomp_debdir($comp,\%repo) ) { return 1; }
+
+    } else {
+        #Create debian directory for this kit component
+
+        if ( &gen_kitcomp_debdir($comp,\%repo) ) { return 1; }
+
+    }
+
+
 
     if (defined($comp->{non_native_pkgs}) ) {
         my $sourcedir = $::workdir."/source_packages";
@@ -2468,6 +2501,99 @@ sub build_kitcomp_debian{
     }
     return 0;
 }
+
+
+#-----------------------------------------------------------------------------
+
+=head3   gen_kitcomp_debdir_prep
+
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub gen_kitcomp_debdir_prep{
+    my $comp = shift;
+    my $repo = shift;
+    my $scriptdir = $::workdir."/scripts/";
+    my $combuilddir = $::workdir."/debbuild/"."prep-".$comp->{kitcompname};
+
+    #copy the debian dir template to the build path
+    mkpath("$combuilddir/debian");
+    my $cmd = "cp -Rf " . $::XCATSHARE . "/kits/debian_template/* $combuilddir/debian/";
+    system($cmd);
+
+    my $kitname = $::bldkit_config->{kit}{entries}[0]->{basename};
+    my $kitcompname = "prep-".$comp->{kitcompname};
+    my $upgradeflag = "pre-".$comp->{basename} . ".tmp";
+
+    my ($prescript,$postscript,$preupscript,$postupscript,$preunscript,$postunscript,$nonnativepkgs) = '';
+    if (defined($comp->{preinstall})) {
+        $prescript = &load_script("$scriptdir$comp->{preinstall}");
+    }
+    if (defined($comp->{preupgrade})) {
+        $preupscript = &load_script("$scriptdir$comp->{preupgrade}");
+    }
+    if (defined($comp->{preuninstall})) {
+        $preunscript = &load_script("$scriptdir$comp->{preuninstall}");
+    }
+
+    #replace all special sub string in all files under debian
+    unless (opendir(DH, "${combuilddir}/debian/")){
+        print "Can not open the xCAT Kit Component debian dir: ${combuilddir}/debian/";
+        return 1;
+    }
+
+    foreach (readdir(DH)){
+        my $file = "${combuilddir}/debian/$_";
+        if ( -d $file){
+            next;
+        }
+
+        unless ( open ( FH, "<", $file )){
+            print "Error attempting to open the xCAT Kit Component ${kitcompname}'s debian template file $file.\n";
+            close(DH);
+            return 1;
+        }
+
+        if ($::VERBOSE){
+            print "Reading the xCAT Kit Component ${kitcompname}'s debian template file $file. \n";
+        }
+        my @lines = <FH>;
+        close(FH);
+        my $prep_comp_name="prep-".$comp->{basename};
+        for(@lines) {
+            chomp;
+            s/<<<INSERT_kitcomponent_basename_HERE>>>/$prep_comp_name/;
+            s/<<<INSERT_kitcomponent_ospkgdeps_HERE>>>/$comp->{ospkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitpkgdeps_HERE>>>/$comp->{kitpkgdeps}/;
+            s/<<<INSERT_kitcomponent_kitcompdeps_HERE>>>/$comp->{kitcompdeps}/;
+            s/<<<INSERT_kitcomponent_desc_HERE>>>/$comp->{description}/;
+            s/<<<INSERT_kitcomponent_upgrade_flag_HERE>>>/$upgradeflag/;
+            s/<<<INSERT_kitcomponent_preinstall_script_HERE>>>/$prescript/;
+            s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
+            s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>/$preupscript/;
+            s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
+            s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
+
+        }
+        my $joined_lines = join("\n", @lines);
+        @lines = split(/\\n/,$joined_lines);
+
+        open (FH, ">", $file);
+        if ($::VERBOSE){
+            print "Created kitcomponent ${kitcompname}'s build file under debian dir $file";
+        }
+        print FH @lines;
+        close(FH);
+    }
+    closedir(DH);
+
+    return 0;
+}
+
+
 
 #-----------------------------------------------------------------------------
 
