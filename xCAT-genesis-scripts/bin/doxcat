@@ -146,10 +146,24 @@ if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 else
 	echo "Setting IP via DHCP..."
 # This section is for System P hardware discovery, which won't have a BOOTIF value set
+        tries=0
+        while [ $tries -lt 5 ]; do
+            if [ -z "$bootnic" ]; then
+                ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo`
+                for tmp1 in $ALLUP_NICS; do
+                    bootnic=$tmp1
+                    break
+                done
+            else
+                break
+            fi
+            sleep 2
+            tries=$(($tries+1))
+        done
         if [ -z "$bootnic" ]; then
-            ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo`
-            for tmp1 in $ALLUP_NICS; do
-                bootnic=$tmp1
+            ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
+            for tmp in $ALL_NICS; do
+                bootnic=$tmp
                 break
             done
         fi

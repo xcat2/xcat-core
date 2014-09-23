@@ -353,7 +353,7 @@ sub process_request {
         $callback->({error=> ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode=>["1"]});
         return;
     }
-    if (defined ($request->{pbmc_node})) {
+    if (defined ($request->{pbmc_node}) and defined($request->{pbmc_node}->[0]) ) {
         my $pbmc_node = $request->{pbmc_node}->[0];
         xCAT::Utils->cleanup_for_powerLE_hardware_discovery($node, $pbmc_node, $doreq);
     }
