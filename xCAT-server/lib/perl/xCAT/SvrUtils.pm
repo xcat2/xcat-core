@@ -713,6 +713,9 @@ sub  update_tables_with_templates
 			     osarch=>$arch,
 			     synclists=>$synclistfile,
 			     osdistroname=>$osdistroname);
+                if ($args{description}) {
+			$tb_cols{description} = $args{description};
+		}
 		$osimagetab->setAttribs(\%key_col, \%tb_cols);
                 
 		if ($osname =~ /^win/) {
