@@ -2175,76 +2175,25 @@ sub findme {
         }
         @nodes = keys (%nodes_hash);
     }
-    foreach (@nodes) {
+    my $nodenum = $#nodes;
+    if ($nodenum < 0) {
+        xCAT::MsgUtils->message("S", "Discovery Error: Could not find any node.");
+        return;
+    } elsif ($nodenum > 0) {
+        xCAT::MsgUtils->message("S", "Discovery Error: More than one node were found.");
+        return;
+    }
+    {
         my $req = {%$request};
         $req->{command} = ['discovered'];
-        $req->{noderange} = [$_];
+        $req->{noderange} = [$nodes[0]];
+        $req->{pbmc_node} = [$pbmc_node];
         $req->{discoverymethod} = ['mtms'];
         $subreq->($req);
         %{$req} = ();
     }
-    &cleanup_for_powerLE_hardware_discovery($nodes[-1], $pbmc_node, $subreq);
 }
 
-sub cleanup_for_powerLE_hardware_discovery {
-    my $host_node = shift;
-    my $pbmc_node = shift;
-    my $subreq = shift;
-    my $ipmitab = xCAT::Table->new("ipmi");
-    unless($ipmitab) {
-        xCAT::MsgUtils->message("S", "Discovery Error: can not open ipmi table.");
-        return;
-    }
-    my @nodes = ($host_node, $pbmc_node);
-    my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['node', 'bmc', 'username', 'password']);
-    if ($ipmihash) {
-        my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
-        my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
-
-        xCAT::MsgUtils->message("S", "Discover info: configure ip:$new_bmc_ip for pbmc_node:$pbmc_node.");
-        if($new_bmc_ip) {
-            xCAT::Utils->runxcmd(
-                {
-                command => ["rspconfig"],
-                node => ["$pbmc_node"],
-                arg     => [ "ip=$new_bmc_ip" ],
-                },
-                $subreq, 0,1);
-            if ($::RUNCMD_RC != 0) {
-                xCAT::MsgUtils->message("S", "Discovery Error: configure IP address failed for FSP.");
-                return;
-            }
-            xCAT::Utils->runxcmd(
-                {
-                command => ["chdef"],
-                node => ["$pbmc_node"],
-                arg     => [ "bmc=$new_bmc_ip" ],
-                },
-                $subreq, 0,1);
-        }
-        xCAT::MsgUtils->message("S", "Discovery info: configure password:$new_bmc_password for pbmc_node:$pbmc_node.");
-        if ($new_bmc_password) {
-            xCAT::Utils->runxcmd(
-                {
-                command => ["rspconfig"],
-                node => ["$pbmc_node"],
-                arg     => [ "password=$new_bmc_password" ],
-                },
-                $subreq, 0,1);
-            if ($::RUNCMD_RC != 0) {
-                xCAT::MsgUtils->message("S", "Discovery Error: configure password failed for FSP.");
-                return;
-            }
-        }
-        xCAT::MsgUtils->message("S", "Discovery info: remove pbmc_node:$pbmc_node.");
-        xCAT::Utils->runxcmd(
-           {
-           command => ["rmdef"],
-           node => ["$pbmc_node"],
-           },
-           $subreq, 0,1);
-    }
-}
 ##########################################################################
 # Process request from xCat daemon
 ##########################################################################

@@ -4232,4 +4232,68 @@ sub disableservice{
   xCAT::Utils->runcmd($cmd, -1);
   return $::RUNCMD_RC;
 }
+
+sub cleanup_for_powerLE_hardware_discovery {
+    my $host_node = shift;
+    if( $host_node =~ /xCAT::Utils/)
+    {
+        $host_node=shift;
+    }
+    my $pbmc_node = shift;
+    my $subreq = shift;
+    my $ipmitab = xCAT::Table->new("ipmi");
+    unless($ipmitab) {
+        xCAT::MsgUtils->message("S", "Discovery Error: can not open ipmi table.");
+        return;
+    }
+    my @nodes = ($host_node, $pbmc_node);
+    my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['node', 'bmc', 'username', 'password']);
+    if ($ipmihash) {
+        my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
+        my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
+
+        xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
+        `rspconfig $pbmc_node password=$new_bmc_password`;
+        #if ($new_bmc_password) {
+        #    xCAT::Utils->runxcmd(
+        #        {
+        #        command => ["rspconfig"],
+        #        node => ["$pbmc_node"],
+        #        arg     => [ "password=$new_bmc_password" ],
+        #        },
+        #        $subreq, 0,1);
+        #    if ($::RUNCMD_RC != 0) {
+        #        xCAT::MsgUtils->message("S", "Discovery Error: configure password failed for FSP.");
+        #        return;
+        #    }
+        #}
+
+        xCAT::MsgUtils->message("S", "Discover info: configure ip:$new_bmc_ip for pbmc_node:$pbmc_node.");
+        `rspconfig $pbmc_node ip=$new_bmc_ip`;
+        #if($new_bmc_ip) {
+        #    xCAT::Utils->runxcmd(
+        #        {
+        #        command => ["rspconfig"],
+        #        node => ["$pbmc_node"],
+        #        arg     => [ "ip=$new_bmc_ip" ],
+        #        },
+        #        $subreq, 0,1);
+        #    if ($::RUNCMD_RC != 0) {
+        #        xCAT::MsgUtils->message("S", "Discovery Error: configure IP address failed for FSP.");
+        #        return;
+        #    }
+        #}
+        xCAT::MsgUtils->message("S", "Discovery info: remove pbmc_node:$pbmc_node.");
+        `rmdef $pbmc_node`;
+        #xCAT::Utils->runxcmd(
+        #   {
+        #   command => ["rmdef"],
+        #   node => ["$pbmc_node"],
+        #   },
+        #   $subreq, 0,1);
+    }
+}
+
+
+
 1;
