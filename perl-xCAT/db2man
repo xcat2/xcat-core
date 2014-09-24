@@ -266,7 +266,7 @@ See http://www.perl.com/doc/manual/html/pod/perlre.html for information on perl 
 
 As of xCAT 2.8.1, you can use a modified version of the regular expression support described in the previous section. You do not need to enter the node information (1st part of the expression), it will be derived from the input nodename. You only need to supply the 2nd part of the expression to determine the value to give the attribute. For examples, see 
 
-https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Listing_and_Modifying_the_Database#Easy_Regular_expressions
+https://sourceforge.net/p/xcat/wiki/Listing_and_Modifying_the_Database/#easy-regular-expressions
 
 =head1 OBJECT DEFINITIONS
 
