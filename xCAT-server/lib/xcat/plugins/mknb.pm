@@ -269,7 +269,7 @@ sub process_request {
          print $cfgfile "  APPEND initrd=xcat/nbfs.$arch.gz quiet xcatd=".$hexnets->{$_}.":$xcatdport $consolecmdline\n";
          close($cfgfile);
       } elsif ($arch =~ /ppc/) {
-         open($cfgfile,">","$tftpdir/etc/".lc($_));
+         open($cfgfile,">", "$tftpdir/pxelinux.cfg/p/default");
          print $cfgfile "default xCAT\n";
          print $cfgfile "   label xCAT\n";
          print $cfgfile "   kernel http://".$hexnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
