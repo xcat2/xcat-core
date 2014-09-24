@@ -291,7 +291,7 @@ sub find_latest_pkg_deb
             if ($latestmatch) {
                 # then we need to figure out which is the newest
                 # if the $fdeb is newer than use it
-                if ( xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, ">", $founddeb{$r}{$latestmatch}{version}) ) {
+                if ( xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, "gt", $founddeb{$r}{$latestmatch}{version}) ) {
                     $latestmatch = $fdeb;
                 }
 
