@@ -135,6 +135,87 @@ sub get_latest_version
 }
 
 #--------------------------------------------------------------------------
+=head3    get_latest_version_deb
+
+          Find the latest version in a list of debs with the same basename
+
+        Arguments:
+                - the repo location
+                - a list of debs with the same basename
+        Returns:
+                - name of deb
+                - undef
+        Example:
+                  my $new_d = xCAT::BuildKitUtils->get_latest_version($repodir, \@rpmlist);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub get_latest_version_deb
+{
+    my ($class, $repodir, $debs) = @_;
+
+    my @deblist = @$debs;
+
+    my %localversions_hash = ();
+    my $file_name; 
+    my %founddeb;
+    my $latest;
+    my $i = 0;
+    foreach my $deb (@deblist)
+    {
+
+        # include path
+        my $fulldebpath = "$repodir/$deb*";
+        chomp $deb;
+        # get the basename, version, and release for this deb
+        print "dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'";
+        my $basenamedeb = `dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'`;
+        chomp $basenamedeb;
+
+        my $versiondeb = `dpkg -I $repodir/$deb |grep Version|awk '{print \$2}'`;
+        chomp $versiondeb;
+
+        $founddeb{$basenamedeb}{$deb}{version}=$versiondeb;
+
+        $i++;
+    }
+    if ($i == 0)
+    {
+        print "error\n";
+        return undef;
+    }
+
+
+     foreach my $r (keys %founddeb ) {
+        # if more than one with same basename then find the latest
+        my $latestmatch="";
+        foreach my $fdeb (keys %{$founddeb{$r}} ) {
+            # if we already found a match in some other dir
+            if ($latestmatch) {
+                # then we need to figure out which is the newest
+                # if the $fdeb is newer than use iti
+                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
+                    $latestmatch = $fdeb;
+                }
+
+            } else {
+                $latestmatch = $fdeb;
+            }
+        }
+        $latest=$latestmatch;
+        
+    }
+    if ($i == 0)
+    {
+        print "Error: Could not determine the latest version for the following list of debs: @deblist\n";
+        return undef;
+    } else {
+        return ($latest);
+    }
+}
+
+#--------------------------------------------------------------------------
 =head3    find_latest_pkg
 
           Find the latest rpm package give the rpm name and a list of 
@@ -235,6 +316,7 @@ sub find_latest_pkg
                 - the name of the deb
         Returns:
                 - \@founddeblist
+
                 - undef
         Example:
                   my $newrpm = xCAT::BuildKitUtils->find_latest_pkg_deb(\@pkgdirs, $debname);
@@ -275,7 +357,7 @@ sub find_latest_pkg_deb
             chomp $basename;
 
             my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'`;
-            print "$basename:$version";
+            chomp $version;
 
             $founddeb{$basename}{$r}{version}=$version;
             }
@@ -291,7 +373,7 @@ sub find_latest_pkg_deb
             if ($latestmatch) {
                 # then we need to figure out which is the newest
                 # if the $fdeb is newer than use it
-                if ( xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, "gt", $founddeb{$r}{$latestmatch}{version}) ) {
+                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
                     $latestmatch = $fdeb;
                 }
 
@@ -335,7 +417,9 @@ sub find_latest_pkg_deb
 sub testVersion_deb
 {
       my ($class, $version1, $operator, $version2) = @_;
-
+      if ($::VERBOSE) {
+           print "dpkg --compare-versions $version1 $operator $version2 \n";
+        }
       my $result =`dpkg --compare-versions $version1 $operator $version2`;
 
       return $result;
