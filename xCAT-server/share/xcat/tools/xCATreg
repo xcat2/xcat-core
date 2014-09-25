@@ -1501,9 +1501,13 @@ sub send_mail {
     my $mailprog = "/bin/mail";
     my $sendmail = "echo \"$content\"";
     send_msg(2, "begin to send  mail , the contents is $sendmail\n");
-    my $send = $sendmail." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
-    system($send);
-    send_msg(2, "finish sending mail, $send\n");
+    if ($confkeys{mailgroup}) {
+        my $send = "$sendmail"." | $mailprog -s \"$subject\" \"$confkeys{mailgroup}\" ";
+        system($send);
+        send_msg(2, "finish sending mail, $send\n");
+    } else {
+        send_msg(1, "can't send mail to nobody ");
+    }
     return 0;
 }
 
