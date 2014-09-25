@@ -1044,11 +1044,11 @@ sub  do_test1
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-
+    sleep 300;
     system("xdsh $MN /opt/xcat/bin/xcattest -b bat.bundle");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_ppc64");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_ppc64");
-    system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
+    #system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_diskless_installation_flat_ppc64");
+    #system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_statelite_installation_flat_ppc64");
+    #system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
     #if($dsklscnsninst){
     #     system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_cn_with_sn_diskless_installation_flat_x86_vm");
     #     system("xdsh $MN mv /opt/xcat/share/xcat/tools/autotest/result/* /autotest/result/");
@@ -1081,7 +1081,8 @@ sub  do_test1
     send_msg(2, "start  test");
     send_msg(2, "******************************");
     system("xdsh $MN perl /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_full_installation_flat_ppc64");
-  #  system("xdsh $MN /opt/xcat/bin/xcattest -b bat.bundle");
+    sleep 300;
+    system("xdsh $MN /opt/xcat/bin/xcattest -b bat.bundle");
   #  system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t Linux_sles_diskless_installation_ppc64_flat");
   #  system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sles_statelite_installation_flat_ppc64");
   # system("xdsh $MN /opt/xcat/bin/xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf -t Linux_sn_installation_flat_x86_vm");
