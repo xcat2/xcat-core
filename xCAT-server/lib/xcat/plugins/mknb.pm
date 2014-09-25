@@ -239,6 +239,14 @@ sub process_request {
 	 close($cfg);
 	}
 	
+      } elsif ($arch =~ /ppc/) {
+         open($cfgfile,">", "$tftpdir/pxelinux.cfg/p/$net");
+         print $cfgfile "default xCAT\n";
+         print $cfgfile "   label xCAT\n";
+         print $cfgfile "   kernel http://".$normnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
+         print $cfgfile "   initrd http://".$normnets->{$_}.":80/$initrd_file\n";
+         print $cfgfile '   append "quiet xcatd='.$normnets->{$_}.":$xcatdport $consolecmdline\"\n";
+         close($cfgfile);
       }
    }
    $dopxe=0;
@@ -269,7 +277,7 @@ sub process_request {
          print $cfgfile "  APPEND initrd=xcat/nbfs.$arch.gz quiet xcatd=".$hexnets->{$_}.":$xcatdport $consolecmdline\n";
          close($cfgfile);
       } elsif ($arch =~ /ppc/) {
-         open($cfgfile,">", "$tftpdir/pxelinux.cfg/p/default");
+         open($cfgfile,">","$tftpdir/etc/".lc($_));
          print $cfgfile "default xCAT\n";
          print $cfgfile "   label xCAT\n";
          print $cfgfile "   kernel http://".$hexnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
