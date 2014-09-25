@@ -32,7 +32,7 @@ sub handled_commands {
       rscan     => 'nodehm:mgt',
       getfspcon => 'nodehm:cons',
       getmulcon => 'fsp',
-
+      findme    => 'fsp',
   };
 }
 

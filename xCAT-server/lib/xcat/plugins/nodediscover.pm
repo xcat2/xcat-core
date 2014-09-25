@@ -206,6 +206,8 @@ sub process_request {
         }
         if ($request->{arch}->[0] =~ /x86/ and $currboot !~ /pxe/ and $currboot !~ /xnba/) {
             $nrtab->setNodeAttribs($node,{netboot=>'xnba'});
+        } elsif ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
+            $nrtab->setNodeAttribs($node,{netboot=>'petitboot'});
         } elsif ($request->{arch}->[0] =~ /ppc/ and $currboot  !~ /yaboot/) {
             $nrtab->setNodeAttribs($node,{netboot=>'yaboot'});
         }
@@ -350,6 +352,10 @@ sub process_request {
     unless ($clientip) {
         $callback->({error=> ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode=>["1"]});
         return;
+    }
+    if (defined ($request->{pbmc_node}) and defined($request->{pbmc_node}->[0]) ) {
+        my $pbmc_node = $request->{pbmc_node}->[0];
+        xCAT::Utils->cleanup_for_powerLE_hardware_discovery($node, $pbmc_node, $doreq);
     }
     
     my $restartstring = "restart";

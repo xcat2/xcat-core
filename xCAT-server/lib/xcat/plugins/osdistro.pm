@@ -95,7 +95,6 @@ sub getOSdistroref
 	{
 		return undef;
 	}
-        # verified this does work on DB2
 
 	my @clause=();
 	
@@ -158,7 +157,7 @@ sub rmosdistro
 
 
     if ($help) {
-     		 $callback->({info=>"rmosdistro [{-a|--all}] [-f|--force] [osdistroname] ...",errorcode=>[0]});
+     		 $callback->({info=>["rmosdistro [{-a|--all}] [-f|--force] [osdistroname] ..."],errorcode=>[0]});
      		 return;
     }
 
@@ -166,7 +165,7 @@ sub rmosdistro
     {
 	unless(scalar @ARGV)
 	{
-     		$callback->({info=>"please specify osdistroname to remove, or specify \"-a|--all\" to remove all osdistros ",errorcode=>[1]});
+     		$callback->({info=>["please specify osdistroname to remove, or specify \"-a|--all\" to remove all osdistros "],errorcode=>[1]});
      		return;
         }
         #if any osdistro has been specified,push it into array	
@@ -176,7 +175,7 @@ sub rmosdistro
     my $osdistrotab = xCAT::Table->new('osdistro',-create=>1);
     unless($osdistrotab)
     {
-       	$callback->({error=>"rmosdistro: failed to open table 'osdistro'!",errorcode=>[1]});
+       	$callback->({error=>["rmosdistro: failed to open table 'osdistro'!"],errorcode=>[1]});
        	return;
     }
 
@@ -203,7 +202,7 @@ sub rmosdistro
 		$osimagetab=xCAT::Table->new('osimage');
 		unless($osimagetab)
 		{
-              	   $callback->({error=>"rmosdistro: failed to open table 'osimage'!",errorcode=>[1]});
+              	   $callback->({error=>["rmosdistro: failed to open table 'osimage'!"],errorcode=>[1]});
 		   $osdistrotab->close();	
         	   return;			
 		}
@@ -218,7 +217,7 @@ sub rmosdistro
 			my $result=&getOSdistroref($osimagetab,$_);
 		        if($result)
 			{
-		            $callback->({error=>"rmosdistro: failed to remove $_, it is referenced by osimages:\n$result\nretry with -f option !",errorcode=>[1]});
+		            $callback->({error=>["rmosdistro: failed to remove $_, it is referenced by osimages:\n$result\nretry with -f option !"],errorcode=>[1]});
                             next;   
 			}	
 		}
@@ -228,7 +227,7 @@ sub rmosdistro
 		my $result=$osdistrotab->getAttribs(\%keyhash,'dirpaths','basename','majorversion','minorversion','arch');
 		unless($result)
 		{
-                         $callback->({error=>"rmosdistro: $keyhash{osdistroname}  not exist!",errorcode=>[1]});
+                         $callback->({error=>["rmosdistro: $keyhash{osdistroname}  not exist!"],errorcode=>[1]});
                          next;				
 		}
 			
@@ -240,7 +239,7 @@ sub rmosdistro
 			   system("rm -rf $result->{'dirpaths'}");
 			   if($? != 0)
 				{
-			           $callback->({error=>"rmosdistro: failed to remove $keyhash{osdistroname}  directory!",errorcode=>[1]});
+			           $callback->({error=>["rmosdistro: failed to remove $keyhash{osdistroname}  directory!"],errorcode=>[1]});
                                    next;
 				}
 		}
@@ -259,7 +258,7 @@ sub rmosdistro
 		#remove the osdistro entry			
                 $osdistrotab->delEntries(\%keyhash);
    		$osdistrotab->commit;
-        	$callback->({info=>"rmosdistro: remove $_ success",errorcode=>[0]});
+                $callback->({info=>["rmosdistro: remove $_ success"],errorcode=>[0]})
 				
 	}
 

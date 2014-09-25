@@ -924,8 +924,11 @@ site => {
    " -----------------\n".
    "DATABASE ATTRIBUTES\n".
    " -----------------\n".
+   " auditnosyslog: If set to 1, then commands will only be written to the auditlog table.\n".
+   "                This attribute set to 1 and auditskipcmds=ALL means no logging of commands.\n".
+   "                Default is to write to both the auditlog table and syslog.\n".
    " auditskipcmds: List of commands and/or client types that will not be\n".
-   "                written to the auditlog table.\n".
+   "                written to the auditlog table and syslog. See auditnosyslog.\n".
    "                'ALL' means all cmds will be skipped. If attribute is null, all\n".
    "                commands will be written.\n". 
    "                clienttype:web would skip all commands from the web client\n". 
@@ -943,6 +946,7 @@ site => {
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations. The default is to update.\n\n".
    " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n\n".
+   " skipvalidatelog:  If set to 1, then getcredentials and getpostscripts calls will not be logged in syslog.\n\n".
    " -------------\n".
    "DHCP ATTRIBUTES\n".
    " -------------\n".

@@ -99,8 +99,10 @@ if [ ! -z "$DUMP" ]; then
     # workaround for RHEL6
     # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
     MOUNTPATH=""
-    if (pmatch $OSVER "*6\.*" ); then
+    if ((pmatch $OSVER "*6\.*")); then
 	MOUNTPATH="/tmp"
+    elif (pmatch $OSVER "*7\.*"); then
+        MOUNTPATH="/mnt"
     else
 	MOUNTPATH="/var/tmp"
     fi 
@@ -213,7 +215,17 @@ EOF
                 mv ${oldremount}.bak $oldremount
             fi
 	else
-	    if (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
+            if (pmatch $OSVER "rhel7*") || (pmatch $OSVER "rhels7*");then
+               /bin/mount -o vers=3 $KDIP:$KDPATH $MOUNTPATH
+               #/bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
+               [ -d $MOUNTPATH/var/crash ] || mkdir -p $MOUNTPATH/var/crash
+               echo "nfs $KDIP:$KDPATH" > /etc/kdump.conf 
+               echo "default shell" >> /etc/kdump.conf
+               sed -i 's/KDUMP_COMMANDLINE_APPEND="/KDUMP_COMMANDLINE_APPEND="nonodestatus /' /etc/sysconfig/kdump
+               [ -f /etc/dracut.conf ] && mv /etc/dracut.conf  /tmp/dracut.conf
+               restartservice kdump
+               [ -f /tmp/dracut.conf ] && mv /tmp/dracut.conf /etc/dracut.conf 
+	    elif (pmatch $OSVER "fedora*") || (pmatch $OSVER "rhel6*") || (pmatch $OSVER "rhels6*") || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ];then
                 /bin/mount -o nolock $KDIP:$KDPATH $MOUNTPATH
 		echo "net $KDIP:$KDPATH" > /etc/kdump.conf
                 echo "link_delay 180" >> /etc/kdump.conf

@@ -58,6 +58,7 @@ MTM=unknown
 SERIAL=unknown
 ARCH=unknown
 ARCH=`uname -m` #32-bit only is old news
+PLATFORM=unknown
 if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 	PRODNAME=`cat /sys/devices/virtual/dmi/id/product_name`
 	IAMAVM=0
@@ -71,10 +72,27 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
 		SERIAL=`cat /sys/devices/virtual/dmi/id/product_serial`
 	fi
+        CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
+        grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
+	    echo $line > /tmp/cpumod
+        done
+        CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
+        UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
+
 elif [ -r /proc/device-tree/model ]; then #POWER
-	MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
+	#MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
+	MTM=`cat /proc/device-tree/model | sed -e 's/\^.*,//'`
+        CPUCOUNT=`cat /proc/cpuinfo |grep -e "^cpu\s*:"|wc -l`
+        PLATFORM=`cat /proc/cpuinfo | grep -e "^platform\s*:" | awk '{print \$3}'`
+        grep -e "^cpu\s*:" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
+	    echo $line > /tmp/cpumod
+        done
+        CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
+        SERIAL=`cat /proc/device-tree/system-id`
+        UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /proc/sys/kernel/random/uuid`
+
 fi
-CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
+#CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
 
 # The MEMORY will look like this: 32868920
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
@@ -86,11 +104,11 @@ MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{printf "%.0fMB\n", $2/1024}'`
 # The DISKSIZE will look like this: sdb:250GB,sda:250GB
 DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n", $4, $3*0.000001024}' |sed 'N;s/\n/,/'`
 
-UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
-grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
-	echo $line > /tmp/cpumod
-done
-CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
+#UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /sys/devices/virtual/dmi/id/product_uuid`
+#grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
+#	echo $line > /tmp/cpumod
+#done
+#CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
@@ -101,12 +119,18 @@ echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
 echo "<cputype>$CPUTYPE</cputype>" >> /tmp/discopacket
 echo "<memory>$MEMORY</memory>" >> /tmp/discopacket
 echo "<disksize>$DISKSIZE</disksize>" >> /tmp/discopacket
-echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+if [ "$UUID" != "unknown" ]; then
+        echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
+fi
+
 if [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
 if [ "$SERIAL" != "unknown" ]; then
 	echo "<serial>$SERIAL</serial>" >> /tmp/discopacket
+fi
+if [ "$PLATFORM" != "unknown" ]; then
+        echo "<platform>$PLATFORM</platform>" >> /tmp/discopacket
 fi
 #so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
 #so for each onboard device, we record it.  If it is also the first function, we'll seek out other function numbers and append

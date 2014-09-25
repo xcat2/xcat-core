@@ -1,6 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc
+dracut_install wget openssl tar mstflint ipmitool cpio gzip lsmod ethtool modprobe touch echo cut wc bash
 dracut_install netstat # broadcom update requires
 dracut_install uniq # mellanox update requires
 dracut_install grep ip hostname /usr/bin/awk egrep grep dirname expr
@@ -617,7 +617,7 @@ dracut_install /lib64/rsyslog/lmnet.so
 dracut_install /lib64/rsyslog/lmstrmsrv.so
 dracut_install /lib64/rsyslog/imuxsock.so
 dracut_install /usr/lib64/libnfsidmap/nsswitch.so
-dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec lvm mdadm mke2fs pivot_root sshd swapon tune2fs mkreiserfs reiserfstune  pvcreate lvremove vgremove vgcreate  lvcreate  lvscan  lvchange vgchange pvdisplay lvdisplay vgdisplay blkid dmsetup # for sysclone
+dracut_install killall logger nc nslookup bc chown chroot dd expr kill mkdosfs parted rsync shutdown sort ssh-keygen tr blockdev findfs insmod kexec lvm mdadm mke2fs pivot_root sshd swapon tune2fs mkreiserfs reiserfstune  pvcreate lvremove vgremove vgcreate  lvcreate  lvscan  lvchange vgchange pvdisplay lvdisplay vgdisplay blkid dmsetup sfdisk # for sysclone
 dracut_install /lib/udev/rules.d/10-dm.rules
 dracut_install /lib/udev/rules.d/11-dm-lvm.rules
 dracut_install /lib/udev/rules.d/13-dm-disk.rules

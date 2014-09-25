@@ -815,7 +815,7 @@ sub decode_spd {
             $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x",$spd[323],$spd[324]);
         }
         foreach (@spd[329..348]) {
-            if ($_ & 0b10000000) {
+            if ($_ > 126 or $_ < 32) {
                 $rethash->{product}->{model}="Malformed SPD";
             }
         }

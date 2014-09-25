@@ -135,6 +135,87 @@ sub get_latest_version
 }
 
 #--------------------------------------------------------------------------
+=head3    get_latest_version_deb
+
+          Find the latest version in a list of debs with the same basename
+
+        Arguments:
+                - the repo location
+                - a list of debs with the same basename
+        Returns:
+                - name of deb
+                - undef
+        Example:
+                  my $new_d = xCAT::BuildKitUtils->get_latest_version($repodir, \@rpmlist);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub get_latest_version_deb
+{
+    my ($class, $repodir, $debs) = @_;
+
+    my @deblist = @$debs;
+
+    my %localversions_hash = ();
+    my $file_name; 
+    my %founddeb;
+    my $latest;
+    my $i = 0;
+    foreach my $deb (@deblist)
+    {
+
+        # include path
+        my $fulldebpath = "$repodir/$deb*";
+        chomp $deb;
+        # get the basename, version, and release for this deb
+        print "dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'";
+        my $basenamedeb = `dpkg -I $repodir/$deb |grep Package|awk '{print \$2}'`;
+        chomp $basenamedeb;
+
+        my $versiondeb = `dpkg -I $repodir/$deb |grep Version|awk '{print \$2}'`;
+        chomp $versiondeb;
+
+        $founddeb{$basenamedeb}{$deb}{version}=$versiondeb;
+
+        $i++;
+    }
+    if ($i == 0)
+    {
+        print "error\n";
+        return undef;
+    }
+
+
+     foreach my $r (keys %founddeb ) {
+        # if more than one with same basename then find the latest
+        my $latestmatch="";
+        foreach my $fdeb (keys %{$founddeb{$r}} ) {
+            # if we already found a match in some other dir
+            if ($latestmatch) {
+                # then we need to figure out which is the newest
+                # if the $fdeb is newer than use iti
+                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
+                    $latestmatch = $fdeb;
+                }
+
+            } else {
+                $latestmatch = $fdeb;
+            }
+        }
+        $latest=$latestmatch;
+        
+    }
+    if ($i == 0)
+    {
+        print "Error: Could not determine the latest version for the following list of debs: @deblist\n";
+        return undef;
+    } else {
+        return ($latest);
+    }
+}
+
+#--------------------------------------------------------------------------
 =head3    find_latest_pkg
 
           Find the latest rpm package give the rpm name and a list of 
@@ -159,6 +240,7 @@ sub find_latest_pkg
 
     my @rpms;
     my %foundrpm;
+
 
     #  need to check each pkgdir for the rpm(s)
     #  - if more than one match need to pick latest
@@ -222,6 +304,128 @@ sub find_latest_pkg
         return undef;
     }
 }
+
+#--------------------------------------------------------------------------
+=head3    find_latest_pkg_deb
+
+          Find the latest deb package give the deb name and a list of 
+                 possible package locations.
+
+        Arguments:
+                - a list of package directories
+                - the name of the deb
+        Returns:
+                - \@founddeblist
+
+                - undef
+        Example:
+                  my $newrpm = xCAT::BuildKitUtils->find_latest_pkg_deb(\@pkgdirs, $debname);
+        Comments:
+
+=cut
+#--------------------------------------------------------------------------
+sub find_latest_pkg_deb
+{
+    my ($class, $pkgdirs, $debname) = @_;
+    my @pkgdirlist = @$pkgdirs;
+
+    my @debs;
+    my %founddeb;
+
+
+    #  need to check each pkgdir for the deb(s)
+    #  - if more than one match need to pick latest
+    # find all the matches in all the directories
+    foreach my $debdir (@pkgdirlist) {
+        my $ffile = $debdir."/".$debname;
+
+        if ( system("/bin/ls $ffile > /dev/null 2>&1") ){
+            # if not then skip to next dir
+            next;
+        } else {
+            # if so then get the details and add it to the %founddeb hash
+            my $cmd = "/bin/ls $ffile 2>/dev/null";
+            my $output = `$cmd`;
+            my @deblist = split(/\n/, $output);
+
+            if ( scalar(@deblist) == 0) {
+                next;
+            }
+
+            foreach my $r (@deblist) {
+            my $basename = `dpkg -I $r* |grep Package|awk '{print \$2}'`;
+            chomp $basename;
+
+            my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'`;
+            chomp $version;
+
+            $founddeb{$basename}{$r}{version}=$version;
+            }
+        }
+    }
+
+    # for each unique deb basename
+    foreach my $r (keys %founddeb ) {
+        # if more than one with same basename then find the latest
+        my $latestmatch="";
+        foreach my $fdeb (keys %{$founddeb{$r}} ) {
+            # if we already found a match in some other dir
+            if ($latestmatch) {
+                # then we need to figure out which is the newest
+                # if the $fdeb is newer than use it
+                if ( ! xCAT::BuildKitUtils->testVersion_deb($founddeb{$r}{$fdeb}{version}, 'gt', $founddeb{$r}{$latestmatch}{version}) ) {
+                    $latestmatch = $fdeb;
+                }
+
+            } else {
+                $latestmatch = $fdeb;
+            }
+        }
+        push(@debs, $latestmatch);
+   }
+
+    if (scalar(@debs)) {
+        return \@debs;
+    } else {
+        return undef;
+    }
+}
+
+
+#------------------------------------------------------------------------------
+
+
+=head3    testVersion_deb
+
+        Compare version1 and version2 according to the operator and
+        return 1 0 or 0.
+
+        Arguments:
+                $version1
+                $operator
+                $version2
+        Returns:
+                1 or 0
+        Example:
+
+        Comments:
+                The return value is generated with the Require query 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub testVersion_deb
+{
+      my ($class, $version1, $operator, $version2) = @_;
+      if ($::VERBOSE) {
+           print "dpkg --compare-versions $version1 $operator $version2 \n";
+        }
+      my $result =`dpkg --compare-versions $version1 $operator $version2`;
+
+      return $result;
+
+}
+
 
 #------------------------------------------------------------------------------
 

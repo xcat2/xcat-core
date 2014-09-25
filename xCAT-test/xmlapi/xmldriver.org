@@ -1,0 +1,43 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use File::Basename;
+use Cwd;
+use Socket;
+
+#use Data::Dumper;
+use Getopt::Long;
+require xCAT::MsgUtils;
+require xCAT::DSHCLI;
+use xCAT::Utils;
+use xCAT::RemoteShellExp;
+require xCAT::PCMClient;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1 pcmdriver - test XMLapi for PCM 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+
+my $XML=`cat /root/lissa/PCM/api/getAllEntriesreq `;
+my $data=$XML;
+
+
+
+xCAT::PCMClient::submit_request($data, \&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
+

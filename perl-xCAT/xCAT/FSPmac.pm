@@ -517,12 +517,14 @@ sub getmacs {
 	         $data.= "\n$_\n";
 	         push @$value, "\n$_\n";
 	      } elsif ( /^ent\s+/ ||  /^hfi-ent\s+/ ) {
-	         my @fields = split /\s+/, $_;
-	         my $mac    = $fields[2];
-	         $mac    = format_mac( $mac );
-	         $fields[2] = $mac;
-	         $data  .= join(" ",@fields)."\n";
-	         push @$value, join(" ",@fields)."\n";
+	         #my @fields = split /\s+/, $_;
+	         #my $mac    = $fields[2];
+	         #$mac    = format_mac( $mac );
+	         #$fields[2] = $mac;
+	         #$data  .= join(" ",@fields)."\n";
+	         #push @$value, join(" ",@fields)."\n";
+                 $data .= "$_\n";
+                 push @$value, "$_\n";
 	      }
 	   }
 	   push @$res,[$node,$data,0];

@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use File::Basename;
+use Cwd;
+use Socket;
+use XML::Simple;
+require xCAT::MsgUtils;
+use xCAT::Utils;
+require xCAT::Client;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1 pcmdriver - test XMLapi to Table.pm ( via tabutils.pm) 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+ $ENV{'XCATXMLTRACE'}=1;
+my $XML=`cat /root/lissa/xmlapi/getTablesAllRowAttribsreq`;
+
+my $data=$XML;
+
+$ENV{'XCATSHOWXML'}=1;
+
+xCAT::Client::submit_request($data, \&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
+

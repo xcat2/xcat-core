@@ -1,0 +1,17 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>delEntries</command>
+<table>
+      <name>nodelist</name>
+      <attrs>
+         <groups>compute1,lissa</groups>
+         <status>down</status>
+      </attrs>
+</table>
+<table>
+      <name>nodelist</name>
+      <attrs>
+         <groups>compute2</groups>
+      </attrs>
+</table>
+</xcatrequest>

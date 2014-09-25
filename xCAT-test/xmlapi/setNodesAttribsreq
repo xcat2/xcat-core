@@ -1,0 +1,14 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>setNodesAttribs</command>
+<noderange>blade01-blade02</noderange>
+<arg>
+   <table>
+      <name>nodelist</name>
+      <attr>
+         <groups>all,compute,lissa</groups>
+         <comments> This is a another test</comments>
+      </attr>
+   </table>
+</arg>
+</xcatrequest>

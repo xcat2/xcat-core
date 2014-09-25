@@ -9,7 +9,7 @@ openssh-clients
 iputils
 bc
 irqbalance
-procps
+procps-ng
 wget
 vim-minimal
 ntp

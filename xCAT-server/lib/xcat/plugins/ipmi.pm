@@ -510,7 +510,11 @@ sub on_bmc_connect {
 	} elsif($command eq "rspconfig") {
        shift @{$sessdata->{extraargs}};
        if ($sessdata->{subcommand} =~ /=/) {
-           setnetinfo($sessdata);
+           if ($sessdata->{subcommand} =~ /password/) {
+               setpassword($sessdata);
+           } else {
+               setnetinfo($sessdata);
+           }
        } else {
            getnetinfo($sessdata);
        }
@@ -635,6 +639,55 @@ sub resetedbmc {
 	}
 }
 
+sub setpassword {
+    my $sessdata = shift;
+    my $subcommand = $sessdata->{subcommand};
+    my $argument;
+    ($subcommand, $argument) = split(/=/, $subcommand);
+    my $netfun = 0x06;
+    my $command = 0x47;
+    my @data = ();
+    @data = unpack("C*", $argument);
+    if ($#data > 19 or $#data < 0) {
+        xCAT::SvrUtils::sendmsg([1, "The new password is invalid"],$callback,$sessdata->{node},%allerrornodes);
+        return(1,"The new password is invalid.");
+    }
+    $sessdata->{newpassword}=$argument;
+    my $index = $#data;
+    while($index < 19) { # Password must be padded with 0 to 20 bytes for IPMI 2.0
+        push @data, 0;
+        $index += 1;
+    }
+    unshift @data, 0x02; # byte 2, operation: 0x00 disable user, 0x01 enable user, 0x02 set password, 0x03 test password
+    unshift @data, 0x01; # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
+    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+}
+
+sub password_set {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    }
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
+        }
+        return;
+    }
+    my $ipmitab = xCAT::Table->new('ipmi');
+    if (!$ipmitab)  {
+        xCAT::SvrUtils::sendmsg([1, "Failed to update ipmi table."],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+        $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
+        xCAT::SvrUtils::sendmsg("Done",$callback,$sessdata->{node},%allerrornodes);
+    }
+    return;
+} 
+
 sub setnetinfo {
     my $sessdata = shift;
 	my $subcommand = $sessdata->{subcommand};
@@ -736,12 +789,25 @@ sub setnetinfo {
 	else {
 		return(1,"configuration of $subcommand is not implemented currently");
 	}
+    unless ($sessdata->{netinfo_setinprogress}) {
+        $sessdata->{netinfo_setinprogress} = '1';
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&setnetinfo,callback_args=>$sessdata);
+    }
     my $command = shift @cmd;
     $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
 }
 sub netinfo_set {
     my $rsp = shift;
     my $sessdata = shift;
+    if ($sessdata->{netinfo_setinprogress}) {
+        my $channel_number = $sessdata->{ipmisession}->{currentchannel};
+        delete $sessdata->{netinfo_setinprogress};
+        $sessdata->{rsp}->{error} = $rsp->{error};
+        $sessdata->{rsp}->{code} = $rsp->{code};
+        $sessdata->{ipmisession}->subcmd(netfn=>0x0c, command=>0x01, data=>[$channel_number,0x0,0x0], callback=>\&netinfo_set,callback_args=>$sessdata);
+    } else {
+        $rsp = $sessdata->{rsp};
+    }
     if ($rsp->{error}) { 
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
@@ -833,6 +899,7 @@ sub getnetinfo_response {
     my $rsp = shift;
     my $sessdata = shift;
     my $subcommand = $sessdata->{subcommand};
+   $subcommand =~ s/=.*//;
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
     if ($rsp->{error}) { 
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
@@ -1213,6 +1280,9 @@ sub getrvidparms_with_buildid {
     my $rsp = shift;
     my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
+    if ($build_id[1]==0x54 and $build_id[2]==0x43 and $build_id[3]==0x4f and $build_id[4]==0x4f) { ##Lenovo IMM2
+       return getrvidparms_imm2($rsp,$sessdata);
+    }
     if ($build_id[1]==0x31 and $build_id[2]==0x41 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
        return getrvidparms_imm2($rsp,$sessdata);
     }
@@ -1983,7 +2053,7 @@ sub got_bmc_fw_info {
         my @returnd = (@{$rsp->{data}});
 			my @a = ($fw_rev2);
             my $prefix = pack("C*",@returnd[0..3]);
-            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i) { #we have an imm
+            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i or $prefix =~ /tcoo/i) { #we have an imm
                 $isanimm=1;
             }
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));

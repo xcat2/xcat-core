@@ -63,6 +63,9 @@ Requires: syslinux xCAT-genesis-scripts-x86_64 elilo-xcat
 Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi
 %endif
+%ifarch ppc ppc64
+Requires: xCAT-genesis-scripts-ppc64
+%endif
 
 %if %notpcm
 %ifarch i386 i586 i686 x86 x86_64

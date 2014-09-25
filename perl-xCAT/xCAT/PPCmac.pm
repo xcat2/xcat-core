@@ -555,6 +555,9 @@ sub getmacs {
                     } else {
                         $type = "virtualio";
                     }
+                    if ($mac_addr) {
+                        $mac_addr = format_mac($mac_addr);
+                    }
 
                     my %att = ();
                     $att{'MAC_Address'}        = ($mac_addr) ? $mac_addr : "N/A";
@@ -627,9 +630,9 @@ sub getmacs {
                 }
                 foreach ( @$value ) {
                     if ( /^#\s?Type/ ) {
-                        $data.= "\n$_\n";
+                       $data.= "\n$_\n";
                     } else {
-                        $data.= format_mac( $_ );
+                        $data.= "$_\n";
                     }
                 }
 
@@ -756,7 +759,7 @@ sub getmacs {
             if ( /^#\s?Type/ ) {
                 $data.= "\n$_\n";
             } elsif ( /^ent\s+/ or /^hfi-ent\s+/ ) {
-                $data.= format_mac( $_ );
+                $data.= "$_\n";
             }
         }
         #####################################
@@ -801,10 +804,8 @@ sub cal_mac {
 ##########################################################################
 sub format_mac {
 
-    my $data = shift;
+    my $mac = shift;
 
-    $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
-    my $mac = $2;
     #####################################
     # Get adapter mac
     #####################################
@@ -813,6 +814,10 @@ sub format_mac {
 
     if ( !xCAT::Utils->isAIX() ) {
         foreach my $mac_a ( @macs ) {
+            if (&checkmac($mac_a)) {
+                push @newmacs, $mac_a;
+                next;
+            }
             #################################
             # Delineate MAC with colons
             #################################
@@ -821,12 +826,28 @@ sub format_mac {
             $mac_a =~ s/:$//;
             push @newmacs, $mac_a;
         }
-        my $newmac = join("|",@newmacs);
-        $data   =~ s/$mac/$newmac/;
+        $mac = join("|",@newmacs);
     }
 
-    return( "$data\n" );
+    return( "$mac\n" );
 
+}
+
+##########################################################################
+# checkmac format 
+##########################################################################
+
+sub checkmac {
+    my $mac = shift;
+    if ( !xCAT::Utils->isAIX()) {
+        if ($mac =~ /\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}/) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        return 1;
+    }
 }
 
 
@@ -847,6 +868,9 @@ sub writemac {
     # Find first valid adapter
     #####################################
     foreach ( @$data ) {
+        unless (&checkmac($_)) {
+            next;
+        }
         if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
             $value = $_;
             #####################################
@@ -869,6 +893,9 @@ sub writemac {
     #####################################
     if ( $pingret ne "successful" ) {
         foreach ( @$data ) {
+            unless (&checkmac($_)) {
+                next;
+            }
             if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
                 $value = $_;
                 $ping_test = 0;
@@ -890,7 +917,7 @@ sub writemac {
     #####################################
     # Get adapter mac
     #####################################
-    $value = format_mac( $value ); 
+    #$value = format_mac( $value ); 
     @fields = split /\s+/, $value;
     $mac    = $fields[2];
 

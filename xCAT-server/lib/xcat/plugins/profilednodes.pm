@@ -33,6 +33,7 @@ my %allhostnames;
 my %allbmcips;
 my %allmacs;
 my %allcecs;
+my %alllparids;
 my %allmacsupper;
 my %allips;
 my %allinstallips;
@@ -425,6 +426,10 @@ Usage:
     # Get all CEC names
     $recordsref =  xCAT::ProfiledNodeUtils->get_all_cecs(1);
     %allcecs = %$recordsref;
+    
+    # Get all LPAR ids
+    $recordsref = xCAT::ProfiledNodeUtils->get_all_lparids(\%allcecs);
+    %alllparids = %$recordsref;
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -804,38 +809,55 @@ Usage:
         }
     }
     
+    #fix 241844 issue, use local variable to store args_dict value
+    my $imageprofile = undef;
+    my $networkprofile = undef;
+    my $hardwareprofile = undef;
+
+    if(exists $args_dict{'imageprofile'}){
+        $imageprofile = $args_dict{'imageprofile'};
+    }
+
+    if(exists $args_dict{'networkprofile'}){
+        $networkprofile = $args_dict{'networkprofile'};
+    }
+
+    if(exists $args_dict{'hardwareprofile'}){
+        $hardwareprofile = $args_dict{'hardwareprofile'};
+    }
+
     # After checking, all nodes' profile should be same
     # Get the new profile with specified ones in args_dict
     my $changeflag = 0;
     my $profile_groups;
     my $profile_status;
-    if(exists $args_dict{'networkprofile'}){
-        $profile_groups .= $args_dict{'networkprofile'}.",";
-        if ($args_dict{'networkprofile'} ne $nodeoldprofiles{'networkprofile'}){
+    if($networkprofile){
+        $profile_groups .= $networkprofile . ",";
+        if ($networkprofile ne $nodeoldprofiles{'networkprofile'}){
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
-            delete($args_dict{'networkprofile'});
+            $networkprofile = undef;
         }
     }
-    if(exists $args_dict{'hardwareprofile'}){
-        $profile_groups .= $args_dict{'hardwareprofile'}.",";
-        if ($args_dict{'hardwareprofile'} ne $nodeoldprofiles{'hardwareprofile'}){
+    if($hardwareprofile){
+        $profile_groups .= $hardwareprofile . ",";
+        if ($hardwareprofile ne $nodeoldprofiles{'hardwareprofile'}){
             $profile_status = 'defined';
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
-            delete($args_dict{'hardwareprofile'});
+            $hardwareprofile = undef;
         }
     }
-    if(exists $args_dict{'imageprofile'}){
-        $profile_groups .= $args_dict{'imageprofile'}.",";
-        if ($args_dict{'imageprofile'} ne $nodeoldprofiles{'imageprofile'}){
+    if($imageprofile){
+        $profile_groups .= $imageprofile . ",";
+        if ($imageprofile ne $nodeoldprofiles{'imageprofile'}){
             $profile_status = 'defined';
             $changeflag = 1;
         }else{
             xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
-            delete($args_dict{'imageprofile'});
+            $imageprofile = undef;
         }
     }
     # make sure there are something changed, otherwise we should quit without any changes.
@@ -865,8 +887,8 @@ Usage:
 
     # If network profile specified. Need re-generate IPs for all nodess again.
     # As new design, ignore BMC/FSP NIC while reinstall nodes
-    if(exists $args_dict{'networkprofile'}){
-        my $newNetProfileName = $args_dict{'networkprofile'};
+    if($networkprofile){
+        my $newNetProfileName = $networkprofile;
         my $oldNetProfileName = $nodeoldprofiles{'networkprofile'};
         
         my $newNicsRef = xCAT::ProfiledNodeUtils->get_nodes_nic_attrs([$newNetProfileName])->{$newNetProfileName};
@@ -904,10 +926,7 @@ Usage:
     # hardware profile changed  or
     # image profile changed or
     # network profile changed.
-    if ((exists $args_dict{'networkprofile'}) or 
-        (exists $args_dict{'hardwareprofile'}) or
-        (exists $args_dict{'imageprofile'})){
-
+    if (($imageprofile) or ($networkprofile) or ($hardwareprofile)){
         my $nodetypetab = xCAT::Table->new('nodetype');
         my $firstnode = $nodes->[0];
         my $profiles = xCAT::ProfiledNodeUtils->get_nodes_profiles([$firstnode], 1);
@@ -919,7 +938,7 @@ Usage:
         # If we have hardware changes, reconfigure everything including BMC.
         my $chainret = 0;
         my $chainstr = "";
-        if(exists $args_dict{'hardwareprofile'}){
+        if($hardwareprofile){
             ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 1);
         } else {
             ($chainret, $chainstr) = xCAT::ProfiledNodeUtils->gen_chain_for_profiles($profiles->{$firstnode}, 0);
@@ -933,6 +952,7 @@ Usage:
         my %chainAttr = {};
         foreach my $node (@$nodes){
             $chainAttr{$node}{'chain'} = $chainstr;
+            $chainAttr{$node}{'currchain'} = '';
         }
         my $chaintab = xCAT::Table->new('chain', -create=>1);
         $chaintab->setNodesAttribs(\%chainAttr);
@@ -1124,14 +1144,18 @@ Usage:
                     $fsp_flag = 1;
                     $fspipsAttr{$node}{"hcp"} = $nextip;
                 }
-            }
+            }    
         }
+        
         # Add reserve nics
         foreach my $nicname (@reserveNics){
-            my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
-            if ($oldip) {
-                $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
-            }
+            my $count = index($nicipsAttr{$node}{nicips}, $nicname);
+			if($count < 0) {
+                my $oldip = $nodesNicsRef->{$node}->{$nicname}->{"ip"};
+                if ($oldip) {
+                    $nicipsAttr{$node}{nicips} .= $nicname."!".$oldip.",";
+                }
+			}
         }
     }
     
@@ -1278,26 +1302,50 @@ Usage:
     my $nodelist = $request->{node};
     my $hostname = $nodelist->[0];
 
-    # Validate MAC address
-    my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
-    %allmacs = %$recordsref;
-    foreach (keys %allmacs){
-        my @hostentries = split(/\|/, $_);
-        foreach my $hostandmac ( @hostentries){
-            my ($macstr, $machostname) = split("!", $hostandmac);
-            $allmacs{$macstr} = 0;
+    if("__NOMAC__" eq $args_dict{"mac"}) {
+        # Validate if node is bind on a switch
+        my $switch_table = xCAT::Table->new("switch");
+        my @item = $switch_table->getAttribs({'node' => $hostname}, 'switch', 'port');
+        my $item_num = @item;
+        my $switch_valid = 0;
+        unless($item[0])
+        {
+            setrsp_errormsg("Failed to replace node <$hostname>.  Switch information cannot be retrieved. Ensure that the switch is configured correctly.");
+            return;
+        } else {
+            foreach my $switch_item (@item){
+                if($switch_item->{'switch'} && $switch_item->{'port'}){
+                    $switch_valid = 1;
+                }
+            }
         }
-    }
-    %allmacsupper = ();
-    foreach (keys %allmacs){
-        $allmacsupper{uc($_)} = 0;
-    }
-    if (exists $allmacsupper{uc($args_dict{"mac"})}){
-        setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
-        return;
-    } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})){
-        setrsp_errormsg("The specified MAC address $args_dict{'mac'} is invalid. You must use a valid MAC address.");
-        return;
+        unless ($switch_valid)
+        {
+            setrsp_errormsg("Failed to replace node <$hostname>. Switch information cannot be retrieved. Ensure that the switch is configured correctly.");
+            return;
+        }
+    } else {
+        #Validate MAC address
+        my $recordsref = xCAT::ProfiledNodeUtils->get_allnode_singleattrib_hash('mac', 'mac');
+        %allmacs = %$recordsref;
+        foreach (keys %allmacs){
+            my @hostentries = split(/\|/, $_);
+            foreach my $hostandmac ( @hostentries){
+                my ($macstr, $machostname) = split("!", $hostandmac);
+                $allmacs{$macstr} = 0;
+            }
+        }
+        %allmacsupper = ();
+        foreach (keys %allmacs){
+            $allmacsupper{uc($_)} = 0;
+        }
+        if (exists $allmacsupper{uc($args_dict{"mac"})}){
+            setrsp_errormsg("The specified MAC address $args_dict{'mac'} already exists. You must use a different MAC address.");
+            return;
+        } elsif(! xCAT::NetworkUtils->isValidMAC($args_dict{'mac'})) {
+            setrsp_errormsg("The specified MAC address $args_dict{'mac'} is invalid. You must use a valid MAC address.");
+            return;
+        }
     }
 
     # re-create the chain record as updating mac may means for replacing a new brand hardware...
@@ -1317,13 +1365,23 @@ Usage:
     # Update database records.
     setrsp_progress("Updating database...");
     # MAC table
-    my $mactab = xCAT::Table->new('mac',-create=>1);
-    $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
-    $mactab->close();
+    if("__NOMAC__" eq $args_dict{"mac"})
+	{
+        my $mactab = xCAT::Table->new('mac',-create=>1);
+        my %keyhash;
+        $keyhash{'node'} = $hostname;
+        $mactab->delEntries(\%keyhash);
+        $mactab->commit();
+        $mactab->close();
+	} else {
+        my $mactab = xCAT::Table->new('mac',-create=>1);
+        $mactab->setNodeAttribs($hostname, {mac=>$args_dict{'mac'}});
+        $mactab->close();
+	}
 
     # DB update: chain table.
     my $chaintab = xCAT::Table->new('chain', -create=>1);
-    $mactab->setNodeAttribs($hostname, {chain=>$chainstr});
+    $chaintab->setNodeAttribs($hostname, {chain=>$chainstr, currchain=>''});
     $chaintab->close();
 
 
@@ -1344,6 +1402,17 @@ Usage:
     $retstrref = parse_runxcmd_ret($retref);
     if ($::RUNCMD_RC != 0){
         setrsp_progress("Warning: failed to call kit commands.");
+    }
+
+    if("__NOMAC__" eq $args_dict{"mac"})
+    {
+        setrsp_progress("Updating DHCP entries");
+        $retref = xCAT::Utils->runxcmd({command=>["makedhcp"], node=>[$hostname], arg=>['-d']}, $request_command, 0, 2);
+        $retref = {};
+        $retstrref = parse_runxcmd_ret($retref);
+        if ($::RUNCMD_RC != 0){
+            setrsp_progress("Warning: failed to call kit commands.");
+        }
     }
 
     setrsp_progress("Re-creating nodes...");
@@ -2298,10 +2367,10 @@ sub validate_node_entry{
     }
     # Must specify either MAC, CEC or switch + port.
     if (exists $node_entry{"mac"} ||
-        exists $node_entry{"switch"} && exists $node_entry{"switchport"} ||
+        exists $node_entry{"switches"} ||
         exists $node_entry{"cec"}){
     } else{
-        $errmsg .= "MAC address, cec, switch and port is not specified. You must specify the MAC address, CEC name or switch and port.\n";
+        $errmsg .= "MAC address, cec, switches is not specified. You must specify the MAC address, CEC name or switches.\n";
     }
 
     if (! xCAT::NetworkUtils->isValidHostname($node_name)){
@@ -2435,10 +2504,20 @@ sub validate_node_entry{
                 $errmsg .= "The lparid option must be used with the cec option.\n";
             }
         }elsif ($_ eq "cec"){
+            my $cec_name = $node_entry{"cec"};
+            my $lpar_id = 1;
             # Check the specified CEC is existing
             if (! exists $allcecs{$node_entry{$_}}){
                 $errmsg .= "The CEC name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
+            }elsif (exists $node_entry{"lparid"}){
+                $lpar_id = $node_entry{"lparid"};
             }
+            
+            if (exists $alllparids{$cec_name}{$lpar_id}){
+                $errmsg .= "The CEC name $cec_name and LPAR id $lpar_id already exist in the database or in the nodeinfo file. You must use a new CEC name and LPAR id.\n";
+            }else{
+                $alllparids{$cec_name}{$lpar_id} = 0;
+            }    
         }elsif ($_ eq "nicips"){
             # Check Multi-Nic's ip
             my $othernics = $node_entry{$_};

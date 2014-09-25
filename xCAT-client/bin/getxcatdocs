@@ -1,191 +1,397 @@
 #!/usr/bin/perl
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Downloads/converts the xCAT docs on the sourceforge wiki to local HTML and PDF.
+
+# Downloads/converts the xCAT docs on the sourceforge Allura wiki to local HTML and PDF.
 # This script is not dependent on other xCAT code, so you can copy it to a machine
 # that has internet access to run it.  Before running this command, you must have
-# wget, python, and pisa installed.  See: http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
+# curl, pandoc, and latex installed.  See: http://sourceforge.net/p/xcat/wiki/Editing_and_Downloading_xCAT_Documentation/#converting-wiki-pages-to-html-and-pdfs
+
 
 # Note: do not use the --upload option, unless your machine has authority to write to http://xcat.sourceforge.net/doc/ .
-#       You also need to set $UPLOADUSER to your sourceforge user.
+#       You also need to set $UPLOADUSER to your sourceforge user:
+my $UPLOADUSER = 'bp-sawyers';
 
-#BEGIN
-#{
-#    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-#}
 use strict;
-#use lib "$::XCATROOT/lib/perl";
-#use xCAT::Utils;
 use Getopt::Long;
-#use File::Path;
 use Cwd;
-#use Data::Dumper;
+use JSON;
+use List::Util qw[max];
 
-# Update this list if you group any xcat docs on a separate page such that they are no longer linked from the
-# main doc page.
-my @indexdocs = ('XCAT_Documentation', 'Power_775_Cluster_Documentation', 'Highly_Available_Management_Node', 'Mixed_Cluster_Support', 'IBM_HPC_Stack_in_an_xCAT_Cluster');
 
-#my $VERSION;
+# URL for the xCAT Allura wiki API markdown on SourceForge
+my $SF_URL='http://sourceforge.net/rest';
+my $WIKI_URL=$SF_URL.'/p/xcat/wiki/';
+
+# Update this list if you group any xcat docs on a separate page such that they
+# are no longer linked from the main doc page:
+my @INDEXDOCS = ('XCAT_Documentation', 
+                 'Power_775_Cluster_Documentation', 
+                 'Highly_Available_Management_Node', 
+                 'Mixed_Cluster_Support', 
+                 'IBM_HPC_Stack_in_an_xCAT_Cluster');
+
+
 my $HELP;
 my $UPLOAD;
 my $UPLOADONLY;
+my $IGNOREERRORS;
+my $CONTINUE;
+my $SINGLE_DOC;
 my $VERBOSE;
- 
-my $usage = sub {
-   	my $exitcode = shift @_;
-   	print "Usage: getxcatdocs [-?|-h|--help] [-v|--verbose] [-u|--upload] [--uploadonly] [<destination-dir>]\n";
-	exit $exitcode;
-};
 
-# Process the cmd line args
-Getopt::Long::Configure("bundling");
-#Getopt::Long::Configure("pass_through");
-Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'u|upload' => \$UPLOAD, 'uploadonly' => \$UPLOADONLY )) { $usage->(1); }
-
-if ($HELP) { $usage->(0); }
-
-#if ($VERSION) {
-    #print xCAT::Utils->Version(), "\n";
-#    exit;
-#}
-
-if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
-
-my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
-chdir($destdir) or die "Can not cd to $destdir: $!\n";
-#my $docdir = $ENV{'PWD'};
-
-# Download the HTML docs and convert them all to pdfs
-my @dir;
-if (!$UPLOADONLY) {
-	@dir = gethtmldocs('html');
-	convert2pdf('pdf', \@dir);
-}
-
-
-# tar/compress
-my $date=`date +%Y%m%d%H%M`;
-chop $date;
-my $docname="xcat-docs-snap$date.tar.gz";
-#system('pwd');
-my $cmd = "tar -zcf $docname html pdf 2>&1";
-verbose($cmd);
-system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
-
-# Optionally upload the tarball to sourceforge
-if ($UPLOAD || $UPLOADONLY) {
-	my $UPLOADUSER = 'bp-sawyers';
-	my $count = 1;
-	#my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
-	my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/doc/';
-	print "$cmd\n";
-	while ($count<=5 && system("$cmd 2>&1")) { $count++; }
-}
-exit 0;
-
+my $MDDIR;
+my $HTMLDIR;
+my $PDFDIR;
+my $IMAGEDIR;
+my %LOADEDDOCS;
 
 sub verbose { if ($VERBOSE) { print shift, "\n"; } }
 
+my $usage = sub {
+    my $exitcode = shift @_;
+    print "Usage: getxcatdocs [-?|-h|--help] \n";
+    print "Usage: getxcatdocs [-v|--verbose] [-u|--upload] [--uploadonly] [-U|--uploaduser sourceforge_id] [-i|--ignoreerrors] [<destination-dir>]\n";
+    print "Usage: getxcatdocs [-v|--verbose] [-c|--continue] [-d|--doc single_doc] [-i|--ignoreerrors] [<destination-dir>]\n";
+    exit $exitcode;
+};
 
-# Download all of the html docs from several "index" docs
+
+# Main processing
+
+    # Process the cmd line args
+    Getopt::Long::Configure("bundling");
+    #Getopt::Long::Configure("pass_through");
+    Getopt::Long::Configure("no_pass_through");
+    if (!GetOptions(
+         'h|?|help'    => \$HELP, 
+         'v|verbose'   => \$VERBOSE, 
+         'u|upload'    => \$UPLOAD, 
+         'uploadonly'  => \$UPLOADONLY, 
+         'uploaduser'  => \$UPLOADUSER, 
+         'c|continue'    => \$CONTINUE,
+         'i|ignoreerrors'    => \$IGNOREERRORS, 
+         'd|doc=s'     => \$SINGLE_DOC ))
+          { $usage->(1); }
+
+    if ($HELP) { $usage->(0); }
+
+    if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
+
+    my $DESTDIR = scalar(@ARGV) ? $ARGV[0] : '.';
+    chdir($DESTDIR) or die "Can not cd to $DESTDIR: $!\n";
+
+    my $json = JSON->new(); 
+
+    if ($SINGLE_DOC) {
+      $MDDIR = '.';
+      $HTMLDIR = '.';
+      $PDFDIR = '.';
+      $IMAGEDIR = '.';
+      download_doc($SINGLE_DOC);
+      convert_doc($SINGLE_DOC);
+      exit;
+    }      
+   
+    # Download the HTML docs and convert them all to pdfs
+    if (!$UPLOADONLY) { gethtmldocs(); }
+
+    # tar/compress
+    my $date=`date +%Y%m%d%H%M`;
+    chop $date;
+    my $docname="xcat-docs-snap$date.tar.gz";
+
+    my $cmd = "tar -zcf $docname html pdf images 2>&1";
+    verbose($cmd);
+    system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
+
+    # Optionally upload the tarball to sourceforge
+    if ($UPLOAD || $UPLOADONLY) {
+        my $count = 1;
+        #my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:htdocs/doc/';
+        my $cmd = "rsync -v $docname $UPLOADUSER," . 'xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/doc/';
+        print "$cmd\n";
+        while ($count<=5 && system("$cmd 2>&1")) { $count++; }
+    }
+    exit 0;
+
+
+
 sub gethtmldocs {
-	my $dir = shift;
-	my $savedir = getcwd();
-	#File::Path::make_path($dir);
-	mkdir($dir);
-	chdir($dir);
-	#system('pwd');
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	#system('ls');
-	
-	my $indexes = '';
-	foreach my $index (@indexdocs) {
-		$indexes .= qq('http://sourceforge.net/apps/mediawiki/xcat/index.php?title=$index&printable=yes' );
-	}
-	print "Downloading the xCAT wiki documentation to $dir, from: $indexes ...\n";
-	runwget($indexes);
-	
-	# Remove the funny chars from the links to other docs and rename the docs
-	#my $sedcmd = q(sed -i 's/<a href="\/apps\/mediawiki\/xcat\/index.php?title/<a href="index.php%3Ftitle/' *);
-	# sed -i 's/href="index.php%3Ftitle=/href="/g' index.php\?title\=
-	# sed -i 's/<a href="\([^"]*\)"/<a href="\1.html"/'
-	# This searches for '<a href="index.php?title=' and then all text before a '"' or '#', and then removes the front part and add .html on the end
-	# Note: this does not convert the 'MediaWiki:*' files because they are used in <link> tags, but converting them does not seem to do any good anyway.
-	my $cmd = q(sed -i 's/<a href="index.php?title=\\([^"#]*\\)\\("\|#\\)/<a href="\1.html\2/g' *);
-	verbose($cmd);
-	system($cmd) == 0 or die "Error running $cmd: $!, rc=$?";
-	# get the list of docs
-	opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
-	#my @docs = grep /^index.php\?title=/, readdir(DIR);		# /
-	my @docs;
-	foreach my $f (readdir(DIR)) {
-		if ($f !~ /^index.php\?title=/ || $f =~ /^index.php\?title=MediaWiki:/) { next; }
-		my $newf = $f;
-		$newf =~ s/^index.php\?title=//;
-		if ($newf !~ /\./) { $newf .= '.html'; }
-		verbose("Renaming $f to $newf");
-		rename($f, $newf);
-		push @docs, $newf;
-	}
-	close(DIR);
-	chdir($savedir);
-	return @docs;
+
+    $MDDIR = 'md';
+    $HTMLDIR = 'html';
+    $PDFDIR = 'pdf';
+    $IMAGEDIR = 'images';
+
+    mkdir($MDDIR);
+    mkdir($HTMLDIR);
+    mkdir($PDFDIR);
+    mkdir($IMAGEDIR);
+    #delete all the files in the dirs in case they previously ran this
+     if ($CONTINUE) {
+        print "CONTINUING with files already in $MDDIR";
+        my @mdfiles = glob "$MDDIR/*.md";
+        foreach my $mdf (@mdfiles) {
+            $mdf =~ s/^$MDDIR\///;
+            $mdf =~ s/\.md//;
+            $LOADEDDOCS{$mdf}=1;
+         }
+     } else {
+         unlink <$MDDIR/*>;   
+         unlink <$HTMLDIR/*>;   
+         unlink <$PDFDIR/*>;   
+         unlink <$IMAGEDIR/*>;   
+    }
+                                    
+   print "\nDownloading and converting the xCAT wiki document list from $WIKI_URL ...\n";
+    foreach my $index (@INDEXDOCS) {
+      my @related_docs = download_doc($index);
+      foreach my $docref (@related_docs) {
+        my $docref_name = $docref;
+        $docref_name =~ s/\/.*\/(.+)\/$/$1/;
+        download_doc($docref_name);
+      }
+    }
+
+    foreach my $doc (keys %LOADEDDOCS) {
+      convert_doc($doc);
+    }
+    return;
 }
 
 
-# Convert to pdf
-sub convert2pdf {
-	my ($dir, $files) = @_;
-	my $savedir = getcwd();
-	#File::Path::make_path($dir);
-	mkdir($dir);
-	chdir($dir);
-	if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
-	unlink <*>;		# delete all the files in the dir, in case they previously ran this
-	foreach my $file (@$files) {
-		#if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
-		if ($file eq 'XCAT_Documentation') { next; }
-		#my ($docname) = $file =~ /^index.php\?title=(.+)$/;
-		$file =~ s/\.html$//;
-		print "Converting $file to PDF format...\n";
-		my $url = 'http://sourceforge.net/apps/mediawiki/xcat/index.php?title=' . $file . '&printable=yes';
-		my $destfile = "$file.pdf";
-		my $cmd = "xhtml2pdf '$url' '$destfile' ";
-		runh2p($cmd);
-	}
-	chdir($savedir);
+
+sub download_doc {
+    my $doc_name = shift;
+
+    if ( $LOADEDDOCS{$doc_name} ) { return; }
+    verbose("processing $doc_name");
+    $LOADEDDOCS{$doc_name}=1;
+
+    my $curlcmd = "curl --retry 5 -X GET $WIKI_URL/$doc_name";
+    verbose($curlcmd);
+    my $docjson = `$curlcmd`;
+    if ($? && !$IGNOREERRORS) { die "error encountered in $curlcmd \n";}
+
+    my $jsout = $json->decode($docjson); 
+
+    foreach my $att (@{$jsout->{attachments}}) {
+      my $wgetcmd = "wget -P $IMAGEDIR/ $att->{url}";
+      verbose($wgetcmd);
+      system($wgetcmd);
+      if ($? && !$IGNOREERRORS) { die "error encountered in $wgetcmd \n";}
+    }
+
+    open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+    print MDFILE $jsout->{text};
+    close MDFILE;
+
+    return @{$jsout->{related_artifacts}};
+}   
+
+
+
+sub convert_doc {
+   my $doc_name = shift;
+
+   open(MDFILE, "<$MDDIR/${doc_name}.md") or die "Could not open <$MDDIR/${doc_name}.md";
+   my @doc_lines = <MDFILE>;
+   close MDFILE;
+   my $doc_text = join('',@doc_lines);
+
+   $doc_text = process_includes($doc_text,0);
+
+   if ($doc_text =~ /begin_xcat_table/) {
+       open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+       print MDFILE $doc_text;
+       close MDFILE;
+
+       convert_tables($doc_name);
+
+       open(MDFILE, "<$MDDIR/${doc_name}.md") or die "Could not open <$MDDIR/${doc_name}.md";
+       @doc_lines = <MDFILE>;
+       close MDFILE;
+       $doc_text = join('',@doc_lines);
+   }
+
+  ## Make image refs local
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.png\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.PNG\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(.+\/(.+)\.jpg\)/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.jpg\)/g;
+   $doc_text =~ s/\[img src=(.+)\.png\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\[img src=(.+)\.PNG\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\[img src=(.+)\.jpg\]/\!\[\]\(\.\.\/$IMAGEDIR\/$1\.jpg\)/g;
+
+   ## Remove [TOC] entries
+   $doc_text =~ s/\[TOC\]//g;
+    
+
+   open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+   print MDFILE $doc_text;
+   close MDFILE;
+
+   my $pandoccmd = "pandoc -s --toc $MDDIR/${doc_name}.md -o $HTMLDIR/${doc_name}.html";
+   verbose($pandoccmd);
+   system($pandoccmd);
+   if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd \n";}
+   # This rename is probably a hack, but I didn't want to take the time to
+   # figure out what was going on:
+   #   pandoc does different processing if target filetype is html
+   #   but all internal refs only work in browser when there is no html filetype
+   rename "$HTMLDIR/${doc_name}.html","$HTMLDIR/${doc_name}";
+
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.png\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.png\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.PNG\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.PNG\)/g;
+   $doc_text =~ s/\!\[\]\(\.\.\/$IMAGEDIR\/(.+)\.jpg\)/\!\[\]\(\.\/$IMAGEDIR\/$1\.jpg\)/g;
+   open(MDFILE, ">$MDDIR/${doc_name}.md") or die "Could not open >$MDDIR/${doc_name}.md";
+   print MDFILE $doc_text;
+   close MDFILE;
+   my $pandoccmd2 = "pandoc --toc $MDDIR/${doc_name}.md -o $PDFDIR/${doc_name}.pdf";
+   verbose($pandoccmd2);
+   system($pandoccmd2);
+   if ($? && !$IGNOREERRORS) { die "error encountered in $pandoccmd2 \n";}
+
 }
 
 
-# Run the wget cmd and filter out some of the silly output
-sub runwget {
-	my $index = shift;
-	# options we might consider: --html-extension --restrict-file-names=windows  --cut-dirs=3
-	# options that do not work:  --relative
-	#my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=MediaWiki:*,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
-	my $rejectlist = q('*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat,login.php,support');
-	my $cmd = qq(wget --recursive --convert-links --no-verbose --progress=bar --level=1 --page-requisites --no-parent --no-host-directories --no-directories --no-clobber --execute robots=off --post-data='printable=yes' --reject $rejectlist $index);
-	verbose($cmd);
-	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
-	while (<OUT>) {
-		if (/URL:https*:\/\/sourceforge\.net.+\s+->\s+\"(\S+)\"\s+\[/) { print "Downloaded $1.\n"; }
-		else { print; }
-	}
-	close OUT || print "Error running $cmd: $! $?\n";
+
+sub process_includes {
+    my $doc_text = shift;
+    my $include_nest = shift;
+ 
+    if ($include_nest++ > 10) { die "nested include processing greater than 10.  Infinite recursion???"; }
+
+    while (1) {
+        if ($doc_text =~ /\[\[(\s*)include (\s*)ref=(\s*)(.+)(\s*)\]\]/) {
+            my $next_include = $4;
+            download_doc($next_include);
+
+            open(INCLDFILE, "<$MDDIR/${next_include}.md") or die "Could not open <$MDDIR/${next_include}.md";
+            my @include_lines = <INCLDFILE>;
+            close INCLDFILE;
+
+#            my $include_text = join('\n', @include_lines);
+            my $include_text = join('', @include_lines);
+            $include_text = process_includes($include_text,$include_nest);
+
+            $doc_text =~ s/\[\[(\s*)include (\s*)ref=(\s*)$next_include(\s*)\]\]/$include_text/g;
+
+        } else {
+            last;
+        }
+    }
+   
+    return $doc_text;
 }
 
-# Run the xhtml2pdf cmd and filter out some of the silly output
-sub runh2p {
-	my $cmd = shift;
-	verbose($cmd);
-	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
-	while (<OUT>) {
-		next if /DeprecationWarning:\sthe sets module is deprecated/;
-		next if /from sets import ImmutableSet/;
-		next if /^\s*import sets\s*$/;
-		next if /^Converting\ssourceforge.net/;
-		print;
-	}
-	close OUT || print "Error running $cmd: $! $?\n";
+
+sub convert_tables {
+  my $doc_name=shift;
+  my $infile="$MDDIR/${doc_name}.md";
+  my $outfile=$infile;
+
+  open(MDFILE, "<$infile") or die "Could not open <$infile";
+  my @inlines=<MDFILE>;
+  close MDFILE;
+  my @outlines;
+  my @tablines;
+
+  my $in_comment=0;
+  my $xcat_table=0;
+  my $numcols=1;
+  my @colwidths=(0);
+  my $tabcount=0;
+
+  verbose("converting tables in $doc_name");
+  foreach my $line (@inlines) {
+      if ($line =~ /\<\!---/) { $in_comment=1; next; } 
+      if ($in_comment) {
+         if ($line =~ /begin_xcat_table/) {$xcat_table=1; next;}
+         if ($xcat_table) {
+            if ($line =~ /numcols=(\d+)/) { $numcols=$1; next;}
+            if ($line =~ /colwidths=([\d,]+)/) { @colwidths=split(',',$1); next;}
+         }
+         if ($line =~ /end_xcat_table/) {
+             my $separator = '+';
+             foreach my $c (@colwidths) {
+                if ($c > 0) { $separator .= '-' x $c; }   
+                $separator .= '+';
+             }
+             $separator .= "\n";
+             my $headsep = $separator;
+             $headsep =~ s/-/=/g;
+             my $rowline = $separator;
+             $rowline =~ s/-/ /g;
+
+             my $nosep=0;
+             foreach my $tabline(@tablines) {
+               if ($tabline =~ /^\s*$/) { next;}
+               if ($tabline =~ /^\-\-/) { 
+                 push (@outlines,$headsep);
+                 $nosep = 1;
+                 next;
+               }
+               if ($nosep) { $nosep=0;} else {push (@outlines,$separator);}
+               $tabline =~ s/^\s*\|//;
+               my @vals = split (/\|/,$tabline);
+               my $last_cell_line=0;
+               my $colnum=0;
+               my @tabrow;
+               foreach my $c (@colwidths) {
+                 if ($c > 0) {
+                     my $colval=$vals[$colnum];
+                     $colval =~ s/(\s*)$//;
+                     my $vallen = length($colval);
+                     my $cell_line=0;
+                     while ($vallen >  $c) {
+                       $tabrow[$cell_line++][$colnum] = substr($colval,0,$c);
+                       $vallen -= $c;
+                       $colval = substr($colval,$c,$vallen);
+                     }
+                     $tabrow[$cell_line][$colnum] = substr($colval,0,$vallen);
+                     if ($vallen < $c) {
+                        $tabrow[$cell_line][$colnum] .= " " x ($c-$vallen);
+                     }
+                     $last_cell_line = max($cell_line,$last_cell_line);  
+                 }   
+                 $colnum++; 
+               }
+
+               my @rowlines;
+               for (my $i=0;$i<=$last_cell_line;$i++) {
+                 for (my $j=0;$j<=$numcols-1;$j++) {
+                   $rowlines[$i] .= "|";
+           if ($tabrow[$i][$j]) { $rowlines[$i] .= $tabrow[$i][$j]; }
+                   else { $rowlines[$i] .= " " x $colwidths[$j]; }
+                 }
+                 $rowlines[$i] .= "|\n";
+               }
+               push (@outlines,@rowlines);
+            }
+            push (@outlines,$separator);
+
+            # reset to process next table
+            @tablines = ();
+            $xcat_table=0; $numcols=1;@colwidths=(0);next;
+         }
+         if ($line =~ /--\>/) {$in_comment=0;next;}
+         next;
+      }
+      if ($xcat_table) { push (@tablines,$line); next; }
+
+      push (@outlines,$line);
+      next;
+  }
+
+  open(MD2FILE, ">$outfile") or die "Could not open >$outfile";
+  print MD2FILE @outlines;
+  close MD2FILE;
+
+  return;
+
+
+
+
+
+
 }

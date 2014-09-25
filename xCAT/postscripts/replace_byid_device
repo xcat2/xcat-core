@@ -1,0 +1,45 @@
+#!/bin/bash
+
+#Only used by sysclone
+
+#if the /etc/systemimager/byid_real_map.conf exist, 
+#the device name used in fstab and grub are in "by-id" style
+#use the by-id name on target node to replace the name on the goden client
+
+if [ ! -e /etc/systemimager/byid_real_map.conf ];then
+    exit 0
+fi
+
+sed -e 's/-part[0-9]\+//g' -e 's/[0-9]\+$//' /etc/systemimager/byid_real_map.conf | uniq |
+	while read str_line
+do
+    str_old_dev="${str_line%%:*}"
+    str_real="${str_line##*:}"
+    str_real="${str_line##*/}"
+#    str_dev_prefix=`basename $str_old_dev | awk -F'-' '{print $1}'`
+    
+    #find out the new by-id name
+    str_new_dev=`ls -l --time-style=locale /dev/disk/by-id/ | grep -E "$str_real\$" | awk '{print $9}'`
+    if [ -z "$str_new_dev" ];then
+        continue
+    fi
+    str_new_dev="/dev/disk/by-id/${str_new_dev}"
+
+    for str_file_name in \
+		/boot/efi/efi/SuSE/elilo.conf \
+		/boot/efi/EFI/redhat/grub.conf \
+		/boot/grub/menu.lst \
+		/boot/grub/device.map \
+		/etc/elilo.conf \
+		/etc/fstab \
+		/etc/grub.conf \
+		/etc/lilo.conf \
+		/etc/yaboot.conf		
+    do
+        if [ -f $str_file_name ];then
+            sed -i "s:$str_old_dev:$str_new_dev:g" "$str_file_name"
+        fi
+    done
+done
+
+exit 0

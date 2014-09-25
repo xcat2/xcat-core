@@ -1349,6 +1349,7 @@ sub mksysclone
     my $clusterfile = "$installroot/sysclone/scripts/cluster.txt";
 
     mkpath("$pspath");
+    copy("$installroot/postscripts/replace_byid_device","$pspath/11all.replace_byid_device");
     copy("$installroot/postscripts/configefi","$pspath/15all.configefi");
     copy("$installroot/postscripts/updatenetwork","$pspath/16all.updatenetwork");
     copy("$installroot/postscripts/runxcatpost","$pspath/17all.runxcatpost");
@@ -1361,11 +1362,11 @@ sub mksysclone
         copy("/var/lib/systemimager/scripts/post-install/10all.fix_swap_uuids","$pspath");
     }
 
-    unless (-r "$pspath/11all.replace_byid_device")
-    {
-        mkpath("$pspath");
-        copy("/var/lib/systemimager/scripts/post-install/11all.replace_byid_device","$pspath");
-    }
+    #unless (-r "$pspath/11all.replace_byid_device")
+    #{
+    #    mkpath("$pspath");
+    #    copy("/var/lib/systemimager/scripts/post-install/11all.replace_byid_device","$pspath");
+    #}
 
     unless (-r "$pspath/95all.monitord_rebooted")
     {
@@ -1480,6 +1481,18 @@ sub mksysclone
                 }
             }
             $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+
+            my $nodetab = xCAT::Table->new('nodetype');
+            my $archref = $nodetab->getNodeAttribs($node, ['arch']);
+            if ($archref->{arch} eq "ppc64"){
+                my $mactab = xCAT::Table->new('mac');
+                my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                my $formatmac = $macref->{mac};
+                $formatmac =~ s/:/-/g;
+                $formatmac = "01-".$formatmac;
+                $kcmdline .= " BOOTIF=$formatmac ";
+            }
+
 
             my $i = "xcat/genesis.fs.$arch.gz";
             if ( -r "$tftpdir/xcat/genesis.fs.$arch.lzma" ){

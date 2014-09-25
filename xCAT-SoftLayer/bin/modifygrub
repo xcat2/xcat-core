@@ -63,26 +63,50 @@ sub addKernelParms {
 	# get node ip and add it to the kernel parms
 	my ($nic, $ip, $netmask, $network, $broadcast, $gateway, $mac) = getNodeIpInfo($args);
 	if (!$ip) { die "Error: could not find the NIC that would connect to the xCAT mgmt node's IP (".$args->{mnip}.").\n"; }
-	# if we are booting genesis, need to add the BOOTIF parm
-	my $bootif;
+
+	#if (defined($PROVMETHOD) && $PROVMETHOD eq 'sysclone') {
 	if ($args->{kernelpath} =~ m/genesis\.kernel\.x86_64/) {
-		$bootif = $mac;
+		# genesis case, add additional parms for sysclone or nodeset shell
+		my $bootif = $mac;
 		$bootif =~ s/:/-/g;
 		$bootif = "BOOTIF=01-$bootif";
-	}
-
-	#todo: if you are running genesis shell (nodeset <node> shell), this if-else will depend on the nodeset done before that.
-	#		really should check for currstate=shell, or something like that
-	if (defined($PROVMETHOD) && $PROVMETHOD eq 'sysclone') {
-		# add additional parms for sysclone
 		# DEVICE=eth0 IPADDR=10.0.0.99 NETMASK=255.255.255.0 NETWORK=10.0.0.0 BROADCAST=10.0.0.255 GATEWAY=10.0.0.1 GATEWAYDEV=eth0
 		#todo:  should we also add ETHER_SLEEP=$WAITTIME textmode=1 dns=$mnip ?
 		$args->{kernelparms} .= " $bootif IPADDR=$ip NETMASK=$netmask NETWORK=$network BROADCAST=$broadcast GATEWAY=$gateway HOSTNAME=$nodename DEVICE=$nic GATEWAYDEV=$nic";
 	}
-	else {			# scripted install
-		#todo: the parameters for kickstart are likely different
-		$args->{kernelparms} .= " $bootif hostip=$ip netmask=$netmask gateway=$gateway dns=$mnip hostname=$nodename netdevice=$nic netwait=$WAITTIME textmode=1";
-              # print Dumper($args->{kernelparms})
+	else {			# scripted install (kickstart or autoyast)
+		if ($args->{kernelparms} =~ m/autoyast=/) {			# sles
+			# if site.managedaddressmode=static is set, it will put several of these kernel parms on there for us.  Do not duplicate in that case.
+			if ($args->{kernelparms} !~ m/ hostip=/) { $args->{kernelparms} .= " hostip=$ip"; }
+			if ($args->{kernelparms} !~ m/ netmask=/) { $args->{kernelparms} .= " netmask=$netmask"; }
+			if ($args->{kernelparms} !~ m/ gateway=/) { $args->{kernelparms} .= " gateway=$gateway"; }
+			if ($args->{kernelparms} !~ m/ hostname=/) { $args->{kernelparms} .= " hostname=$nodename"; }
+			if ($args->{kernelparms} !~ m/ dns=/) { $args->{kernelparms} .= " dns=$mnip"; }
+			# If they set installnic=mac (recommended), the netdevice will already be set to the mac.
+			# If they explicitly set installnic=<nic>, then ksdevice will be set to that and we will not disturb it here.
+			# Otherwise add netdevice set to the nic we calculated it should be.
+			if ($args->{kernelparms} !~ m/ netdevice=/) { $args->{kernelparms} .= " netdevice=$nic"; }
+			$args->{kernelparms} .= " netwait=$WAITTIME textmode=1";
+	        # print Dumper($args->{kernelparms})
+    	}
+		elsif ($args->{kernelparms} =~ m/ks=/) {			# rhel/centos
+			# See https://www.centos.org/docs/5/html/Installation_Guide-en-US/s1-kickstart2-startinginstall.html
+			# and  http://fedoraproject.org/wiki/Anaconda/NetworkIssues for description of kickstart kernel parms
+			# if site.managedaddressmode=static is set, it will put several of these kernel parms on there for us.  Do not duplicate in that case.
+			if ($args->{kernelparms} !~ m/ ip=/) { $args->{kernelparms} .= " ip=$ip"; }
+			if ($args->{kernelparms} !~ m/ netmask=/) { $args->{kernelparms} .= " netmask=$netmask"; }
+			if ($args->{kernelparms} !~ m/ gateway=/) { $args->{kernelparms} .= " gateway=$gateway"; }
+			if ($args->{kernelparms} !~ m/ hostname=/) { $args->{kernelparms} .= " hostname=$nodename"; }
+			if ($args->{kernelparms} !~ m/ dns=/) { $args->{kernelparms} .= " dns=$mnip"; }
+			# If they set installnic=mac (recommended), the ksdevice will already be set to the mac.
+			# If they explicitly set installnic=<nic>, then ksdevice will be set to that and we will not disturb it here.
+			# Otherwise ksdevice will be set to bootif, and we change it to the nic we calculated it should be.
+			if ($args->{kernelparms} =~ m/ ksdevice=bootif/) { $args->{kernelparms} =~ s/ ksdevice=bootif/ ksdevice=$nic/; }
+			elsif ($args->{kernelparms} !~ m/ ksdevice=/) { $args->{kernelparms} .= " ksdevice=$nic"; }
+			$args->{kernelparms} .= " nicdelay=$WAITTIME linksleep=$WAITTIME textmode=1";
+	        # print Dumper($args->{kernelparms})
+    	}
+    	else { die "Error: for scripted installs, only support SLES or RHEL/CentOS as the target OS.\n"; }
 	}
 }
 
@@ -134,8 +158,10 @@ sub getNodeIpInfo {
 	# so if we are on centos right now, we need to count down to determine the number that sles
 	# will give the nic that we have selected, because it is the sles naming that we care about,
 	# because that is the initrd that will be running in the scripted install case.
-	# For the sysclone case, genesis doxcat should be changed to use the mac to find the nic.
-	if (isRedhat()) {
+	# This works similarly (at least in some case) when rhel is the target OS.
+	# The preferred way is for the user to set installnic=mac, then we do not need to run this code.
+	# For the sysclone case, genesis doxcat uses the mac to find the nic.
+	if (isRedhat() && $args->{kernelparms} !~ m/ ksdevice=\S*:/ && $args->{kernelparms} !~ m/ netdevice=\S*:/) {
 		my @nics = grep(m/^\d+:\s+eth/, @output);
 		my $i = 0;
 		foreach my $line (@nics) {
@@ -143,8 +169,8 @@ sub getNodeIpInfo {
 			if (defined($nictmp) && $nictmp eq $realnic) { $realnic = "eth$i"; last; }		# got ip, we are done
 			$i++;
 		}
+		print "Determined that SLES/RHEL will call the install NIC $realnic (it has mac $mac)\n";
 	}
-	print "Determined that SLES will call the install NIC $realnic (it has mac $mac)\n";
 
 	# finally, find the gateway
 	my $gateway;

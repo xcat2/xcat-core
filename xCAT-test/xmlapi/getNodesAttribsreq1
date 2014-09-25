@@ -1,0 +1,7 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getNodesAttribs</command>
+<table>nodelist</table>
+<noderange>blade01-blade02</noderange>
+<attr>ALL</attr> 
+</xcatrequest>

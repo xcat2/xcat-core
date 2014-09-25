@@ -12,6 +12,24 @@ fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
+
+
+#the nics have not been configured when running the PBS sometimes, need to make sure... 
+RETRY=0
+until ip -4 --oneline addr show|grep -v 127.0.0.1 >/dev/null
+do
+    sleep 2
+    RETRY=$[ $RETRY + 1 ]
+    if [ $RETRY -eq 15  ];then
+       logger -t xcat -p local4.err "Network not configured, please check..."
+       echo `date` "xcatinstallpost: Network not configured, please check..." >> /var/log/xcat/xcat.log 
+       exit 1
+    fi
+
+done
+
+
+
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH

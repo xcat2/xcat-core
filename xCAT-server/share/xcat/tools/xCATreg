@@ -43,6 +43,7 @@ my $branch = 0;
 my $testconfigfile = "$rootdir/default.conf";
 my $configfile = "/regression/default.conf";
 my $MN = undef;
+my $confdir = "/regression/confdir";
 my $management_node = undef;
 my $CN = undef;
 my $output = undef;
@@ -378,21 +379,23 @@ sub config_test {
             }
         }
     }
-    &runcmd ("touch default.conf");
-    &runcmd ("touch defaultslesppc64.conf");
-    &runcmd ("touch defaultrhx8664.conf");
-    &runcmd ("touch defaultslesx8664.conf");
-    &runcmd ("touch defaultubux8664.conf");
+
+    &runcmd ("rm -rf $confdir/*");
+    &runcmd ("touch  $confdir/default.conf");
+    &runcmd ("touch  $confdir/defaultslesppc64.conf");
+    &runcmd ("touch  $confdir/defaultrhx8664.conf");
+    &runcmd ("touch  $confdir/defaultslesx8664.conf");
+    &runcmd ("touch  $confdir/defaultubux8664.conf");
     if(exists $rhppc64config{object}){
         foreach my $type (keys %{$rhppc64config{object}}){
             foreach my $name (keys %{$rhppc64config{object}{$type}}){
                 send_msg(2, "OBJECT:$name,TYPE:$type");
-                &runcmd( "  echo [Object_$type]>>default.conf");
-                &runcmd( "  echo Name=$name>>default.conf");
+                &runcmd( "  echo [Object_$type]>>$confdir/default.conf");
+                &runcmd( "  echo Name=$name>>$confdir/default.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$rhppc64config{object}{$type}{$name}}){
                     send_msg(2, "    $attr = $rhppc64config{object}{$type}{$name}{$attr};");
-                    &runcmd( "  echo $attr=$rhppc64config{object}{$type}{$name}{$attr}>>default.conf");
+                    &runcmd( "  echo $attr=$rhppc64config{object}{$type}{$name}{$attr}>>$confdir/default.conf");
                 }
             }
         }
@@ -401,12 +404,12 @@ sub config_test {
         foreach my $type (keys %{$slesppc64config{object}}){
             foreach my $name (keys %{$slesppc64config{object}{$type}}){
                 send_msg(2, "OBJECT:$name,TYPE:$type");
-                &runcmd( "  echo [Object_$type]>>defaultslesppc64.conf");
-                &runcmd( "  echo Name=$name>>defaultslesppc64.conf");
+                &runcmd( "  echo [Object_$type]>>$confdir/defaultslesppc64.conf");
+                &runcmd( "  echo Name=$name>>$confdir/defaultslesppc64.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$slesppc64config{object}{$type}{$name}}){
                     send_msg(2, "    $attr = $slesppc64config{object}{$type}{$name}{$attr};");
-                    &runcmd( "  echo $attr=$slesppc64config{object}{$type}{$name}{$attr}>>defaultslesppc64.conf");
+                    &runcmd( "  echo $attr=$slesppc64config{object}{$type}{$name}{$attr}>>$confdir/defaultslesppc64.conf");
                 }
             }
         }
@@ -415,12 +418,12 @@ sub config_test {
         foreach my $type (keys %{$rhx8664config{object}}){
             foreach my $name (keys %{$rhx8664config{object}{$type}}){
                 send_msg(2, "OBJECT:$name,TYPE:$type");
-                &runcmd( "  echo [Object_$type]>>defaultrhx8664.conf");
-                &runcmd( "  echo Name=$name>>defaultrhx8664.conf");
+                &runcmd( "  echo [Object_$type]>>$confdir/defaultrhx8664.conf");
+                &runcmd( "  echo Name=$name>>$confdir/defaultrhx8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$rhx8664config{object}{$type}{$name}}){
                     send_msg(2, "    $attr = $rhx8664config{object}{$type}{$name}{$attr};");
-                    &runcmd( "  echo $attr=$rhx8664config{object}{$type}{$name}{$attr}>>defaultrhx8664.conf");
+                    &runcmd( "  echo $attr=$rhx8664config{object}{$type}{$name}{$attr}>>$confdir/defaultrhx8664.conf");
                 }
             }
         }
@@ -429,12 +432,12 @@ sub config_test {
         foreach my $type (keys %{$slesx8664config{object}}){
             foreach my $name (keys %{$slesx8664config{object}{$type}}){
                 send_msg(2, "OBJECT:$name,TYPE:$type");
-                &runcmd( "  echo [Object_$type]>>defaultslesx8664.conf");
-                &runcmd( "  echo Name=$name>>defaultslesx8664.conf");
+                &runcmd( "  echo [Object_$type]>>$confdir/defaultslesx8664.conf");
+                &runcmd( "  echo Name=$name>>$confdir/defaultslesx8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$slesx8664config{object}{$type}{$name}}){
                     send_msg(2, "    $attr = $slesx8664config{object}{$type}{$name}{$attr};");
-                    &runcmd( "  echo $attr=$slesx8664config{object}{$type}{$name}{$attr}>>defaultslesx8664.conf");
+                    &runcmd( "  echo $attr=$slesx8664config{object}{$type}{$name}{$attr}>>$confdir/defaultslesx8664.conf");
                 }
             }
         }
@@ -443,12 +446,12 @@ sub config_test {
         foreach my $type (keys %{$ubux8664config{object}}){
             foreach my $name (keys %{$ubux8664config{object}{$type}}){
                 send_msg(2, "OBJECT:$name,TYPE:$type");
-                &runcmd( "  echo [Object_$type]>>defaultubux8664.conf");
-                &runcmd( "  echo Name=$name>>defaultubux8664.conf");
+                &runcmd( "  echo [Object_$type]>>$confdir/defaultubux8664.conf");
+                &runcmd( "  echo Name=$name>>$confdir/defaultubux8664.conf");
                 #print "$name,TYPE:$type \n";
                 foreach my $attr (keys %{$ubux8664config{object}{$type}{$name}}){
                     send_msg(2, "    $attr = $ubux8664config{object}{$type}{$name}{$attr};");
-                    &runcmd( "  echo $attr=$ubux8664config{object}{$type}{$name}{$attr}>>defaultubux8664.conf");
+                    &runcmd( "  echo $attr=$ubux8664config{object}{$type}{$name}{$attr}>>$confdir/defaultubux8664.conf");
                 }
             }
         }
@@ -457,17 +460,17 @@ sub config_test {
     if(exists $rhppc64config{table}){
         foreach my $type (keys %{$rhppc64config{table}}){
             send_msg(2, "TABLE:$type");
-            &runcmd( "  echo [Table_$type]>>default.conf");
+            &runcmd( "  echo [Table_$type]>>$confdir/default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$rhppc64config{table}{$type}}){
                send_msg(2, "    $rhppc64config{table}{$type}{$name}{__KEY__} = $name");
-               &runcmd( "  echo $rhppc64config{table}{$type}{$name}{__KEY__}=$name>>default.conf");
+               &runcmd( "  echo $rhppc64config{table}{$type}{$name}{__KEY__}=$name>>$confdir/default.conf");
                foreach my $attr (keys %{$rhppc64config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
                        send_msg(2, "    $attr = $rhppc64config{table}{$type}{$name}{$attr}");
-                       &runcmd( " echo $attr=$rhppc64config{table}{$type}{$name}{$attr}>>default.conf");
+                       &runcmd( " echo $attr=$rhppc64config{table}{$type}{$name}{$attr}>>$confdir/default.conf");
                    }
                 }
                 send_msg(2, "\n");
@@ -477,17 +480,17 @@ sub config_test {
     if(exists $slesppc64config{table}){
         foreach my $type (keys %{$slesppc64config{table}}){
             send_msg(2, "TABLE:$type");
-            &runcmd( "  echo [Table_$type]>>defaultslesppc64.conf");
+            &runcmd( "  echo [Table_$type]>>$confdir/defaultslesppc64.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$slesppc64config{table}{$type}}){
                send_msg(2, "    $slesppc64config{table}{$type}{$name}{__KEY__} = $name");
-               &runcmd( "  echo $slesppc64config{table}{$type}{$name}{__KEY__}=$name>>defaultslesppc64.conf");
+               &runcmd( "  echo $slesppc64config{table}{$type}{$name}{__KEY__}=$name>>$confdir/defaultslesppc64.conf");
                foreach my $attr (keys %{$slesppc64config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
                        send_msg(2, "    $attr = $slesppc64config{table}{$type}{$name}{$attr}");
-                       &runcmd( " echo $attr=$slesppc64config{table}{$type}{$name}{$attr}>>defaultslesppc64.conf");
+                       &runcmd( " echo $attr=$slesppc64config{table}{$type}{$name}{$attr}>>$confdir/defaultslesppc64.conf");
                    }
                 }
                 send_msg(2, "\n");
@@ -497,17 +500,17 @@ sub config_test {
     if(exists $rhx8664config{table}){
         foreach my $type (keys %{$rhx8664config{table}}){
             send_msg(2, "TABLE:$type");
-            &runcmd( "  echo [Table_$type]>>defaultrhx8664.conf");
+            &runcmd( "  echo [Table_$type]>>$confdir/defaultrhx8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$rhx8664config{table}{$type}}){
                send_msg(2, "    $rhx8664config{table}{$type}{$name}{__KEY__} = $name");
-               &runcmd( "  echo $rhx8664config{table}{$type}{$name}{__KEY__}=$name>>defaultrhx8664.conf");
+               &runcmd( "  echo $rhx8664config{table}{$type}{$name}{__KEY__}=$name>>$confdir/defaultrhx8664.conf");
                foreach my $attr (keys %{$rhx8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
                        send_msg(2, "    $attr = $rhx8664config{table}{$type}{$name}{$attr}");
-                       &runcmd( " echo $attr=$rhx8664config{table}{$type}{$name}{$attr}>>defaultrhx8664.conf");
+                       &runcmd( " echo $attr=$rhx8664config{table}{$type}{$name}{$attr}>>$confdir/defaultrhx8664.conf");
                    }
                 }
                 send_msg(2, "\n");
@@ -517,17 +520,17 @@ sub config_test {
     if(exists $slesx8664config{table}){
         foreach my $type (keys %{$slesx8664config{table}}){
             send_msg(2, "TABLE:$type");
-            &runcmd( "  echo [Table_$type]>>defaultslesx8664.conf");
+            &runcmd( "  echo [Table_$type]>>$confdir/defaultslesx8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$slesx8664config{table}{$type}}){
                send_msg(2, "    $slesx8664config{table}{$type}{$name}{__KEY__} = $name");
-               &runcmd( "  echo $slesx8664config{table}{$type}{$name}{__KEY__}=$name>>defaultslesx8664.conf");
+               &runcmd( "  echo $slesx8664config{table}{$type}{$name}{__KEY__}=$name>>$confdir/defaultslesx8664.conf");
                foreach my $attr (keys %{$slesx8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
                        send_msg(2, "    $attr = $slesx8664config{table}{$type}{$name}{$attr}");
-                       &runcmd( " echo $attr=$slesx8664config{table}{$type}{$name}{$attr}>>defaultslesx8664.conf");
+                       &runcmd( " echo $attr=$slesx8664config{table}{$type}{$name}{$attr}>>$confdir/defaultslesx8664.conf");
                    }
                 }
                 send_msg(2, "\n");
@@ -537,17 +540,17 @@ sub config_test {
     if(exists $ubux8664config{table}){
         foreach my $type (keys %{$ubux8664config{table}}){
             send_msg(2, "TABLE:$type");
-            &runcmd( "  echo [Table_$type]>>defaultubux8664.conf");
+            &runcmd( "  echo [Table_$type]>>$confdir/defaultubux8664.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             #&runcmd( "  echo [Table_site]>>default.conf");
             #&runcmd( "  echo key=$type>>default.conf");
             foreach my $name (keys %{$ubux8664config{table}{$type}}){
                send_msg(2, "    $ubux8664config{table}{$type}{$name}{__KEY__} = $name");
-               &runcmd( "  echo $ubux8664config{table}{$type}{$name}{__KEY__}=$name>>defaultubux8664.conf");
+               &runcmd( "  echo $ubux8664config{table}{$type}{$name}{__KEY__}=$name>>$confdir/defaultubux8664.conf");
                foreach my $attr (keys %{$ubux8664config{table}{$type}{$name}}){
                    if($attr ne '__KEY__'){
                        send_msg(2, "    $attr = $ubux8664config{table}{$type}{$name}{$attr}");
-                       &runcmd( " echo $attr=$ubux8664config{table}{$type}{$name}{$attr}>>defaultubux8664.conf");
+                       &runcmd( " echo $attr=$ubux8664config{table}{$type}{$name}{$attr}>>$confdir/defaultubux8664.conf");
                    }
                 }
                 send_msg(2, "\n");
@@ -574,10 +577,10 @@ sub config_test {
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
         send_msg(2, "Varible:");
-        &runcmd( "  echo [System]>>default.conf");
+        &runcmd( "  echo [System]>>$confdir/default.conf");
         foreach my $varname (keys %{$rhppc64config{var}}){
             send_msg(2, "    $varname = $rhppc64config{var}{$varname}");
-            &runcmd( "  echo $varname=$rhppc64config{var}{$varname}>>default.conf");
+            &runcmd( "  echo $varname=$rhppc64config{var}{$varname}>>$confdir/default.conf");
             #print "var is $rhppc64config{var}\n";
         }
     }
@@ -587,10 +590,10 @@ sub config_test {
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
         send_msg(2, "Varible:");
-        &runcmd( "  echo [System]>>defaultslesppc64.conf");
+        &runcmd( "  echo [System]>>$confdir/defaultslesppc64.conf");
         foreach my $varname (keys %{$slesppc64config{var}}){
             send_msg(2, "    $varname = $slesppc64config{var}{$varname}");
-            &runcmd( "  echo $varname=$slesppc64config{var}{$varname}>>defaultslesppc64.conf");
+            &runcmd( "  echo $varname=$slesppc64config{var}{$varname}>>$confdir/defaultslesppc64.conf");
             #print "var is $slesppc64config{var}\n";
         }
     }
@@ -600,10 +603,10 @@ sub config_test {
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
         send_msg(2, "Varible:");
-        &runcmd( "  echo [System]>>defaultrhx8664.conf");
+        &runcmd( "  echo [System]>>$confdir/defaultrhx8664.conf");
         foreach my $varname (keys %{$rhx8664config{var}}){
             send_msg(2, "    $varname = $rhx8664config{var}{$varname}");
-            &runcmd( "  echo $varname=$rhx8664config{var}{$varname}>>defaultrhx8664.conf");
+            &runcmd( "  echo $varname=$rhx8664config{var}{$varname}>>$confdir/defaultrhx8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
     }
@@ -613,10 +616,10 @@ sub config_test {
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
         send_msg(2, "Varible:");
-        &runcmd( "  echo [System]>>defaultslesx8664.conf");
+        &runcmd( "  echo [System]>>$confdir/defaultslesx8664.conf");
         foreach my $varname (keys %{$slesx8664config{var}}){
             send_msg(2, "    $varname = $slesx8664config{var}{$varname}");
-            &runcmd( "  echo $varname=$slesx8664config{var}{$varname}>>defaultslesx8664.conf");
+            &runcmd( "  echo $varname=$slesx8664config{var}{$varname}>>$confdir/defaultslesx8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
     }
@@ -626,10 +629,10 @@ sub config_test {
     #&runcmd( "echo $MN $MN.$DOMAIN $MNIP>>/etc/hosts");
     #print "MN is $MN\n";}
         send_msg(2, "Varible:");
-        &runcmd( "  echo [System]>>defaultubux8664.conf");
+        &runcmd( "  echo [System]>>$confdir/defaultubux8664.conf");
         foreach my $varname (keys %{$ubux8664config{var}}){
             send_msg(2, "    $varname = $ubux8664config{var}{$varname}");
-            &runcmd( "  echo $varname=$ubux8664config{var}{$varname}>>defaultubux8664.conf");
+            &runcmd( "  echo $varname=$ubux8664config{var}{$varname}>>$confdir/defaultubux8664.conf");
             #print "var is $rhppc64config{var}\n";
         }
     }
@@ -647,6 +650,8 @@ sub git_update {
     my $lastcommit;
     my $commitlog1;
     my $lastcommitfile;
+    my $codedir;
+    $codedir="/regression/code/xcat-core";
 
     my $gitup;
     $gitup="/tmp/gitup";
@@ -659,6 +664,8 @@ sub git_update {
     #    exit;
     #}
 
+    chdir $codedir;
+ 
     $res = system("git checkout $branch");
     if ($res != 0){
         send_msg(0, "git checkout failed");
@@ -800,27 +807,36 @@ sub config_mn {
 sub gettestinfo {
 my $mn = shift;
 my $testenvinfo = undef;
-my @osname = runcmd("xdsh $mn uname -a ");
-my @release = runcmd("xdsh $mn  cat /etc/*release");
-my @osinfo = runcmd("xdsh $mn lsb_release -a");
-if ( $osname [0]  =~ /Linux/  && $osname [0] =~ /ppc64/ && $release [1] =~ /Red Hat Enterprise Linux Server release 6.5/){
-   print "MN info is redhat ppc 64 ";
+my $osinfoconf = "/regression/lsbinfo";
+runcmd("xdsh $mn lsb_release -a > $osinfoconf");
+send_msg(2, "=============gettestinf==============");
+my $os = 2;
+my $osenv = 2;
+my $osubu = 2;
+$os =  system("cat $osinfoconf |grep RedHat");
+$osenv = system("cat $osinfoconf |grep ppc64");
+$osubu =  system("cat $configfile |grep Ubuntu");
+if (($osenv == 0)&&($os == 0)){
    $testenvinfo = "rhppc64";
-}elsif ( $osinfo [2]  =~ /SUSE Linux Enterprise Server 11/ && $osinfo [2]  =~ /ppc64/){
-   print " MN info is sles 11.3 ppc64 ";
+   print "MN osinfo is $testenvinfo";
+}elsif (($osenv == 0)&&($os == 256)){
    $testenvinfo = "slesppc64";
-}elsif ( $osinfo [2]  =~ /SUSE Linux Enterprise Server 11/ && $osinfo [2]  =~ /x86_64/){
-   print " MN info is sles 11.3 x86_64 ";
-   $testenvinfo = "slesx8664";
-}elsif ( $osinfo [0]  =~ /amd64/ && $osinfo [2]  =~ /Red Hat Enterprise Linux Server release 6.5/){
-   print "MN info is redhat 6.5  x86_64 \n";
+   print "MN osinfo is $testenvinfo";
+}elsif (($osenv == 256)&&($os == 0)){
    $testenvinfo = "rhx8664";
-
-}elsif ( $osinfo [1]  =~ /Ubuntu/ && $osinfo [1]  =~ /12.04/){
-   print "MN info is Ubuntu 12.04   x86_64 \n";
+   print "MN osinfo is $testenvinfo";
+}elsif (($osenv == 256)&&($os == 256)){
+   $testenvinfo = "slesx8664";
+   print "MN osinfo is $testenvinfo";
+}elsif ($osubu == 0){
    $testenvinfo = "ubux8664";
-}else
-   {print "no machine info ";}
+   print "MN osinfo is $testenvinfo";
+}
+else
+  {
+   send_msg(0, "no machine info");
+  }
+  send_msg(2, "testenvinfo is $testenvinfo");
   return $testenvinfo;
 }
 
@@ -829,6 +845,8 @@ sub init
     my $mn = shift;
     my $MN=$mn;
     my $envoutput = &gettestinfo($mn);
+    send_msg(2, "****************************** MNinit is $mn ");
+    send_msg(2, "==================in init function================");
     if ($envoutput eq 'rhppc64'){
         my $nodedir=$confkeys{rhpdir};
         my $iso=$rhppc64config{var}{ISO};
@@ -843,7 +861,7 @@ sub init
        print "--get the latest XCAT tarball.......\n";
        $res =  system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
-       system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");
+       system("scp -r   $confdir/rhel6.5.repo $MN:/etc/yum.repos.d/rhel6.5.repo");
        system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
        print "--install XCAT .......\n";
        system("xdsh $MN rpm --import /iso/mountpoint/RPM-GPG-KEY-redhat-release");
@@ -852,12 +870,10 @@ sub init
        system("xdsh $MN yum -y install perl-xCAT xCAT-client xCAT-server xCAT");
        print "--install XCATTEST .......\n";
        system("xdsh $MN yum -y install xCAT-test");
-       system("scp -r default.conf $MN:$testconfigfile");
-       system("rm -rf default.conf");
-       system("rm -rf rhel6.5.repo");
-        system("xdsh $MN yum -y install screen");
-        system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
-        #system("xdsh $MN sysctl -n net.ipv4.ip_forward=1");
+       system("scp -r  $confdir/default.conf $MN:$testconfigfile");
+       system("xdsh $MN yum -y install screen");
+       system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
+       #system("xdsh $MN sysctl -n net.ipv4.ip_forward=1");
         $res =  system("xdsh $MN source /etc/profile.d/xcat.sh");
         #if ($res != 0){
         #send_msg(0, "install xCAT failed on rhpmn");
@@ -893,8 +909,7 @@ sub init
         system("xdsh $MN zypper -n install xCAT");
         system("xdsh $MN zypper -n install xCAT-test");
         system("xdsh $MN zypper -n install lsb");
-        system("scp -r defaultslesppc64.conf $MN:$testconfigfile");
-        system("rm -rf defaultslesppc64.conf");
+        system("scp -r  $confdir/defaultslesppc64.conf $MN:$testconfigfile");
         print "--prepare test environment....\n";
         print "[OK]\n";
 }elsif ($envoutput eq 'rhx8664'){
@@ -912,7 +927,7 @@ sub init
         print "--get the latest XCAT tarball.......\n";
         system("scp -r $nodedir/xcat-dep $MN:/");
         &repo();
-        system("scp -r  rhel6.5.repo $MN:/etc/yum.repos.d/");
+        system("scp -r  $confdir/rhel6.5.repo $MN:/etc/yum.repos.d/");
         system("xdsh $MN perl /xcat-dep/rh6/ppc64/mklocalrepo.sh");
         print "--install XCAT .......\n";
         system("xdsh $MN yum clean metadata");
@@ -925,9 +940,7 @@ sub init
         system("xdsh $MN yum -y install screen");
         system("xdsh $MN yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc");
         system("xdsh $MN yum -y install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64 ");
-        system("scp -r defaultrhx8664.conf $MN:$testconfigfile");
-        system("rm -rf defaultrhx8664.conf");
-        system("rm -rf rhel6.5.repo");
+        system("scp -r  $confdir/defaultrhx8664.conf $MN:$testconfigfile");
 }elsif ($envoutput eq 'slesx8664'){
         my $nodedir=$confkeys{slesxdir};
          my $iso=$slesx8664config{var}{ISO};
@@ -954,8 +967,7 @@ sub init
         system("xdsh $MN zypper -n  xCAT-test*");
         print "--prepare test environment....\n";
         system("xdsh $MN zypper  -n install iscsi-initiator-utils bridge-utils kvm perl-Sys-Virt perl-Sys-Virt.x86_64 libvirt.x86_64 qemu-kvm.x86_64");
-        system("scp -r defaultslesx8664.conf $MN:$testconfigfile");
-        system("rm -rf defaultslesx8664.conf");
+        system("scp -r  $confdir/defaultslesx8664.conf $MN:$testconfigfile");
         print "--prepare vmslestest environment....\n";
         print "[OK]\n";
 }elsif ($envoutput eq 'ubux8664'){
@@ -992,10 +1004,9 @@ sub init
         system("xdsh $MN source /etc/profile.d/xcat.sh");
          system("xdsh $MN apt-get install xcat-test");
         print "--prepare test environment....\n";
-        system("scp -r defaultubux8664.conf $MN:$testconfigfile");
+        system("scp -r $confdir/defaultubux8664.conf $MN:$testconfigfile");
         print "--prepare vmubuntu test environment....\n";
         print "[OK]\n";}
-        system("rm -rf default*.conf");
         return 0;
 }
 #######################################
@@ -1181,11 +1192,11 @@ sub trim {
 #repo
 ####################################
 sub repo{
-    &runcmd( "  echo [rhe-6.5-server]>>rhel6.5.repo");
-    &runcmd( "  echo name=RHEL 6.5 SERVER packages>>rhel6.5.repo");
-    &runcmd("   echo baseurl=file:///iso/mountpoint/Server/>>rhel6.5.repo");
-    &runcmd("   echo enabled=1>>rhel6.5.repo");
-    &runcmd("   echo gpgcheck=1>>rhel6.5.repo");
+    &runcmd( "  echo [rhe-6.5-server]>>$confdir/rhel6.5.repo");
+    &runcmd( "  echo name=RHEL 6.5 SERVER packages>>$confdir/rhel6.5.repo");
+    &runcmd("   echo baseurl=file:///iso/mountpoint/Server/>>$confdir/rhel6.5.repo");
+    &runcmd("   echo enabled=1>>$confdir/rhel6.5.repo");
+    &runcmd("   echo gpgcheck=1>>$confdir/rhel6.5.repo");
     }
 
 

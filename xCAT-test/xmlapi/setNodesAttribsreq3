@@ -1,0 +1,19 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>setNodesAttribs</command>
+<noderange>compute2</noderange>
+<arg>
+   <table>
+      <name>nodelist</name>
+      <attr>
+         <groups>allxxx</groups>
+      </attr>
+   </table>
+   <table>
+      <name>nodetype</name>
+      <attr>
+         <os>Redhat20</os>
+      </attr>
+   </table>
+</arg>
+</xcatrequest>

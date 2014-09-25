@@ -2417,6 +2417,9 @@ sub addnet
           "    } else if option client-architecture = 00:02 { #ia64\n ";
         push @netent, "      filename \"elilo.efi\";\n";
         push @netent,
+          "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
+        push @netent, "      option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/".$net."_".$maskbits."\";\n";
+        push @netent,
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "      filename \"/yaboot\";\n";
         push @netent, "    }\n";

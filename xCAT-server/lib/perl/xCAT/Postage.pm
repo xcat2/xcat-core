@@ -1858,12 +1858,45 @@ sub getPostScripts
         $result .=  "setbootfromnet\n";
     }
 
-    # add setbootfromdisk if the nodesetstate is install and arch is ppc64
-    if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64"))
+    # add setbootfromdisk if the nodesetstate is install or sysclone and arch is ppc64
+    if (($nodesetstate) && (($nodesetstate eq "install") || ($nodesetstate eq "sysclone")) && ($arch eq "ppc64"))
     {
         $result .=  "setbootfromdisk\n";
     }
 
+    
+
+    #for redhat 7, append "disableconsistentNICrename" to default postscripts 
+    #if "net.ifnames=0" is specified in kcmdline/addkcmdline of node or osimage 
+    my $tftpdir = xCAT::TableUtils::getTftpDir();
+    my $osimagetab=xCAT::Table->new('osimage',-create=>1);
+    my $osimgent = $osimagetab->getAttribs({imagename => $osimgname },'osvers');
+    my $os = $osimgent->{'osvers'};    
+    my $nrret = $::GLOBAL_TAB_HASH{noderes}{$node};
+    my $netboot = $nrret->{'netboot'};
+
+    if( (($os =~ "rhel7*") || ($os =~ "rhels7*")) && ($nodesetstate) && ($nodesetstate eq "install") )
+    {
+       my $nodecfg;
+       if($netboot eq "grub2")
+       {
+          $nodecfg="$tftpdir/boot/grub2/$node";
+       }elsif($netboot eq "xnba")
+       {
+          $nodecfg="$tftpdir/xcat/xnba/nodes/$node";
+
+       }elsif($netboot eq "pxe")
+       {
+          $nodecfg="$tftpdir/pxelinux.cfg/$node";
+
+       }
+
+       my $rc=system("grep net.ifnames=0 $nodecfg >/dev/null 2>&1");
+       if($rc ==0)
+       {
+            $result .=  "disableconsistentNICrename\n";
+       }
+    }    
 
     return $result;
 }

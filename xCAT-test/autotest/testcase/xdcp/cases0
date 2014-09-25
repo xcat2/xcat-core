@@ -1,7 +1,6 @@
 start:xdcp_h
 cmd:xdcp -h
 check:rc==0
-check:output=~Usage
 end
 
 start:xdcp_V

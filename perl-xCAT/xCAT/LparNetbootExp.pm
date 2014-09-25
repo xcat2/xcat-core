@@ -629,7 +629,8 @@ sub  get_adap_prop    {
     $cmd[0] = "\" supported-network-types\" " . $phandle . " get-package-property\r";
     $msg[0] = "Status: rc and all supported network types now on stack\n";
     #$pattern[0] = "(.*)3 >(.*)";
-    $pattern[0] = "3 >";
+    #$pattern[0] = "3 >";
+    $pattern[0] = "ok";
     $newstate[0] = 1;
 
     # state 1, return code and string on stack
@@ -637,7 +638,8 @@ sub  get_adap_prop    {
     $cmd[1] = ".\r";
     $msg[1] = "Status: All supported network types now on stack\n";
     #$pattern[1] = "(.*)2 >(.*)";
-    $pattern[1] = "2 >";
+    #$pattern[1] = "2 >";
+    $pattern[1] = "ok";
     $newstate[1] = 2;
 
     # state 2, data ready to decode
@@ -691,6 +693,16 @@ sub  get_adap_prop    {
         $timeout,
         [ qr/$pattern[$state]/i,
             sub {
+               if ($state eq 1) {
+                    if ($rconsole->before() =~ /-\d+/) {
+                        nc_msg($verbose, "Status: Error getting adapter property for phandle=$phandle.\n");
+                        $state = 7;
+                        $rconsole->clear_accum();
+                        $rc = 1;
+                        return 1;
+                    }
+                }
+
                 nc_msg($verbose, $msg[$state]);
                 $state = $newstate[$state];
                 $rconsole->clear_accum();
@@ -878,6 +890,15 @@ sub get_mac_addr {
             $timeout,
             [qr/$pattern[$state]/=>
             sub {
+                if ($state eq 1) {
+                    if ($rconsole->before() =~ /-\d+/) {
+                        nc_msg($verbose, "Status: Error getting MAC address for phandle=$phandle.\n");
+                        $rconsole->clear_accum();
+                        $state = 4;
+                        $rc = 1;
+                        return undef;
+                    }
+                }
                 nc_msg($verbose, $msg[$state]);
                 $state = $newstate[$state];
                 $rconsole->clear_accum();
@@ -1019,7 +1040,8 @@ sub get_mac_addr {
     $cmd[0] = "\" ibm,loc-code\" $phandle get-package-property\r";
     $msg[0] = "Status:  return code and loc-code now on stack\n";
     #$pattern[0] = "(.*)3 >(.*)";
-    $pattern[0] = "3 >";
+    #$pattern[0] = "3 >";
+    $pattern[0] = "ok";
     $newstate[0] = 1;
 
     # cmd(1) is a dot (.). This is a stack manipulation command that removes one
@@ -1052,6 +1074,16 @@ sub get_mac_addr {
             $timeout,
             [qr/$pattern[$state]/=>
             sub {
+                if ($state eq 1) {
+                    if ($rconsole->before() =~ /-\d+/) {
+                        nc_msg($verbose, "Status: Error getting adapter location for phandle=$phandle.");
+                        $rconsole->clear_accum();
+                        $state = 3;
+                        $rc = 1;
+                        return undef;
+                    }
+                }
+
                 nc_msg($verbose, $msg[$state]);
                 $rconsole->clear_accum();
                 $state = $newstate[$state];
@@ -1125,10 +1157,19 @@ sub get_mac_addr {
         return undef if ($rc eq 1);
     }
     # Did we find one or more adapters?
-
-    if ($result[3] =~ /(\w*):(.*):(\w*\.\w*\.\w*):/) {
-        $loc_code = $3;
-    }else {
+    my @loc_array = split /\n/,$result[3];
+    my $found = 0;
+    $loc_code = '';
+    foreach my $line ( @loc_array ) {
+        if ($line =~ /(\w*):(.*):([\w|\.|-]*):/) {
+            $loc_code .= $3; 
+            $found = 1;
+        }
+    }
+    if ($found) {
+        $loc_code =~ s/\.$//;
+        return $loc_code;
+    } else {
         return undef;
     }
 }
@@ -3005,6 +3046,21 @@ sub lparnetbootexp
                     } else {
                         $device_type = "physical";
                     }
+
+                    if (defined($mac_address)) {
+                        my @newmacs = ();
+                        my @allmacs = split /\|/,$mac_address;
+                        if ( !xCAT::Utils->isAIX() ) {
+                            foreach my $mac_a ( @allmacs ) {
+                                $mac_a = lc($mac_a);
+                                $mac_a =~ s/(\w{2})/$1:/g;
+                                $mac_a =~ s/:$//;
+                                push @newmacs, $mac_a;
+                            }
+                            $mac_address = join("|",@newmacs);
+                        } 
+                    }
+
 
                     if($colon) {
                         nc_msg($verbose, "$adap_type[$i]\:$loc_code\:$mac_address\:$full_path_name_array[$i]\:$ping_result\:$device_type\:\:\:\:\n");

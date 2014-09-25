@@ -1957,6 +1957,18 @@ sub mksysclone
                 }
             }
             $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
+
+            my $nodetab = xCAT::Table->new('nodetype');
+            my $archref = $nodetab->getNodeAttribs($node, ['arch']);
+            if ($archref->{arch} eq "ppc64"){
+                my $mactab = xCAT::Table->new('mac');
+                my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                my $formatmac = $macref->{mac};
+                $formatmac =~ s/:/-/g;
+                $formatmac = "01-".$formatmac;
+                $kcmdline .= " BOOTIF=$formatmac ";
+            }
+
             #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
             # of the command, if it exists

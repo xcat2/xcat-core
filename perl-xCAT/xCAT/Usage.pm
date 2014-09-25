@@ -33,7 +33,7 @@ my %usage = (
      LPAR(with HMC) specific:
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms|softoff]
      CEC(using Direct FSP Management) specific:
-       rpower <noderange> [on|onstandby|off|stat|state|lowpower|resetsp]
+       rpower <noderange> [on|onstandby|off|stat|state|resetsp]
      Frame(using Direct FSP Management) specific:
        rpower <noderange> [stat|state|rackstandby|exit_rackstandby|resetsp]
      LPAR(using Direct FSP Management) specific:

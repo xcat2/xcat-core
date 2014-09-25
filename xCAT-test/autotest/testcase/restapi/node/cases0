@@ -8,7 +8,7 @@ start:node_post2
 description: node_post2
 cmd:restapitest -m POST -r /nodes/node1 -d '{"groups":"all","mgt":"dfm","netboot":"yaboot"}'
 check:rc==403
-cmdcheck:restapitest -o '{"errorcode":"1","error":["\nA definition for 'node1' already exists."]}' -O =~
+cmdcheck:restapitest -o '{"errorcode":"1"}' -O ==
 end
 
 
@@ -36,7 +36,7 @@ end
 
 start:node_delete
 description: node_delete
-cmd:restapitest -m GET -r /nodes/node1
+cmd:restapitest -m DELETE -r /nodes/node1
 check:rc==200
 end
 
@@ -51,7 +51,7 @@ start:node_get2
 description: node_get2
 cmd:restapitest -m GET -r /nodes/node1
 check:rc==403
-cmdcheck:restapitest -o '{"errorcode":"1","error":["Could not find an object named 'node1' of type 'node'."]}' -O =~
+cmdcheck:restapitest -o '{"errorcode":"1"}' -O ==
 end
 
 start:node_post3_for_get_test
@@ -67,7 +67,6 @@ check:rc==200
 cmdcheck:restapitest -o '{"node1":{"netboot":"yaboot"}}' -O ==
 end
 
-###########此次需先添加networks表和hosts表的net和ip属性
 start:node_makehosts
 description: node_makehosts
 cmd:restapitest -m POST -r /nodes/node1/host
@@ -121,70 +120,70 @@ end
 
 start:node_scan
 description: node_scan
-cmd:restapitest -m GET -r /nodes/e108m6hmc02/subnodes
+cmd:restapitest -m GET -r /nodes/__GETNODEATTR($$CN,hcp)__
 check:rc==200
-cmdcheck:restapitest -o '{"Vc68m4hsp01":{"parent":"Server-9119-590-SN02C5F9E"}}' -O ==
+cmdcheck:restapitest -o '{"__GETNODEATTR($$CN,hcp)__":"ANY"}' -O ==
 end
 
 
 start:node_power_get
 description: node_power_get
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/power
+cmd:restapitest -m GET -r /nodes/$$CN/power
 check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"power":"ANY"}}' -O ==
+cmdcheck:restapitest -o '{"$$CN":{"power":"ANY"}}' -O ==
 end
 
 start:node_power_put
-description: node_power_put
-cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/power -d '{"action":"on"}'
+description: node_power_reset
+cmd:restapitest -m PUT -r /nodes/$$CN/power -d '{"action":"reset"}'
 check:rc==200
 end
 
-start:node_energy_put
-description: node_energy_put
-cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/energy -d '{"cappingstatus":"on"}'
-check:rc==200
-end
+#start:node_energy_put
+#description: node_energy_put
+#cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/energy -d '{"cappingstatus":"on"}'
+#check:rc==200
+#end
 
-start:node_energy_get
-description: node_energy_get
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy 
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"on"}}' -O ==
-end
+#start:node_energy_get
+#description: node_energy_get
+#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy 
+#check:rc==200
+#cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"on"}}' -O ==
+#end
 
-start:node_energy_get_attr
-description: node_energy_get_attr
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy/cappingmaxmin,cappingstatus 
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"ANY"}}' -O ==
-end
+#start:node_energy_get_attr
+#description: node_energy_get_attr
+#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/energy/cappingmaxmin,cappingstatus 
+#check:rc==200
+#cmdcheck:restapitest -o '{"Vc68m5sn01":{"cappingmin":"ANY"}}' -O ==
+#end
 
-start:node_get_attr
-description: node_get_attr
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/sp/community
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"SP SNMP Community":"public"}}' -O ==
-end
+#start:node_get_attr
+#description: node_get_attr
+#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/sp/community
+#check:rc==200
+#cmdcheck:restapitest -o '{"Vc68m5sn01":{"SP SNMP Community":"public"}}' -O ==
+#end
 
-start:node_put_attr
-description: node_put_attr
-cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/sp/community -d '{"value":"mycommunity"}''
-check:rc==200
-end
+#start:node_put_attr
+#description: node_put_attr
+#cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/sp/community -d '{"value":"mycommunity"}''
+#check:rc==200
+#end
 
-start:node_put_nextboot
-description: node_put_nextboot
-cmd:restapitest -m PUT -r /nodes/Vc68m5sn01/nextboot -d '{"order":"net"}'
-check:rc==201
-end
+#start:node_put_nextboot
+#description: node_put_nextboot
+#cmd:restapitest -m PUT -r /nodes/$$CN/nextboot -d '{"order":"net"}'
+#check:rc==201
+#end
 
-start:node_get_nextboot
-description: node_get_nextboot
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nextboot 
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"nextboot":"net"}}' -O ==
-end
+#start:node_get_nextboot
+#description: node_get_nextboot
+#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nextboot 
+#check:rc==200
+#cmdcheck:restapitest -o '{"Vc68m5sn01":{"nextboot":"net"}}' -O ==
+#end
 
 start:node_put_bootstate
 description: node_put_bootstate
@@ -194,9 +193,9 @@ end
 
 start:node_get_bootstate
 description: node_get_bootstate
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/bootstate 
+cmd:restapitest -m GET -r /nodes/$$CN/bootstate 
 check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"bootstat":"boot"}}' -O ==
+cmdcheck:restapitest -o '{"$$CN":{"bootstat":"ANY"}}' -O ==
 end
 
 start:node_get_vitals
@@ -208,9 +207,9 @@ end
 
 start:node_get_vitals_attr
 description: node_get_vitals_attr
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/vitals/fanspeed
+cmd:restapitest -m GET -r /nodes/$$CN/vitals/all
 check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"Fan 1A Tach":"3219 RPM"}}' -O ==
+cmdcheck:restapitest -o '{"$$CN":{"System Temperature":"ANY"}}' -O ==
 end
 
 start:node_get_inventory
@@ -227,16 +226,16 @@ check:rc==200
 cmdcheck:restapitest -o '{"Vc68m5sn01":{"System Description":"System x3650 M4"}}' -O ==
 end
 
-start:node_get_eventlog
-description: node_get_eventlog
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/eventlog
-check:rc==200
-cmdcheck:restapitest -o '{"Vc68m5sn01":{"eventlog":"ANY"}}' -O ==
-end
+#start:node_get_eventlog
+#description: node_get_eventlog
+#cmd:restapitest -m GET -r /nodes/Vc68m5sn01/eventlog
+#check:rc==200
+#cmdcheck:restapitest -o '{"Vc68m5sn01":{"eventlog":"ANY"}}' -O ==
+#end
 
 start:node_post_nodecopy
 description: node_post_nodecopy
-cmd:restapitest -m GET -r /nodes/Vc68m5sn01/nodecopy -d '{"src":["/tmp/f1","/tmp/f2"],"target":"/tmp"}'
+cmd:restapitest -m POST -r /nodes/$$CN/nodecopy -d '{"src":["/etc/hosts","/etc/resolv.conf"],"target":"/tmp"}'
 check:rc==201
 end
 
