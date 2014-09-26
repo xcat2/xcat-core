@@ -542,8 +542,15 @@ sub do_discovery_process {
 	my $vintage = time();
    	$dispatch_requests=0;
         populate_site_hash();
+        populate_vpd_hash();
+        populate_ppc_hash();
 	while (not $quit) {
-           	if ((time()-$vintage)> 15) { populate_site_hash(); } #site table reread every 15 second
+           	if ((time()-$vintage)> 15) { 
+                    populate_site_hash(); 
+                    populate_vpd_hash();
+                    populate_ppc_hash();
+                    $vintage = time();
+                } #site table reread every 15 second
 		my $msg = fd_retrieve($broker);
 		my $data;
 		my $client;
@@ -2032,6 +2039,29 @@ sub populate_site_hash {
     my @records = $sitetab->getAllAttribs(qw/key value/);
     foreach (@records) {
         $::XCATSITEVALS{$_->{key}}=$_->{value};
+    }
+}
+
+sub populate_vpd_hash {
+    %::XCATVPDHASH=();
+    my $vpdtab = xCAT::Table->new('vpd',-create=>0); 
+    unless ($vpdtab) {return;}
+    my @entries = $vpdtab->getAllAttribs(qw/node serial mtm/);
+    foreach (@entries) {
+        unless ($_->{mtm} and $_->{serial}) {next;}
+        my $mtms = $_->{mtm}."*".$_->{serial};
+        push @{$::XCATVPDHASH{$mtms}}, $_->{node};
+    }
+}
+sub populate_ppc_hash {
+    %::XCATPPCHASH=();
+    my $ppctab = xCAT::Table->new('ppc',-create=>0); 
+    unless ($ppctab) {return;}
+    my @entries = $ppctab->getAllAttribs(qw/node nodetype/);
+    foreach (@entries) {
+        if ($_->{nodetype} and $_->{nodetype} eq 'pbmc') {
+            $::XCATPPCHASH{$_->{node}}=$_->{nodetype};
+        }
     }
 }
 
