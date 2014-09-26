@@ -157,6 +157,16 @@ sub process_request {
 		if ($node) { last; }
 	    }
 	}
+        my $pbmc_node = undef;
+        if ($req->{'mtm'}->[0] and $req->{'serial'}->[0]) {
+            my $mtms = $req->{'mtm'}->[0]."*".$req->{'serial'}->[0];
+            my $tmp_nodes = $::XCATVPDHASH{$mtms};
+            foreach (@$tmp_nodes) {
+                if ($::XCATPPCHASH{$_}) {
+                    $pbmc_node = $_;
+                }
+            } 
+        }
 	 
 	if ($node) {
 	    my $mactab = xCAT::Table->new('mac',-create=>1);
@@ -169,6 +179,9 @@ sub process_request {
 	    #$doreq->(\%request);
 	    $req->{command}=['discovered'];
 	    $req->{noderange} = [$node];
+            if ($pbmc_node) {
+                $req->{pbmc_node} = [$pbmc_node];
+            }
 	    $req->{discoverymethod} = ['switch'];
 	    $doreq->($req); 
 	    %{$req}=();#Clear req structure, it's done..
