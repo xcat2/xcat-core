@@ -78,6 +78,9 @@ sub process_request {
       $callback->({error=>["Failed to create a temporary directory"],errorcode=>[1]});
       return;
    }
+   unless (-e "$tftpdir/xcat") {
+       mkpath("$tftpdir/xcat");
+   }
    my $rc;
    my $invisibletouch=0;
    if (-e  "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
