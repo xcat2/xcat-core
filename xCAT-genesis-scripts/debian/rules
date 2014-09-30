@@ -9,6 +9,15 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+
+ifneq ($(DEB_BUILD_ARCH),ppc64el)
+        export TARGET_ARCH=x86_64
+else
+        export TARGET_ARCH=ppc64
+endif
+export installdir=/opt/xcat/share/xcat/netboot/genesis/$(TARGET_ARCH)/fs
+export installtodir=opt/xcat/share/xcat/netboot/genesis/$(TARGET_ARCH)/fs
+
 build:
 	pwd
 
@@ -21,8 +30,11 @@ install:
 	pwd
 	dh_testdir
 	dh_testroot
-	dh_installdirs
+	dh_installdirs $(installdir)
 	dh_install -X".svn"
+	dh_install ./etc/ $(installtodir)
+	dh_install ./bin/ $(installtodir)
+	dh_install ./sbin/ $(installtodir)
 	dh_compress
 	dh_installdeb
 	dh_gencontrol

@@ -194,12 +194,12 @@ then
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
         fi
-        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack xCAT-OpenStack-baremetal xCAT-buildkit"
+        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack xCAT-OpenStack-baremetal"
         target_archs=(amd64 ppc64el)
         for file in `echo $packages`
         do
             file_low=`echo $file | tr '[A-Z]' '[a-z]'`
-            if [ "$file" = "xCAT" ]; then
+            if [ "$file" = "xCAT" -o "$file" = "xCAT-genesis-scripts" ]; then
                 target_archs="amd64 ppc64el"
             else
                 target_archs="all"
@@ -208,8 +208,8 @@ then
             do
                 if grep -q $file $update_log || [ "$BUILDALL" == 1 -o "$file" = "perl-xCAT" ]; then
                     rm -f ../../$package_dir_name/${file_low}_*.$target_arch.deb
-                    #only for genesis package
-                    rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
+                    #genesis scripts package, don't remove genesis amd64 files
+                    #rm -f ../../$package_dir_name/${file_low}-amd64_*.deb
                     cd $file
                     dch -v $pkg_version -b -c debian/changelog $build_string
                     if [ "$target_arch" = "all" ]; then
