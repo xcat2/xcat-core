@@ -1491,93 +1491,102 @@ sub process_request
     
     if ( $^O ne 'aix')
     {
-		#add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
+        #add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
-		my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
+        my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
         foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server", "isc-dhcp-server") {
-        if (-e "/etc/sysconfig/$dhcpver") {
-		if ($dhcpver eq "dhcpd") {
+            if (-e "/etc/sysconfig/$dhcpver") {
+                if ($dhcpver eq "dhcpd") {
 		    delete($missingfiles{dhcpd});
 		    delete($missingfiles{"dhcp3-server"});
 		} else {
-			delete($missingfiles{$dhcpver});
+                    delete($missingfiles{$dhcpver});
 		}
-            open DHCPD_FD, "/etc/sysconfig/$dhcpver";
-            my $syscfg_dhcpd = "";
-            my $found = 0;
-            my $dhcpd_key = "DHCPDARGS";
+                open DHCPD_FD, "/etc/sysconfig/$dhcpver";
+                my $syscfg_dhcpd = "";
+                my $found = 0;
+                my $dhcpd_key = "DHCPDARGS";
+                my $os = xCAT::Utils->osver();
+                if ($os =~ /sles/i) {
+                    $dhcpd_key = "DHCPD_INTERFACE";
+                }
+
+                my $ifarg = "$dhcpd_key=\"";
+                foreach (keys %activenics) {
+                    if (/!remote!/) { next; }
+                    $ifarg .= " $_";
+                }
+                $ifarg =~ s/^ //;
+                $ifarg .= "\"\n";
+
+                while (<DHCPD_FD>) {
+                    if ($_ =~ m/^$dhcpd_key/) {
+                        $found = 1;
+                        $syscfg_dhcpd .= $ifarg;
+                    } else {
+                        $syscfg_dhcpd .= $_;
+                    }
+                }
+
+                if ( $found eq 0 ) {
+                    $syscfg_dhcpd .= $ifarg;
+                }
+                close DHCPD_FD; 
+
+                open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
+                print DBG_FD $syscfg_dhcpd;
+                close DBG_FD;
+            } elsif (-e "/etc/default/$dhcpver") { #ubuntu
+                delete($missingfiles{"dhcpd"});
+                #dhcpd and dhcpd6 use the same configure file
+                delete($missingfiles{"dhcpd6"});
+                delete($missingfiles{"dhcp3-server"});
+                open DHCPD_FD, "/etc/default/$dhcpver";
+                my $syscfg_dhcpd = "";
+                my $found = 0;
+                my $dhcpd_key = "INTERFACES";
+                my $os = xCAT::Utils->osver();
+
+                my $ifarg = "$dhcpd_key=\"";
+                foreach (keys %activenics) {
+                    if (/!remote!/) { next; }
+                    $ifarg .= " $_";
+                }
+                $ifarg =~ s/^ //;
+                $ifarg .= "\"\n";
+
+                while (<DHCPD_FD>) {
+                    if ($_ =~ m/^$dhcpd_key/) {
+                        $found = 1;
+                        $syscfg_dhcpd .= $ifarg;
+                    } else {
+                        $syscfg_dhcpd .= $_;
+                    }
+                }
+
+                if ( $found eq 0 ) {
+                    $syscfg_dhcpd .= $ifarg;
+                }
+                close DHCPD_FD; 
+
+                open DBG_FD, '>', "/etc/default/$dhcpver";
+                print DBG_FD $syscfg_dhcpd;
+                close DBG_FD;
+            }
+        }
+        if ($usingipv6) {
             my $os = xCAT::Utils->osver();
+            # sles had dhcpd and dhcpd6 config in the dhcp file
             if ($os =~ /sles/i) {
-                $dhcpd_key = "DHCPD_INTERFACE";
-            }
-
-            my $ifarg = "$dhcpd_key=\"";
-            foreach (keys %activenics) {
-                if (/!remote!/) { next; }
-                $ifarg .= " $_";
-            }
-            $ifarg =~ s/^ //;
-            $ifarg .= "\"\n";
-
-            while (<DHCPD_FD>) {
-                if ($_ =~ m/^$dhcpd_key/) {
-                    $found = 1;
-                    $syscfg_dhcpd .= $ifarg;
-                }else {
-                    $syscfg_dhcpd .= $_;
+                if ($missingfiles{dhcpd}) {
+                    $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
+                }
+            } else {
+                if ($missingfiles{dhcpd6}) {
+                    $callback->({error=>["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"]});
                 }
             }
-
-            if ( $found eq 0 ) {
-                $syscfg_dhcpd .= $ifarg;
-            }
-            close DHCPD_FD; 
-
-            open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
-            print DBG_FD $syscfg_dhcpd;
-            close DBG_FD;
-        }elsif (-e "/etc/default/$dhcpver") { #ubuntu
-			delete($missingfiles{"dhcpd"});
-            #dhcpd and dhcpd6 use the same configure file
-            delete($missingfiles{"dhcpd6"});
-			delete($missingfiles{"dhcp3-server"});
-			open DHCPD_FD, "/etc/default/$dhcpver";
-            my $syscfg_dhcpd = "";
-            my $found = 0;
-            my $dhcpd_key = "INTERFACES";
-            my $os = xCAT::Utils->osver();
-
-            my $ifarg = "$dhcpd_key=\"";
-            foreach (keys %activenics) {
-                if (/!remote!/) { next; }
-                $ifarg .= " $_";
-            }
-            $ifarg =~ s/^ //;
-            $ifarg .= "\"\n";
-
-            while (<DHCPD_FD>) {
-                if ($_ =~ m/^$dhcpd_key/) {
-                    $found = 1;
-                    $syscfg_dhcpd .= $ifarg;
-                }else {
-                    $syscfg_dhcpd .= $_;
-                }
-            }
-
-            if ( $found eq 0 ) {
-                $syscfg_dhcpd .= $ifarg;
-            }
-            close DHCPD_FD; 
-
-            open DBG_FD, '>', "/etc/default/$dhcpver";
-            print DBG_FD $syscfg_dhcpd;
-            close DBG_FD;
-        	
         }
-        }
-	if ($usingipv6 and $missingfiles{dhcpd6}) {
-            $callback->({error=>["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"]});
-	}
 	if ($missingfiles{dhcpd}) {
             $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
 	}
