@@ -322,6 +322,7 @@ if (
                 'k|kitversion=s' => \$::KITVERSION,
                 'r|kitrelease=s' => \$::KITRELEASE,
                 'l|kitloc=s'	=> \$::KITLOC,
+                'for=s'	=> \$::FOROSVERSARCH,
     )
   )
 {
@@ -337,9 +338,24 @@ if ($::HELP)
 }
 
 my $debianflag = 0;
+my $dpkg_flag = '-uc -us';
 my $tempstring = xCAT::BuildKitUtils->osver();
 if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
     $debianflag = 1;
+}
+
+# This is an undocumented flag to support our local build team
+#   to allow building Ubuntu kits on our RH build machines.
+#   It requires RH rpms such as dep, fakeroot, perl-File-DesktopEntry,
+#   perl-File-BaseDir, and html2text to be installed on the build server
+#   for this to work.  To use this flag:
+#      buildkit --for ubuntu buildrepo <reponame>
+#      buildkit --for ubuntu buildtar
+if ($::FOROSVERSARCH) {
+   if ( $::FOROSVERSARCH =~ /debian/ || $::FOROSVERSARCH =~ /ubuntu/ ) {  
+       $debianflag=1; 
+       $dpkg_flag .= ' -A -d';
+   }
 }
 
 # display the version statement if -v or --version is specified
@@ -2442,10 +2458,10 @@ sub build_kitcomp_debian{
             my $prep_compversion = $comp->{version} . "-" . $comp->{release};
             my $prep_buildstring = "Prep Kit component build package.";
             my $prep_debbuilddir = $::workdir."/debbuild/"."prep-".$comp->{kitcompname};
-            my $prep_debianbuildcmd = "cd $prep_debbuilddir;dch -v $prep_compversion -b -c debian/changelog $prep_buildstring;dpkg-buildpackage -uc -us";
+            my $prep_debianbuildcmd = "cd $prep_debbuilddir;debchange -v $prep_compversion -b -c debian/changelog $prep_buildstring;dpkg-buildpackage $dpkg_flag";
 
             if ( system($prep_debianbuildcmd) ) {
-                print "Error running \"dpkg-buildpackage -uc -us\" command for kit component prep-$comp->{kitcompname} meta package\n";
+                print "Error running \"dpkg-buildpackage $dpkg_flag\" command for kit component prep-$comp->{kitcompname} meta package\n";
                 return 1;
             }
         }
@@ -2482,11 +2498,11 @@ sub build_kitcomp_debian{
         }
     }
     my $compversion = $comp->{version} . "-" . $comp->{release};
-    my $buildstring = "Kit component build package.";
-    my $debianbuildcmd = "cd $debbuilddir;dch -v $compversion -b -c debian/changelog $buildstring;dpkg-buildpackage -uc -us";
+    my $buildstring = "\'Kit component build package.\'";
+    my $debianbuildcmd = "cd $debbuilddir;debchange -v $compversion -b -c debian/changelog $buildstring;dpkg-buildpackage $dpkg_flag";
     if ( !$::NON_NATIVE_PKGS->{$comp->{kitcompname}} ) {
         if ( system($debianbuildcmd) ) {
-            print "Error running \"dpkg-buildpackage -uc -us\" command for kit component $comp->{kitcompname} meta package\n";
+            print "Error running \"dpkg-buildpackage $dpkg_flag\" command for kit component $comp->{kitcompname} meta package\n";
             return 1;
         }
         my $repodir = $::base_repodir."/".$repo{kitreponame};
@@ -3558,7 +3574,7 @@ sub kit_addpkgs
                 #for debian/ubuntu
                 my $repodir = $tmpdir . "/repos/".$non_native_kitreponame;
                 if ( $debianflag ){
-                    my $debbuildcmd = "cd $source_dir;dpkg-buildpackage -uc -us";
+                    my $debbuildcmd = "cd $source_dir;dpkg-buildpackage $dpkg_flag";
                     if ( system($debbuildcmd) ){
                         print "error running debian build cmd for kit component $non_native_basename meta package.\n";
                         return 1;
