@@ -936,6 +936,8 @@ unless ($pid_UDP) {
   my $discoctl;
   my $udpbroker;
   socketpair($discoctl,$udpbroker,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
+  $udpbroker->autoflush(1);
+  $discoctl->autoflush(1);
   $pid_disco = xCAT::Utils->xfork;
   if (!defined $pid_disco) {
 	  xCAT::MsgUtils->message("S", "Unable to fork for UDP/TCP");
