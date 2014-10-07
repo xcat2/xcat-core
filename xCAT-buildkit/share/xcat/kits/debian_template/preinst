@@ -21,6 +21,7 @@ case "$1" in
 
     upgrade)
     if [ -f /tmp/<<<INSERT_kitcomponent_upgrade_flag_HERE>>> ]; then
+    echo "preupgrade processing"
     <<<INSERT_kitcomponent_preupgrade_script_HERE>>>
     fi
     ;;
