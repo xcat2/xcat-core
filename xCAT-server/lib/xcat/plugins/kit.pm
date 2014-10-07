@@ -1979,20 +1979,24 @@ sub addkitcomp
         # Read serverrole from osimage.
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
-    } elsif ( !$osimagetable or !$osimagetable->{'osname'} ) {
+    } elsif ( !$osimagetable ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osname' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not exist";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
-
+    } elsif ( !$osimagetable->{'osname'} ) {
+        my %rsp;
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        return 1;
     } elsif ( !$osimagetable->{'osvers'} ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osvers' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     } elsif ( !$osimagetable->{'osarch'} ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osarch' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     } else {
@@ -3336,20 +3340,24 @@ sub chkkitcomp
         # Read serverrole from osimage.
         $os{$osimage}{serverrole} = lc($osimagetable->{'serverrole'});
 
-    } elsif ( !$osimagetable or !$osimagetable->{'osname'} ) {
+    } elsif ( !$osimagetable ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osname' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not exist";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
-
+    } elsif ( !$osimagetable->{'osname'} ) {
+        my %rsp;
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osname' attribute";
+        xCAT::MsgUtils->message( "E", \%rsp, $callback );
+        return 1;
     } elsif ( !$osimagetable->{'osvers'} ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osvers' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osvers' attribute";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     } elsif ( !$osimagetable->{'osarch'} ) {
         my %rsp;
-        push@{ $rsp{data} }, "osimage $osimage does not contains a valid 'osarch' attribute";
+        push@{ $rsp{data} }, "osimage $osimage does not contain a valid 'osarch' attribute";
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     } else {
