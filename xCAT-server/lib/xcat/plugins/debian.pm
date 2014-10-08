@@ -281,7 +281,7 @@ sub copycd
     {
         $darch = "ppc64el";
     }
-    elsif ($darch and $darch =~ /ppc/)
+    elsif ($darch and ($darch =~ /ppc/ or  $darch =~ /powerpc/))
     {
         $darch = "ppc64";
     }
