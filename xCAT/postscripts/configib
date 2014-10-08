@@ -149,7 +149,7 @@ then
     fi
 
     # remove the nic configuration files which are included in $NIC_IBNICS
-    for nic in echo "$NIC_IBNICS" | tr "," "\n"
+    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
     do
         rm -f $dir/ifcfg-$nic 2>&1 1>/dev/null
     done
