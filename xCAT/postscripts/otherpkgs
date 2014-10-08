@@ -396,30 +396,35 @@ hasdpkg=0
 supdatecommand="rpm -Uvh --replacepkgs"
 sremovecommand="rpm -ev"
 
-result=`rpm --version 2>/dev/null`
+#In ubuntu, rpm can be installed, if rpm is installed,ubuntu will use rpm
+#So dpkg --version should be in front of rpm --version
+result=`dpkg --version 2>/dev/null`
 if [ $? -eq 0 ]; then
-    hasrpm=1
-    result=`rpm -q yum`
-    if [ $? -eq 0 ]; then 
-        hasyum=1
-    else
-        result=`rpm -q zypper`
-        if [ "$?" = "0" ]; then 
-	    haszypper=1
-        fi
-    fi 
-else
-    result=`dpkg --version`
+    hasdpkg=1
+    supdatecommand="dpkg -i"
+    sremovecommand="dpkg -r"
+    result=`dpkg -l apt`
     if [ $? -eq 0 ]; then
-        hasdpkg=1
-	supdatecommand="dpkg -i"
-	sremovecommand="dpkg -r"
-	result=`dpkg -l apt`
-	if [ $? -eq 0 ]; then
-	    hasapt=1
-	fi
+         hasapt=1
+    fi
+else
+    result=`rpm --version 2>/dev/null`
+    if [ $? -eq 0 ]; then
+         hasrpm=1
+         result=`rpm -q yum`
+         if [ $? -eq 0 ]; then
+              hasyum=1
+         else
+              result=`rpm -q zypper`
+              if [ "$?" = "0" ]; then
+              haszypper=1
+              fi
+         fi
     fi
 fi
+
+
+
 
 ###########
 ##start generating the os pkg repositories
