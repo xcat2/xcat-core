@@ -1022,7 +1022,7 @@ sub kit_buildtar
        }
     }
 
-    print "Creating tar file $tarfile.\n";
+    print "Creating tar file $::current_dir/$kitfilename.\n";
 
     if ( system("cd $::deploy_dir; cd ..; tar -cjhf $tarfile $kitname/*") ) {
          print "Error building tarfile $tarfile \n";
