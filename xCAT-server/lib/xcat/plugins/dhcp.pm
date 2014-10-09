@@ -1513,7 +1513,7 @@ sub process_request
                     if (/!remote!/) { next; }
                     $ifarg .= " $_";
                 }
-                $ifarg = s/\=\" /\=\"/;
+                $ifarg =~ s/\=\" /\=\"/;
                 $ifarg .= "\"\n";
 
                 while (<DHCPD_FD>) {
