@@ -6,13 +6,15 @@ B<configfpc> - discover the Fan Power Controllers (FPCs) and configure the FPC i
 
 B<configfpc> B<-i> I<interface>
 
+B<configfpc> B<-i> I<interface> B<--ip> I<default ip address>
+
 B<configfpc> [B<-V>|B<--verbose>] 
 
 B<configfpc> [B<-h>|B<--help>|B<-?>]
 
 =head1 DESCRIPTION
 
-B<configfpc> will discover and configure all FPCs that are set to the default IP address.
+B<configfpc> will discover and configure all FPCs that are set to the default IP address. If not supplied the default ip is 192.168.0.100.
 
 The B<-i> B<interface> is required to direct B<configfpc> to the xCAT MN interface which is on the same VLAN as the FPCs.
 
@@ -24,7 +26,7 @@ The B<configfpc> command discovers the FPCs and collects the MAC address. The MA
 
 This process is repeated until no more FPCs are discovered. 
 
-For more information on xCAT support of NeXtScale and configfpc see:
+For more information on xCAT support of NeXtScale and configfpc see the following doc:
 XCAT_NeXtScale_Clusters
 
 =head1 OPTIONS
@@ -34,6 +36,10 @@ XCAT_NeXtScale_Clusters
 =item B<-i> I<interface>
 
 Use this flag to specify which xCAT MN interface (example: eth4) that is connected to the NeXtScale FPCs. This option is required. 
+
+=item B<--ip> I<default ip address>
+
+Use this flag to override the default ip address of 192.168.0.100 with a new address. 
 
 =item B<-V>|B<--verbose>
 
@@ -50,6 +56,12 @@ Verbose mode
 To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface. 
 
 B<configfpc> B<-i> I<eth0>
+
+=item 2
+
+To override the default ip address and run in Verbose mode. 
+
+B<configfpc> B<-i> I<eth0> B<--ip> I<196.68.0.100>  B<-V>
 
 =back
 
