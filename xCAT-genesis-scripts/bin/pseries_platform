@@ -1,0 +1,29 @@
+#!/bin/sh
+
+SOURCE_FILE="pseries_platform"
+PLATFORM_FILE=/proc/cpuinfo
+export PLATFORM_UNKNOWN=0
+export PLATFORM_POWERKVM_HOST=1
+export PLATFORM_POWERKVM_GUEST=2
+export PLATFORM_PSERIES_LPAR=3
+
+export platform_name="Unknown"
+export platform=$PLATFORM_UNKNOWN
+
+if grep -q "PowerNV" $PLATFORM_FILE; then
+	platform_name="PowerKVM Host"
+	platform=$PLATFORM_POWERKVM_HOST
+elif grep -q "IBM pSeries (emulated by qemu)" $PLATFORM_FILE; then
+	platform_name="PowerKVM pSeries Guest"
+	platform=$PLATFORM_POWERKVM_GUEST
+elif  grep -q "pSeries" $PLATFORM_FILE; then
+	platform_name="PowerVM pSeries LPAR"
+	platform=$PLATFORM_PSERIES_LPAR
+fi
+PARAM=$0
+BASENAME=`basename $0`
+echo "basename:$BASENAME, param:$PARAM"
+
+if [ $SOURCE_FILE = `basename $0` ]; then
+	echo $platform_name
+fi

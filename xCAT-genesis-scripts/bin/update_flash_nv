@@ -1,0 +1,416 @@
+#!/bin/sh
+# Copyright (c) 2013 International Business Machines
+# Common Public License Version 1.0 (see COPYRIGHT)
+#
+# Authors: Vasant Hegde <hegdevasant@linux.vnet.ibm.com>
+#
+# Simple script for code update on "KVM on Power" machines. This
+# is a simple wrapper script to pass the image. The Linux kernel
+# and FW does the real work during system reboot.
+#
+# This script has minimal dependencies so it can operate in a
+# rescue environment.
+
+#set -x
+
+# Error codes
+E_SUCCESS=0	# Success
+E_UNSUPPORTED=1	# Firmware update is not supported
+E_USAGE=3	# Usage error
+E_PERM=4	# Permission error
+E_IMAGE=5	# Image file error
+E_SYS_FS=6	# Firmware update related sysfs file doesn't exist
+E_MODULE=7	# Error loading module
+E_OPAL=8	# OPAL call failed
+E_USER=9	# User aborted operation
+E_OVERWRITE=10	# Auto overwrite permanent side image
+E_WRNTY=15	# Update Access Key Expired
+
+# Firmware update related files
+SYS_IMAGE_FILE=/sys/firmware/opal/image
+SYS_VALIDATE_FLASH=/sys/firmware/opal/validate_flash
+SYS_MANAGE_FLASH=/sys/firmware/opal/manage_flash
+SYS_UPDATE_FLASH=/sys/firmware/opal/update_flash
+
+# Code update status values
+FLASH_SUCCESS=0			# Success
+FLASH_PARAM_ERR=-1		# Parameter error
+FLASH_BUSY=-2			# OPAL busy
+FLASH_HW_ERR=-6			# Hardware error
+FLASH_INTERNAL_ERR=-11		# Internal error
+FLASH_NO_OP=-1099		# No operation initiated by user
+FLASH_NO_AUTH=-9002		# Inband firmware update is not allowed
+
+# Validate image status values
+FLASH_IMG_READY=-1001		# Image ready for validation
+FLASH_IMG_INCOMPLETE=-1002	# User copied < VALIDATE_BUF_SIZE
+
+# Manage image status values
+FLASH_ACTIVE_ERR=-9001		# Cannot overwrite active img
+
+# Flash image status values
+FLASH_IMG_READY=0		# Image ready for flash on reboot
+FLASH_INVALID_IMG=-1003		# Flash image shorter than expected
+FLASH_IMG_NULL_DATA=-1004	# Bad data
+FLASH_IMG_BAD_LEN=-1005		# Bad length
+
+# Validate image update result tokens
+#
+# T side will be updated
+VALIDATE_TMP_UPDATE=0
+#
+# Partition does not have authority
+VALIDATE_FLASH_AUTH=1
+#
+# Candidate image is not valid for this platform
+VALIDATE_INVALID_IMG=2
+#
+# Current fixpack level is unknown
+VALIDATE_CUR_UNKNOWN=3
+#
+# Current T side will be committed to P side before being replace
+# with new image, and the new image is downlevel from current image
+VALIDATE_TMP_COMMIT_DL=4
+#
+# Current T side will be committed to P side before being replaced
+# with new image
+VALIDATE_TMP_COMMIT=5
+#
+# T side will be updated with a downlevel image
+VALIDATE_TMP_UPDATE_DL=6
+#
+# The candidate image's release date is later than the system's Update
+# Access Key Expiration date - service warranty period has expired
+VALIDATE_OUT_OF_WRNTY=7
+
+error() {
+	local exit_code=$1
+
+	if [ $# -lt 1 ]; then
+		echo "error(): usage." >&2
+		return $E_USAGE
+	fi
+
+	shift;
+	echo update_flash: $* >&2
+	exit $exit_code
+}
+
+usage() {
+	local exit_code;
+
+	if [ "$1" == $E_SUCCESS ]; then
+		exit_code=$E_SUCCESS
+	else
+		exit_code=$E_USAGE
+	fi
+
+	echo "USAGE: update_flash {-h | -s | -r | -c | [-v|-n] -f <image filename>}" >&2
+	echo "	-h		Print this message." >&2
+	echo "	-s		Determine if partition has access to" >&2
+	echo "			perform flash image management." >&2
+	echo "	-r		Reject temporary image." >&2
+	echo "	-c		Commit temporary image." >&2
+	echo "	-v		Validate the given image file." >&2
+	echo "	-n		Do not overwrite Permanent side" >&2
+	echo "			image automatically." >&2
+	echo "	-f <filename>	Update with given image file. If possible," >&2
+	echo "			the image is automatically validated prior" >&2
+	echo "			to update." >&2
+	echo "" >&2
+	exit $exit_code
+}
+
+# Validate sysfs interface
+validate_sysfs_file() {
+	local file="$1"
+	if [ -r "$file" ]; then
+		return $E_SUCCESS
+	fi
+
+	error $E_SYS_FS "sysfs interface for firmware update does not exists."
+}
+
+# Copy image to sysfs file
+copy_candidate_image() {
+	local img_file=$1
+
+	[ $# -eq 1 ] || error $E_USAGE "copy_candidate_image(): usage."
+
+	[ -r "$img_file" ] || error $E_IMAGE "Cannot read ${img_file}."
+
+	# Copy candidate image
+	dd if=$img_file of=$SYS_IMAGE_FILE 2>/dev/null
+	if [ $? -ne 0 ]; then
+		echo "update_flash: Error copying firmware image."
+		error $E_IMAGE "Please retry with valid firmware image."
+	fi
+}
+
+echo_opal_return_status() {
+	case "$1" in
+	$FLASH_PARAM_ERR)
+		error $E_OPAL "Parameter Error.";;
+	$FLASH_BUSY)
+		error $E_OPAL "OPAL Busy.";;
+	$FLASH_HW_ERR)
+		error $E_OPAL "Hardware error.";;
+	$FLASH_INTERNAL_ERR)
+		error $E_OPAL "OPAL internal error.";;
+	$FLASH_NO_AUTH)
+		error $E_PERM "System does not have authority to perform firmware update.";;
+	$FLASH_IMG_INCOMPLETE)
+		error $E_IMAGE "Invalid candidate image.";;
+	$FLASH_ACTIVE_ERR)
+		error $E_OVERWRITE "Cannot Overwrite the Active Firmware Image.";;
+	$FLASH_INVALID_IMG)
+		error $E_IMAGE "Invalid candidate image.";;
+	$FLASH_IMG_NULL_DATA)
+		error $E_IMAGE "Bad data value in flash list block.";;
+	$FLASH_IMG_BAD_LEN)
+		error $E_IMAGE "Bad length value in flash list block.";;
+	*)	error $E_OPAL "Unknown return status.";;
+	esac
+}
+
+# Determine if partition has access to perform flash image management
+query_flash_support() {
+	# Validate sysfs interface
+	validate_sysfs_file $SYS_IMAGE_FILE
+
+	# By default KVM on Power host is allowed to do firmware management
+	echo "update_flash: Firmware image management is supported."
+
+	exit $E_SUCCESS
+}
+
+echo_validate_buf() {
+	local output="$1"
+	local cur_t=$(echo "$output" | grep "^MI" | head -n 1 | awk ' { print $2 } ')
+	local cur_p=$(echo "$output" | grep "^MI" | head -n 1 | awk ' { print $3 } ')
+	local new_t=$(echo "$output" | grep "^MI" | tail -n 1 | awk ' { print $2 } ')
+	local new_p=$(echo "$output" | grep "^MI" | tail -n 1 | awk ' { print $3 } ')
+
+	echo "Projected Flash Update Results:"
+	echo "Current T Image: $cur_t"
+	echo "Current P Image: $cur_p"
+	echo "New T Image:     $new_t"
+	echo "New P Image:     $new_p"
+}
+
+echo_validate_return_status() {
+	local output="$1"
+	local rc=$(echo "$output" | head -n 1)
+	local opal_buf=$(echo "$output" | tail -n +2)
+
+	[ $# -eq 1 ] || error $E_USAGE "echo_validate_return_status(): usage."
+
+	if [ $rc -lt 0 ]; then
+		echo_opal_return_status $rc
+	fi
+
+	# Validation result
+	case "$rc" in
+	$VALIDATE_TMP_UPDATE)
+		echo -n "info: Temporary side will be updated with a newer or"
+		echo " identical image.";;
+	$VALIDATE_FLASH_AUTH)
+		error $E_OPAL "System does not have authority.";;
+	$VALIDATE_INVALID_IMG)
+		error $E_OPAL "Invalid candidate image for this platform.";;
+	$VALIDATE_CUR_UNKNOWN)
+		echo "info: Current fixpack level is unknown.";;
+	$VALIDATE_TMP_COMMIT_DL)
+		echo "info: Current Temporary image will be committed to"
+		echo "Permanent side before being replaced with new image,"
+		echo "and the new image is downlevel from current image.";;
+	$VALIDATE_TMP_COMMIT)
+		echo "info: Current Temporary side will be committed to"
+		echo "Permanent side before being replaced with the new"
+		echo "image.";;
+	$VALIDATE_TMP_UPDATE_DL)
+		echo "info: Temporary side will be updated with a downlevel image.";;
+	*)	error $E_OPAL "Unknown return status."
+	esac
+
+	echo
+	echo_validate_buf "$opal_buf"
+
+	# Do not commit T side image to P side
+	if [ $no_overwrite_opt -eq 1 ]; then
+		if [ $rc -eq $VALIDATE_TMP_COMMIT_DL ] ||
+			[ $rc -eq $VALIDATE_TMP_COMMIT ]; then
+			echo ""
+			echo "update_flash: Run without -n option to flash new image."
+			exit $E_OVERWRITE
+		fi
+	fi
+}
+
+validate_flash() {
+	local output=""
+
+	# Validate candidate image
+	echo 1 > $SYS_VALIDATE_FLASH 2>/dev/null
+
+	# Display appropriate message, exiting if necessary
+	output="$(cat $SYS_VALIDATE_FLASH)"
+	echo_validate_return_status "$output"
+}
+
+validate_flash_from_file() {
+	local img_file=$1
+
+	[ $# -eq 1 ] || error $E_USAGE "validate_flash_from_file(): usage."
+
+	# Validate sysfs interface
+	validate_sysfs_file $SYS_VALIDATE_FLASH
+
+	# Copy candiadate image
+	copy_candidate_image $img_file
+
+	# Validate candidate image
+	validate_flash
+
+	exit $E_SUCCESS
+}
+
+echo_update_return_status() {
+	local rc="$1"
+
+	[ $# -eq 1 ] || error $E_USAGE "echo_update_return_status(): usage."
+
+	if [ $rc -lt 0 ]; then
+		echo_opal_return_status $rc
+	elif [ $rc -eq $FLASH_IMG_READY ]; then
+		echo
+		echo "FLASH: Image ready...rebooting the system..."
+		echo "FLASH: This will take several minutes."
+		echo "FLASH: Do not power off!"
+	else
+		error $E_SYS_FS "Unknown return status."
+	fi
+}
+
+update_flash_from_file() {
+	local img_file=$1
+	local output=""
+
+	[ $# -eq 1 ] || error $E_USAGE "update_flash_from_file(): usage."
+
+	# Validate sysfs interface
+	validate_sysfs_file $SYS_UPDATE_FLASH
+
+	# Copy candidate image
+	copy_candidate_image $img_file
+
+	# Validate candidate image
+	validate_flash
+
+	# Update image
+	echo 1 > $SYS_UPDATE_FLASH 2>/dev/null
+	output="$(cat $SYS_UPDATE_FLASH)"
+	echo_update_return_status "$output"
+
+	# Reboot system, so that we can flash new image
+	reboot -f
+
+	exit $E_SUCCESS
+}
+
+echo_manage_return_status() {
+	local is_commit=$1
+	local output=$2
+	local rc=$(echo $output)
+
+	[ $# -eq 2 ] || error $E_USAGE "echo_manage_return_status(): usage."
+
+	if [ $rc -lt 0 ]; then
+		echo_opal_return_status $rc
+	elif [ $rc -eq $FLASH_SUCCESS ]; then
+		if [ $is_commit -eq 0 ]; then
+			echo "Success: Rejected temporary firmware image."
+		else
+			echo "Success: Committed temporary firmware image."
+		fi
+	else
+		error $E_OPAL "Unknown return status."
+	fi
+}
+
+manage_flash() {
+	local is_commit=$1
+	local commit_str="1"
+	local reject_str="0"
+	local output=""
+
+	[ $# -eq 1 ] || error $E_USAGE "manage_flash(): usage."
+
+	# Validate sysfs interface
+	validate_sysfs_file $SYS_MANAGE_FLASH
+
+	# Commit operation
+	if [ $is_commit -eq 1 ]; then
+		echo $commit_str > $SYS_MANAGE_FLASH
+	else
+		echo $reject_str > $SYS_MANAGE_FLASH
+	fi
+
+	# Result
+	output=$(cat $SYS_MANAGE_FLASH)
+	echo_manage_return_status $is_commit "$output"
+
+	exit $E_SUCCESS
+}
+
+file=""
+check_opt=0
+commit_opt=0
+reject_opt=0
+validate_opt=0
+no_overwrite_opt=0
+file_opt=0
+
+# Only root user can perform firmware update
+[ "`whoami`" == "root" ] || error $E_PERM "Must be root to execute this command."
+
+# Parse command line options
+while [ -n "$1" ]; do
+	arg="$1"
+	shift
+	case "$arg" in
+	  -q|-l|-D|-S) error $E_USAGE "The $arg option is not implemented.";;
+	  -h) usage $E_SUCCESS;;
+	  -s) check_opt=1;;
+	  -c) commit_opt=1;;
+	  -r) reject_opt=1;;
+	  -v) validate_opt=1;;
+	  -n) no_overwrite_opt=1;;
+	  -f) file_opt=1; file="$1"; shift;;
+	  *) error $E_USAGE "Unknown option ${arg}."
+	esac
+done
+
+if [ -n "$file" ]; then
+	if [ $commit_opt -eq 1 ] || [ $reject_opt -eq 1 ] ||
+						[ $check_opt -eq 1 ]; then
+		usage
+	elif [ $validate_opt -eq 1 ] && [ $no_overwrite_opt -eq 1 ]; then
+		usage
+	elif [ $validate_opt -eq 1 ]; then
+		validate_flash_from_file $file
+	else
+		update_flash_from_file $file
+	fi
+else
+	if [ $check_opt -eq 1 ]; then
+		if [ $commit_opt -eq 1 ] || [ $reject_opt -eq 1 ]; then
+			usage
+		else
+			query_flash_support
+		fi
+	fi
+	[ $commit_opt -eq 0 ] && [ $reject_opt -eq 0 ] && usage
+	[ $commit_opt -eq 1 ] && [ $reject_opt -eq 1 ] && usage
+	manage_flash $commit_opt
+fi
