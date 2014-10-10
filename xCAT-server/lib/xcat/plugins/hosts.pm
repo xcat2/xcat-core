@@ -56,7 +56,7 @@ sub delnode
 
 sub addnode
 {
-	my $callback = shift;
+    my $callback = shift;
     my $node = shift;
     my $ip   = shift;
 
@@ -67,11 +67,11 @@ sub addnode
 
     my $othernames = shift;
     my $domain     = shift;
-	my $nics  	   = shift;
+    my $nics         = shift;
     my $idx        = 0;
     my $foundone   = 0;
 
-	# if this ip was already added then just update the entry 
+    # if this ip was already added then just update the entry 
     while ($idx <= $#hosts)
     {
 
@@ -84,22 +84,22 @@ sub addnode
             }
             else
             {
-				# we found a matching entry in the hosts list
-				if ($nics) {
-					# we're processing the nics table and we found an
-					#   existing entry for this ip so just add this
-					#	node name as an alias for the existing entry
-					my ($hip, $hnode, $hdom, $hother)= split(/ /, $hosts[$idx]);
-
-					# at this point "othernames", if any is just a space
-					#	delimited list - so just add the node name to the list
-					$othernames .= " $node";
-					$hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
-				} else {
-					# otherwise just try to completely update the existing
-					#	entry
-                	$hosts[$idx] = build_line($callback, $ip, $node, $domain, $othernames);
-				}
+                # we found a matching entry in the hosts list
+                if ($nics) {
+                    # we're processing the nics table and we found an
+                    #   existing entry for this ip so just add this
+                    # ode name as an alias for the existing entry
+                    my ($hip, $hnode, $hdom, $hother)= split(/ /, $hosts[$idx]);
+                    
+                    # at this point "othernames", if any is just a space
+                    # elimited list - so just add the node name to the list
+                    $othernames .= " $node";
+                    $hosts[$idx] = build_line($callback, $ip, $hnode, $domain, $othernames);
+                } else {
+                    # otherwise just try to completely update the existing
+                    # entry
+                    $hosts[$idx] = build_line($callback, $ip, $node, $domain, $othernames);
+                }
             }
             $foundone = 1;
         }
@@ -108,14 +108,14 @@ sub addnode
     if ($foundone) { return; }
 
     my $line = build_line($callback, $ip, $node, $domain, $othernames);
-	if ($line) {
-    	push @hosts, $line;
-	}
+    if ($line) {
+        push @hosts, $line;
+    }
 }
 
 sub build_line
 {
-	my $callback = shift;
+    my $callback   = shift;
     my $ip         = shift;
     my $node       = shift;
     my $domain     = shift;
@@ -123,13 +123,13 @@ sub build_line
     my @o_names    = ();
     my @n_names    = ();
 
-    # Trim spaces from the beginning and end from $othernames
-    $othernames =~ s/^\s+|\s+$//g;
-
     if (defined $othernames)
     {
-		# the "hostnames" attribute can be a list delimited by 
-		#	either a comma or a space
+        # Trim spaces from the beginning and end from $othernames
+        $othernames =~ s/^\s+|\s+$//g;
+
+        # the "hostnames" attribute can be a list delimited by 
+        #  either a comma or a space
         @o_names = split(/,| /, $othernames);
     }
     my $longname;
@@ -155,26 +155,26 @@ sub build_line
     }
     unshift(@o_names, @n_names);
 
-	my $shortname=$node;
+    my $shortname=$node;
 
     if ($node =~ m/\.$domain$/i)
     {
         $longname = $node;
-		($shortname = $node) =~ s/\.$domain$//;
+        ($shortname = $node) =~ s/\.$domain$//;
     }
     elsif ($domain && !$longname)
     {
-		$shortname = $node;
+        $shortname = $node;
         $longname = "$node.$domain";
     }
 
     # if shortname contains a dot then we have a bad syntax for name
-	if ($shortname =~ /\./) {
-		my $rsp;
-		push @{$rsp->{data}}, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return undef;
-	}
+    if ($shortname =~ /\./) {
+        my $rsp;
+        push @{$rsp->{data}}, "Invalid short node name \'$shortname\'. The short node name may not contain a dot. The short node name is considered to be anything preceeding the network domain name in the fully qualified node name \'$longname\'.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return undef;
+    }
 
     $othernames = join(' ', @o_names);
     if    ($LONGNAME)        { return "$ip $longname $shortname $othernames\n"; }
@@ -184,7 +184,7 @@ sub build_line
 
 sub addotherinterfaces
 {
-	my $callback		= shift;
+    my $callback        = shift;
     my $node            = shift;
     my $otherinterfaces = shift;
     my $domain          = shift;
@@ -192,12 +192,12 @@ sub addotherinterfaces
     my @itf_pairs = split(/,/, $otherinterfaces);
     foreach (@itf_pairs)
     {
-		my ($itf, $ip); 
-		if ($_  =~ /!/) {
-			($itf, $ip) = split(/!/, $_);
-		} else {
-        	($itf, $ip) = split(/:/, $_);
-		}
+        my ($itf, $ip); 
+        if ($_  =~ /!/) {
+            ($itf, $ip) = split(/!/, $_);
+        } else {
+            ($itf, $ip) = split(/:/, $_);
+        }
         if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
         {
             if ($itf =~ /^-/)
@@ -218,12 +218,12 @@ sub delotherinterfaces
     my @itf_pairs = split(/,/, $otherinterfaces);
     foreach (@itf_pairs)
     {
-		my ($itf, $ip); 
-		if ($_  =~ /!/) {
-			($itf, $ip) = split(/!/, $_);
-		} else {
-        	($itf, $ip) = split(/:/, $_);
-		}
+        my ($itf, $ip); 
+        if ($_  =~ /!/) {
+            ($itf, $ip) = split(/!/, $_);
+        } else {
+            ($itf, $ip) = split(/:/, $_);
+        }
         if ($ip && xCAT::NetworkUtils->isIpaddr($ip))
         {
             if ($itf =~ /^-/)
@@ -236,82 +236,80 @@ sub delotherinterfaces
 }
 
 sub add_hosts_content {
-	my %args = @_;
-	my $nodelist = $args{nodelist};
-	my $callback = $args{callback};
-	my $DELNODE = $args{delnode};
-	my $domain = $args{domain};
-    	my $hoststab = xCAT::Table->new('hosts',-create=>0);
-            my $hostscache;
-	    if ($hoststab) {
-             $hostscache =
-              $hoststab->getNodesAttribs($nodelist,
-                                       [qw(ip node hostnames otherinterfaces)]);
-			       }
-            foreach (@{$nodelist})
+    my %args = @_;
+    my $nodelist = $args{nodelist};
+    my $callback = $args{callback};
+    my $DELNODE = $args{delnode};
+    my $domain = $args{domain};
+    my $hoststab = xCAT::Table->new('hosts',-create=>0);
+    my $hostscache;
+    if ($hoststab) {
+         $hostscache = $hoststab->getNodesAttribs($nodelist,
+                                   [qw(ip node hostnames otherinterfaces)]);
+    }
+    foreach (@{$nodelist}) {
+        my $ref = $hostscache->{$_}->[0];
+        my $nodename = $_;
+        my $ip = $ref->{ip};
+        if (not $ip) {
+            $ip = xCAT::NetworkUtils->getipaddr($nodename); #attempt lookup
+        } 
+
+        my $netn;
+        ($domain, $netn) = &getIPdomain($ip, $callback);
+        if (!$domain) {
+            if ($::sitedomain) {
+                $domain=$::sitedomain;
+            } elsif ($::XCATSITEVALS{domain}) {
+                $domain=$::XCATSITEVALS{domain};
+            } else {
+                my $rsp;
+                push @{$rsp->{data}}, "No domain can be determined for node \'$nodename\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+
+                xCAT::MsgUtils->message("W", $rsp, $callback);
+                next;
+            }
+        }
+
+        if ($DELNODE)
+        {
+            delnode $nodename, $ip, $ref->{hostnames}, $domain;
+            if (defined($ref->{otherinterfaces}))
             {
-
-                my $ref = $hostscache->{$_}->[0];
-		my $nodename = $_;
-		my $ip = $ref->{ip};
-		if (not $ip) {
-			$ip = xCAT::NetworkUtils->getipaddr($nodename); #attempt lookup
-		} 
-
-				my $netn;
-                ($domain, $netn) = &getIPdomain($ip, $callback);
-                if (!$domain) {
-                    if ($::sitedomain) {
-                        $domain=$::sitedomain;
-                    } elsif ($::XCATSITEVALS{domain}) {
-                        $domain=$::XCATSITEVALS{domain};
-                    } else {
-                        my $rsp;
-                        push @{$rsp->{data}}, "No domain can be determined for node \'$nodename\'. The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
-
-                        xCAT::MsgUtils->message("W", $rsp, $callback);
-                        next;
-                    }
-                }
-
-                if ($DELNODE)
-                {
-                    delnode $nodename, $ip, $ref->{hostnames}, $domain;
-                    if (defined($ref->{otherinterfaces}))
-                    {
-                        delotherinterfaces $nodename, $ref->{otherinterfaces}, $domain;
-                    }
-                }
-                else
-                {
-                    if (xCAT::NetworkUtils->isIpaddr($ip))
-                    {
-                        addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
-                    }
-		    else
-		    {
-			    my $rsp;
+                delotherinterfaces $nodename, $ref->{otherinterfaces}, $domain;
+            }
+        }
+        else
+        {
+            if (xCAT::NetworkUtils->isIpaddr($ip))
+            {
+                addnode $callback, $nodename, $ip, $ref->{hostnames}, $domain;
+            }
+            else
+            {
+                my $rsp;
                 if (!$ip)
                 {
                     push @{$rsp->{data}}, "Ignoring node \'$nodename\', it can not be resolved.";
                 }
                 else
                 {
-			        push @{$rsp->{data}}, "Ignoring node \'$nodename\', its ip address \'$ip\' is not valid.";
+                    push @{$rsp->{data}}, "Ignoring node \'$nodename\', its ip address \'$ip\' is not valid.";
                 }
-			    xCAT::MsgUtils->message("W", $rsp, $callback);
-		    }
+                xCAT::MsgUtils->message("W", $rsp, $callback);
+            }
 
-                    if (defined($ref->{otherinterfaces}))
-                    {
-                        addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;
-                    }
-                }
-            }    #end foreach
-	    if ($args{hostsref}) {
-	    	@{$args{hostsref}} = @hosts;
-	    }
-	  }
+            if (defined($ref->{otherinterfaces}))
+            {
+                addotherinterfaces $callback, $nodename, $ref->{otherinterfaces}, $domain;
+            }
+        }
+    }    #end foreach
+    if ($args{hostsref}) {
+        @{$args{hostsref}} = @hosts;
+    }
+}
+
 sub process_request
 {
     Getopt::Long::Configure("bundling");
@@ -325,7 +323,7 @@ sub process_request
 
     my $HELP;
     my $REMOVE;
-	my $DELNODE;
+    my $DELNODE;
 
     # parse the options
     if ($req && $req->{arg}) { @ARGV = @{$req->{arg}}; }
@@ -355,14 +353,14 @@ sub process_request
         return;
     }
 
-	# get site domain for backward compatibility
-	my $sitetab = xCAT::Table->new('site');
-	if ($sitetab) {
-		my $dom = $sitetab->getAttribs({key=>'domain'},'value');
-		if ($dom and $dom->{value}) {
-			$::sitedomain=$dom->{value};
-		}
-	}
+    # get site domain for backward compatibility
+    my $sitetab = xCAT::Table->new('site');
+    if ($sitetab) {
+        my $dom = $sitetab->getAttribs({key=>'domain'},'value');
+        if ($dom and $dom->{value}) {
+            $::sitedomain=$dom->{value};
+        }
+    }
 
     my $hoststab = xCAT::Table->new('hosts');
     my $domain;
@@ -396,9 +394,9 @@ sub process_request
         }
 
 
-		#  the contents of the /etc/hosts file is saved in the @hosts array
-		#	the @hosts elements are updated and used to re-create the 
-		#	/etc/hosts file at the end by the writeout subroutine.
+        #  the contents of the /etc/hosts file is saved in the @hosts array
+        #    the @hosts elements are updated and used to re-create the 
+        #    /etc/hosts file at the end by the writeout subroutine.
         open($lockh, ">", "/tmp/xcat/hostsfile.lock");
         flock($lockh, LOCK_EX);
         my $rconf;
@@ -430,21 +428,21 @@ sub process_request
                 }
                 my $linklocal = xCAT::NetworkUtils->linklocaladdr($mac);
 
-				my $netn;
+                my $netn;
                 ($domain, $netn) = &getIPdomain($linklocal, $callback);
 
-				if (!$domain) {
-					if ($::sitedomain) {
-						$domain=$::sitedomain;
-                    			} elsif ($::XCATSITEVALS{domain}) {
-                        			$domain=$::XCATSITEVALS{domain};
-					} else {
-						my $rsp;
-						push @{$rsp->{data}}, "No domain can be determined for node \'$node\'.  The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
-                    	xCAT::MsgUtils->message("W", $rsp, $callback);
-                    	next;
-					}
-				}
+                if (!$domain) {
+                    if ($::sitedomain) {
+                        $domain=$::sitedomain;
+                    } elsif ($::XCATSITEVALS{domain}) {
+                        $domain=$::XCATSITEVALS{domain};
+                    } else {
+                        my $rsp;
+                        push @{$rsp->{data}}, "No domain can be determined for node \'$node\'.  The domain of the xCAT node must be provided in an xCAT network definition or the xCAT site definition.\n";
+                        xCAT::MsgUtils->message("W", $rsp, $callback);
+                        next;
+                    }
+                }
 
                 if ($DELNODE)
                 {
@@ -458,7 +456,7 @@ sub process_request
         }
         else
         {
-		add_hosts_content(nodelist=>$req->{node},callback=>$callback,delnode=>$DELNODE,domain=>$domain);
+            add_hosts_content(nodelist=>$req->{node},callback=>$callback,delnode=>$DELNODE,domain=>$domain);
         }    # end else
 
         # do the other node nics - if any
@@ -480,14 +478,14 @@ sub process_request
 
             push @allnodes, $_->{node};
 
-			my $netn;
-           ($domain, $netn) = &getIPdomain($_->{ip});
-			if (!$domain) {
+            my $netn;
+            ($domain, $netn) = &getIPdomain($_->{ip});
+            if (!$domain) {
                 $domain=$::sitedomain;
             }
-			if (!$domain) {
+            if (!$domain) {
                 $domain=$::XCATSITEVALS{domain};
-	    }
+            }
 
             if (xCAT::NetworkUtils->isIpaddr($_->{ip}))
             {
@@ -534,13 +532,13 @@ sub writeout
 =head3    donics
 
            Add the additional network interfaces for a list of nodes as 
-				indicated in the nics table
+           indicated in the nics table
 
         Arguments:
-               node name
+           node name
         Returns:
-			0 - ok
-			1 - error
+            0 - ok
+            1 - error
 
         Globals:
 
@@ -566,8 +564,8 @@ sub donics
 
     foreach my $node (@nodelist)
     {
-		my $nich;
-		my %nicindex;
+        my $nich;
+        my %nicindex;
 
         # get the nic info
         my $et =
@@ -580,64 +578,64 @@ sub donics
                                    ]
                                    );
 
-		# only require IP for nic
+        # only require IP for nic
         if ( !($et->{nicips}) ) {
             next;
         }
 
-		# gather nics info
-		# delimiter could be ":" or "!"  
-		# new  $et->{nicips} looks like 
-		#		"eth0!11.10.1.1,eth1!60.0.0.5|60.0.0.250..."
+        # gather nics info
+        # delimiter could be ":" or "!"  
+        # new  $et->{nicips} looks like 
+        # "eth0!11.10.1.1,eth1!60.0.0.5|60.0.0.250..."
         my @nicandiplist = split(',', $et->{'nicips'});
 
         foreach (@nicandiplist)
         {
-			my ($nicname, $nicip);
+            my ($nicname, $nicip);
 
-			# if it contains a "!" then split on "!"
-			if ($_  =~ /!/) {
-				($nicname, $nicip) = split('!', $_);
-			} else {
-            	($nicname, $nicip) = split(':', $_);
-			}
+            # if it contains a "!" then split on "!"
+            if ($_  =~ /!/) {
+                ($nicname, $nicip) = split('!', $_);
+            } else {
+                ($nicname, $nicip) = split(':', $_);
+            }
 
-			$nicindex{$nicname}=0;
+            $nicindex{$nicname}=0;
 
-			if (!$nicip) {
-				next;
-			}
+            if (!$nicip) {
+                next;
+            }
 
-			if ( $nicip =~ /\|/) {
-				my @ips = split( /\|/, $nicip);
-				foreach my $ip (@ips) {
-					$nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $ip;
-					$nicindex{$nicname}++;
-				}
-			} else {
-				$nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $nicip;
-				$nicindex{$nicname}++;
-			}
-		}
+            if ( $nicip =~ /\|/) {
+                my @ips = split( /\|/, $nicip);
+                foreach my $ip (@ips) {
+                    $nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $ip;
+                    $nicindex{$nicname}++;
+                }
+            } else {
+                $nich->{$nicname}->{nicip}->[$nicindex{$nicname}] = $nicip;
+                $nicindex{$nicname}++;
+            }
+        }
 
         my @nicandsufx = split(',', $et->{'nichostnamesuffixes'});
         my @nicandprfx = split(',', $et->{'nichostnameprefixes'});
 
         foreach (@nicandsufx)
         {
-			my ($nicname, $nicsufx);
-			if ($_  =~ /!/) {
-				($nicname, $nicsufx) = split('!', $_);
-			} else {
-            	($nicname, $nicsufx) = split(':', $_);
-			}
+            my ($nicname, $nicsufx);
+            if ($_  =~ /!/) {
+                ($nicname, $nicsufx) = split('!', $_);
+            } else {
+                ($nicname, $nicsufx) = split(':', $_);
+            }
 
             if ( $nicsufx =~ /\|/) {
                 my @sufs = split( /\|/, $nicsufx);
-				my $index=0;
+                my $index=0;
                 foreach my $suf (@sufs) {
                     $nich->{$nicname}->{nicsufx}->[$index] = $suf;
-					$index++;
+                    $index++;
                 }
             } else {
                 $nich->{$nicname}->{nicsufx}->[0] = $nicsufx;
@@ -645,46 +643,49 @@ sub donics
         }
         foreach (@nicandprfx)
         {
-			my ($nicname, $nicprfx);
-			if ($_  =~ /!/) {
-				($nicname, $nicprfx) = split('!', $_);
-			} else {
-            	($nicname, $nicprfx) = split(':', $_);
-			}
+            my ($nicname, $nicprfx);
+            if ($_  =~ /!/) {
+                ($nicname, $nicprfx) = split('!', $_);
+            } else {
+                ($nicname, $nicprfx) = split(':', $_);
+            }
 
-            if ( $nicprfx =~ /\|/) {
+            if ( defined($nicprfx) && $nicprfx =~ /\|/) {
                 my @prfs = split( /\|/, $nicprfx);
-				my $index=0;
+                my $index=0;
                 foreach my $prf (@prfs) {
                     $nich->{$nicname}->{nicprfx}->[$index] = $prf;
-					$index++;
+                    $index++;
                 }
             } else {
                 $nich->{$nicname}->{nicprfx}->[0] = $nicprfx;
             }
         }
 
-		# see if we need to fill in a default suffix
-		# nich has all the valid nics - ie. that have IPs provided!
-		foreach my $nic (keys %{$nich}) {
-			for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
-				if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
-					# then we have no suffix at all for this 
-					# so set a default
-					$nich->{$nic}->{nicsufx}->[$i] = "-$nic";
-				}
-			}
-		}
+        # see if we need to fill in a default suffix
+        # nich has all the valid nics - ie. that have IPs provided!
+        foreach my $nic (keys %{$nich}) {
+            unless (defined ($nicindex{$nic})) {
+                $nicindex{$nic} = 0;
+            }
+            for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
+                if (!$nich->{$nic}->{nicsufx}->[$i] && !$nich->{$nic}->{nicprfx}->[$i]) {
+                    # then we have no suffix at all for this 
+                    # so set a default
+                    $nich->{$nic}->{nicsufx}->[$i] = "-$nic";
+                }
+            }
+        }
 
         my @nicandnetwrk = split(',', $et->{'nicnetworks'});
         foreach (@nicandnetwrk)
         {
-			my ($nicname, $netwrk);
-			if ($_  =~ /!/) {
-				($nicname, $netwrk) = split('!', $_);
-			} else {
-            	($nicname, $netwrk) = split(':', $_);
-			}
+            my ($nicname, $netwrk);
+            if ($_  =~ /!/) {
+                ($nicname, $netwrk) = split('!', $_);
+            } else {
+                ($nicname, $netwrk) = split(':', $_);
+            }
 
             if (!$netwrk) {
                 next;
@@ -702,7 +703,10 @@ sub donics
             }
         }
 
-		my @nicandnicalias = split(',', $et->{'nicaliases'});
+        my @nicandnicalias;
+        if (defined($et->{'nicaliases'})) {
+            @nicandnicalias = split(',', $et->{'nicaliases'});
+        }
         foreach (@nicandnicalias)
         {
             my ($nicname, $aliases);
@@ -727,78 +731,82 @@ sub donics
             }
         }
 
-		# end gather nics info
+        # end gather nics info
 
-		# add or delete nic entries in the hosts file
-		foreach my $nic (keys %{$nich}) {
+        # add or delete nic entries in the hosts file
+        foreach my $nic (keys %{$nich}) {
             # make sure we have the short hostname
             my $shorthost;
             ($shorthost = $node) =~ s/\..*$//;
+            for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
+                my $nicip = "";
+                my $nicsuffix = "";
+                my $nicprefix = "";
+                my $nicnetworks = "";
+                my $nicaliases = "";
+                
+                $nicip = $nich->{$nic}->{nicip}->[$i] if (defined ($nich->{$nic}->{nicip}->[$i]));
+                $nicsuffix = $nich->{$nic}->{nicsufx}->[$i] if (defined($nich->{$nic}->{nicsufx}->[$i]));
+                $nicprefix = $nich->{$nic}->{nicprfx}->[$i] if (defined($nich->{$nic}->{nicprfx}->[$i]));
+                $nicnetworks = $nich->{$nic}->{netwrk}->[$i] if (defined($nich->{$nic}->{netwrk}->[$i]));
+                $nicaliases = $nich->{$nic}->{nicaliases}->[$i] if (defined($nich->{$nic}->{nicaliases}->[$i]));
 
-			for (my $i = 0; $i < $nicindex{$nic}; $i++ ){
+                if (!$nicip) {
+                    next;
+                }
 
-				my $nicip = $nich->{$nic}->{nicip}->[$i];
-				my $nicsuffix = $nich->{$nic}->{nicsufx}->[$i];
-				my $nicprefix = $nich->{$nic}->{nicprfx}->[$i];
-				my $nicnetworks = $nich->{$nic}->{netwrk}->[$i];
-				my $nicaliases = $nich->{$nic}->{nicaliases}->[$i];
+                # construct hostname for nic
+                my $nichostname = "$nicprefix$shorthost$nicsuffix";
 
-				if (!$nicip) {
-					next;
-				}
+                # get domain from network def provided by nic attr
+                my $nt = $nettab->getAttribs({ netname => "$nicnetworks"}, 'domain');
+                # look up the domain as a check or if it's not provided
+                my ($ndomain, $netn) = &getIPdomain($nicip, $callback);
 
-            	# construct hostname for nic
-            	my $nichostname = "$nicprefix$shorthost$nicsuffix";
-
-            	# get domain from network def provided by nic attr
-				my $nt = $nettab->getAttribs({ netname => "$nicnetworks"}, 'domain');
-				# look up the domain as a check or if it's not provided
-				my ($ndomain, $netn) = &getIPdomain($nicip, $callback);
-
-				if ( $nt->{domain} && $ndomain ) {
-					# if they don't match we may have a problem.
-					if($nicnetworks ne $netn) {	
-						my $rsp;
-						push @{$rsp->{data}}, "The xCAT network name listed for
+                if ( $nt->{domain} && $ndomain ) {
+                    # if they don't match we may have a problem.
+                    if($nicnetworks ne $netn) {    
+                        my $rsp;
+                        push @{$rsp->{data}}, "The xCAT network name listed for
 \'$nichostname\' is \'$nicnetworks\' however the nic IP address \'$nicip\' seems to be in the \'$netn\' network.\nIf there is an error then makes corrections to the database definitions and re-run this command.\n";
-						xCAT::MsgUtils->message("W", $rsp, $callback);
-					}
-				}
+                        xCAT::MsgUtils->message("W", $rsp, $callback);
+                    }
+                }
 
-				# choose a domain
-				my $nicdomain;
-				if ( $ndomain ) {
-					# use the one based on the ip address 
-					$nicdomain=$ndomain;
-				} elsif ( $nt->{domain} ) {
-					# then try the one provided in the nics entry 
-					$nicdomain=$nt->{domain};
-				} elsif ( $::sitedomain)  {
-					# try the site domain for backward compatibility
-					$nicdomain=$::sitedomain;
-                		} elsif ($::XCATSITEVALS{domain}) {
-                        		$nicdomain=$::XCATSITEVALS{domain};
-				} else {
-					my $rsp;
-					push @{$rsp->{data}}, "No domain can be determined for the NIC IP value of \'$nicip\'. The network domains must be provided in an xCAT network definition or the xCAT site definition.\n";
-					xCAT::MsgUtils->message("W", $rsp, $callback);
-					next;
-				}
+                # choose a domain
+                my $nicdomain;
+                if ( $ndomain ) {
+                    # use the one based on the ip address 
+                    $nicdomain=$ndomain;
+                } elsif ( $nt->{domain} ) {
+                    # then try the one provided in the nics entry 
+                    $nicdomain=$nt->{domain};
+                } elsif ( $::sitedomain)  {
+                    # try the site domain for backward compatibility
+                    $nicdomain=$::sitedomain;
+                } elsif ($::XCATSITEVALS{domain}) {
+                    $nicdomain=$::XCATSITEVALS{domain};
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "No domain can be determined for the NIC IP value of \'$nicip\'. The network domains must be provided in an xCAT network definition or the xCAT site definition.\n";
+                    xCAT::MsgUtils->message("W", $rsp, $callback);
+                    next;
+                }
 
-            	if ($delnode)
-            	{
-                	delnode $nichostname, $nicip, '', $nicdomain;
-            	}
-            	else
-            	{
-                	addnode $callback, $nichostname, $nicip, $nicaliases, $nicdomain, 1;
-				}
+                if ($delnode)
+                {
+                    delnode $nichostname, $nicip, '', $nicdomain;
+                }
+                else
+                {
+                    addnode $callback, $nichostname, $nicip, $nicaliases, $nicdomain, 1;
+                }
             } # end for each index
         }    # end for each nic
     }    # end for each node
 
     if ($args{hostsref}) {
-    	@{$args{hostsref}} = @hosts;
+        @{$args{hostsref}} = @hosts;
     }
 
     $nettab->close;
@@ -811,12 +819,12 @@ sub donics
 
 =head3    getIPdomain
 
-			Find the xCAT network definition match the IP and then return the
-				domain value from that network def.
+        Find the xCAT network definition match the IP and then return the
+        domain value from that network def.
 
         Arguments:
-               node IP
-				callback
+           node IP
+           callback
         Returns:
             domain and netname - ok
             undef - error
