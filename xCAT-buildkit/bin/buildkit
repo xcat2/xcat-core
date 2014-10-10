@@ -2855,8 +2855,13 @@ sub create_kitconf
             $::kit_config->{$s}{entries}[$li]->{kitreponame} = 
                     $se->{kitreponame};
             if ( !$::PREREQUISITE and ($se->{ospkgdeps} || $se->{preinstall} || $se->{preupgrade} || $se->{preuninstall}) ) {
-                $::kit_config->{$s}{entries}[$li]->{prerequisite} = 
+               if ( $debianflag ){
+                $::kit_config->{$s}{entries}[$li]->{prerequisite} =
+                    "prep-" . $se->{basename};
+               }else{
+                $::kit_config->{$s}{entries}[$li]->{prerequisite} =
                     "prep_" . $se->{basename};
+               }
             }
         }
         $li++;
