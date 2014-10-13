@@ -161,7 +161,7 @@ sub configfpc {
         }
         # Build route,  if defaultip is 192.168.0.100, then route is 192.168.0.101/16
         my ($a1,$a2,$a3,$a4)=split(/\./, $fpcip); 
-        my $a4="101";
+        my $a4 = $a4 +1;
         my $a5="\/16";
         my $route=join(".", $a1, $a2, $a3,$a4);
         my $route = $route . $a5;
