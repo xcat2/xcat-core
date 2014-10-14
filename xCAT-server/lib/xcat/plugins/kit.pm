@@ -2897,7 +2897,8 @@ sub rmkitcomp
                             $inlist = 1;
                         }
                         if ( $kitcomps{$kitcomponent}{prerequisite} ) {
-                            if ( $line =~ /^$kitreponame\/prep_$basename$/ ) {
+                            if (( $line =~ /^$kitreponame\/prep_$basename$/ ) ||
+                                ( $line =~ /^$kitreponame\/prep-$basename$/ )) {
                                 if ( $inlist ) {
                                     $num--;
                                     foreach ( 1..$num ) {
