@@ -3617,6 +3617,10 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  tabentry => 'kit.kitdeployparams',
                  access_tabentry => 'kit.kitname=attr:kitname',
         },
+        {attr_name => 'kitdir',
+                 tabentry => 'kit.kitdir',
+                 access_tabentry => 'kit.kitname=attr:kitname',
+        },
 
 );
 #############################
@@ -3702,6 +3706,10 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  tabentry => 'kitcomponent.kitpkgdeps',
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
+        {attr_name => 'prerequisite',
+                 tabentry => 'kitcomponent.prerequisite',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
         {attr_name => 'driverpacks',
                  tabentry => 'kitcomponent.driverpacks',
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
@@ -3712,6 +3720,10 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
         {attr_name => 'postbootscripts',
                  tabentry => 'kitcomponent.postbootscripts',
+                 access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
+        },
+        {attr_name => 'genimage_postinstall',
+                 tabentry => 'kitcomponent.genimage_postinstall',
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
         {attr_name => 'exlist',
