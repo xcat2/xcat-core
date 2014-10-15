@@ -135,7 +135,8 @@ fi
 #so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
 #so for each onboard device, we record it.  If it is also the first function, we'll seek out other function numbers and append
 #if that other function number does not show up in its own dmi type 41 record
-for onboard in `dmidecode -t 41|egrep '(Type:|Bus Address)'|grep -A1 Ethernet|grep -v Ethernet|sed -e 's/.*Address: //'`; do
+if [ -f "/usr/sbin/dmidecode" ]; then
+    for onboard in `dmidecode -t 41|egrep '(Type:|Bus Address)'|grep -A1 Ethernet|grep -v Ethernet|sed -e 's/.*Address: //'`; do
 	obdevs=("${obdevs[@]}" $onboard)
 	if [ ${onboard#*.}=0 ]; then
 		truncslot=${onboard%.*}
@@ -145,8 +146,8 @@ for onboard in `dmidecode -t 41|egrep '(Type:|Bus Address)'|grep -A1 Ethernet|gr
 			fi
 		done
 	fi
-done
-		
+    done
+fi
 #TODO: downed nics, also examine /sys/bus/pci/*/ for more network class devices that might not have driver suppert
 for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v usb0`; do
 	FIRMDESC=""
@@ -155,7 +156,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://|grep -v
 	PCI_SLOT=`grep PCI_SLOT_NAME /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
 	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
-	if [ ! -z "$PCI_SLOT" ]; then
+	if [[ ! -z "$PCI_SLOT" && -f "/usr/sbin/dmidecode" ]]; then
 	SLOTNAME=`dmidecode -t 9|egrep '(Designation|Address)'|grep -B1 $PCI_SLOT|grep Designation|sed -e 's/.*Designation:[ 	]*//'`
 	if [ -z "$SLOTNAME" ]; then #check for on board device
 		index=1

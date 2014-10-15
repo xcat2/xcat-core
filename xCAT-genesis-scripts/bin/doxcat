@@ -59,7 +59,7 @@ echo "Done"
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
-/sbin/rsyslogd -c4
+/sbin/rsyslogd -4
 mkdir -p /var/lib/lldpad
 echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
 echo '{' >> /var/lib/lldpad/lldpad.conf
@@ -199,6 +199,13 @@ ntpd -g -x
 # rv 0 state does not work with the new ntp versions
 #(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
 (while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}' | sed s/-//`" -ge 1000 ]; do sleep 1; done; hwclock --systohc) &
+IPMI_ERROR=`ipmitool mc info`
+IPMI_RC=$?
+IPMI_SUPPORT=1
+if [ $IPMI_RC -ne 0 ]; then
+    IPMI_SUPPORT=0
+fi
+
 if [ -f "/usr/sbin/dmidecode" ]; then
     if dmidecode|grep IPMI > /dev/null; then
         modprobe ipmi_si
@@ -267,10 +274,14 @@ while :; do
 		cd -
 	elif [ "$dest" = "reboot" -o "$dest" = "boot" ]; then
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
-		ipmitool chassis bootdev pxe
+                if [ $IPMI_SUPPORT -ne 0 ]; then
+		    ipmitool chassis bootdev pxe
+                fi
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
-		ipmitool chassis bootdev pxe
+                if [ $IPMI_SUPPORT -ne 0 ]; then
+		    ipmitool chassis bootdev pxe
+                fi
 		reboot -f
 	elif [ "$dest" = sysclone ]; then
                 /bin/dosysclone
