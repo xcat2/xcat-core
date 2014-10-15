@@ -275,6 +275,7 @@ my $socket;
   $SIG{USR2} = sub { 
 	if ($socket) { #do not mess with pid file except when we still have  the socket.
       	unlink("/var/run/xcat/installservice.pid"); close($socket); $quit=1; 
+        $udpctl=0;
        xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
 	}
 	};
@@ -547,6 +548,7 @@ sub do_udp_service { #This function opens up a UDP port
 	if ($socket) {
 		#only clear out pid file when we still have socket.
       		unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
+                $udpctl=0;
        		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
 	}
 	};
@@ -824,7 +826,9 @@ sub ssl_reaper {
       	$numdone--;
        }
    }
-   store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+   if ($udpctl) {
+     store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+   }
    $SIG{CHLD} = \&ssl_reaper;
 }
 
@@ -890,7 +894,7 @@ if (! defined $pid_UDP) {
   die;
 }
 unless ($pid_UDP) {
-  close($udpctl);
+  close($udpctl); $udpctl=0;
   $$progname="xcatd: UDP listener";
   do_udp_service;
   xexit(0);
@@ -903,7 +907,7 @@ if (! defined $pid_MON) {
 }
 unless ($pid_MON) {
   $$progname="xcatd: install monitor";
-  close($udpctl);
+  close($udpctl); $udpctl=0;
   do_installm_service;
   xexit(0);
 }
@@ -952,6 +956,7 @@ my $mainpidfile;
 $SIG{USR2} = sub { 
 	if ($listener) {
 	      unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; 
+               $udpctl=0;
 	       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
 	}
 };
@@ -1063,7 +1068,7 @@ until ($quit) {
   }
 
   if ($child == 0) {
-    close($udpctl);
+    close($udpctl); $udpctl=0;
     $SIG{TERM} = $SIG{INT} = {};
     $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
@@ -1141,7 +1146,9 @@ if ($inet6support) {
     xexit(0);
   }
   $sslclients++; #THROTTLE
-  store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+  if ($udpctl) {
+    store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+  }
   $cnnection->close();
 }
   if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
