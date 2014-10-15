@@ -338,9 +338,10 @@ unless ($onlyinitrd) {
 
     #add the other package directory to for apt-get install
     open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
-    if ($otherpkgsdir_local){
-        print $aptconfig "deb file://$otherpkgsdir_local ./\n";
-    }
+    #if ($otherpkgsdir_local){
+    #   # print $aptconfig "deb file://$otherpkgsdir_local ./\n";
+    #   print $aptconfig "deb file:///mnt/otherpkgdir/ ./\n";
+    #}
     if ($otherpkgsdir_internet){
         print $aptconfig $otherpkgsdir_internet;
     }
@@ -367,6 +368,7 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
+      open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
       my $index=1;
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
@@ -376,11 +378,13 @@ unless ($onlyinitrd) {
             }
 
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
+            if ($otherpkgsdir_local) { print $aptconfig "deb file:///mnt/otherpkgdir/$_ ./\n"};
             $index++;
             my $pa=$extra_hash{$pass}{$_};
             $extrapkgnames{$pass} .= " " . join(' ', @$pa);
         }
       }
+      close($aptconfig);
       $index--;
 
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
@@ -403,7 +407,9 @@ unless ($onlyinitrd) {
 
           # install extra packages
           my $aptgetcmd_base = $aptgetcmd;
-          $aptgetcmd .= " install ";
+          # to prevent "The following packages cannot be authenticated" error, 
+          # invoke apt-get with "--allow-unauthenticated" option
+          $aptgetcmd .= " install --allow-unauthenticated ";
           # append extra pkg names to yum command 
           if ($extrapkgnames{$pass}) {
               $aptgetcmd .= " $extrapkgnames{$pass} ";
