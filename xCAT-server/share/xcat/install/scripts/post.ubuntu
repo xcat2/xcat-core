@@ -12,13 +12,16 @@ if [ -z "$PRINIC" ]
 then
     export PRINIC=eth0
 elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
-    export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+    #export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+    export PRINIC=`ip -o link|grep -i  "$PRINIC" |awk  '{print $2}'|sed s/://`
 fi
-IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 if [ -z $IP ]
 then
 	dhclient eth0
-	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+	#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+        IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 fi
 echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
 for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
