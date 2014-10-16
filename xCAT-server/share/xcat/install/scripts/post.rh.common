@@ -13,8 +13,14 @@ if [ -z "$PRINIC" ]
 then
     for karg in $(cat /proc/cmdline |sed -e 's/-/:/g' -e 's/ /\n/g'); do
         if  [ "${karg%%=*}" = "BOOTIF" ]; then
+            MACADDR="${karg#*=}";
+            #The BOOTIF in pxelinux will be the MAC address with the hardware type code as a prefix
+            #such as BOOTIF=01-40-f2-e9-68-de-90
+            if [ "${#MACADDR}" == "20" ]; then
+               MACADDR=${MACADDR:3:21}
+            fi 
             #export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
-            export PRINIC=`ip -o link|grep -i "${karg#*=}"|awk  '{print $2}'|sed s/://`
+            export PRINIC=`ip -o link|grep -i "$MACADDR"|awk  '{print $2}'|sed s/://`
         fi
     done
     if [ -z "$PRINIC" ]; then
