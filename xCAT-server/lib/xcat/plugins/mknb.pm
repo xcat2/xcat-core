@@ -53,6 +53,9 @@ sub process_request {
    if (! $arch) {
       $callback->({error=>"Need to specify architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
       return;
+   } elsif ( $arch eq "ppc64le" or $arch eq "ppc64el" ) {
+       $callback->({data=>"The arch:$arch is not supported at present, pls use \"ppc64\" instead"});
+       return;
    }
    unless (-d "$::XCATROOT/share/xcat/netboot/$arch" or -d "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
       $callback->({error=>"Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch",errorcode=>[1]});
@@ -77,6 +80,9 @@ sub process_request {
    unless ($tempdir) {
       $callback->({error=>["Failed to create a temporary directory"],errorcode=>[1]});
       return;
+   }
+   unless (-e "$tftpdir/xcat") {
+       mkpath("$tftpdir/xcat");
    }
    my $rc;
    my $invisibletouch=0;
@@ -117,6 +123,7 @@ sub process_request {
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
+   my $initrd_file = undef;
    my $lzma_exit_value=1;
    if ($invisibletouch) {
        my $done=0;
@@ -129,18 +136,25 @@ sub process_request {
 		unlink ("$tftpdir/xcat/genesis.fs.$arch.lzma");
 	} else {
 		$done = 1;
+                $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
 	}
 	}
 		
        if (not $done) {
        $callback->({data=>["Creating genesis.fs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
+       $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
 	}
    } else {
    	$callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
        system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
+       $initrd_file = "$tftpdir/xcat/nbfs.$arch.gz";
    }
    system ("rm -rf $tempdir");
+   unless ($initrd_file) {
+       $callback->({data=>["Creating filesystem file in $tftpdir/xcat failed"]});
+       return;
+   }
    my $hexnets = xCAT::NetworkUtils->my_hexnets();
    my $normnets = xCAT::NetworkUtils->my_nets();
    my $consolecmdline;
@@ -170,7 +184,7 @@ sub process_request {
          chmod(0644,"$tftpdir/pxelinux.0");
       }
    } elsif ($arch =~ /ppc/) {
-      mkpath("$tftpdir/etc");
+      mkpath("$tftpdir/pxelinux.cfg/p/");
    }
    my $dopxe=0;
    foreach (keys %{$normnets}) {
@@ -231,6 +245,14 @@ sub process_request {
 	 close($cfg);
 	}
 	
+      } elsif ($arch =~ /ppc/) {
+         open($cfgfile,">", "$tftpdir/pxelinux.cfg/p/$net");
+         print $cfgfile "default xCAT\n";
+         print $cfgfile "   label xCAT\n";
+         print $cfgfile "   kernel http://".$normnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
+         print $cfgfile "   initrd http://".$normnets->{$_}.":80/$initrd_file\n";
+         print $cfgfile '   append "quiet xcatd='.$normnets->{$_}.":$xcatdport $consolecmdline\"\n";
+         close($cfgfile);
       }
    }
    $dopxe=0;
@@ -262,11 +284,11 @@ sub process_request {
          close($cfgfile);
       } elsif ($arch =~ /ppc/) {
          open($cfgfile,">","$tftpdir/etc/".lc($_));
-         print $cfgfile "timeout=5\n";
-         print $cfgfile "   label=xcat\n";
-         print $cfgfile "   image=xcat/nbk.$arch\n";
-         print $cfgfile "   initrd=xcat/nbfs.$arch.gz\n";
-         print $cfgfile '   append="quiet xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
+         print $cfgfile "default xCAT\n";
+         print $cfgfile "   label xCAT\n";
+         print $cfgfile "   kernel http://".$hexnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
+         print $cfgfile "   initrd http://".$hexnets->{$_}.":80/$initrd_file\n";
+         print $cfgfile '   append "quiet xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
          close($cfgfile);
       }
    }

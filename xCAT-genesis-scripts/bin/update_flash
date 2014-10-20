@@ -1,0 +1,457 @@
+#!/bin/sh
+# Copyright (c) 2003, 2004, 2008 International Business Machines
+# Common Public License Version 1.0 (see COPYRIGHT)
+#
+# Authors: John Rose <johnrose@us.ibm.com>
+#          Mike Strosaker <strosake@austin.ibm.com>
+
+# Simple script to update flash.  The kernel module rtas_flash does
+# the real work at reboot time.
+# This script has minimal dependencies so it can operate in a rescue
+# environment.  This is probably overkill since it is easy enough to
+# flash without this script.
+
+#set -x
+
+# For now firmware can only handle 4k pages.  At some point in the
+# future they will be able to handle large pages.  When that (hopefully)
+# happens we will need to use getconf to retrieve the systems page size.
+PAGE_SIZE=4096
+
+# Error Codes
+E_SUCCESS=0     # Success
+E_UNSUPPORTED=1	# Flash update is not supported on this system
+E_USAGE=3	# Usage error
+E_PERM=4	# Permission error
+E_IMAGE=5	# Image file error
+E_PROC_FS=6	# Proc file either doesn't exist, or behaves unexpectedly
+E_MODULE=7	# Error loading module
+E_RTAS=8	# RTAS call failed
+E_USER=9	# User aborted operation
+E_OVERWRITE=10	# Auto overwrite permanent side image
+E_WRNTY=15	# Update Access Key Expired
+
+# Script Constants
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
+PROCFLASH=/proc/ppc64/rtas/firmware_update
+PROCMANAGE=/proc/ppc64/rtas/manage_flash
+PROCVALIDATE=/proc/ppc64/rtas/validate_flash
+OLDPROCFLASH=/proc/ppc64/rtas/firmware_flash
+PSERIES_PLATFORM=$(dirname $0)/pseries_platform
+
+# firmware_update Status Values
+FLASH_AUTH=-9002		# RTAS Not Service Authority Partition
+FLASH_NO_OP=-1099		# No operation initiated by user
+FLASH_IMG_SHORT=-1005 		# Flash image shorter than expected
+FLASH_IMG_BAD_LEN=-1004 	# Bad length value in flash list block
+FLASH_IMG_NULL_DATA=-1003 	# Bad data value in flash list block
+FLASH_IMG_READY=0     		# Firmware img ready for flash on reboot
+
+# manage_flash Status Values
+MANAGE_AUTH=-9002 		# RTAS Not Service Authority Partition 
+MANAGE_ACTIVE_ERR=-9001 	# RTAS Cannot Overwrite Active Img 
+MANAGE_NO_OP=-1099 		# No operation initiated by user 
+MANAGE_PARAM_ERR=-3    		# RTAS Parameter Error 
+MANAGE_HW_ERR=-1    		# RTAS Hardware Error 
+MANAGE_SUCCESS=0		# Operation Successful
+
+# validate_flash Status Values
+VALIDATE_AUTH=-9002 		# RTAS Not Service Authority Partition
+VALIDATE_INCOMPLETE=-1002 	# User copied < VALIDATE_BUF_SIZE
+VALIDATE_READY=-1001 		# Firmware image ready for validation
+VALIDATE_PARAM_ERR=-3    	# RTAS Parameter Error
+VALIDATE_HW_ERR=-1    		# RTAS Hardware Error
+VALIDATE_TMP_UPDATE=0     	# RPA Section 7.3, Table 63
+VALIDATE_FLASH_AUTH=1     	# RPA Section 7.3, Table 63
+VALIDATE_INVALID_IMG=2     	# RPA Section 7.3, Table 63
+VALIDATE_CUR_UNKNOWN=3     	# RPA Section 7.3, Table 63
+VALIDATE_TMP_COMMIT_DL=4     	# RPA Section 7.3, Table 63
+VALIDATE_TMP_COMMIT=5     	# RPA Section 7.3, Table 63
+VALIDATE_TMP_UPDATE_DL=6     	# RPA Section 7.3, Table 63
+VALIDATE_OUT_OF_WRNTY=7     	# RPA Section 7.3, Table 63
+
+error() {
+	local exit_code=$1
+
+	if [ $# -lt 1 ]; then
+		echo "error(): usage" >&2
+		return $E_USAGE
+	fi
+	
+	shift;
+	echo update_flash: $* >&2
+	exit $exit_code
+}
+
+usage() {
+	local exit_code;
+
+	if [ "$1" == $E_SUCCESS ]; then
+		exit_code=$E_SUCCESS
+	else
+		exit_code=$E_USAGE
+	fi
+
+	echo "USAGE:  update_flash {-h | -s | -r | -c | [-v|-n] -f <image filename>}" >&2
+	echo "		-h		Print this message." >&2
+	echo "		-s		Determine if partition has access to" >&2
+	echo "				perform flash image management." >&2
+	echo "		-r 		Reject temporary image." >&2
+	echo "		-c		Commit temporary image." >&2
+	echo "		-v		Validate ONLY with given image file." >&2
+	echo "		-n		Do not overwrite Permanent side" >&2
+	echo "				image automatically." >&2
+	echo "		-f <filename>	Update with given image file.  If possible," >&2
+	echo "				the image is automatically validated prior" >&2 
+	echo "				to update." >&2
+	echo "" >&2
+	exit $exit_code
+}
+
+query_support() {
+	local exit_status=$E_UNSUPPORTED
+
+	if [ ! -r "$PROCVALIDATE" ]; then 
+		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
+	fi
+
+	if [ -e "/proc/device-tree/rtas/ibm,manage-flash-image" ]; then
+		grep \\"$VALIDATE_AUTH" "$PROCVALIDATE" > /dev/null
+		if [ $? -ne 0 ]; then
+			# validate-flash did not return "not authorized"
+			head --bytes=4k /dev/zero > $PROCVALIDATE 2>/dev/null
+			grep 1 "$PROCVALIDATE" > /dev/null
+			if [ $? -ne 0 ]; then
+				# validate-flash did not return "not authorized"
+				exit_status=0
+			fi
+		fi
+	else
+		if [ -e "/proc/device-tree/rtas/ibm,update-flash-64-and-reboot" ] || [ -e "/proc/device-tree/rtas/udpate-flash-and-reboot" ]; then
+			exit_status=0
+		fi
+	fi
+
+	if [ $exit_status -ne 0 ]; then
+		echo update_flash: flash image cannot be managed from this partition
+	else
+		echo update_flash: flash image management is supported
+	fi
+
+	exit $exit_status;
+}
+
+echo_validate_rtas_buf() {
+	local output="$1"
+	local cur_t_name=$(echo "$output" | grep "^MI" | head -n 1 | awk ' { print $2 } ')
+	local cur_p_name=$(echo "$output" | grep "^MI" | head -n 1 | awk ' { print $3 } ')
+	local new_t_name=$(echo "$output" | grep "^MI" | tail -n 1 | awk ' { print $2 } ')
+	local new_p_name=$(echo "$output" | grep "^MI" | tail -n 1 | awk ' { print $3 } ')
+
+	echo "Projected Flash Update Results:"
+	echo "Current T Image: $cur_t_name"
+	echo "Current P Image: $cur_p_name"
+	echo "New T Image:     $new_t_name"
+	echo "New P Image:     $new_p_name"
+}
+
+echo_entitlement_expiry_date() {
+	local build_date=`cat $PROCVALIDATE | grep "^MG" | tail -n 1 | cut -d " " -f2`
+	local entl_date=`cat $PROCVALIDATE | grep "^ME" | cut -d " " -f2`
+
+	echo "The selected firmware image cannot be applied."
+	echo ""
+	echo -n "The Build Date of the firmware image selected is "
+	if [ "$build_date" != "" ]; then
+		echo "$(date --date=$build_date +"%B %d, %Y")."
+	else
+		echo "UNKNOWN."
+	fi
+
+	echo -n "The System's Update Access Key Expiration Date is "
+	if [ "$entl_date" != "" ]; then
+		echo "$(date --date=$entl_date +"%B %d, %Y")."
+	else
+		echo "UNKNOWN."
+	fi
+	echo ""
+	echo "Please go to http://www.ibm.com/servers/eserver/ess to obtain "
+	echo "a replacement update access key."
+}
+
+echo_validate_return_status() {
+	local output="$1"
+	local rc=$(echo "$output" | head -n 1)
+	local rtas_buf=$(echo "$output" | tail -n +2)
+
+	[ $# -eq 1 ] || error $E_USAGE "echo_validate_return_status(): usage" 
+
+	case "$rc" in
+	$VALIDATE_PARAM_ERR)	
+		error $E_RTAS "RTAS: validate() Parameter Error";;
+	$VALIDATE_HW_ERR) 	
+		error $E_RTAS "RTAS: validate() Hardware Error";;
+	$VALIDATE_FLASH_AUTH)	
+		error $E_RTAS "RTAS: validate() Partition does not have authority";;
+	$VALIDATE_AUTH)
+		error $E_RTAS "RTAS: validate() Partition does not have authority";;
+	$VALIDATE_INVALID_IMG)	
+		error $E_RTAS "RTAS: validate() Invalid candidate image for this platform";;
+	$VALIDATE_TMP_UPDATE)	
+		echo "info: Temporary side will be updated with a newer or"
+		echo "identical image";;
+	$VALIDATE_CUR_UNKNOWN)	
+		echo "info: Current fixpack level is unknown";;
+	$VALIDATE_TMP_COMMIT_DL)	
+		echo "info: Current Temporary image will be committed to"
+		echo "Permanent side before being replaced with new image, and"
+		echo "the new image is downlevel from current image";;
+	$VALIDATE_TMP_COMMIT)	
+		echo "info: Current Temporary side will be committed to"
+		echo "Permanent side before being replaced with the new image";;
+	$VALIDATE_TMP_UPDATE_DL) 	
+		echo "info: Temporary side will be updated with a downlevel"
+		echo "image";;
+	$VALIDATE_OUT_OF_WRNTY)
+		echo_entitlement_expiry_date
+		error $E_WRNTY "Please contact your service support structure.";;
+	*) 	error $E_RTAS "RTAS: Unknown validate-flash-image Return Status"
+	esac
+
+	echo
+	echo_validate_rtas_buf "$rtas_buf"
+
+	# Do not commit T side image to P side
+	if [ $no_overwrite_opt -eq 1 ]; then
+		if [ $rc -eq $VALIDATE_TMP_COMMIT_DL ] || [ $rc -eq $VALIDATE_TMP_COMMIT ]; then
+			echo ""
+			echo "update_flash: Run without -n option to flash new image"
+			exit $E_OVERWRITE
+		fi
+	fi
+}
+
+validate_flash() {
+	local img_file=$1
+	local output=""
+
+	[ $# -eq 1 ] || error $E_USAGE "validate_flash(): usage"
+
+	[ -r $PROCVALIDATE ] || return $E_PROC_FS
+
+	grep \\"$VALIDATE_AUTH" "$PROCVALIDATE" > /dev/null
+	if [ $? -eq 0 ]; then	# validate-flash returned "not authorized"
+		return $E_RTAS
+	fi
+
+	# Copy image file to proc file
+	cp "$img_file" "$PROCVALIDATE" || error $E_PROC_FS "error copying flash image to rtas_flash validate module"
+
+	# Display appropriate message, exiting if necessary
+	output="$(cat $PROCVALIDATE)"
+	echo_validate_return_status "$output"
+
+	return 0
+}
+
+validate_flash_from_file() {
+	local img_file=$1
+
+	[ $# -eq 1 ] || error $E_USAGE "validate_flash_from_file(): usage" 
+
+	if [ ! -r "$PROCVALIDATE" ]; then 
+		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
+		[ -r "$PROCVALIDATE" ] || error $E_PROC_FS "rtas_flash kernel module did not create $PROCVALIDATE"
+	fi
+
+	if validate_flash $img_file; then
+		return 0;
+	else
+		case "$?" in 
+		$E_PROC_FS) error $E_PROC_FS "validate: $PROCVALIDATE does not exist";;
+		$E_RTAS) error $E_RTAS "validate: firmware validation not supported on this system";;
+		esac
+	fi
+}
+
+echo_update_status() {
+	local rc="$1"
+	
+	[ $# -eq 1 ] || error $E_USAGE "echo_update_status(): usage" 
+
+	case "$rc" in
+	$FLASH_AUTH) 
+		error $E_RTAS "RTAS: Partition does not have authority";;
+	$FLASH_IMG_SHORT) 
+		error $E_IMAGE "Flash image shorter than expected";;
+	$FLASH_IMG_BAD_LEN) 
+		error $E_PROC_FS "Bad length value in flash list block";;
+	$FLASH_IMG_NULL_DATA) 
+		error $E_PROC_FS "Bad data value in flash list block";;
+	$FLASH_IMG_READY)
+		echo "Flash image ready...rebooting the system...";;
+	*)     	error $E_PROC_FS "RTAS: Unknown update flash status"
+	esac
+}
+
+update_flash_from_file() {
+	local img_file=$1
+	local output=""
+	local oldkernel=0
+
+	[ $# -eq 1 ] || error $E_USAGE "update_flash_from_file(): usage" 
+
+	[ -r "$img_file" ] || error $E_IMAGE "cannot read $img_file"
+
+	flashfile=$PROCFLASH
+	if [ ! -r "$PROCFLASH" ]; then 
+		modprobe rtas_flash 
+		if [ ! -r "$PROCFLASH" ]; then
+			if [ -r "$OLDPROCFLASH" ]; then
+				oldkernel=1
+			else
+				error $E_PROC_FS "rtas_flash kernel module did not create $PROCFLASH"
+			fi
+		fi
+	fi
+
+	if [ -r "$PROCVALIDATE" ]; then
+		validate_flash "$img_file"
+	fi
+	
+	if [ $oldkernel -eq 0 ]; then
+		dd if="$img_file" of="$PROCFLASH" bs=$PAGE_SIZE 2>/dev/null || error $E_PROC_FS "error copying flash image to rtas_flash kernel module"
+
+		output="$(cat $PROCFLASH)"
+		echo_update_status "$output"
+	else
+		dd if="$img_file" of="$OLDPROCFLASH" bs=PAGE_SIZE 2>/dev/null || error $E_PROC_FS "error copying flash image to rtas_flash kernel module"
+		cat "$OLDPROCFLASH"
+	fi
+
+	#XXX
+	reboot
+
+	return 0;
+}
+
+echo_manage_return_status() {
+	local is_commit=$1
+	local output=$2
+	local rc=$(echo $output)
+
+	[ $# -eq 2 ] || error $E_USAGE "echo_manage_return_status(): usage" 
+	
+	case "$rc" in
+	$MANAGE_AUTH)
+		error $E_RTAS "RTAS: manage() Partition does not have authority";;
+	$MANAGE_ACTIVE_ERR)  
+		error $E_RTAS "RTAS: manage() Cannot Overwrite the Active Firmware Image";;
+	$MANAGE_PARAM_ERR)	
+		error $E_RTAS "RTAS: manage() Parameter Error";;
+	$MANAGE_HW_ERR) 	
+		error $E_RTAS "RTAS: manage() Hardware Error";;
+	$MANAGE_SUCCESS)	
+		if [ $is_commit -eq 0 ]; then
+			echo "success: Rejected temporary firmware image"
+		else
+			echo "success: Committed temporary firmware image"
+		fi
+		;;
+	*) 	error $E_RTAS "Unknown manage-flash-image Return Status"
+	esac
+}
+
+manage_flash() {
+	local is_commit=$1
+	local commit_str="1"
+	local reject_str="0"
+	local output=""
+	
+	[ $# -eq 1 ] || error $E_USAGE "manage_flash(): usage" 
+	
+	if [ ! -r "$PROCMANAGE" ]; then 
+		modprobe rtas_flash || error $E_MODULE "could not load rtas_flash kernel module"
+		[ -r "$PROCMANAGE" ] || error $E_PROC_FS "rtas_flash kernel module did not create $PROCMANAGE"
+	fi
+
+	if [ $is_commit -eq 1 ]; then
+		echo $commit_str > $PROCMANAGE
+	else
+		echo $reject_str > $PROCMANAGE
+	fi
+	
+	output=$(cat $PROCMANAGE)
+	
+	echo_manage_return_status $is_commit "$output"
+
+	if echo $output | grep "^success" > /dev/null; then
+		return 0
+	else
+		return $E_RTAS
+	fi
+}
+
+file=""
+check_opt=0
+commit_opt=0
+reject_opt=0
+validate_opt=0
+no_overwrite_opt=0
+file_opt=0
+
+[ -d /proc/device-tree ] || error $E_PROC_FS "iSeries or /proc not mounted"
+#XXX
+#[ "`whoami`" = "root" ] || error $E_PERM "must be root to execute this command"
+
+# Check for platform and if PowerNV call update_flash_nv
+
+# PowerNV update_flash tool
+UPDATE_FLASH_NV=$(dirname $0)/update_flash_nv
+
+. $PSERIES_PLATFORM
+case "$platform" in
+    $PLATFORM_UNKNOWN | $PLATFORM_POWERKVM_GUEST)
+	echo "update_flash: is not supported on the $platform_name platform"
+	exit 1;;
+    $PLATFORM_POWERKVM_HOST)
+	if [ ! -r "$UPDATE_FLASH_NV" ]; then
+		error $E_PERM "Couldn't find $UPDATE_FLASH_NV file."
+	fi
+	/bin/sh $UPDATE_FLASH_NV $@
+	exit $?
+esac
+
+while [ -n "$1" ]; do
+	arg="$1"
+	shift
+	case "$arg" in
+	  -q|-l|-D|-S) error $E_USAGE "the $arg option is not implemented";;
+	  -h) usage $E_SUCCESS;;
+	  -s) check_opt=1;;
+	  -c) commit_opt=1;;
+	  -r) reject_opt=1;;
+	  -v) validate_opt=1;;
+	  -n) no_overwrite_opt=1;;
+	  -f) file_opt=1; file="$1"; shift;;
+	  *) error $E_USAGE "unknown option $arg"
+	esac
+done
+
+if [ -n "$file" ]; then
+	if [ $commit_opt -eq 1 ] || [ $reject_opt -eq 1 ] ||
+						[ $check_opt -eq 1 ]; then
+		usage
+	elif [ $validate_opt -eq 1 ] && [ $no_overwrite_opt -eq 1 ]; then
+		usage
+	elif [ $validate_opt -eq 1 ]; then
+		validate_flash_from_file $file
+	else
+		update_flash_from_file $file
+	fi
+else
+	[ $check_opt -eq 1 ] && query_support
+	[ $commit_opt -eq 0 ] && [ $reject_opt -eq 0 ] && usage
+	[ $commit_opt -eq 1 ] && [ $reject_opt -eq 1 ] && usage
+	manage_flash $commit_opt
+fi

@@ -98,6 +98,19 @@ check:output=~test.file
 cmd:xdsh $$TARGET_NODE "hostname"
 check:output=~$$TARGET_NODE: $$TARGET_NODE
 
+cmd:xdsh $$GOLDEN_CLIENT "cd / && date > update.flag"
+check:rc==0
+cmd:imgcapture $$GOLDEN_CLIENT  -t sysclone -o goldenclient-osimage-$$GOS-$$MODE -V
+check:rc==0
+cmd:updatenode $$TARGET_NODE -S
+check:rc==0
+
+cmd:xdsh $$TARGET_NODE "ls -l / |grep update.flag"
+check:rc==0
+check:output=~update.flag
+
+cmd:xdsh $$TARGET_NODE "rm -f /update.flag"
+check:rc==0
 end
 
 

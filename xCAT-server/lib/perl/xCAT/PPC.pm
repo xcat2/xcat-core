@@ -2142,29 +2142,41 @@ sub findme {
     my $request = shift;
     my $callback = shift;
     my $subreq = shift;
-    my $vpdtab = xCAT::Table->new('vpd');
     if (!defined $request->{'mtm'} or !defined $request->{'serial'}) {
         xCAT::MsgUtils->message("S", "Discovery Error: 'mtm' or 'serial' not found.");
         return;
     }
-    unless ($vpdtab)  {
-        xCAT::MsgUtils->message("S", "Discovery Error: Could not open table: vpd.");
+    my @attr_array = ();
+    my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0]; 
+    my $tmp_nodes = $::XCATVPDHASH{$mtms};
+    my @nodes = ();
+    my $pbmc_node;
+    foreach (@$tmp_nodes) {
+        if ($::XCATPPCHASH{$_}) {
+            $pbmc_node = $_;
+        } else {
+            push @nodes, $_;
+        }
+    }
+    my $nodenum = $#nodes;
+    if ($nodenum < 0) {
+        xCAT::MsgUtils->message("S", "Discovery Error: Could not find any node.");
+        return;
+    } elsif ($nodenum > 0) {
+        xCAT::MsgUtils->message("S", "Discovery Error: More than one node were found.");
         return;
     }
-    my @attr_array = ();
-    push @attr_array, "mtm==$request->{mtm}->[0]";
-    push @attr_array, "serial==$request->{serial}->[0]";
-
-    my @nodes = $vpdtab->getAllAttribsWhere(\@attr_array, 'node');
-    foreach (@nodes) {
+    {
         my $req = {%$request};
         $req->{command} = ['discovered'];
-        $req->{noderange} = [$_->{node}];
+        $req->{noderange} = [$nodes[0]];
+        $req->{pbmc_node} = [$pbmc_node];
         $req->{discoverymethod} = ['mtms'];
         $subreq->($req);
         %{$req} = ();
     }
 }
+
 ##########################################################################
 # Process request from xCat daemon
 ##########################################################################

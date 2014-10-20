@@ -789,12 +789,25 @@ sub setnetinfo {
 	else {
 		return(1,"configuration of $subcommand is not implemented currently");
 	}
+    unless ($sessdata->{netinfo_setinprogress}) {
+        $sessdata->{netinfo_setinprogress} = '1';
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&setnetinfo,callback_args=>$sessdata);
+    }
     my $command = shift @cmd;
     $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
 }
 sub netinfo_set {
     my $rsp = shift;
     my $sessdata = shift;
+    if ($sessdata->{netinfo_setinprogress}) {
+        my $channel_number = $sessdata->{ipmisession}->{currentchannel};
+        delete $sessdata->{netinfo_setinprogress};
+        $sessdata->{rsp}->{error} = $rsp->{error};
+        $sessdata->{rsp}->{code} = $rsp->{code};
+        $sessdata->{ipmisession}->subcmd(netfn=>0x0c, command=>0x01, data=>[$channel_number,0x0,0x0], callback=>\&netinfo_set,callback_args=>$sessdata);
+    } else {
+        $rsp = $sessdata->{rsp};
+    }
     if ($rsp->{error}) { 
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
@@ -886,6 +899,7 @@ sub getnetinfo_response {
     my $rsp = shift;
     my $sessdata = shift;
     my $subcommand = $sessdata->{subcommand};
+   $subcommand =~ s/=.*//;
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
     if ($rsp->{error}) { 
         xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);

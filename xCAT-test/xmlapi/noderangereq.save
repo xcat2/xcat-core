@@ -1,0 +1,5 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>NodeRange</command>
+<noderange>compute1-compute2</noderange>
+</xcatrequest>

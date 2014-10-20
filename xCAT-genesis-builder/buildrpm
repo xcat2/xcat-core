@@ -51,6 +51,8 @@ if [ "$HOSTOS" = "mcp" ]; then
 	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
 	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
 
+	sed -i 's/\/usr\/bin\/basename/\/bin\/basename/' $DRACUTMODDIR/install
+
 	# these are needed for sysclone, but are not yet in mcp
 	sed -i 's/ bc//' $DRACUTMODDIR/install
 	sed -i 's/ mkdosfs//' $DRACUTMODDIR/install
@@ -58,6 +60,10 @@ if [ "$HOSTOS" = "mcp" ]; then
 	sed -i 's/ kexec//' $DRACUTMODDIR/install
 	sed -i 's/ klogd//' $DRACUTMODDIR/install
 	sed -i 's/ mdadm//' $DRACUTMODDIR/install
+	sed -i 's/ mkfs\.xfs//' $DRACUTMODDIR/install
+	sed -i 's/ xfs_db//' $DRACUTMODDIR/install
+	sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
+	sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
 
         # These timezone files are not available in the latest mcp build
         sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh87//' $DRACUTMODDIR/install

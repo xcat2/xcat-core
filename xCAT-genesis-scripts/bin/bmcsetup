@@ -387,6 +387,21 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
+# Reset the BMC for the x3755 M4 (8722), otherwise the BMC will not be pingable after running of bmcsetup
+XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+if [ "$XPROD" = "309" ] ; then
+    echo "Resetting BMC ..."
+    ipmitool mc reset cold
+    echo "Waiting for the BMC to appear ..."
+    sleep 15
+    TRIES=0
+    while ! ipmitool lan print $LANCHAN > /dev/null; do
+        sleep 3
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+fi
+
 # update the node status to 'bmcready'
 for parm in `cat /proc/cmdline`; do
 	key=`echo $parm|awk -F= '{print $1}'`

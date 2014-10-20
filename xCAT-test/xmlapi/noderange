@@ -1,0 +1,14 @@
+# Reads the table input for the noderange and returns list of attributes 
+# requested
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>NodeRange</command>
+<node>compute1-compute2</node>
+</xcatrequest>
+<xcatresponse>
+<node>node1</node>
+.
+.
+.
+<node>noden</node>
+</xcatresponse>

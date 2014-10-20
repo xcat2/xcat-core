@@ -1,0 +1,60 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN
+{
+    $::XCATROOT =
+        $ENV{'XCATROOT'} ? $ENV{'XCATROOT'}
+      : -d '/opt/xcat'   ? '/opt/xcat'
+      : '/usr';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use File::Basename;
+use Cwd;
+use Socket;
+use XML::Simple;
+require xCAT::MsgUtils;
+use xCAT::Utils;
+require xCAT::Client;
+my $bname = basename($0);
+
+#-----------------------------------------------------------------------------
+
+=head1 pcmdriver - test XMLapi for PCM 
+
+
+=cut
+
+#-----------------------------------------------------------------------------
+# Main
+
+ $ENV{'XCATXMLTRACE'}=1;
+my $XML=`cat /root/lissa/PCM/api/getTablesAllRowAttribsreq`;
+#my $XML=`cat /root/lissa/PCM/api/getAllEntriesreq `;
+#my $XML=`cat /root/lissa/PCM/api/setNodesAttribsreq `;
+#y $XML=`cat /root/lissa/PCM/api/getTablesAllNodeAttribsreq `;
+#my $XML=`cat /root/lissa/PCM/api/getTablesAllNodeAttribsreq1`;
+#my $XML=`cat /root/lissa/PCM/api/getTablesAllNodeAttribsreq2`;
+#my $XML=`cat /root/lissa/PCM/api/getTablesAllNodeAttribsreq3`;
+#my $XML=`cat /root/lissa/PCM/api/getTablesNodesAttribsreq`;
+#my $XML=`cat /root/lissa/PCM/api/getTablesNodesAttribsreq2`;
+#my $XML=`cat /root/lissa/PCM/api/getTablesNodesAttribsreq1`;
+#my $XML=`cat /root/lissa/PCM/api/setNodesAttribsreq1.1 `;
+#my $XML=`cat /root/lissa/PCM/api/getNodesAttribsreq1 `;
+#y $XML=`cat /root/lissa/PCM/api/getNodesAttribsreq `;
+#my $XML=`cat /root/lissa/PCM/api/getNodesAttribsreq2 `;
+#my $XML=`cat /root/lissa/PCM/api/setNodesAttribsreq3 `;
+#my $XML=`cat /root/lissa/PCM/api/delEntriesreq `;
+#my $XML=`cat /root/lissa/PCM/api/delEntriesreq3 `;
+#my $XML=`cat /root/lissa/PCM/api/getAttribsreq `;
+#my $XML=`cat /root/lissa/PCM/api/getAttribsreq2 `;
+#my $XML=`cat /root/lissa/PCM/api/setAttribsreq `;
+#my $XML=`cat /root/lissa/PCM/api/noderangereq `;
+
+my $data=$XML;
+
+$ENV{'XCATSHOWXML'}=1;
+
+xCAT::Client::submit_request($data, \&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
+

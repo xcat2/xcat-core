@@ -130,6 +130,17 @@ sub findme {
             $node = $allnodes[0];
         }
     }
+    my $pbmc_node = undef;
+    if ($request->{'mtm'}->[0] and $request->{'serial'}->[0]) {
+        my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0];
+        my $tmp_nodes = $::XCATVPDHASH{$mtms};
+        foreach (@$tmp_nodes) {
+            if ($::XCATPPCHASH{$_}) {
+                $pbmc_node = $_;
+            }
+        } 
+    }
+
 
     if ($node) {
         my $skiphostip;
@@ -363,8 +374,13 @@ sub findme {
         }
 
         # call the discovered command to update the discovery request to a node
+         
         $request->{command}=['discovered'];
         $request->{noderange} = [$node];
+        if ($pbmc_node) {
+            $request->{pbmc_node} = [$pbmc_node];
+        }
+
         $request->{discoverymethod} = ['sequential'];
         $request->{updateswitch} = ['yes'];
         $subreq->($request); 

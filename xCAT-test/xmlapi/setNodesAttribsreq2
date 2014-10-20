@@ -1,0 +1,17 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>setNodesAttribs</command>
+<arg>
+   <table>ppc</table>
+   <nodes>
+      <n1>
+         <hcp>fsp1</hcp>
+         <id>1</id>
+      </n1>
+      <n2>
+         <parent>cec1</parent>
+      </n1>
+   </nodes>
+</arg>
+</xcatrequest>
+

@@ -18,7 +18,6 @@ use xCAT::NetworkUtils;
 use xCAT::MacMap;
 use Socket;
 use Net::Ping;
-my $interface;
 
 ##########################################################################
 ## Command handler method from tables
@@ -65,6 +64,7 @@ sub process_request {
 	my $getopt_success = Getopt::Long::GetOptions(
 		'help|h|?'  => \$::opt_h,
 		'i|I=s' => \$::opt_I,
+		'ip|ip=s' => \$::opt_IP,
 		'verbose|V' => \$::opt_V,
 	);
 
@@ -89,7 +89,7 @@ sub process_request {
 
 	# Option -i for kit component attributes
 	if ( defined($::opt_I) ) {
-		$interface = $::opt_I;
+		$::interface = $::opt_I;
 	} 
 
 	my $command       = $request->{command}->[0];
@@ -116,9 +116,9 @@ sub configfpc_usage {
     push @{ $rsp->{data} },
       "\nUsage: configfpc - Configure the NeXtScale FPCs.i This command requires the -i option to give specify which network adapter to use to look for the FPCs.\n";
     push @{ $rsp->{data} },
-      "  configfpc -i interface \n ";
+      "  configfpc -i interface [--ip default ip address]\n ";
     push @{ $rsp->{data} },
-      "  configfpc [-V|--verbose] -i interface \n ";
+      "  configfpc [-V|--verbose] -i interface [--ip default ip address] \n ";
     push @{ $rsp->{data} }, "  configfpc [-h|--help|-?] \n";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -129,7 +129,8 @@ sub configfpc_usage {
 #
 ###########################################################################
 # This routine will look for NeXtWcale Fan Power Controllers (FPC) that have
-# a default IP address of 192.169.0.100
+# a default IP address of 192.168.0.100
+# It will take in a different default IP address, if you input --ip <new default ip> 
 #
 # For each FPC found the code will 
 # 1 - ping the default IP address to get the default IP and MAC in the arp table
@@ -155,18 +156,40 @@ sub configfpc {
 	my $ipmiuser = 'USERID';
 	my $ipmipass = 'PASSW0RD';
 	my $fpcip = '192.168.0.100';
+        if ($::opt_IP) {   # override with --ip input
+	   $fpcip = $::opt_IP;
+        }
+        # Build route,  if defaultip is 192.168.0.100, then route is 192.168.0.101/16
+        my ($a1,$a2,$a3,$a4)=split(/\./, $fpcip); 
+        my $a4 = $a4 +1;
+        my $a5="\/16";
+        my $route=join(".", $a1, $a2, $a3,$a4);
+        my $route = $route . $a5;
+        
+ 
+	if($::VERBOSE){
+	  my $rsp;
+	  push @{ $rsp->{data} }, "Default IP address is $fpcip \n";
+	  xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        } 
+	if($::VERBOSE){
+	  my $rsp;
+	  push @{ $rsp->{data} }, "Default route address is $route \n";
+	  xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        } 
 	my $defnode = 'deffpc';
 
 	# This is the default FPC IP that we are looking for 
 	my $foundfpc = 0;
 
-	# Setup routing to 182.168.0.100 network
+	# Setup routing to on the network:w
 	if($::VERBOSE){
 		my $rsp;
-		push@{ $rsp->{data} }, "Adding route definition for 192.168.0.101/16 to $::interface interface";
+		push@{ $rsp->{data} }, "Running ip addr add dev $::interface $route";
 		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
-	my $setroute = `ip addr add dev $::interface 192.168.0.101/16`;
+        
+	my $setroute = `ip addr add dev $::interface $route`;
 	
 	#
 	# check for an FPC - this ping will also add the FPC IP and MAC  to the ARP table 
@@ -271,15 +294,14 @@ sub configfpc {
 	#
 	# Cleanup on the way out - Delete route and remove the deffpc node definition 
 	#
-	# Delete routing to 182.168.0.100 network
+	# Delete routing to from the network
 	if($::VERBOSE){
 		my $rsp;
-		push@{ $rsp->{data} }, "Deleting route definition for 192.168.0.101/16 on interface $::interface";
+		push@{ $rsp->{data} }, "Running ip addr del dev $::interface $route";
 		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
-	my $setroute = `ip addr del dev $::interface 192.168.0.101/16`;
+	my $setroute = `ip addr del dev $::interface $route`;
 	
-	# Delete routing to 182.168.0.100 network
 	if($::VERBOSE){
 		my $rsp;
 		push@{ $rsp->{data} }, "Removing default FPC node definition $defnode";
@@ -427,7 +449,11 @@ sub set_FPC_network_parms {
 sub get_node {
 	my $callback = shift;
 
-	my $fpcip = '192.168.0.100';
+	my $fpcip = '192.168.0.100';  # default if not entered on CLI
+        if ($::opt_IP) {   # override with --ip input
+	   $fpcip = $::opt_IP;
+        }
+ 
 	
 	# get the FPC from the arp table
 	my $arpout = `arp -a | grep $fpcip`;
@@ -478,7 +504,7 @@ sub add_node {
 
 	if($::VERBOSE){
 		my $rsp;
-		push@{ $rsp->{data} }, "Creating default FPC node deffpc with IP 192.168.0.100 for later use with rspconfig";
+		push@{ $rsp->{data} }, "Creating default FPC node deffpc with IP $fpcip for later use with rspconfig";
 		xCAT::MsgUtils->message( "I", $rsp, $callback );
 	}
 

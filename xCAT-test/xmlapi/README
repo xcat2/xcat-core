@@ -1,0 +1,55 @@
+xCAT has an XML input interface to the xCAT tables.  The routines are in tabutils.pm and map to the
+Table.pm routines by the same name. These routines were written for PCM but are also used in the restapi.  They are not a documented api.  
+For the restapi, check the following for how and which routines are used.
+xCAT-server/xCAT-wsapi/xcatws.cgi at all the functions between tablenodehdl() and tablerowdelhdl().
+
+            getAllEntries    => "tabutils",
+            getNodesAttribs  => "tabutils",
+            getTablesAllNodeAttribs  => "tabutils",
+            getTablesNodesAttribs  => "tabutils",
+            getTablesAllRowAttribs  => "tabutils",
+            setNodesAttribs  => "tabutils",
+            delEntries       => "tabutils",
+            getAttribs       => "tabutils",
+            setAttribs       => "tabutils",
+            NodeRange       => "tabutils",
+
+If you vi /opt/xcat/lib/perl/xCAT_plugin/tabutils.pm,  and search for example "sub getAllEntries", you will see documented in the routines comments to  input XML format requried and the output XML sent.
+
+To test these routines,  I put together a driver program pcmdriver, that generates the test XML and sends it  and displays the returned output. 
+
+
+For example:
+vi xmldriver in this directory
+
+You will see 
+
+ $ENV{'XCATXMLTRACE'}=1;
+my $XML=`cat /.../xmlapi/getTablesAllRowAttribsreq`;
+my $data=$XML;
+
+$ENV{'XCATSHOWXML'}=1;
+
+xCAT::Client::submit_request($data, \&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
+
+If you vi getTablesAllRowAttribsreq, you will see the following. This is an XML request to get the all rows from the passwd table the attributes username and rack. These is one of these  XML request files for all
+possible input to the routines in the directory. 
+
+XCATXMLTRACE is exported to show the XML that is being sent to xcatd. XCATSHOWXML is exported  to display the XML returned to the client. 
+
+To get the XML request you must not be running in XCATBYPASS mode,  you can get the reponse in XCATBYPASS mode. 
+
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getTablesAllRowAttribs</command>
+<table>
+<tablename>passwd</tablename>
+<attr>username</attr>
+</table>
+<table>
+<tablename>rack</tablename>
+<attr>rackname</attr>
+</table>
+</xcatrequest>
+

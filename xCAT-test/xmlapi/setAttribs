@@ -1,0 +1,17 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>setAttribs</command>
+<table>tablename</table>
+<keys>
+<keyname1>value1</keyname1>
+<keyname2>value2</keyname2>   For multiple key tables
+</keys>
+<attr>
+ <attrname1>value1</attrname1>
+ <attrname2>value2</attrname2>
+</attr>
+</xcatrequest>
+<xcatresponse>
+<serverdone></serverdone>
+</xcatresponse>
+

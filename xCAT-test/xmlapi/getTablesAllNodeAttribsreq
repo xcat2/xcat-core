@@ -1,0 +1,9 @@
+<xcatrequest>
+<clienttype>PCM</clienttype>
+<command>getTablesAllNodeAttribs</command>
+<table>
+<tablename>nodelist</tablename>
+<attr>groups</attr>
+<attr>comments</attr>
+</table>
+</xcatrequest>

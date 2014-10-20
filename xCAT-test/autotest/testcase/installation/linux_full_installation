@@ -25,7 +25,7 @@ cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-ins
 check:rc==0
 cmd:rnetboot $$CN
 check:rc==0
-cmd:sleep 1200
+cmd:sleep 1800
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
 cmd:lsdef -l $$CN | grep status

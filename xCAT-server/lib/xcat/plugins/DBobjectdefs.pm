@@ -30,30 +30,30 @@ $Getopt::Long::ignorecase = 0;
 # Globals
 #
 
-%::CLIATTRS;      # attr=values provided on the command line
-%::FILEATTRS;     # attr=values provided in an input file
-%::FINALATTRS;    # final set of attr=values that are used to set
+# %::CLIATTRS;      # attr=values provided on the command line
+#%::FILEATTRS;     # attr=values provided in an input file
+#%::FINALATTRS;    # final set of attr=values that are used to set
                   #    the object
 
-%::objfilehash;   #  hash of objects/types based of "-f" option
+#%::objfilehash;   #  hash of objects/types based of "-f" option
                   #    (list in file)
 
-%::WhereHash;     # hash of attr=val from "-w" option
-@::AttrList;      # list of attrs from "-i" option
-%::NicsAttrHash;  # hash of nics attributes specified with "-i" option
+#%::WhereHash;     # hash of attr=val from "-w" option
+#@::AttrList;      # list of attrs from "-i" option
+#%::NicsAttrHash;  # hash of nics attributes specified with "-i" option
                   # e.g. $::NicsAttrHash{'nicips'} = ("eth0","eth1");
 
 # object type lists
-@::clobjtypes;      # list of object types derived from the command line.
-@::fileobjtypes;    # list of object types from input file ("-x" or "-z")
+#@::clobjtypes;      # list of object types derived from the command line.
+#@::fileobjtypes;    # list of object types from input file ("-x" or "-z")
 
 #  object name lists
-@::clobjnames;      # list of object names derived from the command line
-@::fileobjnames;    # list of object names from an input file
-@::objfilelist;     # list of object names from the "-f" option
-@::allobjnames;     # combined list
+#@::clobjnames;      # list of object names derived from the command line
+#@::fileobjnames;    # list of object names from an input file
+#@::objfilelist;     # list of object names from the "-f" option
+#@::allobjnames;     # combined list
 
-@::noderange;       # list of nodes derived from command line
+#@::noderange;       # list of nodes derived from command line
 
 #------------------------------------------------------------------------------
 
@@ -951,7 +951,7 @@ sub processArgs
             }
         }
     }
-    elsif (@::noderange && (@::clobjtypes[0] eq 'node'))
+    elsif (@::noderange && ($::clobjtypes[0] eq 'node'))
     {
 
         # if there's no object list and the type is node then the
@@ -1278,7 +1278,7 @@ sub defmk
     {
 
         # if attr=val on cmd line then could only have one type
-        $::objtype = @::clobjtypes[0];
+        $::objtype = $::clobjtypes[0];
 
         #
         #  set cli attrs for each object definition
@@ -1921,7 +1921,7 @@ sub defch
     {
 
         # if attr=val on cmd line then could only have one type
-        $::objtype = @::clobjtypes[0];
+        $::objtype = $::clobjtypes[0];
 
         #
         #  set cli attrs for each object definition
@@ -2760,7 +2760,7 @@ sub defls
     my %objhash;
 
     my @objectlist;
-    @::allobjnames;
+#    @::allobjnames;
     my @displayObjList;
 
     my $numtypes = 0;
@@ -2843,7 +2843,7 @@ sub defls
     
     if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
-        my $type = @::clobjtypes[0];
+        my $type = $::clobjtypes[0];
 
         $numtypes = 1;
 
@@ -3748,7 +3748,7 @@ sub defrm
     #    there can only be one type value
     if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
-        my $type = @::clobjtypes[0];
+        my $type = $::clobjtypes[0];
 
         foreach my $obj (sort @::clobjnames)
         {
@@ -3873,8 +3873,8 @@ sub defrm
                 $nhash{$m} = 'node';
             }
             # Performance: Only call getobjdefs once
-            my @attrs = ('groups');
-                %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash, 0, \@attrs);
+            @attrs = ('groups');
+            %nodehash = xCAT::DBobjUtils->getobjdefs(\%nhash, 0, \@attrs);
                 if (!(%nodehash))
                 {
                     my $rsp;
@@ -4222,7 +4222,7 @@ sub initialize_variables
     %::CLIATTRS = ();
     %::FILEATTRS = ();
     %::FINALATTRS = ();
-    %::objfilehash = ();
+#    %::objfilehash = ();
     %::WhereHash = ();
     @::AttrList = ();
     %::NicsAttrHash = ();

@@ -280,6 +280,7 @@ my $socket;
   $SIG{USR2} = sub { 
 	if ($socket) { #do not mess with pid file except when we still have  the socket.
       	unlink("/var/run/xcat/installservice.pid"); close($socket); $quit=1; 
+        $udpctl=0;
        xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
 	}
 	};
@@ -542,8 +543,15 @@ sub do_discovery_process {
 	my $vintage = time();
    	$dispatch_requests=0;
         populate_site_hash();
+        populate_vpd_hash();
+        populate_ppc_hash();
 	while (not $quit) {
-           	if ((time()-$vintage)> 15) { populate_site_hash(); } #site table reread every 15 second
+           	if ((time()-$vintage)> 15) { 
+                    populate_site_hash(); 
+                    populate_vpd_hash();
+                    populate_ppc_hash();
+                    $vintage = time();
+                } #site table reread every 15 second
 		my $msg = fd_retrieve($broker);
 		my $data;
 		my $client;
@@ -612,6 +620,7 @@ sub do_udp_service { #This function opens up a UDP port
 	if ($socket) {
 		#only clear out pid file when we still have socket.
       		unlink("/var/run/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
+                $udpctl=0;
        		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
 	}
 	kill(15,$discopid);
@@ -857,7 +866,9 @@ sub ssl_reaper {
       	$numdone--;
        }
    }
-   store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+   if ($udpctl) {
+     store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+   }
    $SIG{CHLD} = \&ssl_reaper;
 }
 
@@ -923,12 +934,14 @@ if (! defined $pid_UDP) {
   die;
 }
 unless ($pid_UDP) {
-  close($udpctl);
+  close($udpctl); $udpctl=0;
   $$progname="xcatd: UDP listener";
   my $pid_disco;
   my $discoctl;
   my $udpbroker;
   socketpair($discoctl,$udpbroker,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
+  $udpbroker->autoflush(1);
+  $discoctl->autoflush(1);
   $pid_disco = xCAT::Utils->xfork;
   if (!defined $pid_disco) {
 	  xCAT::MsgUtils->message("S", "Unable to fork for UDP/TCP");
@@ -952,7 +965,7 @@ if (! defined $pid_MON) {
 }
 unless ($pid_MON) {
   $$progname="xcatd: install monitor";
-  close($udpctl);
+  close($udpctl); $udpctl=0;
   do_installm_service;
   xexit(0);
 }
@@ -1001,6 +1014,7 @@ my $mainpidfile;
 $SIG{USR2} = sub { 
 	if ($listener) {
 	      unlink("/var/run/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; 
+               $udpctl=0;
 	       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
 	}
 };
@@ -1115,7 +1129,7 @@ until ($quit) {
   }
 
   if ($child == 0) {
-    close($udpctl);
+    close($udpctl); $udpctl=0;
     $SIG{TERM} = $SIG{INT} = {};
     $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
@@ -1196,7 +1210,9 @@ if ($inet6support) {
     xexit(0);
   }
   $sslclients++; #THROTTLE
-  store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+  if ($udpctl) {
+    store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+  }
   $cnnection->close();
 }
   if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
@@ -2032,6 +2048,29 @@ sub populate_site_hash {
     my @records = $sitetab->getAllAttribs(qw/key value/);
     foreach (@records) {
         $::XCATSITEVALS{$_->{key}}=$_->{value};
+    }
+}
+
+sub populate_vpd_hash {
+    %::XCATVPDHASH=();
+    my $vpdtab = xCAT::Table->new('vpd',-create=>0); 
+    unless ($vpdtab) {return;}
+    my @entries = $vpdtab->getAllAttribs(qw/node serial mtm/);
+    foreach (@entries) {
+        unless ($_->{mtm} and $_->{serial}) {next;}
+        my $mtms = $_->{mtm}."*".$_->{serial};
+        push @{$::XCATVPDHASH{$mtms}}, $_->{node};
+    }
+}
+sub populate_ppc_hash {
+    %::XCATPPCHASH=();
+    my $ppctab = xCAT::Table->new('ppc',-create=>0); 
+    unless ($ppctab) {return;}
+    my @entries = $ppctab->getAllAttribs(qw/node nodetype/);
+    foreach (@entries) {
+        if ($_->{nodetype} and $_->{nodetype} eq 'pbmc') {
+            $::XCATPPCHASH{$_->{node}}=$_->{nodetype};
+        }
     }
 }
 

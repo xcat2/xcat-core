@@ -1645,6 +1645,9 @@ sub copycd
         if (not $darch and m/^BASEARCHS\s+(\S+)/) {
             $darch = $1;
         }
+        if (not $darch and m/^REPOID.*\/(\S+)/) {
+            $darch = $1;
+        }
     }
     close($dinfo);
     unless ($darch)
@@ -1672,7 +1675,7 @@ sub copycd
             my $prod = <$mfile>;
             close($mfile);
 
-            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/)
+            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/)
             {
                 if (-f "$mntpath/content") {
                     my $content;
@@ -1684,6 +1687,12 @@ sub copycd
                             my @verpair = split /\s+|-/;
                             $detdistname = "sles".$verpair[1];
                             unless ($distname) { $distname = $detdistname; }
+                        }
+                        unless ($distname) {
+                            if (/^DISTRO/) {
+                                $_ =~ /sles:(\d+),/;
+                                $distname = "sles".$1;
+                            }
                         }
                     }
                 } else {

@@ -69,14 +69,14 @@ This program module file, is a set of network utilities used by xCAT commands.
 #-------------------------------------------------------------------------------
 sub getNodeDomains()
 {
-    my $class    = shift;
+        my $class    = shift;
 	my $nodes  = shift;
 
 	my @nodelist = @$nodes;
 	my %nodedomains;
 
 	# Get the network info for each node
-    my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist);
+        my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodelist);
 
 	# get the site domain value
 	my @domains = xCAT::TableUtils->get_site_attribute("domain");
@@ -85,12 +85,13 @@ sub getNodeDomains()
 	# for each node - set hash value to network domain or default 
 	#		to site domain 
 	foreach my $node (@nodelist) {
-		if ($nethash{$node}{domain}) {
-			$nodedomains{$node} = $nethash{$node}{domain};
-		} else {
-			$nodedomains{$node} = $sitedomain;
-		}
-	}
+            unless (defined($node)) {next;}
+            if (defined($nethash{$node}) && $nethash{$node}{domain}) {
+                $nodedomains{$node} = $nethash{$node}{domain};
+            } else {
+                $nodedomains{$node} = $sitedomain;
+            }
+        }
 
 	return \%nodedomains;
 }

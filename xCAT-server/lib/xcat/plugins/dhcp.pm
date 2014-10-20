@@ -1208,28 +1208,27 @@ sub process_request
 
     # if option is query then call listnode for each node and return 
     if ($opt{q})
-        {
+    {
 	# call listnode for each node requested
         foreach my $node ( @{$req->{node}} ) {
                 listnode($node,$callback);
          }
-    return;
+        return;
     }
 
     # if current node is a servicenode, make sure that it is also a dhcpserver
     my $isok=1;
     if (xCAT::Utils->isServiceNode()) {
-	   $isok=0;
-	   my @hostinfo=xCAT::NetworkUtils->determinehostname();
-	   my %iphash=();
-	   foreach(@hostinfo) {$iphash{$_}=1;}
-	   my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
-	   foreach my $s (@sn)
-	   {
-	       if (exists($iphash{$s})) {
-		      $isok=1;
-	       }
-	   }
+        $isok=0;
+        my @hostinfo=xCAT::NetworkUtils->determinehostname();
+        my %iphash=();
+        foreach(@hostinfo) {$iphash{$_}=1;}
+        my @sn = xCAT::ServiceNodeUtils->getSNList('dhcpserver');
+        foreach my $s (@sn) {
+            if (exists($iphash{$s})) {
+                $isok=1;
+            }
+        }
     }
     
     if($isok == 0) { #do nothing if it is a service node, but not dhcpserver
@@ -1332,39 +1331,35 @@ sub process_request
     @dhcpconf = ();
     @dhcp6conf = ();
     
-   my $dhcplockfd;
-   open($dhcplockfd,">","/tmp/xcat/dhcplock");
-   flock($dhcplockfd,LOCK_EX);
-   if ($::XCATSITEVALS{externaldhcpservers}) { #do nothing if remote dhcpservers at this point
-   } elsif ($opt{n})
-    {
-        if (-e $dhcpconffile)
-        {
-			if ($^O eq 'aix')
-    		{
-				# save NIM aix entries - to be restored later
-				my $aixconf;
-        		open($aixconf, $dhcpconffile); 
-        		if ($aixconf)
-        		{
-					my $save=0;
-            		while (<$aixconf>)
-            		{
-						if ($save) {	
-                			push @aixcfg, $_;
-						}
+    my $dhcplockfd;
+    open($dhcplockfd,">","/tmp/xcat/dhcplock");
+    flock($dhcplockfd,LOCK_EX);
+    if ($::XCATSITEVALS{externaldhcpservers}) { 
+        # do nothing if remote dhcpservers at this point
+    } elsif ($opt{n}) {
+        if (-e $dhcpconffile) {
+            if ($^O eq 'aix') {
+                # save NIM aix entries - to be restored later
+                my $aixconf;
+                open($aixconf, $dhcpconffile); 
+                if ($aixconf) {
+                    my $save=0;
+                    while (<$aixconf>) {
+                        if ($save) {	
+                            push @aixcfg, $_;
+                        }
 
-						if ($_ =~ /#Network configuration end\n/) {
-							$save++;
-						}
-            		}
-            		close($aixconf);
-        		}
-				$restartdhcp=1;  
-        		@dhcpconf = ();
-			}
+                        if ($_ =~ /#Network configuration end\n/) {
+                            $save++;
+                        }
+                    }
+                    close($aixconf);
+                }
+                $restartdhcp=1;  
+                @dhcpconf = ();
+            }
 
-			my $rsp;
+            my $rsp;
             push @{$rsp->{data}}, "Renamed existing dhcp configuration file to  $dhcpconffile.xcatbak\n";
             xCAT::MsgUtils->message("I", $rsp, $callback);
 
@@ -1400,11 +1395,11 @@ sub process_request
             @dhcp6conf = ();
         }
     }
-	my $nettab = xCAT::Table->new("networks");
-	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain', 'domain');
+    my $nettab = xCAT::Table->new("networks");
+    my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain', 'domain');
 
-	# get a list of all domains listed in xCAT network defs
-	#       - include the site domain - if any
+    # get a list of all domains listed in xCAT network defs
+    #       - include the site domain - if any
     my $nettab = xCAT::Table->new("networks");
     my @doms = $nettab->getAllAttribs('domain');
     foreach(@doms){
@@ -1416,9 +1411,9 @@ sub process_request
 
     # add the site domain
     if ($site_domain) {
-		if (!grep(/^$site_domain$/, @alldomains)) {
-        	push (@alldomains, $site_domain);
-		}
+        if (!grep(/^$site_domain$/, @alldomains)) {
+            push (@alldomains, $site_domain);
+        }
     }
 
     foreach (@vnets) {
@@ -1450,18 +1445,19 @@ sub process_request
         }
     }
 
-	foreach(@vnets){
+    foreach(@vnets){
         #TODO: v6 relayed networks?
-		my $n = $_->{net};
-		my $if = $_->{mgtifname};
-		my $nm = $_->{mask};
+        my $n = $_->{net};
+        my $if = $_->{mgtifname};
+        my $nm = $_->{mask};
         if ($if =~ /!remote!/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
-    		push @nrn, "$n:$if:$nm";
+            push @nrn, "$n:$if:$nm";
         }
-	}
+    }
     if ($querynics)
-    {    #Use netstat to determine activenics only when no site ent.
-        #TODO: IPv6 auto-detect, or just really really insist people define dhcpinterfaces or suffer doom?
+    {   
+        # Use netstat to determine activenics only when no site ent.
+        # TODO: IPv6 auto-detect, or just really really insist people define dhcpinterfaces or suffer doom?
         foreach (@nrn)
         {
             my @ent = split /:/;
@@ -1491,93 +1487,103 @@ sub process_request
     
     if ( $^O ne 'aix')
     {
-		#add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
+        #add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
-		my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
+        my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
         foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server", "isc-dhcp-server") {
-        if (-e "/etc/sysconfig/$dhcpver") {
-		if ($dhcpver eq "dhcpd") {
+            if (-e "/etc/sysconfig/$dhcpver") {
+                # for dhcpd, dhcpd6
+                if ($dhcpver eq "dhcpd") {
 		    delete($missingfiles{dhcpd});
 		    delete($missingfiles{"dhcp3-server"});
 		} else {
-			delete($missingfiles{$dhcpver});
+                    delete($missingfiles{$dhcpver});
 		}
-            open DHCPD_FD, "/etc/sysconfig/$dhcpver";
-            my $syscfg_dhcpd = "";
-            my $found = 0;
-            my $dhcpd_key = "DHCPDARGS";
+                open DHCPD_FD, "/etc/sysconfig/$dhcpver";
+                my $syscfg_dhcpd = "";
+                my $found = 0;
+                my $dhcpd_key = "DHCPDARGS";
+                my $os = xCAT::Utils->osver();
+                if ($os =~ /sles/i) {
+                    $dhcpd_key = "DHCPD_INTERFACE";
+                }
+
+                my $ifarg = "$dhcpd_key=\"";
+                foreach (keys %activenics) {
+                    if (/!remote!/) { next; }
+                    $ifarg .= " $_";
+                }
+                $ifarg =~ s/\=\" /\=\"/;
+                $ifarg .= "\"\n";
+
+                while (<DHCPD_FD>) {
+                    if ($_ =~ m/^$dhcpd_key/) {
+                        $found = 1;
+                        $syscfg_dhcpd .= $ifarg;
+                    } else {
+                        $syscfg_dhcpd .= $_;
+                    }
+                }
+
+                if ( $found eq 0 ) {
+                    $syscfg_dhcpd .= $ifarg;
+                }
+                close DHCPD_FD; 
+
+                open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
+                print DBG_FD $syscfg_dhcpd;
+                close DBG_FD;
+            } elsif (-e "/etc/default/$dhcpver") { #ubuntu
+                delete($missingfiles{"dhcpd"});
+                #dhcpd and dhcpd6 use the same configure file
+                delete($missingfiles{"dhcpd6"});
+                delete($missingfiles{"dhcp3-server"});
+                open DHCPD_FD, "/etc/default/$dhcpver";
+                my $syscfg_dhcpd = "";
+                my $found = 0;
+                my $dhcpd_key = "INTERFACES";
+                my $os = xCAT::Utils->osver();
+
+                my $ifarg = "$dhcpd_key=\"";
+                foreach (keys %activenics) {
+                    if (/!remote!/) { next; }
+                    $ifarg .= " $_";
+                }
+                $ifarg =~ s/^ //;
+                $ifarg .= "\"\n";
+
+                while (<DHCPD_FD>) {
+                    if ($_ =~ m/^$dhcpd_key/) {
+                        $found = 1;
+                        $syscfg_dhcpd .= $ifarg;
+                    } else {
+                        $syscfg_dhcpd .= $_;
+                    }
+                }
+
+                if ( $found eq 0 ) {
+                    $syscfg_dhcpd .= $ifarg;
+                }
+                close DHCPD_FD; 
+
+                open DBG_FD, '>', "/etc/default/$dhcpver";
+                print DBG_FD $syscfg_dhcpd;
+                close DBG_FD;
+            }
+        }
+        if ($usingipv6) {
             my $os = xCAT::Utils->osver();
+            # sles had dhcpd and dhcpd6 config in the dhcp file
             if ($os =~ /sles/i) {
-                $dhcpd_key = "DHCPD_INTERFACE";
-            }
-
-            my $ifarg = "$dhcpd_key=\"";
-            foreach (keys %activenics) {
-                if (/!remote!/) { next; }
-                $ifarg .= " $_";
-            }
-            $ifarg =~ s/^ //;
-            $ifarg .= "\"\n";
-
-            while (<DHCPD_FD>) {
-                if ($_ =~ m/^$dhcpd_key/) {
-                    $found = 1;
-                    $syscfg_dhcpd .= $ifarg;
-                }else {
-                    $syscfg_dhcpd .= $_;
+                if ($missingfiles{dhcpd}) {
+                    $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
+                }
+            } else {
+                if ($missingfiles{dhcpd6}) {
+                    $callback->({error=>["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"]});
                 }
             }
-
-            if ( $found eq 0 ) {
-                $syscfg_dhcpd .= $ifarg;
-            }
-            close DHCPD_FD; 
-
-            open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
-            print DBG_FD $syscfg_dhcpd;
-            close DBG_FD;
-        }elsif (-e "/etc/default/$dhcpver") { #ubuntu
-			delete($missingfiles{"dhcpd"});
-            #dhcpd and dhcpd6 use the same configure file
-            delete($missingfiles{"dhcpd6"});
-			delete($missingfiles{"dhcp3-server"});
-			open DHCPD_FD, "/etc/default/$dhcpver";
-            my $syscfg_dhcpd = "";
-            my $found = 0;
-            my $dhcpd_key = "INTERFACES";
-            my $os = xCAT::Utils->osver();
-
-            my $ifarg = "$dhcpd_key=\"";
-            foreach (keys %activenics) {
-                if (/!remote!/) { next; }
-                $ifarg .= " $_";
-            }
-            $ifarg =~ s/^ //;
-            $ifarg .= "\"\n";
-
-            while (<DHCPD_FD>) {
-                if ($_ =~ m/^$dhcpd_key/) {
-                    $found = 1;
-                    $syscfg_dhcpd .= $ifarg;
-                }else {
-                    $syscfg_dhcpd .= $_;
-                }
-            }
-
-            if ( $found eq 0 ) {
-                $syscfg_dhcpd .= $ifarg;
-            }
-            close DHCPD_FD; 
-
-            open DBG_FD, '>', "/etc/default/$dhcpver";
-            print DBG_FD $syscfg_dhcpd;
-            close DBG_FD;
-        	
         }
-        }
-	if ($usingipv6 and $missingfiles{dhcpd6}) {
-            $callback->({error=>["The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"]});
-	}
 	if ($missingfiles{dhcpd}) {
             $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
 	}
@@ -2416,6 +2422,9 @@ sub addnet
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
         push @netent, "      filename \"elilo.efi\";\n";
+        push @netent,
+          "    } else if option client-architecture = 00:0e { #OPAL-v3\n ";
+        push @netent, "      option conf-file = \"http://$tftp/tftpboot/pxelinux.cfg/p/".$net."_".$maskbits."\";\n";
         push @netent,
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "      filename \"/yaboot\";\n";
