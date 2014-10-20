@@ -47,6 +47,7 @@ is a comma-delimited list of kit component names. The B<lskitcomp> command will 
 
 =item B<-x|--xml|--XML>
 
+Need XCATXMLTRACE=1 env when using -x|--xml|--XML.
 Return the output with XML tags.  The data is returned as:
   <data>
     <kitinfo>
@@ -139,6 +140,12 @@ To list kit components compatible with "rhels-6.2-x86_64" osdistro, enter:
 To list kit components compatible with "rhels-6.2-x86_64" osdistro and "computenode" server role, enter:
 
   lskitcomp -O rhels-6.2-x86_64 -S computenode
+
+=item 6.
+
+To list the kit component "testkit-compute-1.0-1-ubuntu-14.04-ppc64el" with XML tags, enter:
+  
+  XCATXMLTRACE=1 lskitcomp -x testkit-compute-1.0-1-ubuntu-14.04-ppc64el
 
 =back
 
