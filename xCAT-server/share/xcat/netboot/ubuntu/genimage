@@ -1752,7 +1752,7 @@ sub mount_chroot {
    system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
    if ($otherpkgdir){
       if(-d $otherpkgdir){
-         system("mount -o bind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
+         system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
       }else{
          print "The specified otherpkgdir $otherpkgdir does not exist!\n"
       }
@@ -1765,7 +1765,8 @@ sub umount_chroot {
    #system("umount $rootimage_dir/proc");
    #system("umount $rootimage_dir/sys");
    system("umount $rootimage_dir/mnt/pkgdir");
-   system("umount $rootimage_dir/mnt/otherpkgdir");
+   #system("umount $rootimage_dir/mnt/otherpkgdir");
+   system("grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r|xargs umount");
    rmdir("$rootimage_dir/mnt/pkgdir");
    rmdir("$rootimage_dir/mnt/otherpkgdir");
 }
