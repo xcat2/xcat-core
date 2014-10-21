@@ -17,6 +17,7 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::BuildKitUtils;
 use Getopt::Long;
 #use Data::Dumper;
 use File::Basename;
@@ -31,6 +32,12 @@ $::KITFRAMEWORK ="2";
 # this code is compatible with other kits that are at framework 0 or 1.
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
+my $debianflag = 0;
+my $tempstring = xCAT::BuildKitUtils->osver();
+if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+    $debianflag = 1;
+    print "debian";
+}
 
 #-------------------------------------------------------
 
@@ -576,11 +583,23 @@ sub assign_to_osimage
                 unless ( -d "$otherpkgdir" ) {
                     mkpath("$otherpkgdir");
                 }
-
-                # Create symlink if doesn't exist
-                unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
+                if ( $debianflag )
+                {
+                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
+                    {
+                        system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
+                        print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
+                        system("mount --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}");
+                        print "mount --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}";
+                    }
+                }
+                else
+                {
+                    # Create symlink if doesn't exist
+                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
                     system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
-                } 
+                    }
+                }
             } else {
                 $callback->({error => ["Cannot open linuximage table or otherpkgdir do not exist"],errorcode=>[1]});
                 return 1;
@@ -2729,6 +2748,10 @@ sub rmkitcomp
                         }
                     }
                     if ( !$match ) {
+                        if ( $debianflag )
+                        {
+                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                        }
                         system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
                     }
                 }
