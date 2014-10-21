@@ -50,15 +50,14 @@ OS=`uname`
 #installroot='/install/netboot/sles11.1/x86_64/compute/rootimg'
 INSTALL_DIR='/install'
 
-echo "------------------------------------------"
-echo "OFED_DIR=$ofeddir"
-echo "OSVER=$OSVER"
-echo "arch=$ARCH"
-echo  "NODESETSTATE=$NODESETSTATE"
-echo "mlnxofed_options=$mlnxofed_options"
-echo  "installroot=$installroot"
-NODESETSTATE=install
-echo "------------------------------------------"
+#echo "------------------------------------------"
+#echo "OFED_DIR=$ofeddir"
+#echo "OSVER=$OSVER"
+#echo "arch=$ARCH"
+#echo  "NODESETSTATE=$NODESETSTATE"
+#echo "mlnxofed_options=$mlnxofed_options"
+#echo  "installroot=$installroot"
+#echo "------------------------------------------"
 
 
 
@@ -85,7 +84,7 @@ if [ -z "$mlnxofed_options" ]; then
    mlnxofed_options="--without-32bit --force"
 fi 
 
-if [[ $NODESETSTATE != "genimage" ]]; then    #-------------------------
+if [[ $NODESETSTATE != "genimage" ]]; then   
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
 fi
@@ -177,10 +176,7 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             umount $installroot/proc
         elif [ -f /etc/os-release ] &&        
              cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null; then
-echo "----------------------------"
-echo "installroot=$installroot"
-echo "OFED_DIR=$OFED_DIR"
-echo "----------------------------"
+
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
 
@@ -212,9 +208,6 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist
             chroot $installroot apt-get clean all
             sleep 1
             chroot $installroot apt-get update
-echo "----------------------------"
-ls  -l  $installroot/tmp/ofed_install/ofed/
-echo "----------------------------"
             mount --bind  /dev $installroot/dev/
             mount --bind  /proc  $installroot/proc/ 
             mount --bind  /sys   $installroot/sys/
