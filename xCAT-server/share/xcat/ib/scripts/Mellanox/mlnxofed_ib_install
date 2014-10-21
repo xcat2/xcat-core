@@ -50,6 +50,18 @@ OS=`uname`
 #installroot='/install/netboot/sles11.1/x86_64/compute/rootimg'
 INSTALL_DIR='/install'
 
+echo "------------------------------------------"
+echo "OFED_DIR=$ofeddir"
+echo "OSVER=$OSVER"
+echo "arch=$ARCH"
+echo  "NODESETSTATE=$NODESETSTATE"
+echo "mlnxofed_options=$mlnxofed_options"
+echo  "installroot=$installroot"
+NODESETSTATE=install
+echo "------------------------------------------"
+
+
+
 #use arg for the OFED_DIR if defined,
 ARGNUM=$#
 if [ $ARGNUM -gt 1 ]; then
@@ -73,13 +85,13 @@ if [ -z "$mlnxofed_options" ]; then
    mlnxofed_options="--without-32bit --force"
 fi 
 
-if [ $NODESETSTATE != "genimage" ]; then
+if [[ $NODESETSTATE != "genimage" ]]; then    #-------------------------
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
 fi
 
 if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+    if [[ $NODESETSTATE == "install" ]] || [[ $NODESETSTATE == "boot" ]]; then
     #  Being run from a stateful install postscript
     #  Copy rpms directly from the xCAT management node and install
         mkdir -p /tmp/ofed
@@ -92,13 +104,58 @@ if [ $OS != "AIX" ]; then
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/ 2> /tmp/wget.log
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/.mlnx 2>> /tmp/wget.log
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --reject "index.html*"  --no-parent http://$MASTER$download_dir/.supported_kernels 2>> /tmp/wget.log
+
+
+        if [ -f /etc/os-release ] && 
+            cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null
+        then
+            nodename=`hostname`
+            echo "$nodename 's operating system is Ubuntu."
+            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access public network."
+            echo -n "checking $nodename 's ability to access public network..........."
+            if ping -c 3 91.189.88.140 > /dev/null;then 
+               echo "[OK]"
+            else
+               echo "[Failed]"
+               echo "please make your $nodename have ability to access public network"
+               exit 1
+            fi
+                            
+           cp /etc/apt/sources.list  /etc/apt/sources.list.bak
+           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty main/d"  /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates main/d"  /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty universe/d" /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates universe/d" /etc/apt/sources.list
+                    
+           echo "deb http://91.189.88.140/ubuntu-ports/ trusty main
+deb http://91.189.88.140/ubuntu-ports/ trusty-updates main
+deb http://91.189.88.140/ubuntu-ports/ trusty universe
+deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sources.list
+                
+           apt-get clean all
+           sleep 1
+           apt-get update
+        fi
+        
         #rpm -Uvh --force libibverbs-devel*.rpm 
         #perl -x mlnxofedinstall --without-32bit --force
-        perl -x mlnxofedinstall $mlnxofed_options
+        
+        if [ -f /etc/os-release ] &&
+            cat /etc/os-release|grep NAME|grep Ubuntu>/dev/null &&
+            uname -m |grep ppc64 >/dev/null
+        then
+            echo "ARCH=powerpc perl -x mlnxofedinstall $mlnxofed_options"
+            ARCH=powerpc perl -x mlnxofedinstall $mlnxofed_options
+            sleep 1
+            service openibd restart
+        else
+            echo  "perl -x mlnxofedinstall $mlnxofed_options"
+            perl -x mlnxofedinstall $mlnxofed_options
+        fi
         rm -Rf /tmp/ofed
     fi
 
-    if [ $NODESETSTATE == "genimage" ]; then
+    if [[ $NODESETSTATE == "genimage" ]]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
         if [[ $OS == sles* ]] || [[ $OS == suse* ]] || [[ -f /etc/SuSE-release ]]; then
@@ -118,6 +175,58 @@ if [ $OS != "AIX" ]; then
             umount $installroot/dev/
             umount $installroot/sys
             umount $installroot/proc
+        elif [ -f /etc/os-release ] &&        
+             cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null; then
+echo "----------------------------"
+echo "installroot=$installroot"
+echo "OFED_DIR=$OFED_DIR"
+echo "----------------------------"
+            mkdir $installroot/tmp/ofed_install
+            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
+
+            nodename=`hostname`
+            echo "$nodename 's operating system is Ubuntu."
+            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access public network."
+            echo -n "checking $nodename 's ability to access public network..........."
+            if ping -c 3 91.189.88.140 > /dev/null;then 
+                echo "[OK]"
+            else
+                echo "[Failed]"
+                echo "please make your $nodename have ability to access public network"
+                exit 1
+            fi
+
+            sourceslist="$installroot/etc/apt/sources.list"
+            cp  $sourceslist $sourceslist.bak 
+
+            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
+            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist 
+            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty universe/d" $sourceslist 
+            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist 
+                    
+            echo "deb http://91.189.88.140/ubuntu-ports/ trusty main
+deb http://91.189.88.140/ubuntu-ports/ trusty-updates main
+deb http://91.189.88.140/ubuntu-ports/ trusty universe
+deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist 
+                
+            chroot $installroot apt-get clean all
+            sleep 1
+            chroot $installroot apt-get update
+echo "----------------------------"
+ls  -l  $installroot/tmp/ofed_install/ofed/
+echo "----------------------------"
+            mount --bind  /dev $installroot/dev/
+            mount --bind  /proc  $installroot/proc/ 
+            mount --bind  /sys   $installroot/sys/
+            chroot $installroot  apt-get install -y linux-headers-$(uname -r)
+
+            echo "perl -x mlnxofedinstall $mlnxofed_options"
+            chroot $installroot  perl -x /tmp/ofed_install/ofed/mlnxofedinstall  --without-fw-update $mlnxofed_options
+            rm -rf $installroot/tmp/ofed_install 
+            umount $installroot/dev/
+            umount $installroot/proc/
+            umount $installroot/sys/
+    
         else
             mkdir $installroot/tmp/ofed_install
             cp -r $OFED_DIR/ $installroot/tmp/ofed_install/ 
