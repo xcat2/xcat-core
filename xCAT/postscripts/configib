@@ -17,6 +17,7 @@
 # NETWORKS_LINE2='netname=ib1||net=15.0.1.0||mask=255.255.255.0||mgtifname=||gateway=15.0.1.254||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 # NETWORKS_LINE3='netname=ib3||net=15.0.3.0||mask=255.255.255.0||mgtifname=||gateway=||dhcpserver=||tftpserver=||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments='
 
+
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
@@ -69,7 +70,7 @@ fi
 
 #find correct IB driver
 PLTFRM=`uname`
-if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* ]]
+if [[ $OSVER == rhels5*  || "$OSVER" == rhels6* || "$OSVER" == ubuntu14* ]] 
 then
     ib_driver="rdma"
     #/sbin/service $ib_driver status
@@ -135,24 +136,59 @@ then
     elif [ -f /etc/SuSE-release ]
     then
         OS_name="suse"
+    elif [ -f /etc/os-release ] && cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null
+	then 
+        OS_name="ubuntu"
     else
         echo "Unsupported to config IB on this OS!"
         logger -p local4.info -t xcat "Unsupported to config IB on this OS!"
         exit
-     fi
- 
-    if [ $OS_name == 'suse' ]
-    then
-         dir="/etc/sysconfig/network"
-    else
-         dir="/etc/sysconfig/network-scripts"
     fi
+	
+    if [ $OS_name != 'ubuntu' ]; then  
+        if [ $OS_name == 'suse' ]
+        then
+            dir="/etc/sysconfig/network"
+        else
+            dir="/etc/sysconfig/network-scripts"
+        fi
+		
+        #`rm -f $dir/ifcfg-$nic` 2>&1 1>/dev/null
+        # nic aliases
+        `rm -f $dir/ifcfg-ib*` 2>&1 1>/dev/null
+        else  
+            interfaces="/etc/network/interfaces"
 
-    # remove the nic configuration files which are included in $NIC_IBNICS
-    for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
-    do
-        rm -f $dir/ifcfg-$nic 2>&1 1>/dev/null
-    done
+            for tmp  in `sed -n "/auto ib/=" ${interfaces}`
+            do 
+                startline=`sed -n "/auto ib/=" ${interfaces}|  head -n 1`
+                endline=`sed -n "$startline,/^auto/p" ${interfaces} |wc -l`
+    
+                if sed -n "$startline,/^auto/p" ${interfaces} |sed '$!d' |grep "auto" >/dev/null;then
+                    endline=`expr $startline + $endline - 2`
+                else
+                    endline=`expr $startline + $endline - 1`
+                fi
+    
+                ((startline--))
+                temp=`sed -n ${startline}p ${interfaces}`
+                while [[ $temp =~ ^# ]]
+                do
+                    ((startline--))
+                    temp=`sed -n ${startline}p ${interfaces}`
+                done
+    		    ((startline++))
+    
+                temp=`sed -n ${endline}p ${interfaces}`
+                while [[ $temp =~ ^# ]]
+                do
+                    ((endline--))
+                    temp=`sed -n ${endline}p ${interfaces}`
+                done
+				
+                sed -i ${startline},${endline}d ${interfaces}
+            done
+    fi
 else
     loop_number=`lsdev | grep "IP over Infiniband Network Interface" | wc -l`
     num=0
@@ -428,6 +464,56 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                         goodnics="$goodnics,$nic:$ipindex"
                     fi
                 fi # end not the first ip address
+            elif [ $OS_name == 'ubuntu' ]
+            then
+                # First ip address 
+                if [ $ipindex -eq 1 ]; then
+                    # ipv6
+                    if echo $nicip | grep : 2>&1 1>/dev/null
+                    then
+                        echo "auto $nic
+iface $nic inet6 static
+address $nicip
+netmask $netmask" >> /etc/network/interfaces
+
+                        if [ -n "$gateway" ]; then
+                            echo "gateway $gateway" >> /etc/network/interfaces
+                        fi
+                    # ipv4		
+                    else  
+                        # Write the info to the ifcfg file
+                        echo "auto $nic
+iface $nic inet static
+address $nicip
+netmask $netmask" >> /etc/network/interfaces
+
+                        #if [ -n "$gateway" ]; then
+                        #    echo "gateway $gateway" >> /etc/network/interfaces
+                        #fi
+                    fi
+                else   # Not the first ip address 
+                    # ipv6
+                    if echo $nicip | grep : 2>&1 1>/dev/null
+                    then
+                        echo "auto $nic
+iface $nic inet6 static
+address $nicip
+netmask $netmask" >> /etc/network/interfaces
+
+                        if [ -n "$gateway" ]; then
+                            echo "gateway $gateway" >> /etc/network/interfaces
+                        fi
+                    else  # ipv4
+                        echo "auto $nic:$ipindex
+iface $nic:$ipindex inet static
+address $nicip
+netmask $netmask" >> /etc/network/interfaces
+
+                        #if [ -n "$gateway" ]; then
+                        #    echo "gateway $gateway" >> /etc/network/interfaces
+                        #fi
+                    fi
+                fi
             else
                 echo "Unsupported operating system"
                 logger -p local4.err -t xcat "Unsupported operating system"
@@ -502,18 +588,27 @@ done # end for nic
 # Bringup all the ib interfaces
 if [ $PLTFRM == "Linux" ]
 then
-
     #/sbin/service $ib_driver restart
     restartservice $ib_driver
-    for nic in `echo "$goodnics" | tr "," "\n"`
+    for nic in `echo "$goodnics" | tr "," "\n"|sort -u`
     do     
         sleep 5
-             
         if [[ "$OSVER" == rhels6* ]]
         then
             ip link set dev $nic up
         else 
-            ifup $nic     
+            if [[ "$OSVER" == ubuntu14* ]]
+            then
+                interfaces="/etc/network/interfaces"
+                for tmp in `cat $interfaces |grep "auto ib" |sort -u|awk '{print $2}'`
+                do 
+                    ifdown $tmp  > /dev/null 2>&1
+                    sleep 2
+                    ifup   $tmp
+                done
+            else 
+                ifup $nic     
+            fi
         fi
     done
 fi
