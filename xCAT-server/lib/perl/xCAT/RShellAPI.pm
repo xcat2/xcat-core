@@ -146,6 +146,7 @@ sub run_remote_shell_api {
             my $pw_tried=0;
             my $login_done=0;
 	    my ($prematch, $match)= $t->waitfor(Match => '/login[: ]*$/i',
+                                               Match => '/username[: ]*$/i',
 						Match => '/User Name[: ]*$/i',
 						Match => '/password[: ]*$/i',
 						Match => "/$prompt/",
@@ -155,7 +156,7 @@ sub run_remote_shell_api {
 	    }
             if ($match =~ /$prompt/) {
  		$login_done=1;
-	    } elsif (($match =~ /User Name[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
+	    } elsif (($match =~ /User Name[: ]*$/i) || ($match =~ /username[: ]*$/i) || ($match =~ /login[: ]*$/i )) {
 		# user name
 		if ($user) {
 		    if (! $t->put(String => "$user\n",
