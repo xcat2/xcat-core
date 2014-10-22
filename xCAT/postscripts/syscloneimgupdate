@@ -32,7 +32,6 @@ for filename in \
     /opt/xcat \
     /root/.ssh \
     /var/cache \
-    /var/lib \
     /xcatpost 
 do
     if [ ! -e $filename ];then
