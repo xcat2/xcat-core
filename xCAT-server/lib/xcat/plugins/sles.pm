@@ -1010,6 +1010,11 @@ sub mkinstall
              and -r "$pkgdir/1/boot/i386/loader/linux"
              and -r "$pkgdir/1/boot/i386/loader/initrd"
             )
+            or (
+             $arch eq "ppc64le"
+             and -r "$pkgdir/1/boot/ppc64le/linux"
+             and -r "$pkgdir/1/boot/ppc64le/initrd"
+            )
             or ($arch =~ /ppc/ and -r "$pkgdir/1/suseboot/inst64")
           )
         {
@@ -1048,6 +1053,12 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/boot/i386/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/i386/loader/initrd", "$tftppath");
+                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                    }
+                } elsif ($arch eq "ppc64le") {
+                    unless ($noupdateinitrd) {
+                        copy("$pkgdir/1/boot/$arch/linux", "$tftppath");
+                        copy("$pkgdir/1/boot/$arch/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
@@ -1231,7 +1242,7 @@ sub mkinstall
             my $kernelpath;
             my $initrdpath;
             
-            if ($arch =~ /x86/)
+            if ($arch =~ /x86/ or $arch eq "ppc64le")
             {
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
@@ -1731,6 +1742,9 @@ sub copycd
     if ($darch and $darch =~ /i.86/)
     {
         $darch = "x86";
+    }
+    elsif ($darch and ($darch eq "ppc64le" or $darch eq "ppc64el")) {
+        $darch = "ppc64le";
     }
     elsif ($darch and $darch =~ /ppc/)
     {
