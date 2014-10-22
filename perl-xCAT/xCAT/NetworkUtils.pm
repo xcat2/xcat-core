@@ -2182,7 +2182,13 @@ sub pingNodeStatus {
 	    foreach (@mon_nodes) {
 		$deadnodes{$_}=1;
 	    }	 
-	    open (NMAP, "nmap -PE --system-dns --send-ip -sP ". $nodes . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+
+		# get additional options from site table
+		my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions"); 
+		my $more_options = $nmap_options[0];
+
+        #call namp
+	    open (NMAP, "nmap -PE --system-dns --send-ip -sP $more_options ". $nodes . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
 	    my $node;
 	    while (<NMAP>) {
 		if (/Host (.*) \(.*\) appears to be up/) {

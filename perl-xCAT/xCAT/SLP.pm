@@ -116,6 +116,9 @@ sub dodiscover {
                    send_message($args{reqcallback}, 0, "The rarge is too large and may be time consuming. Broadcast is recommended.");
                }
             }
+
+            #no need to check site.nmapoptions because it specifilly 
+			# uses T5 for certain performance requirement.
             `/usr/bin/nmap $range -sn -PE -n --send-ip -T5 `;
             my $nmapres = `/usr/bin/nmap $range -PE -p 427 -n --send-ip -T5 `;
             foreach my $line (split(/\n\n/,$nmapres)) {

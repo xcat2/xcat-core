@@ -1122,6 +1122,13 @@ site => {
    " httpport:    The port number that the booting/installing nodes should contact the\n".
    "              http server on the MN/SN on. It is your responsibility to configure\n".
    "              the http server to listen on that port - xCAT will not do that.\n\n".
+   " nmapoptions: Additional options for the nmap command. nmap is used in pping, \n".
+   "              nodestat, xdsh -v and updatenode commands. Sometimes additional \n".
+   "              performance tuning may be needed for nmap due to network traffic.\n".
+   "              For example, if the network response time is too slow, nmap may not\n".
+   "              give stable output. You can increase the timeout value by specifying \n".
+   "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n".
+   "              the nmap command.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
    " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".

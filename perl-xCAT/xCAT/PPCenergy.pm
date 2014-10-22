@@ -14,7 +14,7 @@ use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::DBobjUtils;
 use xCAT::FSPUtils;
-use xCAT::TableUtils qw(get_site_Master);
+use xCAT::TableUtils;
 %::QUERY_ATTRS = (
 'savingstatus' => 1,
 'dsavingstatus' => 1,
@@ -223,7 +223,6 @@ sub renergy {
     my ($node, $attrs) = %$nodehash;
     my $cec_name = @$attrs[2];
     my $hw_type = @$attrs[4];
-
     
     if (!$cec_name) {
         return ([[$node, "ERROR: Cannot find the cec name, check the attributes: vpd.serial, vpd.mtm.", 1]]);
@@ -295,7 +294,12 @@ sub renergy {
 	foreach (@hcps_ip) {
 	    $deadnodes{$_}=1;
 	}	 
-	open (NMAP, "nmap -PE --system-dns --send-ip -sP ". join(' ',@hcps_ip) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+
+	# get additional options from site table
+	my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions"); 
+	my $more_options = $nmap_options[0];
+
+	open (NMAP, "nmap -PE --system-dns --send-ip -sP $more_options ". join(' ',@hcps_ip) . " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
 	my $node;
 	while (<NMAP>) {
 	    #print "$_\n";
