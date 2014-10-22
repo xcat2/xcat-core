@@ -25,6 +25,8 @@ my %supported_encodes = (
 );
 my $sslctl;
 my $udpctl;
+my $pid_UDP;
+my $pid_MON;
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
@@ -198,8 +200,13 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 $sitetab->close;
 my $progname;
 my $pipeexpected;
+my $ssl2udppipe=0;
 $SIG{PIPE} = sub { 
     if ($pipeexpected) { return; }
+    if ($ssl2udppipe) { 
+        xCAT::MsgUtils->message("S","SIGPIPE xcatd SSL listener to udp service pipe is broken.  Ignore this error if you are shutting down or restarting xcatd.");
+        return;
+    }
     confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)";
 };
 $progname = \$0;
@@ -851,6 +858,10 @@ my %immediatechildren;
 sub generic_reaper {
    local($!);
    while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
+      if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+         # got here because UDP child is gone 
+         close($udpctl); $udpctl=0;
+      }
       yield;
    }
    $SIG{CHLD} = \&generic_reaper;
@@ -865,9 +876,15 @@ sub ssl_reaper {
       	$sslclients--;
       	$numdone--;
        }
+       if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+          # got here because UDP child is gone 
+          close($udpctl); $udpctl=0;
+       }
    }
    if ($udpctl) {
+     $ssl2udppipe=1;
      store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+     $ssl2udppipe=0;
    }
    $SIG{CHLD} = \&ssl_reaper;
 }
@@ -878,6 +895,10 @@ sub dispatch_reaper {
      if ($dispatched_children{$CHILDPID}) { 
         delete $dispatched_children{$CHILDPID}; 
         $dispatch_children--;
+     }
+     if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+        # got here because UDP child is gone 
+        close($udpctl); $udpctl=0;
      }
   }
   $SIG{CHLD} = \&dispatch_reaper;
@@ -890,14 +911,16 @@ sub plugin_reaper {
          delete $plugin_children{$CHILDPID}; 
          $plugin_numchildren--; 
       } 
+      if (($CHILDPID == $pid_UDP) && ($udpctl)) {
+         # got here because UDP child is gone 
+         close($udpctl); $udpctl=0;
+      }
    } 
   $SIG{CHLD} = \&plugin_reaper;
 }
 
 $SIG{CHLD} = \&generic_reaper;
 
-my $pid_UDP;
-my $pid_MON;
 $SIG{TERM} = $SIG{INT} = sub { 
    #printf("Asked to quit...\n"); 
    $quit++;
@@ -1211,7 +1234,9 @@ if ($inet6support) {
   }
   $sslclients++; #THROTTLE
   if ($udpctl) {
+    $ssl2udppipe=1;
     store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
+    $ssl2udppipe=0;
   }
   $cnnection->close();
 }
@@ -2113,7 +2138,7 @@ sub get_request {
     my $request = shift;
     if ($encode eq "xml") {
         my $line = "";
-        while ($request !~ m/<\/xcatrequest>/) { 
+        while ((!$request) || ($request !~ m/<\/xcatrequest>/)) { 
             my $flags=fcntl($sock,F_GETFL,0);
             $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
             fcntl($sock,F_SETFL,$flags);
