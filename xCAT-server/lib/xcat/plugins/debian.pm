@@ -600,7 +600,9 @@ sub mkinstall
             $darch = "i386";
         }
         else {
-            xCAT::MsgUtils->message("S","debian.pm: Unknown arch ($arch)");
+            if ($arch ne "ppc64le" and $arch ne "ppc64el") {
+                xCAT::MsgUtils->message("S","debian.pm: Unknown arch ($arch)");
+            }
             $darch = $arch;
         }
 
