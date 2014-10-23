@@ -114,34 +114,73 @@ config_Rsyslog_C3()
   fi 
 }
 
-# THis sets up rsyslog 8.x, quite different from the previous rsyslog versions.  
+# This sets up rsyslog 8.x, different from the previous rsyslog versions.  
+# Instead of updating /etc/rsyslog.conf  for forwarding to a remote host,
+# You update /etc/rsyslog.d/remote.conf.  The /etc/sysconfig/rsyslog file does not exist.
+# This is only for Linux, since AIX does not use rsyslog.  It ships its own syslog in an lpp,
+# at least at the time of this code being written
 
 config_rsyslog_V8()
 {
-  isReceiving=0
+  
+  goLocal=0;
+  conf_file="/etc/rsyslog.conf"
   remoteconf="/etc/rsyslog.d/remote.conf"
 
+  # If this is a Management Node or Service Node, then it will be receiving syslog entries from the
+  # compute nodes. Management Node is receiving from Service Nodes and possibly compute nodes.
+  # They will all be put in /var/log/messages
+  # For the service node, if site table svloglocal  is set then we will keep the logs on the servicenode
+  # and not forward to the Management Node. 
 
-  if [ -f /etc/xCATMN ] ||  [ $isSN -eq 1 ] 
-  then 
-    isReceiving=1
+  #now handling where the logs go, if goLocal=1 then log local, if not forward to MN
+  if [ -f /etc/xCATMN ]; then
+     goLocal=1
+  else
+    # check to see if service node should forward of keep logs
+    if [ $isSN -eq 1 ]; then
+       if [ -n "$SVLOGLOCAL" ] && [ $SVLOGLOCAL -eq 1 ]; then
+         goLocal=1  
+       fi
+    fi
   fi
 
-  if [ ! -f $remoteconf.XCATORIG ]; then
-    cp -f $remoteconf $remoteconf.XCATORIG
-  fi
-  # check if already an entry, we need to replace it
-  grep "xCAT settings" $remoteconf 2>&1 1> /dev/null
-  if [ $? -eq 0 ]; then
+  if [ $goLocal -eq 1 ]; then
+    #logging is local, do not forward
+    #making sure all the messages goes to /var/log/messages
+    touch  /var/log/messages
+    # backup rsyslog.conf
+    if [ ! -f $conf_file.XCATORIG ]; then
+      cp -f $conf_file $conf_file.XCATORIG
+    fi
+
+    grep "xCAT settings" $conf_file 2>&1 1> /dev/null
+    if [ $? -eq 0 ]; then
+	  sed "/# xCAT settings/,$ d" $conf_file >/tmp/sed.tmp
+      cat /tmp/sed.tmp >$conf_file
+    fi
+
+    echo "# xCAT settings" >> $conf_file
+    echo "*.debug   /var/log/messages"  >> $conf_file
+  else
+    # not logging local, forward logging
+    # backup the existing remote.conf file from the install
+    if [ ! -f $remoteconf.XCATORIG ]; then
+      cp -f $remoteconf $remoteconf.XCATORIG
+    fi
+    # check if already an entry by xCAT. If so, we need to replace it
+    grep "xCAT settings" $remoteconf 2>&1 1> /dev/null
+    if [ $? -eq 0 ]; then
        sed "/# xCAT settings/,$ d" $remoteconf >/tmp/sed.tmp
        cat /tmp/sed.tmp >$remoteconf
-  fi
+    fi
 
-
-   echo "# xCAT settings" >> $remoteconf
-   echo "*.* @$master" >> $remoteconf
-
-  restartservice syslog
+    # add xCAT entries
+    echo "# xCAT settings" >> $remoteconf
+    echo "*.* @$master" >> $remoteconf
+ fi
+ # restart syslog ( could be service or systemctl call depending on the OS)
+ restartservice syslog
 
 }
 
@@ -169,7 +208,6 @@ if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
   exit 0
 fi
 
-echo  " not configuring $SYSLOGVER"
 if [ "$(uname -s)" = "Linux" ]; then
   if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
     if [ -e /etc/rsyslog.conf ]; then
