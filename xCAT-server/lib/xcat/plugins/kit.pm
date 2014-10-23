@@ -4356,20 +4356,35 @@ sub lskitdeployparam {
     foreach my $kit (@$kits) {
         my $deployparam_file = $kit->{kitdir}."/other_files/".$kit->{kitdeployparams};
 
+        my $tmpkitdeployparames = $kit->{kitdeployparams};
+
         if (defined($deployparam_file)) {
-            open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
+
+            # Check if there is kitdeployparam file or not
+            if (defined($tmpkitdeployparames))
+            {
+                  open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
             
-            while (<$fh>) {
-                chomp $_;
-                if ($_ =~ /^#ENV:.+=.+#$/) {
-                    my $tmp = $_;
-                    $tmp =~ s/^#ENV://;
-                    $tmp =~ s/#$//;
-                    (my $name, my $value) = split(/=/, $tmp);
-                    $deployparam_hash->{$name} = $value;
-                }
-            }
-            close($fh);
+                  while (<$fh>) {
+                     chomp $_;
+                     if ($_ =~ /^#ENV:.+=.+#$/) {
+                          my $tmp = $_;
+                          $tmp =~ s/^#ENV://;
+                          $tmp =~ s/#$//;
+                          (my $name, my $value) = split(/=/, $tmp);
+                          $deployparam_hash->{$name} = $value;
+                     }
+                  }
+                  close($fh);
+           }
+           else {
+                   my $rsp = {};
+                   push @{ $rsp->{data}}, "There is no kitdeployparams file in $deployparam_file.\n";
+                   xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
+
+                   return 1;
+           }
+
         }
     }
 
