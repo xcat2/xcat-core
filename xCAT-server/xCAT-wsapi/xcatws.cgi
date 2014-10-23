@@ -403,23 +403,68 @@ my %URIdef = (
                 outhdler => \&noout,
             },
         },
-        virtualization => {
-            desc => "[URI:/nodes/{noderange}/virtualization] - The virtualization resource for the node {noderange}",
-            matcher => '^/nodes/[^/]*/virtualization$',
-            GET => {
+        vm => {
+            desc => "[URI:/nodes/{noderange}/vm] - The virtualization node {noderange}.",
+            desc1 => "The node should be a virtual machine of type kvm, esxi ...",
+            matcher => '^/nodes/[^/]*/vm$',
+            GET_backup => {
                 desc => "Get the vm status for the node {noderange}.",
                 cmd => "lsvm",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
             PUT => {
-                desc => "Change the vm status for the node {noderange}. DataBody: {new:1|clone:1|migrate:1 ...}. new=1 means to run mkvm; clone=1 means to run rclone; migrate=1 means to run rmigrate.",
-                cmd => "",
-                fhandler => \&common,
+                desc => "Change the configuration for the virtual machine {noderange}.",
+                usage => "|$usagemsg{objchparam} DataBody: \n    Set memory size - {\"memorysize\":\"sizeofmemory(MB)\"}\n    Add new disk - {\"adddisk\":\"sizeofdisk1(GB),sizeofdisk2(GB)\"}\n    Purge disk - {\"purgedisk\":\"scsi_id1,scsi_id2\"}|$usagemsg{non_getreturn}|",
+                example => "|Set memory to 3000MB.|PUT|/nodes/node1/vm {\"memorysize\":\"3000\"}||",
+                example1 => "|Add a new 20G disk.|PUT|/nodes/node1/vm {\"adddisk\":\"20G\"}||",
+                example2 => "|Purge the disk \'hdb\'.|PUT|/nodes/node1/vm {\"purgedisk\":\"hdb\"}||",
+                cmd => "chvm",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+            POST => {
+                desc => "Create the vm node {noderange}.",
+                usage => "|$usagemsg{objchparam} DataBody: \n    Set CPU count - {\"cpucount\":\"numberofcpu\"}\n    Set memory size - {\"memorysize\":\"sizeofmemory(MB)\"}\n    Set disk size - {\"disksize\":\"sizeofdisk\"}\n    Do it by force - {\"force\":\"yes\"}|$usagemsg{non_getreturn}|",
+                example => "|Create the vm node1 with a 30G disk, 2048M memory and 2 cpus.|POST|/nodes/node1/vm {\"disksize\":\"30G\",\"memorysize\":\"2048\",\"cpucount\":\"2\"}||",
+                cmd => "mkvm",
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
             },
             DELETE => {
                 desc => "Remove the vm node {noderange}.",
+                usage => "|$usagemsg{objchparam} DataBody: \n    Purge disk - {\"purge\":\"yes\"}\n    Do it by force - {\"force\":\"yes\"}|$usagemsg{non_getreturn}|",
+                example => "|Remove the vm node1 by force and purge the disk.|DELETE|/nodes/node1/vm {\"force\":\"yes\",\"purge\":\"yes\"}||",
                 cmd => "rmvm",
-                fhandler => \&common,
+                fhandler => \&actionhdl,
+                outhdler => \&noout,
+            },
+        },
+        vmclone => {
+            desc => "[URI:/nodes/{noderange}/vmclone] - The clone resource for the virtual node {noderange}.",
+            desc1 => "The node should be a virtual machine of kvm, esxi ...",
+            matcher => '^/nodes/[^/]*/vmclone$',
+            POST => {
+                desc => "Create a clone master from node {noderange}. Or clone the node {noderange} from a clone master.",
+                usage => "|$usagemsg{objchparam} DataBody: \n    Clone a master named \"mastername\" - {\"tomaster\":\"mastername\"}\n    Clone a node from master \"mastername\" - {\"frommaster\":\"mastername\"}\n    Use Detach mode - {\"detach\":\"yes\"}\n    Do it by force - {\"force\":\"yes\"}|The messages of creating Clone target.|",
+                example1 => "|Create a clone master named \"vmmaster\" from the node1.|POST|/nodes/node1/vmclone {\"tomaster\":\"vmmaster\",\"detach\":\"yes\"}|{\n   \"node1\":{\n      \"vmclone\":\"Cloning of node1.hda.qcow2 complete (clone uses 9633.19921875 for a disk size of 30720MB)\"\n   }\n}|",
+                example2 => "|Clone the node1 from the clone master named \"vmmaster\".|POST|/nodes/node1/vmclone {\"frommaster\":\"vmmaster\"}||",
+                cmd => "clonevm",
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
+            },
+        },
+        vmmigrate => {
+            desc => "[URI:/nodes/{noderange}/vmmigrate] - The virtualization resource for migration.",
+            desc1 => "The node should be a virtual machine of kvm, esxi ...",
+            matcher => '^/nodes/[^/]*/vmmigrate$',
+            POST => {
+                desc => "Migrate a node to targe node.",
+                usage => "|$usagemsg{objchparam} DataBody: {\"target\":\"targethost\"}.",
+                example => "|Migrate node1 to target host host2.|POST|/nodes/node1/vmmigrate {\"target\":\"host2\"}||",
+                cmd => "rmigrate",
+                fhandler => \&actionhdl,
+                outhdler => \&actionout,
             },
         },
         updating => {
@@ -1812,7 +1857,82 @@ sub actionhdl {
         if (isGET()) {
             push @args, '-z';
         }
-    } 
+    } elsif ($params->{'resourcename'} eq "vm") {
+        # handle the virtual machine
+        if (isGET()) {
+            # do nothing for kvm and esxi
+        }elsif (isPut()) {  # change the configuration of vm
+            if (defined ($paramhash->{'adddisk'})) { #add new disk
+                push @args, ('-a', $paramhash->{'adddisk'});
+            }
+            #if (defined ($paramhash->{'rmdisk'})) { #remove disk
+            #    push @args, ('-d', $paramhash->{'rmdisk'});
+            #}
+            if (defined ($paramhash->{'purgedisk'})) { #purge disk
+                push @args, ('-p', $paramhash->{'purgedisk'});
+            }
+            if (defined ($paramhash->{'resizedisk'})) { #change the disk size
+                $paramhash->{'resizedisk'} =~ s/\:/=/;   # replace : to be = in the param
+                push @args, ('--resize', $paramhash->{'resizedisk'});
+            }
+            if (defined ($paramhash->{'memorysize'})) { #change the memory size
+                push @args, ('--mem', $paramhash->{'memorysize'});
+            }
+            if (defined ($paramhash->{'cpucount'})) { #change the cpu size
+                push @args, ('--cpus', $paramhash->{'cpucount'});
+            }
+        } elsif (isPost()) {  # create virtual machine
+            if (defined ($paramhash->{'master'})) { # specify the master node for clone
+                push @args, ('-m', $paramhash->{'master'});
+            }
+            if (defined ($paramhash->{'disksize'})) { # specify disk size
+                push @args, ('-s', $paramhash->{'disksize'});
+            }
+            if (defined ($paramhash->{'memorysize'})) { #specify the memory size
+                push @args, ('--mem', $paramhash->{'memorysize'});
+            }
+            if (defined ($paramhash->{'cpucount'})) { #specify the cpu size
+                push @args, ('--cpus', $paramhash->{'cpucount'});
+            }
+            if (defined ($paramhash->{'force'}) && $paramhash->{'force'} eq "yes") { # force the recreate
+                push @args, "-f";
+            }
+        } elsif (isDelete()) {
+            if (defined ($paramhash->{'force'}) && $paramhash->{'force'} eq "yes") { # force the recreate
+                push @args, "-f";
+            }
+            if (defined ($paramhash->{'purge'}) && $paramhash->{'purge'} eq "yes") { # purge disk when remove the vm
+                push @args, "-p";
+            }
+        }
+    } elsif ($params->{'resourcename'} eq "vmclone") {
+        # handle the clone of virtual machine
+        if (isPost()) {
+            if (defined ($paramhash->{'tomaster'})) {
+                push @args, ("-t", $paramhash->{'tomaster'});
+            } elsif (defined ($paramhash->{'frommaster'})) {
+                push @args, ("-b", $paramhash->{'frommaster'});
+            } else {
+                error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
+            }
+            
+            if (defined ($paramhash->{'detach'}) && $paramhash->{'detach'} eq "yes") {
+                push @args, "-d";
+            }
+            if (defined ($paramhash->{'force'}) && $paramhash->{'force'} eq "yes") { # force the recreate
+                push @args, "-f";
+            }
+        }
+    } elsif (($params->{'resourcename'} eq "vmmigrate")) {
+        # handle the migration of virtual machine
+        if (isPost()) {
+            if (defined ($paramhash->{'target'})) {
+                push @args, $paramhash->{'target'};
+            } else {
+                error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
+            }
+        }
+    }
 
     push @{$request->{arg}}, @args;  
     my $req = genRequest();
@@ -2638,11 +2758,18 @@ sub fetchParameters {
                 }
             }
         }
+    } elsif (isPost()) {
+        $pdata = $q->param('POSTDATA'); 
+    } elsif (isDelete()) { 
+        if ($ENV{'CONTENT_TYPE'} =~ /json/) {
+            $q->read_from_client(\$pdata, $ENV{'CONTENT_LENGTH'});
+        } 
     }
-    elsif (isPost()) { $pdata = $q->param('POSTDATA'); }
+    
     if ($dbgdata) {
         $pdata = $dbgdata;
     }
+    
     my $genparms = {};
     my $phash;
     if ($pdata) {
