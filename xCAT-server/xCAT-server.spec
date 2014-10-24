@@ -32,10 +32,7 @@ Obsoletes: atftp-xcat
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %ifos linux
-%ifnarch s390x
-# PCM does not use or ship grub2-xcat
 Requires: grub2-xcat
-%endif
 %endif
 %endif
 
