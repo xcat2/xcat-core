@@ -1,0 +1,109 @@
+start:lskitcomp_v
+os:Linux
+cmd:lskitcomp -v
+check:rc==0
+check:output=~lskitcomp
+check:output=~kitframework
+check:output=~compatible_frameworks
+cmd:lskitcomp --version
+check:rc==0
+check:output=~lskitcomp
+check:output=~kitframework
+check:output=~compatible_frameworks
+end
+
+start:lskitcomp_h
+os:Linux
+cmd:lskitcomp -h
+check:rc==0
+check:output =~ Usage
+cmd:lskitcomp --help
+check:rc==0
+check:output=~ Usage
+end
+
+start:lskitcomp_C
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C basename $compname
+check:rc==0
+check:output=~basename
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C kitcompname $compname
+check:output=~kitcompname
+check:rc==0
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C kitreponame $compname
+check:rc==0
+check:output=~kitreponame
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C serverroles $compname
+check:rc==0
+check:output=~serverroles
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+end
+
+start:lskitcomp_C
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C basename $compname
+check:rc==0
+check:output=~basename
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C kitcompname $compname
+check:output=~kitcompname
+check:rc==0
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C kitreponame $compname
+check:rc==0
+check:output=~kitreponame
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -C serverroles $compname
+check:rc==0
+check:output=~serverroles
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+end
+
+
+start:lskitcomp_S
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp -S compute $compname
+check:rc==0
+check:output=~compute
+cmd:compname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;lskitcomp --serverrole compute $compname
+check:rc==0
+check:output=~compute
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/lskitcomp/mykits
+end
+
