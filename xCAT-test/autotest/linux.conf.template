@@ -66,6 +66,7 @@ ISO=/iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso
 NETDRIVER=ibmveth     #network infterface card driver used by diskless installation
 NETBOOTDIR=/opt/xcat/share/xcat/netboot/rh       #path of netboot directory, used by diskless installation
 MaxLparID=32
+KITDATA=kitdata
 [Custom]
 
 #commands run before test
