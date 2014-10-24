@@ -63,7 +63,7 @@ cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/mykits
 end
 
 start:buildkit_buildrepo_all
-os:Linux
+os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
@@ -75,7 +75,41 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prodkit_compute-1.0-1.noarch.rpm
+check:output=~prodkit-compute_1.0-1.noarch.rpm
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_buildrepo_all
+os:sles
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+check:output!~error
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
+check:output=~prodkit-1.0-1
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
+check:output=~repodata
+check:output=~pkg1-1-1.noarch.rpm
+check:output=~prodkit-compute_1.0-1.noarch.rpm
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_buildrepo_all
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+check:output!~error
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
+check:output=~prodkit-1.0-1
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
+check:output=~Packages
+check:output=~pkg1_1-2_all.deb
+check:output=~prodkit-compute_1.0-1_all.deb
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
@@ -92,7 +126,7 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prodkit_compute-1.0-1.noarch.rpm
+check:output=~prodkit-compute-1.0-1.noarch.rpm
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
@@ -109,7 +143,24 @@ check:output=~prodkit-1.0-1
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
 check:output=~repodata
 check:output=~pkg1-1-1.noarch.rpm
-check:output=~prodkit_compute-1.0-1.noarch.rpm
+check:output=~prodkit-compute-1.0-1.noarch.rpm
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_buildrepo_ubuntu
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit buildrepo $reponame
+check:rc==0
+check:output!~error
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir
+check:output=~prodkit-1.0-1
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir/prodkit-1.0-1-*
+check:output=~Packages
+check:output=~pkg1_1-2_all.deb
+check:output=~prodkit-compute_1.0-1_all.deb
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
@@ -138,7 +189,7 @@ cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit bu
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit cleanrepo $reponame
 check:rc==0
-check:output=~Kit repository rhels[0-9].[0-9] has been removed
+check:output=~been removed
 check:output!~error
 cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep rhels
 check:output!~rhels
@@ -161,6 +212,21 @@ check:output!~sles
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
+start:buildkit_cleanrepo_ubuntu
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;reponame=`cat buildkit.conf|grep kitrepoid|sed 's/ //g' |grep ^kitrepoid=|head -1|awk -F= '{print $2}'`;buildkit cleanrepo $reponame
+check:rc==0
+check:output=~been removed
+check:output!~error
+cmd:ls /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build/kit_repodir|grep ubuntu 
+check:output!~ubuntu
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
 
 start:buildkit_listrepo
 os:rhels
@@ -191,6 +257,19 @@ check:output!~error
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
+start:buildkit_listrepo
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit listrepo
+check:rc==0
+check:output=~ DONE
+check:output!~error
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
 
 start:buildkit_buildtar
 os:Linux
@@ -212,12 +291,16 @@ end
 
 
 start:buildkit_cleantar
-os:Linux
+os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
 check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+check:output=~prodkit-1.0-1.tar.bz2 successfully built
+check:output!~error
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit cleantar
 check:rc==0
 check:output=~Kit tar files have been successfully removed from /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
@@ -228,27 +311,50 @@ check:output!~prodkit-1.0-1.tar.bz2
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
-start:buildkit_chkconfig
-os:Linux
+start:buildkit_cleantar
+os:sles
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit chkconfig
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
 check:rc==0
-check:output=~No errors were found in Kit Build File /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
-cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/other_files/sample/exclude.lst /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/other_files/sample/exclude.lst.new
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit chkconfig
-check:rc!=0
-check:output=~Exclude List file /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/other_files/sample/exclude.lst defined in Kit Componenet "prodkit_compute" does not exist or is not readable
-cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/other_files/sample/exclude.lst.new /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/other_files/sample/exclude.lst
-cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit chkconfig
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
 check:rc==0
-check:output=~~No errors were found in Kit Build File /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
+check:output=~prodkit-1.0-1.tar.bz2 successfully built
+check:output!~error
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit cleantar
+check:rc==0
+check:output=~Kit tar files have been successfully removed from /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+check:output=~Removed /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/rpmbuild
+check:output!~error
+cmd: ls |grep prodkit-1.0-1.tar.bz2
+check:output!~prodkit-1.0-1.tar.bz2
+cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_cleantar
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+check:output=~prodkit-1.0-1.tar.bz2 successfully built
+check:output!~error
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit cleantar
+check:rc==0
+check:output=~Kit tar files have been successfully removed from /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+check:output=~Removed /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/build
+check:output!~error
+cmd: ls |grep prodkit-1.0-1.tar.bz2
+check:output!~prodkit-1.0-1.tar.bz2
 cmd:cd -;rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
 start:buildkit_partialkit
-os:Linux
+os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
@@ -270,9 +376,54 @@ check:output!~pkg1-1-1.noarch.rpm
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
+start:buildkit_partialkit
+os:sles
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf|sed 's/isexternalpkg=no/isexternalpkg=yes/g' >  /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new |sed '/rpm_prebuiltdir/d' > /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp
+check:rc==0
+cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2
+check:rc==0
+check:output=~prodkit-1.0-1/build_input/buildkit.conf
+check:output=~prodkit-1.0-1/kit.conf
+check:output=~prodkit-1.0-1/repos/
+check:output=~prodkit_compute-1.0-1.noarch.rpm
+check:output!~pkg1-1-1.noarch.rpm
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_partialkit_ubuntu
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf|sed 's/isexternalpkg=no/isexternalpkg=yes/g' >  /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new |sed '/rpm_prebuiltdir/d' > /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp
+check:rc==0
+cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2
+check:rc==0
+check:output=~prodkit-1.0-1/build_input/buildkit.conf
+check:output=~prodkit-1.0-1/kit.conf
+check:output=~prodkit-1.0-1/repos/
+check:output=~prodkit-compute_1.0-1_all.deb
+check:output!~pkg1_1-2_all.deb
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
 
 start:buildkit_partialkit_completekit
-os:Linux
+os:rhels
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
 check:rc==0
@@ -299,6 +450,68 @@ check:output=~/opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/prod
 cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-2.0-s002a.tar.bz2
 check:output=~prodkit_compute-2.0-s002a.noarch.rpm
 check:output=~pkg1-1-1.noarch.rpm
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_partialkit_completekit
+os:sles
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf|sed 's/isexternalpkg=no/isexternalpkg=yes/g' >  /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new |sed '/rpm_prebuiltdir/d' > /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp
+check:rc==0
+cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit addpkgs prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2 -p source_packages/sample/pkg1
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~prodkit_compute-1.0-1.noarch.rpm
+check:output=~pkg1-1-1.noarch.rpm
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;rm -f prodkit-1.0-1.tar.bz2
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit addpkgs prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2 -p source_packages/sample/pkg1 -k 2.0 -r s002a
+check:rc==0
+check:output=~/opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/prodkit-2.0-s002a.tar.bz2 successfully built
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-2.0-s002a.tar.bz2
+check:output=~prodkit_compute-2.0-s002a.noarch.rpm
+check:output=~pkg1-1-1.noarch.rpm
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+end
+
+start:buildkit_partialkit_completekit
+os:ubuntu
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit;buildkit create prodkit
+check:rc==0
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf|sed 's/isexternalpkg=no/isexternalpkg=yes/g' >  /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new
+cmd:cat /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.new |sed '/rpm_prebuiltdir/d' > /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp
+check:rc==0
+cmd:mv /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf.tmp /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/buildkit.conf
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit buildtar
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit addpkgs prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2 -p source_packages/sample/pkg1
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-1.0-1.tar.bz2
+check:rc==0
+check:output=~prodkit-compute_1.0-1_all.deb
+check:output=~pkg1_1-2_all.deb
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;rm -f prodkit-1.0-1.tar.bz2
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;buildkit addpkgs prodkit-1.0-1.NEED_PRODUCT_PKGS.tar.bz2 -p source_packages/sample/pkg1 -k 2.0 -r s002a
+check:rc==0
+check:output=~/opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit/prodkit-2.0-s002a.tar.bz2 successfully built
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit;tar -tf prodkit-2.0-s002a.tar.bz2
+check:output=~prodkit-compute_2.0-s002a_all.deb
+check:output=~pkg1_1-2_all.deb
 cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/buildkit/prodkit
 end
 
