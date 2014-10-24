@@ -995,6 +995,16 @@ site => {
    " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n".
    "               section. This is an interface for user to add configuration entries to\n". 
    "               the zone sections in named.conf.\n\n".
+   " dnsinterfaces:  The network interfaces DNS server should listen on.  If it is the same\n".
+   "                  for all nodes, use a simple comma-separated list of NICs.  To\n".
+   "                  specify different NICs for different nodes:\n".
+   "                       xcatmn|eth1,eth2;service|bond0.\n".
+   "                  In this example xcatmn is the name of the xCAT MN, and DNS there\n".
+   "                  should listen on eth1 and eth2.  On all of the nodes in group\n".
+   "                  'service' DNS should listen on the bond0 nic.\n".
+   "                  NOTE: if using this attribute to block certain interfaces, make sure\n".
+   "                  the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to\n".
+   "                  use this ip to communicate with the local NDS server on MN.\n\n".
    " -------------------------\n".
    "HARDWARE CONTROL ATTRIBUTES\n".
    " -------------------------\n".

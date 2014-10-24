@@ -515,6 +515,61 @@ sub process_request {
             $ctx->{zonestotouch}->{$_->{domain}}=1;
         }
     }
+
+    # get the listen on port for the DNS server from site.dnsinterfaces
+    my @dnsifinsite =  xCAT::TableUtils->get_site_attribute("dnsinterfaces");
+    if (@dnsifinsite)
+    #syntax should be like host|ifname1,ifname2;host2|ifname3,ifname2 etc or simply ifname,ifname2
+    {
+        my $dnsinterfaces = $dnsifinsite[0];
+        my $listenonifs;
+        foreach my $dnsif (split /;/,$dnsinterfaces) {
+            if ($dnsif =~ /\|/) {  # there's host in the string
+                my ($hosts,$dnsif) = split /\|/,$dnsif;
+                if (! xCAT::NetworkUtils->thishostisnot($hosts)) {
+                   $listenonifs=$dnsif;
+                } else {
+                    # this host string might be a xcat group, try to test each node in the group
+                    foreach my $host (noderange($hosts)) {
+                       unless (xCAT::NetworkUtils->thishostisnot($host)) {
+                           $listenonifs=$dnsif;
+                           last;
+                       }
+                    }
+                }
+            } else {
+                $listenonifs = $dnsif;
+            }
+
+            # get the ip for each interface and set it to $ctx->{dnslistenonifs}
+            if ($listenonifs) {
+                $listenonifs = "lo,".$listenonifs;
+                # get the ip address for each interface
+                my (@listenipv4, @listenipv6);
+                for my $if (split /,/, $listenonifs) {
+                    my @ifaddrs = `ip addr show $if`;
+                    foreach (@ifaddrs) {
+                        if (/^\s*inet\s+([^ ]*)/) {
+                            my $ip = $1; 
+                            $ip =~ s/\/.*//;
+                            push  @listenipv4, $ip;
+                        } elsif (/^\s*inet6\s+([^ ]*)/) {
+                            my $ip = $1;
+                            $ip =~ s/\/.*//;
+                            push  @listenipv6, $ip;
+                        }
+                    }
+                }
+                if (@listenipv4) {
+                    $ctx->{dnslistenonifs}->{ipv4} = \@listenipv4;
+                }
+                if (@listenipv6) {
+                    $ctx->{dnslistenonifs}->{ipv6} = \@listenipv6;
+                }
+                last;
+            }
+        }
+    }
     
     xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes for a large cluster.", $callback);
     
@@ -930,6 +985,20 @@ sub update_namedconf {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";                    
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on {/) {
+                        push @newnamed,"\tlisten-on \{\n";
+                        $skip=1;
+                        foreach (@{$ctx->{dnslistenonifs}->{ipv4}}) {
+                            push  @newnamed,"\t\t".$_.";\n";
+                        }
+                        push @newnamed,"\t};\n";                    
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 {/) {
+                        push @newnamed,"\tlisten-on-v6 \{\n";
+                        $skip=1;
+                        foreach (@{$ctx->{dnslistenonifs}->{ipv6}}) {
+                            push  @newnamed,"\t\t".$_.";\n";
+                        }
+                        push @newnamed,"\t};\n";                    
                     } elsif ($skip) {
                         if ($line =~ /};/) {
                             $skip = 0;
@@ -1029,7 +1098,7 @@ sub update_namedconf {
            push @newnamed,"\tdirectory \"".$ctx->{zonesdir}."\";\n";
            push @newnamed, "\tallow-recursion { any; };\n";
         }
-        push @newnamed,"\t\t//listen-on-v6 { any; };\n";
+        #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
@@ -1055,6 +1124,23 @@ sub update_namedconf {
                 push @newnamed,"\t};\n";            
             }
         }
+        
+        # add the listen-on option
+        if (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4})) {
+            push @newnamed, "\tlisten-on \{\n";
+            foreach (@{$ctx->{dnslistenonifs}->{ipv4}}) {
+                push  @newnamed,"\t\t".$_.";\n";
+            }
+            push @newnamed,"\t};\n"
+        }
+        if (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6})) {
+            push @newnamed,"\tlisten-on-v6 \{\n";
+            foreach (@{$ctx->{dnslistenonifs}->{ipv6}}) {
+                push  @newnamed,"\t\t".$_.";\n";
+            }
+            push @newnamed,"\t};\n";                    
+        }
+        
         push @newnamed,"};\n\n";
     }
 
@@ -1068,7 +1154,7 @@ sub update_namedconf {
             $ctx->{restartneeded}=1;
         }    
     }
-
+    
     my $cmd = "grep '^nameserver' /etc/resolv.conf | awk '{print \$2}'";
     my @output = xCAT::Utils->runcmd($cmd, 0);
     my $zone;
