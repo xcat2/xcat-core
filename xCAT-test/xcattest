@@ -539,7 +539,10 @@ sub loadcase
                 $cases[$i]->{os}="Linux";
                 }elsif($string1 =~ /^sles\s*/ && -f "/etc/SuSE-release"){
                 $cases[$i]->{os}="Linux";
-                }else{
+                }elsif($string1 =~ /^ubuntu\s*/ && -f "/etc/lsb-release"){
+                $cases[$i]->{os}="Linux";
+                }
+                else{
                  $cases[$i]->{os}=$string1;
 
                 }
