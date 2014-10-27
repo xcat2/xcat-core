@@ -428,7 +428,6 @@ unless ($onlyinitrd) {
           $aptdevby .=$aptgetcmdby;
           $aptdevby .=" install --allow-unauthenticated ";
           $aptgetcmd=$aptdevby;
-          $aptgetcmd_base = $aptgetcmd;
 
           # append extra pkg names to yum command 
           if ($extrapkgnames{$pass}) {
