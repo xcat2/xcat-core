@@ -241,7 +241,14 @@ unless ($onlyinitrd) {
    my @line=split(" ",`ls -lh $installroot/$osver/$arch/dists/ | grep dr`);
    my $dist = $line[@line-1];
 
-   my $aptgetcmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-get $non_interactive ";
+#   my $aptgetcmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-get $non_interactive ";
+
+    # If there is env in otherpkg list
+    # apt-get update and apt-get install should be added env param
+    my $aptgetcmd = "chroot $rootimg_dir apt-get update";
+    my $aptgetcmdby="chroot $rootimg_dir apt-get $non_interactive ";
+
+
    my $aptcachecmd = "chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-cache $non_interactive ";
    my $aptcmd1 = "debootstrap";
    #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
@@ -408,9 +415,21 @@ unless ($onlyinitrd) {
 
           # install extra packages
           my $aptgetcmd_base = $aptgetcmd;
+
+          #env param need to be added before each chroot
+          my $aptdevby=$aptgetcmd;
+          
+
           # to prevent "The following packages cannot be authenticated" error, 
           # invoke apt-get with "--allow-unauthenticated" option
-          $aptgetcmd .= " install --allow-unauthenticated ";
+          #example:If there is env IBM_PPE_RTE_LICENSE_ACCEPT , it should be in front of chroot
+          #IBM_PPE_RTE_LICENSE_ACCEPT=yes chroot /install/netboot/ubuntu14.04/ppc64el/compute/rootimg apt-get update&& IBM_PPE_RTE_LICENSE_ACCEPT=yes chroot /install/netboot/ubuntu14.04/ppc64el/compute/rootimg apt-get -y  install --allow-unauthenticated   pperte-license
+          $aptdevby .="&& ".$envlist." ";
+          $aptdevby .=$aptgetcmdby;
+          $aptdevby .=" install --allow-unauthenticated ";
+          $aptgetcmd=$aptdevby;
+          $aptgetcmd_base = $aptgetcmd;
+
           # append extra pkg names to yum command 
           if ($extrapkgnames{$pass}) {
               $aptgetcmd .= " $extrapkgnames{$pass} ";
