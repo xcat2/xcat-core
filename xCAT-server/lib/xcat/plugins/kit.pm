@@ -2419,7 +2419,7 @@ sub rmkitcomp
         push@{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
         push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\trmkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] \n\t\t-i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] [--noscripts] \n\t\t-i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
     };
 
