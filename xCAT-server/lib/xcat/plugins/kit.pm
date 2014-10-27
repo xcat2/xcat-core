@@ -1461,7 +1461,7 @@ sub rmkit
         push@{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
         push@{ $rsp{data} }, "\trmkit [-h|--help]";
         push@{ $rsp{data} }, "\trmkit [-v|--version]";
-        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>] [-V]";
+        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
