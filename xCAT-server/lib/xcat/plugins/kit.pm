@@ -589,7 +589,7 @@ sub assign_to_osimage
                     {
                         system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
                         print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
-                        system("mount --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}");
+                        system("mount -o ro --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}");
                         print "mount --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}";
                     }
                 }
