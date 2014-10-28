@@ -465,7 +465,8 @@ unless ($onlyinitrd) {
 
    # run apt-get upgrade to update any installed debs
    # needed when running genimage again after updating software in repositories
-   my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
+   #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
+   my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
    $rc = system("$aptgetcmd_update");
    print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
@@ -1783,9 +1784,13 @@ sub umount_chroot {
    #system("umount $rootimage_dir/proc");
    #system("umount $rootimage_dir/sys");
    system("umount $rootimage_dir/mnt/pkgdir");
-   #system("umount $rootimage_dir/mnt/otherpkgdir");
-   system("grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r|xargs umount");
    rmdir("$rootimage_dir/mnt/pkgdir");
+   #system("umount $rootimage_dir/mnt/otherpkgdir");
+   #system("grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r|xargs umount");
+   my @data = `grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r`;
+   foreach (@data) {
+       `umount $_`;
+   }
    rmdir("$rootimage_dir/mnt/otherpkgdir");
 }
 
