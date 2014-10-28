@@ -17,7 +17,6 @@ use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
-use xCAT::BuildKitUtils;
 use Getopt::Long;
 #use Data::Dumper;
 use File::Basename;
@@ -33,7 +32,7 @@ $::KITFRAMEWORK ="2";
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
 my $debianflag = 0;
-my $tempstring = xCAT::BuildKitUtils->osver();
+my $tempstring = xCAT::Utils->osver();
 if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
     $debianflag = 1;
     print "debian";
