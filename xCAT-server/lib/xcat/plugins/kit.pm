@@ -35,7 +35,7 @@ my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
 if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
     $debianflag = 1;
-    print "debian";
+#    print "debian";
 }
 
 #-------------------------------------------------------
@@ -2489,6 +2489,7 @@ sub rmkitcomp
     }
 
     my %kitcomps;
+    my @remove_kitcomps_by_basename;
     my $des = shift @ARGV;
     my @kitcomponents = split ',', $des;
     foreach my $kitcomponent (@kitcomponents) {
@@ -2519,19 +2520,22 @@ sub rmkitcomp
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
-
-            my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
-            $kitcomps{$highest}{name} = $highest;
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
-            $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
-            $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
-            $kitcomps{$highest}{prerequisite} = $kitcomptable->{prerequisite};
-            $kitcomps{$highest}{basename} = $kitcomptable->{basename};
-            $kitcomps{$highest}{exlist} = $kitcomptable->{exlist};
-            $kitcomps{$highest}{postbootscripts} = $kitcomptable->{postbootscripts};
-            $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
-            $kitcomps{$highest}{driverpacks} = $kitcomptable->{driverpacks};
-            $kitcomps{$highest}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
+            push (@remove_kitcomps_by_basename,$kitcomponent);
+            foreach $basename_entry (@entries) {
+                my $this_entry = $basename_entry->{kitcompname};
+                $kitcomps{$this_entry}{name} = $this_entry;
+                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $this_entry}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+                $kitcomps{$this_entry}{kitname} = $kitcomptable->{kitname};
+                $kitcomps{$this_entry}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+                $kitcomps{$this_entry}{prerequisite} = $kitcomptable->{prerequisite};
+                $kitcomps{$this_entry}{basename} = $kitcomptable->{basename};
+                $kitcomps{$this_entry}{exlist} = $kitcomptable->{exlist};
+                $kitcomps{$this_entry}{postbootscripts} = $kitcomptable->{postbootscripts};
+                $kitcomps{$this_entry}{kitreponame} = $kitcomptable->{kitreponame};
+                $kitcomps{$this_entry}{driverpacks} = $kitcomptable->{driverpacks};
+                $kitcomps{$this_entry}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
+                $kitcomps{$this_entry}{remove_by_basename} = '1';
+            }
         }
     }
     # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
@@ -2559,13 +2563,35 @@ sub rmkitcomp
     my $invalidkitcomp = '';
     foreach my $kitcomp ( keys %kitcomps) {
         if ( !$kitcomps{$kitcomp}{matched} ) {
-            if ( !$invalidkitcomp ) {
-                $invalidkitcomp = $kitcomp;
+            if ( $kitcomps{$kitcomp}{remove_by_basename} ) {
+              delete($kitcomps{$kitcomp});
             } else {
+              if ( !$invalidkitcomp ) {
+                $invalidkitcomp = $kitcomp;
+              } else {
                 $invalidkitcomp = join(',', $invalidkitcomp, $kitcomp);
+              }
             }
         }
     }
+  
+    foreach $basename_to_remove (@remove_kitcomps_by_basename) {
+        my $removing_at_least_one = 0;
+        foreach my $kitcomponent (keys %kitcomps) {
+            if ($basename_to_remove eq $kitcomps{$kitcomponent}{basename}) {
+                $removing_at_least_one = 1;
+                last;
+            }
+        }
+        if (!$removing_at_least_one) {
+              if ( !$invalidkitcomp ) {
+                $invalidkitcomp = $basename_to_remove;
+              } else {
+                $invalidkitcomp = join(',', $invalidkitcomp, $basename_to_remove);
+              }
+        }
+    }
+
 
     if ( $invalidkitcomp ) {
         my %rsp;
@@ -2573,6 +2599,7 @@ sub rmkitcomp
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
+
 
     # Now check if there is any other kitcomponent depending on this one.
 
