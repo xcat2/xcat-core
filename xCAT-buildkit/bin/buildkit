@@ -1167,7 +1167,7 @@ sub edit_bldkitconf
     my $kitcomponent_basename = $kitname."_compute";
 
     if ($debianflag==1) {
-       if($osarch == "ppc64le"){
+       if($osarch eq "ppc64le"){
        $osarch="ppc64el";
        }
        $kitcomponent_basename = $kitname."-compute";
@@ -1893,7 +1893,7 @@ sub validate_os
     chomp($osarch);
 
     if ($debianflag==1) {
-       if($osarch == "ppc64le"){
+       if($osarch eq "ppc64le"){
        $osarch="ppc64el";
        }
     }
