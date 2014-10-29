@@ -1434,7 +1434,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1447,7 +1447,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1896,7 +1896,7 @@ sub mksysclone
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1909,7 +1909,7 @@ sub mksysclone
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1963,7 +1963,7 @@ sub mksysclone
             if ($archref->{arch} eq "ppc64"){
                 my $mactab = xCAT::Table->new('mac');
                 my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                my $formatmac = $macref->{mac};
+                my $formatmac = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 $formatmac =~ s/:/-/g;
                 $formatmac = "01-".$formatmac;
                 $kcmdline .= " BOOTIF=$formatmac ";

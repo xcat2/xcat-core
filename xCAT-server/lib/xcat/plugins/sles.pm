@@ -582,7 +582,7 @@ sub mknetboot
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";
-        my $mac = $machash->{$node}->[0]->{mac};
+        my $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{mac},$node);
 
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and ($reshash->{$node}->[0]->{installnic} ne "mac")) {
                 $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
@@ -1115,7 +1115,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $netdev = $macref->{mac};
+                    $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                  }
                 else
                 {
@@ -1128,7 +1128,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $netdev = $macref->{mac};
+                    $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1463,7 +1463,7 @@ sub mksysclone
             {
                 my $mactab = xCAT::Table->new("mac");
                 my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                $ksdev = $macref->{mac};
+                $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
             }
 
             unless ( $ksdev eq "bootif" ) {
@@ -1498,7 +1498,7 @@ sub mksysclone
             if ($archref->{arch} eq "ppc64"){
                 my $mactab = xCAT::Table->new('mac');
                 my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                my $formatmac = $macref->{mac};
+                my $formatmac = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 $formatmac =~ s/:/-/g;
                 $formatmac = "01-".$formatmac;
                 $kcmdline .= " BOOTIF=$formatmac ";
