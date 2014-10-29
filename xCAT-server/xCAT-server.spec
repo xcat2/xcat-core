@@ -176,6 +176,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kit.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/confluent.pm
 %endif
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
