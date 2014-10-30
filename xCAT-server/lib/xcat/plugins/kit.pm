@@ -586,10 +586,10 @@ sub assign_to_osimage
                 {
                     unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
                     {
-                        system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
-                        print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
-                        system("mount -o ro --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}");
-                        print "mount --bind $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame}";
+                       # system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
+                       # print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
+                        system("cp -Rf $kitrepodir $otherpkgdir/");
+                        print "cp -Rf $kitrepodir $otherpkgdir/";
                     }
                 }
                 else
