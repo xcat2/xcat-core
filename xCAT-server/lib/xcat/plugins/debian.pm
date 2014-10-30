@@ -1437,9 +1437,9 @@ sub mknetboot
         #}
         # append the mac address
         my $mac;
-        if( !$useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if( $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
-            $mac = $machash->{$node}->[0]->{'mac'};
+            $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{'mac'},$node);
 #            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
                #convert to linux format
                 if ($mac !~ /:/) {
@@ -1451,9 +1451,9 @@ sub mknetboot
 #            }
         }
 
-        #if ($useifname && $mac) {
-        #    $kcmdline .= "$mac ";
-        #}
+        if ($useifname && $mac) {
+            $kcmdline .= "$mac ";
+        }
 
         # add "netdev=<eth0>" or "BOOTIF=<mac>" 
         # which are used for other scenarios
