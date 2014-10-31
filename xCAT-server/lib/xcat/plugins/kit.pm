@@ -2776,7 +2776,9 @@ sub rmkitcomp
                     if ( !$match ) {
                         if ( $debianflag )
                         {
-                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                           #Now we do not use moun --bind for kitrepo dir to otherpkgdir
+                           #leave this line is support old way when using mount
+                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
                         }
                         system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
                     }
@@ -3248,6 +3250,60 @@ sub rmkitcomp
 
     # Write osimage table with all the above udpates.
     $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+
+    #After all the data updated in osimage and linuximage table
+    #check if these kitcomponents are assigned to other osimage
+    #if these kitcomponents are not used by other osimage, find their kitrepo and kitrepo directory under otherpkg dir
+    #delete these kitrepo
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
+
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+
+        my $otherpkgdir = $linuximagetable->{otherpkgdir};
+        foreach my $kitcomponent (keys %kitcomps) {
+
+            my %newosikitcomponents;
+            foreach my $allosikitcomp (@allosikitcomps) {
+                if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
+                    foreach my $allkitcomp ( @allkitcomps ) {
+                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                            $newosikitcomponents{$allkitcomp} = 1;
+                        }
+                    }
+                }
+            }
+
+            if ( $kitcomps{$kitcomponent}{kitreponame} ) {
+                if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
+
+                    # Check if this repo is used by other kitcomponent before removing the link
+                    my $match = 0;
+                    foreach my $osikitcomp ( keys %newosikitcomponents ) {
+
+                        my $depkitrepodir;
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
+                        if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+                            $depkitrepodir = "$otherpkgdir/$kitcomptable->{kitreponame}";
+                        }
+                        if ( $depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
+                            $match = 1;
+                        }
+                    }
+                    if ( !$match ) {
+                        if ( $debianflag )
+                        {
+                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
+                        }
+                        system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                    }
+                }
+            }
+        }
+    }
+
+
 
     return;
 }
