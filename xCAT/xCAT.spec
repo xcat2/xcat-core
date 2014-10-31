@@ -184,6 +184,11 @@ then
    cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
+if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then 
+   rm -rf /etc/apache2/conf.d/xcat.conf
+   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+fi
 
 %endif
 
