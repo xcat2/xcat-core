@@ -5,7 +5,6 @@ RewriteCond %{REQUEST_URI} xcatws
 RewriteRule ^(.*)$ https://%{SERVER_NAME}$1 [R,L]
 
 <Files xcatws.cgi>
-    Order allow,deny
-    Allow from all
+Require all granted
 </Files>
 
