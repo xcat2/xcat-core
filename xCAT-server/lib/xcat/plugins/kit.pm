@@ -4267,36 +4267,45 @@ sub lskit {
         return 0;
     }
     if ( defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
-       if ( ! defined($::opt_x)) {
-           if ( defined($::opt_K) ){
-              lskit_K($kit_hash);
-           }
 
-           # Option -R for kit repo attributes
-          if ( defined($::opt_R) ) {
-              my @kitrepos = keys(%$kitrepo_hash);
-              if (scalar @kitrepos == 0) {
-                 my $rsp = {};
-                 push @{ $rsp->{data} }, "No kit repos were found.";
-                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                 return 0;
-              }
-              lskit_R($kit_hash,$kitrepo_hash);
-           }
-
-          if ( defined($::opt_C) ) {
-              my @kitcomplist = keys(%$kitcomp_hash);
-              if (scalar @kitcomplist == 0) {
-                  my $rsp = {};
-                  push @{ $rsp->{data} }, "No kit components were found.";
-                  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-                  return 0;
+         if ( ! defined($::opt_x)) {
+               if ( defined($::opt_K) ){
+               lskit_K($kit_hash);
                }
-              lskit_C($kit_hash,$kitcomp_hash);
-          }
+
+               # Option -R for kit repo attributes
+               if ( defined($::opt_R) ) {
+                    my @kitrepos = keys(%$kitrepo_hash);
+                    if (scalar @kitrepos == 0) {
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "No kit repos were found.";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    return 0;
+                    }
+                    lskit_R($kit_hash,$kitrepo_hash);
+               }
+
+               if ( defined($::opt_C) ) {
+                    my @kitcomplist = keys(%$kitcomp_hash);
+                    if (scalar @kitcomplist == 0) {
+                         my $rsp = {};
+                         push @{ $rsp->{data} }, "No kit components were found.";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                         return 0;
+                     }
+                     lskit_C($kit_hash,$kitcomp_hash);
+              }
        }else
        {
-           create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+           if (defined($::opt_K)) {
+              create_lskit_K_xml_response($kit_hash);
+           }
+           if (defined($::opt_R)) {
+              create_lskit_R_xml_response($kit_hash,$kitrepo_hash);
+           }
+           if (defined($::opt_C)) {
+              create_lskit_C_xml_response($kit_hash,$kitcomp_hash);
+           }
        }
     }
     else
@@ -5112,6 +5121,122 @@ sub create_lskit_xml_response {
 
     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 }
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_K_xml_response
+
+        Prepare a response that returns the kit info in XML format.
+
+        Arguments:
+               kit hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_K_xml_response {
+
+    my $kit_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            push(@{$output_hash->{kitinfo}->{kit}}, $kit);
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_R_xml_response
+
+        Prepare a response that returns the kit repository
+        info in XML format.
+
+        Arguments:
+               kit repo hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_R_xml_response {
+
+    my $kit_hash = shift;
+    my $kitrepo_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitrepo}}, $kitrepo);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_C_xml_response
+
+        Prepare a response that returns the
+        kit component info in XML format.
+
+        Arguments:
+               kit hash table
+               kit component hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_C_xml_response {
+
+    my $kit_hash = shift;
+    my $kitcomp_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
 
 
 #----------------------------------------------------------------------------
