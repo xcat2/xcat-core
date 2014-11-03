@@ -4265,6 +4265,20 @@ sub lskit {
         return 0;
     }
 
+    # Option -R for kit repo attributes
+    if ( defined($::opt_R) ) {
+
+       my @kitrepos = keys(%$kitrepo_hash);
+       if (scalar @kitrepos == 0) {
+           my $rsp = {};
+           push @{ $rsp->{data} }, "No kit repos were found.";
+           xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+           return 0;
+       }
+       lskit_R($kit_hash,$kitrepo_hash);
+       return 0;
+    }
+
     if (defined($::opt_x)) {
         create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
     } else {
@@ -4272,6 +4286,54 @@ sub lskit {
     }
     return 0;
 }
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_R
+
+        Support for listing kit repo
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_R {
+
+     my $kit_hash = shift;
+     my $kitrepo_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                $output .= "kitrepo:\n";
+                for my $kitrepo_attr (sort(keys(%$kitrepo))) {
+                    $output .= sprintf("    %s=%s\n", $kitrepo_attr, $kitrepo->{$kitrepo_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
+}
+
 
 
 #----------------------------------------------------------------------------
