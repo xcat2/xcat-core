@@ -4279,6 +4279,20 @@ sub lskit {
        return 0;
     }
 
+    if ( defined($::opt_C) ) {
+
+       my @kitcomplist = keys(%$kitcomp_hash);
+       if (scalar @kitcomplist == 0) {
+           my $rsp = {};
+           push @{ $rsp->{data} }, "No kit components were found.";
+           xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+           return 0;
+       }
+       lskit_C($kit_hash,$kitcomp_hash);
+       return 0;
+    }
+
+
     if (defined($::opt_x)) {
         create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
     } else {
@@ -4334,6 +4348,53 @@ sub lskit_R {
 
 }
 
+#----------------------------------------------------------------------------
+
+=head3  lskit_C
+
+        Support for listing kitcomponent
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_C {
+
+     my $kit_hash = shift;
+     my $kitcomp_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                $output .= "kitcomponent:\n";
+                for my $kitcomp_attr (sort(keys(%$kitcomp))) {
+                    $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
+}
 
 
 #----------------------------------------------------------------------------
