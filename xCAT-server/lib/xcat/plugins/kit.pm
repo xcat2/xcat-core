@@ -4256,6 +4256,8 @@ sub lskit {
     my $kitrepo_hash = get_kitrepo_hash($::kitnames, $::kitrepoattrs);
     my $kitcomp_hash = get_kitcomp_hash($::kitnames, $::kitcompattrs);
 
+
+
     # Now display the output
     my @kitnames = keys(%$kit_hash);
     if (scalar @kitnames == 0) {
@@ -4264,42 +4266,50 @@ sub lskit {
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
     }
+    if ( defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
+       if ( ! defined($::opt_x)) {
+           if ( defined($::opt_K) ){
+              lskit_K($kit_hash);
+           }
 
-    # Option -R for kit repo attributes
-    if ( defined($::opt_R) ) {
+           # Option -R for kit repo attributes
+          if ( defined($::opt_R) ) {
+              my @kitrepos = keys(%$kitrepo_hash);
+              if (scalar @kitrepos == 0) {
+                 my $rsp = {};
+                 push @{ $rsp->{data} }, "No kit repos were found.";
+                 xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                 return 0;
+              }
+              lskit_R($kit_hash,$kitrepo_hash);
+           }
 
-       my @kitrepos = keys(%$kitrepo_hash);
-       if (scalar @kitrepos == 0) {
-           my $rsp = {};
-           push @{ $rsp->{data} }, "No kit repos were found.";
-           xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-           return 0;
+          if ( defined($::opt_C) ) {
+              my @kitcomplist = keys(%$kitcomp_hash);
+              if (scalar @kitcomplist == 0) {
+                  my $rsp = {};
+                  push @{ $rsp->{data} }, "No kit components were found.";
+                  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                  return 0;
+               }
+              lskit_C($kit_hash,$kitcomp_hash);
+          }
+       }else
+       {
+           create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
        }
-       lskit_R($kit_hash,$kitrepo_hash);
-       return 0;
     }
-
-    if ( defined($::opt_C) ) {
-
-       my @kitcomplist = keys(%$kitcomp_hash);
-       if (scalar @kitcomplist == 0) {
-           my $rsp = {};
-           push @{ $rsp->{data} }, "No kit components were found.";
-           xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-           return 0;
-       }
-       lskit_C($kit_hash,$kitcomp_hash);
-       return 0;
-    }
-
-
-    if (defined($::opt_x)) {
-        create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
-    } else {
-        create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+    else
+    {
+          if (defined($::opt_x)) {
+               create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+          } else {
+               create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+          }
     }
     return 0;
 }
+
 
 #----------------------------------------------------------------------------
 
@@ -4339,6 +4349,51 @@ sub lskit_R {
                 $output .= "\n";
             }
         }
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_K
+
+        Support for listing kit
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_K {
+
+     my $kit_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            $output .= "kit:\n";
+            for my $kit_attr (sort(keys(%$kit))) {
+                $output .= sprintf("    %s=%s\n", $kit_attr, $kit->{$kit_attr});
+            }
+            $output .= "\n";
+        }
+
 
         push @{ $rsp->{data} }, $output;
     }
