@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<liteimg> - Modify statelite image by creating a series of links.
+B<liteimg> - Pack statelite image by creating a series of links.
 
 =head1 SYNOPSIS
 
@@ -8,7 +8,7 @@ I<liteimg [-h| --help]>
 
 I<liteimg  [-v| --version]>
 
-I<liteimg [-o OS] [ -p profile] [-a architecture] [-t rootfstype]>
+I<liteimg [-o OS] [ -p profile] [-a architecture] [-t rootfstype] [-V]>
 
 I<liteimg imagename>
 
@@ -61,6 +61,7 @@ B<-a>          Architecture (ppc64,x86_64,etc)
 
 B<-t>          The type of rootfs for the image (nfs, ramdisk). It is optional, nfs is used to be the rootfs type when B<-t> is not specified.
 
+B<-V>          Verbose mode.
 
 =head1 RETURN VALUE
 
@@ -70,7 +71,7 @@ B<-t>          The type of rootfs for the image (nfs, ramdisk). It is optional, 
 
 =head1 EXAMPLES
 
-1. To lite a fedora8 image for a compute node architecture x86_64 enter:
+1. To  pack the statelite image for fedora8  for a compute node architecture x86_64 enter:
 
 I<liteimg -o fedora8 -p compute -a x86_64>
 
