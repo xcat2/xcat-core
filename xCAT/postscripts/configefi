@@ -17,6 +17,26 @@ if [ "$arch" =  "x86_64" ]; then
 
 		if [ -f "/boot/efi/EFI/redhat/grub.efi" ];then
 			efibootmgr -c -l \\EFI\\redhat\\grub.efi -L syscloneLinux
+                #support for redhat 7.0
+                elif [ -f "/boot/efi/EFI/redhat/grubx64.efi" ];then
+                        efibootmgr -c -l \\EFI\\redhat\\grubx64.efi -L syscloneLinux
+                        
+                        boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
+                        sed -i 's| root=\S*| root='$boot_root'|' /boot/efi/EFI/redhat/grub.cfg 
+      
+                        blkid -c /dev/null |grep UUID|while read str_line
+                        do
+                                partition=`echo "$str_line"|grep UUID|awk '{print $1}'|sed -e 's|/dev/\(.*\):|\1|g'`
+                                #echo "partition=$partition"
+  
+                                if echo "$partition"|grep /; then
+                                    continue
+                                fi
+ 
+                                newuuid=`blkid -c /dev/null|grep "$partition"|sed -e 's|.*UUID="\(.*\)" T.*|\1|g'`    
+                                #echo "newuuid=$newuuid"
+                                sed -i '/'$partition'/s|UUID=\S*|UUID='$newuuid'|' /etc/fstab
+                        done
 		elif [ -f "/boot/efi/efi/SuSE/elilo.efi" ];then
 			efibootmgr -c -l \\efi\\SuSE\\elilo.efi -L syscloneLinux
 		else
@@ -101,8 +121,28 @@ elif [ "$arch" = "ppc64" ]; then
 
        # Set 0x41 as the partition type of the first partition
        # echo A | dd of=/dev/sda bs=1 count=1 seek=450
+    elif [ -f "/boot/grub2/grub" ];then
+       echo "dd if=/boot/grub2/grub of=/dev/sda1 bs=4096"
+       dd if=/boot/grub2/grub of=/dev/sda1 bs=4096
+
+       boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
+       sed -i 's| root=UUID=\S*| root='$boot_root'|' /boot/grub2/grub.cfg
+
+       blkid -c /dev/null |grep UUID|while read str_line
+       do
+           partition=`echo "$str_line"|grep UUID|awk '{print $1}'|sed -e 's|/dev/\(.*\):|\1|g'`
+           #echo "partition=$partition"
+
+           if echo "$partition"|grep /; then
+               continue
+           fi
+
+           newuuid=`blkid -c /dev/null|grep "$partition"|sed -e 's|.*UUID="\(.*\)" T.*|\1|g'`
+           #echo "newuuid=$newuuid"
+           sed -i '/'$partition'/s|UUID=\S*|UUID='$newuuid'|' /etc/fstab
+       done
     else
-       echo "there isn't yaboot bootloader"
+       echo "Can not find boot loader"
     fi     
 else
     echo "[ERROR]: unsupport arch....."
