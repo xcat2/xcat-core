@@ -37,7 +37,9 @@ d-i partman-md/device_remove_md boolean true
 
 #create the /tmp/partitioning based on the uefi or legacy bios 
 d-i partman/early_command string \
-    debconf-set partman-auto/disk "$(list-devices disk | head -n1)"
+    set -x; \
+    DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*sd[^0-9]$' | sort | head -n1 | egrep -o 'sd.*$'`; echo "/dev/$DEV" > /tmp/boot_disk; \
+    debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
 d-i partman-auto/expert_recipe_file string /tmp/partitioning
 
 # This makes partman automatically partition without confirmation, provided
