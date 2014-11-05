@@ -31,6 +31,12 @@ $::KITFRAMEWORK ="2";
 # this code is compatible with other kits that are at framework 0 or 1.
 $::COMPATIBLE_KITFRAMEWORKS = "0,1,2";
 
+my $debianflag = 0;
+my $tempstring = xCAT::Utils->osver();
+if ( $tempstring =~ /debian/ || $tempstring =~ /ubuntu/ ){
+    $debianflag = 1;
+#    print "debian";
+}
 
 #-------------------------------------------------------
 
@@ -576,11 +582,23 @@ sub assign_to_osimage
                 unless ( -d "$otherpkgdir" ) {
                     mkpath("$otherpkgdir");
                 }
-
-                # Create symlink if doesn't exist
-                unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
+                if ( $debianflag )
+                {
+                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
+                    {
+                       # system("mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}");
+                       # print "mkdir -p $otherpkgdir/$kitcomptable->{kitreponame}";
+                        system("cp -Rf $kitrepodir $otherpkgdir/");
+                        print "cp -Rf $kitrepodir $otherpkgdir/";
+                    }
+                }
+                else
+                {
+                    # Create symlink if doesn't exist
+                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" ) {
                     system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
-                } 
+                    }
+                }
             } else {
                 $callback->({error => ["Cannot open linuximage table or otherpkgdir do not exist"],errorcode=>[1]});
                 return 1;
@@ -1442,7 +1460,7 @@ sub rmkit
         push@{ $rsp{data} }, "Usage: rmkit - Remove Kits from xCAT.";
         push@{ $rsp{data} }, "\trmkit [-h|--help]";
         push@{ $rsp{data} }, "\trmkit [-v|--version]";
-        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>] [-V]";
+        push@{ $rsp{data} }, "\trmkit [-V|--verbose] [-f|--force] [-t|--test] <kitlist>]";
         xCAT::MsgUtils->message( "I", \%rsp, $callback );
     };
 
@@ -2400,7 +2418,7 @@ sub rmkitcomp
         push@{ $rsp{data} }, "Usage: rmkitcomp - Remove Kit components from an xCAT osimage.";
         push@{ $rsp{data} }, "\trmkitcomp [-h|--help]";
         push@{ $rsp{data} }, "\trmkitcomp [-v|--version]";
-        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] \n\t\t-i <osimage> <kitcompname_list>";
+        push@{ $rsp{data} }, "\trmkitcomp [-V|--verbose] [-u|--uninstall] [-f|--force] [--noscripts] \n\t\t-i <osimage> <kitcompname_list>";
         xCAT::MsgUtils->message( "I", \%rsp, $callback, $ret );
     };
 
@@ -2471,6 +2489,7 @@ sub rmkitcomp
     }
 
     my %kitcomps;
+    my @remove_kitcomps_by_basename;
     my $des = shift @ARGV;
     my @kitcomponents = split ',', $des;
     foreach my $kitcomponent (@kitcomponents) {
@@ -2501,19 +2520,22 @@ sub rmkitcomp
                 xCAT::MsgUtils->message( "E", \%rsp, $callback );
                 return 1;
             }
-
-            my $highest = get_highest_version('kitcompname', 'version', 'release', @entries);
-            $kitcomps{$highest}{name} = $highest;
-            (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $highest}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
-            $kitcomps{$highest}{kitname} = $kitcomptable->{kitname};
-            $kitcomps{$highest}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
-            $kitcomps{$highest}{prerequisite} = $kitcomptable->{prerequisite};
-            $kitcomps{$highest}{basename} = $kitcomptable->{basename};
-            $kitcomps{$highest}{exlist} = $kitcomptable->{exlist};
-            $kitcomps{$highest}{postbootscripts} = $kitcomptable->{postbootscripts};
-            $kitcomps{$highest}{kitreponame} = $kitcomptable->{kitreponame};
-            $kitcomps{$highest}{driverpacks} = $kitcomptable->{driverpacks};
-            $kitcomps{$highest}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
+            push (@remove_kitcomps_by_basename,$kitcomponent);
+            foreach $basename_entry (@entries) {
+                my $this_entry = $basename_entry->{kitcompname};
+                $kitcomps{$this_entry}{name} = $this_entry;
+                (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $this_entry}, 'kitname', 'kitpkgdeps', 'prerequisite', 'postbootscripts', 'genimage_postinstall', 'kitreponame', 'exlist', 'basename', 'driverpacks');
+                $kitcomps{$this_entry}{kitname} = $kitcomptable->{kitname};
+                $kitcomps{$this_entry}{kitpkgdeps} = $kitcomptable->{kitpkgdeps};
+                $kitcomps{$this_entry}{prerequisite} = $kitcomptable->{prerequisite};
+                $kitcomps{$this_entry}{basename} = $kitcomptable->{basename};
+                $kitcomps{$this_entry}{exlist} = $kitcomptable->{exlist};
+                $kitcomps{$this_entry}{postbootscripts} = $kitcomptable->{postbootscripts};
+                $kitcomps{$this_entry}{kitreponame} = $kitcomptable->{kitreponame};
+                $kitcomps{$this_entry}{driverpacks} = $kitcomptable->{driverpacks};
+                $kitcomps{$this_entry}{genimage_postinstall} = $kitcomptable->{genimage_postinstall};
+                $kitcomps{$this_entry}{remove_by_basename} = '1';
+            }
         }
     }
     # Check if the kitcomponents are existing in osimage.kitcomponents attribute.
@@ -2541,13 +2563,35 @@ sub rmkitcomp
     my $invalidkitcomp = '';
     foreach my $kitcomp ( keys %kitcomps) {
         if ( !$kitcomps{$kitcomp}{matched} ) {
-            if ( !$invalidkitcomp ) {
-                $invalidkitcomp = $kitcomp;
+            if ( $kitcomps{$kitcomp}{remove_by_basename} ) {
+              delete($kitcomps{$kitcomp});
             } else {
+              if ( !$invalidkitcomp ) {
+                $invalidkitcomp = $kitcomp;
+              } else {
                 $invalidkitcomp = join(',', $invalidkitcomp, $kitcomp);
+              }
             }
         }
     }
+  
+    foreach $basename_to_remove (@remove_kitcomps_by_basename) {
+        my $removing_at_least_one = 0;
+        foreach my $kitcomponent (keys %kitcomps) {
+            if ($basename_to_remove eq $kitcomps{$kitcomponent}{basename}) {
+                $removing_at_least_one = 1;
+                last;
+            }
+        }
+        if (!$removing_at_least_one) {
+              if ( !$invalidkitcomp ) {
+                $invalidkitcomp = $basename_to_remove;
+              } else {
+                $invalidkitcomp = join(',', $invalidkitcomp, $basename_to_remove);
+              }
+        }
+    }
+
 
     if ( $invalidkitcomp ) {
         my %rsp;
@@ -2555,6 +2599,7 @@ sub rmkitcomp
         xCAT::MsgUtils->message( "E", \%rsp, $callback );
         return 1;
     }
+
 
     # Now check if there is any other kitcomponent depending on this one.
 
@@ -2729,6 +2774,12 @@ sub rmkitcomp
                         }
                     }
                     if ( !$match ) {
+                        if ( $debianflag )
+                        {
+                           #Now we do not use moun --bind for kitrepo dir to otherpkgdir
+                           #leave this line is support old way when using mount
+                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
+                        }
                         system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
                     }
                 }
@@ -3199,6 +3250,60 @@ sub rmkitcomp
 
     # Write osimage table with all the above udpates.
     $tabs{osimage}->setAttribs({imagename => $osimage }, \%{$osimagetable} );
+
+    #After all the data updated in osimage and linuximage table
+    #check if these kitcomponents are assigned to other osimage
+    #if these kitcomponents are not used by other osimage, find their kitrepo and kitrepo directory under otherpkg dir
+    #delete these kitrepo
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
+
+    (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
+    if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
+
+        my $otherpkgdir = $linuximagetable->{otherpkgdir};
+        foreach my $kitcomponent (keys %kitcomps) {
+
+            my %newosikitcomponents;
+            foreach my $allosikitcomp (@allosikitcomps) {
+                if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
+                    foreach my $allkitcomp ( @allkitcomps ) {
+                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                            $newosikitcomponents{$allkitcomp} = 1;
+                        }
+                    }
+                }
+            }
+
+            if ( $kitcomps{$kitcomponent}{kitreponame} ) {
+                if ( -d "$otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}" ) {
+
+                    # Check if this repo is used by other kitcomponent before removing the link
+                    my $match = 0;
+                    foreach my $osikitcomp ( keys %newosikitcomponents ) {
+
+                        my $depkitrepodir;
+                        (my $kitcomptable) = $tabs{kitcomponent}->getAttribs({kitcompname => $osikitcomp}, 'kitreponame');
+                        if ( $kitcomptable and $kitcomptable->{kitreponame} ) {
+                            $depkitrepodir = "$otherpkgdir/$kitcomptable->{kitreponame}";
+                        }
+                        if ( $depkitrepodir =~ /^$otherpkgdir\/$kitcomps{$kitcomponent}{kitreponame}$/) {
+                            $match = 1;
+                        }
+                    }
+                    if ( !$match ) {
+                        if ( $debianflag )
+                        {
+                           system("umount -f $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame} > /dev/null");
+                        }
+                        system("rm -rf $otherpkgdir/$kitcomps{$kitcomponent}{kitreponame}");
+                    }
+                }
+            }
+        }
+    }
+
+
 
     return;
 }
@@ -4151,6 +4256,8 @@ sub lskit {
     my $kitrepo_hash = get_kitrepo_hash($::kitnames, $::kitrepoattrs);
     my $kitcomp_hash = get_kitcomp_hash($::kitnames, $::kitcompattrs);
 
+
+
     # Now display the output
     my @kitnames = keys(%$kit_hash);
     if (scalar @kitnames == 0) {
@@ -4160,12 +4267,201 @@ sub lskit {
         return 0;
     }
 
-    if (defined($::opt_x)) {
-        create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
-    } else {
-        create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+    #lskit use options
+    if ( defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
+
+         if ( ! defined($::opt_x)) {
+               if ( defined($::opt_K) ){
+               lskit_K($kit_hash);
+               }
+
+               # Option -R for kit repo attributes
+               if ( defined($::opt_R) ) {
+                    my @kitrepos = keys(%$kitrepo_hash);
+                    if (scalar @kitrepos == 0) {
+                    my $rsp = {};
+                    push @{ $rsp->{data} }, "No kit repos were found.";
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                    return 0;
+                    }
+                    lskit_R($kit_hash,$kitrepo_hash);
+               }
+
+               if ( defined($::opt_C) ) {
+                    my @kitcomplist = keys(%$kitcomp_hash);
+                    if (scalar @kitcomplist == 0) {
+                         my $rsp = {};
+                         push @{ $rsp->{data} }, "No kit components were found.";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                         return 0;
+                     }
+                     lskit_C($kit_hash,$kitcomp_hash);
+              }
+         }else
+         {
+           #To support xml format
+           if (defined($::opt_K)) {
+              create_lskit_K_xml_response($kit_hash);
+           }
+           if (defined($::opt_R)) {
+              create_lskit_R_xml_response($kit_hash,$kitrepo_hash);
+           }
+           if (defined($::opt_C)) {
+              create_lskit_C_xml_response($kit_hash,$kitcomp_hash);
+           }
+        }
+    }
+    else
+    {
+         #lskit use no options
+          if (defined($::opt_x)) {
+               create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+          } else {
+               create_lskit_stanza_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
+          }
     }
     return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_R
+
+        Support for listing kit repo
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_R {
+
+     my $kit_hash = shift;
+     my $kitrepo_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                $output .= "kitrepo:\n";
+                for my $kitrepo_attr (sort(keys(%$kitrepo))) {
+                    $output .= sprintf("    %s=%s\n", $kitrepo_attr, $kitrepo->{$kitrepo_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_K
+
+        Support for listing kit
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_K {
+
+     my $kit_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            $output .= "kit:\n";
+            for my $kit_attr (sort(keys(%$kit))) {
+                $output .= sprintf("    %s=%s\n", $kit_attr, $kit->{$kit_attr});
+            }
+            $output .= "\n";
+        }
+
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
+}
+
+#----------------------------------------------------------------------------
+
+=head3  lskit_C
+
+        Support for listing kitcomponent
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskit_C {
+
+     my $kit_hash = shift;
+     my $kitcomp_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+       my $output .= "\nkit : $kitname\n----------------------------------------------------\n";
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                $output .= "kitcomponent:\n";
+                for my $kitcomp_attr (sort(keys(%$kitcomp))) {
+                    $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
 }
 
 
@@ -4333,20 +4629,35 @@ sub lskitdeployparam {
     foreach my $kit (@$kits) {
         my $deployparam_file = $kit->{kitdir}."/other_files/".$kit->{kitdeployparams};
 
+        my $tmpkitdeployparames = $kit->{kitdeployparams};
+
         if (defined($deployparam_file)) {
-            open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
+
+            # Check if there is kitdeployparam file or not
+            if (defined($tmpkitdeployparames))
+            {
+                  open(my $fh, "<", $deployparam_file) || die sprintf("Failed to open file %s because: %s", $deployparam_file, $!);
             
-            while (<$fh>) {
-                chomp $_;
-                if ($_ =~ /^#ENV:.+=.+#$/) {
-                    my $tmp = $_;
-                    $tmp =~ s/^#ENV://;
-                    $tmp =~ s/#$//;
-                    (my $name, my $value) = split(/=/, $tmp);
-                    $deployparam_hash->{$name} = $value;
-                }
-            }
-            close($fh);
+                  while (<$fh>) {
+                     chomp $_;
+                     if ($_ =~ /^#ENV:.+=.+#$/) {
+                          my $tmp = $_;
+                          $tmp =~ s/^#ENV://;
+                          $tmp =~ s/#$//;
+                          (my $name, my $value) = split(/=/, $tmp);
+                          $deployparam_hash->{$name} = $value;
+                     }
+                  }
+                  close($fh);
+           }
+           else {
+                   my $rsp = {};
+                   push @{ $rsp->{data}}, "There is no kitdeployparams file in $deployparam_file.\n";
+                   xCAT::MsgUtils->message("W", $rsp, $::CALLBACK);
+
+                   return 1;
+           }
+
         }
     }
 
@@ -4814,6 +5125,122 @@ sub create_lskit_xml_response {
 
     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 }
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_K_xml_response
+
+        Prepare a response that returns the kit info in XML format.
+
+        Arguments:
+               kit hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_K_xml_response {
+
+    my $kit_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+        # Kit info
+        if (defined($kit_hash->{$kitname})) {
+            my $kit = $kit_hash->{$kitname}->[0];
+            push(@{$output_hash->{kitinfo}->{kit}}, $kit);
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_R_xml_response
+
+        Prepare a response that returns the kit repository
+        info in XML format.
+
+        Arguments:
+               kit repo hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_R_xml_response {
+
+    my $kit_hash = shift;
+    my $kitrepo_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+        # Kit repository info
+        if (defined($kitrepo_hash->{$kitname})) {
+            for my $kitrepo (@{$kitrepo_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitrepo}}, $kitrepo);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3  create_lskit_C_xml_response
+
+        Prepare a response that returns the
+        kit component info in XML format.
+
+        Arguments:
+               kit hash table
+               kit component hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskit_C_xml_response {
+
+    my $kit_hash = shift;
+    my $kitcomp_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
+
 
 
 #----------------------------------------------------------------------------

@@ -582,7 +582,7 @@ sub mknetboot
 
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";
-        my $mac = $machash->{$node}->[0]->{mac};
+        my $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{mac},$node);
 
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and ($reshash->{$node}->[0]->{installnic} ne "mac")) {
                 $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
@@ -1010,6 +1010,11 @@ sub mkinstall
              and -r "$pkgdir/1/boot/i386/loader/linux"
              and -r "$pkgdir/1/boot/i386/loader/initrd"
             )
+            or (
+             $arch eq "ppc64le"
+             and -r "$pkgdir/1/boot/ppc64le/linux"
+             and -r "$pkgdir/1/boot/ppc64le/initrd"
+            )
             or ($arch =~ /ppc/ and -r "$pkgdir/1/suseboot/inst64")
           )
         {
@@ -1048,6 +1053,12 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/boot/i386/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/i386/loader/initrd", "$tftppath");
+                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                    }
+                } elsif ($arch eq "ppc64le") {
+                    unless ($noupdateinitrd) {
+                        copy("$pkgdir/1/boot/$arch/linux", "$tftppath");
+                        copy("$pkgdir/1/boot/$arch/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                     }
                 }
@@ -1104,7 +1115,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $netdev = $macref->{mac};
+                    $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                  }
                 else
                 {
@@ -1117,7 +1128,7 @@ sub mkinstall
                 {
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $netdev = $macref->{mac};
+                    $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else
                 {
@@ -1231,7 +1242,7 @@ sub mkinstall
             my $kernelpath;
             my $initrdpath;
             
-            if ($arch =~ /x86/)
+            if ($arch =~ /x86/ or $arch eq "ppc64le")
             {
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
@@ -1368,11 +1379,17 @@ sub mksysclone
     #    copy("/var/lib/systemimager/scripts/post-install/11all.replace_byid_device","$pspath");
     #}
 
-    unless (-r "$pspath/95all.monitord_rebooted")
+    #unless (-r "$pspath/95all.monitord_rebooted")
+    #{
+    #    mkpath("$pspath");
+    #    copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+    #}
+
+    if(-e "$pspath/95all.monitord_rebooted")
     {
-        mkpath("$pspath");
-        copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+        `rm $pspath/95all.monitord_rebooted`;
     }
+
 
     # copy hosts
     copy("/etc/hosts","$installroot/sysclone/scripts/");
@@ -1452,7 +1469,7 @@ sub mksysclone
             {
                 my $mactab = xCAT::Table->new("mac");
                 my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                $ksdev = $macref->{mac};
+                $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
             }
 
             unless ( $ksdev eq "bootif" ) {
@@ -1487,7 +1504,7 @@ sub mksysclone
             if ($archref->{arch} eq "ppc64"){
                 my $mactab = xCAT::Table->new('mac');
                 my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                my $formatmac = $macref->{mac};
+                my $formatmac = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 $formatmac =~ s/:/-/g;
                 $formatmac = "01-".$formatmac;
                 $kcmdline .= " BOOTIF=$formatmac ";
@@ -1731,6 +1748,9 @@ sub copycd
     if ($darch and $darch =~ /i.86/)
     {
         $darch = "x86";
+    }
+    elsif ($darch and ($darch eq "ppc64le" or $darch eq "ppc64el")) {
+        $darch = "ppc64le";
     }
     elsif ($darch and $darch =~ /ppc/)
     {

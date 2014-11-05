@@ -600,7 +600,9 @@ sub mkinstall
             $darch = "i386";
         }
         else {
-            xCAT::MsgUtils->message("S","debian.pm: Unknown arch ($arch)");
+            if ($arch ne "ppc64le" and $arch ne "ppc64el") {
+                xCAT::MsgUtils->message("S","debian.pm: Unknown arch ($arch)");
+            }
             $darch = $arch;
         }
 
@@ -810,7 +812,7 @@ sub mkinstall
                 if ($ent->{installnic} eq "mac"){
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else{
                     $ksdev = $ent->{installnic};
@@ -820,7 +822,7 @@ sub mkinstall
                 if ($ent->{primarynic} eq "mac"){
                     my $mactab = xCAT::Table->new("mac");
                     my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                    $ksdev = $macref->{mac};
+                    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                 }
                 else{
                     $ksdev = $ent->{primarynic};
@@ -1435,9 +1437,9 @@ sub mknetboot
         #}
         # append the mac address
         my $mac;
-        if( !$useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if( $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
-            $mac = $machash->{$node}->[0]->{'mac'};
+            $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{'mac'},$node);
 #            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
                #convert to linux format
                 if ($mac !~ /:/) {
@@ -1449,9 +1451,9 @@ sub mknetboot
 #            }
         }
 
-        #if ($useifname && $mac) {
-        #    $kcmdline .= "$mac ";
-        #}
+        if ($useifname && $mac) {
+            $kcmdline .= "$mac ";
+        }
 
         # add "netdev=<eth0>" or "BOOTIF=<mac>" 
         # which are used for other scenarios

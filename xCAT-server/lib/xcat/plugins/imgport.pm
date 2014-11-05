@@ -998,7 +998,7 @@ sub make_bundle {
         # Local imgexports go to the current working directory
         $dest = "$dir/$bundleName";
     }
-    
+
     $callback->( {data => ["Compressing $imagename bundle.  Please be patient."]});
     if($::VERBOSE){
         $callback->({data => ["tar czvf $dest . "]});   
@@ -1971,6 +1971,10 @@ sub make_files {
     	    $callback->({error=>["Could not open the litefile table."],errorcode=>[1]});
     	    return 0;
     	}
+		#get current litefile table entries
+		my @entries = $lftab->getAllAttribsWhere( "\"image\" = 'ALL'", 'file', 'options');
+
+        #get the entries for image
         open(FILE,"$fn") or die "Could not open $fn.";
     	foreach my $line (<FILE>) {
     	    chomp($line);
@@ -1978,10 +1982,25 @@ sub make_files {
     	    my @tmp=split('"', $line);
     	    my %keyhash;
     	    my %updates;
-    	    $keyhash{image}=$data->{osimage}->{imagename};
-    	    $keyhash{file}=$tmp[3];
-    	    $updates{options}=$tmp[5];
-    	    $lftab->setAttribs(\%keyhash, \%updates );
+			my $filename = $tmp[3];
+			my $options = $tmp[5];
+			
+            # If there is an entry with image as ALL for the same file,
+            # then no need to add the file name in the table
+            my $skip = 0;
+            foreach my $entry (@entries) {
+				if (($filename eq $entry->{'file'}) && ($options eq $entry->{'options'})){
+					$skip = 1;
+					last;
+				}
+			}
+
+			if ($skip == 0) {
+				$keyhash{image}=$data->{osimage}->{imagename};
+				$keyhash{file}=$filename;
+				$updates{options}=$options;
+				$lftab->setAttribs(\%keyhash, \%updates );
+			}
     	}
     	close(FILE);
         $lftab->commit;

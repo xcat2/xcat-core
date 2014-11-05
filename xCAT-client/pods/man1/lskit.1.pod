@@ -58,6 +58,7 @@ is a comma-delimited list of kit names. The B<lskit> command will only display t
 
 =item B<-x|--xml|--XML>
 
+Need XCATXMLTRACE=1 env when using -x|--xml|--XML, for example: XCATXMLTRACE=1  lskit -x testkit-1.0.0
 Return the output with XML tags.  The data is returned as:
   <data>
     <kitinfo>
@@ -155,6 +156,12 @@ To list the framework value of a Kit tarfile.
   
         kitframework=2
         compatible_kitframeworks=0,1,2
+
+=item 5.
+
+To list kit "testkit-1.0-1" with XML tags, enter:
+
+  XCATXMLTRACE=1 lskit -x testkit-1.0-1
 
 =back
 

@@ -233,6 +233,12 @@ sub delotherinterfaces
     }
 }
 
+
+##!!!!!!!!!!!!!!!!!!!
+# NOTE FOR CHANGING #
+# This subroutine is called in ddns.pm, please take care the calling in ddns.pm
+# for your changes, especially the change upon the subroutine interface
+##!!!!!!!!!!!!!!!!!!!
 sub add_hosts_content {
     my %args = @_;
     my $nodelist = $args{nodelist};
@@ -585,6 +591,12 @@ sub writeout
 =cut
 
 #-------------------------------------------------------------------------------
+
+##!!!!!!!!!!!!!!!!!!!
+# NOTE FOR CHANGING #
+# This subroutine is called in ddns.pm, please take care the calling in ddns.pm
+# for your changes, especially the change upon the subroutine interface
+##!!!!!!!!!!!!!!!!!!!
 sub donics
 {
     my %args = @_;

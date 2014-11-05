@@ -48,7 +48,7 @@ osimage name that include this kit component.
 
 =item B<kitcompname_list>
 
-A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage.
+A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage. If a basename is specified, all kitcomponents matching that basename will be removed from the osimage.
 
 =back
 

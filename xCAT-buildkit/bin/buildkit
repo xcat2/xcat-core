@@ -364,7 +364,8 @@ if ($::VERSION)
     my $versioncmd = "rpm -q --qf \"%{NAME}:  %{VERSION}-%{RELEASE} \n\" xCAT-buildkit";
     my $message = "Error quering xCAT-buildkit rpm.  Version info is not available. \n";
     if ( $debianflag ){
-        $versioncmd = "dpkg-query --show -f='\${PackageSpec}: \${Version}\n' xcat-buildkit";
+
+        $versioncmd = "dpkg-query --show -f='\${binary:Package}:  \${Version}\n' xcat-buildkit";
         $message = "Error quering xcat-buildkit package. Version info is not available. \n";
     }
     if ( system($versioncmd) ) {
@@ -1166,7 +1167,7 @@ sub edit_bldkitconf
     my $kitcomponent_basename = $kitname."_compute";
 
     if ($debianflag==1) {
-       if($osarch == "ppc64le"){
+       if($osarch eq "ppc64le"){
        $osarch="ppc64el";
        }
        $kitcomponent_basename = $kitname."-compute";
@@ -1892,7 +1893,7 @@ sub validate_os
     chomp($osarch);
 
     if ($debianflag==1) {
-       if($osarch == "ppc64le"){
+       if($osarch eq "ppc64le"){
        $osarch="ppc64el";
        }
     }
@@ -3890,6 +3891,47 @@ sub NEW_kit_addpkgs
           }
         }
     }
+
+
+    #When using -k -r, there are useless repodir
+    #delete useless repo dir
+    my $kitrepodirby=$::base_repodir;
+    my $cmdby = "/bin/ls $kitrepodirby 2>/dev/null";
+    my $outputby = `$cmdby`;
+    my @allrepolist = split(/\n/, $outputby);
+    my @dellist;
+    
+    foreach my $reponame (@allrepolist)
+    {
+       my $match=0;
+       foreach my $kr (@{$::bldkit_config->{kitrepo}{entries}})
+       {
+       my $repodirname = "$kr->{kitreponame}";
+
+           if ( ${repodirname} eq ${reponame} )
+           {
+                ${match}++;
+           }
+       }
+       if ( ${match} == 0 )
+       {
+          push(@dellist,$reponame);
+       }
+    }
+
+    foreach my $del (@dellist)
+    {
+        my $delrepodir=$::base_repodir."/".$del ;
+        if ( -d $delrepodir )
+        {
+           my $delcmd="rm -Rf $delrepodir";
+           if ( system($delcmd) )
+           {
+              print "Failed to delete useless repo directory \n";
+           }
+        }
+    }
+
 
     # Build the full kit tar file
     my $buildtar_rc = &kit_buildtar;

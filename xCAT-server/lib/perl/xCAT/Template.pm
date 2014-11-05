@@ -473,7 +473,7 @@ sub windows_net_cfg {
     unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
     my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
     unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
-    my $suffix = $ent->{mac};
+    my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac},$node);
     my $mac = $suffix;
     $suffix = lc($suffix);
     $mac =~ s/:/-/g;
@@ -665,7 +665,7 @@ sub esxipv6setup {
 	my $hoststab;
       my $mactab = xCAT::Table->new('mac',-create=>0);
       my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
-      my $suffix = $ent->{mac};
+      my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac},$node);
       $suffix = lc($suffix);
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
  #in autoula, because ESXi weasel doesn't seemingly grok IPv6 at all, we'll have to do it in %pre
@@ -693,7 +693,7 @@ sub kickstartnetwork {
       unless ($mactab) { $tmplerr ="mac table should always exist prior to template processing when doing autoula"; return;}
       my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
       unless ($ent and $ent->{mac}) { $tmplerr ="missing mac data for $node"; return;}
-      my $suffix = $ent->{mac};
+      my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac},$node);
       $suffix = lc($suffix);
 	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
 		unless ($hoststab) { $hoststab = xCAT::Table->new('hosts',-create=>1); }
@@ -746,7 +746,7 @@ sub yast2network {
       unless ($mactab) { die "mac table should always exist prior to template processing when doing autoula"; }
       my $ent = $mactab->getNodeAttribs($node,['mac'],prefetchcache=>1);
       unless ($ent and $ent->{mac}) { die "missing mac data for $node"; }
-      my $suffix = $ent->{mac};
+      my $suffix = xCAT::Utils->parseMacTabEntry($ent->{mac},$node);
       $suffix = lc($suffix);
 	if ($::XCATSITEVALS{managedaddressmode} eq "autoula") {
            #TODO

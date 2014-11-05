@@ -1,0 +1,145 @@
+start:rmkit_v
+os:Linux
+cmd:rmkit -v
+check:rc==0
+check:output=~rmkit
+check:output=~kitframework
+check:output=~compatible_frameworks
+cmd:rmkit --version
+check:rc==0
+check:output=~rmkit
+check:output=~kitframework
+check:output=~compatible_frameworks
+end
+
+start:rmkit_h
+os:Linux
+cmd:rmkit -h
+check:rc==0
+check:output =~ Usage
+cmd:rmkit --help
+check:rc==0
+check:output=~ Usage
+end
+
+start:rmkit_t_no
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:rmkit -t mykits-1.0-1
+check:rc==0
+check:output=~No kitcomponents are in use
+cmd:rmkit --test mykits-1.0-1
+check:rc==0
+check:output=~No kitcomponents are in use
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+end
+
+start:rmkit_t_yes
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname  
+check:rc==0
+check:output=~Assigning kit component
+cmd:rmkit -t mykits-1.0-1
+check:rc==0
+check:output=~Following kitcomponents are in use
+cmd:rmkit --test mykits-1.0-1
+check:rc==0
+check:output=~Following kitcomponents are in use
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;rmkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Removing kitcomponent
+check:output=~were removed from osimage testimage successfully
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+start:rmkit_f
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Assigning kit component
+cmd:rmkit -f mykits-1.0-1
+check:rc==0
+check:output=~Removing kit mykits-1.0-1
+check:output=~Kit mykits-1.0-1 was successfully removed
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+
+start:rmkit_V
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Assigning kit component
+cmd:rmkit -f mykits-1.0-1 -V
+check:rc==0
+check:output=~Removing kit mykits-1.0-1
+check:output=~Removing kit components
+check:output=~Removing kit plugins
+check:output=~Removing kit scripts
+check:output=~Removing kitdir from
+check:output=~Removing kit from xCAT DB
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/rmkit/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end

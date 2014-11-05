@@ -404,9 +404,18 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         verbose("syslog has been set up.");
     }
 }
-
-
-#
+# The systemd only has LANG and PATH as default environmental variables,
+# TERM is needed for KVM consoles(actually screen command needs TERM)
+# import the TERM into systemd
+if ( -d "/usr/lib/systemd/system" ) {
+    my $cmd = "systemctl import-environment TERM";
+    xCAT::Utils->runcmd("$cmd", 0);
+    if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message('E', "Could not import TERM into systemd.");
+    } else {
+        verbose("Imported TERM=$ENV{'TERM'} into systemd.");
+    }
+}
 
 #
 #  start xcatd

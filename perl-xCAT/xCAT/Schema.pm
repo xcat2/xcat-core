@@ -728,7 +728,7 @@ osimage => {
   description => 'OS Image Description',
   provmethod => 'The provisioning method for node deployment. The valid values are install, netboot,statelite,boottarget,dualboot,sysclone. If boottarget is set, you must set linuximage.boottarget to the name of the boottarget definition. It is not used by AIX.',
   rootfstype => 'The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs',
-  osdistroname => 'The name of the OS distro definition.  This attribute can be used to specify which OS distro to use, instead of using the osname,osvers,and osarch attributes.',
+  osdistroname => 'The name of the OS distro definition.  This attribute can be used to specify which OS distro to use, instead of using the osname,osvers,and osarch attributes. For *kit commands,  the attribute will be used to read the osdistro table for the osname, osvers, and osarch attributes. If defined, the osname, osvers, and osarch attributes defined in the osimage table will be ignored.',
   osupdatename => 'A comma-separated list of OS distro updates to apply to this osimage.',
   cfmdir => 'CFM directory name for PCM. Set to /install/osimages/<osimage name>/cfmdir by PCM. ',
   profile => 'The node usage category. For example compute, service.',
@@ -995,6 +995,16 @@ site => {
    " dnsupdaters:  The value are \',\' separated string which will be added to the zone config\n".
    "               section. This is an interface for user to add configuration entries to\n". 
    "               the zone sections in named.conf.\n\n".
+   " dnsinterfaces:  The network interfaces DNS server should listen on.  If it is the same\n".
+   "                  for all nodes, use a simple comma-separated list of NICs.  To\n".
+   "                  specify different NICs for different nodes:\n".
+   "                       xcatmn|eth1,eth2;service|bond0.\n".
+   "                  In this example xcatmn is the name of the xCAT MN, and DNS there\n".
+   "                  should listen on eth1 and eth2.  On all of the nodes in group\n".
+   "                  'service' DNS should listen on the bond0 nic.\n".
+   "                  NOTE: if using this attribute to block certain interfaces, make sure\n".
+   "                  the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to\n".
+   "                  use this ip to communicate with the local NDS server on MN.\n\n".
    " -------------------------\n".
    "HARDWARE CONTROL ATTRIBUTES\n".
    " -------------------------\n".
@@ -1122,6 +1132,13 @@ site => {
    " httpport:    The port number that the booting/installing nodes should contact the\n".
    "              http server on the MN/SN on. It is your responsibility to configure\n".
    "              the http server to listen on that port - xCAT will not do that.\n\n".
+   " nmapoptions: Additional options for the nmap command. nmap is used in pping, \n".
+   "              nodestat, xdsh -v and updatenode commands. Sometimes additional \n".
+   "              performance tuning may be needed for nmap due to network traffic.\n".
+   "              For example, if the network response time is too slow, nmap may not\n".
+   "              give stable output. You can increase the timeout value by specifying \n".
+   "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n".
+   "              the nmap command.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
    " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".

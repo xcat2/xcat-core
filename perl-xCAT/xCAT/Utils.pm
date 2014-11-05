@@ -4295,5 +4295,43 @@ sub cleanup_for_powerLE_hardware_discovery {
 }
 
 
+#The parseMacTabEntry parses the mac table entry and return the mac address of nic in management network 
+#Arguments:
+#macString : the string of mac table entry
+#HostName  : the hostname of the node
+#The mac address is taken as installnic when:
+#1. the mac addr does not have a suffix "!xxxx"
+#2. the mac addr has a fuffix "!<the node name in xcat nodelist table>"
+#The schema description of mac table is:
+#  mac:            The mac address or addresses for which xCAT will manage static bindings for this node.  
+#This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  
+#This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").
+sub parseMacTabEntry{
+
+        my $macString=shift;
+        if( $macString =~ /xCAT::Utils/)
+          {
+             $macString=shift;
+
+          }
+        my $HostName=shift;
+
+        my $mac_ret;
+        my @macEntry=split(/\|/,$macString);
+
+        foreach my $mac_t  (@macEntry){
+                   if($mac_t =~ /!/){
+                     if($mac_t =~ /(.+)!$HostName$/){
+                        $mac_ret=$1;
+                     }
+                   }else{
+                     $mac_ret=$mac_t;
+                   }
+          }
+
+
+        return $mac_ret;
+}
+
 
 1;

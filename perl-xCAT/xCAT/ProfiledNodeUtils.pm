@@ -888,6 +888,7 @@ sub check_profile_consistent{
         $ppc_netboot = 'grub2';
     }
     my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => $ppc_netboot,
+                        'ppc64el' => $ppc_netboot,
                         'fsp' => 'FSP', 'ipmi' => 'BMC');
     # Check if imageprofile is consistent with networkprofile
     if ($profile_dict{$arch} ne $netboot) {

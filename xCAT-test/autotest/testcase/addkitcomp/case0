@@ -1,0 +1,163 @@
+start:addkitcomp_v
+os:Linux
+cmd:addkitcomp -v
+check:rc==0
+check:output=~addkitcomp
+check:output=~kitframework
+check:output=~compatible_frameworks
+cmd:addkitcomp --version
+check:rc==0
+check:output=~addkitcomp
+check:output=~kitframework
+check:output=~compatible_frameworks
+end
+
+start:addkitcomp_h
+os:Linux
+cmd:addkitcomp -h
+check:rc==0
+check:output =~ Usage
+cmd:addkitcomp --help
+check:rc==0
+check:output=~ Usage
+end
+
+start:addkitcomp_i
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits directory
+cmd:rmkit mykits-1.0-1
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Assigning kit component
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;rmkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Removing kitcomponent
+check:output=~were removed from osimage testimage successfully
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+start:addkitcomp_f
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -f -i testimage $kitcompname
+check:rc==0
+check:output=~Assigning kit component
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;rmkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Removing kitcomponent
+check:output=~were removed from osimage testimage successfully
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+start:addkitcomp_a
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/$$KITDATA /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp 
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA/*.tar.bz2
+check:rc==0
+check:output=~successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:addkitcomp -i testimage -a ubuntukit-compute-2 
+check:rc==0
+check:output=~Assigning kit component ubuntukit-compute-2
+cmd:lsdef -t osimage -o testimage |grep -i kitcomponents
+check:rc==0
+check:output=~ubuntukit-compute-1
+check:output=~ubuntukit-compute-2
+cmd:lsdef -t osimage -o testimage
+check:rc==0
+check:output=~KIT_DEPLOY_PARAMS
+check:output=~KIT_COMPONENTS
+cmd:rmkitcomp -i testimage ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el 
+check:rc==1
+check:output=~Error: Failed to remove kitcomponent
+cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
+check:rc==0
+check:output=~Removing kitcomponent ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
+cmd:rmkitcomp -i testimage -f ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el 
+check:rc==0
+check:output=~Removing kitcomponent ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
+cmd:rmkit ubuntukit-1.0-1-ppc64el  
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA/ubuntukit-1.0-1-ppc64el.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+start:addkitcomp_noscripts
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:mkdir -p /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:cp -rf /opt/xcat/share/xcat/tools/autotest/$$KITDATA /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA/*.tar.bz2
+check:rc==0
+check:output=~successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:addkitcomp -i testimage -a ubuntukit-compute-2 --noscripts
+check:rc==0
+check:output=~Assigning kit component ubuntukit-compute-2
+cmd:lsdef -t osimage -o testimage 
+check:rc==0
+check:output!=~postbootscripts
+cmd:rmkitcomp -i testimage -f ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el
+check:rc==0
+check:output=~Removing kitcomponent ubuntukit-compute-1-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
+cmd:rmkitcomp -i testimage -f ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el
+check:rc==0
+check:output=~Removing kitcomponent ubuntukit-compute-2-1.0-1-ubuntu-14.04-ppc64el from osimage testimage
+cmd:rmkit ubuntukit-1.0-1-ppc64el
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA/ubuntukit-1.0-1-ppc64el.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/addkitcomp/$$KITDATA
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+
+

@@ -1,0 +1,50 @@
+start:chkkitcomp_v
+cmd:chkkitcomp -v
+check:rc==0
+check:output~=Version
+check:output~=kitframework
+check:output~=compatible_frameworks
+end
+
+start:chkkitcomp_h
+cmd:addkit -h
+check:rc==0
+check:output~=Usage
+check:outpur!~error
+end
+
+start:chkkitcomp_V
+os:Linux
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp;buildkit create mykits
+check:rc==0
+check:output=~Kit template for mykits created in /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits directory
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits;buildkit buildrepo all
+check:rc==0
+cmd:cd /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits;buildkit buildtar
+check:rc==0
+cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits/mykits-1.0-1.tar.bz2
+check:rc==0
+check:output=~Kit mykits-1.0-1 was successfully added
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+check:rc==0
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~Assigning kit component
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;chkkitcomp -i testimage $kitcompname
+check:rc==0
+check:output=~compatible with osimage testimage
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;chkkitcomp -i testimage $kitcompname -V
+check:rc==0
+check:output=~compatible with osimage testimage
+cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;rmkitcomp -i testimage $kitcompname
+check:rc==0
+cmd:rmkit mykits-1.0-1
+check:rc==0
+cmd:rm -f /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits/mykits-1.0-1.tar.bz2
+cmd:rm -rf /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits
+cmd:rmdef -t osimage -o testimage
+check:rc==0
+end
+
+

@@ -17,6 +17,7 @@ my @apigroups = (
                       'power', 'energy', 'energyattr', 'serviceprocessor', 'nextboot', 'bootstate',
                       'vitals', 'vitalsattr', 'inventory', 'inventoryattr', 'eventlog', 'beacon', 
                       'updating','filesyncing','software_maintenance','postscript', 'nodeshell', 'nodecopy',
+                      'vm','vmclone','vmmigrate',
                       ]
     },
     {
@@ -209,18 +210,24 @@ sub outwiki {
     my @example_array = ();
     if (defined($def->{example})) {
         push @example_array, $def->{example};
-    } else {
-        foreach (1..10) {
-            if (defined($def->{'example'.$_})) {
-                push @example_array, $def->{'example'.$_};
-            }
+    }
+    foreach (1..10) {
+        if (defined($def->{'example'.$_})) {
+            push @example_array, $def->{'example'.$_};
         }
     }
 
     if (@example_array) {
+        my $exampleno = "";
+        if ($#example_array > 0) {
+            $exampleno = 1;
+        }
         foreach my $line (@example_array) {
             my @parts = split ('\|', $line);
-            print "**Example:**\n";
+            print "**Example$exampleno:**\n";
+            if ($#example_array > 0) {
+                $exampleno++;
+            }
 
             if ($parts[1]) {
                 print "$parts[1]\n";

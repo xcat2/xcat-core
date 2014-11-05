@@ -114,6 +114,77 @@ config_Rsyslog_C3()
   fi 
 }
 
+# This sets up rsyslog 8.x, different from the previous rsyslog versions.  
+# Instead of updating /etc/rsyslog.conf  for forwarding to a remote host,
+# You update /etc/rsyslog.d/remote.conf.  The /etc/sysconfig/rsyslog file does not exist.
+# This is only for Linux, since AIX does not use rsyslog.  It ships its own syslog in an lpp,
+# at least at the time of this code being written
+
+config_rsyslog_V8()
+{
+  
+  goLocal=0;
+  conf_file="/etc/rsyslog.conf"
+  remoteconf="/etc/rsyslog.d/remote.conf"
+
+  # If this is a Management Node or Service Node, then it will be receiving syslog entries from the
+  # compute nodes. Management Node is receiving from Service Nodes and possibly compute nodes.
+  # They will all be put in /var/log/messages
+  # For the service node, if site table svloglocal  is set then we will keep the logs on the servicenode
+  # and not forward to the Management Node. 
+
+  #now handling where the logs go, if goLocal=1 then log local, if not forward to MN
+  if [ -f /etc/xCATMN ]; then
+     goLocal=1
+  else
+    # check to see if service node should forward of keep logs
+    if [ $isSN -eq 1 ]; then
+       if [ -n "$SVLOGLOCAL" ] && [ $SVLOGLOCAL -eq 1 ]; then
+         goLocal=1  
+       fi
+    fi
+  fi
+
+  if [ $goLocal -eq 1 ]; then
+    #logging is local, do not forward
+    #making sure all the messages goes to /var/log/messages
+    touch  /var/log/messages
+    # backup rsyslog.conf
+    if [ ! -f $conf_file.XCATORIG ]; then
+      cp -f $conf_file $conf_file.XCATORIG
+    fi
+
+    grep "xCAT settings" $conf_file 2>&1 1> /dev/null
+    if [ $? -eq 0 ]; then
+	  sed "/# xCAT settings/,$ d" $conf_file >/tmp/sed.tmp
+      cat /tmp/sed.tmp >$conf_file
+    fi
+
+    echo "# xCAT settings" >> $conf_file
+    echo "*.debug   /var/log/messages"  >> $conf_file
+  else
+    # not logging local, forward logging
+    # backup the existing remote.conf file from the install
+    if [ ! -f $remoteconf.XCATORIG ]; then
+      cp -f $remoteconf $remoteconf.XCATORIG
+    fi
+    # check if already an entry by xCAT. If so, we need to replace it
+    grep "xCAT settings" $remoteconf 2>&1 1> /dev/null
+    if [ $? -eq 0 ]; then
+       sed "/# xCAT settings/,$ d" $remoteconf >/tmp/sed.tmp
+       cat /tmp/sed.tmp >$remoteconf
+    fi
+
+    # add xCAT entries
+    echo "# xCAT settings" >> $remoteconf
+    echo "*.* @$master" >> $remoteconf
+ fi
+ # restart syslog ( could be service or systemctl call depending on the OS)
+ restartservice syslog
+
+}
+
+
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
 
 if [ "$NTYPE" = service ]; then 
@@ -123,6 +194,19 @@ fi
 #if [ -e /etc/systemd ]; then
 #  systemdEnabled=1
 #fi
+
+# check if this is rsyslog version 8,  setup is different no matter what OS.
+# We only update the /etc/rsyslog.d/remote.conf file to point to the xcatmaster.
+# Do not even touch rsyslog.conf
+# There is no /etc/sysconfig/rsyslog file, so we use  rsyslogd -v to get the version
+SYSLOGPROD=`rsyslogd -v | grep rsyslogd |awk {'print $1'}`
+SYSLOGVER=`rsyslogd -v | grep rsyslogd |awk {'print $2'}`
+if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
+  config_rsyslog_V8 
+#keep a record
+  logger -t xCAT -p local4.info "Install: rsyslog version 8 setup"
+  exit 0
+fi
 
 if [ "$(uname -s)" = "Linux" ]; then
   if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
@@ -158,13 +242,13 @@ fi
 
 
 
-#handle sysconfig file to make remote loggling possible 
+#handle sysconfig file to make remote logging possible 
 if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then 
   if [ ! -f "$sysconfig.XCATORIG" ]; then
     cp -f $sysconfig $sysconfig.XCATORIG
   fi
 
-  #check if it is ryslog version 3, it has totally different settings in /etc/syslog.cong
+  #check if it is ryslog version 3, it has totally different settings in /etc/syslog.conf
   if [ $isRsyslog -eq 1 ]; then
     grep "SYSLOGD_OPTIONS" $sysconfig | grep -e "[\-c 3|\-c3|\-c4|\-c 4]" 2>&1 1> /dev/null
     if [ $? -eq 0 ]; then

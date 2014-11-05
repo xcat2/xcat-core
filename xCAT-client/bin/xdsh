@@ -443,22 +443,41 @@ sub parse_args_xdsh
         }
 
 
-        #  add config file with strict host checking no
-        my $cmd = "echo \"StrictHostKeyChecking no\" >> $home/.ssh/config";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
-            $msg = "Error from $cmd\n";
-            xCAT::MsgUtils->message("E", $msg);
+       #  add config file with strict host checking no, if not already there
+       my $configinfo = "StrictHostKeyChecking no";
+       my $configfile= "$home/.ssh/config";
+       if (-e $configfile)
+       {
+          my $cmd = "grep StrictHostKeyChecking $configfile";
+          xCAT::Utils->runcmd($cmd, -1);
+          if ($::RUNCMD_RC != 0)
+          {    # not there
+            $cmd = "echo  $configinfo >> $configfile";
+            my @output = xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {    # error
+                xCAT::MsgUtils->message("E", "Error on $cmd, @output");
+                return 1;
+            }
+
+          }
+        }
+        else         # file does not exist
+        {
+          my $cmd = "echo  $configinfo >> $configfile";
+          my @output = xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {        # error
+            xCAT::MsgUtils->message("E", "Error on $cmd, @output");
+            return 1;
+          }
+          else
+          {
+            chmod 0600, $configfile;
+
+          }
         }
 
-        my $cmd = "chmod 0600 $home/.ssh/config";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {    # error
-            $msg = "Error from $cmd\n";
-            xCAT::MsgUtils->message("E", $msg);
-        }
 
         # if current_userid is not "root", we need to generate the keys
         # here before becoming root while running under xcatd

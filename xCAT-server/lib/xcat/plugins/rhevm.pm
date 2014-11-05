@@ -579,7 +579,7 @@ sub mkinstall {
                         if ($ent->{installnic} eq "mac") {
                             my $mactab = xCAT::Table->new("mac");
                             my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                            $ksdev = $macref->{mac};
+                            $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                         }  else {
                             $ksdev = $ent->{installnic};
                         }
@@ -587,7 +587,7 @@ sub mkinstall {
                         if ($ent->{primarynic} eq "mac") {
                             my $mactab = xCAT::Table->new("mac");
                             my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                            $ksdev = $macref->{mac};
+                            $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
                         } else {
                             $ksdev = $ent->{primarynic};
                         }

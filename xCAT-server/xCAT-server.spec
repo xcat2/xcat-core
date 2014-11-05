@@ -32,10 +32,11 @@ Obsoletes: atftp-xcat
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %ifos linux
-%ifnarch s390x
+# ifarch/ifnarch does not work for noarch package
+#%ifnarch s390x
 # PCM does not use or ship grub2-xcat
 Requires: grub2-xcat
-%endif
+#%endif
 %endif
 %endif
 
@@ -175,6 +176,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kit.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/confluent.pm
 %endif
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
@@ -325,6 +328,8 @@ chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-server/*
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/ws
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
+mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
+
 cp xCAT-wsapi/* $RPM_BUILD_ROOT/%{prefix}/ws
 
 # PCM does not need xcatws.cgi
@@ -335,20 +340,24 @@ rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcatws.cgi
 
 %if %fsm
 %else
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
 %if %notpcm
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
+echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
 %endif
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2 >>  $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf
 
-echo "ScriptAlias /xcatrhevh %{prefix}/ws/xcatrhevh.cgi" > $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
-%if %notpcm
-echo "ScriptAlias /xcatws %{prefix}/ws/xcatws.cgi" >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22 >>  $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22
+cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24 >> $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache24
+#install lower version(<2.4) apache/httpd conf files by default
+cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat-ws.conf 
+cp $RPM_BUILD_ROOT/etc/xcat/conf.orig/xcat-ws.conf.apache22 $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf 
 %endif
-cat $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd >> $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat-ws.conf
-%endif
-rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache2
-rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.httpd
+
+
+
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache22
+rm -f $RPM_BUILD_ROOT/%{prefix}/ws/xcat-ws.conf.apache24
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -361,6 +370,8 @@ rm -rf $RPM_BUILD_ROOT
 %if %fsm
 %else
 /etc/init.d/xcatd
+#/etc/xcat/conf.orig/xcat-ws.conf.apache24
+#/etc/xcat/conf.orig/xcat-ws.conf.apache22
 /etc/apache2/conf.d/xcat-ws.conf
 /etc/httpd/conf.d/xcat-ws.conf
 %endif
@@ -406,8 +417,8 @@ fi
 if [ "$1" -gt "1" ]; then #only on upgrade...
   #migration issue for monitoring
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
- 
 fi
+
 %else
 if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
@@ -415,6 +426,26 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
 
 fi  
 %endif
+
+
+#Apply the correct httpd/apache configuration file according to the httpd/apache version
+if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then
+   rm -rf /etc/httpd/conf.d/xcat-ws.conf
+   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/httpd/conf.d/xcat-ws.conf 
+fi
+
+if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then
+   rm -rf /etc/apache2/conf.d/xcat-ws.conf
+   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
+fi
+
+if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+then
+   rm -rf /etc/apache2/conf.d/xcat-ws.conf
+   cp /etc/xcat/conf.orig/xcat-ws.conf.apache24 /etc/apache2/conf.d/xcat-ws.conf
+fi
 
 
 exit 0
@@ -432,8 +463,6 @@ if [ $1 == 0 ]; then  #This means only on -e
   fi
   rm -f /usr/sbin/xcatd  #remove the symbolic
 
-  rm -f /etc/httpd/conf.d/xcat-ws.conf
-  rm -f /etc/httpd/conf.d/xcat-ws.conf
 fi
 %endif
 

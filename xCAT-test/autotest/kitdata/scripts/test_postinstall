@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "running test_postinstall script"
+

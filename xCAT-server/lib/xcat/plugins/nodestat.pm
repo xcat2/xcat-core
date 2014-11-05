@@ -187,8 +187,8 @@ sub preprocess_request
 	    #my $sitetab = xCAT::Table->new('site');
 	    #if ($sitetab) {
 		#(my $ref) = $sitetab->getAttribs({key => 'useNmapfromMN'}, 'value');
-                my @entries =  xCAT::TableUtils->get_site_attribute("useNmapfromMN");
-                my $t_entry = $entries[0];
+		my @entries =  xCAT::TableUtils->get_site_attribute("useNmapfromMN");
+		my $t_entry = $entries[0];
 		if (defined($t_entry)) {
 		    if ($t_entry =~ /1|yes|YES|Y|y/) { $usenmapfrommn=1; }
 		}
@@ -634,79 +634,84 @@ sub process_request_nmap {
    my %rsp;
    my $installquerypossible=0;
    my @nodesetnodes=();
+
+   # get additional options from site table
+   my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions"); 
+   my $more_options = $nmap_options[0];
+
    foreach my $ip6 (0,1) { #first pass, ipv4, second pass ipv6
-   if ($ip6 and scalar(@ip6s)) {
-   open($fping,"nmap -6 -PS$ports,3001 -n --send-ip -p $ports,3001 ".join(' ',@ip6s). " 2> /dev/null|") or die("Can't start nmap: $!");
-   } elsif (not $ip6 and scalar(@ips)) {
-   open($fping,"nmap -PE -n --send-ip -p $ports,3001 ".join(' ',@ips). " 2> /dev/null|") or die("Can't start nmap: $!");
-   } else { next; }
-   while (<$fping>) {
-      if (/Interesting ports on ([^ ]*)[: ]/ or /Nmap scan report for ([^ ]*)/) {
-          my $tmpnode=$1;
-          if ($currnode) {     #if still thinking about last node, flush him out
-              my $status = join ',',sort keys %states ;
-              my $appsd="";
-              foreach my $portnum(keys %portservices) {
-                  my $app_t=$portservices{$portnum};
-		  if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
-		  else {$appsd .= $app_t . "=down,";}
-	      }
-	      $appsd =~ s/,$//;
-	      my $target=$currnode;
-	      if ($hostsents{$target} and $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
-
-              if ($status or ($installquerypossible and $status = installer_query($target))) { #pingable, but no *clue* as to what the state may be
-                  $ret->{$currnode}->{'status'}="ping";
-                  $ret->{$currnode}->{'appstatus'}=$status;
-                  $ret->{$currnode}->{'appsd'}=$appsd;
-                  $currnode="";
-                  %states=();
-              } else {
-                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
-              }
-          }
-          $currnode=$tmpnode;
-	  $currnode =~ s/:$//;
-	  $currnode =~ s/\n$//;
-	  
-
-          my $nip;
-          if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
-              if ($nodebyip{$nip}) {
-                 $currnode = $nodebyip{$nip};
-              }
-          }
-          $installquerypossible=0; #reset possibility indicator
-          %rsp=();
-          unless ($deadnodes{$1}) {
-              my $shortname;
-              foreach (keys %deadnodes) {
-                  if (/\./) {
-                      $shortname = $_;
-                      $shortname =~ s/\..*//;
-                  }
-                  if ($currnode =~ /^$_\./ or ($shortname and $shortname eq $currnode)) {
-                      $currnode = $_;
-                      last;
-                  }
-              }
-          }
-          delete $deadnodes{$currnode};
-      } elsif ($currnode) {
-          #if (/^MAC/) {  #oops not all nmap records end with MAC
-          if (/^PORT/) { next; }
-          ($port,$state) = split;
-          if ($port and $port =~ /^(\d*)\// and $state eq 'open') {
-              if ($1 eq "3001" and defined($chainhash{$currnode}->[0]->{currstate}) and $chainhash{$currnode}->[0]->{currstate} =~ /^install/) {
-                $installquerypossible=1; #It is possible to actually query node
-              } elsif ($1 ne "3001") {
-                $states{$portservices{$1}}=1;
-              }
-          }
-      } 
+	   if ($ip6 and scalar(@ip6s)) {
+		   open($fping,"nmap -6 -PS$ports,3001 -n --send-ip -p $ports,3001 $more_options ".join(' ',@ip6s). " 2> /dev/null|") or die("Can't start nmap: $!");
+	   } elsif (not $ip6 and scalar(@ips)) {
+		   open($fping,"nmap -PE -n --send-ip -p $ports,3001 $more_options ".join(' ',@ips). " 2> /dev/null|") or die("Can't start nmap: $!");
+	   } else { next; }
+	   while (<$fping>) {
+		   if (/Interesting ports on ([^ ]*)[: ]/ or /Nmap scan report for ([^ ]*)/) {
+			   my $tmpnode=$1;
+			   if ($currnode) {     #if still thinking about last node, flush him out
+				   my $status = join ',',sort keys %states ;
+				   my $appsd="";
+				   foreach my $portnum(keys %portservices) {
+					   my $app_t=$portservices{$portnum};
+					   if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
+					   else {$appsd .= $app_t . "=down,";}
+				   }
+				   $appsd =~ s/,$//;
+				   my $target=$currnode;
+				   if ($hostsents{$target} and $hostsents{$target}->[0]->{ip}) { $target = $hostsents{$target}->[0]->{ip}; }
+				   
+				   if ($status or ($installquerypossible and $status = installer_query($target))) { #pingable, but no *clue* as to what the state may be
+					   $ret->{$currnode}->{'status'}="ping";
+					   $ret->{$currnode}->{'appstatus'}=$status;
+					   $ret->{$currnode}->{'appsd'}=$appsd;
+					   $currnode="";
+					   %states=();
+				   } else {
+					   push @nodesetnodes,$currnode; #Aggregate call to nodeset
+				   }
+			   }
+			   $currnode=$tmpnode;
+			   $currnode =~ s/:$//;
+			   $currnode =~ s/\n$//;
+			   
+			   
+			   my $nip;
+			   if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
+				   if ($nodebyip{$nip}) {
+					   $currnode = $nodebyip{$nip};
+				   }
+			   }
+			   $installquerypossible=0; #reset possibility indicator
+			   %rsp=();
+			   unless ($deadnodes{$currnode}) {
+				   my $shortname;
+				   foreach (keys %deadnodes) {
+					   if (/\./) {
+						   $shortname = $_;
+						   $shortname =~ s/\..*//;
+					   }
+					   if ($currnode =~ /^$_\./ or ($shortname and $shortname eq $currnode)) {
+						   $currnode = $_;
+						   last;
+					   }
+				   }
+			   }
+			   delete $deadnodes{$currnode};
+		   } elsif ($currnode) {
+			   #if (/^MAC/) {  #oops not all nmap records end with MAC
+			   if (/^PORT/) { next; }
+			   ($port,$state) = split;
+			   if ($port and $port =~ /^(\d*)\// and $state eq 'open') {
+				   if ($1 eq "3001" and defined($chainhash{$currnode}->[0]->{currstate}) and $chainhash{$currnode}->[0]->{currstate} =~ /^install/) {
+					   $installquerypossible=1; #It is possible to actually query node
+				   } elsif ($1 ne "3001") {
+					   $states{$portservices{$1}}=1;
+				   }
+			   }
+		   } 
+	   }
    }
-   }
-
+   
    if ($currnode) {
        my $status = join ',',sort keys %states ;
        my $appsd="";

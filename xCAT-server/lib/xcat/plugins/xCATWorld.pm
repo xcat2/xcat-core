@@ -102,8 +102,9 @@ sub process_request
     my $args     = $request->{arg};
     my $envs     = $request->{env};
     my %rsp;
-    my @nodes=@$nodes; 
-    @ARGV = @{$args};    # get arguments
+    if (defined $args) {
+       @ARGV = @{$args};    # get arguments
+    }
     $::CALLBACK=$callback; 
     # do your processing here
     # return info
@@ -142,7 +143,7 @@ if (
     # save your callback function
 
    my $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
+                                    node    => \@$nodes,
                                     arg     => [ "-v","ls /tmp" ]
                              }, $subreq, 0,1);
 
@@ -151,7 +152,7 @@ if (
     my $rsp={};
     $rsp->{data}->[0] = "Hello World from $host! I can process the following nodes:";
     xCAT::MsgUtils->message("I", $rsp, $callback, 0);
-    foreach my $node (@nodes)
+    foreach my $node (@$nodes)
     {
         $rsp->{data}->[0] .= "$node\n";
     }
