@@ -1690,11 +1690,18 @@ sub mksysclone
         copy("/var/lib/systemimager/scripts/post-install/10all.fix_swap_uuids","$pspath");
     }
 
-    unless (-r "$pspath/95all.monitord_rebooted")
+    #unless (-r "$pspath/95all.monitord_rebooted")
+    #{
+    #    mkpath("$pspath");
+    #    copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+    #}
+
+
+    if(-e "$pspath/95all.monitord_rebooted")
     {
-        mkpath("$pspath");
-        copy("/var/lib/systemimager/scripts/post-install/95all.monitord_rebooted","$pspath");
+        `rm $pspath/95all.monitord_rebooted`;
     }
+
 
     # copy hosts
     copy("/etc/hosts","$installroot/sysclone/scripts/");
