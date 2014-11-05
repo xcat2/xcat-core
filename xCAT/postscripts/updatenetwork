@@ -4,8 +4,8 @@
 . /tmp/post-install/variables.txt
 
 #delete the udev rule in the image
-rule_file=`ls /etc/udev/rules.d/*net_persistent_names.rules`
-if [ -n "$rule_file" ];then
+rule_file="/etc/udev/rules.d/*net_persistent_names.rules"
+if ls $rule_file >/dev/null 2>&1;then
     rm -f $rule_file
 fi
 
