@@ -64,17 +64,28 @@ echo "si_updateclient --server $str_server_ip --yes"
 export PERL5LIB=/usr/lib/perl5/site_perl/;LANG=C si_updateclient --server $str_server_ip --yes 
 
 if [[ -f /sbin/dracut ]]; then
-    # redhat6.x/centos6.x
+    # redhat6.x/centos6.x/rhels7.x
     echo "Running dracut to regenerate the initrd with the drivers needed by this node:"
-    dracut  --force
+    arch=`uname -m`
+    #echo "arch=$arch"
+    initrdfile=`find /boot -name "initramfs-*.$arch.img"`
+    #echo "initrdfile=$initrdfile"
+    kernelversion=`echo $initrdfile |sed -e 's:/boot/initramfs-\(.*\)\.img:\1:g'`
+    #echo "kernelversion=$kernelversion"
+    mv $initrdfile $initrdfile.org
+    echo "dracut $initrdfile $kernelversion"
+    dracut $initrdfile $kernelversion
 else
     # suse/sles and redhat5.x/centos5.x
     echo "Running mkinitrd to regenerate the initrd with the drivers needed by this node:"
     osvers=`cat /etc/*release|sed -e 's/.*\([0-9]\{1,\}\.[0-9]\{1,\}\).*/\1/'`
     if [[ $osvers == 5\.* ]];then
         initrdfile=`find /boot -name "initrd-*.img"`
+        #echo "initrdfile=$initrdfile"
         kernelversion=`echo $initrdfile |sed -e 's:/boot/initrd-\(.*\)\.img:\1:g'`
+        #echo "kernelversion=$kernelversion"
         mv $initrdfile $initrdfile.org
+        echo "mkinitrd $initrdfile $kernelversion"
         mkinitrd $initrdfile $kernelversion
     else
         mkinitrd
