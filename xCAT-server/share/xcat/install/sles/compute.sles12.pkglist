@@ -1,0 +1,5 @@
+@base
+@x11
+openssl
+ntp
+rsync
