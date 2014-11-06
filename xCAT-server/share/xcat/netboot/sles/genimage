@@ -61,6 +61,7 @@ my $tempfile;
 my $prompt;
 my $timezone; #the TIMEZONE of the stateless and statelite node
 my $ignorekernelchk;
+my $noupdate;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -108,6 +109,7 @@ GetOptions(
    'interactive' =>\$prompt, 
    'onlyinitrd' =>\$onlyinitrd,
    'ignorekernelchk' => \$ignorekernelchk,
+   'noupdate' => \$noupdate,
  );
 
 if (@ARGV > 0) {
@@ -559,15 +561,17 @@ unless ($onlyinitrd) {
            }
        }
 
-       # run zypper update to update any installed rpms
-       # needed when running genimage again after updating software in repositories
-       my $yumcmd_update;
-       if ($osver_host == 11) {
-         $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
-       } else {
-         $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
+       if (!$noupdate) {
+         # run zypper update to update any installed rpms
+         # needed when running genimage again after updating software in repositories
+         my $yumcmd_update;
+         if ($osver_host == 11) {
+           $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
+         } else {
+           $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
+         }
+         $rc = system("$yumcmd_update");
        }
-       $rc = system("$yumcmd_update");
    }
 
    #remove the old repository for extra packages
