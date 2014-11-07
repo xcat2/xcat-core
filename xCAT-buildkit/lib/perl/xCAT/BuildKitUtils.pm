@@ -353,10 +353,10 @@ sub find_latest_pkg_deb
             }
 
             foreach my $r (@deblist) {
-            my $basename = `dpkg -I $r* |grep Package|awk '{print \$2}'`;
+            my $basename = `dpkg -I $r* |grep Package|awk '{print \$2}'|head -1`;
             chomp $basename;
 
-            my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'`;
+            my $version = `dpkg -I $r* |grep Version|awk '{print \$2}'|head -1`;
             chomp $version;
 
             $founddeb{$basename}{$r}{version}=$version;
