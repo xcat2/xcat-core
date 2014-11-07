@@ -422,7 +422,7 @@ sub chvm_parse_args {
         my $check_chvm_arg = chvm_parse_extra_options(\@ARGV, \%opt);
         if (defined($check_chvm_arg)) {
             return (usage("Invalid argument: $check_chvm_arg"));
-        } elsif (($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
+        } elsif (($opt{lparname}) && ($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
             return(usage( "Invalid argument: must specify '*' for more than one node" ));
         }
         if ((exists($opt{lparname}) ||exists($opt{huge_page})) && 
@@ -615,7 +615,6 @@ sub mkvm_parse_args {
     if ( (!exists( $opt{i} ) ||  !exists( $opt{r} )) ) {
         return(usage());
     }
-    } 
     $opt{target} = \@{$request->{node}};
     my $ppctab = xCAT::Table->new( 'ppc');
     unless($ppctab) {
@@ -640,9 +639,11 @@ sub mkvm_parse_args {
             return(usage("For Power 775, please make sure the noderange are in one CEC "));
         }
     } 
-    if (exists($opt{p775})) {
+    #if (exists($opt{p775})) {
         $request->{node} = [$other_p]; 
         $request->{noderange} = $other_p;  
+    #}
+
     }
     ####################################
     # No operands - add command name 
