@@ -64,6 +64,7 @@ my $permission; # the permission works only for statelite mode currently
 my $tempfile;
 my $prompt;
 my $ignorekernelchk;
+my $noupdate;
 
 
 sub xdie {
@@ -110,6 +111,7 @@ GetOptions(
    'interactive' =>\$prompt, 
    'onlyinitrd' =>\$onlyinitrd, 
    'ignorekernelchk' => \$ignorekernelchk,
+   'noupdate' => \$noupdate,
 );
 
 if (@ARGV > 0) {
@@ -344,7 +346,7 @@ unless ($onlyinitrd) {
         }
     }
 
-   #Now let's handle extra packages
+    #Now let's handle extra packages
     unless ($imagename) {
         $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
         unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
@@ -358,116 +360,115 @@ unless ($onlyinitrd) {
 
     my %repohash;
     if (keys(%extra_hash) > 0) {
-      open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
-      my $index=1;
-      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
-        foreach (keys(%{$extra_hash{$pass}})) {
+        open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
+        my $index=1;
+        foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
+            foreach (keys(%{$extra_hash{$pass}})) {
 
-            if($_ eq "INCLUDEBAD")  {
-               print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
-               exit 1;
-            }
+                if($_ eq "INCLUDEBAD")  {
+                    print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+                    exit 1;
+                }
             
-            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-            print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
-            $repohash{$pass}{$index} = 1;
-            $index++;
-            my $pa=$extra_hash{$pass}{$_};
-            $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+                if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;}
+                print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+                $repohash{$pass}{$index} = 1;
+                $index++;
+                my $pa=$extra_hash{$pass}{$_};
+                $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+            }
         }
-      }
-      close($yumconfig);
-      $index--;
-      my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
+        close($yumconfig);
+        $index--;
+        my $yumcmd_base = "yum $non_interactive -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
 
-      #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
-      if(isNFSdir("$rootimg_dir")){
-         $yumcmd_base .= "--setopt=diskspacecheck=0 ";
-       }  
+        #yum/rpm/zypper has defect on calculating diskspace usage when installing rpm on a NFS mounted installroot
+        if(isNFSdir("$rootimg_dir")){
+            $yumcmd_base .= "--setopt=diskspacecheck=0 ";
+        }
 
-      foreach (0..$repnum) {
-          $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
-       }
-#      for (1..$index) {
-#          $yumcmd .= "--enablerepo=otherpkgs$_ ";
-#      } 
+        foreach (0..$repnum) {
+            $yumcmd_base .= "--enablerepo=$osver-$arch-$_ ";
+        }
+#        for (1..$index) {
+#            $yumcmd .= "--enablerepo=otherpkgs$_ ";
+#        }
 
-      foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
-          $yumcmd = $yumcmd_base;
-          foreach my $repo_index ( keys %{$repohash{$pass}} ) {
-              $yumcmd .= "--enablerepo=otherpkgs$repo_index ";
-          }
+        foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
+            $yumcmd = $yumcmd_base;
+            foreach my $repo_index ( keys %{$repohash{$pass}} ) {
+                $yumcmd .= "--enablerepo=otherpkgs$repo_index ";
+            }
 
-          system("$yumcmd clean all");
+            system("$yumcmd clean all");
 
-          my $envlist;
-          if(exists($extra_hash{$pass}{ENVLIST})){
-              $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
-          }
-          # remove the packages that are specified in the otherpkgs.list files with leading '-'
-          my $yumcmd_remove= "$yumcmd erase ";
-          if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
-              my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
-              my $rm_packges= join(' ', @$pa);
-              if ($rm_packges) {
-                  print "$envlist $yumcmd_remove $rm_packges\n";
-                  $rc = system("$envlist $yumcmd_remove $rm_packges");
-              }
-          }
+            my $envlist;
+            if(exists($extra_hash{$pass}{ENVLIST})){
+                $envlist = join(' ', @{$extra_hash{$pass}{ENVLIST}});
+            }
+            # remove the packages that are specified in the otherpkgs.list files with leading '-'
+            my $yumcmd_remove= "$yumcmd erase ";
+            if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
+                my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
+                my $rm_packges= join(' ', @$pa);
+                if ($rm_packges) {
+                    print "$envlist $yumcmd_remove $rm_packges\n";
+                    $rc = system("$envlist $yumcmd_remove $rm_packges");
+                }
+            }
 
-#          # mount /proc file system since several packages need it.
-#          print "mount /proc file system\nchroot $rootimg_dir /bin/mount -t proc proc /proc\n";
-#          system("chroot $rootimg_dir /bin/mount -t proc proc /proc");
+#            # mount /proc file system since several packages need it.
+#            print "mount /proc file system\nchroot $rootimg_dir /bin/mount -t proc proc /proc\n";
+#            system("chroot $rootimg_dir /bin/mount -t proc proc /proc");
 
-          # install extra packages
-          my $yumcmd_base = $yumcmd;
-          $yumcmd .= "install ";
-          # append extra pkg names to yum command 
-          if ($extrapkgnames{$pass}) {
-              $yumcmd .= " $extrapkgnames{$pass} ";
-	      $yumcmd =~ s/ $/\n/;
+            # install extra packages
+            my $yumcmd_base = $yumcmd;
+            $yumcmd .= "install ";
+            # append extra pkg names to yum command
+            if ($extrapkgnames{$pass}) {
+                $yumcmd .= " $extrapkgnames{$pass} ";
+                $yumcmd =~ s/ $/\n/;
     
-	      # debug
-	      #print "yumcmd=$yumcmd\n";
-	      #my $repo=`cat /tmp/genimage.$$.yum.conf`;
-	      #print "repo=$repo";
-	      
-	      print "$envlist $yumcmd\n"; 
-	      my $rc = system("$envlist $yumcmd");
-	      if ($rc) { 
-		  print "yum invocation failed\n";
-		  exit 1;
-	      }
-          } else {
-	      print "No Packages marked for install\n";
-          }
+                # debug
+                #print "yumcmd=$yumcmd\n";
+                #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+                #print "repo=$repo";
 
-#          # umount /proc file system that just mounted
-#          print "umount /proc file system\nchroot $rootimg_dir /bin/umount /proc\n";
-#          system("chroot $rootimg_dir /bin/umount /proc");
+                print "$envlist $yumcmd\n";
+                my $rc = system("$envlist $yumcmd");
+                if ($rc) {
+                    print "yum invocation failed\n";
+                    exit 1;
+                }
+            } else {
+                print "No Packages marked for install\n";
+            }
+
+#            # umount /proc file system that just mounted
+#            print "umount /proc file system\nchroot $rootimg_dir /bin/umount /proc\n";
+#            system("chroot $rootimg_dir /bin/umount /proc");
 	
-          # remove the packages that are specified in the otherpkgs.list files with leading '--'
-          if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
-              my $pa=$extra_hash{$pass}{'POST_REMOVE'};
-              my $rm_packges= join(' ', @$pa);
-              if ($rm_packges) {
-                  print "$envlist $yumcmd_remove $rm_packges\n";
-                  $rc = system("$envlist $yumcmd_remove $rm_packges");
-              }
-          }
-          $yumcmd = $yumcmd_base;
+            # remove the packages that are specified in the otherpkgs.list files with leading '--'
+            if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
+                my $pa=$extra_hash{$pass}{'POST_REMOVE'};
+                my $rm_packges= join(' ', @$pa);
+                if ($rm_packges) {
+                    print "$envlist $yumcmd_remove $rm_packges\n";
+                    $rc = system("$envlist $yumcmd_remove $rm_packges");
+                }
+            }
+            $yumcmd = $yumcmd_base;
 
-          # run yum update to update any installed rpms
-          # needed when running genimage again after updating software in repositories
-          my $yumcmd_update = $yumcmd_base . " update  ";
-          $rc = system("$yumcmd_update");
-
-      }
-   }
-
-   # ignore any return code
-
-   postscripts(); #run 'postscripts'
+            if (!$noupdate) {
+                # run yum update to update any installed rpms
+                # needed when running genimage again after updating software in repositories
+                my $yumcmd_update = $yumcmd_base . " update  ";
+                $rc = system("$yumcmd_update");
+            }
+        }
+    }
+    # ignore any return code
+    postscripts(); #run 'postscripts'
 }
 
 #get the rpm version, if the rpm version is different then the db verison may change.

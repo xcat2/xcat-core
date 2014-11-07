@@ -47,6 +47,7 @@ my $srcdir_otherpkgs;
 my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
+my $noupdate;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -80,6 +81,7 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
    'onlyinitrd' =>\$onlyinitrd,
+   'noupdate' => \$noupdate,
 );
 if (@ARGV > 0) {
     $imagename=$ARGV[0];
@@ -364,11 +366,13 @@ unless ($onlyinitrd) {
 	   $rc = system("$yumcmd_remove $rm_packges");
        }
 
-   # run zypper update to update any installed rpms
-   # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = "zypper -R $rootimg_dir update  ";
-   $rc = system("$yumcmd_update");
-   # ignore any return code
+   if (!$noupdate) {
+       # run zypper update to update any installed rpms
+       # needed when running genimage again after updating software in repositories
+       my $yumcmd_update = "zypper -R $rootimg_dir update  ";
+       $rc = system("$yumcmd_update");
+       # ignore any return code
+   }
 
 
    postscripts(); #run 'postscripts'

@@ -43,6 +43,7 @@ my $interactive;
 my $onlyinitrd;
 my $dryrun;
 my $ignorekernelchk;
+my $noupdate;
 #-----------------------------------------------------------------------------
 
 =head3 print_usage   - usage message
@@ -55,8 +56,8 @@ sub print_usage
     print "Usage:\n";
     print "    genimage\n\n";
     print "    genimage --dryrun\n\n";
-    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun]'."\n\n";
-    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] <imagename>'."\n\n";
+    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--noupdate]'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--noupdate] <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
     print "      -m is used for urbuntu, debian and fedora12 only\n\n";
@@ -90,6 +91,7 @@ if (!GetOptions(
          'onlyinitrd' => \$onlyinitrd, 
          'dryrun' => \$dryrun,
 	 'ignorekernelchk' => \$ignorekernelchk,
+	 'noupdate' => \$noupdate,
 	 'h|help' => \$help,
 	 'v|version' => \$version,
 )) {
@@ -407,6 +409,10 @@ if ($dryrun) {
 
 if ($ignorekernelchk) {
     push @arg, "--ignorekernelchk";
+}
+
+if ($noupdate) {
+    push @arg, "--noupdate";
 }
 
 my $cmdref;

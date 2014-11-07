@@ -63,6 +63,7 @@ my $rootimg_dir;
 my $permission; # the permission works only for statelite mode currently
 my $tempfile;
 my $prompt;
+my $noupdate;
 
 
 sub xdie {
@@ -93,6 +94,7 @@ GetOptions(
    'rootimgdir=s' => \$destdir,   #internal flag
    'interactive' =>\$prompt, 
    'onlyinitrd' =>\$onlyinitrd,
+   'noupdate' =>\$noupdate,
 );
 
 if (@ARGV > 0) {
@@ -463,14 +465,16 @@ unless ($onlyinitrd) {
       }
    }
 
-   # run apt-get upgrade to update any installed debs
-   # needed when running genimage again after updating software in repositories
-   #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
-   my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
-   $rc = system("$aptgetcmd_update");
-   print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
-   umount_chroot($rootimg_dir);
-   # ignore any return code
+   if (!$noupdate) {
+       # run apt-get upgrade to update any installed debs
+       # needed when running genimage again after updating software in repositories
+       #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
+       my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
+       $rc = system("$aptgetcmd_update");
+       print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
+       umount_chroot($rootimg_dir);
+       # ignore any return code
+   }
 
    # Add the local repo from MN
    my $master = xCAT::TableUtils->get_site_Master();
