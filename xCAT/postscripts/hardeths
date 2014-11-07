@@ -114,8 +114,18 @@ EOF
         sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE
         sed -i s/BOOTPROTO=\'dhcp\'/BOOTPROTO=static/ $NICFILE
         sed -i s/BOOTPROTO=\"dhcp\"/BOOTPROTO=static/ $NICFILE
+        grep ^IPADDR= $NICFILE >/dev/null
+        if [ $? -eq 0 ]
+        then
+            sed -i '/IPADDR=/d'  $NICFILE
+        fi
         echo IPADDR=$IPADDR >> $NICFILE
-        echo NETMASK=$NETMASK >> $NICFILE 
+        grep ^NETMASK= $NICFILE >/dev/null
+        if [ $? -eq 0 ]
+        then
+            sed -i '/NETMASK=/d' $NICFILE
+        fi
+        echo NETMASK=$NETMASK >> $NICFILE    
     fi
 
     #for netboot/statelite case, restart the network interface. For diskful installation, it is not necessary because the restart of the network  will happen at the first boot.
