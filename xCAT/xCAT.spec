@@ -64,7 +64,7 @@ Requires: ipmitool-xcat >= 1.8.9
 Requires: xnba-undi
 %endif
 %ifos linux
-%ifarch ppc ppc64
+%ifarch ppc ppc64 ppc64le
 Requires: xCAT-genesis-scripts-ppc64
 Requires: ipmitool-xcat >= 1.8.9
 %endif

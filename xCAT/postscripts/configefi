@@ -106,9 +106,10 @@ if [ "$arch" =  "x86_64" ]; then
 		fi
 	fi
 elif [ "$arch" = "ppc64" ]; then
-    echo "run yaboot to configure the MBR."
+    echo "Choose suitale boot loader to configure the MBR."
     if [ -f "/usr/lib/yaboot/yaboot" ]; then
        # set bootloader
+       echo "Using /usr/lib/yaboot/yaboot"
        echo "dd if=/usr/lib/yaboot/yaboot of=/dev/sda1 bs=4096"
        dd if=/usr/lib/yaboot/yaboot of=/dev/sda1 bs=4096
       
@@ -116,12 +117,14 @@ elif [ "$arch" = "ppc64" ]; then
        # echo A | dd of=/dev/sda bs=1 count=1 seek=450
     elif [ -f "/lib/lilo/pmac/yaboot" ]; then
         # set bootloader
+        echo "using /lib/lilo/pmac/yaboot"
         echo "dd if=/lib/lilo/pmac/yaboot of=/dev/sda1 bs=4096"
         dd if=/lib/lilo/pmac/yaboot of=/dev/sda1 bs=4096
 
        # Set 0x41 as the partition type of the first partition
        # echo A | dd of=/dev/sda bs=1 count=1 seek=450
     elif [ -f "/boot/grub2/grub" ];then
+       echo "using /boot/grub2/grub"
        echo "dd if=/boot/grub2/grub of=/dev/sda1 bs=4096"
        dd if=/boot/grub2/grub of=/dev/sda1 bs=4096
 

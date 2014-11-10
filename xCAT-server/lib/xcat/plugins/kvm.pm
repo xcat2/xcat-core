@@ -618,7 +618,7 @@ sub build_nicstruct {
     foreach (@macs) {
         my $rethash;
         my $nic = shift @nics;
-        my $type = 'e1000'; #better default fake nic than rtl8139, relevant to most
+        my $type = 'virtio'; #better default fake nic than rtl8139, relevant to most
         unless ($nic) {
             last; #Don't want to have multiple vnics tied to the same switch
         }
@@ -2240,7 +2240,7 @@ sub fixup_clone_network {
     my $nic;
     my $deviceroot=$newnodexml->findnodes("/domain/devices")->[0];
     foreach $nic (@nics) { #need more xml to throw at it..
-        my $type = 'e1000'; #better default fake nic than rtl8139, relevant to most
+        my $type = 'virtio'; #better default fake nic than rtl8139, relevant to most
         $nic =~ s/.*://; #the detail of how the bridge was built is of no
                         #interest to this segment of code
         if ($confdata->{vm}->{$node}->[0]->{nicmodel}) {

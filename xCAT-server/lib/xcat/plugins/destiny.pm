@@ -386,6 +386,9 @@ sub setdestiny {
 		return;
 	    }
 	    my $arch = $ent->{arch};
+           if ($arch eq "ppc64le" or $arch eq "ppc64el") {
+               $arch = "ppc64";
+           }
 	    my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
 	    my $master;
 	    my $kcmdline = "quiet ";

@@ -215,6 +215,9 @@ sub init_dbworker {
                 exit(0);
             }
         }
+
+        # sleep a while to make sure the client process has done
+        sleep 1.5;
         close($dbworkersocket);
         unlink($dbsockpath);
         exit 0;

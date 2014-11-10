@@ -6,9 +6,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 B<genimage>
 
-B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<--onlyinitrd>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] [B<--ignorekernelchk>] I<imagename>
+B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<--onlyinitrd>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] [B<--ignorekernelchk>] [B<--noupdate>] I<imagename>
 
-B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<--onlyinitrd>]  [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>]
+B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<--onlyinitrd>]  [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] [B<--noupdate>]
 
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
@@ -153,6 +153,10 @@ This flag shows the underlying call to the os specific genimage function. The us
 =item B<--ignorekernelchk>
 
 Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
+
+=item B<--noupdate>
+
+This flag allows the user to bypass automatic package updating when installing other packages.
 
 =item B<-v|--version>
 

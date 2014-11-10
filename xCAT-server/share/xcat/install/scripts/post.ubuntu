@@ -125,7 +125,7 @@ run_ps () {
   echo "\"\`date\` Running postscript: \$@\"" | tee -a \$logfile
   #./\$@ 2>&1 1> /tmp/tmp4xcatlog
   #cat /tmp/tmp4xcatlog | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a $logfile
+  ./\$@ 2>&1 | tee -a \$logfile
   ret_local=\${PIPESTATUS[0]}
   if [ \"\$ret_local\" -ne \"0\" ]; then
     return_value=\$ret_local

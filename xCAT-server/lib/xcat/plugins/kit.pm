@@ -3862,6 +3862,7 @@ sub lskitcomp_processargs {
     # Option -C for kit component attributes
     if ( defined($::opt_C) ) {
         $::kitcompattrs = split_comma_delim_str($::opt_C);
+        push ($::kitcompattrs,"kitcompname");
         ensure_kitname_attr_in_list($::kitcompattrs);
         if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
             return 3;
@@ -4266,8 +4267,6 @@ sub lskit {
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
     }
-
-    #lskit use options
     if ( defined($::opt_K) || defined($::opt_R) || defined($::opt_C) ) {
 
          if ( ! defined($::opt_x)) {
@@ -4297,9 +4296,8 @@ sub lskit {
                      }
                      lskit_C($kit_hash,$kitcomp_hash);
               }
-         }else
-         {
-           #To support xml format
+       }else
+       {
            if (defined($::opt_K)) {
               create_lskit_K_xml_response($kit_hash);
            }
@@ -4309,11 +4307,10 @@ sub lskit {
            if (defined($::opt_C)) {
               create_lskit_C_xml_response($kit_hash,$kitcomp_hash);
            }
-        }
+       }
     }
     else
     {
-         #lskit use no options
           if (defined($::opt_x)) {
                create_lskit_xml_response($kit_hash, $kitrepo_hash, $kitcomp_hash);
           } else {
@@ -4550,19 +4547,91 @@ sub lskitcomp {
     ## Kit hash table
     my @kitnames = map {$_->{kitname}} @$kitcomps;
     my $kit_hash = get_kit_hash(\@kitnames, ['kitname']);
-    
     ## Kit component hash table
     my $kitcomp_hash = create_hash_from_table_rows($kitcomps, 'kitname');
 
 
     ## Now display the output
+    if ( defined($::opt_C) ) {
+        if ( defined($::opt_x)) {
+              create_lskitcomp_C_xml_response($kit_hash,$kitcomp_hash);
+        }
+        else
+        {
+             if ( defined($::opt_C) ) {
+                    my @kitcomplist = keys(%$kitcomp_hash);
+                    if (scalar @kitcomplist == 0) {
+                         my $rsp = {};
+                         push @{ $rsp->{data} }, "No kit components were found.";
+                         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+                         return 0;
+                     }
+                     lskitcomp_C($kit_hash,$kitcomp_hash);
+              }
+        }
+    }
+    else 
+    {
 
-    if (defined($::opt_x)) {
-        create_lskit_xml_response($kit_hash, {}, $kitcomp_hash);
-    } else {
-        create_lskit_stanza_response($kit_hash, {}, $kitcomp_hash);
+        if (defined($::opt_x)) {
+                create_lskit_xml_response($kit_hash, {}, $kitcomp_hash);
+        } 
+        else 
+        {
+                create_lskit_stanza_response($kit_hash, {}, $kitcomp_hash);
+        }
     }
     return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  lskitcomp_C
+
+        Support for listing kitcomponent
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - help
+                2 - error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lskitcomp_C {
+
+     my $kit_hash = shift;
+     my $kitcomp_hash = shift;
+     my $rsp = {};
+     my $count = 0;
+
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+
+        my $output .= "\n----------------------------------------------------\n";
+        $output .= "\nkit : $kitname:\n\n";
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                $output .= "kitcomponent:\n";
+                for my $kitcomp_attr (sort(keys(%$kitcomp))) {
+                    $output .= sprintf("    %s=%s\n", $kitcomp_attr, $kitcomp->{$kitcomp_attr});
+                }
+                $output .= "\n";
+            }
+        }
+
+
+        push @{ $rsp->{data} }, $output;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+
+
 }
 
 
@@ -5241,7 +5310,45 @@ sub create_lskit_C_xml_response {
     xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
 }
 
+#----------------------------------------------------------------------------
 
+=head3  create_lskitcomp_C_xml_response
+
+        Prepare a response that returns the
+        kit component info in XML format.
+
+        Arguments:
+               kit hash table
+               kit component hash table
+
+               Note: Hash tables are created by create_hash_from_table_rows()
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub create_lskitcomp_C_xml_response {
+
+    my $kit_hash = shift;
+    my $kitcomp_hash = shift;
+
+    my $rsp = {};
+
+    for my $kitname (sort(keys(%$kit_hash))) {
+        my $output_hash = {"kitinfo" => {"kit" => [], "kitrepo" => [], "kitcomponent" => [] } };
+
+
+        # Kit component info
+        if (defined($kitcomp_hash->{$kitname})) {
+            for my $kitcomp (@{$kitcomp_hash->{$kitname}}) {
+                push(@{$output_hash->{kitinfo}->{kitcomp}}, $kitcomp);
+            }
+        }
+
+        push @{ $rsp->{data} }, $output_hash;
+    }
+
+    xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
+}
 
 #----------------------------------------------------------------------------
 

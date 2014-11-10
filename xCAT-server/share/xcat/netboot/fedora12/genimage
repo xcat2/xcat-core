@@ -57,6 +57,7 @@ my $permission; # the permission works only for statelite mode currently
 my $tempfile;
 my $kerneldir;
 my $prompt;
+my $noupdate;
 
 
 sub xdie {
@@ -87,6 +88,7 @@ GetOptions(
    'rootimgdir=s' => \$destdir,   #internal flag
    'interactive' =>\$prompt, 
    'onlyinitrd' =>\$onlyinitrd, 
+   'noupdate' =>\$noupdate,
 );
 
 if (@ARGV > 0) {
@@ -320,11 +322,13 @@ unless ($onlyinitrd) {
       }
    }
 
-   # run yum update to update any installed rpms
-   # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = $yumcmd_base . " update  ";
-   $rc = system("$yumcmd_update");
-   # ignore any return code
+   if (!$noupdate) {
+       # run yum update to update any installed rpms
+       # needed when running genimage again after updating software in repositories
+       my $yumcmd_update = $yumcmd_base . " update  ";
+       $rc = system("$yumcmd_update");
+       # ignore any return code
+   }
 
 
    postscripts(); #run 'postscripts'

@@ -1153,7 +1153,7 @@ until ($quit) {
 
   if ($child == 0) {
     close($udpctl); $udpctl=0;
-    $SIG{TERM} = $SIG{INT} = {};
+    $SIG{TERM} = $SIG{INT} = 'DEFAULT';
     $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
 
@@ -1455,6 +1455,16 @@ sub plugin_command {
   # save the old signal
   my $old_sig_chld = $SIG{CHLD};
   $SIG{CHLD} = \&plugin_reaper; #sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $plugin_numchildren--; } } };
+
+  # make the request handler process to take care all the plugin children
+  $SIG{TERM} = $SIG{INT} = sub {
+      foreach (keys %plugin_children) {
+          kill 2, $_;
+      }
+      $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
+      alarm(1);
+  };
+
   my $check_fds;
   if ($sock) { 
     $check_fds = new IO::Select;
@@ -1559,7 +1569,6 @@ sub plugin_command {
         die; 
       }
       if ($child == 0) {
-        setpgrp(0,0);
         if ($parfd) {  #If xCAT is doing multiple requests in same communication PID, things would get unfortunate otherwise
             $parent_fd = $parfd;
         }
@@ -1776,9 +1785,11 @@ sub dispatch_request {
   $dispatch_children=0;
   $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
   $SIG{TERM} = $SIG{INT} = sub {                        
-   foreach (keys %dispatched_children) {              
-      kill 2, $_;                                     
-   }
+      foreach (keys %dispatched_children) {              
+          kill 2, $_;                                     
+      }
+      $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
+      alarm(1);
   };                                                
   # this is used to filter out the incorrect module that xcat command came into
   # Mainly useful for hierarchical environment on SN
@@ -2398,7 +2409,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
           print "Aborting...";
          foreach (keys %plugin_children) {
             print "Sending INT to $_\n";
-            kill -15, $_;
+            kill 2, $_;
          }
          foreach my $cin ($fds->handles) {
             print $cin "die\n";

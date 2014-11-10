@@ -111,6 +111,8 @@ echo "This is an $OSNAME system"
   ARCH=$(uname -p)
   if [ "$ARCH" = "x64_64" ]; then 
        $CURDIR/makerpm xCAT-genesis-scripts x86_64  
+  else
+       $CURDIR/makerpm xCAT-genesis-scripts ppc64
   fi
 
   
