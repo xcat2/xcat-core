@@ -209,6 +209,23 @@ sub process_request {
     my $deletemode=0;
     my $external=0;
     my $slave=0;
+
+    # Since the mandatory rpm perl-Net-DNS for makedns on sles12 (perl-Net-DNS-0.73-1.28)  has a bug,
+    # user has to update it to a newer version
+    my @rpminfo = `rpm -qi perl-Net-DNS`;
+    my ($matchedver, $matchedrel);
+    foreach (@rpminfo) {
+        if (/Version\s*:\s*0.73/i) {
+            $matchedver = 1;
+        } elsif (/Release\s*:\s*1.28/i) {
+            $matchedrel = 1;
+        }
+    }
+    if ($matchedver && $matchedrel) {
+        xCAT::MsgUtils->message("E", {error => ["The necessary rpm perl-Net-DNS-0.73-1.28 needs be updated to a higher version for makedns to function. You can get a workable version perl-Net-DNS-0.80-1.x86_64.rpm from xCAT Dependency Repository. e.g. For sles12: zypper install perl-Net-DNS-0.80-1.x86_64"], errorcode => [1]}, $callback);
+        return;
+    }        
+
     if ($request->{arg}) {
         $hadargs=1;
         @ARGV=@{$request->{arg}};
