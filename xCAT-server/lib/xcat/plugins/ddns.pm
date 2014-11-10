@@ -222,7 +222,7 @@ sub process_request {
         }
     }
     if ($matchedver && $matchedrel) {
-        xCAT::MsgUtils->message("E", {error => ["The necessary rpm perl-Net-DNS-0.73-1.28 needs be updated to a higher version for makedns to function. You can get a workable version perl-Net-DNS-0.80-1.x86_64.rpm from xCAT Dependency Repository. e.g. For sles12: zypper install perl-Net-DNS-0.80-1.x86_64"], errorcode => [1]}, $callback);
+        xCAT::MsgUtils->message("E", {error => ["The necessary rpm perl-Net-DNS-0.73-1.28 needs be updated to a higher version for makedns to function. You can get a workable version perl-Net-DNS-0.80-1.x86_64.rpm from xCAT Dependency Repository. e.g. For sles12: zypper install perl-Net-DNS-0.80-1.<arch>"], errorcode => [1]}, $callback);
         return;
     }        
 
