@@ -909,8 +909,8 @@ EOF`
 
     #Handle the rest with rpm
     if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then 
-        echo "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
-        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the repository, falling back to rpm command, did you forget to run createrepo?"
+        echo "Warning: the packages $plain_pkgs could not be found in the yum repository, falling back to rpm command. If you want your packages to be installed with yum, verify yum is installed and createrepo has been run."
+        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the yum repository, falling back to rpm command. If you want your packages to be installed with yum, verify yum is installed and createrepo has been run." 
         if [ $mounted -eq 0 ]; then
 	    dir_no_ftproot=${OTHERPKGDIR#*$INSTALLDIR/}
             mkdir -p /xcatpost/$dir_no_ftproot 
