@@ -508,4 +508,71 @@ sub process_request {
   }
 }
 
+sub getstate {
+  my $node = shift;
+  my $tftpdir = shift;
+  unless ($tftpdir) { $tftpdir = _slow_get_tftpdir($node); }
+  if (check_dhcp($node)) {
+    if (-r $tftpdir . "/petitboot/".$node) {
+      my $fhand;
+      open ($fhand,$tftpdir . "/petitboot/".$node);
+      my $headline = <$fhand>;
+      close $fhand;
+      $headline =~ s/^#//;
+      chomp($headline);
+      return $headline;
+    } else {
+      return "boot";
+    }
+  } else {
+    return "discover";
+  }
+}
+
+#----------------------------------------------------------------------------
+=head3  getNodesetStates
+       returns the nodeset state for the given nodes. The possible nodeset
+           states are: netboot, install, boot and discover.
+    Arguments:
+        nodes  --- a pointer to an array of nodes
+        states -- a pointer to a hash table. This hash will be filled by this
+             function.The key is the nodeset status and the value is a pointer
+             to an array of nodes.
+    Returns:
+       (return code, error message)
+=cut
+#-----------------------------------------------------------------------------
+sub getNodesetStates {
+  my $noderef=shift;
+  if ($noderef =~ /xCAT_plugin::petitboot/) {
+    $noderef=shift;
+  }
+  my @nodes=@$noderef;
+  my $hashref=shift;
+  my $noderestab = xCAT::Table->new('noderes'); #in order to detect per-node tftp directories
+  my %nrhash = %{$noderestab->getNodesAttribs(\@nodes,[qw(tftpdir)])};
+ 
+  if (@nodes>0) {
+    foreach my $node (@nodes) {
+      my $tftpdir;
+      if ($nrhash{$node}->[0] and $nrhash{$node}->[0]->{tftpdir}) {
+        $tftpdir = $nrhash{$node}->[0]->{tftpdir};
+      } else {
+         $tftpdir = $globaltftpdir;
+      }
+      my $tmp=getstate($node, $tftpdir);
+      my @a=split(' ', $tmp);
+      my $stat = $a[0];
+      if (exists($hashref->{$stat})) {
+          my $pa=$hashref->{$stat};
+          push(@$pa, $node);
+      }
+      else {
+          $hashref->{$stat}=[$node];
+      }
+    }
+  }
+  return (0, "");
+}
+
 1;
