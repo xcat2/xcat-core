@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<restartxcatd> - Restart the xCAT daemon (xcatd) on AIX.
+B<restartxcatd> - Restart the xCAT daemon (xcatd).
 
 =head1 SYNOPSIS
 
@@ -9,9 +9,32 @@ B<restartxcatd> [[B<-h>|B<--help>] | [B<-v>|B<--version>] | [B<-r>|B<--reload>]]
 
 =head1 DESCRIPTION
 
-The B<restartxcatd> command restarts the xCAT daemon (xcatd) on AIX.  
-It uses the startsrc and stopsrc commands to do the restart work. If the xcatd subsystem was not created, B<restartxcatd> will create it automatically.
+The B<restartxcatd> command restarts the xCAT daemon (xcatd). 
 
+B<Linux Specific>
+
+=over 2
+
+It will perform the xcatd I<fast restart>. The xcatd I<fast restart> is a specific restart which has two advantages compares to the I<stop> and then I<start>.
+    1. The interval of xcatd out of service is very short.
+    2. The in processing request which initiated by old xcatd will not be stopped by force. The old xcatd will hand over the sockets to new xcatd, but old xcat will still be waiting for the in processing request to finish before the exit.
+
+It does the same thing as 'service xcatd restart' on NON-systemd enabled Operating System like rh6.x and sles11.x. But for the systemd enabled Operating System like rh7 and sles12, the 'service xcatd restart' just do the I<stop> and I<start> instead of xcatd I<fast restart>.
+
+It's recommended to use B<restartxcatd> command to restart xcatd on systemd enable system like rh7 and sles12 instead of 'service xcatd restart' or 'systemctl restart xcatd'.
+
+=back
+
+B<AIX Specific>
+
+=over 2
+
+It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active, then runs 'startsrc -s xcatd' to start xcatd.
+
+If the xcatd subsystem was not created, B<restartxcatd> will create it automatically.
+
+=back
+ 
 =head1 OPTIONS
 
 
