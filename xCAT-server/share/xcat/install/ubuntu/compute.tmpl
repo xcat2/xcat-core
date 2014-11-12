@@ -38,19 +38,19 @@ d-i partman-md/device_remove_md boolean true
 #create the /tmp/partitioning based on the uefi or legacy bios 
 d-i partman/early_command string \
     set -x; \
-    rm /tmp/devs-with-grub 2>/dev/null || true; \
+    rm /tmp/devs-with-boot 2>/dev/null || true; \
     for d in $(list-devices partition); do \
         mkdir -p /tmp/mymount; \
         rc=0; \
         mount $d /tmp/mymount || rc=$?; \
         if [[ $rc -eq 0 ]]; then \
-            [[ -e /tmp/mymount/grub/grub.cfg ]] && echo $d >>/tmp/devs-with-grub; \
+            [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot; \
             umount /tmp/mymount; \
         fi \
     done; \
-    if [[ -e /tmp/devs-with-grub ]]; then \
-        head -n1 /tmp/devs-with-grub | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
-        rm /tmp/devs-with-grub 2>/dev/null || true; \
+    if [[ -e /tmp/devs-with-boot ]]; then \
+        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
+        rm /tmp/devs-with-boot 2>/dev/null || true; \
     else \
         DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*sd[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o 'sd.*$'`; \
         if [[ $DEV == "" ]]; then DEV="sda"; fi; \
