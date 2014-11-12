@@ -6,9 +6,9 @@ B<makedns> - sets up domain name services (DNS).
 
 B<makedns> [I<-h>|I<--help>]
 
-B<makedns> [-e|--external] [I<-n>|I<--new>] [I<noderange>]
+B<makedns> [-V|--verbose] [-e|--external] [I<-n>|I<--new>] [I<noderange>]
 
-B<makedns> [-e|--external] [I<-d>|I<--delete> I<noderange>]
+B<makedns> [-V|--verbose] [-e|--external] [I<-d>|I<--delete> I<noderange>]
 
 =head1 DESCRIPTION
 
@@ -36,6 +36,10 @@ Cluster_Name_Resolution
 =head1 OPTIONS
 
 =over 6
+
+=item B<-V>|B<--verbose>
+
+Verbose mode.
 
 =item B<-n>|B<--new>
 
