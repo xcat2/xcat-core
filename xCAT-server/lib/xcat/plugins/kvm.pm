@@ -1445,7 +1445,7 @@ sub rinv {
         xCAT::SvrUtils::sendmsg("Maximum Memory: $maxmem MB", $callback,$node);
 	
     }
-    invstorage($domain);
+    invstorage($domain, $dom);
     invnics($domain);
 }
 sub get_storage_pool_by_volume {
@@ -1473,7 +1473,8 @@ sub get_storage_pool_by_path {
 }
 
 sub invstorage {
-    my $domain = shift;
+    my $domain = shift; # the dom obj of XML
+    my $dom = shift; # the real domain obj
     my @disks = $domain->findnodes('/domain/devices/disk');
     my $disk;
     foreach $disk (@disks) {
@@ -1494,29 +1495,39 @@ sub invstorage {
 		next;
 	}
         my $file = $candidatenodes[0]->getAttribute('file');
-        #we'll attempt to map file path to pool name and volume name
-        #fallback to just reporting filename if not feasible
-        #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
-        $file =~ m!/([^/]*)/($node\..*)\z!;
-        my $volname=$2;
-        my $vollocation=$file;
-        eval {
-            my $pool = get_storage_pool_by_path($file);
-            my $poolname = $pool->get_name();
-            $vollocation = "[$poolname] $volname";
-        };
-        #at least I get to skip the whole pool mess here
-        my $vol = $hypconn->get_storage_volume_by_path($file);
+        my $dev = $candidatenodes[0]->getAttribute('dev');
+        my $vollocation;
         my $size;
-        if ($vol) {
-            my %info = %{$vol->get_info()};
-            if ($info{allocation} and $info{capacity}) {
-                $size = $info{allocation};
-                $size = $size/1048576; #convert to MB
-                $size = sprintf("%.3f",$size);
-                $size .= "/".($info{capacity}/1048576);
+        my %info;
+        if ($file) { # for the volumn is a file in storage poll
+            #we'll attempt to map file path to pool name and volume name
+            #fallback to just reporting filename if not feasible
+            #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
+            $file =~ m!/([^/]*)/($node\..*)\z!;
+            my $volname=$2;
+            $vollocation=$file;
+            eval {
+                my $pool = get_storage_pool_by_path($file);
+                my $poolname = $pool->get_name();
+                $vollocation = "[$poolname] $volname";
+            };
+            #at least I get to skip the whole pool mess here
+            my $vol = $hypconn->get_storage_volume_by_path($file);
+            if ($vol) {
+                %info = %{$vol->get_info()};
             }
+        } elsif ($dev) { # for the volumn is a block device
+            $vollocation = $dev;
+            %info = %{$dom->get_block_info($dev)};
         }
+        
+        if ($info{allocation} and $info{capacity}) {
+            $size = $info{allocation};
+            $size = $size/1048576; #convert to MB
+            $size = sprintf("%.3f",$size);
+            $size .= "/".($info{capacity}/1048576);
+        }
+        
         $callback->({
             node=>{
                 name=>$node,
