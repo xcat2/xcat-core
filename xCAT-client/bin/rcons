@@ -48,7 +48,27 @@ if [ -n "$2" ]; then
     fi
 fi
 
-if [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
+if [ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ]; then
+	#use confluent
+   CONFETTY="confetty"
+   if [ -x "/opt/confluent/bin/confetty" ]; then
+	CONFETTY="/opt/confluent/bin/confetty"
+   fi
+	if [ ! -z "$CONSCONTROLPATH" ]; then
+		CONSCONTROLPATH="-c $CONSCONTROLPATH"
+	fi
+    if [ -z "$CONSERVER" ]; then
+        CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
+    fi
+    
+    if [ -z "$CONSERVER" ]; then
+	CONSERVER=$XCATHOST
+    fi
+    if [ ! -z "$CONSERVER" ]; then
+	CONSERVER="-s $CONSERVER"
+    fi
+    $CONFETTY $CONSCONTROLPATH $CONSERVER  $1
+elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
     #use conserver
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
