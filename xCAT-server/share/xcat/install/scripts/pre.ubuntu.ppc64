@@ -134,9 +134,9 @@ else
     echo '    $primary{ } $bootable{ } method{ prep }' >> /tmp/partitioning
     echo "    ." >> /tmp/partitioning
 
-    echo "100 50 100 ext4" >> /tmp/partitioning
-    echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot }' >> /tmp/partitioning
-    echo "    ." >> /tmp/partitioning
+    #echo "100 50 100 ext4" >> /tmp/partitioning
+    #echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot }' >> /tmp/partitioning
+    #echo "    ." >> /tmp/partitioning
 fi
 echo "500 10000 1000000000 ext4" >> /tmp/partitioning
 echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / }" >> /tmp/partitioning
