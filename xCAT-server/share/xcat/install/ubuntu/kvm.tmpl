@@ -105,6 +105,9 @@ d-i preseed/early_command string wget http://`cat /tmp/xcatserver`/install/autoi
      chmod u+x #HOSTNAME#.pre; \
      ./#HOSTNAME#.pre 
 
+# To workaround the "Unmount partitions that are in use?" question
+d-i preseed/early_command string umount /media || true
+
 d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
      chmod u+x #HOSTNAME#.post; \
      cp ./#HOSTNAME#.post /target/root/post.script; \

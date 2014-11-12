@@ -2,7 +2,33 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
 
-#
+#-----------------------------------------------------------------------------
+=head1 restartxcatd 
+
+ restartxcatd  - this routine is used to restart the xcatd process group.
+
+     Linux: It will perform the xcatd fast restart. The 'xcatd fast restart'
+         has two advantages compares to the 'service stop and then start'. 
+             1. The interval of xcatd out of service is very short.
+             2. The in processing request which initiated by old xcatd will
+                not be stopped by force. The old xcatd will hand over the sockets
+                to new xcatd, but old xcat will still be waiting for the in processing 
+                request to finish before the exit.
+
+         It does the same thing as 'service xcatd restart' on NON-systemd OS like
+             rh6.x and sles11.x. But for the systemd enabled OS like rh7 and sles12, 
+             the 'service xcatd restart' just do the 'stop and start' instead of 
+             'xcatd fast restart'.
+         
+         SO, it's recommended to use 'restartxcatd' command to restart xcatd on 
+             systemd enable system like rh7 and sles12 instead of 'service xcatd restart' or 
+             'systemctl restart xcatd'.
+
+     AIX: It runs 'stopsrc -s xcatd' to stop xcatd first if xcatd is active, 
+         then runs 'startsrc -s xcatd' to start xcatd.
+
+=cut
+#-----------------------------------------------------------------------------
 
 BEGIN
 {
@@ -16,35 +42,6 @@ use Getopt::Long;
 use File::Basename;
 use xCAT::MsgUtils;
 use xCAT::Utils;
-
-#-----------------------------------------------------------------------------
-
-=head1  startstopxcatd
-
-
-
- restartxcatd  - this routine is used to restart the xcatd processes by 
-   startsrc and stopsrc commands.
- It runs on AIX. 
-
-=cut
-
-#-----------------------------------------------------------------------------
-# Main
-
-$::RE_CHECK_NUM = 10;   # the times to check the result of command, the checking interval is 1 second
-
-my $rc;
-my @output;
-my $inoperative = 0;
-my $check_num;
-
-if (!(xCAT::Utils->isAIX()))
-{    # only runs on AIX
-    xCAT::MsgUtils->message("E", "Error: This command should only be run on AIX.");
-    exit 1;
-
-}
 
 my $cmd = basename($0);
 # for auditing
@@ -62,6 +59,40 @@ $rsp->{clienttype} -> [0]= "cli";
 $rsp->{command} -> [0] = $cmd;
 $rsp->{status} -> [0] = "allowed";
 xCAT::MsgUtils->message("SA",$rsp); # syslog and auditlog
+
+
+# for Linux specific
+if (xCAT::Utils->isLinux())
+{ 
+    print "Restarting xCATd                                           ";
+    if (-r "/etc/profile.d/xcat.sh") {
+        $cmd = "source /etc/profile.d/xcat.sh;";
+    }
+
+    $cmd .= "xcatd -p /var/run/xcatd.pid";
+    xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC == 0) {
+        print "[  OK  ]\n";
+        system ("logger -p local4.info -t xCAT Restart xcatd: [ OK ].");
+        exit 0;
+    } else {
+        print "[ FAILED  ]\n";
+        system ("logger -p local4.info -t xCAT Restart xcatd: [ FAILED ].");
+        exit 1;
+    }
+} elsif (!(xCAT::Utils->isAIX())) {
+    xCAT::MsgUtils->message("E", "Error: This command should only be run on Linux or AIX.");
+    exit 1;
+}
+
+# Following code is for AIX only
+
+$::RE_CHECK_NUM = 10;   # the times to check the result of command, the checking interval is 1 second
+
+my $rc;
+my @output;
+my $inoperative = 0;
+my $check_num;
 
 # Check whether the xcatd subsystem has been created
 $cmd = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";

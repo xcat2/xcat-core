@@ -54,6 +54,7 @@ sub getNodesetStates
         my @yabootnodes = ();
         my @xnbanodes= ();
         my @grub2nodes = ();
+        my @petitbootnodes = ();
         my $tabdata     = $tab->getNodesAttribs(\@nodes, ['node', 'netboot']);
         foreach my $node (@nodes)
         {
@@ -79,6 +80,10 @@ sub getNodesetStates
             elsif ($nb eq "grub2")
             {
                 push(@grub2nodes, $node);
+            }
+            elsif ($nb eq "petitboot")
+            {
+                push(@petitbootnodes, $node);
             }
         }
 
@@ -141,6 +146,17 @@ sub getNodesetStates
             require xCAT_plugin::grub2;
             @retarray =
               xCAT_plugin::grub2::getNodesetStates(\@grub2nodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+        if (@petitbootnodes > 0)
+        {
+            require xCAT_plugin::petitboot;
+            @retarray = xCAT_plugin::petitboot::getNodesetStates(\@petitbootnodes,  $hashref);
             if ($retarray[0])
             {
                 $retcode = $retarray[0];

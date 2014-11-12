@@ -3862,7 +3862,7 @@ sub lskitcomp_processargs {
     # Option -C for kit component attributes
     if ( defined($::opt_C) ) {
         $::kitcompattrs = split_comma_delim_str($::opt_C);
-        push ($::kitcompattrs,"kitcompname");
+        push (@{$::kitcompattrs},"kitcompname");
         ensure_kitname_attr_in_list($::kitcompattrs);
         if (check_attr_names_exist('kitcomponent', $::kitcompattrs) != 0) {
             return 3;

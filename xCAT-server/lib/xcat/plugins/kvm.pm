@@ -401,9 +401,9 @@ sub reconfigvm {
 		$_->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
 	}
     }
-    if (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+    if (defined $confdata->{vm}->{$node}->[0]->{vcpus}) {
 	$needfixin=1;
-	$domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{cpus});
+	$domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{vcpus});
     }
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
         my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder});
@@ -664,6 +664,12 @@ sub build_xmldesc {
     my $cdloc=$args{cd};
     my %xtree=();
     my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
+    my $hypcputype = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cputype};
+    my $hypcputhreads = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpu_thread};
+    unless ($hypcputhreads) {
+        $hypcputhreads = "1";
+    }
+
     $xtree{type}='kvm';
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
@@ -683,15 +689,38 @@ sub build_xmldesc {
     } else {
         $xtree{memory}->{content}=524288;
     }
-    if ($args{cpus}) {
-        $xtree{vcpu}->{content}=$args{cpus};
-        if ($confdata->{vm}->{$node}->[0]->{cpus}) {
+    if ($hypcpumodel eq "ppc64") {
+        my %cpuhash = ();
+        $cpuhash{model} = $hypcputype;
+        if ($args{cpus}) {
+            $xtree{vcpu}->{content}=$args{cpus} * $hypcputhreads;
+            $cpuhash{topology}->{sockets} = 1;
+            $cpuhash{topology}->{cores} = $args{cpus};
+            $cpuhash{topology}->{threads} = $hypcputhreads;
             $updatetable->{vm}->{$node}->{cpus}=$args{cpus};
+        } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+            $xtree{vcpu}->{content}=$confdata->{vm}->{$node}->[0]->{cpus} * $hypcputhreads;
+            $cpuhash{topology}->{sockets} = 1;
+            $cpuhash{topology}->{cores} = $confdata->{vm}->{$node}->[0]->{cpus};
+            $cpuhash{topology}->{threads} = $hypcputhreads;
+        } else {
+            $xtree{vcpu}->{content}=1 * $hypcputhreads;
+            $cpuhash{topology}->{sockets} = 1;
+            $cpuhash{topology}->{cores} = 1;
+            $cpuhash{topology}->{threads} = $hypcputhreads;
         }
-    } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
-        $xtree{vcpu}->{content}=$confdata->{vm}->{$node}->[0]->{cpus};
+        $xtree{cpu} = \%cpuhash;
     } else {
-        $xtree{vcpu}->{content}=1;
+        if ($args{cpus}) {
+            $xtree{vcpu}->{content}=$args{cpus};
+            if ($confdata->{vm}->{$node}->[0]->{cpus}) {
+                $updatetable->{vm}->{$node}->{cpus}=$args{cpus};
+            }
+        } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+            $xtree{vcpu}->{content}=$confdata->{vm}->{$node}->[0]->{cpus};
+        } else {
+            $xtree{vcpu}->{content}=1;
+        }
     }
     if (defined ($confdata->{vm}->{$node}->[0]->{clockoffset})) {
         #If user requested a specific behavior, give it
@@ -1416,7 +1445,7 @@ sub rinv {
         xCAT::SvrUtils::sendmsg("Maximum Memory: $maxmem MB", $callback,$node);
 	
     }
-    invstorage($domain);
+    invstorage($domain, $dom);
     invnics($domain);
 }
 sub get_storage_pool_by_volume {
@@ -1444,7 +1473,8 @@ sub get_storage_pool_by_path {
 }
 
 sub invstorage {
-    my $domain = shift;
+    my $domain = shift; # the dom obj of XML
+    my $dom = shift; # the real domain obj
     my @disks = $domain->findnodes('/domain/devices/disk');
     my $disk;
     foreach $disk (@disks) {
@@ -1465,29 +1495,39 @@ sub invstorage {
 		next;
 	}
         my $file = $candidatenodes[0]->getAttribute('file');
-        #we'll attempt to map file path to pool name and volume name
-        #fallback to just reporting filename if not feasible
-        #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
-        $file =~ m!/([^/]*)/($node\..*)\z!;
-        my $volname=$2;
-        my $vollocation=$file;
-        eval {
-            my $pool = get_storage_pool_by_path($file);
-            my $poolname = $pool->get_name();
-            $vollocation = "[$poolname] $volname";
-        };
-        #at least I get to skip the whole pool mess here
-        my $vol = $hypconn->get_storage_volume_by_path($file);
+        my $dev = $candidatenodes[0]->getAttribute('dev');
+        my $vollocation;
         my $size;
-        if ($vol) {
-            my %info = %{$vol->get_info()};
-            if ($info{allocation} and $info{capacity}) {
-                $size = $info{allocation};
-                $size = $size/1048576; #convert to MB
-                $size = sprintf("%.3f",$size);
-                $size .= "/".($info{capacity}/1048576);
+        my %info;
+        if ($file) { # for the volumn is a file in storage poll
+            #we'll attempt to map file path to pool name and volume name
+            #fallback to just reporting filename if not feasible
+            #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
+            $file =~ m!/([^/]*)/($node\..*)\z!;
+            my $volname=$2;
+            $vollocation=$file;
+            eval {
+                my $pool = get_storage_pool_by_path($file);
+                my $poolname = $pool->get_name();
+                $vollocation = "[$poolname] $volname";
+            };
+            #at least I get to skip the whole pool mess here
+            my $vol = $hypconn->get_storage_volume_by_path($file);
+            if ($vol) {
+                %info = %{$vol->get_info()};
             }
+        } elsif ($dev) { # for the volumn is a block device
+            $vollocation = $dev;
+            %info = %{$dom->get_block_info($dev)};
         }
+        
+        if ($info{allocation} and $info{capacity}) {
+            $size = $info{allocation};
+            $size = $size/1048576; #convert to MB
+            $size = sprintf("%.3f",$size);
+            $size .= "/".($info{capacity}/1048576);
+        }
+        
         $callback->({
             node=>{
                 name=>$node,
@@ -1846,6 +1886,16 @@ sub chvm {
         } else { #offline xml edits
             my $parsed=$parser->parse_string($vmxml); #TODO: should only do this once, oh well
             if ($cpucount) {
+                my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
+                if ($hypcpumodel eq "ppc64") {
+                    my $hypcputype = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cputype};
+                    my $cputhreads = $parsed->findnodes("/domain/cpu/topology")->[0]->getAttribute('threads');
+                    unless ($cputhreads) {
+                        $cputhreads = "1";
+                    }
+                    $parsed->findnodes("/domain/cpu/topology")->[0]->setAttribute('cores'=>$cpucount);
+                    $cpucount *= $cputhreads;
+                }
                 $parsed->findnodes("/domain/vcpu/text()")->[0]->setData($cpucount);
             }
             if ($memory) {
@@ -3011,6 +3061,20 @@ sub dohyp {
       my $nodeinfo = $hypconn->get_node_info();
       if (exists($nodeinfo->{model})) {
           $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
+          if ($nodeinfo->{model} eq "ppc64") {
+              my $syshash = XMLin($hypconn->get_sysinfo());
+              my $processor_content = $syshash->{processor}->[0]->{entry}->{type}->{content};
+              if ($processor_content =~ /POWER8/i) {
+                  $confdata->{$hyp}->{cputype} = "power8";
+                  $confdata->{$hyp}->{cpu_thread} = "8";
+              } elsif ($processor_content =~ /POWER7/i) {
+                  $confdata->{$hyp}->{cputype} = "power7";
+                  $confdata->{$hyp}->{cpu_thread} = "4";
+              } elsif ($processor_content =~ /POWER6/i) {
+                  $confdata->{$hyp}->{cputype} = "power6";
+                  $confdata->{$hyp}->{cpu_thread} = "2";
+              }
+          }
       }
   }
 
@@ -3018,6 +3082,13 @@ sub dohyp {
     if ($confdata->{$hyp}->{cpumodel} and $confdata->{$hyp}->{cpumodel} =~ /ppc64/i) {
         $confdata->{vm}->{$node}->[0]->{storagemodel} = "scsi";
     }
+    if ($confdata->{$hyp}->{cpu_thread}) {
+        $confdata->{vm}->{$node}->[0]->{cpu_thread} = $confdata->{$hyp}->{cpu_thread};
+    }
+    if ($confdata->{$hyp}->{cputype})  {
+        $confdata->{vm}->{$node}->[0]->{cputype} = $confdata->{$hyp}->{cputype};
+    }
+
     my ($rc,@output) = guestcmd($hyp,$node,$command,@$args); 
 
     foreach(@output) {
