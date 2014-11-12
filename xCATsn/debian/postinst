@@ -28,13 +28,29 @@ case "$1" in
         rm  /etc/xCATMN
       fi
 
-        ver=$(cat /etc/issue |awk '{print $2}')
-        num=${ver%.*}
-        file="xcat.conf.apach24"
-        if [ $num -gt 12 ];then
-            mv /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf-enabled/
-        fi
-
+        #ver=$(cat /etc/issue |awk '{print $2}')
+        #num=${ver%.*}
+        #file="xcat.conf.apach24"
+        #if [ $num -gt 12 ];then
+        #    mv /etc/apache2/conf.d/xcat.conf.apach24 /etc/apache2/conf-enabled/
+        #fi
+	if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+	then
+	   rm -rf /etc/httpd/conf.d/xcat.conf
+	   ln -s /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+	fi
+	
+	if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+	then
+	   rm -rf /etc/apache2/conf-enabled/xcat.conf
+	   ln -s /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
+	fi
+	
+	if [ -n "$(apache2ctl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
+	then
+	   rm -rf /etc/apache2/conf-enabled/xcat.conf
+	   ln -s /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
+	fi  
 
       apachedaemon='apache2'
 
