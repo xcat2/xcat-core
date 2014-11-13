@@ -604,10 +604,10 @@ then
                 do 
                     ifdown $tmp  > /dev/null 2>&1
                     sleep 2
-                    ifup   $tmp
+                    ifup   $tmp > /dev/null 2>&1
                 done
             else 
-                ifup $nic     
+                ifup $nic    > /dev/null 2>&1 
             fi
         fi
     done
