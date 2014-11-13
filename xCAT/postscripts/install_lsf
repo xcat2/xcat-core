@@ -1,0 +1,285 @@
+#!/bin/bash -x
+#README################################################################
+# (1)Check you have  LSF installer script package and  LSF distribution packages. e.g. "lsf9.1.3_lsfinstall.tar.Z" and "lsf9.1.3_lnx26-lib23-ppc64le.tar.Z"
+# (2)Get LSF entitlement file for the edition you are installing. e.g. "platform_lsf_std_entitlement.dat"
+# (3)Prepare a install.config file, install.config should be in the same directory with install_lsf and lsf_startup scripts.
+# The format of install.config file
+# cat install.config
+# LSF_TOP=""
+# LSF_ADMINS=""
+# LSF_CLUSTER_NAME=""
+# LSF_MASTER_LIST=""
+# LSF_ENTITLEMENT_FILE="NEED A FULL PATH OF THE FILE"
+# LSF_TARDIR=""
+# (4)Run this script on one compute node,you can also use "updatenode <nodename> -P install_lsf" to execute this script on one compute node
+#   (It's not necessary to run it on each compute node).
+# 
+# NOTE for install.config:
+# -----------------
+# LSF_TOP="/usr/share/lsf"
+# -----------------
+# Full path to the top-level installation directory {REQUIRED}
+#
+# The path to LSF_TOP must be shared and accessible to all hosts
+# in the cluster. It cannot be the root directory (/).
+# The file system containing LSF_TOP must have enough disk space for
+# all host types (approximately 300 MB per host type).
+
+# -----------------
+# LSF_ADMINS="lsfadmin user1 user2"
+# -----------------
+# List of LSF administrators {REQUIRED}
+#
+# The first user account name in the list is the primary LSF
+# administrator. It cannot be the root user account.
+# Typically, this account is named lsfadmin.
+# It owns the LSF configuration files and log files for job events.
+# It also has permission to reconfigure LSF and to control batch
+# jobs submitted by other users. It typically does not have
+# authority to start LSF daemons. Usually, only root has
+# permission to start LSF daemons.
+# All the LSF administrator accounts must exist on all hosts in the
+# cluster before you install LSF.
+# Secondary LSF administrators are optional.
+#
+# -----------------
+# LSF_CLUSTER_NAME="cluster1"
+# -----------------
+# Name of the LSF cluster {REQUIRED}
+#
+# It must be 39 characters or less, and cannot contain any
+# white spaces. Do not use the name of any host, user, or user group
+# as the name of your cluster.
+#
+# -----------------
+# LSF_MASTER_LIST="hostm hosta hostc"
+# -----------------
+# List of LSF server hosts to be master or master candidate in the
+# cluster {REQUIRED when you install for the first time or during
+# upgrade if the parameter does not already exist.}
+#
+# You must specify at least one valid server host to start the
+# cluster. The first host listed is the LSF master host.
+#
+# -----------------
+# LSF_ENTITLEMENT_FILE="/usr/share/lsf/lsf_distrib/platform_lsf_std_entitlement.dat"
+# -----------------
+# You must specify a full path to the LSF entitlement file.
+#
+# -----------------
+# LSF_TARDIR="/usr/share/lsf_distrib/"
+# -----------------
+# Full path to the directory containing the LSF distribution tar files.
+#
+# Default: Parent directory of the current working directory.
+#          For example, if lsfinstall is running under
+#          /usr/share/lsf_distrib/lsf_lsfinstall
+#          the LSF_TARDIR default value is
+#          /usr/share/lsf_distrib
+# -----------------
+# LSF_ADD_SERVERS="hostm hosta hostb hostc"
+# -----------------
+# List of additional LSF server hosts
+#
+# The hosts in LSF_MASTER_LIST are always LSF servers. You can specify
+# additional server hosts.
+#README################################################################
+
+
+INSTALL_CONFIG_FILE=`pwd`/install.config
+#LSF_INSTALL_FILE_PATH=""
+#LSF_GLIBC_FILE_PATH=""
+
+
+
+function is_parameter_set()
+{
+PARA=$1
+IF_SET=`grep $PARA $INSTALL_CONFIG_FILE`
+
+if [[ -z $IF_SET ]] ; then
+	if [[ $PARA == "LSF_SILENT_INSTALL_TARLIST" ]]; then
+		echo "$PARA="all"" >> $INSTALL_CONFIG_FILE
+ 	elif [[ $PARA == "LSF_DYNAMIC_HOST_WAIT_TIME" ]]; then
+		echo "$PARA="60"" >> $INSTALL_CONFIG_FILE	
+	else
+		echo "$PARA="Y"" >> $INSTALL_CONFIG_FILE
+	fi
+	echo "INFO: Set a recommended value for $PARA"
+fi
+return 0
+}
+
+#verify if install.config exists
+if [[ ! -f ${INSTALL_CONFIG_FILE} ]]; then
+	echo "ERROR: $INSTALL_CONFIG_FILE not found"
+	exit 1
+fi
+
+. $INSTALL_CONFIG_FILE
+cat $INSTALL_CONFIG_FILE
+#verify if the required parameters are valid in install.config
+
+
+if [[ ! -d $LSF_TOP ]]; then
+	echo "ERROR: No such directory $LSF_TOP. Check LSF_TOP in install.config"
+	exit 1
+fi
+
+if [[ x$LSF_ADMINS == x ]]; then
+	echo "ERROR: You must specify LSF_ADMINS in install.config"
+	exit 1
+fi
+
+for USERID in ${LSF_ADMINS} ; do
+	RTC=`id $USERID`
+	RTC=$?
+	if [[ $RTC -ne 0 ]] ; then
+		echo "ERROR: No such user id $USERID on the node. Check LSF_ADMINS in install.config"
+		exit 1
+	fi
+done
+
+if [[ x$LSF_CLUSTER_NAME == x ]]; then
+	echo "ERROR: You must specify LSF_CLUSTER_NAME in install.config"
+	exit 1
+fi
+
+if [[ x$LSF_MASTER_LIST == x ]]; then
+	echo "ERROR: You must specify LSF_MASTER_LIST in install.config"
+	exit 1
+fi
+
+for MASTER_NODE in $LSF_MASTER_LIST ; do
+	RTC=`ssh $MASTER_NODE uptime`
+	RTC=$?
+	if [[ $RTC -ne 0 ]] ; then
+		echo "ERROR: MASTER_NODE $MASTER_NODE is not reachable. Check LSF_MASTER_LIST in install.config"
+		exit 1
+	fi
+done
+
+if [[ ! -r ${LSF_ENTITLEMENT_FILE} || -d ${LSF_ENTITLEMENT_FILE} ]]; then
+	echo "ERROR: No such entitlement file $LSF_ENTITLEMENT_FILE. Check LSF_ENTITLEMENT_FILE in install.config"
+	exit 1
+fi
+
+#CH_TMP=`expr "$LSF_ENTITLEMENT_FILE" : '\(.\).*'`
+#if [[ "$CH_TMP" != "/" ]]; then
+#	echo "Set LSF_ENTITLEMENT_FILE a full path but not relative path"
+#	return 1
+#fi
+
+if [[ ! -d $LSF_TARDIR ]]; then
+        echo "ERROR: No such directory $LSF_TARDIR. Check LSF_TARDIR in install.config"
+        exit 1
+fi
+
+if [[ x$LSF_INSTALL_FILE_PATH != x ]]; then
+	if [[ -r ${LSF_INSTALL_FILE_PATH} ]] && [[ ! -d ${LSF_INSTALL_FILE_PATH} ]]; then
+		:
+	else
+        	echo "ERROR: No such lsf install tar file $LSF_INSTALL_FILE_PATH. Check LSF_INSTALL_FILE_PATH in install.config"
+        	exit 1
+	fi
+else
+	LSF_INSTALL_FILE_PATH=`find $LSF_TARDIR -name 'lsf*lsfinstall*tar.Z'`
+	count=`echo $LSF_INSTALL_FILE_PATH |wc -w`
+	if [[ $count -gt 1 ]]; then
+		echo "ERROR: There are more than one lsfinstall tar file. You need to specify LSF_INSTALL_FILE_PATH in install.config or remove other useless lsfinstall TAR files in LSF_TARDIR $LSF_TARDIR."
+		exit 1
+	elif [[ $count -eq 1 ]]; then
+	 :
+	else 
+		echo "ERROR: lsfinstall TAR file not found in LSF_TARDIR $LSF_TARDIR."
+		exit 1
+	fi
+fi
+
+echo "INFO: We will untar the lsfinstall TAR file $LSF_INSTALL_FILE_PATH."
+
+	
+for SERVER_NODE in $LSF_ADD_SERVERS ; do
+	RTC=`ssh $SERVER_NODE uptime`
+	RTC=$?
+	if [[ $RTC -ne 0 ]] ; then
+		echo "ERROR: SERVER_NODE $SERVER_NODE is not reachable. Check LSF_ADD_SERVERS in install.config"
+		exit 1
+        fi
+done
+#Check if we set following parameters in install.config; if not, set them a recommended value.
+#ENABLE_DYNAMIC_HOSTS="Y"
+##LSF_DYNAMIC_HOST_WAIT_TIME="60"
+#ENABLE_HPC_CONFIG="Y"
+#SILENT_INSTALL="Y"
+#LSF_SILENT_INSTALL_TARLIST="all"
+
+
+is_parameter_set "ENABLE_DYNAMIC_HOSTS"
+is_parameter_set "LSF_DYNAMIC_HOST_WAIT_TIME"
+is_parameter_set "ENABLE_HPC_CONFIG"
+is_parameter_set "SILENT_INSTALL"
+is_parameter_set "LSF_SILENT_INSTALL_TARLIST"
+
+
+#Extract lsfinstall package 
+cd $LSF_TARDIR
+LSF_INSTALL_PACKAGE=`basename $LSF_INSTALL_FILE_PATH`
+zcat $LSF_INSTALL_PACKAGE | tar xvf -
+RTC=$?
+if [[ $RTC -ne 0 ]] ; then
+	echo "ERROR: Fail to extract LSF_INSTALL_PACKAGE $LSF_INSTALL_PACKAGE."
+	exit 1
+fi
+
+#INSTALL LSF on the node
+
+cd $LSF_TARDIR/lsf*lsfinstall
+
+INSTALL_LOG="Install.log"
+#backup Install.log if there is one before installing
+if [[ -r $INSTALL_LOG ]]; then
+	mv $INSTALL_LOG `date "+%Y.%m.%d-%H:%M"`_$INSTALL_LOG
+fi
+
+./lsfinstall -f $INSTALL_CONFIG_FILE
+RTC=$?
+IF_INSTALL_DONE=`grep "lsfinstall is done" $INSTALL_LOG`
+
+if [[ $RTC -ne 0 || -z $IF_INSTALL_DONE ]] ; then
+         echo "ERROR: Fail to install LSF. Check Install.log and Install.err in `pwd`."
+	 exit 1
+fi
+
+echo "INFO: Installation script DONE."
+
+LSF_VERSION=`echo $LSF_INSTALL_PACKAGE |cut -c4-6`
+if [[ `echo "$LSF_VERSION >= 9.1"|bc` -eq 1 ]]
+then
+
+#Start configuration. Update configuration files lsf.conf,lsf.hosts.
+
+echo "INFO: Updating LSF Cluster Configuration Files lsf.conf and lsb.hosts"
+
+LSF_CONF_FILE="$LSF_TOP/conf/lsf.conf"
+echo "LSF_RSH=ssh" >> $LSF_CONF_FILE
+echo "LSF_PE_NETWORK_NUM=2" >> $LSF_CONF_FILE
+echo "LSF_PE_NETWORK_UPDATE_INTERVAL=6" >> $LSF_CONF_FILE
+echo "EGO_DEFINE_NCPUS=threads" >> $LSF_CONF_FILE
+echo "LSF_HPC_EXTENSIONS="CUMULATIVE_RUSAGE"">> $LSF_CONF_FILE
+
+LSB_HOSTS_FILE="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts" 
+LSB_HOSTS_FILE_ORIG="$LSF_TOP/conf/lsbatch/$LSF_CLUSTER_NAME/configdir/lsb.hosts.orig"
+mv $LSB_HOSTS_FILE $LSB_HOSTS_FILE_ORIG
+
+PRIMARY_MASTER_NODE=`echo $LSF_MASTER_LIST |  awk '{print $1}'`
+echo "Begin Host" >> lsb.hosts
+echo "HOST_NAME MXJ   r1m     pg    ls    tmp  DISPATCH_WINDOW  AFFINITY" >> $LSB_HOSTS_FILE
+echo "default	!	()	()	()	()	()	(Y)" >> $LSB_HOSTS_FILE
+echo "$PRIMARY_MASTER_NODE	0	()	()	()	()	()    (Y)" >> $LSB_HOSTS_FILE
+echo "End Host" >> $LSB_HOSTS_FILE
+echo "Begin HostGroup" >> $LSB_HOSTS_FILE
+echo "GROUP_NAME    GROUP_MEMBER" >> $LSB_HOSTS_FILE
+echo "End HostGroup" >> $LSB_HOSTS_FILE 
+
+fi
