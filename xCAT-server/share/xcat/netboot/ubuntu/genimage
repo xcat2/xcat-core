@@ -1568,8 +1568,8 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
       print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
    } else {
-      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=10m             0 2\n";
-      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=10m       0 2\n";
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults             0 2\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults       0 2\n";
    }
 
    my $rootfs_name=$profile."_".$arch;
