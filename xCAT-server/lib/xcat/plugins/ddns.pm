@@ -13,6 +13,7 @@ use MIME::Base64;
 use xCAT::SvrUtils;
 use Socket;
 use Fcntl qw/:flock/;
+use Data::Dumper;
 
 # This is a rewrite of DNS management using nsupdate rather than 
 #	direct zone mangling
@@ -52,7 +53,7 @@ sub getzonesfornet {
             die "Not supporting having a mask like $mask on an ipv6 network like $net";
         }
         my $netnum= getipaddr($net,GetNumber=>1);
-    unless ($netnum) { return (); }
+        unless ($netnum) { return (); }
         $netnum->brsft(128-$maskbits);
         my $prefix=$netnum->as_hex();
         my $nibbs=$maskbits/4;
@@ -209,6 +210,7 @@ sub process_request {
     my $deletemode=0;
     my $external=0;
     my $slave=0;
+    my $VERBOSE;
 
     # Since the mandatory rpm perl-Net-DNS for makedns on sles12 (perl-Net-DNS-0.73-1.28)  has a bug,
     # user has to update it to a newer version
@@ -238,6 +240,7 @@ sub process_request {
             'd|delete' => \$deletemode,
             'e|external' => \$external,
             's|slave' => \$slave,
+            'V|verbose'     => \$VERBOSE,
             'h|help' => \$help,
             )) {
             #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
@@ -246,6 +249,12 @@ sub process_request {
             return;
         }
     }
+    if (defined($VERBOSE)) {
+        $::VERBOSE=$VERBOSE;
+    } else {
+        undef $::VERBOSE;
+    }
+
     if ($::XCATSITEVALS{externaldns}) {
         $external=1;
     }
@@ -275,6 +284,13 @@ sub process_request {
         return;
     }
     $ctx->{domain} = $site_entry;
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+            "domain name = $site_entry";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
 
     if($external) #need to check if /etc/resolv.conf existing
     {
@@ -287,7 +303,17 @@ sub process_request {
             $cmd = $acmd;
         }
         
+
         my @output=xCAT::Utils->runcmd($cmd, 0);
+        if ($::VERBOSE)
+        {
+            my $rsp;
+            my $outp = join(', ', @output);
+            push @{$rsp->{data}},
+                "output from /etc/resolv.conf:  $outp";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+
         if ($::RUNCMD_RC != 0)
         {
             xCAT::SvrUtils::sendmsg([1,"You are using -e flag to update DNS records to an external DNS server, please ensure /etc/resolv.conf existing and pointed to this external DNS server."], $callback);
@@ -309,6 +335,14 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([1,"nameservers not defined in site table"], $callback);
         umask($oldmask);
         return;
+    }
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+            "nameservers = $sitens";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
@@ -499,6 +533,13 @@ sub process_request {
         my $currzone;
         foreach $currzone (getzonesfornet($_)) {
             $ctx->{zonestotouch}->{$currzone} = 1;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                    "zone info for this $net: $currzone";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
         }
     }
     my $passtab = xCAT::Table->new('passwd');
@@ -592,7 +633,17 @@ sub process_request {
     
     foreach (@nodes) {
         my @revzones =  get_reverse_zones_for_entity($ctx,$_);;
-        unless (@revzones) { next; }
+        unless (@revzones) 
+        { 
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                    "No reverse zones for $_ ";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            } 
+            next; 
+        }
         $ctx->{revzones}->{$_} = \@revzones;
         foreach (@revzones) {
             $ctx->{zonestotouch}->{$_}=1;
@@ -638,6 +689,14 @@ sub process_request {
         }
         unless ($external) { # only generate the named.conf and zone files for xCAT dns when NOT using external dns
             if ($zapfiles || $slave) { #here, we unlink all the existing files to start fresh
+                if ($::VERBOSE)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                        "Stop named service";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+ 
                 if (xCAT::Utils->isAIX())
                 {
                     system("/usr/bin/stopsrc -s $service");
@@ -650,6 +709,14 @@ sub process_request {
                 my $conf = get_conf();
                 unlink $conf;
                 my $DBDir = get_dbdir();
+                if ($::VERBOSE)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                        "get_dbdir: $DBDir";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
                 foreach (<$DBDir/db.*>) {
                     unlink $_;
                 }
@@ -658,7 +725,14 @@ sub process_request {
             $ctx->{dbdir} = get_dbdir();
             $ctx->{zonesdir} = get_zonesdir();
             chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
-    
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                    "Update Named Conf dir $ctx->{dbdir} $ctx->{zonesdir}";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+ 
             update_namedconf($ctx, $slave); 
             
             unless ($slave)
@@ -1497,8 +1571,9 @@ sub makedns_usage
       "\n  makedns - sets up domain name services (DNS).";
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmakedns [-h|--help ]";
-    push @{$rsp->{data}}, "\tmakedns [-e|--external] [-n|--new ] [noderange]";
-    push @{$rsp->{data}}, "\tmakedns [-e|--external] [-d|--delete noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-V|--verbose]";
+    push @{$rsp->{data}}, "\tmakedns [-V|--verbose] [-e|--external] [-n|--new ] [noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-V|--verbose] [-e|--external] [-d|--delete noderange]";
     push @{$rsp->{data}}, "\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;

@@ -691,7 +691,9 @@ sub build_xmldesc {
     }
     if ($hypcpumodel eq "ppc64") {
         my %cpuhash = ();
-        $cpuhash{model} = $hypcputype;
+        if ($hypcputype) {
+            $cpuhash{model} = $hypcputype;
+        }
         if ($args{cpus}) {
             $xtree{vcpu}->{content}=$args{cpus} * $hypcputhreads;
             $cpuhash{topology}->{sockets} = 1;
@@ -1888,7 +1890,6 @@ sub chvm {
             if ($cpucount) {
                 my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
                 if ($hypcpumodel eq "ppc64") {
-                    my $hypcputype = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cputype};
                     my $cputhreads = $parsed->findnodes("/domain/cpu/topology")->[0]->getAttribute('threads');
                     unless ($cputhreads) {
                         $cputhreads = "1";
@@ -3062,17 +3063,20 @@ sub dohyp {
       if (exists($nodeinfo->{model})) {
           $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
           if ($nodeinfo->{model} eq "ppc64") {
-              my $syshash = XMLin($hypconn->get_sysinfo());
-              my $processor_content = $syshash->{processor}->[0]->{entry}->{type}->{content};
-              if ($processor_content =~ /POWER8/i) {
-                  $confdata->{$hyp}->{cputype} = "power8";
-                  $confdata->{$hyp}->{cpu_thread} = "8";
-              } elsif ($processor_content =~ /POWER7/i) {
-                  $confdata->{$hyp}->{cputype} = "power7";
-                  $confdata->{$hyp}->{cpu_thread} = "4";
-              } elsif ($processor_content =~ /POWER6/i) {
-                  $confdata->{$hyp}->{cputype} = "power6";
-                  $confdata->{$hyp}->{cpu_thread} = "2";
+              my $sysinfo = $hypconn->get_sysinfo();
+              if ($sysinfo) {
+                  my $syshash = XMLin($sysinfo);
+                  my $processor_content = $syshash->{processor}->[0]->{entry}->{type}->{content};
+                  if ($processor_content =~ /POWER8/i) {
+                      $confdata->{$hyp}->{cputype} = "power8";
+                      $confdata->{$hyp}->{cpu_thread} = "8";
+                  } elsif ($processor_content =~ /POWER7/i) {
+                      $confdata->{$hyp}->{cputype} = "power7";
+                      $confdata->{$hyp}->{cpu_thread} = "4";
+                  } elsif ($processor_content =~ /POWER6/i) {
+                      $confdata->{$hyp}->{cputype} = "power6";
+                      $confdata->{$hyp}->{cpu_thread} = "2";
+                  }
               }
           }
       }

@@ -2410,6 +2410,7 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
          foreach (keys %plugin_children) {
             print "Sending INT to $_\n";
             kill 2, $_;
+            kill 15, $_;                                     
          }
          foreach my $cin ($fds->handles) {
             print $cin "die\n";

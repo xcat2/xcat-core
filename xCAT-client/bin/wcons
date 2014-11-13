@@ -3,6 +3,8 @@
 use Getopt::Long qw(:config getopt_compat pass_through);
 use File::Basename;
 BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+use IO::Socket::UNIX;
+use Time::HiRes qw/sleep/;
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Client;
 #use Data::Dumper;
@@ -54,7 +56,6 @@ foreach (@nodes) {
       $conservers{$_} =~ s/:.*//;
       next;
    }
-   $conservers{$_} = 'localhost';
 }
    
 
@@ -82,7 +83,7 @@ if (defined($tilefact)) {
          $screenheight=$1;
       }
    }
-   $rootinf = `xwininfo -name "Top Panel"`;
+   $rootinf = `xwininfo -name "Top Panel" 2> /dev/null`;
    foreach (split /\n/,$rootinf) {
       if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
          if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) { 
@@ -91,7 +92,7 @@ if (defined($tilefact)) {
       }
    }
    if ($panel_pad == 0) {
-           $rootinf = `xwininfo -name "Top Expanded Edge Panel"`;
+           $rootinf = `xwininfo -name "Top Expanded Edge Panel" 2> /dev/null`;
            foreach (split /\n/,$rootinf) {
               if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
                  if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) {
@@ -102,9 +103,24 @@ if (defined($tilefact)) {
    }
 
 
+   $ENV{CONSCONTROLPATH} = "/tmp/wconscontrol.$firstnode.$$";
    system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry +0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
-   sleep(2); #Give time for window manager to figure out everything
-   my $xinfo = `xwininfo -name $firstnode`;
+   my $remainwait = 2;
+   while (not -S  "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
+         sleep(0.1);
+         $remainwait -= 0.1;
+   }
+   my $xinfo;
+   if (-S "/tmp/wconscontrol.$firstnode.$$") { # confluent mode
+	my $controlchannel = IO::Socket::UNIX->new(Type=>SOCK_STREAM(), Peer =>  "/tmp/wconscontrol.$firstnode.$$");
+        print $controlchannel "GETWINID\n";
+        my $winid = <$controlchannel>;
+        $winid = <$controlchannel>;
+ 	$xinfo = `xwininfo -id $winid`;
+   } else {
+      $xinfo = `xwininfo -name $firstnode`;
+   }
+
    my @xinfl = split(/\n/,$xinfo);
    my $side_pad;
    my $wmxo;
