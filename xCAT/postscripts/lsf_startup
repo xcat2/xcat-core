@@ -1,0 +1,119 @@
+#!/bin/bash 
+#README################################################################
+# (1)lsf_startup should be ran after lsf is installed, so it should be ran after install_lsf script
+# (2)lsf_startup use the same install.config file with install_lsf, install.config should be in the same directory with install_lsf and lsf_startup scripts.
+# The format of install.config file, see more details in install_lsf README
+# cat install.config
+# LSF_TOP=""
+# LSF_ADMINS=""
+# LSF_CLUSTER_NAME=""
+# LSF_MASTER_LIST=""
+# LSF_ENTITLEMENT_FILE="NEED A FULL PATH OF THE FILE"
+# LSF_TARDIR=""
+# (3)Run this script on all lsf cluster nodes,you can also use "updatenode <noderange> -P lsf_startup" to execute this script
+#
+#README################################################################
+
+
+#need install.config
+INSTALL_CONFIG_FILE=`pwd`/install.config
+
+
+. $INSTALL_CONFIG_FILE
+
+echo "INFO: Run hostsetup on each node."
+
+find /$LSF_TOP -name hostsetup > /dev/null
+if [[ $? -ne 0 ]]
+then
+     echo "Error : there is no hostsetup, check if lsf install is installed or not."
+     exit 1
+fi
+
+#get lsf main version,
+LSF_VERSION=`find /$LSF_TOP -name hostsetup|head -1|awk '{print $5}'`
+
+if [[ x${LSF_ADD_SERVERS} != x ]]; then
+     ALL_LSF_NODES=${LSF_MASTER_LIST}' '${LSF_ADD_SERVERS}
+else
+     ALL_LSF_NODES=${LSF_MASTER_LIST}
+fi
+
+
+for item in $ALL_LSF_NODES
+do
+   if [[ x${item} == x$NODE ]]
+   then
+      
+      $LSF_TOP/$LSF_VERSION/install/hostsetup --top="$LSF_TOP" --boot="y"
+     
+   fi
+done
+
+
+# Set your LSF environment"
+echo "INFO: Set LSF environment for root and LSF_ADMINS"
+
+
+for lsfnode in $ALL_LSF_NODES
+do
+    if [[ x${lsfnode} == x$NODE ]]
+    then
+        echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+    fi
+done
+
+
+#change .profile for every lsf admin user
+for LSF_ADMIN_USER in $LSF_ADMINS ; do
+
+        LSF_ADMIN_USER_HOMEDIR=`grep $LSF_ADMIN_USER: /etc/passwd | cut -d ':' -f 6`
+
+        grep "profile.lsf" $LSF_ADMIN_USER_HOMEDIR/.profile > /dev/null
+        if [[ $? -eq 0 ]]
+        then
+             sed -i '/profile.lsf/d' $LSF_ADMIN_USER_HOMEDIR/.profile
+        fi
+        for lsfnode in $ALL_LSF_NODES
+        do
+             if [[ x${lsfnode} == x$NODE ]]
+             then
+             echo ". $LSF_TOP/conf/profile.lsf" >> $LSF_ADMIN_USER_HOMEDIR/.profile
+             fi
+        done
+done
+
+# Startup LSF CLUSTER
+echo "INFO: Start LSF Cluster."
+.  $LSF_TOP/conf/profile.lsf
+
+lsadminpath="lsadmin"
+if [[ x${lsadminpath} == x ]]
+then
+     echo "Error:there is no lsadmin."
+else
+     $lsadminpath limstartup
+     if [[ $? -ne 0 ]]
+     then
+         echo "lsadmin limstartup fail."
+     fi
+     $lsadminpath resstartup
+     if [[ $? -ne 0 ]]
+     then
+         echo "lsadmin resstartup fail."
+     fi
+fi
+
+badminpath="badmin"
+if [[ x${badminpath} == x ]]
+then
+    echo "Error:there is no badmin."
+else
+
+    $badminpath hstartup
+    if [[ $? -ne 0 ]]
+    then
+        echo "Error : badmin hstartup faile. "
+    fi
+fi
+

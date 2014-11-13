@@ -27,6 +27,11 @@ if (!GetOptions(
 
 if ($::HELP) { print $::USAGE; exit 0; }
 
+unless (-x "/usr/sbin/tcpdump") {
+  print "Error: Please install tcpdump before the detecting.\n";
+  exit 1;
+}
+
 my $nic;
 if ($::IF) {
   $nic = $::IF;
@@ -69,8 +74,12 @@ if (-f "/etc/redhat-release") {
   $os = "rh";
 } elsif (-f "/etc/SuSE-release") {
   $os = "sles";
+} elsif (-f "/etc/lsb-release") {
+  $os = "ubuntu";
+} elsif (-f "/etc/debian_version") {
+  $os = "debian";
 } else {
-  print "Only support the redhat and sles OS.\n";
+  print "Only support the redhat, sles, ubuntu and debian OS.\n";
   exit 1;
 }
 # fork a process to capture the packet by tcpdump
@@ -96,6 +105,15 @@ my $sock = IO::Socket::INET->new(Proto => 'udp',
   LocalAddr => $IP,
   LocalPort => '68',
   PeerAddr => inet_ntoa(INADDR_BROADCAST));
+
+# try the any port if localport 68 has been used
+unless ($sock) {
+ $sock = IO::Socket::INET->new(Proto => 'udp',
+  Broadcast => 1,
+  PeerPort => '67',
+  LocalAddr => $IP,
+  PeerAddr => inet_ntoa(INADDR_BROADCAST));
+}
 
 unless ($sock) {
   print "Create socket error: $@\n";

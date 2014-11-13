@@ -53,7 +53,7 @@ for i in $*; do
 done
 
 # Supported distributions
-dists="maverick natty oneiric precise saucy trusty"
+dists="saucy trusty utopic"
 
 c_flag=            # xcat-core (trunk-delvel) path
 d_flag=            # xcat-dep (trunk) path
@@ -262,7 +262,7 @@ then
     mkdir conf
 
     for dist in $dists; do
-       if [ "$dist" = "trusty" ]; then
+       if [ "$dist" = "trusty" ] || [ "$dist" = "utopic" ]; then
            tmp_out_arch="amd64 ppc64el"
        else
            tmp_out_arch="amd64"
@@ -289,7 +289,7 @@ __EOF__
     amd_files=`ls ../$package_dir_name/*.deb | grep -v "ppc64el"`
     all_files=`ls ../$package_dir_name/*.deb`
     for dist in $dists; do
-      if [ "$dist" = "trusty" ]; then
+      if [ "$dist" = "trusty" ] || [ "$dist" = "utopic" ]; then
           deb_files=$all_files
       else
           deb_files=$amd_files
@@ -382,7 +382,7 @@ then
 
     #create the conf/distributions file
     for dist in $dists; do
-       if [ "$dist" = "trusty" ]; then
+       if [ "$dist" = "trusty" ] || [ "$dist" = "utopic" ]; then
            tmp_out_arch="amd64 ppc64el"
        else 
            tmp_out_arch="amd64"
@@ -409,7 +409,7 @@ __EOF__
     amd_files=`ls ../debs/*.deb | grep -v "ppc64el"`
     all_files=`ls ../debs/*.deb`
     for dist in $dists; do
-      if [ "$dist" = "trusty" ]; then
+      if [ "$dist" = "trusty" ] || [ "$dist" = "utopic" ]; then
           deb_files=$all_files
       else
           deb_files=$amd_files

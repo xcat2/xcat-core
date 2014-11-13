@@ -8,6 +8,7 @@ Standards-Version: 3.9.2
 Package: xcat-genesis-scripts
 Architecture: amd64 ppc64el
 Depends: xcat-genesis-base-amd64[any-amd64],xcat-genesis-base-ppc64[any-ppc64el]
+Replaces: xcat-genesis-scripts-amd64[any-amd64]
 Description: xCAT genesis 
 	(Genesis Enhanced Netboot Environment for System Information and Servicing) is a small, embedded-like environment for xCAT's use in discovery and management actions when interaction with an OS is infeasible. This package reperesents the EPL content that is more tightly bound to specific xcat-core versions
 

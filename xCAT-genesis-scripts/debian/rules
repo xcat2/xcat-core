@@ -10,7 +10,7 @@
 #export DH_VERBOSE=1
 
 
-ifneq ($(DEB_BUILD_ARCH),ppc64el)
+ifneq ($(DEB_HOST_ARCH),ppc64el)
         export TARGET_ARCH=x86_64
 else
         export TARGET_ARCH=ppc64
