@@ -144,7 +144,7 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             uname -m |grep ppc64 >/dev/null
         then
             echo "ARCH=powerpc perl -x mlnxofedinstall $mlnxofed_options"
-            ARCH=powerpc perl -x mlnxofedinstall $mlnxofed_options
+            ARCH=powerpc perl -x mlnxofedinstall --without-fw-update  $mlnxofed_options
             sleep 1
             service openibd restart
         else
