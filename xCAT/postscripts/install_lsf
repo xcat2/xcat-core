@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash 
 #README################################################################
 # (1)Check you have  LSF installer script package and  LSF distribution packages. e.g. "lsf9.1.3_lsfinstall.tar.Z" and "lsf9.1.3_lnx26-lib23-ppc64le.tar.Z"
 # (2)Get LSF entitlement file for the edition you are installing. e.g. "platform_lsf_std_entitlement.dat"
