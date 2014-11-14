@@ -2001,7 +2001,7 @@ sub build_kitcomp
     $::VALID_PRER_COMPONENT = 0;
 
     if ( !$::PREREQUISITE ) {
-        if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} || $comp->{preuninstall} ) {
+        if ( $comp->{ospkgdeps} || $comp->{preinstall} || $comp->{preupgrade} ) {
             if ( &gen_kitcomp_spec($comp,\%repo, 'PREREQUISITE') ) { return 1; }
         
             # run the rpmbuild command
@@ -2376,7 +2376,7 @@ sub gen_kitcomp_spec
             s/<<<INSERT_kitcomponent_postinstall_script_HERE>>>/$postscript/;
             s/<<<INSERT_kitcomponent_preupgrade_script_HERE>>>//;
             s/<<<INSERT_kitcomponent_postupgrade_script_HERE>>>/$postupscript/;
-            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>//;
+            s/<<<INSERT_kitcomponent_preuninstall_script_HERE>>>/$preunscript/;
             s/<<<INSERT_kitcomponent_postuninstall_script_HERE>>>/$postunscript/;
         }
     }
