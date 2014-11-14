@@ -661,7 +661,7 @@ sub mkinstall
                 "$installroot/autoinst/" . $node,
                 $node,
 	    		$pkglistfile,
-		    	"",
+		        $pkgdir,
 			    $platform
                 );
         }
