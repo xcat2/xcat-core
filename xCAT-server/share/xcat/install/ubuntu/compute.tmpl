@@ -18,7 +18,7 @@ d-i netcfg/dhcp_timeout string 120
 
 d-i mirror/country string manual
 d-i mirror/protocol string http
-d-i mirror/http/directory string /install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+d-i mirror/http/directory string #INCLUDE_OSIMAGE_PKGDIR#
 d-i mirror/http/proxy string
 
 # Suite to install.

@@ -231,6 +231,9 @@ sub subvars {
     
           $inc =~ s/#INSTALL_SOURCES#/$source/g;
           $inc =~ s/#INSTALL_SOURCES_IN_PRE#/$source_in_pre/g;
+          if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
+              $inc =~ s/#INCLUDE_OSIMAGE_PKGDIR#/$pkgdirs[-1]/;
+          }
       }
     
       #ok, now do everything else..
