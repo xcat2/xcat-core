@@ -444,7 +444,7 @@ __EOF__
     chmod -R g+w xcat-dep
 
     #create the tar ball
-    dep_tar_name=xcat-dep-ubuntu.tar.bz
+    dep_tar_name=xcat-dep-ubuntu-snap`date +%Y%m%d`.tar.bz
     tar -hjcf $dep_tar_name xcat-dep
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name

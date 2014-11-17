@@ -26,9 +26,6 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files
-%defattr(-,root,root)
-<<<INSERT_kitcomponent_files_HERE>>>
 
 %changelog
 
@@ -47,6 +44,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %preun
 <<<INSERT_kitcomponent_preuninstall_script_HERE>>>
+
+%files
+%defattr(-,root,root)
+<<<INSERT_kitcomponent_files_HERE>>>
+
 
 %postun
 <<<INSERT_kitcomponent_postuninstall_script_HERE>>>
