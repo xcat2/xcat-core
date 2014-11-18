@@ -1971,12 +1971,24 @@ sub query_cec_info {
             }
             my $rethash = query_cec_info_actions($request, $name, $d, $usage, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","part_get_all_vio_info","get_huge_page","get_cec_bsr"], \%tmp_hash);
 	        #push @result, [$name, $rethash, 0];
-	        push @result, @$rethash;
+	        #push @result, @$rethash;
+                if (scalar (@$rethash)) {
+                    push @result, @$rethash;
+                } else {
+                    push @result, [$name, "No information got", -1];
+                    last;
+                }
                 $lpar_hash{$name} = \%tmp_hash;
                 $lpar_hash{$name}->{parent} = @$d[3];
         }
         if (@td[0] == 0) {
             my $rethash = query_cec_info_actions($request, @td[3],\@td, $usage);
+            if (scalar (@$rethash)) {
+                push @result, @$rethash;
+            } else {
+                push @result, [@td[3], "No information got", -1];
+                last;
+            }
             #push @result, [@td[3], $rethash, 0];
             push @result, @$rethash;
         }  
