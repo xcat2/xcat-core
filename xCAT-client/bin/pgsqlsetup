@@ -336,14 +336,14 @@ if (($INIT) && ($xcatrunningpgsql == 0))
   #
   # Init Pg database and setup pg_hba.conf and postgresql.conf
   #
-  &initpgdb;
+   &initpgdb;
 
   #
   # Start Postgresql server
   #
   if ($pgsqlrunning == 0)  # if not already running
   {
-         &pgstart;
+         &pgstart(0);
   }
 
   #
@@ -705,6 +705,7 @@ sub runpgcmd_chkoutput
 sub initpgdb
 {
     my $cmd;
+    my $dbrestart = 0;
 
     # init the database,  must su to postgres
     
@@ -759,6 +760,7 @@ sub initpgdb
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
         }
+        $dbrestart = 1;
     }
 
     # setup the postgresql.conf file
@@ -800,6 +802,7 @@ sub initpgdb
             $cmd = qq~echo log_min_messages = notice >> $pgconf~;
             `$cmd`;
         }
+        $dbrestart = 1;
     }
     # make sure everything in /var/lib/pgsql/data is owned by postgres
     if ($::installdatadir) { # for protection
@@ -819,6 +822,11 @@ sub initpgdb
       }
 
     }
+    if ($dbrestart){
+        &pgstart(1);
+    }
+
+
 }
 
 #-----------------------------------------------------------------------------
@@ -826,14 +834,18 @@ sub initpgdb
 =head3   pgstart 
 
 	
-    Start the Postgresql server 
+    Start or restart the Postgresql server 
+    startflg = 0  start postgresql 
+    startflg = 1  restart postgresql 
 
 =cut
 
 #-----------------------------------------------------------------------------
 
 sub pgstart
+
 {
+    my $startflg = shift;
     my $cmd;
     my $ret=0;
     xCAT::MsgUtils->message("I", "Starting the PosgreSQL Server");
@@ -853,9 +865,11 @@ sub pgstart
           #$cmd = "service postgresql start";
           $cmd = "postgresql";
         }
-        #system($cmd)
-        #if ($? > 0) {
-        $ret=xCAT::Utils->startservice($cmd);
+        if ($startflg == 0) { 
+          $ret=xCAT::Utils->startservice($cmd);
+        } else {
+          $ret=xCAT::Utils->restartservice($cmd);
+        }
         if ($ret != 0) {
             xCAT::MsgUtils->message("E", " failed to start $cmd.");
             exit(1);
