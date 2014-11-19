@@ -47,7 +47,7 @@ fi
 # create a script that will launch the first time ESX does and configure
 # the network
 cat >/tmp/esxcfg.sh <<EOF1
-#!/bin/sh
+#!/bin/bash
 # Configure ESX Server.  You'll need to put your own IP address
 # in here. We assume eth0 is your nic.  Change if needed.
 NIC=eth0

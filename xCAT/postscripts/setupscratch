@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # This postscript sets up a scratch area on the local disk for stateless
