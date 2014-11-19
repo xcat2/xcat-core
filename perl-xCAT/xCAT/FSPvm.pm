@@ -206,8 +206,9 @@ sub chvm_parse_args {
     # Process command-line arguments
     #############################################
     if ( !defined( $args )) {
-        $request->{method} = $cmd;
-        return( \%opt );
+        #$request->{method} = $cmd;
+        #return( \%opt );
+        return ( usage() );
     }
     #############################################
     # Checks case in GetOptions, allows opts
@@ -863,6 +864,10 @@ sub do_op_extra_cmds {
                     my @td = @$d;
                     @td[0] = 0;
                     $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem"]);
+                    unless (scalar keys(%$memhash)) {
+                        push @values, [$mtms, "Can not get hypervisor information", 1];
+                        next;
+                    }
                     if (!exists($memhash->{run})) {
                         if ($param =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
                             my $memsize = $memhash->{mem_region_size};
@@ -921,10 +926,16 @@ sub do_op_extra_cmds {
                     push @values, [$name, "Success", '0'];
                 } 
             }
-            my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
-            # need to add update db here 
-            $lpar_hash{$name} = $rethash;     
-            $lpar_hash{$name}->{parent} = @$d[3];
+            if (@query_array) {
+                my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
+                unless (scalar keys(%$memhash)) {
+                    push @values, [$mtms, "Can not get hypervisor information", 1];
+                    next;
+                }
+                # need to add update db here 
+                $lpar_hash{$name} = $rethash;     
+                $lpar_hash{$name}->{parent} = @$d[3];
+            }
         }
     } 
     if (%lpar_hash) {
@@ -1971,12 +1982,24 @@ sub query_cec_info {
             }
             my $rethash = query_cec_info_actions($request, $name, $d, $usage, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_io_bus_info","part_get_all_vio_info","get_huge_page","get_cec_bsr"], \%tmp_hash);
 	        #push @result, [$name, $rethash, 0];
-	        push @result, @$rethash;
+	        #push @result, @$rethash;
+                if (scalar (@$rethash)) {
+                    push @result, @$rethash;
+                } else {
+                    push @result, [$name, "No information got", -1];
+                    last;
+                }
                 $lpar_hash{$name} = \%tmp_hash;
                 $lpar_hash{$name}->{parent} = @$d[3];
         }
         if (@td[0] == 0) {
             my $rethash = query_cec_info_actions($request, @td[3],\@td, $usage);
+            if (scalar (@$rethash)) {
+                push @result, @$rethash;
+            } else {
+                push @result, [@td[3], "No information got", -1];
+                last;
+            }
             #push @result, [@td[3], $rethash, 0];
             push @result, @$rethash;
         }  
@@ -2252,7 +2275,7 @@ sub mkspeclpar {
         return([["Error","Cannot open vm table", 1]]);
     }
     while (my ($mtms, $h) = each (%$hash)) {
-        my $memhash;
+        my $memhash = undef;
         my @nodes = keys(%$h);
         my $ent = $vmtab->getNodesAttribs(\@nodes, ['cpus', 'memory','physlots', 'othersettings', 'storage', 'nics']); 
         while (my ($name, $d) = each (%$h)) {
@@ -2261,12 +2284,17 @@ sub mkspeclpar {
                 last;
             }
             #if (!exists($memhash->{run})) 
-            {
+            #{
                 my @td = @$d;
                 @td[0] = 0;
                 $memhash = &query_cec_info_actions($request, $name, \@td, 1, ["part_get_hyp_process_and_mem","lpar_lhea_mac","part_get_all_io_bus_info"]);
+                unless (scalar keys(%$memhash)) {
+                    push @result, [$mtms, "Can not get hypervisor information", 1];
+                    last;
+                }
                 #$memhash->{run} = 1; 
-            }
+            #}
+            
             my $tmp_ent = $ent->{$name}->[0];
             if (exists($opt->{vmcpus})) {
                 $tmp_ent->{cpus} = $opt->{vmcpus};
@@ -2427,6 +2455,10 @@ sub mkspeclpar {
             push @result, @$values;
             #need to add update db here
             my $rethash = query_cec_info_actions($request, $name, $d, 1, ["part_get_lpar_processing","part_get_lpar_memory","part_get_all_vio_info","part_get_all_io_bus_info","get_huge_page","get_cec_bsr"]);
+            unless (scalar keys(%$rethash)) {
+                push @result, [$mtms, "Can not get hypervisor information", 1];
+                next;
+            }
             $lpar_hash{$name} = $rethash;     
             $lpar_hash{$name}->{parent} = @$d[3];
 
@@ -2456,8 +2488,9 @@ sub mkfulllpar {
                 my @td = @$d;
                 @td[0] = 0;
                 $rethash = query_cec_info_actions($request, $name, \@td, 1); 
-                if (ref($rethash) ne 'HASH') {
-                    return ([[$mtms, "Cann't get hypervisor info hash", 1]]);
+                unless (scalar keys(%$rethash)) {
+                    push @result, [$mtms, "Can not get hypervisor information", 1];
+                    next;
                 }
                 $rethash->{run} = 1; 
                 #print Dumper($rethash);
