@@ -977,6 +977,15 @@ unless ($pid_UDP) {
   	xexit(0);
   }
   close($udpbroker);
+
+  $SIG{TERM} = $SIG{INT} = sub {
+    if ($pid_disco) {
+        kill 2, $pid_disco;
+    }
+    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period"; };
+    alarm(2);
+  };
+
   do_udp_service(discoctl=>$discoctl,discopid=>$pid_disco);
   xexit(0);
 }
