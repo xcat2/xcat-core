@@ -1587,6 +1587,11 @@ sub mksysclone
     if($retcode !=0){
         my $rc = xCAT::Utils->startservice("systemimager-server-rsyncd");
         if ($rc != 0) {
+            $callback->(
+                {error     => ["systemimager-server-rsyncd start unsuccessfully. please check if there is rsync service already run in your s
+erver, if so, stop it first and try again"],
+                 errorcode => [1]}
+            );
             return 1;
         }
     }
