@@ -1163,7 +1163,7 @@ sub edit_bldkitconf
     my ($osbasename,$osmore) = split(/\,/, $osinfo);
     my ($osmajorversion,$osminorversion) = split(/\./, $osmore);
     my $osarch=`uname -p`;
-    
+    chomp($osarch); 
     my $kitcomponent_basename = $kitname."_compute";
 
     if ($debianflag==1) {
