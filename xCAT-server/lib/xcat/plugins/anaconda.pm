@@ -1879,6 +1879,7 @@ sub mksysclone
         }
       
         # copy kernel and initrd from image dir to /tftpboot
+=pod
         my $kernpath;
         my $initrdpath;
         my $ramdisk_size = 200000;
@@ -1889,6 +1890,14 @@ sub mksysclone
             and -r "$tftpdir/xcat/genesis.fs.$arch.lzma"
             and $initrdpath = "$tftpdir/xcat/genesis.fs.$arch.lzma"
         )
+=cut
+        my $ramdisk_size = 200000;
+        my $kernpath=`ls -l $tftpdir/xcat/|grep "genesis.kernel.$arch"|awk '{print \$9}'`;
+        chomp($kernpath);
+        my $initrdpath=`ls -l $tftpdir/xcat/|grep "genesis.fs.$arch"| awk '{print \$9}'`;
+        chomp($initrdpath);
+
+        if($kernpath ne '' and $initrdpath ne '')
         {
             #We have a shot...
             my $ent    = $rents{$node}->[0];
@@ -1985,10 +1994,14 @@ sub mksysclone
             #        $kcmdline .= " ";
             #        $kcmdline .= $addkcmd->{'addkcmdline'};
             #}
+
             my $k;
             my $i;
-            $k = "xcat/genesis.kernel.$arch";
-            $i = "xcat/genesis.fs.$arch.lzma";
+            #$k = "xcat/genesis.kernel.$arch";
+            #$i = "xcat/genesis.fs.$arch.lzma";
+
+             $k = "xcat/$kernpath";
+             $i = "xcat/$initrdpath";
 
             $bptab->setNodeAttribs(
                 $node,
