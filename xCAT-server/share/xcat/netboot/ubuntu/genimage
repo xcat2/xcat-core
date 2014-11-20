@@ -212,7 +212,7 @@ unless ($onlyinitrd) {
    if ($kernelver) {
       find(\&isaptdir, <$kerneldir/>);
       if (!grep /$kerneldir/, @aptdirs) {
-         print "The repository for $kerneldir should be created before running the geniamge. Try to run [createrepo $kerneldir].\n";
+         print "The repository for $kerneldir should be created before running the genimage.\n";
       }
    }
    unless (scalar(@aptdirs)) {
