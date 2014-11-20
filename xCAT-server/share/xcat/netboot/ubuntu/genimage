@@ -64,6 +64,7 @@ my $permission; # the permission works only for statelite mode currently
 my $tempfile;
 my $prompt;
 my $noupdate;
+my $kernelimage;
 
 
 sub xdie {
@@ -315,6 +316,9 @@ unless ($onlyinitrd) {
                     }
                     push @npa, $kernelname;
                 }
+                elsif ($p =~ /linux-image-generic/) {
+                    $kernelimage = "linux-image-generic";
+                }
                 elsif ($p =~ /^@/) {
                     push @npa, "\"$p\"";
                 }
@@ -471,6 +475,13 @@ unless ($onlyinitrd) {
        #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
        my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
        $rc = system("$aptgetcmd_update");
+       if ($kernelimage) {
+           if ($kernelver) {
+               $kernelimage = "linux-image-".$kernelver."-generic";
+           }
+           my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
+           $rc = system("$aptgetcmd_install");
+       }
        print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
        umount_chroot($rootimg_dir);
        # ignore any return code
