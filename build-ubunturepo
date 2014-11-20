@@ -194,7 +194,8 @@ then
         if [ ! -d ../../$package_dir_name ];then
             mkdir -p "../../$package_dir_name"
         fi
-        packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack xCAT-OpenStack-baremetal xCAT-buildkit"
+        #packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-OpenStack xCAT-OpenStack-baremetal xCAT-buildkit"
+         packages="xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-buildkit"        
         target_archs=(amd64 ppc64el)
         for file in `echo $packages`
         do
