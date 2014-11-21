@@ -18,7 +18,7 @@ d-i netcfg/dhcp_timeout string 120
 
 d-i mirror/country string manual
 d-i mirror/protocol string http
-d-i mirror/http/directory string /install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+d-i mirror/http/directory string #INCLUDE_OSIMAGE_PKGDIR#
 d-i mirror/http/proxy string
 
 # Suite to install.
@@ -37,7 +37,26 @@ d-i partman-md/device_remove_md boolean true
 
 #create the /tmp/partitioning based on the uefi or legacy bios 
 d-i partman/early_command string \
-    debconf-set partman-auto/disk "$(list-devices disk | head -n1)"
+    set -x; \
+    rm /tmp/devs-with-boot 2>/dev/null || true; \
+    for d in $(list-devices partition); do \
+        mkdir -p /tmp/mymount; \
+        rc=0; \
+        mount $d /tmp/mymount || rc=$?; \
+        if [[ $rc -eq 0 ]]; then \
+            [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot; \
+            umount /tmp/mymount; \
+        fi \
+    done; \
+    if [[ -e /tmp/devs-with-boot ]]; then \
+        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
+        rm /tmp/devs-with-boot 2>/dev/null || true; \
+    else \
+        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*sd[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o 'sd.*$'`; \
+        if [[ "$DEV" == "" ]]; then DEV="sda"; fi; \
+        echo "/dev/$DEV" > /tmp/boot_disk; \
+    fi; \
+    debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
 d-i partman-auto/expert_recipe_file string /tmp/partitioning
 
 # This makes partman automatically partition without confirmation, provided
