@@ -2,7 +2,7 @@ bash
 nfs-common
 openssl
 isc-dhcp-client
-linux-image-server
+linux-image-generic
 openssh-server 
 openssh-client
 wget
