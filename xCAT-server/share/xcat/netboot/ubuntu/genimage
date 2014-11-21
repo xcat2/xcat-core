@@ -477,7 +477,7 @@ unless ($onlyinitrd) {
        $rc = system("$aptgetcmd_update");
        if ($kernelimage) {
            if ($kernelver) {
-               $kernelimage = "linux-image-".$kernelver."-generic";
+               $kernelimage = "linux-image-".$kernelver;
            }
            my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
            $rc = system("$aptgetcmd_install");
