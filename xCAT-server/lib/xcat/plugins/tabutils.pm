@@ -740,7 +740,7 @@ sub tabdump
       output_table($table,$cb,$tabh,$recs); 
     } else { # dump to file
       
-      my $rc1;
+      my $rc1 = 0;
       my $fh;
       # check to see if you can open the file
       unless (open($fh," > $FILENAME")) {

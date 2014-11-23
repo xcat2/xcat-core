@@ -2162,7 +2162,72 @@ sub osver
     my $line  = '';
     my @lines;
     my $relfile;
-    if (-f "/etc/redhat-release")
+  
+    if (-f "/etc/os-release"){
+        my $version;
+        my $version_id;
+        my $id;
+        my $id_like;
+        my $name;
+        my $prettyname;
+        my $verrel;
+        if (open($relfile,"<","/etc/os-release")) {
+                    my @text = <$relfile>;
+                    close($relfile);
+                    chomp(@text);
+                    #print Dumper(\@text);
+                    foreach my $line (@text){
+                    if($line =~ /^\s*VERSION=\"?([0-9\.]+).*/){
+                    $version=$1;
+                    }
+                    if($line =~ /^\s*VERSION_ID=\"?([0-9\.]+).*/){
+                    $version_id=$1;
+                    }
+
+
+                    if($line =~ /^\s*ID=\"?([0-9a-z\_\-\.]+).*/){
+                    $id=$1;
+                    }
+                    if($line =~ /^\s*ID_LIKE=\"?([0-9a-z\_\-\.]+).*/){
+                    $id_like=$1;
+                    }
+
+
+                    if($line =~ /^\s*NAME=\"?(.*)/){
+                    $name=$1;
+                    }
+                    if($line =~ /^\s*PRETTY_NAME=\"?(.*)/){
+                    $prettyname=$1;
+                    }
+                    }
+        }   
+
+        $os=$id;
+        if (!$os and $id_like) {
+           $os=$id_like;
+        }
+
+        $verrel=$version;
+        if (!$verrel and $version_id) {
+           $verrel=$version_id;
+        }
+     
+      
+        if(!$name and $prettyname){
+           $name=$prettyname;
+        }
+        
+        if($os =~ /rhel/ and $name =~ /Server/i){
+           $os="rhels";
+        }
+        
+        if($verrel =~ /([0-9]+)\.?(.*)/) {
+           $ver=$1;
+           $rel=$2;
+        }
+#     print "$ver -- $rel";    
+    }
+    elsif (-f "/etc/redhat-release")
     {
         open($relfile,"<","/etc/redhat-release");
         $line = <$relfile>;
@@ -2269,8 +2334,10 @@ sub osver
             close($relfile);
         }
     }
+#print "xxxx $type === $rel \n";
     if ( $type and $type =~ /all/ ) {
-        if ( $rel ) {
+        if ( $rel ne "") {
+#    print "xxx $os-$ver-$rel  \n";
             return( "$os" . "," . "$ver" . ".$rel" );
         } else {
             return( "$os" . "," . "$ver" );

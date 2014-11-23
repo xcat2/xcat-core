@@ -3837,7 +3837,7 @@ sub writeAllEntries
     }
     my $filename = shift;
     my $fh;
-    my $rc;
+    my $rc = 0;
     # open the file for write
     unless (open($fh," > $filename")) {
      my $msg="Unable to open $filename for write \n.";

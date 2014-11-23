@@ -192,6 +192,14 @@ sub parse_attr_for_osimage{
             return -1;
         }
         my ($tmp_imagetype, $tmp_arch, $tmp_osname,$tmp_ostype,$tmp_osvers);
+        if (!exists($attr_hash->{osvers})) {
+            $tmp_osvers = xCAT::Utils->osver("all");
+            $tmp_osvers =~ s/,//;
+            $attr_hash->{osvers} = $tmp_osvers; 
+        } else {
+            $tmp_osvers =$attr_hash->{osvers};
+        }
+
         if (!exists($attr_hash->{osarch})) {
             $tmp_arch = `uname -m`;
             chomp($tmp_arch);
@@ -200,13 +208,13 @@ sub parse_attr_for_osimage{
         } else {
             $tmp_arch = $attr_hash->{osarch};
         }
-        if (!exists($attr_hash->{osvers})) {
-            $tmp_osvers = xCAT::Utils->osver("all");
-            $tmp_osvers =~ s/,//;
-            $attr_hash->{osvers} = $tmp_osvers; 
-        } else {
-            $tmp_osvers =$attr_hash->{osvers};
-        }
+         
+        #for ubuntu,the the arch attribute "ppc64le" should be modified to "ppc64el"
+        if(($tmp_osvers =~ /^ubuntu/i) && ($tmp_arch =~ /^ppc64le/i)){
+            $tmp_arch="ppc64el";
+            $attr_hash->{osarch} = "ppc64el"; 
+        } 
+        
         $tmp_osname = $tmp_osvers;
         $tmp_ostype="Linux";  #like Linux, Windows
         $tmp_imagetype="linux";
