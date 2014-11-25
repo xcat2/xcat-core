@@ -982,6 +982,14 @@ EOS1
    print $inifile "mknod /dev/ttyS1 c 4 65\n";
    print $inifile "mknod /dev/ttyS2 c 4 66\n";
    print $inifile "mknod /dev/ttyS3 c 4 67\n";
+   print $inifile "mknod /dev/hvc0 c 229 0\n";
+   print $inifile "mknod /dev/hvc1 c 229 1\n";
+   print $inifile "mknod /dev/hvc2 c 229 2\n";
+   print $inifile "mknod /dev/hvc3 c 229 3\n";
+   print $inifile "mknod /dev/hvc4 c 229 4\n";
+   print $inifile "mknod /dev/hvc5 c 229 5\n";
+   print $inifile "mknod /dev/hvc6 c 229 6\n";
+   print $inifile "mknod /dev/hvc7 c 229 7\n";
 
    foreach (@ndrivers) {
 		print $inifile "insmod /lib/$_\n";

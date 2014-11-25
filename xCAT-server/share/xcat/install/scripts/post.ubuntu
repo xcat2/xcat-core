@@ -185,12 +185,40 @@ echo "$TMP" > /xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
+export CONSOLEPORT=#TABLE:nodehm:THISNODE:serialport#
 #addsiteyum
 if [[ -r /boot/grub/menu.lst ]]; then
 sed -i 's/^serial/#serial/' /boot/grub/menu.lst
 sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
 elif [[ -r /boot/grub/grub.cfg ]] ; then
 update-grub
+fi
+if echo "$ARCH" | grep -i 'ppc64'; then
+    CONSOLE="hvc$CONSOLEPORT"
+    if [[ -r /etc/default/grub ]] ; then
+        sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"console=$CONSOLE\"/" /etc/default/grub
+    else
+        echo "GRUB_CMDLINE_LINUX_DEFAULT=\"console=$CONSOLE\"" > /etc/default/grub
+    fi
+    update-grub
+
+cat >/etc/init/$CONSOLE\.conf << 'EOF'
+start on stopped rc RUNLEVEL=[2345] and (not-container or container container CONTAINER=lxc or container CONTAINER=lxc-libvirt)
+stop on runlevel [!2345]
+respawn
+script
+    for i in `cat /proc/cmdline`; do
+        KEY=`echo $i|cut -d= -f 1`
+        if [ "$KEY" == "console" -a "$i" != "console=tty0" ]; then
+            VALUE=`echo $i | cut -d= -f 2`
+            COTTY=`echo $VALUE|cut -d, -f 1`
+            COSPEED=`echo $VALUE|cut -d, -f 2|cut -dn -f 1`
+            exec /sbin/getty -L $COSPEED $COTTY vt102
+            break
+        fi
+    done
+end script
+EOF
 fi
 sed -i 's/\(deb.*security.*\)/#\1/' /etc/apt/sources.list
 #iso does not contains source deb packages
