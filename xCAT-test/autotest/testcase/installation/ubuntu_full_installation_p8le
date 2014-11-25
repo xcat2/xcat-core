@@ -1,0 +1,40 @@
+start:Ubuntu_full_installation_flat_p8le_vm
+os:Linux
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:nodeset $$CN osimage
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
