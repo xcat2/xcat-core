@@ -179,6 +179,10 @@ sub init_dbworker {
         #setup signal in NotifHandler so that the cache can be updated
         xCAT::NotifHandler::setup($$, 0);
 
+        # NOTE: There's a bug that sometimes the %SIG is cleaned up by accident, but we cannot figure out when and why
+        # this happens. The temporary fix is to backup the %SIG and recover it when necessary.
+        my %SIGbakup = %SIG;
+
         while (not $exitdbthread) {
             eval {
                 my @ready_socks = $clientset->can_read;
@@ -191,6 +195,7 @@ sub init_dbworker {
                     } else {
                         eval {
                             handle_dbc_conn($currcon,$clientset);
+                            unless (%SIG && defined ($SIG{USR1})) { %SIG = %SIGbakup; }
                         };
                         if ($@) { 
                             my $err=$@;
@@ -3837,7 +3842,7 @@ sub writeAllEntries
     }
     my $filename = shift;
     my $fh;
-    my $rc;
+    my $rc = 0;
     # open the file for write
     unless (open($fh," > $filename")) {
      my $msg="Unable to open $filename for write \n.";

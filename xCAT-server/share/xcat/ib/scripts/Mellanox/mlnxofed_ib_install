@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 #
 #
 # Sample script to customize options for Mellonax OFED IB support
@@ -143,8 +143,8 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             cat /etc/os-release|grep NAME|grep Ubuntu>/dev/null &&
             uname -m |grep ppc64 >/dev/null
         then
-            echo "ARCH=powerpc perl -x mlnxofedinstall $mlnxofed_options"
-            ARCH=powerpc perl -x mlnxofedinstall --without-fw-update  $mlnxofed_options
+            echo "ARCH=powerpc perl -x mlnxofedinstall --without-fw-update $mlnxofed_options"
+            ARCH=powerpc perl -x mlnxofedinstall --without-fw-update $mlnxofed_options
             sleep 1
             service openibd restart
         else
@@ -211,10 +211,50 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist
             mount --bind  /dev $installroot/dev/
             mount --bind  /proc  $installroot/proc/ 
             mount --bind  /sys   $installroot/sys/
-            chroot $installroot  apt-get install -y linux-headers-$(uname -r)
 
-            echo "perl -x mlnxofedinstall $mlnxofed_options"
+            mv "${installroot}/bin/uname" "${installroot}/bin/uname.nouse"
+#            cat <<-EOF >"${installroot}/bin/uname"
+#		#!/bin/sh 
+#		[ "\$1" = "-r" ] && cd /lib/modules && for d in *; do :; done && echo \$d
+#		[ "\$1" = "-m" ] && if [ -d "/proc/powerpc" ];then echo ppc64le;else echo x86_64;fi 
+#		[ "\$1" = "-s" ] && echo Linux
+#		exit 0
+#		EOF
+
+            cat <<-EOF >"${installroot}/bin/uname"
+		#!/bin/sh 
+		case "\$1" in
+		"-m")
+			ARCH="\$(dpkg --print-architecture || rpm -q kernel-\$("\$0" -r) --qf '%{arch}')"
+			case "\$ARCH" in
+			"amd64")		
+				ARCH="x86_64"
+				;;
+			"ppc64el")
+			        ARCH="ppc64le"		
+				;;	
+			esac
+			echo "\$ARCH"	
+			;;
+		"-r")	
+			cd /lib/modules && for d in * ; do : ; done && echo \$d	
+			;;
+		"-s"|"")
+			echo "Linux"	
+			;;
+		esac
+		exit 0
+		EOF
+
+#            head -n 999 "${installroot}/bin/uname"
+            chmod 0755 "${installroot}/bin/uname"
+             
+            chroot $installroot sh -c 'apt-get install -y linux-headers-$(uname -r)'
+
+            echo "perl -x /tmp/ofed_install/ofed/mlnxofedinstall  --without-fw-update $mlnxofed_options"
             chroot $installroot  perl -x /tmp/ofed_install/ofed/mlnxofedinstall  --without-fw-update $mlnxofed_options
+            mv "${installroot}/bin/uname.nouse" "${installroot}/bin/uname"
+
             rm -rf $installroot/tmp/ofed_install 
             umount $installroot/dev/
             umount $installroot/proc/

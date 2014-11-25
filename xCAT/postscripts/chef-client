@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #This script will invoke the config_chef_client directly.
 #If the chef-server and chef-client are installed successfully at first,

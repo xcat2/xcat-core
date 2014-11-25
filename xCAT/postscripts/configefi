@@ -22,7 +22,7 @@ if [ "$arch" =  "x86_64" ]; then
                         efibootmgr -c -l \\EFI\\redhat\\grubx64.efi -L syscloneLinux
                         
                         boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
-                        sed -i 's| root=\S*| root='$boot_root'|' /boot/efi/EFI/redhat/grub.cfg 
+                        sed -i 's| root=\S*| root='$boot_root' net.ifnames=0|' /boot/efi/EFI/redhat/grub.cfg 
       
                         blkid -c /dev/null |grep UUID|while read str_line
                         do
@@ -129,7 +129,7 @@ elif [ "$arch" = "ppc64" ]; then
        dd if=/boot/grub2/grub of=/dev/sda1 bs=4096
 
        boot_root=`mount | grep -E ' on\s+/ type ' | awk '{print $1}'`
-       sed -i 's| root=UUID=\S*| root='$boot_root'|' /boot/grub2/grub.cfg
+       sed -i 's| root=UUID=\S*| root='$boot_root' net.ifnames=0|' /boot/grub2/grub.cfg
 
        blkid -c /dev/null |grep UUID|while read str_line
        do

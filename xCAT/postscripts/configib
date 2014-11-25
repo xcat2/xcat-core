@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash 
 # IBM(c) 2013 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only
 # xCAT post script for configuring ib adapters.

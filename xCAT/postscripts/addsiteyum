@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 cd `dirname $0`
 if [ ! -d repos/$OSVER/$ARCH ];  then
    logger -t xcat -p local4.err "addsiteyum: repos/$OSVER/$ARCH is not a directory"

@@ -21,7 +21,7 @@ profile=$4
 workdir=$5
 
 #-- Example how /etc/fstab can be automatically generated during image generation:
-#cat <<END >$installroot/etc/fstab
+cat <<END >$installroot/etc/fstab
 devpts  /dev/pts devpts   gid=5,mode=620 0 0
 tmpfs   /dev/shm tmpfs    defaults       0 0
 proc    /proc    proc     defaults       0 0
@@ -29,7 +29,7 @@ sysfs   /sys     sysfs    defaults       0 0
 tmpfs   /tmp     tmpfs    defaults             0 2
 tmpfs   /var/tmp     tmpfs    defaults       0 2
 compute_ppc64el    /   tmpfs   rw  0 1
-#END
+END
 
 
 #-- Uncomment the line contains "cons" in /etc/inittab

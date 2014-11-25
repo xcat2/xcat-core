@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #(C)IBM Corp
 #  This script adds xCAT specific setup to the /etc/ssh/sshd_config and ssh_config file

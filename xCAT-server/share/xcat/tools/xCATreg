@@ -86,7 +86,7 @@ sub usage
                                     -U: when -U is specified, only code updates can trigger the regression.\n
                                     -V: log and message in verbose mode.\n
                                     -e: <email_addr>   send the test result to email_addr\n";
-    print "  xCATreg [-?|-h]\n";
+    print "  xCATreg [--help|-h]\n";
     print "  xCATreg [-f configure file] [-b branch] [-m mangement node][-V][-e] install mn \n";
     print "  xCATreg [-f configure file] [-b branch] [-m mangement node ] [-U][-V][-e] if code updates there will be regression.\n";
     print "\n";
@@ -1530,7 +1530,7 @@ send_msg(2,"........................");
 #######################################
 send_msg(2, "step 0, initializing...............");
 if (
-    !GetOptions("h|?"  => \$needhelp,
+    !GetOptions("h|help"  => \$needhelp,
                 "f=s" => \$configfile,
                 "b=s" => \$branch,
                 "m=s" => \$management_node,
