@@ -1416,13 +1416,26 @@ sub mkinstall
 	    }
 
             my $kcmdline;
+            
+            my $kversion=$os;
+            $kversion =~ s/^\D*([\.0-9]+)/$1/;
+            $kversion =~ s/\.$//;
+            print "xxx $kversion\n";
             if ($pkvm) {
-                $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
+                   $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
             } else {
-            $kcmdline ="quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
-              . $instserver . ":". $httpport
-              . "/install/autoinst/"
-              . $node;
+                if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+			$kcmdline ="quiet repo=$httpmethod://$instserver:$httpport$httpprefix ks=$httpmethod://"
+		      . $instserver . ":". $httpport
+		      . "/install/autoinst/"
+		      . $node;
+                }else{
+			$kcmdline ="quiet inst.repo=$httpmethod://$instserver:$httpport$httpprefix inst.ks="
+                      . "$httpmethod://"
+		      . $instserver . ":". $httpport
+		      . "/install/autoinst/"
+		      . $node;
+                }
             }
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
@@ -1470,9 +1483,19 @@ sub mkinstall
              if($esxi){
                  $ksdev =~ s/eth/vmnic/g;
              }
-             unless ($ksdev eq "bootif" and $os =~ /7/) {
-                 $kcmdline .= " ksdevice=" . $ksdev;
-            }
+            
+             my $nicname; 
+             if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+                  $kcmdline .= " ksdevice=" . $ksdev;
+             }else{
+                  if(xCAT::NetworkUtils->isValidMAC($ksdev)){
+                     $kcmdline .= " BOOTIF=" . $ksdev;
+                  }elsif($ksdev ne "bootif"){
+                     $nicname=$ksdev;
+                  }
+             }   
+
+
             
             #if site.managedaddressmode=static, specify the network configuration as kernel options 
             #to avoid multicast dhcp
@@ -1492,9 +1515,22 @@ sub mkinstall
                if($gateway eq '<xcatmaster>'){
                       $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
                }
+               
+               if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+                  $kcmdline .=" ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
+               }else{
+		    unless($nicname){
+		       $nicname="bootnic";
+		       my $mactab = xCAT::Table->new("mac");
+		       my $macref = $mactab->getNodeAttribs($node, ['mac']);
+	   	       my $mac = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
+	               $kcmdline .= " ifname=$nicname:$mac";
+		    }
 
-               $kcmdline .=" ip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
 
+                    $kcmdline .=" ip=$ipaddr"."::"."$gateway".":"."$netmask".":"."$hostname".":"."$nicname".":"."none";
+                    $kcmdline .=" bootdev=$nicname ";
+               }
 
                 my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
                 my @nameserverARR=split (",",$nameservers{$node});
@@ -1512,8 +1548,22 @@ sub mkinstall
                 }
                
                if(scalar @nameserversIP){
-                  $kcmdline .=" dns=".join(",",@nameserversIP);
+                  if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+                     $kcmdline .=" dns=".join(",",@nameserversIP);
+                  }else{
+                     foreach(@nameserversIP){
+                        $kcmdline .=" nameserver=$_";
+                     }
+                  }
                }
+           }else{
+                unless(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+			if($nicname){
+			   $kcmdline .=" ip=$nicname:dhcp ";
+			}else{
+			   $kcmdline .=" ip=dhcp ";
+			}
+                }
            }
 
             #TODO: dd=<url> for driver disks
@@ -1532,8 +1582,14 @@ sub mkinstall
                     next;
                 }
 		#go cmdline if serial console is requested, the shiny ansi is just impractical
+		if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
+                   $kcmdline .=" cmdline ";                  
+                }else{
+                   $kcmdline .=" inst.cmdline ";
+                }
+
                 $kcmdline .=
-                    " cmdline console=tty0 console=ttyS"
+                    " console=tty0 console=ttyS"
                   . $sent->{serialport} . ","
                   . $sent->{serialspeed};
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
@@ -1963,6 +2019,7 @@ sub mksysclone
                     next;
                 }
 		#go cmdline if serial console is requested, the shiny ansi is just impractical
+
                 $kcmdline .=
                     " cmdline console=tty0 console=ttyS"
                   . $sent->{serialport} . ","
