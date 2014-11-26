@@ -1,5 +1,6 @@
 #image,file,options,comments,disable
 "ALL","/etc/lvm/","tmpfs",,
+"ALL","/etc/inittab","tmpfs",,
 "ALL","/etc/ntp.conf","tmpfs",,
 "ALL","/etc/ntp.conf.org","tmpfs",,
 "ALL","/etc/resolv.conf","tmpfs",,

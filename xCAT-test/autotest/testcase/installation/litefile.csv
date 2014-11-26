@@ -1,6 +1,7 @@
 #image,file,options,comments,disable
 "ALL","/etc/adjtime","tmpfs",,
 "ALL","/etc/securetty","tmpfs",,
+"ALL","/etc/inittab","tmpfs",,
 "ALL","/etc/lvm/","tmpfs",,
 "ALL","/etc/ntp.conf","tmpfs",,
 "ALL","/etc/rsyslog.conf","tmpfs",,
