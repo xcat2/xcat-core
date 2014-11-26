@@ -1,0 +1,93 @@
+start:reg_linux_SN_installation_hierarchy
+os:Linux
+
+cmd:chtab key=nameservers site.value="<xcatmaster>"
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$SN
+check:output=~$$SN
+cmd:sleep 5
+#cmd:getmacs -D $$SN 
+3check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$SN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$SN;fi 
+check:output=~$$SN
+
+cmd:chdef -t node $$SN groups=service,all
+check:rc==0
+cmd:chdef -t group -o service profile=service netboot=yaboot primarynic=mac installnic=mac
+check:rc==0
+cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1
+check:rc==0
+cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
+check:rc==0
+cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
+check:rc==0
+
+#cmd:copycds $$ISO
+#check:rc==0
+
+cmd:chdef -t site clustersite installloc="/install"
+check:rc==0
+
+#cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+#check:rc==0
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/sles$ver/__GETNODEATTR($$SN,arch)__ && createrepo . ;elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/rh$ver/__GETNODEATTR($$SN,arch)__ && createrepo . ;fi
+#check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
+check:rc==0
+
+
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;for i in mysql-client libmysqlclient_r15 libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql; do  cat /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; fi done; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;for i in mysql; do cat /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist; fi done;fi
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.pkglist;fi
+check:rc==0
+cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
+check:rc==0
+
+
+cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
+check:rc==0
+cmd:rnetboot $$SN
+check:rc==0
+
+cmd:sleep 600
+cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 350 ];then break;fi done
+
+cmd:ping $$SN -c 3
+check:rc==0
+check:output=~64 bytes from $$SN
+cmd:lsdef -l $$SN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$SN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$SN "ps -ef |grep xcatd"
+check:rc==0
+check:output=~xcatd:
+cmd:xdsh $$SN "lsdef"
+check:rc==0
+check:output=~$$SN: $$SN
+cmd:xdsh $$SN "tabdump site"
+check:rc==0
+check:output=~nodelist
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/install on /install
+cmd:xdsh $$SN "mount"
+check:rc==0
+check:output=~/tftpboot on /tftpboot
+cmd:xdsh $$SN "nslookup $$CN"
+check:rc==0
+check:output=~Name:   $$CN
+end

@@ -1,0 +1,60 @@
+start:reg_linux_diskless_installation_hierarchy
+os:Linux
+
+cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:getmacs -D $$CN
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi   
+check:output=~$$CN
+
+#cmd:copycds $$ISO
+#check:rc==0
+
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -d /install/custom/netboot/rh ]; then mkdir -p /install/custom/netboot/rh; fi;fi
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -e /install/custom/netboot/rh/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/rh/compute.synclist; fi;fi
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/sles/compute.synclist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/rh/compute.synclist;fi
+check:rc==0
+
+cmd:genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:rnetboot $$CN
+check:rc==0
+
+cmd:sleep 300
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 60 ];then break;fi done
+
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type tmpfs
+end
