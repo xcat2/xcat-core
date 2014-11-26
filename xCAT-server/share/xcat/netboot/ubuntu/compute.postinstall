@@ -41,19 +41,3 @@ END
 #for ext in pkglist exlist postinstall repolist; do
 #  [ -r $workdir/$profile.$ext ] && cat $workdir/$profile.$ext | grep -E '^[[:space:]]*#.*[[:space:]]\$Id' >> $installroot/etc/IMGVERSION
 #done
-if echo "$arch" | grep -i 'ppc64'; then
-    CONSOLE="hvc0"
-for i in `cat /proc/cmdline`; do
-    KEY=`echo $i|cut -d= -f 1`
-    if [ "$KEY" == "console" -a "$i" != "console=tty0" ]; then
-        CONSOLEPARAM=$i
-        CONSOLE=`echo $i | cut -d= -f 2 | cut -d, -f 1`
-    fi
-done
-if [[ -r $installroot/etc/default/grub ]]; then
-    sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"console=$CONSOLE\"/" $installroot/etc/default/grub
-else
-    echo "GRUB_CMDLINE_LINUX_DEFAULT=\"console=$CONSOLE\"" > $installroot/etc/default/grub
-fi
-#update-grub
-fi
