@@ -840,8 +840,11 @@ sub mkinstall
                                  errorcode => [1]});
                     next;
                 }
-                $kcmdline .= " console=tty0 console=ttyS"
-                  . $sent->{serialport} . "," . $sent->{serialspeed};
+                if ( $arch =~ /ppc64/i ) {
+                    $kcmdline .= " console=tty0 console=hvc".$sent->{serialport} . "," . $sent->{serialspeed};
+                } else {
+                    $kcmdline .= " console=tty0 console=ttyS".$sent->{serialport} . "," . $sent->{serialspeed};
+                }
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/){
                     $kcmdline .= "n8r";
                 }
@@ -1493,8 +1496,13 @@ sub mknetboot
                     );
                 next;
             }
-            $kcmdline .=
+            if ( $arch =~ /ppc64/i ) {
+                $kcmdline .=
+              "console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+            } else {
+                $kcmdline .=
               "console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+            }
             if ($sent->{serialflow} =~ /(hard|tcs|ctsrts)/)
             {
                 $kcmdline .= "n8r";

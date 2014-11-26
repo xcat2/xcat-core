@@ -211,7 +211,7 @@ if [ -z "$UPDATENODE" ] || [ $UPDATENODE -ne 1 ]; then
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ] 
   then
-      echo "  Did not install any extra rpms."
+      echo "  Did not install any extra packages."
       exit 0
   fi
 fi 

@@ -479,12 +479,24 @@ if ($::INITIALINSTALL || $::FORCE)
          if ($rc == 0)
          {
              xCAT::MsgUtils->message('W', "SELINUX is not disabled, disabling it now...");
-             # Disable selinux for running system
-             my $cmd = "echo 0 > /selinux/enforce";
-             my $outref = xCAT::Utils->runcmd("$cmd", 0);
-             if ($::RUNCMD_RC != 0)
+             # set selinux be in permissive mode for running system,
+             # if the user forgot to disable selinux, 
+             # try to not hurt xcat too much
+             my $enforcefile;
+             if ( -f "/selinux/enforce")
              {
-                xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
+                 $enforcefile = "/selinux/enforce";
+             } elsif ( -f "/sys/fs/selinux/enforce" ) {
+                 $enforcefile = "/sys/fs/selinux/enforce";
+             }
+             if ($enforcefile)
+             {
+                 my $cmd = "echo 0 > $enforcefile";
+                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
+                 if ($::RUNCMD_RC != 0)
+                 {
+                    xCAT::MsgUtils->message('E', "Failed to disable SELINUX.");
+                 }
              }
              # Disable selinux through reboots
              my $cmd = "sed -i 's/^SELINUX=.*\$/SELINUX=disabled/' /etc/selinux/config";
