@@ -650,19 +650,20 @@ sub do_udp_service { #This function opens up a UDP port
       }
       close($udppidfile);
   }
-   my $select = new IO::Select;
-while (not $socket and $retry) {
-if ($inet6support) {
-  $socket = IO::Socket::INET6->new(LocalPort => $port,
+  my $select = new IO::Select;
+  while (not $socket and $retry) {
+      $retry--;
+      if ($inet6support) {
+          $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
                                      );
-} else {
-  $socket = IO::Socket::INET->new(LocalPort => $port,
+      } else {
+          $socket = IO::Socket::INET->new(LocalPort => $port,
                                      Proto     => 'udp',
                                      Domain => AF_INET);
-}
-sleep 0.05;
-}
+      }
+      sleep 0.05;
+  }
 
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
