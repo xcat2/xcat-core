@@ -222,10 +222,12 @@ sub setstate {
     }
     my $mactab = xCAT::Table->new('mac');
     my %ipaddrs;
+    my $macstring;
     $ipaddrs{$ip} = 1;
     if ($mactab) {
      my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
      if ($ment and $ment->{mac}) {
+       $macstring=$ment->{mac};
        my @macs = split(/\|/,$ment->{mac});
        foreach (@macs) {
           $nodemac = $_;
@@ -246,7 +248,10 @@ sub setstate {
         unlink($tftpdir."/boot/grub2/".$pname);
         link($tftpdir."/boot/grub2/".$node,$tftpdir."/boot/grub2/".$pname);
     }
-  
+    if($macstring){
+       $nodemac=xCAT::Utils->parseMacTabEntry($macstring,$node); 
+    }
+
     if ($nodemac =~ /:/) {
         my $tmp = lc($nodemac);
         $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;

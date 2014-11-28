@@ -263,10 +263,12 @@ sub setstate {
     }
     my $mactab = xCAT::Table->new('mac');
     my %ipaddrs;
+    my $macstring;
     $ipaddrs{$ip} = 1;
     if ($mactab) {
       my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
       if ($ment and $ment->{mac}) {
+        $macstring=$ment->{mac};
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
            $nodemac = $_;
@@ -287,14 +289,22 @@ sub setstate {
       unlink($tftpdir."/etc/".$pname);
       link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
     }
+
+    if($macstring){
+       $nodemac=xCAT::Utils->parseMacTabEntry($macstring,$node);
+    }   
+  
+    if ($nodemac =~ /:/) {
+        my $tmp =lc($nodemac);
+        $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
+        my $pname = "yaboot.conf-" . $tmp;
+        unlink($tftpdir."/".$pname);
+        link($tftpdir."/etc/".$node,$tftpdir."/".$pname); 
+    }
+
+
   }
-  if ($nodemac =~ /:/) {
-      my $tmp =lc($nodemac);
-      $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
-      my $pname = "yaboot.conf-" . $tmp;
-      unlink($tftpdir."/".$pname);
-      link($tftpdir."/etc/".$node,$tftpdir."/".$pname); 
-  }
+
   return;      
 }
   
