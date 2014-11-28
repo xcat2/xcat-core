@@ -223,7 +223,21 @@ else
 chomp $::arch;
 chomp $::root;
 
+if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
+{
+    # Ubuntu uses upstart to manage dhcp server,
+    # xCAT does not support upstart for now,
+    # disable dhcp server in upstart and let xCAT totally manage dhcp server
+    if ( -e "/etc/debian_version" )
+    {
+        # Try to stop isc-dhcp-server started by upstart
+        my $cmd = "stop isc-dhcp-server";
+        xCAT::Utils->runcmd("$cmd", -1);
 
+        # Disable isc-dhcp-server in upstart
+        `echo manual > /etc/init/isc-dhcp-server.override`;
+    }
+}
 
 #
 # Generate ssh host keys for the nodes
