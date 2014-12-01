@@ -3,6 +3,8 @@ os:Linux
 
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
+cmd:chdef -t node $$SN groups=service,all
+check:rc==0
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
@@ -13,7 +15,7 @@ cmd:makeconservercf
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
-cmd:sleep 5
+cmd:sleep 20
 cmd:getmacs -D $$CN 
 check:rc==0
 cmd:makedhcp -n
@@ -28,11 +30,19 @@ check:output=~$$CN
 
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
+cmd:lsdef $$CN |grep provmethod
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 cmd:rnetboot $$CN
 check:rc==0
 
-cmd:sleep 480
-cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 250 ];then break;fi done
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi
+
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output!~booted
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 
 cmd:ping $$CN -c 3
 check:rc==0

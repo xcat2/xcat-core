@@ -19,7 +19,7 @@ check:rc==0
 #cmd:copycds $$ISO
 #check:rc==0
 
-cmd:if cat /etc/*release |grep SUSE >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv; elif cat /etc/*release |grep "Red Hat" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null; then  cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
 check:rc==0
 cmd:tabdump litefile
 check:rc==0
@@ -42,6 +42,9 @@ check:rc==0
 cmd:chtab priority=4.8 policy.commands=litetree policy.rule=allow
 check:rc==0
 
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
+check:rc==0
+
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -d /install/custom/netboot/rh ]; then mkdir -p /install/custom/netboot/rh; fi;fi
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -e /install/custom/netboot/rh/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/rh/compute.synclist; fi;fi
@@ -53,8 +56,12 @@ cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compu
 check:rc==0
 cmd:liteimg  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
+
 cmd:nodeset $$CN statelite
 check:rc==0
+cmd:lsdef $$CN |grep provmethod
+check:rc==0
+check:output=~statelite
 cmd:rnetboot $$CN
 check:rc==0
 
@@ -72,16 +79,24 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
-check:output=~$$MN:/nodedata/$$CN on /.statelite/persistent type nfs 
+check:output=~$$MN:/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
 
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
+check:rc==0
 
 cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute rootfstype=ramdisk
 check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
+check:rc==0
 cmd:liteimg __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
+
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
+cmd:lsdef $$CN |grep provmethod
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 cmd:rnetboot $$CN
 check:rc==0
 
@@ -99,6 +114,10 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
-check:output=~$$MN:/nodedata/$$CN on /.statelite/persistent type nfs
+check:output=~$$MN:/nodedata/$$CN on /.statelite/persistent
 check:output=~rootfs on / type tmpfs
+
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
+
 end

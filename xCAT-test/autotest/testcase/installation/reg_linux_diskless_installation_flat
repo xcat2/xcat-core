@@ -23,6 +23,9 @@ check:output=~$$CN
 #cmd:copycds $$ISO
 #check:rc==0
 
+cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then mv $rootimgdir $rootimgdir.regbak;fi
+check:rc==0
+
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -d /install/custom/netboot/rh ]; then mkdir -p /install/custom/netboot/rh; fi;fi
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -e /install/custom/netboot/rh/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/rh/compute.synclist; fi;fi
@@ -37,6 +40,10 @@ check:rc==0
 
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
+cmd:lsdef $$CN |grep provmethod
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+
 cmd:rnetboot $$CN
 check:rc==0
 
@@ -55,4 +62,7 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 check:output=~on / type tmpfs
+
+cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
+check:rc==0
 end

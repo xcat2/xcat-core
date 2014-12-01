@@ -10,9 +10,9 @@ cmd:makeconservercf
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
-cmd:sleep 5
-#cmd:getmacs -D $$SN 
-3check:rc==0
+cmd:sleep 20
+cmd:getmacs -D $$SN 
+check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
@@ -37,10 +37,11 @@ check:rc==0
 cmd:chdef -t site clustersite installloc="/install"
 check:rc==0
 
-#cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
-#check:rc==0
+cmd:cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-core && createrepo .  
+check:rc==0
 #cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/sles$ver/__GETNODEATTR($$SN,arch)__ && createrepo . ;elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;cd /install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__/xcat/xcat-dep/rh$ver/__GETNODEATTR($$SN,arch)__ && createrepo . ;fi
 #check:rc==0
+
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
@@ -80,7 +81,7 @@ check:rc==0
 check:output=~$$SN: $$SN
 cmd:xdsh $$SN "tabdump site"
 check:rc==0
-check:output=~nodelist
+check:output=~tftpdir 
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/install on /install
