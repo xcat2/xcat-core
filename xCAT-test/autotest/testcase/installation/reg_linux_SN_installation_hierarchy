@@ -90,5 +90,5 @@ check:rc==0
 check:output=~/tftpboot on /tftpboot
 cmd:xdsh $$SN "nslookup $$CN"
 check:rc==0
-check:output=~Name:   $$CN
+check:output=~Name:    $$CN
 end
