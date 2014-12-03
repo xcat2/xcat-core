@@ -1396,7 +1396,7 @@ sub  collect_all_attribs_for_tables_in_template
                                   #for noderes.xcatmaster
                                   if ($tabname =~ /^noderes$/ && $attrib =~ /^xcatmaster$/ && 
                                      ( ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
-                                       $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} == ""        ) )
+                                       $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} eq ""        ) )
                                   {
                                       my $value;
                                       $value = xCAT::NetworkUtils->my_ip_facing($node);
