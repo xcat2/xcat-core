@@ -89,7 +89,7 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
-check:output=~$$SN:/nodedata/$$CN on /.statelite/persistent
+check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
 
 

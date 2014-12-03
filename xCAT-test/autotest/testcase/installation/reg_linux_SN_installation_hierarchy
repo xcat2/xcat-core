@@ -62,7 +62,7 @@ cmd:rnetboot $$SN
 check:rc==0
 
 cmd:sleep 600
-cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 350 ];then break;fi done
+cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 400 ];then break;fi done
 
 cmd:ping $$SN -c 3
 check:rc==0
@@ -90,5 +90,5 @@ check:rc==0
 check:output=~/tftpboot on /tftpboot
 cmd:xdsh $$SN "nslookup $$CN"
 check:rc==0
-check:output=~Name:    $$CN
+check:output!~server can't find $$CN
 end
