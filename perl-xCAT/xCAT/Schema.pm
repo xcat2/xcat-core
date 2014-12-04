@@ -1420,7 +1420,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases nicextraparams comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1457,6 +1457,12 @@ nics => {
             Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
 			For multiple aliases per nic use a space-separated list.
             For example: eth0!moe larry curly,eth1!tom|jerry',
+            nicextraparams => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
+                If only one ip address is associated with each NIC:
+                    <nic1>!<param1=value1 param2=value2>,<nic2>!<param3=value3>, for example, eth0!MTU=1500,ib0!MTU=65520 CONNECTED_MODE=yes.
+                If multiple ip addresses are associated with each NIC:
+                    <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
+            The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -2383,7 +2389,11 @@ my @nodeattrs = (
 				tabentry => 'nics.nicaliases',
 				access_tabentry => 'nics.node=attr:node',
 		},
-######################
+		{attr_name => 'nicextraparams',
+				tabentry => 'nics.nicextraparams',
+				access_tabentry => 'nics.node=attr:node',
+		},
+#######################
 #  prodkey table     #
 ######################
                 {attr_name => 'productkey',
