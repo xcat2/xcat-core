@@ -180,7 +180,8 @@ if ($::RUNCMD_RC != 0)
     exit(1);
 }
 # check if 9.X release not built by us is installed,  setup different
-if  (grep(/postgresql9/, @output)) {  # postgresql 9.x
+# SLES used default dir
+if  ( (grep(/postgresql9/, @output)) && ($::linuxos !~ /sles/) ){  # postgresql 9.x
  # figure out which 9.x release  and build path
  my @parseout= split(/\-/, $output[0]);
  my @ptflevel= split ("postgresql9",$parseout[0]);
@@ -986,7 +987,7 @@ sub setupxcatdb
       $cmd = "/var/lib/pgsql/bin/psql -d $::dbname -U postgres";
     } else {  # Linux
        $cmd = "$::pgcmddir/psql -d $::dbname -U postgres";
-       if ($debianflag){
+       if ( ($debianflag) || ($::linuxos =~ /sles/) ){
            $cmd = "su - postgres -c '$::pgcmddir/psql -d $::dbname -U postgres'";
        }
     }
