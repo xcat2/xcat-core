@@ -403,7 +403,7 @@ do
        fi
 
        #there should be only one gateway on a node and that should go through the to the xcat management node and would be set up from the install nic. Anything else should be a route
-       if [ "$gateway" == "<xcatmaster>" ]; then
+       if [ "$gateway" == "<xcatmaster>" ] || [ "$gateway" == "&lt;xcatmaster&gt;" ]; then
            gateway=''
        fi
 
