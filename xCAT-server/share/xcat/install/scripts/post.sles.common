@@ -33,14 +33,14 @@ echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
 fi
 
 perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
-/etc/init.d/network restart
+service network restart
 
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
 jsi=0
 while [ $(hostname) == 'linux' ]
 do
-	if [ $jsi -gt 10 ]; then
+	if [ $jsi -gt 180 ]; then
 		logger "Slept too long!"
 		exit
 	fi
