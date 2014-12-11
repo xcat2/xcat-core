@@ -16,7 +16,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:getmacs -D $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -25,15 +25,15 @@ check:rc==0
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi 
 check:output=~$$CN
 
-#cmd:copycds $$ISO
-#check:rc==0
+cmd:copycds $$ISO
+check:rc==0
 
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:rnetboot $$CN
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi

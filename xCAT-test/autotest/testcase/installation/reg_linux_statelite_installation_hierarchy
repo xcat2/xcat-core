@@ -11,15 +11,15 @@ check:rc==0
 cmd:makeconservercf
 check:rc==0
 cmd:sleep 20
-cmd:getmacs -D $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 
-#cmd:copycds $$ISO
-#check:rc==0
+cmd:copycds $$ISO
+check:rc==0
 
 cmd:xdsh $$SN df|grep /install;if [ $? -eq 0 ] ;then xdsh $$SN umount /install;fi
 check:rc==0
@@ -72,7 +72,7 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~statelite
-cmd:rnetboot $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
 cmd:sleep 300
@@ -110,7 +110,7 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
-cmd:rnetboot $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
 cmd:sleep 300

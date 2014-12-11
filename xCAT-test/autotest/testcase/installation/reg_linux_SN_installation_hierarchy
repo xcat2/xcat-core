@@ -11,7 +11,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
 cmd:sleep 20
-cmd:getmacs -D $$SN 
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -31,8 +31,8 @@ check:rc==0
 cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
 check:rc==0
 
-#cmd:copycds $$ISO
-#check:rc==0
+cmd:copycds $$ISO
+check:rc==0
 
 cmd:chdef -t site clustersite installloc="/install"
 check:rc==0
@@ -58,7 +58,7 @@ check:rc==0
 
 cmd:nodeset $$SN osimage=__GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service
 check:rc==0
-cmd:rnetboot $$SN
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then rnetboot $$SN;elif [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rpower $$SN boot; fi
 check:rc==0
 
 cmd:sleep 600
@@ -91,4 +91,8 @@ check:output=~/tftpboot on /tftpboot
 cmd:xdsh $$SN "nslookup $$CN"
 check:rc==0
 check:output!~server can't find $$CN
+
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
+check:rc==0
+
 end

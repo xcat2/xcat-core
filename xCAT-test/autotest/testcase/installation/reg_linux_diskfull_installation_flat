@@ -11,7 +11,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:getmacs -D $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -28,10 +28,10 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:rnetboot $$CN
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 200;else sleep 180;fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 80;else sleep 180;fi
 
 cmd:lsdef -l $$CN | grep status
 check:rc==0
