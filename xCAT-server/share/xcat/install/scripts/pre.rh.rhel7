@@ -196,7 +196,7 @@ if uname -r|grep '^3.*el7' > /dev/null; then
     EFIFSTYPE=efi
 fi
 
-if [ `uname -m` = "ppc64" ]; then
+if [ `uname -m` = "ppc64" -o `uname -m` = "ppc64le" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
 fi
 if [ -d /sys/firmware/efi ]; then 
