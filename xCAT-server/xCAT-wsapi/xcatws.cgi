@@ -807,7 +807,7 @@ my %URIdef = (
             POST => {
                 desc => "Create the osimage resources base on the parameters specified in the Data body.",
                 #usage => "|$usagemsg{objchparam} DataBody: {iso:isoname\\file:filename\\node:noderange,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
-                usage => "|$usagemsg{objchparam} DataBody: {iso:isoname\\file:filename,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
+                usage => "|$usagemsg{objchparam} DataBody: {iso:isopath,file:filename,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
                 example1 => "|Create osimage resources based on the ISO specified|POST|/osimages {\"iso\":\"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso\"}||",
                 example2 => "|Create osimage resources based on an xCAT image or configuration file|POST|/osimages {\"file\":\"/tmp/sles11.2-x86_64-install-compute.tgz\"}||",
                 # TD: the imgcapture need to be moved to nodes/.*/osimages
@@ -883,7 +883,7 @@ my %URIdef = (
             matcher => '^\/osimages\/[^\/]*/instance$',
             POST => {
                 desc => "Operate the instance of the osimage {imgname}.",
-                usage => "|$usagemsg{objchparam} DataBody: {action:gen\\pack\\export,params:[{attr1:value1,attr2:value2...}]}|$usagemsg{non_getreturn}|",
+                usage => "|$usagemsg{objchparam} DataBody: {action:gen OR pack OR export,params:[{attr1:value1,attr2:value2...}]}|$usagemsg{non_getreturn}|",
                 example1 => "|Generates a stateless image based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"gen\"}||",
                 example2 => "|Packs the stateless image from the chroot file system based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"pack\"}||",
                 example3 => "|Exports an xCAT image based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"export\"}||",

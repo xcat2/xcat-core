@@ -243,8 +243,13 @@ sub outwiki {
                 } else {
                     print "\n    #curl -X $parts[2] -k \'https://127.0.0.1/xcatws$parts[3]$postfix\'\n";
                 }
-                $parts[4] =~ s/\n/\n    /g;
-                print "    $parts[4]\n\n---\n";
+
+                if ($parts[4]) {
+                    $parts[4] =~ s/\n/\n    /g;
+                    print "    $parts[4]\n\n---\n";
+                } else {
+                    print "\n---\n";
+                }
             } else {
                 push @errmsg, "Error format for:[".$def->{desc}."]\n";
             }
@@ -371,6 +376,7 @@ sub gendoc {
     }
 
     if ($format eq "wiki") {
+        print "![](http://sourceforge.net/p/xcat/wiki/XCAT_Documentation/attachment/Official-xcat-doc.png)\n\n";
         print "\n[TOC]\n";
     }
 
