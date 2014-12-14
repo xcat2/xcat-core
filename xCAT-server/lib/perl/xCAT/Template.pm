@@ -260,7 +260,7 @@ sub subvars {
       if ($partitionfile && $doneincludes) {
           #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
           # split the partition file out from the $inc
-          ($inc, $partcontent) = split(/FFFFFFFFFFFFPARTITIONFILESTART/, $inc);
+          ($inc, $partcontent) = split(/FFFFFFFFFFFFPARTITIONFILESTART\n/, $inc);
           if ($scriptflag){
               # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
               # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
