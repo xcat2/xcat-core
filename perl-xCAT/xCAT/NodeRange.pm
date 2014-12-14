@@ -196,6 +196,7 @@ sub expandatom {
 	$nodelist->_set_use_cache(1);
         @allnodeset = $nodelist->getAllAttribs('node','groups');
         %allnodehash = map { $_->{node} => 1 } @allnodeset;
+	$nodelist->_set_use_cache(0);   #The {_use_cache} for nodelist table object must be turn off, otherwise it will keep open and affect the Table.pm subroutines like getNodesAttribs when it tries to access nodelist table to get status column.
     }
 	my $verify = (scalar(@_) >= 1 ? shift : 1);
   my %options = @_;      # additional options
