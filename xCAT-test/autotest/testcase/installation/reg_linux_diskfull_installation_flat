@@ -1,6 +1,8 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
 
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
 

@@ -1,6 +1,8 @@
 start:reg_linux_statelite_installation_hierarchy
 os:Linux
 
+cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`;sed -i "s:nameserver .*:nameserver $MNIP:g" /etc/resolv.conf 
+
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
 cmd:chdef -t node $$SN groups=service,all
