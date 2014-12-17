@@ -210,11 +210,11 @@ Add product package rpms to a previously built kit tar file.  This is used for p
 
 =over 3
 
-=item 0
+=item <B>0
 
 The command completed successfully.
 
-=item 1
+=item <B>1
 
 An error has occurred.
 
