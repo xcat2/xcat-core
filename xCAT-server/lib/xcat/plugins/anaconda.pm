@@ -2338,7 +2338,7 @@ sub copycd
                 );
             return;
         }
-        if ($arch =~ /ppc/) { $arch = "ppc64" }
+        if ($arch eq "ppc") { $arch = "ppc64" }
     }
 
     if($inspection)
