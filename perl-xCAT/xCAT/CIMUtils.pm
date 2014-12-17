@@ -59,6 +59,14 @@ sub enum_instance
     }
     
     my $cim_params = shift;
+
+    unless ($cim_params->{classname}) {
+        return ({rc => 1, msg => "Miss the classname"});
+    }
+
+    unless ($cim_params->{namespace}) {
+        $cim_params->{namespace} = "ibmsd";
+    }
     
     # prepare the CIM payload
     my $tmpnode;
@@ -97,7 +105,7 @@ sub enum_instance
     $localnamespacepath->addChild($tmpnode);
     
     $tmpnode = $doc->createElement("NAMESPACE");
-    $tmpnode->setAttribute("NAME", "ibmsd");
+    $tmpnode->setAttribute("NAME", $cim_params->{namespace});
     $localnamespacepath->addChild($tmpnode);
     
     $imethod_call->addChild($localnamespacepath);
@@ -108,7 +116,7 @@ sub enum_instance
     $imethod_call->addChild($param_classname);
     
     my $classname = $doc->createElement("CLASSNAME");
-    $classname->setAttribute("NAME", "IBM_HWCtrlPoint");
+    $classname->setAttribute("NAME", $cim_params->{classname});
     $param_classname->addChild($classname);
     
     # add several common parameters
@@ -116,7 +124,6 @@ sub enum_instance
     
     my $payload = $doc->toString();
     
-
     # generate http request
     my $ret = gen_http_request($http_params, $payload);
 
@@ -130,9 +137,39 @@ sub enum_instance
         return $ret;
     }
 
-    
     # parse the http response
-    print $ret->{payload};
+    my $ret_value;
+    my $parser = XML::LibXML->new();
+    my $resp_doc = $parser->parse_string($ret->{payload});
+
+    # check the error message from CIM
+    my $error_node = $resp_doc->getElementsByTagName("ERROR");
+    if ($error_node) {
+        return ({rc => 1, cimcode => $error_node->[0]->getAttribute("CODE"), msg => $error_node->[0]->getAttribute("DESCRIPTION")});
+    }
+
+    # get all the instance elements
+    my @instances = $resp_doc->getElementsByTagName("INSTANCE");
+    foreach my $instance (@instances) {
+        # get all the property element for each instance
+        my @properties = $instance->getElementsByTagName("PROPERTY");
+        my $ins_value;
+        foreach my $property (@properties) {
+            # get name, vlaue and type for each property. (only the one which has value)
+            if (my $pname = $property->getAttribute("NAME")) {
+                if (my $node = $property->getElementsByTagName("VALUE")) {
+                    $ins_value->{property}->{$pname}->{value} = $node->[0]->textContent;
+
+                    if (my $pvalue = $property->getAttribute("TYPE")) {
+                        $ins_value->{property}->{$pname}->{type} = $pvalue;
+                    }
+                }
+            }
+        }
+        push @{$ret_value}, $ins_value;
+    }
+    
+    return ({rc =>0}, $ret_value);
 }
 
 
