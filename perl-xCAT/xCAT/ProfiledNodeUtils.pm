@@ -277,7 +277,7 @@ sub get_nodes_nic_attrs{
     my $nodes = shift;
 
     my $nicstab = xCAT::Table->new( 'nics');
-    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'nichostnameprefixes', 'niccustomscripts', 'nicnetworks', 'nicips']);
+    my $entry = $nicstab->getNodesAttribs($nodes, ['nictypes', 'nichostnamesuffixes', 'nichostnameprefixes', 'niccustomscripts', 'nicnetworks', 'nicips', 'nicextraparams']);
 
     my %nicsattrs;
     my @nicattrslist;
@@ -359,6 +359,19 @@ sub get_nodes_nic_attrs{
 					@nicattrs = split(":", $_);
 				}
                 $nicsattrs{$node}{$nicattrs[0]}{'ip'} = $nicattrs[1];
+            }
+        }
+
+        if($entry->{$node}->[0]->{'nicextraparams'}){
+            @nicattrslist = split(",", $entry->{$node}->[0]->{'nicextraparams'});
+            foreach (@nicattrslist){
+				my @nicattrs;
+				if ($_  =~ /!/) {
+					@nicattrs = split("!", $_);
+				} else {
+					@nicattrs = split(":", $_);
+				}
+                $nicsattrs{$node}{$nicattrs[0]}{'extraparams'} = $nicattrs[1];
             }
         }
     }
