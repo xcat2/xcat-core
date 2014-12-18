@@ -70,6 +70,11 @@ if ($hmtab) {
   exit(1);
 }
 my $file = "/var/log/consoles/$node";
+#use confluent if it is there
+if ((-x "/opt/confluent/bin/confetty") || (-x "/usr/bin/confetty")) {
+	$file = "/var/log/confluent/consoles/$node";
+}
+#print "file=$file\n";
 
 #if has conserver, goto conserver the execute replaycons command
 my @hostinfo=xCAT::NetworkUtils->determinehostname();
