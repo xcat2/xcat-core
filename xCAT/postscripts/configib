@@ -62,6 +62,76 @@ convert_netmask_to_cidr() {
 }
  
 
+# The extra parameter are specified in the nics.nicextraparams. 
+# It has the following format:
+#  eth2!MTU=65520 CONNECTED_MODE=yes,eth3!MTU=1500
+# This function gets the values for the given nic, 
+# It stores each parameter values in a separate array.
+function get_nic_extra_params() {
+    nic_temp=$1
+    if [ ! "$NICEXTRAPARAMS" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_conf_temp=($NICEXTRAPARAMS)
+    IFS=$old_ifs
+
+    i=0
+    while [ $i -lt ${#array_conf_temp[@]} ]
+    do
+        token="${array_conf_temp[$i]}"
+        D=
+        if echo "$token" | grep "!"; then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo "$token" | cut -d"$D" -f 1`
+		if [ "$key" == "$nic_temp" ]; then
+			str_temp_value=`echo "$token" | cut -d"$D" -f 2`
+            #echo "token=$token, str_temp_value=$str_temp_value"
+			old_ifs=$IFS
+			IFS=$'|'
+			nic_params_temp=($str_temp_value)
+			IFS=$old_ifs
+            j=0
+			while [ $j -lt ${#nic_params_temp[@]} ]
+			do
+				#token1="${nic_params_temp[$j]}"
+				#echo "token1=$token1"
+				old_ifs=$IFS
+				IFS=$' '
+				params_temp=(${nic_params_temp[$j]})
+				IFS=$old_ifs
+				k=0
+				while [ $k -lt ${#params_temp[@]} ]
+				do
+					token2="${params_temp[$k]}"
+					key=`echo "$token2" | cut -d'=' -f 1`
+					value=`echo "$token2" | cut -d'=' -f 2`
+                    #echo "key=$key, value=$value"
+					if [ "$key" = "mtu" ] || [ "$key" = "MTU" ]; then
+						array_nic_mtu[$j]=$value
+					elif [ "$key" = "connected_mode" ] || [ "$key" = "CONNECTED_MODE" ]; then
+						array_nic_connected[$j]=$value
+					fi
+					k=$((k+1))
+				done
+				if [[ -z "${array_nic_mtu[$j]}" ]]; then
+					array_nic_mtu[$j]=$str_default_token
+				fi
+				if [[ -z "${array_nic_connected[$j]}" ]]; then
+					array_nic_connected[$j]=$str_default_token
+				fi
+				j=$((j+1))
+			done
+		fi
+		i=$((i+1))
+    done
+}
+
+
 #if $NIC_IBNICS is not defined, all ib nics' configuration files will be deleted.
 if [ -z "$NIC_IBNICS" ]; then
     echo "nothing to do."
@@ -221,6 +291,11 @@ else
 fi
 
 
+declare -a array_nic_mtu
+declare -a array_nic_connected
+# This token is used for the value of an attributes that has not been assigned any value.
+str_default_token="default"
+
 goodnics=""
 for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
 do 
@@ -255,6 +330,10 @@ do
        logger -p local4.info -t xcat "No network defined for $nic"
        continue
    fi   
+
+   array_nic_mtu=()
+   array_nic_connected=()
+   get_nic_extra_params $nic
 
    ipindex=0
    for nicip in `echo $nicips | tr "|" "\n"`
@@ -324,11 +403,13 @@ do
        fi
 
        #there should be only one gateway on a node and that should go through the to the xcat management node and would be set up from the install nic. Anything else should be a route
-       if [ "$gateway" == "<xcatmaster>" ]; then
+       if [ "$gateway" == "<xcatmaster>" ] || [ "$gateway" == "&lt;xcatmaster&gt;" ]; then
            gateway=''
        fi
 
-   
+       str_mtu=${array_nic_mtu[$ipindex-1]}
+       str_connect_mode=${array_nic_connected[$ipindex-1]}
+
        if [ $PLTFRM == "Linux" ]
        then
            # Issue openibd for Linux at boot time
@@ -378,7 +459,13 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                            echo "default $gateway - -" >> /etc/sysconfig/network/routes
                        fi
                    fi
-               else # not the first ip address
+				   if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
+					   echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic
+				   fi
+				   if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
+					   echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic
+				   fi
+			   else # not the first ip address
                    echo "LABEL_$ipindex=$ipindex
 IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                     # ipv6
@@ -425,6 +512,12 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                     if [ -n "$gateway" ]; then
                        echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic
                     fi
+					if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
+						echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic
+					fi
+					if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
+						echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic
+					fi
                else # not the first ip address
                    # ipv6
                    if echo $nicip | grep : 2>&1 1>/dev/null
@@ -460,6 +553,12 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                         if [ -n "$gateway" ]; then
                            echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic:$ipindex
                         fi
+						if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
+							echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic:$ipindex
+						fi
+						if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
+							echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic:$ipindex
+						fi
                         # need to run ifup eth1:1 for RedHat
                         goodnics="$goodnics,$nic:$ipindex"
                     fi
@@ -513,6 +612,13 @@ netmask $netmask" >> /etc/network/interfaces
                         #    echo "gateway $gateway" >> /etc/network/interfaces
                         #fi
                     fi
+
+					if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
+						echo "mtu ${str_mtu}" >> /etc/network/interfaces
+					fi
+					if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
+						echo "connected_mode ${str_connect_mode}" >> /etc/network/interfaces
+					fi
                 fi
             else
                 echo "Unsupported operating system"
@@ -607,7 +713,7 @@ then
                     ifup   $tmp > /dev/null 2>&1
                 done
             else 
-                ifup $nic    > /dev/null 2>&1 
+                ifup $nic > /dev/null 2>&1   
             fi
         fi
     done

@@ -3,6 +3,71 @@
 # Internal script used by confignics only.
 # It configs the Ethernet adpaters on the node
 
+# The extra parameter are specified in the nics.nicextraparams. 
+# It has the following format:
+#  eth2!MTU=65520 somethingelse=yes,eth3!MTU=1500
+# This function gets the values for the given nic, 
+# It stores each parameter values in a separate array.
+function get_nic_extra_params() {
+    nic=$1
+    if [ ! "$NICEXTRAPARAMS" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_conf_temp=($NICEXTRAPARAMS)
+    IFS=$old_ifs
+
+    i=0
+    while [ $i -lt ${#array_conf_temp[@]} ]
+    do
+        token="${array_conf_temp[$i]}"
+        D=
+        if echo "$token" | grep "!"; then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo "$token" | cut -d"$D" -f 1`
+		if [ "$key" == "$nic" ]; then
+			str_temp_value=`echo "$token" | cut -d"$D" -f 2`
+            #echo "token=$token, str_temp_value=$str_temp_value"
+			old_ifs=$IFS
+			IFS=$'|'
+			nic_params_temp=($str_temp_value)
+			IFS=$old_ifs
+            j=0
+			while [ $j -lt ${#nic_params_temp[@]} ]
+			do
+				#token1="${nic_params_temp[$j]}"
+				#echo "token1=$token1"
+				old_ifs=$IFS
+				IFS=$' '
+				params_temp=(${nic_params_temp[$j]})
+				IFS=$old_ifs
+				k=0
+				while [ $k -lt ${#params_temp[@]} ]
+				do
+					token2="${params_temp[$k]}"
+					key=`echo "$token2" | cut -d'=' -f 1`
+					value=`echo "$token2" | cut -d'=' -f 2`
+                    #echo "key=$key, value=$value"
+					if [ "$key" = "mtu" ] || [ "$key" = "MTU" ]; then
+						array_nic_mtu[$j]=$value
+					fi
+					k=$((k+1))
+				done
+				if [[ -z "${array_nic_mtu[$j]}" ]]; then
+					array_nic_mtu[$j]=$str_default_token
+				fi
+				j=$((j+1))
+			done
+			return
+		fi
+		i=$((i+1))
+    done
+}
+
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
@@ -14,6 +79,7 @@ function configipv4(){
     str_v4net=$3
     str_v4mask=$4
     num_v4num=$5
+    str_mtu=$6
     
     if [ "$str_os_type" = "sles" ];then
         str_conf_file="/etc/sysconfig/network/ifcfg-${str_if_name}"
@@ -26,11 +92,17 @@ function configipv4(){
             echo "STARTMODE=onboot" >> $str_conf_file
             echo "USERCONTROL=no" >> $str_conf_file
             echo "_nm_name=static-0" >> $str_conf_file
+            if [ "$str_mtu" != "$str_default_token" ]; then
+				echo "MTU=${str_mtu}" >> $str_conf_file
+			fi
         else
             echo "IPADDR_${num_v4num}=${str_v4ip}" >> $str_conf_file
             echo "NETMASK_${num_v4num}=${str_v4mask}" >> $str_conf_file
             echo "NETWORK_${num_v4num}=${str_v4net}" >> $str_conf_file
             echo "LABEL_${num_v4num}=${num_v4num}" >> $str_conf_file
+            if [ "$str_mtu "!= "$str_default_token" ]; then
+				echo "MTU_${num_v4num}=${str_mtu}" >> $str_conf_file
+			fi
         fi
 
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
@@ -49,6 +121,9 @@ function configipv4(){
         echo "  address ${str_v4ip}" >> $str_conf_file
         echo "  netmask ${str_v4mask}" >> $str_conf_file
         echo "  network ${str_v4net}" >> $str_conf_file
+        if [ "$str_mtu" != "$str_default_token" ]; then
+			echo " mtu  ${str_mtu}" >> $str_conf_file
+		fi
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             parent_device=`echo ${str_if_name} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
             echo "  vlan-raw-device ${parent_device}" >> $str_conf_file
@@ -64,6 +139,7 @@ function configipv4(){
             echo "DEVICE=${str_if_name}:${num_v4num}" > $str_conf_file
         fi
 
+
         echo "BOOTPROTO=static" >> $str_conf_file
         echo "NM_CONTROLLED=no" >> $str_conf_file
         echo "IPADDR=${str_v4ip}" >> $str_conf_file
@@ -72,6 +148,9 @@ function configipv4(){
         if [[ ${str_if_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
             echo "VLAN=yes" >> $str_conf_file
         fi
+        if [ "$str_mtu" != "$str_default_token" ]; then
+			echo "MTU=${str_mtu}" >> $str_conf_file
+		fi
     fi
 }
 
@@ -83,6 +162,8 @@ configipv6(){
     num_v6num=$5
     num_v4num=$6
     str_v6gateway=$7
+    str_mtu=$8
+
 
     #remove the prefix length from the subnet
     str_v6net=`echo $str_v6net | cut -d"/" -f 1`
@@ -101,12 +182,15 @@ configipv6(){
         echo "LABEL_ipv6${num_v6num}=ipv6$num_v6num" >> $str_conf_file
         echo "IPADDR_ipv6${num_v6num}=${str_v6ip}" >> $str_conf_file
         echo "PREFIXLEN_ipv6${num_v6num}=${str_v6prefix}" >> $str_conf_file
-        if [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
+        if [ "$str_v6gateway" != "$str_default_token" ] -a [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
             grep -E "default[:space:]+${str_v6gateway}[:space:]+" /etc/sysconfig/network/routes 2>&1 1>/dev/null
             if [ $? -ne 0 ];then
                 echo "default $str_v6gateway - -" >> /etc/sysconfig/network/routes
             fi
         fi 
+		if [ "$str_mtu" != "$str_default_token" ]; then
+				echo "MTU=${str_mtu}" >> $str_conf_file
+		fi
     elif [ "$str_os_type" = "debian" ];then
         #debian or ubuntu
         str_conf_file="/etc/network/interfaces.d/${str_if_name}"
@@ -118,9 +202,12 @@ configipv6(){
             echo "iface ${str_if_name} inet6 static" >> $str_conf_file
             echo "  address ${str_v6ip}" >> $str_conf_file
             echo "  netmask ${str_v6prefix}" >> $str_conf_file
-            if [ $str_v6gateway ];then
+            if [ "$str_v6gateway" != "$str_default_token" ]; then
                 echo "  gateway ${str_v6gateway}" >> $str_conf_file
             fi
+			if [ "$str_mtu" != "$str_default_token" ]; then
+				echo " mtu ${str_mtu}" >> $str_conf_file
+			fi
         else
             echo "  post-up /sbin/ifconfig ${str_if_name} inet6 add ${str_v6ip}/${str_v6prefix}" >> $str_conf_file
             echo "  pre-down /sbin/ifconfig ${str_if_name} inet6 del ${str_v6ip}/${str_v6prefix}" >> $str_conf_file
@@ -140,9 +227,12 @@ configipv6(){
         else
             echo "IPV6ADDR_SECONDARIES=${str_v6ip}/${str_v6prefix}" >> $str_conf_file
         fi
-        if [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
+        if [ "$str_v6gateway" != "$str_default_token" ] -a [ `echo $str_v6gateway | grep -v 'xcatmaster'` ];then
             echo "IPV6_DEFAULTGW=$str_v6gateway" >> $str_conf_file
         fi
+		if [ "$str_mtu" != "$str_default_token" ]; then
+			echo "MTU=${str_mtu}" >> $str_conf_file
+		fi
     fi
 }
 
@@ -221,6 +311,9 @@ function add_ip_temporary(){
         fi
     fi
 }
+
+# This token is used for the value of an attributes that has not been assigned any value.
+str_default_token="default"
 
 str_nic_name=''
 str_os_type=`uname | tr 'A-Z' 'a-z'`
@@ -447,6 +540,7 @@ declare -a array_nic_network_config
 declare -a array_nic_subnet
 declare -a array_nic_netmask
 declare -a array_nic_gateway
+declare -a array_nic_mtu
 
 str_ip_mask_pair=''
 num_index=1
@@ -464,6 +558,9 @@ while [ $num_index -le $NETWORKS_LINES ];do
     done
     num_index=$((num_index+1))
 done
+
+#get extra configration parameters for each nic
+get_nic_extra_params $str_nic_name
 
 logger -t xcat -p local4.err "configeth: new configuration"
 echo "configeth on $NODE: new configuration"
@@ -667,6 +764,17 @@ else
         bool_modify_flag=1
     fi
 
+    #check if mtu value has been changed or not
+    new_mtu=${array_nic_mtu[0]}
+	if [ "$new_mtu" != "$str_default_token" ]; then
+		old_mtu=`ip addr show dev $str_nic_name | grep mtu | awk '{print $5}'`
+		#echo "old=$old_mtu, new=$new_mtu"
+		if [ "$new_mtu" != "$old_mtu" ]; then
+			bool_restart_flag=1
+			bool_modify_flag=1
+		fi
+   fi
+			
     if [ $bool_restart_flag = 0 ];then
         #add the new defined ip
         old_ifs=$IFS
@@ -735,16 +843,24 @@ else
             str_subnet=${array_nic_subnet[$num_index]}
             str_netmask=${array_nic_netmask[$num_index]}
             str_gateway=${array_nic_gateway[$num_index]}
-            if [ ! $str_subnet -o ! $str_netmask ];then
+            str_mtu=${array_nic_mtu[$num_index]}
+
+            # make sure each parameter has a value
+			if [[ -z "$str_gateway" ]]; then
+				str_gateway=$str_default_token
+			fi
+			
+			if [ ! $str_subnet -o ! $str_netmask ];then
                 num_index=$((num_index+1))
                 continue
             fi
 
+			
             if [ `echo $str_ip | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'` ];then
-                configipv4 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv4_index
+                configipv4 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv4_index $str_mtu
                 num_ipv4_index=$((num_ipv4_index+1))
             elif [ `echo $str_ip | grep -E ":"` ];then
-                configipv6 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv6_index $num_ipv4_index $str_gateway
+                configipv6 $str_nic_name $str_ip $str_subnet $str_netmask $num_ipv6_index $num_ipv4_index $str_gateway $str_mtu
                 num_ipv6_index=$((num_ipv6_index+1))
             else
                 num_index=$((num_index+1))
@@ -762,6 +878,7 @@ else
         if [ "$str_os_type" = "debian" ];then
             ifup -a -i /etc/network/interfaces.d/$str_nic_name
         else
+            echo "bring up ip"
             ifup $str_nic_name
         fi
     fi
