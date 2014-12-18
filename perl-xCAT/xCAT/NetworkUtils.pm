@@ -2018,49 +2018,6 @@ sub getNodeNameservers{
     return \%nodenameservers;
 }
 
-#-------------------------------------------------------------------------------
-=head3  getNodeGateway 
-    Description:
-        Get gateway from the networks table of the node. 
-
-    Arguments:
-        ip: the ip address of the node
-    Returns:
-        Return a string, of the gateway
-        undef - Failed to get the gateway
-    Globals:
-        none
-    Error:
-        none
-    Example:
-        my $gateway = xCAT::NetworkUtils::getNodeGateway('192.168.1.0');
-    Comments:
-        none
-
-=cut
-#-------------------------------------------------------------------------------
-sub getNodeGateway
-{
-   my $ip=shift;
-   if( $ip =~ /xCAT::NetworkUtils/)
-   {
-      $ip=shift;
-   }
-   my $gateway=undef;
-
-   my $nettab = xCAT::Table->new("networks");
-   if ($nettab) {
-      my @nets = $nettab->getAllAttribs('net','mask','gateway');
-      foreach my $net (@nets) {
-         if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
-               $gateway=$net->{'gateway'};
-            }
-        }
-    }
-
-
-   return $gateway;
-}
 
 #-------------------------------------------------------------------------------
 
@@ -2093,18 +2050,22 @@ sub getNodeNetworkCfg
        $node =shift;
     }
 
-    my $nets = xCAT::NetworkUtils::my_nets();
     my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
     my $gateway = undef;
-    for my $net (keys %$nets)
-    {
-        my $netname;
-        ($netname,$mask) = split /\//, $net;
-        last if ( xCAT::NetworkUtils::isInSameSubnet( $netname, $ip, $mask, 1));
+
+    my $nettab = xCAT::Table->new("networks");
+    if ($nettab) {
+	   my @nets = $nettab->getAllAttribs('net','mask','gateway');
+	   foreach my $net (@nets) {
+	      if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+	          $gateway=$net->{'gateway'};
+	          $mask=$net->{'mask'};
+	       }
+	   }
     }
-    $gateway=xCAT::NetworkUtils::getNodeGateway($ip);
-    return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,1,0));
+ 
+    return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,0,0));
 }
 
 
