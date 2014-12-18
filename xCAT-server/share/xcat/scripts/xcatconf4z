@@ -350,7 +350,7 @@ function setupDisk {
       /sbin/zfcp_host_configure 0.0.$xcat_fcpAddr 1
       /sbin/zfcp_disk_configure 0.0.$xcat_fcpAddr $xcat_wwpn $xcat_lun 1
       echo "0x$xcat_wwpn:0x$xcat_lun" >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$xcat_fcpAddr
-    elif [[ $os == sles11* ]]; then
+    elif [[ $os == sles* ]]; then
       /sbin/zfcp_host_configure 0.0.$xcat_fcpAddr 1
       /sbin/zfcp_disk_configure 0.0.$xcat_fcpAddr $xcat_wwpn $xcat_lun 1
       
@@ -455,7 +455,7 @@ function setupDisk {
     if [[ $os == sles10* ]]; then
       expression="/$xcat_lun/d"
       sed --in-place -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$xcat_fcpAddr
-    elif [[ $os == sles11* ]]; then
+    elif [[ $os == sles* ]]; then
       expression="/$xcat_lun/d"
       sed --in-place -e $expression /etc/udev/rules.d/51-zfcp-0.0.$xcat_fcpAddr.rules
     elif [[ $os == rhel* ]]; then

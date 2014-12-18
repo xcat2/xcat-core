@@ -428,7 +428,7 @@ fi
 
 ###########
 ##start generating the os pkg repositories
-if ( pmatch "$OSVER" "sles11*" && [ $haszypper -eq 1 ] ); then
+if ( ("$OSVER" ge "sles11") && [ $haszypper -eq 1 ] ); then
     old_repo=`zypper lr |grep -e "^[0-9]" | cut -f2 -d '|'`
     for x in $old_repo
     do
@@ -701,7 +701,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    fi
 	        elif [ $haszypper -eq 1 ]; then
                     #use zypper
-		    if ( pmatch "$OSVER" "sles11*" ); then
+		    if ( "$OSVER" ge "sles11" ); then
 		        result=`zypper ar -c $REPOFILE`
 		    else
                         result=`zypper sa -r $REPOFILE << EOF

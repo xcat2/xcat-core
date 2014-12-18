@@ -614,10 +614,6 @@ sub punch2Reader {
     my $out;
     if ( $os =~ m/sles10/i ) {
         $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
-    } elsif ( $os =~ m/sles11/i ) {
-        $out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
-    } elsif ( $os =~ m/rhel/i ) {
-    	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
     } else {
     	$out = `ssh -o ConnectTimeout=5 $user\@$hcp "$sudo /usr/sbin/vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
     }
