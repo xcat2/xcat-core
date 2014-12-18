@@ -3185,7 +3185,7 @@ sub updateOS
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
-    elsif ("$installOS$version" =~ m/sles11/i)
+    elsif ("$installOS$version" =~ m/sles/i)
     {
 
         # SUSE repository path - http://10.1.100.1/install/sles10.3/s390x/1/

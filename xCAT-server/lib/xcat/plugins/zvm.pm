@@ -1126,7 +1126,7 @@ sub changeVM {
                 }
                 
                 $out = xCAT::zvmUtils->rExecute($::SUDOER, $node, "echo 0x$wwpn:0x$lun >> /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device");
-            } elsif ( $os =~ m/sles11/i ) {
+            } elsif ( $os =~ m/sles/i ) {
                 $out = `ssh $::SUDOER\@$node "$::SUDO /sbin/zfcp_host_configure 0.0.$device 1"`;
                 if ($out) {
                     xCAT::zvmUtils->printLn($callback, "$node: $out");
@@ -1932,12 +1932,13 @@ sub changeVM {
             #   SLES 10: /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-*
             #   SLES 11: /etc/udev/rules.d/51-zfcp*
             my $expression = "";
-            if ( $os =~ m/sles10/i ) {
+            if ( $os =~ m/sles/i ) {
                 $expression = "/$lun/d";
-                $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
-            } elsif ( $os =~ m/sles11/i ) {
-                $expression = "/$lun/d";
-                $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e $expression /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                if ( $os =~ m/sles10/i ) {
+                    $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e $expression /etc/sysconfig/hardware/hwcfg-zfcp-bus-ccw-0.0.$device"`;
+                } else {
+                    $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e $expression /etc/udev/rules.d/51-zfcp-0.0.$device.rules"`;
+                }
             } elsif ( $os =~ m/rhel/i ) {
                 $expression = "/$lun/d";
                 $out = `ssh $::SUDOER\@$node "$::SUDO sed -i -e $expression /etc/zfcp.conf"`;
@@ -4440,7 +4441,7 @@ EOM"`;
             }
         
             # If it is SLES 11 - ifcfg-qeth file is in /etc/sysconfig/network
-            elsif ( $srcOs =~ m/sles11/i ) {        
+            elsif ( $srcOs =~ m/sles/i ) {        
                 $out   = `ssh $::SUDOER\@$hcp "$::SUDO grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*"`;
                 xCAT::zvmUtils->printSyslog("grep -H -i -r $srcNicAddr $cloneMntPt/etc/sysconfig/network/ifcfg-eth*");
                 xCAT::zvmUtils->printSyslog("$out");
@@ -5081,12 +5082,12 @@ sub nodeSet {
             my $device;
             my $chanIds = "$readChannel $writeChannel $dataChannel";
 
-            # SLES 11
-            if ( $os =~ m/sles11/i ) {
-                $device = "eth0";
-            } else {
+            # SLES 
+            if ( $os =~ m/sles10/i ) {
                 # SLES 10
                 $device = "qeth-bus-ccw-$readChannel";
+            } else {
+                $device = "eth0";
             }
 
             $out =

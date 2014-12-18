@@ -101,6 +101,7 @@ my %guestidmap = (
     "centos6.*" => "rhel6_",
     "centos5.*" => "rhel5_",
     "centos4.*" => "rhel4_",
+    "sles12.*" => "sles12_",
     "sles11.*" => "sles11_",
     "sles10.*" => "sles10_",
     "win2k8" => "winLonghorn",
