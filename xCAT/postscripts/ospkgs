@@ -492,7 +492,7 @@ if ( pmatch "$OSVER" "sles10*" ); then
 	    fi
 	fi
     fi
-elif ( pmatch "$OSVER" "sles" ); then
+elif ( pmatch "$OSVER" "sles*" ); then
     #check if zypper is installed
     result=`rpm -q zypper`
     if [ $? -ne 0 ]; then 
