@@ -118,14 +118,6 @@ nodeset_stat
 nodeset_noderange
 nodestat_noderange
 nodestat_err_node
-rinv_null
-rinv_bus
-rinv_config
-rinv_serial
-rinv_model
-rinv_firm
-rinv_all
-rinv_noderange_err
 rmdef_null
 rmdef_t_o_attr
 rmdef_f_all
