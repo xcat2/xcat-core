@@ -26,7 +26,6 @@ packimage_h
 packimage_v
 pping_h
 pping_v
-pping_all
 pping_node
 gettab_key_table
 gettab_H
@@ -47,8 +46,8 @@ makeconservercf_null
 makeconservercf_noderange
 makeconservercf_d
 makedhcp_n
-makedhcp_a
-makedhcp_a_d
+makedhcp_a_ubuntu
+makedhcp_a_ubuntu_d
 makedhcp_d
 mkdef_null
 mkdef_t_o_attr
@@ -203,8 +202,7 @@ xcatstop
 xdcp_P
 makedns_n_node
 makedns_d_node
-makedns_n
-makedns
+makedns_ubuntu_n
 copycds_iso
 copycds_n
 copycds_a
