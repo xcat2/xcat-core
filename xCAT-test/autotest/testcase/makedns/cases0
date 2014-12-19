@@ -59,6 +59,37 @@ cmd:makedns -n
 check:rc==0
 end
 
+start:makedns_ubuntu_n
+description:makedns -n
+cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
+check:rc==0
+cmd:cp /etc/hosts  /etc/hosts.testbak
+check:rc==0
+cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/bind/named.conf 
+check:rc==0
+check:output~=zone "100.100.100.IN-ADDR.ARPA."
+cmd:nslookup dnstestnode 
+check:output~=Server:             $$MN
+check:output!~(server can't find dnstestnode)
+cmd:rm -f /etc/hosts
+check:rc==0
+cmd:mv /etc/hosts.testbak   /etc/hosts
+check:rc==0
+cmd:chtab -d netname=testnetwork networks
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:cat /etc/bind/named.conf 
+check:rc==0
+check:output!~zone "100.100.100.IN-ADDR.ARPA."
+cmd:nslookup dnstestnode $$MN
+check:output~=Server:             $$MN
+check:output~=(server can't find dnstestnode)
+end
 start:makedns_n
 description:makedns -n
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
@@ -69,7 +100,7 @@ cmd:echo "100.100.100.1  dnstestnode" >> /etc/hosts
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output~=zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
@@ -83,7 +114,7 @@ cmd:chtab -d netname=testnetwork networks
 check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:cat /etc/named.conf 
+cmd:cat /etc/named.conf
 check:rc==0
 check:output!~zone "100.100.100.IN-ADDR.ARPA."
 cmd:nslookup dnstestnode $$MN
