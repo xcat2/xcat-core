@@ -16,8 +16,6 @@ chtab_modify
 chtab_d
 chtab_modify_node
 chtab_modify_key
-chtab_err_symble
-chtab_err_table
 chtab_h
 chtab_v
 copycds_iso
@@ -33,7 +31,6 @@ packimage_h
 packimage_v
 pping_h
 pping_v
-pping_all
 pping_node
 getmacs_noderange
 getmacs_d
@@ -159,8 +156,6 @@ mvitals_state
 rvitals_lcds
 rvitals_all
 rvitals_noderange_err
-sinv_c_p_t_r_o
-sinv_c_s_p_t_o
 tabdump_table
 tabdump_d
 tabdump_v

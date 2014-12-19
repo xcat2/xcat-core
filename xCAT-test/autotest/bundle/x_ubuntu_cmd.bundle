@@ -15,8 +15,6 @@ chtab_modify
 chtab_d
 chtab_modify_node
 chtab_modify_key
-chtab_err_symble
-chtab_err_table
 chtab_h
 chtab_v
 packimage_o_p_a_m
