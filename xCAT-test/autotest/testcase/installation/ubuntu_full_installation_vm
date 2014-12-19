@@ -1,23 +1,21 @@
 start:Ubuntu_full_installation_flat_x86_vm
 os:Linux
+cmd:copycds $$ISO
+check:rc==0
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf $$CN
-check:rc==0
-cmd:cat /etc/conserver.cf | grep $$CN
-check:output=~$$CN
 cmd:sleep 60
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ ! -e /install/custom/netboot/ubuntu/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/ubuntu/compute.synclist; fi
+cmd:makeconservercf $$CN
 check:rc==0
-cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/ubuntu/compute.synclist
-check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:rpower $$CN reset
+cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 2000
 cmd:ping $$CN -c 3
