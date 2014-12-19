@@ -1,22 +1,24 @@
 start:copycds_iso
 os:Linux
+cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 #cmd:umount /mnt/xcat
 cmd:copycds $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:output=~Media copy operation successful
-cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo || ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__ 
 check:rc==0
 end
 
 start:copycds_n
 os:Linux
-#cmd:umount /mnt/xcat
+#cmd:umount /mnt/xca
+cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
 cmd:copycds -n __GETNODEATTR($$CN,os)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:output=~Media copy operation successful
-cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo || ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
 end
 
@@ -27,7 +29,7 @@ cmd:copycds -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:output=~Media copy operation successful
-cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo ||ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
 end
 
@@ -38,7 +40,7 @@ cmd:copycds -n __GETNODEATTR($$CN,os)__ -a __GETNODEATTR($$CN,arch)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:output=~Media copy operation successful
-cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo || ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
 end
 
