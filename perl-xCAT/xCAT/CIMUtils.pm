@@ -13,6 +13,7 @@ use HTTP::Request;
 use LWP::UserAgent;
 
 use XML::LibXML;
+use Data::Dumper;
 
 =head1 HTTP_PARAMS
 
@@ -46,8 +47,8 @@ use XML::LibXML;
     Return:
         A hash reference. The valid key includes:
             rc     - The return code. 0 - success. > 0 - fail.
-            msg    - Output message
-            value  - ??
+            msg    - Output message.
+            value  - Array of instances, each instance is a hash contains lots of properties.
 =cut
 
 
@@ -149,26 +150,34 @@ sub enum_instance
     }
 
     # get all the instance elements
-    my @instances = $resp_doc->getElementsByTagName("INSTANCE");
+    my @instances = $resp_doc->getElementsByTagName("VALUE.NAMEDINSTANCE");
     foreach my $instance (@instances) {
         # get all the property element for each instance
         my @properties = $instance->getElementsByTagName("PROPERTY");
+        if (my @property_arrays = $instance->getElementsByTagName("PROPERTY.ARRAY")) {
+            push @properties, @property_arrays;
+        }
         my $ins_value;
         foreach my $property (@properties) {
             # get name, vlaue and type for each property. (only the one which has value)
             if (my $pname = $property->getAttribute("NAME")) {
-                if (my $node = $property->getElementsByTagName("VALUE")) {
-                    $ins_value->{property}->{$pname}->{value} = $node->[0]->textContent;
-
-                    if (my $pvalue = $property->getAttribute("TYPE")) {
-                        $ins_value->{property}->{$pname}->{type} = $pvalue;
+                if (my $pvalue = $property->getAttribute("TYPE")) {
+                    $ins_value->{property}->{$pname}->{type} = $pvalue;
+                }
+                if ($property->getElementsByTagName("VALUE.ARRAY")) {
+                    my @nodelist = $property->getElementsByTagName("VALUE");
+                    my @value_array = ();
+                    foreach my $n (@nodelist) {
+                        push @value_array, $n->textContent;
                     }
+                    $ins_value->{property}->{$pname}->{value} = join(',',@value_array);
+                } elsif (my $node = $property->getElementsByTagName("VALUE")) {
+                    $ins_value->{property}->{$pname}->{value} = $node->[0]->textContent;
                 }
             }
         }
         push @{$ret_value}, $ins_value;
     }
-    
     return ({rc =>0}, $ret_value);
 }
 
@@ -273,8 +282,8 @@ sub send_http_request
     }
 
     # create a new HTTP User Agent Object
-    my $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 0 });
-    $ua->timeout(10);
+    my $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 0, SSL_verify_mode => 0});
+    $ua->timeout(500);
 
     # send request and receive the response
     my $response = $ua->request($http_request);
@@ -288,7 +297,4 @@ sub send_http_request
     
     return ({rc => 1, http_rc => $response->{_rc}, msg => $response->{_msg}});
 }
-
-
-
 1;
