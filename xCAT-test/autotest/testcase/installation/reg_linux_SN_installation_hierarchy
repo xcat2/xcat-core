@@ -28,7 +28,7 @@ cmd:chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver
 check:rc==0
 cmd:chdef -t group -o service nfsserver=$$MN tftpserver=$$MN xcatmaster=$$MN monserver=$$MN
 check:rc==0
-cmd:chtab node=service postscripts.postscripts="servicenode,odbcsetup"
+cmd:chtab node=service postscripts.postscripts="servicenode"
 check:rc==0
 
 cmd:copycds $$ISO
