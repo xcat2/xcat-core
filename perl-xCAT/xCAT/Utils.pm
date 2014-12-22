@@ -3298,13 +3298,68 @@ sub noderangecontainsMn
  return;   # if no MN in the noderange, return nothing
 }
 
+
+# the MTM of P6 and P7 machine
+my %MTM_P6P7 = (
+    # P6 systems
+    '7998-60X' => 1,
+    '7998-61X' => 1,
+    '7778-23X' => 1,
+    '8203-E4A' => 1,
+    '8204-E8A' => 1,
+    '8234-EMA' => 1,
+    '9117-MMA' => 1,
+    '9119-FHA' => 1,
+
+    # P7 systems
+    '8406-70Y' => 1,
+    '8406-71Y' => 1,
+    '7891-73X' => 1,
+    '7891-74X' => 1,
+    '8231-E2B' => 1,
+    '8202-E4B' => 1,
+    '8231-E2B' => 1,
+    '8205-E6B' => 1,
+    '8233-E8B' => 1,
+    '8236-E8C' => 1,
+    '9117-MMB' => 1,
+    '9179-MHB' => 1,
+    '9119-FHB' => 1,
+);
+
+#-----------------------------------------------------------------------------
+
+=head3   isP6P7 
+	
+    Check whether a MTM is a P6 or P7 machine
+    Parameter: MTM of Power machine
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub isP6P7
+{
+    my $class = shift;
+    my $mtm = shift;
+
+    if ($class !~ /Utils/) {
+        $mtm = $class; 
+    }
+
+    if (defined $MTM_P6P7{$mtm} && $MTM_P6P7{$mtm} == 1) {
+        return 1;
+    }
+
+    return 0;
+}
+
 =head3  filter_nodes
 ##########################################################################
 # Fliter the nodes to  specific groups
 # For specific command, figure out the node lists which should be handled by blade.pm, fsp.pm or ipmi.pm
-# mp group: the nodes will be handled by blade.pm
-# fsp group: the nodes will be handled by fsp.pm
-# bmc group: the nodes will be handled by ipmi.pm
+# mp group (argument: $mpnodes): the nodes will be handled by blade.pm
+# fsp group (argument: $fspnodes): the nodes will be handled by fsp.pm
+# bmc group (argument: $bmcnodes): the nodes will be handled by ipmi.pm
 # For rspconfig network, the NGP ppc blade will be included in the group of mp, othewise in the fsp group
 # For getmacs -D, the NGP ppc blade will be included in the group of common fsp, otherwise in the mp group
 # For renergy command, NGP blade will be moved to mp group
@@ -3346,13 +3401,29 @@ sub filter_nodes{
     if ($ipmitab) {
         $ipmitabhash = $ipmitab->getNodesAttribs(\@nodes,['bmc']);
     }
+
+    # get the node attributes from the nodehm table
     my $nodehmhash;
     my $nodehmtab = xCAT::Table->new("nodehm");
     if ($nodehmtab) {
         $nodehmhash = $nodehmtab->getNodesAttribs(\@nodes,['mgt']);
     }
 
-    my (@mp, @ngpfsp, @ngpbmc, @commonfsp, @commonbmc, @unknow);
+    # get the node attributes from the nodetype table
+    my $nodetypehash;
+    my $nodetypetab = xCAT::Table->new("nodetype");
+    if ($nodetypetab) {
+        $nodetypehash = $nodetypetab->getNodesAttribs(\@nodes, ['arch']);
+    }
+
+    # get the node attributes from the vpd table
+    my $vpdhash,
+    my $vpdtab = xCAT::Table->new("vpd");
+    if ($vpdtab) {
+        $vpdhash = $vpdtab->getNodesAttribs(\@nodes, ['mtm']);
+    }
+
+    my (@mp, @ngpfsp, @ngpbmc, @commonfsp, @commonbmc, @unknow, @nonppcle, @p6p7);
 
     # if existing in both 'mpa' and 'ppc', a ngp power blade
     # if existing in both 'mpa' and 'ipmi', a ngp x86 blade
@@ -3386,9 +3457,21 @@ sub filter_nodes{
         } elsif (defined ($ppctabhash->{$_}->[0]) && defined ($ppctabhash->{$_}->[0]->{'hcp'})) { 
             # common power node
             push @commonfsp, $_;
+            # whether is a Power 8 or higher with FSP
+            if (defined ($vpdhash->{$_}->[0]) && defined ($vpdhash->{$_}->[0]->{'mtm'})) {
+                if (isP6P7($vpdhash->{$_}->[0]->{'mtm'})) {
+                    push @p6p7, $_;
+                }
+            }
         } elsif (defined ($ipmitabhash->{$_}->[0]) && defined ($ipmitabhash->{$_}->[0]->{'bmc'})) { 
             # common bmc node
             push @commonbmc, $_;
+            # whether is a Power 8 or higher with FSP
+            if (defined ($nodetypehash->{$_}->[0]) && defined ($nodetypehash->{$_}->[0]->{'arch'})) {
+                if ($nodetypehash->{$_}->[0]->{'arch'} ne "ppc64le") {
+                    push @nonppcle, $_;
+                }
+            }
         } else {
             push @unknow, $_;
         }
@@ -3422,6 +3505,16 @@ sub filter_nodes{
             push @{$mpnodes}, @ngpfsp;
         }
     } elsif ($cmd eq "renergy") {
+        # for renergy command, only the p6,p7 get to the general fsp.pm
+        # P8 and higher will get in the energy.pm
+        @{$fspnodes} = ();
+        push @{$fspnodes}, @p6p7;
+
+        # for rnergy command, only the non-ppcle nodes get to the general ipmi.pm
+        # ppcle of P8 and higher will get in the energy.pm
+        @{$bmcnodes} = ();
+        push @{$bmcnodes}, @nonppcle;
+
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
         } else {

@@ -47,6 +47,7 @@ use Data::Dumper;
     Return:
         A hash reference. The valid key includes:
             rc     - The return code. 0 - success. > 0 - fail.
+            cim_rc - The return code from CIM server.
             msg    - Output message.
             value  - Array of instances, each instance is a hash contains lots of properties.
 =cut
@@ -146,7 +147,9 @@ sub enum_instance
     # check the error message from CIM
     my $error_node = $resp_doc->getElementsByTagName("ERROR");
     if ($error_node) {
-        return ({rc => 1, cimcode => $error_node->[0]->getAttribute("CODE"), msg => $error_node->[0]->getAttribute("DESCRIPTION")});
+        my $msg = $error_node->[0]->getAttribute("DESCRIPTION");
+        my $errorcode = $error_node->[0]->getAttribute("CODE");
+        return ({rc => 1, cim_rc => $errorcode, msg => $error_node->[0]->getAttribute("DESCRIPTION")." [cim return code: $errorcode]"});
     }
 
     # get all the instance elements
@@ -283,7 +286,11 @@ sub send_http_request
 
     # create a new HTTP User Agent Object
     my $ua = LWP::UserAgent->new(ssl_opts => { verify_hostname => 0, SSL_verify_mode => 0});
-    $ua->timeout(500);
+    if ($http_params->{timeout}) {
+        $ua->timeout($http_params->{timeout});
+    } else {
+        $ua->timeout(10);   # the default timeout is 10s
+    }
 
     # send request and receive the response
     my $response = $ua->request($http_request);
@@ -291,10 +298,12 @@ sub send_http_request
     # check the http response
     if (defined ($response) && defined ($response->{_rc}) && defined ($response->{_msg})) {
         if ($response->{_rc} eq "200" && $response->{_msg} eq "OK") {
-            return ({rc => 0, http_rc => $response->{_rc}, payload => $response->{_content}});
+            return ({rc => 0, http_rc => $response->{_rc}, msg => "$response->{_msg} [http return code: $response->{_rc}]", payload => $response->{_content}});
         }
     }
     
     return ({rc => 1, http_rc => $response->{_rc}, msg => $response->{_msg}});
 }
+
+
 1;
