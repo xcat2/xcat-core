@@ -41,3 +41,13 @@ END
 #for ext in pkglist exlist postinstall repolist; do
 #  [ -r $workdir/$profile.$ext ] && cat $workdir/$profile.$ext | grep -E '^[[:space:]]*#.*[[:space:]]\$Id' >> $installroot/etc/IMGVERSION
 #done
+
+
+#Setup locale for Ubuntu diskless nodes
+echo "Setting up the locales";
+chroot $installroot \
+ locale-gen en_US.UTF-8 en_US
+chroot $installroot \
+ update-locale
+chroot $installroot \
+ dpkg-reconfigure locales
