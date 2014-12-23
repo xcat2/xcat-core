@@ -152,24 +152,28 @@ sub parse_args {
 
                 # make sure the attribute is valid
                 if ($SET_ATTRS{$set_attr} != 1) {
-                    return (1, &usage());
+                    return (1, &usage("Invalid attribute."));
+                }
+
+                if ($set_flag) {
+                    return (1, &usage("Only supports to perform one setting at invoke."));
                 }
 
                 # make sure the value for attirbute is valid
                 if (($set_attr eq "savingstatus" || $set_attr eq "fsavingstatus") 
                      && ($set_value ne "on" && $set_value ne "off")) {
-                    return (1, &usage());
+                    return (1, &usage("Incorrect Value"));
                 } elsif ($set_attr eq "dsavingstatus"
                      && ($set_value ne "off"
                          && $set_value ne "on-norm" && $set_value ne "on-maxp")) {
-                    return (1, &usage());
+                    return (1, &usage("Incorrect Value"));
                 } elsif ($set_attr eq "cappingstatus" 
                      && ($set_value ne "on" && $set_value ne "off")) {
-                    return (1, &usage());
+                    return (1, &usage("Incorrect Value"));
                 } elsif ( ($set_attr eq "cappingwatt"  
                      || $set_attr eq "cappingperc" ||  $set_attr eq "ffovalue")
                        && $set_value =~ /\D/) {
-                    return (1, &usage());
+                    return (1, &usage("Incorrect Value"));
                 }
 
                 push @set_pair, $set_attr."=".$set_value;
@@ -402,6 +406,7 @@ sub process_request {
     RETURN
         $ret - return code and messages
         $pum - a hash includes all the attributes
+        $namepath - the name path of pum instance
 
 =cut
 
@@ -410,11 +415,12 @@ sub query_pum
     my $http_params = shift;
     
     my %cimargs = ( classname => 'FipS_PUMService' );
-    my ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
+    my ($ret, $value, $namepath) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
     if ($ret->{rc}) {
         return ($ret);
     }
 
+    # parse the return xml to get all the property of pum instance
     my $pum;
     foreach my $instance (@$value) {
         foreach my $pname (keys %{$instance->{property}}) {
@@ -422,7 +428,7 @@ sub query_pum
         }
     }
     
-    return ($ret, $pum);
+    return ($ret, $pum, $namepath);
 }
 
 =head3  run_cim
@@ -464,11 +470,11 @@ sub run_cim
 
     # Try to connect CIM Server to Enumerate CEC object;
     # If cannot access this ip, return 10 for caller to connect to the next ip
-    my %cimargs = (
+    my $cimargs = {
         classname => 'fips_cec',
-    );
+    };
     $http_params->{timeout} = 5;
-    my ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
+    my ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, $cimargs);
     if ($ret->{rc}) {
         if ($ret->{msg} =~ /Couldn't connect to server/) {
             xCAT::MsgUtils->message("E", data => ["$node: Couldn not connect to server [$http_params->{ip}]."], $callback);
@@ -480,149 +486,210 @@ sub run_cim
     }
     
    
-
-    # start to handle the query and setting
-    my $query_pum_value;
-    # Pre-query some specific objects
-    my $query_pum_capabilities_flag;    # set to query the instance for [FipS_PUMServiceCapabilities]
+    # ======start to handle the query and setting======
+    
+    # Pre-query some specific instances since some instances are common for multiple energy attributes
+    #my $query_pum_capabilities_flag;    # set to query the instance for [FipS_PUMServiceCapabilities]
     my $query_pum_flag;    # set to query the instance for [FipS_PUMService]
-    foreach my $attr (split(',', $query_list)) {
-        if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
-            $query_pum_flag = 1;
+    my $query_pum_value;    # the rep queried PUM instance
+    my $namepath_pum;     # the name path of PUM instance
+
+    if ($query_list) {
+        foreach my $attr (split(',', $query_list)) {
+            if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
+                $query_pum_flag = 1;
+                last;
+            }
+            if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
+                $query_pum_flag = 1;
+                last;
+            }
         }
-        if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
+    }
+
+    if ($set_pair) {
+        my ($set_name, $set_value) = split('=', $set_pair);
+        if ($set_name =~/^(savingstatus|dsavingstatus|fsavingstatus|ffovalue)$/) {
             $query_pum_flag = 1;
         }
     }
-   
+    
+    # query the pre required instances 
     if ($query_pum_flag) {
-        ($ret, $query_pum_value) = query_pum($http_params);
+        ($ret, $query_pum_value, $namepath_pum) = query_pum($http_params);
         if ($ret->{rc}) {
             xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
             return ($ret->{rc});
         }
     } 
 
-    foreach my $attr (split(',', $query_list)) {
-        if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
-            if ($query_pum_flag) {
-                if (defined ($query_pum_value->{PowerUtilizationMode})) {
-                    # 2 = None; 3 = Dynamic; 4 = Static; 32768 = Dynamic Favor Performance; 32769 = FFO
-                    if ($query_pum_value->{PowerUtilizationMode} eq "2") {
-                        push @output, "$node: $attr: off";
-                    } elsif ($query_pum_value->{PowerUtilizationMode} eq "3") {
-                        if ($attr eq "dsavingstatus") {
-                            push @output, "$node: $attr: on-norm";
-                        } else {
-                             push @output, "$node: $attr: off";
+    # perform the query request
+    if ($query_list) {
+        foreach my $attr (split(',', $query_list)) {
+            # Query the power saving status
+            if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
+                if ($query_pum_flag) {
+                    if (defined ($query_pum_value->{PowerUtilizationMode})) {
+                        # 2 = None; 3 = Dynamic; 4 = Static; 32768 = Dynamic Favor Performance; 32769 = FFO
+                        if ($query_pum_value->{PowerUtilizationMode} eq "2") {
+                            push @output, "$node: $attr: off";
+                        } elsif ($query_pum_value->{PowerUtilizationMode} eq "3") {
+                            if ($attr eq "dsavingstatus") {
+                                push @output, "$node: $attr: on-norm";
+                            } else {
+                                 push @output, "$node: $attr: off";
+                            }
+                        } elsif ($query_pum_value->{PowerUtilizationMode} eq "4") {
+                            if ($attr eq "savingstatus") {
+                                push @output, "$node: $attr: on";
+                            } else {
+                                 push @output, "$node: $attr: off";
+                            }
+                        } elsif ($query_pum_value->{PowerUtilizationMode} eq "32768") {
+                            if ($attr eq "dsavingstatus") {
+                                push @output, "$node: $attr: on-maxp";
+                            } else {
+                                 push @output, "$node: $attr: off";
+                            }
+                        } elsif ($query_pum_value->{PowerUtilizationMode} eq "32769") {
+                            if ($attr eq "fsavingstatus") {
+                                push @output, "$node: $attr: on";
+                            } else {
+                                 push @output, "$node: $attr: off";
+                            }
                         }
-                    } elsif ($query_pum_value->{PowerUtilizationMode} eq "4") {
-                        if ($attr eq "savingstatus") {
-                            push @output, "$node: $attr: on";
-                        } else {
-                             push @output, "$node: $attr: off";
-                        }
-                    } elsif ($query_pum_value->{PowerUtilizationMode} eq "32768") {
-                        if ($attr eq "dsavingstatus") {
-                            push @output, "$node: $attr: on-maxp";
-                        } else {
-                             push @output, "$node: $attr: off";
-                        }
-                    } elsif ($query_pum_value->{PowerUtilizationMode} eq "32769") {
-                        if ($attr eq "fsavingstatus") {
-                            push @output, "$node: $attr: on";
-                        } else {
-                             push @output, "$node: $attr: off";
-                        }
-                    }
-                } else {
-                    push @output, "$node: $attr: na";
-                }
-            } else {
-                push @output, "$node: $attr: na";
-            }
-        }
-
-        if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
-            if ($query_pum_flag) {
-                if (defined ($query_pum_value->{FixedFrequencyPoints}) && defined ($query_pum_value->{FixedFrequencyPointValues})) {
-                    my @ffo_point = split (',', $query_pum_value->{FixedFrequencyPoints});
-                    my @ffo_point_value = split (',', $query_pum_value->{FixedFrequencyPointValues});
-                    foreach my $index (0..$#ffo_point) {
-                        if ($ffo_point[$index] eq '2' && $attr eq 'ffoNorm') { # Norminal
-                            push @output, "$node: $attr: $ffo_point_value[$index]";
-                        } elsif ($ffo_point[$index] eq '3' && $attr eq 'ffoTurbo') { # Turbo
-                            push @output, "$node: $attr: $ffo_point_value[$index]";
-                        } elsif ($ffo_point[$index] eq '4' && $attr eq 'ffoVmin') { # Vmin
-                            push @output, "$node: $attr: $ffo_point_value[$index]";
-                        } elsif ($ffo_point[$index] eq '5' && $attr eq 'ffoMin') { # Min
-                            push @output, "$node: $attr: $ffo_point_value[$index]";
-                        }
-                    }
-                } else {
-                    push @output, "$node: $attr: na";
-                }
-            } else {
-                push @output, "$node: $attr: na";
-            }
-        }
-
-        if ($attr eq 'ffovalue') {
-            if ($query_pum_flag) {
-                if (defined ($query_pum_value->{FixedFrequencyOverrideFreq})) {
-                    if ($query_pum_value->{FixedFrequencyOverrideFreq} eq '4294967295') {
-                        push @output, "$node: $attr: 0";
                     } else {
-                        push @output, "$node: $attr: $query_pum_value->{FixedFrequencyOverrideFreq}";
+                        push @output, "$node: $attr: na";
                     }
                 } else {
                     push @output, "$node: $attr: na";
                 }
-            } else {
-                push @output, "$node: $attr: na";
             }
-
+    
+            # Query the FFO settings
+            if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
+                if ($query_pum_flag) {
+                    if (defined ($query_pum_value->{FixedFrequencyPoints}) && defined ($query_pum_value->{FixedFrequencyPointValues})) {
+                        my @ffo_point = split (',', $query_pum_value->{FixedFrequencyPoints});
+                        my @ffo_point_value = split (',', $query_pum_value->{FixedFrequencyPointValues});
+                        foreach my $index (0..$#ffo_point) {
+                            if ($ffo_point[$index] eq '2' && $attr eq 'ffoNorm') { # Norminal
+                                push @output, "$node: $attr: $ffo_point_value[$index]";
+                            } elsif ($ffo_point[$index] eq '3' && $attr eq 'ffoTurbo') { # Turbo
+                                push @output, "$node: $attr: $ffo_point_value[$index]";
+                            } elsif ($ffo_point[$index] eq '4' && $attr eq 'ffoVmin') { # Vmin
+                                push @output, "$node: $attr: $ffo_point_value[$index]";
+                            } elsif ($ffo_point[$index] eq '5' && $attr eq 'ffoMin') { # Min
+                                push @output, "$node: $attr: $ffo_point_value[$index]";
+                            }
+                        }
+                    } else {
+                        push @output, "$node: $attr: na";
+                    }
+                } else {
+                    push @output, "$node: $attr: na";
+                }
+            }
+    
+            # Query the FFO Value
+            if ($attr eq 'ffovalue') {
+                if ($query_pum_flag) {
+                    if (defined ($query_pum_value->{FixedFrequencyOverrideFreq})) {
+                        if ($query_pum_value->{FixedFrequencyOverrideFreq} eq '4294967295') {
+                            push @output, "$node: $attr: 0";
+                        } else {
+                            push @output, "$node: $attr: $query_pum_value->{FixedFrequencyOverrideFreq}";
+                        }
+                    } else {
+                        push @output, "$node: $attr: na";
+                    }
+                } else {
+                    push @output, "$node: $attr: na";
+                }
+    
+            }
         }
     }
+
+    # Perform the setting request
+    if ($set_pair) {
+        my ($set_name, $set_value) = split('=', $set_pair);
+        if ($set_name =~/^(savingstatus|dsavingstatus|fsavingstatus|ffovalue)$/) {
+            if ($query_pum_flag) {
+                if (defined ($query_pum_value->{PowerUtilizationMode})) {
+
+                    # set the power saving value
+                    my $ps_value;
+                    if ($set_name eq "savingstatus") {
+                        if ($set_value eq 'on') {
+                            $ps_value = '4';
+                        } elsif ($set_value eq 'off') {
+                            $ps_value = '2';
+                        }
+                    } elsif ($set_name eq "dsavingstatus") {
+                        if ($set_value eq 'on-norm') {
+                            $ps_value = '3';
+                        } elsif ($set_value eq 'on-maxp') {
+                            $ps_value = '32768';
+                        }elsif ($set_value eq 'off') {
+                            $ps_value = '2';
+                        }
+                    } elsif ($set_name eq "fsavingstatus") {
+                        if ($set_value eq 'on') {
+                            $ps_value = '32769';
+                        } elsif ($set_value eq 'off') {
+                            $ps_value = '2';
+                        }
+                    } 
+    
+                    if ($set_name eq "ffovalue") {
+                        # set ffo value
+                        $cimargs = {
+                            propertyname => 'FixedFrequencyOverrideFreq',
+                            propertyvalue =>  $set_value,
+                            namepath => $namepath_pum,
+                        };
+                        $ret = xCAT::CIMUtils->set_property($http_params, $cimargs);
+                        if ($ret->{rc}) {
+                            push @output, "$node: Set $set_name failed. [$ret->{msg}]"; 
+                        } else {
+                            push @output, "$node: Set $set_name succeeded";
+                        }
+                    } else {
+                        # set the power saving
+                        if ($ps_value eq $query_pum_value->{PowerUtilizationMode}) {    # do nothing if it already was the correct status
+                            push @output, "$node: Set $set_name succeeded";
+                        } else {
+                            # perform the setting
+                            $cimargs = {
+                                propertyname => 'PowerUtilizationMode',
+                                propertyvalue =>  $ps_value,
+                                namepath => $namepath_pum,
+                            };
+                            $ret = xCAT::CIMUtils->set_property($http_params, $cimargs);
+                            if ($ret->{rc}) {
+                                push @output, "$node: Set $set_name failed. [$ret->{msg}]"; 
+                            } else {
+                                push @output, "$node: Set $set_name succeeded";
+                            }
+                        }
+                    }
+                } else {
+                     push @output, "$node: Set $set_name failed"; 
+                }
+            } else {
+                push @output, "$node: Set $set_name failed"; 
+            }
+        }
+    } 
 
     # Display the output
     my $rsp;
     push @{$rsp->{data}}, @output;
     xCAT::MsgUtils->message("I", $rsp, $callback);
-    return;
 
-
-
-    
-    %cimargs = (
-        classname => 'CIM_PowerUtilizationManagementService',
-        #classname => 'FipS_PowerMetricValue',
-    );
-
-    ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
-    if ($ret->{rc}) {
-        xCAT::MsgUtils->message("E", {data => "$node: $ret->{msg}"}, $callback);
-        return;
-    }
-    
-    if ($cimargs{classname} eq 'FipS_PowerMetricValue') {
-        my %instance_id;
-        foreach my $instance (@$value) {
-            if (defined ($instance->{property}->{InstanceID})) {
-                my $i_id = $instance->{property}->{InstanceID}->{value};
-                $i_id =~ s/ .*$//;
-                $instance_id{$i_id} = 1;
-            }
-            foreach my $pname (keys %{$instance->{property}}) {
-                 xCAT::MsgUtils->message("I", "$pname: $instance->{property}->{$pname}->{value} ($instance->{property}->{$pname}->{type})\n", $callback);
-            }
-        }
-        #foreach (keys %instance_id) {
-         #   print "Instance ID for FipS_PowerMetricValue: $_\n";
-        #}
-    } else {
-        
-    }
+    return;    
 }
+
 
 1;

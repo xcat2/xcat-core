@@ -43,13 +43,17 @@ use Data::Dumper;
     Arguments:
         http_params: A reference to HTTP_PARAMS
         cim_params:  The CIM parameters
+            classname - a mandatory param to specify the class that enumerate will target to.
 
     Return:
-        A hash reference. The valid key includes:
+        1 - A hash reference. The valid key includes:
             rc     - The return code. 0 - success. > 0 - fail.
             cim_rc - The return code from CIM server.
             msg    - Output message.
-            value  - Array of instances, each instance is a hash contains lots of properties.
+            
+        2 - Array of instances, each instance is a hash contains lots of properties.
+
+        3 - The name path of instance
 =cut
 
 
@@ -62,8 +66,9 @@ sub enum_instance
     
     my $cim_params = shift;
 
+   # This is a mandatory parameter 
     unless ($cim_params->{classname}) {
-        return ({rc => 1, msg => "Miss the classname"});
+        return ({rc => 1, msg => "Missed the classname"});
     }
 
     unless ($cim_params->{namespace}) {
@@ -152,6 +157,13 @@ sub enum_instance
         return ({rc => 1, cim_rc => $errorcode, msg => $error_node->[0]->getAttribute("DESCRIPTION")." [cim return code: $errorcode]"});
     }
 
+    # get the name path of the instance, which is used to set property
+    my @namepath = $resp_doc->getElementsByTagName("INSTANCENAME");
+    my $namepath_string;
+    if (@namepath) {
+        $namepath_string = $namepath[0]->toString();
+    }
+
     # get all the instance elements
     my @instances = $resp_doc->getElementsByTagName("VALUE.NAMEDINSTANCE");
     foreach my $instance (@instances) {
@@ -181,9 +193,128 @@ sub enum_instance
         }
         push @{$ret_value}, $ins_value;
     }
-    return ({rc =>0}, $ret_value);
+    
+    return ({rc =>0}, $ret_value, $namepath_string);
 }
 
+=head1 set_property ()
+    Description:
+        Set the property for an instance.
+
+    Arguments:
+        http_params: A reference to HTTP_PARAMS
+        cim_params:  The CIM parameters
+            namepath - a mandatory param to specify the path of the instance.
+                It should be returned from 'enum_instance' subroutine.
+
+    Return:
+        1 - A hash reference. The valid key includes:
+            rc     - The return code. 0 - success. > 0 - fail.
+            cim_rc - The return code from CIM server.
+            msg    - Output message.
+=cut
+sub set_property
+{
+    my $http_params = shift;
+    unless (ref($http_params)) {
+        $http_params = shift;
+    }
+    
+    my $cim_params = shift;
+
+    # This is a mandatory parameter
+    unless ($cim_params->{namepath}) {
+        return ({rc => 1, msg => "Missed the name path for the instance"});
+    }
+
+    unless ($cim_params->{namespace}) {
+        $cim_params->{namespace} = "ibmsd";
+    }
+    
+    # prepare the CIM payload
+    my $tmpnode;
+
+    # create a new doc
+    my $doc = XML::LibXML->createDocument('1.0','UTF-8');
+    
+    # create and add the root element
+    my $root = $doc->createElement("CIM");
+    $root->setAttribute("CIMVERSION", "2.0");
+    $root->setAttribute("DTDVERSION", "2.0");
+    
+    $doc->setDocumentElement($root);
+    
+    # create and add the MESSAGE element
+    my $message = $doc->createElement("MESSAGE");
+    $message->setAttribute("ID", "1000");
+    $message->setAttribute("PROTOCOLVERSION", "1.0");
+    
+    $root->addChild($message);
+    
+    # add a SIMPLE REQUEST
+    my $simple_request = $doc->createElement("SIMPLEREQ");
+    $message->addChild($simple_request);
+    
+    # add an IMETHOD CALL
+    my $imethod_call = $doc->createElement("IMETHODCALL");
+    $imethod_call->setAttribute("NAME", "SetProperty");
+    
+    $simple_request->addChild($imethod_call);
+    
+    # add the local name space path
+    my $localnamespacepath = $doc->createElement("LOCALNAMESPACEPATH");
+    $tmpnode = $doc->createElement("NAMESPACE");
+    $tmpnode->setAttribute("NAME", "root");
+    $localnamespacepath->addChild($tmpnode);
+    
+    $tmpnode = $doc->createElement("NAMESPACE");
+    $tmpnode->setAttribute("NAME", $cim_params->{namespace});
+    $localnamespacepath->addChild($tmpnode);
+    
+    $imethod_call->addChild($localnamespacepath);
+    
+    # add the target property name
+    my $param_propertyname = $doc->createElement("IPARAMVALUE");
+    $param_propertyname->setAttribute("NAME", "PropertyName");
+    $imethod_call->addChild($param_propertyname);
+    
+    $tmpnode = $doc->createElement("VALUE");
+    $tmpnode->appendTextNode($cim_params->{propertyname});
+    $param_propertyname->addChild($tmpnode);
+
+    # add the target property value
+    my $param_newvaluename = $doc->createElement("IPARAMVALUE");
+    $param_newvaluename->setAttribute("NAME", "NewValue");
+    $imethod_call->addChild($param_newvaluename);
+    
+    $tmpnode = $doc->createElement("VALUE");
+    $tmpnode->appendTextNode($cim_params->{propertyvalue});
+    $param_newvaluename->addChild($tmpnode);
+    
+    # add parameters of instance name path
+    my $param_namepath = $doc->createElement("IPARAMVALUE");
+    $param_namepath->setAttribute("NAME", "InstanceName");
+    $param_namepath->appendWellBalancedChunk($cim_params->{namepath});
+    $imethod_call->addChild($param_namepath);
+    
+    my $payload = $doc->toString();
+    
+    # generate http request
+    my $ret = gen_http_request($http_params, $payload);
+
+    if ($ret->{rc}) {
+        return $ret;
+    }
+
+    # send request to http server
+    $ret = send_http_request($http_params, $ret->{request});
+    if ($ret->{rc}) {
+        return $ret;
+    }
+
+    # if no http and cim error, the setting was succeeded
+    return ($ret);
+}
 
 =head1 gen_http_request ()
     Description:
@@ -207,7 +338,7 @@ sub gen_http_request
     
     # check the mandatory parameters
     unless (defined ($http_params->{ip}) && defined ($http_params->{port}) && defined($http_params->{user}) && defined($http_params->{password})) {
-        return ({rc => 1, msg => "Miss the mandatory parameters: ip, port, user or password"});
+        return ({rc => 1, msg => "Missed the mandatory parameters: ip, port, user or password"});
     }
 
     # set the default value for parameters
