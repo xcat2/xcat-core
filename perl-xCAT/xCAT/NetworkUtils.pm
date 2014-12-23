@@ -1098,7 +1098,8 @@ sub my_if_netmap
     Error:
         none
     Example:
-        xCAT::NetworkUtils->my_ip_facing
+        my $ip = xCAT::NetworkUtils->my_ip_facing($peerip)
+        my @ip = xCAT::NetworkUtils->my_ip_facing($peerip)  # return multiple
     Comments:
         none
 =cut
@@ -1116,6 +1117,8 @@ sub my_ip_facing
     unless ($peernumber) { return undef; }
     my $noden = unpack("N", inet_aton($peer));
     my @nets = split /\n/, `/sbin/ip addr`;
+
+    my @ips;
     foreach (@nets)
     {
         my @elems = split /\s+/;
@@ -1128,10 +1131,19 @@ sub my_ip_facing
         my $curn = unpack("N", inet_aton($curnet));
         if (($noden & $curmask) == ($curn & $curmask))
         {
-            return $curnet;
+            push @ips, $curnet;
         }
     }
-    return undef;
+
+    if (@ips) {
+        if (wantarray) {
+            return @ips;
+        } else {
+            return $ips[0];
+        }
+    } else {
+        return undef;
+    }
 }
 
 #-------------------------------------------------------------------------------

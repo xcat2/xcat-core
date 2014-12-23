@@ -355,13 +355,15 @@ sub process_request {
         if ($net and $net->{nameservers})
         {
             my $valid = 0;
-            my $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
+            my @myips = xCAT::NetworkUtils->my_ip_facing($net->{net});
             foreach (split /,/, $net->{nameservers})
             {
                 chomp $_;
-                if (($_ eq $myip) || ($_ eq '<xcatmaster>') || ($_ eq $sitens))
-                {
-                    $valid += 1;
+                foreach my $myip (@myips) {
+                    if (($_ eq $myip) || ($_ eq '<xcatmaster>') || ($_ eq $sitens))
+                    {
+                        $valid += 1;
+                    }
                 }
             }
             unless ($valid > 0)
