@@ -37,14 +37,10 @@ my $parser;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 my $confdata; #a reference to serve as a common pointer betweer VMCommon functions and this plugin
-my $libvirtsupport;
-$libvirtsupport = eval { 
-    require Sys::Virt; 
-    if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
+require Sys::Virt; 
+if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
         die;
-    }
-    1;
-};
+}
 
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -67,9 +63,6 @@ my $callback;
 my $requester; #used to track the user
 
 sub handled_commands {
-  #unless ($libvirtsupport) {
-  #    return {};
-  #}
   return {
     rpower => 'nodehm:power,mgt',
     mkvm => 'nodehm:power,mgt',
@@ -2611,18 +2604,9 @@ sub process_request {
       $requester=$request->{_xcat_authname}->[0];
   }
   $callback = shift;
-  unless ($libvirtsupport) {
-      $libvirtsupport = eval { 
-      require Sys::Virt; 
-      if ( xCAT::Utils::version_cmp(Sys::Virt->VERSION, "0.2.0") < 0 ) {
-          die;
-      }
-      1;
-      };
-  }
-  unless ($libvirtsupport) { #Still no Sys::Virt module
-      $callback->({error=>"Sys::Virt perl module missing or older than 0.2.0, unable to fulfill KVM plugin requirements",errorcode=>[42]});
-      return [];
+  require Sys::Virt; 
+  if ( xCAT::Utils::version_cmp(Sys::Virt->VERSION, "0.2.0") < 0 ) {
+      die;
   }
   require Sys::Virt::Domain;
   %runningstates = (&Sys::Virt::Domain::STATE_NOSTATE=>1,&Sys::Virt::Domain::STATE_RUNNING=>1,&Sys::Virt::Domain::STATE_BLOCKED=>1);
