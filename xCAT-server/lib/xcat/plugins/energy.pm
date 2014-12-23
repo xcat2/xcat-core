@@ -382,6 +382,8 @@ sub process_request {
                 password => $password);
 
             if ($verbose) {
+                $args{verbose} = 1;
+                $args{callback} = $callback;
                 xCAT::MsgUtils->message("I", {data => ["$node: Access hcp [$ip], user [$user], passowrd [$password]"]}, $callback);
             }
             # call the cim utils to connect to cim server

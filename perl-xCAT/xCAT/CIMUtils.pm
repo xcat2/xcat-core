@@ -423,8 +423,16 @@ sub send_http_request
         $ua->timeout(10);   # the default timeout is 10s
     }
 
+    if (defined($http_params->{verbose}) && defined ($http_params->{callback})) {
+        $http_params->{callback}({data => ["\n========CIM Request Start========", $http_request->as_string(), "=======CIM Request End======="]});
+    }
+
     # send request and receive the response
     my $response = $ua->request($http_request);
+
+    if (defined($http_params->{verbose}) && defined ($http_params->{callback}) && defined ($response->{_content})) {
+        $http_params->{callback}({data => ["\n========CIM Response Start========", $response->{_content}, "=======CIM Response End======="]});
+    }
 
     # check the http response
     if (defined ($response) && defined ($response->{_rc}) && defined ($response->{_msg})) {
