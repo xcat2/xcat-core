@@ -433,6 +433,123 @@ sub query_pum
     return ($ret, $pum, $namepath);
 }
 
+
+=head3 query_metric
+
+    DESCRIPTION:
+        Query the attribute for instance of FipS_*metricValue class
+
+    ARGUMENTS:
+        $http_params - refer to the HTTP_PARAMS in xCAT::CIMUtils.pm
+        $option - the specified operation
+
+    RETURN
+        $ret - return code and messages
+        $array - a hash includes all the attributes
+
+=cut
+
+sub query_metric
+{
+    my $http_params = shift;
+    my $classname = shift;
+    my $matching_string = shift;
+    my %cimargs = ( classname => "$classname" );
+    my ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
+    if ($ret->{rc}) {
+        return $ret;
+    }
+    my ($matching_key, $matching_value) = split /:/,$matching_string;
+
+    my %instances_hash = ();
+    foreach my $instance (@$value) {
+        my $instance_element = undef;
+        my $timestamp = undef;
+        if (defined ($instance->{property}->{$matching_key}) and $instance->{property}->{$matching_key}->{value} !~ /$matching_value/) {
+            next;
+        }
+        if (defined ($instance->{property}->{InstanceID})) {
+            $instance_element = $instance->{property}->{InstanceID}->{value};
+            $instance_element =~ s/ .*$//;
+        }
+        if (!defined($instance_element)) {
+            next;
+        }
+
+        if (defined ($instance->{property}->{MeasuredElementName})) {
+            $instances_hash{$instance_element}->{MeasuredElementName} = $instance->{property}->{MeasuredElementName}->{value};
+        } else {
+            next;
+        }
+
+        if (defined ($instance->{property}->{TimeStamp})) {
+            $timestamp = $instance->{property}->{TimeStamp}->{value};
+            $timestamp =~ s/\..*$//;
+        }
+        if (defined ($instance->{property}->{MetricValue})) {
+            if (defined($timestamp)) {
+                $instances_hash{$instance_element}->{MetricValue}->{$timestamp} = $instance->{property}->{MetricValue}->{value};
+            }
+        }
+    }
+
+    return ($ret, \%instances_hash);
+}
+
+=head3 query_tmp
+    DESCRIPTION:
+        Require the input and output temperature
+=cut 
+sub query_tmp 
+{
+    &query_metric(@_, "FipS_ThermalMetricValue", "InstanceID:InletAirTemp|ExhaustAirTemp");
+}
+=head3 query_cpuspeed
+    DESCRIPTION:
+        Require the cpuspeed history
+=cut 
+sub query_cpuspeed
+{
+    &query_metric(@_, "FipS_CPUUsageMetricValue", "InstanceID:AvgCPUUsage");
+}
+=head3 query_fanspeed
+    DESCRIPTION:
+        Require the fanspeed history
+=cut 
+sub query_fanspeed
+{
+    &query_metric(@_, "FipS_FanSpeedMetricValue", "InstanceID:FansSpeed");
+}
+=head3 query_powermetric
+    DESCRIPTION:
+        Require the AC and DC power comsume history
+=cut 
+sub query_powermetric
+{
+    my $http_params = shift;
+    my ($ret, $return_hash) = &query_metric($http_params, "FipS_PowerMetricValue", "InstanceID:AvgInputPwr");
+    if ($ret->{rc})  {
+        return $ret;
+    }
+    my %instances = ();
+    foreach my $ins (keys %$return_hash) {
+        if ($return_hash->{$ins}->{MeasuredElementName} =~ /Power Supply/) {
+            foreach my $timestamp (keys $return_hash->{$ins}->{MetricValue}) {
+                if (!exists($instances{"averageAC"}->{MetricValue}->{$timestamp})) {
+                    $instances{"averageAC"}->{MetricValue}->{$timestamp} = $return_hash->{$ins}->{MetricValue}->{$timestamp};
+                } else {
+                    $instances{"averageAC"}->{MetricValue}->{$timestamp} += $return_hash->{$ins}->{MetricValue}->{$timestamp};
+                }
+            }
+        } else {
+            $instances{"averageDC"}->{MetricValue} = $return_hash->{$ins}->{MetricValue};
+        }
+    }
+    return ($ret, \%instances); 
+}
+
+
+
 =head3  run_cim
 
     DESCRIPTION:
@@ -500,7 +617,12 @@ sub run_cim
     my $query_pum_flag;    # set to query the instance for [FipS_PUMService]
     my $query_pum_value;    # the rep queried PUM instance
     my $namepath_pum;     # the name path of PUM instance
-
+    
+    my %query_return_hash = (); # the hash store the returned hashes for query functions
+    my $query_tmp_value; # the requrest for FipS_ThermalMetricValue class
+    my $query_cpuspeed_value; # the request for FipS_CPUUsageMetricValue class
+    my $query_fanspeed_value; # the request for FipS_FanSpeedMetricValue class
+    my $query_powermetric_value; # the request for FipS_PowerMetricValue class
     if ($query_list) {
         foreach my $attr (split(',', $query_list)) {
             if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
@@ -510,6 +632,15 @@ sub run_cim
             if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
                 $query_pum_flag = 1;
                 last;
+            }
+            if ($attr =~ /^(ambienttemp|exhausttemp)$/) {
+                $query_tmp_value = 1;
+            } elsif ($attr =~ /^CPUspeed$/) {
+                $query_cpuspeed_value = 1;
+            } elsif ($attr =~ /^fanspeed$/) {
+                $query_fanspeed_value = 1;
+            } elsif ($attr =~ /^(averageAC|averageDC)$/) {
+                $query_powermetric_value = 1;
             }
         }
     }
@@ -529,6 +660,38 @@ sub run_cim
             return ($ret->{rc});
         }
     } 
+    if ($query_powermetric_value) {
+        my ($tmpret, $tmpvalue) = query_powermetric($http_params);
+        if ($tmpret->{rc}) {
+            xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
+            return ($tmpret->{rc});
+        }
+        $query_return_hash{query_tmp} = $tmpvalue;
+    }
+    if ($query_fanspeed_value) {
+        my ($tmpret, $tmpvalue) = query_fanspeed($http_params);
+        if ($tmpret->{rc}) {
+            xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
+            return ($tmpret->{rc});
+        }
+        $query_return_hash{query_fanspeed} = $tmpvalue;
+    }
+    if ($query_cpuspeed_value) {
+        my ($tmpret, $tmpvalue) = query_cpuspeed($http_params);
+        if ($tmpret->{rc}) {
+            xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
+            return ($tmpret->{rc});
+        }
+        $query_return_hash{query_cpuspeed} = $tmpvalue;
+    }
+    if ($query_tmp_value) {
+        my ($tmpret, $tmpvalue) = query_tmp($http_params);
+        if ($tmpret->{rc}) {
+            xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
+            return ($tmpret->{rc});
+        }
+        $query_return_hash{query_tmp} = $tmpvalue;
+    }
 
     # perform the query request
     if ($query_list) {
@@ -615,6 +778,44 @@ sub run_cim
                 }
     
             }
+            if ($attr eq "ambienttemp") {
+                my $tmphash = $query_return_hash{query_tmp};
+                foreach my $ins (keys %$tmphash) {
+                    if ($ins =~ /InletAirTemp/) {
+                        my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
+                        push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                    }
+                }
+            } elsif ($attr eq "exhausttemp") {
+                my $tmphash = $query_return_hash{query_tmp}; 
+                foreach my $ins (keys %$tmphash) {
+                    if ($ins =~ /ExhaustAirTemp/) {
+                        my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
+                        push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                    }
+                }
+            } elsif ($attr =~ /^CPUspeed$/) {
+                my $tmphash = $query_return_hash{query_cpuspeed}; 
+                foreach my $ins (keys %$tmphash) {
+                    if ($ins =~ /AvgCPUUsage/) {
+                        my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
+                        push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                    }
+                }
+            } elsif ($attr =~ /^fanspeed$/) {
+                my $tmphash = $query_return_hash{query_fanspeed}; 
+                foreach my $ins (keys %$tmphash) {
+                    if ($ins =~ /FansSpeed/) {
+                        my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
+                        push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                    }
+                }
+                $query_fanspeed_value = 1;
+            } elsif ($attr =~ /^(averageAC|averageDC)$/) {
+                my $tmphash = $query_return_hash{query_powermetric};
+                my @times = sort keys %{$tmphash->{$attr}->{MetricValue}};
+                push @output, "$node: $attr: $tmphash->{$attr}->{MetricValue}->{$times[-1]}";
+            } 
         }
     }
 
