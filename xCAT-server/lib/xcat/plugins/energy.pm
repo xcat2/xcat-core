@@ -424,7 +424,8 @@ sub query_pum
 
     # parse the return xml to get all the property of pum instance
     my $pum;
-    foreach my $instance (@$value) {
+    if ($value && @$value) {
+        my $instance = $$value[0];
         foreach my $pname (keys %{$instance->{property}}) {
             $pum->{$pname} = $instance->{property}->{$pname}->{value};
         }
@@ -433,6 +434,42 @@ sub query_pum
     return ($ret, $pum, $namepath);
 }
 
+=head3 query_cec_drawer 
+
+    DESCRIPTION:
+        Query the attribute for instance of FipS_CECDrawer class
+
+    ARGUMENTS:
+        $http_params - refer to the HTTP_PARAMS in xCAT::CIMUtils.pm
+
+    RETURN
+        $ret - return code and messages
+        $cec_drawer - a hash includes all the attributes
+
+=cut
+sub query_cec_drawer
+{
+    my $http_params = shift;
+    
+    my %cimargs = ( classname => 'FipS_CECDrawer' );
+    my ($ret, $value, $namepath) = xCAT::CIMUtils->enum_instance($http_params, \%cimargs);
+    if ($ret->{rc}) {
+        return ($ret);
+    }
+
+    # parse the return xml to get all the property of pum instance
+    my $cec_drawer;
+    if ($value && @$value) {
+        my $instance = $$value[0];
+        foreach my $pname (keys %{$instance->{property}}) {
+            $cec_drawer->{$pname} = $instance->{property}->{$pname}->{value};
+        }
+    } else {
+        return ({rc => 1, msg => "Cannot find instance for FipS_CECDrawer class"});
+    }
+    
+    return ($ret, $cec_drawer, $namepath);
+}
 
 =head3 query_metric
 
@@ -615,8 +652,11 @@ sub run_cim
     # Pre-query some specific instances since some instances are common for multiple energy attributes
     #my $query_pum_capabilities_flag;    # set to query the instance for [FipS_PUMServiceCapabilities]
     my $query_pum_flag;    # set to query the instance for [FipS_PUMService]
-    my $query_pum_value;    # the rep queried PUM instance
+    my $query_pum_value;    # the pre-queried PUM instance
     my $namepath_pum;     # the name path of PUM instance
+
+    my $query_drawer_flag;    # set to query the instance for [FipS_CECDrawer]
+    my $query_drawer_value;    # the pre-queried cec drawer instance
     
     my %query_return_hash = (); # the hash store the returned hashes for query functions
     my $query_tmp_value; # the requrest for FipS_ThermalMetricValue class
@@ -625,15 +665,11 @@ sub run_cim
     my $query_powermetric_value; # the request for FipS_PowerMetricValue class
     if ($query_list) {
         foreach my $attr (split(',', $query_list)) {
-            if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus)$/) {
+            if ($attr =~ /^(savingstatus|dsavingstatus|fsavingstatus|ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
                 $query_pum_flag = 1;
-                last;
-            }
-            if ($attr =~ /^(ffoMin|ffoVmin|ffoTurbo|ffoNorm|ffovalue)$/) {
-                $query_pum_flag = 1;
-                last;
-            }
-            if ($attr =~ /^(ambienttemp|exhausttemp)$/) {
+            } elsif ($attr =~ /^(syssbpower|sysIPLtime)$/) {
+                $query_drawer_flag = 1;
+            } elsif ($attr =~ /^(ambienttemp|exhausttemp)$/) {
                 $query_tmp_value = 1;
             } elsif ($attr =~ /^CPUspeed$/) {
                 $query_cpuspeed_value = 1;
@@ -659,7 +695,14 @@ sub run_cim
             xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
             return ($ret->{rc});
         }
-    } 
+    }
+    if ($query_drawer_flag) {
+        ($ret, $query_drawer_value) = query_cec_drawer($http_params);
+        if ($ret->{rc}) {
+            xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
+            return ($ret->{rc});
+        }
+    }
     if ($query_powermetric_value) {
         my ($tmpret, $tmpvalue) = query_powermetric($http_params);
         if ($tmpret->{rc}) {
@@ -778,6 +821,22 @@ sub run_cim
                 }
     
             }
+            
+            # Query the attribute sysIPLtime and syssbpower
+            if ($attr =~ /^(syssbpower|sysIPLtime)$/) {
+                if ($query_drawer_flag) {
+                    if (defined ($query_drawer_value->{AverageTimeToIPL}) && $attr eq "sysIPLtime") {
+                        push @output, "$node: $attr: $query_drawer_value->{AverageTimeToIPL}";
+                    } elsif (defined ($query_drawer_value->{StandbyPowerUtilization}) && $attr eq "syssbpower") {
+                        push @output, "$node: $attr: $query_drawer_value->{StandbyPowerUtilization}";
+                    } else {
+                        push @output, "$node: $attr: na";
+                    }
+                } else {
+                    push @output, "$node: $attr: na";
+                }
+            }
+
             if ($attr eq "ambienttemp") {
                 my $tmphash = $query_return_hash{query_tmp};
                 foreach my $ins (keys %$tmphash) {
