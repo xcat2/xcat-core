@@ -1413,59 +1413,65 @@ sub add_or_delete_records {
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
-        my $ip = xCAT::NetworkUtils->getipaddr($ctx->{nsmap}->{$zone});
-        if( !defined $ip) {
-            xCAT::SvrUtils::sendmsg([1,"Please make sure $ctx->{nsmap}->{$zone} exist either in /etc/hosts or DNS."], $callback);
-            return 1;
+        unless (defined ($ctx->{nsmap}->{$zone}) && $ctx->{nsmap}->{$zone}) {
+            next;
         }
-
-        my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
-        my $entry;
-        my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
-        my $update = Net::DNS::Update->new($zone);
-        foreach $entry (@{$ctx->{updatesbyzone}->{$zone}}) {
-            if ($ctx->{deletemode}) {
-                $update->push(update=>rr_del($entry));
-            } else {
-                $update->push(update=>rr_add($entry));
+        # the ns for zone might be multiple ones which separated with ,
+        foreach my $zoneserver (split(',', $ctx->{nsmap}->{$zone})) {
+            my $ip = xCAT::NetworkUtils->getipaddr($zoneserver);
+            if( !defined $ip) {
+                xCAT::SvrUtils::sendmsg([1,"Please make sure $zoneserver exist either in /etc/hosts or DNS."], $callback);
+                return 1;
             }
-            $numreqs -= 1;
-            if ($numreqs == 0) {
+    
+            my $resolver = Net::DNS::Resolver->new(nameservers=>[$ip]);
+            my $entry;
+            my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
+            my $update = Net::DNS::Update->new($zone);
+            foreach $entry (@{$ctx->{updatesbyzone}->{$zone}}) {
+                if ($ctx->{deletemode}) {
+                    $update->push(update=>rr_del($entry));
+                } else {
+                    $update->push(update=>rr_add($entry));
+                }
+                $numreqs -= 1;
+                if ($numreqs == 0) {
+                    $update->sign_tsig("xcat_key",$ctx->{privkey});
+                    $numreqs=300;
+                    my $reply = $resolver->send($update);
+                    if ($reply)
+                    {
+                        if ($reply->header->rcode ne 'NOERROR')
+                        {
+                            xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                        }
+                    }
+                    else
+                    {
+                        xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                    }
+                    
+                    $update =  Net::DNS::Update->new($zone); #new empty request
+                }
+            }
+            if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
                 $update->sign_tsig("xcat_key",$ctx->{privkey});
-                $numreqs=300;
                 my $reply = $resolver->send($update);
-                if ($reply)
-                {
-                    if ($reply->header->rcode ne 'NOERROR')
+                    if ($reply)
                     {
-                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                        if ($reply->header->rcode ne 'NOERROR')
+                        {
+                            xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
+                        }
                     }
-                }
-                else
-                {
-                    xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
-                }
+                    else
+                    {
+                        xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
+                    }
                 
-                $update =  Net::DNS::Update->new($zone); #new empty request
+                # sometimes resolver does not work if the update zone request sent so quick
+                sleep 1;
             }
-        }
-        if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
-            $update->sign_tsig("xcat_key",$ctx->{privkey});
-            my $reply = $resolver->send($update);
-                if ($reply)
-                {
-                    if ($reply->header->rcode ne 'NOERROR')
-                    {
-                        xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
-                    }
-                }
-                else
-                {
-                    xCAT::SvrUtils::sendmsg([1,"No reply received when sending DNS update to zone $zone"], $callback);
-                }
-            
-            # sometimes resolver does not work if the update zone request sent so quick
-            sleep 1;
         }
     }
     xCAT::SvrUtils::sendmsg("Completed updating DNS records.", $callback);
@@ -1518,12 +1524,16 @@ sub find_nameserver_for_dns {
                    if ($reply->header->rcode ne 'NOERROR') {
                       xCAT::SvrUtils::sendmsg([1,"Failure encountered querying $zone, error was ".$reply->header->rcode], $callback);
                     }
+                    my @zoneserver;
                     foreach my $record ($reply->answer) {
                         if ( $record->nsdname =~ /blackhole.*\.iana\.org/) {
                             $ctx->{nsmap}->{$zone} = 0; 
                         } else {
-                            $ctx->{nsmap}->{$zone} = $record->nsdname;
+                            push @zoneserver, $record->nsdname;
                         }
+                    }
+                    unless (defined ($ctx->{nsmap}->{$zone})) {
+                        $ctx->{nsmap}->{$zone} = join(',', @zoneserver);
                     }
                } else { 
                    $ctx->{nsmap}->{$zone} = 0; 
