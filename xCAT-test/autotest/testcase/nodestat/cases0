@@ -1,8 +1,10 @@
 start:nodestat_noderange
+arch:x86
 cmd:nodestat $$CN
 check:rc==0
 check:output=~noping|sshd|install|snmp|pbs
 end
+
 start:nodestat_err_node
 cmd:nodestat testnode
 check:rc!=0
