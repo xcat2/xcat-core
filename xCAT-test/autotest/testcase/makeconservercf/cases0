@@ -6,7 +6,7 @@ cmd:cat /etc/conserver.cf
 check:output=~console testnodetmp {
 check:output=~ exec /opt/xcat/share/xcat/cons/hmc testnodetmp;
 check:output=~}
-cmd:rmdef -t node testnode
+cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_noderange
