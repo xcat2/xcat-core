@@ -25,6 +25,7 @@ use xCAT::CIMUtils;
 use xCAT::MsgUtils;
 use xCAT::Table;
 use xCAT::FSPUtils;
+use xCAT::NetworkUtils;
 
 sub handled_commands {
     return {
@@ -373,9 +374,14 @@ sub process_request {
         }
         foreach my $ip (split(',', $hcp_ip)) {
             unless ($ip) { next; }
+            my $real_ip = xCAT::NetworkUtils->getipaddr($ip);
+            unless ($real_ip) {
+                xCAT::MsgUtils->message("E", {error => ["$node: Cannot get ip for $ip"], errorcode => 1}, $callback);
+                next;
+            }
             my %args =  (
                 node => $node,
-                ip => $ip,
+                ip => $real_ip,
                 port => '5989',
                 method => 'POST',
                 user => $user,
@@ -571,7 +577,7 @@ sub query_powermetric
     my %instances = ();
     foreach my $ins (keys %$return_hash) {
         if ($return_hash->{$ins}->{MeasuredElementName} =~ /Power Supply/) {
-            foreach my $timestamp (keys $return_hash->{$ins}->{MetricValue}) {
+            foreach my $timestamp (keys %{$return_hash->{$ins}->{MetricValue}}) {
                 if (!exists($instances{"averageAC"}->{MetricValue}->{$timestamp})) {
                     $instances{"averageAC"}->{MetricValue}->{$timestamp} = $return_hash->{$ins}->{MetricValue}->{$timestamp};
                 } else {
