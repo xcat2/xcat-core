@@ -39,8 +39,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 my $date;
-#my $regrootdir="/home/autotest_code";
-my $regrootdir="/xCATreg";
+my $regrootdir="/home/autotest_code";
+my $mailtitle="P Cluster";
+#my $regrootdir="/xCATreg";
+#my $mailtitle="X Cluster";
 my $logfiledir = "$regrootdir/log";
 my $logfile="";
 my $configfiledir = "$regrootdir/conf";
@@ -287,19 +289,29 @@ sub mn_install {
 
 	&runcmd("nodeset $confkeys{$mn} osimage=$osimage");
 	if( $arch =~ /x86_64/){
-		#&runcmd("rsetboot $confkeys{$mn} net");
 		&runcmd("rpower $confkeys{$mn} boot");
 	}else{
 	    &runcmd("rnetboot $confkeys{$mn}");
 	}
 	
-	&runcmd("sleep 300");	
-
-	&runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");
+	if($mn !~ /ubuntu/){
+	    &runcmd("sleep 300");
+	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
+	else{
+	    &runcmd("sleep 900");	
+	}
+	
 	&runcmd("lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null");
 	if($?){
         send_msg(0, "[$mn->$confkeys{$mn}][mn_install] install $osimage for node $confkeys{$mn} failed");
         return 1;
+	}
+	
+	if($mn =~ /ubuntu/){
+	    system("updatenode $confkeys{$mn} -P \"confignics -s\" >/dev/null 2>&1");  
+	    system("xdsh $confkeys{$mn} \"iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\" >/dev/null 2>&1");   
+		system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -j ACCEPT\" >/dev/null 2>&1");     
+        system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT\" >/dev/null 2>&1");
 	}
 	
     return 0;
@@ -345,8 +357,12 @@ sub copy_code {
 	send_msg(2, "[$mn->$confkeys{$mn}][copy_code] untar $depball in $mn successfully");
 	
     #copy xcat-core source code to MN:/
-	$res = system("scp -r $xcatcoredir root\@$confkeys{$mn}:/  >/dev/null");
-    if ($?){
+	if($mn =~ /ubuntux/){
+        $res = system("xdsh $confkeys{$mn} 'mkdir -p /xcatbuild' && scp -r $xcatcoredir root\@$confkeys{$mn}:/xcatbuild/  >/dev/null");
+	}else{
+        $res = system("scp -r $xcatcoredir root\@$confkeys{$mn}:/  >/dev/null");
+	}
+    if ($res){
         send_msg(0, "[$mn->$confkeys{$mn}][copy_code] copy the latest xcat code to $mn failed");
         return 1;
     }
@@ -428,6 +444,30 @@ sub copy_code {
             send_msg(2, "[$mn->$confkeys{$mn}][copy_code] For sles11, copy find-requires to $mn successfully");	
         }		
 	}
+	if($mn =~ /ubuntu/){
+        $os =~ /(\D+)(\d+\.\d+\.?\d?)/;
+		my $osversion = $2;
+        if ($mn =~ /ubuntux/){
+            $iso=`ls -l $osisodir| awk '{print \$9}'|grep ubuntu|grep amd64 |grep $osversion |tail -n 1`;
+        }elsif($mn =~ /ubuntupel/){
+            $iso=`ls -l $osisodir| awk '{print \$9}'|grep ubuntu|grep ppc64el |grep $osversion |tail -n 1`;
+		}
+		chomp($iso);
+		#print "[$mn->$confkeys{$mn}][copy_code] iso=$iso\n";
+        if ($iso eq ""){
+            send_msg(0, "[$mn->$confkeys{$mn}][copy_code] can't find ISO for os=$os and arch=$arch under dir $osisodir");
+            return 1;
+		}
+		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] find $iso for os=$os and arch=$arch");
+		
+		$res = system("scp $osisodir/$iso root\@$confkeys{$mn}:/  >/dev/null");
+        if ($?){
+            send_msg(0, "[$mn->$confkeys{$mn}][copy_code] copy ISO $iso to $mn failed");
+            return 1;
+        }
+		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] copy ISO $iso to $mn successfully");	
+        system ("sed -i 's|ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");	
+	}
     return 0;
 }
 
@@ -440,7 +480,16 @@ sub build_xcat {
 	
     #print "=======[$mn->$confkeys{$mn}] build_xcat========\n";
 	send_msg(2, "[$mn->$confkeys{$mn}][build_xcat] starting to build xcat in $confkeys{$mn}");
-                                            
+            
+    #modify /etc/resolv.conf	
+	my $dnsserver=`cat /etc/hosts |grep $confkeys{$mn}|awk '{print \$1}'|head -n 1`;
+	chomp($dnsserver);
+    my $res = system("xdsh $confkeys{$mn} \"sed -i 's:nameserver .*:nameserver $dnsserver:g' /etc/resolv.conf\" >/dev/null 2>&1");
+    if ($res != 0){
+        send_msg(0, "[$mn->$confkeys{$mn}][install_xcat] modify resolv.conf in $mn failed");
+        return 1;
+    }
+
 	if($mn =~ /rh/){
 	    system("xdsh $confkeys{$mn} 'yum  -y groupinstall \"Development tools\"' >/dev/null 2>&1");	
 	    system("xdsh $confkeys{$mn} 'yum -y groupinstall \"Perl Support\"' >/dev/null 2>&1");
@@ -451,8 +500,33 @@ sub build_xcat {
 	    system("xdsh $confkeys{$mn} 'zypper -n install perl-DBI' >/dev/null 2>&1");
     }
 	
+    if($mn =~ /ubuntu/){
+	    system("xdsh $confkeys{$mn} \"echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf\" >/dev/null 2>&1");
+	    system("xdsh $confkeys{$mn} 'apt-get -y install software-properties-common' >/dev/null 2>&1");
+		if($mn =~ /ubuntux/){
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc) main\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://archive.ubuntu.com/ubuntu \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
+		}elsif($mn =~ /ubuntupel/){
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) main\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates main\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc) universe\"' >/dev/null 2>&1");
+	        system("xdsh $confkeys{$mn} 'add-apt-repository \"deb http://ports.ubuntu.com/ubuntu-ports \$(lsb_release -sc)-updates universe\"' >/dev/null 2>&1");
+		}
+		
+        system("xdsh $confkeys{$mn} \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" >/dev/null 2>&1");
+		system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
+		system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
+		system("xdsh $confkeys{$mn} 'apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl' >/dev/null 2>&1");
+    }
+	
     #build xcat core ball 
-    my $res = system("xdsh $confkeys{$mn} '/xcat-core/buildlocal.sh CURDIR=/xcat-core' >/dev/null 2>&1");
+	if($mn =~ /ubuntux/){
+        $res = system("xdsh $confkeys{$mn} '/xcatbuild/xcat-core/build-ubunturepo -c UP=0 BUILDALL=1' >/dev/null 2>&1");
+	}else{
+        $res = system("xdsh $confkeys{$mn} '/xcat-core/buildlocal.sh CURDIR=/xcat-core' >/dev/null 2>&1");
+	}
     if ($res != 0){
         send_msg(0, "[$mn->$confkeys{$mn}][build_xcat] build xcat in $mn failed");
         return 1;
@@ -468,15 +542,7 @@ sub build_xcat {
 sub install_xcat {
     my $mn = shift;
 	send_msg(2, "[$mn->$confkeys{$mn}][install_xcat] starting to install xcat in $confkeys{$mn}");
-
-    #modify /etc/resolv.conf	
-	my $dnsserver=`cat /etc/hosts |grep $confkeys{$mn}|awk '{print \$1}'|head -n 1`;
-	chomp($dnsserver);
-    my $res = system("xdsh $confkeys{$mn} \"sed -i 's:nameserver .*:nameserver $dnsserver:g' /etc/resolv.conf\" >/dev/null 2>&1");
-    if ($res != 0){
-        send_msg(0, "[$mn->$confkeys{$mn}][install_xcat] modify resolv.conf in $mn failed");
-        return 1;
-    }
+	
 	my $os = $confkeys{$mn."os"};
 	my $arch = "ppc64";
 	$arch="x86_64" if($mn !~ /aix/ && $mn =~ /x/);
@@ -503,13 +569,18 @@ sub install_xcat {
 		if($mn =~ /slesx/){
 		    system("xdsh $confkeys{$mn} \"zypper -n install perl-Sys-Virt\" >/dev/null 2>&1");
 		}
+	}elsif($mn =~ /ubuntux/){
+        system("xdsh $confkeys{$mn} \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test' >/dev/null 2>&1");
 	}
 
 	#check if MN is installed successful 
-    my $lsdefout = `xdsh $confkeys{$mn} "lsdef -v"`;
+	my $lsdefout = `ssh -t $confkeys{$mn} 'bash -l -i -c "lsdef -v"'`;
     chomp($lsdefout);
-    #if($lsdefout !~ /^$confkeys{$mn}: lsdef - Version [0-9\.]+ \(git commit [0-9a-z]+, built .+\)$/ ){
-	if($lsdefout !~ /^$confkeys{$mn}: lsdef - Version/ ){
+	if($lsdefout !~ /^lsdef - Version/ ){
 	    send_msg(0, "[$mn->$confkeys{$mn}][install_xcat] install xcat in $mn failed");
 	    return 1;
     }
@@ -549,77 +620,128 @@ sub do_test {
         $diskfull_installation_hierarchy_testcase="reg_linux_diskfull_installation_hierarchy";
         $diskless_installation_hierarchy_testcase="reg_linux_diskless_installation_hierarchy";
         $statelite_installation_hierarchy_testcase="reg_linux_statelite_installation_hierarchy";
-		#$batbundle="bat.bundle" 
 		$batbundle="p_rhels_cmd.bundle" if($mn =~ /rhp/);
 		$batbundle="x_rhels_cmd.bundle" if($mn =~ /rhx/);
 		$batbundle="p_sles_cmd.bundle" if($mn =~ /slesp/);
 		$batbundle="x_sles_cmd.bundle" if($mn =~ /slesx/);
+	}elsif($mn =~ /ubuntux/){
+		$diskfull_installation_flat_testcase="Ubuntu_full_installation_flat_x86_vm";
+		$diskless_installation_flat_testcase="Ubuntu_diskless_installation_flat_x86_vm";
+		$batbundle="x_ubuntu_cmd.bundle";
+	}elsif($mn =~ /ubuntupel/){
+		$diskfull_installation_flat_testcase="Ubuntu_full_installation_flat_p8le_vm";
+		$diskless_installation_flat_testcase="Ubuntu_diskless_installation_flat_p8le_vm";
+		$batbundle="p_ubunut.cmd.bundle";
 	}
 	
-	#diskfull installation in flat mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
+    if($mn !~ /ubuntu/){
+		#diskfull installation in flat mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
 
-	#commands bundle in flat mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do all commands test in flat mode in $mn.....[done]");
+		#commands bundle in flat mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do all commands test in flat mode in $mn.....[done]");
 
-	#diskless installation in flat mode test		
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in flat mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in flat mode in $mn.....[done]");
+		#diskless installation in flat mode test		
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in flat mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in flat mode in $mn.....[done]");	
+	
+		#statelite installation in flat mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in flat mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_flat_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in flat mode in $mn.....[done]");
 
-	#statelite installation in flat mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in flat mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_flat_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in flat mode in $mn.....[done]");
+		#deploy SN
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] setting up mysql for installing SN in $mn.....");
+		$res = system("xdsh $confkeys{$mn} \"XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 mysqlsetup -i\" >/dev/null 2>&1");
+		if ($res != 0){
+			send_msg(0, "[$mn->$confkeys{$mn}][do_test] set up mysql for installing SN in $mn failed");
+			return 1;
+		}
+		$res =  system ("xdsh $confkeys{$mn} \"echo \\\"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\\\" | mysql -u root -p12345\" >/dev/null 2>&1");
+		if ($res != 0){
+			send_msg(0, "[$mn->$confkeys{$mn}][do_test] grant right to mysql for installing SN in $mn failed");
+			return 1;
+		}
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] set up mysql for installing SN in $mn.....[done]");
+		
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] preparing xcat ball for installing SN in $mn.....");
+		my $os = $confkeys{$mn."os"};
+		my $arch = "ppc64";
+		$arch="x86_64" if($mn !~ /aix/ && $mn =~ /x/);
+		my $xcatballpath = "/install/post/otherpkgs/$os/$arch/xcat";
+		$res = system("xdsh $confkeys{$mn} \"mkdir -p $xcatballpath/xcat-core && cp -r /xcat-core/build/* $xcatballpath/xcat-core && cp -r /xcat-dep $xcatballpath\"");
+		if ($res != 0){
+			send_msg(0, "[$mn->$confkeys{$mn}][do_test] prepare xcat ball for installing SN in $mn failed");
+			return 1;
+		}
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] prepare xcat ball for installing SN in $mn.....[done]");
+		
+		if($mn =~ /rhp/){
+		    my $ping_sn_on_rhp_pid = fork();
+		    if( !defined($ping_sn_on_rhp_pid)){
+		        send_msg(0, "fork process for trigger random number generator on redhat+ppc environment to install SN error");
+		        exit;
+		    }elsif($ping_sn_on_rhp_pid ==0){
+		        send_msg(2, "....fork 1 process[pid=$$] for trigger random number generator on redhat+ppc environment to install SN..........");
+		        my $snnodename = `cat $configfiledir/$regconf |grep SN|grep =|awk -F'=' '{print \$2}'`;
+		        chomp($snnodename);
+		        &runcmd("sleep 900");
+		        my $timecnt=0;
+		        while($timecnt < 180){
+		            my $booted = system("xdsh $confkeys{$mn} \"lsdef -l $snnodename|grep status|grep booted\"");
+		            last if($booted==0);
+					
+		            my $booting = system("xdsh $confkeys{$mn} \"lsdef -l $snnodename|grep status|grep booting\"");
+		            system("xdsh $confkeys{$mn} \"xdsh $snnodename \"echo 1\"\"")  if($booting==0);
+		
+		            &runcmd("sleep 10");
+		            $timecnt++;
+			    }
+			    send_msg(2, "....process[pid=$$] for trigger random number generator on redhat+ppc environment to install SN....[exit]");
+			    exit 0;
+		    }
+		}
+		
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] installing SN.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $sn_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] install SN.....[done]");
+		
+		#diskfull installation in hierarchy mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in hierarchy mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in hierarchy mode in $mn.....[done]");
+		
+		#diskless installation in hierarchy mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in hierarchy mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in hierarchy mode in $mn.....[done]");
 
-	#deploy SN
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] setting up mysql for installing SN in $mn.....");
-	$res = system("xdsh $confkeys{$mn} \"XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 mysqlsetup -i\" >/dev/null 2>&1");
-	if ($res != 0){
-		send_msg(0, "[$mn->$confkeys{$mn}][do_test] set up mysql for installing SN in $mn failed");
-		return 1;
+		#statelite installation in hierarchy mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in hierarchy mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in hierarchy mode in $mn.....[done]");	
+		
+    }else{
+		#diskfull installation in flat mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
+		system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\"' >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
+
+		#commands bundle in flat mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
+		system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\"' >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do all commands test in flat mode in $mn.....[done]");
+
+		#diskless installation in flat mode test		
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in flat mode in $mn.....");
+		system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\"' >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in flat mode in $mn.....[done]");
 	}
-	$res =  system ("xdsh $confkeys{$mn} \"echo \\\"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\\\" | mysql -u root -p12345\" >/dev/null 2>&1");
-	if ($res != 0){
-		send_msg(0, "[$mn->$confkeys{$mn}][do_test] grant right to mysql for installing SN in $mn failed");
-		return 1;
-	}
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] set up mysql for installing SN in $mn.....[done]");
-	
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] preparing xcat ball for installing SN in $mn.....");
-	my $os = $confkeys{$mn."os"};
-	my $arch = "ppc64";
-	$arch="x86_64" if($mn !~ /aix/ && $mn =~ /x/);
-	my $xcatballpath = "/install/post/otherpkgs/$os/$arch/xcat";
-	$res = system("xdsh $confkeys{$mn} \"mkdir -p $xcatballpath/xcat-core && cp -r /xcat-core/build/* $xcatballpath/xcat-core && cp -r /xcat-dep $xcatballpath\"");
-	if ($res != 0){
-		send_msg(0, "[$mn->$confkeys{$mn}][do_test] prepare xcat ball for installing SN in $mn failed");
-		return 1;
-	}
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] prepare xcat ball for installing SN in $mn.....[done]");
-	
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] installing SN.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $sn_installation_hierarchy_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] install SN.....[done]");
-	
-	#diskfull installation in hierarchy mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in hierarchy mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_hierarchy_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in hierarchy mode in $mn.....[done]");
-	
-	#diskless installation in hierarchy mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in hierarchy mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_hierarchy_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in hierarchy mode in $mn.....[done]");
-
-	#statelite installation in hierarchy mode test
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in hierarchy mode in $mn.....");
-	system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_testcase\" >/dev/null 2>&1");
-	send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in hierarchy mode in $mn.....[done]");	
 	
     send_msg(2, "[$mn->$confkeys{$mn}][install_xcat] run regression test in $mn finished");
 	
@@ -744,11 +866,11 @@ sub send_email{
 	# $gitupdateflag = 2 git update failed
 	my $subject="";
 	if($gitupdateflag==0 || $gitupdateflag==2){
-	    $subject = "[Autotest]Git update failed, stop regression test today!!!";
+	    $subject = "[$mailtitle] Git update failed, stop regression test today!!!";
 	}elsif($gitupdateflag==1 && ! $forceregwithoutupdate){
-	    $subject = "[Autotest]No code checkin, stop regression test today!!!";
+	    $subject = "[$mailtitle] No code checkin, stop regression test today!!!";
 	}else{
-	    $subject = "[Autotest] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: ".$checkinlist;
+	    $subject = "[$mailtitle] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: ".$checkinlist;
 	}
 
     my $mailreport .= "\n\n======================================\n";
@@ -775,6 +897,8 @@ sub send_email{
 #######################################
 sub git_update{
 	send_msg(2, "[git update] starting to update xcat source code from git"); 
+	
+	#return 0;      #????????????ubuntu debug ??????????????
 	
     my $res = system("cd $xcatcoredir && git checkout $branch > /dev/nul 2>&1");
     if ($res != 0){
@@ -1030,6 +1154,9 @@ foreach my $m (keys %mns) {
     } elsif ( $pid == 0 ) { # child process
 	    send_msg(2, "..........fork process[pid=$$] for $m [$confkeys{$m}]..........");
         close CONTROLREAD;
+		if($m =~ /ubuntux/){
+            &runcmd("sleep 3600");
+		}
 		my $res; 		
         #######################################
         # step 3. Install MNs,
