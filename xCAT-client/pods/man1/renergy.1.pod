@@ -27,17 +27,35 @@ B<Power 7 server specific :>
 
 =over 2
 
+B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus]
+[cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin]
+[averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed]
+[syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin]
+[ffoTurbo] [ffoNorm] [ffovalue]}
+
+B<renergy> I<noderange> [-V] { savingstatus={on | off}
+| dsavingstatus={on-norm | on-maxp | off}
+| fsavingstatus={on | off} | ffovalue=MHZ
+| cappingstatus={on | off} | cappingwatt=watt
+| cappingperc=percentage }
+
+=back
+
+B<Power 8 server specific :>
+
+=over 2
+
 B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus] 
 [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] 
-[averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
+[averageAC] [averageAChistory] [averageDC] [averageDChistory] 
+[ambienttemp] [ambienttemphistory] [exhausttemp] [exhausttemphistory] 
+[fanspeed] [fanspeedhistory] [CPUspeed] [CPUspeedhistory]
 [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] 
 [ffoTurbo] [ffoNorm] [ffovalue]}
 
 B<renergy> I<noderange> [-V] { savingstatus={on | off} 
 | dsavingstatus={on-norm | on-maxp | off}
-| fsavingstatus={on | off} | ffovalue=MHZ 
-| cappingstatus={on | off} | cappingwatt=watt 
-| cappingperc=percentage }
+| fsavingstatus={on | off} | ffovalue=MHZ }
 
 =back
 
@@ -127,10 +145,11 @@ user can query and set the power saving and power capping status, and also can
 query the average consumed energy, the ambient and exhaust temperature, 
 the processor frequency for a server.
 
-B<renergy> command supports IBM POWER6 and POWER7 rack-mounted servers,
+B<renergy> command supports IBM POWER6, POWER7 and POWER8 rack-mounted servers,
 BladeCenter management modules, blade servers, and iDataPlex servers. 
-For system p rack-mounted servers, the following specific hardware types are supported:
+For I<Power6> and I<Power7> rack-mounted servers, the following specific hardware types are supported:
 I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>, I<8236-E8C>.
+For I<Power8> server, there's no hardware type restriction.
 
 The parameter I<noderange> needs to be specified for the B<renergy> command to 
 get the target servers. The I<noderange> should be a list of CEC node names, blade 
@@ -234,10 +253,12 @@ will get response immediately.
 
 =head1 B<PREREQUISITES>
 
-For the system p nodes, the B<renergy> command depends 
+For the I<Power6> and I<Power7> nodes, the B<renergy> command depends 
 on the Energy Management Plugin B<xCAT-pEnergy> to 
 communicate with server.  B<xCAT-pEnergy> can be downloaded from the IBM web site: 
 http://www.ibm.com/support/fixcentral/. (Other Software -> EM)
+
+NOTE: I<Power8> nodes don't need this specific energy management package.
 
 For iDataPlex nodes, the B<renergy> command depends 
 on the Energy Management Plugin B<xCAT-xEnergy> to 
@@ -282,6 +303,10 @@ management module node.
 
 Query the current ambient temperature. (Unit is centigrade)
 
+=item B<ambienttemphistory>
+
+Query the historical records which were generated in last one hour for B<ambienttemp>.
+
 =item B<availableDC>
 
 Query the total DC power available for the entire blade center chassis.
@@ -298,9 +323,17 @@ averageAC is the total AC power being consumed by all modules
  in the chassis. It also includes power consumed by the Chassis 
 Cooling Devices for BCH chassis.
 
+=item B<averageAChistory>
+
+Query the historical records which were generated in last one hour for B<averageAC>.
+
 =item B<averageDC>
 
 Query the average power consumed (Output). (Unit is watt)
+
+=item B<averageDChistory>
+
+Query the historical records which were generated in last one hour for B<averageDC>.
 
 =item B<capability>
 
@@ -380,6 +413,10 @@ guaranteed.
 
 Query the effective processor frequency. (Unit is MHz)
 
+=item B<CPUspeedhistory>
+
+Query the historical records which were generated in last one hour for B<CPUspeed>
+
 =item B<dsavingstatus>
 
 Query the dynamic power saving status. The result should 
@@ -409,6 +446,21 @@ B<savingstatus> is in turn off status.
 =item B<exhausttemp>
 
 Query the current exhaust temperature. (Unit is centigrade)
+
+=item B<exhausttemphistory>
+
+Query the historical records which were generated in last one hour for B<exhausttemp>
+
+=item B<fanspeed>
+
+Query the fan speed for all the fans which installed in this node. (Unit is RPM - Rotations Per Minute))
+
+If there are multiple fans for a node, multiple lines will be output. And a fan name in bracket will be 
+appended after B<fanspped> attribute name.
+
+=item B<fanspeedhistory>
+
+Query the historical records which were generated in last one hour for B<fanspeed>.
 
 =item B<ffoMin>
 
@@ -455,7 +507,7 @@ The ffovalue setting operation needs about 1 minute to take effect.
 Query the status of FFO. The result should be 'on' or 'off'. 
 'on' - enable; 'off' - disable.
 
-=item B<fsavingstatus>={B<on> │ B<off>}
+=item B<fsavingstatus>={B<on> | B<off>}
 
 Set the status of FFO. The value must be 'on' or 'off'.
 
@@ -574,7 +626,7 @@ Query the time used from FSP standby to OS standby.
 =item B<syssbpower>
 
 Query the system power consumed prior to power on. 
-(Unit is MHz)
+(Unit is Watt)
 
 =item B<thermaloutput>
 
@@ -595,7 +647,7 @@ center chassis.
 
 =item 1
 
-Query all the attributes which CEC1,CEC2 supported.
+Query all attributes which CEC1,CEC2 supported.
 
 B<renergy> CEC1,CEC2 all
 
@@ -629,6 +681,43 @@ The output of the query operation:
 
 =item 2
 
+Query the B<fanspeed> attribute for Power8 CEC.
+
+B<renergy> CEC1 fanspeed
+
+The output of the query operation:
+
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A1 00002101): 5947 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A2 00002103): 6081 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A3 00002105): 6108 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A4 00002107): 6000 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A5 00002109): 6013 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-A6 0000210B): 6013 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-E1 0000210C): 4992 RPM
+    CEC1: fanspeed (Fan U78CB.001.WZS00MA-E2 0000210D): 5016 RPM
+
+=item 3
+
+Query the historical records for the B<CPUspeed> attribute. (Power8 CEC)
+
+B<renergy> CEC1 CPUspeedhistory
+
+The output of the query operation:
+
+    CEC1: CPUspeedhistory: 2027 MHZ: 20141226042900
+    CEC1: CPUspeedhistory: 2027 MHZ: 20141226042930
+    CEC1: CPUspeedhistory: 2244 MHZ: 20141226043000
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043030
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043100
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043130
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043200
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043230
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043300
+    CEC1: CPUspeedhistory: 2393 MHZ: 20141226043330
+    ...
+
+=item 4
+
 Query all the attirbutes for management module node MM1. (For chassis)
 
 B<renergy> MM1 all
@@ -658,7 +747,7 @@ The output of the query operation:
 in this power domain.
     mm1: thermaloutput: 9717.376000 BTU/hour
 
-=item 3
+=item 5
 
 Query all the attirbutes for blade server node blade1.
 
@@ -674,7 +763,7 @@ The output of the query operation:
     blade1: maxCPUspeed: 4204MHZ
     blade1: savingstatus: off
 
-=item 4
+=item 6
 
 Query the attributes savingstatus, cappingstatus 
 and CPUspeed for server CEC1.
@@ -687,7 +776,7 @@ The output of the query operation:
     CEC1: cappingstatus: on
     CEC1: CPUspeed: 3621 MHz
 
-=item 5
+=item 7
 
 Turn on the power saving function of CEC1.
 
@@ -698,7 +787,7 @@ The output of the setting operation:
     CEC1: Set savingstatus succeeded.         
     CEC1: This setting may need some minutes to take effect.   
 
-=item 6
+=item 8
 
 Set the power capping value base on the percentage of the 
 max-min capping value. Here, set it to 50%.

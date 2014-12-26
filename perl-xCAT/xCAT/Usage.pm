@@ -333,12 +333,16 @@ my %usage = (
     renergy [-v | --version] 
 
     Power 6 server specific :
-    renergy noderange [-V] { all | { [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
-    renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage } 
+      renergy noderange [-V] { all | { [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
+      renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage } 
 
     Power 7 server specific :
-    renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue] } }
-    renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {fsavingstatus}={on | off} | {ffovalue}=MHZ | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
+      renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue] } }
+      renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {fsavingstatus}={on | off} | {ffovalue}=MHZ | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
+
+    Power 8 server specific :
+      renergy noderange [-V] { all | [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageAChistory] [averageDC] [averageDChistory] [ambienttemp] [ambienttemphistory] [exhausttemp] [exhausttemphistory] [fanspeed] [fanspeedhistory] [CPUspeed] [CPUspeedhistory] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue]}
+      renergy noderange [-V] { savingstatus={on | off} | dsavingstatus={on-norm | on-maxp | off} | fsavingstatus={on | off} | ffovalue=MHZ }
 
     BladeCenter specific :
       For Management Modules:

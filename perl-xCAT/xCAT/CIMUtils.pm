@@ -312,6 +312,20 @@ sub set_property
         return $ret;
     }
 
+    # parse the http response
+    my $ret_value;
+    my $parser = XML::LibXML->new();
+    my $resp_doc = $parser->parse_string($ret->{payload});
+
+    # check the error message from CIM
+    my $error_node = $resp_doc->getElementsByTagName("ERROR");
+    if ($error_node) {
+        my $msg = $error_node->[0]->getAttribute("DESCRIPTION");
+        my $errorcode = $error_node->[0]->getAttribute("CODE");
+        return ({rc => 1, cim_rc => $errorcode, msg => $error_node->[0]->getAttribute("DESCRIPTION")." [cim return code: $errorcode]"});
+    }
+
+
     # if no http and cim error, the setting was succeeded
     return ($ret);
 }
