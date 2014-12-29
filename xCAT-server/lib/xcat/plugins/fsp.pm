@@ -81,7 +81,7 @@ sub preprocess_request {
         my (@fspnodes, @nohandle);
         xCAT::Utils->filter_nodes($arg1, undef, \@fspnodes, undef, \@nohandle);
         if (@fspnodes) {
-            $arg1->{noderange} = \@fspnodes;
+            $arg1->{node} = \@fspnodes;
         } else {
             return [];
         }
