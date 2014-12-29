@@ -2392,6 +2392,11 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
   my $rfh;
   my $rc = @readyset;
   my $text;
+
+  # A PIPE signal might be received when run fd_retrieve from the plugin sub processors
+  # This mostly happens when there are multiple plugins are called for certain command
+  # So spkit the pipe error handle
+  $pipeexpected=1;
   foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
     my $line;
     my $resp;
