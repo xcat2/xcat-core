@@ -46,7 +46,6 @@ B<Power 8 server specific :>
 =over 2
 
 B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus] 
-[cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] 
 [averageAC] [averageAChistory] [averageDC] [averageDChistory] 
 [ambienttemp] [ambienttemphistory] [exhausttemp] [exhausttemphistory] 
 [fanspeed] [fanspeedhistory] [CPUspeed] [CPUspeedhistory]
@@ -283,11 +282,13 @@ Display the version information.
 
 Verbose output.
 
-
 =item B<all>
 
 Query all energy attributes which supported by the specific 
 type of hardware.
+
+For I<Power8> machines, will not display the attributes
+for historical records.
 
 =item B<pd1all>
 

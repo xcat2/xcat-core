@@ -234,23 +234,23 @@ sub preprocess_request
     my $callback = shift;
 
     # Exit if the packet has been preprocessed
-    if (defined ($req->{_xcatpreprocessed}) && $req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    if (defined ($req->{_xcatpreprocessed}->[0]) && $req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
     my ($rc, $args) = parse_args($req);
     if ($rc) {
         # error or message display happens
         xCAT::MsgUtils->message("E", {error => [$args], errorcode => [$rc]}, $callback);
-        return;
+        return [];
     } else {
         unless (ref($args)) {
             xCAT::MsgUtils->message("I", {data => [$args]}, $callback);
-            return;
+            return [];
         }
     }
 
     # do nothing if no query or setting required. 
     unless (defined ($args->{query_list}) || defined($args->{set_pair})) {
-        return;
+        return [];
     }
 
     # This plugin only handle the node which is 1. mgt=fsp, mtm=(p8); 2. mgt=ipmi, arch=ppc64le;
@@ -289,7 +289,7 @@ sub preprocess_request
         return \@requests;
     }
 
-    return;
+    return [];
 }
 
 
