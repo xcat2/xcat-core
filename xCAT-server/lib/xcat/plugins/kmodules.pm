@@ -287,6 +287,7 @@ sub lskmodules {
         }
         return ( $rc - 1 );
     }
+  
     if ($::VERBOSE) {
         my $rsp;
         push @{ $rsp->{data} }, "Running lskmodules command... ";
@@ -301,7 +302,7 @@ sub lskmodules {
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
         return 1;
     }
-
+     
     # Get the list of kernel modules in each rpm/img file
     my @modlist;
     foreach my $source (@sources) {
@@ -309,7 +310,12 @@ sub lskmodules {
            $source =~ s/^dud://;
            push (@modlist, &mods_in_img($source) );
         } else {
-           $source =~ s/^rpm://;
+            my $osver = xCAT::Utils->osver();
+            if ($osver =~ /ubuntu/) {
+                 $source =~ s/^deb://;
+            }else{
+                $source =~ s/^rpm://;
+            }
            push (@modlist, &mods_in_rpm($source) );
         }
     }
@@ -328,7 +334,7 @@ sub lskmodules {
            push @{ $rsp->{data} }, $mn->{name}.': '.$mn->{description};
        }
     }
-    #xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+
     if ( $rsp ) { 
         $::CALLBACK->($rsp);
     }
@@ -443,7 +449,7 @@ sub set_sources {
   if ( defined($::opt_u) ) {
        my $outab = xCAT::Table->new('osdistroupdate');
        foreach my $ou (split( ',', $::opt_u)) {
-          my ($ou_entry) = $outab->getAttribs({'osupdatename'=>$ou},('dirpath'));
+          my ($ou_entry) = $outab->getAttribs({'osupdatename'=>$ou},('dirpath','basename'));
           if ( !($ou_entry) || !(defined($ou_entry->{'dirpath'})) ) {
               if ($::VERBOSE) {
                 my $rsp;
@@ -453,7 +459,16 @@ sub set_sources {
               next;
           } 
           my $dirpath = $ou_entry->{'dirpath'};
-          my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+          my @kernel_rpms = ();
+          if ($ou_entry->{'basename'} =~ /^ubuntu/)
+           {
+               @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+           }
+           else
+           {
+               @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+           }
+
           foreach my $krpm (@kernel_rpms) {
               chomp($krpm);
               my $base_krpm = basename($krpm);
@@ -477,13 +492,13 @@ sub set_sources {
   if ( defined($::opt_o) ) {
        my $odtab = xCAT::Table->new('osdistro');
        foreach my $od (split( ',', $::opt_o)) {
-          my ($od_entry) = $odtab->getAttribs({'osdistroname'=>$od},('dirpaths'));
+          my ($od_entry) = $odtab->getAttribs({'osdistroname'=>$od},('dirpaths','basename'));
           if ( !($od_entry) ) {
               # try building dirpath from distro_name/local_arch
               my $arch = `uname -m`;
               chomp($arch);
               $arch = "x86" if ($arch =~ /i.86$/);
-              my $dirpath = $installdir.'/'.$od.'/'.$arch;      
+              my $dirpath = $installdir.'/'.$od.'/'.$arch;     
               if (!(-e $dirpath)) {
                   if ($::VERBOSE) {
                     my $rsp;
@@ -492,7 +507,17 @@ sub set_sources {
                   }
                   next;
               }
-              my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+
+              my @kernel_rpms = ();
+              if ($od_entry->{'basename'} =~ /ubuntu/)
+              {
+                  @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+              }
+              else
+              {
+                  @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+              }
+
               foreach my $krpm (@kernel_rpms) {
                   chomp($krpm);
                   my $base_krpm = basename($krpm);
@@ -504,7 +529,16 @@ sub set_sources {
               }
           } else {
               foreach my $dirpath (split( ',', $od_entry->{'dirpaths'})){
-                  my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+                  my @kernel_rpms = ();
+                  if ($od_entry->{'basename'} =~ /ubuntu/)
+                  {
+                      @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+                  }   
+                  else
+                  {
+                      @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
+                  }
+                  #my @kernel_rpms = `find $dirpath -name kernel-*.rpm`;
                   foreach my $krpm (@kernel_rpms) {
                       chomp($krpm);
                       my $base_krpm = basename($krpm);
@@ -573,14 +607,24 @@ sub mods_in_rpm {
   my $tmp_path = "/tmp/lskmodules_expanded_rpm";
   mkpath($tmp_path);
   if (-r $krpm) {
-     if (system ("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
-         my $rsp;
-         push @{ $rsp->{data} }, "Unable to extract files from the rpm $krpm.";
-         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-         rmtree($tmp_path);
-         return;
-     }
-  } else {
+        my $osver = xCAT::Utils->osver();
+        if ($osver =~ /ubuntu/) {
+             if (system ("cd $tmp_path; dpkg -X $krpm $tmp_path > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
+             my $rsp;
+             push @{ $rsp->{data} }, "Unable to extract files from the deb package $krpm.";
+             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+             rmtree($tmp_path);
+             return;}
+        }else{
+             if (system ("cd $tmp_path; rpm2cpio $krpm | cpio -idum *.ko > /dev/null 2>&1 ; cd - > /dev/null 2>&1")) {
+             my $rsp;
+             push @{ $rsp->{data} }, "Unable to extract files from the rpm $krpm.";
+             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+             rmtree($tmp_path);
+             return;
+             }
+        }
+  }else{
      my $rsp;
      push @{ $rsp->{data} }, "Unable to read rpm $krpm.";
      xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
