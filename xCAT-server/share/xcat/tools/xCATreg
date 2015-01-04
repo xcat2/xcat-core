@@ -39,10 +39,10 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 my $date;
-my $regrootdir="/home/autotest_code";
-my $mailtitle="P Cluster";
-#my $regrootdir="/xCATreg";
-#my $mailtitle="X Cluster";
+#my $regrootdir="/home/autotest_code";
+#my $mailtitle="P Cluster";
+my $regrootdir="/xCATreg";
+my $mailtitle="X Cluster";
 my $logfiledir = "$regrootdir/log";
 my $logfile="";
 my $configfiledir = "$regrootdir/conf";
@@ -164,7 +164,8 @@ sub clean_outdated_file{
 sub xCATreg_init{
 
     #init important attributes
-    $date = `date  +"%Y%m%d"`;
+    
+	$date = `date  +"%Y%m%d"`; 
     chomp($date);
 
     &runcmd("mkdir -p $logfiledir") if(! -e $logfiledir);
@@ -298,7 +299,7 @@ sub mn_install {
 	    &runcmd("sleep 300");
 	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
 	else{
-	    &runcmd("sleep 900");	
+	    &runcmd("sleep 1800");	
 	}
 	
 	&runcmd("lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null");
@@ -773,11 +774,14 @@ sub creat_report{
 		&runcmd("touch $mailfile && echo \"$mailreport\" > $mailfile");
 		&runcmd("mv $commitinfofile $commitinfofile.old && echo \"\" > $commitinfofile");  		
 		return 0;
-	}elsif($gitupdateflag==1){
+	}elsif($gitupdateflag==1 && ! $forceregwithoutupdate){
 	    $mailreport .= "There isn't new code checkin last one day, stop regression test today!!!\n\n\n";
 		&runcmd("touch $mailfile && echo \"$mailreport\" > $mailfile"); 
 		&runcmd("mv $commitinfofile $commitinfofile.old && echo \"\" > $commitinfofile");  
 		return 0;
+	}elsif($gitupdateflag==1 && $forceregwithoutupdate){
+	    $mailreport .= "There isn't new code checkin last one day, But force to run regresson today!!!\n\n\n";
+		&runcmd("mv $commitinfofile $commitinfofile.old && echo \"\" > $commitinfofile");  
 	}elsif($gitupdateflag==2){
 	    $mailreport .= "Get the latest xcat source code from git error, stop regression test today!!!\n\n\n";
 		&runcmd("touch $mailfile && echo \"$mailreport\" > $mailfile"); 
@@ -814,7 +818,7 @@ sub creat_report{
 			    for(my $i=1;$i<$cnt+1;$i++){
 			        my $line=`cat $todayregresultdir/$k/$file |grep -- "------END::"|sed -n ${i}p`;
 					chomp($line);
-					if($line =~ /------END::(\D+)::(\D+)::Time.+/){
+					if($line =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/){
 					    my $failedcase=$1;
 					    if($2 =~ /Failed/){
 					        $failcnt++;
@@ -869,20 +873,55 @@ sub send_email{
 	    $subject = "[$mailtitle] Git update failed, stop regression test today!!!";
 	}elsif($gitupdateflag==1 && ! $forceregwithoutupdate){
 	    $subject = "[$mailtitle] No code checkin, stop regression test today!!!";
+	}elsif($gitupdateflag==1 && $forceregwithoutupdate){
+	    $subject = "[$mailtitle] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: NO ONE!!";
 	}else{
 	    $subject = "[$mailtitle] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: ".$checkinlist;
 	}
-
+    
     my $mailreport .= "\n\n======================================\n";
     $mailreport .= "       Commit Codes Last Day\n";
     $mailreport .= "======================================\n\n";
 	
 	&runcmd("echo \"$mailreport\">> $mailfile");
     &runcmd("cat $commitinfofile >> $mailfile");  	
+	
+	my $attachfile="/tmp/failed_case_detail.txt";
+	&runcmd("echo \"\" > $attachfile");
+	if($failcnt > 0){
+        opendir(DIR, "$todayregresultdir");
+        foreach my $subdir (readdir DIR){
+            next  if($subdir =~ /^\./);
+            #print "subdir-> $subdir\n";
+			
+			my $scenario="[".$confkeys{$subdir."os"};
+			if($subdir=~/p/){$scenario.="+PPC64] ";}else{$scenario.="+x86_64] ";}
+            my $separator .= "\n###############################################################\n";
+            $separator .= "                    $scenario\n";
+            $separator .= "###############################################################\n\n";
+			&runcmd("echo \"$separator\" >> $attachfile");
+            opendir(SUBDIR, "$todayregresultdir/$subdir");
+            foreach my $file (readdir SUBDIR){
+                next if($file !~ /^failedcases/);
+                next if(-z "$todayregresultdir/$subdir/$file");
+                #print "\t$file\n";
+                system("cat $todayregresultdir/$subdir/$file >> $attachfile");
+            }
+        }
+	}
+	
 	if($mail_list){
-	    system("cat $mailfile"." | /bin/mail -s \"$subject\" \"$mail_list\"");
+	    if($failcnt > 0){
+	        system("cat $mailfile"." | /bin/mail -s \"$subject\" -a $attachfile \"$mail_list\"");
+		}else{
+	        system("cat $mailfile"." | /bin/mail -s \"$subject\" \"$mail_list\"");		
+		}
 	}else{
-        system("cat $mailfile"." | /bin/mail -s \"$subject\" \"$confkeys{mailgroup}\"");
+	    if($failcnt > 0){
+            system("cat $mailfile"." | /bin/mail -s \"$subject\" -a $attachfile \"$confkeys{mailgroup}\"");
+	    }else{
+            system("cat $mailfile"." | /bin/mail -s \"$subject\" \"$confkeys{mailgroup}\"");
+		}
 	}
     return 0;
 }
@@ -897,8 +936,6 @@ sub send_email{
 #######################################
 sub git_update{
 	send_msg(2, "[git update] starting to update xcat source code from git"); 
-	
-	#return 0;      #????????????ubuntu debug ??????????????
 	
     my $res = system("cd $xcatcoredir && git checkout $branch > /dev/nul 2>&1");
     if ($res != 0){
@@ -1154,10 +1191,8 @@ foreach my $m (keys %mns) {
     } elsif ( $pid == 0 ) { # child process
 	    send_msg(2, "..........fork process[pid=$$] for $m [$confkeys{$m}]..........");
         close CONTROLREAD;
-		if($m =~ /ubuntux/){
-            &runcmd("sleep 3600");
-		}
-		my $res; 		
+		my $res; 
+      		
         #######################################
         # step 3. Install MNs,
         #######################################
