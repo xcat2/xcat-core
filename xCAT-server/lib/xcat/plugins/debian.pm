@@ -848,6 +848,12 @@ sub mkinstall
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/){
                     $kcmdline .= "n8r";
                 }
+            } else {
+                $callback->(
+                            {
+                             warning => ["rcons my not work since no serialport specified"],
+                            }
+                            );
             }
             #$kcmdline .= " noipv6";
             # add the addkcmdline attribute  to the end
@@ -1507,6 +1513,12 @@ sub mknetboot
             {
                 $kcmdline .= "n8r";
             }
+        } else {
+                $callback->(
+                            {
+                             warning => ["rcons my not work since no serialport specified"],
+                            }
+                            );
         }
         # add the addkcmdline attribute  to the end
         # of the command, if it exists
