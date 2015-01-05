@@ -185,7 +185,7 @@ echo "$TMP" > /xcatpost/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
-export CONSOLEPORT=#TABLE:nodehm:THISNODE:serialport#
+export CONSOLEPORT=#TABLEBLANKOKAY:nodehm:THISNODE:serialport#
 #addsiteyum
 if [[ -r /boot/grub/menu.lst ]]; then
 sed -i 's/^serial/#serial/' /boot/grub/menu.lst
@@ -194,6 +194,9 @@ elif [[ -r /boot/grub/grub.cfg ]] ; then
 update-grub
 fi
 if echo "$ARCH" | grep -i 'ppc64'; then
+    if [ -z "$CONSOLEPORT" ] ; then
+        export CONSOLEPORT=0
+    fi
     CONSOLE="hvc$CONSOLEPORT"
     if [[ -r /etc/default/grub ]] ; then
         sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"console=$CONSOLE\"/" /etc/default/grub
