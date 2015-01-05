@@ -524,9 +524,9 @@ sub build_xcat {
 	
     #build xcat core ball 
 	if($mn =~ /ubuntux/){
-        $res = system("xdsh $confkeys{$mn} '/xcatbuild/xcat-core/build-ubunturepo -c UP=0 BUILDALL=1' >/dev/null 2>&1");
+        $res = system("xdsh $confkeys{$mn} '/xcatbuild/xcat-core/build-ubunturepo -c UP=0 BUILDALL=1 > /var/log/xcat/build_xcat.log 2>&1' >/dev/null  2>&1");
 	}else{
-        $res = system("xdsh $confkeys{$mn} '/xcat-core/buildlocal.sh CURDIR=/xcat-core' >/dev/null 2>&1");
+        $res = system("xdsh $confkeys{$mn} '/xcat-core/buildlocal.sh CURDIR=/xcat-core > /var/log/xcat/build_xcat.log 2>&1' >/dev/null 2>&1");
 	}
     if ($res != 0){
         send_msg(0, "[$mn->$confkeys{$mn}][build_xcat] build xcat in $mn failed");
@@ -552,7 +552,7 @@ sub install_xcat {
 	    $os =~ /(\D+)(\d+)\.?(\d?)/;
 		system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh$2/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
-		system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test\" >/dev/null 2>&1");
+		system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
 		if($mn =~ /rhx/){
@@ -563,7 +563,7 @@ sub install_xcat {
 		system("xdsh $confkeys{$mn} \"zypper ar file:///xcat-dep/sles$2/$arch xCAT-dep\" >/dev/null 2>&1");   
 		system("xdsh $confkeys{$mn} \"zypper sl -U\" >/dev/null 2>&1"); 
 		system("xdsh $confkeys{$mn} \"zypper --gpg-auto-import-keys search --match-exact -s screen\" >/dev/null 2>&1");   
-		system("xdsh $confkeys{$mn} \"zypper -n install xCAT xCAT-test\" >/dev/null 2>&1"); 
+		system("xdsh $confkeys{$mn} \"zypper -n install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1"); 
 		system("xdsh $confkeys{$mn} \"zypper -n install createrepo\" >/dev/null 2>&1"); 
 		system("xdsh $confkeys{$mn} \"zypper -n install mysql-client libmysqlclient_r15  libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql unixODBC\" >/dev/null 2>&1"); 
 		system("xdsh $confkeys{$mn} \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
@@ -575,7 +575,7 @@ sub install_xcat {
         system("xdsh $confkeys{$mn} \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
-        system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test' >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test  > /var/log/xcat/install_xcat.log 2>&1' >/dev/null 2>&1");
 	}
 
 	#check if MN is installed successful 
@@ -945,11 +945,22 @@ sub git_update{
     send_msg(2, "[git update] change to branch $branch....[ok]");
 	
 	my $gitpulloutput = "/tmp/gitpulloutput";
-    $res = system("cd $xcatcoredir && git pull > $gitpulloutput 2>&1");
-    if ($res != 0){
-        send_msg(0, "[git update] pull the latest code to control node....[failed]");
-        return 2;
-    }
+	my $trytime=1;
+    while($trytime < 4){	
+        $res = system("cd $xcatcoredir && git pull > $gitpulloutput 2>&1");
+        if ($res != 0){
+            send_msg(0, "[git update] pull the latest code to control node....[$trytime failed]");
+			$trytime++;
+            &runcmd("sleep 120");  	
+        }else{
+		    last;
+		}
+	}
+	
+	if($trytime == 4){
+        send_msg(0, "[git update] pull the latest code to control node....[finally failed]");
+        return 2;		
+	}
 	
     $res = system("grep 'Already up-to-date' $gitpulloutput > /dev/nul 2>&1");
     if ($res == 0 && ! $forceregwithoutupdate) {
