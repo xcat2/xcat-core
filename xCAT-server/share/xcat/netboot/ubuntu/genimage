@@ -102,7 +102,25 @@ if (@ARGV > 0) {
     $imagename=$ARGV[0];
 }
 
-
+#############################################################
+# The current logic for install deb pkgs
+#   
+#   Pre: 4 parameters and values
+#     1. srcdir -- Normally the repo created within copycds    
+#     2. kerneldir -- The dir admin used in osimage object to specify the repo dir for the special kernel version with 'kernelver' option
+#     3. otherpkgdir -- The dir admin used to specify the repo dir other pkg list
+#     4. internet_repo -- The default internet path where the internet mirror is located.
+# 
+#   The pkg installing logic
+#   
+#   1. use debootstrap to create the minimal image from internet_repo based on the pkglist, the kernel will be exclude from pkglist. 
+#     Note: The reason to create image from internet_repo is the pkg libc-bin is not included in ISO repo.
+#   2. install kernel
+#     Note: At this point, the kerneldir and srcdir are all added as the repo to do pkg upgrade and kernel installation.
+#   3. install otherpkg
+#     Note: Then, the deb pkg repo included three types: the srcdir, the kerneldir and the otherpkgdir. 
+#
+##############################################################
 my %updates_os = (); # the hash for updating osimage table
 my %updates = (); # the hash for updating linuximage table
 
@@ -207,7 +225,7 @@ $uarch="amd64" if ($arch eq x86_64);
 
 unless ($onlyinitrd) {
    @aptdirs=();
-   find(\&isaptdir, <$installroot/$osver/$arch/>);
+   find(\&isaptdir, <$srcdir/>);
    # Add the dir for kernel deb to be installed
    if ($kernelver) {
       find(\&isaptdir, <$kerneldir/>);
@@ -223,8 +241,8 @@ unless ($onlyinitrd) {
    my $aptconfig;
    open($aptconfig,">","/tmp/genimage.$$.apt.list");
    my $repnum=0;
-   foreach $srcdir (@aptdirs) {
-      print $aptconfig "deb file://$srcdir main stable\n\n";
+   foreach $tmpsrcdir (@aptdirs) {
+      print $aptconfig "deb file://$tmpsrcdir main stable\n\n";
       $repnum += 1;
    }
    $repnum-=1;
@@ -342,13 +360,40 @@ unless ($onlyinitrd) {
     }
 
     print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
-    mount_chroot($rootimg_dir, $otherpkgsdir_local, $srcdir);
+    mount_chroot($rootimg_dir, $otherpkgsdir_local, $srcdir, $kerneldir);
 
     # Add the local repo from MN temporarily for apt-get update/upgrade
     open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
     print $aptconfig "deb file:///mnt/pkgdir/ $dist main\n";
+    if (-d "$rootimage_dir/mnt/kerneldir") {
+        print $aptconfig "deb file:///mnt/kerneldir/ $dist main\n";
+    }
     close($aptconfig);
 
+    {
+        # run apt-get upgrade to update any installed debs
+        # needed when running genimage again after updating software in repositories
+        #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
+        my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
+        $rc = system("$aptgetcmd_update");
+        
+
+        #############################################################
+        # The section below is used to install kernel base and extra#
+        #############################################################
+        if ($kernelimage) {
+            my $kernelextraimage = undef;
+            if ($kernelver) {
+                $kernelimage = "linux-image-".$kernelver;
+                $kernelextraimage = "linux-image-extra-".$kernelver;
+            }
+            my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
+            $rc = system("$aptgetcmd_install");
+            $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ". $kernelextraimage;
+            $rc = system("$aptgetcmd_install");
+        }
+
+    }
     #add the other package directory to for apt-get install
     open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
     #if ($otherpkgsdir_local){
@@ -475,17 +520,17 @@ unless ($onlyinitrd) {
        #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
        my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
        $rc = system("$aptgetcmd_update");
-       if ($kernelimage) {
-           if ($kernelver) {
-               $kernelimage = "linux-image-".$kernelver;
-           }
-           my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
-           $rc = system("$aptgetcmd_install");
-       }
-       print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
-       umount_chroot($rootimg_dir);
+#       if ($kernelimage) {
+#           if ($kernelver) {
+#               $kernelimage = "linux-image-".$kernelver;
+#           }
+#           my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
+#           $rc = system("$aptgetcmd_install");
+#       }
        # ignore any return code
    }
+   print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
+   umount_chroot($rootimg_dir);
 
    # Add the local repo from MN
    my $master = xCAT::TableUtils->get_site_Master();
@@ -1786,12 +1831,22 @@ sub mount_chroot {
    my $rootimage_dir = shift;
    my $otherpkgdir = shift;
    my $pkgdir = shift;
+   my $kerneldir = shift;
    mkdir("$rootimage_dir/mnt/pkgdir");
    mkdir("$rootimage_dir/mnt/otherpkgdir");
    #system("mount -o bind /dev $rootimage_dir/dev");
    #system("mount -o bind /proc $rootimage_dir/proc");
    #system("mount -o bind /sys $rootimage_dir/sys");
    system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+   if ($kerneldir){
+      if(-d $kerneldir){
+         mkdir("$rootimage_dir/mnt/kerneldir");
+         system("mount --rbind $kerneldir $rootimage_dir/mnt/kerneldir");
+      }else{
+         print "The specified kerneldir $kerneldir does not exist!\n"
+      }
+   }
+
    if ($otherpkgdir){
       if(-d $otherpkgdir){
          system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
@@ -1815,6 +1870,10 @@ sub umount_chroot {
        `umount $_`;
    }
    rmdir("$rootimage_dir/mnt/otherpkgdir");
+   if (-d "$rootimage_dir/mnt/kerneldir") {
+       system("umount $rootimage_dir/mnt/kerneldir");
+       rmdir("$rootimage_dir/mnt/kerneldir");
+   }
 }
 
 sub usage {
