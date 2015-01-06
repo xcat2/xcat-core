@@ -1,0 +1,8 @@
+openssh-server
+ntp
+gawk
+nfs-common
+snmpd
+libdbd-mysql-perl
+libodbc1 
+
