@@ -338,12 +338,14 @@ groups=''   #groups
 pkgs_d=''   #packages to remove
 
 OIFS=$IFS
-IFS=$'\n'
+IFS=$','
 if ( pmatch "$OSVER" "ubuntu*" ); then
-    IFS=$(printf '\n')
+    IFS=$(printf ',')
 fi
+pkgarray=($OSPKGS)
+IFS=$OIFS
 
-for x in `echo "$OSPKGS" | tr "," "\n"`
+for x in ${pkgarray[@]};
 do
     #remove leading and trailing spaces
     x=`echo $x |sed 's/^ *//;s/ *$//'`
@@ -370,7 +372,6 @@ do
 	fi
     fi
 done
-IFS=$OIFS
 
 if [ $debug -ne 0 ]; then
     echo "pkgs=$pkgs"
@@ -658,12 +659,31 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 		exit 1
 	fi
 
-	# No need to setup a /etc/apt/sources.list.d/ file because installation
-	# should already lead to /etc/apt/sources.list including the xcat install
-	# media repository.
+        # setup apt source for os distro updates
+        # check whether the os package path in primary apt source (/etc/apt/sources.list) or not
+        # if the os package path does not exist in /etc/apt/sources.list,
+        # create apt source file in /etc/apt/sources.list.d
+
+        prirepo=/etc/apt/sources.list
+        repoprefix=/etc/apt/sources.list.d/xCAT-${OSVER}-path
+        oldif=$IFS
+        IFS=","
+        pkgdirs=($OSPKGDIR)
+        IFS=$oldif
+
+        repocount=0
+        for dir in ${pkgdirs[@]}; do
+            if grep "^deb\ .*$dir" $prirepo; then
+                continue
+            fi
+            #create apt source file in /etc/apt/sources.list.d
+            echo "deb http://$NFSSERVER/$dir ./"  > "${repoprefix}${repocount}.list"
+            repocount=$(($repocount+1))
+        done
 
 	# upgrade existing packages
-	command="apt-get -y upgrade"
+        apt-get -y update
+        command="DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated --force-yes -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade "
 	echo "=== $command"
 	eval $command
         R=$?
