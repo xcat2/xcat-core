@@ -359,7 +359,7 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_signature gpg' >> $MACROS
 	fi
 	if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-		echo '%_gpg_name Jarrod Johnson' >> $MACROS
+		echo '%_gpg_name xCAT Security Key' >> $MACROS
 	fi
 	echo "Signing RPMs..."
 	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
