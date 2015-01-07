@@ -1,0 +1,6 @@
+mariadb-client
+mariadb-common
+mariadb-server
+xcat-core/xcatsn
+xcat-dep/conserver-xcat
+
