@@ -105,6 +105,9 @@ config_Rsyslog_C3()
       cat /tmp/sed.tmp >$2 
       echo "*.debug  /var/log/messages" >> $2
       touch  /var/log/messages  
+      if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
+        chown syslog:adm /var/log/messages
+      fi
   else
       sed 's/^\(\*\..*\)/\#\1/' $2 >/tmp/sed.tmp
       cat /tmp/sed.tmp >$2
@@ -149,6 +152,9 @@ config_rsyslog_V8()
     #logging is local, do not forward
     #making sure all the messages goes to /var/log/messages
     touch  /var/log/messages
+    if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
+      chown syslog:adm /var/log/messages
+    fi
     # backup rsyslog.conf
     if [ ! -f $conf_file.XCATORIG ]; then
       cp -f $conf_file $conf_file.XCATORIG
@@ -318,6 +324,9 @@ else
   if [ $goLocal -eq 1 ]; then
     #making sure all the messages goes to /var/log/messages
     touch  /var/log/messages 
+    if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
+      chown syslog:adm /var/log/messages
+    fi
     if [ $ng -eq 0 ]; then
       if [ ! -f $conf_file.XCATORIG ]; then
         cp -f $conf_file $conf_file.XCATORIG
