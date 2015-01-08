@@ -382,14 +382,10 @@ unless ($onlyinitrd) {
         # The section below is used to install kernel base and extra#
         #############################################################
         if ($kernelimage) {
-            my $kernelextraimage = undef;
             if ($kernelver) {
-                $kernelimage = "linux-image-".$kernelver;
-                $kernelextraimage = "linux-image-extra-".$kernelver;
+                $kernelimage = "linux-image-$kernelver linux-image-extra-$kernelver linux-firmware";
             }
             my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
-            $rc = system("$aptgetcmd_install");
-            $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ". $kernelextraimage;
             $rc = system("$aptgetcmd_install");
         }
 

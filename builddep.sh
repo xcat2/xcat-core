@@ -92,7 +92,7 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_signature gpg' >> $MACROS
 	fi
 	if ! $GREP -q '%_gpg_name' $MACROS 2>/dev/null; then
-		echo '%_gpg_name Jarrod Johnson' >> $MACROS
+		echo '%_gpg_name xCAT Security Key' >> $MACROS
 	fi
 
 	# Sign the rpms that are not already signed.  The "standard input reopened" warnings are normal.
