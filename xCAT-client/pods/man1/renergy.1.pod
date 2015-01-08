@@ -56,6 +56,10 @@ B<renergy> I<noderange> [-V] { savingstatus={on | off}
 | dsavingstatus={on-norm | on-maxp | off}
 | fsavingstatus={on | off} | ffovalue=MHZ }
 
+I<NOTE:> The setting operation for B<Power 8> server is only supported 
+for the server which is running in PowerVM mode. Do NOT run the setting 
+for the server which is running in OPAL mode.
+
 =back
 
 B<BladeCenter specific :>
