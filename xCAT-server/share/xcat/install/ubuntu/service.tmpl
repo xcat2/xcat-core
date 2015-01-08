@@ -120,12 +120,12 @@ xserver-xorg xserver-xorg/config/monitor/mode-list \
   select 1024x768 @ 60 Hz
 
 
+# To workaround the "Unmount partitions that are in use?" question,
+# run the "umount /media" after the preseed is read in
 d-i preseed/early_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.pre; \
      chmod u+x #HOSTNAME#.pre; \
-     ./#HOSTNAME#.pre 
-
-# To workaround the "Unmount partitions that are in use?" question
-d-i preseed/early_command string umount /media || true
+     ./#HOSTNAME#.pre; \
+     umount /media || true
 
 d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoinst/#HOSTNAME#.post; \
      chmod u+x #HOSTNAME#.post; \
