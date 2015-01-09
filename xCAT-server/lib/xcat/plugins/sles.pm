@@ -1710,7 +1710,7 @@ sub copycd
             my $prod = <$mfile>;
             close($mfile);
 
-            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/)
+            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/ || $prod =~ m/SLES/ || $prod =~ m/SDK/ )
             {
                 if (-f "$mntpath/content") {
                     my $content;
@@ -1724,9 +1724,13 @@ sub copycd
                             unless ($distname) { $distname = $detdistname; }
                         }
                         unless ($distname) {
-                            if (/^DISTRO/) {
-                                $_ =~ /sles:(\d+),/;
-                                $distname = "sles".$1;
+                            if (/^DISTRO/ || /^LABEL/) {
+                                # only set to $1 if the regex was successful
+                                if ($_ =~ /sles:(\d+),/) {
+                                    $distname = "sles".$1;
+                                } elsif ($_ =~ /Software Development Kit\s*(\d+)/) {
+                                    $distname = "sles".$1;
+                                }
                             }
                         }
                     }
@@ -1736,8 +1740,15 @@ sub copycd
                     $detdistname = "sles" . $subparts[0];
                     unless ($distname) { $distname = "sles" . $subparts[0] };
                 }
-                if($prod =~ m/Software-Development-Kit/) {
-                    if ($distname eq 'sles11.3') {
+                if($prod =~ m/Software-Development-Kit/ || $prod =~ m/SDK/ ) {
+                    #
+                    # It's been seen that the 3rd disc on the SDK ISO images are using 'media.1' instead of
+                    # media.3 to represent the 3rd disc.  This code here is to work around this issue.  I'm not
+                    # sure why this only applies to sles 11.3 since I do see the same issue in sles 11.  But will
+                    # keep the logic as is... checking for >= 11.3
+                    #
+                    (my $numver = $distname) =~ s/[^0-9]//g;
+                    if ($numver >= 11.3 ) {
                         if ($discnumber == 1 and $totaldiscnumber == 1) { #disc 3, aka disc1 of 'debug'
                             $discnumber = 3;
                         }
