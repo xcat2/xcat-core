@@ -377,7 +377,7 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
-* Fri Nov 20 2007 - Jarrod Johnson <jbjohnso@us.ibm.com>
+* Tue Nov 20 2007 - Jarrod Johnson <jbjohnso@us.ibm.com>
 - Changes for relocatible rpm.
 
 * Wed May 2 2007 - Norm Nott <nott@us.ibm.com>
