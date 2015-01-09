@@ -2201,12 +2201,7 @@ sub copycd
     {
 
         #If they say to call it something unidentifiable, give up?
-        #at least show a warning
-        $callback->(
-                   {
-                       warning => ["could not identify the distribution name \"$distname\", may cause problems."],
-                   }
-                   );
+        return;
     }
     unless (-r $mntpath . "/.discinfo")
     {
