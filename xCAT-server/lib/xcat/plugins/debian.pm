@@ -212,6 +212,19 @@ sub copycd
         #this plugin needs $path...
         return;
     }
+    if (    $distname
+        and $distname !~ /^debian/i
+        and $distname !~ /^ubuntu/i)
+    {
+
+        #If they say to call it something unidentifiable, give up?
+        #at least show a warning
+        $callback->(
+                   {
+                       warning => ["could not identify the distribution name \"$distname\", may cause problems."],
+                   }
+                   );
+    }
 
     if ( $copypath || $noosimage || $nonoverwrite ){
         $callback->({info=> ["copycd on debian/ubuntu doesn't support -p, -o, -w options!"]});
@@ -253,7 +266,9 @@ sub copycd
 	# So that we have the netboot images
         $isnetinst = 1 if ($line2[7] eq "NETINST");
 
-        $distname="debian".$ver;
+        if (!$distname) {
+            $distname="debian".$ver;
+        }
 	$detdistname="debian".$ver;
     }
     elsif ($prod eq "Ubuntu" or $prod eq "Ubuntu-Server" )
@@ -261,7 +276,9 @@ sub copycd
         # to cover for LTS releases
         $darch = $line2[7] if ($line2[2] eq "LTS");
 
-        $distname="ubuntu".$ver;
+        if (!$distname) {
+            $distname="ubuntu".$ver;
+        }
 	$detdistname="ubuntu".$ver;
         $discno = `cat $path/README.diskdefines | grep 'DISKNUM ' | awk '{print \$3}'`;
     }
