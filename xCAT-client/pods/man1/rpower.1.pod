@@ -86,8 +86,6 @@ Reboot the service processor. If there are primary and secondary FSPs/BPAs of on
 
 Attempt to request clean shutdown of OS (may not detect failures in completing command)
 
-For stateless osimage, the 'acpid' package needs to be added to the .pkglist configuration file for the stateless osimage to enable the 'softoff' function.
-
 =item B<off>
 
 Turn power off.
