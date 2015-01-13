@@ -170,6 +170,13 @@ sub process_request {
        $pkglist = $ref_linuximage_tab->{'pkglist'};
        
        $srcdir = $ref_linuximage_tab->{'pkgdir'};
+       my @pkgarray = split(/,/, $ref_linuximage_tab->{'pkgdir'});
+       if(scalar(@pkgarray) > 1)
+       {
+           $srcdir = @pkgarray[0];
+       }
+       
+
        $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};

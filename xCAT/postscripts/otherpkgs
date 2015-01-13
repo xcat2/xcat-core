@@ -585,7 +585,13 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
     plain_pkgs_preremove=""
     plain_pkgs_postremove=""
     array_empty handled_path
-    for x in `echo "$pkglist" | tr "," "\n"`
+    oifs=$IFS
+    IFS=$','
+    pkgsarray=($pkglist)
+    IFS=$oifs
+    echo "pkgsarray: ${pkgsarray[@]}, ${#pkgsarray[@]}"
+    echo "yum: $hasyum, apt: $hasapt, zypper: $haszypper"
+    for x in ${pkgsarray[@]}
     do
         #check if the file name starts with -- or -. 
         #If it is start with -,  then the rpm must be removed before installing other packages
@@ -621,8 +627,12 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         else
 	    fn=`basename $x`
 	    path=`dirname $x`
-	    whole_path=$OTHERPKGDIR/$path
-	    #whole_path=$OTHERPKGDIR
+	    whole_path=$OTHERPKGDIR
+
+            if [[ ! $OSVER =~ ^ubuntu|^debian ]]; then
+                echo "rhel package path"
+	        whole_path=$OTHERPKGDIR/$path
+            fi
 	
             #find out if this path has already handled
 	    try_repo=1
@@ -690,6 +700,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
                         IFS=$OLDIFS
                     fi
 		fi 
+	    fi
 	        if [ $hasyum -eq 1 ]; then 
 	            #use yum
 		    result=`yum list $fn 2>&1`
@@ -724,6 +735,7 @@ EOF`
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
 		    #use apt
+                    fn=`echo $fn| tr "." ":"`
 			apt_get_update_if_repos_changed $REPOFILE
 			result=`apt-cache show $fn 2>&1`
 
@@ -735,8 +747,6 @@ EOF`
 		    fi
 
 	        fi
-	    fi
-	
 	    if [ $rc -eq 0 ]; then
 	        repo_pkgs="$repo_pkgs $fn"  
 	    else
@@ -909,8 +919,8 @@ EOF`
 
     #Handle the rest with rpm
     if [ "$plain_pkgs" != "" -a -n "$OTHERPKGDIR" ]; then 
-        echo "Warning: the packages $plain_pkgs could not be found in the yum repository, falling back to rpm command. If you want your packages to be installed with yum, verify yum is installed and createrepo has been run."
-        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the yum repository, falling back to rpm command. If you want your packages to be installed with yum, verify yum is installed and createrepo has been run." 
+        echo "Warning: the packages $plain_pkgs could not be found in the yum/apt repository, falling back to rpm/dpkg command. If you want your packages to be installed with yum/apt, verify yum/apt is installed and createrepo/dpkg-scanpackages has been run."
+        logger -p local4.info -t xcat "Warning: the packages $plain_pkgs could not be found in the yum/apt repository, falling back to rpm/dpkg command. If you want your packages to be installed with yum/apt, verify yum/apt is installed and createrepo/dpkg-scanpackages has been run." 
         if [ $mounted -eq 0 ]; then
 	    dir_no_ftproot=${OTHERPKGDIR#*$INSTALLDIR/}
             mkdir -p /xcatpost/$dir_no_ftproot 
