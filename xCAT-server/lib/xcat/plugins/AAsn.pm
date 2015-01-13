@@ -429,7 +429,7 @@ sub setupInstallloc
     {
 
         # update fstab
-        my $cmd = "grep $master:$installloc $installdir  /etc/fstab  ";
+        my $cmd = "grep \"$master:$installloc $installdir\"  /etc/fstab  ";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
