@@ -58,3 +58,111 @@ cmd:copycds  -n aix $$ISO
 check:rc!=0
 check:output=~Error
 end
+
+start:copycds_p
+os:Linux
+#cmd:umount /mnt/xcat
+cmd:mkdir -p /install/tmp
+cmd:copycds -p /install/tmp $$ISO
+check:rc==0
+check:output=~Copying media to /install/tmp
+check:output=~Media copy operation successful
+cmd:ls /install/tmp/1/suse
+check:rc==0
+cmd:rm -rf /install/tmp
+check:rc==0
+end
+
+start:copycds_path
+os:Linux
+#cmd:umount /mnt/xcat
+cmd:mkdir -p /install/tmp
+cmd:copycds --path /install/tmp $$ISO
+check:rc==0
+check:output=~Copying media to /install/tmp
+check:output=~Media copy operation successful
+cmd:ls /install/tmp/1/suse
+check:rc==0
+cmd:rm -rf /install/tmp
+check:rc==0
+end
+
+
+start:copycds_i
+os:Linux
+cmd:copycds -i $$ISO
+check:rc==0
+check:output=~OS Image:$$ISO
+check:output=~DISTNAME:__GETNODEATTR($$CN,os)__
+check:output=~ARCH:__GETNODEATTR($$CN,arch)__
+check:rc==0
+end
+
+start:copycds_inspection
+os:Linux
+cmd:copycds --inspection $$ISO
+check:rc==0
+check:output=~OS Image:$$ISO
+check:output=~DISTNAME:__GETNODEATTR($$CN,os)__
+check:output=~ARCH:__GETNODEATTR($$CN,arch)__
+check:rc==0
+end
+
+start:copycds_o
+os:Linux
+cmd:copycds -o $$ISO
+check:rc==0
+check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+check:output=~Media copy operation successful
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo || ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+check:rc==0
+end
+
+start:copycds_noosimage
+os:Linux
+cmd:copycds --noosimage $$ISO
+check:rc==0
+check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+check:output=~Media copy operation successful
+cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/.treeinfo || ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/1/suse
+check:rc==0
+end
+
+start:copycds_w
+os:Linux
+cmd:copycds $$ISO
+check:rc==0
+cmd:copycds -w $$ISO
+check:rc==0
+check:output=~The disc iso has already been copied in!
+end
+
+
+start:copycds_w2
+os:Linux
+cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
+check:rc==0
+cmd:copycds -w $$ISO
+check:rc==0
+check:output=~~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+end
+
+
+start:copycds_nonoverwrite
+os:Linux
+cmd:copycds $$ISO
+check:rc==0
+cmd:copycds --nonoverwrite $$ISO
+check:rc==0
+check:output=~The disc iso has already been copied in!
+end
+
+start:copycds_nonoverwrite2
+os:Linux
+cmd:rm -rf /install/__GETNODEATTR($$CN,os)__
+check:rc==0
+cmd:copycds --nonoverwrite $$ISO
+check:rc==0
+check:output=~~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
+end
+
