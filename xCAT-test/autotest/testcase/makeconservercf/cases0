@@ -1,6 +1,6 @@
 start:makeconservercf_null
 cmd:chdef -t node -o testnodetmp cons=hmc
-cmd:makeconservercf
+cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:cat /etc/conserver.cf
 check:output=~console testnodetmp {
