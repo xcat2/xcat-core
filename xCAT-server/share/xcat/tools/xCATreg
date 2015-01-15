@@ -573,6 +573,7 @@ sub install_xcat {
 	}elsif($mn =~ /ubuntux/){
         system("xdsh $confkeys{$mn} \"/xcat-core/mklocalrepo.sh\" >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} \"/xcat-dep/mklocalrepo.sh\" >/dev/null 2>&1");
+        system("xdsh $confkeys{$mn} \"wget -O - \"http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download\" | apt-key add -\" >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test  > /var/log/xcat/install_xcat.log 2>&1' >/dev/null 2>&1");
