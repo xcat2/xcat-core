@@ -1450,7 +1450,7 @@ sub process_request
         my $n = $_->{net};
         my $if = $_->{mgtifname};
         my $nm = $_->{mask};
-        if ($if =~ /!remote!/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
+        if ($if =~ /!remote!\S+/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
             push @nrn, "$n:$if:$nm";
         }
     }
@@ -1467,20 +1467,27 @@ sub process_request
             {
                 next;
             }
-
+            my $netif = $ent[1];
+            if ($netif =~ /!remote!/) {
+                $netif =~ s/!remote!\s*(.*)$/$1/;
+            }
             # Bridge nics
             if ((-f "/usr/sbin/brctl") || (-f "/sbin/brctl"))
             {
-                system "brctl showmacs $ent[1] 2>&1 1>/dev/null";
+                #system "brctl showmacs $ent[1] 2>&1 1>/dev/null";
+                system "brctl showmacs $netif 2>&1 1>/dev/null";
                 if ($? == 0)
                 {
-                    $activenics{$ent[1]} = 1;
+                    #$activenics{$ent[1]} = 1;
+                    $activenics{$netif} = 1;
                     next;
                 }
             }
-            if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\S*\d+|em\S*\d+)/)
+            #if ($ent[1] =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\S*\d+|em\S*\d+)/)
+            if ($netif =~ m/(remote|ipoib|ib|vlan|bond|eth|myri|man|wlan|en\S*\d+|em\S*\d+)/)
             {    #Mask out many types of interfaces, like xCAT 1.x
-                $activenics{$ent[1]} = 1;
+                #$activenics{$ent[1]} = 1;
+                $activenics{$netif} = 1;
             }
         }
     }
@@ -1700,7 +1707,18 @@ sub process_request
         {
             next;
         }
-        if ($activenics{$line[1]} and $line[3] !~ /G/)
+        my $netif = $line[1];
+        if ($netif =~ /!remote!/) {
+            $netif =~ s/!remote!\s*(.*)$/$1/;
+            if (!defined($activenics{"!remote!"})) {
+                next;
+            } elsif (!defined($activenics{$netif})) {
+                addnic($netif,\@dhcpconf);
+                $activenics{$netif} = 1; 
+            }
+        }
+        #if ($activenics{$line[1]} and $line[3] !~ /G/)
+        if ($activenics{$netif} and $line[3] !~ /G/)
         {
             addnet($line[0], $line[2]);
         }
@@ -2123,6 +2141,9 @@ sub addnet
             if ($ent[0] eq $net and $ent[2] eq $mask)
             {
                 $nic = $ent[1];
+                if ($nic =~ /!remote!/) {
+                    $nic =~ s/!remote!\s*(.*)$/$1/;
+                }
                 # The first nic that matches the network,
                 # what will happen if there are more than one nics in the same subnet,
                 # and we want to use the second nic as the dhcp interfaces?
@@ -2537,8 +2558,8 @@ sub addnic
         #$restartdhcp=1;
         #print "Adding NIC $nic\n";
         if ($nic =~ /!remote!/) {
-            push @$conf, "#shared-network $nic {\n";
-            push @$conf, "#\} # $nic nic_end\n";
+            #push @$conf, "#shared-network $nic {\n";
+            #push @$conf, "#\} # $nic nic_end\n";
         } else {
             push @$conf, "shared-network $nic {\n";
             push @$conf, "\} # $nic nic_end\n";
