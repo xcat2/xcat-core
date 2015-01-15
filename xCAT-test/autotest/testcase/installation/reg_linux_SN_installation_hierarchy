@@ -61,7 +61,7 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then rnetboot $$SN;elif [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rpower $$SN boot; fi
 check:rc==0
 
-cmd:sleep 600
+cmd:sleep 1800
 cmd:a=0;while ! `lsdef -l $$SN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 400 ];then break;fi done
 
 cmd:ping $$SN -c 3
