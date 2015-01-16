@@ -31,10 +31,10 @@ end
 
 start:tabprune_p_auditlog
 description:to remove 50% of the auditlog table,if the original number is odd number,the final result is 1;or else the final number is 0;
-cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $((n1-($n2-2)*2))
+#cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $((n1-($n2-2)*2))
+cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $($n2<n1)
 check:rc=0
 check:output=~tabprune of auditlog complete
-check:output=~(0|1)
 end
 
 start:tabprune_i_auditlog
