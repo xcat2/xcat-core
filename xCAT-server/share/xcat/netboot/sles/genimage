@@ -246,7 +246,7 @@ unless ($onlyinitrd) {
    close($fd);
    
    my $non_interactive;
-   if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks"; }
+   if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks --gpg-auto-import-keys"; }
 
    if($osver_host == 11) {#zypper in SLES11 is different
 
@@ -1676,11 +1676,15 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     #modify /etc/sysconfig/clock in the image:HWCLOCK="--local", TIMEZONE=site:timezone
     if ($timezone) {
-        system("sed  -i '".'s!\(TIMEZONE=\).*!\1'."\"$timezone\"!"."' $rootimg_dir/etc/sysconfig/clock");
+        if (-e $rootimg_dir/etc/sysconfig/clock) {
+           system("sed  -i '".'s!\(TIMEZONE=\).*!\1'."\"$timezone\"!"."' $rootimg_dir/etc/sysconfig/clock");
+        }
         system("chroot $rootimg_dir zic -l $timezone");
     }
 
-    system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
+    if (-e $rootimg_dir/etc/sysconfig/clock) {
+        system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
+    }
 
     unlink("$rootimg_dir/dev/null");
     system("mknod $rootimg_dir/dev/null c 1 3");
