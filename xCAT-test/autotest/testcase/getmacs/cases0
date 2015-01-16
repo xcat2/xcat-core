@@ -31,4 +31,5 @@ check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0
 cmd:tabrestore /tmp/mac.csv
 cmd:rm /tmp/mac.csv
 cmd:rpower $$CN on
+cmd:sleep 300
 end
