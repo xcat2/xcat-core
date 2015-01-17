@@ -580,6 +580,9 @@ sub mknetboot
         # add flow control setting
         $kcmdline .= "FC=$useflowcontrol ";
 
+        # add dhcp for ip
+        $kcmdline .= "ip=dhcp ";
+
         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
         my $netdev = "";
         my $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{mac},$node);
