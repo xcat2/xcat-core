@@ -21,6 +21,9 @@ use imgutils;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
+my $dracutmode; #Indicate whether this is a dracut style initrd
+my $dracutdir = "dracut";  # The default directory name of dracut
+my $dracutver;
 my $prinic; #TODO be flexible on node primary nic
 my $othernics; #TODO be flexible on node primary nic
 my $netdriver;
@@ -248,7 +251,7 @@ unless ($onlyinitrd) {
    my $non_interactive;
    if (!$prompt) { $non_interactive="--non-interactive --no-gpg-checks --gpg-auto-import-keys"; }
 
-   if($osver_host == 11) {#zypper in SLES11 is different
+   if($osver_host >= 11) {#zypper in SLES11 is different
 
        system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver-*.repo");
        my @pkgdirs = split(",", $srcdir); 
@@ -286,7 +289,7 @@ unless ($onlyinitrd) {
           print "Cannot find the directory for the kernel at $kerneldir.\n";
           exit 1;
       }
-      if ($osver_host == 11) {
+      if ($osver_host >= 11) {
          if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
             system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
          }
@@ -297,7 +300,7 @@ unless ($onlyinitrd) {
    }
 
    #remove the old repository for extra packages
-   if ($osver_host == 11) {
+   if ($osver_host >= 11) {
        my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
        if ($result =~ /\S/) {
            system("zypper -R $rootimg_dir $non_interactive rr $result");
@@ -311,7 +314,7 @@ unless ($onlyinitrd) {
 
    #add the new repository for extra packages
    my %extrapkgnames; 
-   if($osver_host == 11) {	#SLES11
+   if($osver_host >= 11) {	#SLES11
        if(-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
 	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
        }
@@ -329,13 +332,13 @@ unless ($onlyinitrd) {
        if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
-	   if($osver_host == 11) { 
+	   if($osver_host >= 11) { 
 	       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
 	       system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
 	   }
        } else {
-	   if($osver_host == 11) { 
+	   if($osver_host >= 11) { 
 	       system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
 	       system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
@@ -364,7 +367,7 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
-       if($osver_host == 11) {
+       if($osver_host >= 11) {
          system("zypper -R $rootimg_dir $non_interactive ar $repourl $repoalias");
        }else {
          system("zypper -R $rootimg_dir $non_interactive sa $repourl $repoalias");
@@ -379,10 +382,10 @@ unless ($onlyinitrd) {
    #$yumcmd .= "install ";
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
-   if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l --no-recommends "; #add -l for SLES11
-   }else {
+   if( $osver_host < 11) {
        $yumcmd = "zypper -R $rootimg_dir $non_interactive install ";
+   }else {
+       $yumcmd = "zypper -R $rootimg_dir $non_interactive install -l --no-recommends "; #add -l for SLES11
    }
 
    #install packages from pkglist file
@@ -490,7 +493,7 @@ unless ($onlyinitrd) {
 
        my $index=1;
        #remove the old repository for extra packages
-       if ($osver_host == 11) {
+       if ($osver_host >= 11) {
            my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
            if ($result =~ /\S/) {
                system("zypper -R $rootimg_dir $non_interactive rr $result");
@@ -505,13 +508,13 @@ unless ($onlyinitrd) {
        foreach (keys(%{$extra_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;}
            if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
-              if($osver_host == 11) {
+              if($osver_host >= 11) {
                   system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
                } else {
                     system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir_otherpkgs/$_");
                }
            } else {
-               if($osver_host == 11) {
+               if($osver_host >= 11) {
                    system("zypper -R $rootimg_dir $non_interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
                }else {
                    system("zypper -R $rootimg_dir $non_interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
@@ -565,7 +568,7 @@ unless ($onlyinitrd) {
          # run zypper update to update any installed rpms
          # needed when running genimage again after updating software in repositories
          my $yumcmd_update;
-         if ($osver_host == 11) {
+         if ($osver_host >= 11) {
            $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update ";
          } else {
            $yumcmd_update = "zypper -R $rootimg_dir $non_interactive update  ";
@@ -575,7 +578,7 @@ unless ($onlyinitrd) {
    }
 
    #remove the old repository for extra packages
-   if ($osver_host == 11) {
+   if ($osver_host >= 11) {
        my $result=`zypper -R $rootimg_dir $non_interactive lr |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
        if ($result =~ /\S/) {
            system("zypper -R $rootimg_dir $non_interactive rr $result");
@@ -592,6 +595,22 @@ unless ($onlyinitrd) {
    postscripts(); #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";
+
+# added dracut mode
+if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") ) {
+    $dracutmode = 1;
+   # get dracut version
+    $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'     `;
+    chomp($dracutver);
+    if ($dracutver =~ /^\d\d\d$/) {
+        if ($dracutver >= "033") {
+            $dracutdir = "dracut_033";
+        } else {
+            $dracutdir = "dracut";  # The default directory
+        }
+    }
+    print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
+}
 
 # default to the first kernel found in the install image if nothing specified explicitly.
 # A more accurate guess than whatever the image build server happens to be running 
@@ -784,6 +803,20 @@ unless( -r "$pathtofiles/../add-on/statelite/rc.statelite") {
 system("cp $pathtofiles/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 system("cp $pathtofiles/../add-on/statelite/rc.localdisk $rootimg_dir/etc/init.d/localdisk");
 
+# added dracutmode
+unless ($dracutmode) { #in dracut mode, we delegate all this activity
+    unless (-l "$rootimg_dir/var/lib/dhclient" ) {
+        mkpath "$rootimg_dir/var/lib/dhclient/";
+        system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
+    }
+
+    unless (-l "$rootimg_dir/var/lib/dhcp" ) {
+        mkpath "$rootimg_dir/var/lib/dhcp/";
+        system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
+    }
+ }
+
+
 # the dhcp client information stores in the directory "/var/lib/dhcpcd/"
 unless(-l "$rootimg_dir/var/lib/dhcpcd") {
     mkpath "$rootimg_dir/var/lib/dhcpcd/";
@@ -863,13 +896,17 @@ foreach my $dn (@ndrivers) {
 # before mkinitrd, run depmod to generate the modules.dep
 system("chroot $rootimg_dir depmod $kernelver");
 
-my @drivers; # backup  of @ndrivers
-push @drivers, @ndrivers;
-mkinitrd("statelite");
-@ndrivers=();
-push @ndrivers, @drivers;
-mkinitrd("stateless");
-
+if ($dracutmode) {
+    mkinitrd_dracut("statelite");
+    mkinitrd_dracut("stateless");
+} else {
+    my @drivers; # backup  of @ndrivers
+    push @drivers, @ndrivers;
+    mkinitrd("statelite");
+    @ndrivers=();
+    push @ndrivers, @drivers;
+    mkinitrd("stateless");
+}
 
 sub getlibs {
     my $file = shift;
@@ -895,6 +932,130 @@ sub getlibs {
         $libhash{$temp1}=1;
     }
 }
+
+#added dracut
+sub mkinitrd_dracut {
+    my ($mode) = @_; # the mode is for statelite or stateless
+
+    my $dracutmoduledir="$rootimg_dir/usr/share/dracut/modules.d/";
+    if ( (! -d $dracutmoduledir) and (-d "$rootimg_dir/usr/lib/dracut/modules.d/"))
+    {
+       $dracutmoduledir="$rootimg_dir/usr/lib/dracut/modules.d/";
+    }
+
+    my $dracutmpath = $dracutmoduledir."97xcat/";
+    mkpath($dracutmpath);
+
+    my $perm = (stat("$fullpath/$dracutdir/check"))[2];
+    cp("$fullpath/$dracutdir/check", $dracutmpath);
+    chmod($perm&07777, "$dracutmpath/check");
+
+    foreach (@ndrivers) { s/\.ko$//; }
+    # Add drivers to support local disk
+    push @ndrivers, "ext3";
+    push @ndrivers, "ext4";
+    #remove the duplicated drivers
+    my @fulldrivers;
+    foreach my $dn (@ndrivers) {
+        unless (grep {$_ eq $dn} @fulldrivers) {
+            push @fulldrivers, $dn;
+        }
+    }
+    @ndrivers = @fulldrivers;
+
+    my $add_drivers = join(' ', @ndrivers);
+    print "Try to load drivers: $add_drivers to initrd.\n";
+    my $DRACUTCONF;
+
+     if ($mode eq "statelite") {
+        # for statelite
+        cp("$fullpath/$dracutdir/install.statelite","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+
+        cp("$fullpath/$dracutdir/xcat-prepivot.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-prepivot.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
+
+        cp("$fullpath/$dracutdir/xcat-premount.sh",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-premount.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-premount.sh");
+
+        #update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        print $DRACUTCONF qq{filesystems+="nfs"\n};
+        close $DRACUTCONF;
+    } elsif ($mode eq "stateless") {
+        cp("$fullpath/$dracutdir/install.netboot","$dracutmpath/install");
+        $perm = (stat("$fullpath/$dracutdir/install.netboot"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/$dracutdir/xcat-cmdline.sh","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcat-cmdline.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
+
+        cp("$fullpath/$dracutdir/xcat-updateflag",$dracutmpath);
+        $perm = (stat("$fullpath/$dracutdir/xcat-updateflag"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-updateflag");
+        if ($prinic) {
+            my $optspec;
+            open($optspec,'>>',"$dracutmpath/xcat-cmdline.sh");
+            print $optspec "PRINIC=$prinic\n";
+            close $optspec;
+        }
+
+        cp("$fullpath/$dracutdir/xcatroot","$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/xcatroot"))[2];
+        chmod($perm&07777, "$dracutmpath/xcatroot");
+
+        cp("$fullpath/$dracutdir/installkernel", "$dracutmpath/");
+        $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
+        chmod($perm&07777, "$dracutmpath/installkernel");
+
+        # update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+        }
+        else{
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+        }
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        close $DRACUTCONF;
+    } else {
+        xdie "the mode: $mode is not supported by genimage";
+    }
+
+    my $additional_options=undef;
+    if($rootlimit)
+    {
+        open(my $ETC_CMDLINE,">","$rootimg_dir/tmp/cmdline");
+        print $ETC_CMDLINE qq{rootlimit=$rootlimit\n};
+        close $ETC_CMDLINE;
+        $additional_options= qq{--include /tmp/cmdline /etc/cmdline};
+    }
+    
+    # force the dracut run in non-hostonly mode for dracut higher than version 033
+    if ($dracutver > "033") {
+        $additional_options .= " -N";
+    }
+
+    system("chroot $rootimg_dir dracut $additional_options -f /tmp/initrd.$$.gz $kernelver");
+    print "the initial ramdisk for $mode is generated successfully.\n";
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
+}
+
 
 sub mkinitrd {
     my ($mode) = @_; # statelite or stateless
@@ -1518,7 +1679,7 @@ EOMS
             getlibs($_); 
             push @filestoadd,$_;
         } 
-        if($osver_host == 11) {
+        if($osver_host >= 11) {
             foreach ("sbin/mount.nfs", "sbin/umount.nfs", "sbin/udevadm") {
                 getlibs($_);
                 push @filestoadd,$_;
@@ -1530,7 +1691,7 @@ EOMS
             getlibs($_); 
             push @filestoadd,$_;
         }
-        if($osver_host == 11) {
+        if($osver_host >= 11) {
             getlibs("sbin/udevadm");
             push @filestoadd,"sbin/udevadm";
         }
@@ -1589,7 +1750,7 @@ EOMS
    rmtree($pathonrootimage);
 
    #copy conf files needed by nfs mount in sles11.2
-   if($osver_host == 11)
+   if($osver_host >= 11)
    {
       system("cp -r $rootimg_dir/etc/protocols /tmp/xcatinitrd.$$/etc/");
       system("cp -r $rootimg_dir/etc/netconfig /tmp/xcatinitrd.$$/etc/");
@@ -1676,13 +1837,13 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     #modify /etc/sysconfig/clock in the image:HWCLOCK="--local", TIMEZONE=site:timezone
     if ($timezone) {
-        if (-e $rootimg_dir/etc/sysconfig/clock) {
+        if (-e "$rootimg_dir/etc/sysconfig/clock") {
            system("sed  -i '".'s!\(TIMEZONE=\).*!\1'."\"$timezone\"!"."' $rootimg_dir/etc/sysconfig/clock");
         }
         system("chroot $rootimg_dir zic -l $timezone");
     }
 
-    if (-e $rootimg_dir/etc/sysconfig/clock) {
+    if (-e "$rootimg_dir/etc/sysconfig/clock") {
         system("sed  -i 's!\\(HWCLOCK=\\).*!\\1\"--localtime\"!' $rootimg_dir/etc/sysconfig/clock");
     }
 
