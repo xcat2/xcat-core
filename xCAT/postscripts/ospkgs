@@ -695,7 +695,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 	# but keeping this here doesn't really hurt. Anything that looks like a group will
 	# be installed as though it were a package.)
 	if [ -n "$groups" ]; then
-		command="$ENVLIST apt-get -q -y --force-yes install $groups"
+		command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $groups"
 		echo "=== $command"
 		eval $command
                 R=$?
@@ -706,7 +706,7 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
 
 	# install packages
 	if [ -n "$pkgs" ]; then
-		command="$ENVLIST apt-get -q -y --force-yes install $pkgs"
+		command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $pkgs"
 		echo "=== $command"
 		eval $command
                 R=$?
