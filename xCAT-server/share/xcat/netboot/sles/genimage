@@ -857,6 +857,12 @@ if (@new_order) {
 # add drivers for local disk support
 push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "scsi_dh.ko", "ahci.ko", "ibmvscsi.ko", "ibmvscsic.ko", "megaraid_sas.ko", "pcieport.ko", "sd_mod.ko");
 
+if (-f "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko") {
+     for (@ndrivers) {
+         s/mlx_en/mlx4_en/;
+     }
+}
+
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
 my @checkdeps = @ndrivers;
