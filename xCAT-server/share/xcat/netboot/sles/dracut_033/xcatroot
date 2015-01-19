@@ -272,6 +272,8 @@ if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; the
 	echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
 
+echo `hostname` > $NEWROOT/etc/hostname
+
 # inject new exit_if_exists
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
 # force udevsettle to break
