@@ -205,13 +205,15 @@ fi
 # We only update the /etc/rsyslog.d/remote.conf file to point to the xcatmaster.
 # Do not even touch rsyslog.conf
 # There is no /etc/sysconfig/rsyslog file, so we use  rsyslogd -v to get the version
-SYSLOGPROD=`rsyslogd -v | grep rsyslogd |awk {'print $1'}`
-SYSLOGVER=`rsyslogd -v | grep rsyslogd |awk {'print $2'}`
-if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
-  config_rsyslog_V8 
-#keep a record
-  logger -t xCAT -p local4.info "Install: rsyslog version 8 setup"
-  exit 0
+if [ -e "/sbin/rsyslogd" -o -e "/usr/sbin/rsyslogd" ]; then
+    SYSLOGPROD=`rsyslogd -v | grep rsyslogd |awk {'print $1'}`
+    SYSLOGVER=`rsyslogd -v | grep rsyslogd |awk {'print $2'}`
+    if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
+      config_rsyslog_V8 
+      #keep a record
+      logger -t xCAT -p local4.info "Install: rsyslog version 8 setup"
+      exit 0
+    fi
 fi
 
 if [ "$(uname -s)" = "Linux" ]; then
