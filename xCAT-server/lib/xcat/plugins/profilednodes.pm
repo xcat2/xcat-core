@@ -42,6 +42,7 @@ my %allracks;
 my %allchassis;
 my %allswitches;
 my %all_switchports;
+my %allvmhosts;
 
 my @switch_records;
 
@@ -430,6 +431,10 @@ Usage:
     # Get all LPAR ids
     $recordsref = xCAT::ProfiledNodeUtils->get_all_lparids(\%allcecs);
     %alllparids = %$recordsref;
+    
+    # Get all vm hosts/hypervisiors
+    $recordsref =  xCAT::ProfiledNodeUtils->get_all_vmhosts();
+    %allvmhosts = %$recordsref;
 
     #TODO: can not use getallnode to get rack infos.
     $recordsref = xCAT::ProfiledNodeUtils->get_all_rack(1);
@@ -2103,6 +2108,12 @@ sub gen_new_hostinfo_dict{
             $hostinfo_dict{$item}{"mgt"} = "fsp";
         }
         
+        # Generate VM host nodes' attribute
+        # Update netboot attribute if this is powerKVM node
+        if (exists $hostinfo_dict{$item}{"vmhost"}){
+            $hostinfo_dict{$item}{"netboot"} = 'grub2';
+        }
+        
         # get the chain attribute from hardwareprofile and insert it to node.
         my $chaintab = xCAT::Table->new('chain');
         my $hardwareprofile = $args_dict{'hardwareprofile'};
@@ -2538,6 +2549,12 @@ sub validate_node_entry{
                     }
                 }
             } 
+        }elsif ($_ eq "vmhost") {
+            # Support PowerKVM vms
+            my $vm_host= $node_entry{"vmhost"};
+            if (! exists $allvmhosts{$node_entry{$_}}){
+                $errmsg .= "The VM host name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
+            }
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";
         }

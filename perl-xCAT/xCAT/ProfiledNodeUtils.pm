@@ -895,18 +895,21 @@ sub check_profile_consistent{
         return 0, "Provisioning network not defined for network profile."
     }
 
+    # Remove check mechanism about arch and netboot attribute
+    # Attribute 'neboot' will be generated based on arch, management method, os
+    
     # Profile consistent keys, arch=>netboot,  mgt=>nictype
-    my $ppc_netboot = 'yaboot';
-    if( $os =~ /rhels7/ ){
-        $ppc_netboot = 'grub2';
-    }
-    my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => $ppc_netboot,
-                        'ppc64el' => $ppc_netboot,
-                        'fsp' => 'FSP', 'ipmi' => 'BMC');
+    #my $ppc_netboot = 'yaboot';
+    #if( $os =~ /rhels7/ ){
+    #    $ppc_netboot = 'grub2';
+    #}
+    #my %profile_dict = ('x86' => 'xnba','x86_64' => 'xnba', 'ppc64' => $ppc_netboot,
+    #                    'ppc64el' => $ppc_netboot,
+    #                    'fsp' => 'FSP', 'ipmi' => 'BMC');
     # Check if imageprofile is consistent with networkprofile
-    if ($profile_dict{$arch} ne $netboot) {
-        return 0, "Imageprofile's arch is not consistent with networkprofile's netboot."
-    }
+    #if ($profile_dict{$arch} ne $netboot) {
+    #    return 0, "Imageprofile's arch is not consistent with networkprofile's netboot."
+    #}
     
     # Check if networkprofile is consistent with hardwareprofile
     if (not $hardwareprofile) { # Not define hardwareprofile
@@ -916,27 +919,27 @@ sub check_profile_consistent{
             return 0, "$nictype networkprofile must use with hardwareprofile.";
         }
     }
-
-    if ($mgt eq 'vm') 
-    {
-        return 1, "";
-    }  
+    
+    my %mgt_dict = ('fsp' => 'FSP', 'ipmi' => 'BMC', 'kvm' => '');
        
-    # For nodetype is lpar node, not need to check the nictype as it is not required for lpar node
-    if (not $nictype and $mgt and $nodetype ne 'lpar' ) { 
-        # define hardwareprofile, not define fsp or bmc networkprofile, and the node type is not lpar
-        return 0, "$profile_dict{$mgt} hardwareprofile must use with $profile_dict{$mgt} networkprofile.";
+    if ($mgt eq 'vm') {
+        return 1, "";
     }
     
-    if ($profile_dict{$mgt} ne $nictype and $nodetype ne 'lpar') {
-        # Networkprofile's nictype is not consistent with hadrwareprofile's mgt, and the node type is not lpar
-        return 0, "Networkprofile's nictype is not consistent with hardwareprofile's mgt.";
+    if ($nodetype eq 'lpar') {
+        if ($nictype) {
+            # Can not associate FSP/BMC network if the node type is lpar
+            return 0, "The node with hardware type $nodetype can not use with $nictype networkprofile.";
+        }
+        return 1, ""
     }
-
-    if ($nodetype eq 'lpar' and $nictype eq 'FSP') 
-    {
-        # can not associate FSP network if the node type is lpar
-        return 0, "The node with hardware type $nodetype can not use with $nictype networkprofile.";
+    
+    if ($mgt and $mgt_dict{$mgt} ne $nictype) {
+        my $errmsg = "$mgt hardwareprofile must use with $mgt_dict{$mgt} networkprofile.";
+        if ( $mgt eq 'kvm' ) {
+            $errmsg = "$mgt hardwareprofile must use with non-BMC and non-FSP networkprofile."
+        }
+        return 0, $errmsg;
     }
         
     return 1, "";
@@ -1266,4 +1269,33 @@ sub gen_chain_for_profiles{
         }
     }
     return (0, $final_chain);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_all_vmhosts
+      Description : Get all vm hosts/hypervisor from DB. 
+      Arguments   : N/A
+      Returns     : ref for vm hosts/hypervisor hash.
+      Example     : 
+                    my $hashref = xCAT::ProfiledNodeUtils->get_all_vmhosts();
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_all_vmhosts
+{
+    my %vmhostshash;
+
+    my $nodelisttab = xCAT::Table->new('nodelist');
+    # groups like '__Hypervisor_pkvm' means this node is Power KVM hypervisor
+    my @vmhosts = $nodelisttab->getAllAttribsWhere("groups like '%__Hypervisor_kvm%'", 'node');
+    foreach (@vmhosts) {
+        if($_->{'node'}) {
+            $vmhostshash{$_->{'node'}} = 1;
+        }
+    }
+    $nodelisttab->close();
+
+    # Return the ref accordingly 
+    return \%vmhostshash;
 }
