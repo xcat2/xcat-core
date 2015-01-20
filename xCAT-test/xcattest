@@ -192,7 +192,7 @@ sub getConfig
             }
         }elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-            if($line =~ /(\w+)\s*=\s*([\w\.\-]+)/) {
+               if($line =~ /(\w+)\s*=\s*([:\w\.\-]+)/) {
                $attr = $1;
                $value = $2;
                if($attr eq "Name"){
