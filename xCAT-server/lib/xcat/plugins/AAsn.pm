@@ -544,9 +544,13 @@ sub setup_DHCP
     if (xCAT::Utils->isMN()) { # on the MN
         #my @output = xCAT::Utils->runcmd("service dhcpd status", -1);
         #if ($::RUNCMD_RC != 0)  { # not running
-        my $retcode= xCAT::Utils->checkservicestatus("dhcpd");
+        my $dhcpservice = "dhcpd"; 
+        if (-e "/etc/init.d/isc-dhcp-server") { #Ubuntu
+            $dhcpservice = "isc-dhcp-server";
+        }
+        my $retcode= xCAT::Utils->checkservicestatus($dhcpservice);
         if($retcode!=0){
-          $rc = xCAT::Utils->startservice("dhcpd");
+          $rc = xCAT::Utils->startservice($dhcpservice);
           if ($rc != 0)
           {
             return 1;
