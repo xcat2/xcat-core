@@ -628,10 +628,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    fn=`basename $x`
 	    path=`dirname $x`
 	    whole_path=$OTHERPKGDIR
-
-            if [[ ! $OSVER =~ ^ubuntu|^debian ]]; then
-                echo "rhel package path"
+            if [[ ! $OSVER =~ ^debian ]]; then
+            #    echo "rhel package path"
 	        whole_path=$OTHERPKGDIR/$path
+                whole_path=${whole_path%.}
             fi
 	
             #find out if this path has already handled
@@ -689,7 +689,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                fi
                         echo "deb $type://$whole_path ./"  > $REPOFILE
                     fi
-                    if [ -n "$OTHERPKGDIR_INTERNET" ];then
+                    if [ -n "$OTHERPKGDIR_INTERNET" ] && [ $index -eq 0 ] ;then
                         OLDIFS=$IFS
                         IFS=$','
                         urlarray=($OTHERPKGDIR_INTERNET)
