@@ -185,6 +185,13 @@ sub isServiceReq
       if (!exists($servicehash->{'tftpserver'})) { 
            $servicehash->{'tftpserver'} = 1;
       }
+      # On Ubuntu management node, we disabled the isc-dhcp-server in upstart,
+      # through file /etc/init/isc-dhcp-server.override, see bug 4399
+      # however, this causes a new problem, bug 4515
+      # the fix is to start dhcp server when starting xcatd
+      if (!exists($servicehash->{'dhcpserver'}) && xCAT::Utils->osver() =~ /ubuntu.*/i) {
+          $servicehash->{'dhcpserver'} = 1;
+      }
     }
     $servicenodetab->close;
 
