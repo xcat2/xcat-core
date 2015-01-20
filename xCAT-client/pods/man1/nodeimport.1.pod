@@ -134,6 +134,16 @@ To import nodes using a profile, follow the following steps:
      cec=mycec
      lparid=2
   # Node information file ends.
+  
+  Example of a node information file that specifies a PowerKVM Guest node that uses KVM management:
+  
+  # Node information file begins
+  # This entry defines a PowerKVM Guest node.
+  # Make sure the node 'vm01' is already created on Hypervisor
+  vm01:
+     mac=b8:ef:3f:28:31:15
+     vmhost=pkvm1
+  # Node information file ends.
 
 The node information file includes the following items:
 
@@ -184,6 +194,10 @@ Description: node location info, for rack server only. Specify the server height
 B<unit=<rack-server-unit-location>> This is an optional item.
 
 Description: node location info, for rack server only. Specify the node's start unit number in rack, in U. this item must be specified together with rack and height.
+
+B<vmhost=<PowerKVM Hypervisior Host Name>>  This is a mandatory option for defining PowerKVM Guest nodes.
+
+Description: Specifies the vmhost of a Power KVM Guest node, where <vmhost> is the host name of PowerKVM Hypervisior. 
 
 3. Import the nodes, by using the following commands. Note: If we want to import PureFlex X/P nodes, hardware profile must be set to a PureFlex hardware type.
   nodeimport file=/root/hostinfo.txt networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute-#NNN
