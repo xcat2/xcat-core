@@ -273,9 +273,13 @@ unless ($onlyinitrd) {
        #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
        #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        #}
-       my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
-       if ( -e "$srcdir_sdk") {
-           system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk");
+       my $index=1;
+       while (1) {
+           my $srcdir_sdk = "$installroot/$osver/$arch/sdk$index";
+           if ( -e "$srcdir_sdk") {
+               system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk$index");
+              $index++;
+           } else { last; }
        }
 
    }else {
