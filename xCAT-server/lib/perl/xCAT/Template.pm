@@ -136,7 +136,7 @@ sub subvars {
         # append preseed directive lines
         while (<PKGLISTFILE>) {
           chomp $_;
-          if (/^\s*#.*/ ){
+          if ((/^\s*#.*/ ) || ( $_ =~ /^-/ )){
             next;
           }
           $pkglist .= " " . $_;

@@ -55,10 +55,13 @@ then
         sed -i '/MaxStartups /'d /etc/ssh/sshd_config
         echo "MaxStartups 1024" >>/etc/ssh/sshd_config
  
-    if [ "$SETUPFORPCM" = "1" ];then
-         sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
-         echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
-
+    if [ "$SETUPFORPCM" = "1" ]; then
+        if [[ $OSVER == sles* ]];then
+            sed -i '/PasswordAuthentication /'d /etc/ssh/sshd_config
+            echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
+        elif [[ $OSVER == ubuntu* ]];then
+            sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+        fi
     fi
 fi
 
