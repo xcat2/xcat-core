@@ -309,11 +309,11 @@ fi
  
 
 
-if [ "$SDKDIR" != "" ]; then 
-    if [ $mounted -eq 0 ]; then
-        SDKDIR="$NFSSERVER/$SDKDIR"
-    fi
-fi
+#if [ "$SDKDIR" != "" ]; then 
+#    if [ $mounted -eq 0 ]; then
+#        SDKDIR="$NFSSERVER/$SDKDIR"
+#    fi
+#fi
     
 #if [ $mounted -eq 0 ]; then
 #    OSPKGDIR_NO_PREFIX=${OSPKGDIR#$INSTALLDIR}
@@ -554,22 +554,30 @@ elif ( pmatch "$OSVER" "sles*" ); then
         done
     fi
 
+    #adds SDK repository. The SDKDIR is a comma separated list of
+    #directory names. For example:
+    #SDKDIR='/install/sles12/x86_64/sdk1,/install/sles12/x86_64/sdk2'
     if [ "$SDKDIR" != "" ]; then
-        if [ $mounted -eq 0 ]; then
-	    SDKDIR="http://$SDKDIR"
-        else
-            SDKDIR="file://$SDKDIR"
-        fi
-        result=`zypper ar $SDKDIR xCAT-$OSVER-sdk 2>&1`
-        if [ $? -ne 0 ]; then 
-	    if ( ! pmatch "$result" "*exists*" ); then 
-		logger -t xcat -p local4.info "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk\n    $result"
-		echo "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk"
-		echo "    $result"
-	    fi
-	fi
+        OIFS=$IFS
+        IFS=$','
+        for sdk_src in $SDKDIR; do
+            bname=`basename $sdk_src`
+            if [ $mounted -eq 0 ]; then
+                sdk_src="http://$NFSSERVER/$sdk_src"
+            else
+                sdk_src="file://$sdk_src"
+            fi
+            result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
+            if [ $? -ne 0 ]; then
+                if ( ! pmatch "$result" "*exists*" ); then
+                    logger -t xcat -p local4.info "ospkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    echo "ospkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
+                    echo "    $result"
+                fi
+            fi
+        done
     fi
-    
+
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
     if [ $debug -ne 0 ]; then
 	echo "zypper --non-interactive refresh"

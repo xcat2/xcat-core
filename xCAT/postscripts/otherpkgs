@@ -364,11 +364,11 @@ fi
 #fi
 
 
-if [ "$SDKDIR" != "" ]; then 
-    if [ $mounted -eq 0 ]; then
-        SDKDIR="$NFSSERVER/$SDKDIR"
-    fi
-fi
+#if [ "$SDKDIR" != "" ]; then 
+#    if [ $mounted -eq 0 ]; then
+#        SDKDIR="$NFSSERVER/$SDKDIR"
+#    fi
+#fi
 
 ##end collecting the repositories for os 
 #########################
@@ -428,7 +428,7 @@ fi
 
 ###########
 ##start generating the os pkg repositories
-if ( [[ "$OSVER" > "sles11" ]] || [[ "$OSVER" == "sles11" ]] ) && [ $haszypper -eq 1 ] ; then
+if ( ! ( pmatch "$OSVER" "sles10*" ) && [ $haszypper -eq 1 ] ); then
     old_repo=`zypper lr |grep -e "^[0-9]" | cut -f2 -d '|'`
     for x in $old_repo
     do
@@ -481,24 +481,33 @@ if ( [[ "$OSVER" > "sles11" ]] || [[ "$OSVER" == "sles11" ]] ) && [ $haszypper -
         done
     fi
 
+    #adds SDK repository. The SDKDIR is a comma separated list of
+    #directory names. For example:
+    #SDKDIR='/install/sles12/x86_64/sdk1,/install/sles12/x86_64/sdk2'
     if [ "$SDKDIR" != "" ]; then
-        if [ $mounted -eq 0 ]; then
-	    SDKDIR="http://$SDKDIR"
-        else
-            SDKDIR="file://$SDKDIR"
-        fi
-        result=`zypper ar $SDKDIR xCAT-$OSVER-sdk 2>&1`
-        if [ $? -ne 0 ]; then 
-	    if ( ! pmatch "$result" "*exists*" ); then 
-		logger -t xcat -p local4.info "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk\n    $result"
-                if [ $VERBOSE ]; then
-	   	  echo "ospkgs: zypper ar $SDKDIR xCAT-$OSVER-sdk"
-		  echo "    $result"
-	        fi
-	    fi
-	fi
+        OIFS=$IFS
+        IFS=$','
+        for sdk_src in $SDKDIR; do
+            bname=`basename $sdk_src`
+            if [ $mounted -eq 0 ]; then
+                sdk_src="http://$NFSSERVER/$sdk_src"
+            else
+                sdk_src="file://$sdk_src"
+            fi
+            result=`zypper ar $sdk_src xCAT-$OSVER-$bname 2>&1`
+            if [ $? -ne 0 ]; then
+                if ( ! pmatch "$result" "*exists*" ); then
+                    logger -t xcat -p local4.info "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname\n    $result"
+                    if [ $VERBOSE ]; then
+                        echo "otherpkgs: zypper ar $sdk_src xCAT-$OSVER-bname"
+                        echo "    $result"
+                    fi
+                fi
+            fi
+        done
+        IFS=$OIFS
     fi
-    
+
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
 
 elif ( ((pmatch "$OSVER" "rhel*") || (pmatch "$OSVER" "centos*") || (pmatch "$OSVER" "SL*")) && [ $hasyum -eq 1 ] ); then 
@@ -712,14 +721,14 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 		    fi
 	        elif [ $haszypper -eq 1 ]; then
                     #use zypper
-		    if ( [[ "$OSVER" > "sles11" ]] || [[ "$OSVER" == "sles11" ]] ); then
-		        result=`zypper ar -c $REPOFILE`
-		    else
+                    if ( pmatch "$OSVER" "sles10*" ); then
                         result=`zypper sa -r $REPOFILE << EOF
 y
 EOF`
-		    fi	
-		
+                    else
+                        result=`zypper ar -c $REPOFILE`
+                    fi
+
 		    result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
 		    if [ $? -eq 0 ]; then  
 		        rc=0
