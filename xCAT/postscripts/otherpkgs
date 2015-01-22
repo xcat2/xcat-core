@@ -628,10 +628,10 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	    fn=`basename $x`
 	    path=`dirname $x`
 	    whole_path=$OTHERPKGDIR
-
-            if [[ ! $OSVER =~ ^ubuntu|^debian ]]; then
-                echo "rhel package path"
+            if [[ ! $OSVER =~ ^debian ]]; then
+            #    echo "rhel package path"
 	        whole_path=$OTHERPKGDIR/$path
+                whole_path=${whole_path%.}
             fi
 	
             #find out if this path has already handled
@@ -689,7 +689,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	                fi
                         echo "deb $type://$whole_path ./"  > $REPOFILE
                     fi
-                    if [ -n "$OTHERPKGDIR_INTERNET" ];then
+                    if [ -n "$OTHERPKGDIR_INTERNET" ] && [ $index -eq 0 ] ;then
                         OLDIFS=$IFS
                         IFS=$','
                         urlarray=($OTHERPKGDIR_INTERNET)
@@ -903,9 +903,9 @@ EOF`
 	elif [ $hasapt -eq 1 ]; then
 	    apt_get_update_if_repos_changed $REPOFILE
             if [ $VERBOSE  ]; then
-	      echo "$envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes install $repo_pkgs"
+	      echo "$envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes  -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs"
 	    fi
-	    result=`eval $envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes install $repo_pkgs 2>&1`
+	    result=`eval $envlist DEBIAN_FRONTEND=noninteractive apt-get -q -y --force-yes  -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' install $repo_pkgs 2>&1`
             R=$?
             if [ $R -ne 0 ]; then
               RETURNVAL=$R 

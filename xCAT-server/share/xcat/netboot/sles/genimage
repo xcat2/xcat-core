@@ -273,9 +273,13 @@ unless ($onlyinitrd) {
        #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
        #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        #}
-       my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
-       if ( -e "$srcdir_sdk") {
-           system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk");
+       my $index=1;
+       while (1) {
+           my $srcdir_sdk = "$installroot/$osver/$arch/sdk$index";
+           if ( -e "$srcdir_sdk") {
+               system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk$index");
+              $index++;
+           } else { last; }
        }
 
    }else {
@@ -855,7 +859,19 @@ if (@new_order) {
 }
 
 # add drivers for local disk support
-push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "ata_piix.ko", "libata.ko", "scsi_mod.ko", "scsi_dh.ko", "ahci.ko", "ibmvscsi.ko", "ibmvscsic.ko", "megaraid_sas.ko", "pcieport.ko", "sd_mod.ko");
+push @ndrivers, ("ext3.ko", "ext4.ko", "virtio_pci.ko", "virtio_blk.ko", "libata.ko", "scsi_mod.ko", "scsi_dh.ko", "ahci.ko", "megaraid_sas.ko", "sd_mod.ko");
+
+if ($osver_host >= 12) {
+   push @ndrivers, ("ibmvscsi.ko");
+} else { # for sles11 or lower
+   push @ndrivers, ("ibmvscsic.ko", "ata_piix.ko", "pcieport.ko");
+}
+
+if (-f "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/net/ethernet/mellanox/mlx4/mlx4_en.ko") {
+     for (@ndrivers) {
+         s/mlx_en/mlx4_en/;
+     }
+}
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -1957,18 +1973,42 @@ sub generic_post { # This function is meant to leave the image in a state approx
 
     copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
     chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
-    #insserv with -f option to ignore the dependency on sles10.4
-    system("chroot $rootimg_dir insserv -f network sshd gettyset xcatpostinit");
 
-    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
-    if ($rc) {
-        system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $rootimg_dir/etc/init.d/.depend.start");
-        system("ln -s ../sshd $rootimg_dir/etc/init.d/rc3.d/S20sshd");
+    #
+    # set certain system services to start on boot, if the file exists in /etc/init.d as a script,
+    # use insserv to start it.  If not, assume that the service is controlled by systemctl
+    #
+    # note: insserv is passed the -f option to ignore the dependency on sles10.4
+    #
+    print "[genimage] setting services to start at boot time...\n";
+    my @services;
+    push @services, qw/sshd network gettyset xcatpostinit/;
+
+    foreach my $service (@services) {
+        my $cmd = "chroot $rootimg_dir ";
+        if (-r "$rootimg_dir/etc/init.d/$service" ) {
+            $cmd = $cmd . "insserv -f $service";
+            system("$cmd");
+        }
+        else {
+            print "[genimage] Not starting service $service, verify if started by systemctl\n";
+        }
     }
-    my $rc = system("grep gettyset $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
-    if ($rc) {
-        system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $rootimg_dir/etc/init.d/.depend.start");
-        system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
+
+    #
+    # Check if .depend.start file exists.  For SLES12 and later OS, this does not apply
+    #
+    if (-r '$rootimg_dir/etc/init.d/.depend.start') {
+        my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
+        if ($rc) {
+            system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $rootimg_dir/etc/init.d/.depend.start");
+            system("ln -s ../sshd $rootimg_dir/etc/init.d/rc3.d/S20sshd");
+        }
+        my $rc = system("grep gettyset $rootimg_dir/etc/init.d/.depend.start | grep TARGETS");
+        if ($rc) {
+            system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $rootimg_dir/etc/init.d/.depend.start");
+            system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
+        }
     }
 }
 

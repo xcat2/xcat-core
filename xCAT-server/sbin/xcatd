@@ -278,6 +278,10 @@ sub daemonize {
 }
   
 my %cmd_handlers;
+my $rescanreadpipe;
+my $rescanwritepipe;
+my $rescanrselect;
+my $rescanrequest = "rescanplugins";
 sub do_installm_service { 
 	unless ($sport) { return; }
   #This function servers as a handler for messages from installing nodes
@@ -340,6 +344,19 @@ sleep 0.05; #up to 50 ms outage possible
     $SIG{ALRM} = sub { xCAT::MsgUtils->message("S","XCATTIMEOUT"); die; }; 
     my $conn;
     next unless $conn = $socket->accept;
+
+    # check if a rescanplugins request has come in
+    my @rescans;
+    if (@rescans = $rescanrselect->can_read(0)) {
+      foreach my $rrequest (@rescans) {
+        my $rescan_request = fd_retrieve($rrequest);
+        if ($$rescan_request =~ /rescanplugins/) {
+          scan_plugins('','1');
+        } else {
+          print "ignoring unrecognized pipe request received by install monitor from ssl listener:  $rescan_request \n";
+       }
+     }
+   }
 
     my $client_name;
     my $client_aliases;
@@ -991,6 +1008,14 @@ unless ($pid_UDP) {
   xexit(0);
 }
 close($sslctl);
+
+# Set up communication pipe to have ssl listener tell install monitor to
+# rescanplugins
+if ( !(socketpair($rescanreadpipe, $rescanwritepipe,AF_UNIX,SOCK_STREAM,PF_UNSPEC)) ) {
+    xCAT::MsgUtils->message("S", "socketpair failed: $!");
+}
+$rescanrselect = new IO::Select;
+$rescanrselect->add($rescanreadpipe);
 $pid_MON = xCAT::Utils->xfork;
 if (! defined $pid_MON) {
   xCAT::MsgUtils->message("S", "Unable to fork installmonitor");
@@ -1509,6 +1534,9 @@ sub plugin_command {
                #    rescanplugins request gets handled directly here in xcatd
                if ($req->{command}->[0] eq 'rescanplugins') { 
                  scan_plugins($chwritepipe,'1');
+                 if ($rescanwritepipe) {
+                   store_fd(\$rescanrequest,$rescanwritepipe);
+                 }
                } else {
                  ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
                }
@@ -1602,6 +1630,9 @@ sub plugin_command {
            #    rescanplugins request gets handled directly here in xcatd
            if ($req->{command}->[0] eq 'rescanplugins') { 
              scan_plugins($chwritepipe,'1');
+             if ($rescanwritepipe) {
+               store_fd(\$rescanrequest,$rescanwritepipe);
+             }
            } else {
              ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
            }
@@ -1836,6 +1867,9 @@ sub dispatch_request {
         #    rescanplugins request gets handled directly here in xcatd
         if ($_->{command}->[0] eq 'rescanplugins') {
           scan_plugins($chwritepipe,'1');
+          if ($rescanwritepipe) {
+            store_fd(\$rescanrequest,$rescanwritepipe);
+          }
         } else {
           ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         }
@@ -1925,6 +1959,9 @@ sub dispatch_request {
             #    rescanplugins request gets handled directly here in xcatd
             if ($_->{command}->[0] eq 'rescanplugins') {
               scan_plugins($chwritepipe,'1');
+              if ($rescanwritepipe) {
+                store_fd(\$rescanrequest,$rescanwritepipe);
+              }
             } else {
               ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
             }
