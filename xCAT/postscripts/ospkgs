@@ -576,6 +576,7 @@ elif ( pmatch "$OSVER" "sles*" ); then
                 fi
             fi
         done
+        IFS=$OIFS
     fi
 
     result=`zypper --non-interactive --no-gpg-checks refresh 2>&1` 
