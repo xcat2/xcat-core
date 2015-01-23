@@ -549,9 +549,11 @@ sub build_diskstruct {
         }
     }
     my $cdprefix='hd';
-    if ($storagemodel eq 'virtio') {
-        $cdprefix='vd';
-    } elsif ($storagemodel eq 'scsi') {
+    # device name vd* doesn't work for CDROM, so delete it.
+    #if ($storagemodel eq 'virtio') {
+    #    $cdprefix='vd';
+    #} els
+    if ($storagemodel eq 'scsi') {
         $cdprefix='sd';
     }
     $suffidx += 1;
