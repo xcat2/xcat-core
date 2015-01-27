@@ -63,7 +63,7 @@ echo "This is an Ubuntu system"
 
      mkdir -p $CURDIR/build
 
- for rpmname in xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test; do
+ for rpmname in xCAT-client xCAT-genesis-scripts perl-xCAT xCAT-server xCAT xCATsn xCAT-test xCAT-vlan; do
      rpmname_low=`echo $rpmname | tr '[A-Z]' '[a-z]'`
      echo "============================================"
      echo "$rpmname_low"
@@ -102,7 +102,7 @@ echo "This is an $OSNAME system"
  
 
    # Build the rest of the noarch rpms
-   for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-test xCAT-buildkit; do
+   for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-test xCAT-buildkit xCAT-vlan; do
         if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi     
         $CURDIR/makerpm $rpmname
    done
