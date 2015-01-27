@@ -1,0 +1,62 @@
+=head1 NAME
+
+B<rmvlan> - It remves the vlan from the cluster. 
+
+=head1 SYNOPSIS
+
+B<rmvlan> I<vlanid>
+
+B<rmvlan> [B<-h>|B<--help>]
+
+B<rmvlan> [B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<rmvlan> command removes the given vlan ID from the cluster. It removes the vlan id from all the swithces involved, deconfigures the nodes so that vlan adaptor (tag) will be remved, cleans up /etc/hosts, DNS and database tables for the given vlan.  
+
+For added security, the root guard and bpdu guard were enabled for the ports in this vlan by mkvlan and chvlan commands. However, the guards will not be disabled by this command. To disable them, you need to use the switch command line interface. Please refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port. 
+
+=head1 Parameters
+
+I<vlanid> is a unique vlan number.  
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h|--help>     Display usage message.
+
+=item B<-v|--version>  The Command Version.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To remove vlan 3
+
+  rmvlan 3
+
+If the nodes are KVM guest then the do the following after the vlan is removed:
+  rpower node1,node2 off
+  rmvm node1,node2
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/rmvlan
+
+=head1 SEE ALSO
+
+L<mkvlan(1)|mkvlan.1>, L<chvlan(1)|chvlan.1>, L<lsvlan(1)|lsvlan.1>

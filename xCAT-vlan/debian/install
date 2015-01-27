@@ -1,0 +1,5 @@
+xCAT/* opt/xcat/lib/perl/xCAT/
+xCAT_plugin/* opt/xcat/lib/perl/xCAT_plugin/
+install/postscripts/* install/postscripts/
+share/man/man1/* opt/xcat/share/man/man1
+share/doc/man1/* opt/xcat/share/doc/man1

@@ -1,0 +1,87 @@
+=head1 NAME
+
+B<lsvlan> - It lists the existing vlans for the cluster.
+
+=head1 SYNOPSIS
+
+B<lsvlan> 
+
+B<lsvlan> [I<vlanid>]
+
+B<lsvlan> [B<-h>|B<--help>]
+
+B<lsvlan> [B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<lsvlan> command lists all the vlans for the cluster. If I<vlanid> is specifined it will list more details about this vlan including the nodes in the vlan.  
+
+=head1 Parameters
+
+I<vlanid> is a unique vlan number. If it is omitted, all vlans will be listed.
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h|--help>  Display usage message.
+
+=item B<-v|--version>  Command Version.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To list all the vlans in the cluster
+
+  lsvlan
+
+Output is similar to:
+  vlan 3:
+      subnet 10.3.0.0
+      netmask 255.255.0.0
+
+  vlan 4:
+      subnet 10.4.0.0
+      netmask 255.255.0.0
+
+
+=item 2.
+
+TO list the details for vlan3
+
+  lsvlan 3
+
+Output is similar to:
+  vlan 3
+      subnet 10.3.0.0
+      netmask 255.255.0.0
+
+      hostname    ip address      node            vm host
+      v3n1        10.3.0.1        c68m4hsp06
+      v3n2        10.3.0.2        x3455n01
+      v3n3        10.3.0.3        x3650n01
+      v3n4        10.3.0.4        x3650n01kvm1    x3650n01
+      v3n5        10.3.0.5        x3650n01kvm2    x3650n01
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/lsvlan
+
+=head1 SEE ALSO
+
+L<mkvlan(1)|mkvlan.1>, L<rmvlan(1)|rmvlan.1>, L<chvlan(1)|chvlan.1>
+
