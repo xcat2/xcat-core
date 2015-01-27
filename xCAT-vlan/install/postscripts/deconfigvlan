@@ -1,0 +1,231 @@
+#!/bin/sh
+
+#-------------------------------------------------------------------------------------
+#
+# this script deconfigures the vlan on the node.
+#  deconfigvlan <vlan_id>
+#     if vlan_is is not specified, all the vlans defined 
+#     for the given node will be deconfigured.
+#
+#-------------------------------------------------------------------------------------
+if [[ -z $VLANMAXINDEX ]] || [[ $VLANMAXINDEX -eq 0 ]]; then
+    logger -t xcat "deconfigvlan: Nothing to do."
+    echo "deconfigvlan: Nothing to do." 
+    exit 0
+fi
+
+if [[ $OSTYPE = linux* ]]; then
+  if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+      nwdir="/etc/sysconfig/network"
+      isSLES=1
+  else 
+      nwdir="/etc/sysconfig/network-scripts"
+  fi 
+else
+    logger -t xcat "deconfigvlan: Does not support AIX yet."
+    echo "deconfigvlan: Does not support AIX yet." 
+    exit 0
+fi
+
+
+if [[ -n "$1" ]]; then
+    IN_VLAN=$1 #The vlan id to be deconfigured, if not specified, all will be deconfigured on this note. 
+fi
+
+index=1
+while [ $index -le $VLANMAXINDEX ]; do
+    nic=""
+    eval VLANID=\$VLANID_$index
+    if [[ -n $IN_VLAN ]]; then
+	if [[ "$VLANID" != "$IN_VLAN" ]]; then
+	    index=$((index+1))
+	    continue
+	fi
+    fi
+
+    if [[ -z $VMNODE ]]; then #for bare-metal nodes
+	eval VLANNIC=\$VLANNIC_$index #VLANNIC could be ethx, primary, primary:ethx or empty
+	
+        #determine if the current is primary network
+	PMRY=0   
+	if [[ -z $VLANNIC ]] || [[ $VLANNIC = primary* ]]; then
+	    PMRY=1
+	fi
+	
+	if [[ $VLANNIC = primary* ]]; then
+	    VLANNIC=${VLANNIC#primary}
+	fi
+	if [[ -n $VLANNIC ]]; then
+	    nic=${VLANNIC#:}
+	fi
+    else #for KVM nodes
+	eval VLAN_VMNICPOS=\$VLAN_VMNICPOS_$index #VLAN_VMNICPOS identifies the position of the mac address in mac, the mac has the following format: 01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth
+
+	PMRY=0
+	if [[ $index -eq 1 ]]; then 
+	    PMRY=1   ##the first one is always primary network
+	fi
+
+	if [[ -z $VLAN_VMNICPOS ]]; then
+	    nic="eth1"
+	fi
+    fi
+    
+	
+    
+    if [[ -z $nic ]]; then  #get the nic
+	if [[ -n $MACADDRESS ]]; then 
+	    pos=0
+            #mac has the following format: 01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1
+	    for x in `echo "$MACADDRESS" | tr "|" "\n"`
+	    do
+		node=""
+                mac=""
+		pos=$((pos+1))
+		i=`expr index $x !`
+		if [[ $i -gt 0 ]]; then
+		    node=`echo ${x##*!}`
+		    mac_tmp=`echo ${x%%!*}`
+		else
+		    mac_tmp=$x
+		fi
+
+		if [[ $pos -eq 1 ]]; then
+		    mac1=$mac_tmp
+		fi
+
+		if [[ -n $VMNODE ]]; then
+		    if [[ $pos -eq $VLAN_VMNICPOS ]]; then
+			mac=$mac_tmp
+			break
+		    fi
+		else
+		    if [[ "$PRIMARYNIC" = "$mac_tmp" ]]; then
+			mac=$mac_tmp
+			break
+		    fi
+
+		    if [[ -z "$PRIMARYNIC" ]] || [[ "$PRIMARYNIC" = "mac" ]]; then
+			if [[ -z "$node" ]] || [[ "$node" = "$NODE" ]]; then
+			   mac=$mac_tmp
+			   break
+			fi
+		    fi
+		fi
+	    done
+
+	    if [[ -z $mac ]]; then
+		if  [[ -n $VMNODE ]]; then
+		     mac=$mac1 
+		else 
+		    if [[ -z "$PRIMARYNIC" ]] || [[ "$PRIMARYNIC" = "mac" ]]; then 
+			mac=$mac1 #if nothing mathes, take the first mac
+		    else
+			nic=$PRIMARYNIC #or the primary nic itself is the nic
+		    fi
+		fi
+	    fi
+	else
+	    logger -t xcat "deconfigvlan: no mac addresses are defined in the mac table for the node $NODE"
+	    echo "deconfigvlan: no mac addresses are defined in the mac table for the node $NODE"
+	    index=$((index+1))
+	    continue
+	fi
+	echo "mac=$mac"
+    fi
+
+    if [[ -z $nic ]];  then
+	#go to each nic to match the mac address	
+	ret=`ifconfig |grep -i $mac | cut -d' ' -f 1 2>&1`;
+	if [ $? -eq 0 ]; then
+	    for x in $ret
+	    do  
+                #ignore bridge because bridge and the nic has the same mac address
+		if [[ $isSLES -eq 1 ]]; then
+		    ret1=`grep -i "TYPE='Bridge'" $nwdir/ifcfg-$x 2>&1`;
+		else
+		    ret1=`grep -i "TYPE=Bridge" $nwdir/ifcfg-$x 2>&1`;
+		fi
+		if [ $? -ne 0 ]; then
+		    nic=$x
+		    break
+		fi
+	    done
+	    if [ -z $nic ]; then
+		nic=`echo $ret |head -n1`
+	    fi
+	else
+	    logger -t xcat "deconfigvlan: The mac address for the network for $NODE is not defined."
+	    echo "deconfigvlan: The mac address for the network for $NODE is not defined." 
+	    index=$((index+1))
+            continue
+	fi
+    fi
+    echo "nic=$nic"
+
+    eval VLANID=\$VLANID_$index
+    eval VLANIP=\$VLANIP_$index
+    eval VLANNETMASK=\$VLANNETMASK_$index    
+
+    #write into the network configuration file
+    if [ -z "$VMNODE" ]; then
+	newnic="$nic.$VLANID"
+    else
+	newnic="$nic"
+    fi
+
+    #stop the vlan network
+    logger -t xcat "dconfigvlan: de-configuring vlan $newnic for $NODE..."
+    echo "dconfigvlan: de-configuring vlan $newnic for $NODE..."
+
+    if [[ -n $newnic ]]; then
+	ret=`ifdown $newnic 2>&1`
+	if [ $? -ne 0 ]; then
+	    logger -t xcat "deconfigvlan: stopping $newnic: $ret"
+	    echo "deconfigvlan: stopping $newnic: $ret"
+	fi
+
+        #remove the network conf file for the vlan
+	ret=`rm $nwdir/ifcfg-$newnic 2>&1`
+    else 
+	logger -t xcat "deconfigvlan: cannot find the nic that has the vlan."
+	echo "deconfigvlan: cannot find the nic that has the vlan" 
+    fi
+
+    #stop the bridge on the vm hosts, 
+    if [ -f $nwdir/ifcfg-vl$VLANID ]; then
+	ret=`ifconfig vl$VLANID down 2>&1`
+	ret=`rm $nwdir/ifcfg-vl$VLANID 2>&1`
+	ret=`brctl delbr vl$VLANID  2>&1`
+    fi
+
+    if [[ $PMRY -eq 1 ]]; then   
+	logger -t xcat "dconfigvlan: changing the hostname back to $NODE..."
+	echo "dconfigvlan: changing the hostname back to $NODE..."
+        #change the hostname
+	hostname $NODE
+	
+        #change the hostname permanently
+	if [ -f /etc/SuSE-release ]
+	then
+            #SLES x
+	    echo $NODE > /etc/HOSTNAME
+	else
+            #RedHat and others
+	    fn="/etc/sysconfig/network"
+	    grep HOSTNAME $fn
+	    if [ $? -eq 0 ]; then
+		sed -i "s/HOSTNAME.*/HOSTNAME=$NODE/" $fn
+	    else
+		echo "HOSTNAME=$NODE" >> $fn
+	    fi
+	fi
+    fi
+    logger -t xcat "deconfigvlan: done."
+    echo "deconfigvlan: done."
+
+    #next
+    index=$((index+1))
+done
+
+exit 0
