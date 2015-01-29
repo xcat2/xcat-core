@@ -26,8 +26,10 @@ my %usage = (
     "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage[=<imagename>]|offline]",
 );
 sub handled_commands {
+    # process noderes:netboot like "grub2-<transfer protocol>"
+    # such as grub2-http and grub2-tftp
     return {
-        nodeset => "noderes:netboot"
+        nodeset => "noderes:netboot=(grub2[-]?.*)"
     }
 }
 
@@ -189,20 +191,47 @@ sub setstate {
            }
            $tftpserverip{$tftpserver} = $serverip;
        }
+       
+       my $grub2protocol="tftp";
+       if (defined ($nrhash{$node}->[0]) && $nrhash{$node}->[0]->{'netboot'} 
+           && ($nrhash{$node}->[0]->{'netboot'} =~ /grub2-(.*)/)) {
+           $grub2protocol = $1;
+       }
+
+       unless($grub2protocol =~ /^http|tftp$/ ){
+           $::callback->(
+                       {
+                       error => [
+                       "Invalid netboot method, please check noderes.netboot for $node"
+                       ],
+                       errorcode => [1]
+                       }
+                   );
+           return;          
+       }
+
+   
        print $pcfg "set default=\"xCAT OS Deployment\"\n";
        print $pcfg "menuentry \"xCAT OS Deployment\" {\n";
        print $pcfg "    insmod http\n";
        print $pcfg "    insmod tftp\n";
-       print $pcfg "    set root=http,$serverip\n";
+       print $pcfg "    set root=$grub2protocol,$serverip\n";
        print $pcfg "    echo Loading Install kernel ...\n";
+   
+       my $protocolrootdir="";
+       if($grub2protocol =~ /^http$/)
+       {
+          $protocolrootdir=$tftpdir;
+       }
+
        if ($kern and $kern->{kcmdline}) {
-           print $pcfg "    linux $tftpdir/$kern->{kernel} $kern->{kcmdline}\n";
+           print $pcfg "    linux $protocolrootdir/$kern->{kernel} $kern->{kcmdline}\n";
        } else {
-           print $pcfg "    linux $tftpdir/$kern->{kernel}\n";
+           print $pcfg "    linux $protocolrootdir/$kern->{kernel}\n";
        }
        print $pcfg "    echo Loading initial ramdisk ...\n";
        if ($kern and $kern->{initrd}) {
-         print $pcfg "    initrd $tftpdir/$kern->{initrd}\n";
+         print $pcfg "    initrd $protocolrootdir/$kern->{initrd}\n";
        }
        
        print $pcfg "}";
@@ -457,7 +486,7 @@ sub process_request {
     my $mactab=xCAT::Table->new('mac',-create=>1);
     my $machash=$mactab->getNodesAttribs(\@nodes,['mac']);
     my $nrtab=xCAT::Table->new('noderes',-create=>1);
-    my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode','tftpserver','xcatmaster']);
+    my $nrhash=$nrtab->getNodesAttribs(\@nodes,['servicenode','tftpserver','xcatmaster','netboot']);
     my $typetab=xCAT::Table->new('nodetype',-create=>1);
     my $typehash=$typetab->getNodesAttribs(\@nodes,['os','provmethod','arch','profile']);
     my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);

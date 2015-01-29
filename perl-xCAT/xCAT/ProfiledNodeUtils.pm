@@ -858,6 +858,13 @@ sub check_profile_consistent{
     my $arch = $nodetypeentry->{'arch'};
     $nodetypetab->close();
     
+    # Get Imageprofile pkgdir
+    my $osdistroname = $os . "-" . $arch;
+    my $osdistrotab = xCAT::Table->new('osdistro');
+    my $osdistroentry = ($osdistrotab->getAllAttribsWhere("osdistroname = '$osdistroname'", 'ALL' ))[0];
+    my $pkgdir = $osdistroentry->{'dirpaths'};
+    $osdistrotab->close();
+    
     # Get networkprofile netboot and installnic
     my $noderestab = xCAT::Table->new('noderes');
     my $noderesentry = $noderestab->getNodeAttribs($networkprofile, ['netboot', 'installnic']);
@@ -889,6 +896,12 @@ sub check_profile_consistent{
     my $nodetype = undef;
     $nodetype = $ntentry->{'nodetype'} if ($ntentry->{'nodetype'});
     $ppctab->close(); 
+    
+    # Checking whether netboot initrd image for Ubuntu ppc64
+    # This image should be downloaded from internet
+    if ($arch =~ /ppc64/i and $os =~ /ubuntu/i and !(-e "$pkgdir/install/netboot/initrd.gz")){
+        return 0, "The netboot initrd is not found in $pkgdir/install/netboot, please download it firstly.";
+    }
  
     # Check if exists provision network
     if (not ($installnic and exists $netprofile_nicshash{$installnic}{"network"})){
@@ -941,7 +954,7 @@ sub check_profile_consistent{
         }
         return 0, $errmsg;
     }
-        
+            
     return 1, "";
 }
 
@@ -1298,4 +1311,154 @@ sub get_all_vmhosts
 
     # Return the ref accordingly 
     return \%vmhostshash;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3 get_netboot_attr
+      Description : Get netboot attribute for node
+      Arguments   : $imageprofile - image profile name, mandatory. e.g. "__ImageProfile_rhels7.0-x86_64-stateful-mgmtnode"
+                    $hardwareprofile - harware profile name, optional. e.g. "__HardwareProfile_IBM_System_x_M4"
+      Returns     : (returncode, netboot)
+                    returncode=0 - can not get netboot value,netboot is the error message
+                    returncode=1 - can get netboot value,netboot is the right value
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_netboot_attr{
+    my $class = shift;
+    my $imageprofile = shift;
+    my $hardwareprofile = shift;
+    my $netboot;
+
+    my @nodegrps = xCAT::TableUtils->list_all_node_groups();
+    unless(grep{ $_ eq $imageprofile} @nodegrps)
+    {
+        return 0, "Image profile not defined in DB."
+    }
+    $imageprofile =~ s/^__ImageProfile_//;
+
+    if ($hardwareprofile){
+        unless(grep{ $_ eq $hardwareprofile} @nodegrps)
+        {
+            return 0, "Hardware profile not defined in DB."
+        }
+        $hardwareprofile =~ s/^__HardwareProfile_//;
+    }
+    else
+    {
+        $hardwareprofile = '*';
+    }
+
+    # Get os name, os major version, osarch
+    my $osimage_tab = xCAT::Table->new('osimage');
+    my $osimage_tab_entry = $osimage_tab->getAttribs({'imagename'=> $imageprofile},('osdistroname'));
+    my $osdistroname = $osimage_tab_entry->{'osdistroname'};
+    $osimage_tab->close();
+
+    my $osdistro_tab = xCAT::Table->new('osdistro');
+    my $osdistro_tab_entry = $osdistro_tab->getAttribs({'osdistroname'=> $osdistroname},('basename', 'majorversion', 'arch'));
+    my $os_name = $osdistro_tab_entry->{'basename'};
+    my $os_major_version = $osdistro_tab_entry->{'majorversion'};
+    my $os_arch = $osdistro_tab_entry->{'arch'};
+    $osdistro_tab->close;
+
+    # Treate os name rhel,centos,rhelhpc same as rhels
+    if ($os_name eq 'centos' || $os_name eq 'rhelhpc' || $os_name eq 'rhel')
+    {
+        $os_name = 'rhels';
+    }
+    # Treate arch ppc64el same as ppc64le,x86 same as x86_64
+    if ($os_arch eq 'ppc64el')
+    {
+        $os_arch = 'ppc64le';
+    }elsif ($os_arch eq 'x86')
+    {
+        $os_arch = 'x86_64';
+    }
+
+# Rule for netboot attribute.If update the rule,just update %netboot_dict and @condition_array
+# It's sequence sensitive: os arch -> os name -> os major version -> hardware profile
+# Priority |  Arch       | OS Name | OS Major Version | Hardware Profile | Noderes.netboot  |
+# 1        |  x86_64/x86 | *       | *                | *                | xnba             |
+# 2        |  ppc64      | rhels   | 7                | *                | grub2            |
+# 3        |             | *       | *                | *                | yaboot           |
+# 4        |  ppc64le/el | *       | *                | IBM_PowerNV      | petiboot         |
+# 5        |             | *       | *                | *                | grub2            |
+#                         arch          osname       version  hardware           netboot
+    my %netboot_dict = ( 'x86_64'                                             => 'xnba', 
+                         'ppc64'   => { 
+                                        'rhels' => { 
+                                                     '7'                      => 'grub2', 
+                                                     '*'                      => 'yaboot',
+                                                   }, 
+                                        '*'                                   => 'yaboot', 
+                                      },                                  
+                         'ppc64le' => {
+                                        '*'    =>  { 
+                                                     '*' => { 
+                                                              'IBM_PowerNV'   => 'petiboot',
+                                                              '*'             => 'grub2',
+                                                            },
+                                                   },
+                                      },
+                       );
+    my $condition_array_ref = [$os_arch, $os_name, $os_major_version, $hardwareprofile];
+    $netboot = cal_netboot(\%netboot_dict, $condition_array_ref);
+    if($netboot eq '0')
+    {
+        return 0, "Can not get the netboot attribute";
+    }
+    else
+    {
+        return 1, $netboot;
+    }
+}
+#-------------------------------------------------------------------------------
+
+=head3 cal_netboot
+      Description : Calculate netboot attribute by conditions recursively, internal use.
+      Arguments   : $netboot_dict_ref
+                    $condition_array_ref
+      Returns     : netboot
+                    returncode=0 - can not get netboot value
+=cut
+
+#-------------------------------------------------------------------------------
+sub cal_netboot{
+    my $netboot_dict_ref = shift;
+    my $condition_array_ref = shift;
+    my $condition_array_len = scalar @$condition_array_ref;
+    
+    if( $condition_array_len == 0 ){
+        return 0;
+    }
+
+    my $condition = shift $condition_array_ref;
+    if( (exists($netboot_dict_ref->{$condition})) || (exists($netboot_dict_ref->{'*'})) )
+    {
+        if(!exists($netboot_dict_ref->{$condition}))
+        {
+            $condition = '*';
+        }
+        if(ref($netboot_dict_ref->{$condition}) eq 'HASH')
+        {
+            if($condition_array_len > 1)
+            {
+                return cal_netboot($netboot_dict_ref->{$condition}, $condition_array_ref);
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            return $netboot_dict_ref->{$condition};
+        }
+    }
+    else
+    {
+        return 0;
+    }
 }

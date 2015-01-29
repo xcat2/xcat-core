@@ -630,7 +630,7 @@ sub run_cim
     my $http_params = shift;
     my $node = $http_params->{node};
 
-    my @output;
+    my $output;
     my $verbose;
     my $query_list;
     my $set_pair;
@@ -769,37 +769,37 @@ sub run_cim
                     if (defined ($query_pum_value->{PowerUtilizationMode})) {
                         # 2 = None; 3 = Dynamic; 4 = Static; 32768 = Dynamic Favor Performance; 32769 = FFO
                         if ($query_pum_value->{PowerUtilizationMode} eq "2") {
-                            push @output, "$node: $attr: off";
+                            push @{$output->{$node}}, "$attr: off";
                         } elsif ($query_pum_value->{PowerUtilizationMode} eq "3") {
                             if ($attr eq "dsavingstatus") {
-                                push @output, "$node: $attr: on-norm";
+                                push @{$output->{$node}}, "$attr: on-norm";
                             } else {
-                                 push @output, "$node: $attr: off";
+                                 push @{$output->{$node}}, "$attr: off";
                             }
                         } elsif ($query_pum_value->{PowerUtilizationMode} eq "4") {
                             if ($attr eq "savingstatus") {
-                                push @output, "$node: $attr: on";
+                                push @{$output->{$node}}, "$attr: on";
                             } else {
-                                 push @output, "$node: $attr: off";
+                                 push @{$output->{$node}}, "$attr: off";
                             }
                         } elsif ($query_pum_value->{PowerUtilizationMode} eq "32768") {
                             if ($attr eq "dsavingstatus") {
-                                push @output, "$node: $attr: on-maxp";
+                                push @{$output->{$node}}, "$attr: on-maxp";
                             } else {
-                                 push @output, "$node: $attr: off";
+                                 push @{$output->{$node}}, "$attr: off";
                             }
                         } elsif ($query_pum_value->{PowerUtilizationMode} eq "32769") {
                             if ($attr eq "fsavingstatus") {
-                                push @output, "$node: $attr: on";
+                                push @{$output->{$node}}, "$attr: on";
                             } else {
-                                 push @output, "$node: $attr: off";
+                                 push @{$output->{$node}}, "$attr: off";
                             }
                         }
                     } else {
-                        push @output, "$node: $attr: na";
+                        push @{$output->{$node}}, "$attr: na";
                     }
                 } else {
-                    push @output, "$node: $attr: na";
+                    push @{$output->{$node}}, "$attr: na";
                 }
             }
     
@@ -811,20 +811,20 @@ sub run_cim
                         my @ffo_point_value = split (',', $query_pum_value->{FixedFrequencyPointValues});
                         foreach my $index (0..$#ffo_point) {
                             if ($ffo_point[$index] eq '2' && $attr eq 'ffoNorm') { # Norminal
-                                push @output, "$node: $attr: $ffo_point_value[$index] MHZ";
+                                push @{$output->{$node}}, "$attr: $ffo_point_value[$index] MHZ";
                             } elsif ($ffo_point[$index] eq '3' && $attr eq 'ffoTurbo') { # Turbo
-                                push @output, "$node: $attr: $ffo_point_value[$index] MHZ";
+                                push @{$output->{$node}}, "$attr: $ffo_point_value[$index] MHZ";
                             } elsif ($ffo_point[$index] eq '4' && $attr eq 'ffoVmin') { # Vmin
-                                push @output, "$node: $attr: $ffo_point_value[$index] MHZ";
+                                push @{$output->{$node}}, "$attr: $ffo_point_value[$index] MHZ";
                             } elsif ($ffo_point[$index] eq '5' && $attr eq 'ffoMin') { # Min
-                                push @output, "$node: $attr: $ffo_point_value[$index] MHZ";
+                                push @{$output->{$node}}, "$attr: $ffo_point_value[$index] MHZ";
                             }
                         }
                     } else {
-                        push @output, "$node: $attr: na";
+                        push @{$output->{$node}}, "$attr: na";
                     }
                 } else {
-                    push @output, "$node: $attr: na";
+                    push @{$output->{$node}}, "$attr: na";
                 }
             }
     
@@ -833,15 +833,15 @@ sub run_cim
                 if ($query_pum_flag) {
                     if (defined ($query_pum_value->{FixedFrequencyOverrideFreq})) {
                         if ($query_pum_value->{FixedFrequencyOverrideFreq} eq '4294967295') {
-                            push @output, "$node: $attr: 0 MHZ";
+                            push @{$output->{$node}}, "$attr: 0 MHZ";
                         } else {
-                            push @output, "$node: $attr: $query_pum_value->{FixedFrequencyOverrideFreq} MHZ";
+                            push @{$output->{$node}}, "$attr: $query_pum_value->{FixedFrequencyOverrideFreq} MHZ";
                         }
                     } else {
-                        push @output, "$node: $attr: na";
+                        push @{$output->{$node}}, "$attr: na";
                     }
                 } else {
-                    push @output, "$node: $attr: na";
+                    push @{$output->{$node}}, "$attr: na";
                 }
     
             }
@@ -850,14 +850,14 @@ sub run_cim
             if ($attr =~ /^(syssbpower|sysIPLtime)$/) {
                 if ($query_drawer_flag) {
                     if (defined ($query_drawer_value->{AverageTimeToIPL}) && $attr eq "sysIPLtime") {
-                        push @output, "$node: $attr: $query_drawer_value->{AverageTimeToIPL} S";
+                        push @{$output->{$node}}, "$attr: $query_drawer_value->{AverageTimeToIPL} S";
                     } elsif (defined ($query_drawer_value->{StandbyPowerUtilization}) && $attr eq "syssbpower") {
-                        push @output, "$node: $attr: $query_drawer_value->{StandbyPowerUtilization} W";
+                        push @{$output->{$node}}, "$attr: $query_drawer_value->{StandbyPowerUtilization} W";
                     } else {
-                        push @output, "$node: $attr: na";
+                        push @{$output->{$node}}, "$attr: na";
                     }
                 } else {
-                    push @output, "$node: $attr: na";
+                    push @{$output->{$node}}, "$attr: na";
                 }
             }
 
@@ -867,12 +867,12 @@ sub run_cim
                     if ($ins =~ /InletAirTemp/) {
                         my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
                         if ($attr eq "ambienttemp") {
-                            #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
-                            push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} C";
+                            #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                            push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} C";
                         } else {
                             foreach my $time (@times) {
-                                #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
-                                push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$time} C: $time";
+                                #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
+                                push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$time} C: $time";
                             }
                         }
                     }
@@ -883,12 +883,12 @@ sub run_cim
                     if ($ins =~ /ExhaustAirTemp/) {
                         my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
                         if ($attr eq "exhausttemp") {
-                            #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
-                            push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} C";
+                            #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                            push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} C";
                         } else {
                             foreach my $time (@times) {
-                                #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
-                                push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$time} C: $time";
+                                #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
+                                push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$time} C: $time";
                             }
                         }
                     }
@@ -899,12 +899,12 @@ sub run_cim
                     if ($ins =~ /AvgCPUUsage/) {
                         my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
                         if ($attr eq "CPUspeed") {
-                            #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
-                            push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} MHZ";
+                            #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]}";
+                            push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$times[-1]} MHZ";
                         } else {
                             foreach my $time (@times) {
-                                #push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
-                                push @output, "$node: $attr: $tmphash->{$ins}->{MetricValue}->{$time} MHZ: $time";
+                                #push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time}: $time";
+                                push @{$output->{$node}}, "$attr: $tmphash->{$ins}->{MetricValue}->{$time} MHZ: $time";
                             }
                         }
                     }
@@ -915,10 +915,10 @@ sub run_cim
                     if ($ins =~ /FansSpeed/) {
                         my @times = sort keys %{$tmphash->{$ins}->{MetricValue}};
                         if ($attr eq "fanspeed") {
-                            push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]} RPM";
+                            push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$times[-1]} RPM";
                         } else {
                             foreach my $time (@times) {
-                                push @output, "$node: $attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time} RPM: $time";
+                                push @{$output->{$node}}, "$attr ($tmphash->{$ins}->{MeasuredElementName}): $tmphash->{$ins}->{MetricValue}->{$time} RPM: $time";
                             }
                         }
                     }
@@ -930,10 +930,10 @@ sub run_cim
                 my @times = sort keys %{$tmphash->{$tmpattr}->{MetricValue}};
                 if ($attr =~ /history$/) {
                     foreach my $time (@times) {
-                        push @output, "$node: $attr: $tmphash->{$tmpattr}->{MetricValue}->{$time} W: $time";
+                        push @{$output->{$node}}, "$attr: $tmphash->{$tmpattr}->{MetricValue}->{$time} W: $time";
                     }
                 } else {
-                    push @output, "$node: $attr: $tmphash->{$attr}->{MetricValue}->{$times[-1]} W";
+                    push @{$output->{$node}}, "$attr: $tmphash->{$attr}->{MetricValue}->{$times[-1]} W";
                 }
             } 
         }
@@ -979,14 +979,14 @@ sub run_cim
                         };
                         $ret = xCAT::CIMUtils->set_property($http_params, $cimargs);
                         if ($ret->{rc}) {
-                            push @output, "$node: Set $set_name failed. [$ret->{msg}]"; 
+                            push @{$output->{$node}}, "Set $set_name failed. [$ret->{msg}]"; 
                         } else {
-                            push @output, "$node: Set $set_name succeeded";
+                            push @{$output->{$node}}, "Set $set_name succeeded";
                         }
                     } else {
                         # set the power saving
                         if ($ps_value eq $query_pum_value->{PowerUtilizationMode}) {    # do nothing if it already was the correct status
-                            push @output, "$node: Set $set_name succeeded";
+                            push @{$output->{$node}}, "Set $set_name succeeded";
                         } else {
                             # perform the setting
                             $cimargs = {
@@ -996,29 +996,37 @@ sub run_cim
                             };
                             $ret = xCAT::CIMUtils->set_property($http_params, $cimargs);
                             if ($ret->{rc}) {
-                                push @output, "$node: Set $set_name failed. [$ret->{msg}]"; 
+                                push @{$output->{$node}}, "Set $set_name failed. [$ret->{msg}]"; 
                             } else {
-                                push @output, "$node: Set $set_name succeeded";
+                                push @{$output->{$node}}, "Set $set_name succeeded";
                             }
                         }
                     }
                 } else {
-                     push @output, "$node: Set $set_name failed"; 
+                     push @{$output->{$node}}, "Set $set_name failed"; 
                 }
             } else {
-                push @output, "$node: Set $set_name failed"; 
+                push @{$output->{$node}}, "Set $set_name failed"; 
             }
         }
     } 
 
     # Display the output
-    my $rsp;
-    if ($query_list && $query_list !~ /history/) {
-        push @{$rsp->{data}}, sort (@output);
-    } else {
-        push @{$rsp->{data}}, @output;
+    foreach my $node (keys (%{$output})) {
+        my @newoutput;
+        if ($query_list && $query_list !~ /history/) {
+            @newoutput = sort (@{$output->{$node}});
+        } else {
+            @newoutput = @{$output->{$node}};
+        }
+        foreach (@newoutput) {
+            my $rsp;
+            $rsp->{node}->[0]->{name} = $node;
+            push @{$rsp->{node}->[0]->{data}->[0]->{contents}}, $_;
+
+            xCAT::MsgUtils->message("N", $rsp, $callback);
+        }
     }
-    xCAT::MsgUtils->message("I", $rsp, $callback);
 
     return 0;    
 }
