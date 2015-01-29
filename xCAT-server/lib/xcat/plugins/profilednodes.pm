@@ -45,6 +45,7 @@ my %all_switchports;
 my %allvmhosts;
 
 my @switch_records;
+my $netboot;
 
 # The array of all chassis which is special CMM 
 my %allcmmchassis;
@@ -381,6 +382,13 @@ Usage:
         setrsp_errormsg($errmsg);
         return;
     }
+    # Get the netboot attribute for node
+    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
+    if (not $retcode) {
+        setrsp_errormsg($retval);
+        return;
+    }
+    $netboot = $retval;
 
     # Get database records: all hostnames, all ips, all racks...
     xCAT::MsgUtils->message('S', "Getting database records.");
@@ -767,6 +775,7 @@ Usage:
     my $nodelstab = xCAT::Table->new('nodelist');
     my $nodeshashref = $nodelstab->getNodesAttribs($nodes, ['groups']);
     my %updatenodeshash;
+    my %updatenodereshash;
 
     my %nodeoldprofiles = ();
     foreach (@$nodes){
@@ -870,18 +879,27 @@ Usage:
         setrsp_infostr("Warning: no profile changes detect.");
         return;
     }
-    
+    # Get the netboot attribute for node
+    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
+    if (not $retcode) {
+        setrsp_errormsg($retval);
+        return;
+    }
+    my $new_netboot = $retval;
     # Update nodes' attributes
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
-    }    
+        $updatenodereshash{$_}{'netboot'} = $new_netboot;
+    }
     
     #update DataBase.
     setrsp_progress("Updating database records...");
     my $nodetab = xCAT::Table->new('nodelist',-create=>1);
     $nodetab->setNodesAttribs(\%updatenodeshash);
     $nodetab->close();
-
+    my $noderestab = xCAT::Table->new('noderes',-create=>1);
+    $noderestab->setNodesAttribs(\%updatenodereshash);
+    $noderestab->close();
     #update node's status:
     if($profile_status eq "defined"){
         xCAT::Utils->runxcmd({command=>["updatenodestat"], node=>$nodes, arg=>['defined']}, $request_command, -1, 2);
@@ -1778,6 +1796,16 @@ sub findme{
             }
         }
     }
+    my $imageprofile = $args_dict{'imageprofile'};
+    my $networkprofile = $args_dict{'networkprofile'};
+    my $hardwareprofile = $args_dict{'hardwareprofile'};
+    # Get the netboot attribute for node
+    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
+    if (not $retcode) {
+        setrsp_errormsg($retval);
+        return;
+    }
+    $netboot = $retval;
 
     # Get database records: all hostnames, all ips, all racks...
     # To improve performance, we should initalize a daemon later??
@@ -2108,11 +2136,8 @@ sub gen_new_hostinfo_dict{
             $hostinfo_dict{$item}{"mgt"} = "fsp";
         }
         
-        # Generate VM host nodes' attribute
-        # Update netboot attribute if this is powerKVM node
-        if (exists $hostinfo_dict{$item}{"vmhost"}){
-            $hostinfo_dict{$item}{"netboot"} = 'grub2';
-        }
+        # Set netboot attribute for node
+        $hostinfo_dict{$item}{"netboot"} = $netboot;
         
         # get the chain attribute from hardwareprofile and insert it to node.
         my $chaintab = xCAT::Table->new('chain');
