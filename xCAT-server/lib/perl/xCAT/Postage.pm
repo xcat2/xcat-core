@@ -1195,14 +1195,27 @@ sub getImageitems_for_node
     }
 
 
-    # SLES sdk
+    #Adds SDK repositoryi for sles. The SDKDIR is a comma separated list of
+    #directory names. For example:
+    #SDKDIR='/install/sles12/x86_64/sdk1,/install/sles12/x86_64/sdk2'
     if ($os =~ /sles.*/)
     {
+        my @sdkdir=();
         my $installdir = $::XCATSITEVALS{'installdir'} ? $::XCATSITEVALS{'installdir'} : "/install";
-        my $sdkdir = "$installdir/$os/$arch/sdk1";
-        if (-e "$sdkdir")
+        if (opendir(SRCDIR, "$installdir/$os/$arch/")) {
+            while (my $tmpfile = readdir(SRCDIR)) {
+                if ($tmpfile =~ m/^sdk/) {
+                    my $srcdir_sdk = "$installdir/$os/$arch/${tmpfile}";
+                    if ( -d "$srcdir_sdk") {
+                        push @sdkdir, $srcdir_sdk;
+                    }
+                }  
+            }  
+        }
+
+        if (@sdkdir > 0)
         {
-            $result .= "SDKDIR='" . $sdkdir . "'\n";
+            $result .= "SDKDIR='" . join(',', @sdkdir) . "'\n";
             $result .= "export SDKDIR\n";
         }
     }

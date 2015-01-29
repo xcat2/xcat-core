@@ -1,0 +1,72 @@
+=head1 NAME
+
+B<chvlanports> - It adds or removes nodes' switch interfaces for the vlan.
+
+=head1 SYNOPSIS
+
+B<chvlanports> I<vlanid> B<-n>|B<--nodes> I<noderange> B<-i>|B<--interface> I<nic> 
+
+B<chvlanports> I<vlanid> B<-n>|B<--nodes> I<noderange> B<-i>|B<--interface> I<nic> B<-d>|B<--delete> 
+
+B<chvlanports> [B<-h>|B<--help>]
+
+B<chvlanports> [B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<chvlanports> command adds nodes switch interfaces to the given vlan. If -d is specified, the nodes switch interfaces will be removed from the vlan. 
+
+This command won't create/remove vlans on switches, it just add node's switch ports into exisitng vlan or remove them from existing vlan on switch. Before calling chvlanports, the nodes switch interfaces should be configured in table switch, and vlan must already existing in switches.
+=head1 Parameters
+
+I<vlanid> is a unique vlan number. 
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-n|--nodes>    The nodes or groups to be added or removed. It takes the noderange format. Please check the man page for noderange for details. 
+
+=item B<-i|--interface> The interface name where the vlan will be tagged on.
+
+=item B<-h|--help>     Display usage message.
+
+=item B<-v|--version>  The Command Version.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To add node1, node2 and node3 to vlan 3 using eth1 interface.
+
+  chvlanports 3 -n node1,node2,node3 -i eth1
+
+
+=item 2.
+
+TO remove eth1 interface of node1, node2 and node3 from vlan 3.
+
+  chvlanports 3 -n node1,node2,node3 -i eth1 -d
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/chvlanports
+
+=head1 SEE ALSO
+
+L<mkvlan(1)|mkvlan.1>, L<rmvlan(1)|rmvlan.1>, L<lsvlan(1)|lsvlan.1>, L<chvlan(1)|chvlan.1>
+

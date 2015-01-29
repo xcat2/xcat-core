@@ -858,6 +858,13 @@ sub check_profile_consistent{
     my $arch = $nodetypeentry->{'arch'};
     $nodetypetab->close();
     
+    # Get Imageprofile pkgdir
+    my $osdistroname = $os . "-" . $arch;
+    my $osdistrotab = xCAT::Table->new('osdistro');
+    my $osdistroentry = ($osdistrotab->getAllAttribsWhere("osdistroname = '$osdistroname'", 'ALL' ))[0];
+    my $pkgdir = $osdistroentry->{'dirpaths'};
+    $osdistrotab->close();
+    
     # Get networkprofile netboot and installnic
     my $noderestab = xCAT::Table->new('noderes');
     my $noderesentry = $noderestab->getNodeAttribs($networkprofile, ['netboot', 'installnic']);
@@ -889,6 +896,12 @@ sub check_profile_consistent{
     my $nodetype = undef;
     $nodetype = $ntentry->{'nodetype'} if ($ntentry->{'nodetype'});
     $ppctab->close(); 
+    
+    # Checking whether netboot initrd image for Ubuntu ppc64
+    # This image should be downloaded from internet
+    if ($arch =~ /ppc64/i and $os =~ /ubuntu/i and !(-e "$pkgdir/install/netboot/initrd.gz")){
+        return 0, "The netboot initrd is not found in $pkgdir/install/netboot, please download it firstly.";
+    }
  
     # Check if exists provision network
     if (not ($installnic and exists $netprofile_nicshash{$installnic}{"network"})){
@@ -941,7 +954,7 @@ sub check_profile_consistent{
         }
         return 0, $errmsg;
     }
-        
+            
     return 1, "";
 }
 

@@ -713,7 +713,7 @@ sub mkinstall
         }
 
         if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz")) {
-            $callback->({error => ["The netboot initrd not found in $pkgdir/install/netboot, pls download first"], 
+            $callback->({error => ["The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."],
                          errorcode=>[1]});
              next;
         }

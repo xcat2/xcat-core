@@ -1,0 +1,13 @@
+Source: xcat-vlan
+Section: admin
+Priority: extra
+Maintainer: root <root@unknown>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.2
+#Vcs-Git: git://git.debian.org/collab-maint/xcat-vlan.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/xcat-vlan.git;a=summary
+
+Package: xcat-vlan
+Architecture: all
+Depends: xCAT-client
+Description: xCAT-vlan provides the xCAT vlan confiuration.

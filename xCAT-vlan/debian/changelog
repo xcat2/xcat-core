@@ -1,0 +1,5 @@
+xcat-vlan (2.9-snap201304181624) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- root <root@unknown>  Thu, 18 Apr 2013 15:40:26 +0800

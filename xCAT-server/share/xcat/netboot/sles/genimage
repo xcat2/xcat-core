@@ -273,15 +273,16 @@ unless ($onlyinitrd) {
        #if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
        #    system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        #}
-       my $index=1;
-       while (1) {
-           my $srcdir_sdk = "$installroot/$osver/$arch/sdk$index";
-           if ( -e "$srcdir_sdk") {
-               system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}sdk$index");
-              $index++;
-           } else { last; }
+       if (opendir(SRCDIR, "$installroot/$osver/$arch/")) {
+           while (my $tmpfile = readdir(SRCDIR)) {
+               if ($tmpfile =~ m/^sdk/) {
+                   my $srcdir_sdk = "$installroot/$osver/$arch/${tmpfile}";
+                   if ( -d "$srcdir_sdk") {
+                       system("zypper -R $rootimg_dir $non_interactive ar file:$srcdir_sdk ${osver}${tmpfile}");
+                   }
+               }
+           }  
        }
-
    }else {
            $srcdir = $srcdir . "/1";
 	   system("zypper -R $rootimg_dir $non_interactive sa file:$srcdir");
