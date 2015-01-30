@@ -105,6 +105,7 @@ if (defined($tilefact)) {
 
    $ENV{CONSCONTROLPATH} = "/tmp/wconscontrol.$firstnode.$$";
    system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry +0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+   $ENV{CONSCONTROLPATH} = "";
    my $remainwait = 2;
    while (not -S  "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
          sleep(0.1);
