@@ -1516,7 +1516,7 @@ sub dispatch_request {
             #flock($dlock,LOCK_UN);
             if ($errstr) {
 	            if ($numdests == 1) {
-                    dispatch_callback({error=>["Unable to dispatch hierarchical sub-command to ".$ENV{XCATHOST}.".  Error: $errstr."],errorcode=>[1]}); 
+                    dispatch_callback({error=>["Unable to dispatch hierarchical sub-command to ".$ENV{XCATHOST}.".  This service node may be down or its xcatd daemon may not be responding."],errorcode=>[1]}); 
 	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.": ".$errstr);
                 } else {
 	                xCAT::MsgUtils->message("S","Error dispatching request to ".$ENV{XCATHOST}.", trying other service nodes: ".$errstr);
@@ -1732,7 +1732,7 @@ sub service_connection {
       my $bytesread;
       do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
       if (length($line)==0) {
-	      if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does
+	      if (not defined $bytesread and $! == EAGAIN) { next; } #
 	      last;
       }
     	 $flags=fcntl($sock,F_GETFL,0);
@@ -1885,9 +1885,7 @@ sub send_pending_responses {
                                 $blocks += 1;
                         }
                         foreach (0..$blocks) {
-				do {
                                 syswrite($sock,$resp,4096,$_*4096);
-				} while (($! == EAGAIN) or ($! == ECHILD));
                         }
 	      	};
 }
@@ -1990,18 +1988,24 @@ sub validate {
   $policytable->close;
   my $rule;
   my $peerstatus="untrusted";
+  # This sorts the policy table  rows based on the level of the priority field in the row.
+  # note the lower the number in the policy table the higher the priority
+  my @sortedpolicies = sort { $a->{priority} <=> $b->{priority} } (@$policies);
   # check to see if peerhost is trusted
-  foreach $rule (@$policies) {
+  foreach $rule (@sortedpolicies) {
      
     if (($rule->{name} and $rule->{name} eq $peername)  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
   }
-  RULE: foreach $rule (@$policies) {
+  RULE: foreach $rule (@sortedpolicies) {
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});
+    }
+    if ($rule->{name} and $rule->{name} eq '*') { #a name is required, but can be any name whatsoever....
+      next unless ($peername);
     }
     if ($rule->{time} and $rule->{time} ne '*') {
       #TODO: time ranges
