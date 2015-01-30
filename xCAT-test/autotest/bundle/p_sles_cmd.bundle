@@ -254,3 +254,16 @@ confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
 confignics_config_multiple_port_withnicaliases_multiple_value
 confignics_disable_set_to_yes
 confignics_disable_set_to_1
+xdsh_h
+xdsh_V
+xdsh_regular_command
+xdsh_Q_command
+xdsh_c_sn
+xdsh_c_cn
+xdsh_e_filename
+xdsh_E
+xdsh_i_linux
+xdsh_t
+xdsh_q
+xdsh_T
+xdsh_o
