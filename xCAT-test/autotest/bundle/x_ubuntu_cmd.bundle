@@ -210,7 +210,6 @@ addkitcomp_h
 addkitcomp_i
 addkitcomp_f
 addkitcomp_a
-addkitcomp_noscripts
 buildkit_v
 buildkit_h
 buildkit_create
@@ -251,8 +250,6 @@ rmkit_f
 rmkit_V
 rmkitcomp_v
 rmkitcomp_h
-rmkitcomp_noscripts
-rmkitcomp_f
 xdsh_h
 xdsh_V
 xdsh_regular_command
