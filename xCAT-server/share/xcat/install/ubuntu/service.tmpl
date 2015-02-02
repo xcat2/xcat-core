@@ -16,10 +16,7 @@ d-i netcfg/dhcp_timeout string 120
 ### Mirror settings
 # If you select ftp, the mirror/country string does not need to be set.
 
-d-i mirror/country string manual
-d-i mirror/protocol string http
-d-i mirror/http/directory string #INCLUDE_OSIMAGE_PKGDIR#
-d-i mirror/http/proxy string
+#MIRRORSPEC#
 
 # Suite to install.
 #d-i mirror/suite string testing

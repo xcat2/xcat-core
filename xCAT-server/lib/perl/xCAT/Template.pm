@@ -136,7 +136,7 @@ sub subvars {
         # append preseed directive lines
         while (<PKGLISTFILE>) {
           chomp $_;
-          if ((/^\s*#.*/ ) || ( $_ =~ /^-/ )){
+          if ((/^\s*#.*/ ) || ( $_ =~ /^-/ )){ 
             next;
           }
           $pkglist .= " " . $_;
@@ -248,6 +248,7 @@ sub subvars {
       $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
       $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
       $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
+      $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
       $inc =~ s/#YAST2NET#/yast2network()/eg;
       $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
       $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
@@ -740,6 +741,60 @@ sub kickstartnetwork {
 	}
 	return $line;
 }
+
+sub mirrorspec{
+      my $line;
+      my $ostab    = xCAT::Table->new('nodetype'); 
+      my %oents = %{$ostab->getNodesAttribs([$node],[qw(os arch profile provmethod)])};
+      my $ent = $oents{$node}->[0];
+      my $imagename;
+      if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+            $imagename=$ent->{provmethod};
+      }
+      unless($imagename){
+            $tmplerr ="cannot determine the osimage for $node"; 
+            return;
+      }
+
+      my $pkgdirval;
+      my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+      my $ref = $linuximagetab->getAttribs({imagename => $imagename}, 'pkgdir');
+      if (($ref) && ($ref->{'pkgdir'})) {
+            $pkgdirval=$ref->{'pkgdir'};
+      }
+      
+      my $pkgdir;
+      my @mirrors;
+      my @pkgdirlist=split(/,/,$pkgdirval);
+      foreach (@pkgdirlist){
+               if($_ =~ /^http|ssh/){
+                 push @mirrors,$_;
+               }else{
+                 $pkgdir=$_;
+               }
+      }
+      
+      if($pkgdir){
+            $line .="
+d-i mirror/country string manual\n
+d-i mirror/protocol string http\n
+d-i mirror/http/directory string $pkgdir\n
+d-i mirror/http/proxy string\n";
+      }
+
+      if(scalar @mirrors){
+         my $index=0;
+         foreach(@mirrors){
+            $line .= " 
+d-i apt-setup/local$index/repository string deb $_\n
+d-i apt-setup/local$index/comment string online mirror $index\n";
+               $index=$index+1;
+         }
+      }
+
+      return $line;
+}
+
 
 
 sub yast2network {
