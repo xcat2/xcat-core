@@ -26,7 +26,7 @@ check:rc==0
 cmd:addkit /opt/xcat/share/xcat/tools/autotest/testcase/chkkitcomp/mykits/mykits-1.0-1.tar.bz2
 check:rc==0
 check:output=~Kit mykits-1.0-1 was successfully added
-cmd:mkdef testimage -u profile=compute provmethod=install osarch=ppc64el
+cmd:mkdef testimage -u profile=compute provmethod=install osarch=__GETNODEATTR($$MN,arch)__
 check:rc==0
 cmd:kitcompname=`lskit mykits-1.0-1 |grep kitcompname|awk -F= '{print $2}'`;addkitcomp -i testimage $kitcompname
 check:rc==0
