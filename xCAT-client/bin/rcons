@@ -52,7 +52,7 @@ if [ -n "$2" ]; then
     fi
 fi
 
-if [ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ]; then
+if [ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]; then
 	#use confluent
    CONFETTY="confetty"
    if [ -x "/opt/confluent/bin/confetty" ]; then

@@ -47,6 +47,9 @@ xCAT-SoftLayer provides Utilities to make xCAT work in a SoftLayer environment. 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/python
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/python/xcat
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/install
 #mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-SoftLayer
@@ -58,6 +61,8 @@ cp -p -R share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 
 cp -d bin/* $RPM_BUILD_ROOT/%{prefix}/bin
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
+
+cp -d lib/python/xcat/* $RPM_BUILD_ROOT/%{prefix}/lib/python/xcat/
 
 #cp -d postscripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts
 #chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/sysclone/postscripts/*

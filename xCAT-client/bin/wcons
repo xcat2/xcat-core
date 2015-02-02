@@ -18,9 +18,11 @@ my $sb;
 my $tilefact;
 my $xrm="-xrm xterm.mainMenu.*.font:fixed -xrm xterm.vtMenu.*.font:fixed -xrm xterm.fontMenu.*.font:fixed -xrm xterm -xrm xterm.vt100.font6:grvga.737";
 my $font = "5x7";
+my $sizegeometry;
 GetOptions(
    #'sb' => \$sb,
    'tile|t:i' => \$tilefact,
+   'geometry|g:s' => \$sizegeometry,
    #'font|f=s' => \$font
 );
 my $noderange = $ARGV[$#ARGV];
@@ -104,7 +106,8 @@ if (defined($tilefact)) {
 
 
    $ENV{CONSCONTROLPATH} = "/tmp/wconscontrol.$firstnode.$$";
-   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry +0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry $sizegeometry+0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"/bin/true ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+   $ENV{CONSCONTROLPATH} = "";
    my $remainwait = 2;
    while (not -S  "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
          sleep(0.1);
@@ -154,7 +157,11 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   my $geo;
+   if ($sizegeometry) {
+       $geo = "-g $sizegeometry ";
+   }
+   system("xterm $xrm $geo-bg black -fg white -title $firstnode -n $firstnode ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 
 }
 my $geometry="";
@@ -162,7 +169,7 @@ foreach (@nodes) {
    if ($tilefact) {
       my $corrected_x=$currx+$wmxo;
       my $corrected_y=$curry+$wmyo;
-      $geometry="-geometry +$corrected_x+$corrected_y";
+      $geometry="-geometry $sizegeometry+$corrected_x+$corrected_y";
       $currx+=$window_width;
       if ($currx >= ($tilefact * $window_width)) {
          $currx=0;
@@ -171,6 +178,8 @@ foreach (@nodes) {
             $curry = $panel_pad; #+$top_pad;
          }
       }
+   } elsif ($sizegeometry) {
+       $geometry = "-geometry $sizegeometry";
    }
 
    system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $_ -n $_ $geometry -e /bin/bash -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
