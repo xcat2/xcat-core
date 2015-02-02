@@ -2,7 +2,7 @@ start:buildkit_v
 os:Linux
 cmd:buildkit -v
 check:rc==0
-check:output=~xCAT-buildkit
+check:output=~xcat-buildkit
 check:output=~kitframework
 check:output=~compatible_frameworks
 cmd:buildkit --version
