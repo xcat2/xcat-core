@@ -209,7 +209,6 @@ addkitcomp_v
 addkitcomp_h
 addkitcomp_i
 addkitcomp_f
-addkitcomp_a
 buildkit_v
 buildkit_h
 buildkit_create
