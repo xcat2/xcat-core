@@ -211,7 +211,6 @@ xdsh_h
 xdsh_V
 xdsh_regular_command
 xdsh_Q_command
-xdsh_c_sn
 xdsh_c_cn
 xdsh_e_filename
 xdsh_E
