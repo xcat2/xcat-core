@@ -1434,7 +1434,7 @@ sub cal_netboot{
         return 0;
     }
 
-    my $condition = shift $condition_array_ref;
+    my $condition = shift @$condition_array_ref;
     if( (exists($netboot_dict_ref->{$condition})) || (exists($netboot_dict_ref->{'*'})) )
     {
         if(!exists($netboot_dict_ref->{$condition}))
