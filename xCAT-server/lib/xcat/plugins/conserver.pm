@@ -96,8 +96,18 @@ sub preprocess_request {
       $request = {};
       return;
   }
-  
-  
+
+  # 
+  # check the site "consoleservice" configuration.  
+  #   2.9.X, if not defined, default to conserver 
+  #          if defined and confluent, prevent this command from running
+  my $consoleservice=xCAT::TableUtils->get_site_attribute("consoleservice");
+  if ($consoleservice && $consoleservice eq "confluent") {
+      $callback->({data=>"ERROR: confluent is configured as the xCAT console service in the site table, try makeconfluentcfg"});
+      $request = {};
+      return;
+  }
+
   # get site master
   my $master=xCAT::TableUtils->get_site_Master();
   if (!$master) { $master=hostname(); }
