@@ -12,37 +12,37 @@
 #    at https://sourceforge.net/account/ssh
 #  - On Linux:  make sure createrepo is installed on the build machine
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
-#			apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
-#			conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
-#           popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
+#        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
+#        conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
+#        popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  
+#        Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
 # Usage:  buildcore.sh [attr=value attr=value ...]
-#       Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
-#		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
-#					actually build xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
-#					If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
-#					or https://sourceforge.net/projects/xcat/files/aix/.
-#		PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
-#					a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
-#					https://sourceforge.net/projects/xcat/files/yum/ or https://sourceforge.net/projects/xcat/files/aix/
-#					(but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
-#					release this build, use PROMOTE=1 without PREGA
-#		BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
-# 		UP=0 or UP=1 - override the default upload behavior 
-# 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
-# 		GITUP=<filename> - control which rpms get built by specifying a coregitup file
-#		EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
-#		VERBOSE=1 - to see lots of verbose output
+#    Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
+#        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
+#                    xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
+#                    If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
+#                    or https://sourceforge.net/projects/xcat/files/aix/.
+#        PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
+#                  a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
+#                  https://sourceforge.net/projects/xcat/files/yum/ or https://sourceforge.net/projects/xcat/files/aix/
+#                  (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
+#                  release this build, use PROMOTE=1 without PREGA
+#        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
+#        UP=0 or UP=1 - override the default upload behavior 
+#        SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
+#        GITUP=<filename> - control which rpms get built by specifying a coregitup file
+#        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
+#        VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
 FRS=/home/frs/project/x/xc/xcat
 
 # These are the rpms that should be built for each kind of xcat build
-#ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-OpenStack xCAT-SoftLayer xCAT-OpenStack-baremetal"
-ALLBUILD="perl-xCAT xCAT-client xCAT-server  xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan"
+ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
 ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT and xCATsn have PCM specific configuration - conserver-xcat, syslinux-xcat
