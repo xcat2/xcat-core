@@ -827,6 +827,10 @@ unless(-l "$rootimg_dir/var/lib/dhcpcd") {
     mkpath "$rootimg_dir/var/lib/dhcpcd/";
     system("touch $rootimg_dir/var/lib/dhcpcd/dhcpcd-$prinic.info");
 }
+
+#keyctl moved to /bin for newer release
+system("cd $rootimg_dir/usr/bin/; ln -s ../../bin/keyctl $rootimg_dir/usr/bin/keyctl");
+
 # which is different from the Redhat family
 
 # some rpms mounts the imageroot/proc on the /proc, need to release it, 
@@ -1005,10 +1009,10 @@ sub mkinitrd_dracut {
         #update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
         if (-d glob($dracutmoduledir."[0-9]*fadump")){
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm fadump"\n};
         }
         else{
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm"\n};
         }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         print $DRACUTCONF qq{filesystems+="nfs"\n};
@@ -1043,10 +1047,10 @@ sub mkinitrd_dracut {
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
         if (-d glob($dracutmoduledir."[0-9]*fadump")){
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm fadump"\n};
         }
         else{
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules lvm"\n};
         }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
@@ -1992,7 +1996,8 @@ sub generic_post { # This function is meant to leave the image in a state approx
             system("$cmd");
         }
         else {
-            print "[genimage] Not starting service $service, verify if started by systemctl\n";
+            $cmd = $cmd . "systemctl start $service.service";
+            system("$cmd");
         }
     }
 
