@@ -137,7 +137,6 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
 sub scpnode {
   my $inputs = shift;
   my $nodehdl = shift;
-  my $out = shift;
   my $node = shift;
   my $in;
   #my $args = join(" ",@_);
