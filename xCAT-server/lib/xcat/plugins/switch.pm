@@ -162,7 +162,7 @@ sub process_request {
             my $mtms = $req->{'mtm'}->[0]."*".$req->{'serial'}->[0];
             my $tmp_nodes = $::XCATVPDHASH{$mtms};
             foreach (@$tmp_nodes) {
-                if ($::XCATPPCHASH{$_}) {
+                if ($::XCATMPHASH{$_}) {
                     $pbmc_node = $_;
                 }
             } 

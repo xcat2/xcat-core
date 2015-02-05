@@ -135,7 +135,7 @@ sub findme {
         my $mtms = $request->{'mtm'}->[0]."*".$request->{'serial'}->[0];
         my $tmp_nodes = $::XCATVPDHASH{$mtms};
         foreach (@$tmp_nodes) {
-            if ($::XCATPPCHASH{$_}) {
+            if ($::XCATMPHASH{$_}) {
                 $pbmc_node = $_;
             }
         } 
