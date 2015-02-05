@@ -116,9 +116,10 @@ sub process_request {
     if ($command eq 'kitnodeadd' or $command eq 'kitnodeupdate' or $command eq 'kitnoderefresh') {
         push @commandslist, ['makehosts', ''];
         push @commandslist, ['makedns', ''];
-        if ($macflag) {
-            push @commandslist, ['makedhcp', ''];
-        }
+        # Remove 'makedhcp' command, nodeset will update dhcp lease file
+        #if ($macflag) {
+        #    push @commandslist, ['makedhcp', ''];
+        #}
         push @commandslist, ['makeknownhosts', ''];
         if ($runconservercmd) {
             push @commandslist, ['makeconservercf', ''];
