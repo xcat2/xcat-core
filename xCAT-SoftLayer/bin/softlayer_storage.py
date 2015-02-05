@@ -48,6 +48,7 @@ def mount_nas_storage(hostname, user, passwd, mountPoint):
     print "%s\n" %(cmd)
 
 def mount_consistent_storage(hostname, user, mountPoint): 
+    # TODO: would be good to be able to specify the nfs version as a argument
     print "Attempting to mount the Consistent Performance File Storage at %s" %(mountPoint)
 
     if xcatutils.isMounted(mountPoint):
@@ -59,6 +60,11 @@ def mount_consistent_storage(hostname, user, mountPoint):
         raise xcatutils.xCatError("Error when mounting. (%s)" %(err))
     else: 
         print "Success\n"
+
+    # To help out with automount, print this msg 
+    print "\nNote: To configure automount on reboot, add the following into /etc/fstab:"
+    cmd = "%s:/%s %s nfs4 defaults,hard,intr 0 0" %(hostname,user,mountPoint)
+    print "%s\n" %(cmd)
 
 def unmount_storage(mountPoint):
     print "Attempting to unmount the NAS at %s..." %(mountPoint)
