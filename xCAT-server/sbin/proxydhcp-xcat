@@ -139,10 +139,10 @@ until ($quit) {
     my $winboot = $winpepath."Boot/pxeboot.0";
     if ($archp) {
         my $clienttype = substr($data, $archp, 5);
-        if ($clienttype == "00000") {
+        if ($clienttype eq "00000") {
         #if ("$package[$archp]$package[$archp+1]$package[$archp+2]$package[$archp+3]$package[$archp+4]" == "00000") {
             $winboot = $winpepath."Boot/pxeboot.0";
-        } elsif ($clienttype == "00007") {
+        } elsif ($clienttype eq "00007") {
             $winboot = $winpepath."Boot/bootmgfw.efi";
         }
     }
@@ -322,7 +322,7 @@ sub my_ip_facing
         (my $curnet, my $maskbits) = split /\//, $elems[2];
         my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
         my $curn = unpack("N", inet_aton($curnet));
-        if (($noden & $curmask) == ($curn & $curmask))
+        if (($noden & $curmask) eq ($curn & $curmask))
         {
             return inet_aton($curnet);
         }

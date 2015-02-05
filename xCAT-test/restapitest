@@ -596,7 +596,7 @@ sub find_key
            my $tmp = $$en; # keey head
             $$en .= "$val:";
             my $t1 = find_key($$input{$val}, $en, $ou);
-            if ($$en == ""){
+            if ($$en eq ""){
                 $$en = $tmp; #restore head
             }
         }

@@ -141,13 +141,13 @@ sub chvm_parse_extra_options {
             } elsif ($cmd eq "vmmemory") {
                 if ($value =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
                     my ($mmin, $mcur, $mmax);
-                    if ($2 == "G" or $2 == '') {
+                    if ($2 eq "G" or $2 eq '') {
                         $mmin = $1 * 1024;
                     } 
-                    if ($4 == "G" or $4 == '') {
+                    if ($4 eq "G" or $4 eq '') {
                         $mcur = $3 * 1024;
                     }
-                    if ($6 == "G" or $6 == '') {
+                    if ($6 eq "G" or $6 eq '') {
                         $mmax = $5 * 1024;
                     }
                     unless ($mmin <= $mcur and $mcur <= $mmax) {
@@ -872,17 +872,17 @@ sub do_op_extra_cmds {
                         if ($param =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
                             my $memsize = $memhash->{mem_region_size};
                             my $min = $1;
-                            if ($2 == "G" or $2 == '') {
+                            if ($2 eq "G" or $2 eq '') {
                                 $min = $min * 1024;
                             } 
                             $min = int($min/$memsize);
                             my $cur = $3;
-                            if ($4 == "G" or $4 == '') {
+                            if ($4 eq "G" or $4 eq '') {
                                 $cur = $cur * 1024;
                             }
                             $cur = int($cur/$memsize);
                             my $max = $5;
-                            if ($6 == "G" or $6 == '') {
+                            if ($6 eq "G" or $6 eq '') {
                                 $max = $max * 1024;
                             }
                             $max = int($max/$memsize);
@@ -1183,7 +1183,7 @@ sub get_cec_lpar_name {
     my @value = split(/\n/, $lpar_info);
     foreach my $v (@value) {
         if($v =~ /lparname:\s*([^\,]*),\s*lparid:\s*([\d]+),/) {
-            if($2 == $lparid) {
+            if($2 eq $lparid) {
                 return $1;
             }
         }
@@ -2347,13 +2347,13 @@ sub mkspeclpar {
                     next;
                 }
                 my ($mmin, $mcur, $mmax);
-                if ($2 == "G" or $2 == '') {
+                if ($2 eq "G" or $2 eq '') {
                     $mmin = $1 * 1024;
                 } 
-                if ($4 == "G" or $4 == '') {
+                if ($4 eq "G" or $4 eq '') {
                     $mcur = $3 * 1024;
                 }
-                if ($6 == "G" or $6 == '') {
+                if ($6 eq "G" or $6 eq '') {
                     $mmax = $5 * 1024;
                 }
                 unless ($mmin <= $mcur and $mcur <= $mmax) {
