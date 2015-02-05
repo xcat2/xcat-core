@@ -11,7 +11,6 @@ chdef_multiple_keys
 chdef_n
 chdef_t_o_error
 chtab_null
-chtab_delete
 chtab_modify
 chtab_d
 chtab_modify_node
@@ -31,7 +30,6 @@ packimage_h
 packimage_v
 pping_h
 pping_v
-pping_all
 pping_node
 getmacs_noderange
 getmacs_d
@@ -59,8 +57,6 @@ makedhcp_a
 makedhcp_a_d
 makedhcp_d
 mkdef_null
-mkdef_t_o_attr
-mkdef_f_t_o_attr
 mkdef_z
 mkdef_t_o_error
 nodeadd_noderange
@@ -78,7 +74,6 @@ nodech_noderange_table_comma
 nodech_noderange_table_arrow
 nodech_noderanage_table_at
 nodech_delete
-nodech_delete_error
 nodech_error_node
 nodech_error_table
 nodech_h
@@ -136,7 +131,6 @@ rinv_firm
 rinv_all
 rinv_noderange_err
 rmdef_null
-rmdef_t_o_attr
 rmdef_f_all
 rmdef_t_err
 rpower_off
@@ -153,7 +147,6 @@ rscan_z
 rscan_w
 rscan_x_w
 rscan_z_w
-mvitals_state
 rvitals_lcds
 rvitals_all
 rvitals_noderange_err
@@ -222,12 +215,9 @@ makehosts_l
 makehosts_d
 makehosts_n
 makehosts_n_noderange
-xcatstart
-xcatstop
 xdcp_src_dst
 xdcp_P
 makedns_h
-makedns_n_node
 makedns_d_node
 makedns_n
 makedns
@@ -235,8 +225,6 @@ noderange_individual_node
 noderange_individual_grp
 noderange_node01-node10
 noderange_node[01-10]
-noderange_node[01
-noderange_f[1-2]n[1-3]
 noderange_group1-group3
 noderange_node001-node200
 noderange_node10+3
