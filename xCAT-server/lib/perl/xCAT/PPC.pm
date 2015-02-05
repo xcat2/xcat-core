@@ -2152,7 +2152,7 @@ sub findme {
     my @nodes = ();
     my $pbmc_node;
     foreach (@$tmp_nodes) {
-        if ($::XCATPPCHASH{$_}) {
+        if ($::XCATMPHASH{$_}) {
             $pbmc_node = $_;
         } else {
             push @nodes, $_;

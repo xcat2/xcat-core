@@ -171,7 +171,7 @@ my %globalnodetype = (
     ivm   => $::NODETYPE_PPC,
     cmm   => $::NODETYPE_MP,
     lpar  =>"$::NODETYPE_PPC,$::NODETYPE_OSI",
-    pbmc  => $::NODETYPE_PPC,
+    pbmc  => $::NODETYPE_MP,
 );
 my %globalmgt = (
     fsp   => "fsp",
@@ -1128,6 +1128,10 @@ sub parse_responses {
             $atthash{ip} = ${$searchmacs{$rsp}}{peername};
             $atthash{url} =  ${$searchmacs{$rsp}}{payload};
             $atthash{hostname} =  'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
+            if (exists($::OLD_DATA_CACHE{"mp*".$atthash{mtm}."*".$atthash{serial}})) {
+                $atthash{hostname} = $::OLD_DATA_CACHE{"mp*".$atthash{mtm}."*".$atthash{serial}};
+                push @matchnode, 'Server-'.$atthash{mtm}.'-SN'.$atthash{serial};
+            }
             $outhash{'Server-'.$atthash{mtm}.'-SN'.$atthash{serial}} = \%atthash;
 
         }elsif (($type eq SERVICE_FSP) && (${$attributes->{'machinetype-model'}}[0] =~ /^7895|1457|7954/ )) {
@@ -1496,7 +1500,7 @@ sub xCATdB {
             $machash{$hostname} = {mac=>$mac} if ($type =~ /^fsp|bpa$/);           
         } elsif ( $type =~ /^pbmc$/) {
             $nodelisthash{$hostname} = {groups=>$groups, hidden=>$hidden};
-            $ppchash{$hostname} = {nodetype=>$globalhwtype{$type}};
+            $mphash{$hostname} = {nodetype=>$globalhwtype{$type}};
             $vpdhash{$hostname} = {mtm=>$model, serial=>$serial};
             $nodehmhash{$hostname} = {mgt=>$globalmgt{$type}};
             $nodetypehash{$hostname} = {nodetype=>$globalnodetype{$type}};
