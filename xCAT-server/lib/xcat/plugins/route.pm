@@ -610,7 +610,7 @@ sub set_route {
         # ipv6 network
         if ($net =~ /:/) {
             if (xCAT::Utils->isLinux()) {
-	        if ( $gw_ip == "" || $gw_ip == "::" ) {
+	        if ( $gw_ip eq "" || $gw_ip eq "::" ) {
                     $cmd="ip -6 route add $net/$mask dev $ifname";
 		} else {
                     $cmd="ip -6 route add $net/$mask via $gw_ip";
@@ -620,7 +620,7 @@ sub set_route {
             }
         } else {
             if (xCAT::Utils->isLinux()) {
-	        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+	        if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
 		    $cmd="route add -net $net netmask $mask dev $ifname";
 		} else {
                     $cmd="route add -net $net netmask $mask gw $gw_ip";
@@ -691,7 +691,7 @@ sub delete_route {
         my $cmd;
         if ($net =~ /:/) {
             if (xCAT::Utils->isLinux()) {
-	        if ( $gw_ip == "" || $gw_ip == "::" ) {
+	        if ( $gw_ip eq "" || $gw_ip eq "::" ) {
                     $cmd = "ip -6 route delete $net/$mask dev $ifname";
 		} else {
                     $cmd = "ip -6 route delete $net/$mask via $gw_ip";
@@ -701,7 +701,7 @@ sub delete_route {
             }
         } else {
             if (xCAT::Utils->isLinux()) {
-	        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+	        if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
                     $cmd="route delete -net $net netmask $mask dev $ifname";
 		} else {
                     $cmd="route delete -net $net netmask $mask gw $gw_ip";
@@ -850,13 +850,13 @@ sub addPersistentRoute_Sles {
     #print "hasConfiged=$hasConfiged\n";
     my $new_config;
     if ($net =~ /:/) {
-        if ( $gw_ip == "" || $gw_ip == "::" ) {
+        if ( $gw_ip eq "" || $gw_ip eq "::" ) {
             $new_config = "$net/$mask :: - $ifname\n";
 	} else {
             $new_config = "$net/$mask $gw_ip - -\n";
 	}
     } else {
-        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+        if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
             $new_config="$net 0.0.0.0 $mask $ifname\n";
 	} else {
             $new_config="$net $gw_ip $mask $ifname\n";
@@ -1026,7 +1026,7 @@ sub addPersistentRoute_RH {
 
         $new_config="$ifname $net/$mask $gw_ip";
     } else {
-        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+        if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
             $new_config="any net $net netmask $mask dev $ifname\n";
 	} else {
             $new_config="any net $net netmask $mask gw $gw_ip\n";
@@ -1170,7 +1170,7 @@ sub addPersistentRoute_Debian{
 
     #ipv6
     if ( $net =~ /:/){
-	if ( $gw_ip == "" || $gw_ip == "::" ) {
+	if ( $gw_ip eq "" || $gw_ip eq "::" ) {
             $cmd = "grep \"$net/$mask dev $ifname\" $conf_file";
             $route_conf = "  up route -A inet6 add $net/$mask dev $ifname \n  down route -A inet6 del $net/$mask dev $ifname \n";
 	} else {
@@ -1180,7 +1180,7 @@ sub addPersistentRoute_Debian{
     }
     else { #ipv4
         $cmd = "grep \"-net $net netmask $mask gw $gw_ip\" $conf_file";
-	if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+	if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
             $route_conf = "  up route add -net $net netmask $mask dev $ifname \n  down route del -net $net netmask $mask dev $ifname \n";
 	} else {
 	    $route_conf = "  up route add -net $net netmask $mask gw $gw_ip \n  down route del -net $net netmask $mask gw $gw_ip\n";
@@ -1242,14 +1242,14 @@ sub deletePersistentRoute_Debian{
     preParse_Debian();
     #ipv6
     if ( $net =~ /:/){
-        if ( $gw_ip == "" || $gw_ip == "::" ) {
+        if ( $gw_ip eq "" || $gw_ip eq "::" ) {
             $match = "$net/$mask dev $ifname";
 	} else {
             $match = "$net/$mask gw $gw_ip";
 	}
     }
     else {
-        if ( $gw_ip == "" || $gw_ip == "0.0.0.0" ) {
+        if ( $gw_ip eq "" || $gw_ip eq "0.0.0.0" ) {
             $match = "net $net netmask $mask dev $ifname";
 	} else {
             $match = "net $net netmask $mask gw $gw_ip";

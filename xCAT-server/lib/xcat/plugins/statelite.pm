@@ -786,7 +786,7 @@ sub liteItem {
 
         # the /etc/mtab should be handled every time even the parent /etc/ has been handled.
         # if adding /etc/ to litefile, only tmpfs should be used. 
-        if ($entry[1] == "/etc/mtab") {
+        if ($entry[1] eq "/etc/mtab") {
             $isChild = 0;
         }
 

@@ -163,7 +163,7 @@ while (<FILE>) {
     if ($::VERBOSE) {
       print "The server I found: mac = $chaddr, clientip = $ciaddr, serverip = $siaddr, offer = $offer.\n";
     }
-    if ($os == "sles") { $offer = 1;}
+    if ($os eq "sles") { $offer = 1;}
     if ($chaddr =~ /$MAC/i && $offer && $ciaddr && $siaddr && $rsiaddr) {
       $output{$rsiaddr}{'client'} = $ciaddr;
       $output{$rsiaddr}{'nextsv'} = $siaddr;
