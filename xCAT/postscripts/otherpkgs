@@ -22,6 +22,9 @@
 #=cut
 #-------------------------------------------------------------------------------
 
+#enable debug
+set -x
+
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
 pmatch ()
