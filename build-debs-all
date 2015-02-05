@@ -68,7 +68,7 @@ function makedeb {
 }
 
 # build all debian packages
-packages="xCAT-client xCAT-nbroot xCAT-nbroot2 perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-IBMhpc xCAT-rmc xCAT-vlan"
+packages="xCAT-client xCAT-nbroot xCAT-nbroot2 perl-xCAT xCAT-server xCAT-UI xCAT xCATsn xCAT-test xCAT-IBMhpc xCAT-rmc xCAT-vlan xCAT-confluent"
 
 for file in `echo $packages`
 do
