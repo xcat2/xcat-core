@@ -28,7 +28,7 @@ system management server
 
 %build
 # Convert pods to man pages and html pages
-./xpod2man
+#./xpod2man
 
 %install
 rm -rf $RPM_BUILD_ROOT
