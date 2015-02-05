@@ -241,12 +241,13 @@ if [ "$OSNAME" = "AIX" ]; then
 fi
 
 # Build the rest of the noarch rpms
-for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan; do
+for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent; do
 	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi		# do not build xCAT-buildkit on aix
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi		# do not build xCAT-softlayer on aix
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-vlan" ]; then continue; fi		# do not build xCAT-vlan on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-vlan" ]; then continue; fi      # do not build xCAT-vlan on aix
+	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-confluent" ]; then continue; fi # do not build xCAT-confluent on aix
 	if $GREP $rpmname $GITUP || [ "$BUILDALL" == 1 ]; then
 		UPLOAD=1
 		maker $rpmname
