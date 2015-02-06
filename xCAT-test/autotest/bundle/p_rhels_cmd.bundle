@@ -11,7 +11,6 @@ chdef_multiple_keys
 chdef_n
 chdef_t_o_error
 chtab_null
-chtab_modify
 chtab_d
 chtab_modify_node
 chtab_modify_key
@@ -120,9 +119,7 @@ noderm_null
 noderm_err_node
 nodeset_stat
 nodeset_noderange
-nodestat_noderange
 nodestat_err_node
-rinv_null
 rinv_bus
 rinv_config
 rinv_serial
@@ -131,7 +128,6 @@ rinv_firm
 rinv_all
 rinv_noderange_err
 rmdef_null
-rmdef_f_all
 rmdef_t_err
 rpower_off
 rpower_stat
@@ -191,7 +187,6 @@ dumpxCATdb_a_p_nullskiptables_V
 dumpxCATdb_p_V
 restorexCAT_h
 restorexCATdb_v
-restorexCATdb_p
 restorexCATdb_p_V
 restorexCATdb_a_p_V
 restorexCATdb_wrongpath
@@ -216,7 +211,6 @@ makehosts_d
 makehosts_n
 makehosts_n_noderange
 xdcp_src_dst
-xdcp_P
 makedns_h
 makedns_d_node
 makedns_n
@@ -224,15 +218,10 @@ makedns
 noderange_individual_node
 noderange_individual_grp
 noderange_node01-node10
-noderange_node[01-10]
 noderange_group1-group3
-noderange_node001-node200
-noderange_node10+3
 noderange_10-20
 noderange_XCAT_NODE_PREFIX
 noderange_XCAT_NODE_SUFFIX
-noderange_/nrtestnode.*
-noderange_/tmp/nodelistfile
 noderange_exclusion
 noderange_group_intersection
 confignics_config_one_port_single_value
@@ -246,11 +235,9 @@ xdsh_h
 xdsh_V
 xdsh_regular_command
 xdsh_Q_command
-xdsh_c_sn
 xdsh_c_cn
 xdsh_e_filename
 xdsh_E
-xdsh_i_linux
 xdsh_t
 xdsh_q
 xdsh_T

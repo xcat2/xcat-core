@@ -224,8 +224,6 @@ rmkit_f
 rmkit_V
 rmkitcomp_v
 rmkitcomp_h
-rmkitcomp_noscripts
-rmkitcomp_f
 xdsh_h
 xdsh_V
 xdsh_regular_command
@@ -237,5 +235,3 @@ xdsh_t
 xdsh_q
 xdsh_T
 xdsh_o
-xdsh_c_sn
-xdsh_i_linux

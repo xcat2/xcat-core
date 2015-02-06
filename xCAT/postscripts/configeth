@@ -100,7 +100,7 @@ function configipv4(){
             echo "NETMASK_${num_v4num}=${str_v4mask}" >> $str_conf_file
             echo "NETWORK_${num_v4num}=${str_v4net}" >> $str_conf_file
             echo "LABEL_${num_v4num}=${num_v4num}" >> $str_conf_file
-            if [ "$str_mtu "!= "$str_default_token" ]; then
+            if [ "$str_mtu" != "$str_default_token" ]; then
 				echo "MTU_${num_v4num}=${str_mtu}" >> $str_conf_file
 			fi
         fi
