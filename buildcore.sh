@@ -428,7 +428,14 @@ if [[ $REPOFILE == "xCAT-*.repo" ]]; then
     echo "ERROR: For xcat-dep, please execute $0 in the correct <os>/<arch> subdirectory"
     exit 1
 fi
-sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > /etc/yum.repos.d/$REPOFILE
+#
+# default to RHEL yum, if doesn't exist try Zypper
+#
+DIRECTORY="/etc/yum.repos.d"
+if [[ ! -d ${DIRECTORY} ]]; then                                                                            
+    DIRECTORY="/etc/zypp/repos.d"                                                                           
+fi
+sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > ${DIRECTORY}/$REPOFILE
 cd -
 EOF2
 chmod 775 mklocalrepo.sh
