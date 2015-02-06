@@ -225,7 +225,12 @@ $uarch="amd64" if ($arch eq x86_64);
 
 unless ($onlyinitrd) {
    @aptdirs=();
-   find(\&isaptdir, <$srcdir/>);
+
+   # Get the ubuntu repo path from osimage.pkgdir
+   my @srcdirs = split(',', $srcdir);
+   foreach my $dir (@srcdirs) {
+      find(\&isaptdir, <$dir/>);
+   } 
    # Add the dir for kernel deb to be installed
    if ($kernelver) {
       find(\&isaptdir, <$kerneldir/>);
@@ -274,11 +279,20 @@ unless ($onlyinitrd) {
    my $aptcmd1 = "debootstrap";
    #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
    my $aptcmd2;
-   if ($uarch eq 'ppc64el') {
-       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
+
+   # Check whether a local Ubuntu mirror is specified
+   # if linuximage.pkgdir has second mirror is set, we consider the second mirror as a full Ubuntu mirror
+   if ($#srcdirs > 0) {
+       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir file://$srcdirs[1]";
+       $srcdir = $srcdirs[0];
    } else {
-       $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
+      if ($uarch eq 'ppc64el') {
+         $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
+      } else {
+         $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
+      }
    }
+
    mkpath("$rootimg_dir/var/lib/dpkg");
    mkpath("$rootimg_dir/var/lib/apt");
 
@@ -390,6 +404,7 @@ unless ($onlyinitrd) {
         }
 
     }
+    
     #add the other package directory to for apt-get install
     open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
     #if ($otherpkgsdir_local){
