@@ -252,7 +252,9 @@ if [ -z $STATEMNT ]; then
     MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
   elif [ ! -z "$BOOTIF" ]; then
     MACX=$BOOTIF
-    ETHX=$(getdevfrommac $BOOTIF)
+    MACX=${MACX#01-}
+    MACX=${MACX//-/:}
+    ETHX=$(getdevfrommac $MACX)
   fi
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
