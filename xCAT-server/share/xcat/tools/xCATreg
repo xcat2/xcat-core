@@ -626,14 +626,14 @@ sub do_test {
 		$batbundle="x_rhels_cmd.bundle" if($mn =~ /rhx/);
 		$batbundle="p_sles_cmd.bundle" if($mn =~ /slesp/);
 		$batbundle="x_sles_cmd.bundle" if($mn =~ /slesx/);
-	}elsif($mn =~ /ubuntux/){
+        }elsif($mn =~ /ubuntux/){
 		$diskfull_installation_flat_testcase="Ubuntu_full_installation_flat_x86_vm";
 		$diskless_installation_flat_testcase="Ubuntu_diskless_installation_flat_x86_vm";
 		$batbundle="x_ubuntu_cmd.bundle";
 	}elsif($mn =~ /ubuntupel/){
 		$diskfull_installation_flat_testcase="Ubuntu_full_installation_flat_p8le_vm";
-		$diskless_installation_flat_testcase="Ubuntu_diskless_installation_flat_p8le_vm";
-		$batbundle="p_ubunut.cmd.bundle";
+                $diskless_installation_flat_testcase="Ubuntu_diskless_installation_flat_p8le_vm";
+                $batbundle="p_ubunut.cmd.bundle";
 	}
 	
     if($mn !~ /ubuntu/){
@@ -766,7 +766,6 @@ sub creat_report{
     my $mailreport .= "======================================\n";
     $mailreport .= "       Regression Result Summary\n";
     $mailreport .= "======================================\n\n";
-	
 	# $gitupdateflag = 0 git update out of time
 	# $gitupdateflag = 1 there isn't new code checkin in last one day
 	# $gitupdateflag = 2 git update failed
@@ -789,12 +788,32 @@ sub creat_report{
 		&runcmd("mv $commitinfofile $commitinfofile.old && echo \"\" > $commitinfofile");   
 		return 0;	
 	}
-    
+ 
     while(my($k,$v) = each %pidrecord){
         my $scenario="[".$confkeys{$k."os"};
         if($k=~/p/){$scenario.="+PPC64] ";}else{$scenario.="+x86_64] ";}
         $mailreport .= "$scenario\n";
-		
+        my $batbundle="";
+        my $totalcase=0;
+
+ if($k=~ /sles/ || $k =~ /rh/){
+                $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/p_rhels_cmd.bundle" if($k =~ /rhp/);
+                $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/x_rhels_cmd.bundle" if($k =~ /rhx/);
+                $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/p_sles_cmd.bundle" if($k =~ /slesp/);
+                $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/x_sles_cmd.bundle" if($k =~ /slesx/);
+                $totalcase=`cat $batbundle|wc -l`;
+                $totalcase+=7;
+                }elsif($k =~ /ubuntux/){
+                $batbundle="/$xcatcoredir/xCAT-test/autotest/bundle/x_ubuntu_cmd.bundle";
+                $totalcase=`cat $batbundle|wc -l`;
+                $totalcase+=2;
+                }elsif($k =~ /ubuntupel/){
+                $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/p_ubunut.cmd.bundle";
+                $totalcase=`cat "$batbundle|wc -l`;
+                $totalcase+=2;
+                }
+
+
         if ($v == 0){ # whole regression test finished 
             my $h=int($consumptionrecord{$k}/3600);
 			my $m=int(($consumptionrecord{$k} - $h*3600)/60);
@@ -804,6 +823,7 @@ sub creat_report{
 			
 			if($piderrrecord{$k} ne ""){
 			    $mailreport .= "\tDeploy MN result: $piderrrecord{$k}\n";
+                            $mailreport .= "\tTotalCase $totalcase TotalRun 0 Failed 0\n";
 			    next;
 			}
 		
@@ -828,9 +848,11 @@ sub creat_report{
 					}
 			    }
 			}
+
 			closedir(DIR);
 
-			$mailreport .= "\tTotal $totalcnt Failed $failcnt\n\tFailed cases: $faillist\n";
+
+			$mailreport .= "\tTotalCase $totalcase TotalRun $totalcnt Failed $failcnt\n\tFailed cases: $faillist\n";
 		}else{ # regression test out of time
 			$mailreport .= "\tTime consumption: Out of 8 hours!!!!!!\n";
 		}
@@ -855,14 +877,16 @@ sub send_email{
 	
 	my $totalcnt=0;
 	my $failcnt=0;
-    $cnt =`cat  $mailfile |grep "Total"|grep "Failed"|wc -l`;
+        my $totalcase=0;   
+$cnt =`cat  $mailfile |grep "Total"|grep "Failed"|wc -l`;
 	$out =`cat  $mailfile |grep "Total"|grep "Failed"`;
 	for(my $i=1;$i<$cnt+1;$i++){
         my $tmpline=`echo "$out"|sed -n ${i}p`;
 		chomp($tmpline);
-		if($tmpline =~ /Total (\d+) Failed (\d+)/){
-		    $totalcnt+=$1;
-			$failcnt+=$2;
+		if($tmpline =~ /TotalCase (\d+) TotalRun (\d+) Failed (\d+)/){
+                   $totalcase+=$1;
+		    $totalcnt+=$2;
+			$failcnt+=$3;
 		}
 	}
 	
@@ -875,11 +899,10 @@ sub send_email{
 	}elsif($gitupdateflag==1 && ! $forceregwithoutupdate){
 	    $subject = "[$mailtitle] No code checkin, stop regression test today!!!";
 	}elsif($gitupdateflag==1 && $forceregwithoutupdate){
-	    $subject = "[$mailtitle] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: NO ONE!!";
+	    $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", Checkin: NO ONE!!";
 	}else{
-	    $subject = "[$mailtitle] Total:".$totalcnt.", Fail:".$failcnt.", Checkin: ".$checkinlist;
+	    $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", Checkin: ".$checkinlist;
 	}
-    
     my $mailreport .= "\n\n======================================\n";
     $mailreport .= "       Commit Codes Last Day\n";
     $mailreport .= "======================================\n\n";
