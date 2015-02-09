@@ -76,16 +76,16 @@ check:output=~11.1.0.0
 check:output=~12.1.0.0
 check:output=~13.1.0.0
 check:output=~14.1.0.0
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~11.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi  
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -94,10 +94,10 @@ cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
 cmd:xdsh $$CN ifdown $$SECONDNIC
 cmd:xdsh $$CN ifdown $$THIRDNIC
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf  /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
 end
 
 start:confignics_config_multiple_port_withnichostnamesuffixes_multiple_value
@@ -135,16 +135,16 @@ check:output=~11.1.0.0
 check:output=~12.1.0.0
 check:output=~13.1.0.0
 check:output=~14.1.0.0
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~11.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -153,10 +153,10 @@ cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
 cmd:xdsh $$CN ifdown $$SECONDNIC
 cmd:xdsh $$CN ifdown $$THIRDNIC
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi 
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi 
 cmd:cp /etc/hosts.backup /etc/hosts
 end
 
@@ -193,16 +193,16 @@ check:output=~11.1.0.0
 check:output=~12.1.0.0
 check:output=~13.1.0.0
 check:output=~14.1.0.0
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~11.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$SECONDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
 check:output=~12.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~13.1.0.100
 check:output!~dhcp
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1; else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$$THIRDNIC:1 ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1;else xdsh $$CN cat /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
 check:output=~14.1.0.100
 check:output!~dhcp
 cmd:rmdef -t network -o 11_1_0_0-255_255_0_0
@@ -211,10 +211,10 @@ cmd:rmdef -t network -o 13_1_0_0-255_255_0_0
 cmd:rmdef -t network -o 14_1_0_0-255_255_0_0
 cmd:xdsh $$CN ifdown $$SECONDNIC
 cmd:xdsh $$CN ifdown $$THIRDNIC
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
-cmd:if [ "$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$SECONDNIC:1; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$SECONDNIC:1; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC; else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC; fi
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN rm -rf /etc/network/interfaces.d/$$THIRDNIC:1;  else xdsh $$CN rm -rf /etc/sysconfig/network*/ifcfg-$$THIRDNIC:1; fi
 end
 
 start:confignics_disable_set_to_yes
