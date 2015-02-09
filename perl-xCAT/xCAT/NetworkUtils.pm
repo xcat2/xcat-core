@@ -2428,6 +2428,102 @@ sub get_all_nicips{
     }
 }
 
+#-------------------------------------------------------------------------------
 
+=head3  gen_net_boot_params
+
+    Description:
+        This subroutine is used to generate all possible kernel parameters for network boot (rh/sles/ubuntu + diskfull/diskless)
+        The supported network boot parameters:
+            ksdevice - Specify network device for Anaconda. For rh6 and earlier. Format: 'ksdevice={$mac|$nicname}'
+            BOOTIF - Specify network device for Anaconda. The boot device which set by pxe. xCAT also set it if the bootload is not pxe. Format 'BOOTIF={$mac}'
+            ifname - Specify a interfacename<->mac pair, it will set the interfacename to the interface which has the <mac>. Format 'ifname=$ifname:$mac'
+               # This will only be generated when linuximage.nodebootif is set. 
+            bootdev - Specify the boot device. Mostly it's used with <ip> parameter and when there are multiple <ip> params. Format 'bootdev={$mac|$ifname}
+            ip - Specify the network configuration for an interface. Format: 'ip=dhcp', 'ip=$ifname:dhcp'
+           
+            netdevice - Specify network device for Linuxrc (Suse bootloader). Format: 'netdevice={$mac|$nicname}'
+           
+            netdev - Specify the interfacename which is used by xCAT diskless boot script to select the network interface. Format: 'netdev=$nicname'
+
+        Reference:
+            Redhat anaconda doc: https://github.com/rhinstaller/anaconda/blob/master/docs/boot-options.txt
+            Suse Linuxrc do: https://en.opensuse.org/SDB:Linuxrc
+            
+    Arguments:
+        $installnic   <- node.installnic
+        $primarynic <- node.primarynic
+        $macmac    <- node.mac
+        $nodebootif <- linuximage.nodebootif
+        
+    Returns: 
+        $net_params - The key will be the parameter name, the value for the key will be the parameter value.
+        Valid Parameter Name:
+            ksdevice
+            netdev
+            netdevice
+            ip
+            ifname
+            BOOTIF
+
+        And following two keys also will be returned for reference
+            mac
+            nicname
+
+    Example:
+        my $netparams = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primmarynic, $macmac, $nodebootif);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub gen_net_boot_params 
+{
+    my $class = shift;
+    my $installnic = shift;
+    my $primarynic = shift;
+    my $macmac = shift;
+    my $nodebootif = shift;
+
+    my $net_params;
+    
+    # arbitrary use primarynic if installnic is not set
+    unless ($installnic) {
+         $installnic = $primarynic;
+    }
+    
+    # just use the installnic to generate the nic related kernel parameters
+    my $mac;
+    my $nicname;
+    
+    if ((! defined ($installnic)) || ($installnic eq "") || ($installnic =~ /^mac$/i)) {
+        $mac = $macmac;
+        $net_params->{mac} = $mac;
+    } elsif ($installnic =~ /^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}$/) {
+        $mac = $installnic;
+        $net_params->{mac} = $mac;
+    } else {
+        $nicname = $installnic;
+        $net_params->{nicname} = $nicname;
+    }
+
+    if ($nicname) {
+        $net_params->{ksdevice} = "ksdevice=$nicname";
+        $net_params->{ip} = "ip=$nicname:dhcp";
+        $net_params->{netdev} = "netdev=$nicname";
+        $net_params->{netdevice} = "netdevice=$nicname";
+    } elsif ($mac) {
+        $net_params->{ksdevice} = "ksdevice=$mac";
+        $net_params->{BOOTIF} = "BOOTIF=$mac";
+        $net_params->{bootdev} = "bootdev=$mac";
+        $net_params->{ip} = "ip=dhcp";
+        if ($nodebootif) {
+            $net_params->{ifname} = "ifname=$nodebootif:$mac";
+        }
+        $net_params->{netdevice} = "netdevice=$mac";
+    }
+
+    return $net_params;
+}
 
 1;
