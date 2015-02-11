@@ -750,7 +750,7 @@ sub mknetboot
         my $primarynic;
         my $mac;
         if (defined ($reshash->{$node}->[0]) && $reshash->{$node}->[0]->{installnic}) {
-            $installnic = $reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic};
+            $installnic = $reshash->{$node}->[0]->{installnic};
         }
         if (defined ($reshash->{$node}->[0]) and $reshash->{$node}->[0]->{primarynic}) {
             $primarynic = $reshash->{$node}->[0]->{primarynic};
@@ -762,8 +762,13 @@ sub mknetboot
         my $net_params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $mac, $nodebootif);
 
         if (defined ($net_params->{ifname}) || defined ($net_params->{netdev})) {
-            $kcmdline .= "$net_params->{ifname} $net_params->{netdev} ";
-        } elsif (defined ($net_params->{BOOTIF}) && $arch=~ /ppc/) {
+            if (defined ($net_params->{ifname})) {
+                $kcmdline .= "$net_params->{ifname} ";
+            }
+            if ( defined ($net_params->{netdev})) {
+                $kcmdline .= "$net_params->{netdev} ";
+            }
+        } elsif (defined ($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch=~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
         }
 
@@ -1386,11 +1391,11 @@ sub mkinstall
                  $ent->{installnic} =~ s/eth/vmnic/g;
                  $ent->{primarynic} =~ s/eth/vmnic/g;
             }
-            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $macent->{mac});
-print "ori par: $ent->{installnic}, $ent->{primarynic}, $macent->{mac}\n";
-foreach (keys %{$net_params}) {
-    print "key[$_} = $net_params->{$_}\n";
-}
+            my $mac;
+            if ($macent->{mac}) {
+                $mac = xCAT::Utils->parseMacTabEntry($macent->{mac}, $node);
+            }
+            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $mac);
             
             my $nicname = $net_params->{nicname};
              
@@ -1863,7 +1868,11 @@ sub mksysclone
             my $kcmdline = "ramdisk_size=$ramdisk_size";
 
             # Add kernel parameters to specify the boot network interface
-            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $macent->{mac});            
+            my $mac;
+            if ($macent->{mac}) {
+                $mac = xCAT::Utils->parseMacTabEntry($macent->{mac}, $node);
+            }
+            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $mac);            
             $kcmdline .= " $net_params->{ksdevice} ";
             if ($arch =~ /ppc/) {
                   $kcmdline .= " $net_params->{BOOTIF} ";

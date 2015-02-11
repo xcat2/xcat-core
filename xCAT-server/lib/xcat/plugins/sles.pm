@@ -583,30 +583,6 @@ sub mknetboot
         # add dhcp for ip
         $kcmdline .= "ip=dhcp ";
 
-        # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
-        #my $netdev = "";
-        #my $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{mac},$node);
-
-        #if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and ($reshash->{$node}->[0]->{installnic} ne "mac")) {
-        #        $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
-        #} elsif ($nodebootif) {
-        #    $kcmdline .=  "netdev=" . $nodebootif . " ";
-        #} elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and ($reshash->{$node}->[0]->{primarynic} ne "mac")) {
-        #    $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
-        #} else {
-        #    if ($arch =~ /x86/) {
-        #        #do nothing, we'll let pxe/xnba work their magic
-        #    } elsif ($mac) {
-        #        $kcmdline .=  "BOOTIF=" . $mac . " ";
-        #    } else {
-        #        $callback->({
-        #            error=>[qq{"cannot get the mac address for $node in mac table"}],
-        #            errorcode=>[1]
-        #        });
-        #    }
-        #}
-       
-         # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
          my $mac;
          my $installnic;
          my $primarynic;
@@ -627,7 +603,7 @@ sub mknetboot
          
          if (defined ($net_params->{ifname}) || defined ($net_params->{netdev})) {
              $kcmdline .= " $net_params->{ifname} $net_params->{netdev} ";
-         } elsif (defined ($net_params->{BOOTIF}) && $arch=~ /ppc/) {
+         } elsif (defined ($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch=~ /ppc/)) {
              $kcmdline .= " $net_params->{BOOTIF} ";
          } 
           
@@ -1142,50 +1118,6 @@ sub mkinstall
               . $netserver . ":" . $httpport
               . "$httpprefix/1";
 
-            #my $netdev = "";
-            #if ($ent->{installnic})
-            #{
-            #    if ($ent->{installnic} eq "mac")
-            #    {
-            #        my $mactab = xCAT::Table->new("mac");
-            #        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-            #        $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
-            #     }
-            #    else
-            #    {
-            #        $netdev = $ent->{installnic};
-            #    }
-            #}
-            #elsif ($ent->{primarynic})
-            #{
-            #    if ($ent->{primarynic} eq "mac")
-            #    {
-            #        my $mactab = xCAT::Table->new("mac");
-            #        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-            #        $netdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
-            #    }
-            #    else
-            #    {
-            #        $netdev = $ent->{primarynic};
-            #    }
-            #}
-            #else
-            #{
-            #    $netdev = "bootif";
-            #}
-            #if ($netdev eq "") #why it is blank, no mac defined?
-            #{
-            #    $callback->(
-            #        {
-            #            error => ["No mac.mac for $node defined"],
-            #            errorcode => [1]
-            #        }
-            #    );
-            #}
-            #unless ($netdev eq "bootif") { #if going by bootif, BOOTIF will suffice
-            #    $kcmdline .= " netdevice=" . $netdev;
-            #}
-
             my $installnic;
             my $primarynic;
             my $mac;           
@@ -1518,30 +1450,6 @@ sub mksysclone
             my $sent = $hents{$node}->[0];
 
             my $kcmdline = "ramdisk_size=$ramdisk_size";
-            #my $ksdev = "";
-            #if ($ent->{installnic})
-            #{
-            #    $ksdev = $ent->{installnic};
-            #}
-            #elsif ($ent->{primarynic})
-            #{
-            #    $ksdev = $ent->{primarynic};
-            #}
-            #else
-            #{
-            #    $ksdev = "bootif"; #if not specified, fall back to bootif
-            #}
-
-            #if ($ksdev eq "mac")
-            #{
-            #    my $mactab = xCAT::Table->new("mac");
-            #    my $macref = $mactab->getNodeAttribs($node, ['mac']);
-            #    $ksdev = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
-            #}
-
-            #unless ( $ksdev eq "bootif" ) {
-            #    $kcmdline .= " netdevice=" . $ksdev;
-            #}
 
             my $installnic;
             my $primarynic;
@@ -1565,6 +1473,7 @@ sub mksysclone
 
             if ($arch =~ /ppc/) {
                 $kcmdline .= " dhcptimeout=150";
+                $kcmdline .= " $net_params->{BOOTIF} ";
             }
 
             if (defined($sent->{serialport}))
@@ -1585,18 +1494,6 @@ sub mksysclone
                 }
             }
             $kcmdline .= " XCAT=$xcatmaster:$xcatdport xcatd=$xcatmaster:$xcatdport SCRIPTNAME=$imagename";
-
-            #my $nodetab = xCAT::Table->new('nodetype');
-            #my $archref = $nodetab->getNodeAttribs($node, ['arch']);
-            #if ($archref->{arch} eq "ppc64"){
-            #    my $mactab = xCAT::Table->new('mac');
-            #    my $macref = $mactab->getNodeAttribs($node, ['mac']);
-            #    my $formatmac = xCAT::Utils->parseMacTabEntry($macref->{mac},$node);
-            #    $formatmac =~ s/:/-/g;
-            #    $formatmac = "01-".$formatmac;
-            #    $kcmdline .= " BOOTIF=$formatmac ";
-            #}
-            $kcmdline .= " $net_params->{BOOTIF} ";
 
             my $i = "xcat/genesis.fs.$arch.gz";
             if ( -r "$tftpdir/xcat/genesis.fs.$arch.lzma" ){
