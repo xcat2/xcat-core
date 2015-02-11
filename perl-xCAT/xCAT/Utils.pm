@@ -4468,29 +4468,32 @@ sub cleanup_for_powerLE_hardware_discovery {
 #This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").
 sub parseMacTabEntry{
 
-        my $macString=shift;
-        if( $macString =~ /xCAT::Utils/)
-          {
-             $macString=shift;
+    my $macString=shift;
+    if( $macString =~ /xCAT::Utils/)     {
+        $macString=shift;
+    }
+    my $HostName=shift;
+    
+    my $mac_ret;
+    my @macEntry=split(/\|/,$macString);
+    
+    foreach my $mac_t  (@macEntry){
+        if($mac_t =~ /!/){
+            if($mac_t =~ /(.+)!$HostName$/){
+                $mac_ret=$1;
+            }
+        }else{
+            $mac_ret=$mac_t;
+        }
+    }
 
-          }
-        my $HostName=shift;
-
-        my $mac_ret;
-        my @macEntry=split(/\|/,$macString);
-
-        foreach my $mac_t  (@macEntry){
-                   if($mac_t =~ /!/){
-                     if($mac_t =~ /(.+)!$HostName$/){
-                        $mac_ret=$1;
-                     }
-                   }else{
-                     $mac_ret=$mac_t;
-                   }
-          }
-
-
-        return $mac_ret;
+    if ($mac_ret) {
+        if ($mac_ret !~ /:/) {
+            $mac_ret =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+        }
+    }
+    
+    return $mac_ret;
 }
 
 

@@ -1452,9 +1452,6 @@ sub mknetboot
         if( $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = xCAT::Utils->parseMacTabEntry($machash->{$node}->[0]->{'mac'},$node);
-            if ($mac !~ /:/) {
-               $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
-            }
         }
         my $net_params = xCAT::NetworkUtils->gen_net_boot_params($installnic, $primarynic, $mac, $nodebootif);
         if (defined($net_params->{ifname})) {
@@ -1462,7 +1459,7 @@ sub mknetboot
         }
         if (defined($net_params->{netdev})) {
             $kcmdline .= "$net_params->{netdev} ";
-        } elsif (defined($net_params->{BOOTIF})) {
+        } elsif (defined($net_params->{BOOTIF}) && ($net_params->{setmac} || $arch=~ /ppc/)) {
             $kcmdline .= "$net_params->{BOOTIF} ";
         }
 
