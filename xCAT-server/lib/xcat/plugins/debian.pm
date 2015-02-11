@@ -506,6 +506,8 @@ sub mkinstall
         my $profile;
         my $tmplfile;
         my $pkgdir;
+        my $pkgdirval;
+        my @mirrors;
         my $pkglistfile;
         my $imagename; # set it if running of 'nodeset osimage=xxx'
         my $platform;
@@ -580,13 +582,23 @@ sub mkinstall
 	        $arch  = $ph->{osarch};
 	        $profile = $ph->{profile};
 	        $platform=xCAT_plugin::debian::getplatform($os);
+
+                $tmplfile=$ph->{template};
+                $pkgdirval=$ph->{pkgdir};
+                my @pkgdirlist=split(/,/,$pkgdirval);
+                foreach (@pkgdirlist){
+                   if($_ =~ /^http|ssh/){
+                     push @mirrors,$_;
+                   }else{
+                     $pkgdir=$_;
+                   }
+
+                }
 	
-    	    $tmplfile=$ph->{template};
-            $pkgdir=$ph->{pkgdir};
 	        if (!$pkgdir) {
 		        $pkgdir="$installroot/$os/$arch";
 	        }
-		    $pkglistfile=$ph->{pkglist};
+		$pkglistfile=$ph->{pkglist};
 	    }
 	    else {
 	        $os = $ent->{os};
