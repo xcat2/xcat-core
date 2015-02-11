@@ -449,7 +449,7 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open ($aptconfig,">>","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
+      open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list");
       my $index=1;
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
@@ -558,8 +558,9 @@ unless ($onlyinitrd) {
    # Add the local repo from MN
    my $master = xCAT::TableUtils->get_site_Master();
    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
-   print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
+   print $aptconfig "deb http://$master$srcdir $dist main\n";
    close($aptconfig);
+   `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
    
    #recover the /etc/hosts & /etc/reslov.conf
    `cd $rootimg_dir/etc/;mv -f hosts.bak hosts;mv -f resolv.conf.bak resolv.conf`;
