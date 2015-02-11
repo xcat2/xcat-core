@@ -2502,9 +2502,12 @@ sub gen_net_boot_params
     } elsif ($installnic =~ /^[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}$/) {
         $mac = $installnic;
         $net_params->{mac} = $mac;
+        $net_params->{setmac} = $mac;
     } else {
+        $mac = $macmac;
         $nicname = $installnic;
         $net_params->{nicname} = $nicname;
+        $net_params->{mac} = $mac;
     }
 
     if ($nicname) {
@@ -2512,6 +2515,7 @@ sub gen_net_boot_params
         $net_params->{ip} = "ip=$nicname:dhcp";
         $net_params->{netdev} = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
+        $net_params->{ifname} = "ifname=$nodebootif:$mac";
     } elsif ($mac) {
         $net_params->{ksdevice} = "ksdevice=$mac";
         $net_params->{BOOTIF} = "BOOTIF=$mac";
