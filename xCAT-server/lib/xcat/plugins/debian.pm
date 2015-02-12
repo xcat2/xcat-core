@@ -739,11 +739,6 @@ sub mkinstall
         my $initrdpath;
         my $maxmem;
 
-        # only first value is adopted, please see tabdump linuximage, section pkgdir.
-        my @pkgdirs = split(/,/, $pkgdir);
-        if (scalar(@pkgdirs) > 1) {
-            $pkgdir = @pkgdirs[0];
-        }
 
         if (
 	       (
