@@ -281,7 +281,8 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
-for rpmname in xCAT xCATsn xCAT-OpenStack xCAT-OpenStack-baremetal; do
+#for rpmname in xCAT xCATsn xCAT-OpenStack xCAT-OpenStack-baremetal; do
+for rpmname in xCAT xCATsn; do 
 	#if [ "$EMBED" = "zvm" ]; then break; fi
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
@@ -515,7 +516,7 @@ if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ];
 	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
+	#rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
 	rpm2cpio ../$XCATCORE/xCAT-vlan-*.$NOARCH.rpm | cpio -id '*.html'
 	i=0
