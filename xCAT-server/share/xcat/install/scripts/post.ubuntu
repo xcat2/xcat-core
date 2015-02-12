@@ -32,7 +32,7 @@ done >>/etc/resolv.conf
 ln -sf /bin/bash /bin/sh
 #
 #delete the useless apt repo
-sed -i 's/^deb.*updates.*$/#&/g' /etc/apt/sources.list
+#sed -i 's/^deb.*updates.*$/#&/g' /etc/apt/sources.list
 # Run xCAT post install
 #
 export MASTER_IP="#XCATVAR:XCATMASTER#"
@@ -230,9 +230,9 @@ script
 end script
 EOF
 fi
-sed -i 's/\(deb.*security.*\)/#\1/' /etc/apt/sources.list
+#sed -i 's/\(deb.*security.*\)/#\1/' /etc/apt/sources.list
 #iso does not contains source deb packages
-sed -i 's/^\(\s*deb-src.*install.*\)$/#\1/g' /etc/apt/sources.list
+#sed -i 's/^\(\s*deb-src.*install.*\)$/#\1/g' /etc/apt/sources.list
 #delete the 127.0.1.1 line from /etc/hosts
 sed -i '/127.0.1.1/d' /etc/hosts
 updateflag.awk $MASTER 3002

@@ -228,8 +228,14 @@ unless ($onlyinitrd) {
 
    # Get the ubuntu repo path from osimage.pkgdir
    my @srcdirs = split(',', $srcdir);
+   my $pkgdir_internet; #only support one http mirror which will be used to create bootstrap
    foreach my $dir (@srcdirs) {
-      find(\&isaptdir, <$dir/>);
+      if ($dir =~ /^http.*/){
+          $pkgdir_internet = $dir;
+      } else {
+          $srcdir = $dir;  #set $srcdir to be the one which is not http path
+          find(\&isaptdir, <$dir/>);
+      }
    } 
    # Add the dir for kernel deb to be installed
    if ($kernelver) {
@@ -251,6 +257,11 @@ unless ($onlyinitrd) {
       $repnum += 1;
    }
    $repnum-=1;
+
+   # Add the internet mirror
+   if ($pkgdir_internet) {
+      print $aptconfig "deb $pkgdir_internet\n\n";
+   }
    close($aptconfig);
    mkpath "$rootimg_dir/etc";
 
@@ -282,9 +293,10 @@ unless ($onlyinitrd) {
 
    # Check whether a local Ubuntu mirror is specified
    # if linuximage.pkgdir has second mirror is set, we consider the second mirror as a full Ubuntu mirror
-   if ($#srcdirs > 0) {
-       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir file://$srcdirs[1]";
-       $srcdir = $srcdirs[0];
+   if ($pkgdir_internet) {
+       my $mirrorurl = $pkgdir_internet;
+       $mirrorurl =~ s/ .*$//g;    # get the url part of mirror path
+       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir $mirrorurl";
    } else {
       if ($uarch eq 'ppc64el') {
          $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
@@ -437,7 +449,7 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open ($aptconfig,">>","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
+      open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list");
       my $index=1;
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
@@ -546,8 +558,9 @@ unless ($onlyinitrd) {
    # Add the local repo from MN
    my $master = xCAT::TableUtils->get_site_Master();
    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
-   print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
+   print $aptconfig "deb http://$master$srcdir $dist main\n";
    close($aptconfig);
+   `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
    
    #recover the /etc/hosts & /etc/reslov.conf
    `cd $rootimg_dir/etc/;mv -f hosts.bak hosts;mv -f resolv.conf.bak resolv.conf`;
