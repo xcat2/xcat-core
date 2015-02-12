@@ -294,6 +294,14 @@ export XCATROOT PATH MANPATH
 export PERL_BADLANG=0
 EOF
 
+# export XCATSSLVER for sles11. Others OS can work without this setting.
+if [ -r /etc/SuSE-release ]; then
+  ver=`grep 'VERSION' /etc/SuSE-release | awk -F= '{print $2}' | sed 's/ //g'`
+  if [ "$ver" = "11" ]; then
+    echo 'export XCATSSLVER=TLSv1' >> /etc/profile.d/xcat.sh
+  fi
+fi
+
 cat << EOF > /etc/profile.d/xcat.csh
 setenv XCATROOT "$RPM_INSTALL_PREFIX0"
 setenv PATH \${XCATROOT}/bin:\${XCATROOT}/sbin:\${XCATROOT}/share/xcat/tools:\${PATH}

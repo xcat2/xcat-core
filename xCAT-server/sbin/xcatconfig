@@ -1250,6 +1250,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
 
         if ($::osname eq 'AIX')
@@ -1503,6 +1504,16 @@ sub initDB
                 xCAT::MsgUtils->message('E',"Could not set ddns as dnshandler.");
             }
         }
+
+        # add default value to site.xcatsslversion
+        $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $outref = xCAT::Utils->runcmd("$cmds", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',"Could not add default value for site.xcatsslversion.");
+        }
+
+
 
    } 
    # remove xcatserver,xcatclient

@@ -237,6 +237,10 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
      }
   }
   my $client;
+  my %sslargs;
+  if (defined($ENV{'XCATSSLVER'})) {
+    $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+  }
   if (-r $keyfile and -r $certfile and -r $cafile) {
     $client = IO::Socket::SSL->start_SSL($pclient,
     SSL_key_file => $keyfile,
@@ -245,6 +249,7 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     SSL_verify_mode => SSL_VERIFY_PEER,
     SSL_use_cert => 1,
     Timeout => 0,
+    %sslargs,
    );
   } else {
     $client =  IO::Socket::SSL->start_SSL($pclient,
