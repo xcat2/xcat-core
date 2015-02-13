@@ -298,7 +298,8 @@ EOF
 if [ -r /etc/SuSE-release ]; then
   ver=`grep 'VERSION' /etc/SuSE-release | awk -F= '{print $2}' | sed 's/ //g'`
   if [ "$ver" = "11" ]; then
-    echo 'export XCATSSLVER=TLSv1' >> /etc/profile.d/xcat.sh
+    echo
+    #echo 'export XCATSSLVER=TLSv1' >> /etc/profile.d/xcat.sh
   fi
 fi
 
