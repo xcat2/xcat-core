@@ -59,6 +59,11 @@ if ($::NOEXPAND) {		# this is when ppping is calling us and has already expanded
 	@nodes = split(/,/, $noderange);
 }
 else { 		# the normal case of the user running the cmd - expand the noderange using xcatd
+    my %sslargs;
+    if (defined($ENV{'XCATSSLVER'})) {
+        $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+    }
+
 	my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=> xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem",
@@ -66,6 +71,7 @@ else { 		# the normal case of the user running the cmd - expand the noderange us
                 SSL_ca_file =>  xCAT::Utils->getHomeDir()."/.xcat/ca.pem",
                 SSL_use_cert => 1,
                 SSL_verify_mode => 1,
+		%sslargs,
              );
 	die "Connection failure: $!\n" unless ($client);
 	my %cmdref = (command => 'noderange', noderange => $noderange);
