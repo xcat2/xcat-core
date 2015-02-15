@@ -1,5 +1,7 @@
 start:Ubuntu_diskless_installation_flat_x86_vm
 os:Linux
+cmd:copycds $$ISO
+check:rc==0
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
