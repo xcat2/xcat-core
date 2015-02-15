@@ -928,7 +928,7 @@ sub do_op_extra_cmds {
             }
             if (@query_array) {
                 my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
-                unless (scalar keys(%$memhash)) {
+                unless (scalar keys(%$rethash)) {
                     push @values, [$mtms, "Can not get hypervisor information", 1];
                     next;
                 }
