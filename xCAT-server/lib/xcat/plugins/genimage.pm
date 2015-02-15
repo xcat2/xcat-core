@@ -170,12 +170,6 @@ sub process_request {
        $pkglist = $ref_linuximage_tab->{'pkglist'};
        
        $srcdir = $ref_linuximage_tab->{'pkgdir'};
-       my @pkgarray = split(/,/, $ref_linuximage_tab->{'pkgdir'});
-       if(scalar(@pkgarray) > 1)
-       {
-           $srcdir = @pkgarray[0];
-       }
-       
 
        $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
@@ -299,7 +293,7 @@ sub process_request {
    if ($interactive) { $cmd .= " --interactive" }
    if ($onlyinitrd) { $cmd .= " --onlyinitrd" }
    
-   if ($srcdir) { $cmd .= " --srcdir $srcdir";}
+   if ($srcdir) { $cmd .= " --srcdir \"$srcdir\"";}
    if ($pkglist) { $cmd .= " --pkglist $pkglist";}
    if ($srcdir_otherpkgs) { $cmd .= " --otherpkgdir \"$srcdir_otherpkgs\""; }
    if ($otherpkglist) { $cmd .= " --otherpkglist $otherpkglist"; }  

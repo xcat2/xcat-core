@@ -77,12 +77,18 @@ my $noderange = $ARGV[0];
 my  @user = getpwuid($>);
 my $homedir=$user[7];
 
+my %sslargs;
+if (defined($ENV{'XCATSSLVER'})) {
+    $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+}
+
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
+		%sslargs,
                 #SSL_verify_mode => 1,
              );
 die "Connection failure: $!\n" unless ($client);

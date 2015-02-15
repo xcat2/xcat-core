@@ -928,7 +928,7 @@ sub do_op_extra_cmds {
             }
             if (@query_array) {
                 my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
-                unless (scalar keys(%$memhash)) {
+                unless (scalar keys(%$rethash)) {
                     push @values, [$mtms, "Can not get hypervisor information", 1];
                     next;
                 }
@@ -1738,7 +1738,7 @@ sub parse_part_get_info {
             $hash->{process_units_avail} = $2;
         } elsif ($line =~ /Authority Lpar id:(\w+)/i) {
             $hash->{service_lparid} = $1;
-        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),\w*\(([\w| |-|_]*)\)/) {
+        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),\w*\(([\w| |-|_|\/]*)\)/) {
             $hash->{bus}->{$3}->{cur_lparid} = $1;
             $hash->{bus}->{$3}->{bus_slot} = $2;
             $hash->{bus}->{$3}->{des} = $4;
@@ -2001,7 +2001,7 @@ sub query_cec_info {
                 last;
             }
             #push @result, [@td[3], $rethash, 0];
-            push @result, @$rethash;
+            #push @result, @$rethash;
         }  
     }
     if ($args->{updatedb} and %lpar_hash) {
