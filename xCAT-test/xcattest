@@ -553,7 +553,7 @@ sub loadcase
                 chomp($cases[$i]->{os});
                 chomp($config{var}{OS});                 
                 if($cases[$i]->{os} !~ /$config{var}{OS}/){
-                    if((($config{var}{OS} =~ /^Linux\s*/) && ($cases[$i]->{os} =~ /^aix\s*/)) || (($config{var}{OS} =~ /^aix\s*/)&&($cases[$i]->{os} !~ /^aix\s*/)) || (($config{var}{OS} =~ /^rhels\s*/) && ($cases[$i]->{os} !~ /^Linux\s*/)) || (($config{var}{OS} =~ /^sles\s*/) && ($cases[$i]->{os} !~ /^Linux\s*/)) || (($config{var}{OS} =~ /^ubuntu\s*/) && ($cases[$i]->{os} !~ /^Linux\s*/))){
+                    if((($config{var}{OS} =~ /^Linux\s*/i) && ($cases[$i]->{os} =~ /^aix\s*/i)) || (($config{var}{OS} =~ /^aix\s*/i) && ($cases[$i]->{os} !~ /^aix\s*/i)) || (($config{var}{OS} =~ /^rhels\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i)) || (($config{var}{OS} =~ /^sles\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i)) || (($config{var}{OS} =~ /^ubuntu\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i))){
                         push(@notrightcase, $cases[$i]->{name});
                         pop(@rightcase);
                         $skip = 1;
