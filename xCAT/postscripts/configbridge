@@ -1,0 +1,594 @@
+#!/bin/bash
+
+# load library for network caculation
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
+
+function add_br() {
+  BNAME=$1
+
+  if [[ $BRIDGE == "ovs" ]]; then
+    ovs-vsctl add-br $BNAME
+  elif [[ $BRIDGE == "linux" ]]; then
+    brctl addbr $BNAME
+  fi
+}
+function add_if() {
+  BNAME=$1
+  PORT=$2
+
+  if [[ $BRIDGE == "ovs" ]]; then
+    ovs-vsctl add-port $BNAME $PORT
+  elif [[ $BRIDGE == "linux" ]]; then
+    brctl addif $BNAME $PORT
+  fi
+}
+
+#written in bash for fewest prerequisites
+function get_def_interface {
+    #gethostbyname on `hostname` would be helpful, but since we
+    #are in bash, the best alternative is to use ping to get at it
+    #don't want to grep in /etc/hosts or presume DNS
+    #we are, however, presuming ipv4 for the moment
+    retval=$(ping -c 1 `hostname`|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
+    if [ -z "$retval" -o "127.0.0.1" = "$retval" ]; then #ok, that didn't pan out, now we grab the first address that looks sane
+        #retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
+        retval=`ip -4 -oneline addr show|grep -v "127.0.0.1"|grep -v '169.254'|head -n 1|awk -F 'inet ' '{print $2}'|awk -F '/' '{print $1}'`
+    fi
+    if [ -z "$retval" ]; then 
+        echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
+        exit 1
+    fi
+    #iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
+    iface=`ip -4 -oneline addr show|grep -i $retval|awk -F ':' '{print $2}'|awk -F ' ' '{print $1}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+    if [ -z "$iface" ]; then
+        echo "ERROR: Unable to reasonably guess the default interface" >&2
+        exit 1
+    fi
+    if $brcmd show | grep ^$iface >& /dev/null; then #
+        OIFS=$IFS
+        IFS=$'\n'
+        INMATCH=0
+        for brline in $($listbr); do
+            IFS=$OIFS
+            for port in $($listport $brline); do
+
+                if [ $port == $iface ]; then
+                    iface=$port
+                    echo "$iface"
+                    IFS=$OFIS
+                    return
+                fi
+            done
+    done
+    IFS=$OFIS
+    else 
+        echo "$iface"
+    fi
+}
+
+#before modify the configuration on ubuntu/debian, should preparse the interface file
+#By default, All nics configuration are saved into /etc/network/interfaces, it is difficult for xcat to configure nic
+#So only use source /etc/network/interfaces.d/* in "/etc/network/interfaces"
+#create files under /etc/network/interfaces.d/ for each nic, then it is similar with the readhat and sles
+function debianpreconf(){
+    #create the config sub dir
+    if [ ! -d "/etc/network/interfaces.d" ];then
+        mkdir -p "/etc/network/interfaces.d"
+    fi
+    #search xcat flag
+    XCATFLAG=`grep "#XCAT_CONFIG" /etc/network/interfaces`
+    if [ -n "$XCATFLAG" ];then
+        return
+    fi
+
+    #back up the old interface configure
+    if [ ! -e "/etc/network/interfaces.bak" ];then
+        mv /etc/network/interfaces /etc/network/interfaces.bak
+    fi
+
+    #create the new config file
+    echo "#XCAT_CONFIG" > /etc/network/interfaces
+    echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+
+    CONFFILE=''
+
+    #read the backfile
+    cat /etc/network/interfaces.bak | while read LINE
+    do
+        if [ ! "$LINE" ];then
+            continue
+        fi
+        FIRSTCHAR=${LINE:0:1}
+        if [ $FIRSTCHAR = '#' ];then
+            continue
+        fi
+
+        CONFTYPE=`echo $LINE | cut -d" " -f1`
+        if [ $CONFTYPE = 'auto' -o $CONFTYPE = 'allow-hotplug' ];then
+            LINE=${LINE#$CONFTYPE}
+            for NICNAME in $LINE; do
+                echo "$CONFTYPE $NICNAME" > "/etc/network/interfaces.d/$NICNAME"
+            done
+        elif [ $CONFTYPE = 'iface' -o $CONFTYPE = 'mapping' ];then
+            #find out the nic name, should think about the eth0:1
+            NICNAME=`echo $LINE | cut -d" " -f 2 | cut -d":" -f 1`
+            CONFFILE="/etc/network/interfaces.d/$NICNAME"
+            if [ ! -e $CONFFILE ];then
+                echo "auto $NICNAME" > $CONFFILE
+            fi
+
+            #write lines into the conffile
+            echo $LINE >> $CONFFILE
+        else
+            echo $LINE >> $CONFFILE
+        fi
+
+    done
+}
+
+if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+  nwdir="/etc/sysconfig/network"
+  isSLES=1
+elif [ -f "/etc/debian_version" ];then
+  debianpreconf
+  nwdir="/etc/network/interfaces.d"
+  isDebian=1
+  getcap /usr/bin/qemu-system-x86_64 | grep cap_net_admin
+  if [ $? ne 0 ];then
+    setcap cap_net_admin=ei /usr/bin/qemu-system-x86_64
+  fi
+else 
+  nwdir="/etc/sysconfig/network-scripts"
+  isRedhat=1
+fi 
+
+#Type of bridge, ovs, brctl
+
+if [ "ovs" = "$1" ]; then
+
+    restartservice openvswitch
+    enableservice openvswitch
+    BRIDGE="ovs"
+    brcmd=ovs-vsctl
+
+    listbr="$brcmd list-br"
+    listport="$brcmd list-ports"
+
+elif [ "linux" = "$1" ]; then
+
+    BRIDGE="linux"
+    brcmd=brctl
+
+    listbr="$brcmd show | cut -f1 | tail -n +2 | xargs"
+    listport="$brcmd show | awk '{print $NF}' | tail -n +2"
+
+fi
+
+    NETDESC="$2"
+    # get the port for installation
+    if [ -n "$INSTALLNIC" ]; then
+        if [[ "$INSTALLNIC" = mac ]] || [[ "$INSTALLNIC" = MAC ]]; then
+            #INSPORT=`ifconfig -a|grep -v inet6| grep -i 'HWaddr '$MACADDRESS|head -n 1|awk '{print $1}'`
+            INSPORT=`ip -oneline link show|grep -i ether|grep -i $MACADDRESS|awk -F ':' '{print $2}'|grep -o "[^ ]\+\( \+[^ ]\+\)*"`
+        else
+            INSPORT=$INSTALLNIC
+        fi
+    fi
+
+    if [ -z "$NETDESC" ]; then
+        if [ -n "$INSTALLNIC" ]; then
+          NETDESC=$INSPORT:default
+        else
+            echo "Incorrect usage"
+            exit 1
+        fi
+    fi
+    if echo "$NETDESC"|grep ':'> /dev/null; then
+        PORTS=`echo "$NETDESC"|cut -d: -f 1`
+        BNAME=`echo "$NETDESC"|cut -d: -f 2`
+    else 
+        if [ -n "$INSTALLNIC" ]; then
+            PORTS=$INSPORT
+        fi
+        BNAME=$NETDESC
+    fi
+    #Still here, that means we must build a bridge
+    if [ -z "$PORTS" ]; then #No ports specified, default to whatever looks up
+        PORTS=$(get_def_interface)
+    fi
+    if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
+        exit 1
+    fi
+    #For now, we only support bridge name==network name.  This precludes
+    #the config of the same vlan number on multiple fabrics, but
+    #will cover that flexibility later if demanded (with 4k vlan ids, 
+    #I think it would be unwise to reuse them as it could confuse anyway)
+    if echo "$PORTS"|grep '@'; then #we have bonding... fun to be had
+    #To be slack, going to just support one bond for now..
+        echo "alias $BOND bonding" > /etc/modprobe.d/$BOND.conf
+        modprobe bonding miimon=100 mode=4
+	BOND=`echo $PORTS | cut -d% -f 2`
+        if [ -z "$BOND" -o "$PORTS" = "$BOND" ]; then
+          BOND=bond0
+        fi
+        PORTS=`echo $PORTS |cut -d% -f 1 | sed -e 's/@/ /'`
+        BOND_INT=$BOND
+        if [[ ${BOND} == [a-zA-Z0-9]*.[0-9]* ]]; then
+             BOND_INT=`echo ${BOND} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
+             BOND_VLAN=`echo ${BOND} | sed -e 's/[a-zA-Z0-9]*\.\([0-9]*\)/\1/g'`
+        fi
+        if [[ $isDebian -eq 1 ]];then
+          cat > $nwdir/$BOND << EOF
+auto $BOND
+iface $BOND inet manual
+        bond-mode 4
+        bond-miimon 100
+        bond-downdelay 0
+        bond-updelay 0
+        bond-lacp-rate 1
+        bond-xmit-hash-policy 1
+        bond-slaves none
+EOF
+          if [[ ${BOND_VLAN} -gt 0 ]]; then
+             echo "  vlan-raw-device ${BOND_INT}" >> $nwdir/$BOND
+          fi
+        elif [[ $isSLES -eq 1 ]];then
+          cat > $nwdir/ifcfg-$BOND <<EOF
+NAME='Bonded Interface'
+BOOTPROTO=static
+BONDING_MASTER=yes
+STARTMODE=onboot
+USERCONTROL=no
+EOF
+        else
+          cat >$nwdir/ifcfg-$BOND <<EOF
+DEVICE=$BOND
+BOOTPROTO=none
+ONBOOT=yes
+USERCTL=no
+NM_CONTROLLED=no
+EOF
+        fi
+        if [[ $isSLES -eq 1 ]] || [[ $isRedhat -eq 1 ]] ; then
+          if [[ ${BOND_VLAN} -gt 0 ]]; then
+              echo "VLAN=yes" >> $nwdir/ifcfg-$BOND
+          else
+              echo "BONDING_OPTS=\"mode=4 miimon=100 downdelay=0 updelay=0 lacp_rate=fast xmit_hash_policy=1\"" >> $nwdir/ifcfg-$BOND
+          fi
+        fi
+        num_index=0
+        for p in $PORTS; do
+            #TODO: we are only going to manage the default
+            #route for now
+            saveroutes=`ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//'`
+            OIFS=$IFS
+            IFS=$'\n'
+            saveip=`ip addr show dev $p scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+            if [ ! -z "$saveip" ]; then
+                for line in $saveip; do 
+                    ip addr add dev $BOND $line
+                done
+            fi
+            ifdown $p &>/dev/null
+            IFS=$OIFS
+            if [ ! -z "$saveroutes" ]; then
+                ip route add $saveroutes
+            fi
+            if [[ $isDebian -eq 1 ]]; then
+              cat > $nwdir/ifcfg-$p << EOT
+auto $p
+iface $p inet manual
+        bond-master $BOND
+EOT
+            elif [[ $isSLES -eq 1 ]]; then
+              cat > $nwdir/ifcfg-$p << EOT
+BOOTPROTO=none
+STARTMODE=hotplug
+EOT
+              echo "BONDING_SLAVE_${num_index}=$p" >> $nwdir/ifcfg-$BOND
+            else
+
+              cat > $nwdir/ifcfg-$p << EOT
+DEVICE=$p
+MASTER=$BOND_INT
+SLAVE=yes
+BOOTPROTO=none
+ONBOOT=yes
+USERCTL=no
+NM_CONTROLLED=no
+EOT
+            fi
+        done
+        PORTS=$BOND
+    fi
+    if echo "$BNAME"|egrep '^vl(an)?[0123456789]' > /dev/null; then 
+        vlan="yes"
+        TNAME=${BNAME##vl}
+        TNAME=${TNAME##an}
+        #We have a vlan... more fun
+        modprobe 8021q
+        vconfig add $PORTS $TNAME
+        vconfig set_flag $PORTS.$TNAME 2 1 #Turn on GVRP where supported
+        ip link set $PORTS.$TNAME up
+        PORTORG=$PORTS
+        PORTS=$PORTS.$TNAME
+    elif [[ ${BOND_VLAN} -gt 0 ]]; then
+        vlan="yes"
+        modprobe 8021q
+        vconfig add $BOND_INT $BOND_VLAN
+        vconfig set_flag $BOND_INT.$BOND_VLAN 2 1 #Turn on GVRP where supported
+        ip link set $BOND_INT.$BOND_VLAN up
+    fi
+    #Now, $PORTS is 'the' physical device to participate in a bridge
+    #TODO: we are only going to manage the default
+    #route for now
+    add_br $BNAME
+    ip link set $BNAME up
+    saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
+    OIFS=$IFS
+    IFS=$'\n'
+    saveip=`ip addr show dev $PORTS scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    #saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    if [ ! -z "$saveip" ]; then
+        for line in $saveip; do 
+            IFS=$OIFS
+            ip addr add dev $BNAME $line
+        done
+    else
+        if [ ! -z "$3" ]; then
+            ip addr add dev $BNAME $3 
+        fi
+    fi
+    add_if $BNAME $PORTS
+    if [ ! -z "$saveip" ]; then
+        OIFS=$IFS
+        IFS=$'\n'
+        for line in $saveip; do 
+            IFS=$OIFS
+            ip addr del dev $PORTS $line
+        done
+       IFS=$OIFS
+    fi
+    IFS=$OIFS
+    if [ ! -z "$saveroutes" ]; then
+        ip route add $saveroutes
+    fi
+    
+    #now save the settings into the config files so that they will be persistent among reboots
+
+    str_if_ip=""
+    for devname in $BNAME $PORTS; do    # for each "bondname nic1 nic2 ..."
+        for ifipinfo in ${NICIPS//,/ }; do    # for each "ifname!ifip"
+            old_ifs=$IFS
+            IFS=$'!'
+            arrayifinfo=($ifipinfo)    # [0] - ifname; [1] - if ip address
+            IFS=$old_ifs
+
+            if [ "$devname" = "${arrayifinfo[0]}" ]; then
+                str_if_ip=${arrayifinfo[1]}
+                break 2
+            fi
+        done
+    done
+
+    # remove the left part from |. that means only keeping the first ip in the interface if there are alias ip
+    str_if_ip=${str_if_ip%%|*}
+
+    if [ ! -z "$str_if_ip" ]; then
+        str_bond_net=
+        str_if_mask=
+        num_i=1
+        while [ $num_i -le $NETWORKS_LINES ];do
+            eval str_bond_network=\$NETWORKS_LINE$num_i
+            str_temp_net=${str_bond_network#*net=}    # remove the left part from 'net='
+            str_temp_net=${str_temp_net%%|*}             # remove the right part from first '|'
+            str_temp_mask=${str_bond_network#*mask=}    # remove the left part from 'mask='
+            str_temp_mask=${str_temp_mask%%|*}             # remove the right part from first '|'
+    
+            str_temp_net1=$(v4calcnet $str_if_ip $str_temp_mask)
+            str_temp_net2=$(v4calcnet $str_temp_net $str_temp_mask)
+            if [ "$str_temp_net1" = "$str_temp_net2" ];then
+                str_bond_net=$str_temp_net
+                str_if_mask=$str_temp_mask
+                break
+            fi
+            num_i=$((num_i+1))
+        done
+    fi
+
+    #write into the network configuration file
+    if [[ $isSLES -eq 1 ]]; then
+        cat >$nwdir/ifcfg-$PORTS <<EOF
+DEVICE='$PORTS'
+ONBOOT='yes'
+EOF
+      if [[ $BRIDGE = "ovs" ]] ; then
+          echo "OVS_BRIDGE='$BNAME'" >> $nwdir/ifcfg-$PORTS
+          echo "TYPE='OVSPort'" >> $nwdir/ifcfg-$PORTS
+          echo "DEVICETYPE='ovs'" >> $nwdir/ifcfg-$PORTS
+      else
+          echo "BRIDGE='$BNAME'" >> $nwdir/ifcfg-$PORTS
+      fi 
+        mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+        if [ ! -z "$mac" ]; then
+            echo "HWADDR='$mac'" >> $nwdir/ifcfg-$PORTS
+        fi
+        if [ ! -z "$vlan" ]; then
+            echo "VLAN='yes'" >> $nwdir/ifcfg-$PORTS
+            if [[ $BOND_VLAN -gt 0 ]] ; then
+               echo "  vlan-raw-device ${BOND_INT}" >> $nwdir/$BOND
+
+            fi
+        fi
+        cat >$nwdir/ifcfg-$BNAME <<EOF      
+DEVICE='$BNAME'
+ONBOOT='yes'
+PEERDNS='yes'
+DELAY='0'
+EOF
+      if [[ $BRIDGE = "ovs" ]] ; then
+          echo "TYPE='OVSBridge" >> $nwdir/ifcfg-$BNAME
+          echo "DEVICETYPE='ovs'" >> $nwdir/ifcfg-$BNAME
+      else
+          echo "TYPE='Bridge'" >> $nwdir/ifcfg-$BNAME
+      fi 
+        if [ ! -z "$str_if_ip" ]; then
+            echo "IPADDR=$str_if_ip" >> $nwdir/ifcfg-$BNAME 
+            echo "NETMASK=$str_if_mask" >> $nwdir/ifcfg-$BNAME
+        elif [ ! -z "$3" ]; then 
+            echo "IPADDR='$3'" >> $nwdir/ifcfg-$BNAME 
+            str_if_ip=$3
+            if [ ! -z "$4" ]; then
+                echo "NETMASK='$4'" >> $nwdir/ifcfg-$BNAME
+            str_if_ip=$3
+            fi
+        else
+            if [[ $BRIDGE = "ovs" ]] ; then
+                echo "OVSBOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+            else
+                echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+            fi
+        fi
+    elif [[ $isDebian -eq 1 ]];then
+        #ubuntu/debian
+        [[ $BRIDGE = "ovs" ]] && echo "allow-$BNAME $PORTS" >$nwdir/$PORTS
+        echo "auto $PORTS" >$nwdir/$PORTS
+        echo "iface $PORTS inet manual" >> $nwdir/$PORTS
+        if [[ $BRIDGE = "ovs" ]] ; then
+            echo "  ovs_bridge $BNAME" >> $nwdir/$PORTS
+            echo "  ovs_type OVSport" >> $nwdir/$PORTS
+            echo "  pre-up ifconfig \$IFACE up" >> $nwdir/$PORTS
+            echo "  post-down ifconfig \$IFACE down" >> $nwdir/$PORTS
+        fi
+        
+        if [ ! -z "$vlan" ];then
+            echo "  vlan-raw-device $PORTORG"
+        fi
+
+        echo "auto $BNAME" > $nwdir/$BNAME
+        [[ $BRIDGE = "ovs" ]] && echo "allow-ovs $BNAME" >> $nwdir/$BNAME
+        if [ ! -z "$str_if_ip" ]; then
+            echo "iface $BNAME inet static" >> $nwdir/$BNAME
+            echo "  address $str_if_ip" >> $nwdir/$BNAME
+            if [ ! -z "$str_if_mask" ];then
+                echo "  netmask $str_if_mask" >> $nwdir/$BNAME
+            else
+                echo "  netmask 255.255.255.0" >> $nwdir/$BNAME
+            fi
+        elif [ ! -z "$3" ];then
+            echo "iface $BNAME inet static" >> $nwdir/$BNAME
+            echo "  address $3" >> $nwdir/$BNAME
+            str_if_ip=$3
+            if [ ! -z "$4" ];then
+                echo "  netmask $4" >> $nwdir/$BNAME
+                str_if_mask=$4
+            else
+                echo "  netmask 255.255.255.0" >> $nwdir/$BNAME
+            fi
+        else
+            echo "iface $BNAME inet dhcp" >> $nwdir/$BNAME
+        fi
+        if [[ $BRIDGE = "ovs" ]] ; then
+            echo "  ovs_type OVSBridge" >> $nwdir/$BNAME
+            echo "  ovs_ports $PORTS" >> $nwdir/$BNAME
+        else
+            echo "  bridge_ports $PORTS" >> $nwdir/$BNAME
+            echo "  bridge_stp off" >> $nwdir/$BNAME
+            echo "  bridge_fd 0" >> $nwdir/$BNAME
+            echo "  bridge_maxwait 0" >> $nwdir/$BNAME
+        fi
+    else
+        # if its a bond, we already set this up above
+        if [ -z $BOND ]; then
+        cat >$nwdir/ifcfg-$PORTS <<EOF
+DEVICE=$PORTS
+ONBOOT=yes
+NM_CONTROLLED=no
+EOF
+        fi
+        if [[ $BRIDGE = "ovs" ]] ; then
+            echo "OVS_BRIDGE=$BNAME" >> $nwdir/ifcfg-$PORTS
+            echo "TYPE=OVSPort" >> $nwdir/ifcfg-$PORTS
+            echo "DEVICETYPE=ovs" >> $nwdir/ifcfg-$PORTS
+        else
+            echo "BRIDGE=$BNAME" >> $nwdir/ifcfg-$PORTS
+        fi
+        mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+        if [ ! -z "$mac" -a -z $BOND ]; then
+            # if its a BOND, then we DONT want to copy the mac address over
+            echo "HWADDR=$mac" >> $nwdir/ifcfg-$PORTS
+        fi
+        if [ ! -z "$vlan" ]; then
+            echo "VLAN=yes" >> $nwdir/ifcfg-$PORTS
+        fi
+        cat >$nwdir/ifcfg-$BNAME <<EOF      
+DEVICE=$BNAME
+ONBOOT=yes
+PEERDNS=yes
+DELAY=0
+NM_CONTROLLED=no
+EOF
+        if [[ $BRIDGE = "ovs" ]] ; then
+            echo "TYPE=OVSBridge" >> $nwdir/ifcfg-$BNAME
+            echo "DEVICETYPE=ovs" >> $nwdir/ifcfg-$BNAME
+        else
+            echo "TYPE=Bridge" >> $nwdir/ifcfg-$BNAME
+        fi
+        if [ ! -z "$str_if_ip" ]; then
+            echo "IPADDR=$str_if_ip" >> $nwdir/ifcfg-$BNAME 
+            echo "NETMASK=$str_if_mask" >> $nwdir/ifcfg-$BNAME
+        elif [ ! -z "$3" ]; then 
+            echo "IPADDR=$3" >> $nwdir/ifcfg-$BNAME 
+            str_if_ip=$3
+            if [ ! -z "$4" ]; then
+                echo "NETMASK=$4" >> $nwdir/ifcfg-$BNAME
+                str_if_mask=$4
+            fi
+        else
+            if [[ $BRIDGE = "ovs" ]] ; then
+                echo "OVSBOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+            else
+                echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+            fi
+        fi
+    fi
+
+    if [ ! -z $BOND ]; then 
+      if [[ $BOND_VLAN -gt 0 ]] ; then
+         ifdown $BOND_INT &>/dev/null
+         ifup $BOND_INT &>/dev/null
+      fi
+
+      ifdown $BOND &>/dev/null
+      ifup $BOND &>/dev/null
+
+    fi
+ 
+if [[ $BRIDGE = "ovs" ]]; then
+    ovs-vsctl br-set-external-id $BNAME bridge-id $BNAME
+    ifdown $BNAME
+    ifup $BNAME
+    if [ ! -x $str_if_ip ]; then
+      bcast=$(v4calcbcase $str_if_ip $str_if_mask)
+      ip addr add $str_if_ip/$str_if_mask broadcast $bcast dev $BNAME
+    fi
+else
+    ifup $BNAME
+fi
+
+# Something is creating these files, and causes the system not to restart network correctly
+# so removing these files
+
+[[ $isRedhat -eq 1 ]] && rm -rf /etc/sysconfig/network-scripts/ifcfg-eth-id-*
+
+# Restart networking if we have the bond to have the vlan, otherwise it doesn't come
+# up correctly
+
+[[ $BOND_VLAN -gt 0 ]] && restartservice network
+
+#END bridge config.
+
+    
