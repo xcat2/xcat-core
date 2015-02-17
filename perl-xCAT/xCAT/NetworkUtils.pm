@@ -2509,13 +2509,12 @@ sub gen_net_boot_params
         $net_params->{nicname} = $nicname;
         $net_params->{mac} = $mac;
     }
-
     if ($nicname) {
         $net_params->{ksdevice} = "ksdevice=$nicname";
         $net_params->{ip} = "ip=$nicname:dhcp";
         $net_params->{netdev} = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
-        $net_params->{ifname} = "ifname=$nodebootif:$mac";
+        $net_params->{ifname} = "ifname=$nicname:$mac";
     } elsif ($mac) {
         $net_params->{ksdevice} = "ksdevice=$mac";
         $net_params->{BOOTIF} = "BOOTIF=$mac";
