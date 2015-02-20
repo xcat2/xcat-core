@@ -397,7 +397,7 @@ unless ($onlyinitrd) {
                     push @npa, $kernelname;
                 }
                 elsif ($p =~ /linux-image-generic/) {
-                    $kernelimage = "linux-image-generic";
+                    $kernelimage = $p;
                 }
                 elsif ($p =~ /^@/) {
                     push @npa, "\"$p\"";
