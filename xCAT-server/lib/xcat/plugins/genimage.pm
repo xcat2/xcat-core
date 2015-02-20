@@ -168,12 +168,24 @@ sub process_request {
 	   return 1;
        }
        $pkglist = $ref_linuximage_tab->{'pkglist'};
+       if (! -e $pkglist) {
+           $callback->({error=>["The pkglist specified \'$pkglist\' does not exist!"],errorcode=>[1]});
+	   return 1;
+       }
        
        $srcdir = $ref_linuximage_tab->{'pkgdir'};
 
        $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
+       if (! -e $otherpkglist) {
+           $callback->({error=>["The otherpkglist specified \'$otherpkglist\' does not exist!"],errorcode=>[1]});
+	   return 1;
+       }
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
+       if (! -e $postinstall_filename) {
+           $callback->({error=>["The postinstall_filename specified \'$postinstall_filename\' does not exist!"],errorcode=>[1]});
+	   return 1;
+       }
        $destdir = $ref_linuximage_tab->{'rootimgdir'};
        $rootimg_dir = $ref_linuximage_tab->{'rootimgdir'};
        $driverupdatesrc = $ref_linuximage_tab->{'driverupdatesrc'};
