@@ -168,7 +168,7 @@ sub process_request {
 	   return 1;
        }
        $pkglist = $ref_linuximage_tab->{'pkglist'};
-       if (! -e $pkglist) {
+       if ($pkglist ne "" and ! -e $pkglist) {
            $callback->({error=>["The pkglist specified \'$pkglist\' does not exist!"],errorcode=>[1]});
 	   return 1;
        }
@@ -177,12 +177,12 @@ sub process_request {
 
        $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
-       if (! -e $otherpkglist) {
+       if ($otherpkglist ne "" and ! -e $otherpkglist) {
            $callback->({error=>["The otherpkglist specified \'$otherpkglist\' does not exist!"],errorcode=>[1]});
 	   return 1;
        }
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
-       if (! -e $postinstall_filename) {
+       if ($postinstall_filename ne "" and ! -e $postinstall_filename) {
            $callback->({error=>["The postinstall_filename specified \'$postinstall_filename\' does not exist!"],errorcode=>[1]});
 	   return 1;
        }
