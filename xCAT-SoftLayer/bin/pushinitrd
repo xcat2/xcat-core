@@ -31,7 +31,7 @@ my $usage = sub {
 
 # Process the cmd line args
 Getopt::Long::Configure("bundling");
-#Getopt::Long::Configure("pass_through");
+# Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
 if (!GetOptions('h|?|help'  => \$HELP, 'v|verbose' => \$VERBOSE, 'dryrun' => \$DRYRUN, 'w|waittime=s' => \$WAITTIME, 'a|noautoinst' => \$NOAUTOINST)) { $usage->(1); }
 
@@ -40,10 +40,13 @@ if (scalar(@ARGV) != 1) { $usage->(1); }
 if (!defined($WAITTIME)) { $WAITTIME = 75; }	# seconds to wait after configuring the nic (to let the switch handle the state change)
 my $noderange = $ARGV[0];
 
+#
+# Run some Node verification before starting pushinitrd 
+#
+verifyNodeConfiguration($noderange);
+
 my %bootparms = getBootParms($noderange);
-
 copyFilesToNodes($noderange, \%bootparms);
-
 updateGrubOnNodes($noderange, \%bootparms);
 
 if ($DRYRUN) { exit(0); }
@@ -53,8 +56,6 @@ if ($bootparms{osimageprovmethod} eq 'install' && $bootparms{osimageosvers}=~ m/
 if ($bootparms{osimageprovmethod} eq 'sysclone') { copySyscloneFiles(); }
 
 exit(0);
-
-sub isRedhat { return (-e '/etc/redhat-release' || -e '/etc/centos-release' || -e '/etc/fedora-release'); } 
 
 # Query the db for the kernel, initrd, and kcmdline attributes of the 1st node in the noderange
 sub getBootParms {
@@ -113,12 +114,14 @@ sub copyFilesToNodes {
 		my $localfile = "/tftpboot/$file";
 		# for the 
 		my $remotefile = '/boot/' . remoteFilename($file);
+		my $cmd = "xdcp $nr -p $localfile $remotefile";
 		if ($DRYRUN) {
-			print "Dry run: would copy $localfile to $nr:$remotefile\n";
+			print "Dry run: Copying $localfile to $nr:$remotefile\n";
+			print "Dry run: $cmd\n";
 		}
 		else {
 			print "Copying $localfile to $nr:$remotefile\n";
-			runcmd("xdcp $nr -p $localfile $remotefile");
+			runcmd($cmd);
 		}
 	}
 }
@@ -184,20 +187,20 @@ sub modifyAutoinstFiles {
 	my $replace = "$sedstring\nchmod 755 $file.new; mv -f $file.new $file";
 
 	# Add a script that gets invoked by the OS after the nic is brought up
-    # Note: this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
-    # so autoyast fails to get the media
-    # these are specific to SLES
-    #my $netdir = '/etc/sysconfig/network';
-    #my $filename = '/etc/sysconfig/network/if-up.d/xcat-sl-wait';
-    #my $mnip = $bootparms->{mnip};
-    #todo: to support rhel, use these values instead
-    #my $netdir='/etc/sysconfig/network-scripts';
-    #my $filename='/sbin/ifup-local';
+	# Note: this does not work, because midway thru the autoyast process, the if-up.d scripts do not seem to get invoked
+	# so autoyast fails to get the media
+	# these are specific to SLES
+	#my $netdir = '/etc/sysconfig/network';
+	#my $filename = '/etc/sysconfig/network/if-up.d/xcat-sl-wait';
+	#my $mnip = $bootparms->{mnip};
+	#todo: to support rhel, use these values instead
+	#my $netdir='/etc/sysconfig/network-scripts';
+	#my $filename='/sbin/ifup-local';
 	#my $replace = qq(
-#FILENAME=$filename
-#NETDIR=$netdir
-#MNIP=$mnip
-#);
+	#FILENAME=$filename
+	#NETDIR=$netdir
+	#MNIP=$mnip
+	#);
 #	$replace .= q(
 #cat >$FILENAME << EOF1
 #MNIP=$MNIP
@@ -233,6 +236,23 @@ sub modifyAutoinstFiles {
 	}
 }
 
+sub verifyNodeConfiguration { 
+	my $nr = shift @_;
+
+	my @nodes = runcmd("nodels $nr");
+	chomp(@nodes);
+
+	foreach my $n (@nodes) { 
+		# Verify the IP is set for the node
+		my @output = runcmd("nodels $n hosts.ip");
+		chomp($output[0]);
+		my ($junk, $ip) = split(/\s+/, $output[0]);
+		#todo: also support getting the ip from name resolution
+		if (!$ip) {
+			die "Error: The ip attribute must be set for $n.\n";
+		}
+	}
+}
 
 # Copy softlayer specific systemimager post-install scripts to the systemimager location.
 # These cause si to use static ip and insert a wait into the bring up of the network.
@@ -252,7 +272,6 @@ sub getNodeIpInfo {
 	chomp($output[0]);
 	my ($junk, $ip) = split(/\s+/, $output[0]);
 	#todo: also support getting the ip from name resolution
-	if (!$ip) { die "Error: the ip attribute must be set for $node.\n"; }
 
 	# find relevant network in the networks table
 	# first get the networks in a hash

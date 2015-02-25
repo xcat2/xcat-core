@@ -26,7 +26,23 @@ my $usage = sub {
 	exit $exitcode;
 };
 
-if (-f '/etc/os-release') { die "This script doesn't support ubuntu yet.\n"; }
+
+my $file = '/etc/os-release';
+if (-f $file) { 
+	#
+	# SLES and RHEL also have /etc/os-release file, so actually need to open the file
+	# and look for Ubuntu in the 'NAME=' lines before declaring Ubuntu
+	#
+	open my $info, $file or die "Could not open $file: $!";
+	while( my $line = <$info>)  {
+		if (index($line, 'NAME=') != -1) {
+			if ($line =~ /Ubuntu/i) {
+				die "This script does not support Ubuntu at this time.\n";
+			}
+		}
+	}
+	close $info;
+}
 
 # Process the cmd line args
 Getopt::Long::Configure("bundling");
