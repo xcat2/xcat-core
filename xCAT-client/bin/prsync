@@ -63,6 +63,11 @@ if ($fanout) {  # see if they overroad the fanout from the command line
 (my $noderange,my $destloc) = split(/:/,$ARGV[1]);
 my @user = getpwuid($>);
 my $homedir=$user[7];
+my %sslargs;
+if (defined($ENV{'XCATSSLVER'})) {
+    $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+}
+
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$homedir."/.xcat/client-cred.pem",
@@ -70,6 +75,7 @@ my $client = IO::Socket::SSL->new(
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
                 SSL_verify_mode => 1,
+                %sslargs,
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
