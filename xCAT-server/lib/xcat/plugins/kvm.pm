@@ -2573,7 +2573,7 @@ sub adopt {
         if ($confdata->{vm}->{$node}->[0]->{memory}) {
             $addmemory{$target}+=getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024);
         } else {
-            $addmemory{$target}+=getUnits("512","M",1024);
+            $addmemory{$target}+=getUnits("4096","M",1024);
         }
         $hyphash{$target}->{nodes}->{$node}=1;
         delete $orphash->{$node};
