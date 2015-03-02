@@ -1621,10 +1621,17 @@ sub copycd
 	       );
     unless ($mntpath)
     {
-
-        #this plugin needs $mntpath...
+        # $mntpath needs to be specified for this plugin
         return;
     }
+
+    if ($path) {
+        # if path if specified, clean up removing trailing slash...
+        $path =~ s/\/$//;
+        # and multiple slashes
+        $path =~ s,//*,/,g;
+    }
+
     if ($distname and $distname !~ /^sles|^suse/)
     {
 

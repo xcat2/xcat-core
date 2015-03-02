@@ -221,16 +221,18 @@ sub copycd
         return;
     }
 
-    if ( $copypath || $nonoverwrite ){
-        $callback->({info=> ["copycd on debian/ubuntu doesn't support -p, -w options!"]});
-        return;
-    }
-    
     unless (-r $path . "/.disk/info")
     {
         #xCAT::MsgUtils->message("S","The CD doesn't look like a Debian CD, exiting...");
         return;
     }
+
+    if ( $copypath || $nonoverwrite )
+    {
+        $callback->({info=> ["copycds on Ubuntu/Debian does not support -p or -w option."]});
+        return;
+    }
+
     my $dinfo;
     open($dinfo, $path . "/.disk/info");
     my $line = <$dinfo>;
