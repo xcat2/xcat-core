@@ -841,7 +841,10 @@ sub mkinstall
             }
 
             # parse Mac table to get one mac address in case there are multiples.
-            $mac = xCAT::Utils->parseMacTabEntry($macent->{mac},$node);
+            my $mac;
+            if ($macent->{mac}) {
+                $mac = xCAT::Utils->parseMacTabEntry($macent->{mac},$node);
+            }
 
             my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic},$ent->{primarynic},$mac);
             if (exists($net_params->{nicname})) {
