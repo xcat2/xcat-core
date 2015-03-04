@@ -438,8 +438,7 @@ sub copycd
     }
 }
 
-sub mkinstall
-{
+sub mkinstall {
     xCAT::MsgUtils->message("S","Doing debian mkinstall");
     my $request  = shift;
     my $callback = shift;
@@ -490,16 +489,13 @@ sub mkinstall
             my $site_ent = $ents[0];
             if (!defined($site_ent) || ($site_ent =~ /no/i) || ($site_ent =~ /0/))
             {
-                $callback->(
-                            {
-                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
-                            }
-                            );
+                $callback->( { warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], });
                 # Do not print this warning message multiple times
                 last;
             }
         }
     }
+
     foreach $node (@nodes)
     {
         my $os;
@@ -517,111 +513,115 @@ sub mkinstall
         my $osinst;
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
-	        $imagename=$ent->{provmethod};
-	        if (!exists($img_hash{$imagename})) {
-		        if (!$osimagetab) {
-		            $osimagetab=xCAT::Table->new('osimage', -create=>1);
-		        }
-		        (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-		        if ($ref) {
-		            $img_hash{$imagename}->{osver}=$ref->{'osvers'};
-		            $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
-		            $img_hash{$imagename}->{profile}=$ref->{'profile'};
-		            $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
-		            if (!$linuximagetab) {
-			            $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-		            }
-		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
-		            if ($ref1) {
-			            if ($ref1->{'template'}) {
-			                $img_hash{$imagename}->{template}=$ref1->{'template'};
-			            }
-			            if ($ref1->{'pkgdir'}) {
-			                $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
-			            }
-			            if ($ref1->{'pkglist'}) {
-			                 $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
-			            }
-		            }
-		            # if the install template wasn't found, then lets look for it in the default locations.
-		            unless($img_hash{$imagename}->{template}){
-	                    my $pltfrm=getplatform($ref->{'osvers'});
-	    		        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm", 
-		 			         $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
-	    		        if (! $tmplfile) {
-                            $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
-		 			          $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
-		                }
-			            # if we managed to find it, put it in the hash:
-			            if($tmplfile){
-			                $img_hash{$imagename}->{template}=$tmplfile;
-			            }
-		            }
-                    #if the install pkglist wasn't found, then lets look for it in the default locations
-			        unless($img_hash{$imagename}->{pkglist}){
-				        my $pltfrm=getplatform($ref->{'osvers'});
-				        my $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$pltfrm", 
-					             $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
-				        if (! $pkglistfile) {
-                            $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
-					             $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
-				        }	   
-			            # if we managed to find it, put it in the hash:
-			            if($pkglistfile){
-				            $img_hash{$imagename}->{pkglist}=$pkglistfile;
-			            }	   
-			        }
-		        }
-                else {
-		            $callback->(
-			            {error     => ["The os image $imagename does not exists on the osimage table for $node"],
-			             errorcode => [1]});
-		            next;
-		        }
-	        }
-	        my $ph=$img_hash{$imagename};
-	        $os = $ph->{osver};
-	        $arch  = $ph->{osarch};
-	        $profile = $ph->{profile};
-	        $platform=xCAT_plugin::debian::getplatform($os);
-
-                $tmplfile=$ph->{template};
-                $pkgdirval=$ph->{pkgdir};
-                my @pkgdirlist=split(/,/,$pkgdirval);
-                foreach (@pkgdirlist){
-                   if($_ =~ /^http|ssh/){
-                     push @mirrors,$_;
-                   }else{
-                     $pkgdir=$_;
-                   }
-
+            $imagename=$ent->{provmethod};
+            if (!exists($img_hash{$imagename})) {
+                if (!$osimagetab) {
+                    $osimagetab=xCAT::Table->new('osimage', -create=>1);
                 }
-	
-	        if (!$pkgdir) {
-		        $pkgdir="$installroot/$os/$arch";
-	        }
-		$pkglistfile=$ph->{pkglist};
-	    }
-	    else {
-	        $os = $ent->{os};
-	        $arch    = $ent->{arch};
-	        $profile = $ent->{profile};
-	        $platform=xCAT_plugin::debian::getplatform($os);
-	        my $genos = $os;
-	        $genos =~ s/\..*//;
-	    
-	        $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
-	        if (! $tmplfile) {
+                (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+                if ($ref) {
+                    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+                    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+                    $img_hash{$imagename}->{profile}=$ref->{'profile'};
+                    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+                    if (!$linuximagetab) {
+                        $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+                    }
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
+                    if ($ref1) {
+                        if ($ref1->{'template'}) {
+                                $img_hash{$imagename}->{template}=$ref1->{'template'};
+                        }
+                        if ($ref1->{'pkgdir'}) {
+                            $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+                        }
+                        if ($ref1->{'pkglist'}) {
+                            $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
+                        }
+                    }
+                    # if the install template wasn't found, then lets look for it in the default locations.
+                    unless($img_hash{$imagename}->{template}) {
+                        my $pltfrm=getplatform($ref->{'osvers'});
+                        my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm", 
+                        $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+                        if (! $tmplfile) {
+                            $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+                            $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+                        }
+                        # if we managed to find it, put it in the hash:
+                        if($tmplfile) {
+                            $img_hash{$imagename}->{template}=$tmplfile;
+                        }
+                    }
+                    #if the install pkglist wasn't found, then lets look for it in the default locations
+                    unless($img_hash{$imagename}->{pkglist}) {
+                        my $pltfrm=getplatform($ref->{'osvers'});
+                        my $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$pltfrm", 
+                        $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+                        if (! $pkglistfile) {
+                            $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+                            $ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+                        }	   
+                        # if we managed to find it, put it in the hash:
+                        if($pkglistfile) {
+                            $img_hash{$imagename}->{pkglist}=$pkglistfile;
+                        }	   
+                    }
+                }
+                else {
+                    $callback->(
+                        {error     => ["The os image $imagename does not exists on the osimage table for $node"],
+                        errorcode => [1]});
+                    next;
+                }
+            }
+
+            my $ph=$img_hash{$imagename};
+            $os = $ph->{osver};
+            $arch  = $ph->{osarch};
+            $profile = $ph->{profile};
+            $platform=xCAT_plugin::debian::getplatform($os);
+
+            $tmplfile=$ph->{template};
+            $pkgdirval=$ph->{pkgdir};
+            my @pkgdirlist=split(/,/,$pkgdirval);
+            foreach (@pkgdirlist) {
+                if($_ =~ /^http|ssh/) {
+                    push @mirrors,$_;
+                } else {
+                    # If multiple pkgdirs are provided,  The first path in the value of osimage.pkgdir 
+                    # must be the OS base pkg dir path, so use the first path as pkgdir 
+                    if (!$pkgdir) {
+                        $pkgdir=$_;
+                    } 
+                }
+            }
+
+            if (!$pkgdir) {
+                $pkgdir="$installroot/$os/$arch";
+            }
+            $pkglistfile=$ph->{pkglist};
+        }
+        else {
+            $os = $ent->{os};
+            $arch    = $ent->{arch};
+            $profile = $ent->{profile};
+            $platform=xCAT_plugin::debian::getplatform($os);
+            my $genos = $os;
+            $genos =~ s/\..*//;
+
+            $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+            if (! $tmplfile) {
                 $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); 
             }
 
-		    $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
-		    if (! $pkglistfile) {
+            $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+            if (! $pkglistfile) {
                 $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); 
             }
 
-	        $pkgdir="$installroot/$os/$arch";
-	    }
+            $pkgdir="$installroot/$os/$arch";
+        }
 
         if ($arch eq "x86_64") {
             $darch = "amd64";
@@ -638,7 +638,7 @@ sub mkinstall
 
         my @missingparms;
         unless ($os) {
-	        if ($imagename) { 
+            if ($imagename) { 
                 push @missingparms,"osimage.osvers";  
             }
             else {
@@ -655,7 +655,7 @@ sub mkinstall
             }
         }
         unless ($profile) {
-	        if ($imagename) {
+            if ($imagename) {
                 push @missingparms,"osimage.profile";  
             }
             else {
@@ -666,7 +666,7 @@ sub mkinstall
         unless ($os and $arch and $profile){
             $callback->({error => ["Missing ".join(',',@missingparms)." for $node"],
                          errorcode => [1]});
-            next;    #No profile
+            next; # No profile
         }
 
         unless ( -r "$tmplfile") {
@@ -679,46 +679,42 @@ sub mkinstall
         my $tmperr;
         my $preerr;
         my $posterr;
-	    if ($imagename) {
-	        $tmperr="Unable to find template file: $tmplfile";
-	    } else {
+        if ($imagename) {
+            $tmperr="Unable to find template file: $tmplfile";
+        } else {
             $tmperr="Unable to find template in $installroot/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
-	    }
+        }
         if (-r "$tmplfile") {
             $tmperr =
-               xCAT::Template->subvars(
-                $tmplfile,
-                "$installroot/autoinst/" . $node,
-                $node,
-	    		$pkglistfile,
-		        $pkgdir,
-			    $platform
-                );
+                xCAT::Template->subvars($tmplfile,
+                                        "$installroot/autoinst/" . $node,
+                                        $node,
+                                        $pkglistfile,
+                                        $pkgdir,
+                                        $platform
+                                        );
         }
 
-	    my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
-	    my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
+        my $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform";
+        my $postscript = "$::XCATROOT/share/xcat/install/scripts/post.$platform";
             
-            # for powerkvm VM ubuntu LE#
-            if ($arch =~ /ppc64/i and $platform eq "ubuntu") {
-	        $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
-            }
+        # for powerkvm VM ubuntu LE#
+        if ($arch =~ /ppc64/i and $platform eq "ubuntu") {
+            $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
+        }
 
-	    if (-r "$prescript"){
-            $preerr =
-              xCAT::Template->subvars(
-                $prescript,
-                "$installroot/autoinst/" . $node . ".pre",
-                $node
-                );
-	    }
-	    if (-r "$postscript") {
-            $posterr =
-              xCAT::Template->subvars(
-                $postscript,
-                "$installroot/autoinst/" . $node . ".post",
-                $node
-                );
+        if (-r "$prescript"){
+            $preerr = xCAT::Template->subvars($prescript,
+                                             "$installroot/autoinst/" . $node . ".pre",
+                                              $node
+                                              );
+        }
+
+        if (-r "$postscript") {
+            $posterr = xCAT::Template->subvars($postscript,
+                                              "$installroot/autoinst/" . $node . ".post",
+                                              $node
+                                              );
         }
 
         my $errtmp;
@@ -730,8 +726,8 @@ sub mkinstall
 
         if ($arch =~ /ppc64/i and !(-e "$pkgdir/install/netboot/initrd.gz")) {
             $callback->({error => ["The network boot initrd.gz is not found in $pkgdir/install/netboot.  This is provided by Ubuntu, please download and retry."],
-                         errorcode=>[1]});
-             next;
+            errorcode=>[1]});
+            next;
         }
         my $tftpdir = "/tftpboot";
 
@@ -741,33 +737,31 @@ sub mkinstall
         my $initrdpath;
         my $maxmem;
 
-
         if (
-	       (
-               ($arch =~ /x86/ and
-		       (
-                    ( -r "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
-                      and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
-                      and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                      and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
-                    ) or 
-		            ( -r "$pkgdir/install/netboot/vmlinuz"
-                      and $kernpath = "$pkgdir/install/netboot/vmlinuz"
-                      and -r "$pkgdir/install/netboot/initrd.gz"
-                      and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
+            (
+                ($arch =~ /x86/ and
+                    (
+                        ( -r "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
+                        and $kernpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/linux"
+                        and -r "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
+                        and $initrdpath = "$pkgdir/install/netboot/ubuntu-installer/$darch/initrd.gz"
+                        ) or 
+                        ( -r "$pkgdir/install/netboot/vmlinuz"
+                        and $kernpath = "$pkgdir/install/netboot/vmlinuz"
+                        and -r "$pkgdir/install/netboot/initrd.gz"
+                        and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
+                        )
                     )
-		       )
-               ) or (
+                ) or (
                    $arch =~ /ppc64/i and (
-                       -r "$pkgdir/install/vmlinux"
-                       and $kernpath = "$pkgdir/install/vmlinux"
-                       and -r "$pkgdir/install/netboot/initrd.gz"
-                       and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
+                        -r "$pkgdir/install/vmlinux"
+                        and $kernpath = "$pkgdir/install/vmlinux"
+                        and -r "$pkgdir/install/netboot/initrd.gz"
+                        and $initrdpath = "$pkgdir/install/netboot/initrd.gz"
                    )
                )
-
-		   )
-       ){
+            )
+        ){
             #TODO: driver slipstream, targetted for network.
 
             # Copy the install resource to /tftpboot and check to only copy once
@@ -796,43 +790,23 @@ sub mkinstall
                 copyAndAddCustomizations($initrdpath,"$tftppath/initrd.img");
             }
 
-            #We have a shot...
+            # We have a shot...
             my $ent    = $rents{$node}->[0];
-#           $restab->getNodeAttribs($node,
-#                                     ['nfsserver', 'primarynic', 'installnic']);
             my $sent = $hents{$node}->[0];
-#           $hmtab->getNodeAttribs(
-#                                     $node,
-#                                     [
-#                                      'serialport', 'serialspeed', 'serialflow'
-#                                     ]
-#                                     );
             my $macent = $macents{$node}->[0];
             my $instserver;
-            if ($ent and $ent->{xcatmaster}){
+            if ($ent and $ent->{xcatmaster}) {
                 $instserver = $ent->{xcatmaster};
             }
-            else{
+            else {
                 $instserver = '!myipfn!';
             }
 
-            if ($ent and $ent->{nfsserver})
-            {
+            if ($ent and $ent->{nfsserver}) {
                 $instserver = $ent->{nfsserver};
             }
-	        #if ($platform eq "ubuntu"){
-            #    my $kcmdline =
-            #        "nofb utf8 auto url=http://"
-            #      . $ent->{nfsserver}
-            #      . "$installroot/autoinst/"
-            #      . $node;
-            #} else 
-	    #{
-            my $kcmdline = "nofb utf8 auto url=http://"
-                  . $instserver
-                  . "/install/autoinst/"
-                  . $node;
-	    #}
+
+            my $kcmdline = "nofb utf8 auto url=http://" . $instserver . "/install/autoinst/" . $node;
 	        
 	    $kcmdline .= " xcatd=".$instserver;
 	    $kcmdline .= " mirror/http/hostname=".$instserver;
@@ -854,8 +828,8 @@ sub mkinstall
             }
             
             #TODO: dd=<url> for driver disks
-            if (defined($sent->{serialport})){
-                unless ($sent->{serialspeed}){
+            if (defined($sent->{serialport})) {
+                unless ($sent->{serialspeed}) {
                     $callback->({error => ["serialport defined, but no serialspeed for $node in nodehm table"],
                                  errorcode => [1]});
                     next;
@@ -865,74 +839,49 @@ sub mkinstall
                 } else {
                     $kcmdline .= " console=tty0 console=ttyS".$sent->{serialport} . "," . $sent->{serialspeed};
                 }
-                if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/){
+                if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/) {
                     $kcmdline .= "n8r";
                 }
             } else {
-                $callback->(
-                            {
-                             warning => ["rcons my not work since no serialport specified"],
-                            }
-                            );
+                $callback->({ warning => ["rcons my not work since no serialport specified"], });
             }
-            #$kcmdline .= " noipv6";
-            # add the addkcmdline attribute  to the end
-            # of the command, if it exists
-            #my $addkcmd   = $addkcmdhash->{$node}->[0];
-            # add the extra addkcmd command info, if in the table
-            #if ($addkcmd->{'addkcmdline'}) {
-            #        $kcmdline .= " ";
-            #        $kcmdline .= $addkcmd->{'addkcmdline'};
-            #}
 
             # need to add these in, otherwise aptitude will ask questions
-	        $kcmdline .= " locale=en_US";
-	        #$kcmdline .= " netcfg/wireless_wep= netcfg/get_hostname= netcfg/get_domain=";
+            $kcmdline .= " locale=en_US";
+            #$kcmdline .= " netcfg/wireless_wep= netcfg/get_hostname= netcfg/get_domain=";
 	    
             # default answers as much as possible, we don't want any interactiveness :)
-	        $kcmdline .= " priority=critical";
+            $kcmdline .= " priority=critical";
 
             # Automatically detect all HDD
-	        #$kcmdline .= " all-generic-ide irqpoll";
+            # $kcmdline .= " all-generic-ide irqpoll";
 
-	        # by default do text based install
-	        #$kcmdline .= " DEBIAN_FRONTEND=text";
+            # by default do text based install
+            # $kcmdline .= " DEBIAN_FRONTEND=text";
 
-	        # Maybe useful for debugging purposes
-	        #
-	        #$kcmdline .= " BOOT_DEBUG=3";
-	        #$kcmdline .= " DEBCONF_DEBUG=5";
+            # Maybe useful for debugging purposes
+            #
+            # $kcmdline .= " BOOT_DEBUG=3";
+            # $kcmdline .= " DEBCONF_DEBUG=5";
 
-	        # I don't need the timeout for ubuntu, but for debian there is a problem with getting dhcp in a timely manner
-
+            # I don't need the timeout for ubuntu, but for debian there is a problem with getting dhcp in a timely manner
             # safer way to set hostname, avoid problems with nameservers
             $kcmdline .= " hostname=".$node;
 
             #from 12.10, the live install changed, so add the live-installer
-             if ( -r "$pkgdir/install/filesystem.squashfs")
-             {
-                 $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
-             }
+            if ( -r "$pkgdir/install/filesystem.squashfs") {
+                $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
+            }
 
-            $bptab->setNodeAttribs(
-                                   $node,
-                                   {
-                                    kernel   => "$rtftppath/vmlinuz",
-                                    initrd   => "$rtftppath/initrd.img",
-                                    kcmdline => $kcmdline
-                                   }
-                                   );
+            $bptab->setNodeAttribs($node, { kernel   => "$rtftppath/vmlinuz",
+                                            initrd   => "$rtftppath/initrd.img",
+                                            kcmdline => $kcmdline });
         }
         else{
             $callback->({error => ["Install image not found in $installroot/$os/$arch"],
                          errorcode => [1]});
         }
     }
-    #my $rc = xCAT::TableUtils->create_postscripts_tar();
-    #if ($rc != 0)
-    #{
-    #    xCAT::MsgUtils->message("S", "Error creating postscripts tar file.");
-    #}
 }
 
 sub mknetboot
