@@ -1,0 +1,9 @@
+#the nic name might change between the installation and 1st boot
+#active all the nics with network link during system boot
+for i in $(find /etc/sysconfig/network-scripts/ifcfg-*|egrep -v ifcfg-lo )
+do 
+  nicname=$(echo $i|awk -F 'ifcfg-' '{print $2}')
+  if ethtool $nicname|grep -E -i "Link detected.*yes" >/dev/null 2>&1
+     then sed -i 's/ONBOOT=no/ONBOOT=yes/' $i 
+  fi
+done
