@@ -113,9 +113,9 @@ use Sys::Syslog qw(:DEFAULT setlogsock);
 openlog("xcatd",,"local4");
 # turn off warnings for call to setlogsock.  puts out warning message if
 #   syslog tcp port not defined in /etc/services.  this can safely be ignored.
-no warnings qw(Sys::Syslog);
+no warnings;
 setlogsock(["tcp","unix","stream"]);
-use warnings qw(Sys::Syslog);
+use warnings;
 
 use xCAT::NotifHandler;
 use xCAT_monitoring::monitorctrl;
@@ -568,12 +568,12 @@ sub do_discovery_process {
    	$dispatch_requests=0;
         populate_site_hash();
         populate_vpd_hash();
-        populate_ppc_hash();
+        populate_mp_hash();
 	while (not $quit) {
            	if ((time()-$vintage)> 15) { 
                     populate_site_hash(); 
                     populate_vpd_hash();
-                    populate_ppc_hash();
+                    populate_mp_hash();
                     $vintage = time();
                 } #site table reread every 15 second
 		my $msg = fd_retrieve($broker);
@@ -2145,14 +2145,14 @@ sub populate_vpd_hash {
         push @{$::XCATVPDHASH{$mtms}}, $_->{node};
     }
 }
-sub populate_ppc_hash {
-    %::XCATPPCHASH=();
-    my $ppctab = xCAT::Table->new('ppc',-create=>0); 
-    unless ($ppctab) {return;}
-    my @entries = $ppctab->getAllAttribs(qw/node nodetype/);
+sub populate_mp_hash {
+    %::XCATMPHASH=();
+    my $mptab = xCAT::Table->new('mp',-create=>0); 
+    unless ($mptab) {return;}
+    my @entries = $mptab->getAllAttribs(qw/node nodetype/);
     foreach (@entries) {
         if ($_->{nodetype} and $_->{nodetype} eq 'pbmc') {
-            $::XCATPPCHASH{$_->{node}}=$_->{nodetype};
+            $::XCATMPHASH{$_->{node}}=$_->{nodetype};
         }
     }
 }

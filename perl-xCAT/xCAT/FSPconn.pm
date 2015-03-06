@@ -407,7 +407,7 @@ sub lshwconn_parse_args
     }
     if (scalar(@error_type_nodes)) {
         my $tmp_nodelist = join ',', @error_type_nodes;
-        my $link = (scalar(@error_type_nodes) == '1')? 'is':'are';
+        my $link = (scalar(@error_type_nodes) eq '1')? 'is':'are';
         return( ["Node type of node(s) $tmp_nodelist $link not supported for this command in FSPAPI.\n"]);
     }
     #$nodetypetab->close();

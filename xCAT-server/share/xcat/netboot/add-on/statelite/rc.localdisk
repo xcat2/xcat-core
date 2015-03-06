@@ -68,9 +68,9 @@ xCATCmd () {
 # $2 is the command
     ARCH=`uname -m`
     if [ x$ARCH = x"ppc64" -a x$OS = x"rh" ]; then
-        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | /usr/sbin/chroot ${MNTDIR} /usr/bin/openssl s_client -quiet -no_ssl3 -no_ssl2 -connect ${1} -rand /bin/nice 2>/dev/null
     else
-        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+        echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -no_ssl3 -no_ssl2 -connect ${1} -rand /bin/nice 2>/dev/null
     fi
 }
 

@@ -2476,7 +2476,7 @@ sub clone_vms_from_master {
 sub make_customization_spec {
 	my $node = shift;
     my %args = @_;
-	my $password="Passw0rd";
+	my $password;
 	my $wintimezone;
 	#map of number to strings can be found at 
 	#http://osman-shener-en.blogspot.com/2008/02/unattendedtxt-time-zone-index.html

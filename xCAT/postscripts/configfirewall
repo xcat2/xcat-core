@@ -192,9 +192,39 @@ elsif (-f "/etc/SuSE-release")
     #system($cmd);
     xCAT::Utils->enableservice("firewall");
 }
+elsif (system("grep -i ubuntu /etc/issue > /dev/null 2>&1") == 0)
+{
+    my $fwconf = "/etc/fwrules.ubuntu";
+
+    if($::opt_private && $::opt_public)
+    {
+        &setup_ip_forwarding();
+        my $cmd = &generate_iptables_conf($::opt_private, $::opt_public);
+        system($cmd);
+    }
+
+    if ($::opt_nat)
+    {
+        my $cmd = &generate_nat_conf($::opt_private, $::opt_public);
+        system($cmd);
+    }
+
+    # iptables configuration should be persistent through reboots
+    my $cmd = "iptables-save > $fwconf";
+    system($cmd);
+
+    #put the iptables to rc.local, make firewall rules can be applied when system startup
+    if (system("grep '^iptables-restore.*$fwconf' /etc/rc.local"))
+    {
+        $cmd = "sed -i '2i iptables-restore < $fwconf' /etc/rc.local ";
+        system($cmd);
+    }
+}
 else
 {
-    #Ubuntu: FIXME
+    #if this block is hit, it should be an unknown OS.
+    print "unknow os system";
+    exit 1;
 }
 
 exit 0;

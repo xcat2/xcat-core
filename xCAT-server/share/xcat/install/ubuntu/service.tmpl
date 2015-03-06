@@ -100,7 +100,7 @@ tasksel tasksel/first multiselect standard
 
 d-i pkgsel/include string #INCLUDE_DEFAULT_PKGLIST_PRESEED#
 
-d-i debian-installer/allow_unauthenticated string true
+d-i debian-installer/allow_unauthenticated boolean true
 d-i pkgsel/update-policy select none
 d-i pkgsel/updatedb boolean false
 
@@ -131,5 +131,5 @@ d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoin
      mount -o bind /dev /target/dev; \
      mount -o bind /dev/pts /target/dev/pts -t devpts; \
      mount -o bind /sys /target/sys; \
-     chroot /target /root/post.script
-
+     chroot /target /root/post.script; \
+     cp /target/etc/network/interfaces /etc/network/interfaces

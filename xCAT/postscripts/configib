@@ -61,14 +61,15 @@ convert_netmask_to_cidr() {
     echo $cidrnum
 }
  
-
-# The extra parameter are specified in the nics.nicextraparams. 
-# It has the following format:
-#  eth2!MTU=65520 CONNECTED_MODE=yes,eth3!MTU=1500
-# This function gets the values for the given nic, 
-# It stores each parameter values in a separate array.
+# This function parse the NICEXTRAPARAMS into an array. 
+# Each arry element contains all the extra params for an ip
+# For example:
+#    NICEXTRAPARAMS="eth0!MTU=1500 sonething=x|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes".
+# After calling this function with eth0:
+#    array_extra_param[0]="MTU=1500 sonething=x"
+#    array_extra_param[1]="MTU=1460"
 function get_nic_extra_params() {
-    nic_temp=$1
+    nic=$1
     if [ ! "$NICEXTRAPARAMS" ];then
         return
     fi
@@ -76,6 +77,7 @@ function get_nic_extra_params() {
     IFS=$','
     array_conf_temp=($NICEXTRAPARAMS)
     IFS=$old_ifs
+    #echo "NICEXTRA=$NICEXTRAPARAMS"
 
     i=0
     while [ $i -lt ${#array_conf_temp[@]} ]
@@ -88,47 +90,47 @@ function get_nic_extra_params() {
             D=":"
         fi
         key=`echo "$token" | cut -d"$D" -f 1`
-		if [ "$key" == "$nic_temp" ]; then
+        #echo "key=$key nic=$nic"
+		if [ "$key" == "$nic" ]; then
 			str_temp_value=`echo "$token" | cut -d"$D" -f 2`
             #echo "token=$token, str_temp_value=$str_temp_value"
 			old_ifs=$IFS
 			IFS=$'|'
-			nic_params_temp=($str_temp_value)
+			array_nic_params=($str_temp_value)
 			IFS=$old_ifs
-            j=0
-			while [ $j -lt ${#nic_params_temp[@]} ]
-			do
-				#token1="${nic_params_temp[$j]}"
-				#echo "token1=$token1"
-				old_ifs=$IFS
-				IFS=$' '
-				params_temp=(${nic_params_temp[$j]})
-				IFS=$old_ifs
-				k=0
-				while [ $k -lt ${#params_temp[@]} ]
-				do
-					token2="${params_temp[$k]}"
-					key=`echo "$token2" | cut -d'=' -f 1`
-					value=`echo "$token2" | cut -d'=' -f 2`
-                    #echo "key=$key, value=$value"
-					if [ "$key" = "mtu" ] || [ "$key" = "MTU" ]; then
-						array_nic_mtu[$j]=$value
-					elif [ "$key" = "connected_mode" ] || [ "$key" = "CONNECTED_MODE" ]; then
-						array_nic_connected[$j]=$value
-					fi
-					k=$((k+1))
-				done
-				if [[ -z "${array_nic_mtu[$j]}" ]]; then
-					array_nic_mtu[$j]=$str_default_token
-				fi
-				if [[ -z "${array_nic_connected[$j]}" ]]; then
-					array_nic_connected[$j]=$str_default_token
-				fi
-				j=$((j+1))
-			done
+			return
 		fi
 		i=$((i+1))
     done
+}
+
+# This functions parse the extra parameters for an ip address of a nic
+# Input is like this:
+#     MTU=65520 something=yes
+# After the function is called:
+#     array_extra_param_names[0]="MTU"
+#     array_extra_param_values[0]="65520" 
+#     array_extra_param_names[1]="something"
+#     array_extra_param_values[0]="yes" 
+#     
+function parse_nic_extra_params() {
+    str_extra=$1
+   
+    unset array_extra_param_names
+    unset array_extra_param_values
+
+	old_ifs=$IFS
+	IFS=$' '
+	params_temp=($str_extra)
+	IFS=$old_ifs
+	k=0
+	while [ $k -lt ${#params_temp[@]} ]
+	do
+		token2="${params_temp[$k]}"
+		array_extra_param_names[$k]=`echo "$token2" | cut -d'=' -f 1`
+		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2`	
+		k=$((k+1))
+	done
 }
 
 
@@ -291,10 +293,9 @@ else
 fi
 
 
-declare -a array_nic_mtu
-declare -a array_nic_connected
-# This token is used for the value of an attributes that has not been assigned any value.
-str_default_token="default"
+declare -a array_nic_params
+declare -a array_extra_param_names
+declare -a array_extra_param_values
 
 goodnics=""
 for nic in `echo "$NIC_IBNICS" | tr "," "\n"`
@@ -331,9 +332,17 @@ do
        continue
    fi   
 
-   array_nic_mtu=()
-   array_nic_connected=()
+   unset array_nic_params
+   unset array_extra_param_names
+   unset array_extra_param_values
    get_nic_extra_params $nic
+   j=0
+   while [ $j -lt ${#array_nic_params[@]} ]
+   do
+	   token1="${array_nic_params[$j]}"
+	   echo "array_nic_params $j=$token1"
+	   j=$((j+1))
+   done
 
    ipindex=0
    for nicip in `echo $nicips | tr "|" "\n"`
@@ -407,8 +416,10 @@ do
            gateway=''
        fi
 
-       str_mtu=${array_nic_mtu[$ipindex-1]}
-       str_connect_mode=${array_nic_connected[$ipindex-1]}
+	   if [ ${#array_nic_params[@]} -gt 0 ]; then
+		   str_extra_params=${array_nic_params[$ipindex-1]}
+		   parse_nic_extra_params "$str_extra_params"
+	   fi 
 
        if [ $PLTFRM == "Linux" ]
        then
@@ -459,12 +470,17 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                            echo "default $gateway - -" >> /etc/sysconfig/network/routes
                        fi
                    fi
-				   if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
-					   echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic
-				   fi
-				   if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
-					   echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic
-				   fi
+
+                   #add extra params
+				   i=0
+				   while [ $i -lt ${#array_extra_param_names[@]} ]
+				   do
+					   name="${array_extra_param_names[$i]}"
+					   value="${array_extra_param_values[$i]}"
+					   echo "  $i: name=$name value=$value"
+					   echo "${name}=${value}" >> $dir/ifcfg-$nic
+					   i=$((i+1))
+				   done		
 			   else # not the first ip address
                    echo "LABEL_$ipindex=$ipindex
 IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
@@ -482,6 +498,16 @@ IPADDR_$ipindex=$nicip" >> $dir/ifcfg-$nic
                            echo "default $gateway - -" >> /etc/sysconfig/network/routes
                        fi
                    fi
+                   #add extra params
+				   i=0
+				   while [ $i -lt ${#array_extra_param_names[@]} ]
+				   do
+					   name="${array_extra_param_names[$i]}"
+					   value="${array_extra_param_values[$i]}"
+					   echo "  $i: name=$name value=$value"
+					   echo "${name}=${value}" >> $dir/ifcfg-$nic
+					   i=$((i+1))
+				   done		
                 fi # end if [ $ipindex -eq 1 ]
             elif [ $OS_name == 'redhat' ]
             then
@@ -512,12 +538,18 @@ IPADDR=$nicip" > $dir/ifcfg-$nic
                     if [ -n "$gateway" ]; then
                        echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic
                     fi
-					if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
-						echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic
-					fi
-					if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
-						echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic
-					fi
+
+
+					#add extra params
+					i=0
+					while [ $i -lt ${#array_extra_param_names[@]} ]
+					do
+						name="${array_extra_param_names[$i]}"
+						value="${array_extra_param_values[$i]}"
+						echo "  $i: name=$name value=$value"
+						echo "${name}=${value}" >> $dir/ifcfg-$nic
+						i=$((i+1))
+					done		
                else # not the first ip address
                    # ipv6
                    if echo $nicip | grep : 2>&1 1>/dev/null
@@ -553,12 +585,18 @@ IPADDR=$nicip" > $dir/ifcfg-$nic:$ipindex
                         if [ -n "$gateway" ]; then
                            echo "GATEWAY=$gateway" >> $dir/ifcfg-$nic:$ipindex
                         fi
-						if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
-							echo "MTU=${str_mtu}" >> $dir/ifcfg-$nic:$ipindex
-						fi
-						if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
-							echo "CONNECTED_MODE=${str_connect_mode}" >> $dir/ifcfg-$nic:$ipindex
-						fi
+
+						#add extra params
+						i=0
+						while [ $i -lt ${#array_extra_param_names[@]} ]
+						do
+							name="${array_extra_param_names[$i]}"
+							value="${array_extra_param_values[$i]}"
+							echo "  $i: name=$name value=$value"
+							echo "${name}=${value}" >> $dir/ifcfg-$nic:$ipindex
+							i=$((i+1))
+						done		
+
                         # need to run ifup eth1:1 for RedHat
                         goodnics="$goodnics,$nic:$ipindex"
                     fi
@@ -613,13 +651,17 @@ netmask $netmask" >> /etc/network/interfaces
                         #fi
                     fi
 
-					if [ -n "$str_mtu" -a "$str_mtu" != "$str_default_token" ]; then
-						echo "mtu ${str_mtu}" >> /etc/network/interfaces
-					fi
-					if [ -n "$str_connect_mode" -a "$str_connect_mode" != "$str_default_token" ]; then
-						echo "connected_mode ${str_connect_mode}" >> /etc/network/interfaces
-					fi
-                fi
+					#add extra params
+					i=0
+					while [ $i -lt ${#array_extra_param_names[@]} ]
+					do
+						name="${array_extra_param_names[$i]}"
+						value="${array_extra_param_values[$i]}"
+						echo "  $i: name=$name value=$value"
+						echo "${name} ${value}" >> /etc/network/interfaces
+						i=$((i+1))
+					done
+               fi
             else
                 echo "Unsupported operating system"
                 logger -p local4.err -t xcat "Unsupported operating system"

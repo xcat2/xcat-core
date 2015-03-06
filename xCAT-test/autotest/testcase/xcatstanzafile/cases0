@@ -16,8 +16,7 @@ end
 start:xcatstanzafile_normal
 os:Aix
 description:xcatstanzafile in normal format
-cmd:echo "default-node:\n       groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.p
-pd.pok.com" > testfile
+cmd:echo "default-node:\n       groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster=MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
 check:rc==0
 cmd:cat testfile|chdef -z
 check:rc==0
@@ -105,8 +104,7 @@ end
 start:xcatstanzafile_tab
 os:Aix
 description:xcatstanzafile,line with tab and space
-cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster   =       MS02.ppd.pok.com\n    nfsserver=
-IS227.ppd.pok.com" > testfile
+cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster   =       MS02.ppd.pok.com\n    nfsserver=IS227.ppd.pok.com" > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0
@@ -131,8 +129,7 @@ end
 start:xcatstanzafile_multattr
 os:Aix
 description:xcatstanzafile,line with multiple attribute
-cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com nfsserver=IS227.ppd.pok.
-com" > testfile
+cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com nfsserver=IS227.ppd.pok.com" > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0
@@ -161,8 +158,7 @@ start:xcatstanzafile_defaultvalue
 os:Aix
 description:xcatstanzafile,If the header name is ``default-<object type>:'' the attribute values in the stanza are considered default va
 lues for subsequent definitions in the file that are the same object type.
-cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.
-ppd.pok.com" > testfile
+cmd:echo "default-node:\n    groups=all,compute\n testnode:\n    objtype=node\n    xcatmaster= MS02.ppd.pok.com\n       nfsserver=IS227.ppd.pok.com" > testfile
 check:rc==0
 cmd:cat testfile|mkdef -z
 check:rc==0

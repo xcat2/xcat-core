@@ -225,7 +225,20 @@ $uarch="amd64" if ($arch eq x86_64);
 
 unless ($onlyinitrd) {
    @aptdirs=();
-   find(\&isaptdir, <$srcdir/>);
+
+   # Get the ubuntu repo path from osimage.pkgdir
+   my @srcdirs = split(',', $srcdir);
+   
+   my @pkgdir_internet; #Put all the http mirror in ths array, but only the first http mirror which will be used to create bootstrap
+   $srcdir = undef;
+   foreach my $dir (@srcdirs) {
+      if ($dir =~ /^http.*/){
+          push @pkgdir_internet, $dir;
+      } else {
+          $srcdir = $dir;  #set $srcdir to be the one which is not http path
+          find(\&isaptdir, <$dir/>);
+      }
+   } 
    # Add the dir for kernel deb to be installed
    if ($kernelver) {
       find(\&isaptdir, <$kerneldir/>);
@@ -246,10 +259,15 @@ unless ($onlyinitrd) {
       $repnum += 1;
    }
    $repnum-=1;
+
+   # Add the internet mirror
+   if (@pkgdir_internet) {
+      foreach (@pkgdir_internet) {
+          print $aptconfig "deb $_\n\n";
+      }
+   }
    close($aptconfig);
    mkpath "$rootimg_dir/etc";
-
-
 
    my $fd;
    open($fd,">>","$rootimg_dir/etc/fstab");
@@ -274,14 +292,58 @@ unless ($onlyinitrd) {
    my $aptcmd1 = "debootstrap";
    #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
    my $aptcmd2;
-   if ($uarch eq 'ppc64el') {
-       $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
-   } else {
-       $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
-   }
-   mkpath("$rootimg_dir/var/lib/dpkg");
-   mkpath("$rootimg_dir/var/lib/apt");
 
+   # Check whether a local Ubuntu mirror is specified
+   # if linuximage.pkgdir has http mirror is set, we consider the first http mirror 
+   # as a full Ubuntu mirror which will be used to create bootstrap
+   if (@pkgdir_internet) {
+       my $mirrorurl = $pkgdir_internet[0];
+       if ($pkgdir_internet[0] =~ /(http.*?) +([^ ]+)/) {
+           $mirrorurl = $1;
+           $dist = $2;
+           $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir $mirrorurl";
+       } else {
+           print "Error: In pkgdir, the first http mirror path must includes http URL and distribute name.";
+           exit 1;
+       }
+   } else {
+      if ($uarch eq 'ppc64el') {
+         $aptcmd2 = "--verbose --arch $uarch $dist $rootimg_dir http://ports.ubuntu.com/ubuntu-ports/";
+      } else {
+         $aptcmd2 = "--verbose  --arch $uarch $dist $rootimg_dir http://archive.ubuntu.com/ubuntu/";
+      }
+   }
+
+   print "Run cmd [$aptcmd1 $aptcmd2] to create rootimage bootstraps\n";
+   my $rc = system("$aptcmd1 $aptcmd2");
+   if ($rc) { 
+       print "Error: cannnot create bootstraps for rootimage. Make sure you specified full http mirror path.\n";
+       exit 1;
+   }
+   
+   # Prepare the installation mirror for the package install
+   print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
+   mount_chroot($rootimg_dir, $otherpkgsdir_local, $srcdir, $kerneldir);
+   
+   # Add mirrors from pkgdir attributes to rootimage for the pkg install from pkglist
+   open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
+
+   if ($srcdir) {
+       my $master = xCAT::TableUtils->get_site_Master();
+       print $aptconfig "deb http://$master$srcdir $dist main\n";
+   }
+
+   foreach (@pkgdir_internet) {
+       print $aptconfig "deb $_\n";
+   }
+
+   close($aptconfig);
+
+   # run apt-get upgrade to update any installed debs
+   my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
+   $rc = system("$aptgetcmd_update");
+        
+   # Start to install pkgs in pkglist
    unless ($imagename) {
        $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
        unless ($pkglist) {
@@ -335,7 +397,7 @@ unless ($onlyinitrd) {
                     push @npa, $kernelname;
                 }
                 elsif ($p =~ /linux-image-generic/) {
-                    $kernelimage = "linux-image-generic";
+                    $kernelimage = $p;
                 }
                 elsif ($p =~ /^@/) {
                     push @npa, "\"$p\"";
@@ -344,40 +406,22 @@ unless ($onlyinitrd) {
                     push @npa, $p;
                 }
             }
-            $pkgnames .= join(',', @npa);
+            $pkgnames .= join(' ', @npa);
         }
         my $envlist;
         if(exists $pkg_hash{$pass}{ENVLIST}){
             $envlist = join(',', @{$pkg_hash{$pass}{ENVLIST}});
         }
 
-        print "$envlist $aptcmd1 --include=$pkgnames $aptcmd2\n";
-        my $rc = system("$envlist $aptcmd1 --include=$pkgnames $aptcmd2");
+        print "$envlist $aptgetcmdby install $pkgnames\n";
+        my $rc = system("$envlist $aptgetcmdby install --allow-unauthenticated $pkgnames");
         if ($rc) { 
-            print "apt invocation failed\n";
+            print "Failed to install packages $pkgnames\n";
             exit 1;
         }
     }
 
-    print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
-    mount_chroot($rootimg_dir, $otherpkgsdir_local, $srcdir, $kerneldir);
-
-    # Add the local repo from MN temporarily for apt-get update/upgrade
-    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
-    print $aptconfig "deb file:///mnt/pkgdir/ $dist main\n";
-    if (-d "$rootimage_dir/mnt/kerneldir") {
-        print $aptconfig "deb file:///mnt/kerneldir/ $dist main\n";
-    }
-    close($aptconfig);
-
     {
-        # run apt-get upgrade to update any installed debs
-        # needed when running genimage again after updating software in repositories
-        #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
-        my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
-        $rc = system("$aptgetcmd_update");
-        
-
         #############################################################
         # The section below is used to install kernel base and extra#
         #############################################################
@@ -385,11 +429,11 @@ unless ($onlyinitrd) {
             if ($kernelver) {
                 $kernelimage = "linux-image-$kernelver linux-image-extra-$kernelver linux-firmware";
             }
-            my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
+            my $aptgetcmd_install = $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
             $rc = system("$aptgetcmd_install");
         }
-
     }
+    
     #add the other package directory to for apt-get install
     open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
     #if ($otherpkgsdir_local){
@@ -422,7 +466,7 @@ unless ($onlyinitrd) {
     my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
-      open ($aptconfig,">>","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
+      open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list");
       my $index=1;
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
@@ -528,11 +572,7 @@ unless ($onlyinitrd) {
    print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
 
-   # Add the local repo from MN
-   my $master = xCAT::TableUtils->get_site_Master();
-   open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
-   print $aptconfig "deb http://$master$installroot/$osver/$arch/ $dist main\n";
-   close($aptconfig);
+   `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
    
    #recover the /etc/hosts & /etc/reslov.conf
    `cd $rootimg_dir/etc/;mv -f hosts.bak hosts;mv -f resolv.conf.bak resolv.conf`;
@@ -1829,12 +1869,17 @@ sub mount_chroot {
    my $otherpkgdir = shift;
    my $pkgdir = shift;
    my $kerneldir = shift;
-   mkdir("$rootimage_dir/mnt/pkgdir");
-   mkdir("$rootimage_dir/mnt/otherpkgdir");
    #system("mount -o bind /dev $rootimage_dir/dev");
    #system("mount -o bind /proc $rootimage_dir/proc");
    #system("mount -o bind /sys $rootimage_dir/sys");
-   system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+   if ($pkgdir) {
+       if (-d $pkgdir) {
+           mkdir("$rootimage_dir/mnt/pkgdir");
+           system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+       } else {
+           print "The specified pkgdir $pkgdir does not exist!\n"
+       }
+   }
    if ($kerneldir){
       if(-d $kerneldir){
          mkdir("$rootimage_dir/mnt/kerneldir");
@@ -1845,6 +1890,7 @@ sub mount_chroot {
    }
 
    if ($otherpkgdir){
+      mkdir("$rootimage_dir/mnt/otherpkgdir");
       if(-d $otherpkgdir){
          system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
       }else{

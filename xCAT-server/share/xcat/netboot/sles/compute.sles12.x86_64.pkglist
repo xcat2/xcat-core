@@ -1,9 +1,11 @@
 aaa_base
+coreutils
 bash 
 nfs-kernel-server
+keyutils
+lvm2
 openssl
 dhcp-client 
-kernel-default
 openssh
 procps
 psmisc
@@ -29,7 +31,11 @@ dmraid
 mdadm
 multipath-tools
 gpg2
+which
 cifs-utils
+open-lldp
+fcoe-utils
 kernel-firmware
 util-linux-systemd
+kernel-default
 

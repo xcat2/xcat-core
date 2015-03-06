@@ -200,7 +200,7 @@ END
 	}
 	
 	# Add dasd to template
-	if ($dasd_option == '1') {
+	if ($dasd_option eq '1') {
 		# Get virtual address
 		$addr = ask("  What is the virtual address? ");
 		while (length($addr) < 4) { # Address length must be 4
@@ -228,7 +228,7 @@ END
 	} 
 	
 	# Remove dasd from template
-	elsif ($dasd_option == '2') {
+	elsif ($dasd_option eq '2') {
 		$addr = ask("  What is the virtual address to remove? ");
 		while (length($addr) < 4) { # Address length must be 4
 			$addr = '0' . $addr;
@@ -239,7 +239,7 @@ END
 		delete $dasd{$addr};
 	} 
 
-	elsif ($dasd_option == '3') {
+	elsif ($dasd_option eq '3') {
 		# Show configuration
 		print <<END;
 #  |   Address   |   Type   
@@ -252,7 +252,7 @@ END
 		}
 	}
 	
-	elsif ($dasd_option == '4') {
+	elsif ($dasd_option eq '4') {
 		# Do nothing, go to next step	
 	} else {
 		print "  Unknown value!\n"
@@ -433,7 +433,7 @@ END
 				$lvm_option = <>;
 				
 				# Add an LVM volume to template
-				if ($lvm_option == '1') {
+				if ($lvm_option eq '1') {
 					# Get dasd virtual address
 					$lvm_vol_name = ask("  What is the LVM volume name? ");
 					
@@ -463,14 +463,14 @@ END
 				} 
 				
 				# Remove an LVM volume from template
-				elsif ($lvm_option == '2') {
+				elsif ($lvm_option eq '2') {
 					my $name = ask("  What is the LVM volume to remove? ");
 										
 					# Remove from hash
 					delete $partitions{$device_name}{'lvm'}{$name};
 				}
 
-				elsif ($lvm_option == '3') {
+				elsif ($lvm_option eq '3') {
 					# Show configuration
 					print <<END;
 Group      |   Volume   |    Mount   |   Size   
@@ -484,7 +484,7 @@ END
 					}
 				}
 				
-				elsif ($lvm_option == '4') {
+				elsif ($lvm_option eq '4') {
 					# Do nothing, go to next step	
 				} else {
 					print "  Unknown value!\n"

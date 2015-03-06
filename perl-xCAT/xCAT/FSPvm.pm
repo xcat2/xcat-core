@@ -141,13 +141,13 @@ sub chvm_parse_extra_options {
             } elsif ($cmd eq "vmmemory") {
                 if ($value =~ /^([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)\/([\d|.]+)([G|M]?)$/i) {
                     my ($mmin, $mcur, $mmax);
-                    if ($2 == "G" or $2 == '') {
+                    if ($2 eq "G" or $2 eq '') {
                         $mmin = $1 * 1024;
                     } 
-                    if ($4 == "G" or $4 == '') {
+                    if ($4 eq "G" or $4 eq '') {
                         $mcur = $3 * 1024;
                     }
-                    if ($6 == "G" or $6 == '') {
+                    if ($6 eq "G" or $6 eq '') {
                         $mmax = $5 * 1024;
                     }
                     unless ($mmin <= $mcur and $mcur <= $mmax) {
@@ -872,17 +872,17 @@ sub do_op_extra_cmds {
                         if ($param =~ /(\d+)([G|M]?)\/(\d+)([G|M]?)\/(\d+)([G|M]?)/i) {
                             my $memsize = $memhash->{mem_region_size};
                             my $min = $1;
-                            if ($2 == "G" or $2 == '') {
+                            if ($2 eq "G" or $2 eq '') {
                                 $min = $min * 1024;
                             } 
                             $min = int($min/$memsize);
                             my $cur = $3;
-                            if ($4 == "G" or $4 == '') {
+                            if ($4 eq "G" or $4 eq '') {
                                 $cur = $cur * 1024;
                             }
                             $cur = int($cur/$memsize);
                             my $max = $5;
-                            if ($6 == "G" or $6 == '') {
+                            if ($6 eq "G" or $6 eq '') {
                                 $max = $max * 1024;
                             }
                             $max = int($max/$memsize);
@@ -928,7 +928,7 @@ sub do_op_extra_cmds {
             }
             if (@query_array) {
                 my $rethash = query_cec_info_actions($request, $name, $d, 1, \@query_array);
-                unless (scalar keys(%$memhash)) {
+                unless (scalar keys(%$rethash)) {
                     push @values, [$mtms, "Can not get hypervisor information", 1];
                     next;
                 }
@@ -1183,7 +1183,7 @@ sub get_cec_lpar_name {
     my @value = split(/\n/, $lpar_info);
     foreach my $v (@value) {
         if($v =~ /lparname:\s*([^\,]*),\s*lparid:\s*([\d]+),/) {
-            if($2 == $lparid) {
+            if($2 eq $lparid) {
                 return $1;
             }
         }
@@ -1738,7 +1738,7 @@ sub parse_part_get_info {
             $hash->{process_units_avail} = $2;
         } elsif ($line =~ /Authority Lpar id:(\w+)/i) {
             $hash->{service_lparid} = $1;
-        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),\w*\(([\w| |-|_]*)\)/) {
+        } elsif ($line =~ /(\d+),(\d+),[^,]*,(\w+),\w*\(([\w| |-|_|\/]*)\)/) {
             $hash->{bus}->{$3}->{cur_lparid} = $1;
             $hash->{bus}->{$3}->{bus_slot} = $2;
             $hash->{bus}->{$3}->{des} = $4;
@@ -2001,7 +2001,7 @@ sub query_cec_info {
                 last;
             }
             #push @result, [@td[3], $rethash, 0];
-            push @result, @$rethash;
+            #push @result, @$rethash;
         }  
     }
     if ($args->{updatedb} and %lpar_hash) {
@@ -2347,13 +2347,13 @@ sub mkspeclpar {
                     next;
                 }
                 my ($mmin, $mcur, $mmax);
-                if ($2 == "G" or $2 == '') {
+                if ($2 eq "G" or $2 eq '') {
                     $mmin = $1 * 1024;
                 } 
-                if ($4 == "G" or $4 == '') {
+                if ($4 eq "G" or $4 eq '') {
                     $mcur = $3 * 1024;
                 }
-                if ($6 == "G" or $6 == '') {
+                if ($6 eq "G" or $6 eq '') {
                     $mmax = $5 * 1024;
                 }
                 unless ($mmin <= $mcur and $mcur <= $mmax) {
