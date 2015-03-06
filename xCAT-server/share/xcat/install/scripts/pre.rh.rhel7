@@ -75,6 +75,10 @@ try:
 				percent = 0
 				count = 0
 				numpack = 0
+				pre = 0
+				if(os.path.isfile('/tmp/xcatpre.log')):
+					ilog = '/tmp/xcatpre.log'
+					pre = 1
 				if(os.path.isfile('/tmp/packaging.log')):
 					ilog = '/tmp/packaging.log'
 				if(os.path.isfile('/mnt/sysimage/tmp/post.log')):
@@ -84,7 +88,7 @@ try:
 					count = len(open(ilog).readlines())
 					line = linecache.getline(ilog,count)
 					linecache.clearcache()
-				if(line and not post):
+				if(line and not post and not pre):
 					r2 = re.compile("Installing ([^ ]*) \((\d+)/(\d+)\)")
 					m2 = r2.search(line)
 					if m2:
@@ -92,7 +96,7 @@ try:
 					else:
 						newline = "post"
 					line = "installing " + newline
-				if(line and post):
+				if(line and post and not pre):
 					line = "installing " + line
 				if(not line):
 					line = "installing prep"
