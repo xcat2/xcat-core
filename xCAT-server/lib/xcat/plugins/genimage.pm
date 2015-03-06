@@ -168,23 +168,35 @@ sub process_request {
 	   return 1;
        }
        $pkglist = $ref_linuximage_tab->{'pkglist'};
-       if ($pkglist ne "" and ! -e $pkglist) {
-           $callback->({error=>["The pkglist specified \'$pkglist\' does not exist!"],errorcode=>[1]});
-	   return 1;
+       if ($pkglist ne "") {
+          foreach my $file (split ',', $pkglist) {
+               if (! -r $file) {
+                   $callback->({error=>["The pkglist specified \'$file\' does not exist!"],errorcode=>[1]});
+                   return 1;
+               }
+           }
        }
        
        $srcdir = $ref_linuximage_tab->{'pkgdir'};
 
        $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
        $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
-       if ($otherpkglist ne "" and ! -e $otherpkglist) {
-           $callback->({error=>["The otherpkglist specified \'$otherpkglist\' does not exist!"],errorcode=>[1]});
-	   return 1;
+       if ($otherpkglist ne "") {
+           foreach my $file (split ',', $otherpkglist) {
+               if (! -r $file) {
+                   $callback->({error=>["The otherpkglist specified \'$file\' does not exist!"],errorcode=>[1]});
+	           return 1;
+               }
+           }
        }
        $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
-       if ($postinstall_filename ne "" and ! -e $postinstall_filename) {
-           $callback->({error=>["The postinstall_filename specified \'$postinstall_filename\' does not exist!"],errorcode=>[1]});
-	   return 1;
+       if ($postinstall_filename ne "") {
+          foreach my $file (split ',', $postinstall_filename) {
+               if (! -r $file) {
+                   $callback->({error=>["The postinstall_filename specified \'$file\' does not exist!"],errorcode=>[1]});
+                   return 1;
+               }
+           }
        }
        $destdir = $ref_linuximage_tab->{'rootimgdir'};
        $rootimg_dir = $ref_linuximage_tab->{'rootimgdir'};
