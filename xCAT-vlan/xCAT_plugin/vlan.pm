@@ -543,7 +543,7 @@ sub process_mkvlan {
     if ($vlan_id > 0) {
 	if ($nwtab) {
 	    my @tmp1=$nwtab->getAllAttribs(('vlanid', 'net', 'mask'));
-	    if (defined(@tmp1) && (@tmp1 > 0)) {
+	    if ((@tmp1) && (@tmp1 > 0)) {
 		foreach(@tmp1) {
 		    if ($vlan_id eq $_->{vlanid}) {
 			my $rsp={};
@@ -1028,7 +1028,7 @@ sub get_prefix_and_nodenumber {
     my $swtab=xCAT::Table->new("switch", -create =>0);
     my @nodes=();
     my @tmp1=$swtab->getAllAttribs(('node', 'vlan'));
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    if ((@tmp1) && (@tmp1 > 0)) {
 	foreach my $ent (@tmp1) {
 	    my @nodes_tmp=noderange($ent->{node});
 	    foreach my $node (@nodes_tmp) {
@@ -1048,7 +1048,7 @@ sub get_prefix_and_nodenumber {
     my @vmnodes=();
     if ($vmtab) {
 	my @tmp1=$vmtab->getAllAttribs('node', 'host');
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if ((@tmp1) && (@tmp1 > 0)) {
 	    foreach(@tmp1) {
 		my $host = $_->{host};
 		if (grep(/^$host$/, @nodes)) {
@@ -1158,7 +1158,7 @@ sub verify_vlanid {
 
     my $switchestab=xCAT::Table->new('switches',-create=>0);
     my @tmp1=$switchestab->getAllAttribs(('switch'));
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    if ((@tmp1) && (@tmp1 > 0)) {
 	foreach(@tmp1) {
 	    my @switches_tmp=noderange($_->{switch});
 	    if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; } #sometimes the switch name is not on the node list table.  
@@ -1198,7 +1198,7 @@ sub get_next_vlanid {
     my $switchestab=xCAT::Table->new('switches',-create=>0);
     my @tmp1=$switchestab->getAllAttribs(('switch'));
     my %vlanids=();
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    if ((@tmp1) && (@tmp1 > 0)) {
 	foreach(@tmp1) {
 	    my @switches_tmp=noderange($_->{switch});
 	    if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; } #sometimes the switch name is not on the node list table.  
@@ -1688,7 +1688,7 @@ sub process_chvlanports {
         my $swtab=xCAT::Table->new("switch", -create =>0);
         if ($swtab) {
             my @tmp1=$swtab->getAllAttribs('switch', 'vlan');
-            if (defined(@tmp1) && (@tmp1 > 0)) {
+            if ((@tmp1) && (@tmp1 > 0)) {
                 foreach my $item (@tmp1) {
                     my $vlan=$item->{vlan};
                     my $sw=$item->{switch};
@@ -1772,7 +1772,7 @@ sub process_chvlan {
     if ($vlan_id > 0) {
         if ($nwtab) {
             my @tmp1=$nwtab->getAllAttribs(('vlanid', 'net', 'mask'));
-            if (defined(@tmp1) && (@tmp1 > 0)) {
+            if ((@tmp1) && (@tmp1 > 0)) {
                 foreach(@tmp1) {
                     if ($vlan_id eq $_->{vlanid}) {
                         $found=1;
@@ -1943,7 +1943,7 @@ sub process_chvlan {
         my $swtab=xCAT::Table->new("switch", -create =>0);
         if ($swtab) {
             my @tmp1=$swtab->getAllAttribs('switch', 'vlan');
-            if (defined(@tmp1) && (@tmp1 > 0)) {
+            if ((@tmp1) && (@tmp1 > 0)) {
                 foreach my $item (@tmp1) {
                     my $vlan=$item->{vlan};
                     my $sw=$item->{switch};
@@ -2159,7 +2159,7 @@ sub process_rmvlan {
     my $swtab=xCAT::Table->new("switch", -create =>0);
     if ($swtab) {
 	my @tmp1=$swtab->getAllAttribs(('node', 'switch', 'port', 'vlan'));
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if ((@tmp1) && (@tmp1 > 0)) {
 	    foreach my $ent (@tmp1) {
 		my @nodes_tmp=noderange($ent->{node});
 		foreach my $node (@nodes_tmp) {
@@ -2188,7 +2188,7 @@ sub process_rmvlan {
     my $switchestab=xCAT::Table->new('switches',-create=>0);
     if ($switchestab) {
 	my @tmp1=$switchestab->getAllAttribs(('switch'));
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if ((@tmp1) && (@tmp1 > 0)) {
 	    foreach(@tmp1) {
 		my @switches_tmp=noderange($_->{switch});
 		if (@switches_tmp==0) { push @switches_tmp, $_->{switch}; } #sometimes the switch name is not on the node list table.  
@@ -2278,7 +2278,7 @@ sub process_rmvlan {
     my $vmtab=xCAT::Table->new("vm", -create =>0);
     if ($vmtab) {
 	my @tmp1=$vmtab->getAllAttribs(('node','host', 'nics'));
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if ((@tmp1) && (@tmp1 > 0)) {
 	    foreach(@tmp1) {
 		my @nodes_tmp=noderange($_->{node});
 		my $nics=$_->{nics};
@@ -2389,7 +2389,7 @@ sub process_lsvlan {
     my $nwtab=xCAT::Table->new("networks", -create =>0);
     if ($nwtab) {
 	my @tmp1=$nwtab->getAllAttribs('net', 'mask', 'vlanid');
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if ((@tmp1) && (@tmp1 > 0)) {
 	    foreach(@tmp1) {
 		if (exists($_->{vlanid})) {
 		    $vlans{$_->{vlanid}}->{net}=$_->{net};
@@ -2426,7 +2426,7 @@ sub process_lsvlan {
 	my @nodes=();
 	if ($swtab) {
 	    my @tmp1=$swtab->getAllAttribs('node', 'vlan', 'interface');
-	    if (defined(@tmp1) && (@tmp1 > 0)) {
+	    if ((@tmp1) && (@tmp1 > 0)) {
 		foreach my $grp (@tmp1) {
 		    my $vlan=$grp->{vlan};
 		    my $nic="primary";
@@ -2453,7 +2453,7 @@ sub process_lsvlan {
 	my @vmnodes=();
 	if ($vmtab) {
 	    my @tmp1=$vmtab->getAllAttribs('node', 'host', 'nics');
-	    if (defined(@tmp1) && (@tmp1 > 0)) {
+	    if ((@tmp1) && (@tmp1 > 0)) {
 		my $new_nic="vl$vlan_id";
 		foreach(@tmp1) {
 		    my $host = $_->{host};
