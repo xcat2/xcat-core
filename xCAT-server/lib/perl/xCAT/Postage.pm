@@ -518,6 +518,13 @@ sub makescript {
     ## kit and kitcomponent parameter.
     my $kitcomp_deployparams = getKitcompDeployParams($osimgname,\%image_hash);
 
+    # get mac address for the node
+    my $macaddress;
+    if( defined( $::GLOBAL_TAB_HASH{mac}) && defined( $::GLOBAL_TAB_HASH{mac}{$node}) ) {
+        my $macmac = $::GLOBAL_TAB_HASH{mac}{$node}{mac};
+        $macaddress = xCAT::Utils->parseMacTabEntry($macmac, $node);
+    }
+
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -544,6 +551,8 @@ sub makescript {
   
   #$inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/\$NTYPE/$nodetype/eg;
+
+  $inc =~ s/\$MACADDRESS/$macaddress/eg;
 
   # This line only is used to compatible with the old code
   $inc =~ s/#Subroutine:([^:]+)::([^:]+)::([^:]+):([^#]+)#/runsubroutine($1,$2,$3,$4)/eg;
