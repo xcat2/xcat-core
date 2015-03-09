@@ -1,10 +1,1 @@
-#Please make sure there is a space between @ and group name
-wget
-ntp
-nfs-utils
-net-snmp
-rsync
-yp-tools
-openssh-server
-util-linux
-net-tools
+compute.rhels7.pkglist
