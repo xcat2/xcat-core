@@ -338,7 +338,10 @@ sub init
         my @output = runcmd("uname");
         $config{var}{OS} = $output[0];
         log_this("Detecting: OS = $config{var}{OS}");
-    }
+    } else {
+         $config{var}{OS} = lc($config{var}{OS});
+           }
+    
     if(!exists $config{var}{ARCH}){
         if(!exists $config{var}{CN}){
             $config{var}{ARCH} = "Unknown";
@@ -536,21 +539,25 @@ sub loadcase
                 next if $skip;
                 $string1=$1;
                 if($string1 =~ /^rhels\s*/ && -f "/etc/redhat-release"){
-                $cases[$i]->{os}="Linux";
+                $cases[$i]->{os}="rhels";
                 }elsif($string1 =~ /^sles\s*/ && -f "/etc/SuSE-release"){
-                $cases[$i]->{os}="Linux";
+                $cases[$i]->{os}="sles";
                 }elsif($string1 =~ /^ubuntu\s*/ && -f "/etc/lsb-release"){
-                $cases[$i]->{os}="Linux";
+                $cases[$i]->{os}="ubuntu";
                 }
                 else{
                  $cases[$i]->{os}=$string1;
 
                 }
 
+                chomp($cases[$i]->{os});
+                chomp($config{var}{OS});                 
                 if($cases[$i]->{os} !~ /$config{var}{OS}/){
-                    push(@notrightcase, $cases[$i]->{name});
-                    pop(@rightcase);
-                    $skip = 1;
+                    if((($config{var}{OS} =~ /^Linux\s*/i) && ($cases[$i]->{os} =~ /^aix\s*/i)) || (($config{var}{OS} =~ /^aix\s*/i) && ($cases[$i]->{os} !~ /^aix\s*/i)) || (($config{var}{OS} =~ /^rhels\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i)) || (($config{var}{OS} =~ /^sles\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i)) || (($config{var}{OS} =~ /^ubuntu\s*/i) && ($cases[$i]->{os} !~ /^Linux\s*/i))){
+                        push(@notrightcase, $cases[$i]->{name});
+                        pop(@rightcase);
+                        $skip = 1;
+                    }
                 }
 
             }elsif($line =~ /^arch\s*:\s*(\w[\w\,]+)/){
