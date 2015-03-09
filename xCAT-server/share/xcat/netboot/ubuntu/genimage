@@ -910,7 +910,8 @@ sub mkinitrd_dracut {
         xdie "the mode: $mode is not supported by genimage";
     }
 
-    system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver");
+    !system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver")
+        or die("Error: failed to generate the initial ramdisk for $mode.\n");
     print "the initial ramdisk for $mode is generated successfully.\n";
     move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
 }
