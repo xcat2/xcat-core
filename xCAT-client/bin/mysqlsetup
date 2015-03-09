@@ -314,6 +314,38 @@ if ((($odbconly == 0) && ( $::xcatrunningmysql == 0)) || $::UPDATE || $::SETUPLL
 # initial setup request, if not already running mysql
 if (($::INIT) && ($::xcatrunningmysql == 0))
 {
+    # MySQL not running, then initialize the database
+    if ($::mysqlrunning == 0)
+    {
+        # Add mysql user and group for AIX
+        # Correct directory permissions
+        #
+        &fixinstalldir;
+
+        #
+        # Init mysql db and setup my.cnf
+        #
+        &initmysqldb;
+
+        #
+        # Start MySQL server
+        #
+        &mysqlstart;
+
+        #
+        # Setup MySQL to restart on reboot
+        #
+        &mysqlreboot;
+
+        #
+        # set mysql root password in database
+        #
+        #
+        &setupmysqlroot;
+    }
+
+    # Verify the mysql root password, if it is wrong, do nothing and die.
+    &verifymysqlroot;
 
     #
     # Backup current database
@@ -364,37 +396,6 @@ if (($::INIT) && ($::xcatrunningmysql == 0))
     {
         xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
         exit(1);
-    }
-
-    # MySQL not running, then initialize the database
-    if ($::mysqlrunning == 0)
-    {
-        # Add mysql user and group for AIX
-        # Correct directory permissions
-        #
-        &fixinstalldir;
-
-        #
-        # Init mysql db and setup my.cnf
-        #
-        &initmysqldb;
-
-        #
-        # Start MySQL server
-        #
-        &mysqlstart;
-
-        #
-        # Setup MySQL to restart on reboot
-        #
-        &mysqlreboot;
-
-        #
-        # set mysql root password in database
-        #
-        #
-        &setupmysqlroot;
-
     }
 
     # if xcat not already configured to run mysql, then add xcat info to the DB
@@ -1061,6 +1062,39 @@ sub mysqlreboot
         }
     }
 
+}
+
+sub verifymysqlroot
+{
+    # Verify if mysql has an correct user input root password
+    if ($::osname eq 'AIX')
+    {
+        my $cmd2 =
+          "ulimit -n unlimited; ulimit -m unlimited; ulimit -d unlimited;ulimit -f unlimited; ulimit -s unlimited;";
+        $cmd = $cmd2;
+        $cmd .= "$::installdir/bin/mysqladmin -u root -p$::rootpassword version";
+    }
+    else
+    {
+        $cmd = "/usr/bin/mysqladmin -u root -p$::rootpassword version";
+    }
+
+    my $tmpv = $::VERBOSE;
+    $::VERBOSE = 0;
+    xCAT::Utils->runcmd($cmd, 0);
+    $::VERBOSE = $tmpv;
+    if ($::RUNCMD_RC == 0)
+    {
+	# User has input an correct root passwd. That is fine. Do nothing and go head.
+	return
+    }
+
+    # The password is wrong, warn the user and die.
+    xCAT::MsgUtils->message(
+            "E",
+            "Wrong MySQL root password."
+            );
+    exit 1;
 }
 
 #-----------------------------------------------------------------------------
