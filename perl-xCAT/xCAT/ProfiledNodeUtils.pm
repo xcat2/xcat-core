@@ -1261,6 +1261,13 @@ sub gen_chain_for_profiles{
     unless ($netprofileattr){
         return (1, "Can not get attributes for network profile $netprofile");
     }
+    
+    # Get node's netboot attribute
+    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imgprofile, $hwprofile);
+    if (not $retcode) {
+        return (1, $retval);
+    }
+    my $netboot = $retval;
 
     $final_chain = 'osimage='.$provmethod.":--noupdateinitrd";
     # get the chain attribute from hardwareprofile and insert it to node.
@@ -1273,7 +1280,8 @@ sub gen_chain_for_profiles{
         }
     }
     #run bmcsetups.
-    if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig){ 
+    #PowerNV nodes can't use 'runcmd=bmcsetup' to set BMC.
+    if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig and $netboot ne 'petitboot'){ 
         if (index($final_chain, "runcmd=bmcsetup") == -1){
             $final_chain = 'runcmd=bmcsetup,'.$final_chain.':reboot4deploy';
         }
@@ -1383,7 +1391,7 @@ sub get_netboot_attr{
 # 1        |  x86_64/x86 | *       | *                | *                | xnba             |
 # 2        |  ppc64      | rhels   | 7                | *                | grub2            |
 # 3        |             | *       | *                | *                | yaboot           |
-# 4        |  ppc64le/el | *       | *                | IBM_PowerNV      | petiboot         |
+# 4        |  ppc64le/el | *       | *                | IBM_PowerNV      | petitboot        |
 # 5        |             | *       | *                | *                | grub2            |
 #                         arch          osname       version  hardware           netboot
     my %netboot_dict = ( 'x86_64'                                             => 'xnba', 
@@ -1397,7 +1405,7 @@ sub get_netboot_attr{
                          'ppc64le' => {
                                         '*'    =>  { 
                                                      '*' => { 
-                                                              'IBM_PowerNV'   => 'petiboot',
+                                                              'IBM_PowerNV'   => 'petitboot',
                                                               '*'             => 'grub2',
                                                             },
                                                    },
