@@ -3710,7 +3710,7 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
         {attr_name => 'kitreponame',
-                 tabentry => 'kitcomponent.kitrepoid',
+                 tabentry => 'kitcomponent.kitreponame',
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
         {attr_name => 'basename',
