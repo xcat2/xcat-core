@@ -2737,7 +2737,7 @@ sub rmkitcomp
     # Read all the kitcomponents assigned to all the osimage to make sure the repo used by other osimage
     # will not be deleted.
 
-    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents','otherpkgdir' );
+    my @allosikitcomps = $tabs{osimage}->getAllAttribs( 'imagename', 'kitcomponents' );
 
     (my $linuximagetable) = $tabs{linuximage}->getAttribs({imagename=> $osimage}, 'postinstall', 'exlist', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
     if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
@@ -2748,13 +2748,13 @@ sub rmkitcomp
             my %newosikitcomponents;
             foreach my $allosikitcomp (@allosikitcomps) {
                 if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    (my $allosiotherpkgdir) = $tabs{linuximage}->getAttribs({imagename=> $allosikitcomp->{imagename}}, 'otherpkgdir');
+
                     my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
                     foreach my $allkitcomp ( @allkitcomps ) {
                         if ( (($allosikitcomp->{imagename} ne $osimage) and
-                               ( $allosikitcomp->{otherpkgdir} eq $otherpkgdir ))
-                              or ($allkitcomp ne $kitcomponent)  ) {
-
-}
+                              ($allosiotherpkgdir->{otherpkgdir} eq $otherpkgdir))
+                          or ($allkitcomp ne $kitcomponent)  ) {
                             $newosikitcomponents{$allkitcomp} = 1;
                         } 
                     }
