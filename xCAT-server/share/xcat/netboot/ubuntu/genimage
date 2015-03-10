@@ -584,6 +584,31 @@ unless ($onlyinitrd) {
    postscripts(); #run 'postscripts'
 }
 
+#-- run postinstall script
+unless ($imagename) {
+    $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
+    unless ($postinstall_filename) {
+        $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
+    }
+}
+
+if ( $postinstall_filename ) {
+
+    $updates{'postinstall'} = $postinstall_filename if ($tempfile);
+
+    foreach my $postinstall ( split /,/, $postinstall_filename ) {
+        if ( !-x $postinstall ) {
+            print "postinstall script $postinstall is not executable\n";
+            exit 1;
+        }
+        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
+        if($rc) {
+            print "postinstall script $postinstall failed\n";
+            exit 1;
+        }
+    }
+}
+
 # Default to the first kernel found in the install image if nothing specified explicitly.
 # A more accurate guess than whatever the image build server happens to be running
 # If specified, that takes precedence.
@@ -666,31 +691,6 @@ if (-d "$rootimg_dir/usr/share/dracut") {
         }
     }
     print "Enter the dracut mode. Dracut version: $dracutver. Dracut directory: $dracutdir.\n";
-}
-
-#-- run postinstall script
-unless ($imagename) {
-    $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
-    unless ($postinstall_filename) {
-        $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
-    }
-} 
-
-if ( $postinstall_filename ) {
-
-    $updates{'postinstall'} = $postinstall_filename if ($tempfile);
-
-    foreach my $postinstall ( split /,/, $postinstall_filename ) {
-        if ( !-x $postinstall ) {
-            print "postinstall script $postinstall is not executable\n";
-            exit 1;
-        }
-        my $rc = system($postinstall, $rootimg_dir,$osver,$arch,$profile);
-        if($rc) {
-            print "postinstall script $postinstall failed\n";
-            exit 1;
-        }
-    }
 }
 
 # all the attributes have been gathered
