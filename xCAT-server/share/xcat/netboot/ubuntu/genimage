@@ -320,6 +320,10 @@ unless ($onlyinitrd) {
        print "Error: cannnot create bootstraps for rootimage. Make sure you specified full http mirror path.\n";
        exit 1;
    }
+
+   # Since kernel-image package needs the /proc/cpuinfo file to validate the cpu type, 
+   # copy the /proc/cpuinfo from host node
+   copy("/proc/cpuinfo", "$rootimg_dir/proc/cpuinfo");
    
    # Prepare the installation mirror for the package install
    print("Mount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
