@@ -6,4 +6,8 @@ do
   if ethtool $nicname|grep -E -i "Link detected.*yes" >/dev/null 2>&1
      then sed -i 's/ONBOOT=no/ONBOOT=yes/' $i 
   fi
+
+  #remove the entry 'HWADDR' from ifcfg-ethx, this is used to skip the 
+  #nic name change during the install and first_reboot
+  sed -i '/HWADDR/d' $i
 done
