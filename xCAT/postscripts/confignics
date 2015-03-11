@@ -217,6 +217,8 @@ fi
 splitconfig "$NICIPS"
 splitconfig "$NICCUSTOMSCRIPTS"
 
+
+
 if [ $boot_myscript -eq 1 ];then
     . $str_dir_name/$myscript
     if [ $? -ne 0 ];then
@@ -273,9 +275,11 @@ if [ $bool_remove -eq 1 ];then
         configeth -r $str_temp_nic
     done
 fi
-
 old_ifs=$IFS
 IFS=$' '
+if [ $bool_cfg_inst_nic -eq 1 ];then
+    str_all_nics=$str_all_nics" "$str_inst_nic
+fi
 array_nics_temp=($str_all_nics)
 IFS=$old_ifs
 for key in ${array_nics_temp[@]}
@@ -341,7 +345,6 @@ do
         fi
     fi
 done
-
 if [ -n "$str_ib_nics" ];then
     logger -t xcat -p local4.info "confignics: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"
     echo "confignics on $NODE: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"
