@@ -9,15 +9,15 @@ check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
 cmd:sleep 20
-cmd:getmacs -D $$CN 
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
 
-#cmd:copycds $$ISO
-#check:rc==0
+cmd:copycds $$ISO
+check:rc==0
 
 cmd:if cat /etc/*release |grep SUSE >/dev/null; then  cp /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile_sles.csv /tmp/litefile.csv;tabrestore /tmp/litefile.csv; elif cat /etc/*release |grep "Red Hat" >/dev/null; then  tabrestore /opt/xcat/share/xcat/tools/autotest/testcase/installation/litefile.csv;fi
 check:rc==0
@@ -62,7 +62,7 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~statelite
-cmd:rnetboot $$CN
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
 cmd:sleep 300
@@ -97,7 +97,7 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
-cmd:rnetboot $$CN
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 
 cmd:sleep 300

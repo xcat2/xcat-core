@@ -2748,9 +2748,13 @@ sub rmkitcomp
             my %newosikitcomponents;
             foreach my $allosikitcomp (@allosikitcomps) {
                 if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    (my $allosiotherpkgdir) = $tabs{linuximage}->getAttribs({imagename=> $allosikitcomp->{imagename}}, 'otherpkgdir');
+
                     my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
                     foreach my $allkitcomp ( @allkitcomps ) {
-                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                        if ( (($allosikitcomp->{imagename} ne $osimage) and
+                              ($allosiotherpkgdir->{otherpkgdir} eq $otherpkgdir))
+                          or ($allkitcomp ne $kitcomponent)  ) {
                             $newosikitcomponents{$allkitcomp} = 1;
                         } 
                     }

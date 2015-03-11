@@ -206,10 +206,6 @@ elif [ `echo $str_temp | grep -E "e(n|th)[0-9a-z]+"` ];then
     str_inst_nic=$str_temp
 fi
 
-if [ $bool_cfg_inst_nic -eq 1 ];then
-    configeth -s $str_inst_nic 
-fi
-
 bool_exit_flag=0
 #check the required attributes
 if [ -z "$NICIPS" ];then
@@ -220,6 +216,8 @@ fi
 
 splitconfig "$NICIPS"
 splitconfig "$NICCUSTOMSCRIPTS"
+
+
 
 if [ $boot_myscript -eq 1 ];then
     . $str_dir_name/$myscript
@@ -277,9 +275,11 @@ if [ $bool_remove -eq 1 ];then
         configeth -r $str_temp_nic
     done
 fi
-
 old_ifs=$IFS
 IFS=$' '
+if [ $bool_cfg_inst_nic -eq 1 ];then
+    str_all_nics=$str_all_nics" "$str_inst_nic
+fi
 array_nics_temp=($str_all_nics)
 IFS=$old_ifs
 for key in ${array_nics_temp[@]}
@@ -287,9 +287,6 @@ do
     key=`echo $key | sed 's/^ \+//' | sed 's/ \+$//'`
     str_nic_type=
     str_value=$(hashget hash_defined_nics $key)
-    if [ "$key" = "$str_inst_nic" ];then
-        continue
-    fi
     old_ifs=$IFS
     IFS=$','
     array_temp=($str_value)
@@ -300,6 +297,16 @@ do
         echo "confignics on $NODE: processing custom scripts: ${array_temp[1]} for interface $key"
         ${array_temp[1]}
     else
+        if [ "$key" = "$str_inst_nic" ];then
+            if [ $bool_cfg_inst_nic -eq 1 ];then
+                logger -t xcat -p local4.info "confignics: call 'configeth $str_inst_nic'"
+                echo "confignics on $NODE: call 'configeth -s $str_inst_nic"
+                configeth -s $str_inst_nic
+                continue
+            else
+                continue
+            fi
+        fi
         if [ `echo $key | grep -E 'e(n|th|m)[0-9a-z]+'` ];then
             str_nic_type="ethernet"
         elif [ `echo $key | grep -E 'ib[0-9]+'` ];then
@@ -334,7 +341,6 @@ do
         fi
     fi
 done
-
 if [ -n "$str_ib_nics" ];then
     logger -t xcat -p local4.info "confignics: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"
     echo "confignics on $NODE: executed script: configib for nics: $str_ib_nics, ports: $num_iba_ports"

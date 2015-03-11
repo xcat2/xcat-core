@@ -1013,10 +1013,11 @@ sub runcmd
       }
       # store the return string
       #push  @$outref,$output;   
+      close(PIPE);  # This will set the $? properly
     }
 
     # now if not streaming process errors 
-    if (($?) && (!defined($stream)))
+    if ($?)
     {
         $::RUNCMD_RC = $? >> 8;
         my $displayerror = 1;

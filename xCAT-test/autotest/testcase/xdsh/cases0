@@ -1,7 +1,6 @@
 start:xdsh_h
 cmd:xdsh  -h
 check:rc==0
-check:output=~Usage
 end
 
 start:xdsh_V

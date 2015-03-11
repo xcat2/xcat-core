@@ -2201,6 +2201,7 @@ sub get_request {
             $flags |= O_NONBLOCK; #we want sysread to bail on us, select seems to be evil to us still..
             fcntl($sock,F_SETFL,$flags);
             my $bytesread;
+            if (!($line) ) { $line = ''; }
             do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
             if (length($line)==0) {
                 if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
