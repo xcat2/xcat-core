@@ -68,8 +68,6 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rmvlan
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsvlan
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/chvlanports
 
-set -x
-
 
 %clean
 # This step does not happen until *after* the %files packaging below
