@@ -293,6 +293,10 @@ do
     IFS=$old_ifs
 
     if [ -n "${array_temp[1]}" ];then
+        if [ "$key" = "$str_inst_nic" ] && [ $bool_cfg_inst_nic -ne 1 ];then
+            # don't run customized script for installnic if not specify the -s
+            continue
+        fi
         logger -t xcat -p local4.info "confignics: processing custom scripts: ${array_temp[1]} for interface $key" 
         echo "confignics on $NODE: processing custom scripts: ${array_temp[1]} for interface $key"
         ${array_temp[1]}
