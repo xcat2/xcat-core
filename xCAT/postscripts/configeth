@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 # Internal script used by confignics only.
 # It configs the Ethernet adpaters on the node
@@ -502,6 +502,21 @@ elif [ "$1" = "-s" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
+        else
+            if [ -n "$MACADDRESS" ];then       
+                str_inst_mac=$MACADDRESS
+                inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
+                if [ ! -z "${inst_nic}" ];then
+                    str_inst_ip=`ip -4 -o addr|grep -i ${inst_nic} |awk '{print $4}'|awk -F/ '{print $1}'`
+                    if [ ! -z "str_inst_ip" ];then
+                        inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
+                        if [ ! -z "inst_ip_pre" ];then
+                            str_inst_mask=`route |grep ${inst_ip_pre}|awk '{print $3}'|head -1`
+                        fi
+                    fi
+                fi
+                str_inst_gateway=`ip ro ls|grep default|awk '{print $3}'|head -1`
+            fi
         fi
     elif [ -f "/etc/SuSE-release" ];then
        str_lease_file="/var/lib/dhcpcd/dhcpcd-"$str_inst_nic".info"
@@ -516,6 +531,21 @@ elif [ "$1" = "-s" ];then
             str_inst_ip=`grep fixed-address $str_lease_file | tail -n 1 | awk '{print $2}' | sed 's/;$//'`
             str_inst_mask=`grep subnet-mask $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
             str_inst_gateway=`grep routers $str_lease_file | tail -n 1 | awk '{print $3}' | sed 's/;$//'`
+        else
+            if [ -n "$MACADDRESS" ];then
+                str_inst_mac=$MACADDRESS
+                inst_nic=`ip -o link |grep -i ${str_inst_mac} |awk '{print $2}'|sed 's/://g'`
+                if [ ! -z "${inst_nic}" ];then
+                    str_inst_ip=`ip -4 -o addr|grep -i ${inst_nic} |awk '{print $4}'|awk -F/ '{print $1}'`
+                    if [ ! -z "str_inst_ip" ];then
+                        inst_ip_pre=`ip ro ls|grep -i ${str_inst_ip}|awk '{print $1}'|awk -F/ '{print $1}'`
+                        if [ ! -z "inst_ip_pre" ];then
+                            str_inst_mask=`route |grep ${inst_ip_pre}|awk '{print $3}'|head -1`
+                        fi
+                    fi
+                fi
+                str_inst_gateway=`ip ro ls|grep default|awk '{print $3}'|head -1`
+            fi
         fi
     fi
     if [ -n "$MACADDRESS" ];then
