@@ -839,6 +839,14 @@ Usage:
     if(exists $args_dict{'hardwareprofile'}){
         $hardwareprofile = $args_dict{'hardwareprofile'};
     }
+    
+    # Get the netboot attribute for node
+    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
+    if (not $retcode) {
+        setrsp_errormsg($retval);
+        return;
+    }
+    my $new_netboot = $retval;
 
     # After checking, all nodes' profile should be same
     # Get the new profile with specified ones in args_dict
@@ -879,13 +887,7 @@ Usage:
         setrsp_infostr("Warning: no profile changes detect.");
         return;
     }
-    # Get the netboot attribute for node
-    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
-    if (not $retcode) {
-        setrsp_errormsg($retval);
-        return;
-    }
-    my $new_netboot = $retval;
+    
     # Update nodes' attributes
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;

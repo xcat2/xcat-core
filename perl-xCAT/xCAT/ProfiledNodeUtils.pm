@@ -1351,7 +1351,6 @@ sub get_netboot_attr{
         {
             return 0, "Hardware profile not defined in DB."
         }
-        $hardwareprofile =~ s/^__HardwareProfile_//;
     }
     else
     {
@@ -1384,16 +1383,28 @@ sub get_netboot_attr{
     {
         $os_arch = 'x86_64';
     }
+    
+    # Identify whether this node is PowerKVM or PowerNV if os arch is ppc64le
+    # If hardware profile is defined 
+    my $mgt = '*';
+    if ($os_arch eq 'ppc64le' and $hardwareprofile ne '*') {
+        my $nodehmtab = xCAT::Table->new('nodehm');
+        my $nodehmtab_entry = $nodehmtab->getNodeAttribs($hardwareprofile, ['mgt']);
+        if (defined $nodehmtab_entry->{'mgt'}) {
+            $mgt = $nodehmtab_entry->{'mgt'};
+        }
+    }
+    
 
 # Rule for netboot attribute.If update the rule,just update %netboot_dict and @condition_array
 # It's sequence sensitive: os arch -> os name -> os major version -> hardware profile
-# Priority |  Arch       | OS Name | OS Major Version | Hardware Profile | Noderes.netboot  |
-# 1        |  x86_64/x86 | *       | *                | *                | xnba             |
-# 2        |  ppc64      | rhels   | 7                | *                | grub2            |
-# 3        |             | *       | *                | *                | yaboot           |
-# 4        |  ppc64le/el | *       | *                | IBM_PowerNV      | petitboot        |
-# 5        |             | *       | *                | *                | grub2            |
-#                         arch          osname       version  hardware           netboot
+# Priority |  Arch       | OS Name | OS Major Version | Management method | Noderes.netboot  |
+# 1        |  x86_64/x86 | *       | *                | *                 | xnba             |
+# 2        |  ppc64      | rhels   | 7                | *                 | grub2            |
+# 3        |             | *       | *                | *                 | yaboot           |
+# 4        |  ppc64le/el | *       | *                | *                 | grub2
+# 4        |  ppc64le/el | *       | *                | ipmi              | petitboot
+#          arch          osname       version  hardware           netboot
     my %netboot_dict = ( 'x86_64'                                             => 'xnba', 
                          'ppc64'   => { 
                                         'rhels' => { 
@@ -1405,20 +1416,20 @@ sub get_netboot_attr{
                          'ppc64le' => {
                                         '*'    =>  { 
                                                      '*' => { 
-                                                              'IBM_PowerNV'   => 'petitboot',
-                                                              '*'             => 'grub2',
+                                                              '*'    => 'grub2',
+                                                              'ipmi' => 'petitboot',
                                                             },
                                                    },
                                       },
                        );
-    my $condition_array_ref = [$os_arch, $os_name, $os_major_version, $hardwareprofile];
+    my $condition_array_ref = [$os_arch, $os_name, $os_major_version, $mgt];
     $netboot = cal_netboot(\%netboot_dict, $condition_array_ref);
     if($netboot eq '0')
     {
         return 0, "Can not get the netboot attribute";
     }
     else
-    {
+    {    
         return 1, $netboot;
     }
 }
