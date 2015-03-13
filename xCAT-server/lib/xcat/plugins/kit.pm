@@ -1346,14 +1346,14 @@ sub addkit
             } else {
                 $rc = system("cp -rf $kitdir/other_files/$_ $installdir/postscripts/");
             }
+            if($rc && !-e "$installdir/postscripts/$_"){
+                my %rsp;
+                push@{ $rsp{data} }, "Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts";
+                xCAT::MsgUtils->message( "E", \%rsp, $callback );
+                return 1;
+            }
+            $rc = 0;
             chmod(0755,"$installdir/postscripts/$_");
-        }
-
-        if($rc){
-            my %rsp;
-            push@{ $rsp{data} }, "Failed to copy scripts from $kitdir/scripts/ to $installdir/postscripts";
-            xCAT::MsgUtils->message( "E", \%rsp, $callback );
-            return 1;
         }
 
         # Copying plugins to /opt/xcat/lib/perl/xCAT_plugin/
@@ -2748,9 +2748,13 @@ sub rmkitcomp
             my %newosikitcomponents;
             foreach my $allosikitcomp (@allosikitcomps) {
                 if ( $allosikitcomp->{kitcomponents} and $allosikitcomp->{imagename} ) {
+                    (my $allosiotherpkgdir) = $tabs{linuximage}->getAttribs({imagename=> $allosikitcomp->{imagename}}, 'otherpkgdir');
+
                     my @allkitcomps = split /,/, $allosikitcomp->{kitcomponents};
                     foreach my $allkitcomp ( @allkitcomps ) {
-                        if ( $allosikitcomp->{imagename} ne $osimage or $allkitcomp ne $kitcomponent  ) {
+                        if ( (($allosikitcomp->{imagename} ne $osimage) and
+                              ($allosiotherpkgdir->{otherpkgdir} eq $otherpkgdir))
+                          or ($allkitcomp ne $kitcomponent)  ) {
                             $newosikitcomponents{$allkitcomp} = 1;
                         } 
                     }
