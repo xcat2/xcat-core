@@ -345,7 +345,7 @@ sub process_request {
                 unless (@ppc_all_entry) {
                     @ppc_all_entry = $ppc_tab->getAllNodeAttribs(['node', 'parent', 'hcp', 'nodetype']);
                     foreach my $ppcentry (@ppc_all_entry) {
-                        if (defined($ppcentry->{parent})) {
+                        if (defined($ppcentry->{parent}) && defined($ppcentry->{nodetype}) && $ppcentry->{nodetype} =~ /fsp/) {
                             $cec2fsp->{$ppcentry->{parent}} .= "$ppcentry->{node},";
                         }
                     }
@@ -387,7 +387,7 @@ sub process_request {
             unless ($ip) { next; }
             my $real_ip = xCAT::NetworkUtils->getipaddr($ip);
             unless ($real_ip) {
-                xCAT::MsgUtils->message("E", {error => ["$node: Cannot get ip for $ip"], errorcode => 1}, $callback);
+                xCAT::MsgUtils->message("E", {error => ["$node: Cannot get ip for $ip"], errorcode => [1]}, $callback);
                 next;
             }
             my %args =  (
@@ -653,8 +653,8 @@ sub run_cim
     $http_params->{timeout} = 5;
     my ($ret, $value) = xCAT::CIMUtils->enum_instance($http_params, $cimargs);
     if ($ret->{rc}) {
-        if ($ret->{msg} =~ /Couldn't connect to server/) {
-            xCAT::MsgUtils->message("E", data => ["$node: Couldn not connect to server [$http_params->{ip}]."], $callback);
+        if ($ret->{msg} =~ /(Couldn't connect to server)|(Can't connect to)/) {
+            xCAT::MsgUtils->message("E", {data => ["$node: Couldn't connect to server [$http_params->{ip}]."]}, $callback);
             return 10;
         } else {
             xCAT::MsgUtils->message("E", {data => ["$node: $ret->{msg}"]}, $callback);
