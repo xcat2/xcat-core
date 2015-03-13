@@ -165,7 +165,7 @@ sub xCATreg_init{
 
     #init important attributes
     
-	$date = `date  +"%Y%m%d"`; 
+    $date = `date  +"%Y%m%d"`; 
     chomp($date);
 
     &runcmd("mkdir -p $logfiledir") if(! -e $logfiledir);
@@ -1008,29 +1008,13 @@ sub git_update{
     return 0;
 }
 
-xCATreg_init();
-
-###############################################################
-# Mainfunction
-###############################################################
-send_msg(2,"........................");
-send_msg(2,"........................");
-send_msg(2,".....ooooO..............");
-send_msg(2,"....(....)....Ooooo.....");
-send_msg(2,".....\\..(.....(....)....");
-send_msg(2,"......\\__).....)../.....");
-send_msg(2,"..............(_ /......");
-send_msg(2,"........................");
-send_msg(2,".........START .........");
-send_msg(2,"........................");
-
 #######################################
 # step 0. Parse input arguments
 #######################################
 send_msg(2, "step 1, Parse input arguments............");
 =pod
 if (
-    !GetOptions("h|?" => \$needhelp,
+    !GetOptions("--help|h|?" => \$needhelp,
                 "f=s" => \$configfile,
                 "b=s" => \$branch,
                 "m=s" => \$management_node,
@@ -1040,7 +1024,7 @@ if (
  )
 =cut
 if (
-    !GetOptions("h|?" => \$needhelp,
+    !GetOptions("--help|h|?" => \$needhelp,
                 "f=s" => \$configfile,
                 "b=s" => \$branch,
                 "m=s" => \$management_node,
@@ -1058,6 +1042,22 @@ if ($needhelp)
     exit 0;
 }
 
+
+xCATreg_init();
+
+###############################################################
+# Mainfunction
+###############################################################
+send_msg(2,"........................");
+send_msg(2,"........................");
+send_msg(2,".....ooooO..............");
+send_msg(2,"....(....)....Ooooo.....");
+send_msg(2,".....\\..(.....(....)....");
+send_msg(2,"......\\__).....)../.....");
+send_msg(2,"..............(_ /......");
+send_msg(2,"........................");
+send_msg(2,".........START .........");
+send_msg(2,"........................");
 #######################################
 # step 1. Read configuration files
 #######################################

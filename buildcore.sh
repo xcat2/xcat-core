@@ -49,7 +49,7 @@ ZVMLINK="xCAT-client xCAT xCATsn"
 # xCAT-server has PCM specific configuration - RESTAPI(perl-JSON) 
 # xCAT-client has PCM specific configuration - getxcatdocs(perl-JSON) 
 PCMBUILD="xCAT xCAT-server xCAT-client xCATsn"
-PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64"
+PCMLINK="perl-xCAT xCAT-buildkit xCAT-genesis-scripts-x86_64 xCAT-genesis-scripts-ppc64 xCAT-vlan"
 # Note: for FSM, the FlexCAT rpm is built separately from gsa/git
 FSMBUILD="perl-xCAT xCAT-client xCAT-server"
 FSMLINK=""
@@ -85,21 +85,19 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
 		exit 1
 	fi
-	
-	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
+	# This is so rpm and gpg will know home, even in sudo
+	export HOME=/root
 fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-	#git checkout $BRANCH
-	#REL=`git rev-parse --abbrev-ref HEAD`
 	REL=`git name-rev --name-only HEAD`
 	if [ "$REL" = "master" ]; then
 		REL="devel"
 	fi
 }
 
-if [ "$REL" = "xcat-core" ]; then			# using git
+if [ "$REL" = "xcat-core" ]; then	# using git
 	GIT=1
 	setbranch			# this changes the REL variable
 fi
@@ -131,7 +129,7 @@ fi
 
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 
-if [ "$GIT" = "1" ]; then			# using git - need to include REL in the path where we put the built rpms
+if [ "$GIT" = "1" ]; then	# using git - need to include REL in the path where we put the built rpms
 	DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
 else
 	DESTDIR=../..$EMBEDDIR/$XCATCORE
@@ -184,7 +182,8 @@ fi
 
 # If they have not given us a premade update file, do an svn update or git pull and capture the results
 SOMETHINGCHANGED=0
-if [ "$GIT" = "1" ]; then			# using git
+if [ "$GIT" = "1" ]; then
+	# using git
 	if [ -z "$GITUP" ]; then
 		GITUP=../coregitup
 		echo "git pull > $GITUP"
@@ -198,7 +197,8 @@ if [ "$GIT" = "1" ]; then			# using git
 	if ! $GREP 'Already up-to-date' $GITUP; then
 		SOMETHINGCHANGED=1
 	fi
-else		# using svn
+else
+	# using svn
 	GIT=0
 	if [ -z "$SVNUP" ]; then
 		SVNUP=../coresvnup
@@ -242,7 +242,6 @@ fi
 
 # Build the rest of the noarch rpms
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent; do
-	#if [ "$EMBED" = "zvm" -a "$rpmname" != "xCAT-server" -a "$rpmname" != "xCAT-UI" ]; then continue; fi		# for zvm embedded env only need to build server and UI
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
 	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix
@@ -253,7 +252,8 @@ for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xC
 		maker $rpmname
 	fi
 	if [ "$OSNAME" = "AIX" ]; then
-		if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then		# we do not automatically install the rest of the rpms on AIX
+		if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then
+			# we do not automatically install the rest of the rpms on AIX
 			echo "rpm -Uvh $rpmname-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 		fi
 	fi
@@ -281,9 +281,7 @@ if [ "$OSNAME" != "AIX" ]; then
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
-#for rpmname in xCAT xCATsn xCAT-OpenStack xCAT-OpenStack-baremetal; do
 for rpmname in xCAT xCATsn; do 
-	#if [ "$EMBED" = "zvm" ]; then break; fi
 	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
 	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
 		UPLOAD=1
@@ -362,7 +360,7 @@ if [ "$OSNAME" != "AIX" ]; then
 		echo '%_signature gpg' >> $MACROS
 	fi
 	if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-		echo '%_gpg_name Jarrod Johnson' >> $MACROS
+		echo '%_gpg_name xCAT Security Key' >> $MACROS
 	fi
 	echo "Signing RPMs..."
 	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
@@ -468,7 +466,6 @@ chmod g+w $TARNAME
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
 	exit 0;
 fi
-#else we will continue
 
 # Upload the individual RPMs to sourceforge
 if [ "$OSNAME" = "AIX" ]; then

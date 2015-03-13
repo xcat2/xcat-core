@@ -1129,7 +1129,7 @@ site => {
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
    "                   Linux, yes on AIX.\n\n".
-   " consoleservice:   The console service to be used by xCAT. Default is conserver\n\n",
+   " consoleservice:   The console service to be used by xCAT. Default is conserver\n\n".
    " httpport:    The port number that the booting/installing nodes should contact the\n".
    "              http server on the MN/SN on. It is your responsibility to configure\n".
    "              the http server to listen on that port - xCAT will not do that.\n\n".
@@ -3711,7 +3711,7 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
         {attr_name => 'kitreponame',
-                 tabentry => 'kitcomponent.kitrepoid',
+                 tabentry => 'kitcomponent.kitreponame',
                  access_tabentry => 'kitcomponent.kitcompname=attr:kitcompname',
         },
         {attr_name => 'basename',

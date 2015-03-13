@@ -462,7 +462,7 @@ sub set_sources {
           my @kernel_rpms = ();
           if ($ou_entry->{'basename'} =~ /^ubuntu/)
            {
-               @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+               @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *deb`;
            }
            else
            {
@@ -511,7 +511,7 @@ sub set_sources {
               my @kernel_rpms = ();
               if ($od_entry->{'basename'} =~ /ubuntu/)
               {
-                  @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+                  @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *deb`;
               }
               else
               {
@@ -532,7 +532,7 @@ sub set_sources {
                   my @kernel_rpms = ();
                   if ($od_entry->{'basename'} =~ /ubuntu/)
                   {
-                      @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *.deb`;
+                      @kernel_rpms = `find $dirpath/pool/main/l/linux/ -name *deb`;
                   }   
                   else
                   {

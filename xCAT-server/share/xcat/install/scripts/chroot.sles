@@ -46,7 +46,15 @@ if [ -z "$PRINIC" ]
 then
     for karg in $(cat /proc/cmdline |sed -e 's/-/:/g' -e 's/ /\n/g'); do
         if  [ "${karg%%=*}" = "BOOTIF" ]; then
-            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
+            #export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
+            export PRINIC=${karg#*=01:}
+            export PRINIC=`ip -o link|grep -i "$PRINIC"|awk  '{print $2}'|sed s/://`
+        fi
+        if  [ "${karg%%=*}" = "netdevice" ]; then
+            export PRINIC="${karg#*=}";
+            if [ "${#PRINIC}" = "20" ]; then
+               export PRINIC=${PRINIC:3:21}
+            fi
         fi
     done
     if [ -z "$PRINIC" ]; then
@@ -57,7 +65,8 @@ if [ -z "$PRINIC" ]
 then
     export PRINIC=eth0
 elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
-    export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+    #export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+    export PRINIC=`ip -o link|grep -i "$PRINIC"|awk  '{print $2}'|sed s/://`
 fi
 echo 'export PRINIC='"$PRINIC" > /mnt/tmp/prinicsetting
 ]]>
