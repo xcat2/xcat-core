@@ -8,6 +8,7 @@ HOSTOS="$1"
 DIR=`dirname $0`
 #DIR=`realpath $DIR`
 DIR=`readlink -f $DIR`
+BUILDARCH=`uname -m`
 
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
@@ -21,9 +22,64 @@ fi
 
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
+
+if [ "$HOSTOS" = "mcp" ]; then
+        #Special handlings for MCP PPC64 platform building.
+        if [ $BUILDARCH = "ppc64" ]; then
+            sed -i 's/dracut_install efibootmgr//' $DRACUTMODDIR/install
+            sed -i 's/dracut_install dmidecode \/usr\/lib64\/libstdc++.so.5//' $DRACUTMODDIR/install
+            sed -i 's/dmidecode//' $DRACUTMODDIR/install
+            sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-2.17.so/' $DRACUTMODDIR/install
+        else
+            sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-linux-x86-64.so.2/' $DRACUTMODDIR/install
+        fi
+	sed -i 's/mkfs.btrfs//' $DRACUTMODDIR/install
+	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
+	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
+
+	sed -i 's/\/usr\/bin\/basename/\/bin\/basename/' $DRACUTMODDIR/install
+
+	sed -i 's/\/lib64\/libnss_dns-2.12.so/\/usr\/lib64\/libnss_dns-2.17.so/' $DRACUTMODDIR/install
+	sed -i 's/\/lib64\/libnss_dns.so.2/\/usr\/lib64\/libnss_dns.so.2/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libc.so.6/\/usr\/lib64\/libc.so.6/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libdl.so.2/\/usr\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libm.so.6/\/usr\/lib64\/libm.so.6/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libstdc++.so.5//' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libpthread.so.0/\/usr\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libncurses.so.5.7/\/usr\/lib64\/libncurses.so.5.9/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libgcc_s.so.1/\/usr\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/libtinfo.so.5.7/\/usr\/lib64\/libtinfo.so.5.9/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libsasl2.so.2/\/usr\/lib64\/libsasl2.so.3/' $DRACUTMODDIR/install
+
+        sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
+
+	# these are needed for sysclone, but are not yet in mcp
+	sed -i 's/ bc//' $DRACUTMODDIR/install
+	sed -i 's/ mkdosfs//' $DRACUTMODDIR/install
+	sed -i 's/ rsync//' $DRACUTMODDIR/install
+	sed -i 's/ kexec//' $DRACUTMODDIR/install
+	sed -i 's/ klogd//' $DRACUTMODDIR/install
+	sed -i 's/ mdadm//' $DRACUTMODDIR/install
+	sed -i 's/ mkfs\.xfs//' $DRACUTMODDIR/install
+	sed -i 's/ xfs_db//' $DRACUTMODDIR/install
+	sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
+	sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
+	sed -i 's/ vconfig//' $DRACUTMODDIR/install
+	sed -i 's/ killall//' $DRACUTMODDIR/install
+
+        # These timezone files are not available in the latest mcp build
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh87//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh88//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh89//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh87//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh88//' $DRACUTMODDIR/install
+        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh89//' $DRACUTMODDIR/install
+
 # For ppc64 platform, needs to remove some files,
-# and some files are in different directories
-if [ `uname -m` = "ppc64" ]; then
+# # and some files are in different directories
+elif [ $BUILDARCH = "ppc64" ]; then
         sed -i 's/dracut_install efibootmgr//' $DRACUTMODDIR/install
         sed -i 's/ dmidecode//' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libncurses.so.5.7/\/lib64\/libncurses.so.5.7/' $DRACUTMODDIR/install
@@ -46,38 +102,11 @@ if [ `uname -m` = "ppc64" ]; then
         sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi
 
-if [ "$HOSTOS" = "mcp" ]; then
-	sed -i 's/mkfs.btrfs//' $DRACUTMODDIR/install
-	sed -i 's/\/etc\/redhat-release/\/etc\/base-release \/etc\/system-release/' $DRACUTMODDIR/install
-	sed -i 's/btrfs//' $DRACUTMODDIR/installkernel
-
-	sed -i 's/\/usr\/bin\/basename/\/bin\/basename/' $DRACUTMODDIR/install
-
-	# these are needed for sysclone, but are not yet in mcp
-	sed -i 's/ bc//' $DRACUTMODDIR/install
-	sed -i 's/ mkdosfs//' $DRACUTMODDIR/install
-	sed -i 's/ rsync//' $DRACUTMODDIR/install
-	sed -i 's/ kexec//' $DRACUTMODDIR/install
-	sed -i 's/ klogd//' $DRACUTMODDIR/install
-	sed -i 's/ mdadm//' $DRACUTMODDIR/install
-	sed -i 's/ mkfs\.xfs//' $DRACUTMODDIR/install
-	sed -i 's/ xfs_db//' $DRACUTMODDIR/install
-	sed -i 's/ mkreiserfs//' $DRACUTMODDIR/install
-	sed -i 's/ reiserfstune//' $DRACUTMODDIR/install
-
-        # These timezone files are not available in the latest mcp build
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh87//' $DRACUTMODDIR/install
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh88//' $DRACUTMODDIR/install
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Asia\/Riyadh89//' $DRACUTMODDIR/install
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh87//' $DRACUTMODDIR/install
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh88//' $DRACUTMODDIR/install
-        sed -i 's/dracut_install \/usr\/share\/zoneinfo\/posix\/Mideast\/Riyadh89//' $DRACUTMODDIR/install
-fi
-mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
+mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 
 # run dracut
 if [ "$HOSTOS" = "mcp" ]; then
-	KPATH=`/bin/ls -d /lib/modules/*.x86_64`
+	KPATH=`/bin/ls -d /lib/modules/*`
 	KERNELVERSION=`basename $KPATH`
 	echo Creating the initramfs in /tmp/xcatgenesis.$$.rfs using dracut and kernel $KERNELVERSION ...
 else
@@ -85,31 +114,31 @@ else
 fi
 
 # On Fedora 20 ppc64, dracut uses host-only mode by default
-if [ `uname -m` = "ppc64" ]; then
+if [ $BUILDARCH = "ppc64" ]; then
     dracut -m "xcat base" -N -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 else
     dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs $KERNELVERSION
 fi
-echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs ...
-cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
+echo Expanding the initramfs into /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs ...
+cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/fs 
 zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
 
 # add the kernel
 if [ "$HOSTOS" = "mcp" ]; then
 	echo Adding kernel /boot/vmlinuz-* ...
-	cp /boot/vmlinuz-*.x86_64 /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+	cp /boot/vmlinuz-* /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/kernel
 else
-	echo Adding kernel /boot/vmlinuz-`uname -r` ...
-	cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+	echo Adding kernel /boot/vmlinuz-$BUILDARCH ...
+	cp /boot/vmlinuz-$BUILDARCH /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/kernel
 fi
 cd -
 
 # create tar file
-echo Tarring /tmp/xcatgenesis.$$/opt into ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 ...
+echo Tarring /tmp/xcatgenesis.$$/opt into ~/rpmbuild/SOURCES/xCAT-genesis-base-$BUILDARCH.tar.bz2 ...
 cd /tmp/xcatgenesis.$$
-tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 opt
+tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-base-$BUILDARCH.tar.bz2 opt
 
 # build the rpm
-echo Building xCAT-genesis-base rpm from ~/rpmbuild/SOURCES/xCAT-genesis-base-`uname -m`.tar.bz2 and $DIR/xCAT-genesis-base.spec ...
+echo Building xCAT-genesis-base rpm from ~/rpmbuild/SOURCES/xCAT-genesis-base-$BUILDARCH.tar.bz2 and $DIR/xCAT-genesis-base.spec ...
 rpmbuild -ba $DIR/xCAT-genesis-base.spec 
 rm -rf $DRACUTMODDIR
