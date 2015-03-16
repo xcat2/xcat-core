@@ -11,6 +11,7 @@ BEGIN
   }
 
 }
+
 use lib "$::XCATROOT/lib/perl";
 #use Net::SNMP qw(:snmp INTEGER);
 use xCAT::Table;
@@ -2004,7 +2005,7 @@ sub getmacs {
    }
 
    my @macs = ();
-   (my $code,my @orig_macs)=inv('mac');
+   (my $code,my @orig_macs)=inv($node, 'mac');
    my $ignore_gen_mac = 0;
    foreach my $mac (@orig_macs) {
        if ($mac =~ /(.*) -> (.*)/) { 
@@ -2113,6 +2114,7 @@ sub getmacs {
 }
    
 sub inv {
+  my $node = shift;
   my @invitems;
   my $data;
   my @output;
@@ -2239,50 +2241,67 @@ sub inv {
       $updatehash{serial}=$data;
     }
 
-    if ($item =~ /^mac/ and $slot !~ /:/) {
-      foreach (0..3) {
-        $data=$session->get([$macoids[$_],$slot]);
-        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-        if ($data =~ /:/) {
-          push @output,"MAC Address ".($_+1).": ".$data; 
+      #print "item=$item, slot=$slot\n";
+
+   if ($item =~ /^mac/)  {
+      if ($slot !~ /:/) {
+          foreach (0..3) {
+            $data=$session->get([$macoids[$_],$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data =~ /:/) {
+              push @output,"MAC Address ".($_+1).": ".$data; 
+            }
+          }
+          foreach (0..3) {
+            my $oid=$hsdcmacoids[$_].".$slot";
+            $data=$session->get([$hsdcmacoids[$_],$slot]);
+
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data =~ /:/) {
+              push @output,"HS Daughter card MAC Address ".($_+1).": ".$data;
+            }
+          }
+          foreach (0..3) {
+            $data=$session->get([$dcmacoids[$_],$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data =~ /:/) {
+              push @output,"Daughter card 1 MAC Address ".($_+1).": ".$data;
+            }
+          }
+          foreach (0..3) {
+            $data=$session->get([$sidecardoids[$_],$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data =~ /:/) {
+              push @output,"Side card MAC Address ".($_+1).": ".$data;
+            }
+          }
+        } else {
+            my $cmd="pasu $node show PXE |grep NicPortMacAddress";
+            my $mac_list = xCAT::Utils->runcmd($cmd, 0, 1);
+            #print "mac_list=$mac_list\n";
+            if (@$mac_list > 0) {
+	        foreach my $mac (@$mac_list) {
+                    #print "mac=$mac\n";
+                    $mac =~ s/^.*PXE.NicPortMacAddress.*(\d+)=(.*)$/"MAC Address $1: $2/;
+                    #print "mac=$mac\n";
+                    push @output, $mac;
+                }
+            } 
         }
-      }
-      foreach (0..3) {
-        my $oid=$hsdcmacoids[$_].".$slot";
-        $data=$session->get([$hsdcmacoids[$_],$slot]);
-        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-        if ($data =~ /:/) {
-          push @output,"HS Daughter card MAC Address ".($_+1).": ".$data;
-        }
-      }
-      foreach (0..3) {
-        $data=$session->get([$dcmacoids[$_],$slot]);
-        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-        if ($data =~ /:/) {
-          push @output,"Daughter card 1 MAC Address ".($_+1).": ".$data;
-        }
-      }
-      foreach (0..3) {
-        $data=$session->get([$sidecardoids[$_],$slot]);
-        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-        if ($data =~ /:/) {
-          push @output,"Side card MAC Address ".($_+1).": ".$data;
-        }
-      }
-    }
-  }
-  if ($updatetable and $updatehash{mtm}) {
+     }
+   }
+   if ($updatetable and $updatehash{mtm}) {
       #updatenodegroups
       my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($updatehash{mtm}) ;
       if (defined($tmp_pre)) {
           xCAT::TableUtils->updatenodegroups($currnode, $tmp_pre);
       }
-  }
-  if ($updatetable and keys %updatehash) {
+   }
+   if ($updatetable and keys %updatehash) {
   	my $vpdtab = xCAT::Table->new('vpd');
 	$vpdtab->setNodeAttribs($currnode,\%updatehash);
-  }
-  return (0,@output);
+   }
+   return (0,@output);
 }
 sub power {
   my $subcommand = shift;
@@ -3716,7 +3735,7 @@ sub bladecmd {
   } elsif ($command eq "getmacs") {
     return getmacs($node, @args);
   } elsif ($command eq "rinv") {
-    return inv(@args);
+    return inv($node, @args);
   } elsif ($command eq "reventlog") {
     return eventlog(@args);
   } elsif ($command eq "rscan") {
