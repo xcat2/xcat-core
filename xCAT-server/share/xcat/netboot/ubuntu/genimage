@@ -831,7 +831,7 @@ sub getlibs {
 	my @libs = split/\n/,$liblist;
 	my @return;
         foreach (@libs) {
-        if(/statically linked/){
+        if(/statically linked/ or /not a dynamic executable/){
           return;
         }
         unless (/=>/) {
