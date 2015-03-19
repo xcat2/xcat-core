@@ -36,6 +36,7 @@
 #        GITUP=<filename> - control which rpms get built by specifying a coregitup file
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
+#        LOG=<filename> - provide an LOG file option to redirect some output into log file
 
 # you can change this if you need to
 UPLOADUSER=bp-sawyers
@@ -343,6 +344,10 @@ fi
 #else we will continue
 
 # Prepare the RPMs for pkging and upload
+WGET_CMD="wget"
+if [ ! -z ${LOG} ]; then 
+    WGET_CMD="wget -o ${LOG}"
+fi
 
 # get gpg keys in place
 if [ "$OSNAME" != "AIX" ]; then
@@ -350,7 +355,7 @@ if [ "$OSNAME" != "AIX" ]; then
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
 		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
 			rm -f $HOME/.gnupg/$i
-			wget -P $HOME/.gnupg $GSA/keys/$i
+			${WGET_CMD} -P $HOME/.gnupg $GSA/keys/$i
 			chmod 600 $HOME/.gnupg/$i
 		fi
 	done
@@ -372,10 +377,10 @@ if [ "$OSNAME" != "AIX" ]; then
 	gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
 	gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
 	if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-		wget -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
+		${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
 	fi
 	if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-		wget -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
+		${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
 	fi
 fi
 
