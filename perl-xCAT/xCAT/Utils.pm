@@ -3597,6 +3597,8 @@ sub version_cmp {
         $ver_a = shift;
     }
     my $ver_b = shift;
+    $ver_a =~ s/([-.]0+)+$//;
+    $ver_b =~ s/([-.]0+)+$//;
     my @array_a = ($ver_a =~ /([-.]|\d+|[^-.\d]+)/g);
     my @array_b = ($ver_b =~ /([-.]|\d+|[^-.\d]+)/g);
 
@@ -3621,9 +3623,12 @@ sub version_cmp {
         } elsif ( $b eq '.' ) {
             return 1;
         } elsif ($a =~ /^\d+$/ and $b =~ /^\d+$/) {
-            if ($a =~ /^0/ || $b =~ /^0/) {
-                return ($a cmp $b);
-            } else {
+#            if ($a =~ /^0/ || $b =~ /^0/) {
+#                return ($a cmp $b);
+#            } else {
+#                return ($a <=> $b);
+#            }
+            if($a != $b ){
                 return ($a <=> $b);
             }
         } else {
