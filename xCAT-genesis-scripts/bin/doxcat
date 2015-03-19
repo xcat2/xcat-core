@@ -117,6 +117,7 @@ mask2prefix() {
 }
 
 # see if they specified static ip info, otherwise use dhcp
+XCATPORT=3001
 for parm in `cat /proc/cmdline`; do
     key=`echo $parm|awk -F= '{print $1}'`
     value=`echo $parm|awk -F= '{print $2}'`
@@ -126,8 +127,14 @@ for parm in `cat /proc/cmdline`; do
         netmask=$value
     elif [[ ${key,,} == "gateway" ]]; then
         gateway=$value
+    elif [[ ${key,,} == "xcatd" ]]; then
+        XCATMASTER=`echo $value |awk -F: '{print $1}'`
+        XCATPORT=`echo $value |awk -F: '{print $2}'`
     fi
 done
+export XCATPORT
+export XCATMASTER
+
 if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 	# doing static ip
 	# the device was determined above from the bootif mac, and put in bootnic
@@ -145,54 +152,68 @@ if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 	sleep 3
 else
 	echo "Setting IP via DHCP..."
-# This section is for System P hardware discovery, which won't have a BOOTIF value set
-        tries=0
-        while [ $tries -lt 5 ]; do
-            if [ -z "$bootnic" ]; then
-                ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo`
-                for tmp1 in $ALLUP_NICS; do
-                    bootnic=$tmp1
-                    break
-                done
-            else
-                break
-            fi
-            sleep 2
-            tries=$(($tries+1))
-        done
+        # This section is for System P hardware discovery, which won't have a BOOTIF value set
         if [ -z "$bootnic" ]; then
-            ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
-            for tmp in $ALL_NICS; do
-                bootnic=$tmp
-                break
+            tries=0
+            while [ $tries -lt 100 ]; do
+                ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo | sort -n -r`
+                for tmp1 in $ALLUP_NICS; do
+                    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$tmp1.pid $tmp1 &
+                    dhclient -6 -pf /var/run/dhclient6.$tmp1.pid $tmp1 -lf /var/lib/dhclient/dhclient6.leases &
+                    #bootnic=$tmp1
+                    #break
+                done
+                if [ ! -z "$ALLUP_NICS" ]; then
+                    break
+                fi
+                sleep 2
+                tries=$(($tries+1))
             done
-        fi
 
-	dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
-	#we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
-	#chances that we'll perform a partial discovery
-	#in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
-	dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
-	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
-	export NICSTOBRINGUP
-	for nic in $NICSTOBRINGUP; do
+	    echo -n "Acquiring network addresses.."
+            while [ -z "$bootnic" ]; do
+	        for tmp1 in $ALLUP_NICS; do
+	            if ip addr show dev $tmp1|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; then
+                        result=`ping -c1 -I $tmp1 $XCATMASTER 2>&1`
+	                if [ $? -eq 0 ]; then
+	                    bootnic=$tmp1
+	                    break
+	                fi
+                fi
+                done
+                sleep 2
+	    done
+            if [ -z "$bootnic" ]; then
+                /bin/bash
+            fi
+        else
+	    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
+	    #we'll kick of IPv6 and IPv4 on all nics, but not wait for them to come up unless doing discovery, to reduce
+	    #chances that we'll perform a partial discovery
+	    #in other scenarios where downed non-bootnics cause issues, will rely on retries to fix things up
+	    dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+	    NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v $bootnic|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+	    export NICSTOBRINGUP
+	    for nic in $NICSTOBRINGUP; do
 		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$nic.pid $nic ) &
 		(while ! ethtool $nic | grep Link\ detected|grep yes > /dev/null; do sleep 5; done; dhclient -cf /etc/dhclient.conf -6 -pf /var/run/dhclient6.$nic.pid -lf /var/lib/dhclient/dhclient6.leases $nic ) &
-	done
+	    done
+
+            gripeiter=101
+            echo -n "Acquiring network addresses.."
+            while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; do
+                sleep 0.1
+                if [ $gripeiter = 1 ]; then
+                    echo
+                    echo "It seems to be taking a while to acquire an IPv4 address, you may want to check spanning tree..."
+                fi
+                gripeiter=$((gripeiter-1))
+            done
+        fi
 fi
 
 openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
-gripeiter=101
-echo -n "Acquiring network addresses.."
-while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; do
-	sleep 0.1
-	if [ $gripeiter = 1 ]; then
-		echo
-		echo "It seems to be taking a while to acquire an IPv4 address, you may want to check spanning tree..."
-	fi
-	gripeiter=$((gripeiter-1))
-done
 echo -n "Acquired IPv4 address on $bootnic: "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
@@ -214,16 +235,7 @@ if [ -f "/usr/sbin/dmidecode" ]; then
 fi
 DEVICE=$bootnic
 export DEVICE
-XCATPORT=3001
-export XCATPORT
-for parm in `cat /proc/cmdline`; do
-        key=`echo $parm|awk -F= '{print $1}'`
-        if [ "$key" = "xcatd" ]; then
-                XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
-                XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
-        fi
-done
-export XCATMASTER
+
 if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
 	/bin/getcert $XCATMASTER:$XCATPORT
 fi
