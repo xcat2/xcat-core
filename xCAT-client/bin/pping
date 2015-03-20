@@ -179,7 +179,7 @@ sub nmap_pping {
 	my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions"); 
 	my $more_options = $nmap_options[0];
 
-    open (FPING, "nmap -PE --system-dns --send-ip -sP $more_options ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    open (FPING, "nmap -PE --unprivileged --system-dns --send-ip -sP $more_options ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
     while (<FPING>) {
       if (/Host (.*) \(.*\) appears to be up/) {
