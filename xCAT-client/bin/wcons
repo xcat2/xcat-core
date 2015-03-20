@@ -109,6 +109,9 @@ if (defined($tilefact)) {
    system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry $sizegeometry+0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"/bin/true ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
    $ENV{CONSCONTROLPATH} = "";
    my $remainwait = 2;
+   if (-x "/opt/confluent/bin/confetty" or -x "/usr/bin/confetty" or -x "/usr/local/bin/confetty" ) {
+      $remainwait = 10;
+   }
    while (not -S  "/tmp/wconscontrol.$firstnode.$$" and $remainwait > 0) {
          sleep(0.1);
          $remainwait -= 0.1;
