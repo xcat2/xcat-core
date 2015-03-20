@@ -75,6 +75,7 @@ fi
 for nic in `ip link |grep "BROADCAST" |awk '{print $2}'   | sed s/://`; do
     IPADDRMASK=`ip addr show dev $nic | grep inet | grep -v inet6 | awk '{print $2}' | head -n 1`
     IPADDR=`echo $IPADDRMASK | awk -F'/' '{print $1}'`
+    [ -z $IPADDR ] && continue
     PREFIXMASK=`echo $IPADDRMASK | awk -F'/' '{print $2}'`
     # converts to x.x.x.x mask value
     maskfromprefix $PREFIXMASK
@@ -108,7 +109,8 @@ EOF
             NICFILE=${NICFILEPRE}${nic}
         else
             #mac=`ifconfig $nic|grep HWaddr|awk '{print $5}'|tr "[A-Z]" "[a-z]"`
-            mac=`ip link show $nic | grep ether | awk '{print $2}'`
+            mac=`ip link show $nic | grep "ether\|infiniband" | awk '{print $2}'`
+            [ -z $mac  ] && continue
             NICFILE=${NICFILEPRE}eth-id-${mac}
         fi
         sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE

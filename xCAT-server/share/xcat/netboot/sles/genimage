@@ -918,8 +918,8 @@ foreach my $dn (@ndrivers) {
 system("chroot $rootimg_dir depmod $kernelver");
 
 if ($dracutmode) {
-    mkinitrd_dracut("statelite");
     mkinitrd_dracut("stateless");
+    mkinitrd_dracut("statelite");
 } else {
     my @drivers; # backup  of @ndrivers
     push @drivers, @ndrivers;

@@ -830,20 +830,25 @@ sub getlibs {
 	my $liblist = `chroot $rootimg_dir ldd $file`;
 	my @libs = split/\n/,$liblist;
 	my @return;
-	foreach (@libs) {
-      unless (/=>/) {
-         (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
-         $lib =~ s/^\///;
-         $libhash{$lib}=1;
-         next;
-      }
-		(my $temp1,my $temp2) = split />/,$_,2;
-		(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
-		unless ($temp1 =~ /\//) {
-			next;
-		}
-      $temp1 =~ s/^\///;
-      $libhash{$temp1}=1;
+        foreach (@libs) {
+        if(/statically linked/ or /not a dynamic executable/){
+          return;
+        }
+        unless (/=>/) {
+           (my $wjnk, my $lib,my $jnk) = split /\s+/,$_,3;
+           $lib =~ s/^\///;
+           $libhash{$lib}=1;
+           getlibs($lib);
+           next;
+        }
+	(my $temp1,my $temp2) = split />/,$_,2;
+	(my $whitespace,$temp1,$temp2) = split /\s+/,$temp2,4;
+	unless ($temp1 =~ /\//) {
+		next;
+	}
+        $temp1 =~ s/^\///;
+        $libhash{$temp1}=1;
+        getlibs($temp1);
    }
 }
 
@@ -1180,12 +1185,20 @@ for i in `cat /proc/cmdline`; do
         #NOTE needs FT retry code to scale
         #NOTE: should prob have max count
         FILENAME=`echo \$VALUE|awk -F/ '{print \$NF}'`
+        
+        MAXTRIES=5
+        ITER=0
         while [ ! -r "\$FILENAME" ]; do
           echo Getting \$VALUE...
-          if ! wget \$VALUE; then
+          if ! /usr/bin/wget \$VALUE; then
             ST=`expr \$RANDOM % 5`
             sleep \$ST
             rm -f \$FILENAME
+            ITER=\$(expr \$ITER + 1 )
+            if [ "\$ITER" == "\$MAXTRIES" ]; then
+               /bin/busybox telnetd -l /bin/sh
+               shell
+            fi
           fi
         done
       fi
@@ -1420,7 +1433,7 @@ EOMS
    print $inifile "fi\n";
    print $inifile "cd /\n";
    print $inifile "cp /etc/hostname \$NEWROOT/etc/hostname\n";
-   print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf\n";
+   print $inifile "rm -f \$NEWROOT/etc/resolv.conf; cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf\n";
    print $inifile "mount --move /dev \$NEWROOT/dev \n";
    print $inifile "mount --move /proc \$NEWROOT/proc \n";
    print $inifile "mount --move /sys  \$NEWROOT/sys \n";
@@ -1525,7 +1538,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod") {
+   foreach ( "usr/bin/dig","bin/busybox","bin/bash", "sbin/mount.nfs", "usr/bin/rsync", "sbin/insmod", "sbin/udevd", "sbin/udevadm", "sbin/modprobe", "sbin/blkid", "sbin/depmod","usr/bin/wget") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -1541,6 +1554,10 @@ EOMS
    if ($arch =~ /x86_64/) {
       push @filestoadd,"lib64/libnss_dns.so.2";
       push @filestoadd,"lib64/libresolv.so.2";
+   } elsif ($arch =~ /ppc64el/) {
+      push @filestoadd,"lib/powerpc64le-linux-gnu/libnss_files.so.2";
+      push @filestoadd,"lib/powerpc64le-linux-gnu/libnss_dns.so.2";
+     
    } else {
       push @filestoadd,"lib/libnss_dns.so.2";
    }
@@ -1582,6 +1599,11 @@ EOMS
         system("cp  $rootimg_dir/lib/modules/$kernelver/modules.builtin /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.builtin");
         system("cp  $rootimg_dir/lib/modules/$kernelver/modules.order /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.order");
     }
+
+
+#   if (-d "$rootimg_dir/lib/powerpc64le-linux-gnu/"){
+#      system("cp  -rf $rootimg_dir/lib/powerpc64le-linux-gnu/* /tmp/xcatinitrd.$$/lib/powerpc64le-linux-gnu/");
+#   }
 
     system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
 	# Copy udev and network scripts into initrd for s390x, which also works for other platforms

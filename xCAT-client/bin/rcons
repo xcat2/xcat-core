@@ -52,15 +52,28 @@ if [ -n "$2" ]; then
     fi
 fi
 
-if [ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]; then
-	#use confluent
-   CONFETTY="confetty"
-   if [ -x "/opt/confluent/bin/confetty" ]; then
+# xCAT 2.9.1 allows for an option to use confluent as a rcons replacement and only use
+# confluent if this keyword is defined in the site table.  This allows for confluent to 
+# be installed on the xCAT management node and switch between conserver & confluent
+USE_CONFLUENT=0
+CONSOLE_SERVICE_KEYWORD=`tabdump site | grep consoleservice | cut -d, -f1 | tr -d '"'`
+CONSOLE_SERVICE_VALUE=`tabdump site | grep consoleservice | cut -d, -f2 | tr -d '"'`
+
+if [ "$CONSOLE_SERVICE_KEYWORD" == "consoleservice" ]; then
+    if [ "$CONSOLE_SERVICE_VALUE" == "confluent" ]; then
+        USE_CONFLUENT=1
+    fi
+fi
+
+if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]); then
+    #use confluent
+    CONFETTY="confetty"
+    if [ -x "/opt/confluent/bin/confetty" ]; then
 	CONFETTY="/opt/confluent/bin/confetty"
-   fi
-	if [ ! -z "$CONSCONTROLPATH" ]; then
-		CONSCONTROLPATH="-c $CONSCONTROLPATH"
-	fi
+    fi
+    if [ ! -z "$CONSCONTROLPATH" ]; then
+        CONSCONTROLPATH="-c $CONSCONTROLPATH"
+    fi
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
     fi
