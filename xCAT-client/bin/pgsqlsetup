@@ -779,7 +779,7 @@ sub initpgdb
         `$cmd`;
         if ($::osname eq 'Linux')
         {
-            $cmd = qq~ echo listen_addresses = \\'*\\' >> $pgconf~;
+            $cmd = qq~ echo listen_addresses = \\'localhost,$::MN\\' >> $pgconf~;
             `$cmd`;
         }
 
