@@ -89,7 +89,7 @@ my $client = IO::Socket::SSL->new(
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
 		%sslargs,
-                #SSL_verify_mode => 1,
+                SSL_verify_mode => SSL_VERIFY_PEER,
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
