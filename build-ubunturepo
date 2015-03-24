@@ -27,6 +27,7 @@
 #                                       release this build, use PROMOTE=1 without PREGA
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 #               UP=0 or UP=1 - override the default upload behavior
+#               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
 # For the dependency packages 1. please run the build-debs-all in xcat-dep svn first( there is usage detail in that script)
 #                             2. run ./build-ubunturepo -d
@@ -112,13 +113,18 @@ fi
 
 export HOME=/root
 
+WGET_CMD="wget"
+if [ ! -z ${LOG} ]; then 
+    WGET_CMD="wget -o ${LOG}"
+fi
+
 #sync the gpg key to the build machine local
 gsa_url=http://pokgsa.ibm.com/projects/x/xcat/build/linux
 mkdir -p $HOME/.gnupg
 for key_name in pubring.gpg secring.gpg trustdb.gpg; do
     if [ ! -f $HOME/.gnupg/$key_name ] || [ `wc -c $HOME/.gnupg/$key_name|cut -f 1 -d' '` == 0 ]; then
         rm -f $HOME/.gnupg/$key_name
-        wget -P $HOME/.gnupg $gsa_url/keys/$key_name
+        ${WGET_CMD} -P $HOME/.gnupg $gsa_url/keys/$key_name
         chmod 600 $HOME/.gnupg/$key_name
     fi
 done
