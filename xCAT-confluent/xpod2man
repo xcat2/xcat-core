@@ -71,7 +71,7 @@ sub createDummyPods {
 	my $cmd = "grep -r -E 'L<.+\\([57]\\)\\|.+\\.[57]>' " . $poddir;
 	#print "Running cmd: ", $cmd, "\n";
 	my @lines = `$cmd`;
-	if ($?) { print "Error running:  $cmd\n"; print join('', @lines); }
+	if ($?) { print "Did not find any section 5 man page, creating dummy pods...\n"; print join('', @lines); }
 	#my @lines;
 	#system($cmd);
 	my @dummyPods;
