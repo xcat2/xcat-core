@@ -198,7 +198,7 @@ if ($netdriver) {
     if ($arch eq 'x86' or $arch eq 'x86_64') {
         @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en virtio_net/;
     } elsif ($arch eq 'ppc64el') {
-        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb/;
+        @ndrivers = qw/bnx2 bnx2x e1000 e1000e igb mlx_en mlx4_en/;
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq 's390x') {   
