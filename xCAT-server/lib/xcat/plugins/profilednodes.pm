@@ -471,6 +471,7 @@ Usage:
 
     my $mac_addr_mode = 0;
     my $switch_mode = 0;
+    my $powerkvm_mode = 0;
     # Parse and validate the hostinfo string. The real hostnames will be generated here.
     xCAT::MsgUtils->message('S', "Parsing hostinfo string and validate it.");
     my ($hostinfo_dict_ref, $invalid_records_ref) = validate_node_entries();
@@ -498,6 +499,10 @@ Usage:
         if(defined($hostinfo_dict{$mynode}{'switches'}))
         {
             $switch_mode = 1;
+        }
+        if(defined($hostinfo_dict{$mynode}{'vmhost'}))
+        {
+            $powerkvm_mode = 1;
         }
     }
     
@@ -535,6 +540,20 @@ Usage:
         $warnstr = "Warning: failed to import some nodes.";
         setrsp_progress($warnstr);
     }
+    
+    # create default uuid for PowerKVM nodes
+    if ($powerkvm_mode) {
+        my $vpdtab = xCAT::Table->new( 'vpd', -create=>1, -autocommit=>0 );
+        foreach (@nodelist) {
+            my $keyhash;
+            my $updatehash;
+            $keyhash->{'node'} = $_;
+            $updatehash->{'uuid'} = '00000000-0000-0000-0000-000000000000';
+            $vpdtab->setAttribs($keyhash, $updatehash);
+        }
+        $vpdtab->commit;
+    }
+    
     # create switch, port, interface relationship.
     if($switch_mode){
         #debug message.
