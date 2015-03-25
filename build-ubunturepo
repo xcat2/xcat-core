@@ -226,6 +226,7 @@ then
                     rc=$?
                     if [ $rc -gt 0 ]; then
                         echo "Error: $file build package failed exit code $rc"
+                        exit $rc
                     fi
                     cd -
                     find $file -maxdepth 3 -type d -name "${file_low}*" | grep debian | xargs rm -rf
