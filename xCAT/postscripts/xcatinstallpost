@@ -12,11 +12,12 @@ fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
-
+MACADDR=`grep MACADDRESS= /xcatpost/mypostscript.post |awk -F = '{print $2}'|sed s/\'//g`
+INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
 #the nics have not been configured when running the PBS sometimes, need to make sure... 
 RETRY=0
-until ip -4 --oneline addr show|grep -v 127.0.0.1 >/dev/null
+until ip -4 --oneline addr show dev $INSTALLNIC|grep inet >/dev/null
 do
     sleep 2
     RETRY=$[ $RETRY + 1 ]
