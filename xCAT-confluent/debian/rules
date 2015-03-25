@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+build:
+
+clean:
+	dh_testdir
+	dh_testroot
+	dh_clean -d
+
+install:
+	dh_installdirs
+	cp -r confluent/* debian/xcat-confluent/opt/confluent
+
+binary-indep: build install
+
+binary-arch:
+	dh_compress
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+
+.PHONY: build clean binary-indep binary-arch binary install configure

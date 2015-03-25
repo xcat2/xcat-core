@@ -126,7 +126,6 @@ sub getPodList {
 
 
 # Create the xcat man page that gives a summary description of each xcat cmd.
-# Not used.
 sub writesummarypage {
 	my $file = shift;       # relative path file name of the man page
 	# the rest of @_ contains the pod files that describe each cmd

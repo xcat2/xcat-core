@@ -1,0 +1,11 @@
+Source: xcat-confluent
+Section: admin
+Priority: extra
+Maintainer: xCAT <xcat-user@lists.sourceforge.net>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.2
+
+Package: xcat-confluent
+Architecture: all
+Depends: xcat-client
+Description: xCAT integration with confluent systems management server
