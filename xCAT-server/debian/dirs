@@ -34,5 +34,6 @@ opt/xcat/xdsh/Context
 opt/xcat/ws
 etc/init.d
 etc/xcat
-etc/apache2/conf.d
+etc/apache2/conf-enabled
+etc/apache2/conf-available
 opt/xcat/share/doc/packages/xCAT-server
