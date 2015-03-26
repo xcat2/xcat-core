@@ -30,7 +30,7 @@ case "$1" in
        update-rc.d xcatd disable
        rm -f /usr/sbin/xcatd  #remove the symbolic
 
-       rm -f /etc/apache2/conf.d/xcat-ws.conf
+       rm -f /etc/apache2/conf-enabled/xcat-ws.conf
     ;;
 
     *)

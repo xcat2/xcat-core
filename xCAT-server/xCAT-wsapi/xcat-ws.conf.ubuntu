@@ -1,11 +1,11 @@
 LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
+LoadModule cgi_module /usr/lib/apache2/modules/mod_cgi.so
 RewriteEngine On
 RewriteCond %{SERVER_PORT} 80
 RewriteCond %{REQUEST_URI} xcatws
 RewriteRule ^(.*)$ https://%{SERVER_NAME}$1 [R,L]
 
 <Files xcatws.cgi>
-    Order allow,deny
-    Allow from all
+    Require all granted
 </Files>
 
