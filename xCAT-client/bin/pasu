@@ -225,7 +225,7 @@ sub asunode {
   } else {
     foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
   }
-  my $cmd = "$::asucmd $args --host $bmc --user $username --password $passwd 2>&1 |";
+  my $cmd = "$::asucmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
   if ($::VERBOSE) { print "forking $cmd\n"; }
   my $pid = open($$out, $cmd);
   $pids{$pid} = $node;
