@@ -26,6 +26,7 @@ use xCAT::TableUtils;
 use xCAT::IMMUtils;
 use xCAT::ServiceNodeUtils;
 use xCAT::SvrUtils;
+use xCAT::NetworkUtils;
 use xCAT::Usage;
 use Thread qw(yield);
 use LWP 5.64;
@@ -1229,6 +1230,8 @@ sub getrvidparms_imm2 {
         return;
 	}
 	my $host = $sessdata->{ipmisession}->{bmc};
+    my $hostname;
+    ($hostname, $host) = xCAT::NetworkUtils->gethostnameandip($host);
         my $ip6mode=0;
 	if ($host =~ /:/) { $ip6mode=1; $host = "[".$host."]"; }
     my $message = "user=".$sessdata->{ipmisession}->{userid}."&password=".$sessdata->{ipmisession}->{password}."&SessionTimeout=1200";
@@ -1252,15 +1255,15 @@ sub getrvidparms_imm2 {
     	$response = $browser->request(GET $baseurl."data/logout");
 	return;
     }
-    $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp)');
+    $response = $browser->request(GET $baseurl."designs/imm/viewer(".$host.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp)');
      #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     my $jnlp = $response->content;
     unless ($jnlp) { #ok, might be the newer syntax...
-    	$response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0'.')');
+    	$response = $browser->request(GET $baseurl."designs/imm/viewer(".$host.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0'.')');
      	#arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode, finally 'notwin32'
     	$jnlp = $response->content;
 	if ($jnlp =~ /Failed to parse ip format for request/) {
-           $response = $browser->request(GET $baseurl."designs/imm/viewer(".$sessdata->{ipmisession}->{bmc}.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0@0'.')');
+           $response = $browser->request(GET $baseurl."designs/imm/viewer(".$host.'@'.$httpport.'@'.$ip6mode.'@'.time().'@1@0@1@jnlp'.'@USERID@0@0@0@0@0'.')');
            #arguments are host, then ipv6 or not, then timestamp, then whether to encrypte or not, singleusermode,  'notwin32', and one more (unknown)
            $jnlp = $response->content;
        }
