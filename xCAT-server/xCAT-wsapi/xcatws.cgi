@@ -728,6 +728,7 @@ my %URIdef = (
                 example => "|Create the networks resources base on the network configuration on xCAT MN.|POST|/networks||",
                 cmd => "makenetworks",
                 fhandler => \&actionhdl,
+                outhdler => \&noout,
             },
         },
         network_allattr => {
@@ -2674,6 +2675,7 @@ sub sendRequest {
     else {
         $client = IO::Socket::SSL->new(
             PeerAddr => $xcatHost,
+            SSL_verify_mode => 0,
             Timeout  => 15,);
     }
     unless ($client) {
