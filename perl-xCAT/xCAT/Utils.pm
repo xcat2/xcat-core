@@ -4124,7 +4124,9 @@ sub restartservice{
      return -1;
   }
  
-  xCAT::Utils->runcmd($cmd, -1);
+  #xCAT::Utils->runcmd($cmd, -1);
+  system($cmd);
+  $::RUNCMD_RC=$?;
   return $::RUNCMD_RC;
 }
 
