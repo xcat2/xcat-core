@@ -66,9 +66,10 @@ binary-arch:
 	chmod 644 $(rootdir)/lib/perl/xCAT_schema/samples/*
 	chmod 644 $(rootdir)/lib/shfunctions
 	chmod 644 $(rootdir)/share/doc/packages/xCAT-server/*
-	echo "ScriptAlias /xcatws $(prefix)/ws/xcatws.cgi" > $(buildroot)/etc/apache2/conf.d/xcat-ws.conf
-	cat $(PWD)/xCAT-wsapi/xcat-ws.conf.ubuntu >>  $(buildroot)/etc/apache2/conf.d/xcat-ws.conf
+	echo "ScriptAlias /xcatws $(prefix)/ws/xcatws.cgi" > $(buildroot)/etc/apache2/conf-available/xcat-ws.conf
+	cat $(PWD)/xCAT-wsapi/xcat-ws.conf.ubuntu >>  $(buildroot)/etc/apache2/conf-available/xcat-ws.conf
 	rm -rf $(rootdir)/ws/xcat-ws.conf*
+	ln -s ../conf-available/xcat-ws.conf $(buildroot)/etc/apache2/conf-enabled/xcat-ws.conf
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
