@@ -116,6 +116,9 @@ if [ "storageprereq" = "$1"  ]; then
     mkdir -p /var/lib/xcat/vmnt/$DIRNAME
     mount $MOUNTPATH /var/lib/xcat/vmnt/$DIRNAME
 elif [ "bridgeprereq" = "$1" ]; then
+    # load the bridge module first
+    modprobe bridge
+
     NETDESC="$2"
     # get the port for installation
     if [ -n "$INSTALLNIC" ]; then
