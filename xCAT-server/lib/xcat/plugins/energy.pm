@@ -19,6 +19,10 @@ use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings "all";
 use Getopt::Long;
+use IO::Socket;
+use Thread qw(yield);
+use POSIX "WNOHANG";
+use Storable qw(store_fd fd_retrieve);
 
 use xCAT::Usage;
 use xCAT::CIMUtils;
@@ -32,6 +36,8 @@ sub handled_commands {
         renergy => 'nodehm:mgt=ipmi|fsp',
     }
 }
+
+my $parent_fd;
 
 # The hash includes all valid attribute for quering
 my %QUERY_ATTRS = (
@@ -332,6 +338,36 @@ sub process_request {
 
     my $ppcdirect_tab = xCAT::Table->new('ppcdirect', -create=>0);
 
+    my $children;    # The number of child process
+    my %sp_children;    # Record the pid of child process
+    my $sub_fds = new IO::Select;    # Record the parent fd for each child process
+
+    # Set the signal handler for ^c
+    $SIG{TERM} = $SIG{INT} = sub {
+        foreach (keys %sp_children) {
+            kill 2, $_;
+        }
+        $SIG{ALRM} = sub { 
+            while (wait() > 0) {
+                yield;
+            }
+            exit @_;
+        };
+        alarm(1); # wait 1s for grace exit
+    };
+
+    # Set the singal handler for child process finished it's work
+    $SIG{CHLD} = sub { 
+        my $cpid; 
+        while (($cpid = waitpid(-1, WNOHANG)) > 0) { 
+            if ($sp_children{$cpid}) { 
+                delete $sp_children{$cpid}; 
+                $children--; 
+            } 
+        } 
+    };
+
+    # Do run each node
     foreach my $node (@{$request->{node}}) {
         my $user = $user_default;
         my $password = $password_default;
@@ -383,36 +419,112 @@ sub process_request {
              xCAT::MsgUtils->message("E", {data => ["$node: Cannot find HCP"]}, $callback);
              return 1;
         }
-        foreach my $ip (split(',', $hcp_ip)) {
-            unless ($ip) { next; }
-            my $real_ip = xCAT::NetworkUtils->getipaddr($ip);
-            unless ($real_ip) {
-                xCAT::MsgUtils->message("E", {error => ["$node: Cannot get ip for $ip"], errorcode => [1]}, $callback);
-                next;
-            }
-            my %args =  (
-                node => $node,
-                ip => $real_ip,
-                port => '5989',
-                method => 'POST',
-                user => $user,
-                password => $password);
 
-            if ($verbose) {
-                $args{verbose} = 1;
-                $args{callback} = $callback;
-                xCAT::MsgUtils->message("I", {data => ["$node: Access hcp [$ip], user [$user], passowrd [$password]"]}, $callback);
-            }
-            # call the cim utils to connect to cim server
-            my $ret = run_cim ($request, $callback, \%args);
-            # 0 - success; 1 - cim error; 10 - ip is not pingable; 11 - this ip is a standby fsp
-            unless ($ret == 10 || $ret == 11) {
-                last;
-            }
-        }
-    } 
+        # fork a sub process to handle the communication with service processor
+        $children++;
+        my $cfd;
+
+        # the $parent_fd will be used by &send_rep() to send response from child process to parent process
+        socketpair($parent_fd, $cfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
+        $cfd->autoflush(1);
+        $parent_fd->autoflush(1);
+        
+        my $child = xCAT::Utils->xfork;
+        if ($child == 0) {
+            close($cfd);
+            $0 = $0." for node [$node]";
+            $callback = \&send_rep;
+            foreach my $ip (split(',', $hcp_ip)) {
+                unless ($ip) { next; }
+                my $real_ip = xCAT::NetworkUtils->getipaddr($ip);
+                unless ($real_ip) {
+                    xCAT::MsgUtils->message("E", {error => ["$node: Cannot get ip for $ip"], errorcode => [1]}, $callback);
+                    next;
+                }
+                my %args =  (
+                    node => $node,
+                    ip => $real_ip,
+                    port => '5989',
+                    method => 'POST',
+                    user => $user,
+                    password => $password);
     
+                if ($verbose) {
+                    $args{verbose} = 1;
+                    $args{callback} = $callback;
+                    xCAT::MsgUtils->message("I", {data => ["$node: Access hcp [$ip], user [$user], passowrd [$password]"]}, $callback);
+                }
+                # call the cim utils to connect to cim server
+                my $ret = run_cim ($request, $callback, \%args);
+                # 0 - success; 1 - cim error; 10 - ip is not pingable; 11 - this ip is a standby fsp
+                unless ($ret == 10 || $ret == 11) {
+                    last;
+                }
+            }
+            exit(0);
+        } else {
+            # in the main process, record the created child process and add parent fd for the child process to an IO:Select object 
+            # the main process will check all the parent fd and receive response
+            $sp_children{$child}=1;
+            close ($parent_fd);
+            $sub_fds->add($cfd);
+        }
+    }
+
+    # receive data from child processes
+    while ($sub_fds->count > 0 or $children > 0) {
+        forward_data($callback,$sub_fds);
+    }
+    while (forward_data($callback,$sub_fds)) {}
 }
+
+=head3 send_rep 
+
+    DESCRIPTION:
+        Send date from forked child process to parent process.
+        This subroutine will be replace the original $callback in the forked child process
+
+    ARGUMENTS:
+        $resp - The response which generated in xCAT::Utils->message();
+
+=cut
+sub send_rep {
+    my $resp=shift;
+    
+    unless ($resp) { return; }
+    store_fd($resp,$parent_fd);
+}
+
+=head3 forward_data 
+
+    DESCRIPTION:
+        Receive data from forked child process and call the original $callback to forward data to xcat client
+
+=cut
+sub forward_data {
+  my $callback = shift;
+  my $fds = shift;
+  my @ready_fds = $fds->can_read(1);
+  my $rfh;
+  my $rc = @ready_fds;
+  foreach $rfh (@ready_fds) {
+    my $data;
+    my $responses;
+    eval {
+    	$responses = fd_retrieve($rfh); 
+    };
+    if ($@ and $@ =~ /^Magic number checking on storable file/) { #this most likely means we ran over the end of available input
+      $fds->remove($rfh);
+      close($rfh);
+    } else {
+      eval { print $rfh "ACK\n"; }; #Ignore ack loss due to child giving up and exiting, we don't actually explicitly care about the acks
+      $callback->($responses);
+    }
+  }
+  yield; #Try to avoid useless iterations as much as possible
+  return $rc;
+}
+
 
 =head3 query_pum 
 
