@@ -230,13 +230,21 @@ unless ($onlyinitrd) {
    my @srcdirs = split(',', $srcdir);
    
    my @pkgdir_internet; #Put all the http mirror in ths array, but only the first http mirror which will be used to create bootstrap
+   my @pkgdir_local; #Put all directories except first in this array
+   my $masternode = xCAT::TableUtils->get_site_Master();
    $srcdir = undef;
    foreach my $dir (@srcdirs) {
       if ($dir =~ /^http.*/){
           push @pkgdir_internet, $dir;
       } else {
-          $srcdir = $dir;  #set $srcdir to be the one which is not http path
-          find(\&isaptdir, <$dir/>);
+          # If multiple pkgdirs are provided,  The first path in the value of osimage.pkgdir
+          if (!$srcdir) {
+            $srcdir = $dir; 
+            find(\&isaptdir, <$dir/>);
+          } else { #set other directory to http url
+            my $osuurl = "http://$masternode$dir ./";
+            push @pkgdir_local, $osuurl;
+          }
       }
    } 
    # Add the dir for kernel deb to be installed
@@ -263,6 +271,11 @@ unless ($onlyinitrd) {
    # Add the internet mirror
    if (@pkgdir_internet) {
       foreach (@pkgdir_internet) {
+          print $aptconfig "deb $_\n\n";
+      }
+   }
+   if (@pkgdir_local) {
+      foreach (@pkgdir_local) {
           print $aptconfig "deb $_\n\n";
       }
    }
@@ -329,11 +342,13 @@ unless ($onlyinitrd) {
    open($aptconfig,">","$rootimg_dir/etc/apt/sources.list");
 
    if ($srcdir) {
-       my $master = xCAT::TableUtils->get_site_Master();
-       print $aptconfig "deb http://$master$srcdir $dist main\n";
+       print $aptconfig "deb http://$masternode$srcdir $dist main\n";
    }
 
    foreach (@pkgdir_internet) {
+       print $aptconfig "deb $_\n";
+   }
+   foreach (@pkgdir_local) {
        print $aptconfig "deb $_\n";
    }
 

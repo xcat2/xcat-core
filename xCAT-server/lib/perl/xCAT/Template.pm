@@ -766,11 +766,19 @@ sub mirrorspec{
       my $pkgdir;
       my @mirrors;
       my @pkgdirlist=split(/,/,$pkgdirval);
+      my $masternode = xCAT::TableUtils->get_site_Master();
+      
       foreach (@pkgdirlist){
                if($_ =~ /^http|ssh/){
                  push @mirrors,$_;
                }else{
-                 $pkgdir=$_;
+                 # If multiple pkgdirs are provided,  The first path in the value of osimage.pkgdir
+                 if (!$pkgdir) {
+                     $pkgdir=$_;
+                 }else {
+                    my $osuurl = "http://" . $masternode . $_ . " ./";
+                    push @mirrors,$osuurl;
+                 }
                }
       }
       
