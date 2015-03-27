@@ -180,13 +180,13 @@ sub process_request {
         $retref = "";
         if(($current_cmd eq "nodeset") && $noupdate_flag)
         {
-            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, 0, 2);
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args, "--noupdateinitrd"]}, $request_command, -1, 1);
         }
         else
         {
-            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, 0, 2);
+            $retref = xCAT::Utils->runxcmd({command=>[$current_cmd], node=>$nodelist, arg=>[$current_args]}, $request_command, -1, 1);
         }
-        log_cmd_return($retref);
+        log_cmd_return($current_cmd, $retref, $callback);
     }
     
 }
@@ -212,24 +212,37 @@ sub setrsp_progress
 =head3  log_cmd_return
 
        Description:  Log commands return ref into log files.
-       Args: $return - command return ref.
+       Args:   $command - current command name
+               $return  - command return ref.
 
 =cut
 
 #-------------------------------------------------------
 sub log_cmd_return
 {
-    my $return = shift;
-    if ($return){
-        if ($return->{error}){
-            my $errarrayref = $return->{error};
-            xCAT::MsgUtils->message('S', "Command error message:".Dumper($errarrayref));
-        }
-        if ($return->{data}){
-            my $dataarrayref = $return->{data};
-            xCAT::MsgUtils->message('S', "Command output message:".Dumper($dataarrayref));
+    my $command = shift;
+    my $res = shift;
+    my $callback = shift;
+    my $errmsg = undef;
+    
+    if($::RUNCMD_RC) {
+         $errmsg = "Command '$command' failed, " . join(',', @$res);
+    }elsif ($command eq 'nodeset') { # Only check output for 'nodeset' command
+        foreach my $line (@$res) {
+            if (($line =~ /kernel cannot be found/) or ($line =~ /stop configuration/) or ($line =~ /failed to set up install resources/)) {
+                $errmsg = "Command '$command' failed, $line.";
+                last;
+            }
         }
     }
-}
+    
+    if($errmsg)
+    {
+        $callback->({
+            error=>[$errmsg],
+            errorcode=>[1]
+        });
+    }
+}   
 
 1;
