@@ -347,6 +347,39 @@ sub donodeent {
   }
   my $ipmiauthdata = xCAT::PasswordUtils::getIPMIAuth(
         noderange=>\@toconfignodes, ipmihash=>$ipmientries);
+  my $nltab = xCAT::Table->new('nodelist', -create=>0);
+  my $groupdata = {};
+  if ($nltab) {
+     $groupdata = $nltab->getNodesAttribs(\@toconfignodes,
+                                             [qw/groups/]);
+  }
+  my @cfgroups;
+  foreach (keys %$groupdata) {
+      push @cfgroups, split /,/,$groupdata->{$_}->[0]->{groups};
+  }
+  $confluent->read('/nodegroups/');
+  my $currgroup = $confluent->next_result();
+  my %currgroups;
+  while ($currgroup) {
+    if (exists $currgroup->{item}) {
+        my $groupname = $currgroup->{item}->{href};
+        $groupname =~ s/\/$//;
+        $currgroups{$groupname} = 1;
+    }
+    $currgroup = $confluent->next_result();
+  }
+  foreach (@cfgroups) {
+     if (not exists $currgroups{$_}) {
+        $confluent->create('/nodegroups/', parameters=>{name=>$_});
+        my $rsp = $confluent->next_result();
+        while ($rsp) {
+            if (exists $rsp->{error}) {
+                xCAT::SvrUtils::sendmsg([1,"Confluent error: " . $rsp->{error}],$cb);
+            }
+            $rsp = $confluent->next_result();
+        }
+     }
+  }
 
 # Go thru all nodes specified to add them to the file
 foreach my $node (sort keys %$cfgenthash) {
@@ -379,6 +412,7 @@ foreach my $node (sort keys %$cfgenthash) {
   } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
     $parameters{'console.logging'} = 'none';
   }
+  $parameters{'groups'} = [split /,/,$groupdata->{$node}->[0]->{'groups'}];
   if (exists $currnodes{$node}) {
     $confluent->update('/nodes/'.$node.'/attributes/current', parameters=>\%parameters);
     my $rsp = $confluent->next_result();
