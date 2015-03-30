@@ -402,6 +402,13 @@ sub process_request {
   }
   if ($errored) { return; }
 
+  # Fix the bug 4611: PowerNV stateful CN provision will hang at reboot stage#
+  if ($args[0] eq 'next') {
+    $sub_req->({command=>['rsetboot'],
+                node=>\@nodes,
+                arg=>['default']});
+    xCAT::MsgUtils->message("S", "xCAT: petitboot netboot: clear node(s): @nodes boot device setting.");
+  }
   my $bptab=xCAT::Table->new('bootparams',-create=>1);
   my $bphash = $bptab->getNodesAttribs(\@nodes,['kernel','initrd','kcmdline','addkcmdline']);
   my $chaintab=xCAT::Table->new('chain',-create=>1);
