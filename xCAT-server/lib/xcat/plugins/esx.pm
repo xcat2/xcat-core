@@ -122,7 +122,7 @@ sub handled_commands{
 	return {
 		copycd => 'esx',
 		mknetboot => "nodetype:os=(esxi.*)",
-		mkinstall => "nodetype:os=(esxi5.*)",
+		mkinstall => "nodetype:os=(esxi[56].*)",
 		rpower => 'nodehm:power,mgt',
         esxiready => "esx",
 		rsetboot => 'nodehm:power,mgt',
@@ -4550,7 +4550,7 @@ sub copycd {
 	# let everyone read it
 	#chdir "/tmp";
 	chmod 0755, "$installroot/$distname/$arch";
-	if ($distname =~ /esxi5/) { #going to tweak boot.cfg for install and default stateless case
+	if ($distname =~ /esxi[56]/) { #going to tweak boot.cfg for install and default stateless case
 	  if (! -r "$installroot/$distname/$arch/boot.cfg.stateless") {
 	    copy("$installroot/$distname/$arch/boot.cfg","$installroot/$distname/$arch/boot.cfg.stateless");
 	    my $bootcfg;
@@ -4644,7 +4644,7 @@ sub  makecustomizedmod {
     my @otherusers = qw/nobody nfsnobody dcui daemon/;
     if ($osver =~ /esxi4/) {
       push @otherusers,"vimuser";
-    } elsif ($osver =~ /esxi5/) {
+    } elsif ($osver =~ /esxi[56]/) {
       push @otherusers,"vpxuser";
     }
     print $shadow "root:$password:$dayssince1970:0:99999:7:::\n";
@@ -4656,18 +4656,18 @@ sub  makecustomizedmod {
     if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6") {
         mkpath($tempdir."/etc/vmware/init/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6",$tempdir."/etc/vmware/init/init.d/38.xcat-enableipv6");
-    } elsif ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/xcat-ipv6.json") {
+    } elsif ($osver =~ /esxi[56]/ and -e "$::XCATROOT/share/xcat/netboot/esxi/xcat-ipv6.json") {
         mkpath($tempdir."/usr/libexec/jumpstart/plugins/");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/xcat-ipv6.json",$tempdir."/usr/libexec/jumpstart/plugins/xcat-ipv6.json");
     }
     if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
-    } elsif ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/39.ipv6fixup") {
+    } elsif ($osver =~ /esxi[56]/ and -e "$::XCATROOT/share/xcat/netboot/esxi/39.ipv6fixup") {
         mkpath($tempdir."/etc/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/39.ipv6fixup",$tempdir."/etc/init.d/39.ipv6fixup");
 		chmod(0755,"$tempdir/etc/init.d/39.ipv6fixup");
     }
-    if ($osver =~ /esxi5/ and -e "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup") {
+    if ($osver =~ /esxi[56]/ and -e "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup") {
         mkpath($tempdir."/etc/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/48.esxifixup",$tempdir."/etc/init.d/48.esxifixup");
 		chmod(0755,"$tempdir/etc/init.d/48.esxifixup");
@@ -5105,7 +5105,7 @@ sub cpNetbootImages {
             }
         }
 
-	}elsif ($osver =~ /esxi5/) { #we need boot.cfg.stateles
+	}elsif ($osver =~ /esxi[56]/) { #we need boot.cfg.stateles
 	  my @filestocopy = ("boot.cfg.$bootmode");
 	  if (-r "$srcDir/boot.cfg.$bootmode" or -r "$overridedir/boot.cfg.$bootmode") {
 	     @filestocopy = ("boot.cfg.$bootmode");
