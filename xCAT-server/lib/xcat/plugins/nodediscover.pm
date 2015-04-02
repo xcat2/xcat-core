@@ -194,6 +194,9 @@ sub process_request {
             unless ($nent and $nent->{supportedarchs} eq $request->{arch}->[0] and $nent->{arch} eq $request->{arch}->[0]) {
                 $typetab->setNodeAttribs($node,{arch=>$request->{arch}->[0],supportedarchs=>$request->{arch}->[0]});
             }
+            if ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
+                $typetab->setNodeAttribs($node,{nodetype=>'mp'});
+            }
         }
         my $currboot='';
         $nrtab = xCAT::Table->new('noderes'); #Attempt to check and set if wrong the netboot method on discovery, if admin omitted
