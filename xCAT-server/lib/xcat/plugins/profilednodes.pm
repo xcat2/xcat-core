@@ -2439,6 +2439,13 @@ sub validate_node_entry{
     # validate if node use FSP network
     my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
     
+    # Check whether this node is a KVM node
+    my $is_kvm = xCAT::ProfiledNodeUtils->is_kvm_node($args_dict{'hardwareprofile'});
+    if (not $node_entry{'vmhost'} and $is_kvm) {
+        # Using kvm hardware profile but not define vmhost in nodeinfo file
+        $errmsg .= "Specified KVM guest hardwareprofile must define hypervisor host name 'vmhost' in nodeinfo file.\n";
+    }
+    
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
@@ -2598,8 +2605,12 @@ sub validate_node_entry{
         }elsif ($_ eq "vmhost") {
             # Support PowerKVM vms
             my $vm_host= $node_entry{"vmhost"};
-            if (! exists $allvmhosts{$node_entry{$_}}){
-                $errmsg .= "The VM host name $node_entry{$_} that is specified in the node information file is not defined in the system.\n";
+            if (! exists $allvmhosts{$vm_host}){
+                $errmsg .= "The Hypervisor host name '$vm_host' that is specified in the node information file is not defined in the system.\n";
+            }
+            
+            if (not $is_kvm) {
+                $errmsg .= "Specified hypervisor host name '$vm_host' in nodeinfo file must use KVM guest hardwareprofile.\n";
             }
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";

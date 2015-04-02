@@ -996,6 +996,39 @@ sub is_fsp_node
 
 #-------------------------------------------------------------------------------
 
+=head3 is_kvm_node
+      Description : Judge whether nodes are KVM nodes.
+      Arguments   : $hardwareprofile - hardwareprofile name
+      Returns     : 1 - KVM nodes
+                    0 - Not KVM nodes
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_kvm_node
+{
+    my $class = shift;
+    my $hardwareprofile = shift;
+    
+    if (not $hardwareprofile) {
+        return 0;
+    }
+ 
+    #Get hardwareprofile mgt
+    my $nodehmtab = xCAT::Table->new('nodehm');
+    my $mgtentry = $nodehmtab->getNodeAttribs($hardwareprofile, ['mgt']);  
+    my $mgt = undef;
+    $mgt = $mgtentry->{'mgt'} if ($mgtentry->{'mgt'});
+    $nodehmtab->close();
+    
+    if ($mgt eq 'kvm') {
+        return 1;
+    } 
+    
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 get_nodes_cmm
       Description : Get the CMM of nodelist 
       Arguments   : $nodelist - the ref of node list array
