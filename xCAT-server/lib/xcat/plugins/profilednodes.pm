@@ -2443,14 +2443,14 @@ sub validate_node_entry{
     my $is_kvm = xCAT::ProfiledNodeUtils->is_kvm_node($args_dict{'hardwareprofile'});
     if (not $node_entry{'vmhost'} and $is_kvm) {
         # Using kvm hardware profile but not define vmhost in nodeinfo file
-        $errmsg .= "Specified KVM guest hardwareprofile must define hypervisor host name 'vmhost' in nodeinfo file.\n";
+        $errmsg .= "No vmhost specified. Specify a vmhost and set it to the node information file if you are using the default IBM_PowerKVM_Guest hardware profile.\n";
     }
     
     # validate each single value.
     foreach (keys %node_entry){
         if ($_ eq "mac"){
             if (exists $allmacsupper{uc($node_entry{$_})}){
-                $errmsg .= "MAC address $node_entry{$_} already exists in the database or in the nodeinfo file. You must use a new MAC address.\n";
+                $errmsg .= "MAC address $node_entry{$_} already exists in the database or in the node information file. You must use a new MAC address.\n";
             }elsif(! xCAT::NetworkUtils->isValidMAC($node_entry{$_})){
                 $errmsg .= "MAC address $node_entry{$_} is invalid. You must use a valid MAC address.\n";
             }else{
@@ -2459,7 +2459,7 @@ sub validate_node_entry{
             }
         }elsif ($_ eq "ip"){
             if (exists $allips{$node_entry{$_}}){
-                $errmsg .= "IP address $node_entry{$_} already exists in the database or in the nodeinfo file.\n";
+                $errmsg .= "IP address $node_entry{$_} already exists in the database or in the node information file.\n";
             }elsif((xCAT::NetworkUtils->validate_ip($node_entry{$_}))[0]->[0] ){
                 $errmsg .= "IP address $node_entry{$_} is invalid. You must use a valid IP address.\n";
             }else {
@@ -2502,7 +2502,7 @@ sub validate_node_entry{
                     # now, we need to check "swith_switchport" string list to avoid duplicate config
                     my $switch_port = $spilist[1] . "_" . $spilist[2];
                     if (exists $all_switchports{$switch_port}){
-                        $errmsg .= "Specified switch $spilist[1] and port $spilist[2] already exists in the database or in the nodeinfo file. You must use a new switch port.\n";
+                        $errmsg .= "Specified switch $spilist[1] and port $spilist[2] already exists in the database or in the node information file. You must use a new switch port.\n";
                     }else{
                         # after checking, add this one into all_switchports
                         $all_switchports{$switch_port} = 0;
@@ -2578,7 +2578,7 @@ sub validate_node_entry{
             }
             
             if (exists $alllparids{$cec_name}{$lpar_id}){
-                $errmsg .= "The CEC name $cec_name and LPAR id $lpar_id already exist in the database or in the nodeinfo file. You must use a new CEC name and LPAR id.\n";
+                $errmsg .= "The CEC name $cec_name and LPAR id $lpar_id already exist in the database or in the node information file. You must use a new CEC name and LPAR id.\n";
             }else{
                 $alllparids{$cec_name}{$lpar_id} = 0;
             }    
@@ -2593,7 +2593,7 @@ sub validate_node_entry{
                     @nic_and_ips = split(/!/, $nic_ips);
                     $nic_ip = $nic_and_ips[1];
                     if (exists $allips{$nic_ip}){
-                        $errmsg .= "IP address $nic_ip already exists in the database or in the nodeinfo file.\n";
+                        $errmsg .= "IP address $nic_ip already exists in the database or in the node information file.\n";
                     }elsif((xCAT::NetworkUtils->validate_ip($nic_ip))[0]->[0] ){
                         $errmsg .= "IP address $nic_ip is invalid. You must use a valid IP address.\n";
                     }else {
@@ -2606,11 +2606,12 @@ sub validate_node_entry{
             # Support PowerKVM vms
             my $vm_host= $node_entry{"vmhost"};
             if (! exists $allvmhosts{$vm_host}){
-                $errmsg .= "The Hypervisor host name '$vm_host' that is specified in the node information file is not defined in the system.\n";
+                $errmsg .= "Specified vmhost '$vm_host' is not defined in the system. Specify a correct vmhost.\n";
+                
             }
             
             if (not $is_kvm) {
-                $errmsg .= "Specified hypervisor host name '$vm_host' in nodeinfo file must use KVM guest hardwareprofile.\n";
+                $errmsg .= "Incorrect vmhost '$vm_host' found in node information file. vmhost must be used together with the IBM_PowerKVM_Guest hardware profile\n";
             }
         }else{
            $errmsg .= "Invalid attribute $_ specified\n";
@@ -2638,7 +2639,7 @@ sub setrsp_invalidrecords
     my $rsp;
     
     # The total number of invalid records.
-    $rsp->{error} = ["Errors found in nodeinfo file"];
+    $rsp->{error} = ["Errors found in node information file"];
     $rsp->{errorcode} = [2];
     $rsp->{invalid_records_num}->[0] = scalar @$recordsref;
 
