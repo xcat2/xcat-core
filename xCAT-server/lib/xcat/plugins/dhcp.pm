@@ -1593,7 +1593,14 @@ sub addnet6
             $idx++;
         }
         unless ($dhcp6conf[$idx] =~ /\} # $iface nic_end\n/) {
-                return 1;    #TODO: this is an error condition
+                $callback->(
+	            {
+                        error =>
+                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
+                            errorcode => [1]
+                    }
+                );
+                return 1;
         }
 
     }
@@ -1605,6 +1612,7 @@ sub addnet6
 
     my @netent = (
                    "  subnet6 $net {\n",
+                   "    authoritative;\n",
                    "    max-lease-time $dhcplease;\n",
                    "    min-lease-time $dhcplease;\n",
                    "    default-lease-time $dhcplease;\n",
@@ -1843,6 +1851,7 @@ sub addnet
         }
         @netent = (
                    "  subnet $net netmask $mask {\n",
+                   "    authoritative;\n",
                    "    max-lease-time $dhcplease;\n",
                    "    min-lease-time $dhcplease;\n",
                    "    default-lease-time $dhcplease;\n"
@@ -2176,7 +2185,6 @@ sub newconfig
     my $passtab = xCAT::Table->new('passwd', -create => 1);
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
-    push @dhcpconf, "authoritative;\n";
     push @dhcpconf, "option space isan;\n";
     push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";
     push @dhcpconf, "option isan.iqn code 203 = string;\n";
