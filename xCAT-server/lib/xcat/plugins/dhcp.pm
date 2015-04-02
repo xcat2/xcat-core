@@ -1688,14 +1688,21 @@ sub addnet
             while ($idx <= $#dhcpconf)
             {
                 if ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
-            {
-                last;
-            }
-            $idx++;
+                {
+                    last;
+                }
+                $idx++;
             }
             unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
             {
-                return 1;    #TODO: this is an error condition
+                $callback->(
+	            {
+                        error =>
+                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
+                            errorcode => [1]
+                    }
+                );
+                return 1;
             }
         }
 
