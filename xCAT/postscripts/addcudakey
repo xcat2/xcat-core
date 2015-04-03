@@ -1,0 +1,33 @@
+#!/bin/bash
+
+
+if [ -r /xcatpost/cudakey ]; then
+    GPGKEY=`cat /xcatpost/cudakey`
+else
+    GPGKEY="-----BEGIN PGP PUBLIC KEY BLOCK-----                
+Version: GnuPG v2.0.9 (GNU/Linux)
+
+mQGiBFFoeGMRBACjjvkdqqBafo0msmm9251rB7ocN4Es4cCq6O/8eOVoPx8fFrAK
+LHExbZODXp7eKJMkKHIlGwmG9SZR02wJO2bvnqn3AdbRydRsNPGlb0+8Xl9uvRyc
+2feeDLYQfbUW/8D2nKkAhbZ8EiUvezDZYG6hs24bMpPFmn+fTqdtmSfMHwCg7X+q
+v1EJl25niTiQVb3F2qvj950D/ib0LQWMHDiPCc2NhCfXjaDJ9QrNaF+z083I4xMk
+GS/7jLWuM07+8izyaThePJbFad2KyK6csN7AFH54VIqHerLsy9xCS4xd5aX0UXmp
+uiae8XyWdj8kvJ9ujWxx5xgPABaDGIGxW6Bifiy75mI6okV4GwrAg5QW81/agm+k
+NqZ+BACRNIw3w+wNLk5kLfbyK01fMr5UhgBWDKKIbyXxnmonSdpcvl1jF47/r59u
+XMfRmyVnW5qepKN3sO2jQcySh713t+Oc23/vHeQNDoET8/FDpyqRq/zXIfS8KZg7
+7mIrzdfohRyj8hjBGS3XBT4OaSk1Kp2ecK/oECsUleJXWGYgPLQgY3VkYXRvb2xz
+IDxjdWRhdG9vbHNAbnZpZGlhLmNvbT6IYAQTEQIAIAUCUWh4YwIbAwYLCQgHAwIE
+FQIIAwQWAgMBAh4BAheAAAoJENiMPThcN9O+M2EAoI/q1YTdia8WMdcoJxQKhuWl
+0dxLAJ0YMMLZywIU8XJX3GkscXbn/LerOrkBDQRRaHhjEAQArb/oDncYCzLzHZEp
+mXA9EKx/MLXfyammV4Yb9gFrpmVbcMGYqakSnSwimqp/Rc94pGNBekkddUw36eCo
+Tww2mWKbHhXQ5fAMInrfbkbqqNl2rlf/fllej6vLI1yOFbAR4OIY8RMMVmTW38kk
+RTQIHsiPDv4FRkjdT5jQgCfjtNsAAwYD/0yEUdGDLxCygyPQERsYZOxA4loN8Ts0
+2zSkhaRW4oLPedMdwEqHLIU1xXypq41Oc/vwggQo2Nuf5l4iclZf9KGaMkTDqnOS
+4PaLN+h3g76pqprdfbj8XwvUL1fp59m4E7zrPmFEC77mN5juL0G0Vd2hATc/tHtn
+JE1twuU/z0M9iEkEGBECAAkFAlFoeGMCGwwACgkQ2Iw9OFw3075WiQCePaId+3oa
+Gxt50E+HszCx9nLtSIUAoIeoy/nWEJqX/uYHglHBLe4qdfcH
+=lRUP
+-----END PGP PUBLIC KEY BLOCK-----"
+fi
+
+echo "$GPGKEY" | apt-key add -
