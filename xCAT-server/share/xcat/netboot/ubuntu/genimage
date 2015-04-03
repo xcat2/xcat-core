@@ -399,6 +399,9 @@ unless ($onlyinitrd) {
                 elsif ($p =~ /linux-image-generic/) {
                     $kernelimage = $p;
                 }
+                elsif ($p =~ /linux-headers/ && $kernelver) {
+                    push @npa, "linux-headers-$kernelver";
+                }
                 elsif ($p =~ /^@/) {
                     push @npa, "\"$p\"";
                 }
@@ -458,6 +461,9 @@ unless ($onlyinitrd) {
         $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
         unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
     }
+    # Hack uname to get the corrent kernel ver, must be here because pkglist name depend on uname binary, put hacked uname script here to overwrite the orignal uname
+    use_hackuname();
+
     my %extra_hash=();
     if ($otherpkglist) {
         $updates{'otherpkglist'} = $otherpkglist if ($tempfile);
@@ -569,6 +575,9 @@ unless ($onlyinitrd) {
 #       }
        # ignore any return code
    }
+   # Hack uname to get the corrent kernel ver, use the original uname binary
+   unuse_hackuname();
+
    print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
 
@@ -1887,13 +1896,52 @@ sub load_dd ()
     return @dd_drivers;
 }
 
+#To hack the uname
+sub use_hackuname {
+    if ( -e "$rootimg_dir/bin/uname-binary") {
+        system("rm $rootimg_dir/bin/uname-binary");
+    }
+    if ( -e -x "$rootimg_dir/bin/uname" ) {
+        move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");  
+    }
+   
+    # write the hacked uname script
+    my $unamefile;
+    open($unamefile, ">", "$rootimg_dir/bin/uname");
+    print $unamefile "#!/bin/bash \n";
+    print $unamefile "case \"\$1\" in \n";
+    print $unamefile "\"-m\") \n";
+    print $unamefile "    ARCH=\"\$(dpkg --print-architecture || \n";
+    print $unamefile "                rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}')\" \n";
+    print $unamefile "    case \"\$ARCH\" in \n";
+    print $unamefile "        \"amd64\") ARCH=\"x86_64\" ;; \n";
+    print $unamefile "        \"ppc64el\") ARCH=\"ppc64le\" ;; \n";
+    print $unamefile "    esac \n";
+    print $unamefile "    echo \"\$ARCH\" ;; \n";
+    print $unamefile "\"-r\")   cd /lib/modules && for d in * ; do : ; done && echo \$d ;; \n";
+    print $unamefile "\"-s\"|\"\") echo \"Linux\" ;; \n";
+    print $unamefile "esac \n";
+    print $unamefile "exit 0 \n";
+    close $unamefile;
+    chmod(0755, "$rootimg_dir/bin/uname");
+}
+
+sub unuse_hackuname {
+    if ( -e "$rootimg_dir/bin/uname" ) {
+        system("rm -fr $rootimg_dir/bin/uname"); 
+    }
+    if ( -e -x "$rootimg_dir/bin/uname-binary") {
+        move("$rootimg_dir/bin/uname-binary", "$rootimg_dir/bin/uname");  
+    }
+}
+
 sub mount_chroot {
    my $rootimage_dir = shift;
    my $otherpkgdir = shift;
    my $pkgdir = shift;
    my $kerneldir = shift;
    #system("mount -o bind /dev $rootimage_dir/dev");
-   #system("mount -o bind /proc $rootimage_dir/proc");
+   system("mount -o bind /proc $rootimage_dir/proc");
    #system("mount -o bind /sys $rootimage_dir/sys");
    if ($pkgdir) {
        if (-d $pkgdir) {
@@ -1925,7 +1973,7 @@ sub mount_chroot {
 sub umount_chroot {
    my $rootimage_dir = shift;
    #system("umount $rootimage_dir/dev");
-   #system("umount $rootimage_dir/proc");
+   system("umount $rootimage_dir/proc");
    #system("umount $rootimage_dir/sys");
    system("umount $rootimage_dir/mnt/pkgdir");
    rmdir("$rootimage_dir/mnt/pkgdir");
