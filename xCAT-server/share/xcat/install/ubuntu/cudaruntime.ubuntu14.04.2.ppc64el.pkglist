@@ -4,6 +4,7 @@ openssl
 isc-dhcp-client
 libc-bin
 linux-image-generic-lts-utopic
+linux-headers-generic-lts-utopic
 openssh-server
 openssh-client
 wget
