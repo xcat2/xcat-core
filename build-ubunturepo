@@ -94,8 +94,7 @@ curdir=`pwd`
 
 #define the dep source code path, core build target path and dep build target path
 local_core_repo_path="$curdir/../../xcat-core"
-xcat_dep_path="$curdir/../../../xcat-dep/src/xcat-dep"
-local_dep_repo_path="$curdir/../../../xcat-dep/xcat-dep"
+local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
 
 #define the url used for creating the source list file
 #define the upload dir used for uploading packages
