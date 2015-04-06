@@ -961,7 +961,9 @@ site => {
    "                      begin queueing. This applies to both client command requests\n".
    "                      and node requests, e.g. to get postscripts. Default is 64.\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
-   " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
+   " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n".
+   " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n".
+   " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
   value => 'The value of the attribute specified in the "key" column.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",

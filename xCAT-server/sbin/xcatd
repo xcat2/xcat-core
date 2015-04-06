@@ -892,6 +892,12 @@ until ($quit) {
     $SIG{CHLD} = \&generic_reaper; #THROTTLE
     $listener->close;
 
+    populate_site_hash();
+    my %extrasslargs;
+    if ($::XCATSITEVALS{xcatsslversion}) { $extrasslargs{SSL_version} = $::XCATSITEVALS{xcatsslversion}; }
+    if ($::XCATSITEVALS{xcatsslciphers}) { $extrasslargs{SSL_cipher_list} = $::XCATSITEVALS{xcatsslciphers}; }
+    use Data::Dumper;
+
     $SIG{ALRM} = sub { $ssltimeout = 1; die; }; 
     eval {
       alarm(10);
@@ -900,7 +906,8 @@ until ($quit) {
       SSL_cert_file=>$xcatdir."/cert/server-cred.pem",
       SSL_ca_file=>$xcatdir."/cert/ca.pem",
       SSL_server=>1,
-      SSL_verify_mode=> 1
+      SSL_verify_mode=> 1,
+      %extrasslargs
       );
       alarm(0);
     };
