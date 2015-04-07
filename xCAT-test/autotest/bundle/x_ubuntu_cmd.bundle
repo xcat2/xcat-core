@@ -32,7 +32,6 @@ lsdef_t_i_o
 lsdef_t_w
 lsdef_t_err
 lslite_i
-lslite_noderange
 lslite_h
 makeconservercf_null
 makeconservercf_noderange
