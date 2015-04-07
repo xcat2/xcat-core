@@ -814,6 +814,8 @@ Usage:
                 $nodecurrprofiles{'networkprofile'} = $group;
             }elsif ($group =~ /__HardwareProfile/){
                 $nodecurrprofiles{'hardwareprofile'} = $group;
+            }elsif ($group =~ /__Hypervisor/){
+                next;
             }else{
                 $nodecurrprofiles{'groups'} .= $group.",";
             }
@@ -858,6 +860,9 @@ Usage:
     if(exists $args_dict{'hardwareprofile'}){
         $hardwareprofile = $args_dict{'hardwareprofile'};
     }
+    
+    # Verify whether this node is KVM hypervisor node
+    my $is_kvm_hypv = xCAT::ProfiledNodeUtils->is_kvm_hypv_node($imageprofile);
     
     # Get the netboot attribute for node
     my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
@@ -910,6 +915,9 @@ Usage:
     # Update nodes' attributes
     foreach (@$nodes) {
         $updatenodeshash{$_}{'groups'} .= $profile_groups;
+        if ($is_kvm_hypv) {
+            $updatenodeshash{$_}{'groups'} .= ",__Hypervisor_kvm";
+        }
         $updatenodereshash{$_}{'netboot'} = $new_netboot;
     }
     
@@ -2030,6 +2038,9 @@ sub gen_new_hostinfo_dict{
     # Check whether this is Power env.
     my $is_fsp = xCAT::ProfiledNodeUtils->is_fsp_node($args_dict{'networkprofile'});
 
+    # Check whether this node is PowerKVM Hypervisor node
+    my $is_kvm_hypv = xCAT::ProfiledNodeUtils->is_kvm_hypv_node($args_dict{'imageprofile'});
+    
     foreach my $item (sort(keys %hostinfo_dict)){       
         # Set Nodes's type:
         $hostinfo_dict{$item}{"objtype"} = 'node';
@@ -2127,6 +2138,7 @@ sub gen_new_hostinfo_dict{
         if (exists $args_dict{'imageprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'imageprofile'}}
         if (exists $args_dict{'hardwareprofile'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'hardwareprofile'}}
         if (exists $args_dict{'groups'}){$hostinfo_dict{$item}{"groups"} .= ",".$args_dict{'groups'}}
+        if ($is_kvm_hypv) {$hostinfo_dict{$item}{"groups"} .= ",__Hypervisor_kvm"}
 
         # xCAT limitation: slotid attribute only for power, id is for x.
         if ((exists $hostinfo_dict{$item}{"slotid"}) && (! $is_fsp) ){
