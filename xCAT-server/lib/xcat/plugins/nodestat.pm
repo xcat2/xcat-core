@@ -108,11 +108,8 @@ sub preprocess_request
     my $req = shift;
     my $cb  = shift;
     my %sn;
-
-    if ((defined($req->{_xcatpreprocessed})) &&
-      ($req->{_xcatpreprocessed}->[0] == 1)) {
-      return [$req];
-    }
+    if (defined $req->{_xcatpreprocessed}->[0] && $req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+    #exit if preprocessed
 
     my $command = $req->{command}->[0];
     if ($command eq "nodestat") { 
