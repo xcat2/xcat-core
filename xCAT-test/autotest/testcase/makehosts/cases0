@@ -77,6 +77,7 @@ cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
 cmd:makehosts -n
 check:rc==0
+cmd:sleep 10
 cmd:cat /etc/hosts |wc -l
 check:rc==0
 check:output==2
