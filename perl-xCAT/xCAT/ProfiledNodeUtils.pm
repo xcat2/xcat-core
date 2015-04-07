@@ -1029,6 +1029,39 @@ sub is_kvm_node
 
 #-------------------------------------------------------------------------------
 
+=head3 is_kvm_hypv_node
+      Description : Judge whether nodes are KVM nodes.
+      Arguments   : $imageprofile - imageprofile name
+      Returns     : 1 - KVM hypervisor nodes
+                    0 - Not KVM hypervisor nodes
+=cut
+
+#-------------------------------------------------------------------------------
+sub is_kvm_hypv_node
+{
+    my $class = shift;
+    my $imageprofile = shift;
+    
+    # Get provmethod
+    my $provmethod = xCAT::ProfiledNodeUtils->get_imageprofile_prov_method($imageprofile);
+    unless ($provmethod ){
+        return 0;
+    }
+    
+    my $osimage_tab = xCAT::Table->new('osimage');
+    my $osimage_tab_entry = $osimage_tab->getAttribs({'imagename'=> $provmethod},('osdistroname'));
+    my $osdistroname = $osimage_tab_entry->{'osdistroname'};
+    $osimage_tab->close();
+    
+    if ($osdistroname and $osdistroname =~ /^pkvm/ ) {
+        return 1;
+    }
+    
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
 =head3 get_nodes_cmm
       Description : Get the CMM of nodelist 
       Arguments   : $nodelist - the ref of node list array
@@ -1434,6 +1467,7 @@ sub get_netboot_attr{
 # Priority |  Arch       | OS Name | OS Major Version | Management method | Noderes.netboot  |
 # 1        |  x86_64/x86 | *       | *                | *                 | xnba             |
 # 2        |  ppc64      | rhels   | 7                | *                 | grub2            |
+# 2        |  ppc64      | pkvm    | *                | *                 | petitboot        |
 # 3        |             | *       | *                | *                 | yaboot           |
 # 4        |  ppc64le/el | *       | *                | *                 | grub2
 # 4        |  ppc64le/el | *       | *                | ipmi              | petitboot
@@ -1444,6 +1478,7 @@ sub get_netboot_attr{
                                                      '7'                      => 'grub2', 
                                                      '*'                      => 'yaboot',
                                                    }, 
+                                        'pkvm'                                => 'petitboot',
                                         '*'                                   => 'yaboot', 
                                       },                                  
                          'ppc64le' => {
