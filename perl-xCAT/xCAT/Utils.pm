@@ -3430,6 +3430,7 @@ sub filter_nodes{
     # if existing in both 'mpa' and 'ipmi', a ngp x86 blade
     # if only in 'ppc', a common power node
     # if only in 'ipmi', a common x86 node
+    # if in ipmi and arch =~ /ppc64/, a pp64le node
     foreach (@nodes) {
         if (defined ($mptabhash->{$_}->[0]) && defined ($mptabhash->{$_}->[0]->{'mpa'})) {
             if ($mptabhash->{$_}->[0]->{'mpa'} eq $_) {
@@ -3469,7 +3470,7 @@ sub filter_nodes{
             push @commonbmc, $_;
             # whether is a Power 8 or higher with FSP
             if (defined ($nodetypehash->{$_}->[0]) && defined ($nodetypehash->{$_}->[0]->{'arch'})) {
-                if ($nodetypehash->{$_}->[0]->{'arch'} ne "ppc64le") {
+                if ($nodetypehash->{$_}->[0]->{'arch'} !~ /^ppc64/i) {
                     push @nonppcle, $_;
                 }
             }
