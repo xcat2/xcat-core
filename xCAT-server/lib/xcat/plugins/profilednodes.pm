@@ -865,12 +865,17 @@ Usage:
     my $is_kvm_hypv = xCAT::ProfiledNodeUtils->is_kvm_hypv_node($imageprofile);
     
     # Get the netboot attribute for node
-    my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr($imageprofile, $hardwareprofile);
-    if (not $retcode) {
-        setrsp_errormsg($retval);
-        return;
+    my $new_netboot = undef;
+    my $latestimgproflie = $imageprofile?$imageprofile:$nodeoldprofiles{'imageprofile'};
+    my $latesthardwareprofile = $hardwareprofile?$hardwareprofile:$nodeoldprofiles{'hardwareprofile'};
+    if ($latestimgproflie){
+        my ($retcode, $retval) = xCAT::ProfiledNodeUtils->get_netboot_attr( $latestimgproflie, $latesthardwareprofile);
+        if (not $retcode) {
+            setrsp_errormsg($retval);
+            return;
+        }
+        $new_netboot = $retval;
     }
-    my $new_netboot = $retval;
 
     # After checking, all nodes' profile should be same
     # Get the new profile with specified ones in args_dict
@@ -885,7 +890,10 @@ Usage:
             xCAT::MsgUtils->message('S', "Specified networkprofile is same with current value, ignore.");
             $networkprofile = undef;
         }
+    }else{
+        $profile_groups .= $nodeoldprofiles{'networkprofile'}.",";
     }
+
     if($hardwareprofile){
         $profile_groups .= $hardwareprofile . ",";
         if ($hardwareprofile ne $nodeoldprofiles{'hardwareprofile'}){
@@ -895,7 +903,12 @@ Usage:
             xCAT::MsgUtils->message('S', "Specified hardwareprofile is same with current value, ignore.");
             $hardwareprofile = undef;
         }
+    }else{
+        if($nodeoldprofiles{'hardwareprofile'}){
+            $profile_groups .= $nodeoldprofiles{'hardwareprofile'}.",";
+        }
     }
+
     if($imageprofile){
         $profile_groups .= $imageprofile . ",";
         if ($imageprofile ne $nodeoldprofiles{'imageprofile'}){
@@ -905,6 +918,8 @@ Usage:
             xCAT::MsgUtils->message('S', "Specified imageprofile is same with current value, ignore.");
             $imageprofile = undef;
         }
+    }else{
+        $profile_groups .= $nodeoldprofiles{'imageprofile'}.",";
     }
     # make sure there are something changed, otherwise we should quit without any changes.
     unless ($changeflag){
@@ -918,7 +933,9 @@ Usage:
         if ($is_kvm_hypv) {
             $updatenodeshash{$_}{'groups'} .= ",__Hypervisor_kvm";
         }
-        $updatenodereshash{$_}{'netboot'} = $new_netboot;
+        if($new_netboot){
+            $updatenodereshash{$_}{'netboot'} = $new_netboot;
+        }
     }
     
     #update DataBase.
