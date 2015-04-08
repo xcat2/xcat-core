@@ -2577,31 +2577,41 @@ sub initfru_zero {
     $sessdata->{genhwfru} = [];
     foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
         my $sdr = $sdr_hash{$key};
-        unless ($sdr->rec_type == 0x11 and $sdr->fru_type == 0x10) { #skip non fru sdr stuff and frus I don't understand
+        unless ($sdr->rec_type == 0x11) { #skip non fru sdr stuff
             next;
         }
         
-        if ($sdr->fru_type == 0x10) { #supported
-            if ($sdr->fru_subtype == 0x1) { #DIMM
-                push @{$sessdata->{dimmfru}},$sdr;
-            } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
-                push @{$sessdata->{genhwfru}},$sdr;
-            }
+        if ($sdr->fru_subtype == 0x1) { #DIMM
+            push @{$sessdata->{dimmfru}},$sdr;
+        } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
+            push @{$sessdata->{genhwfru}},$sdr;
         }
     }
    if (scalar @{$sessdata->{dimmfru}}) {
         $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
-        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
-        $sessdata->{currfrutype}="dimm";
-        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
-  } elsif (scalar @{$sessdata->{genhwfru}}) {
-        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
-        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
-        $sessdata->{currfrutype}="genhw";
-        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
-  } else {
-      fru_initted($sessdata);
+        while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{$sessdata->{dimmfru}}) {
+            $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
+        }
+        if ($sessdata->{currfrusdr}->sensor_number !=0) {
+            $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+            $sessdata->{currfrutype}="dimm";
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+            return;
+        }
   }
+  if (scalar @{$sessdata->{genhwfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+         while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{$sessdata->{genhwfru}}) {
+            $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+         }
+        if ($sessdata->{currfrusdr}->sensor_number !=0) {
+            $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+            $sessdata->{currfrutype}="genhw";
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+            return;
+        }
+  }
+  fru_initted($sessdata);
 }
 sub get_frusize {
     my $fruid=shift;
@@ -2868,17 +2878,29 @@ sub add_fruhash {
     }
     if (scalar @{$sessdata->{dimmfru}}) {
         $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
-        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
-        $sessdata->{currfrutype}="dimm";
-        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
-    } elsif (scalar @{$sessdata->{genhwfru}}) {
-        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
-        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
-        $sessdata->{currfrutype}="genhw";
-        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
-    } else {
-        fru_initted($sessdata);
+         while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{$sessdata->{dimmfru}}) {
+            $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
+         }
+        if ($sessdata->{currfrusdr}->sensor_number != 0) {
+            $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+            $sessdata->{currfrutype}="dimm";
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+            return;
+        }
     }
+    if (scalar @{$sessdata->{genhwfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+        while ($sessdata->{currfrusdr}->sensor_number == 0 and scalar @{$sessdata->{genhwfru}}) {
+            $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+        }
+        if ($sessdata->{currfrusdr}->sensor_number != 0) {
+            $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+            $sessdata->{currfrutype}="genhw";
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+            return;
+        }
+    }
+    fru_initted($sessdata);
 }
 
 sub readcurrfrudevice {
@@ -3079,8 +3101,15 @@ sub parsefru {
             return "unknown-COULDGUESS",undef;
         }
         $currsize=($bytes->[$curridx+1])*8;
+        # some systems have malformed board info
+        # Just in case, give the board area parser access to end
+        # of total area unless product or multirecord is there
+        my $endidx = $#{$bytes};
+        if ($bytes->[4] or $bytes->[5]) {
+            $endidx = $curridx + $currsize - 1;
+        }
         if ($currsize > 0) {
-            @currarea=@{$bytes}[$curridx..($curridx+$currsize-1)];
+            @currarea=@{$bytes}[$curridx..$endidx];
             $fruhash->{board} = parseboard(@currarea);
         }
     }
