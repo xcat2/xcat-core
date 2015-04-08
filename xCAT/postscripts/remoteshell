@@ -469,4 +469,14 @@ else
     restartservice sshd
 fi
 
+# check whether the sshd daemon has been started successfully
+# As we known that for rh7 the sshd cannot be started by systemctl in chroot mode
+ps aux | grep -v grep | grep sshd
+
+if [ $? -ne 0 ]; then
+    if [ -e "/usr/sbin/sshd" ]; then
+        /usr/sbin/sshd
+    fi
+fi
+
 kill -9 $CREDPID
