@@ -201,7 +201,7 @@ sub geninitrd {
             return;
         } 
     } elsif ($arch =~ /ppc/) {
-        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)/) {
+        if ($osvers =~ /(^ol[0-9].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)|(pkvm.*)/) {
             $kernelpath = "$tftppath/vmlinuz";
             copy("$pkgdir/ppc/ppc64/vmlinuz", $kernelpath);
             if (-r "$pkgdir/ppc/ppc64/ramdisk.image.gz") {
