@@ -86,6 +86,7 @@ cmd:cat /etc/hosts
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
+cmd:cp /etc/hosts /hosts
 cmd:mv -f /etc/hosts.xcatbak /etc/hosts
 end
 
