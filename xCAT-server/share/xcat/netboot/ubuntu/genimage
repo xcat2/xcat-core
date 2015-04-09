@@ -1898,13 +1898,12 @@ sub load_dd ()
 
 #To hack the uname
 sub use_hackuname {
-    if ( -e "$rootimg_dir/bin/uname-binary") {
-        system("rm $rootimg_dir/bin/uname-binary");
+    unless ( -e "$rootimg_dir/bin/uname-binary") {
+        if ( -e -x "$rootimg_dir/bin/uname" ) {
+            move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");
+        }
     }
-    if ( -e -x "$rootimg_dir/bin/uname" ) {
-        move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");  
-    }
-   
+
     # write the hacked uname script
     my $unamefile;
     open($unamefile, ">", "$rootimg_dir/bin/uname");
