@@ -22,7 +22,11 @@ d-i netcfg/dhcp_timeout string 120
 #d-i mirror/suite string testing
 # Suite to use for loading installer components (optional).
 #d-i mirror/udeb/suite string testing
- 
+
+# Use the following option to add additional boot parameters for the
+# installed system (if supported by the bootloader installer).
+# Note: options passed to the installer will be added automatically.
+d-i debian-installer/add-kernel-opts string #XCATVAR:PERSKCMDLINE# 
 
 ### Partitioning
 # This creates a small /boot partition, suitable
