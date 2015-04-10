@@ -129,7 +129,7 @@ if [ "$HOSTOS" = "mcp" ]; then
 	cp /boot/vmlinuz-* /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/kernel
 else
 	echo Adding kernel /boot/vmlinuz-$BUILDARCH ...
-	cp /boot/vmlinuz-$BUILDARCH /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/kernel
+	cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/$BUILDARCH/kernel
 fi
 cd -
 
