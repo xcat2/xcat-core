@@ -4500,5 +4500,32 @@ sub parseMacTabEntry{
     return $mac_ret;
 }
 
+#The splitkcmdline subroutine is used to split the "persistent kernel options" 
+#and "provision-time kernel options" out of the kernel cmdline string
+#Arguments:
+#          $kcmdline:  the native kernel cmdline string
+#Return value:
+#          a reference of hash with the following KEY-VALUE def:
+#          "persistent" ==> string of persistent kernel options,delimited with space " "
+#          "volatile"   ==> string of provision-time kernel options,delimited with space " "
+sub splitkcmdline{
+ my $kcmdline=shift;
+ if( $kcmdline =~ /xCAT::Utils/)     {
+     $kcmdline=shift;
+ }
 
+ my %cmdhash;
+
+ my @cmdlist=split(/[, ]/,$kcmdline);
+ foreach my $cmd (@cmdlist){
+    if($cmd =~ /^P::(.*)$/){
+      $cmdhash{persistent}.="$1 ";
+    }else{
+      $cmdhash{volatile}.="$cmd ";
+    }
+
+ }
+
+ return \%cmdhash;
+}
 1;

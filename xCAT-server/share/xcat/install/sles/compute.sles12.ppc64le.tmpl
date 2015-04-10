@@ -5,7 +5,7 @@
     <bootloader>
       <write_bootloader config:type="boolean">true</write_bootloader>
       <activate config:type="boolean">true</activate>
-      <kernel_parameters></kernel_parameters>
+      <kernel_parameters>#XCATVAR:PERSKCMDLINE#</kernel_parameters>
       <lba_support config:type="boolean">false</lba_support>
       <linear config:type="boolean">false</linear>
       <location>mbr</location>

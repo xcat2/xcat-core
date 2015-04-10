@@ -104,7 +104,7 @@ sub subvars {
 	$ENV{NODESTATUS}=$tmp;
   }
 
-
+  $ENV{PERSKCMDLINE}=getPersistentKcmdline($node);
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -250,6 +250,7 @@ sub subvars {
       $inc =~ s/#KICKSTARTNET#/kickstartnetwork()/eg;
       $inc =~ s/#MIRRORSPEC#/mirrorspec()/eg;
       $inc =~ s/#YAST2NET#/yast2network()/eg;
+      $inc =~ s/#KICKSTARTBOOTLOADER#/kickstartbootloader()/eg;
       $inc =~ s/#ESXIPV6SETUP#/esxipv6setup()/eg;
       $inc =~ s/#WINTIMEZONE#/xCAT::TZUtils::get_wintimezone()/eg;
       $inc =~ s/#WINPRODKEY:([^#]+)#/get_win_prodkey($1)/eg;
@@ -661,6 +662,66 @@ sub get_node_domain {
     return $domain;
 
 }
+
+
+#get persistent command options from node and osimage definition
+sub getPersistentKcmdline {
+    my $lcnode=shift;
+    if ( $lcnode eq 'THISNODE' ){
+       $lcnode=$node;
+    }
+
+    my @nodes=($lcnode);
+
+    my $bptab=xCAT::Table->new('bootparams',-create=>1);
+    my $bphash = $bptab->getNodesAttribs(\@nodes,['addkcmdline']);
+
+    my $typetab=xCAT::Table->new('nodetype',-create=>1);
+    my $typehash=$typetab->getNodesAttribs(\@nodes,['provmethod']);
+    my $linuximgtab=xCAT::Table->new('linuximage',-create=>1);
+
+    my $ent = $typehash->{$lcnode}->[0];
+    my $osimgname = $ent->{'provmethod'};
+
+    my $linuximghash = $linuximgtab->getAttribs({imagename => $osimgname}, 'boottarget', 'addkcmdline');
+    my $kern = $bphash->{$lcnode}->[0];
+
+    my $addkcmdline;
+    if ($kern->{addkcmdline}) {
+        $addkcmdline .= $kern->{addkcmdline}." ";
+    }
+
+    if($linuximghash and $linuximghash->{'addkcmdline'})
+    {
+        unless($linuximghash->{'boottarget'})
+        {
+            $addkcmdline .= $linuximghash->{'addkcmdline'}." ";
+        }
+    }
+
+    my $cmdhashref;
+    if($addkcmdline){
+       $cmdhashref=xCAT::Utils->splitkcmdline($addkcmdline);
+    }
+
+    my $ret="";
+    if($cmdhashref and $cmdhashref->{persistent})
+    {
+       $ret=$cmdhashref->{persistent};
+    }
+
+    return $ret;
+}
+
+
+sub kickstartbootloader {
+    my $line="bootloader";
+    if($ENV{PERSKCMDLINE}){
+       $line.=" --append=\"".$ENV{PERSKCMDLINE}."\"";
+    }
+    return $line;
+}
+
 
 sub esxipv6setup {
  if (not $::XCATSITEVALS{managedaddressmode} or $::XCATSITEVALS{managedaddressmode} =~ /v4/) { return ""; } # blank line for ipv4 schemes
