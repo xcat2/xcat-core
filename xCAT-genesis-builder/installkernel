@@ -9,3 +9,4 @@ instmods ibmveth # ppc64 virtual ethernet
 instmods ibmvscsic # ppc64 virtual disk
 instmods ehea      # ppc64 hea ethernet
 instmods dm-mod  #support LVM for sysclone
+instmods sg # Lenovo thinkserver firmware update support
