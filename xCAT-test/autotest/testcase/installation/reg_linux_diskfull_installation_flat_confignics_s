@@ -1,0 +1,71 @@
+start:reg_linux_diskfull_installation_flat_confignics_s
+os:Linux
+
+cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
+
+cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
+check:rc==0
+
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf 
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 20
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
+check:output=~$$CN
+
+cmd:copycds $$ISO
+check:rc==0
+
+cmd:chdef $$CN postscripts="confignics -s"
+check:rc==0
+
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:lsdef $$CN |grep provmethod
+check:rc==0
+check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 120;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 80;else sleep 180;fi
+
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output!~booted
+
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
+
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:rc==0
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN mount
+check:rc==0
+check:output=~on / type ext
+
+cmd:port=`xdsh $$CN ip addr |grep $$INSTALLNICIP |cut -f 12 -d ' '`;if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces.d/$port ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network-scripts/ifcfg-$port;else xdsh $$CN cat /etc/sysconfig/network/ifcfg-$port; fi
+check:output=~$$INSTALLNICIP
+check:output=~static
+check:output!=\d\d:\d\d:\d\d
+
+
+cmd:if [ "$$OS" = "ubuntu" ];then xdsh $$CN cat /etc/network/interfaces ; elif [ "$$OS" = "rhels" ]; then xdsh $$CN cat /etc/sysconfig/network;else xdsh $$CN cat /etc/sysconfig/network/routes; fi
+check:rc==0
+check:output=~$$GATEWAY
+
+
+end
