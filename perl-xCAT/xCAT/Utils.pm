@@ -4523,7 +4523,7 @@ sub splitkcmdline{
 
  my @cmdlist=split(/[, ]/,$kcmdline);
  foreach my $cmd (@cmdlist){
-    if($cmd =~ /^P::(.*)$/){
+    if($cmd =~ /^R::(.*)$/){
       $cmdhash{persistent}.="$1 ";
     }else{
       $cmdhash{volatile}.="$cmd ";
