@@ -25,7 +25,6 @@
 #-------------------------------------------------------------------------------
 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
-
 pmatch ()
 {
   case $1 in
@@ -336,6 +335,7 @@ fi
 pkgs=''  #packages
 groups=''   #groups
 pkgs_d=''   #packages to remove
+cudapkgs='' #cuda pkg set
 
 OIFS=$IFS
 IFS=$','
@@ -368,13 +368,20 @@ do
 		groups="$groups $tmp"
 	    fi
 	else
-	    pkgs="$pkgs $x"
+            if ( pmatch  "$x" "cuda*" ); then
+                cudapkgs="$cudapkgs $x" 
+            else
+                pkgs="$pkgs $x"
+            fi
 	fi
     fi
 done
 
 if [ $debug -ne 0 ]; then
     echo "pkgs=$pkgs"
+    if [ -n "$cudapkgs" ]; then
+        echo "cudapkgs=$cudapkgs"
+    fi
     echo "groups=$groups"
     echo "remove pkgs=$pkgs_d"
 fi
@@ -672,6 +679,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
         # check whether the os package path in primary apt source (/etc/apt/sources.list) or not
         # if the os package path does not exist in /etc/apt/sources.list,
         # create apt source file in /etc/apt/sources.list.d
+        
+        # replace space with "===" to avoid the string split issue
+        OSPKGDIR=`echo $OSPKGDIR | sed 's/\ /===/g'`
 
         prirepo=/etc/apt/sources.list
         repoprefix=/etc/apt/sources.list.d/xCAT-${OSVER}-path
@@ -679,21 +689,27 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
         IFS=","
         pkgdirs=($OSPKGDIR)
         IFS=$oldif
-
         repocount=0
         for dir in ${pkgdirs[@]}; do
+            dir=`echo $dir | sed 's/\=\=\=/\ /g'`
+
             if grep "^deb\ .*$dir" $prirepo; then
                 continue
             fi
             #create apt source file in /etc/apt/sources.list.d
-            echo "deb http://$NFSSERVER/$dir ./"  > "${repoprefix}${repocount}.list"
+            result=`echo $dir | grep -E "^http:.*"`
+            if [ $? -eq 0 ]; then
+                echo "deb $dir" > "${repoprefix}${repocount}.list"
+            else
+                echo "deb http://$NFSSERVER/$dir ./"  > "${repoprefix}${repocount}.list"
+            fi
             repocount=$(($repocount+1))
         done
 
 	# upgrade existing packages
         apt-get -y update
         command="DEBIAN_FRONTEND=noninteractive apt-get -y --allow-unauthenticated --force-yes -o Dpkg::Options::='--force-confold' -o Dpkg::Options::='--force-confdef' upgrade "
-	echo "=== $command"
+        echo "=== $command"
 	eval $command
         R=$?
         if [ $R -ne 0 ]; then
@@ -723,6 +739,22 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                    RETURNVAL=$R
                 fi
 	fi
+        if [ -n "$cudapkgs" ]; then
+                
+                command="$ENVLIST apt-get -q -y --force-yes install --no-install-recommends $cudapkgs"
+                echo "=== $command"
+                # the nvidia-346 postinstall script will trigger the building of nvidia driver, it will use the ARCH environment parameter, unset the ARCH env variable will resolve this issue
+                original_arch=$ARCH
+                unset ARCH
+                eval $command
+                # re declare the ARCH env after installing cuda command done
+                ARCH=$original_arch
+                export ARCH
+                R=$?
+                if [ $R -ne 0 ]; then
+                   RETURNVAL=$R
+                fi
+        fi
 
 	# remove packages
 	if [ -n "$pkgs_d" ]; then
