@@ -218,6 +218,12 @@ if [ -z "$instdisk" ]; then
 		instdisk=$firstdisk 
 	fi
 fi
+
+# Could not determine the install disk for whatever reason,
+# try the default /dev/sda
+if [ -z "$instdisk" ]; then
+    instdisk="/dev/sda"
+fi
 		
 
 modprobe ext4 >& /dev/null
