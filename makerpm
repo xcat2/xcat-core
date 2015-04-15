@@ -39,6 +39,10 @@ function makenoarch {
 		rm -f $RPMROOT/SRPMS/xCAT-server-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
 		RC=$?
+		if [ $RPMNAME = "xCAT-UI" ]; then 
+			# undo the changes from above
+			git checkout xCAT-UI/xCAT-UI.spec
+		fi
 	fi
 }
 
