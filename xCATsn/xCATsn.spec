@@ -137,16 +137,22 @@ fi
 %post
 %ifos linux
 #Apply the correct httpd/apache configuration file according to the httpd/apache version
-if [ -n "$(httpd -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then
-   rm -rf /etc/httpd/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+
+compare_version="2.4"
+version=`rpm -qi httpd 2>&1 | grep 'Version' | awk '$NF { print $3 }' | cut -d. -f1,2`
+if [ -n "$version" ]; then
+    if (( `bc <<< "$version >= $compare_version"` )); then
+        rm -rf /etc/httpd/conf.d/xcat.conf
+        cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/httpd/conf.d/xcat.conf
+    fi
 fi
 
-if [ -n "$(apachectl -v 2>&1 |grep -e '^Server version\s*:.*\/2.4')" ]
-then
-   rm -rf /etc/apache2/conf.d/xcat.conf
-   cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+version=`rpm -qi apache2 2>&1 | grep '^Version' | awk '$NF { print $3 }' | cut -d. -f1,2`
+if [ -n "$version" ]; then
+    if (( `bc <<< "$version >= $compare_version"` )); then
+        rm -rf /etc/apache2/conf.d/xcat.conf
+        cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
+    fi
 fi
 
 
