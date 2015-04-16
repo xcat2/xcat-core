@@ -796,6 +796,10 @@ sub mknetboot
                 next;
             }
             if ( $arch =~ /ppc64/i ) {
+                # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
+                # both the physical serial port or virtual serial port appeared
+                # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
+                # /dev/hvc1 instead of /dev/ttyS0 or /dev/ttyS1
                 $kcmdline .= " console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
             } else {
                 $kcmdline .= " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
