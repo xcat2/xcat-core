@@ -55,5 +55,4 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
-check:output=~on / type ext
 end
