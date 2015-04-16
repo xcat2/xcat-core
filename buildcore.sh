@@ -33,7 +33,7 @@
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
-UPLOADUSER=bp-sawyers
+UPLOADUSER=litingt
 FRS=/home/frs/project/x/xc/xcat
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
