@@ -1596,7 +1596,7 @@ sub addnet6
                 $callback->(
 	            {
                         error =>
-                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
+                            ["Could not add the subnet $net for interface $iface into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
                             errorcode => [1]
                     }
                 );
@@ -1706,7 +1706,7 @@ sub addnet
                 $callback->(
 	            {
                         error =>
-                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
+                            ["Could not add the subnet $net for interface $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
                             errorcode => [1]
                     }
                 );
