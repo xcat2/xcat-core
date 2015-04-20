@@ -69,7 +69,7 @@ my %consumptionrecord;
 my $commitinfofile="/tmp/commitinfo";
 my $gitupdateflag = 0;
 my $forceregwithoutupdate=0;
-
+my $depupdateflag = 0;
 
 #######################################
 # runcmd
@@ -318,6 +318,52 @@ sub mn_install {
     return 0;
 }
 
+#######################################
+# down dep
+#######################################
+sub down_dep{
+    my $mn=shift;
+    send_msg(2, "[$mn->$confkeys{$mn}][down xcatdep] starting to down the latest xcat dep");
+    my $downxcatdepdir="$regrootdir/curl/$mn";
+    `mkdir -p $downxcatdepdir`;
+    my $curllink = $confkeys{$mn."curllink"};
+    my $deplink;
+    if (! -f "$downxcatdepdir/curlhtml1"){
+       send_msg(2, "it is first time to down xcatdep");
+       ` curl  "$curllink"  |grep "$curllink" |grep "href" > "$downxcatdepdir/curlhtml1" `;
+       ` sed -n '1p'  "$downxcatdepdir/curlhtml1" >  "$downxcatdepdir/curlfile"`;
+       $deplink = `cat "$downxcatdepdir"/"curlfile" |sed "s/<a/\\ /" |sed 's/href="/\ /' |sed 's/"/\ /' | sed 's/^[[:space:]]*//'  |sed 's#/download##g'  `;
+       print "deplink is $deplink\n";
+       `mkdir -p $xcatdepdir/$mn`;
+       ` wget  -P "$xcatdepdir/$mn" -c $deplink `;
+          if($?){
+              send_msg(0, "download xcatdep failed");
+              return 1;
+           }
+       $depupdateflag=1;
+    }else{
+       `curl  "$curllink"  |grep "$curllink" |grep "href" > "$downxcatdepdir"/"curlhtml2"`;
+       ` diff  "$downxcatdepdir"/"curlhtml1"  "$downxcatdepdir"/"curlhtml2"`;
+       if ($?==0) {
+          send_msg(2, "no update for  xcatdep ");
+          $depupdateflag=0;
+       }else{
+          ` sed -n '1p'  "$downxcatdepdir"/"curlhtml2"> "$downxcatdepdir"/"curlfile"`;
+          $deplink = `cat "$downxcatdepdir"/"curlfile" |sed "s/<a/\\ /" |sed 's/href="/\ /' |sed 's/"/\ /' | sed 's/^[[:space:]]*//'  |sed 's#/download##g'  `;
+          print "deplink is $deplink\n";
+          ` rm -rf  $xcatdepdir/$mn`;
+          `mkdir -p $xcatdepdir/$mn`;
+          ` wget  -P "$xcatdepdir/$mn" -c $deplink `;
+          if($?){
+             send_msg(2, "download xcatdep failed");
+             return 1;
+          }
+   `mv  "$downxcatdepdir"/"curlhtml2"    "$downxcatdepdir"/"curlhtml1" -f `;
+    $depupdateflag=2;
+      }
+   }
+    return ($depupdateflag);
+}
 
 #######################################
 # copy code
@@ -330,11 +376,11 @@ sub copy_code {
 	#copy xcat-dep tarball to MN:/
 	my $depball="";
 	if($mn =~ /aix/){
-	    $depball = `ls -l $xcatdepdir|awk '{print \$9}'|grep aix|tail -n 1`;
+	    $depball = `ls -l $xcatdepdir/$mn|awk '{print \$9}'|grep aix|tail -n 1`;
 	}elsif($mn =~ /ubuntu/){
-	    $depball = `ls -l $xcatdepdir|awk '{print \$9}'|grep ubuntu|tail -n 1`;
+	    $depball = `ls -l $xcatdepdir/$mn|awk '{print \$9}'|grep ubuntu|tail -n 1`;
 	}else{
-	    $depball = `ls -l $xcatdepdir|awk '{print \$9}'|grep 'xcat-dep-[0-9]\\{12\\}.tar.bz'|tail -n 1`;
+	    $depball = `ls -l $xcatdepdir/$mn|awk '{print \$9}'|grep 'xcat-dep-[0-9]\\{12\\}.tar.bz'|tail -n 1`;
 	}
 	chomp($depball);
 	if ($depball eq ""){
@@ -343,7 +389,7 @@ sub copy_code {
 	}
 	send_msg(2, "[$mn->$confkeys{$mn}][copy_code] find dep tarball $depball for $mn");
 
-    my $res = system("scp $xcatdepdir/$depball root\@$confkeys{$mn}:/  >/dev/null");
+    my $res = system("scp $xcatdepdir/$mn/$depball root\@$confkeys{$mn}:/  >/dev/null");
     if ($?){
         send_msg(0, "[$mn->$confkeys{$mn}][copy_code] copy $depball to $mn failed");
         return 1;
@@ -395,7 +441,7 @@ sub copy_code {
 		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] copy RPM-GPG-KEY-redhat-release to $mn successfully");
 		
 		$os =~ /(\D+)(\d+\.\d+)/;
-		$iso=`ls -l $osisodir|awk '{print \$9}'|grep RHEL|grep $arch|grep $2|tail -n 1`;
+		$iso=`ls -l $osisodir|awk '{print \$9}'|grep RHEL`;
 		chomp($iso);
 		#print "[$mn->$confkeys{$mn}][copy_code] iso=$iso\n";
 		if ($iso eq ""){
@@ -549,12 +595,19 @@ sub install_xcat {
 	$arch="x86_64" if($mn !~ /aix/ && $mn =~ /x/);
 	
 	if($mn =~ /rh/){
-	    $os =~ /(\D+)(\d+)\.?(\d?)/;
+           if($os =~ /rhels7/){
+                system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh7.0/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
+                system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
+                system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
+                system("xdsh $confkeys{$mn} \"yum -y install mariadb-devel-5.5.35-3.el7  mariadb-libs-5.5.35-3.el7  mariadb-server-5.5.35-3.el7 mariadb-bench-5.5.35-3.el7 mariadb-5.5.35-3.el7  perl-DBD-MySQL  mysql-connector-odbc unixODBC\" >/dev/null 2>&1");
+                }elsif($os =~ /rhels6/){
+	        $os =~ /(\D+)(\d+)\.?(\d?)/;
 		system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh$2/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
-        system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
+                system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
+                }
 		if($mn =~ /rhx/){
             system("xdsh $confkeys{$mn} \"yum install -y perl-Sys-Virt\" >/dev/null 2>&1");
 		}
@@ -596,6 +649,7 @@ sub install_xcat {
 #######################################
 sub do_test {
     my $mn = shift;
+    my $os = $confkeys{$mn."os"};
     send_msg(2, "[$mn->$confkeys{$mn}][do_test] starting to run regression test in $confkeys{$mn}");  
 	
 	my $regconf=$mn.".conf";
@@ -605,8 +659,10 @@ sub do_test {
 	    return 1;
 	}
 	send_msg(2, "[$mn->$confkeys{$mn}][do_test] copy $configfiledir/$regconf to $mn successfully");
-	
-    my $diskfull_installation_flat_testcase="";
+   if($os =~ /rhels7/){
+         system("scp  /opt/xcat/share/xcat/install/rh/service.rhels7.ppc64.otherpkgs.pkglist root\@$confkeys{$mn}:/opt/xcat/share/xcat/install/rh  >/dev/null");
+    }	
+        my $diskfull_installation_flat_testcase="";
 	my $diskless_installation_flat_testcase="";
 	my $statelite_installation_flat_testcase="";
 	my $sn_installation_hierarchy_testcase="";
@@ -659,7 +715,7 @@ sub do_test {
 
 		#deploy SN
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] setting up mysql for installing SN in $mn.....");
-		$res = system("xdsh $confkeys{$mn} \"XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 mysqlsetup -i\" >/dev/null 2>&1");
+                $res = system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 /opt/xcat/bin/mysqlsetup -i\"' >/dev/null 2>&1");
 		if ($res != 0){
 			send_msg(0, "[$mn->$confkeys{$mn}][do_test] set up mysql for installing SN in $mn failed");
 			return 1;
@@ -893,16 +949,27 @@ $cnt =`cat  $mailfile |grep "Total"|grep "Failed"|wc -l`;
 	# $gitupdateflag = 0 git update out of time
 	# $gitupdateflag = 1 there isn't new code checkin in last one day
 	# $gitupdateflag = 2 git update failed
+        $depupdateflag = `cat $logfiledir/$logfile |grep "updated for xcat dep" `;
 	my $subject="";
 	if($gitupdateflag==0 || $gitupdateflag==2){
 	    $subject = "[$mailtitle] Git update failed, stop regression test today!!!";
 	}elsif($gitupdateflag==1 && ! $forceregwithoutupdate){
 	    $subject = "[$mailtitle] No code checkin, stop regression test today!!!";
 	}elsif($gitupdateflag==1 && $forceregwithoutupdate){
-	    $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", Checkin: NO ONE!!";
-	}else{
-	    $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", Checkin: ".$checkinlist;
-	}
+            `cat $logfiledir/$logfile |grep "updated for xcat dep" `;
+            if($?==0){
+               $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", xcatdep updated, Checkin: NO ONE !!";
+             }else{
+                $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", xcatdep no updated, Checkin: NO ONE !!";
+               }
+         }else{
+            `cat $logfiledir/$logfile |grep "updated for xcat dep" `;
+            if($?==0){
+               $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", xcatdep updated, Checkin: ".$checkinlist;
+            }else{
+               $subject = "[$mailtitle] TotalCase:".$totalcase.", TotalRun:".$totalcnt.", Fail:".$failcnt.", Branch:".$branch.", xcatdep no updated, Checkin: ".$checkinlist;
+             }
+          }
     my $mailreport .= "\n\n======================================\n";
     $mailreport .= "       Commit Codes Last Day\n";
     $mailreport .= "======================================\n\n";
@@ -1238,52 +1305,61 @@ foreach my $m (keys %mns) {
             exit 1;
         }
 		send_msg(2, "[$m]step 3, Run mn_install...............[OK]");
- 	   
         #######################################
-        # step 4. Copy code to MNs
+        # step 4. Down xcatdep to MNs
         #######################################
-        send_msg(2, "[$m]step 4, Running copy_code...............");
+        send_msg(2, "[$m]step 4, Down xcatdep...............");
+        $depupdateflag = down_dep($m);
+        if ($depupdateflag ==2){
+            send_msg(2, "[$m]step 4,  updated for xcat dep");
+        }else{
+           send_msg(2, "[$m]step 4, no update for xcat dep");
+        }
+        #######################################
+        # step 5. Copy code to MNs
+        #######################################
+        send_msg(2, "[$m]step 5, Running copy_code...............");
         $res =  copy_code($m);
         if ($res) {
             syswrite MNWRITE,"REPORTFROM:$m->$mn: copy xcat source code to $mn failed\n";
             exit 1;
         }
-		send_msg(2, "[$m]step 4, Run copy_code...............[OK]");
+		send_msg(2, "[$m]step 5, Run copy_code...............[OK]");
  
         #######################################
-        # step 5. Build xcat code in MNs
+        # step 6. Build xcat code in MNs
         #######################################
-        send_msg(2, "[$m]step 5, Running build_xcat...............");
+        send_msg(2, "[$m]step 6, Running build_xcat...............");
         $res =  build_xcat($m);
         if ($res) {
             syswrite MNWRITE,"REPORTFROM:$m->$mn: build new xcat in $mn failed\n";
             exit 1;
         }
-		send_msg(2, "[$m]step 5, Run build_xcat...............[OK]");
+		send_msg(2, "[$m]step 6, Run build_xcat...............[OK]");
 
         #######################################
-        # step 6. Read xCAT MN's configuration
+        # step 7. Read xCAT MN's configuration
         #######################################
-        send_msg(2, "[$m]step 6, Running install_xcat...............");
+        send_msg(2, "[$m]step 7, Running install_xcat...............");
         $res = install_xcat($m);
         if ($res) {
             syswrite MNWRITE,"REPORTFROM:$m->$mn: install new xcat in $mn failed\n";
             exit 1;
         }
-		send_msg(2, "[$m]step 6, Run install_xcat...............[OK]");
+		send_msg(2, "[$m]step 7, Run install_xcat...............[OK]");
 	
         #######################################
-        # step 7. Genrate local configuration file for xcattest
+        # step 8. Genrate local configuration file for xcattest
         #         Do test
         #         Write log
         #######################################
-        send_msg(2, "[$m]step 7, Running do_test...............");
+        send_msg(2, "[$m]step 8, Running do_test...............");
         $res = do_test($m);
         if ($res) {
             syswrite MNWRITE,"REPORTFROM:$m->$mn: run regression test cases in $mn failed\n";
             exit 1;
         }
-        send_msg(2, "[$m]step 7,  Running do_test...............[OK]");	
+        send_msg(2, "[$m]step 8,  Running do_test...............[OK]");	
 		
         send_msg(2, "whole regression test for $mn finished");
 		syswrite MNWRITE,"REPORTFROM:$m->$mn: whole regression test are successful\n";
