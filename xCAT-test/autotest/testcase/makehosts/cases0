@@ -77,12 +77,14 @@ cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
 cmd:makehosts -n
 check:rc==0
-cmd:sleep 30
+cmd:sleep 300
 check:rc==0
-cmd:cat /etc/hosts |wc -l
-check:rc==0
-check:output==2
 cmd:cat /etc/hosts
+cmd:cp -f /etc/hosts /tmp/hosts
+cmd:cat /tmp/hosts |wc -l
+check:rc==0
+check:output=~2
+cmd:cat /tmp/hosts
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
