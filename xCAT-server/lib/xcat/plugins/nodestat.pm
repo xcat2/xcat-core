@@ -1157,26 +1157,30 @@ sub process_request {
 			   $status1->{$node1}->{statustime}= "";
 		       }
 		   }
-		   
-		   my $oldappstatus=$stuff->{$node1}->[0]->{'appstatus'};
-		   my $newappstatus=$status->{$node1}->{'appsd'};
-		   while ($newappstatus =~ /(\w+)\=(\w+)/) {
-                       my $tmp1=$1;
-                       my $tmp2=$2;
-		       if ($oldappstatus) {
-			   if($oldappstatus =~ /$tmp1\=/){
-			       $oldappstatus =~ s/$tmp1\=\w+/$tmp1\=$tmp2/g;
-			   }else{
-			       $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
-			   }
-		       } else {
-			   $oldappstatus = "$tmp1\=$tmp2";
-		       }
-		       $newappstatus =~ s/(\w+)\=(\w+)//;
-                    }
-	 	    $status1->{$node1}->{appstatus}= $oldappstatus; 
-		    $status1->{$node1}->{appstatustime}= $currtime; 
-	       }  
+		  
+                   if ($newstatus =~ /noping/) {
+                       $status1->{$node1}->{appstatus}= "";
+                   } else { 
+		       my $oldappstatus=$stuff->{$node1}->[0]->{'appstatus'};
+		       my $newappstatus=$status->{$node1}->{'appsd'};
+		       while ($newappstatus =~ /(\w+)\=(\w+)/) {
+                           my $tmp1=$1;
+                           my $tmp2=$2;
+		           if ($oldappstatus) {
+			       if($oldappstatus =~ /$tmp1\=/){
+			           $oldappstatus =~ s/$tmp1\=\w+/$tmp1\=$tmp2/g;
+			       }else{
+			           $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
+			       }
+		           } else {
+			       $oldappstatus = "$tmp1\=$tmp2";
+		           }
+		           $newappstatus =~ s/(\w+)\=(\w+)//;
+                        }   
+	 	        $status1->{$node1}->{appstatus}= $oldappstatus; 
+	           }
+                   $status1->{$node1}->{appstatustime}= $currtime;
+               }     
 	       #print Dumper($status1);    
 	       $nodetab->setNodesAttribs($status1);
 	   }
