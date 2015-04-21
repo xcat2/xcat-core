@@ -19,7 +19,7 @@
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
-UPLOADUSER=bp-sawyers
+UPLOADUSER=litingt
 
 FRS=/home/frs/project/x/xc/xcat
 OSNAME=$(uname)

@@ -119,6 +119,17 @@ sub setstate {
 
     my $kcmdlinehack = ($imgaddkcmdline)?$kern->{addkcmdline}." ".$imgaddkcmdline : $kern->{addkcmdline};
 
+    my $cmdhashref;
+    if($kcmdlinehack){
+       $cmdhashref=xCAT::Utils->splitkcmdline($kcmdlinehack);
+    }
+
+    if($cmdhashref and $cmdhashref->{volatile})
+    {
+       $kcmdlinehack=$cmdhashref->{volatile};
+    }    
+
+
     while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
         my $natab = xCAT::Table->new($1);
         my $naent = $natab->getNodeAttribs($node,[$2]);

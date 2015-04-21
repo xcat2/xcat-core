@@ -23,7 +23,7 @@
 #-------------------------------------------------------------------------------
 
 #enable debug
-set -x
+#set -x
 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
