@@ -168,6 +168,12 @@ config_rsyslog_V8()
 
     echo "# xCAT settings" >> $conf_file
     echo "*.debug   /var/log/messages"  >> $conf_file
+    # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
+    # to make the MN be able to receive syslog from remote hosts
+    if [ -f "$remoteconf" ]; then
+        sed -i 's/#\$ModLoad imudp.so/\$ModLoad imudp.so/' $remoteconf
+        sed -i 's/#\$UDPServerRun 514/\$UDPServerRun 514/' $remoteconf
+    fi
   else
     # not logging local, forward logging
     # backup the existing remote.conf file from the install
