@@ -1861,6 +1861,10 @@ sub dispatch_request {
     }
     if ($onlyone and not ($_->{'_xcatdest'} and xCAT::NetworkUtils->thishostisnot($_->{'_xcatdest'}))) {
         $SIG{CHLD}='DEFAULT';
+
+        # make the plugin process exit directly instead of wait(), this is useful 
+        # for the plugin process to exit successfully when it opened some shell subprocesses. 
+        $SIG{TERM} = $SIG{INT} = 'DEFAULT';
         "" =~ m/()/; #clear $1 that we may have sitting around
 	if ($_->{'_xcatdelay'} and not ref $_->{'_xcatdelay'}) { sleep $_->{'_xcatdelay'}; }
         # Call the plugin to process the command request
@@ -1955,6 +1959,9 @@ sub dispatch_request {
          } else {
             $$progname.=": locally executing";
             $SIG{CHLD}='DEFAULT';
+            # make the plugin process exit directly instead of wait(), this is useful 
+            # for the plugin process to exit successfully when it opened some shell subprocesses. 
+            $SIG{TERM} = $SIG{INT} = 'DEFAULT';
             # Call the plugin to process the command request
             #    rescanplugins request gets handled directly here in xcatd
             if ($_->{command}->[0] eq 'rescanplugins') {

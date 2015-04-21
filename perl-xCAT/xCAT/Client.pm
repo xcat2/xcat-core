@@ -282,7 +282,9 @@ if (ref($request) eq 'HASH') { # the request is an array, not pure XML
     $msg=$request;
     print $client $msg;
   }
-  $SIG{TERM} =  $SIG{INT} = sub { send_request({abortcommand=>[1]},$client,$encode); exit 0; };
+  # when receive TERM or INT (ctrl^c) from user, sleep 2s before exit to make
+  # sure the server (xcatd) has recevied 'abortcommand' command 
+  $SIG{TERM} =  $SIG{INT} = sub { send_request({abortcommand=>[1]},$client,$encode); sleep 2; exit 0; };
   my $response;
   my $rsp;
   my $cleanexit=0;
