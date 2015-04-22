@@ -811,7 +811,7 @@ sub decode_spd {
 
         $rethash->{product}->{manufacturer} = decode_manufacturer($spd[320],$spd[321]);
         $rethash->{product}->{buildlocation} = sprintf("%02x",$spd[322]);
-        if ($spd[120] != 0 or $spd[121] != 0) {
+        if ($spd[323] != 0 or $spd[324] != 0) {
             $rethash->{product}->{builddate} = sprintf("Week %x of 20%02x",$spd[323],$spd[324]);
         }
         foreach (@spd[329..348]) {
