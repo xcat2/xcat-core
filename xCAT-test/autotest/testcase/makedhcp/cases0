@@ -123,7 +123,8 @@ cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases; fi
+cmd:makedhcp -q $$CN
+check:rc==0
 check:output=~$$CN
 check:output=~11:22:33:44:55:66
 cmd:chdef -t node -o $$CN mac=
@@ -147,7 +148,8 @@ os:Linux
 cmd:makedhcp -a -d
 check:rc==0
 cmd:service dhcpd restart
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN; fi
+cmd:makedhcp -q $$CN
+check:rc==0
 check:output!~$$CN
 cmd:makedhcp -a
 end
@@ -166,7 +168,7 @@ os:Linux
 cmd:makedhcp -d $$CN
 check:rc==0
 cmd:service dhcpd restart
-cmd:if [ -f /var/lib/dhcpd/dhcpd.leases ]; then cat /var/lib/dhcpd/dhcpd.leases | grep $$CN; elif [ -f /var/lib/dhcp/db/dhcpd.leases ]; then cat /var/lib/dhcp/db/dhcpd.leases | grep $$CN; fi
+cmd:makedhcp -q $$CN
 check:output!~$$CN
 cmd:makedhcp -a
 end
