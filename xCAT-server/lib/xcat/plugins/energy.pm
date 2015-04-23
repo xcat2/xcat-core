@@ -774,12 +774,6 @@ sub run_cim
         }
     }
     delete $http_params->{timeout};
-    # check whether the primary ip of fsp is the IP we are accessing
-    if (defined ($value->[0]->{property}->{PrimaryFSP_IP}->{value}) && $value->[0]->{property}->{PrimaryFSP_IP}->{value} ne $http_params->{ip}) {
-        # run against the standby fsp, do the next one
-        return 11;
-    }
-    
    
     # ======start to handle the query and setting======
     
