@@ -1,6 +1,7 @@
 makehosts_h
 makehosts_help
 makehosts_n_noderange
+makehosts_n
 chdef_null
 chdef_z
 chdef_t_o_error
