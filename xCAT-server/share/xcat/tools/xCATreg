@@ -330,7 +330,7 @@ sub down_dep{
     my $deplink;
     if (! -f "$downxcatdepdir/curlhtml1"){
        send_msg(2, "it is first time to down xcatdep");
-       ` curl  "$curllink"  |grep "$curllink" |grep "href" > "$downxcatdepdir/curlhtml1" `;
+       ` curl  "$curllink"  |grep "$curllink" |grep "href"|grep -v "README" > "$downxcatdepdir/curlhtml1" `;
        ` sed -n '1p'  "$downxcatdepdir/curlhtml1" >  "$downxcatdepdir/curlfile"`;
        $deplink = `cat "$downxcatdepdir"/"curlfile" |sed "s/<a/\\ /" |sed 's/href="/\ /' |sed 's/"/\ /' | sed 's/^[[:space:]]*//'  |sed 's#/download##g'  `;
        print "deplink is $deplink\n";
@@ -342,7 +342,7 @@ sub down_dep{
            }
        $depupdateflag=1;
     }else{
-       `curl  "$curllink"  |grep "$curllink" |grep "href" > "$downxcatdepdir"/"curlhtml2"`;
+       `curl  "$curllink"  |grep "$curllink" |grep "href" |grep -v "README" > "$downxcatdepdir"/"curlhtml2"`;
        ` diff  "$downxcatdepdir"/"curlhtml1"  "$downxcatdepdir"/"curlhtml2"`;
        if ($?==0) {
           send_msg(2, "no update for  xcatdep ");
