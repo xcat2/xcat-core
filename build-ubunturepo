@@ -471,6 +471,14 @@ __EOF__
     echo "Uploading $dep_tar_name to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
     while [ $((i+=1)) -le 5 ] && ! rsync -v $dep_tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
     do : ; done
+
+    #upload the README file
+    cd debs
+    i=0
+    echo "Uploading README to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v README ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    do : ; done
+
     cd $old_pwd
 fi
 exit 0
