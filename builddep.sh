@@ -260,3 +260,11 @@ i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
 do : ; done
+
+# Upload the README to the SF FRS Area
+cd xcat-dep
+i=0
+echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
+while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+do : ; done
+
