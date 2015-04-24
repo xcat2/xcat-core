@@ -1,4 +1,4 @@
-start:Ubuntu_full_installation_flat_x86_vm
+start:Ubuntu_full_installation_flat_x86_vm_confignics
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
