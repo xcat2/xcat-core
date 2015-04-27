@@ -232,25 +232,24 @@ sub ck_args {
     my $hcp = $opt->{hcp};
     my $lparid = $opt->{id};
     my $profile = $opt->{pprofile};
-
-    if (exists( $opt->{D}) and (!exists ($opt->{s}) or !exists ($opt->{d} ))) {
+    if (exists( $opt->{D}) and !exists($opt->{noping}) and (!exists ($opt->{s}) or !exists ($opt->{d} ))) {
         nc_msg($verbose, "Speed and duplex required\n");
         usage;
         return 1;
     }
 
-    if (exists ($opt->{D}) and !exists ($opt->{C}))  {
+    if (exists ($opt->{D}) and !exists($opt->{noping}) and !exists ($opt->{C}))  {
         nc_msg($verbose, "Client IP is required\n");
         usage;
         return 1;
     }
-    if (exists( $opt->{D}) and !exists($opt->{S})) {
+    if (exists( $opt->{D}) and !exists($opt->{noping}) and !exists($opt->{S})) {
         nc_msg($verbose, "Server IP is required\n");
         usage;
         return 1;
     }
 
-    if (exists( $opt->{D}) and !exists($opt->{G})) {
+    if (exists( $opt->{D}) and !exists($opt->{noping}) and !exists($opt->{G})) {
         nc_msg($verbose, "Gateway IP is required\n");
         usage;
         return 1;
@@ -325,7 +324,7 @@ sub ck_args {
         return 1;
     }
 
-    if ($opt->{M} and $opt->{D} and (!exists($opt->{S}) or !exists($opt->{G}) or !exists($opt->{C}) or !exists( $opt->{s}) or !exists($opt->{d}))) {
+    if ($opt->{M} and $opt->{D} and !exists($opt->{noping}) and (!exists($opt->{S}) or !exists($opt->{G}) or !exists($opt->{C}) or !exists( $opt->{s}) or !exists($opt->{d}))) {
         nc_msg($verbose, "Flag -M with -D require arguments for -C, -S, -G, -s and -d.\n");
         usage;
         return 1;
@@ -2372,6 +2371,8 @@ sub lparnetbootexp
 # Flags and initial variable
     my $discovery = 0;
     my $discover_all = 0;
+    my $discoverynoping = 0;
+    my $discoverytimeout = 0;
     my $verbose = 0;
     my $discover_macaddr = 0;
     my $rc = 0;
@@ -2429,6 +2430,10 @@ sub lparnetbootexp
 
     if ( exists ($opt->{D})) {
         $discovery = 1;
+    }
+
+    if ( exists ($opt->{noping})) {
+        $discoverynoping = 1;
     }
 
     if ( exists ($opt->{G})) {
@@ -2573,6 +2578,7 @@ sub lparnetbootexp
     if ($dev_type_found)    { nc_msg($verbose, "$PROGRAM Status: List only $list_type adapters\n");               }
     if ($noboot)            { nc_msg($verbose, "$PROGRAM Status: -n (no boot) flag detected\n");                  }
     if ($discovery)         { nc_msg($verbose, "$PROGRAM Status: -D (discovery) flag detected\n");                }
+    if ($discoverynoping)         { nc_msg($verbose, "$PROGRAM Status: --noping (discovery) flag detected\n");                }
     if ($discover_all)      { nc_msg($verbose, "$PROGRAM Status: -A (discover all) flag detected\n" );            }
     if ($verbose)           { nc_msg($verbose, "$PROGRAM Status: -v (verbose debug) flag detected\n");            }
     if ($discover_macaddr)  { nc_msg($verbose, "$PROGRAM Status: -M (discover mac address) flag detected\n");     }
@@ -2595,7 +2601,7 @@ sub lparnetbootexp
     ####################################
     # process the arguments
     ####################################
-    $rc = xCAT::LparNetbootExp->ck_args($opt, $node, $verbose);
+    $rc = xCAT::LparNetbootExp->ck_args($opt, $verbose, $node);
     if ($rc != 0) {
         nc_msg($verbose, "ck_args failed. \n");
         return [1];
@@ -2989,7 +2995,7 @@ sub lparnetbootexp
     #
     ##############################
     nc_msg($verbose, "begin to process opt-discovery");
-    if ($discovery) {              #rnetboot node will not go here
+    if ($discovery && !$discoverynoping) {              #rnetboot node will not go here
         nc_msg($verbose, "# Client IP address is $client_ip\n");
         nc_msg($verbose, "# Server IP address is $server_ip\n");
         nc_msg($verbose, "# Gateway IP address is $gateway_ip\n");
@@ -3013,9 +3019,15 @@ sub lparnetbootexp
             $outputarrayindex++;  # start from 1, 0 is used to set as 0
             $outputarray[$outputarrayindex] = "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:";
         } else {
-            nc_msg($verbose, "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n");
-            $outputarrayindex++;
-            $outputarray[$outputarrayindex] = "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result";
+            if ($discoverynoping) {
+                nc_msg($verbose, "# Type \tLocation Code \tMAC Address\t Full Path Name\t Device Type\n");
+                $outputarrayindex++;
+                $outputarray[$outputarrayindex] = "# Type \tLocation Code \tMAC Address\t Full Path Name\t Device Type";
+            } else {
+                nc_msg($verbose, "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\t Device Type\n");
+                $outputarrayindex++;
+                $outputarray[$outputarrayindex] = "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\t Device Type";
+            }
         }
 
         if ( $discover_all ) {    #getmacs here
@@ -3026,7 +3038,7 @@ sub lparnetbootexp
                         $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                     }
                     $ping_result = "";
-                    if ($discovery) {
+                    if ($discovery && !$discoverynoping) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         nc_msg($verbose, "ping_server returns $ping_rc\n");
                         unless( $ping_rc eq 0) {
@@ -3081,7 +3093,7 @@ sub lparnetbootexp
                         $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                     }
                     $ping_result = "";
-                    if ($discovery) {
+                    if ($discovery && !$discoverynoping) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         nc_msg($verbose, "ping_server returns $ping_rc\n");
                         unless( $ping_rc eq 0) {
@@ -3151,7 +3163,7 @@ sub lparnetbootexp
                 }
                 $mac_address = get_mac_addr($phandle_array[$i], $rconsole, $node, $verbose);
                 if ( $macaddress =~ /$mac_address/ ) {
-                    if ($discovery eq 1) {
+                    if (($discovery eq 1) && !$discoverynoping) {
                         unless ( $adap_type[$i] eq "hfi-ent" ) {
                            $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         }
@@ -3176,7 +3188,7 @@ sub lparnetbootexp
             for ($i = 0; $i < $adapter_found; $i++) {
                 $loc_code = get_adaptr_loc($phandle_array[$i], $rconsole, $node, $verbose);
                 if ($loc_code =~ /$phys_loc/) {
-                    if ($discovery) {
+                    if ($discovery && !$discoverynoping) {
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
                             nc_msg($verbose, "Unable to boot network adapter.\n");
@@ -3202,7 +3214,7 @@ sub lparnetbootexp
             for ($i = 0; $i < $adapter_found; $i++) {
             nc_msg($verbose, " begint to boot from first adapter in the device tree \n");
                 if ($adap_type[$i] eq $list_type ) {
-                    if ( $discovery eq 1 ){
+                    if ( ($discovery eq 1) && !$discoverynoping ){
                         $ping_rc = ping_server($phandle_array[$i], $full_path_name_array[$i], $rconsole, $node, $mac_address, $verbose, $adap_speed, $adap_duplex, $list_type, $server_ip, $client_ip, $gateway_ip);
                         unless ($ping_rc eq 0) {
                             return [1];

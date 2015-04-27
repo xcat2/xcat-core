@@ -49,7 +49,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|verbose v|version C=s G=s S=s D d f M o F=s arp))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|verbose v|version C=s G=s S=s D d f M o F=s arp noping))) { 
         return( usage() );
     }
     ####################################
@@ -83,12 +83,22 @@ sub parse_args {
         unless (exists($opt{D})){
             return(usage( "The -o flag must be used with -D flag" ));
         }
-    
     }
+    
+    ####################################
+    # Check --noping argument which is used to skip the ping test for -D
+    ####################################
+    if ( exists($opt{noping}) ) {
+        unless (exists($opt{D})){
+            return(usage( "The --noping flag must be used with -D flag" ));
+        }
+    }
+
     ####################################
     # Check argument for ping test
+    # If set --noping with -D, don't need to check the -S, -C, -G
     ####################################
-    if ( exists($opt{D}) ) {
+    if ( exists($opt{D}) && !exists($opt{noping})) {
         my @network;
         my $client_ip;
         my $gateway;
@@ -214,7 +224,7 @@ sub parse_args {
                 return(usage( @$result[1] ));
             }
         }
-    } elsif ( exists($opt{S}) || exists($opt{G}) || exists($opt{C}) ) {
+    } elsif ( (exists($opt{S}) || exists($opt{G}) || exists($opt{C})) && !exists($opt{D}) ) {
         return( [RC_ERROR,"Option '-D' is required for ping test\n"] );
     }
 
@@ -350,6 +360,11 @@ sub do_getmacs {
     #######################################
     # Network specified (-D ping test)
     #######################################
+    if ( exists( $opt->{noping} )) {
+        $optarg{'D'} = 1;
+        $optarg{'noping'} = 1;
+    }
+
     if ( exists( $opt->{S} )) {
         if ( exists( $opt->{o} )) {
             #$cmd .=" -o";
