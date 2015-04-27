@@ -127,6 +127,11 @@ sub do_getmacs {
     #######################################
     # Network specified (-D ping test)
     #######################################
+    if ( exists( $opt->{noping} )) {
+        $optarg{'D'} = 1;
+        $optarg{'noping'} = 1;
+    }
+
     if ( exists( $opt->{S} )) { 
         if ( exists( $opt->{o} )) {
             #$cmd .=" -o";
