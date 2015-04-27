@@ -14,7 +14,7 @@ B<getmacs> I<noderange> [B<-F> I<filter>]
 
 B<getmacs> I<noderange> [B<-M>]
 
-B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> [B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<-o>]]
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> {[B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<-o>] | [B<--noping>]}]
 
 =head2 blade specific:
 
@@ -28,7 +28,7 @@ If no ping test performed,  getmacs writes the first adapter MAC to the xCAT dat
 
 For PPC (using Direct FSP Management) specific:
 
-Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
+Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform B<Discovery> with option "B<-D>", since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
 
 For PPC (using HMC) specific:
 
@@ -54,7 +54,7 @@ Display MAC only. The default is to write the first valid adapter MAC to the xCA
 
 B<-D>          
 
-Perform ping test.  Please be aware that in this way, the lpars will be reset.
+Perform discovery for mac address.  By default, it will run ping test to test the connection between adapter and xCAT management node. Use '--noping' can skip the ping test to save time. Please be aware that in this way, the lpars will be reset.
 
 B<-f>          
 
@@ -75,6 +75,10 @@ Display usage message.
 B<-M>
 
 Return multiple MAC addresses for the same adapter or port, if available from the hardware.  For some network adapters (e.g. HFI) the MAC can change when there are some recoverable internal errors.  In this case, the hardware can return several MACs that the adapter can potentially have, so that xCAT can put all of them in DHCP.  This allows successful booting, even after a MAC change, but on Linux at this time, it can also cause duplicate IP addresses, so it is currently not recommended on Linux.  By default (without this flag), only a single MAC address is returned for each adapter.
+
+B<--noping>
+
+Only can be used with '-D' to display all the available adapters with mac address but do NOT run ping test.
 
 B<-o>          
 
@@ -183,6 +187,18 @@ Output is similar to:
  lpar4:
  #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
  HFI  N/A  02:00:02:00:00:04|02:00:02:00:00:05|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
+
+8. To retrieve the MAC address for Power Lpar by '-D' but without ping test.
+
+ getmacs lpar4 -D --noping
+
+Output is similar to:
+
+ lpar4:
+ # Type  Location Code   MAC Address      Full Path Name  Device Type
+ ent U8233.E8B.103A4DP-V3-C3-T1 da:08:4c:4d:d5:03 /vdevice/l-lan@30000003  virtual
+ ent U8233.E8B.103A4DP-V3-C4-T1 da:08:4c:4d:d5:04 /vdevice/l-lan@30000004  virtual
+ ent U78A0.001.DNWHYT2-P1-C6-T1 00:21:5e:a9:50:42 /lhea@200000000000000/ethernet@200000000000003  physical
 
 =head1 FILES
 
