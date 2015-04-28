@@ -503,6 +503,7 @@ sub mkinstall {
         my $darch;
         my $profile;
         my $tmplfile;
+        my $partitionfile;
         my $pkgdir;
         my $pkgdirval;
         my @mirrors;
@@ -527,7 +528,7 @@ sub mkinstall {
                     if (!$linuximagetab) {
                         $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist','partitionfile');
                     if ($ref1) {
                         if ($ref1->{'template'}) {
                                 $img_hash{$imagename}->{template}=$ref1->{'template'};
@@ -537,6 +538,9 @@ sub mkinstall {
                         }
                         if ($ref1->{'pkglist'}) {
                             $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
+                        }
+                        if ($ref1->{'partitionfile'}) {
+                            $img_hash{$imagename}->{partitionfile}=$ref1->{'partitionfile'};
                         }
                     }
                     # if the install template wasn't found, then lets look for it in the default locations.
@@ -580,8 +584,9 @@ sub mkinstall {
             $os = $ph->{osver};
             $arch  = $ph->{osarch};
             $profile = $ph->{profile};
-            $platform=xCAT_plugin::debian::getplatform($os);
-
+            $partitionfile=$ph->{partitionfile};
+            $platform=xCAT_plugin::debian::getplatform($os);   
+            
             $tmplfile=$ph->{template};
             $pkgdirval=$ph->{pkgdir};
             my @pkgdirlist=split(/,/,$pkgdirval);
@@ -703,10 +708,15 @@ sub mkinstall {
             $prescript = "$::XCATROOT/share/xcat/install/scripts/pre.$platform.ppc64";
         }
 
+
         if (-r "$prescript"){
             $preerr = xCAT::Template->subvars($prescript,
                                              "$installroot/autoinst/" . $node . ".pre",
-                                              $node
+                                              $node,
+                                              "",
+                                              "",
+                                              "",
+                                              $partitionfile
                                               );
         }
 

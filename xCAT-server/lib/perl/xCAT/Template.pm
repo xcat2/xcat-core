@@ -42,8 +42,7 @@ my %tab_replacement=(
     );
 
 
-
-sub subvars { 
+sub subvars {
   my $self = shift;
   my $inf = shift;
   my $outf = shift;
@@ -52,12 +51,11 @@ sub subvars {
   my $pkglistfile=shift;
   my $media_dir = shift;
   my $platform=shift;
-  my $partitionfile=shift;
+  my $partitionfileval=shift;
   my %namedargs = @_; #further expansion of this function will be named arguments, should have happened sooner.
   unless ($namedargs{reusemachinepass}) {
 	$lastmachinepassdata->{password}="";
   }
-
   my $outh;
   my $inh;
   $idir = dirname($inf);
@@ -103,8 +101,8 @@ sub subvars {
   if( defined($tmp)  ){
 	$ENV{NODESTATUS}=$tmp;
   }
-
   $ENV{PERSKCMDLINE}=getPersistentKcmdline($node);
+
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -171,11 +169,50 @@ sub subvars {
 
   #if user specify the partion file, replace the default partition strategy
   my $partcontent;
+  my $diskcontent;
   my $scriptflag = 0;
+  my $preseedflag =0;
+  my $partitionfile;
+  my $diskfile;
+  my $diskscriptflag;
+  my @partitionfilelist=split(/,/,$partitionfileval);
+  foreach(@partitionfilelist){
+     if($_ =~ /^sd:(.*)/){
+       $diskfile=$1;
+       $diskscriptflag=1;
+     }elsif($_ =~ /^d:(.*)/){
+       $diskfile=$1;
+     }elsif($_ =~ /^s:(.*)/){
+       $partitionfile=$1;
+       $scriptflag = 1;
+     }else{
+       $partitionfile=$_;
+     }
+  }
+ 
+  
+ 
+  if($diskfile){
+      if (-r $diskfile){
+          open ($inh, "<", $diskfile);
+          while (<$inh>){
+              $diskcontent .= $_;
+          }
+          close ($inh);
+      }
+
+      # append the partition file into the $inc to do the replacement
+      $inc .= "\nFFFFFFFFFFFFPARTITIONDISKFILESTART\n".$diskcontent;     
+  }
+
   if ($partitionfile){
       if ($partitionfile =~ /^s:(.*)/){
           $scriptflag = 1;
           $partitionfile = $1;
+      }
+ 
+      if($inc =~ /#XCA_PARTMAN_RECIPE_SCRIPT#/){
+          $preseedflag=1; 
       }
   
       if (-r $partitionfile){
@@ -293,7 +330,7 @@ sub subvars {
           #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
           # split the partition file out from the $inc
           ($inc, $partcontent) = split(/FFFFFFFFFFFFPARTITIONFILESTART\n/, $inc);
-          if ($scriptflag){
+          if ($scriptflag or $preseedflag){
               # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
               # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
               # %pre and decode it out during the running time.
@@ -326,6 +363,23 @@ sub subvars {
                   $partcontent .= "/tmp/partscript\n";
                   $inc =~ s/#XCA_PARTITION_SCRIPT#/$partcontent/;
               }
+              #for ubuntu
+              elsif ($inc =~ /#XCA_PARTMAN_RECIPE_SCRIPT#/){
+                  # Put the base64 coded partitionfile into %pre part
+                  $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
+                  if( $scriptflag ){
+                     # Put the code to decode preseed script and run it to generate pressed recipe file
+                     $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
+                     $partcontent .= "chmod 755 /tmp/partscript\n";
+                     $partcontent .= "/tmp/partscript\n";
+                  }else{
+                     # Put the code to decode the preseed recipe file
+                     $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partitioning\n";
+                    
+                  }
+                  #replace the #XCA_PARTMAN_RECIPE_SCRIPT#
+                  $inc =~ s/#XCA_PARTMAN_RECIPE_SCRIPT#/$partcontent/;
+              }
           }
           else{
               $partcontent =~ s/\s$//;
@@ -337,6 +391,36 @@ sub subvars {
               }
           }
       }
+     
+ 
+      if ($diskfile && $doneincludes) {
+          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/boot_disk
+          # split the disk file out from the $inc
+          ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
+          # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
+          # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
+          # %pre and decode it out during the running time.
+          use MIME::Base64;
+          $diskcontent = encode_base64($diskcontent);
+          $diskcontent =~ s/\n//g;
+
+          if ($inc =~ /#XCA_PARTMAN_DISK_SCRIPT#/){
+             # Put the base64 coded disk file/script into %pre part
+             $diskcontent = "cat > /tmp/diskscript.enc << EOFEOF\n" . $diskcontent . "\nEOFEOF\n";
+             if( $diskscriptflag ){
+                # Put the code to decode disk script and run it to generate pressed disk file
+                $diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/diskscript\n";
+                $diskcontent .= "chmod 755 /tmp/diskscript\n";
+                $diskcontent .= "/tmp/diskscript\n";
+             }else{
+                # Put the code to decode the preseed  disk file
+                $diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/boot_disk\n";
+
+             }
+             #replace the #XCA_PARTMAN_DISK_SCRIPT#
+             $inc =~ s/#XCA_PARTMAN_DISK_SCRIPT#/$diskcontent/;
+           }
+      } 
   }
 
   if ($tmplerr) {
@@ -347,6 +431,8 @@ sub subvars {
   close($outh);
   return 0;
 }
+
+
 sub windows_disable_null_admin { 
 #in the event where windows_account_data has not set an administrator user, we explicitly disable the administrator user 
 	unless ($localadminenabled) {

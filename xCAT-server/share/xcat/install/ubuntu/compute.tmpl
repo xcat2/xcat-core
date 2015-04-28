@@ -40,6 +40,10 @@ d-i partman-md/device_remove_md boolean true
 #create the /tmp/partitioning based on the uefi or legacy bios 
 d-i partman/early_command string \
     set -x; \
+    if [ -f /tmp/boot_disk ]; then \
+       debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"; \
+       exit; \
+    fi; \
     rm /tmp/devs-with-boot 2>/dev/null || true; \
     for d in $(list-devices partition); do \
         mkdir -p /tmp/mymount; \
