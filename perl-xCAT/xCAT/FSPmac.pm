@@ -130,6 +130,7 @@ sub do_getmacs {
     if ( exists( $opt->{noping} )) {
         $optarg{'D'} = 1;
         $optarg{'noping'} = 1;
+        $optarg{'pprofile'} = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
     }
 
     if ( exists( $opt->{S} )) { 
