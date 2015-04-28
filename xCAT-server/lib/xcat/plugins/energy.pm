@@ -336,6 +336,13 @@ sub process_request {
         $nodehm_hash = $nodehm_tab->getNodesAttribs($request->{node}, ['mgt']);
     }
 
+    # get the 'fsp' key from the passwd table
+    my $passwd_tab = xCAT::Table->new('passwd', -create => 0);
+    my $passwd_hash;
+    if ($passwd_tab) {
+        $passwd_hash = $passwd_tab->getAttribs({key=>'fsp'},qw(username password));
+    }
+
     my $ppcdirect_tab = xCAT::Table->new('ppcdirect', -create=>0);
 
     my $children;    # The number of child process
@@ -399,9 +406,11 @@ sub process_request {
                 if (defined ($ipmi_hash->{$node}->[0]->{bmc})){
                     # This is a ipmi managed node. (should be a ppcle)
                     $hcp_ip = $ipmi_hash->{$node}->[0]->{bmc};
-                    if (defined ($ipmi_hash->{$node}->[0]->{username})){
-                        $user = $ipmi_hash->{$node}->[0]->{username};
-                        $password = $ipmi_hash->{$node}->[0]->{password};
+
+                    # Get the passwd from passwd table for 'fsp' first, if not the default will be used
+                    if (defined($passwd_hash->{username}) && defined($passwd_hash->{password})) {
+                        $user = $passwd_hash->{username};
+                        $password = $passwd_hash->{password};
                     }
                 } else {
                     xCAT::MsgUtils->message("E", {data => ["$node: Missed attribute [bmc]."]}, $callback);
