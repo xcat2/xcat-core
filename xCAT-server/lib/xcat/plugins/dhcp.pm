@@ -1450,7 +1450,7 @@ sub process_request
         my $n = $_->{net};
         my $if = $_->{mgtifname};
         my $nm = $_->{mask};
-        if ($if =~ /!remote!\S+/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
+        if ($if =~ /!remote!/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
             push @nrn, "$n:$if:$nm";
         }
     }
@@ -1468,7 +1468,7 @@ sub process_request
                 next;
             }
             my $netif = $ent[1];
-            if ($netif =~ /!remote!/) {
+            if ($netif =~ /!remote!\S+/) {
                 $netif =~ s/!remote!\s*(.*)$/$1/;
             }
             # Bridge nics
@@ -1708,7 +1708,7 @@ sub process_request
             next;
         }
         my $netif = $line[1];
-        if ($netif =~ /!remote!/) {
+        if ($netif =~ /!remote!\S+/) {
             $netif =~ s/!remote!\s*(.*)$/$1/;
             if (!defined($activenics{"!remote!"})) {
                 next;
@@ -2141,7 +2141,7 @@ sub addnet
             if ($ent[0] eq $net and $ent[2] eq $mask)
             {
                 $nic = $ent[1];
-                if ($nic =~ /!remote!/) {
+                if ($nic =~ /!remote!\S+/) {
                     $nic =~ s/!remote!\s*(.*)$/$1/;
                 }
                 # The first nic that matches the network,
