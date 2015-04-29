@@ -19,8 +19,10 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:mkdef -t node -o node01,node02 groups="compute"
 check:rc==0
+cmd:sleep 30
 cmd:makehosts 
 check:rc==0
+cmd:sleep 30
 cmd:cat /etc/hosts
 check:output=~1.2.3.2 
 check:output=~1.2.3.1 
@@ -38,15 +40,19 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:chdef -t node -o node01,node02 groups="compute"
 check:rc==0
+cmd:sleep 30
 cmd:makehosts -l
 check:rc==0
-cmd:cat /etc/hosts|awk '{print $2}'
+cmd:sleep 30
+cmd:cp -f /etc/hosts /tmp/hosts
+cmd:cat /tmp/hosts|awk '{print $2}'
 check:output=~node01.cluster.net
 check:output=~node02.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:rmdef node02
 cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:rm -rf /tmp/hosts
 end
 
 start:makehosts_d
@@ -55,9 +61,11 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
+cmd:sleep 30
 cmd:makehosts node01 
 check:rc==0
 cmd:cat /etc/hosts > /tmp/1
+cmd:sleep 30
 cmd:makehosts -d node01
 check:rc==0
 cmd:cat /etc/hosts > /tmp/2
@@ -75,11 +83,12 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
+cmd:sleep 30
 cmd:makehosts -n
 check:rc==0
-cmd:sleep 300
-check:rc==0
+cmd:sleep 30
 cmd:cat /etc/hosts
+cmd:sleep 30
 cmd:cp -f /etc/hosts /tmp/hosts
 cmd:cat /tmp/hosts |wc -l
 check:rc==0
@@ -90,6 +99,7 @@ cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:cp /etc/hosts /hosts
 cmd:mv -f /etc/hosts.xcatbak /etc/hosts
+cmd:rm -rf /tmp/hosts
 end
 
 start:makehosts_n_noderange
@@ -98,18 +108,22 @@ cmd:chtab node=compute hosts.ip="|node(\d+)|1.2.3.(\$1+0)|" hosts.hostnames="|(.
 check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
+cmd:sleep 30
 cmd:makehosts -n node01
 check:rc==0
-cmd:cat /etc/hosts |wc -l
+cmd:sleep 30
+cmd:cp /etc/hosts /tmp/hosts -f
+cmd:cat /tmp/hosts |wc -l
 check:rc==0
 check:output==2
-cmd:cat /etc/hosts
+cmd:cat /tmp/hosts
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
 cmd:rmdef node01
 cmd:mv -f /etc/hosts.xcatbak /etc/hosts
 cmd:cat /etc/hosts| grep -v node01 > /tmp/1
 cmd:mv -f /tmp/1 /etc/hosts 
+cmd:rm -rf /tmp/hosts
 end
 
 
