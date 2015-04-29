@@ -369,12 +369,14 @@ sub subvars {
                   $partcontent = "cat > /tmp/partscript.enc << EOFEOF\n" . $partcontent . "\nEOFEOF\n";
                   if( $scriptflag ){
                      # Put the code to decode preseed script and run it to generate pressed recipe file
-                     $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
+                     #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partscript\n";
+                     $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partscript\n";
                      $partcontent .= "chmod 755 /tmp/partscript\n";
                      $partcontent .= "/tmp/partscript\n";
                   }else{
                      # Put the code to decode the preseed recipe file
-                     $partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partitioning\n";
+                     #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partitioning\n";
+                     $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partitioning\n";
                     
                   }
                   #replace the #XCA_PARTMAN_RECIPE_SCRIPT#
@@ -409,12 +411,14 @@ sub subvars {
              $diskcontent = "cat > /tmp/diskscript.enc << EOFEOF\n" . $diskcontent . "\nEOFEOF\n";
              if( $diskscriptflag ){
                 # Put the code to decode disk script and run it to generate pressed disk file
-                $diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/diskscript\n";
+                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/diskscript\n";
+                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/diskscript\n";
                 $diskcontent .= "chmod 755 /tmp/diskscript\n";
                 $diskcontent .= "/tmp/diskscript\n";
              }else{
                 # Put the code to decode the preseed  disk file
-                $diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/boot_disk\n";
+                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/boot_disk\n";
+                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/boot_disk\n";
 
              }
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
