@@ -2557,9 +2557,9 @@ sub addnic
     {    #add a section if not there
         #$restartdhcp=1;
         #print "Adding NIC $nic\n";
-        if ($nic =~ /!remote!/) {
-            #push @$conf, "#shared-network $nic {\n";
-            #push @$conf, "#\} # $nic nic_end\n";
+        if ($nic eq '!remote!') {
+            push @$conf, "#shared-network $nic {\n";
+            push @$conf, "#\} # $nic nic_end\n";
         } else {
             push @$conf, "shared-network $nic {\n";
             push @$conf, "\} # $nic nic_end\n";
