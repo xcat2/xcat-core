@@ -152,27 +152,47 @@ sub subvars {
   #if user specify the partion file, replace the default partition strategy
   my $partcontent;
   my $diskcontent;
+  my $configcontent;
   my $scriptflag = 0;
+  my $partscriptflag = 0;
+  my $diskscriptflag = 0;
+  my $configscriptflag = 0;
   my $preseedflag =0;
+  my $configfile;
   my $partitionfile;
   my $diskfile;
-  my $diskscriptflag;
   my @partitionfilelist=split(/,/,$partitionfileval);
-  foreach(@partitionfilelist){
-     if($_ =~ /^sd:(.*)/){
+  foreach my $filepath (@partitionfilelist){
+     $scriptflag =0;
+     if($filepath =~ /^s:(.*)/){
+        $scriptflag = 1;
+        $filepath=$1;
+     }
+
+     if($filepath =~ /^d:(.*)/){
        $diskfile=$1;
-       $diskscriptflag=1;
-     }elsif($_ =~ /^d:(.*)/){
-       $diskfile=$1;
-     }elsif($_ =~ /^s:(.*)/){
-       $partitionfile=$1;
-       $scriptflag = 1;
-     }else{
-       $partitionfile=$_;
+       if($scriptflag ) {$diskscriptflag=1;};
+     }elsif($filepath =~ /^c:(.*)/){
+       $configfile=$1;
+       if($scriptflag ) {$configscriptflag=1;};
+     }elsif($filepath){
+       $partitionfile=$filepath;
+       if($scriptflag ) {$partscriptflag=1;};
      }
   }
  
-  
+  if($configfile){
+      if (-r $configfile){
+          open ($inh, "<", $configfile);
+          while (<$inh>){
+              $configcontent .= $_;
+          }
+          close ($inh);
+      }
+
+      # append the partition file into the $inc to do the replacement
+      $inc .= "\nFFFFFFFFFFFFPARTITIONCONFIGFILESTART\n".$configcontent."\nFFFFFFFFFFFFPARTITIONCONFIGFILEEND\n";
+  }    
  
   if($diskfile){
       if (-r $diskfile){
@@ -184,14 +204,10 @@ sub subvars {
       }
 
       # append the partition file into the $inc to do the replacement
-      $inc .= "\nFFFFFFFFFFFFPARTITIONDISKFILESTART\n".$diskcontent;     
+      $inc .= "\nFFFFFFFFFFFFPARTITIONDISKFILESTART\n".$diskcontent."\nFFFFFFFFFFFFPARTITIONDISKFILEEND\n";     
   }
 
   if ($partitionfile){
-      if ($partitionfile =~ /^s:(.*)/){
-          $scriptflag = 1;
-          $partitionfile = $1;
-      }
  
       if($inc =~ /#XCA_PARTMAN_RECIPE_SCRIPT#/){
           $preseedflag=1; 
@@ -206,7 +222,7 @@ sub subvars {
       }
 
       # append the partition file into the $inc to do the replacement
-      $inc .= "\nFFFFFFFFFFFFPARTITIONFILESTART\n".$partcontent;
+      $inc .= "\nFFFFFFFFFFFFPARTITIONFILESTART\n".$partcontent."\nFFFFFFFFFFFFPARTITIONFILEEND\n";
   }
 
 
@@ -312,7 +328,9 @@ sub subvars {
           #the content of the specified file is a script which can write partition definition into /tmp/partitionfile
           # split the partition file out from the $inc
           ($inc, $partcontent) = split(/FFFFFFFFFFFFPARTITIONFILESTART\n/, $inc);
-          if ($scriptflag or $preseedflag){
+          ($partcontent, $res) = split(/\nFFFFFFFFFFFFPARTITIONFILEEND/, $partcontent);
+          $inc .=$res;
+          if ($partscriptflag or $preseedflag){
               # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
               # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
               # %pre and decode it out during the running time.
@@ -381,6 +399,8 @@ sub subvars {
           #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/boot_disk
           # split the disk file out from the $inc
           ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
+          ($diskcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONDISKFILEEND/, $diskcontent);
+          $inc .=$res;
           # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
           # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
           # %pre and decode it out during the running time.
@@ -406,7 +426,37 @@ sub subvars {
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
              $inc =~ s/#XCA_PARTMAN_DISK_SCRIPT#/$diskcontent/;
            }
-      } 
+      }
+ 
+      if ($configfile && $doneincludes) {
+          #the content of the specified file is the additional pressed config with 'd-i' or 
+          # a script set the additional pressed config with "debconf-set"
+          # split the config file out from the $inc
+          ($inc, $configcontent) = split(/FFFFFFFFFFFFPARTITIONCONFIGFILESTART\n/, $inc);
+          ($configcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONCONFIGFILEEND/, $configcontent);
+          $inc .=$res;
+          
+
+
+          if ($configscriptflag){
+             # since the whole partition file needs be packaged in %pre first and generate an executable file at running time,
+             # all the special chars like ',",%,\ need be kept, we have to use the base64 coding to code it and put it in
+             # %pre and decode it out during the running time.
+             use MIME::Base64;
+             $configcontent = encode_base64($configcontent);
+             $configcontent =~ s/\n//g;
+             # Put the base64 coded config script into %pre part
+             $configcontent = "cat > /tmp/configscript.enc << EOFEOF\n" . $configcontent . "\nEOFEOF\n";
+
+             # Put the code to decode config script and run it to generate pressed config
+             $configcontent .= "base64decode</tmp/configscript.enc >/tmp/configscript\n";
+             $configcontent .= "chmod 755 /tmp/configscript\n";
+             $configcontent .= "/tmp/configscript\n";
+             $inc =~ s/#XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#/$configcontent/;
+         }else{
+             $inc =~ s/#XCA_PARTMAN_ADDITIONAL_CFG#/$configcontent/; 
+       }
+        }
   }
 
   if ($tmplerr) {
