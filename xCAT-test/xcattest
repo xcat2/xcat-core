@@ -637,6 +637,7 @@ sub getnodeattr
     }else{
         foreach my $output1 (@output){
             if($output1 =~ /$attr=(\w.+)/){
+                log_this("$attr is $1");
                 return $1;
             }
         }
