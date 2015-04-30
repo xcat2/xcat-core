@@ -696,7 +696,8 @@ sub mkinstall {
                                         $node,
                                         $pkglistfile,
                                         $pkgdir,
-                                        $platform
+                                        $platform,
+                                        $partitionfile
                                         );
         }
 
