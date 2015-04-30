@@ -3,7 +3,7 @@ os:Linux
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ &&  mkvm $$CN -s 25G; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$SN vmstorage=dir:///var/lib/libvirt/images/ &&  mkvm $$SN -s 25G; fi
 
 cmd:makedns -n
 check:rc==0
