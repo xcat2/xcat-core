@@ -215,7 +215,10 @@ echo "2048 512 300% linux-swap" >> /tmp/partitioning
 echo "    method{ swap } format{ }" >> /tmp/partitioning
 echo "    ." >> /tmp/partitioning
 
+
 #XCA_PARTMAN_RECIPE_SCRIPT#
 #XCA_PARTMAN_DISK_SCRIPT#
+#XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#
+
 exit 0
 
