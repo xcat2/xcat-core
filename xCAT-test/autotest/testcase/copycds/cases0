@@ -18,6 +18,8 @@ cmd:copycds -n __GETNODEATTR($$CN,os)__ $$ISO
 check:rc==0
 check:output=~Copying media to /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:output=~Media copy operation successful
+cmd:lsdef $$CN
+cmd:ps -aux |grep copycds
 cmd:ls /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__
 check:rc==0
 end
