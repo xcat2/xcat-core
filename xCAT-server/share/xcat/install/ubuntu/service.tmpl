@@ -22,11 +22,12 @@ d-i netcfg/dhcp_timeout string 120
 #d-i mirror/suite string testing
 # Suite to use for loading installer components (optional).
 #d-i mirror/udeb/suite string testing
+ 
 
 # Use the following option to add additional boot parameters for the
 # installed system (if supported by the bootloader installer).
 # Note: options passed to the installer will be added automatically.
-d-i debian-installer/add-kernel-opts string #XCATVAR:PERSKCMDLINE# 
+d-i debian-installer/add-kernel-opts string #XCATVAR:PERSKCMDLINE#
 
 ### Partitioning
 # This creates a small /boot partition, suitable
@@ -36,9 +37,13 @@ d-i partman-auto/method string regular
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-md/device_remove_md boolean true
 
-#create the /tmp/partitioning based on the uefi or legacy bios 
+#create the /tmp/partitionfile based on the uefi or legacy bios 
 d-i partman/early_command string \
     set -x; \
+    if [ -f /tmp/boot_disk ]; then \
+       debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"; \
+       exit; \
+    fi; \
     rm /tmp/devs-with-boot 2>/dev/null || true; \
     for d in $(list-devices partition); do \
         mkdir -p /tmp/mymount; \
@@ -53,12 +58,12 @@ d-i partman/early_command string \
         head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
         rm /tmp/devs-with-boot 2>/dev/null || true; \
     else \
-        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*sd[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o 'sd.*$'`; \
+        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; \
         if [[ "$DEV" == "" ]]; then DEV="sda"; fi; \
         echo "/dev/$DEV" > /tmp/boot_disk; \
     fi; \
     debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
-d-i partman-auto/expert_recipe_file string /tmp/partitioning
+d-i partman-auto/expert_recipe_file string /tmp/partitionfile
 
 # This makes partman automatically partition without confirmation, provided
 # that you told it what to do using one of the methods above.
@@ -68,6 +73,7 @@ d-i partman/choose_partition select finish
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
 
+#XCA_PARTMAN_ADDITIONAL_CFG#
 
 ### Account setup 
 
@@ -137,3 +143,4 @@ d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoin
      mount -o bind /sys /target/sys; \
      chroot /target /root/post.script; \
      cp /target/etc/network/interfaces /etc/network/interfaces
+
