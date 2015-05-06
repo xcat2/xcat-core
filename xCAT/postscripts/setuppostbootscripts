@@ -26,9 +26,9 @@ if [ ! -d "/opt/xcat" ]; then
 fi
 infofile="/opt/xcat/xcatinfo"
 if [ "$RUNBOOTSCRIPTS" = "yes" ] || [ "$RUNBOOTSCRIPTS" = "YES" ]; then
-       RUNBOOTSCRIPTS=YES
+       RUNBOOTSCRIPTS=yes
 else
-       RUNBOOTSCRIPTS=NO
+       RUNBOOTSCRIPTS=no
 fi 
 #  check to see if current setting is already in the file, if so nothing to do
 if [ -f $infofile ]; then
