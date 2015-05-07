@@ -5,9 +5,12 @@ cmd:makedhcp -n
 check:rc==0
 cmd:ls /etc/dhcp/dhcpd.conf || ls /etc/dhcpd.conf
 check:rc==0
+cmd:sleep 20
 cmd:ps -e | grep dhcpd
 check:rc==0
 check:output=~dhcpd
+cmd:if  cat /etc/*release |grep Ubuntu >/dev/null;then service isc-dhcp-server status;else service dhcpd status;fi
+check:output=~running
 cmd:if [ -f "/etc/dhcp/dhcpd.conf" ]; then mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf; elif [ -f "/etc/dhcpd.conf" ]; then mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf; fi
 end
 
