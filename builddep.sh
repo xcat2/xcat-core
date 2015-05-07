@@ -263,6 +263,9 @@ do : ; done
 
 # Upload the README to the SF FRS Area
 cd xcat-dep
+# add a comment to indicate the latest xcat-dep tar ball name
+sed "6 iThe latest xcat-dep tar ball is ${DFNAME}" -i README
+
 i=0
 echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
 while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
