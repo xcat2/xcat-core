@@ -1,0 +1,81 @@
+
+=head1 NAME
+
+B<switchdiscover> - Discover all the switches on the subnets.
+
+
+=head1 SYNOPSIS
+
+I<switchdiscover [-h| --help]>
+
+I<switchdiscover [-v| --version]>
+
+
+I<switchdiscover [noderange] [-V] [-i adpt[,adpt..]][-w][-r|-x|-z][-n][-s scan_methods]>
+
+
+
+=head1 DESCRIPTION
+
+The switchdiscover command scan the subnets and discover all the swithches on the subnets.  The default subnets will be the ones that the xCAT management node is on. The command will also take a subnet as an input. The default discovery method will be lldpd. The nmap and snmp methods will be supported as options chosen by -s option. The optional -r -x and -z format the output.
+
+
+=head1 OPTIONS
+
+B<noderange>   The switches which the user want to discover.
+            If the user specify the noderange, switchdiscover will just return the switches 
+            in the node range. Which means it will help to add the new switches to the xCAT
+            database without modifying the existed definitions. But the switches' name 
+            specified in noderange should be defined in database in advance. The ips of the
+            switches will be defined in /etc/hosts file. This command will fill the switch 
+            attributes for the switches defined. 
+
+B<-i>          adapter(s) the command will search through (defaults to all available adapters).
+
+B<-h>          Display usage message.
+
+B<-n>          Only display and write the newly discovered switches.
+
+B<--range>     Specify one or more IP ranges.  
+            It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
+            If the range is huge, for example, 192.168.1.1/8, lsslp may take a very long 
+            time for node scan. So the range should be exactly specified. 
+
+B<-r>          Display Raw response.
+
+B<-s>          It is a comma separated list of methods for switch discovery. 
+            The possible switch scan methods are: llpd, nmap and snmp. The default is lldpd.
+
+B<-v>          Command Version.
+
+B<-V>          Verbose output.
+
+B<-w>          Writes output to xCAT database.
+
+B<-x>          XML format.
+
+B<-z>          Stanza formated output.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+
+
+=head1 FILES
+
+/opt/xcat/bin/switchdiscover
+
+
+=head1 SEE ALSO
+
+
+
+
+
+
