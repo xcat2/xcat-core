@@ -20,7 +20,10 @@ use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Thread qw(yield);
-$::asucmd = '/opt/ibm/toolscenter/asu/asu64';
+$::asucmd = '/opt/lenovo/toolscenter/asu/asu64';
+if (! -x $::asucmd) {
+  $::asucmd = '/opt/ibm/toolscenter/asu/asu64';
+}
 my $interface;
 my $username;
 my $passwd;
