@@ -595,19 +595,16 @@ sub install_xcat {
 	$arch="x86_64" if($mn !~ /aix/ && $mn =~ /x/);
 	
 	if($mn =~ /rh/){
-           if($os =~ /rhels7/){
-                system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh7.0/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
+                $os =~ /(\D+)(\d+)\.?(\d?)/;
+                system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh$2/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
                 system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
                 system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
+           if($os =~ /rhels7/){
                 system("xdsh $confkeys{$mn} \"yum -y install mariadb-devel-5.5.35-3.el7  mariadb-libs-5.5.35-3.el7  mariadb-server-5.5.35-3.el7 mariadb-bench-5.5.35-3.el7 mariadb-5.5.35-3.el7  perl-DBD-MySQL  mysql-connector-odbc unixODBC\" >/dev/null 2>&1");
                 }elsif($os =~ /rhels6/){
-	        $os =~ /(\D+)(\d+)\.?(\d?)/;
-		system("xdsh $confkeys{$mn} \"cd /xcat-dep/rh$2/$arch && ./mklocalrepo.sh\" >/dev/null 2>&1");
-                system("xdsh $confkeys{$mn} \"rpm --import /RPM-GPG-KEY-redhat-release\" >/dev/null 2>&1");
-		system("xdsh $confkeys{$mn} \"yum -y install xCAT xCAT-test > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
 		system("xdsh $confkeys{$mn} \"yum -y install mysql-server mysql mysql-bench mysql-devel mysql-connector-odbc\" >/dev/null 2>&1");
-		system("xdsh $confkeys{$mn} \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
                 }
+                system("xdsh $confkeys{$mn} \"source /etc/profile.d/xcat.sh\" >/dev/null 2>&1");
 		if($mn =~ /rhx/){
             system("xdsh $confkeys{$mn} \"yum install -y perl-Sys-Virt\" >/dev/null 2>&1");
 		}
