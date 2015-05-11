@@ -623,3 +623,4 @@ dracut_install /lib/udev/rules.d/11-dm-lvm.rules
 dracut_install /lib/udev/rules.d/13-dm-disk.rules
 dracut_install /lib/udev/rules.d/69-dm-lvm-metad.rules
 dracut_install /lib/udev/rules.d/95-dm-notify.rules
+dracut_install /lib64/libform.so.5 /lib64/libpanel.so.5 /lib64/libmenu.so.5 /lib64/libsysfs.so.2 /usr/sbin/iprconfig # iprconfig for IBM Power RAID configuration
