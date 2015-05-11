@@ -50,7 +50,14 @@ d-i partman/early_command string \
         rm /tmp/devs-with-boot 2>/dev/null || true; \
     else \
         DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; \
-        if [[ "$DEV" == "" ]]; then DEV="sda"; fi; \
+        if [[ "$DEV" == "" ]]; then \
+            for line in $(list-devices disk); do \
+                DEV=$line; DEV=${DEV##/dev/}; break; \
+            done; \
+            if [[ "$DEV" == "" ]]; then \
+                DEV="sda"; \
+            fi \
+        fi; \
         echo "/dev/$DEV" > /tmp/boot_disk; \
     fi; \
     debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
