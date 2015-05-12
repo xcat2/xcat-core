@@ -21,9 +21,6 @@ use Storable qw(store_fd fd_retrieve);
 use strict;
 use warnings "all";
 use Getopt::Long;
-
-
-
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
@@ -114,6 +111,11 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "\tbmcdiscover [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]\n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-m|--method] scan_method [-r|--range] ip_range \n ";
+    push @{ $rsp->{data} }, "\tFor example: \n ";
+    push @{ $rsp->{data} }, "\tbmcdiscover -m nmap -r \"10.4.23.100-254 50.3.15.1-2\" \n ";
+    push @{ $rsp->{data} }, "\tNote : ip_range should be a string, can pass hostnames, IP addresses, networks, etc. \n ";
+    push @{ $rsp->{data} }, "\tIf there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
+    push @{ $rsp->{data} }, "\tEx: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
 }
@@ -292,8 +294,7 @@ sub scan_process{
                if ($child == 0) {
                     close($cfd);
                     $callback = \&send_rep;
-                    #sleep(5);
-                    xCAT::MsgUtils->message("I", {data => ["${$live_ip}[$i]"]}, $callback);
+                       bmcdiscovery_ipmi(${$live_ip}[$i]);
                     exit 0;
                } else {
 
@@ -303,6 +304,8 @@ sub scan_process{
                     close ($parent_fd);
                     $sub_fds->add($cfd);
                }
+
+
                do {
                     sleep(1);
                } until ($children < 32);
@@ -427,7 +430,7 @@ sub create_error_response {
     my $error_msg = shift;
     my $rsp;
     push @{ $rsp->{data} }, $error_msg;
-    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
 }
 
 
@@ -473,7 +476,10 @@ sub bmcdiscovery {
 
 =head3  bmcdiscovery_ipmi
 
-        Support for discovering bmc using nmap
+        Support for discovering bmc using ipmi
+        Returns:
+              if it is bmc, it returns bmc ip or host;
+              if it is not bmc, it returns nothing;
 
 =cut
 
@@ -481,6 +487,14 @@ sub bmcdiscovery {
 
 sub bmcdiscovery_ipmi {
     my $ip = shift;
+    my $bmcstr = "BMC Session ID";
+    my $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U USERID -P PASSW0RD -H $ip chassis status ";
+    my $output = xCAT::Utils->runcmd("$icmd", -1);
+    if ( $output =~ $bmcstr ){
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$ip";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+    }
 }
 
 1;
