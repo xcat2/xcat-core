@@ -409,8 +409,13 @@ sub create_imgconf_file {
     my $subreq = shift;
     my $nim_root = shift;
     my $bootimg_root = shift;
-    my $relative_path = $bootimg_root;
+    my $bootimg_link = "/tftpboot/vios/nodes";
+    my $relative_path = $bootimg_link;
     $relative_path =~ s/^\/tftpboot//;
+    # check the dir where the bootimage link file and bootimage configuration file stored
+    unless (-e $bootimg_link) {
+        mkpath($bootimg_link);
+    }
     # Get nodes network information
     my %nethash = ();
     %nethash = xCAT::DBobjUtils->getNetwkInfo($nodes);
@@ -428,7 +433,7 @@ sub create_imgconf_file {
     unless (-e $bootimg_root."/viobootimg") {
         return "Unable to find VIOS bootimg file";
     }
-    chdir($bootimg_root);
+    chdir($bootimg_link);
     foreach my $node (@$nodes) {
         my $bootimg_conf_fd;
         my $gateway = $nethash{$node}{gateway};
@@ -438,18 +443,17 @@ sub create_imgconf_file {
         my $master = xCAT::NetworkUtils->gethostname($master_node);
         my $master_ip = xCAT::NetworkUtils->getipaddr($master); 
         my $node_ip = xCAT::NetworkUtils->getipaddr($node);
-        my $relative_bootfile = $relative_path."/viobootimg-$node";
-        unless (-e "viobootimg-$node") {
-            symlink("viobootimg", "viobootimg-$node");
+        unless (-e "$node") {
+            symlink($bootimg_root."/viobootimg", "$node");
         }
-        if (-e $bootimg_root."/viobootimg-$node.info") {
-            unlink($bootimg_root."/viobootimg-$node.info");
+        if (-e $bootimg_link."/$node.info") {
+            unlink($bootimg_link."/$node.info");
         }
-        open ($bootimg_conf_fd, ">", $bootimg_root."/viobootimg-$node.info"); 
+        open ($bootimg_conf_fd, ">", $bootimg_link."/$node.info"); 
         print $bootimg_conf_fd "export NIM_SERVER_TYPE=linux\n";
         print $bootimg_conf_fd "export NIM_SYSLOG_PORT=514\n";
         print $bootimg_conf_fd "export NIM_SYSLOG_FACILITY=local2\n";
-        print $bootimg_conf_fd "export NIM_NAME=viobootimg-$node\n";
+        print $bootimg_conf_fd "export NIM_NAME=$node\n";
         print $bootimg_conf_fd "export NIM_HOSTNAME=$node\n";
         print $bootimg_conf_fd "export NIM_CONFIGURATION=standalone\n";
         print $bootimg_conf_fd "export NIM_MASTER_HOSTNAME=$master\n";
@@ -472,8 +476,7 @@ sub create_imgconf_file {
         close($bootimg_conf_fd);
 
         $subreq->({command=>['makedhcp'],
-                   node=>[$node],
-                   arg=>['-s', 'supersede server.filename=\"'.$relative_bootfile.'\";']}, $global_callback); 
+                   node=>[$node]}, $global_callback);
     } 
 }
 
@@ -506,7 +509,7 @@ sub nodeset {
         if ($ref) {
             if ($ref->{provmethod} and $ref->{provmethod} eq 'nimol' and $ref->{osdistroname}) {
                 $nim_root = $installroot."/nim/".$ref->{osdistroname};
-                $bootimg_root = "/tftpboot/".$ref->{osdistroname}."/nodes";
+                $bootimg_root = "/tftpboot/".$ref->{osdistroname};
             } else {
                 $callback->({error=>["The 'provmethod' for OS image $osimage can only be 'nimol'."], errorcode=>[1]});
                 return;

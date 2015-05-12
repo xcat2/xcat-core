@@ -616,6 +616,14 @@ sub addnode
                     $lstatements = 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }'.$lstatements;
                 }
             }
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
+            $lstatements = 'filename = \"/yb/node/yaboot-'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'grub2') {
+            $lstatements = 'filename = \"/boot/grub2/grub2-'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
+            $lstatements = 'option conf-file \"http://'.$nxtsrv.'/tftpboot/petitboot/'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
+            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\"'.$lstatements;
         }
 
 

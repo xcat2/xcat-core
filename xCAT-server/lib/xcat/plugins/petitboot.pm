@@ -472,24 +472,19 @@ sub process_request {
       if (defined($t_entry) ) {
          if ($t_entry =~ /0|n|N/) { $do_dhcpsetup=0; }
       }
-
       if ($do_dhcpsetup) {
           foreach my $node (@normalnodeset) {
-              my $server = xCAT::TableUtils->GetMasterNodeName($node);
-              my $ipfn = xCAT::NetworkUtils->my_ip_facing($server);
-              if(($server != 1) and defined($ipfn)) {    
-                  my $fpath = "http://$ipfn/tftpboot/petitboot/$node"; 
-                  if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-                      $sub_req->({command=>['makedhcp'],
-                                  node=> [$node],
-                                  arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
-                  } else {
-                      $sub_req->({command=>['makedhcp'],
-                                  node=> [$node],
-                                  arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);
-                  }
+              if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+                  $sub_req->({command=>['makedhcp'],
+                              node=> [$node],
+                              arg=>['-l']},$callback);
+                              #arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
+              } else {
+                  $sub_req->({command=>['makedhcp'],
+                              node=> [$node]}, $callback);
+                              #arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);
               }
-          } 
+          }
       }
   }
   
