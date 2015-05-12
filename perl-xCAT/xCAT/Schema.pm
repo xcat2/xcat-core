@@ -1739,6 +1739,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
   osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
   zone=> { attrs => [], attrhash => {}, objkey => 'zonename' },
+  switch=> { attrs => [], attrhash => {}, objkey => 'switch' },
   
 );
 
@@ -3759,6 +3760,67 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
 
 );
+
+
+#############################
+#  switch object #
+#############################
+#     switch table          #
+#############################
+@{$defspec{switch}->{'attrs'}} = (
+        {attr_name => 'switch',
+                 tabentry => 'switches.switch',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmpusername',
+                 tabentry => 'switches.username',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmppassword',
+                 tabentry => 'switches.password',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmpversion',
+                 tabentry => 'switches.snmpversion',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'privacy',
+                 tabentry => 'switches.privacy',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'auth',
+                 tabentry => 'switches.auth',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'linkports',
+                 tabentry => 'switches.linkports',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'sshusername',
+                 tabentry => 'switches.sshusername',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'sshpassword',
+                 tabentry => 'switches.sshpassword',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'protocol',
+                 tabentry => 'switches.protocol',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'switchtype',
+                 tabentry => 'switches.switchtype',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'comments',
+                 tabentry => 'switches.comments',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'disable',
+                 tabentry => 'switches.disable',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+         );
 
 ###################################################
 
