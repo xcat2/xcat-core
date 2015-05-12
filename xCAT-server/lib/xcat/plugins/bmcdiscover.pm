@@ -30,6 +30,7 @@ use File::Basename;
 use File::Path;
 use Cwd;
 
+my $nmap_path;
 
 my $debianflag = 0;
 my $tempstring = xCAT::Utils->osver();
@@ -155,6 +156,26 @@ sub bmcdiscovery_processargs {
         return 3;
     }
 
+    ######################################
+    # check if there is nmap or not
+    ######################################
+    if ( -x '/usr/bin/nmap' )
+    {
+        $nmap_path="/usr/bin/nmap";
+    }
+    elsif ( -x '/usr/local/bin/nmap' )
+    {
+        $nmap_path="/usr/local/bin/nmap";
+    }
+    else
+    {
+        my $rsp;
+        push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
+        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        return 1;
+
+    }
+
     #########################################
     # This command is for linux
     #########################################
@@ -227,7 +248,7 @@ sub scan_process{
     # get live ip list
     ###########################################################
     if ( $method eq "nmap" ) {
-        my $bcmd = "/usr/bin/nmap -sn $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ";
+        my $bcmd = join(" ",$nmap_path," -sn $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
         $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp = {};
