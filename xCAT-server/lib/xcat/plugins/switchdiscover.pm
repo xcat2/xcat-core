@@ -1,23 +1,48 @@
+#!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT_plugin::switchdiscover;
-use lib "/opt/xcat/lib/perl";
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::Utils;
 
-#######################################
-# Power methods
-#######################################
+#global variables for this module
 my %globalopt;
 my @filternodes;
+my %global_scan_type = (
+    lldp => "lldp_scan",
+    nmap => "nmap_scan",
+    snmp => "snmp_scan"
+);
+
+#-------------------------------------------------------------------------------
+=head1  xCAT_plugin:switchdiscover
+=head2    Package Description
+    Handles switch discovery functions. It uses lldp, nmap or snmap to scan
+    the network to find out the switches attached to the network.
+=cut
+#-------------------------------------------------------------------------------
 
 
-##########################################################################
-# Invokes the callback with the specified message
-##########################################################################
+#--------------------------------------------------------------------------------
+=head3   send_msg
+      Invokes the callback with the specified message
+    Arguments:
+        request: request structure for plguin calls
+        ecode: error code. 0 for succeful.
+        msg: messages to be displayed.
+    Returns:
+        none
+=cut
+#--------------------------------------------------------------------------------
 sub send_msg {
 
     my $request = shift;
@@ -48,16 +73,31 @@ sub send_msg {
 }
 
 
-##########################################################################
-# Command handler method from tables
-##########################################################################
+#--------------------------------------------------------------------------------
+=head3   handled_commands
+      It returns a list of commands handled by this plugin.
+    Arguments:
+       none
+    Returns:
+       a list of commands.
+=cut
+#--------------------------------------------------------------------------------
 sub handled_commands {
     return( {switchdiscover=>"switchdiscover"} );
 }
 
-##########################################################################
-# Parse the command line options and operands
-##########################################################################
+
+#--------------------------------------------------------------------------------
+=head3   parse_args
+      Parse the command line options and operands.
+    Arguments:
+        request: the request structure for plugin
+    Returns:
+        Usage string or error message.
+        0 if no user promp needed.
+
+=cut
+#--------------------------------------------------------------------------------
 sub parse_args {
 
     my $request  = shift;
@@ -125,11 +165,21 @@ sub parse_args {
     }
 
     #############################################
-    # Check for unsupported service type
+    # Check for unsupported scan types
     #############################################
     if ( exists( $opt{s} )) {
-        $globalopt{service} = $opt{s};
-    }
+        my @stypes = split ',', $opt{s};
+		my $error;
+		foreach my $st (@stypes) {
+			if (! exists($global_scan_type{$st})) {
+				$error = $error . "Invalide scan type: $st\n";	
+			}
+        }
+		if ($error) {
+			return usage($error);
+		}
+        $globalopt{scan_types} = \@stypes;
+	}
 
     #############################################
     # Check the validation of -i option
@@ -186,9 +236,12 @@ sub parse_args {
 }
 
 
-#############################################################################
-# Preprocess request from xCAT daemon
-#############################################################################
+#--------------------------------------------------------------------------------
+=head3   preprocess_request
+      Parse the arguments and display the usage or the version string. 
+
+=cut
+#--------------------------------------------------------------------------------
 sub preprocess_request {
     my $req = shift;
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -212,9 +265,13 @@ sub preprocess_request {
     return \@result;
 }
 
-##########################################################################
-# Process request from xCat daemon
-##########################################################################
+#--------------------------------------------------------------------------------
+=head3   process_request
+    Pasrse the arguments and call the correspondent functions
+    to do switch discovery. 
+
+=cut
+#--------------------------------------------------------------------------------
 sub process_request {
     my $req      = shift;
     my $callback = shift;
@@ -231,6 +288,7 @@ sub process_request {
     # Process command-specific options
     ####################################
     my $result = parse_args( \%request );
+    
 
     ####################################
     # Return error
@@ -240,8 +298,98 @@ sub process_request {
         return(1);
     }
 
+    # call the relavant functions to start the scan 
+	my @scan_types = ("lldp");
+	if (exists($globalopt{scan_types})) {
+		@scan_types = @{$globalopt{scan_types}};
+	}
+	foreach my $st (@scan_types) {
+		no strict;
+		my $fn = $global_scan_type{$st};
+		my $result = &$fn(\%request, $callback);
+	}
+		
+
     return;
 
+}
+
+#--------------------------------------------------------------------------------
+=head3   lldp_scan
+      Use lldpd to scan the subnets to do switch discovery.
+    Arguments:
+       request: request structure with callback pointer.
+    Returns:
+        A hash containing the swithes discovered. 
+        Each element is a hash of switch attributes. For examples:
+        {
+		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+       } 
+=cut
+#--------------------------------------------------------------------------------
+sub lldp_scan {
+    my $request  = shift;
+
+	send_msg($request, 0, "Discovering switches using lldpd...");
+	my %switches = (
+		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
+		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
+     );
+	return %switches
+}
+
+
+#--------------------------------------------------------------------------------
+=head3   nmap_scan
+      Use nmap to scan the subnets to do switch discovery.
+    Arguments:
+       request: request structure with callback pointer.
+    Returns:
+        A hash containing the swithes discovered. 
+        Each element is a hash of switch attributes. For examples:
+        {
+		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+       } 
+=cut
+#--------------------------------------------------------------------------------
+sub nmap_scan {
+    my $request  = shift;
+
+	send_msg($request, 0, "Discovering switches using nmap...");
+	my %switches = (
+		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
+		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
+     );
+	return %switches
+}
+
+
+
+#--------------------------------------------------------------------------------
+=head3   snmp_scan
+      Use lldpd to scan the subnets to do switch discovery.
+    Arguments:
+       request: request structure with callback pointer.
+    Returns:
+        A hash containing the swithes discovered. 
+        Each element is a hash of switch attributes. For examples:
+        {
+		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+       } 
+=cut
+#--------------------------------------------------------------------------------
+sub snmp_scan {
+    my $request  = shift;
+
+	send_msg($request, 0, "Discovering switches using snmp...");
+	my %switches = (
+		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
+		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
+     );
+	return %switches
 }
 
 1;
