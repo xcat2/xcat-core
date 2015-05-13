@@ -146,33 +146,25 @@ sub rinstall
         # call "nodeset ... osimage= ..." to set the boot state of the noderange to the specified osimage,
         # "nodeset" will handle the updating of node attributes such as os,arch,profile,provmethod
         # verify input
-         &checkoption("[-O|--osimage] $OSIMAGE",$OSVER,$PROFILE,$ARCH,$callback);
+        &checkoption("[-O|--osimage] $OSIMAGE",$OSVER,$PROFILE,$ARCH,$callback);
 
         # run nodeset $noderange osimage=$OSIMAGE
-         my @osimageargs;
-         push @osimageargs,"osimage=$OSIMAGE" ;
-         my $res  =
-         xCAT::Utils->runxcmd(
+        my @osimageargs;
+        push @osimageargs,"osimage=$OSIMAGE" ;
+        my $res  =
+        xCAT::Utils->runxcmd(
                            {
                             command => ["nodeset"],
                             node    => \@nodes,
                             arg     => \@osimageargs
                            },
                            $subreq, -1, 1);
-       
-         my $rsp = {};
-         if ($::RUNCMD_RC ==0 ) {
-           foreach my $line (@$res) {
-              $rsp->{data} ->[0] = $line;
-               xCAT::MsgUtils->message("I", $rsp, $callback);
-           }      
-         }  else {  
-           foreach my $line (@$res) {
-              $rsp->{error} ->[0] = $line;
-               xCAT::MsgUtils->message("E", $rsp, $callback);
-           }      
-           return 1;
-         }      
+        $rc=$::RUNCMD_RC;       
+        my $rsp = {};
+        foreach my $line (@$res) {
+            $rsp->{data} ->[0] = $line;
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }      
     }
     else
     {
@@ -268,19 +260,12 @@ sub rinstall
                             arg     => \@nodesetarg
                            },
                            $subreq, -1, 1);
-                    
+
+                   $rc = $::RUNCMD_RC;                    
                    my $rsp = {};
-                   $rc=$::RUNCMD_RC;
-                   if ($rc ==0 ) {
-                     foreach my $line (@$res) {
+                   foreach my $line (@$res) {
                        $rsp->{data} ->[0] = $line;
                        xCAT::MsgUtils->message("I", $rsp, $callback);
-                     }      
-                   }  else {  # error
-                     foreach my $line (@$res) {
-                       $rsp->{error} ->[0] = $line;
-                       xCAT::MsgUtils->message("E", $rsp, $callback);
-                     }      
                    }      
                 }
             }
@@ -300,31 +285,23 @@ sub rinstall
                             arg     => \@nodesetarg
                            },
                            $subreq, -1, 1);
-                    
+
+                 $rc = $::RUNCMD_RC;                    
                  my $rsp = {};
-                 $rc=$::RUNCMD_RC;
-                 if ($rc ==0 ) {
-                     foreach my $line (@$res) {
-                       $rsp->{data} ->[0] = $line;
-                       xCAT::MsgUtils->message("I", $rsp, $callback);
-                     }      
-                 }  else {  # error
-                     foreach my $line (@$res) {
-                       $rsp->{error} ->[0] = $line;
-                       xCAT::MsgUtils->message("E", $rsp, $callback);
-                     }      
+                 foreach my $line (@$res) {
+                     $rsp->{data} ->[0] = $line;
+                     xCAT::MsgUtils->message("I", $rsp, $callback);
                  }      
             }
 
         }
     } # end nodech/nodeset for each group
 
-    if ($rc != 0)   # we got an error with the nodeset 
+    if ($rc != 0)   # we got an error with the nodeset
     {
        my $rsp = {};
-       $rsp->{error}->[0] = "nodeset failure will not continue ";
+       $rsp->{error}->[0] = "nodeset failed on certain nodes.";
        xCAT::MsgUtils->message("E", $rsp, $callback);
-       return 1;
     }
 
     # call "rsetboot" to set the boot order of the nodehm.mgt=ipmi nodes,for others, 
@@ -342,28 +319,23 @@ sub rinstall
            arg     => \@rsetbootarg
        },
        $subreq, -1, 1);
+
+    $rc = $::RUNCMD_RC;
     # fix output it is a hash and you must get error out of the hash.               
     my $rsp = {};
-    $rc=$::RUNCMD_RC;
-    if ($rc ==0 ) {
-        foreach my $line (@$res) {
-          $rsp->{data} ->[0] = $line;
-          xCAT::MsgUtils->message("I", $rsp, $callback);
-        }      
-    }  else {  # error
-         foreach my $line (@$res) {
-            $rsp->{error} ->[0] = $line;
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-         }      
-    }      
-    if ($rc != 0)   # we got an error with the rsetboot 
-    {
-       my $rsp = {};
-       $rsp->{error}->[0] = "rsetboot failure will not continue ";
-       xCAT::MsgUtils->message("E", $rsp, $callback);
-       return 1;
+    foreach my $line (@$res) {
+        $rsp->{data} ->[0] = $line;
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }
 
+    if ($rc != 0)   # we got an error with the rsetboot
+    {
+       my $rsp = {};
+       $rsp->{error}->[0] = "rsetboot failed on certain nodes.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+    }
+
+     
     # call "rpower" to start the node provision process
 
     #run rpower $noderange boot
@@ -377,20 +349,22 @@ sub rinstall
            arg     => \@rpowerarg
        },
        $subreq, -1, 1);
-                   
+
+    $rc = $::RUNCMD_RC;                   
     my $rsp = {};
-    $rc=$::RUNCMD_RC;
-    if ($rc ==0 ) {
-        foreach my $line (@$res) {
-          $rsp->{data} ->[0] = $line;
-          xCAT::MsgUtils->message("I", $rsp, $callback);
-        }      
-    }  else {  # error
-         foreach my $line (@$res) {
-            $rsp->{error} ->[0] = $line;
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-         }      
+    foreach my $line (@$res) {
+        $rsp->{data} ->[0] = $line;
+        xCAT::MsgUtils->message("I", $rsp, $callback);
     }      
+
+    if ($rc != 0)   # we got an error with the rsetboot
+    {
+       my $rsp = {};
+       $rsp->{error}->[0] = "rpower failed on certain nodes.";
+       xCAT::MsgUtils->message("E", $rsp, $callback);
+    }
+
+
     # Check if they asked to bring up a console ( -c) from rinstall  always for winstall
     $req->{startconsole}->[0] =0;
     if ($command =~ /rinstall/)
