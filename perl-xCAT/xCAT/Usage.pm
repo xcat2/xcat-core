@@ -286,6 +286,9 @@ my %usage = (
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC|CMM|IMM2|FSP]
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
+    "switchdiscover" =>
+"Usage: switchdiscover [-h|--help|-v|--version]
+       switchdiscover [<noderange>][-V|--verbose][-i adpt[,adpt..]][-w][-r|-x|-z][-n][-s scan_methods]",
   "rflash" =>
 "Usage: 
     rflash [ -h|--help|-v|--version]
@@ -481,6 +484,7 @@ my %version = (
     "chvm" => "$vers",
     "rmvm" => "$vers",
     "lsslp" => "$vers",
+    "switchdiscover" => "$vers",
     "rflash" => "$vers",
     "renergy" => "$vers",
     "lsflexnode" => "$vers",

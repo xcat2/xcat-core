@@ -23,6 +23,15 @@ fi
 mkdir -p $DRACUTMODDIR
 cp $DIR/* $DRACUTMODDIR
 
+# Remove the ipr(IBM Power RAID) stuff when building on x86_64
+if [ $BUILDARCH = "x86_64" ]; then
+    sed -i 's/dracut_install \/lib64\/libform.so.5//' $DRACUTMODDIR/install
+    sed -i 's/\/lib64\/libpanel.so.5//' $DRACUTMODDIR/install
+    sed -i 's/\/lib64\/libmenu.so.5//' $DRACUTMODDIR/install
+    sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
+    sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
+    sed -i 's/instmods ipr//' $DRACUTMODDIR/installkernel
+fi
 if [ "$HOSTOS" = "mcp" ]; then
         #Special handlings for MCP PPC64 platform building.
         if [ $BUILDARCH = "ppc64" ]; then

@@ -37,7 +37,7 @@ d-i partman-auto/method string regular
 d-i partman-lvm/device_remove_lvm boolean true
 d-i partman-md/device_remove_md boolean true
 
-#create the /tmp/partitioning based on the uefi or legacy bios 
+#create the /tmp/partitionfile based on the uefi or legacy bios 
 d-i partman/early_command string \
     set -x; \
     if [ -f /tmp/boot_disk ]; then \
@@ -59,11 +59,18 @@ d-i partman/early_command string \
         rm /tmp/devs-with-boot 2>/dev/null || true; \
     else \
         DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; \
-        if [[ "$DEV" == "" ]]; then DEV="sda"; fi; \
+        if [[ "$DEV" == "" ]]; then \
+            for line in $(list-devices disk); do \
+                DEV=$line; DEV=${DEV##/dev/}; break; \
+            done; \
+            if [[ "$DEV" == "" ]]; then \
+                DEV="sda"; \
+            fi \
+        fi; \
         echo "/dev/$DEV" > /tmp/boot_disk; \
     fi; \
     debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
-d-i partman-auto/expert_recipe_file string /tmp/partitioning
+d-i partman-auto/expert_recipe_file string /tmp/partitionfile
 
 # This makes partman automatically partition without confirmation, provided
 # that you told it what to do using one of the methods above.
@@ -141,5 +148,6 @@ d-i preseed/late_command string wget http://`cat /tmp/xcatserver`/install/autoin
      mount -o bind /dev /target/dev; \
      mount -o bind /dev/pts /target/dev/pts -t devpts; \
      mount -o bind /sys /target/sys; \
-     chroot /target /root/post.script
+     chroot /target /root/post.script; \
+     cp /target/etc/network/interfaces /etc/network/interfaces
 

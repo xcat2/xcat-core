@@ -643,7 +643,7 @@ noderes => {
  descriptions => {
   node => 'The node name or group name.',
   servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
-  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for POWER architecture, grub2-tftp and grub2-http for RHEL7 on Power and all the os deployment on Power LE. Notice: yaboot is not supported from rhels7 on Power,use grub2-tftp or grub2-http instead, the difference between the 2 is the file transfer protocol(i.e, http or tftp)',
+  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for ppc64 RHEL 6 and SLES 11, grub2 for ppc64 RHEL7 and all the Little-Endian os deployment on PowerKVM guests, petiboot for the PowerNV deployment',
   tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
   tftpdir => 'The directory that roots this nodes contents from a tftp and related perspective.  Used for NAS offload by using different mountpoints.',
   nfsserver => 'The NFS or HTTP server for this node (as known by this node).',
@@ -771,7 +771,7 @@ linuximage  => {
   permission => 'The mount permission of /.statelite directory is used, its default value is 755',
   dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
   crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
-  partitionfile => 'The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.',
+  partitionfile => 'The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/boot_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma "," ',
   driverupdatesrc => 'The source of the drivers which need to be loaded during the boot. Two types of driver update source are supported: Driver update disk and Driver rpm package. The value for this attribute should be comma separated sources. Each source should be the format tab:full_path_of_srouce_file. The tab keyword can be: dud (for Driver update disk) and rpm (for driver rpm). If missing the tab, the rpm format is the default. e.g. dud:/install/dud/dd.img,rpm:/install/rpm/d.rpm',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1739,6 +1739,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   osdistro=> { attrs => [], attrhash => {}, objkey => 'osdistroname' },
   osdistroupdate=> { attrs => [], attrhash => {}, objkey => 'osupdatename' },
   zone=> { attrs => [], attrhash => {}, objkey => 'zonename' },
+  switch=> { attrs => [], attrhash => {}, objkey => 'switch' },
   
 );
 
@@ -3759,6 +3760,67 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
         },
 
 );
+
+
+#############################
+#  switch object #
+#############################
+#     switch table          #
+#############################
+@{$defspec{switch}->{'attrs'}} = (
+        {attr_name => 'switch',
+                 tabentry => 'switches.switch',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmpusername',
+                 tabentry => 'switches.username',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmppassword',
+                 tabentry => 'switches.password',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'snmpversion',
+                 tabentry => 'switches.snmpversion',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'privacy',
+                 tabentry => 'switches.privacy',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'auth',
+                 tabentry => 'switches.auth',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'linkports',
+                 tabentry => 'switches.linkports',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'sshusername',
+                 tabentry => 'switches.sshusername',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'sshpassword',
+                 tabentry => 'switches.sshpassword',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'protocol',
+                 tabentry => 'switches.protocol',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'switchtype',
+                 tabentry => 'switches.switchtype',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'comments',
+                 tabentry => 'switches.comments',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+        {attr_name => 'disable',
+                 tabentry => 'switches.disable',
+                 access_tabentry => 'switches.switch=attr:switch',
+                 },
+         );
 
 ###################################################
 

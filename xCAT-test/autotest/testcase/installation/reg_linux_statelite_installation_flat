@@ -57,7 +57,7 @@ check:rc==0
 cmd:liteimg  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 
-cmd:nodeset $$CN statelite
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0

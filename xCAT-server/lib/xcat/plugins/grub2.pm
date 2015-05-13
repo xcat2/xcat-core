@@ -580,27 +580,36 @@ sub process_request {
                xCAT::MsgUtils->message("E", $rsp, $callback);       
                return; 
                }
+            chdir("$tftpdir/boot/grub2/");
+            foreach my $tmp_node (@{$osimagenodehash{$osimage}}) {
+                unless (-e "grub2-$tmp_node") {
+                    symlink("grub2.".$validarch, "grub2-$tmp_node"); 
+                }
+            }
             if ($do_dhcpsetup) {
                 if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-l','-s','filename = \"'.$grub2.'\";']},$callback);
+                         node=>\@{$osimagenodehash{$osimage}}}, $callback);
                 } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-s','filename = \"'.$grub2.'\";']},$callback);
+                         node=>\@{$osimagenodehash{$osimage}}},$callback);
                 }
             }
         } #end of foreach osimagenodehash
+
+        foreach my $tmp_node (@breaknetboot) {
+            if (-e "$tftpdir/boot/grub2/grub2-$tmp_node") {
+                unlink("$tftpdir/boot/grub2/grub2-$tmp_node");
+            }
+        }
         if ($do_dhcpsetup) {
           if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
               $sub_req->({command=>['makedhcp'],
                node=>\@breaknetboot,
-               arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+               arg=>['-l']},$callback);
           } else {
               $sub_req->({command=>['makedhcp'],
-               node=>\@breaknetboot,
-               arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+               node=>\@breaknetboot},$callback);
           }
        }
     }

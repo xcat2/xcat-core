@@ -655,6 +655,12 @@ sub process_request {
                 xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);
                return; 
             } 
+        } elsif ($osv !~ /fedora/i) {
+            my $rsp;
+            push @{$rsp->{data}},
+                  "stop configuration because yaboot DOES NOT work for $os provision, please change noderes.netboot=grub2 instead.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::YABOOT_callback);
+            return;
         }
     } #end of foreach osimagenodehash
   
@@ -671,10 +677,13 @@ sub process_request {
              if ($t_entry =~ /0|n|N/) { $do_dhcpsetup=0; }
           }
       #}
-
       if ($do_dhcpsetup) {
         if (%osimagenodehash) {
+            chdir("$tftpdir");
             foreach my $osimage (keys %osimagenodehash) {
+                unless (-e "$tftpdir/yb/node") {
+                    system("mkdir -p $tftpdir/yb/node");
+                }
                 my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');
                 my $osentry = $osimgent->{'osvers'};
 
@@ -694,16 +703,26 @@ sub process_request {
                 if (($osv =~ /rh/ and int($osn) >= 6) or 
                     ($osv =~ /sles/ and int($osn) >= 11)) {
                     my $fpath = "/yb/". $osentry."/yaboot"; 
+                    foreach my $tmp_node (@{$osimagenodehash{$osimage}}) {
+                        unless (-e "yb/node/yaboot-$tmp_node") {
+                            symlink("yb/$osentry/yaboot", "yb/node/yaboot-$tmp_node");
+                        }
+                    }
                     if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-l','-s','filename = \"'.$fpath.'\";']},$::YABOOT_callback);
+                         arg=>['-l']},$::YABOOT_callback);
                     } else {
                     $sub_req->({command=>['makedhcp'],
-                         node=>\@{$osimagenodehash{$osimage}},
-                         arg=>['-s','filename = \"'.$fpath.'\";']},$::YABOOT_callback);
+                         node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     }
                 } else {
+                    foreach my $tmp_node (@{$osimagenodehash{$osimage}}) {
+                        unless (-e "yb/node/yaboot-$tmp_node") {
+                            symlink("yaboot", "yb/node/yaboot-$tmp_node");
+                        }
+                    }
+
                     if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
                     $sub_req->({command=>['makedhcp'],arg=>['-l'],
                            node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
@@ -722,14 +741,18 @@ sub process_request {
                  node=>\@normalnodeset},$::YABOOT_callback);
             }
         }
+        foreach my $tmp_node (@breaknetboot)  {
+            if (-e "$tftpdir/yb/node/yaboot-$tmp_node") {
+                unlink("$tftpdir/yb/node/yaboot-$tmp_node");
+            }
+        }
         if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
             $sub_req->({command=>['makedhcp'],
              node=>\@breaknetboot,
-             arg=>['-l','-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
+             arg=>['-l']},$::YABOOT_callback);
         } else {
             $sub_req->({command=>['makedhcp'],
-             node=>\@breaknetboot,
-             arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$::YABOOT_callback);
+             node=>\@breaknetboot}, $::YABOOT_callback);
         }
      }
   }

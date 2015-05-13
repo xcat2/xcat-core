@@ -5,7 +5,7 @@ cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ &&  mkvm $$CN -s 15G; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 15G; fi
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -19,6 +19,7 @@ cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
+cmd:sleep 10
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
 check:output=~$$CN
 

@@ -616,6 +616,14 @@ sub addnode
                     $lstatements = 'if option vendor-class-identifier = \"ScaleMP\" { filename = \"vsmp/pxelinux.0\"; } else { filename = \"pxelinux.0\"; }'.$lstatements;
                 }
             }
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'yaboot') {
+            $lstatements = 'filename = \"/yb/node/yaboot-'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'grub2') {
+            $lstatements = 'filename = \"/boot/grub2/grub2-'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
+            $lstatements = 'option conf-file \"http://'.$nxtsrv.'/tftpboot/petitboot/'.$node.'\";'.$lstatements;
+        } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
+            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\"'.$lstatements;
         }
 
 
@@ -2033,7 +2041,14 @@ sub addnet6
             $idx++;
         }
         unless ($dhcp6conf[$idx] =~ /\} # $iface nic_end\n/) {
-                return 1;    #TODO: this is an error condition
+                $callback->(
+	            {
+                        error =>
+                            ["Could not add the subnet $net for interface $iface into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
+                            errorcode => [1]
+                    }
+                );
+                return 1;
         }
 
     }
@@ -2045,6 +2060,7 @@ sub addnet6
 
     my @netent = (
                    "  subnet6 $net {\n",
+                   "    authoritative;\n",
                    "    max-lease-time $dhcplease;\n",
                    "    min-lease-time $dhcplease;\n",
                    "    default-lease-time $dhcplease;\n",
@@ -2158,21 +2174,21 @@ sub addnet
             while ($idx <= $#dhcpconf)
             {
                 if ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
-            {
-                last;
-            }
-            $idx++;
+                {
+                    last;
+                }
+                $idx++;
             }
             unless ($dhcpconf[$idx] =~ /\} # $nic nic_end\n/)
             {
-                  $callback->(
-                      {
-                         error =>
-                            ["Could not add the subnet $net/$mask for nic $nic into $dhcpconffile."],
+                $callback->(
+	            {
+                        error =>
+                            ["Could not add the subnet $net for interface $nic into $dhcpconffile.\nPlease verify the xCAT database matches networks defined on this system."],
                             errorcode => [1]
-                      }
-                  );
-                return 1;    #TODO: this is an error condition
+                    }
+                );
+                return 1;
             }
         }
 
@@ -2326,6 +2342,7 @@ sub addnet
         }
         @netent = (
                    "  subnet $net netmask $mask {\n",
+                   "    authoritative;\n",
                    "    max-lease-time $dhcplease;\n",
                    "    min-lease-time $dhcplease;\n",
                    "    default-lease-time $dhcplease;\n"
@@ -2684,7 +2701,6 @@ sub newconfig
     my $passtab = xCAT::Table->new('passwd', -create => 1);
     push @dhcpconf, "#xCAT generated dhcp configuration\n";
     push @dhcpconf, "\n";
-    push @dhcpconf, "authoritative;\n";
     push @dhcpconf, "option conf-file code 209 = text;\n";
     push @dhcpconf, "option space isan;\n";
     push @dhcpconf, "option isan-encap-opts code 43 = encapsulate isan;\n";

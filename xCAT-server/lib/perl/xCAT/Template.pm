@@ -393,8 +393,8 @@ sub subvars {
                      $partcontent .= "/tmp/partscript\n";
                   }else{
                      # Put the code to decode the preseed recipe file
-                     #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partitioning\n";
-                     $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partitioning\n";
+                     #$partcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/partscript.enc\",\"rb\").read())' >/tmp/partitionfile\n";
+                     $partcontent .= "base64decode</tmp/partscript.enc >/tmp/partitionfile\n";
                     
                   }
                   #replace the #XCA_PARTMAN_RECIPE_SCRIPT#

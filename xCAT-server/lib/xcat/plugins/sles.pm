@@ -129,11 +129,11 @@ sub mknetboot
             {
                 $callback->(
                             {
-                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                             error => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], errorcode => [1]
                            }
                             );
                 # Do not print this warning message multiple times
-                last;
+                exit(1);
             }
         }
     }
@@ -776,11 +776,11 @@ sub mkinstall
             {
                 $callback->(
                            { 
-                             warning => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated. They should continue to work in this release, but have not been tested as carefully, and some new functions are not available with these options.  For full function and support, use \"nodeset <noderange> osimage=<osimage_name>\" instead."],
+                             error => ["The options \"install\", \"netboot\", and \"statelite\" have been deprecated, use \"nodeset <noderange> osimage=<osimage_name>\" instead."], errorcode => [1]
                            }
                            );
                 # Do not print this warning message multiple times
-                last;
+                exit(1);
             }
         }
     }

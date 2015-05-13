@@ -179,22 +179,22 @@ base64decode()
 }
 
 if [ -d /sys/firmware/efi ]; then
-    echo "ubuntu-efi ::" > /tmp/partitioning
-    echo "    512 512 1024 fat16" >> /tmp/partitioning
-    echo '    $iflabel{ gpt } $reusemethod{ } method{ efi } format{ }' >> /tmp/partitioning
-    echo "    ." >> /tmp/partitioning
+    echo "ubuntu-efi ::" > /tmp/partitionfile
+    echo "    512 512 1024 fat16" >> /tmp/partitionfile
+    echo '    $iflabel{ gpt } $reusemethod{ } method{ efi } format{ }' >> /tmp/partitionfile
+    echo "    ." >> /tmp/partitionfile
 else
-    echo "ubuntu-boot ::" > /tmp/partitioning
-    echo "100 50 100 ext3" >> /tmp/partitioning
-    echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitioning
-    echo "    ." >> /tmp/partitioning
+    echo "ubuntu-boot ::" > /tmp/partitionfile
+    echo "100 50 100 ext3" >> /tmp/partitionfile
+    echo '    $primary{ } $bootable{ } method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ /boot }' >> /tmp/partitionfile
+    echo "    ." >> /tmp/partitionfile
 fi
-echo "500 10000 1000000000 ext3" >> /tmp/partitioning
-echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ / }" >> /tmp/partitioning
-echo "    ." >> /tmp/partitioning
-echo "2048 512 300% linux-swap" >> /tmp/partitioning
-echo "    method{ swap } format{ }" >> /tmp/partitioning
-echo "    ." >> /tmp/partitioning
+echo "500 10000 1000000000 ext3" >> /tmp/partitionfile
+echo "    method{ format } format{ } use_filesystem{ } filesystem{ ext3 } mountpoint{ / }" >> /tmp/partitionfile
+echo "    ." >> /tmp/partitionfile
+echo "2048 512 300% linux-swap" >> /tmp/partitionfile
+echo "    method{ swap } format{ }" >> /tmp/partitionfile
+echo "    ." >> /tmp/partitionfile
 
 #XCA_PARTMAN_RECIPE_SCRIPT#
 #XCA_PARTMAN_DISK_SCRIPT#

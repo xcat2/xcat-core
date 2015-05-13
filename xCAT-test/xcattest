@@ -631,12 +631,13 @@ sub loadcase
 sub getnodeattr
 {
     my ($node, $attr) = @_;
-    my @output = runcmd("lsdef -t node -o $node -i $attr");
+    my @output = runcmd("XCATBYPASS=1 lsdef -t node -o $node -i $attr");
     if($::RUNCMD_RC){
         return "Unknown";
     }else{
         foreach my $output1 (@output){
             if($output1 =~ /$attr=(\w.+)/){
+                log_this("$attr is $1");
                 return $1;
             }
         }
