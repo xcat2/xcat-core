@@ -92,14 +92,6 @@ else {          # contact xcatd to expand noderange and get ipmi attrs
   @nodes = keys(%$nodeattrs);
 }
 
-my ($defaultuser, $defaultpw);
-if (!defined($username) || !defined($passwd)) {
-  ($defaultuser, $defaultpw) = getdefaultcredentials();
-  #if (!defined($username)) { $username = $user; }
-  #if (!defined($passwd)) { $passwd = $pw; }
-  if ($::VERBOSE) { print "default username=$defaultuser, passwd=$defaultpw\n"; }
-}
-
 my $children = 0;
 my $inputs = new IO::Select;
 my %pids; # pid => node
@@ -124,7 +116,7 @@ while (scalar(@retries)) {
   foreach (@nodes) {
     my $node=$_;
     my $ipmiattrs = $nodeattrs->{$node};
-    my $bmc = $ipmiattrs->{bmc};
+    my $bmc = $ipmiattrs->{bmcaddr};
     if (!defined($bmc)) {
       print "$node: the ipmi.bmc attribute is not defined, skipping.\n";
       next;
@@ -139,11 +131,9 @@ while (scalar(@retries)) {
     # precedence on the username and password is: cli option, ipmi table, passwd table
     my ($user, $pw);
     if (defined($username)) { $user = $username; }      # cli option
-    elsif (defined($ipmiattrs->{username})) { $user = $ipmiattrs->{username}; }
-    else { $user = $defaultuser; }
+    elsif (defined($ipmiattrs->{bmcuser})) { $user = $ipmiattrs->{bmcuser}; }
     if (defined($passwd)) { $pw = $passwd; }      # cli option
-    elsif (defined($ipmiattrs->{password})) { $pw = $ipmiattrs->{password}; }
-    else { $pw = $defaultpw; }
+    elsif (defined($ipmiattrs->{bmcpass})) { $pw = $ipmiattrs->{bmcpass}; }
     if ($::VERBOSE) { print "For node $node using bmc=$bmc, user=$user, pw=$pw\n"; }
     utilnode(\$child,$node,$bmc,$user,$pw,$batchfile,@ARGV);     # child is the fd of the child process
     $inputs->add($child);
@@ -305,8 +295,7 @@ sub getipmiattrs {
                 #SSL_verify_mode => 1,
              );
   die "Connection failure: $!\n" unless ($client);
-  my %cmdref = (command => 'getNodesAttribs', noderange => $noderange, table => 'ipmi');
-  push (@{$cmdref{attr}}, qw(bmc username password));
+  my %cmdref = (command => 'getipmicons', noderange => $noderange);
   $SIG{ALRM} = sub { die "No response getting ipmi attributes" };
   alarm(15);
   my $msg = XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
@@ -340,65 +329,5 @@ sub getipmiattrs {
   return $nodeattrs;
 }
 
-# Contact xcatd to get the default user/pw for ipmi in the xcat passwd table
-sub getdefaultcredentials {
-  my @data;
-  my @user = getpwuid($>);
-  my $homedir=$user[7];
-  my $client = IO::Socket::SSL->new(
-                PeerAddr=>$xcathost,
-                SSL_key_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
-                SSL_ca_file => $homedir."/.xcat/ca.pem",
-                SSL_use_cert => 1,
-                #SSL_verify_mode => 1,
-             );
-  die "Connection failure: $!\n" unless ($client);
-  #todo: use lissas new db api instead
-  my %cmdref = (command => 'tabdump', arg => 'passwd');
-  #push (@{$cmdref->{arg}}, 'passwd');
-  $SIG{ALRM} = sub { die "No response getting userid and password" };
-  alarm(15);
-  my $msg = XMLout(\%cmdref,RootName=>'xcatrequest', NoAttr=>1, KeyAttr => []);
-  if ($ENV{XCATXMLTRACE}) { print $msg; }
-  print $client $msg;
-  alarm(15);
-  my $response="";
-  while (<$client>) {
-    alarm(0);
-    $response .= $_;
-    if ($response =~ m/<\/xcatresponse>/) {
-      if ($ENV{XCATXMLTRACE}) { print $response; }
-      my $rsp=XMLin($response, ForceArray => ['node']);
-      $response='';
-      if ($rsp->{warning}) {
-        printf "Warning: ".$rsp->{warning}."\n";
-      }
-      if ($rsp->{error}) {
-        die ("ERROR: ".$rsp->{error}."\n");
-      } elsif ($rsp->{data}) {
-        @data=@{$rsp->{data}};
-      }
-      if ($rsp->{serverdone}) {
-        last;
-      }
-    }
-  }
-  close($client);
-
-  # go thru the data lines and find the ipmi row
-  my ($user, $pw);
-  foreach my $d (@data) {
-    #if ($::VERBOSE) { print "$d\n"; }
-    my @cols = split(',', $d);
-    if ($cols[0] eq '"ipmi"') {
-      ($user) = $cols[1] =~ /"(.*)"/;
-      ($pw) = $cols[2] =~ /"(.*)"/;
-      last;
-    }
-  }
-  if (!defined($user) || !defined($pw)) { $user = "USERID"; $pw = "PASSW0RD"; }
-  return ($user, $pw);
-}
 
 # vim: set et ts=2 sts=2 sw=2 :
