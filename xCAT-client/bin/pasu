@@ -1,11 +1,13 @@
 #!/usr/bin/perl
 #!/usr/bin/env perl
+# Lenovo(c) 2015 EPL license http://www.eclipse.org/legal/epl-v10.html
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-# Run the asu64 utility out of band to multiple nodes, either sequentially or in parallel
+# Run asu64 or iflash64 utility out of band to multiple nodes, either sequentially or in parallel
 BEGIN
 {
    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
+my $iam = $0;
 use strict;
 close(STDIN);
 open(STDIN,"<","/dev/null");
@@ -20,9 +22,13 @@ use xCAT::Utils;
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use Thread qw(yield);
-$::asucmd = '/opt/lenovo/toolscenter/asu/asu64';
-if (! -x $::asucmd) {
-  $::asucmd = '/opt/ibm/toolscenter/asu/asu64';
+if ($iam =~ /pasu/) {
+  $::utilcmd = '/opt/lenovo/toolscenter/asu/asu64';
+  if (! -x $::utilcmd) {
+    $::utilcmd = '/opt/ibm/toolscenter/asu/asu64';
+  }
+} elsif ($iam =~ /piflash/) {
+  $::utilcmd = '/opt/xcat/sbin/iflash64';
 }
 my $interface;
 my $username;
@@ -45,8 +51,8 @@ if (!GetOptions(
   "V|verbose" => \$::VERBOSE,
   'h|help' => \$help,
   ) || $help || ($batchfile && scalar(@ARGV)!=1) || (!$batchfile && scalar(@ARGV)<2) ) {
-  print "Usage: pasu [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
-  print "       pasu [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
+  print "Usage: $iam [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
+  print "       $iam [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
   exit;
 }
 my %nodehdl;
@@ -107,8 +113,8 @@ if ($interface) {
   }
 }
 
-# Fork the processes for running asu for each node
-#todo: i thought we would need retry logic because i thought asu had problems running
+# Fork the processes for running utility for each node
+#todo: i thought we would need retry logic because i thought utility had problems running
 #      in parallel.  So far (up to 24 nodes) have not had any problem, but keeping the
 #      logic in just in case.
 @retries = @nodes;
@@ -139,8 +145,7 @@ while (scalar(@retries)) {
     elsif (defined($ipmiattrs->{password})) { $pw = $ipmiattrs->{password}; }
     else { $pw = $defaultpw; }
     if ($::VERBOSE) { print "For node $node using bmc=$bmc, user=$user, pw=$pw\n"; }
-    #asunode(\$child,$node,$username,$passwd,@ARGV[1 .. $#ARGV]);
-    asunode(\$child,$node,$bmc,$user,$pw,$batchfile,@ARGV);     # child is the fd of the child process
+    utilnode(\$child,$node,$bmc,$user,$pw,$batchfile,@ARGV);     # child is the fd of the child process
     $inputs->add($child);
     $nodehdl{$child} = $node;
   }
@@ -159,12 +164,12 @@ my $exitcode=0;
 foreach (values %pids) {
     my $possible_codes = join ",",keys %foundcodes;
     unless (defined $exitcodes{$_}) {
-        print stderr "$_: *** pasu missed exit code, probably one of the following: $possible_codes\n";
+        print stderr "$_: *** $iam missed exit code, probably one of the following: $possible_codes\n";
     }
 }
 foreach (keys %exitcodes) {
     if ($exitcodes{$_}) {
-        print stderr "$_: *** asu exited with error code ".$exitcodes{$_}.".\n";
+        print stderr "$_: *** $::utilcmd exited with error code ".$exitcodes{$_}.".\n";
         $exitcode++;
     }
 }
@@ -199,8 +204,11 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
         if ($::VERBOSE) { print "Need to retry $nodehdl{$readyh}\n"; }
         push @retries, $nodehdl{$readyh};
       } elsif ($::DONOTFILTER || ($line!~/IBM Advanced Settings Utility version/i &&
+                             $line!~/Lenovo Advanced Settings Utility version/i &&
                              $line!~/Licensed Materials - Property of IBM/i &&
+                             $line!~/Licensed Materials - Property of Lenovo/i &&
                              $line!~/\(C\) Copyright IBM Corp. \d+-\d+ All Rights Reserved/i &&
+                             $line!~/\(C\) Copyright Lenovo Corp. \d+-\d+ All Rights Reserved/i &&
                              $line!~/Connected to IMM at IP address/i )) {
         print $nodehdl{$readyh}.": ".$line."\n";
       }
@@ -213,8 +221,7 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
   return $rc;
 }
 
-# Fork the asu cmd for 1 node
-sub asunode {
+sub utilnode {
   my $out = shift;          # this is a reference to the child file descriptor
   my $node = shift;
   my $bmc = shift;
@@ -228,7 +235,7 @@ sub asunode {
   } else {
     foreach my $a (@_) { $args .= ' ' . xCAT::Utils->quote($a); }
   }
-  my $cmd = "$::asucmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
+  my $cmd = "$::utilcmd $args --host '$bmc' --user '$username' --password '$passwd' 2>&1 |";
   if ($::VERBOSE) { print "forking $cmd\n"; }
   my $pid = open($$out, $cmd);
   $pids{$pid} = $node;
