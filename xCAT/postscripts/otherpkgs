@@ -747,7 +747,6 @@ EOF`
 		    fi
 		elif [ $hasapt -eq 1 ]; then 
 		    #use apt
-                    fn=`echo $fn| tr "." ":"`
 			apt_get_update_if_repos_changed $REPOFILE
 			result=`apt-cache show $fn 2>&1`
 
