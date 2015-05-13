@@ -658,6 +658,19 @@ my %URIdef = (
                 outhdler => \&noout,
             }
         },
+        bmcdiscover => {
+            desc => "[URI:/services/bmcdiscover] - The bmc which does support nmap in the xCAT cluster.",
+            matcher => '^/services/bmcdiscover/[^/]+$',
+            GET => {
+                desc => "Get all the bmc alive.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get all the bmc which do not support slp in the network.|",
+                cmd => "bmcdiscover",
+                fhandler => \&bmclisthdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
         dhcp => {
             desc => "[URI:/services/dhcp] - The dhcp service resource.",
             matcher => '^/services/dhcp$',
@@ -808,7 +821,7 @@ my %URIdef = (
             POST => {
                 desc => "Create the osimage resources base on the parameters specified in the Data body.",
                 #usage => "|$usagemsg{objchparam} DataBody: {iso:isoname\\file:filename\\node:noderange,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
-                usage => "|$usagemsg{objchparam} DataBody: {iso:isopath,file:filename,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
+                usage => "|$usagemsg{objchparam} DataBody: {iso:isoname\\file:filename,params:[{attr1:value1,attr2:value2}]}|$usagemsg{non_getreturn}|",
                 example1 => "|Create osimage resources based on the ISO specified|POST|/osimages {\"iso\":\"/iso/RHEL6.4-20130130.0-Server-ppc64-DVD1.iso\"}||",
                 example2 => "|Create osimage resources based on an xCAT image or configuration file|POST|/osimages {\"file\":\"/tmp/sles11.2-x86_64-install-compute.tgz\"}||",
                 # TD: the imgcapture need to be moved to nodes/.*/osimages
@@ -884,7 +897,7 @@ my %URIdef = (
             matcher => '^\/osimages\/[^\/]*/instance$',
             POST => {
                 desc => "Operate the instance of the osimage {imgname}.",
-                usage => "|$usagemsg{objchparam} DataBody: {action:gen OR pack OR export,params:[{attr1:value1,attr2:value2...}]}|$usagemsg{non_getreturn}|",
+                usage => "|$usagemsg{objchparam} DataBody: {action:gen\\pack\\export,params:[{attr1:value1,attr2:value2...}]}|$usagemsg{non_getreturn}|",
                 example1 => "|Generates a stateless image based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"gen\"}||",
                 example2 => "|Packs the stateless image from the chroot file system based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"pack\"}||",
                 example3 => "|Exports an xCAT image based on the specified osimage|POST|/osimages/sles11.2-x86_64-install-compute/instance {\"action\":\"export\"}||",
@@ -1512,6 +1525,62 @@ sub defout_remove_appended_type {
     }
 }
 
+#handle the output for bmcdiscover command
+#handle the input like
+#
+#$VAR1 = [
+#          {
+#            'info' => [
+#                      'bmc_1'
+#                    ]
+#          },
+#          {
+#            'info' => [
+#                      'bmc_2'
+#                    ]
+#          },
+#          {
+#            'info' => [
+#                      'bmc_3'
+#                    ]
+#          }
+#        ];
+#
+# ===msg format
+#  bmc_1
+#  bmc_2
+#  bmc_3
+# ---
+#
+#TO
+# ---
+# [
+#   "bmc_1",
+#   "bmc_2",
+#   "bmc_3"
+# ]
+
+#
+sub defout_remove_appended_info {
+    my $data = shift;
+
+    my $json;
+    foreach my $d (@$data) {
+        my $jsonnode;
+        my $lines = $d->{info};
+        foreach my $l (@$lines) {
+          #  if ($l =~ /^(\S*)\s+\(.*\)$/) {    # start new node
+                push (@{$json}, $l);
+          #  }
+        }
+    }
+    if ($json) {
+        addPageContent($JSON->encode($json), 1);
+    }
+}
+
+
+
 # hanlde the output which has the node irrelevant message (e.g. the output for updatenode command)
 # handle the input like  
 # ===raw xml input
@@ -2130,6 +2199,58 @@ sub tablenodehdl {
     return $responses;
 }
 
+#get bmc list for bmcdiscover
+sub bmclisthdl {
+
+    my $params = shift;
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    my $m_value;
+    my $ip_range;
+    # the array elements for @urilayers are:
+    # 0 - 'bmcdiscover'
+    # 1 - <key-val-list>  (optional)
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+
+    # get method and ip_range
+    if (defined($urilayers[2])) 
+    {
+            my @keyvals = split(/,/, $urilayers[2]);
+            foreach my $kv (@keyvals) 
+            {
+                my ($key, $value) = split(/\s*=\s*/, $kv, 2);
+                if ($key eq "method")
+                {
+                    $m_value=$value;   
+                }
+                elsif ($key eq "iprange")
+                {
+                    $ip_range=$value;
+                }
+            }
+    }
+
+
+    if ($params->{'resourcename'} eq "bmcdiscover") {
+        if (isGET()) {
+            push @args, "-m";
+            push @args, $m_value;
+            push @args, "-r";
+            push @args, $ip_range;
+        }
+
+    }
+
+    push @{$request->{arg}}, @args;
+    my $req = genRequest();
+    my $responses = sendRequest($req);
+
+    return $responses;
+
+}
 
 # get attrs of tables for keys
 sub tablerowhdl {
