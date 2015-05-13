@@ -369,8 +369,7 @@ unless ($onlyinitrd) {
    if ($pkglist) {
        $updates{'pkglist'} = $pkglist if ($tempfile);
    } else {
-       print "Unable to find package list for $profile!";
-       exit 1;
+       xdie "Unable to find package list for $profile!";
    }
 
    my %pkg_hash=imgutils::get_package_names($pkglist);
@@ -380,8 +379,7 @@ unless ($onlyinitrd) {
         my $pkgnames = "";
         foreach (keys(%{$pkg_hash{$pass}})) {
             if($_ eq "INCLUDEBAD")  {
-               print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
-               exit 1;
+               xdie "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
             }
 
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
@@ -406,8 +404,7 @@ unless ($onlyinitrd) {
                         }
                     }
                     if ($found eq 0) {
-                        print "Cannot find the kernel with version $kernelver.\n";
-                        exit 1;
+                        xdie "Cannot find the kernel with version $kernelver.\n";
                     }
                     push @npa, $kernelname;
                 }
@@ -434,8 +431,7 @@ unless ($onlyinitrd) {
         print "$envlist $aptgetcmdby install $pkgnames\n";
         my $rc = system("$envlist $aptgetcmdby install --allow-unauthenticated $pkgnames");
         if ($rc) { 
-            print "Failed to install packages $pkgnames\n";
-            exit 1;
+            xdie "Failed to install packages $pkgnames\n";
         }
     }
 
@@ -492,9 +488,7 @@ unless ($onlyinitrd) {
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if($_ eq "INCLUDEBAD")  {
-             #print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
              xdie "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
-             #  exit 1;
             }
 
             if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
@@ -554,8 +548,6 @@ unless ($onlyinitrd) {
 	      print "$envlist $aptgetcmd\n"; 
 	      my $rc = system("$envlist $aptgetcmd");
 	      if ($rc) { 
-		  #print "apt-get invocation failed\n";
-		  #exit 1;
 		  xdie "apt-get invocation failed\n";
 	      }
           } else {
