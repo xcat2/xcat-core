@@ -500,6 +500,35 @@ sub addnode
         {
             $guess_next_server = 1;
         }
+        if ($nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
+            if ($guess_next_server) {
+                my $node_server = undef;
+                if ($nrent->{xcatmaster}) {
+                    $node_server = $nrent->{xcatmaster};
+                } elsif ($nrent->{servicenode}) {
+                    $node_server = $nrent->{servicenode};
+                }
+                unless($node_server) {
+                    $nxtsrv = xCAT::NetworkUtils->my_ip_facing($node);
+                    unless($nxtsrv) {
+                        $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                        return;
+                    }
+                } else {
+                    my $tmp_server = inet_aton($node_server);
+                    unless($tmp_server) {
+                        $callback->({ error => ["Unable to resolve the tftpserver for node"], errorcode => [1]});
+                        return;
+                    }
+                    $nxtsrv = inet_ntoa($tmp_server);
+                }
+                unless ($nxtsrv) {
+                    $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                    return;
+                }
+                $guess_next_server = 0;
+            }
+        }
 
         #else {
         # $nrent = $nrtab->getNodeAttribs($node,['servicenode']);
