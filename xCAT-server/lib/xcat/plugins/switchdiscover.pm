@@ -8,11 +8,13 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
-use strict;
 use Getopt::Long;
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::Utils;
+use XML::Simple;
+no strict;
+use Data::Dumper;
 
 #global variables for this module
 my %globalopt;
@@ -131,7 +133,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r n range=s s=s))) {
+            qw(h|help V|Verbose v|version x z w r n range=s s=s))) {
         return( usage() );
     }
 
@@ -146,6 +148,9 @@ sub parse_args {
         unless (@filternodes) {
             return(usage( "Invalid Argument: $ARGV[0]" ));
         }
+		if ( exists( $opt{range} )) {
+			return(usage( "--range flag cannot be used with noderange." ));
+		}
     } elsif ( scalar(@ARGV) > 1 ) {
         return(usage( "Invalid flag, please check and retry." ));
     }
@@ -182,12 +187,10 @@ sub parse_args {
 	}
 
     #############################################
-    # Check the validation of -i option
+    # Check the --range ip range option
     #############################################
-    if ( exists( $opt{i} )) {
-        foreach ( split /,/, $opt{i} ) {
-        }
-        $globalopt{i} = $opt{i};
+    if ( exists( $opt{range} )) {
+        $globalopt{range} = $opt{range};
     }
 
     #############################################
@@ -218,12 +221,6 @@ sub parse_args {
         $globalopt{z} = 1;
     }
 
-    #########################################################
-    # only list the nodes that discovered for the first time
-    #########################################################
-    if ( exists( $opt{n} )) {
-        $globalopt{n} = 1;
-    }
 
     #########################################################
     # only list the nodes that discovered for the first time
@@ -307,6 +304,7 @@ sub process_request {
 		no strict;
 		my $fn = $global_scan_type{$st};
 		my $result = &$fn(\%request, $callback);
+		print "switches=" . Dumper($result);
 	}
 		
 
@@ -326,17 +324,61 @@ sub process_request {
 		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
 		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
+       returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
 sub lldp_scan {
     my $request  = shift;
 
 	send_msg($request, 0, "Discovering switches using lldpd...");
-	my %switches = (
-		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
-		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
-     );
-	return %switches
+
+    # get the PID of the currently running lldpd if it is running.
+    # If it is not running start it up.
+    my $pid;
+    chomp($pid= `ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'`);
+	unless($pid){
+        my $dcmd = "lldpd -c -s -e -f";
+        my $outref = xCAT::Utils->runcmd($dcmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            send_msg($request, 1, "Could not start lldpd process. The command was: $dcmd" );
+            return 1;
+        }
+        # TODO: how to determin if the lldpd has done all the scanning or not?
+        xCAT::Utils->runcmd("sleep 30");
+	}
+
+    #now run the lldpcli to collect the data
+	my $ccmd = "lldpcli show neighbors -f xml";
+	my $result = xCAT::Utils->runcmd($ccmd, 0);
+	if ($::RUNCMD_RC != 0)
+	{
+		send_msg($request, 1, "Could not start lldpd process. The command was: $ccmd" );
+		return 1;
+	}
+    send_msg($request, 0, $result);
+    my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
+	my $switches; 
+	if ($result_ref) {
+		if (exists($result_ref->{interface})) {
+			my $ref1 = $result_ref->{interface};
+            foreach my $interface (@$ref1) {
+				if (exists($interface->{chassis})) {
+					my $chassis = $interface->{chassis}->[0];	
+					my $ip = $chassis->{'mgmt-ip'}->[0]->{content};
+					if ($ip) {
+						my $name = $chassis->{name}->[0]->{content};
+						my $id =  $chassis->{id}->[0]->{content};
+						my $desc = $chassis->{descr}->[0]->{content};
+						$switches->{$ip}->{name} = $name;
+						$switches->{$ip}->{mac} =  $id;
+						$switches->{$ip}->{vendor} = $desc;
+					}
+				}
+			}
+		}
+	}
+	return $switches
 }
 
 
@@ -352,17 +394,18 @@ sub lldp_scan {
 		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
 		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
+       returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
 sub nmap_scan {
     my $request  = shift;
 
 	send_msg($request, 0, "Discovering switches using nmap...");
-	my %switches = (
+	my $switches = {
 		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
 		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
-     );
-	return %switches
+     };
+	return $switches
 }
 
 
@@ -379,17 +422,18 @@ sub nmap_scan {
 		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
 		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
+       returns 1 if there are errors occurred.
 =cut
 #--------------------------------------------------------------------------------
 sub snmp_scan {
     my $request  = shift;
 
 	send_msg($request, 0, "Discovering switches using snmp...");
-	my %switches = (
+	my $switches = {
 		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
 		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
-     );
-	return %switches
+     };
+	return $switches
 }
 
 1;
