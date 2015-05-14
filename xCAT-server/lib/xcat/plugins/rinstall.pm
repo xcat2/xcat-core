@@ -412,18 +412,13 @@ sub usage
     my $rsp = {};
     $rsp->{data}->[0] = "$command usage:";
     if ($command =~ /rinstall/) {
-      $rsp->{data}->[1] = " [-o|--osver] [-p|--profile] [-a|--arch]  [-c|--console] <noderange>";
-    } else { # winstall
-      $rsp->{data}->[1] = " [-o|--osver] [-p|--profile] [-a|--arch]  <noderange>";
-    }
-    if ($command =~ /rinstall/) {
-      $rsp->{data}->[2] = " [-O|--osimage] [-c|--console] <noderange>";
+      $rsp->{data}->[1] = " [-O|--osimage] [-c|--console] <noderange>";
     } else {  # wininstall
-      $rsp->{data}->[2] = " [-O|--osimage] <noderange>";
+      $rsp->{data}->[1] = " [-O|--osimage] <noderange>";
     }
 
-    $rsp->{data}->[3] = " [-h|--help]";
-    $rsp->{data}->[4] = " [-v|--version]";
+    $rsp->{data}->[2] = " [-h|--help]";
+    $rsp->{data}->[3] = " [-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 }
 
