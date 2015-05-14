@@ -7,7 +7,7 @@
 #
 #  You can run the following commands on MN:
 #       updatenode noderange confignics
-#       updatenode noderange "confignics -s" (this one configures the installation nic also)
+#       updatenode noderange "confignics -s" (configures the installation nic by default and no need to configure the install nic in nics table)
 #
 #
 #=cut
@@ -209,11 +209,15 @@ fi
 bool_exit_flag=0
 #check the required attributes
 if [ -z "$NICIPS" ];then
-    logger -t xcat -p local4.info "confignics: nicips attribute is not defined. "
-    echo "confignics on $NODE: nicips attribute is not defined. "
-    exit 0
+   if [ $bool_cfg_inst_nic -eq 1 ];then
+       logger -t xcat -p local4.info "confignics: configure the install nic. "
+       echo "confignics on $NODE:configure the install nic. "
+   else
+       logger -t xcat -p local4.info "confignics: nicips attribute is not defined. "
+       echo "confignics on $NODE: nicips attribute is not defined. "
+       exit 0
+   fi
 fi
-
 splitconfig "$NICIPS"
 splitconfig "$NICCUSTOMSCRIPTS"
 
