@@ -2908,12 +2908,13 @@ sub fetchParameters {
         if (ref($phash) ne 'HASH') { error("put or post data must be a json object (hash/dict).", $STATUS_BAD_REQUEST); }
 
         # if any general parms are in the put/post data, move them to genparms
-        foreach my $k (keys %$phash) {
-            if (grep(/^$k$/, @generalparamlist)) {
-                $genparms->{$k} = $phash->{$k};
-                delete($phash->{$k});
-            }
-        }
+        # Do not think this is neccessary and it caused the issue that set any 'password' key would fail.
+    #    foreach my $k (keys %$phash) {
+    #        if (grep(/^$k$/, @generalparamlist)) {
+    #            $genparms->{$k} = $phash->{$k};
+    #            delete($phash->{$k});
+    #        }
+    #    }
     }
     else { $phash = {}; }
 
