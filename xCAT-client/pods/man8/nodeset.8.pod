@@ -4,7 +4,7 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]|I<shell>|I<shutdown>]
+B<nodeset> [I<noderange>] [I<boot>|I<stat>|I<iscsiboot>|I<offline>|I<runcmd=bmcsetup>|I<osimage[=<imagename>>]|I<shell>|I<shutdown>]
 
 B<nodeset> I<noderange> I<osimage=<imagename>> [I<--noupdateinitrd>] [I<--ignorekernelchk>]
 
@@ -42,24 +42,6 @@ A user can supply their own scripts to be run on the mn or on the service node (
 =item B<boot>
 
 Instruct network boot loader to be skipped, generally meaning boot to hard disk
-
-=item B<install>|B<install=profilename>|B<install=<os-architecture-profilename>>
-
-Prepare server for installing a node according to the table configuration.  This will
-typically mean an unattended install file is created (i.e. kickstart or autoyast),
-install resources will be verified in tftp and the bulk transfer method (http, ftp, or nfs for example), and the boot loader configuration file will be written.
-Note: this option has been deprecated and will be removed in a future release.  You should change to using the osimage option instead.
-
-
-=item B<netboot>|B<netboot=profilename>|B<netboot=<os-architecture-profilename>>
-
-Prepare server for deploying diskless nodes. With the diskless solution, the os image will reside in the RAM of the node. 
-Note: this option has been deprecated and will be removed in a future release.  You should change to using the osimage option instead. 
-
-=item B<statelite>|B<statelite=profilename>|B<statelite=<os-architecture-profilename>>
-
-Prepare server for deploying statelite nodes. Statelite provides an efficient and flexible diskless solution because most of the OS image is NFS mounted read-only, but a configurable list of directories and files can be read-write. The read-write files can either be persistent across reboots, or volatile (restoring to pristine state after reboot). The configuration can be  done through B<litefile>, B<litetree> and B<statelite> tables. 
-Note: this option has been deprecated and will be removed in a future release.  You should change to using the osimage option instead.
 
 =item B<offline>
 

@@ -8,8 +8,6 @@ B<genimage>
 
 B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<--onlyinitrd>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] [B<--ignorekernelchk>] [B<--noupdate>] I<imagename>
 
-B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<--onlyinitrd>]  [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<--permission> I<permission>] [B<--interactive>] [B<--dryrun>] [B<--noupdate>]
-
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -18,27 +16,7 @@ B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 Generates a stateless and a statelite image that can be used to boot xCAT nodes in a diskless mode.  
 
-The I<imagename> format of the command is recommended.  When specified, genimage will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings, and will be written back to the osimage definition.
-
-If I<imagename> is not specified (old method):
-   -  the default packages included (and excluded) in the image are specified by 
-/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].pkglist and
-
-/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].exlist. 
-
-   - Additional packages that are not from the os distro can be specified in a 
-
-/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].otherpkgs.pkglist file.
-
-   - Customized package list files will override these files and can be specified under /install/custom/netboot/<os> directory. 
-   - The generated image will be put in /install/netboot/<osver>/<arch>/<profile> directory.
-
-   - osimage definitions will be created in the I<linuximage> and I<osimage> tables.  The newly generated image names will have the following format:
-
-       for stateless: <osver>-<arch>-netboot-<profile>
-
-       for statelite: <osver>-<arch>-statelite-<profile>
-
+genimage will use the osimage definition for information to generate this image.  Additional options specified on the command line will override any corresponding previous osimage settings, and will be written back to the osimage definition.
 
 If B<genimage> runs on the management node, both the I<osimage> table and I<linuximage> table will be updated with the given values from the options.
 
@@ -112,7 +90,6 @@ Regenerates the initrd for a stateless image to be used for a diskless install.
 
 Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/stateli
 te mode.
-The generated initrd will be put in /install/netboot/<OS>/<arch>/<profile>.
 
 The B<genimage --onlyinitrd> command will generate two initial ramdisks, one is B<initrd-statelite.gz> for B<statelite> mode, the other one is B<initrd-stateless.gz> for B<stateless> mode.
 
@@ -204,36 +181,6 @@ To generate an image and have yum/zypper prompt for responses:
 To generate an image, replacing some values in the osimage definition:
 
   genimage -i eth0 -n tg3 myimagename
-
-=item 6
-(old method) To generate a fedora8 image for a compute node architecture
-x86_64 and place it in the
-/install/netboot/fedora8/x86_64/compute/rootimg directory:
-
-  genimage -i eth0 -o fedora8 -p compute
-
-=item 7
-(old method)
-
-  genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute
-
-=item 8
-(old method)
-
-  genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --interactive
-
-=item 9
-(old method)
-
-  genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777
-
-=item 10
-(old method)
-To regenerate the initrd for a fedora8 image for a compute node architecture x86_64 and place it in the /install/netboot/fedora8/x86_64/compute/rootimg directory:  
-
-  cd /opt/xcat/share/xcat/netboot/fedora 
-  ./genimage --onlyinitrd -i eth0 -n tg3,bnx2 -o fedora8 -p compute
-
 
 =back
 

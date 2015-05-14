@@ -8,9 +8,6 @@ I<packimage [-h| --help]>
 
 I<packimage  [-v| --version]>
 
-
-I<packimage [-o OS] [ -p profile] [-a architecture] [-m method]>
-
 I<packimage imagename>
 
 =head1 DESCRIPTION
@@ -20,8 +17,7 @@ sent to the node for a diskless install.
 The install dir is setup by using "installdir" attribute set in the site table.
 The nodetype table "profile" attribute for the node should reflect the profile of the install image.
 
-If no I<imagename> is specified, this command uses the os image definition files from /install/custom/netboot/[os] directory first. If not found, it falls back to the default directory  /opt/xcat/share/xcat/netboot/[os]. 
-If a I<imagename> is specified, this command will get all the necessary os image definition files from the I<osimage> and I<linuximage> tables.
+This command will get all the necessary os image definition files from the I<osimage> and I<linuximage> tables.
 
 =head1 Parameters
 
@@ -51,11 +47,10 @@ B<-m>          Method (default cpio)
 
 =head1 EXAMPLES
 
-1. To pack a fedora8 image for a compute node architecture x86_64 and place it in the  /install/netboot/fedora8/x86_64/compute/rootimg.gz file enter:
+1. To pack the osimage rhels7.1-x86_64-netboot-compute:
 
-I<packimage  -o fedora8 -p compute -a x86_64>
+I<packimage rhels7.1-x86_64-netboot-compute>
 
-This would use the package information from the /install/custom/netboot/fedora/compute* files first. If not found it uses /opt/xcat/share/xcat/netboot/fedora/compute* files.
 
 =head1 FILES
 
