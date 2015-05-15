@@ -300,14 +300,65 @@ sub process_request {
 	if (exists($globalopt{scan_types})) {
 		@scan_types = @{$globalopt{scan_types}};
 	}
+	
+	my $all_result;
 	foreach my $st (@scan_types) {
 		no strict;
 		my $fn = $global_scan_type{$st};
-		my $result = &$fn(\%request, $callback);
-		print "switches=" . Dumper($result);
+		my $tmp_result = &$fn(\%request, $callback);
+		$all_result->{$st} = $tmp_result;
+	}
+
+    #consolidate the results by merging the swithes with the same ip
+	my $result;
+	foreach my $st (keys %$all_result) {
+		my $tmp_result = $all_result->{$st};
+		foreach my $key (keys %$tmp_result) {
+			if (! exists($result->{$key})) {
+				$result->{$key} = $tmp_result->{$key};
+			} else {
+				if (exists($tmp_result->{$key}->{name})) {
+					$result->{$key}->{name} = $tmp_result->{$key}->{name};
+				}
+				if (exists($tmp_result->{$key}->{mac})) {
+					$result->{$key}->{mac} = $tmp_result->{$key}->{mac};
+				}
+				if (exists($tmp_result->{$key}->{vendor})) {
+					$result->{$key}->{vendor} .= $tmp_result->{$key}->{vendor};
+				}
+			}
+		}
 	}
 		
+	#display header
+    $format = "%-12s\t%-12s\t%-20.20s\t%-12s";
+	$header = sprintf $format, "ip", "name","vendor", "mac";
+	send_msg(\%request, 0, $header);
+	my $sep = "------------";
+	send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
 
+	#display switches one by one
+	foreach my $key (keys(%$result)) {
+		my $name="   ";
+		my $mac = "   ";
+		my $vendor = "   ";
+		if (exists($result->{$key}->{name})) {
+			$name = $result->{$key}->{name};
+		}
+		if (exists($result->{$key}->{mac})) {
+			$mac = $result->{$key}->{mac};
+		}
+		if (exists($result->{$key}->{vendor})) {
+			$vendor = $result->{$key}->{vendor};
+		}
+		my $msg = sprintf $format, $key, $name, $vendor, $mac;
+		send_msg(\%request, 0, $msg);
+	}
+
+    # writes the data into xCAT db
+	if (exists($globalopt{w})) {
+		send_msg(\%request, 0, "Writing the data into xCAT DB....");
+	}
     return;
 
 }
@@ -356,7 +407,12 @@ sub lldp_scan {
 		send_msg($request, 1, "Could not start lldpd process. The command was: $ccmd" );
 		return 1;
 	}
-    send_msg($request, 0, $result);
+
+    #display the raw output
+	if (exists($globalopt{r})) {
+		send_msg($request, 0, "$result\n\n");
+	}
+
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
 	my $switches; 
 	if ($result_ref) {
