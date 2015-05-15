@@ -1883,6 +1883,13 @@ sub actionhdl {
         } elsif ($paramhash->{'value'}) {
             push @args, $urilayers[3]."=".$paramhash->{'value'};
         }
+        if (defined($urilayers[3]) and $urilayers[3] =~ /^account/) {
+            foreach my $key (keys %$paramhash) {
+                if (($key ne '') and (exists($paramhash->{$key}))) {
+                    push @args, $key."=".$paramhash->{$key};
+                }
+            }
+        }
     } elsif ($params->{'resourcename'} eq "eventlog") {
         if (isGET()) {
             push @args, 'all';
