@@ -19,6 +19,7 @@ use Data::Dumper;
 #global variables for this module
 my %globalopt;
 my @filternodes;
+my @iprange;
 my %global_scan_type = (
     lldp => "lldp_scan",
     nmap => "nmap_scan",
@@ -191,6 +192,10 @@ sub parse_args {
     #############################################
     if ( exists( $opt{range} )) {
         $globalopt{range} = $opt{range};
+        my @ips = split /,/, $opt{range};
+        foreach (@ips)  {
+            push @iprange, $_;
+        }
     }
 
     #############################################
@@ -456,12 +461,49 @@ sub lldp_scan {
 sub nmap_scan {
     my $request  = shift;
 
-	send_msg($request, 0, "Discovering switches using nmap...");
-	my $switches = {
-		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
-		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
-     };
-	return $switches
+    my $ccmd;
+
+    send_msg($request, 0, "Discovering switches using nmap...");
+
+    if ( scalar(@filternodes) eq 0)
+    {
+        $ccmd = "/usr/bin/nmap -sn -oX - @iprange";
+    } else {
+        $ccmd = "/usr/bin/nmap -sn -oX - @filternodes";
+    }
+    print $ccmd;
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        send_msg($request, 1, "Could not process this command: $ccmd" );
+        return 1;
+    }
+    my $result_ref = XMLin($result, ForceArray => 1);
+    my $switches;
+    if ($result_ref) {
+        if (exists($result_ref->{host})) {
+            my $host_ref = $result_ref->{host};
+            foreach my $host ( @$host_ref ) {
+                my $ip;
+                if (exists($host->{address})) {
+                    my $addr_ref = $host->{address};
+                    foreach my $addr ( @$addr_ref ) {
+                        my $type = $addr->{addrtype};
+                        if ( $type ne "mac" ) {
+                            $ip = $addr->{addr};
+                        }
+                        if ($addr->{vendor}) {
+                            $switches->{$ip}->{mac} = $addr->{addr};
+                            $switches->{$ip}->{vendor} = $addr->{vendor};
+                            $switches->{$ip}->{name} = $host->{hostname};
+                        }
+                    } #end for each address
+                }
+            } #end for each host
+        }
+    }
+
+    return $switches
 }
 
 
