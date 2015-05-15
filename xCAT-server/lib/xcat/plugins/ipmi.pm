@@ -509,16 +509,20 @@ sub on_bmc_connect {
 	} elsif($command eq "rsetboot") {
 		return setboot($sessdata);
 	} elsif($command eq "rspconfig") {
-       shift @{$sessdata->{extraargs}};
+            shift @{$sessdata->{extraargs}};
+
+            # set username or/and password for specified userid #
+            if ($sessdata->{subcommand} =~ /userid|username|password/) {
+                setpassword($sessdata);
+            } else {
        if ($sessdata->{subcommand} =~ /=/) {
-           if ($sessdata->{subcommand} =~ /password/) {
-               setpassword($sessdata);
-           } else {
-               setnetinfo($sessdata);
-           }
+           setnetinfo($sessdata);
        } else {
            getnetinfo($sessdata);
        }
+            }
+
+
 	} elsif($command eq "rvitals") {
         vitals($sessdata);
 	} elsif($command eq "rinv") {
@@ -642,26 +646,97 @@ sub resetedbmc {
 
 sub setpassword {
     my $sessdata = shift;
-    my $subcommand = $sessdata->{subcommand};
-    my $argument;
-    ($subcommand, $argument) = split(/=/, $subcommand);
+    my $subcmd = $sessdata->{subcommand};
     my $netfun = 0x06;
-    my $command = 0x47;
-    my @data = ();
-    @data = unpack("C*", $argument);
-    if ($#data > 19 or $#data < 0) {
-        xCAT::SvrUtils::sendmsg([1, "The new password is invalid"],$callback,$sessdata->{node},%allerrornodes);
-        return(1,"The new password is invalid.");
+    my $command = undef;
+    my ($subcommand, $argument) = split(/=/, $subcmd);
+    if ($subcommand eq "userid") {
+        if ($argument !~ /^\d+$/) {
+   	    return(1,"The value for $subcommand is invalid");
+        }
+        $sessdata->{onuserid} = $argument;
+        $sessdata->{subcommand} = shift @{$sessdata->{extraargs}}; 
+        if ($sessdata->{subcommand} and $sessdata->{subcommand} ne '') { 
+            setpassword($sessdata);
+        }
+    } elsif ($subcommand eq "username") {
+        unless($sessdata->{onuserid}) {
+            my @cmdargv = @{$sessdata->{extraargs}};
+            if (grep /userid/,@cmdargv) {
+                foreach my $opt (@cmdargv) {
+                    if ($opt =~ m/userid=\s*(\d+)/) {
+                        $sessdata->{onuserid} = $1;
+                        last;
+                    } else {
+   	                return(1,"The value for $subcommand is invalid");
+                    }
+                }
+            } else {
+                $sessdata->{onuserid} = '1';# User ID 1 is permanently associated with User 1, the null user name
+            }
+        }
+        my @data = ();
+        $command = 0x45; 
+        @data = unpack("C*", $argument);
+        if ($#data > 15 or $#data < 0) {
+            xCAT::SvrUtils::sendmsg([1, "The username is invalid"],$callback,$sessdata->{node},%allerrornodes);
+            return(1,"The username is invalid.");
+        }
+        $sessdata->{newusername}=$argument;
+        my $index = $#data;
+        while($index < 15) { # Username must be padded with 0 to 16 bytes for IPMI 2.0
+            push @data, 0;
+            $index += 1;
+        }
+        unshift @data, $sessdata->{onuserid} - '0'; # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
+        unless (exists($sessdata->{setuseraccess})) {
+            $sessdata->{setuseraccess} = 1;
+        }
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+    } elsif ($subcommand eq "password") {
+        unless($sessdata->{onuserid}) {
+            my @cmdargv = @{$sessdata->{extraargs}};
+            if (grep /userid/,@cmdargv) {
+                foreach my $opt (@cmdargv) {
+                    if ($opt =~ m/userid=\s*(\d+)/) {
+                        $sessdata->{onuserid} = $1;
+                        last;
+                    } else {
+   	                return(1,"The value for $subcommand is invalid");
+                    }
+                }
+            } else {
+                $sessdata->{onuserid} = '1';
+            }
+        }
+        $command = 0x47;
+        my @data = ();
+        @data = unpack("C*", $argument);
+        if ($#data > 15 or $#data < 0) {
+            xCAT::SvrUtils::sendmsg([1, "The new password is invalid"],$callback,$sessdata->{node},%allerrornodes);
+            return(1,"The new password is invalid.");
+        }
+        $sessdata->{newpassword}=$argument;
+        my $index = $#data;
+        while($index < 15) { # Password must be padded with 0 to 20 bytes for IPMI 2.0
+            push @data, 0;
+            $index += 1;
+        }
+        unless(exists($sessdata->{enableuserdone})) {
+            unshift @data, 0x01; # byte 2, operation: 0x00 disable user, 0x01 enable user, 0x02 set password, 0x03 test password
+            unshift @data, ($sessdata->{onuserid} - '0'); # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
+            $sessdata->{enableuserdone} = 1; 
+            $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+        } else {
+            unshift @data, 0x02; # byte 2, operation: 0x00 disable user, 0x01 enable user, 0x02 set password, 0x03 test password
+            unshift @data, ($sessdata->{onuserid} - '0'); # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
+            unless (exists($sessdata->{setuseraccess})) {
+                $sessdata->{setuseraccess} = 1;
+            }
+            $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+        }
     }
-    $sessdata->{newpassword}=$argument;
-    my $index = $#data;
-    while($index < 19) { # Password must be padded with 0 to 20 bytes for IPMI 2.0
-        push @data, 0;
-        $index += 1;
-    }
-    unshift @data, 0x02; # byte 2, operation: 0x00 disable user, 0x01 enable user, 0x02 set password, 0x03 test password
-    unshift @data, 0x01; # byte 1, userID, User ID 1 is permanently associated with User 1, the null user name
-    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+    return;
 }
 
 sub password_set {
@@ -679,15 +754,51 @@ sub password_set {
         }
         return;
     }
+    if ($sessdata->{setuseraccess}) {
+        setuseraccess($sessdata); 
+        return;
+    }
+    if ($sessdata->{enableuserdone}) {
+        $sessdata->{enableuserdone} = 0;
+        setpassword($sessdata);
+        return;
+    }
+
     my $ipmitab = xCAT::Table->new('ipmi');
     if (!$ipmitab)  {
         xCAT::SvrUtils::sendmsg([1, "Failed to update ipmi table."],$callback,$sessdata->{node},%allerrornodes);
     } else {
-        $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
-        xCAT::SvrUtils::sendmsg("Done",$callback,$sessdata->{node},%allerrornodes);
+        if ($sessdata->{subcommand} =~ m/username/) {
+            $ipmitab->setNodeAttribs($sessdata->{node}, {'username'=>$sessdata->{newusername}});
+            xCAT::SvrUtils::sendmsg("set username Done",$callback,$sessdata->{node},%allerrornodes);
+        } elsif ($sessdata->{subcommand} =~  m/password/) {
+            $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
+            xCAT::SvrUtils::sendmsg("set password Done",$callback,$sessdata->{node},%allerrornodes);
+        }
+    }
+    $sessdata->{subcommand} = shift @{$sessdata->{extraargs}}; 
+    if ($sessdata->{subcommand} and $sessdata->{subcommand} ne '') { 
+        setpassword($sessdata);
     }
     return;
 } 
+
+sub setuseraccess {
+    my $sessdata = shift;
+    my $channel_number = $sessdata->{ipmisession}->{currentchannel};
+    unless($sessdata->{onuserid}) {
+        return;
+    }
+    $sessdata->{setuseraccess} = 0;
+    my @data = ();
+    push @data, (0xc0 | $channel_number);
+    push @data, ($sessdata->{onuserid} - '0');
+    push @data, 0x04;
+    push @data, 0;
+    
+    $sessdata->{ipmisession}->subcmd(netfn=>0x06,command=>0x43,data=>\@data,callback=>\&password_set,callback_args=>$sessdata);
+    return;
+}
 
 sub setnetinfo {
     my $sessdata = shift;
