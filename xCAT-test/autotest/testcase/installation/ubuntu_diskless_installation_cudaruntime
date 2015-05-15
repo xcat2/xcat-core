@@ -1,0 +1,39 @@
+start:Ubuntu_diskless_installation_vm_cudaruntime
+os:Linux
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=ubuntu1404;elif [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.10" ]];then ver=ubuntu1410; fi;echo "deb http://developer.download.nvidia.com/compute/cuda/repos/$ver/__GETNODEATTR($$CN,arch)__ /" >> /etc/apt/sources.list
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:if [ ! -d /install/custom/netboot/ubuntu ]; then mkdir -p /install/custom/netboot/ubuntu; fi
+check:rc==0
+cmd:if [ ! -e /install/custom/netboot/ubuntu/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/ubuntu/compute.synclist; fi
+check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute -p pkgdir="http://ports.ubuntu.com/ubuntu-ports trusty main,http://ports.ubuntu.com/ubuntu-ports trusty-updates main "
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=ubuntu1404;elif [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.10" ]];then ver=ubuntu1410; fi;chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute otherpkgdir="http://developer.download.nvidia.com/compute/cuda/repos/$ver/__GETNODEATTR($$CN,arch)__ /"  otherpkglist="/opt/xcat/share/xcat/netboot/ubuntu/cudaruntime.otherpkgs.pkglist" pkglist="/opt/xcat/share/xcat/netboot/ubuntu/cudaruntime.__GETNODEATTR($$CN,os)__.__GETNODEATTR($$CN,arch)__-.pkglist" rootimgdir="/install/netboot/ __GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/cudaruntime"
+cmd:apt-get  install -y acpid
+check:rc==0
+cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/x86_64/compute
+check:rc==0
+cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 200 
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN dpkg -l |grep cuda
+check:rc==0
+check:output=~cuda
+end
