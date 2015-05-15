@@ -335,37 +335,53 @@ sub process_request {
 		}
 	}
 		
-	#display header
-    $format = "%-12s\t%-12s\t%-20.20s\t%-12s";
-	$header = sprintf $format, "ip", "name","vendor", "mac";
-	send_msg(\%request, 0, $header);
-	my $sep = "------------";
-	send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
-
-	#display switches one by one
-	foreach my $key (keys(%$result)) {
-		my $name="   ";
-		my $mac = "   ";
-		my $vendor = "   ";
-		if (exists($result->{$key}->{name})) {
-			$name = $result->{$key}->{name};
-		}
-		if (exists($result->{$key}->{mac})) {
-			$mac = $result->{$key}->{mac};
-		}
-		if (exists($result->{$key}->{vendor})) {
-			$vendor = $result->{$key}->{vendor};
-		}
-		my $msg = sprintf $format, $key, $name, $vendor, $mac;
-		send_msg(\%request, 0, $msg);
+	my $display_done = 0;
+	if (exists($globalopt{r}))  { 
+        #do nothing since is done by the scan functions. 
+		$display_done = 1;
 	}
+	
+	if (exists($globalopt{x}))  {
+        $display_done = 1;
+	}
+
+	if (exists($globalopt{z}))  { 
+		$display_done = 1;
+	}
+
+	if (!$display_done) {
+        #display header
+		$format = "%-12s\t%-12s\t%-20.20s\t%-12s";
+		$header = sprintf $format, "ip", "name","vendor", "mac";
+		send_msg(\%request, 0, $header);
+		my $sep = "------------";
+		send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
+		
+		#display switches one by one
+		foreach my $key (keys(%$result)) {
+			my $name="   ";
+			my $mac = "   ";
+			my $vendor = "   ";
+			if (exists($result->{$key}->{name})) {
+				$name = $result->{$key}->{name};
+			}
+			if (exists($result->{$key}->{mac})) {
+				$mac = $result->{$key}->{mac};
+			}
+			if (exists($result->{$key}->{vendor})) {
+				$vendor = $result->{$key}->{vendor};
+			}
+			my $msg = sprintf $format, $key, $name, $vendor, $mac;
+			send_msg(\%request, 0, $msg);
+		}
+	}
+
 
     # writes the data into xCAT db
 	if (exists($globalopt{w})) {
 		send_msg(\%request, 0, "Writing the data into xCAT DB....");
 	}
     return;
-
 }
 
 #--------------------------------------------------------------------------------
@@ -415,7 +431,12 @@ sub lldp_scan {
 
     #display the raw output
 	if (exists($globalopt{r})) {
-		send_msg($request, 0, "$result\n\n");
+		my $ccmd = "lldpcli show neighbors";
+		my $raw_result = xCAT::Utils->runcmd($ccmd, 0);
+		if ($::RUNCMD_RC == 0)
+		{
+			send_msg($request, 0, "$raw_result\n\n");
+		}
 	}
 
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
@@ -478,6 +499,13 @@ sub nmap_scan {
         send_msg($request, 1, "Could not process this command: $ccmd" );
         return 1;
     }
+
+    #display the raw output
+	if (exists($globalopt{r})) {
+        send_msg($request, 0, "$result\n" );
+	}
+
+	#compose the switch hash 
     my $result_ref = XMLin($result, ForceArray => 1);
     my $switches;
     if ($result_ref) {
