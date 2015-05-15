@@ -117,6 +117,7 @@ my %usage = (
    BMC specific:
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
        rspconfig <noderange> [garp=<number of 1/2 second>]
+       rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
