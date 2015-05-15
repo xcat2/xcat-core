@@ -29,9 +29,12 @@
 #               UP=0 or UP=1 - override the default upload behavior
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
-# For the dependency packages 1. please run the build-debs-all in xcat-dep svn first( there is usage detail in that script)
+# For the dependency packages 1. All the xcat dependency deb packages should be uploaded to 
+#                                "pokgsa/projects/x/xcat/build/ubuntu/xcat-dep/debs/" on GSA
 #                             2. run ./build-ubunturepo -d
 #
+#                             3. the built xcat-dep deb packages tarball can be found in "../../xcat-dep" 
+#                                related to the path of this script
 ############################
 printusage()
 {
@@ -86,6 +89,8 @@ if [ "$c_flag" -a "$d_flag" ];then
     printusage
     exit 2
 fi
+
+
 
 uploader="litingt"
 # Find where this script is located to set some build variables
@@ -378,6 +383,21 @@ then
     echo "# Creating xcat-dep repository #"
     echo "################################"
 
+
+    #the path of ubuntu xcat-dep deb packages on GSA
+    GSA="/gsa/pokgsa/projects/x/xcat/build/ubuntu/xcat-dep"
+ 
+
+    if [ ! -d $GSA ]; then
+       echo "build-ubunturepo:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
+       exit 1;
+    fi
+
+    # Sync from the GSA master copy of the dep rpms
+    echo "Syncing RPMs from $GSA/ to $local_dep_repo_path/../ ..."
+    rsync -ilrtpu --delete $GSA/ $local_dep_repo_path/../
+
+
     #clean all old files
     if [ -e $local_dep_repo_path ];then
         rm -rf $local_dep_repo_path
@@ -385,6 +405,7 @@ then
     mkdir -p $local_dep_repo_path
     cd $local_dep_repo_path
     mkdir conf
+
 
     #create the conf/distributions file
     for dist in $dists; do
