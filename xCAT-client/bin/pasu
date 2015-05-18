@@ -286,7 +286,7 @@ sub expandnoderange {
 # Contact xcatd to get from the ipmi table for this list of nodes: bmc, username, password
 sub getipmiattrs {
   my $noderange = shift @_;
-  my $nodeattrs;        # this will be a reference to a hash
+  my $nodeattrs = {};        # this will be a reference to a hash
   my @user = getpwuid($>);
   my $homedir=$user[7];
   my $client = IO::Socket::SSL->new(
@@ -321,7 +321,9 @@ sub getipmiattrs {
         die ("ERROR: ".$rsp->{error}."\n");
       } elsif ($rsp->{node}) {
         #print Dumper($rsp->{node});
-        $nodeattrs=$rsp->{node};         # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+        foreach (keys %{$rsp->{node}}) {
+          $nodeattrs->{$_} = $rsp->{node}->{$_};         # this is reference to a hash, each key is the nodename and the value is a reference to a hash of attr values
+        }
       }
       if ($rsp->{serverdone}) {
         last;
