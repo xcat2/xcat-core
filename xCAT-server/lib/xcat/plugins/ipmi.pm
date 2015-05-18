@@ -763,19 +763,19 @@ sub password_set {
         setpassword($sessdata);
         return;
     }
-
-    my $ipmitab = xCAT::Table->new('ipmi');
-    if (!$ipmitab)  {
-        xCAT::SvrUtils::sendmsg([1, "Failed to update ipmi table."],$callback,$sessdata->{node},%allerrornodes);
-    } else {
-        if ($sessdata->{subcommand} =~ m/username/) {
-            $ipmitab->setNodeAttribs($sessdata->{node}, {'username'=>$sessdata->{newusername}});
-            xCAT::SvrUtils::sendmsg("set username Done",$callback,$sessdata->{node},%allerrornodes);
-        } elsif ($sessdata->{subcommand} =~  m/password/) {
-            $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
-            xCAT::SvrUtils::sendmsg("set password Done",$callback,$sessdata->{node},%allerrornodes);
-        }
-    }
+    # Won't update ipmi table, since option username=<> and password=<> can be run Respectively
+    #my $ipmitab = xCAT::Table->new('ipmi');
+    #if (!$ipmitab)  {
+    #    xCAT::SvrUtils::sendmsg([1, "Failed to update ipmi table."],$callback,$sessdata->{node},%allerrornodes);
+    #} else {
+    #    if ($sessdata->{subcommand} =~ m/username/) {
+    #        $ipmitab->setNodeAttribs($sessdata->{node}, {'username'=>$sessdata->{newusername}});
+    #        xCAT::SvrUtils::sendmsg("set username Done",$callback,$sessdata->{node},%allerrornodes);
+    #    } elsif ($sessdata->{subcommand} =~  m/password/) {
+    #        $ipmitab->setNodeAttribs($sessdata->{node}, {'password'=>$sessdata->{newpassword}});
+    #        xCAT::SvrUtils::sendmsg("set password Done",$callback,$sessdata->{node},%allerrornodes);
+    #    }
+    #}
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}}; 
     if ($sessdata->{subcommand} and $sessdata->{subcommand} ne '') { 
         setpassword($sessdata);
