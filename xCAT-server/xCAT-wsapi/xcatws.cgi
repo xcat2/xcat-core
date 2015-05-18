@@ -1886,13 +1886,14 @@ sub actionhdl {
     } elsif ($params->{'resourcename'} eq "serviceprocessor") {
         if (isGET()) {
             push @args, $urilayers[3];
-        } elsif ($paramhash->{'value'}) {
-            push @args, $urilayers[3]."=".$paramhash->{'value'};
-        }
-        if ((isPut() or isPost()) and defined($urilayers[3])) {
-            foreach my $key (keys %$paramhash) {
-                if (($key ne '') and (exists($paramhash->{$key}))) {
-                    push @args, $key."=".$paramhash->{$key};
+        } elsif (isPut() or isPost()) {
+            if ($paramhash->{'value'} and defined($urilayers[3])) {
+                push @args, $urilayers[3]."=".$paramhash->{'value'};
+            } else {
+                foreach my $key (keys %$paramhash) {
+                    if (($key ne '') and (exists($paramhash->{$key}))) {
+                        push @args, $key."=".$paramhash->{$key};
+                    }
                 }
             }
         }
