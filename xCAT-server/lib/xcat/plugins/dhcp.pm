@@ -664,7 +664,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://'.$nxtsrv.'/tftpboot/petitboot/'.$node.'\";'.$lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
-            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\"'.$lstatements;
+            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\";'.$lstatements;
         }
 
 
