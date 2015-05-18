@@ -679,11 +679,12 @@ sub process_request {
       #}
       if ($do_dhcpsetup) {
         if (%osimagenodehash) {
-            chdir("$tftpdir");
+            unless (-e "$tftpdir/yb/node") {
+                system("mkdir -p $tftpdir/yb/node");
+            }
+            chdir("$tftpdir/yb/node");
             foreach my $osimage (keys %osimagenodehash) {
-                unless (-e "$tftpdir/yb/node") {
-                    system("mkdir -p $tftpdir/yb/node");
-                }
+
                 my $osimgent = $osimagetab->getAttribs({imagename => $osimage },'osvers');
                 my $osentry = $osimgent->{'osvers'};
 
@@ -702,10 +703,10 @@ sub process_request {
                 }
                 if (($osv =~ /rh/ and int($osn) >= 6) or 
                     ($osv =~ /sles/ and int($osn) >= 11)) {
-                    my $fpath = "/yb/". $osentry."/yaboot"; 
                     foreach my $tmp_node (@{$osimagenodehash{$osimage}}) {
-                        unless (-e "yb/node/yaboot-$tmp_node") {
-                            symlink("yb/$osentry/yaboot", "yb/node/yaboot-$tmp_node");
+                        unless (-e "yaboot-$tmp_node") {
+                            symlink("../$osentry/yaboot", "yaboot-$tmp_node");
+                            #symlink("/tftpboot/yb/$osentry/yaboot", "yb/node/yaboot-$tmp_node");
                         }
                     }
                     if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
@@ -718,8 +719,8 @@ sub process_request {
                     }
                 } else {
                     foreach my $tmp_node (@{$osimagenodehash{$osimage}}) {
-                        unless (-e "yb/node/yaboot-$tmp_node") {
-                            symlink("yaboot", "yb/node/yaboot-$tmp_node");
+                        unless (-e "yaboot-$tmp_node") {
+                            symlink("../../yaboot", "yb/node/yaboot-$tmp_node");
                         }
                     }
 

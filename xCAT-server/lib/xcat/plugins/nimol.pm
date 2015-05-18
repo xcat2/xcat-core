@@ -361,7 +361,8 @@ sub update_export {
                 push @tmp_options, "insecure";
                 $need_update = 1;
             }
-            push @new_export, join(',',@tmp_options);
+            my $option = join(',',@tmp_options);
+            push @new_export, "/install *($option)";
         } else {
             push @new_export, $line;
         }
@@ -391,7 +392,7 @@ sub update_syslog {
     close($syslog_fd); 
     unless (grep /local2.*nimol\.log/, @curr_syslog) {
         my $new_syslog_fd;
-        open($new_syslog_fd, ">>", "/etc/exports");
+        open($new_syslog_fd, ">>", "/etc/rsyslog.conf");
         print $new_syslog_fd "local2.* /var/log/nimol.log\n";
         close($new_syslog_fd);
         #system("service rsyslog restart");
@@ -412,6 +413,7 @@ sub create_imgconf_file {
     my $bootimg_link = "/tftpboot/vios/nodes";
     my $relative_path = $bootimg_link;
     $relative_path =~ s/^\/tftpboot//;
+    $bootimg_root =~ s/^\/tftpboot//;
     # check the dir where the bootimage link file and bootimage configuration file stored
     unless (-e $bootimg_link) {
         mkpath($bootimg_link);
@@ -430,10 +432,11 @@ sub create_imgconf_file {
     unless (defined($rootpw)) {
         return "Unable to find requested password from passwd, with key=vios,username=padmin";
     }
-    unless (-e $bootimg_root."/viobootimg") {
+
+    chdir($bootimg_link);
+    unless (-e "../../".$bootimg_root."/viobootimg") {
         return "Unable to find VIOS bootimg file";
     }
-    chdir($bootimg_link);
     foreach my $node (@$nodes) {
         my $bootimg_conf_fd;
         my $gateway = $nethash{$node}{gateway};
@@ -444,7 +447,7 @@ sub create_imgconf_file {
         my $master_ip = xCAT::NetworkUtils->getipaddr($master); 
         my $node_ip = xCAT::NetworkUtils->getipaddr($node);
         unless (-e "$node") {
-            symlink($bootimg_root."/viobootimg", "$node");
+            symlink("../../".$bootimg_root."/viobootimg", "$node");
         }
         if (-e $bootimg_link."/$node.info") {
             unlink($bootimg_link."/$node.info");
