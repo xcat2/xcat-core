@@ -4,8 +4,6 @@ B<rinstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<rinstall> [I<-o>|I<--osver>] [I<-p>|I<--profile>] [I<-a>|I<--arch>] [I<-c>|I<--console>] [I<noderange>]
-
 B<rinstall> [I<-O>|I<--osimage>] [I<-c>|I<--console>] [I<noderange>]
 
 =head1 B<Description>
@@ -28,19 +26,6 @@ Display usage message.
 
 Display version. 
 
-=item B<-o>|B<--osver>
-
-Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
-
-=item B<-p>|B<--profile>
-
-Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
-
-
-=item B<-a>|B<--arch>
-
-Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
-
 =item B<-O>|B<--osimage>
 
 Specifies the osimage to provision. 
@@ -57,10 +42,6 @@ Requests that rinstall runs rcons once the provision starts.  This will only wor
 B<rinstall> I<node1-node20>
 
 Provison nodes 1 through 20, using their current configuration.
-
-B<rinstall> I<node1-node20> -o rhels5.1 -p compute
-
-Provision nodes 1 through 20, forcing rhels5.1 and compute profile.
 
 B<rinstall> I<node1-node20> -O rhels6.4-ppc64-netboot-compute
 
