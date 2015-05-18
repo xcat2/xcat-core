@@ -56,7 +56,6 @@ sub print_usage
     print "Usage:\n";
     print "    genimage\n\n";
     print "    genimage --dryrun\n\n";
-    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--noupdate]'."\n\n";
     print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [--onlyinitrd] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>] [--interactive] [--dryrun] [--noupdate] <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
@@ -64,11 +63,6 @@ sub print_usage
     print "Examples:\n";
     print "    genimage\n";
     print "    genimage --interactive\n";
-    print "    genimage -i eth0 -n tg3 -o sles11 -p compute\n";
-    print "    genimage -i eth0 -n tg3 -o sles11 -p compute --onlyinitrd\n";
-    print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute --interactive\n";
-    print "    genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --dryrun\n";
-    print "    genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
     print "    genimage -i eth0 -n tg3 --interactive myimagename\n";
     print "    genimage myimagename\n";
 }

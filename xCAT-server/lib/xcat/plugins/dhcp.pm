@@ -593,6 +593,18 @@ sub addnode
         } elsif ($guess_next_server) {
             $nxtsrv='${next-server}'; #if floating IP support, cause gPXE command-line expansion patch to drive inheritence from network
         }
+
+        # The hostname could not be resolved, print a warning message
+        if (!$ip)
+        {
+                    $callback->(
+                        {
+                         warning => [
+                             "The hostname $hname of node $node could not be resolved."
+                         ]
+                        }
+                        );
+        }
         my $doiscsi=0;
         if ($ient and $ient->{server} and $ient->{target}) {
             $doiscsi=1;
@@ -652,7 +664,7 @@ sub addnode
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'petitboot') {
             $lstatements = 'option conf-file \"http://'.$nxtsrv.'/tftpboot/petitboot/'.$node.'\";'.$lstatements;
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'nimol') {
-            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\"'.$lstatements;
+            $lstatements = 'supersede server.filename=\"/vios/nodes/'.$node.'\";'.$lstatements;
         }
 
 
@@ -715,6 +727,18 @@ sub addnode
             {
                 if ($ip and not ipIsDynamic($ip)) {
                     print $omshell "set ip-address = $ip\n";
+                } else {
+                    # only if when ip is not blank, blank ip warning already done earlier in the code
+                    if ($ip)
+                    {
+                        $callback->(
+                          {
+                             warning => [
+                                 "The ip address $ip of node $node overlaps with the DHCP dynamic range specified in networks table, will not add this ip address into dhcpd.leases file."
+                             ]
+                           }
+                         );
+                     }
                 }
                 if ($lstatements)
                 {

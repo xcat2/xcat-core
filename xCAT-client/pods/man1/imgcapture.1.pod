@@ -4,9 +4,7 @@ B<imgcapture> - Captures an image from a Linux diskful node and create a diskles
 
 =head1 SYNOPSIS
 
-B<imgcapture> node B<-t>|B<--type> diskless [B<-p>|B<--profile> I<profile>] [B<-o>|B<--osimage> I<osimage>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-V>|B<--verbose>]
-
-B<imgcapture> node B<-t>|B<--type> sysclone B<-o>|B<--osimage> I<osimage> [B<-V>|B<--verbose>]
+B<imgcapture> node B<-t>|B<--type> {diskless|sysclone} B<-o>|B<--osimage> I<osimage> [B<-V>|B<--verbose>]
 
 B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
 
@@ -20,7 +18,7 @@ The B<imgcapture> command supports two image types: B<diskless> and B<sysclone>.
 
 The B<diskless> type:
 
-The I<osimage> is pre-defined, the attributes of osimage will be used to capture and prepare the root image. The B<osver>, B<arch> and B<profile> attributes for the stateless/statelite image to be created are duplicated from the B<node>'s attribute. If the B<-p|--profile> I<profile> option is specified, the image will be created under "/<I<installroot>>/netboot/<osver>/<arch>/<I<profile>>/rootimg". 
+The attributes of osimage will be used to capture and prepare the root image. The B<osver>, B<arch> and B<profile> attributes for the stateless/statelite image to be created are duplicated from the B<node>'s attribute. If the B<-p|--profile> I<profile> option is specified, the image will be created under "/<I<installroot>>/netboot/<osver>/<arch>/<I<profile>>/rootimg". 
 
 The default files/directories excluded in the image are specified by /opt/xcat/share/xcat/netboot/<os>/<I<profile>>.<osver>.<arch>.imgcapture.exlist; also, you can put your customized file (<I<profile>>.<osver>.<arch>.imgcapture.exlist) to /install/custom/netboot/<osplatform>. The directories in the default I<.imgcapture.exlist> file are necessary to capture image from the diskful Linux node managed by xCAT, please don't remove it.
 
@@ -100,23 +98,11 @@ Verbose output.
 
 B<node1> is one diskful Linux node, which is managed by xCAT.
 
-1. In order to capture and prepare the diskless root image, run the following command:
-
-imgcapture node1 -t diskless
-
-2. In order to capture and prepare the diskless root image with B<hpc> as profile, run the command:
-
-imgcapture node1 -t diskless -p hpc
-
-3. In order to capture and prepare the diskless root image: its profile is B<hpc>, and the network interface the diskless node will boot over is B<eth0>, the driver modules for this network interface is B<e1000e>.
-
-imgcapture node1 -t diskless -p hpc -i eth0 -n e1000e
-
-4. There's one pre-defined I<osimage>. In order to capture and prepare the diskless root image for I<osimage>, run the command:
+1. There's one pre-defined I<osimage>. In order to capture and prepare the diskless root image for I<osimage>, run the command:
 
 imgcapture node1 -t diskless -o osimage
 
-5. In order to capture the diskful image from B<node1> and create the I<osimage> B<img1>, run the command:
+2. In order to capture the diskful image from B<node1> and create the I<osimage> B<img1>, run the command:
 
 imgcapture node1 -t sysclone -o img1
 

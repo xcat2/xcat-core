@@ -7,8 +7,6 @@ B<rmimage> - Removes the Linux stateless or statelite image from the file system
 I<rmimage [-h | --help]>
 
 
-I<rmimage [-V | --verbose]> I<-o <OS>> I<-a <architecture>> I<-p <profile>>
-
 I<rmimage [-V | --verbose] imagename [--xcatdef]> 
 
 =head1 DESCRIPTION
@@ -40,12 +38,6 @@ B<-h | --help>     Display usage message.
 
 B<-V | --verbose>  Verbose mode.
 
-B<-o>              Operating system (fedora9,rhels5.5,sles11,etc) 
- 
-B<-p>              Profile (compute,service,etc)
-
-B<-a>              Architecture (ppc64,x86_64,etc)
-
 B<--xcatdef>       Remove the xCAT osimage definition
 
 
@@ -57,21 +49,13 @@ B<--xcatdef>       Remove the xCAT osimage definition
 
 =head1 EXAMPLES
 
-1. To remove a fedora9 stateless image for a compute node architecture x86_64, enter:
+1. To remove a RHEL 7.1 stateless image for a compute node architecture x86_64, enter:
 
-I<rmimage fedora9-x86_64-netboot-compute>
-
-or
-
-I<rmimage -o fedora9 -p compute -a x86_64>
+I<rmimage rhels7.1-x86_64-netboot-compute>
 
 2. To remove a rhels5.5 statelite image for a compute node architecture ppc64 and the osimage definition, enter:
 
 I<rmimage rhels5.5-ppc64-statelite-compute --xcatdef>
-
-or 
-
-I<rmimage -o rhels5.5 -p compute -a ppc64 --xcatdef>
 
 =head1 FILES
 

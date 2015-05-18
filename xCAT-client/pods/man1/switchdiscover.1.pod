@@ -11,7 +11,7 @@ I<switchdiscover [-h| --help]>
 I<switchdiscover [-v| --version]>
 
 
-I<switchdiscover [noderange] [-V] [-i adpt[,adpt..]][-w][-r|-x|-z][-n][-s scan_methods]>
+I<switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-n][-s scan_methods]>
 
 
 
@@ -30,15 +30,13 @@ B<noderange>   The switches which the user want to discover.
             switches will be defined in /etc/hosts file. This command will fill the switch 
             attributes for the switches defined. 
 
-B<-i>          adapter(s) the command will search through (defaults to all available adapters).
-
 B<-h>          Display usage message.
 
 B<-n>          Only display and write the newly discovered switches.
 
 B<--range>     Specify one or more IP ranges.  
             It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
-            If the range is huge, for example, 192.168.1.1/8, lsslp may take a very long 
+            If the range is huge, for example, 192.168.1.1/8, switchdiscover may take a very long 
             time for node scan. So the range should be exactly specified. 
 
 B<-r>          Display Raw response.

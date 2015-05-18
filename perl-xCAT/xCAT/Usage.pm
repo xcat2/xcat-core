@@ -117,6 +117,7 @@ my %usage = (
    BMC specific:
        rspconfig <noderange> [ip|netmask|gateway|backupgateway|garp]
        rspconfig <noderange> [garp=<number of 1/2 second>]
+       rspconfig <noderange> [userid=<userid> username=<username> password=<password>]
    iDataplex specific:
        rspconfig <noderange> [thermprofile]
        rspconfig <noderange> [thermprofile=<two digit number from chassis>]
@@ -288,7 +289,7 @@ my %usage = (
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
     "switchdiscover" =>
 "Usage: switchdiscover [-h|--help|-v|--version]
-       switchdiscover [<noderange>][-V|--verbose][-i adpt[,adpt..]][-w][-r|-x|-z][-n][-s scan_methods]",
+       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z][-n] [-w] [-V|--verbose]",
   "rflash" =>
 "Usage: 
     rflash [ -h|--help|-v|--version]
@@ -435,7 +436,7 @@ Options:
 "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage[=<imagename>]|statelite|offline]",
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
   "rmflexnode" =>
 "Usage:
     rmflexnode [-h|--help|-v|--version]

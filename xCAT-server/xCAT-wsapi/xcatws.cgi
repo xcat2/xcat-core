@@ -1470,6 +1470,9 @@ sub defout {
         foreach my $l (@$lines) {
             if ($l =~ /No responses/) { # handle the case that no output from lsslp command
                 return;
+            } elsif ($l =~ /Could not find any object definitions/) {
+                $json->{info} = $l;
+                last;
             }
             if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 if ($l =~ /^Object name:\s+(\S+)/) {    # handle the output of lsdef -t <type> <obj>
@@ -1517,6 +1520,9 @@ sub defout_remove_appended_type {
         foreach my $l (@$lines) {
             if ($l =~ /^(\S*)\s+\(.*\)$/) {    # start new node
                 push @{$json}, $1;
+            } elsif ($l =~ /Could not find any object definitions/) {
+                push @{$json}, $l;
+                last;
             }
         }
     }
@@ -1880,8 +1886,16 @@ sub actionhdl {
     } elsif ($params->{'resourcename'} eq "serviceprocessor") {
         if (isGET()) {
             push @args, $urilayers[3];
-        } elsif ($paramhash->{'value'}) {
-            push @args, $urilayers[3]."=".$paramhash->{'value'};
+        } elsif (isPut() or isPost()) {
+            if ($paramhash->{'value'} and defined($urilayers[3])) {
+                push @args, $urilayers[3]."=".$paramhash->{'value'};
+            } else {
+                foreach my $key (keys %$paramhash) {
+                    if (($key ne '') and (exists($paramhash->{$key}))) {
+                        push @args, $key."=".$paramhash->{$key};
+                    }
+                }
+            }
         }
     } elsif ($params->{'resourcename'} eq "eventlog") {
         if (isGET()) {
@@ -2908,12 +2922,13 @@ sub fetchParameters {
         if (ref($phash) ne 'HASH') { error("put or post data must be a json object (hash/dict).", $STATUS_BAD_REQUEST); }
 
         # if any general parms are in the put/post data, move them to genparms
-        foreach my $k (keys %$phash) {
-            if (grep(/^$k$/, @generalparamlist)) {
-                $genparms->{$k} = $phash->{$k};
-                delete($phash->{$k});
-            }
-        }
+        # Do not think this is neccessary and it caused the issue that set any 'password' key would fail.
+    #    foreach my $k (keys %$phash) {
+    #        if (grep(/^$k$/, @generalparamlist)) {
+    #            $genparms->{$k} = $phash->{$k};
+    #            delete($phash->{$k});
+    #        }
+    #    }
     }
     else { $phash = {}; }
 

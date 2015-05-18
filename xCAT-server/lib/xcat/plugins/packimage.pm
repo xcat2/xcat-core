@@ -39,7 +39,7 @@ sub process_request {
    @ARGV = @{$request->{arg}};
    my $argc = scalar @ARGV;
    if ($argc == 0) {
-       $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\npackimage imagename"]});
+       $callback->({info=>["packimage -h \npackimage -v \npackimage imagename"]});
        return;
    }
    my $osver;
@@ -68,7 +68,7 @@ sub process_request {
       return;
    }
    if ($help) {
-      $callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] [-m method]\npackimage imagename"]});
+      $callback->({info=>["packimage -h \npackimage -v \npackimage imagename"]});
       return;
    }
 

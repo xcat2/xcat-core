@@ -30,7 +30,7 @@ sub process_request {
    my $installroot = xCAT::TableUtils->getInstallDir();
    my $tftproot = xCAT::TableUtils->getTftpDir();
 
-   my $usage = "\nUsage:\n    rmimage [-h | --help]\n    rmimage [-V | --verbose] -o <OS> -a <architecture> -p <profile>\n    rmimage [-V | --verbose] imagename [--xcatde]";
+   my $usage = "\nUsage:\n    rmimage [-h | --help]\n    rmimage [-V | --verbose] imagename [--xcatde]";
 
    @ARGV = @{$request->{arg}};
 
