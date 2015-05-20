@@ -92,7 +92,7 @@ sub outtext {
     }
                     
 
-    my $postfix = "?userName=root&password=cluster&pretty=1";
+    my $postfix = "?userName=root&userPW=cluster&pretty=1";
 
     if (defined ($def->{desc})) {
         print "  $opt - $def->{desc}\n";
@@ -172,7 +172,7 @@ sub outwiki {
         }
     }
 
-    my $postfix = "?userName=root&password=cluster&pretty=1";
+    my $postfix = "?userName=root&userPW=cluster&pretty=1";
 
     if (defined ($def->{desc})) {
         print "###$opt - $def->{desc}###\n";
@@ -277,7 +277,7 @@ sub outmediawiki {
         }
     }
 
-    my $postfix = "?userName=root&password=cluster&pretty=1";
+    my $postfix = "?userName=root&userPW=cluster&pretty=1";
 
     if (defined ($def->{desc})) {
         print "===='''$opt - $def->{desc}'''====\n";

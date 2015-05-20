@@ -1154,7 +1154,7 @@ my %URIdef = (
             POST => {
                 desc => "Create a token.",
                 usage => "||An array of all the global configuration list.|",
-                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"password\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
+                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
                 fhandler => \&nonobjhdl,
                 outhdler => \&tokenout,
             },
@@ -1349,7 +1349,7 @@ if ($#layers < 0) {
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
-$request->{becomeuser}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
+$request->{becomeuser}->[0]->{password}->[0] = $generalparams->{userPW} if (defined($generalparams->{userPW}));
 
 # use the token if it is specified with X_AUTH_TOKEN head
 $request->{tokens}->[0]->{tokenid}->[0] = $ENV{'HTTP_X_AUTH_TOKEN'} if (defined($ENV{'HTTP_X_AUTH_TOKEN'}));
@@ -2049,7 +2049,7 @@ sub nonobjhdl {
         }
     } elsif ($params->{'resourcename'} eq "tokens") {
         $request->{gettoken}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
-        $request->{gettoken}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
+        $request->{gettoken}->[0]->{password}->[0] = $generalparams->{userPW} if (defined($generalparams->{userPW}));
     }
     
     push @{$request->{arg}}, @args;  
@@ -2881,7 +2881,7 @@ sub sendRequest {
 # 1st output param - The params which are listed in @generalparamlis as a general parameters like 'debug=1, pretty=1'
 # 2nd output param - All the params from url params and 'PUTDATA'/'POSTDATA' except the ones in @generalparamlis
 sub fetchParameters {
-    my @generalparamlist = qw(userName password pretty debug xcoll);
+    my @generalparamlist = qw(userName userPW pretty debug xcoll);
     # 1st check for put/post data and put that in the hash
     my $pdata;
     if (isPut()) { 
@@ -2922,13 +2922,12 @@ sub fetchParameters {
         if (ref($phash) ne 'HASH') { error("put or post data must be a json object (hash/dict).", $STATUS_BAD_REQUEST); }
 
         # if any general parms are in the put/post data, move them to genparms
-        # Do not think this is neccessary and it caused the issue that set any 'password' key would fail.
-    #    foreach my $k (keys %$phash) {
-    #        if (grep(/^$k$/, @generalparamlist)) {
-    #            $genparms->{$k} = $phash->{$k};
-    #            delete($phash->{$k});
-    #        }
-    #    }
+        foreach my $k (keys %$phash) {
+            if (grep(/^$k$/, @generalparamlist)) {
+                $genparms->{$k} = $phash->{$k};
+                delete($phash->{$k});
+            }
+        }
     }
     else { $phash = {}; }
 
