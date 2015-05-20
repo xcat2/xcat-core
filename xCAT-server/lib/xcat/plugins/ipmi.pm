@@ -672,7 +672,7 @@ sub setpassword {
                     }
                 }
             } else {
-                $sessdata->{onuserid} = '1';# User ID 1 is permanently associated with User 1, the null user name
+                $sessdata->{onuserid} = '2';# The default userid will be 2 if no userid specified
             }
         }
         my @data = ();
@@ -706,7 +706,13 @@ sub setpassword {
                     }
                 }
             } else {
-                $sessdata->{onuserid} = '1';
+                # If have username specified, if has been dealt will be store in newusername, else need to check the args array. And the default userid must be 2.
+                if (exists($sessdata->{newusername}) or (grep /username/, @{$sessdata->{extraargs}})) {
+                    $sessdata->{onuserid} = '2';
+                # If No username specified, the default userid will be 1.
+                } else {
+                    $sessdata->{onuserid} = '1';
+                }
             }
         }
         $command = 0x47;
@@ -776,6 +782,14 @@ sub password_set {
     #        xCAT::SvrUtils::sendmsg("set password Done",$callback,$sessdata->{node},%allerrornodes);
     #    }
     #}
+
+    # Give out the return complete MSG
+    if ($sessdata->{subcommand} =~ m/username/) {
+        xCAT::SvrUtils::sendmsg("set username Done",$callback,$sessdata->{node},%allerrornodes);
+    } elsif ($sessdata->{subcommand} =~  m/password/) {
+        xCAT::SvrUtils::sendmsg("set password Done",$callback,$sessdata->{node},%allerrornodes);
+    }
+
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}}; 
     if ($sessdata->{subcommand} and $sessdata->{subcommand} ne '') { 
         setpassword($sessdata);
