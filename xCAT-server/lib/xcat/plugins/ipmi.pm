@@ -892,6 +892,8 @@ sub setnetinfo {
                         $mask[$_] = $mask[$_] + 0;
                 }
                 @cmd = (0x01,$channel_number,12,@mask);
+        } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
+                @cmd = (0x01,$channel_number,0x4,0x2);
         } elsif ($subcommand =~ m/ip/) {
                 my $mip = inet_ntoa(inet_aton($argument));
                 my @mask = split /\./, $mip;
@@ -945,6 +947,12 @@ sub netinfo_set {
             xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
+    }
+    if ($sessdata->{subcommand} =~ m/^ip=dhcp/) {
+        $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
+        if (!defined($sessdata->{subcommand}) or $sessdata->{subcommand} eq '')  {
+            return;
+        }
     }
     getnetinfo($sessdata);
     return;
