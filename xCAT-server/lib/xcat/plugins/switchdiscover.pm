@@ -277,6 +277,7 @@ sub preprocess_request {
 sub process_request {
     my $req      = shift;
     my $callback = shift;
+    my $sub_req  = shift;
   
     ###########################################
     # Build hash to pass around
@@ -378,9 +379,11 @@ sub process_request {
 
 
     # writes the data into xCAT db
-	if (exists($globalopt{w})) {
-		send_msg(\%request, 0, "Writing the data into xCAT DB....");
-	}
+    if (exists($globalopt{w})) {
+        send_msg(\%request, 0, "Writing the data into xCAT DB....");
+        xCATdB($result, \%request, $sub_req);
+    }
+
     return;
 }
 
@@ -485,7 +488,10 @@ sub nmap_scan {
     my $ccmd;
 
     send_msg($request, 0, "Discovering switches using nmap...");
-
+    #################################################
+    # If --range options, take iprange, otherwise
+    #  use noderange to discover switches.
+    ##################################################
     if ( scalar(@filternodes) eq 0)
     {
         $ccmd = "/usr/bin/nmap -sn -oX - @iprange";
@@ -500,12 +506,16 @@ sub nmap_scan {
         return 1;
     }
 
+    #################################################
     #display the raw output
-	if (exists($globalopt{r})) {
+    #################################################
+    if (exists($globalopt{r})) {
         send_msg($request, 0, "$result\n" );
-	}
+    }
 
-	#compose the switch hash 
+    #################################################
+    #compose the switch hash 
+    #################################################
     my $result_ref = XMLin($result, ForceArray => 1);
     my $switches;
     if ($result_ref) {
@@ -560,6 +570,77 @@ sub snmp_scan {
 		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
      };
 	return $switches
+}
+
+#--------------------------------------------------------------------------------
+=head3  xCATdB
+      Write discovered switch information to xCAT database.
+    Arguments:
+       outhash: A hash containing the swithes discovered.
+       request: The request structure for plugin.
+       sub_req: The request structure for runxcmd.
+    Returns:
+       none
+=cut
+#--------------------------------------------------------------------------------
+sub xCATdB {
+    my $outhash = shift;
+    my $request = shift;
+    my $sub_req = shift;
+    my $ret;
+
+    #################################################
+    # write each switch to xcat database
+    ##################################################
+    foreach my $ip ( keys %$outhash ) {
+        my $mac = $outhash->{$ip}->{mac};
+        my $vendor = $outhash->{$ip}->{vendor};
+        my $host = $outhash->{$ip}->{name};
+        ################################################## 
+        # If there is no hostname for switch,
+        # created switch hostname as switch and ip format
+        # ex:  switch-9-114-5-6
+        ##################################################
+        if ( !$host ) {
+            my $ip_str = $ip;
+            $ip_str =~ s/\./\-/g;
+            $host = "switch-$ip_str";
+        }
+        #################################################
+        # xCAT only supports Juniper, Cisco and BNT switch
+        # so far.
+        ##################################################
+        my $stype;
+        if ($vendor =~ "Juniper") {
+            $stype = "JUN";
+        } elsif ($vendor =~ "Cisco") {
+            $stype = "Cisco";
+        } elsif ($vendor =~ "BNT") {
+            $stype = "BNT";
+        } else {
+            $stype = $vendor;
+        }
+
+        #################################################
+        # use lsdef command to check if this switch is
+        # already in the switch table
+        # if it is, use chdef to update it's attribute
+        # otherwise, use mkdef to add this switch to
+        # switch table
+        ##################################################
+        $ret = xCAT::Utils->runxcmd( { command => ['lsdef'], arg => ['-t','switch','-o',$host] }, $sub_req, 0, 1);
+        if ($::RUNCMD_RC == 0)
+        {
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','switch','-o',$host,"ip=$ip","comments=$vendor","switchtype=$stype"] }, $sub_req, 0, 1);
+        } else {
+            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','switch','-o',$host,'groups=switch',"ip=$ip","comments=$vendor",'nodetype=switch','mgt=switch',"switchtype=$stype"] }, $sub_req, 0, 1);
+        }
+        if ($::RUNCMD_RC != 0)
+        {
+            send_msg($request, 0, "$$ret[0]");
+        }
+    }
+
 }
 
 1;
