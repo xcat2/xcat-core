@@ -23,6 +23,26 @@ function makenoarch {
 		RC=$?
 	else	# linux
 		echo "Building $RPMROOT/RPMS/noarch/$RPMNAME-$VER-snap*.noarch.rpm $EMBEDTXT..."
+		# TODO: should fix this up, this is a hack for the new build machine
+		if [ $RPMNAME = "xCAT-UI" ]; then 
+			# Only if the old compiler.jar file does not exist.....
+			if [ ! -e /xcat2/build/tools/compiler.jar ]; then 
+				# look for the dynamic location of the compiler.jar file
+				DIRNAME=`dirname $(readlink -f $0)`
+				COMPILER_JAR=`echo "${DIRNAME%%linux_rpm/*}tools/compiler.jar"`
+				if [ -f $COMPILER_JAR ]; then 
+					sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
+				else 
+					# using the old build structure 
+					echo $DIRNAME
+					COMPILER_JAR=`echo "${DIRNAME%%old/*}xcat2/tools/compiler.jar"`
+					echo $COMPILER_JAR
+					if [ -f $COMPILER_JAR ]; then 
+						sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
+					fi
+				fi
+			fi 
+		fi
 		tar --exclude .svn -czf $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz $RPMNAME
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
