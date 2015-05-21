@@ -144,7 +144,10 @@ sub parse_args {
     #############################################
     if ( scalar(@ARGV) eq 1 ) {
         my @nodes = xCAT::NodeRange::noderange( @ARGV );
-        foreach (@nodes)  {
+        if (nodesmissed) {
+			return (usage( "The following nodes are not defined in xCAT DB:\n  " . join(',', nodesmissed)));
+        }
+		foreach (@nodes)  {
             push @filternodes, $_;
         }
         unless (@filternodes) {
@@ -540,8 +543,9 @@ sub nmap_scan {
 
     send_msg($request, 0, "Discovering switches using nmap...");
     #################################################
-    # If --range options, take iprange, otherwise
-    #  use noderange to discover switches.
+    # If --range options, take iprange, if noderange is defined
+    # us the ip addresses of the nodes. If none is define, use the
+    # subnets for all the interfaces.
     ##################################################
 	my $ranges = get_ip_ranges($request);
 
@@ -745,7 +749,7 @@ sub get_ip_ranges {
 	if (@filternodes > 0) {
 		my @ipranges=();
 		foreach my $node (@filternodes) {
-			my $ip = xCAT::NetworkUtils->getipaddr($node);	
+			my $ip = xCAT::NetworkUtils->getipaddr($node);
 			push(@ipranges, $ip);
 		}
 		return \@ipranges;
