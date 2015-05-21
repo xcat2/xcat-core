@@ -289,7 +289,7 @@ my %usage = (
              [-u] [--range IPranges][-t tries][--vpdtable][-C counts][-T timeout]",
     "switchdiscover" =>
 "Usage: switchdiscover [-h|--help|-v|--version]
-       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z][-n] [-w] [-V|--verbose]",
+       switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
   "rflash" =>
 "Usage: 
     rflash [ -h|--help|-v|--version]

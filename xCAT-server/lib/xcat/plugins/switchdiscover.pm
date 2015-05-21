@@ -547,9 +547,9 @@ sub nmap_scan {
     # us the ip addresses of the nodes. If none is define, use the
     # subnets for all the interfaces.
     ##################################################
-	my $ranges = get_ip_ranges($request);
+    my $ranges = get_ip_ranges($request);
 
-	$ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
+    $ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
     print $ccmd;
     my $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -633,8 +633,8 @@ sub snmp_scan {
       ip  :  IP address passed by the switch after scan
     Returns:
       hose:  hostname of the switch
-      if host is empty, format hostname as switch and ip combination
-         ex:  switch-9-114-5-6
+      if host is empty, try to lookup use ip address, otherwise format hostname 
+      as switch and ip combination. ex:  switch-9-114-5-6
 =cut
 #--------------------------------------------------------------------------------
 sub get_hostname {
@@ -642,9 +642,12 @@ sub get_hostname {
     my $ip = shift;
 
     if ( !$host ) {
-        my $ip_str = $ip;
-        $ip_str =~ s/\./\-/g;
-        $host = "switch-$ip_str";
+        $host = gethostbyaddr( inet_aton($ip), AF_INET );
+        if ( !$host ) {
+            my $ip_str = $ip;
+            $ip_str =~ s/\./\-/g;
+            $host = "switch-$ip_str";
+        }
     }
     return $host;
 }

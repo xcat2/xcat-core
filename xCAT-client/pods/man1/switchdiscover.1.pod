@@ -11,7 +11,7 @@ I<switchdiscover [-h| --help]>
 I<switchdiscover [-v| --version]>
 
 
-I<switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-n][-s scan_methods]>
+I<switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-s scan_methods]>
 
 
 
@@ -32,8 +32,6 @@ B<noderange>   The switches which the user want to discover.
 
 B<-h>          Display usage message.
 
-B<-n>          Only display and write the newly discovered switches.
-
 B<--range>     Specify one or more IP ranges.  
             It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
             If the range is huge, for example, 192.168.1.1/8, switchdiscover may take a very long 
@@ -42,7 +40,7 @@ B<--range>     Specify one or more IP ranges.
 B<-r>          Display Raw response.
 
 B<-s>          It is a comma separated list of methods for switch discovery. 
-            The possible switch scan methods are: llpd, nmap and snmp. The default is lldpd.
+            The possible switch scan methods are: lldpd, nmap and snmp. The default is lldpd.
 
 B<-v>          Command Version.
 
