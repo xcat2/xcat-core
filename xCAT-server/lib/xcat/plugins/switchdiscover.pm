@@ -351,16 +351,20 @@ sub process_request {
 	}
 	
 	if (exists($globalopt{x}))  {
-        $display_done = 1;
+            send_msg( \%request, 0, format_xml( $result ));
+            $display_done = 1;
 	}
 
 	if (exists($globalopt{z}))  { 
-		$display_done = 1;
+            
+            my $stanza_output = format_stanza( $result );
+            send_msg( \%request, 0, $stanza_output );
+	    $display_done = 1;
 	}
 
 	if (!$display_done) {
         #display header
-		$format = "%-12s\t%-12s\t%-20.20s\t%-12s";
+		$format = "%-12s\t%-18s\t%-20.20s\t%-12s";
 		$header = sprintf $format, "ip", "name","vendor", "mac";
 		send_msg(\%request, 0, $header);
 		my $sep = "------------";
@@ -368,12 +372,9 @@ sub process_request {
 		
 		#display switches one by one
 		foreach my $key (keys(%$result)) {
-			my $name="   ";
 			my $mac = "   ";
 			my $vendor = "   ";
-			if (exists($result->{$key}->{name})) {
-				$name = $result->{$key}->{name};
-			}
+                        my $name = get_hostname($result->{$key}->{name}, $key);
 			if (exists($result->{$key}->{mac})) {
 				$mac = $result->{$key}->{mac};
 			}
@@ -581,6 +582,7 @@ sub nmap_scan {
                             $switches->{$ip}->{mac} = $addr->{addr};
                             $switches->{$ip}->{vendor} = $addr->{vendor};
                             $switches->{$ip}->{name} = $host->{hostname};
+
                         }
                     } #end for each address
                 }
@@ -620,6 +622,58 @@ sub snmp_scan {
 }
 
 #--------------------------------------------------------------------------------
+=head3   get_hostname 
+      return hostname for the switch discovered
+    Arguments:
+      host:  hostname passed by the switch after scan
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      hose:  hostname of the switch
+      if host is empty, format hostname as switch and ip combination
+         ex:  switch-9-114-5-6
+=cut
+#--------------------------------------------------------------------------------
+sub get_hostname {
+    my $host = shift;
+    my $ip = shift;
+
+    if ( !$host ) {
+        my $ip_str = $ip;
+        $ip_str =~ s/\./\-/g;
+        $host = "switch-$ip_str";
+    }
+    return $host;
+}
+
+#--------------------------------------------------------------------------------
+=head3   get_switchtype
+      determine the switch type based on the switch vendor
+    Arguments:
+      vendor: switch vendor 
+    Returns:
+      stype: type of switch, supports JUN, Cisco, BNT and MellanoxIB 
+=cut
+#--------------------------------------------------------------------------------
+sub get_switchtype {
+    my $vendor = shift;
+    my $stype;
+    
+    if ($vendor =~ "Juniper") {
+        $stype = "JUN";
+    } elsif ($vendor =~ "Cisco") {
+        $stype = "Cisco";
+    } elsif ($vendor =~ "BNT") {
+        $stype = "BNT";
+    } elsif ($vendor =~ "Mellanox") {
+        $stype = "MellanoxIB";
+    } else {
+        $stype = $vendor;
+    }
+
+    return $stype;
+}
+
+#--------------------------------------------------------------------------------
 =head3  xCATdB
       Write discovered switch information to xCAT database.
     Arguments:
@@ -642,31 +696,10 @@ sub xCATdB {
     foreach my $ip ( keys %$outhash ) {
         my $mac = $outhash->{$ip}->{mac};
         my $vendor = $outhash->{$ip}->{vendor};
-        my $host = $outhash->{$ip}->{name};
-        ################################################## 
-        # If there is no hostname for switch,
-        # created switch hostname as switch and ip format
-        # ex:  switch-9-114-5-6
-        ##################################################
-        if ( !$host ) {
-            my $ip_str = $ip;
-            $ip_str =~ s/\./\-/g;
-            $host = "switch-$ip_str";
-        }
-        #################################################
-        # xCAT only supports Juniper, Cisco and BNT switch
-        # so far.
-        ##################################################
-        my $stype;
-        if ($vendor =~ "Juniper") {
-            $stype = "JUN";
-        } elsif ($vendor =~ "Cisco") {
-            $stype = "Cisco";
-        } elsif ($vendor =~ "BNT") {
-            $stype = "BNT";
-        } else {
-            $stype = $vendor;
-        }
+
+        #Get hostname and switch type
+        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $stype = get_switchtype($vendor);
 
         #################################################
         # use lsdef command to check if this switch is
@@ -730,5 +763,95 @@ sub get_ip_ranges {
 	return $ranges;
     
 }
+
+#-------------------------------------------------------------------------------
+=head3  format_stanza 
+      list the stanza format for swithes
+    Arguments:
+      outhash: a hash containing the switches discovered 
+    Returns:
+      result: return lists as stanza format for swithes 
+=cut
+#--------------------------------------------------------------------------------
+sub format_stanza {
+    my $outhash = shift;
+    my $result;
+
+    #####################################
+    # Write attributes
+    #####################################
+    foreach my $ip ( keys %$outhash ) {
+        my $mac = $outhash->{$ip}->{mac};
+        my $vendor = $outhash->{$ip}->{vendor};
+
+        #Get hostname and switch type
+        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $stype = get_switchtype($vendor);
+
+        $result .= "$host:\n\tobjtype=switch\n";
+        $result .= "\tcomments=$vendor\n";
+        $result .= "\tgroups=switch\n";
+        $result .= "\tip=$ip\n";
+        $result .= "\tmac=$mac\n";
+        $result .= "\tmgt=switch\n";
+        $result .= "\tnodetype=switch\n";
+        $result .= "\tswitchtype=$stype\n";
+    }
+    return ($result);
+}
+
+#--------------------------------------------------------------------------------
+=head3  format_xml 
+      list the xml format for swithes
+    Arguments:
+      outhash: a hash containing the switches discovered 
+    Returns:
+      result: return lists as xml format for swithes 
+=cut
+#--------------------------------------------------------------------------------
+sub format_xml {
+    my $outhash = shift;
+    my $xml;
+
+    #####################################
+    # Write attributes
+    #####################################
+    foreach my $ip ( keys %$outhash ) {
+        my $result;
+        my $mac = $outhash->{$ip}->{mac};
+        my $vendor = $outhash->{$ip}->{vendor};
+        
+        #Get hostname and switch type
+        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $stype = get_switchtype($vendor);
+
+        $result .= "hostname=$host\n";
+        $result .= "objtype=switch\n";
+        $result .= "comments=$vendor\n";
+        $result .= "groups=switch\n";
+        $result .= "ip=$ip\n";
+        $result .= "mac=$mac\n";
+        $result .= "mgt=switch\n";
+        $result .= "nodetype=switch\n";
+        $result .= "switchtype=$stype\n";
+
+        my $href = {
+            Switch => { }
+        };
+        my @attr = split '\\n', $result;
+        for (my $i = 0; $i < scalar(@attr); $i++ ){
+            if( $attr[$i] =~ /(\w+)\=(.*)/){
+                $href->{Switch}->{$1} = $2;
+            }
+        }
+        $xml.= XMLout($href,
+                     NoAttr   => 1,
+                     KeyAttr  => [],
+                     RootName => undef );
+    }
+    return ($xml);
+
+}
+
 1;
 
