@@ -32,6 +32,12 @@ function makenoarch {
 				COMPILER_JAR=`echo "${DIRNAME%%linux_rpm/*}tools/compiler.jar"`
 				if [ -f $COMPILER_JAR ]; then 
 					sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
+				else 
+					# In c910, if using the old buildxcat scripts...
+					COMPILER_JAR=`echo "${DIRNAME%%old/*}xcat2/tools/compiler.jar"`
+					if [ -f $COMPILER_JAR ]; then 
+						sed -i "s#/xcat2/build/tools/compiler.jar#${COMPILER_JAR}#g" xCAT-UI/xCAT-UI.spec
+					fi
 				fi
 			fi 
 		fi
