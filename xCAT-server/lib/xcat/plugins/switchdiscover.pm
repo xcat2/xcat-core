@@ -11,6 +11,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use xCAT::Usage;
 use xCAT::NodeRange;
+use xCAT::NetworkUtils;
 use xCAT::Utils;
 use XML::Simple;
 no strict;
@@ -193,8 +194,13 @@ sub parse_args {
     if ( exists( $opt{range} )) {
         $globalopt{range} = $opt{range};
         my @ips = split /,/, $opt{range};
-        foreach (@ips)  {
-            push @iprange, $_;
+        foreach my $ip (@ips)  {
+			if (($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) || 
+				($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/)) {
+				push @iprange, $ip;
+			} else {
+				return usage("Invalid ip or ip range specified: $ip.");
+			}
         }
     }
 
@@ -312,7 +318,9 @@ sub process_request {
 		no strict;
 		my $fn = $global_scan_type{$st};
 		my $tmp_result = &$fn(\%request, $callback);
-		$all_result->{$st} = $tmp_result;
+		if (ref($tmp_result) eq 'HASH') {
+			$all_result->{$st} = $tmp_result;
+		}
 	}
 
     #consolidate the results by merging the swithes with the same ip
@@ -405,31 +413,39 @@ sub process_request {
 sub lldp_scan {
     my $request  = shift;
 
-	send_msg($request, 0, "Discovering switches using lldpd...");
-
     # get the PID of the currently running lldpd if it is running.
-    # If it is not running start it up.
+	if (exists($globalopt{verbose}))	{
+		send_msg($request, 0, "...Checking if lldpd is up and running:\n  ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'\n");
+	}	
     my $pid;
     chomp($pid= `ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'`);
 	unless($pid){
         my $dcmd = "lldpd -c -s -e -f";
-        my $outref = xCAT::Utils->runcmd($dcmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            send_msg($request, 1, "Could not start lldpd process. The command was: $dcmd" );
-            return 1;
-        }
-        # TODO: how to determin if the lldpd has done all the scanning or not?
-        xCAT::Utils->runcmd("sleep 30");
+        #my $outref = xCAT::Utils->runcmd($dcmd, 0);
+        #if ($::RUNCMD_RC != 0)
+        #{
+        #    send_msg($request, 1, "Could not start lldpd process. The command was: $dcmd" #);
+        #    return 1;
+        #}
+        #xCAT::Utils->runcmd("sleep 30");
+		send_msg($request, 1, "Warning: lldpd is not running. Please run the following command to start it:\n  $dcmd\nThen wait a few minutes before running switchdiscover command again.\n");
+        return 1;
 	}
 
     #now run the lldpcli to collect the data
 	my $ccmd = "lldpcli show neighbors -f xml";
+	if (exists($globalopt{verbose}))	{
+		send_msg($request, 0, "...Discovering switches using lldpd:\n $ccmd\n");
+	}
+
 	my $result = xCAT::Utils->runcmd($ccmd, 0);
 	if ($::RUNCMD_RC != 0)
 	{
 		send_msg($request, 1, "Could not start lldpd process. The command was: $ccmd" );
 		return 1;
+	}
+	if (exists($globalopt{verbose}))	{
+		send_msg($request, 0, "$result\n");
 	}
 
     #display the raw output
@@ -442,6 +458,10 @@ sub lldp_scan {
 		}
 	}
 
+
+	if (exists($globalopt{verbose}))	{
+		send_msg($request, 0, "...Converting XML output to hash.\n");
+	}
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
 	my $switches; 
 	if ($result_ref) {
@@ -463,6 +483,36 @@ sub lldp_scan {
 			}
 		}
 	}
+
+    # filter out the uwanted entries if noderange or ip range is specified.
+	if ((@filternodes> 0) || (@iprange>0)) {
+		my $ranges = get_ip_ranges($request);
+		if (exists($globalopt{verbose}))	{
+			send_msg($request, 0, "...Removing the switches that are not within the following ranges:\n  @$ranges\n");
+		}
+		foreach my $ip_r (keys %$switches) {
+			$match = 0;
+			foreach my $ip_f (@$ranges) {
+				my ($net, $mask) = split '/', $ip_f;
+				if ($mask) { #this is a subnet
+					$mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+					if (xCAT::NetworkUtils->ishostinsubnet($ip_r, $mask, $net)) {
+						$match = 1;
+						last;
+					}
+				} else { #this is an ip
+					if ($ip_r eq $net) {
+						$match = 1;
+						last;
+					}
+				}
+			}
+			if (!$match) {
+				delete $switches->{$ip_r};
+			}
+		}
+	}
+
 	return $switches
 }
 
@@ -492,12 +542,9 @@ sub nmap_scan {
     # If --range options, take iprange, otherwise
     #  use noderange to discover switches.
     ##################################################
-    if ( scalar(@filternodes) eq 0)
-    {
-        $ccmd = "/usr/bin/nmap -sn -oX - @iprange";
-    } else {
-        $ccmd = "/usr/bin/nmap -sn -oX - @filternodes";
-    }
+	my $ranges = get_ip_ranges($request);
+
+	$ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
     print $ccmd;
     my $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -640,8 +687,48 @@ sub xCATdB {
             send_msg($request, 0, "$$ret[0]");
         }
     }
-
 }
 
+#--------------------------------------------------------------------------------
+=head3  get_ip_ranges
+      Return the an array of ip ranges. If --range is specified, use it. If
+      noderange is specified, use the ip address of the nodes. Otherwise, use 
+      the subnets for all the live nics on the xCAT mn. 
+    Arguments:
+       request: request structure with callback pointer.
+    Returns:
+        A pointer of an array of ip ranges.
+=cut
+#--------------------------------------------------------------------------------
+sub get_ip_ranges {
+	$request = shift;
+
+	# if --range is defined, just return the ranges specified by the user
+	if (@iprange > 0) {
+		return \@iprange;
+	}
+
+    # if noderange is defined, then put the ip addresses of the nodes in
+	if (@filternodes > 0) {
+		my @ipranges=();
+		foreach my $node (@filternodes) {
+			my $ip = xCAT::NetworkUtils->getipaddr($node);	
+			push(@ipranges, $ip);
+		}
+		return \@ipranges;
+	}
+
+	# for default, use the subnets for all the live nics on the mn
+	my $nets = xCAT::NetworkUtils->my_nets();
+	my $ranges=[];
+	foreach my $net (keys %$nets) {
+		if ($net !~ /127\.0\.0\.0/) {
+			push(@$ranges, $net);
+		}
+	}
+
+	return $ranges;
+    
+}
 1;
 
