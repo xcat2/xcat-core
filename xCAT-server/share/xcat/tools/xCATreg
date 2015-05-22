@@ -1405,7 +1405,7 @@ foreach my $m (keys %mns) {
 	        }
 	    }
 		
-		if(time() - $regstarttime > 28800) {
+		if(time() - $regstarttime > 36000) {
 		#if($curtime - $regstarttime > 10) {
 			send_msg(1, "[timing] 8 hours is expired");
 			last;
