@@ -8,6 +8,8 @@ B<bmcdiscover> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 B<bmcdiscover> [B<-m>|B<--method>] I<scan_method> [B<-r>|B<--range>] I<ip_range> 
 
+B<bmcdiscover> [B<-i>|B<--bmcip>] I<bmc_ip> [B<-u>|B<--bmcuser>] I<bmcusername> [B<-p>|B<--bmcpwd>] I<bmcpassword> [B<-c>|B<--check>]
+
 =head1 DESCRIPTION
 
 The B<bmcdiscover> command will discover bmc using scan method.
@@ -15,6 +17,8 @@ The B<bmcdiscover> command will discover bmc using scan method.
 This command will use nmap scan active nodes, ip range format should be the same format with that is used by nmap.
 
 Note: scan method can only be nmap now.
+
+This command can check if bmc username or password is correct or not
 
 =head1 OPTIONS
 
@@ -28,13 +32,29 @@ Display usage message.
 
 Command version.
 
-=item B<-m> I<scan_method>
+=item B<-m|--method> I<scan_method>
 
 Scan method, now it is nmap.
 
-=item B<-r> I<ip_range>
+=item B<-r|--range> I<ip_range>
 
 Ip range should be a string, can pass hostnames, IP addresses, networks, etc.
+
+=item B<-i|--bmcip> I<bmc_ip>
+
+BMC ip.
+
+=item B<-u|--bmcuser> I<bmcusername>
+
+BMC user name.
+
+=item B<-p|--bmcpwd> I<bmcpassword>
+
+BMC user password.
+
+=item B<-c|--check> 
+
+Check.
 
 =back
 
@@ -56,6 +76,32 @@ Output is similar to:
 50.3.15.1
 
 Note: input for ip range can also be like scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
+
+2. To check if user name or password is correct or not for bmc
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
+
+Output is similar to:
+
+Correct ADMINISTRATOR
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD1 -c
+
+Output is similar to:
+
+Error: Wrong bmc password
+
+bmcdiscover -i 10.4.23.254 -u USERID1 -p PASSW0RD1 -c
+
+Output is similar to:
+
+Error: Wrong bmc user
+
+bmcdiscover -i 10.4.23.2541234 -u USERID -p PASSW0RD -c
+
+Output is similar to:
+
+Error: Not bmc
 
 =head1 SEE ALSO
 
