@@ -1,19 +1,5 @@
-bash
-nfs-common
-openssl
-isc-dhcp-client
-libc-bin
-linux-image-generic-lts-utopic
+#INCLUDE:compute.ubuntu14.04.2.ppc64el.pkglist#
 linux-headers-generic-lts-utopic
-openssh-server
-openssh-client
-wget
-vim
-ntp
-rsync
-busybox-static
-gawk
-dnsutils
 
 build-essential
 zlib1g-dev
