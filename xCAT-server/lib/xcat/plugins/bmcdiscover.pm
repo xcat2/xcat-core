@@ -112,11 +112,15 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "\tbmcdiscover [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]\n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-m|--method] scan_method [-r|--range] ip_range \n ";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword [-c|--check]\n ";
     push @{ $rsp->{data} }, "\tFor example: \n ";
-    push @{ $rsp->{data} }, "\tbmcdiscover -m nmap -r \"10.4.23.100-254 50.3.15.1-2\" \n ";
-    push @{ $rsp->{data} }, "\tNote : ip_range should be a string, can pass hostnames, IP addresses, networks, etc. \n ";
-    push @{ $rsp->{data} }, "\tIf there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
-    push @{ $rsp->{data} }, "\tEx: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
+    push @{ $rsp->{data} }, "\t1, bmcdiscover -m nmap -r \"10.4.23.100-254 50.3.15.1-2\" \n ";
+    push @{ $rsp->{data} }, "\t   Note : ip_range should be a string, can pass hostnames, IP addresses, networks, etc. \n ";
+    push @{ $rsp->{data} }, "\t   If there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
+    push @{ $rsp->{data} }, "\t   Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
+    push @{ $rsp->{data} }, "\t2, bmcdiscover -i <bmc_ip> -u <bmcusername> -p <bmcpassword> -c\n ";
+    push @{ $rsp->{data} }, "\t   Note : check if bmc username and password are correct or not ";
+
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
 }
@@ -147,8 +151,10 @@ sub bmcdiscovery_processargs {
                               'help|h|?'  => \$::opt_h,
                               'method|m=s' => \$::opt_M,
                               'range|r=s' => \$::opt_R,
-                              #'user|U=s' => \$::opt_U,
-                              #'password|P=s' => \$::opt_P,
+                              'bmcip|i=s' => \$::opt_I,
+                              'check|c' => \$::opt_C,
+                              'bmcuser|u=s' => \$::opt_U,
+                              'bmcpwd|p=s' => \$::opt_P,
                               'version|v' => \$::opt_v,
     );
 
@@ -156,25 +162,6 @@ sub bmcdiscovery_processargs {
         return 3;
     }
 
-    ######################################
-    # check if there is nmap or not
-    ######################################
-    if ( -x '/usr/bin/nmap' )
-    {
-        $nmap_path="/usr/bin/nmap";
-    }
-    elsif ( -x '/usr/local/bin/nmap' )
-    {
-        $nmap_path="/usr/local/bin/nmap";
-    }
-    else
-    {
-        my $rsp;
-        push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
-        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-        return 1;
-
-    }
 
     #########################################
     # This command is for linux
@@ -190,7 +177,8 @@ sub bmcdiscovery_processargs {
     # Option -h for Help
     ##########################################
     if ( defined($::opt_h) ) {
-        return 2;
+          bmcdiscovery_usage;   
+          return 0; 
     }
 
     #########################################
@@ -203,19 +191,115 @@ sub bmcdiscovery_processargs {
     }
 
     #########################################
-    # Option -m -r are must
-    ######################################33
-    if ( defined($::opt_M) && defined($::opt_R) ) {
-        #$::method = split_comma_delim_str($::opt_M);
-        #$::range = split_comma_delim_str ($::opt_R);
-        return 0;
+    # Option -m -r should be together
+    ######################################
+    if ( defined($::opt_M) && defined($::opt_R) ) 
+    {
+
+            ######################################
+            # check if there is nmap or not
+            ######################################
+            if ( -x '/usr/bin/nmap' )
+            {
+               $nmap_path="/usr/bin/nmap";
+            }
+               elsif ( -x '/usr/local/bin/nmap' )
+            {
+               $nmap_path="/usr/local/bin/nmap";
+            }
+            else
+            {
+                my $rsp;
+                push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
+                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                return 1;
+
+            }
+           scan_process($::opt_M,$::opt_R);
+
+           return 0;
     }
 
+    #########################################
+    # Option -i -u -p -c should be used together
+    ######################################
+    if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_C) && defined($::opt_I) ) 
+    {
+        my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
+        return $res;
+    }
     #########################################
     # Other attributes are not allowed
     #########################################
 
-    return 3;
+    return 4;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   check_auth_process
+
+        check bmc user and password
+        Returns:
+                0 - OK
+                2 - Error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub check_auth_process{
+    my $bmcip = shift;
+    my $bmcuser = shift;
+    my $bmcpw = shift;
+    my $bmstr1 = "RAKP 2 message indicates an error : unauthorized name";
+    my $bmstr2 = "RAKP 2 HMAC is invalid";
+    my $bmstr3 = "Set Session Privilege Level to ADMINISTRATOR";
+    my $bmstr31 = "Correct ADMINISTRATOR";
+    my $bmstr21 = "Wrong bmc password";
+    my $bmstr11 = "Wrong bmc user";
+    my $bmcerror = "Not bmc";
+    my $othererror = "Check bmc first";
+    my $bmstr4 = "BMC Session ID";
+     
+    my $callback = $::CALLBACK;
+    my $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U $bmcuser -P $bmcpw -H $bmcip chassis status ";
+    my $output = xCAT::Utils->runcmd("$icmd", -1);
+    if ( $output =~ $bmstr1 )
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$bmstr11";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+    elsif ( $output =~ $bmstr2 )
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$bmstr21";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+    elsif ( $output =~ $bmstr3 )
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$bmstr31";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        return 0;
+
+    }
+    elsif ( $output !~ $bmstr4 )
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$bmcerror";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+    else
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$othererror";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
 }
 
 #----------------------------------------------------------------------------
@@ -477,18 +561,22 @@ sub bmcdiscovery {
 
     ##############################################################
     # process the command line
-    # 0=success, 1=version, 2=help, 3=error
+    # 0=success, 1=version, 2=error for check_auth_, other=error
     ##############################################################
     $rc = bmcdiscovery_processargs(@_);
     if ( $rc != 0 ) {
-       if ( $rc != 1) {
-           bmcdiscovery_usage(@_);
+       if ( $rc != 1 ) 
+       {
+           if ( $rc !=2 )
+           {
+               bmcdiscovery_usage(@_);
+           }
        }
        return ( $rc - 1 );
     }
-   scan_process($::opt_M,$::opt_R);
+   #scan_process($::opt_M,$::opt_R);
 
-   return 0;
+   return $rc;
 
 }
 
