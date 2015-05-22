@@ -671,6 +671,19 @@ my %URIdef = (
 
             }
         },
+        checkbmcauth => {
+            desc => "[URI:/services/checkbmcauth] - Check if bmc user or password is correct.",
+            matcher => '^/services/checkbmcauth/[^/]*/[^/]+$',
+            GET => {
+                desc => "Check if bmc user or password is correct.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Check bmc user or password.|GET|/services/checkbmcauth||",
+                cmd => "bmcdiscover",
+                fhandler => \&bmccheckhdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
         dhcp => {
             desc => "[URI:/services/dhcp] - The dhcp service resource.",
             matcher => '^/services/dhcp$',
@@ -2212,6 +2225,67 @@ sub tablenodehdl {
 
     return $responses;
 }
+
+#check if bmc user or password is correct 
+sub bmccheckhdl {
+
+    my $params = shift;
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    my $bmc_ip;
+    my $bmc_user;
+    my $bmc_pw;
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+
+    # get bmc ip
+    if (defined($urilayers[2]))
+    {
+            $bmc_ip=$urilayers[2];
+    }
+
+    # get bmc user and password
+    if (defined($urilayers[3]))
+    {
+            my @keyvals = split(/,/, $urilayers[3]);
+            foreach my $kv (@keyvals)
+            {
+                my ($key, $value) = split(/\s*=\s*/, $kv, 2);
+                if ($key eq "bmcuser")
+                {
+                    $bmc_user=$value;
+                }
+                elsif ($key eq "bmcpw")
+                {
+                    $bmc_pw=$value;
+                }
+            }
+    }
+    
+    if ($params->{'resourcename'} eq "checkbmcauth") {
+        if (isGET()) {
+            push @args, "-i";
+            push @args, $bmc_ip;
+            push @args, "-u";
+            push @args, $bmc_user;
+            push @args, "-p";
+            push @args, $bmc_pw;
+            push @args, "-c";
+        }
+
+    }
+
+    push @{$request->{arg}}, @args;
+    my $req = genRequest();
+    my $responses = sendRequest($req);
+
+    return $responses;
+
+
+}
+
 
 #get bmc list for bmcdiscover
 sub bmclisthdl {
