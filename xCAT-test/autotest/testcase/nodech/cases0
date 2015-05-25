@@ -48,7 +48,7 @@ end
 
 start:nodech_noderanage_table_at
 description:nodech testnode nodetype.os=@=helloworld.Check nodech command with =@=.
-cmd:chdef -t node -o testnode os=hello
+cmd:chdef -t node -o testnode os=hello groups=all
 check:rc==0
 cmd:nodech testnode nodetype.os=@=helloworld
 check:rc==0
@@ -134,7 +134,7 @@ end
 
 start:nodech_noderange_shortname_mgt
 description:nodech testnode mgt=hmc.The nodech use shortname mgt
-cmd:chdef -t node -o testnode mgt=blade
+cmd:chdef -t node -o testnode mgt=blade  groups=all
 check:rc==0
 cmd:nodech testnode mgt=hmc
 check:rc==0
@@ -145,7 +145,7 @@ end
 
 start:nodech_delete
 description:nodech -d 
-cmd:chdef -t node -o testnode os=hello
+cmd:chdef -t node -o testnode os=hello groups=all
 check:rc==0
 cmd:nodech -d testnode nodetype
 check:rc==0
