@@ -144,6 +144,18 @@ my %URIdef = (
                 outhdler => \&noout,
             },
         },
+        noderename => {
+            desc => "[URI:/nodes/{noderange}/rename] - Change old_nodename into new_nodename",
+            matcher => '^/nodes/[^/]*/rename$',
+            PUT => {
+                desc => "Change node name.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Change nodename for node \'node1\'.|PUT|/nodes/node1/rename||",
+                cmd => "chdef",
+                fhandler => \&actionhdl,
+                outhdler => \&defout_remove_appended_info,
+            },
+        },
         nodedns => {
             desc => "[URI:/nodes/{noderange}/dns] - The dns record resource for the node {noderange}",
             matcher => '^/nodes/[^/]*/dns$',
@@ -2027,6 +2039,15 @@ sub actionhdl {
                 push @args, $paramhash->{'target'};
             } else {
                 error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
+            }
+        }
+    } elsif  ($params->{'resourcename'} eq "noderename") {
+
+        if (isPut()) {
+            if (defined ($paramhash->{'newNode'})) { #specify the new name for node
+                push @args, ('-t', "node");
+                push @args, ('-o', $urilayers[1]);
+                push @args, ('-n', $paramhash->{'newNode'});
             }
         }
     }
