@@ -20,7 +20,7 @@ check:rc==0
 cmd:mkdef -t node -o node01,node02 groups="compute"
 check:rc==0
 cmd:sleep 30
-cmd:makehosts 
+cmd:XCATBYPASS=1 makehosts 
 check:rc==0
 cmd:sleep 30
 cmd:cat /etc/hosts
@@ -41,7 +41,7 @@ check:rc==0
 cmd:chdef -t node -o node01,node02 groups="compute"
 check:rc==0
 cmd:sleep 30
-cmd:makehosts -l
+cmd:XCATBYPASS=1 makehosts -l
 check:rc==0
 cmd:sleep 30
 cmd:cp -f /etc/hosts /tmp/hosts
@@ -66,7 +66,7 @@ cmd:makehosts node01
 check:rc==0
 cmd:cat /etc/hosts > /tmp/1
 cmd:sleep 30
-cmd:makehosts -d node01
+cmd:XCATBYPASS=1 makehosts -d node01
 check:rc==0
 cmd:cat /etc/hosts > /tmp/2
 cmd:diff /tmp/1 /tmp/2
@@ -84,7 +84,7 @@ check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
 cmd:sleep 30
-cmd:makehosts -n
+cmd:XCATBYPASS=1 makehosts -n
 check:rc==0
 cmd:sleep 30
 cmd:cat /etc/hosts
@@ -109,7 +109,7 @@ check:rc==0
 cmd:chdef -t node -o node01 groups="compute"
 check:rc==0
 cmd:sleep 30
-cmd:makehosts -n node01
+cmd:XCATBYPASS=1 makehosts -n node01
 check:rc==0
 cmd:sleep 30
 cmd:cp /etc/hosts /tmp/hosts -f
