@@ -631,7 +631,7 @@ sub loadcase
 sub getnodeattr
 {
     my ($node, $attr) = @_;
-    my @output = runcmd("XCATBYPASS=1 lsdef -t node -o $node -i $attr");
+    my @output = runcmd("lsdef -t node -o $node -i $attr");
     if($::RUNCMD_RC){
         return "Unknown";
     }else{
