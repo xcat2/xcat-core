@@ -33,7 +33,7 @@ end
 
 start:nodels_noderange_shortname_mgt
 description:The nodels use shortname mgt
-cmd:chdef -t node -o testnode mgt=blade
+cmd:chdef -t node -o testnode mgt=blade groups=all
 check:rc==0
 cmd:nodels testnode mgt
 check:rc==0
@@ -103,7 +103,7 @@ end
 
 start:nodels_S
 description:nodels -S
-cmd:chdef -t node -o testnode hidden=1 
+cmd:chdef -t node -o testnode hidden=1 groups=rhels5.5  
 check:rc==0
 cmd:nodels -S
 check:rc==0
@@ -169,7 +169,7 @@ end
 
 start:nodels_noderange_tablecolumn
 description:nodels testnode nodehm.mgt
-cmd:chdef -t node -o testnode mgt=hmc
+cmd:chdef -t node -o testnode mgt=hmc groups=all
 check:rc==0
 cmd:nodels testnode nodehm.mgt
 check:rc==0
