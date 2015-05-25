@@ -1,5 +1,5 @@
 start:makeconservercf_null
-cmd:chdef -t node -o testnodetmp cons=hmc
+cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:cat /etc/conserver.cf
@@ -10,7 +10,7 @@ cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_noderange
-cmd:chdef -t node -o testnodetmp cons=hmc
+cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:cat /etc/conserver.cf
@@ -21,7 +21,7 @@ cmd:rmdef -t node testnodetmp
 end
 
 start:makeconservercf_d
-cmd:chdef -t node -o testnodetmp cons=hmc
+cmd:chdef -t node -o testnodetmp cons=hmc groups=all
 cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:makeconservercf -d testnodetmp
