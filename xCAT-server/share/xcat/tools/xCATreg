@@ -907,7 +907,7 @@ sub creat_report{
 
 			$mailreport .= "\tTotalCase $totalcase TotalRun $totalcnt Failed $failcnt\n\tFailed cases: $faillist\n";
 		}else{ # regression test out of time
-			$mailreport .= "\tTime consumption: Out of 8 hours!!!!!!\n";
+			$mailreport .= "\tTime consumption: Out of 9 hours!!!!!!\n";
 		}
     }
 	
