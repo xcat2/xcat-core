@@ -87,7 +87,6 @@ sub setdestiny {
     my $req=shift;
     my $flag=shift;
     my $noupdate=shift;
-    
     $chaintab = xCAT::Table->new('chain',-create=>1);
     my @nodes=@{$req->{node}};
 
@@ -180,6 +179,9 @@ sub setdestiny {
 	}
 
 	my $nodetypetable = xCAT::Table->new('nodetype', -create=>1);
+	my $noderestable = xCAT::Table->new('noderes', -create=>1);
+        my $nbents = $noderestable->getNodeAttribs($req->{node}->[0],["netboot"]);
+        my $curnetboot=$nbents->{netboot};
 	if ($state ne 'osimage') {
 	    my $updateattribs;
 	    if ($target) {
@@ -191,7 +193,7 @@ sub setdestiny {
 		    my $nodearch=$2;
 		    foreach (@{$req->{node}}) {
 			if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
-			    $callback->({errorcode=>1,error=>"Requested architecture ".$nodearch." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
+			    $callback->({errorcode=>[1],error=>"Requested architecture ".$nodearch." is not one of the architectures supported by $_  (per nodetype.supportedarchs, it supports ".$archentries->{$_}->[0]->{supportedarchs}.")"});
 			    return;
 			}
 		    } #end foreach
@@ -207,17 +209,30 @@ sub setdestiny {
 	    if ($target) {
 		my $osimagetable=xCAT::Table->new('osimage');
 		(my $ref) = $osimagetable->getAttribs({imagename => $target}, 'provmethod', 'osvers', 'profile', 'osarch');
+
 		if ($ref) {
 		    if ($ref->{provmethod}) {
 			$state=$ref->{provmethod};
+
 		    } else {
-			$errored =1; $callback->({error=>"osimage.provmethod for $target must be set."});
+			$errored =1; $callback->({errorcode=>[1],error=>"osimage.provmethod for $target must be set."});
 			return;
 		    }
 		} else {
-		    $errored =1; $callback->({error=>"Cannot find the OS image $target on the osimage table."});
+		    $errored =1; $callback->({errorcode=>[1],error=>"Cannot find the OS image $target on the osimage table."});
 		    return;
 		}
+            
+                #if the noderes.netboot is invalid for the specified osimage provision
+                #report error and exit
+                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch});
+                unless($netbootval =~ /$curnetboot/i){
+                    $errored =1; 
+                    $callback->({errorcode=>[1],error=> [join(",",@{$req->{node}}).":stop configuration because $curnetboot DOES NOT work for provision of $target, please choose the correct noderes.netboot value in the subset \"$netbootval\",see description of 'netboot' attributes in 'tabdump -d noderes' for details."]});
+                    return;
+                }               
+
+
 		my $updateattribs;
 		$updateattribs->{provmethod}=$target;
 		$updateattribs->{profile}=$ref->{profile};
@@ -226,12 +241,15 @@ sub setdestiny {
 		my @tmpnodelist = @{$req->{node}};
 		$nodetypetable->setNodesAttribs(\@tmpnodelist,$updateattribs);
 
+
 		foreach my $tmpnode (@{$req->{node}}) {
 		    $state_hash{$tmpnode}=$state;
 		}
 		
 	    } else { 
 		my @errornodes=();
+                my $invalidosimghash;
+                my @validnodes;
 		my $updatestuff;
 		my $nodetypetable = xCAT::Table->new('nodetype', -create=>1);
 		my %ntents = %{$nodetypetable->getNodesAttribs($req->{node},"provmethod")};
@@ -242,6 +260,17 @@ sub setdestiny {
 			    my $osimagetable=xCAT::Table->new('osimage');
 			    (my $ref) = $osimagetable->getAttribs({imagename => $osimage}, 'provmethod', 'osvers', 'profile', 'osarch');
 			    if ($ref) {
+                                #check whether the noderes.netboot is set appropriately
+                                #if not,push the nodes into $invalidosimghash->{$osimage}->{netboot}
+                                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch});
+                                if($netbootval =~ /$curnetboot/i){
+                                    push(@validnodes,$tmpnode);
+                                }else{
+                                    push(@{$invalidosimghash->{$osimage}->{nodes}},$tmpnode);
+                                    $invalidosimghash->{$osimage}->{netboot}=$netbootval;
+                                    next;       
+                                }
+
 				if ($ref->{provmethod}) {
 				    $state=$ref->{provmethod};
 				    $state_hash{$tmpnode}=$state;
@@ -252,16 +281,17 @@ sub setdestiny {
 				    $updatestuff->{$osimage}->{os}=$ref->{osvers};
 				    $updatestuff->{$osimage}->{arch}=$ref->{osarch};
 				} else {
-				    $errored =1; $callback->({error=>"osimage.provmethod for $osimage must be set."});
+				    $errored =1; $callback->({errorcode=>[1],error=>"osimage.provmethod for $osimage must be set."});
 				    return;
 				}
 			    } else {
-				$errored =1; $callback->({error=>"Cannot find the OS image $osimage on the osimage table."});
+				$errored =1; $callback->({errorcode=>[1],error=>"Cannot find the OS image $osimage on the osimage table."});
 				return;
 			    }
 			} else {
 			    my $nodes= $updatestuff->{$osimage}->{nodes};
 			    push (@$nodes, $tmpnode);
+                            push(@validnodes,$tmpnode);
 			    $state_hash{$tmpnode}=$updatestuff->{$osimage}->{state};
 			}
 			
@@ -271,16 +301,31 @@ sub setdestiny {
 		}
 		
 		if (@errornodes) {
-		    $errored =1; $callback->({error=>"OS image name must be specified in nodetype.provmethod for nodes: @errornodes."});
+		    $errored =1; $callback->({errorcode=>[1],error=>"OS image name must be specified in nodetype.provmethod for nodes: @errornodes."});
 		    return;
 		} else {
 		    foreach my $tmpimage (keys %$updatestuff) {
 			my $updateattribs=$updatestuff->{$tmpimage};
 			my @tmpnodelist = @{$updateattribs->{nodes}};
+                        
 			delete $updateattribs->{nodes}; #not needed for nodetype table
 			delete $updateattribs->{state}; #node needed for nodetype table
 			$nodetypetable->setNodesAttribs(\@tmpnodelist,$updateattribs);
-		    } 
+		    }
+ 
+                    #if any node with inappropriate noderes.netboot,report the error and return
+                    foreach my $tmpimage(keys %$invalidosimghash){
+                           $errored =1;
+                           $callback->({errorcode=>[1],error=> [join(",",@{$invalidosimghash->{$tmpimage}->{nodes}}).": stop configuration because $curnetboot DOES NOT work for provision of $tmpimage, please choose the correct noderes.netboot value in the subset \"$invalidosimghash->{$tmpimage}->{netboot}\",see description of 'netboot' attributes in 'tabdump -d noderes' for details."]});
+                    }
+                      
+                    if("$errored" ne "0"){
+                      return;
+                    } 
+                   
+                    #$req->{node}=();
+                    #push(@{$req->{node}},@validnodes);
+                    #print Dumper($req->{node});
 		}
 	    }
 	}
@@ -325,7 +370,7 @@ sub setdestiny {
 	    if ($errored) { 
                 my @myself = xCAT::NetworkUtils->determinehostname();
                 my $myname = $myself[(scalar @myself)-1];
-		$callback->({error=>"Some nodes failed to set up $state resources on server $myname, aborting"});
+		$callback->({errorcode=>[1],error=>"Some nodes failed to set up $state resources on server $myname, aborting"});
 		return; 
 	    }
 	
@@ -337,17 +382,17 @@ sub setdestiny {
 		if ($tempstate ne "winshell") {
 		    if ($ntent and $ntent->{os}) {
 			$nstates{$_} .= " ".$ntent->{os};
-		    } else { $errored =1; $callback->({error=>"nodetype.os not defined for $_"}); }
+		    } else { $errored =1; $callback->({errorcode=>[1],error=>"nodetype.os not defined for $_"}); }
 		} else {
 		    $nstates{$_} .= " winpe";
 		}
 		if ($ntent and $ntent->{arch}) {
 		    $nstates{$_} .= "-".$ntent->{arch};
-		} else { $errored =1; $callback->({error=>"nodetype.arch not defined for $_"}); }
+		} else { $errored =1; $callback->({errorcode=>[1],error=>"nodetype.arch not defined for $_"}); }
 		if (($tempstate ne "winshell") && ($tempstate ne "sysclone")) {
 		    if ($ntent and $ntent->{profile}) {
 			$nstates{$_} .= "-".$ntent->{profile};
-		    } else { $errored =1; $callback->({error=>"nodetype.profile not defined for $_"}); }
+		    } else { $errored =1; $callback->({errorcode=>[1],error=>"nodetype.profile not defined for $_"}); }
 		}
 		if ($errored) {return;}
 		#statelite
@@ -507,7 +552,7 @@ sub setdestiny {
 			} 
 		    }
 		}
-		#if ($provmethod ne 'install') {
+		#if ($provmethod ne 'install') 
 		#fix bug: in sysclone, provmethod attribute gets cleared
 		if ($provmethod ne 'install' &&  $provmethod ne 'sysclone') {
 		    push(@nodestoblank, $_);

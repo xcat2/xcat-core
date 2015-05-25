@@ -4533,4 +4533,56 @@ sub splitkcmdline{
 
  return \%cmdhash;
 }
+
+
+###################################################################################
+#subroutine lookupNetboot 
+#Usage: determine the possible noderes.netboot values of the osimage 
+#       according to the "osvers" and "osarch" attributes.
+#Input Params: 
+#       $osvers: the osname of the osimage,i.e,rhels7.1,sles11.3,ubuntu14.04.1 ...
+#       $osarch: the osarch of the osimage,i.e, x86_64,ppc64,ppc64le ...
+#Return value:
+#       a string of the possible noderes.netboot values delimited with comma ","
+#       i.e, "pxe,xnba", empty on fail.        
+###################################################################################
+
+sub lookupNetboot{
+    my $osvers=shift;
+    if ( $osvers =~ /xCAT::Utils/ ){
+       $osvers=shift;
+    }
+    my $osarch=shift;
+
+    my $ret="";
+    my $osv;
+    my $osn;
+    my $osm;
+    if ($osvers =~ /(\D+)(\d+)\.(\d+)/) {
+        $osv = $1;
+        $osn = $2;
+        $osm = $3;
+
+    } elsif ($osvers =~ /(\D+)(\d+)/){
+        $osv = $1;
+        $osn = $2;
+        $osm = 0;
+    }
+
+
+    if ($osarch =~ /^x86_64$/i){
+        $ret= "xnba,pxe";
+    }elsif($osarch =~ /^ppc64$/i){
+       if(($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and $osn < 12)){
+          $ret="yaboot";
+       }else{
+          $ret="grub2,grub2-tftp,grub2-http";
+       }
+    }elsif($osarch =~ /^ppc64le$/i or $osarch =~ /^ppc64el$/i){
+       $ret="petiboot,grub2,grub2-tftp,grub2-http"; 
+    }
+    
+    return $ret;
+}
+
 1;
