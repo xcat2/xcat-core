@@ -1661,7 +1661,7 @@ sub defmk
         # If none of the attributes in nodelist is defined: groups,status,appstatus,primarysn,comments,disable
         # the nodelist table will not be updated, caused mkdef failed.
         # We give a restriction that the "groups" must be specified with mkdef.
-        if (($type eq "node") && !defined($::FINALATTRS{$obj}{groups}))
+        if (($type eq "node") && (!defined($::FINALATTRS{$obj}{groups}) || !$::FINALATTRS{$obj}{groups}))
         {
             my $rsp;
             $rsp->{data}->[0] =
@@ -2048,12 +2048,18 @@ sub defch
             $isDefined = 1;
         }
 
+        if (!$isDefined && ($type eq 'node') && (!defined($::FINALATTRS{$obj}{'groups'}) || !$::FINALATTRS{$obj}{'groups'}))
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $error = 1;
+            next;
+        }
+
         if (!$isDefined)
         {
             $newobjects{$obj} = $type;
-            if (! grep (/^groups$/, keys %{$::FINALATTRS{$obj}}) ) {
-                $::FINALATTRS{$obj}{'groups'} = "all";
-            }
         }
 
         if (!$isDefined && $::opt_m)
