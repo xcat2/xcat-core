@@ -208,7 +208,7 @@ sub setdestiny {
 	    if (@{$req->{node}} == 0) { return;}
 	    if ($target) {
 		my $osimagetable=xCAT::Table->new('osimage');
-		(my $ref) = $osimagetable->getAttribs({imagename => $target}, 'provmethod', 'osvers', 'profile', 'osarch');
+		(my $ref) = $osimagetable->getAttribs({imagename => $target}, 'provmethod', 'osvers', 'profile', 'osarch','imagetype');
 
 		if ($ref) {
 		    if ($ref->{provmethod}) {
@@ -222,10 +222,8 @@ sub setdestiny {
 		    $errored =1; $callback->({errorcode=>[1],error=>"Cannot find the OS image $target on the osimage table."});
 		    return;
 		}
-            
-                #if the noderes.netboot is invalid for the specified osimage provision
-                #report error and exit
-                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch});
+
+                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch},$ref->{imagetype});
                 unless($netbootval =~ /$curnetboot/i){
                     $errored =1; 
                     $callback->({errorcode=>[1],error=> [join(",",@{$req->{node}}).":stop configuration because $curnetboot DOES NOT work for provision of $target, please choose the correct noderes.netboot value in the subset \"$netbootval\",see description of 'netboot' attributes in 'tabdump -d noderes' for details."]});
@@ -258,11 +256,11 @@ sub setdestiny {
 		    if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot') && ($osimage ne 'statelite')) {
 			if (!exists($updatestuff->{$osimage})) {
 			    my $osimagetable=xCAT::Table->new('osimage');
-			    (my $ref) = $osimagetable->getAttribs({imagename => $osimage}, 'provmethod', 'osvers', 'profile', 'osarch');
+			    (my $ref) = $osimagetable->getAttribs({imagename => $osimage}, 'provmethod', 'osvers', 'profile', 'osarch','imagetype');
 			    if ($ref) {
                                 #check whether the noderes.netboot is set appropriately
                                 #if not,push the nodes into $invalidosimghash->{$osimage}->{netboot}
-                                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch});
+                                my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch},$ref->{imagetype});
                                 if($netbootval =~ /$curnetboot/i){
                                     push(@validnodes,$tmpnode);
                                 }else{
