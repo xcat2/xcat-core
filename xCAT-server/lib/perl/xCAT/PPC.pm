@@ -1016,12 +1016,9 @@ sub resolve_netwk {
                 next;  
             }
             $gateway_ip = @$ip[1];
-        } else {
-            # If the <xcatmaster> is the gateway, the ip forwarding must be enabled on the MN/SN,
-            # xCAT will setup the ipforarding automatically, but still see problems about the ip forwarding occassionally.
-            send_msg( $request, 1, "$_: No gateway defined for this node, check the networks table. If the gateway in the networks table is '<xcatmaster>', check the ip forwarding setup on the management node and service nodes.");
-            next;
-        }
+        } 
+
+        # Without gateway, rnetboot should still work
 
         my $netmask = $nethash{$_}{mask};
         if ( !defined( $netmask )) {
