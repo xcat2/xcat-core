@@ -80,14 +80,16 @@ OSNAME=$(uname)
 if [ "$OSNAME" != "AIX" ]; then
 	GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
 	
-	# Get a lock, so can not do 2 builds at once
-	exec 8>/var/lock/xcatbld-$REL.lock
-	if ! flock -n 8; then
-		echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
-		exit 1
-	fi
-	# This is so rpm and gpg will know home, even in sudo
-	export HOME=/root
+        if [ "$(id -u)" == "0" ]; then
+	    # Get a lock, so can not do 2 builds at once
+	    exec 8>/var/lock/xcatbld-$REL.lock
+	    if ! flock -n 8; then
+                echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
+                exit 1
+	    fi
+	    # This is so rpm and gpg will know home, even in sudo
+	    export HOME=/root
+        fi
 fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
@@ -131,9 +133,11 @@ fi
 XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
 
 if [ "$GIT" = "1" ]; then	# using git - need to include REL in the path where we put the built rpms
-	DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
+	#DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
+        DESTDIR=$HOME/xcatbuild/$REL$EMBEDDIR/$XCATCORE
 else
-	DESTDIR=../..$EMBEDDIR/$XCATCORE
+	#DESTDIR=../..$EMBEDDIR/$XCATCORE
+        DESTDIR=$HOME/xcatbuild/..$EMBEDDIR/$XCATCORE
 fi
 SRCD=core-snap-srpms
 
@@ -143,7 +147,7 @@ if [ "$OSNAME" = "AIX" ]; then
 	SYSGRP=system
 else
 	NOARCH=noarch
-	SYSGRP=root
+	SYSGRP=$(id -g)
 fi
 
 function setversionvars {
@@ -453,7 +457,7 @@ if [ -n "$VERBOSEMODE" ]; then
 else
 	verboseflag=""
 fi
-echo "Creating $TARNAME ..."
+echo "Creating $(dirname $DESTDIR)/$TARNAME ..."
 if [[ -e $TARNAME ]]; then
 	mkdir -p previous
 	mv -f $TARNAME previous

@@ -19,7 +19,8 @@ use Pod::Html;
 my $poddir = 'pods';
 my $mandir = 'share/man';
 my $htmldir = 'share/doc';
-my $cachedir = '/tmp';
+my $cachedir = "$ENV{'HOME'}/tmp";
+if (system("mkdir -p $cachedir")) { die "Error: could not create $cachedir.\n"; }
 my $isaix = ($^O =~ /^aix/i);
 my $skiponaix = 'route|group';
 
