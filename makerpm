@@ -45,6 +45,11 @@ function makenoarch {
 		rm -f $RPMROOT/SRPMS/$RPMNAME-$VER*rpm $RPMROOT/RPMS/noarch/$RPMNAME-$VER*rpm
 		rpmbuild $QUIET -ta $RPMROOT/SOURCES/$RPMNAME-$VER.tar.gz
 		RC=$?
+
+		if [ $RPMNAME = "xCAT-UI" ]; then
+			# undo the modifications above to leave the sandbox prestine on the build machine
+			git checkout xCAT-UI/xCAT-UI.spec
+		fi
 	fi
 }
 

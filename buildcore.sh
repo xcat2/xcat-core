@@ -189,6 +189,22 @@ fi
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
 	# using git
+
+	# Do some error checking for the build before starting...
+	# check if there's any modifications to git current repo
+	MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
+	if [ $MODIFIED_FILES ]; then
+		echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
+		echo "Not a clean build, aborting..."
+		exit 3
+	fi
+	# check if there's any modifications to git current repo
+	UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
+	if [ -n $UNTRACKED_FILES ]; then
+		echo "The following files are not tracked in git: $UNTRACKED_FILES..."
+		echo "Not a clean build, aborting..."
+		exit 3
+	fi
 	if [ -z "$GITUP" ]; then
 		GITUP=../coregitup
 		echo "git pull > $GITUP"
