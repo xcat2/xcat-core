@@ -200,13 +200,8 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 $sitetab->close;
 my $progname;
 my $pipeexpected;
-my $ssl2udppipe=0;
 $SIG{PIPE} = sub { 
     if ($pipeexpected) { return; }
-    if ($ssl2udppipe) { 
-        xCAT::MsgUtils->message("S","SIGPIPE xcatd SSL listener to udp service pipe is broken.  Ignore this error if you are shutting down or restarting xcatd.");
-        return;
-    }
     confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)";
 };
 $progname = \$0;
@@ -526,36 +521,29 @@ sleep 0.05; #up to 50 ms outage possible
   }
 }
     
-sub update_udpcontext_from_sslctl {
-	my %args = @_;
-	my $udpcontext = $args{udpcontext};
-	my $select = $args{select};
-	my $msg;
-	eval { $msg = fd_retrieve($sslctl); };
-	if ($msg)  {
-		#remember new count and, if new connection and we have a fudge factor, decrese fudge factor optimisticly assuming it's the right one
-		$udpcontext->{sslclientcount} = $msg->{sslclientcount};
-		if ($udpcontext->{clientfudge} and $msg->{clientcountchange} > 0) { $udpcontext->{clientfudge} -= $msg->{clientcountchange}; }
-	} else { 
-		$select->remove($sslctl); close($sslctl);  #something went horribly wrong
-	}
-}
 
 sub grant_tcrequests {
 	my $requestors = shift;
 	my $udpcontext = shift;
 	my $availableslots = $batchclients;
-	$availableslots -= $udpcontext->{clientfudge}; #value that forecasts the pressure
-	$availableslots -= $udpcontext->{sslclientcount}; #subtract all currently really active sessions
 	my $oldtime = time()-180; #drop requests older than three minutes if still around
+    my $msg;
+	eval { store_fd({'req'=>'get_client_count'}, $sslctl); $msg = fd_retrieve($sslctl); };
+	if (not $msg)  {
+        return;
+    }
+	$availableslots -= $msg->{clientfudge}; #value that forecasts the pressure
+	$availableslots -= $msg->{sslclientcount}; #subtract all currently really active sessions
+    my $fudgefactor = $msg->{clientfudge};
 	foreach my $rkey (keys %{$requestors}) {
 		if ($requestors->{$rkey}->{timestamp} < $oldtime) { delete $requestors->{$rkey}; next; }
 		unless ($availableslots > 0) { next; } # no slots, ignore requests for now
-		$udpcontext->{clientfudge}+=1; #adjust forecast for being busy
+		$fudgefactor += 1; #adjust forecast for being busy
 		$availableslots-=1;
 		$udpcontext->{socket}->send("resourcerequest: ok\n",0,$requestors->{$rkey}->{sockaddr});
 		delete ($requestors->{$rkey}); #we acknoweldged, assume consumer got it, they'll do retry if they failed
 	}
+    eval { store_fd({'req'=>'set_fudge_factor', 'fudge'=>$fudgefactor}, $sslctl); $msg = fd_retrieve($sslctl); };
 }
 
 sub do_discovery_process {
@@ -634,7 +622,6 @@ sub do_udp_service { #This function opens up a UDP port
   my $discoctl = $args{discoctl};
    $dispatch_requests=0;
    my $udpcontext;
-   $udpcontext->{clientfudge}=0;
    $udpcontext->{sslclientcount}=0;
   my $udppidfile;
   my $retry=1;
@@ -750,8 +737,8 @@ sub do_udp_service { #This function opens up a UDP port
 	   	if ($hdl == $socket) {
 		   $part = $socket->recv($data,1500);
 	           $packets{$part} = [$part,$data];
-		} elsif ($hdl == $sslctl) {
-	   		update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
+		#} elsif ($hdl == $sslctl) {
+	   	#	update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
 		}
 	   }
 	}
@@ -898,11 +885,6 @@ sub ssl_reaper {
           # got here because UDP child is gone 
           close($udpctl); $udpctl=0;
        }
-   }
-   if ($udpctl) {
-     $ssl2udppipe=1;
-     store_fd({clientcountchange=>$numdone,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
-     $ssl2udppipe=0;
    }
    $SIG{CHLD} = \&ssl_reaper;
 }
@@ -1116,6 +1098,7 @@ while (not $listener and $retry) {
     sleep(0.05);
 }
 my $listenwatcher = IO::Select->new($listener);
+my $udpwatcher = IO::Select->new($udpctl);
 
 unless ($listener) {
   kill 2, $pid_UDP;
@@ -1144,6 +1127,7 @@ close($mainpidfile);
 closelog();
 my @pendingconnections;
 my $tconn;
+my $sslfudgefactor = 0;
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
   if (@pendingconnections) {
@@ -1158,6 +1142,16 @@ until ($quit) {
 	push @pendingconnections,$tconn;
   }
   unless (scalar @pendingconnections) { next; } #if for some reason we landed here without any accepted connections, carry on..
+  while ($udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
+      eval {
+          my $msg = fd_retrieve($udpctl);
+          if ($msg->{req} eq 'get_client_count') {
+            store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients});
+          } elsif ($msg->{req} eq 'set_fudge_factor') {
+            $sslfudgefactor = $msg->{fudge};
+          }
+      };
+  }
   if ($sslclients > $maxsslclients) { #we have enough children, wait for some to exit before spawning more
       $listenwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
       next; #just keep pulling things off listen queue onto our own
@@ -1268,11 +1262,6 @@ if ($inet6support) {
     xexit(0);
   }
   $sslclients++; #THROTTLE
-  if ($udpctl) {
-    $ssl2udppipe=1;
-    store_fd({clientcountchange=>1,sslclientcount=>$sslclients},$udpctl); #notify udp service of how many clients are active
-    $ssl2udppipe=0;
-  }
   $cnnection->close();
 }
   if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
