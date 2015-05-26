@@ -198,7 +198,7 @@ then
         #the build introduce stirng
         pkg_type="snap"
         build_string="Snap_Build"
-        cur_date=`date +%Y%m%d`
+        cur_date=`date +%Y%m%d%H%M`
         pkg_version="${short_ver}-${pkg_type}${cur_date}"
     
         if [ ! -d ../../$package_dir_name ];then
