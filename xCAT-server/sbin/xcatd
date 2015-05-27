@@ -1160,7 +1160,7 @@ until ($quit) {
   }
   unless (scalar @pendingconnections) { next; } #if for some reason we landed here without any accepted connections, carry on..
   if ($sslclients > $maxsslclients) { #we have enough children, wait for some to exit before spawning more
-      $listenwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
+      $bothwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
       next; #just keep pulling things off listen queue onto our own
   }
   # before we fork, check to see if rescanplugins was previously processed and
@@ -1268,6 +1268,7 @@ if ($inet6support) {
     service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
     xexit(0);
   }
+  if ($sslfudgefactor) { $sslfudgefactor -= 1; }
   $sslclients++; #THROTTLE
   $cnnection->close();
 }
