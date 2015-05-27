@@ -526,6 +526,8 @@ sub grant_tcrequests {
 	my $requestors = shift;
 	my $udpcontext = shift;
 	my $availableslots = $batchclients;
+    if (not keys %{$requestors}) { return; }  # skip the interaction with SSL if
+    # no requests are actually pending
 	my $oldtime = time()-180; #drop requests older than three minutes if still around
     my $msg;
 	eval { store_fd({'req'=>'get_client_count'}, $sslctl); $msg = fd_retrieve($sslctl); };
@@ -1099,6 +1101,7 @@ while (not $listener and $retry) {
 }
 my $listenwatcher = IO::Select->new($listener);
 my $udpwatcher = IO::Select->new($udpctl);
+my $bothwatcher = IO::Select->new($udpctl, $listener);
 
 unless ($listener) {
   kill 2, $pid_UDP;
@@ -1130,6 +1133,17 @@ my $tconn;
 my $sslfudgefactor = 0;
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
+  while ($udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
+      eval {
+          my $msg = fd_retrieve($udpctl);
+          if ($msg->{req} eq 'get_client_count') {
+            store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients}, $udpctl);
+          } elsif ($msg->{req} eq 'set_fudge_factor') {
+            $sslfudgefactor = $msg->{fudge};
+            store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients}, $udpctl);
+          }
+      };
+  }
   if (@pendingconnections) {
 	while ($listenwatcher->can_read(0)) { #grab everything we can, but don't spend any time waiting for more
 		$tconn = $listener->accept;
@@ -1137,23 +1151,18 @@ until ($quit) {
 		push @pendingconnections,$tconn;
 	}
   } else {
+    $bothwatcher->can_read(30);
+    if (not $listenwatcher->can_read(0)) {  # check for udpctl messages since
+        # we have no listen to hear
+        next;
+    }
 	$tconn = $listener->accept; #we have no connections pending, no rush, just wait until the next connection attempt comes in
 	unless ($tconn) { next; } #sometimes we get 'undef', in which case carry on with our lives...
 	push @pendingconnections,$tconn;
   }
   unless (scalar @pendingconnections) { next; } #if for some reason we landed here without any accepted connections, carry on..
-  while ($udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
-      eval {
-          my $msg = fd_retrieve($udpctl);
-          if ($msg->{req} eq 'get_client_count') {
-            store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients});
-          } elsif ($msg->{req} eq 'set_fudge_factor') {
-            $sslfudgefactor = $msg->{fudge};
-          }
-      };
-  }
   if ($sslclients > $maxsslclients) { #we have enough children, wait for some to exit before spawning more
-      $listenwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
+      $bothwatcher->can_read(0.1); #when next connection tries to come in or a tenth of a second, whichever comes first
       next; #just keep pulling things off listen queue onto our own
   }
   # before we fork, check to see if rescanplugins was previously processed and
@@ -1261,6 +1270,7 @@ if ($inet6support) {
     service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
     xexit(0);
   }
+  if ($sslfudgefactor) { $sslfudgefactor -= 1; }
   $sslclients++; #THROTTLE
   $cnnection->close();
 }
