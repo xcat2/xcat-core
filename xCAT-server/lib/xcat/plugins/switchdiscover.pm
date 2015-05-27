@@ -32,7 +32,7 @@ my %global_switch_type = (
     Juniper => "Jun",
     Cisco => "Cisco",
     BNT => "BNT",
-	Mellanox => "MellanoxIB"
+	Mellanox => "Mellanox"
 );
 
 #-------------------------------------------------------------------------------
@@ -668,7 +668,7 @@ sub get_hostname {
     Arguments:
       vendor: switch vendor 
     Returns:
-      stype: type of switch, supports JUN, Cisco, BNT and MellanoxIB 
+      stype: type of switch, supports Jun, Cisco, BNT and Mellanox 
 =cut
 #--------------------------------------------------------------------------------
 sub get_switchtype {

@@ -680,7 +680,7 @@ noderes => {
         sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet".',
         sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet".',
         protocol => 'Prorocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. Leave it blank or set to "ssh" for Mellanox IB switch.',
-        switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: MellanoxIB etc.',
+        switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Jun (for Juniper).',
 	},
     },
 nodetype => {
