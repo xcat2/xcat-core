@@ -584,10 +584,14 @@ sub nmap_scan {
                             $ip = $addr->{addr};
                         }
                         if ($addr->{vendor}) {
+                          if ( ($addr->{vendor} =~ "Juniper")
+                              || ($addr->{vendor} =~ "Cisco")
+                              || ($addr->{vendor} =~ "BNT")
+                              || ($addr->{vendor} =~ "Mellanox") ) {
                             $switches->{$ip}->{mac} = $addr->{addr};
                             $switches->{$ip}->{vendor} = $addr->{vendor};
                             $switches->{$ip}->{name} = $host->{hostname};
-
+                          }
                         }
                     } #end for each address
                 }
