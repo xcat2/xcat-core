@@ -28,6 +28,13 @@ my %global_scan_type = (
     snmp => "snmp_scan"
 );
 
+my %global_switch_type = (
+    Juniper => "Jun",
+    Cisco => "Cisco",
+    BNT => "BNT",
+	Mellanox => "MellanoxIB"
+);
+
 #-------------------------------------------------------------------------------
 =head1  xCAT_plugin:switchdiscover
 =head2    Package Description
@@ -378,7 +385,7 @@ sub process_request {
 		foreach my $key (keys(%$result)) {
 			my $mac = "   ";
 			my $vendor = "   ";
-                        my $name = get_hostname($result->{$key}->{name}, $key);
+			my $name = get_hostname($result->{$key}->{name}, $key);
 			if (exists($result->{$key}->{mac})) {
 				$mac = $result->{$key}->{mac};
 			}
@@ -584,14 +591,12 @@ sub nmap_scan {
                             $ip = $addr->{addr};
                         }
                         if ($addr->{vendor}) {
-                          if ( ($addr->{vendor} =~ "Juniper")
-                              || ($addr->{vendor} =~ "Cisco")
-                              || ($addr->{vendor} =~ "BNT")
-                              || ($addr->{vendor} =~ "Mellanox") ) {
-                            $switches->{$ip}->{mac} = $addr->{addr};
-                            $switches->{$ip}->{vendor} = $addr->{vendor};
-                            $switches->{$ip}->{name} = $host->{hostname};
-                          }
+							my $search_string = join '|', keys(%global_switch_type);
+							if ($addr->{vendor} =~ /($search_string)/) {
+								$switches->{$ip}->{mac} = $addr->{addr};
+								$switches->{$ip}->{vendor} = $addr->{vendor};
+								$switches->{$ip}->{name} = $host->{hostname};
+							}
                         }
                     } #end for each address
                 }
@@ -668,21 +673,15 @@ sub get_hostname {
 #--------------------------------------------------------------------------------
 sub get_switchtype {
     my $vendor = shift;
-    my $stype;
+    my $key;
     
-    if ($vendor =~ "Juniper") {
-        $stype = "JUN";
-    } elsif ($vendor =~ "Cisco") {
-        $stype = "Cisco";
-    } elsif ($vendor =~ "BNT") {
-        $stype = "BNT";
-    } elsif ($vendor =~ "Mellanox") {
-        $stype = "MellanoxIB";
-    } else {
-        $stype = $vendor;
-    }
-
-    return $stype;
+    my $search_string = join '|', keys(%global_switch_type);
+    if ($vendor =~ /($search_string)/) {
+        $key = $1;
+		return $global_switch_type{$key};
+	} else {
+		return vendor;
+	}
 }
 
 #--------------------------------------------------------------------------------
