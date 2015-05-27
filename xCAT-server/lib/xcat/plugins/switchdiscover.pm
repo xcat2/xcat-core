@@ -644,7 +644,7 @@ sub snmp_scan {
     Returns:
       hose:  hostname of the switch
       if host is empty, try to lookup use ip address, otherwise format hostname 
-      as switch and ip combination. ex:  switch-9-114-5-6
+      as switch and ip combination. ex:  switch_9_114_5_6
 =cut
 #--------------------------------------------------------------------------------
 sub get_hostname {
@@ -655,8 +655,8 @@ sub get_hostname {
         $host = gethostbyaddr( inet_aton($ip), AF_INET );
         if ( !$host ) {
             my $ip_str = $ip;
-            $ip_str =~ s/\./\-/g;
-            $host = "switch-$ip_str";
+            $ip_str =~ s/\./\_/g;
+            $host = "switch_$ip_str";
         }
     }
     return $host;
