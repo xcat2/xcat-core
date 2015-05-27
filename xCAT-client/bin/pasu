@@ -28,7 +28,7 @@ if ($iam =~ /pasu/) {
     $::utilcmd = '/opt/ibm/toolscenter/asu/asu64';
   }
 } elsif ($iam =~ /piflash/) {
-  $::utilcmd = '/opt/xcat/sbin/iflash64';
+  $::utilcmd = '/opt/xcat/sbin/iflash64 --unattended';
 }
 my $interface;
 my $username;
