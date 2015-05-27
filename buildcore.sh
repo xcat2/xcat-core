@@ -200,7 +200,7 @@ if [ "$GIT" = "1" ]; then
 	fi
 	# check if there's any modifications to git current repo
 	UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
-	if [ -n $UNTRACKED_FILES ]; then
+	if [ -n "$UNTRACKED_FILES" ]; then
 		echo "The following files are not tracked in git: $UNTRACKED_FILES..."
 		echo "Not a clean build, aborting..."
 		exit 3
