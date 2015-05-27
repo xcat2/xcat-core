@@ -526,6 +526,8 @@ sub grant_tcrequests {
 	my $requestors = shift;
 	my $udpcontext = shift;
 	my $availableslots = $batchclients;
+    if (not keys %{$requestors}) { return; }  # skip the interaction with SSL if
+    # no requests are actually pending
 	my $oldtime = time()-180; #drop requests older than three minutes if still around
     my $msg;
 	eval { store_fd({'req'=>'get_client_count'}, $sslctl); $msg = fd_retrieve($sslctl); };
