@@ -650,19 +650,19 @@ netmask $netmask" >> /etc/network/interfaces
                         #    echo "gateway $gateway" >> /etc/network/interfaces
                         #fi
                     fi
+				fi
+				#add extra params
+				i=0
+				while [ $i -lt ${#array_extra_param_names[@]} ]
+				do
+					name="${array_extra_param_names[$i]}"
+					value="${array_extra_param_values[$i]}"
+					echo "  $i: name=$name value=$value"
+					echo "${name} ${value}" >> /etc/network/interfaces
+					i=$((i+1))
+				done
 
-					#add extra params
-					i=0
-					while [ $i -lt ${#array_extra_param_names[@]} ]
-					do
-						name="${array_extra_param_names[$i]}"
-						value="${array_extra_param_values[$i]}"
-						echo "  $i: name=$name value=$value"
-						echo "${name} ${value}" >> /etc/network/interfaces
-						i=$((i+1))
-					done
-               fi
-            else
+           else
                 echo "Unsupported operating system"
                 logger -p local4.err -t xcat "Unsupported operating system"
             fi
