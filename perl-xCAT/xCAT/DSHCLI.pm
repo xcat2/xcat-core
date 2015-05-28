@@ -1001,21 +1001,46 @@ sub fork_fanout_dsh
                 }
             } else {
                 #get user name and password  from the switches table
-                 my $switchestab=xCAT::Table->new('switches',-create=>0);
-
-                 my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword protocol/]);
-                 foreach my $entry (values %$switchents) {
+				my $passwdtab=xCAT::Table->new('passwd',-create=>1);
+				my @passwd_ent = $passwdtab->getAttribs({key => "switch"}, ['username', 'password', 'comments']);
+				my $switchestab=xCAT::Table->new('switches',-create=>0);
+				my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword protocol/]);
+				foreach my $entry (values %$switchents) {
                     my $switch=$entry->[0]->{switch};
-                    if (defined($entry->[0]->{sshusername})) {
-                        $resolved_targets->{$switch}->{'user'}=$entry->[0]->{sshusername};
-                    }
-                    if (defined($entry->[0]->{sshpassword})) {
-                        $resolved_targets->{$switch}->{'password'}=$entry->[0]->{sshpassword};
-                    }
-                    if (defined($entry->[0]->{protocol})) {
-                        $resolved_targets->{$switch}->{'remotecmdproto'}=$entry->[0]->{protocol};
-                    }
-                }
+					my $username = "admin";
+					my $password;
+                    my $protocol;
+                     
+					if (defined($entry->[0]->{sshusername})) { #use switch table first
+						$username = $entry->[0]->{sshusername};
+						if (defined($entry->[0]->{sshpassword})) {
+							$password = $entry->[0]->{sshpassword};
+						}
+						if (defined($entry->[0]->{protocol})) {
+							$protocol = $entry->[0]->{protocol};
+						}
+					} 
+					elsif (defined($passwd_ent[0]->{username})) { #use passwd table as default
+						$username=$passwd_ent[0]->{username};
+						if (defined($passwd_ent[0]->{password})) {
+							$password = $passwd_ent[0]->{password};
+						}
+						if (defined($passwd_ent[0]->{comments}) && ($passwd_ent[0]->{comments} eq "telnet")) {
+							$protocol = $passwd_ent[0]->{comments};
+						}
+					}
+					
+					if ($username) {
+						$resolved_targets->{$switch}->{'user'} = $username;
+					}
+					if ($password) {
+						$resolved_targets->{$switch}->{'password'} = $password;
+					}
+					if ($protocol) {
+						$resolved_targets->{$switch}->{'remotecmdproto'} = $protocol;
+					}
+					#print "username=$username, password=$password, protocol=$protocol\n";
+				}
             }
         }
     }
