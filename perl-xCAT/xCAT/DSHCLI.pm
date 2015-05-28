@@ -2352,7 +2352,7 @@ sub config_dsh
 
 	{
           # if not Mellanox, it does not need a config file
-          if (!($$options{'devicetype'}  =~ /Mellanox/i)) {
+          if (!($$options{'devicetype'}  =~ /IBSwitch::Mellanox/i)) {
             my $rsp = {};
             $rsp->{error}->[0] = "The config file: $devicepath is missing";
              xCAT::MsgUtils->message('E', $rsp, $::CALLBACK);
@@ -4006,7 +4006,7 @@ sub parse_and_run_dsh
     }
     # Determine switch type, processing Mellanox not the same as QLogic
     my $switchtype = $options{'devicetype'};
-    $switchtype =~ s/::/\//g;
+    #$switchtype =~ s/::/\//g;
 
     #
     # build list of nodes
@@ -4068,7 +4068,7 @@ sub parse_and_run_dsh
     #  ssh admin@mswitch cli
     #     "enable" "configure terminal" "show ssh server host-keys" 
     my @melcmds;
-    if ($switchtype =~ /Mellanox/i) {
+    if ($switchtype =~ /IBSwitch::Mellanox/i) {
       $::DSH_MELLANOX_SWITCH=1;
       @melcmds = split (/;/, $options{'command'});
       my $newcmd;
@@ -4100,7 +4100,7 @@ sub parse_and_run_dsh
             return;
         } 
         # if devicetype=Mellanox,  xdsh does not setup ssh,  rspconfig does
-        if ($switchtype =~ /Mellanox/i) {
+        if ($switchtype =~ /IBSwitch::Mellanox/i) {
            my $rsp = {};
            $rsp->{error}->[0] = 
             "You do not use xdsh -K to setup the Mellanox switch ssh keys. Use rspconfig. See man page for rspconfig option sshcfg={enable|disable}.";

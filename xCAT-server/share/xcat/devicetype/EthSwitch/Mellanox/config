@@ -1,0 +1,6 @@
+#configuration file for Juniper switches
+[main]
+ssh-setup-command=
+[xdsh]
+pre-command=no cli session paging enable;
+post-command=NULL
