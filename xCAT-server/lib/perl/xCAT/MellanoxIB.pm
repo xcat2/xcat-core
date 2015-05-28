@@ -634,7 +634,7 @@ sub setSSHcfg {
 	    }
 	    
 	    my @result = $mysw->expect(
-		5,
+		10,
 		[
 		 $pwd_prompt,
 		 sub {
