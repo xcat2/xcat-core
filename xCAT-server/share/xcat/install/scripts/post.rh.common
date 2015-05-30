@@ -7,7 +7,7 @@ echo "post scripts" >/root/post.log
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
 then
-    export PRINIC='#TABLE:mac:THISNODE:mac#'
+    export PRINIC='#GETPRINICMAC:THISNODE#'
 fi
 if [ -z "$PRINIC" ]
 then

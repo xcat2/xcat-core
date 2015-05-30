@@ -4476,23 +4476,22 @@ sub cleanup_for_powerLE_hardware_discovery {
 #This may be simply a mac address, which would be bound to the node name (such as "01:02:03:04:05:0E").  
 #This may also be a "|" delimited string of "mac address!hostname" format (such as "01:02:03:04:05:0E!node5|01:02:03:05:0F!node6-eth1").
 sub parseMacTabEntry{
-
     my $macString=shift;
-    if( $macString =~ /xCAT::Utils/)     {
+    if( $macString =~ /xCAT::Utils/){
         $macString=shift;
     }
-    my $HostName=shift;
     
+    my $HostName=shift;
     my $mac_ret;
     my @macEntry=split(/\|/,$macString);
-    
     foreach my $mac_t  (@macEntry){
-        if($mac_t =~ /!/){
-            if($mac_t =~ /(.+)!$HostName$/){
-                $mac_ret=$1;
-            }
-        }else{
+        unless($mac_t =~ /!/){
             $mac_ret=$mac_t;
+        }
+
+        if($HostName and $mac_t =~ /(.+)\!$HostName$/){
+                $mac_ret=$1;
+                last;
         }
     }
 
@@ -4501,9 +4500,10 @@ sub parseMacTabEntry{
             $mac_ret =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
         }
     }
-    
+
     return $mac_ret;
 }
+
 
 #The splitkcmdline subroutine is used to split the "persistent kernel options" 
 #and "provision-time kernel options" out of the kernel cmdline string

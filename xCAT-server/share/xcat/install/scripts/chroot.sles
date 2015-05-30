@@ -40,7 +40,7 @@ chmod 755 /tmp/updateflag.awk
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
 then
-    export PRINIC='#TABLE:mac:THISNODE:mac#'
+    export PRINIC='#GETPRINICMAC:THISNODE#'
 fi
 if [ -z "$PRINIC" ]
 then
