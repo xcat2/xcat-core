@@ -119,7 +119,8 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "\t   If there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
     push @{ $rsp->{data} }, "\t   Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
     push @{ $rsp->{data} }, "\t2, bmcdiscover -i <bmc_ip> -u <bmcusername> -p <bmcpassword> -c\n ";
-    push @{ $rsp->{data} }, "\t   Note : check if bmc username and password are correct or not ";
+    push @{ $rsp->{data} }, "\t   Note : check if bmc username and password are correct or not. If bmc has no username,\n";
+    push @{ $rsp->{data} }, "\t   use none instead, Ex: bmcdiscover -i p8bmc -u none -p passw0rd -c\n";
 
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -262,7 +263,15 @@ sub check_auth_process{
     my $bmstr4 = "BMC Session ID";
      
     my $callback = $::CALLBACK;
-    my $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U $bmcuser -P $bmcpw -H $bmcip chassis status ";
+    my $icmd;
+    if ( $bmcuser eq "none" )
+    {
+       $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -P $bmcpw -H $bmcip chassis status ";
+    }
+    else
+    { 
+       $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U $bmcuser -P $bmcpw -H $bmcip chassis status ";
+    }
     my $output = xCAT::Utils->runcmd("$icmd", -1);
     if ( $output =~ $bmstr1 )
     {
