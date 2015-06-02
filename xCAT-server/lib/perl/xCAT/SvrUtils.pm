@@ -639,7 +639,7 @@ sub  update_tables_with_templates
     
     #now get all the profile names for full installation
     my %profiles=();
-    my @tmplfiles=glob($cuspath."/{compute,service}*.tmpl");
+    my @tmplfiles=glob($cuspath."/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
@@ -653,7 +653,7 @@ sub  update_tables_with_templates
 	#print "$tmpf\n";
 	$profiles{$tmpf}=1;
     }
-    @tmplfiles=glob($defpath."/{compute,service}*.tmpl");
+    @tmplfiles=glob($defpath."/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
 	my $tmpf=basename($_); 
 	#get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
@@ -844,7 +844,7 @@ sub  update_tables_with_mgt_image
 
     #now get all the profile names for full installation
     my %profiles=();
-    my @tmplfiles=glob($cuspath."/{compute,service}*.tmpl");
+    my @tmplfiles=glob($cuspath."/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
         my $tmpf=basename($_);
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
@@ -853,7 +853,7 @@ sub  update_tables_with_mgt_image
         #print "$tmpf\n";
         $profiles{$tmpf}=1;
     }
-    @tmplfiles=glob($defpath."/{compute,service}*.tmpl");
+    @tmplfiles=glob($defpath."/{compute,service}.*tmpl");
     foreach (@tmplfiles) {
         my $tmpf=basename($_);
         #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
@@ -1048,7 +1048,7 @@ sub  update_tables_with_diskless_image
     if ($profile) {
         $profiles{$profile} = 1;
     } else {
-        my @tmplfiles=glob($cuspath."/compute*.pkglist");
+        my @tmplfiles=glob($cuspath."/compute.*pkglist");
         foreach (@tmplfiles) {
             my $tmpf=basename($_); 
             #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
@@ -1056,7 +1056,7 @@ sub  update_tables_with_diskless_image
             $tmpf = $1;
             $profiles{$tmpf}=1;
         }
-        @tmplfiles=glob($defpath."/compute*.pkglist");
+        @tmplfiles=glob($defpath."/compute.*pkglist");
         foreach (@tmplfiles) {
             my $tmpf=basename($_); 
             #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
