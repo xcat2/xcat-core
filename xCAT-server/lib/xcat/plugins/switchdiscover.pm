@@ -32,7 +32,7 @@ my %global_switch_type = (
     Juniper => "Jun",
     Cisco => "Cisco",
     BNT => "BNT",
-	Mellanox => "Mellanox"
+    Mellanox => "Mellanox"
 );
 
 #-------------------------------------------------------------------------------
@@ -153,17 +153,17 @@ sub parse_args {
     if ( scalar(@ARGV) eq 1 ) {
         my @nodes = xCAT::NodeRange::noderange( @ARGV );
         if (nodesmissed) {
-			return (usage( "The following nodes are not defined in xCAT DB:\n  " . join(',', nodesmissed)));
+            return (usage( "The following nodes are not defined in xCAT DB:\n  " . join(',', nodesmissed)));
         }
-		foreach (@nodes)  {
+        foreach (@nodes)  {
             push @filternodes, $_;
         }
         unless (@filternodes) {
             return(usage( "Invalid Argument: $ARGV[0]" ));
         }
-		if ( exists( $opt{range} )) {
-			return(usage( "--range flag cannot be used with noderange." ));
-		}
+        if ( exists( $opt{range} )) {
+            return(usage( "--range flag cannot be used with noderange." ));
+        }
     } elsif ( scalar(@ARGV) > 1 ) {
         return(usage( "Invalid flag, please check and retry." ));
     }
@@ -187,17 +187,17 @@ sub parse_args {
     #############################################
     if ( exists( $opt{s} )) {
         my @stypes = split ',', $opt{s};
-		my $error;
-		foreach my $st (@stypes) {
-			if (! exists($global_scan_type{$st})) {
-				$error = $error . "Invalide scan type: $st\n";	
-			}
+        my $error;
+        foreach my $st (@stypes) {
+            if (! exists($global_scan_type{$st})) {
+                $error = $error . "Invalide scan type: $st\n";    
+            }
         }
-		if ($error) {
-			return usage($error);
-		}
-        $globalopt{scan_types} = \@stypes;
-	}
+        if ($error) {
+            return usage($error);
+        }
+        $globalopt{scan_types} = \@stypes; 
+    }
 
     #############################################
     # Check the --range ip range option
@@ -206,12 +206,12 @@ sub parse_args {
         $globalopt{range} = $opt{range};
         my @ips = split /,/, $opt{range};
         foreach my $ip (@ips)  {
-			if (($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) || 
-				($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/)) {
-				push @iprange, $ip;
-			} else {
-				return usage("Invalid ip or ip range specified: $ip.");
-			}
+            if (($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) || 
+                ($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/)) {
+                push @iprange, $ip;
+            } else {
+                return usage("Invalid ip or ip range specified: $ip.");
+            }
         }
     }
 
@@ -319,83 +319,83 @@ sub process_request {
     }
 
     # call the relavant functions to start the scan 
-	my @scan_types = ("lldp");
-	if (exists($globalopt{scan_types})) {
-		@scan_types = @{$globalopt{scan_types}};
-	}
-	
-	my $all_result;
-	foreach my $st (@scan_types) {
-		no strict;
-		my $fn = $global_scan_type{$st};
-		my $tmp_result = &$fn(\%request, $callback);
-		if (ref($tmp_result) eq 'HASH') {
-			$all_result->{$st} = $tmp_result;
-		}
-	}
+    my @scan_types = ("nmap");
+    if (exists($globalopt{scan_types})) {
+        @scan_types = @{$globalopt{scan_types}};
+    }
+    
+    my $all_result;
+    foreach my $st (@scan_types) {
+        no strict;
+        my $fn = $global_scan_type{$st};
+        my $tmp_result = &$fn(\%request, $callback);
+        if (ref($tmp_result) eq 'HASH') {
+            $all_result->{$st} = $tmp_result;
+        }
+    }
 
     #consolidate the results by merging the swithes with the same ip
-	my $result;
-	foreach my $st (keys %$all_result) {
-		my $tmp_result = $all_result->{$st};
-		foreach my $key (keys %$tmp_result) {
-			if (! exists($result->{$key})) {
-				$result->{$key} = $tmp_result->{$key};
-			} else {
-				if (exists($tmp_result->{$key}->{name})) {
-					$result->{$key}->{name} = $tmp_result->{$key}->{name};
-				}
-				if (exists($tmp_result->{$key}->{mac})) {
-					$result->{$key}->{mac} = $tmp_result->{$key}->{mac};
-				}
-				if (exists($tmp_result->{$key}->{vendor})) {
-					$result->{$key}->{vendor} .= $tmp_result->{$key}->{vendor};
-				}
-			}
-		}
-	}
-		
-	my $display_done = 0;
-	if (exists($globalopt{r}))  { 
+    my $result;
+    foreach my $st (keys %$all_result) {
+        my $tmp_result = $all_result->{$st};
+        foreach my $key (keys %$tmp_result) {
+            if (! exists($result->{$key})) {
+                $result->{$key} = $tmp_result->{$key};
+            } else {
+                if (exists($tmp_result->{$key}->{name})) {
+                    $result->{$key}->{name} = $tmp_result->{$key}->{name};
+                }
+                if (exists($tmp_result->{$key}->{mac})) {
+                    $result->{$key}->{mac} = $tmp_result->{$key}->{mac};
+                }
+                if (exists($tmp_result->{$key}->{vendor})) {
+                    $result->{$key}->{vendor} .= $tmp_result->{$key}->{vendor};
+                }
+            }
+        }
+    }
+        
+    my $display_done = 0;
+    if (exists($globalopt{r}))  { 
         #do nothing since is done by the scan functions. 
-		$display_done = 1;
-	}
-	
-	if (exists($globalopt{x}))  {
+        $display_done = 1;
+    }
+    
+    if (exists($globalopt{x}))  {
             send_msg( \%request, 0, format_xml( $result ));
             $display_done = 1;
-	}
+    }
 
-	if (exists($globalopt{z}))  { 
+    if (exists($globalopt{z}))  { 
             
             my $stanza_output = format_stanza( $result );
             send_msg( \%request, 0, $stanza_output );
-	    $display_done = 1;
-	}
+        $display_done = 1;
+    }
 
-	if (!$display_done) {
+    if (!$display_done) {
         #display header
-		$format = "%-12s\t%-18s\t%-20.20s\t%-12s";
-		$header = sprintf $format, "ip", "name","vendor", "mac";
-		send_msg(\%request, 0, $header);
-		my $sep = "------------";
-		send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
-		
-		#display switches one by one
-		foreach my $key (keys(%$result)) {
-			my $mac = "   ";
-			my $vendor = "   ";
-			my $name = get_hostname($result->{$key}->{name}, $key);
-			if (exists($result->{$key}->{mac})) {
-				$mac = $result->{$key}->{mac};
-			}
-			if (exists($result->{$key}->{vendor})) {
-				$vendor = $result->{$key}->{vendor};
-			}
-			my $msg = sprintf $format, $key, $name, $vendor, $mac;
-			send_msg(\%request, 0, $msg);
-		}
-	}
+        $format = "%-12s\t%-18s\t%-20.20s\t%-12s";
+        $header = sprintf $format, "ip", "name","vendor", "mac";
+        send_msg(\%request, 0, $header);
+        my $sep = "------------";
+        send_msg(\%request, 0, sprintf($format, $sep, $sep, $sep, $sep ));
+        
+        #display switches one by one
+        foreach my $key (keys(%$result)) {
+            my $mac = "   ";
+            my $vendor = "   ";
+            my $name = get_hostname($result->{$key}->{name}, $key);
+            if (exists($result->{$key}->{mac})) {
+                $mac = $result->{$key}->{mac};
+            }
+            if (exists($result->{$key}->{vendor})) {
+                $vendor = $result->{$key}->{vendor};
+            }
+            my $msg = sprintf $format, $key, $name, $vendor, $mac;
+            send_msg(\%request, 0, $msg);
+        }
+    }
 
 
     # writes the data into xCAT db
@@ -416,8 +416,8 @@ sub process_request {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -426,12 +426,12 @@ sub lldp_scan {
     my $request  = shift;
 
     # get the PID of the currently running lldpd if it is running.
-	if (exists($globalopt{verbose}))	{
-		send_msg($request, 0, "...Checking if lldpd is up and running:\n  ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'\n");
-	}	
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "...Checking if lldpd is up and running:\n  ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'\n");
+    }    
     my $pid;
     chomp($pid= `ps -ef | grep lldpd | grep -v grep | awk '{print \$2}'`);
-	unless($pid){
+    unless($pid){
         my $dcmd = "lldpd -c -s -e -f";
         #my $outref = xCAT::Utils->runcmd($dcmd, 0);
         #if ($::RUNCMD_RC != 0)
@@ -440,92 +440,92 @@ sub lldp_scan {
         #    return 1;
         #}
         #xCAT::Utils->runcmd("sleep 30");
-		send_msg($request, 1, "Warning: lldpd is not running. Please run the following command to start it:\n  $dcmd\nThen wait a few minutes before running switchdiscover command again.\n");
+        send_msg($request, 1, "Warning: lldpd is not running. Please run the following command to start it:\n  $dcmd\nThen wait a few minutes before running switchdiscover command again.\n");
         return 1;
-	}
+    }
 
     #now run the lldpcli to collect the data
-	my $ccmd = "lldpcli show neighbors -f xml";
-	if (exists($globalopt{verbose}))	{
-		send_msg($request, 0, "...Discovering switches using lldpd:\n $ccmd\n");
-	}
+    my $ccmd = "lldpcli show neighbors -f xml";
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "...Discovering switches using lldpd:\n $ccmd\n");
+    }
 
-	my $result = xCAT::Utils->runcmd($ccmd, 0);
-	if ($::RUNCMD_RC != 0)
-	{
-		send_msg($request, 1, "Could not start lldpd process. The command was: $ccmd" );
-		return 1;
-	}
-	if (exists($globalopt{verbose}))	{
-		send_msg($request, 0, "$result\n");
-	}
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        send_msg($request, 1, "Could not start lldpd process. The command was: $ccmd" );
+        return 1;
+    }
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "$result\n");
+    }
 
     #display the raw output
-	if (exists($globalopt{r})) {
-		my $ccmd = "lldpcli show neighbors";
-		my $raw_result = xCAT::Utils->runcmd($ccmd, 0);
-		if ($::RUNCMD_RC == 0)
-		{
-			send_msg($request, 0, "$raw_result\n\n");
-		}
-	}
+    if (exists($globalopt{r})) {
+        my $ccmd = "lldpcli show neighbors";
+        my $raw_result = xCAT::Utils->runcmd($ccmd, 0);
+        if ($::RUNCMD_RC == 0)
+        {
+            send_msg($request, 0, "$raw_result\n\n");
+        }
+    }
 
 
-	if (exists($globalopt{verbose}))	{
-		send_msg($request, 0, "...Converting XML output to hash.\n");
-	}
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "...Converting XML output to hash.\n");
+    }
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
-	my $switches; 
-	if ($result_ref) {
-		if (exists($result_ref->{interface})) {
-			my $ref1 = $result_ref->{interface};
+    my $switches; 
+    if ($result_ref) {
+        if (exists($result_ref->{interface})) {
+            my $ref1 = $result_ref->{interface};
             foreach my $interface (@$ref1) {
-				if (exists($interface->{chassis})) {
-					my $chassis = $interface->{chassis}->[0];	
-					my $ip = $chassis->{'mgmt-ip'}->[0]->{content};
-					if ($ip) {
-						my $name = $chassis->{name}->[0]->{content};
-						my $id =  $chassis->{id}->[0]->{content};
-						my $desc = $chassis->{descr}->[0]->{content};
-						$switches->{$ip}->{name} = $name;
-						$switches->{$ip}->{mac} =  $id;
-						$switches->{$ip}->{vendor} = $desc;
-					}
-				}
-			}
-		}
-	}
+                if (exists($interface->{chassis})) {
+                    my $chassis = $interface->{chassis}->[0];    
+                    my $ip = $chassis->{'mgmt-ip'}->[0]->{content};
+                    if ($ip) {
+                        my $name = $chassis->{name}->[0]->{content};
+                        my $id =  $chassis->{id}->[0]->{content};
+                        my $desc = $chassis->{descr}->[0]->{content};
+                        $switches->{$ip}->{name} = $name;
+                        $switches->{$ip}->{mac} =  $id;
+                        $switches->{$ip}->{vendor} = $desc;
+                    }
+                }
+            }
+        }
+    }
 
     # filter out the uwanted entries if noderange or ip range is specified.
-	if ((@filternodes> 0) || (@iprange>0)) {
-		my $ranges = get_ip_ranges($request);
-		if (exists($globalopt{verbose}))	{
-			send_msg($request, 0, "...Removing the switches that are not within the following ranges:\n  @$ranges\n");
-		}
-		foreach my $ip_r (keys %$switches) {
-			$match = 0;
-			foreach my $ip_f (@$ranges) {
-				my ($net, $mask) = split '/', $ip_f;
-				if ($mask) { #this is a subnet
-					$mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
-					if (xCAT::NetworkUtils->ishostinsubnet($ip_r, $mask, $net)) {
-						$match = 1;
-						last;
-					}
-				} else { #this is an ip
-					if ($ip_r eq $net) {
-						$match = 1;
-						last;
-					}
-				}
-			}
-			if (!$match) {
-				delete $switches->{$ip_r};
-			}
-		}
-	}
+    if ((@filternodes> 0) || (@iprange>0)) {
+        my $ranges = get_ip_ranges($request);
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 0, "...Removing the switches that are not within the following ranges:\n  @$ranges\n");
+        }
+        foreach my $ip_r (keys %$switches) {
+            $match = 0;
+            foreach my $ip_f (@$ranges) {
+                my ($net, $mask) = split '/', $ip_f;
+                if ($mask) { #this is a subnet
+                    $mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+                    if (xCAT::NetworkUtils->ishostinsubnet($ip_r, $mask, $net)) {
+                        $match = 1;
+                        last;
+                    }
+                } else { #this is an ip
+                    if ($ip_r eq $net) {
+                        $match = 1;
+                        last;
+                    }
+                }
+            }
+            if (!$match) {
+                delete $switches->{$ip_r};
+            }
+        }
+    }
 
-	return $switches
+    return $switches
 }
 
 
@@ -538,8 +538,8 @@ sub lldp_scan {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -549,13 +549,23 @@ sub nmap_scan {
 
     my $ccmd;
 
-    send_msg($request, 0, "Discovering switches using nmap...");
+    #send_msg($request, 0, "Discovering switches using nmap...");
     #################################################
     # If --range options, take iprange, if noderange is defined
     # us the ip addresses of the nodes. If none is define, use the
     # subnets for all the interfaces.
     ##################################################
     my $ranges = get_ip_ranges($request);
+
+    #warning the user if the range is too big
+    foreach my $r (@$ranges) {
+        if ($r =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/) {
+            if ($5 < 24) {
+                send_msg($request, 0, "It will take long time, you can modify the --range parameters to cut down the time.\n" );
+                last;
+            }
+        }
+    }
 
     $ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
     print $ccmd;
@@ -591,12 +601,12 @@ sub nmap_scan {
                             $ip = $addr->{addr};
                         }
                         if ($addr->{vendor}) {
-							my $search_string = join '|', keys(%global_switch_type);
-							if ($addr->{vendor} =~ /($search_string)/) {
-								$switches->{$ip}->{mac} = $addr->{addr};
-								$switches->{$ip}->{vendor} = $addr->{vendor};
-								$switches->{$ip}->{name} = $host->{hostname};
-							}
+                            my $search_string = join '|', keys(%global_switch_type);
+                            if ($addr->{vendor} =~ /($search_string)/) {
+                                $switches->{$ip}->{mac} = $addr->{addr};
+                                $switches->{$ip}->{vendor} = $addr->{vendor};
+                                $switches->{$ip}->{name} = $host->{hostname};
+                            }
                         }
                     } #end for each address
                 }
@@ -618,8 +628,8 @@ sub nmap_scan {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-		   "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-		   "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
+           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -627,12 +637,12 @@ sub nmap_scan {
 sub snmp_scan {
     my $request  = shift;
 
-	send_msg($request, 0, "Discovering switches using snmp...");
-	my $switches = {
-		"1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
-		"1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
+    send_msg($request, 0, "Discovering switches using snmp...");
+    my $switches = {
+        "1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
+        "1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
      };
-	return $switches
+    return $switches
 }
 
 #--------------------------------------------------------------------------------
@@ -678,10 +688,10 @@ sub get_switchtype {
     my $search_string = join '|', keys(%global_switch_type);
     if ($vendor =~ /($search_string)/) {
         $key = $1;
-		return $global_switch_type{$key};
-	} else {
-		return vendor;
-	}
+        return $global_switch_type{$key};
+    } else {
+        return vendor;
+    }
 }
 
 #--------------------------------------------------------------------------------
@@ -745,33 +755,33 @@ sub xCATdB {
 =cut
 #--------------------------------------------------------------------------------
 sub get_ip_ranges {
-	$request = shift;
+    $request = shift;
 
-	# if --range is defined, just return the ranges specified by the user
-	if (@iprange > 0) {
-		return \@iprange;
-	}
+    # if --range is defined, just return the ranges specified by the user
+    if (@iprange > 0) {
+        return \@iprange;
+    }
 
     # if noderange is defined, then put the ip addresses of the nodes in
-	if (@filternodes > 0) {
-		my @ipranges=();
-		foreach my $node (@filternodes) {
-			my $ip = xCAT::NetworkUtils->getipaddr($node);
-			push(@ipranges, $ip);
-		}
-		return \@ipranges;
-	}
+    if (@filternodes > 0) {
+        my @ipranges=();
+        foreach my $node (@filternodes) {
+            my $ip = xCAT::NetworkUtils->getipaddr($node);
+            push(@ipranges, $ip);
+        }
+        return \@ipranges;
+    }
 
-	# for default, use the subnets for all the live nics on the mn
-	my $nets = xCAT::NetworkUtils->my_nets();
-	my $ranges=[];
-	foreach my $net (keys %$nets) {
-		if ($net !~ /127\.0\.0\.0/) {
-			push(@$ranges, $net);
-		}
-	}
+    # for default, use the subnets for all the live nics on the mn
+    my $nets = xCAT::NetworkUtils->my_nets();
+    my $ranges=[];
+    foreach my $net (keys %$nets) {
+        if ($net !~ /127\.0\.0\.0/) {
+            push(@$ranges, $net);
+        }
+    }
 
-	return $ranges;
+    return $ranges;
     
 }
 
@@ -860,8 +870,7 @@ sub format_xml {
                      KeyAttr  => [],
                      RootName => undef );
     }
-    return ($xml);
-
+    return ($xml);    
 }
 
 1;
