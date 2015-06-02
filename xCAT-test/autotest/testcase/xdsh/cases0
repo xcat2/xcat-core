@@ -73,11 +73,11 @@ check:rc==0
 end
 
 start:xdsh_i_linux
-cmd:XCATBYPASS=1 copycds $$ISO
+cmd: copycds $$ISO
 check:rc==0
-cmd:XCATBYPASS=1 genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+cmd: genimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:XCATBYPASS=1 xdsh -i /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg  "rpm -qa|grep uuid"
+cmd: xdsh -i /install/netboot/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/compute/rootimg  "rpm -qa|grep uuid"
 check:rc==0
 check:output=~libuuid
 end

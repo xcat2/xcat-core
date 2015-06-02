@@ -41,14 +41,14 @@ function usage {
   echo "  xcatws-test.sh -u <USER> -p <pw> [-t]"
   echo "  xcatws-test.sh -u <USER> -p <pw> -h <FQDN - Full hostname of server> [-c] [-t]"
   echo "    -u  The username of xCAT user which is used to access xCAT resource"
-  echo "    -p  The password of username"
+  echo "    -p  The userPW of username"
   echo "    <FQDN of xCAT MN>  The fully qualified hostname of xCAT management node. It can be an IP if using -k."
   echo "    -c  Check the server identity. The server certificate authentication must be enabled."
   echo "    -t  Using token authentication method."
 }
 
 if [ "$USER" = "" ] || [ "$PW" = "" ]; then
-  echo "Error: Miss username or password"
+  echo "Error: Miss username or userPW"
   usage
   exit 1
 fi 
@@ -78,13 +78,13 @@ function REST {
     if [ "$token" = "yes" ]; then
       CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem -H X-Auth-Token:$TOKENID $datamsg https://$HOST/xcatws$SRC?pretty=1"
     else
-      CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&password=$PW"
+      CMD="curl -X $METHOD --cacert /tmp/ca-cert.pem $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&passwor=$PW"
     fi
   else 
     if [ "$token" = "yes" ]; then
       CMD="curl -X $METHOD -k -H X-Auth-Token:$TOKENID $datamsg https://$HOST/xcatws$SRC?pretty=1"
     else 
-      CMD="curl -X $METHOD -k $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&password=$PW"
+      CMD="curl -X $METHOD -k $datamsg https://$HOST/xcatws$SRC?pretty=1&userName=$USER&userPW=$PW"
     fi
   fi
 
@@ -125,7 +125,7 @@ fi
 
 # get a token
 if [ "$token" = "yes" ]; then
-  TOKENID=$(curl -X POST -k "https://$HOST/xcatws/tokens?pretty=1" -H Content-Type:application/json --data "{\"userName\":\"$USER\",\"password\":\"$PW\"}" 2>/dev/null | grep '"id"' | awk -F: {'print $2'} | awk -F \" {'print $2'})
+  TOKENID=$(curl -X POST -k "https://$HOST/xcatws/tokens?pretty=1" -H Content-Type:application/json --data "{\"userName\":\"$USER\",\"userPW\":\"$PW\"}" 2>/dev/null | grep '"id"' | awk -F: {'print $2'} | awk -F \" {'print $2'})
   echo "** Using Token: $TOKENID to authenticate"
 fi
 
