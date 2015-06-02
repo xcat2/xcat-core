@@ -206,7 +206,7 @@ sub parse_args {
         $globalopt{range} = $opt{range};
         my @ips = split /,/, $opt{range};
         foreach my $ip (@ips)  {
-            if (($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) || 
+            if (($ip =~ /^(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?\.(\d{1,3})(-\d{1,3})?$/) || 
                 ($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/)) {
                 push @iprange, $ip;
             } else {
@@ -517,6 +517,7 @@ sub lldp_scan {
                         $match = 1;
                         last;
                     }
+                    #TODO: handles the case where the range is something like 10.2-3.4.5-6
                 }
             }
             if (!$match) {
