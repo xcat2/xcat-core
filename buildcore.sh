@@ -371,7 +371,8 @@ if [ ! -z ${LOG} ]; then
 fi
 
 # get gpg keys in place
-if [ "$OSNAME" != "AIX" ] && ( [ -z "$RPMSIGN" ] || [ "$RPMSIGN" == "1" ] ); then
+if [ "$OSNAME" != "AIX" ]; then
+    if [ -z "$RPMSIGN" -o "$RPMSIGN" == "1" ]; then
 	mkdir -p $HOME/.gnupg
 	for i in pubring.gpg secring.gpg trustdb.gpg; do
 		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
@@ -403,6 +404,10 @@ if [ "$OSNAME" != "AIX" ] && ( [ -z "$RPMSIGN" ] || [ "$RPMSIGN" == "1" ] ); the
 	if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
 		${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
 	fi
+   else
+     createrepo --checksum sha $DESTDIR
+     createrepo --checksum sha $SRCDIR 
+   fi
 fi
 
 # set group and permissions correctly on the built rpms
