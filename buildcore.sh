@@ -37,7 +37,7 @@
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
 #        LOG=<filename> - provide an LOG file option to redirect some output into log file
-#        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA
+#        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without RPMSIGN specified
 
 # you can change this if you need to
 UPLOADUSER=litingt
