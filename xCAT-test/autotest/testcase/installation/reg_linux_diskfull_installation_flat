@@ -25,7 +25,8 @@ check:output=~$$CN
 
 cmd:copycds $$ISO
 check:rc==0
-
+cmd:mkdef $$STATELITE -u profile=compute provmethod=statelite
+cmd:mkdef $$STATELESS -u profile=compute provmethod=netboot
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:lsdef $$CN |grep provmethod
