@@ -35,7 +35,7 @@ Provides a browser-based interface for xCAT (Extreme Cloud Administration Toolki
 # Minify Javascript files using Google Compiler
 echo "Minifying Javascripts... This will take a couple of minutes."
 
-COMPILER_JAR='/xcat2/build/tools/compiler.jar'
+COMPILER_JAR='/media/xcat/build/old/aix/xcat2/build/tool/compiler.jar'
 UI_JS="js/"
 
 %ifos linux
