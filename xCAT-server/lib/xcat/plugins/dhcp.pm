@@ -2078,6 +2078,7 @@ sub putmyselffirst {
 sub addnet6
 {
     if ($::XCATSITEVALS{externaldhcpservers}) { return; }
+    if (!$usingipv6) { return; }
     my $netentry = shift;
     my $net = $netentry->{net};
     my $iface = $netentry->{iface};
