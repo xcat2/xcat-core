@@ -979,6 +979,7 @@ sub doresetnet {
 # child process
 ##########################################################################
 sub child_process {
+    local $SIG{CHLD} = 'DEFAULT';
     my $grouphashref = shift;
     my $iphashref = shift;
     my $rspdevref = shift;
@@ -995,7 +996,7 @@ sub child_process {
     ##########################################################
     foreach my $fspport (@ns) {
         my $ip = ${$iphashref->{$fspport}}{sip};
-        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null") >>8;
         if ($rc == 0) {
             xCAT::MsgUtils->verbose_message( $req, "ping static $ip successfully");
             push @valid_ips, $ip;  # static ip should be used first
@@ -1014,7 +1015,7 @@ sub child_process {
     ###########################################
     foreach my $fspport (@ns) {
         my $ip = ${$iphashref->{$fspport}}{tip};
-        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null") >>8;
         if ($rc == 0) {
             push @valid_ips, $ip;
             xCAT::MsgUtils->verbose_message( $req, "ping temp $ip successfully");
@@ -1065,7 +1066,7 @@ sub child_process {
 		    $port = $portneedreset[1];
 		} 
         xCAT::MsgUtils->verbose_message( $req, "begin to reset for port $port.. good ip is $goodip, ip is $ip....................................");
-        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+        my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null") >>8;
         unless ($rc == 0) { 
             $ip = ${$iphashref->{$port}}{tip};
             $handled{network} = $ip.",".${$rspdevref->{$ip}}{args};
@@ -1111,7 +1112,7 @@ sub child_process {
     }    
     xCAT::MsgUtils->verbose_message( $req, "begin to reset for port $port......................................");
     my $ip = ${$iphashref->{$port}}{sip};
-    my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null");
+    my $rc = system("ping -q -n -c 1 -w 1 $ip > /dev/null") >>8;
     unless ($rc == 0) { #should be unless!!!!!!!!!!!!!
         $ip = ${$iphashref->{$port}}{tip};
         $handled{network} = $ip.",".${$rspdevref->{$ip}}{args};
