@@ -83,11 +83,11 @@ restart)
   ;;
 reload)
   echo -n "Reloading xCATd "
-   if [ -r /etc/profile.d/xcat.sh ]; then
+  if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
   export XCATRELOAD=yes 
-   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
+  xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 status)
   $STATUS
@@ -98,6 +98,7 @@ stop)
   if [ "$?" != "0" ]; then
     echo -n "xCATd not running, not stopping "
     $LOG_WARNING
+    echo
     exit 0
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
@@ -116,14 +117,15 @@ stop)
     $LOG_FAILURE
     exit 0
   fi
-  $LOG_SUCCESS
   rm /var/run/xcatd.pid
+  $LOG_SUCCESS
   ;;
 start)
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     echo -n "xCATd already running "
     $LOG_WARNING
+    echo
     exit
   fi
   echo -n "Starting xCATd "
