@@ -4403,24 +4403,32 @@ sub disableservice{
 }
 
 sub cleanup_for_powerLE_hardware_discovery {
-    my $host_node = shift;
-    if( $host_node =~ /xCAT::Utils/)
+    my $request = shift;
+    if( $request =~ /xCAT::Utils/)
     {
-        $host_node=shift;
+        $request=shift;
     }
-    my $pbmc_node = shift;
     my $subreq = shift;
+    my $host_node = $request->{node}->[0];
+    my $pbmc_node = undef;
+    if (defined($request->{pbmc_node}) and defined($request->{pbmc_node}->[0])) {
+        $pbmc_node = $request->{pbmc_node}->[0];
+    }
+
     my $ipmitab = xCAT::Table->new("ipmi");
     unless($ipmitab) {
         xCAT::MsgUtils->message("S", "Discovery Error: can not open ipmi table.");
         return;
     }
-    my @nodes = ($host_node, $pbmc_node);
-    my $ipmihash = $ipmitab->getNodesAttribs(\@nodes, ['node', 'bmc', 'username', 'password']);
+    my $ipmihash = $ipmitab->getNodesAttribs([$host_node], ['node', 'bmc', 'username', 'password']);
     if ($ipmihash) {
         my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
         my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
-
+        if (!defined($pbmc_node)) {
+            xCAT::MsgUtils->message("S", "Discover info: configure static BMC ip:$new_bmc_ip for host_node:$host_node.");
+            `rspconfig $host_node ip=$new_bmc_ip`;
+            return;
+        }
         xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
         `rspconfig $pbmc_node password=$new_bmc_password`;
         #if ($new_bmc_password) {
