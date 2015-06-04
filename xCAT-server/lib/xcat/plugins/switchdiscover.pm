@@ -550,7 +550,7 @@ sub nmap_scan {
 
     my $ccmd;
 
-    #send_msg($request, 0, "Discovering switches using nmap...");
+    send_msg($request, 0, "Discovering switches using nmap. It may take long time...");
     #################################################
     # If --range options, take iprange, if noderange is defined
     # us the ip addresses of the nodes. If none is define, use the
@@ -562,14 +562,13 @@ sub nmap_scan {
     foreach my $r (@$ranges) {
         if ($r =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/) {
             if ($5 < 24) {
-                send_msg($request, 0, "It will take long time, you can modify the --range parameters to cut down the time.\n" );
+                send_msg($request, 0, "You can modify the --range parameters to cut down the time.\n" );
                 last;
             }
         }
     }
 
-    $ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
-    print $ccmd;
+    $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
     my $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -589,17 +588,22 @@ sub nmap_scan {
     #################################################
     my $result_ref = XMLin($result, ForceArray => 1);
     my $switches;
+    my $found;
     if ($result_ref) {
         if (exists($result_ref->{host})) {
             my $host_ref = $result_ref->{host};
             foreach my $host ( @$host_ref ) {
                 my $ip;
+                my $mac;
                 if (exists($host->{address})) {
                     my $addr_ref = $host->{address};
                     foreach my $addr ( @$addr_ref ) {
                         my $type = $addr->{addrtype};
                         if ( $type ne "mac" ) {
                             $ip = $addr->{addr};
+                            $found = 0;
+                        } else {
+                            $mac = $addr->{addr};
                         }
                         if ($addr->{vendor}) {
                             my $search_string = join '|', keys(%global_switch_type);
@@ -607,8 +611,29 @@ sub nmap_scan {
                                 $switches->{$ip}->{mac} = $addr->{addr};
                                 $switches->{$ip}->{vendor} = $addr->{vendor};
                                 $switches->{$ip}->{name} = $host->{hostname};
+                                $found = 1;
                             }
-                        }
+                        } 
+                        ##########################################################
+                        # If there is no vendor or other than %global_switch_type,
+                        # issue the nmap again to do more aggresively discovery
+                        # Choose best guess from osscan
+                        # only search port 22 and 23 for fast performance
+                        ###########################################################
+                        if ( ($found == 0) && ($type eq "mac") ) {
+                            $ccmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 -oX - $ip | grep osclass | grep switch | grep -v embedded ";
+                            my $os_result = xCAT::Utils->runcmd($ccmd, 0);
+                            if ($::RUNCMD_RC == 0)
+                            {
+                                if ($os_result =~ /vendor=\"(\S*)\"/) {
+                                    my $vendor_name = $1;
+                                    $switches->{$ip}->{mac} = $mac;
+                                    $switches->{$ip}->{vendor} = $vendor_name;
+                                    $switches->{$ip}->{name} = $host->{hostname};
+                                    $found = 1;
+                                }
+                            }
+                        } # end nmap osscan command
                     } #end for each address
                 }
             } #end for each host
