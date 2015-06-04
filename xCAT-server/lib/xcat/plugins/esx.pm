@@ -2840,6 +2840,7 @@ sub setboot {
     $running_tasks{$task}->{task} = $task;
     $running_tasks{$task}->{callback} = \&generic_task_callback;
     $running_tasks{$task}->{hyp} = $args{hyp}; 
+    $running_tasks{$task}->{vm} = $args{node}; 
     $running_tasks{$task}->{data} = { node => $node, successtext => ${$args{exargs}}[0] }; 
 }
 sub register_vm {#Attempt to register existing instance of a VM

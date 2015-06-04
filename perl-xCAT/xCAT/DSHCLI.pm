@@ -1007,21 +1007,24 @@ sub fork_fanout_dsh
 				my $switchents = $switchestab->getNodesAttribs($targets_waiting,[qw/switch sshusername sshpassword protocol/]);
 				foreach my $entry (values %$switchents) {
                     my $switch=$entry->[0]->{switch};
-					my $username = "admin";
+					my $username;
 					my $password;
                     my $protocol;
                      
-					if (defined($entry->[0]->{sshusername})) { #use switch table first
+                    # use switches table first
+					if (defined($entry->[0]->{sshusername})) { 
 						$username = $entry->[0]->{sshusername};
-						if (defined($entry->[0]->{sshpassword})) {
-							$password = $entry->[0]->{sshpassword};
-						}
-						if (defined($entry->[0]->{protocol})) {
-							$protocol = $entry->[0]->{protocol};
-						}
-					} 
-					elsif (defined($passwd_ent[0]->{username})) { #use passwd table as default
-						$username=$passwd_ent[0]->{username};
+                    }
+					if (defined($entry->[0]->{sshpassword})) {
+						$password = $entry->[0]->{sshpassword};
+					}
+					if (defined($entry->[0]->{protocol})) {
+						$protocol = $entry->[0]->{protocol};
+					}
+					if ((!$username) && (!$password) && (!$protocol)) { #use passwd table as default  
+					    if (defined($passwd_ent[0]->{username})) { 
+						    $username=$passwd_ent[0]->{username};
+                        }
 						if (defined($passwd_ent[0]->{password})) {
 							$password = $passwd_ent[0]->{password};
 						}

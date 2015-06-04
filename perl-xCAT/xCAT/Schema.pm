@@ -643,7 +643,15 @@ noderes => {
  descriptions => {
   node => 'The node name or group name.',
   servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
-  netboot => 'The type of network booting to use for this node.  Valid values:  pxe or xnba for x86* architecture, yaboot for ppc64 RHEL 6 and SLES 11, grub2 for ppc64 RHEL7 and all the Little-Endian os deployment on PowerKVM guests, petitboot for the PowerNV deployment',
+  netboot => 'The type of network booting to use for this node.  Valid values:
+                       Arch                  OS                           valid netboot options 
+                       x86, x86_64           ALL                          pxe, xnba 
+                       ppc64                 <=rhel6, <=sles11            yaboot
+                       ppc64                 >=rhels7                     grub2,grub2-http,grub2-tftp
+                 ppc64le NonVirtualize       ALL                          petitboot
+                 ppc64le PowerKVM Guest      ALL                          grub2,grub2-http,grub2-tftp
+                       
+',
   tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
   tftpdir => 'The directory that roots this nodes contents from a tftp and related perspective.  Used for NAS offload by using different mountpoints.',
   nfsserver => 'The NFS or HTTP server for this node (as known by this node).',
