@@ -43,6 +43,20 @@
 UPLOADUSER=litingt
 FRS=/home/frs/project/x/xc/xcat
 
+# For users to build from source code, simply run ./buildcore.sh
+#  1. Do not sign RPM by default
+#  2. Build all packages by default
+#  3. Do not upload to sourcefore by default
+if [ -z "$RPMSIGN" ]; then
+    RPMSIGN=0
+fi
+if [ -z "$BUILDALL" ]; then
+    BUILDALL=1
+fi
+if [ -z "$UP" ]; then
+    UP=0
+fi
+
 # These are the rpms that should be built for each kind of xcat build
 ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-SoftLayer xCAT-vlan xCAT-confluent"
 ZVMBUILD="perl-xCAT xCAT-server xCAT-UI"
