@@ -13,7 +13,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi 
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -25,8 +25,7 @@ check:output=~$$CN
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:mkdef $$STATELITE -u profile=compute provmethod=statelite
-cmd:mkdef $$STATELESS -u profile=compute provmethod=netboot
+cmd:if cat /etc/*release |grep "7.0" |grep "Red Hat">/dev/null;then mkdef $$STATELITE -u profile=compute provmethod=statelite osvers=rhels7;else mkdef $$STATELITE -u profile=compute provmethod=statelite; fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:lsdef $$CN |grep provmethod
