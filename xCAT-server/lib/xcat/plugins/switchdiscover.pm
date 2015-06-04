@@ -345,8 +345,8 @@ sub process_request {
                 if (exists($tmp_result->{$key}->{name})) {
                     $result->{$key}->{name} = $tmp_result->{$key}->{name};
                 }
-                if (exists($tmp_result->{$key}->{mac})) {
-                    $result->{$key}->{mac} = $tmp_result->{$key}->{mac};
+                if (exists($tmp_result->{$key}->{ip})) {
+                    $result->{$key}->{ip} = $tmp_result->{$key}->{ip};
                 }
                 if (exists($tmp_result->{$key}->{vendor})) {
                     $result->{$key}->{vendor} .= $tmp_result->{$key}->{vendor};
@@ -383,16 +383,16 @@ sub process_request {
         
         #display switches one by one
         foreach my $key (keys(%$result)) {
-            my $mac = "   ";
+            my $ip = "   ";
             my $vendor = "   ";
-            my $name = get_hostname($result->{$key}->{name}, $key);
-            if (exists($result->{$key}->{mac})) {
-                $mac = $result->{$key}->{mac};
+            if (exists($result->{$key}->{ip})) {
+                $ip = $result->{$key}->{ip};
             }
+            my $name = get_hostname($result->{$key}->{name}, $ip);
             if (exists($result->{$key}->{vendor})) {
                 $vendor = $result->{$key}->{vendor};
             }
-            my $msg = sprintf $format, $key, $name, $vendor, $mac;
+            my $msg = sprintf $format, $ip, $name, $vendor, $key;
             send_msg(\%request, 0, $msg);
         }
     }
@@ -416,8 +416,8 @@ sub process_request {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
+           "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -492,10 +492,15 @@ sub lldp_scan {
                     }
                     my $id =  $chassis->{id}->[0]->{content};
                     my $desc = $chassis->{descr}->[0]->{content};
-                    if ($ip) {
-                        $switches->{$ip}->{name} = $name;
-                        $switches->{$ip}->{mac} =  $id;
-                        $switches->{$ip}->{vendor} = $desc;
+                    if ($desc) {
+                        $desc =~ s/\n/ /g;
+                        $desc =~ s/\"//g;
+                    }
+
+                    if ($id) {
+                        $switches->{$id}->{name} = $name;
+                        $switches->{$id}->{ip} =  $ip;
+                        $switches->{$id}->{vendor} = $desc;
                     }
                 }
             }
@@ -508,13 +513,14 @@ sub lldp_scan {
         if (exists($globalopt{verbose}))    {
             send_msg($request, 0, "...Removing the switches that are not within the following ranges:\n  @$ranges\n");
         }
-        foreach my $ip_r (keys %$switches) {
+        foreach my $mac (keys %$switches) {
+            my $ip_r = $switches->{$mac}->{ip};
             $match = 0;
             foreach my $ip_f (@$ranges) {
                 my ($net, $mask) = split '/', $ip_f;
                 if ($mask) { #this is a subnet
                     $mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
-                    if (xCAT::NetworkUtils->ishostinsubnet($ip_r, $mask, $net)) {
+                   if (xCAT::NetworkUtils->ishostinsubnet($ip_r, $mask, $net)) {
                         $match = 1;
                         last;
                     }
@@ -527,7 +533,7 @@ sub lldp_scan {
                 }
             }
             if (!$match) {
-                delete $switches->{$ip_r};
+                delete $switches->{$mac};
             }
         }
     }
@@ -545,8 +551,8 @@ sub lldp_scan {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
+           "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -614,9 +620,9 @@ sub nmap_scan {
                         if ($addr->{vendor}) {
                             my $search_string = join '|', keys(%global_switch_type);
                             if ($addr->{vendor} =~ /($search_string)/) {
-                                $switches->{$ip}->{mac} = $addr->{addr};
-                                $switches->{$ip}->{vendor} = $addr->{vendor};
-                                $switches->{$ip}->{name} = $host->{hostname};
+                                $switches->{$mac}->{ip} = $ip;
+                                $switches->{$mac}->{vendor} = $addr->{vendor};
+                                $switches->{$mac}->{name} = $host->{hostname};
                                 $found = 1;
                             }
                         } 
@@ -633,9 +639,9 @@ sub nmap_scan {
                             {
                                 if ($os_result =~ /vendor=\"(\S*)\"/) {
                                     my $vendor_name = $1;
-                                    $switches->{$ip}->{mac} = $mac;
-                                    $switches->{$ip}->{vendor} = $vendor_name;
-                                    $switches->{$ip}->{name} = $host->{hostname};
+                                    $switches->{$mac}->{ip} = $ip;
+                                    $switches->{$mac}->{vendor} = $vendor_name;
+                                    $switches->{$mac}->{name} = $host->{hostname};
                                     $found = 1;
                                 }
                             }
@@ -660,8 +666,8 @@ sub nmap_scan {
         A hash containing the swithes discovered. 
         Each element is a hash of switch attributes. For examples:
         {
-           "1.2.3.5" =>{name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA"},
-           "1.2.4.6" =>{name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF"}
+           "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
+           "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
        } 
        returns 1 if there are errors occurred.
 =cut
@@ -671,8 +677,8 @@ sub snmp_scan {
 
     send_msg($request, 0, "Discovering switches using snmp...");
     my $switches = {
-        "1.2.3.5" => { name=>"switch1", vendor=>"ibm", mac=>"AABBCCDDEEFA" },
-        "1.2.4.6" => { name=>"switch2", vendor=>"cisco", mac=>"AABBCCDDEEFF" }
+        "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
+        "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
      };
     return $switches
 }
@@ -746,12 +752,12 @@ sub xCATdB {
     #################################################
     # write each switch to xcat database
     ##################################################
-    foreach my $ip ( keys %$outhash ) {
-        my $mac = $outhash->{$ip}->{mac};
-        my $vendor = $outhash->{$ip}->{vendor};
+    foreach my $mac ( keys %$outhash ) {
+        my $ip = $outhash->{$mac}->{ip};
+        my $vendor = $outhash->{$mac}->{vendor};
 
         #Get hostname and switch type
-        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
 
         #################################################
@@ -833,12 +839,12 @@ sub format_stanza {
     #####################################
     # Write attributes
     #####################################
-    foreach my $ip ( keys %$outhash ) {
-        my $mac = $outhash->{$ip}->{mac};
-        my $vendor = $outhash->{$ip}->{vendor};
+    foreach my $mac ( keys %$outhash ) {
+        my $ip = $outhash->{$mac}->{ip};
+        my $vendor = $outhash->{$mac}->{vendor};
 
         #Get hostname and switch type
-        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
 
         $result .= "$host:\n\tobjtype=switch\n";
@@ -869,13 +875,13 @@ sub format_xml {
     #####################################
     # Write attributes
     #####################################
-    foreach my $ip ( keys %$outhash ) {
+    foreach my $mac ( keys %$outhash ) {
         my $result;
-        my $mac = $outhash->{$ip}->{mac};
-        my $vendor = $outhash->{$ip}->{vendor};
+        my $ip = $outhash->{$mac}->{ip};
+        my $vendor = $outhash->{$mac}->{vendor};
         
         #Get hostname and switch type
-        my $host = get_hostname($outhash->{$ip}->{name}, $ip);
+        my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
 
         $result .= "hostname=$host\n";
