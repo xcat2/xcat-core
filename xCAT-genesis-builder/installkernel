@@ -11,3 +11,4 @@ instmods ehea      # ppc64 hea ethernet
 instmods dm-mod  #support LVM for sysclone
 instmods sg # Lenovo thinkserver firmware update support
 instmods ipr # IBM Power RAID
+instmods i40e # Intel 40GbE
