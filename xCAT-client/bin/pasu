@@ -47,7 +47,6 @@ if (!GetOptions(
   'b|batch=s' => \$batchfile,
   'r|retry' => \$::RETRY,
   'd|donotfilter' => \$::DONOTFILTER,
-  "n|nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a simple list of nodes.
   "V|verbose" => \$::VERBOSE,
   'h|help' => \$help,
   ) || $help || ($batchfile && scalar(@ARGV)!=1) || (!$batchfile && scalar(@ARGV)<2) ) {
@@ -73,10 +72,6 @@ my @nodes=();
 #print "fanout=$fanout, username=$username, noderange=$noderange\n";
 
 my $nodeattrs;
-if ($::NONODECHECK) {
-  @nodes=split(/,/, $noderange);
-}
-else {          # contact xcatd to expand noderange and get ipmi attrs
   # do not need to do this call, because getting the ipmi atts will also give us a list of nodes
   #@nodes = expandnoderange($noderange);
 
@@ -90,7 +85,6 @@ else {          # contact xcatd to expand noderange and get ipmi attrs
   #}
   #exit;
   @nodes = keys(%$nodeattrs);
-}
 
 my $children = 0;
 my $inputs = new IO::Select;
