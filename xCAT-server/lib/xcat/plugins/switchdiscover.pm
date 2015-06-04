@@ -440,7 +440,7 @@ sub lldp_scan {
         #    return 1;
         #}
         #xCAT::Utils->runcmd("sleep 30");
-        send_msg($request, 1, "Warning: lldpd is not running. Please run the following command to start it:\n  $dcmd\nThen wait a few minutes before running switchdiscover command again.\n");
+        send_msg($request, 1, "Warning: lldpd is not running. Please start it with the following flags:\n  $dcmd\nThen wait a few minutes before running switchdiscover command again.\n");
         return 1;
     }
 
@@ -481,12 +481,18 @@ sub lldp_scan {
             my $ref1 = $result_ref->{interface};
             foreach my $interface (@$ref1) {
                 if (exists($interface->{chassis})) {
-                    my $chassis = $interface->{chassis}->[0];    
+                    my $chassis = $interface->{chassis}->[0];
+                    my $name = $chassis->{name}->[0]->{content};
                     my $ip = $chassis->{'mgmt-ip'}->[0]->{content};
+                    # resolve the ip from name
+                    if (!$ip) {
+                        if ($name) {
+                            $ip = xCAT::NetworkUtils->getipaddr($name);
+                        }
+                    }
+                    my $id =  $chassis->{id}->[0]->{content};
+                    my $desc = $chassis->{descr}->[0]->{content};
                     if ($ip) {
-                        my $name = $chassis->{name}->[0]->{content};
-                        my $id =  $chassis->{id}->[0]->{content};
-                        my $desc = $chassis->{descr}->[0]->{content};
                         $switches->{$ip}->{name} = $name;
                         $switches->{$ip}->{mac} =  $id;
                         $switches->{$ip}->{vendor} = $desc;
