@@ -224,11 +224,25 @@ sub bmcdiscovery_processargs {
     #########################################
     # Option -i -u -p -c should be used together
     ######################################
-    if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_C) && defined($::opt_I) ) 
+
+    if ( defined($::opt_U) ||  defined($::opt_P) || defined($::opt_C) || defined($::opt_I) )
     {
-        my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
-        return $res;
+        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_C) && defined($::opt_I) ) 
+        {
+             my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
+             return $res;
+        }
+        else
+        {
+             my $msg = "bmc_ip or bmcuser or bmcpw is empty.";
+             my $rsp = {};
+             push @{ $rsp->{data} }, "$msg";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+             return 2;
+        }
+
     }
+
     #########################################
     # Other attributes are not allowed
     #########################################
