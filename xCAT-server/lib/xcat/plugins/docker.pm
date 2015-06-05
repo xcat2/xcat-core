@@ -258,7 +258,7 @@ sub genreq {
 
 #-------------------------------------------------------
 
-=head3  get_highest_version
+=head3  send_req
 
   Make connection to docker daemon
   Send REST api request to docker daemon
