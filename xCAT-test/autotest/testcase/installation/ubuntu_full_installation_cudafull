@@ -1,0 +1,35 @@
+start:Ubuntu_full_installation_flat_cudafull
+os:Linux
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=ubuntu1404;elif [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.10" ]];then ver=ubuntu1410; fi;echo "deb http://developer.download.nvidia.com/compute/cuda/repos/$ver/__GETNODEATTR($$CN,arch)__ /" >> /etc/apt/sources.list
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.04" ]];then ver=ubuntu1404;elif [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu14.10" ]];then ver=ubuntu1410; fi;chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute -p pkgdir="http://ports.ubuntu.com/ubuntu-ports trusty main,http://ports.ubuntu.com/ubuntu-ports trusty-updates main,http://developer.download.nvidia.com/compute/cuda/repos/$ver/__GETNODEATTR($$CN,arch)__/ /"
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute pkglist="/opt/xcat/share/xcat/install/ubuntu/cudafull.__GETNODEATTR($$CN,os)__.__GETNODEATTR($$CN,arch)__.pkglist"
+cmd:chdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute template="/opt/xcat/share/xcat/install/ubuntu/cudafull.tmpl"
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN reset
+check:rc==0
+cmd:sleep 2000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN dpkg -l |grep cuda
+check:rc==0
+check:output=~cuda
+end
