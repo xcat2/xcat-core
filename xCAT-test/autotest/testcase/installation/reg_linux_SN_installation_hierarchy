@@ -3,6 +3,7 @@ os:Linux
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$SN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$SN -f -p &&  mkvm $$SN -s 25G; fi
 
 cmd:makedns -n
 check:rc==0
@@ -44,13 +45,18 @@ check:rc==0
 
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkgdir=/install/post/otherpkgs/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.__GETNODEATTR($$SN,os).__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
+#check:rc==0
+
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`; chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist; elif cat /etc/*release |grep "7.0" |grep "Red Hat">/dev/null;then chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.__GETNODEATTR($$SN,os)__.ppc64.otherpkgs.pkglist;elif cat /etc/*release |grep "Red Hat" |grep "6.5">/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service otherpkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.otherpkgs.pkglist;fi
+
 check:rc==0
 
-
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;for i in mysql-client libmysqlclient_r15 libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql; do  cat /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; fi done; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;for i in mysql; do cat /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist; fi done;fi
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;for i in mysql-client libmysqlclient_r15 libqt4-sql-mysql libmysqlclient15 perl-DBD-mysql mysql; do  cat /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; fi done; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;for i in mysql; do cat /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.rhels$ver.ppc64.pkglist; fi done;fi
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;for i in  mariadb-devel-5.5.35-3.el7  mariadb-libs-5.5.35-3.el7  mariadb-server-5.5.35-3.el7 mariadb-bench-5.5.35-3.el7 mariadb-5.5.35-3.el7  perl-DBD-MySQL  mysql-connector-odbc unixODBC; do  cat /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; fi done; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=__GETNODEATTR($$SN,os)__;for i in mysql; do cat /opt/xcat/share/xcat/install/rh/service.$ver.ppc64.pkglist|grep "$i$";if [ $? -ne 0 ] ; then echo "$i" >> /opt/xcat/share/xcat/install/rh/service.$ver.ppc64.pkglist; fi done;fi
 check:rc==0
-cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.pkglist;fi
+#cmd:if cat /etc/*release |grep SUSE >/dev/null;then ver=`cat /etc/*release |grep "VERSION = " | sed 's:VERSION = \(.*\):\1:g'`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/sles/service.sles$ver.pkglist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then ver=`cat /etc/*release |awk '{print $7}' |awk -F"." '{print $1}'|head -n 1`;chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkglist=/opt/xcat/share/xcat/install/rh/service.rhels$ver.__GETNODEATTR($$SN,arch)__.pkglist;fi
 check:rc==0
 cmd:chdef -t osimage __GETNODEATTR($$SN,os)__-__GETNODEATTR($$SN,arch)__-install-service pkgdir="/install/__GETNODEATTR($$SN,os)__/__GETNODEATTR($$SN,arch)__"
 check:rc==0
@@ -88,9 +94,9 @@ check:output=~/install on /install
 cmd:xdsh $$SN "mount"
 check:rc==0
 check:output=~/tftpboot on /tftpboot
-cmd:xdsh $$SN "nslookup $$CN"
-check:rc==0
-check:output!~server can't find $$CN
+#cmd:xdsh $$SN "nslookup $$CN"
+#check:rc==0
+#check:output!~server can't find $$CN
 
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]]; then if cat /etc/*release |grep SUSE >/dev/null;then xdsh $$SN "zypper -n install perl-Sys-Virt"; elif cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$SN "yum install -y perl-Sys-Virt";fi;fi
 check:rc==0
