@@ -278,6 +278,36 @@ When using these commands, the object attributes will be stored in the same tabl
 the tables by hand.  The only difference is that the object commands take care of knowing which tables
 all of the information should go in.
 
+=head2 B<xCAT Object Name Format>:
+
+B<xCAT Object Name Format> is defined by the following regex:
+
+ ^([A-Za-z-]+)([0-9]+)(([A-Za-z-]+[A-Za-z0-9-]*)*)
+
+In plain English, an object name is in B<xCAT Object Name Format> if starting from the begining there are:
+
+=over 2
+
+=item *
+
+one or more alpha characters of any case and any number of "-" in any combination
+
+=item *
+
+followed by one or more numbers
+
+=item *
+
+then optionally followed by one alpha character of any case  or "-"
+
+=item *
+
+followed by any combination of case mixed alphanumerics and "-"
+
+=back
+
+=head2 <Object Types>
+
 To run man for any of the object definitions below, use section 7.  For example:  B<man 7 node>
 
 The object types are:
