@@ -685,14 +685,32 @@ sub nmap_scan {
                         # only search port 22 and 23 for fast performance
                         ###########################################################
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            $ccmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 -oX - $ip | grep osclass | grep switch | grep -v embedded ";
+                            $ccmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 -oX - $ip | grep osclass | grep -v embedded ";
                             my $os_result = xCAT::Utils->runcmd($ccmd, 0);
                             if ($::RUNCMD_RC == 0)
                             {
-                                if ($os_result =~ /vendor=\"(\S*)\"/) {
-                                    my $vendor_name = $1;
+                                my $os_vendor;
+                                my @lines = split /\n/ => $os_result;
+                                foreach my $line (@lines) {
+                                    # pick the first one if found osclass type = switch
+                                    if ($line =~ /switch/) {
+                                        if ($line =~ /vendor=\"(\S*)\"/) {
+                                            $os_vendor = $1;
+                                            last;
+                                        }
+                                    }
+                                    # if didn't find switch type,  choose router as switch
+                                    if ($line =~ /router/) {
+                                        if ($line =~ /vendor=\"(\S*)\"/) {
+                                            if (!($os_vendor)) {
+                                                $os_vendor = $1;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ($os_vendor) {
                                     $switches->{$mac}->{ip} = $ip;
-                                    $switches->{$mac}->{vendor} = $vendor_name;
+                                    $switches->{$mac}->{vendor} = $os_vendor;
                                     $switches->{$mac}->{name} = $host->{hostname};
                                     $found = 1;
                                 }
