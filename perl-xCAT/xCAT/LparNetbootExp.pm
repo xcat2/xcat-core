@@ -2660,14 +2660,27 @@ sub lparnetbootexp
     ####################################
     nc_msg($verbose, "Connecting to the $node.\n");
     sleep 3;
+
+    # Send Ctrl-E, c and ? to get the help to come out to support
+    # both confluent and conserver consoles
+    $rconsole->send("\005c?");
+    # for some reason the ctrl-e is not being sent for confluent, just getting c? 
+
     $timeout = 10;
     $rconsole->expect(
         $timeout,
-        [ qr/Enter.* for help.*/i =>
+        [ qr/c?/i =>
             sub {
                 $rc = 0;
                 $rconsole->clear_accum();
-                nc_msg($verbose, "Connected.\n");
+                nc_msg($verbose, "Confluent -> Connected.\n");
+            }
+        ],
+        [ qr/help.*/i =>
+            sub {
+                $rc = 0;
+                $rconsole->clear_accum();
+                nc_msg($verbose, "Conserver -> Connected.\n");
             }
         ],
         [ timeout =>
