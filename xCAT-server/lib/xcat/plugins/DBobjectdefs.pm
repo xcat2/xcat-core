@@ -565,6 +565,15 @@ sub processArgs
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
+
+    # check the new object name specified with -n
+    if ($::command eq "chdef" && $::opt_n && ($::opt_n !~ /^[a-zA-Z0-9-_]+$/)) {
+        my $rsp;
+        $rsp->{data}->[0] = "The new object name \'$::opt_n\' is not valid.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
     # can get object names in many ways - easier to keep track
     $::objectsfrom_args = 0;
     $::objectsfrom_opto = 0;
