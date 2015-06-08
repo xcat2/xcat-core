@@ -324,7 +324,9 @@ sub refresh_table {
                 $self->{switchparmhash}->{$curswitch}->{auth}='md5'; #Default to md5 auth if not specified but using v3
               }
           } elsif ($_->{snmpversion} =~ /2/) {
-              $self->{switchparmhash}->{$curswitch}->{snmpversion}=2;
+              #$self->{switchparmhash}->{$curswitch}->{snmpversion}=2;
+              # we have Juniper switch enabled snmp v2c, not v2
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=$_->{snmpversion};
           } else {
               $self->{switchparmhash}->{$curswitch}->{snmpversion}=1; #Default to lowest common denominator, snmpv1
           }
