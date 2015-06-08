@@ -280,6 +280,7 @@ all of the information should go in.
 
 =head2 B<xCAT Object Name Format>:
 
+
 B<xCAT Object Name Format> is defined by the following regex:
 
  ^([A-Za-z-]+)([0-9]+)(([A-Za-z-]+[A-Za-z0-9-]*)*)
@@ -306,7 +307,7 @@ followed by any combination of case mixed alphanumerics and "-"
 
 =back
 
-=head2 <Object Types>
+=head2 B<Object Types>
 
 To run man for any of the object definitions below, use section 7.  For example:  B<man 7 node>
 
