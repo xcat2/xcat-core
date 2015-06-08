@@ -23,8 +23,8 @@ my %globalopt;
 my @filternodes;
 my @iprange;
 my %global_scan_type = (
-    lldp => "lldp_scan",
     nmap => "nmap_scan",
+    lldp => "lldp_scan",
     snmp => "snmp_scan"
 );
 
@@ -334,23 +334,59 @@ sub process_request {
         }
     }
 
-    #consolidate the results by merging the swithes with the same ip
+    #consolidate the results by merging the swithes with the same ip or same mac 
+    #or same hostname
     my $result;
+    my $merged;
+    my $counter=0;
     foreach my $st (keys %$all_result) {
         my $tmp_result = $all_result->{$st};
-        foreach my $key (keys %$tmp_result) {
-            if (! exists($result->{$key})) {
-                $result->{$key} = $tmp_result->{$key};
-            } else {
-                if (exists($tmp_result->{$key}->{name})) {
-                    $result->{$key}->{name} = $tmp_result->{$key}->{name};
+        #send_msg( \%request, 1, Dumper($tmp_result));
+        foreach my $old_mac (keys %$tmp_result) {
+            $same = 0;
+            foreach my $new_mac (keys %$result) {
+                my $old_ip = $tmp_result->{$old_mac}->{ip}; 
+                my $old_name = $tmp_result->{$old_mac}->{name};
+                my $old_vendor = $tmp_result->{$old_mac}->{vendor};
+                my $new_ip = $result->{$new_mac}->{ip};
+                my $new_name = $result->{$new_mac}->{name};
+                my $new_vendor = $result->{$new_mac}->{vendor};
+                
+                if (($old_mac eq $new_mac) || 
+                    ($old_ip && ($old_ip eq $new_ip)) || 
+                    ($old_name && ($old_name eq $new_name))) {
+                    $same = 1;
+                    my $key =$new_mac;
+                    if ($new_mac =~ /nomac/) {
+                        if ($old_mac =~ /nomac/) {
+                            $key = "nomac_$counter";
+                            $counter++;
+                        } else {
+                            $key = $old_mac;
+                        }
+                    }
+                    if ($old_name) {
+                        $result->{$key}->{name} = $old_name;
+                    }
+                    if ($old_ip) {
+                        $result->{$key}->{ip} = $old_ip;
+                    }
+                    $result->{$key}->{vendor} = $new_vendor;
+                    if ($old_vendor) {
+                        if ($old_vendor ne $new_vendor) {
+                            $result->{$key}->{vendor} .= " " . $old_vendor;
+                        } else {
+                            $result->{$key}->{vendor} = $old_vendor;
+                        }
+                    }
+
+                    if ($key ne $new_mac) {
+                        delete $result->{$new_mac};
+                    }
                 }
-                if (exists($tmp_result->{$key}->{ip})) {
-                    $result->{$key}->{ip} = $tmp_result->{$key}->{ip};
-                }
-                if (exists($tmp_result->{$key}->{vendor})) {
-                    $result->{$key}->{vendor} .= $tmp_result->{$key}->{vendor};
-                }
+            }
+            if (!$same) {
+                $result->{$old_mac} = $tmp_result->{$old_mac};
             }
         }
     }
@@ -385,12 +421,16 @@ sub process_request {
         foreach my $key (keys(%$result)) {
             my $ip = "   ";
             my $vendor = "   ";
+            my $mac = "        ";
             if (exists($result->{$key}->{ip})) {
                 $ip = $result->{$key}->{ip};
             }
             my $name = get_hostname($result->{$key}->{name}, $ip);
             if (exists($result->{$key}->{vendor})) {
                 $vendor = $result->{$key}->{vendor};
+            }
+            if ($key != /nomac/) {
+                $mac = $key;
             }
             my $msg = sprintf $format, $ip, $name, $vendor, $key;
             send_msg(\%request, 0, $msg);
@@ -424,6 +464,8 @@ sub process_request {
 #--------------------------------------------------------------------------------
 sub lldp_scan {
     my $request  = shift;
+
+    send_msg($request, 0, "Discovering switches using lldp...");
 
     # get the PID of the currently running lldpd if it is running.
     if (exists($globalopt{verbose}))    {
@@ -476,6 +518,7 @@ sub lldp_scan {
     }
     my $result_ref = XMLin($result, KeyAttr => 'interface', ForceArray => 1);
     my $switches; 
+    my $counter=0;
     if ($result_ref) {
         if (exists($result_ref->{interface})) {
             my $ref1 = $result_ref->{interface};
@@ -491,6 +534,10 @@ sub lldp_scan {
                         }
                     }
                     my $id =  $chassis->{id}->[0]->{content};
+                    if (!$id) {
+                        $id="nomac_lldp_$counter";
+                        $counter++;
+                    }
                     my $desc = $chassis->{descr}->[0]->{content};
                     if ($desc) {
                         $desc =~ s/\n/ /g;
@@ -601,6 +648,7 @@ sub nmap_scan {
     my $result_ref = XMLin($result, ForceArray => 1);
     my $switches;
     my $found;
+    my $counter=0;
     if ($result_ref) {
         if (exists($result_ref->{host})) {
             my $host_ref = $result_ref->{host};
@@ -616,6 +664,10 @@ sub nmap_scan {
                             $found = 0;
                         } else {
                             $mac = $addr->{addr};
+                        }
+                        if (!$mac) {
+                            $mac="nomac_nmap_$counter";
+                            $counter++;
                         }
                         if ($addr->{vendor}) {
                             my $search_string = join '|', keys(%global_switch_type);
@@ -759,6 +811,10 @@ sub xCATdB {
         #Get hostname and switch type
         my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
+        if ($mac =~ /nomac/) {
+            $mac=" ";
+        }
+
 
         #################################################
         # use lsdef command to check if this switch is
@@ -846,6 +902,9 @@ sub format_stanza {
         #Get hostname and switch type
         my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
+        if ($mac =~ /nomac/) {
+            $mac = " ";
+        }
 
         $result .= "$host:\n\tobjtype=switch\n";
         $result .= "\tcomments=$vendor\n";
@@ -883,6 +942,9 @@ sub format_xml {
         #Get hostname and switch type
         my $host = get_hostname($outhash->{$mac}->{name}, $ip);
         my $stype = get_switchtype($vendor);
+        if ($mac =~ /nomac/) {
+            $mac = " ";
+        }
 
         $result .= "hostname=$host\n";
         $result .= "objtype=switch\n";
