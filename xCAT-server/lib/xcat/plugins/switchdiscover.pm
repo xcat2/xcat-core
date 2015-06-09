@@ -627,6 +627,7 @@ sub nmap_scan {
         }
     }
 
+
     # handle ctrl-c
     $SIG{TERM} = $SIG{INT} = sub {
         #clean up the nmap processes
@@ -637,7 +638,12 @@ sub nmap_scan {
         }
     };
 
+    
     $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
     my $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -650,6 +656,10 @@ sub nmap_scan {
     #################################################
     if (exists($globalopt{r})) {
         send_msg($request, 0, "$result\n" );
+    } else {
+        if (exists($globalopt{verbose})) {
+            send_msg($request, 0, "$result\n" );
+        }
     }
 
     #################################################
@@ -686,6 +696,9 @@ sub nmap_scan {
                                 $switches->{$mac}->{vendor} = $addr->{vendor};
                                 $switches->{$mac}->{name} = $host->{hostname};
                                 $found = 1;
+                                if (exists($globalopt{verbose}))    {
+                                    send_msg($request, 0, "FOUND Switch: ip=$ip, mac=$mac, vendor=$addr->{vendor}\n");
+                                }
                             }
                         } 
                         ##########################################################
@@ -695,10 +708,20 @@ sub nmap_scan {
                         # only search port 22 and 23 for fast performance
                         ###########################################################
                         if ( ($found == 0) && ($type eq "mac") ) {
+                            if (exists($globalopt{verbose}))    {
+                                send_msg($request, 0, "*********************************");
+                                send_msg($request, 0, "Couldn't find vendor info, use nmap osscan command to choose best guess");
+                            }
                             $ccmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 -oX - $ip | grep osclass | grep -v embedded ";
+                            if (exists($globalopt{verbose})) {
+                                send_msg($request, 0, "Process command: $ccmd");
+                            }
                             my $os_result = xCAT::Utils->runcmd($ccmd, 0);
                             if ($::RUNCMD_RC == 0)
                             {
+                                if (exists($globalopt{verbose})) {
+                                    send_msg($request, 0, "$os_result\n");
+                                }
                                 my $os_vendor;
                                 my @lines = split /\n/ => $os_result;
                                 foreach my $line (@lines) {
@@ -723,6 +746,20 @@ sub nmap_scan {
                                     $switches->{$mac}->{vendor} = $os_vendor;
                                     $switches->{$mac}->{name} = $host->{hostname};
                                     $found = 1;
+                                    if (exists($globalopt{verbose}))    {
+                                        send_msg($request, 0, "Choose best guess: ip=$ip, mac=$mac, vendor=$os_vendor");
+                                        send_msg($request, 0, "*********************************\n");
+                                    }
+                                } else {
+                                    if (exists($globalopt{verbose}))    {
+                                        send_msg($request, 0, "ip=$ip, mac=$mac is not switch");
+                                        send_msg($request, 0, "*********************************\n");
+                                    }
+                                }
+                            } else {
+                                if (exists($globalopt{verbose}))    {
+                                    send_msg($request, 0, "ip=$ip, mac=$mac is not switch");
+                                    send_msg($request, 0, "*********************************\n");
                                 }
                             }
                         } # end nmap osscan command
