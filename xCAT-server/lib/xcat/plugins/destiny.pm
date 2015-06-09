@@ -314,7 +314,7 @@ sub setdestiny {
                     #if any node with inappropriate noderes.netboot,report the error and return
                     foreach my $tmpimage(keys %$invalidosimghash){
                            $errored =1;
-                           $callback->({errorcode=>[1],error=> [join(",",@{$invalidosimghash->{$tmpimage}->{nodes}}).": stop configuration because $curnetboot DOES NOT work for provision of $tmpimage, please choose the correct noderes.netboot value in the subset \"$invalidosimghash->{$tmpimage}->{netboot}\",see description of 'netboot' attributes in 'tabdump -d noderes' for details."]});
+                           $callback->({errorcode=>[1],error=> [join(",",@{$invalidosimghash->{$tmpimage}->{nodes}}).": $curnetboot is not valid when provisioning $tmpimage,valid options: \"$invalidosimghash->{$tmpimage}->{netboot}\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
                     }
                       
                     if("$errored" ne "0"){
