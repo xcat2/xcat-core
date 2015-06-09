@@ -627,6 +627,16 @@ sub nmap_scan {
         }
     }
 
+    # handle ctrl-c
+    $SIG{TERM} = $SIG{INT} = sub {
+        #clean up the nmap processes
+        my $nmap_pid = `ps -ef | grep nmap | grep -v grep | awk '{print \$2}'`;
+        if ($nmap_pid) {
+            system("kill -9 $nmap_pid >/dev/null 2>&1");
+            exit 0;
+        }
+    };
+
     $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
     my $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
