@@ -195,8 +195,8 @@ then
     #/sbin/chkconfig --level 2345 $ib_driver on > /dev/null 2>&1
     enableservice $ib_driver > /dev/null 2>&1
     #/sbin/service $ib_driver restart
-    restartservice $ib_driver 
-    sysctl -p
+    #restartservice $ib_driver 
+    sysctl -p > /dev/null 2>&1
 fi
 
 #clean up existing ib nic configrations
