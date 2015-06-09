@@ -121,3 +121,4 @@ opt/xcat/bin/xcatclientnnr opt/xcat/bin/rmosdistro
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/rmzone
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/slpdiscover
 opt/xcat/bin/xcatclient    opt/xcat/bin/xCATWorld
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/switchdiscover
