@@ -59,7 +59,10 @@ INSTALL_DIR='/install'
 #echo  "installroot=$installroot"
 #echo "------------------------------------------"
 
-
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+    str_dir_name=`dirname $0`
+    . $str_dir_name/xcatlib.sh
+fi
 
 #use arg for the OFED_DIR if defined,
 ARGNUM=$#
@@ -152,6 +155,8 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             perl -x mlnxofedinstall $mlnxofed_options
         fi
         rm -Rf /tmp/ofed
+        #force openibd load all modules in need, restart again
+        restartservice openibd
     fi
 
     if [[ $NODESETSTATE == "genimage" ]]; then
