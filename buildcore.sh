@@ -38,7 +38,7 @@
 #        VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
-UPLOADUSER=bp-sawyers
+UPLOADUSER=litingt
 FRS=/home/frs/project/x/xc/xcat
 
 # These are the rpms that should be built for each kind of xcat build
