@@ -710,7 +710,7 @@ sub do_udp_service { #This function opens up a UDP port
 	 my $hdl;
 	 foreach $hdl (@hdls) {
 	   if ($hdl == $socket) {
-	   $part = $socket->recv($data,1500);
+	   $part = $socket->recv($data,2000);
            $packets{$part} = [$part,$data];
            } elsif ($hdl == $sslctl) { 
 	   	update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
