@@ -355,7 +355,7 @@ sub scan_process{
     # get live ip list
     ###########################################################
     if ( $method eq "nmap" ) {
-        my $bcmd = join(" ",$nmap_path," -sn $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+        my $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
         $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp = {};
