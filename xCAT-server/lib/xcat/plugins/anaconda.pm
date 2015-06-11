@@ -1302,12 +1302,16 @@ sub mkinstall
 
                     )
             ) or (    $arch =~ /ppc/
-                and -r "$pkgdir/ppc/ppc64/vmlinuz"
-                and $kernpath = "$pkgdir/ppc/ppc64/vmlinuz"
+                and ((-r "$pkgdir/ppc/ppc64/vmlinuz"
+                and $kernpath = "$pkgdir/ppc/ppc64/vmlinuz")
+                or (-r "$pkgdir/ppc/ppc64le/vmlinuz"
+                and $kernpath = "$pkgdir/ppc/ppc64le/vmlinuz"))
                 and ((-r "$pkgdir/ppc/ppc64/ramdisk.image.gz"
                 and $initrdpath = "$pkgdir/ppc/ppc64/ramdisk.image.gz")
                 or (-r "$pkgdir/ppc/ppc64/initrd.img"
-                and $initrdpath = "$pkgdir/ppc/ppc64/initrd.img")))
+                and $initrdpath = "$pkgdir/ppc/ppc64/initrd.img")
+                or (-r "$pkgdir/ppc/ppc64le/initrd.img"
+                and $initrdpath = "$pkgdir/ppc/ppc64le/initrd.img")))
           )
         {
             #TODO: driver slipstream, targetted for network.
