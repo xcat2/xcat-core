@@ -18,6 +18,12 @@ if [ -e /etc/xCATMN ]; then
    logger -t xcat -p local4.info "setupntp:Running on the Management Node ,  exiting "
    exit 0
 fi
+# if on the Server Node, exit,  makentp will set up service node
+if [ -e /etc/xCATSN ]; then
+   logger -t xcat -p local4.info "setupntp:Running on the Server Node ,  exiting "
+   exit 0
+fi
+
 master=$MASTER
 setup=0
 sitemaster=$SITEMASTER
