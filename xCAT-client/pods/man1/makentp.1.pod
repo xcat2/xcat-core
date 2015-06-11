@@ -1,0 +1,90 @@
+
+=head1 NAME
+
+B<makentp> - Setup NTP server on the management node and the service node.
+
+
+=head1 SYNOPSIS
+
+I<switchdiscover [-h|--help]>
+
+I<switchdiscover [-v|--version]>
+
+
+I<switchdiscover [-a|--all] [-V|--verbose]>
+
+
+
+=head1 DESCRIPTION
+
+I<makentp> command sets up the NTP server on the xCAT management node and the service node.
+
+By default, it sets up the NTP server for xCAT management node. It gets the site table attribute I<extntpservers> and have the local NTP server sync with the external ntp servers defined by <site.extntpservers>. If -a flag is specified, the command also works for all the service nodes that have I<servicenode.ntpserver> set. The NTP server on the service node will sync with the management node. 
+
+This command is also called by xcatd when it starts on the xCAT management node and the service nodes. 
+
+To setup NTP client on other nodes such as compute nodes, please add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp>. The setupntp postscripts honors I<site.ntpservers> attribute for NTP servers. If the value of I<site.ntpservers> is "<xcatmaster>" then the management node or the service node that serves the node will be the NTP server.
+
+
+=head1 OPTIONS
+
+=over 10
+
+
+=item B<-a|--all>          
+
+Setup NTP servers for both management node and the service node.
+
+
+=item B<-h|--help>          
+
+Display usage message.
+
+
+=item B<-v|--version>  
+
+Command Version.
+
+=item B<-V|--verbose>    
+
+Verbose output.
+
+=back
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item *
+
+To setup NTP server on the management node:
+
+B<makentp>
+
+=item *
+
+To setup NTP servers on both management node and the service node:
+
+B<setupntp> I<-a>
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/setupntp
+
+
+=head1 SEE ALSO
+
+
+
+
+
+
