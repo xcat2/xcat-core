@@ -128,6 +128,9 @@ sub init_plugin
                  }
 
                 }
+                if ($servicelist->{"ntpserver"} == 1) {
+                    &setup_NTP($doreq);
+                }  
                 if ($servicelist->{"proxydhcp"} == 1) {
                     &setup_proxydhcp(1);
                 } else {
@@ -168,7 +171,7 @@ sub init_plugin
 
             }
             if ($servicelist->{"ipforward"} == 1)
-	         {
+         {
 	           # enable ip forwarding 
 	            xCAT::NetworkUtils->setup_ip_forwarding(1); 
 	         }
@@ -870,107 +873,22 @@ sub setup_NFS
 
 #-----------------------------------------------------------------------------
 
-=head3 setup_NTPsn 
+=head3 setup_NTP
 
-    Sets up NTP services on service node
+    Sets up NTP services on mn or sn
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub setup_NTPsn
+sub setup_NTP
 {
-    my ($nodename) = @_;
-    my $rc = 0;
-    my $cmd;
-    my $master;
-    my $os;
-    my $arch;
-    my $ntpcfg = "/etc/ntp.conf";
+    my $doreq = shift;
+    my $res = xCAT::Utils->runxcmd({
+        command => ['makentp'],}, $doreq, 0, 1);
 
-    # read DB for nodeinfo
-    my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
-    $master = $retdata->{'master'};
-    $os     = $retdata->{'os'};
-    $arch   = $retdata->{'arch'};
-    if (!($arch))
-    {    # error
-        xCAT::MsgUtils->message("S", " Error reading service node info.");
-        return 1;
-    }
-
-    # backup the existing config file
-    $rc = &backup_NTPconf();
-    if ($rc == 0)
-    {
-
-        # create config file
-        open(CFGFILE, ">$ntpcfg")
-          or xCAT::MsgUtils->message('SE',
-                                     "Cannot open $ntpcfg for NTP update. \n");
-        print CFGFILE "server ";
-        print CFGFILE $master;
-        print CFGFILE "\n";
-        print CFGFILE "driftfile /var/lib/ntp/drift\n";
-        print CFGFILE "restrict 127.0.0.1\n";
-        close CFGFILE;
-
-        $rc = &start_NTP();    # restart ntp
-    }
-    return $rc;
+    return 0;
 }
 
-#-----------------------------------------------------------------------------
-
-=head3 setup_NTPmn 
-
-    Sets up NTP services on Management Node 
-    Get ntpservers from site table.  If they do not exist, warn cannot setup NTP
-=cut
-
-#-----------------------------------------------------------------------------
-sub setup_NTPmn
-{
-    my $rc     = 0;
-    my $ntpcfg = "/etc/ntp.conf";
-
-    # get timeservers from site table
-    my @ntpservers = xCAT::TableUtils->get_site_attribute("ntpservers");
-    if ($ntpservers[0])
-    {
-
-        # backup the existing config file
-        $rc = &backup_NTPconf();
-        if ($rc == 0)
-        {
-
-            # add server names
-            open(CFGFILE, ">$ntpcfg")
-              or xCAT::MsgUtils->message('SE',
-                                      "Cannot open $ntpcfg for NTP update. \n");
-            my @servers = split ',', $ntpservers[0];
-            foreach my $addr (@servers)
-            {
-                print CFGFILE "server ";
-                print CFGFILE $addr;
-                print CFGFILE "\n";
-            }
-            print CFGFILE "driftfile /var/lib/ntp/drift\n";
-            print CFGFILE "restrict 127.0.0.1\n";
-            close CFGFILE;
-
-            $rc = &start_NTP();    # restart ntp
-        }
-    }
-    else
-    {                              # no servers defined
-        xCAT::MsgUtils->message(
-            "S",
-            "No NTP servers defined in the ntpservers attribute in the site table.\n"
-            );
-        return 1;
-    }
-    return $rc;
-}
 
 #-----------------------------------------------------------------------------
 

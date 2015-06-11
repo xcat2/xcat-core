@@ -290,6 +290,9 @@ my %usage = (
     "switchdiscover" =>
 "Usage: switchdiscover [-h|--help|-v|--version]
        switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
+    "makentp" =>
+"Usage: makentp [-h|--help|-v|--version]
+       makentp [-a|--all] [-V|--verbose]",
   "rflash" =>
 "Usage: 
     rflash [ -h|--help|-v|--version]
@@ -486,6 +489,7 @@ my %version = (
     "rmvm" => "$vers",
     "lsslp" => "$vers",
     "switchdiscover" => "$vers",
+    "makentp" => "$vers",
     "rflash" => "$vers",
     "renergy" => "$vers",
     "lsflexnode" => "$vers",
