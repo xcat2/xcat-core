@@ -212,27 +212,38 @@ sub process_request {
     $request{callback} = $callback;
     $request{command}  = $req->{command}->[0];
 
+    my @nodeinfo   = xCAT::NetworkUtils->determinehostname();
+    my $nodename   = pop @nodeinfo; 
 
+    #check if ntp is installed or not
+    if (!-f "/usr/sbin/ntpd") {
+        send_msg(\%request, 1, "Please make sure ntpd is installed on $nodename.");
+        return 1;
+    }
+    
+    #configure the ntp configuration file
     my $ntpcfg = "/etc/ntp.conf";
     my $ntpcfgbackup     = "/etc/ntp.conf.orig";
     my $ntpxcatcfgbackup = "/etc/ntp.conf.xcatbackup";
-    if (!-e $ntpcfgbackup) {    
-        # if original backup does not already exist
-        my $cmd = "mv $ntpcfg $ntpcfgbackup";
-        my $result = xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0) {
-            send_msg(\%request, 1, "Error from command:$cmd");
-            return 1;
+    if (-e $ntpcfg) {
+        if (!-e $ntpcfgbackup) {    
+            # if original backup does not already exist
+            my $cmd = "mv $ntpcfg $ntpcfgbackup";
+            my $result = xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0) {
+                send_msg(\%request, 1, "Error from command:$cmd");
+                return 1;
+            }
         }
-    }
-    else {    
-        # backup xcat cfg
-        my $cmd = "mv $ntpcfg $ntpxcatcfgbackup";
-        my $result = xCAT::Utils->runcmd($cmd, 0);
-        system $cmd;
-        if ($::RUNCMD_RC != 0) {
-            send_msg(\%request, 1, "Error from command:$cmd");
-            return 1;
+        else {    
+            # backup xcat cfg
+            my $cmd = "mv $ntpcfg $ntpxcatcfgbackup";
+            my $result = xCAT::Utils->runcmd($cmd, 0);
+            system $cmd;
+            if ($::RUNCMD_RC != 0) {
+                send_msg(\%request, 1, "Error from command:$cmd");
+                return 1;
+            }
         }
     }
 
@@ -242,8 +253,6 @@ sub process_request {
         my @entries = xCAT::TableUtils->get_site_attribute("extntpservers");
         $ntp_servers = $entries[0];
     } else {
-        my @nodeinfo   = xCAT::NetworkUtils->determinehostname();
-        my $nodename   = pop @nodeinfo; 
         my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
         $ntp_servers = $retdata->{'master'};
     }
@@ -252,7 +261,6 @@ sub process_request {
     open(CFGFILE, ">$ntpcfg")
         or xCAT::MsgUtils->message('SE',
                                    "Cannot open $ntpcfg for NTP update. \n");
-    #print CFGFILE "restrict default ignore\n";
 
     if (defined($ntp_servers) && $ntp_servers) {
         my @npt_server_array = split(',', $ntp_servers);
@@ -262,9 +270,11 @@ sub process_request {
             print CFGFILE "$ntps\n";
         }
     }
-    print CFGFILE "driftfile /var/lib/ntp/drift\n";
     #add xCAT mn/sn itself as a server
-    print CFGFILE "restrict 127.0.0.1\n";
+    print CFGFILE "server 127.127.1.0\n";
+    print CFGFILE "fudge 127.127.1.0 stratum 10\n";
+ 
+    print CFGFILE "driftfile /var/lib/ntp/drift\n";
     close CFGFILE;
 
     #restart ntp
