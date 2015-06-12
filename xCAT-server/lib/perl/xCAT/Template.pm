@@ -336,7 +336,11 @@ sub subvars {
       $inc =~ s/#SHORTNAME#/$shortname/g;
       $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
       $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
-    
+   
+      if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+           $inc =~ s/#UNCOMMENONXCATDEBUGMODE#/ /g;
+      }
+ 
       my $nrtab = xCAT::Table->new("noderes");
       my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
       my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";

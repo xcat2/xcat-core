@@ -102,13 +102,13 @@ try:
 					line = "installing prep"
 				newSocket.send(line)
 				break
-#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
-#				newcommand = ""
-#				for i in command[1:]:
-#					newcommand = newcommand + i + " "
-#				output = os.popen(newcommand).read()
-#				newSocket.send(output)
-#				break
+#UNCOMMENONXCATDEBUGMODE#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
+#UNCOMMENONXCATDEBUGMODE#				newcommand = ""
+#UNCOMMENONXCATDEBUGMODE#				for i in command[1:]:
+#UNCOMMENONXCATDEBUGMODE#					newcommand = newcommand + i + " "
+#UNCOMMENONXCATDEBUGMODE#				output = os.popen(newcommand).read()
+#UNCOMMENONXCATDEBUGMODE#				newSocket.send(output)
+#UNCOMMENONXCATDEBUGMODE#				break
 			if(command[0] == "screendump"):
 				newcommand = "cat /dev/vcs"
 				for i in command[1:]:

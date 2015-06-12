@@ -7,6 +7,18 @@ d-i localechooser/supported-locales multiselect en_US.UTF-8
 d-i console-setup/ask_detect boolean false
 d-i keyboard-configuration/layoutcode string en
 
+
+
+# Use the following settings if you wish to make use of the network-console
+# component for remote installation over SSH. This only makes sense if you
+# intend to perform the remainder of the installation manually.
+#UNCOMMENONXCATDEBUGMODE#  d-i anna/choose_modules string network-console
+#d-i network-console/authorized_keys_url string http://10.0.0.1/openssh-key
+#UNCOMMENONXCATDEBUGMODE# d-i network-console/password password cluster
+#UNCOMMENONXCATDEBUGMODE# d-i network-console/password-again password cluster
+
+
+
 ### Network Configuration
 
 d-i netcfg/get_hostname string unassigned-hostname

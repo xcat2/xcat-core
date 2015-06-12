@@ -1118,6 +1118,8 @@ site => {
    "               'all' means that the management as well as the service nodes\n".
    "               are all using a common shared filesystem. The default is 'no'.\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
+   " xcatdebugmode:  the value of xcat debug mode. Currently supported values: \n".
+   "                 0: off(default); 1: on \n\n".
    " --------------------\n".
    "REMOTESHELL ATTRIBUTES\n".
    " --------------------\n".

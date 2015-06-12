@@ -1479,7 +1479,32 @@ sub mkinstall
                     $kcmdline .= " $net_params->{ip} ";
                 }
            }
+              
+           if($::XCATSITEVALS{xcatdebugmode} eq "1"){
 
+                 unless($instserver eq '!myipfn!'){
+                    my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
+                    $instserver=$ip;
+                 } 
+ 
+                 if (xCAT::Utils->version_cmp($kversion,"7.0") >= 0){
+                    #enable ssh access during installation
+                    $kcmdline .= " inst.sshd";  
+                           
+                    #set minimum level of messages to be logged on the console
+                    #to be "debug"
+                    $kcmdline .=" inst.loglevel=debug";
+
+                    #all the logs during installation will be forwarded to xcatmster
+                    $kcmdline .=" inst.syslog=$instserver";
+                 }else{
+                    $kcmdline .= " sshd=1";
+                    $kcmdline .=" syslog=$instserver";
+                 }
+                     
+           }
+            
+           
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))
             {
