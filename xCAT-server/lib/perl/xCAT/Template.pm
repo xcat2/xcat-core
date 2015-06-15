@@ -1569,7 +1569,7 @@ sub tabdb
          if ($rep) {
             return tabdb($rep->[0], $rep->[1], $rep->[2]);
          } else {
-            $tmplerr="Unable to find requested $field from $table, with $key"
+            $tmplerr="Unable to find requested filed <$field> from table <$table>, with key <$key>"
          }
       }
       return "";
