@@ -1,0 +1,30 @@
+#!/bin/awk -f
+#usage:
+#runcmdinstaller: issue command which run in the installer and print the command output
+#runcmdinstaller <node> "<command>"
+BEGIN {
+node = ARGV[1]
+#port = ARGV[2]
+port = 3001
+#action = ARGV[3]
+action = "sh"
+cmd = ARGV[2]
+
+if(ARGC !=3 || ! node || ! cmd){
+  print "Usage:\n\n   runcmdinstaller <node> \"<command>\"\n"
+  print           "   make sure all the commands are quoted by \"\"\n";
+  exit 1;
+}
+
+ns = "/inet/tcp/0/" node "/" port
+
+#print "sh " |& ns
+print action " " cmd " " |& ns
+
+while((ns |& getline) > 0)
+print $0
+
+close(ns)
+
+exit 0
+}
