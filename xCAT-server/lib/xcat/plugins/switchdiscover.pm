@@ -798,12 +798,12 @@ sub nmap_scan {
 sub snmp_scan {
     my $request  = shift;
 
-    send_msg($request, 0, "Discovering switches using snmp...");
+    send_msg($request, 0, "Discovering switches using snmp is not supported yet.");
     my $switches = {
         "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
         "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
      };
-    return $switches
+    return 1;
 }
 
 #--------------------------------------------------------------------------------
