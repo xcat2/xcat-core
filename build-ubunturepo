@@ -476,6 +476,10 @@ __EOF__
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
+    # remove the changes to changelog since the builds are occuring in xcat-core, will prevent
+    # switching from branch to branch without a new clone of the repository
+    find ./ -name "changelog" -print | xargs git checkout
+
     if [ -n "$UP" ] && [ "$UP" == 0 ];then
         echo "No need to upload the dep packages"
         cd $old_pwd
