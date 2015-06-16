@@ -390,6 +390,12 @@ sub process_request {
             }
         }
     }
+
+    if (!($result)) {
+        send_msg( \%request, 0, " No switch found ");
+        return;
+    }
+
         
     my $display_done = 0;
     if (exists($globalopt{r}))  { 
@@ -609,7 +615,7 @@ sub nmap_scan {
 
     my $ccmd;
 
-    send_msg($request, 0, "Discovering switches using nmap. It may take long time...");
+    send_msg($request, 0, "Discovering switches using nmap for @$ranges. It may take long time...");
     #################################################
     # If --range options, take iprange, if noderange is defined
     # us the ip addresses of the nodes. If none is define, use the
