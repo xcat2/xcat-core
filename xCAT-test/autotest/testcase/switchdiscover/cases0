@@ -1,0 +1,61 @@
+start:switchdiscover_h
+os:Linux
+decription:help
+cmd:switchdiscover -h
+check:rc==0
+check:output=~Usage
+end
+start:switchdiscover_range_default 
+cmd:switchdiscover --range $$range
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~switch
+end
+start:switchdiscover_range_default_w
+cmd:switchdiscover --range $$range -w
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~switch
+check:output=~Writing the data into xCAT DB
+cmd: lsdef |grep switch
+check:rc==0
+check:output=~switch
+end
+start:switchdiscover_range_s
+cmd:switchdiscover --range $$range -s nmap
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~switch
+end
+start:switchdiscover_range_r
+cmd:switchdiscover --range $$range -r
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~xml
+check:output=~/usr/bin/nmap -sP -oX - $$range
+end
+start:switchdiscover_range_x
+cmd:switchdiscover --range $$range -x
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~<Switch>
+check:output=~<groups>switch</groups>
+end
+start:switchdiscover_range_z
+cmd:switchdiscover --range $$range -z
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~objtype=switch
+check:output=~groups=switch
+end
+start:switchdiscover_range_z_V
+cmd:switchdiscover --range $$range -z -V
+check:rc==0
+check:output=~Discovering switches using nmap
+check:output=~xml
+check:output=~Process command: /usr/bin/nmap -sP -oX - $$range
+check:output=~objtype=switch
+check:output=~groups=switch
+end
+
+
