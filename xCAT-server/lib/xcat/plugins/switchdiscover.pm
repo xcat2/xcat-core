@@ -898,6 +898,7 @@ sub xCATdB {
         if ($::RUNCMD_RC == 0)
         {
             $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','switch','-o',$host,"ip=$ip","comments=$vendor",'nodetype=switch','mgt=switch',"switchtype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','switch','-o',$host,'-p','groups=switch'] }, $sub_req, 0, 1);
         } else {
             $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','switch','-o',$host,'groups=switch',"ip=$ip","comments=$vendor",'nodetype=switch','mgt=switch',"switchtype=$stype"] }, $sub_req, 0, 1);
         }
