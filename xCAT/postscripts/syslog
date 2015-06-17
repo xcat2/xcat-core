@@ -96,6 +96,14 @@ config_Rsyslog_C3()
       cat /tmp/sed.tmp >$2
       sed 's/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/' $2 >/tmp/sed.tmp
       cat /tmp/sed.tmp >$2
+
+
+      sed -i -e  '/# Provides TCP syslog reception/,/#### GLOBAL DIRECTIVES ####/c \
+# Provides TCP syslog reception \
+$ModLoad imtcp \
+$InputTCPServerRun 514 \
+#### GLOBAL DIRECTIVES #### \
+      ' /etc/rsyslog.conf
   fi
 
   #enable to send the logging to master
