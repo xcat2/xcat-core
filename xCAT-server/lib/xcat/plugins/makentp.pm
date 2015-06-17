@@ -59,7 +59,7 @@ sub send_msg {
     elsif ( exists( $request->{callback} )) {
         my $callback = $request->{callback};
         $output{errorcode} = $ecode;
-        $output{data} = $msg;
+        $output{data}->[0] = $msg;
         $callback->( \%output );
     }
 }
@@ -175,21 +175,13 @@ sub preprocess_request {
     my @result = ();
     my $reqcopy = {%$req};
     $reqcopy->{_xcatpreprocessed}->[0] = 1;
-    push @result, $reqcopy;
-
-
-    # if on mn and with -a flag, go to the service node that has 
-    # ntpserver=1.
     if (xCAT::Utils->isMN() && exists($globalopt{a})) {
-        my @servicenodes = xCAT::ServiceNodeUtils->getSNList('ntpserver');
-        send_msg(\%request, 0, "servicenodes=@servicenodes" );
-        foreach my $sn (@servicenodes) {
-            my $reqcopy = {%$req};
-            $reqcopy->{'_xcatdest'}=$sn;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            push @result, $reqcopy;
-        }
+        $reqcopy->{_all}->[0] = 1;
     }
+    if (exists($globalopt{verbose})) {
+        $reqcopy->{_verbose}->[0] = 1;
+    }
+    push @result, $reqcopy;
 
     return \@result;
 }
@@ -212,16 +204,33 @@ sub process_request {
     $request{callback} = $callback;
     $request{command}  = $req->{command}->[0];
 
+    my $verbose;
+    if ($req->{_verbose}->[0] == 1) {
+	$verbose = 1;
+    }
+
     my @nodeinfo   = xCAT::NetworkUtils->determinehostname();
     my $nodename   = pop @nodeinfo; 
 
+    if (xCAT::Utils->isMN()) {
+        send_msg(\%request, 0, "configuring management node: $nodename." );
+    } else {
+        send_msg(\%request, 0, "configuring service node: $nodename." );
+    }
+
     #check if ntp is installed or not
+    if ($verbose) {
+        send_msg(\%request, 0, " ...checking if nptd is installed." );
+    }
     if (!-f "/usr/sbin/ntpd") {
         send_msg(\%request, 1, "Please make sure ntpd is installed on $nodename.");
         return 1;
     }
-    
+        
     #configure the ntp configuration file
+    if ($verbose) {
+        send_msg(\%request, 0, " ...backing up the ntp configuration file /etc/ntp.conf." );
+    }
     my $ntpcfg = "/etc/ntp.conf";
     my $ntpcfgbackup     = "/etc/ntp.conf.orig";
     my $ntpxcatcfgbackup = "/etc/ntp.conf.xcatbackup";
@@ -231,17 +240,16 @@ sub process_request {
             my $cmd = "mv $ntpcfg $ntpcfgbackup";
             my $result = xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0) {
-                send_msg(\%request, 1, "Error from command:$cmd");
+                send_msg(\%request, 1, "Error from command:$cmd\n    $result");
                 return 1;
             }
         }
         else {    
             # backup xcat cfg
-            my $cmd = "mv $ntpcfg $ntpxcatcfgbackup";
+            my $cmd = "rm $ntpxcatcfgbackup;mv $ntpcfg $ntpxcatcfgbackup";
             my $result = xCAT::Utils->runcmd($cmd, 0);
-            system $cmd;
             if ($::RUNCMD_RC != 0) {
-                send_msg(\%request, 1, "Error from command:$cmd");
+                send_msg(\%request, 1, "Error from command:$cmd\n    $result.");
                 return 1;
             }
         }
@@ -249,23 +257,35 @@ sub process_request {
 
     # get site.extntpservers for mn, for sn use mn as the server
     my $ntp_servers;
+    my $ntp_master;
+    my $ntp_attrib;
     if (xCAT::Utils->isMN()) {
-        my @entries = xCAT::TableUtils->get_site_attribute("extntpservers");
-        $ntp_servers = $entries[0];
+        $ntp_attrib = "extntpservers";
     } else {
+        $ntp_attrib = "ntpservers";
+    }
+    my @entries = xCAT::TableUtils->get_site_attribute($ntp_attrib);
+    my $ntp_servers = $entries[0];
+
+    if (!xCAT::Utils->isMN() && ((!$ntp_servers) || (($ntp_servers) && ($ntp_servers =~ /<xcatmaster>/)))) {
         my $retdata = xCAT::ServiceNodeUtils->readSNInfo($nodename);
         $ntp_servers = $retdata->{'master'};
+    }
+
+    if ($verbose) {
+        send_msg(\%request, 0, " ...changing the ntpp configuration file /etc/ntp.conf.\n    ntp servers are: $ntp_servers" );
     }
 
     # create ntp server config file
     open(CFGFILE, ">$ntpcfg")
         or xCAT::MsgUtils->message('SE',
                                    "Cannot open $ntpcfg for NTP update. \n");
-
+    
     if (defined($ntp_servers) && $ntp_servers) {
         my @npt_server_array = split(',', $ntp_servers);
         # add ntp servers one by one
         foreach my $ntps (@npt_server_array) {
+            if (!$ntp_master) { $ntp_master = $ntps; }
             print CFGFILE "server ";
             print CFGFILE "$ntps\n";
         }
@@ -273,15 +293,88 @@ sub process_request {
     #add xCAT mn/sn itself as a server
     print CFGFILE "server 127.127.1.0\n";
     print CFGFILE "fudge 127.127.1.0 stratum 10\n";
- 
+    
     print CFGFILE "driftfile /var/lib/ntp/drift\n";
     close CFGFILE;
-
-    #restart ntp
-    my $rc=xCAT::Utils->startservice("ntpd");
+    
+    my $os = xCAT::Utils->osver("all");
+    my $ntp_service = "ntpd";
+    if ($os =~ /sles/) {
+        $ntp_service = "ntp";
+    }
+    #stop ntpd
+    if ($verbose) {
+        send_msg(\%request, 0, " ...stopping $ntp_service" );
+    }
+    my $rc=xCAT::Utils->stopservice($ntp_service);
     if ($rc != 0) {
+        send_msg(\%request, 1, "Failed to stop nptd on $nodename.");
         return 1;
     }
+    
+    #update the time now
+    if ($ntp_master) {
+        my $cmd;
+        if ($os =~ /sles/) {
+            $cmd = "sntp -P no -r $ntp_master";
+        } else {
+            $cmd = "ntpdate -t5 $ntp_master";
+        }
+        if ($verbose) {
+            send_msg(\%request, 0, " ...updating the time now. $cmd");
+        }
+        my $result = xCAT::Utils->runcmd($cmd, 0);
+        if ($verbose) {
+            send_msg(\%request, 0, "    $result");
+        }
+        if ($::RUNCMD_RC != 0) {
+            send_msg(\%request, 1, "Error from command $cmd\n    $result.");
+            return 1;
+        }
+    }
+    
+    #start ntpd
+    if ($verbose) {
+        send_msg(\%request, 0, " ...starting $ntp_service" );
+    }
+    my $rc=xCAT::Utils->startservice($ntp_service);
+    if ($rc != 0) {
+        send_msg(\%request, 1, "Failed to start nptd on $nodename.");
+        return 1;
+    }
+    
+    #enable ntpd for node reboot
+    if ($verbose) {
+        send_msg(\%request, 0, " ...enabling $ntp_service" );
+    }
+    xCAT::Utils->enableservice($ntp_service);
+
+    #now handle sn that has ntpserver=1 set in servicenode table.
+    # this part is called by makentp -a.
+    if ($req->{_all}->[0] == 1) { 
+        my @servicenodes = xCAT::ServiceNodeUtils->getSNList('ntpserver'); 
+        if (@servicenodes > 0) {
+            send_msg(\%request, 0, "configuring servicenodes: @servicenodes" );
+            my $ret =
+                xCAT::Utils->runxcmd(
+                    {
+                        command => ['updatenode'],
+                        node    => \@servicenodes,
+                        arg     => ["-P", "setupntp"],
+                    },
+                    $sub_req, -1, 1
+                );
+            if ($verbose) {
+                send_msg(\%request, 0, " ...updatnode returns the following result: $ret" );
+            }
+            if ($::RUNCMD_RC != 0) {
+                send_msg(\%request, 1, "Error in updatenode: $ret" );
+
+            }
+        }
+    }
+
+
     return;
 }
 

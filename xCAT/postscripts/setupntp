@@ -13,16 +13,15 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    . $str_dir_name/xcatlib.sh
 fi
 
-# if on the Management Node, exit
+# if on the Management Node
 if [ -e /etc/xCATMN ]; then
-   logger -t xcat -p local4.info "setupntp:Running on the Management Node ,  exiting "
+   logger -t xcat -p local4.info "setupntp: This postscript does not support running on the management node. Please run makentp command. exiting"
    exit 0
 fi
-# if on the Server Node, exit,  makentp will set up service node
-if [ -e /etc/xCATSN ]; then
-   logger -t xcat -p local4.info "setupntp:Running on the Server Node ,  exiting "
-   exit 0
-fi
+
+#for service node, the makentp -a command will call this postscript
+#so do not diable service node.
+
 
 master=$MASTER
 setup=0
@@ -32,7 +31,6 @@ conf_file_org="/etc/ntp.conf.org"
 conf_file_backup="/etc/ntp.conf.postbackup"
 
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
-
 pmatch ()
 {
   case $1 in
@@ -70,35 +68,10 @@ is_lsb_ubuntu ()
 }
 
 logger -t xcat "Install: Setup NTP"
-# if master is the sitemaster, then use the ntpservers defined in the site
-# table, if they exist. If they don't exist, do not setup ntp
-# else use the master which should be a service node
-if [ "$master" =  "$sitemaster" ]; then
-  if [ $NTPSERVERS ]; then
-        if [ "$NODESETSTATE" = "statelite" ]; then
-            cp -a $conf_file $conf_file_org
-            echo  "" > $conf_file
-        else
-            if [ !  -f $conf_file_org ]; then
-                mv -f $conf_file $conf_file_org
-            else
-                mv -f $conf_file $conf_file_backup
-            fi
-        fi
-        if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
-            echo "server $master" >>$conf_file
-        else
-        	for i in $(echo $NTPSERVERS | tr ',' ' ')
-        	do
-         	   echo "server $i" >>$conf_file
-        	   master=$i
-        	done 
-        fi
-  else
-	echo "server $master" >$conf_file
-
-  fi
-else
+# Use the ntpservers defined in the site table, if they exist. 
+# If the value of ntpservers is <xcatmaster> use the service node or
+# the management node as the ntp server.
+if [ $NTPSERVERS ]; then
     if [ "$NODESETSTATE" = "statelite" ]; then
         cp -a $conf_file $conf_file_org
         echo  "" > $conf_file
@@ -109,21 +82,17 @@ else
             mv -f $conf_file $conf_file_backup
         fi
     fi
-
-    if [ $NTPSERVERS ]; then
-        if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
-            echo "server $master" >>$conf_file
-        else
-        	for i in $(echo $NTPSERVERS | tr ',' ' ')
-        	do
-         	   echo "server $i" >>$conf_file
-        	   master=$i
-        	done 
-        fi
+    if [ "$NTPSERVERS" = "&lt;xcatmaster&gt;" ] || [ "$NTPSERVERS" = "<xcatmaster>" ]; then
+        echo "server $master" >>$conf_file
     else
-        echo "server $master" >$conf_file
+        for i in $(echo $NTPSERVERS | tr ',' ' ')
+        do
+         	echo "server $i" >>$conf_file
+        	master=$i
+        done 
     fi
-
+else
+	echo "server $master" >$conf_file
 fi
 
 OS_TYPE=`uname`
@@ -133,17 +102,10 @@ if [ $OS_TYPE = Linux ]; then
     echo "driftfile /var/lib/ntp/drift
 disable auth
 restrict 127.0.0.1" >>$conf_file
-    # default service for redhat/fedora
-    #SERVICE=ntpd
-    #if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ); then
-    #    SERVICE=ntp
-    #fi
 
     #ntpdate/sntp conflict with ntpd, stop the service first
-#    service $SERVICE status
     checkservicestatus ntpserver
     if [ $? -eq 0 ];then
-#        service $SERVICE stop
          stopservice ntpserver
     fi
     #ntpdate program is deprecated on SuSE
@@ -202,21 +164,8 @@ restrict 127.0.0.1" >>$conf_file
             restartservice cron
         fi
     fi
-    #service $SERVICE start 
     startservice ntpserver
 
-    #start ntp and crontab automaticlly
-    #if [ -f "/etc/debian_version" ];then
-    #    update-rc.d cron defaults
-    #    update-rc.d $SERVICE defaults
-    #else
-    #    chkconfig --add  $SERVICE >/dev/null 2>&1
-    #    chkconfig --level 345 $SERVICE on >/dev/null 2>&1
-    #    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ];then
-    #        chkconfig --add cron >/dev/null 2>&1
-    #        chkconfig --level 345 cron on >/dev/null 2>&1
-    #    fi
-    #fi
     enableservice cron
     enableservice ntpserver
 else
