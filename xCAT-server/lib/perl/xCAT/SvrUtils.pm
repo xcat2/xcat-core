@@ -256,6 +256,7 @@ sub get_nodeset_state
 sub getsynclistfile()
 {
   my $nodes = shift;
+  my $synfiledir = "";
   if (($nodes) && ($nodes =~ /xCAT::SvrUtils/))
   {
     $nodes = shift;
@@ -267,6 +268,9 @@ sub getsynclistfile()
 
   # for aix node, use the node figure out the profile, then use the value of
   # profile (osimage name) to get the synclist file path (osimage.synclists)
+  # Then check if this daemon is running on the EMS or a service node. If a 
+  # service node then get the site->SNsycfiledir value and prepend that to the
+  # synclist file path to specify the location of the synclist.
   if (xCAT::Utils->isAIX()) {
     my %node_syncfile = ();
     my %osimage_syncfile = ();
@@ -301,9 +305,27 @@ sub getsynclistfile()
     unless ($osimage_t) {
       return ;
     }
+    # check if we are running on the service node
+    my $onSN = xCAT::Utils->isServiceNode();
+    my @syndir;
+    if ($onSN) {
+        @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
+        if ($syndir[0]) {
+            $synfiledir = $syndir[0];
+        }
+        else {
+            # use default service node staging directory "/var/xcat/syncfiles" as
+            # found in DSHCLI.pm
+            $synfiledir = "/var/xcat/syncfiles";
+        }
+    }
     foreach my $osimage (@profiles) {
       my $synclist = $osimage_t->getAttribs({imagename=>"$osimage"}, 'synclists');
-      $osimage_syncfile{$osimage} = $synclist->{'synclists'};
+      if ($onSN) {
+          $osimage_syncfile{$osimage} = join('', $synfiledir,$synclist->{'synclists'});
+      } else {
+          $osimage_syncfile{$osimage} = $synclist->{'synclists'};
+      }
     }
 
     # set the syncfiles to the nodes
