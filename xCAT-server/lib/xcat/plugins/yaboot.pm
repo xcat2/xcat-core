@@ -19,7 +19,7 @@ my $globaltftpdir = xCAT::Utils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|offline]",
+    "nodeset" => "Usage: nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|offline|--password <yaboot_password>]",
 );
 sub handled_commands {
   return {
@@ -156,6 +156,7 @@ sub setstate {
             }
 
             print $pcfg "timeout=5\n";
+            if (defined $yaboot_password) { print $pcfg "password=$yaboot_password\nrestricted\n"; }
             $normalnodes{$node}=1;
             if ($cref and $cref->{currstate} eq "boot") {
               $breaknetbootnodes{$node}=1;
@@ -314,7 +315,7 @@ sub preprocess_request {
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
-    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) {
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION, 'password=s' => \$yaboot_password) ) {
       if($usage{$command}) {
           my %rsp;
           $rsp{data}->[0]=$usage{$command};

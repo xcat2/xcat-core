@@ -6,7 +6,7 @@ B<nodeset> - set the boot state for a noderange
 
 B<nodeset> [I<noderange>] [I<boot>|I<install>|I<stat>|I<iscsiboot>|I<netboot>|I<statelite>|I<runcmd=bmcsetup>|I<osimage=<imagename>>]
 
-B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>]
+B<nodeset> [I<-h>|I<--help>|I<-v>|I<--version>|I<--password <yaboot_password>>]
 
 =head1 B<Description>
 
@@ -84,6 +84,10 @@ Print help.
 =item B<-v>|B<--version>
 
 Print version.
+
+=item B<--password yaboot_password>
+
+Specifies the password that will be used for the yaboot boot password. The password can be plain text or anything the linux password tools will take as an ecrypted password. Details are in the crypt(3) man page.
 
 =back
 
