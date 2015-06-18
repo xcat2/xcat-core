@@ -20,7 +20,7 @@ set -e
 
 case "$1" in
     configure)
-    echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch> manually'"
+    echo "If you are installing/updating xCAT-genesis-base separately, not as part of installing/updating all of xCAT, run 'mknb <arch>' manually"
     touch /etc/xcat/genesis-scripts-updated
     ;;
 
