@@ -298,10 +298,7 @@ sub process_request {
     close CFGFILE;
     
     my $os = xCAT::Utils->osver("all");
-    my $ntp_service = "ntpd";
-    if ($os =~ /sles/) {
-        $ntp_service = "ntp";
-    }
+    my $ntp_service = "ntpserver";
     #stop ntpd
     if ($verbose) {
         send_msg(\%request, 0, " ...stopping $ntp_service" );
@@ -354,7 +351,7 @@ sub process_request {
     if ($req->{_all}->[0] == 1) { 
         my @servicenodes = xCAT::ServiceNodeUtils->getSNList('ntpserver'); 
         if (@servicenodes > 0) {
-            send_msg(\%request, 0, "configuring servicenodes: @servicenodes" );
+            send_msg(\%request, 0, "configuring service nodes: @servicenodes" );
             my $ret =
                 xCAT::Utils->runxcmd(
                     {
@@ -365,7 +362,7 @@ sub process_request {
                     $sub_req, -1, 1
                 );
             if ($verbose) {
-                send_msg(\%request, 0, " ...updatnode returns the following result: $ret" );
+                send_msg(\%request, 0, " ...updatnode returns the following result: @$ret" );
             }
             if ($::RUNCMD_RC != 0) {
                 send_msg(\%request, 1, "Error in updatenode: $ret" );
