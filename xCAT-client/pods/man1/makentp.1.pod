@@ -19,11 +19,17 @@ I<switchdiscover [-a|--all] [-V|--verbose]>
 
 I<makentp> command sets up the NTP server on the xCAT management node and the service node.
 
-By default, it sets up the NTP server for xCAT management node. It gets the site table attribute I<extntpservers> and have the local NTP server sync with the external ntp servers defined by <site.extntpservers>. If -a flag is specified, the command also works for all the service nodes that have I<servicenode.ntpserver> set. The NTP server on the service node will sync with the management node. 
+By default, it sets up the NTP server for xCAT management node. If -a flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have I<servicenode.ntpserver> set. It honors the site table attributes I<extntpservers> and I<ntpservers> described below:
 
-This command is also called by xcatd when it starts on the xCAT management node and the service nodes. 
+=over 4
 
-To setup NTP client on other nodes such as compute nodes, please add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp>. The setupntp postscripts honors I<site.ntpservers> attribute for NTP servers. If the value of I<site.ntpservers> is "<xcatmaster>" then the management node or the service node that serves the node will be the NTP server.
+I<site.extntpservers> -- the NTP servers for the management node to sync with. If it is empty then the NTP server will use the management node's own hardware clock to calculate the system date and time.
+
+I<site.ntpservers> -- the NTP servers for the service node and compute node to sync with. The keyword <xcatmaster> means that the node's NTP server is the node that is managing it (either its service node or the management node).
+
+=back
+
+To setup NTP on the compute node, please add B<setupntp> postscript to the I<postscripts> table and run I<updatenode node -P setupntp> command. 
 
 
 =head1 OPTIONS

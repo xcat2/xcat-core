@@ -1149,10 +1149,14 @@ site => {
    "              give stable output. You can increase the timeout value by specifying \n".
    "              '--min-rtt-timeout 1s'. xCAT will append the options defined here to \n".
    "              the nmap command.\n\n".
-   " ntpservers:  A comma delimited list of NTP servers for the node. Often the\n".
-   "              xCAT management node is the NTP server.\n\n".
+   " ntpservers:  A comma delimited list of NTP servers for the service node and\n".
+   "              the compute node to sync with. The keyword <xcatmaster> means that\n".
+   "              the node's NTP server is the node that is managing it\n".
+   "              (either its service node or the management node).\n\n".
    " extntpservers:  A comma delimited list of external NTP servers for the xCAT\n".
-   "                 management node to sync with.\n\n".
+   "                 management node to sync with. If it is empty, the NTP server\n".
+   "                 will use the management node's own hardware clock to calculate\n".
+   "                 the system date and time\n\n".
    " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".
    "              mgmt node.\n\n".
    " timezone:  (e.g. America/New_York)\n\n".
