@@ -201,6 +201,13 @@ sub makeconfluentcfg {
   my $svboot=0;
   if (exists($req->{svboot})) { $svboot=1;}
   my $confluent = Confluent::Client->new();  # just the local form for now..
+  unless ($confluent) {
+    # unable to get a connection to confluent 
+    my $rsp;
+    $rsp->{data}->[0] = "Unable to open a connection to confluent, verify that confluent is running.";
+    xCAT::MsgUtils->message("E", $rsp, $cb);
+    return;
+  }
 
   my $isSN=xCAT::Utils->isServiceNode();
   my @hostinfo=xCAT::NetworkUtils->determinehostname();

@@ -87,7 +87,7 @@ sub ssl_connect {
     }
     $self->{handle} = IO::Socket::SSL->new(%sslargs);
     unless ($self->{handle}) {
-        die "Unable to reach target, $SSL_ERROR/$!";
+        return undef; 
     }
 }
 
@@ -107,7 +107,7 @@ sub new {
         $self->{handle} = $self->ssl_connect($serverlocation, @_);
     }
     unless ($self->{handle}) {
-        die "General failure connecting $!";
+        return undef; 
     }
     $self->{server} = Confluent::TLV->new($self->{handle});
     my $banner = $self->{server}->recv();
