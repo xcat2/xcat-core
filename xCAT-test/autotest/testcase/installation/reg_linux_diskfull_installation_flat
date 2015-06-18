@@ -37,7 +37,6 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 1200;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 600;else sleep 180;fi
 
 cmd:lsdef -l $$CN | grep status
-check:output=~booted
 
 cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ $a -gt 300 ];then break;fi done
 
