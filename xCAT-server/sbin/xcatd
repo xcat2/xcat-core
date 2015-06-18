@@ -2289,6 +2289,7 @@ sub service_connection {
                 my ($tokenid, $exptime) = xCAT::xcatd->gettoken($req);
                 my ($sec,$min,$hour,$mday,$mon,$year) = localtime($exptime);
                 $year += 1900;
+                $mon += 1;
                 my $htime = "$year-$mon-$mday $hour:$min:$sec";
                 $resp = {data=>[{token => [{id => $tokenid, expire => $htime}]}]};
             } else {
