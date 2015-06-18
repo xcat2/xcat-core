@@ -760,7 +760,7 @@ sub password_set {
         }
         return;
     }
-    if ($sessdata->{setuseraccess}) {
+    if ($sessdata->{setuseraccess} and $sessdata->{onuserid} ne '1') {
         setuseraccess($sessdata); 
         return;
     }
