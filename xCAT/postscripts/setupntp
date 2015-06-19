@@ -110,11 +110,19 @@ restrict 127.0.0.1" >>$conf_file
     fi
     #ntpdate program is deprecated on SuSE
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
-        logger -t xcat "sntp -P no -r $master"
-        sntp -P no -r $master
+        if [ -f /usr/sbin/rcntpd ]; then
+            cmd="rcntpd ntptimeset"
+        elif [ -f /usr/sbin/rcntp ]; then
+            cmd="rcntp ntptimeset"
+        else
+            cmd="sntp -P no -r $ntp_master"
+        fi
+        echo "$cmd"
+        logger -t xcat "$cmd"
+        eval $cmd
         if [ "$?" != "0" ];then
-            echo "  sntp -P no -r $master failed"
-            logger -t xcat "sntp -P no -r $master failed"
+            echo "  $cmd failed"
+            logger -t xcat "$cmd failed"
         fi
     else
         logger -t xcat "ntpdate -t5 $master "

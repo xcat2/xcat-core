@@ -290,11 +290,21 @@ sub process_request {
             print CFGFILE "$ntps\n";
         }
     }
+
+    if (xCAT::Utils->isAIX()) {
+        print CFGFILE "driftfile /etc/ntp.drift\n";
+        print CFGFILE "tracefile /etc/ntp.trace\n";
+        print CFGFILE "disable auth\n";
+        print CFGFILE "broadcastclient\n";
+    } else {
+        print CFGFILE "driftfile /var/lib/ntp/drift\n";
+        print CFGFILE "disable auth\n";
+    }
+
     #add xCAT mn/sn itself as a server
     print CFGFILE "server 127.127.1.0\n";
     print CFGFILE "fudge 127.127.1.0 stratum 10\n";
     
-    print CFGFILE "driftfile /var/lib/ntp/drift\n";
     close CFGFILE;
     
     my $os = xCAT::Utils->osver("all");
@@ -313,7 +323,13 @@ sub process_request {
     if ($ntp_master) {
         my $cmd;
         if ($os =~ /sles/) {
-            $cmd = "sntp -P no -r $ntp_master";
+            if (-f "/usr/sbin/rcntpd") {
+                $cmd = "rcntpd ntptimeset";
+            } elsif (-f "/usr/sbin/rcntp") {
+                $cmd = "rcntp ntptimeset";
+            } else {
+                $cmd = "sntp -P no -r $ntp_master";
+            }
         } else {
             $cmd = "ntpdate -t5 $ntp_master";
         }
