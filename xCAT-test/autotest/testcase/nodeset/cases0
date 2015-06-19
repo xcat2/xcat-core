@@ -21,7 +21,7 @@ cmd: mkdef "rhels7.5-ppc64-install-compute" -u profile=compute provmethod=instal
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels7.5-ppc64-install-compute"
 check:rc!=0
-check:output=~testnode1:yaboot is not valid when provisioning
+check:output=~yaboot is not valid when provisioning
 check:output=~valid options: "grub2,grub2-tftp,grub2-http"
 cmd:rmdef -t osimage -o "rhels7.5-ppc64-install-compute"
 cmd:noderm testnode1
@@ -69,7 +69,7 @@ cmd: mkdef "rhels6.8-ppc64-install-compute" -u profile=compute provmethod=instal
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels6.8-ppc64-install-compute"
 check:rc!=0
-check:output=~testnode1:grub2 is not valid when provisioning rhels6.8-ppc64-install-compute
+check:output=~grub2 is not valid when provisioning rhels6.8-ppc64-install-compute
 check:output=~valid options: "yaboot"
 cmd:rmdef -t osimage -o "rhels6.8-ppc64-install-compute"
 cmd:noderm testnode1
@@ -154,14 +154,14 @@ end
 
 start:nodeset_check_petitboot
 os:rhels
-cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
+cmd:mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=petitboot
 eck:rc==0
-cmd: mkdef "rhels7.5-ppc64-install-compute" -u profile=compute provmethod=install osvers=rhels7.5
+cmd: mkdef "rhels7.5-ppc64el-install-compute" -u profile=compute provmethod=install osvers=rhels7.5
 check:rc==0
-cmd:nodeset testnode1 osimage="rhels7.5-ppc64-install-compute"
+cmd:nodeset testnode1 osimage="rhels7.5-ppc64el-install-compute"
 check:rc==0
-cmd:rmdef -t osimage -o "rhels7.5-ppc64-install-compute"
+cmd:rmdef -t osimage -o "rhels7.5-ppc64el-install-compute"
 cmd:noderm testnode1
 end
