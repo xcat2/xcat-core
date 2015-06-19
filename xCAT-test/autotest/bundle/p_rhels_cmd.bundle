@@ -254,6 +254,4 @@ nodeset_check_yaboot_no
 nodeset_check_yaboot_yes
 nodeset_check_grub2_yes
 nodeset_check_grub2_no
-nodeset_check_grub2_sles11
-nodeset_check_yaboot_sles11
 nodeset_check_petitboot
