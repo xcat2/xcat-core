@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
 #written in bash for fewest prerequisites
 function get_def_interface {
     #gethostbyname on `hostname` would be helpful, but since we
@@ -147,6 +151,13 @@ elif [ "bridgeprereq" = "$1" ]; then
         fi
         BNAME=$NETDESC
     fi
+
+    # To check whether the brctl have been installed
+    if ! which brctl > /dev/null; then 
+        echo "No bridge-utils installed, pls install it first"
+        exit 1
+    fi 
+
     if brctl showstp "$BNAME" > /dev/null; then
         echo "$BNAME"
         exit 0
@@ -158,6 +169,15 @@ elif [ "bridgeprereq" = "$1" ]; then
     if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
         exit 1
     fi
+     
+    #TO check whether the NIC had been attached to another bridge
+    bridgename=`brctl show |grep $PORTS`
+    if [ ! -z "$bridgename" ]; then
+        echo "Device $PORTS is already a member of another bridge"
+        exit 1
+    fi
+
+
     #For now, we only support bridge name==network name.  This precludes
     #the config of the same vlan number on multiple fabrics, but
     #will cover that flexibility later if demanded (with 4k vlan ids, 
@@ -299,7 +319,17 @@ EOF
                 echo "  netmask 255.255.255.0" >> $nwdir/$BNAME
             fi
         else
-            echo "iface $BNAME inet dhcp" >> $nwdir/$BNAME
+            my_subnet=`ip addr show dev $BNAME scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'| awk '{print $1}'`
+            if [ ! -z "$my_subnet" ]; then
+                bridge_ip=`echo "$my_subnet"|cut -d\/ -f 1`
+                bridge_mask=`echo "$my_subnet"|cut -d\/ -f 2`
+                bridge_mask=`v4prefix2mask $bridge_mask`
+                echo "iface $BNAME inet static" >> $nwdir/$BNAME
+                echo "  address $bridge_ip" >> $nwdir/$BNAME 
+                echo "  netmask $bridge_mask" >> $nwdir/$BNAME
+            else 
+                echo "iface $BNAME inet dhcp" >> $nwdir/$BNAME
+            fi
         fi
         echo "  bridge_ports $PORTS" >> $nwdir/$BNAME
         echo "  bridge_stp off" >> $nwdir/$BNAME
