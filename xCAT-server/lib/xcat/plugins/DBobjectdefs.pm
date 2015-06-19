@@ -427,6 +427,36 @@ sub processArgs
     if (scalar(@ARGV) <= 0) {
         return 2;
     }
+   
+    # clean up all the global variables for each options 
+    # so def command can be called multiple times in one process
+    undef $::opt_a;
+    undef $::opt_c;
+    undef $::opt_d;
+    undef $::opt_a;
+    undef $::opt_c;
+    undef $::opt_d;
+    undef $::opt_f;
+    undef $::opt_i;
+    undef $::opt_h;
+    undef $::opt_l;
+    undef $::opt_s;
+    undef $::opt_m;
+    undef $::opt_n;
+    undef $::opt_o;
+    undef $::opt_p;
+    undef $::opt_t;
+    undef $::opt_V;
+    undef $::opt_v;
+    undef $::opt_w;
+    undef $::opt_x;
+    undef $::opt_z;
+    undef $::opt_S;
+    undef $::opt_nc;
+    undef $::opt_osimg;
+    undef $::opt_nics;
+    undef $::opt_setattr;
+
 
     # parse the options - include any option from all 4 cmds
     Getopt::Long::Configure("no_pass_through");
