@@ -341,6 +341,10 @@ sub nodesockopen {
    unless ($node) { return 0; }
    my $socket;
    my $addr = gethostbyname($node);
+   if (!$addr) {
+        xCAT::SvrUtils::sendmsg([1,"Cannot not resolve host $node"], $callback);
+        return 0;
+   }
    my $sin = sockaddr_in($port,$addr);
    my $proto = getprotobyname('tcp');
    socket($socket,PF_INET,SOCK_STREAM,$proto) || return 0;
