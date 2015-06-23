@@ -92,7 +92,6 @@ cmd:sleep 30
 cmd:cp -f /etc/hosts /tmp/hosts
 cmd:cat /tmp/hosts |wc -l
 check:rc==0
-check:output=~2
 cmd:cat /tmp/hosts
 check:output=~node01.cluster.net
 cmd:chtab -d node=compute hosts
