@@ -19,7 +19,7 @@ I<switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-s scan_metho
 
 The switchdiscover command scans the subnets and discovers all the swithches on the subnets. The command takes a list of subnets as input. The default subnets are the ones that the xCAT management node is on. It uses nmap command to discover the switches. However, you can specify other discovery methods such as lldp with B<-s> flag. You can write the discovered switches into xCAT database with B<-w> flag. This command supports may output formats such as xml(B<-x>), raw(B<-r>) and stanza(B<-z>) in addition to the default format.    
 
-To view all the switches defined in the xCAT databasee use B<lsdef -t switch> command.
+To view all the switches defined in the xCAT databasee use B<lsdef -w "nodetype=switch"> command.
 
 For lldp method, please make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html. 
 
