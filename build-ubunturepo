@@ -344,6 +344,18 @@ __EOF__
         ln -s xcat-core core-snap
     fi
 
+    #
+    # remove the changes to changelog since the files get changed and created in xcat-core..
+    # left over files not commited to git will prevent switching from branch to branch ...
+    echo "Cleaning up modified changelog files..."
+    cleanup_oldpwd=`pwd`
+    # go to the xcat-core git repo directory 
+    #
+    cd $local_core_repo_path
+    cd ../xcatbuild/xcat-core
+    find ./ -name "changelog" -print | xargs git checkout
+    cd $cleanup_oldpwd
+
     # Decide whether to upload or not
     if [ -n "$UP" ] && [ "$UP" == 0 ]; then
         echo "No need to upload"
