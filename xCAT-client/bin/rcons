@@ -20,12 +20,11 @@ if [ -z "$1" ] || [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  
     echo "rcons [-h|--help|-v|--version]"
     exit 0
 fi
-if [ "$1" = "-v"  ]; then
-    echo "Version 2.9"
-    exit 0
-fi
-if [ "$1" = "--version"  ]; then
-    echo "Version 2.9"
+if [ "$1" = "-v" -o "$1" = "--version" ]; then
+    if [ -z "$XCATROOT" ]; then
+        XCATROOT="/opt/xcat"
+    fi
+    perl -e 'use lib "$ENV{XCATROOT}/lib/perl"; use xCAT::Version; print xCAT::Version->Version() . "\n"'
     exit 0
 fi
 
