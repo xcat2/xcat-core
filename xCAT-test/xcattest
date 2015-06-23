@@ -694,9 +694,11 @@ sub getfunc
     while($str =~ /__(\w+)\(([\s\,\w\$]*)\)__/){
         $func = $1;
         $parameter = $2;
+        log_this("parameter is $parameter,fun is $func");
         @para = split /\s*,\s*/, trim($parameter);
         if($func eq "GETNODEATTR"){
             $value= getnodeattr(@para);
+            log_this("value is $value");
             if($value eq "Unknown"){
                 $value = '';
             }
