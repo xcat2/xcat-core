@@ -311,6 +311,7 @@ sub rinstall
 
     my @rsetbootarg;
     push @rsetbootarg, "net";
+    push @rsetbootarg, "-u";
     my $res  =
        xCAT::Utils->runxcmd(
        {
