@@ -45,7 +45,7 @@ start:switchdiscover_range_z
 cmd:switchdiscover --range $$range -z
 check:rc==0
 check:output=~Discovering switches using nmap
-check:output=~objtype=switch
+check:output=~nodetype=switch
 check:output=~groups=switch
 end
 start:switchdiscover_range_z_V
@@ -54,7 +54,7 @@ check:rc==0
 check:output=~Discovering switches using nmap
 check:output=~xml
 check:output=~Process command: /usr/bin/nmap -sP -oX - $$range
-check:output=~objtype=switch
+check:output=~nodetype=switch
 check:output=~groups=switch
 end
 
