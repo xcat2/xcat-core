@@ -760,7 +760,7 @@ sub password_set {
         }
         return;
     }
-    if ($sessdata->{setuseraccess} and $sessdata->{onuserid} ne '1') {
+    if ($sessdata->{setuseraccess} and $sessdata->{onuserid} ne '1' and $sessdata->{onuserid} ne '2') {
         setuseraccess($sessdata); 
         return;
     }
@@ -805,7 +805,7 @@ sub setuseraccess {
     }
     $sessdata->{setuseraccess} = 0;
     my @data = ();
-    push @data, (0xc0 | $channel_number);
+    push @data, (0xd0 | $channel_number);
     push @data, ($sessdata->{onuserid} - '0');
     push @data, 0x04;
     push @data, 0;
