@@ -688,7 +688,7 @@ noderes => {
         sshusername => 'The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
         sshpassword => 'The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.',
         protocol => 'Prorocol for running remote commands for the switch. The valid values are: ssh, telnet. ssh is the default. If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key. The passwd.comments attribute is used for protocol.',
-        switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Jun (for Juniper).',
+        switchtype => 'The type of switch. It is used to identify the file name that implements the functions for this swithc. The valid values are: Mellanox, Cisco, BNT and Juniper.',
 	},
     },
 nodetype => {
@@ -2749,7 +2749,7 @@ my @nodeattrs = (
          tabentry => 'switches.switchtype',
          access_tabentry => 'switches.switch=attr:node',
     },
-		
+	
   );	# end of @nodeattrs that applies to both nodes and groups
 
 

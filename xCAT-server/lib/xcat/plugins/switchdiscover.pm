@@ -29,7 +29,7 @@ my %global_scan_type = (
 );
 
 my %global_switch_type = (
-    Juniper => "Jun",
+    Juniper => "Juniper",
     Cisco => "Cisco",
     BNT => "BNT",
     Mellanox => "Mellanox"
@@ -612,16 +612,16 @@ sub lldp_scan {
 #--------------------------------------------------------------------------------
 sub nmap_scan {
     my $request  = shift;
-
     my $ccmd;
 
-    send_msg($request, 0, "Discovering switches using nmap for @$ranges. It may take long time...");
     #################################################
     # If --range options, take iprange, if noderange is defined
     # us the ip addresses of the nodes. If none is define, use the
     # subnets for all the interfaces.
     ##################################################
     my $ranges = get_ip_ranges($request);
+
+    send_msg($request, 0, "Discovering switches using nmap for @$ranges. It may take long time...");
 
     #warning the user if the range is too big
     foreach my $r (@$ranges) {
@@ -839,7 +839,7 @@ sub get_hostname {
     Arguments:
       vendor: switch vendor 
     Returns:
-      stype: type of switch, supports Jun, Cisco, BNT and Mellanox 
+      stype: type of switch, supports Juniper, Cisco, BNT and Mellanox 
 =cut
 #--------------------------------------------------------------------------------
 sub get_switchtype {
@@ -851,7 +851,7 @@ sub get_switchtype {
         $key = $1;
         return $global_switch_type{$key};
     } else {
-        return vendor;
+        return $vendor;
     }
 }
 
@@ -897,10 +897,10 @@ sub xCATdB {
         $ret = xCAT::Utils->runxcmd( { command => ['lsdef'], arg => ['-t','node','-o',$host] }, $sub_req, 0, 1);
         if ($::RUNCMD_RC == 0)
         {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
             $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,'-p','groups=switch'] }, $sub_req, 0, 1);
         } else {
-            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','node','-o',$host,'groups=switch',"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','node','-o',$host,'groups=switch',"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
         }
         if ($::RUNCMD_RC != 0)
         {

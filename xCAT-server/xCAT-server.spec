@@ -148,6 +148,7 @@ cp -r share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 cp share/xcat/ib/netboot/sles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 cp share/xcat/ib/netboot/rh/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/rh
 cp -r share/xcat/devicetype/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype
+ln -sf Jun $RPM_BUILD_ROOT/%{prefix}/share/xcat/devicetype/EthSwitch/Juniper
 
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts/*
