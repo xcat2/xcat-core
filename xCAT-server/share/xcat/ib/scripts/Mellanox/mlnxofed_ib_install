@@ -163,8 +163,10 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
         if [[ $OS == sles* ]] || [[ $OS == suse* ]] || [[ -f /etc/SuSE-release ]]; then
-            mkdir $installroot/tmp/ofed_install
-            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
+            #mkdir $installroot/tmp/ofed_install
+            #cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
+            mkdir -p $installroot/tmp/ofed_install/ofed
+            ( cd "$OFED_DIR" && tar cf - . ) | ( cd "$installroot/tmp/ofed_install/ofed" && tar xf - )
             #mount -t devtmpfs  /dev $installroot/dev/
             #mount -t sysfs  /sys $installroot/sys
             #mount -t proc /proc $installroot/proc
@@ -182,8 +184,10 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
         elif [ -f /etc/os-release ] &&        
              cat /etc/os-release |grep NAME|grep Ubuntu>/dev/null; then
 
-            mkdir $installroot/tmp/ofed_install
-            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
+            #mkdir $installroot/tmp/ofed_install
+            #cp -r $OFED_DIR/ $installroot/tmp/ofed_install/
+            mkdir -p $installroot/tmp/ofed_install/ofed
+            ( cd "$OFED_DIR" && tar cf - . ) | ( cd "$installroot/tmp/ofed_install/ofed" && tar xf - )
 
             nodename=`hostname`
             echo "$nodename 's operating system is Ubuntu."
@@ -266,8 +270,10 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist
             umount $installroot/sys/
     
         else
-            mkdir $installroot/tmp/ofed_install
-            cp -r $OFED_DIR/ $installroot/tmp/ofed_install/ 
+            #mkdir $installroot/tmp/ofed_install
+            #cp -r $OFED_DIR/ $installroot/tmp/ofed_install/ 
+            mkdir -p $installroot/tmp/ofed_install/ofed
+            ( cd "$OFED_DIR" && tar cf - . ) | ( cd "$installroot/tmp/ofed_install/ofed" && tar xf - )
             chroot $installroot rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
             #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
             chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall $mlnxofed_options
