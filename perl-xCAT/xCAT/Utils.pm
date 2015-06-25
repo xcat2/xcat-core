@@ -4423,6 +4423,7 @@ sub cleanup_for_powerLE_hardware_discovery {
     my $ipmihash = $ipmitab->getNodesAttribs([$host_node], ['node', 'bmc', 'username', 'password']);
     if ($ipmihash) {
         my $new_bmc_ip = $ipmihash->{$host_node}->[0]->{bmc};
+        my $new_bmc_username = $ipmihash->{$host_node}->[0]->{username};
         my $new_bmc_password = $ipmihash->{$host_node}->[0]->{password};
         if (!defined($pbmc_node)) {
             xCAT::MsgUtils->message("S", "Discover info: configure static BMC ip:$new_bmc_ip for host_node:$host_node.");
@@ -4430,7 +4431,13 @@ sub cleanup_for_powerLE_hardware_discovery {
             return;
         }
         xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
-        `rspconfig $pbmc_node password=$new_bmc_password`;
+        if (defined($new_bmc_username) and $new_bmc_username ne '') {
+            `rspconfig $pbmc_node username=$new_bmc_username password=$new_bmc_password`;
+        } else {
+            `rspconfig $pbmc_node password=$new_bmc_password`;
+        }
+        # the rspconfig doesn't update node definition, need to modify manually for modifying bmc ip address
+        `chdef $pbmc_node bmcusername=$new_bmc_username bmcpassword=$new_bmc_password`;
         #if ($new_bmc_password) {
         #    xCAT::Utils->runxcmd(
         #        {
