@@ -317,6 +317,7 @@ sub get_bmc_ip_source{
     {
         my $rsp = {};
         my $ipsource=`echo "$output"|grep "IP Address Source"|awk -F":" '{print \$2}'`;
+        chomp($ipsource); 
         push @{ $rsp->{data} }, "$ipsource";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         return 0;
