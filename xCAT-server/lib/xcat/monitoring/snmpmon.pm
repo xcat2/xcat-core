@@ -24,7 +24,11 @@ my $confdir;
 if(xCAT::Utils->isAIX()){
   $::snmpconfdir = "/opt/freeware/etc";
 } else {
-  $::snmpconfdir = "/usr/share/snmp";
+    if (-f "/etc/snmp/snmpd.conf") {
+        $::snmpconfdir = "/etc/snmp";
+    } else {
+        $::snmpconfdir = "/usr/share/snmp";
+    }
 }
 
 
