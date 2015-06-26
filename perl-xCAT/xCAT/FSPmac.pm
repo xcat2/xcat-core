@@ -650,6 +650,22 @@ sub format_mac {
 
 }
 
+##########################################################################
+# checkmac format
+##########################################################################
+
+sub checkmac {
+    my $mac = shift;
+    if ( !xCAT::Utils->isAIX()) {
+        if ($mac =~ /\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}/) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        return 1;
+    }
+}
 
 ##########################################################################
 # Write first valid adapter MAC to database 
@@ -690,6 +706,9 @@ sub writemac {
     #####################################
     if ( $pingret ne "successful" ) {
         foreach ( @$data ) {
+            unless (&checkmac($_)) {
+                next;
+            }
             if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
                 $value = $_;
                 $ping_test = 0;
