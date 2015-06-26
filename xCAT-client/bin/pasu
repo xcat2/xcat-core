@@ -50,8 +50,8 @@ if (!GetOptions(
   "V|verbose" => \$::VERBOSE,
   'h|help' => \$help,
   ) || $help || ($batchfile && scalar(@ARGV)!=1) || (!$batchfile && scalar(@ARGV)<2) ) {
-  print "Usage: $iam [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
-  print "       $iam [-V] [-d] [-n] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
+  print "Usage: $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] <noderange> <command>\n";
+  print "       $iam [-V] [-d] [-i <hostname-suffix>] [-l <user>] [-p <passwd>] [-f <fanout>] -b <batchfile> <noderange>\n";
   exit;
 }
 my %nodehdl;
