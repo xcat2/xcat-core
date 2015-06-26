@@ -293,7 +293,7 @@ sub get_bmc_ip_source{
     my $bmcpw = shift;
     my $callback = $::CALLBACK;
     my $bmcerror = "Can not find IP Address Source.";
-
+    my $ipsource_t = "IP Address Source";
     my $pcmd;
 
     if ( $bmcuser eq "none" )
