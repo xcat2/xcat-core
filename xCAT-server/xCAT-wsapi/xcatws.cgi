@@ -144,6 +144,18 @@ my %URIdef = (
                 outhdler => \&noout,
             },
         },
+        noderename => {
+            desc => "[URI:/nodes/{noderange}/rename] - Change old_nodename into new_nodename",
+            matcher => '^/nodes/[^/]*/rename$',
+            PUT => {
+                desc => "Change node name.",
+                usage => "||$usagemsg{non_getreturn}|",
+                example => "|Change nodename for node \'node1\'.|PUT|/nodes/node1/rename||",
+                cmd => "chdef",
+                fhandler => \&actionhdl,
+                outhdler => \&defout_remove_appended_info,
+            },
+        },
         nodedns => {
             desc => "[URI:/nodes/{noderange}/dns] - The dns record resource for the node {noderange}",
             matcher => '^/nodes/[^/]*/dns$',
@@ -671,6 +683,33 @@ my %URIdef = (
 
             }
         },
+        checkbmcauth => {
+            desc => "[URI:/services/checkbmcauth] - Check if bmc user or password is correct.",
+            matcher => '^/services/checkbmcauth/[^/]*/[^/]+$',
+            GET => {
+                desc => "Check if bmc user or password is correct.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Check bmc user or password.|GET|/services/checkbmcauth||",
+                cmd => "bmcdiscover",
+                fhandler => \&bmccheckhdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
+        getbmcipsource => {
+            desc => "[URI:/services/getbmcipsource] - Get BMC IP Address source.",
+            matcher => '^/services/getbmcipsource/[^/]*/[^/]+$',
+            GET => {
+                desc => "Get BMC IP Address source.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get BMC IP Address source.|GET|/services/getbmcipsource||",
+                cmd => "bmcdiscover",
+                fhandler => \&bmccheckhdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
+
         dhcp => {
             desc => "[URI:/services/dhcp] - The dhcp service resource.",
             matcher => '^/services/dhcp$',
@@ -1154,7 +1193,7 @@ my %URIdef = (
             POST => {
                 desc => "Create a token.",
                 usage => "||An array of all the global configuration list.|",
-                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"password\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
+                example => "|Aquire a token for user \'root\'.|POST|/tokens {\"userName\":\"root\",\"userPW\":\"cluster\"}|{\n   \"token\":{\n      \"id\":\"a6e89b59-2b23-429a-b3fe-d16807dd19eb\",\n      \"expire\":\"2014-3-8 14:55:0\"\n   }\n}|",
                 fhandler => \&nonobjhdl,
                 outhdler => \&tokenout,
             },
@@ -1349,7 +1388,7 @@ if ($#layers < 0) {
 $request->{becomeuser}->[0]->{username}->[0] = $ENV{userName} if (defined($ENV{userName}));
 $request->{becomeuser}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
 $request->{becomeuser}->[0]->{password}->[0] = $ENV{password} if (defined($ENV{password}));
-$request->{becomeuser}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
+$request->{becomeuser}->[0]->{password}->[0] = $generalparams->{userPW} if (defined($generalparams->{userPW}));
 
 # use the token if it is specified with X_AUTH_TOKEN head
 $request->{tokens}->[0]->{tokenid}->[0] = $ENV{'HTTP_X_AUTH_TOKEN'} if (defined($ENV{'HTTP_X_AUTH_TOKEN'}));
@@ -1470,6 +1509,9 @@ sub defout {
         foreach my $l (@$lines) {
             if ($l =~ /No responses/) { # handle the case that no output from lsslp command
                 return;
+            } elsif ($l =~ /Could not find any object definitions/) {
+                $json->{info} = $l;
+                last;
             }
             if ($l =~ /^Object name: / || $l =~ /^\S+:$/) {    # start new node
                 if ($l =~ /^Object name:\s+(\S+)/) {    # handle the output of lsdef -t <type> <obj>
@@ -1517,6 +1559,9 @@ sub defout_remove_appended_type {
         foreach my $l (@$lines) {
             if ($l =~ /^(\S*)\s+\(.*\)$/) {    # start new node
                 push @{$json}, $1;
+            } elsif ($l =~ /Could not find any object definitions/) {
+                push @{$json}, $l;
+                last;
             }
         }
     }
@@ -1880,8 +1925,16 @@ sub actionhdl {
     } elsif ($params->{'resourcename'} eq "serviceprocessor") {
         if (isGET()) {
             push @args, $urilayers[3];
-        } elsif ($paramhash->{'value'}) {
-            push @args, $urilayers[3]."=".$paramhash->{'value'};
+        } elsif (isPut() or isPost()) {
+            if ($paramhash->{'value'} and defined($urilayers[3])) {
+                push @args, $urilayers[3]."=".$paramhash->{'value'};
+            } else {
+                foreach my $key (keys %$paramhash) {
+                    if (($key ne '') and (exists($paramhash->{$key}))) {
+                        push @args, $key."=".$paramhash->{$key};
+                    }
+                }
+            }
         }
     } elsif ($params->{'resourcename'} eq "eventlog") {
         if (isGET()) {
@@ -2002,6 +2055,15 @@ sub actionhdl {
                 error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
             }
         }
+    } elsif  ($params->{'resourcename'} eq "noderename") {
+
+        if (isPut()) {
+            if (defined ($paramhash->{'newNode'})) { #specify the new name for node
+                push @args, ('-t', "node");
+                push @args, ('-o', $urilayers[1]);
+                push @args, ('-n', $paramhash->{'newNode'});
+            }
+        }
     }
 
     push @{$request->{arg}}, @args;  
@@ -2035,7 +2097,7 @@ sub nonobjhdl {
         }
     } elsif ($params->{'resourcename'} eq "tokens") {
         $request->{gettoken}->[0]->{username}->[0] = $generalparams->{userName} if (defined($generalparams->{userName}));
-        $request->{gettoken}->[0]->{password}->[0] = $generalparams->{password} if (defined($generalparams->{password}));
+        $request->{gettoken}->[0]->{password}->[0] = $generalparams->{userPW} if (defined($generalparams->{userPW}));
     }
     
     push @{$request->{arg}}, @args;  
@@ -2198,6 +2260,79 @@ sub tablenodehdl {
 
     return $responses;
 }
+
+#get bmc ip address source
+#check if bmc user or password is correct 
+sub bmccheckhdl {
+
+    my $params = shift;
+
+    my @args;
+    my @urilayers = @{$params->{'layers'}};
+    my $bmc_ip;
+    my $bmc_user;
+    my $bmc_pw;
+
+    # set the command name
+    $request->{command} = $params->{'cmd'};
+
+    # get bmc ip
+    if (defined($urilayers[2]))
+    {
+            $bmc_ip=$urilayers[2];
+    }
+
+    # get bmc user and password
+    if (defined($urilayers[3]))
+    {
+            my @keyvals = split(/,/, $urilayers[3]);
+            foreach my $kv (@keyvals)
+            {
+                my ($key, $value) = split(/\s*=\s*/, $kv, 2);
+                if ($key eq "bmcuser")
+                {
+                    $bmc_user=$value;
+                }
+                elsif ($key eq "bmcpw")
+                {
+                    $bmc_pw=$value;
+                }
+            }
+    }
+    
+    if ($params->{'resourcename'} eq "checkbmcauth") {
+        if (isGET()) {
+            push @args, "-i";
+            push @args, $bmc_ip;
+            push @args, "-u";
+            push @args, $bmc_user;
+            push @args, "-p";
+            push @args, $bmc_pw;
+            push @args, "-c";
+        }
+    }
+
+    if ($params->{'resourcename'} eq "getbmcipsource") {
+        if (isGET()) {
+            push @args, "-i";
+            push @args, $bmc_ip;
+            push @args, "-u";
+            push @args, $bmc_user;
+            push @args, "-p";
+            push @args, $bmc_pw;
+            push @args, "-s";
+        }
+    }
+
+    push @{$request->{arg}}, @args;
+    my $req = genRequest();
+    my $responses = sendRequest($req);
+
+    return $responses;
+
+
+}
+
 
 #get bmc list for bmcdiscover
 sub bmclisthdl {
@@ -2867,7 +3002,7 @@ sub sendRequest {
 # 1st output param - The params which are listed in @generalparamlis as a general parameters like 'debug=1, pretty=1'
 # 2nd output param - All the params from url params and 'PUTDATA'/'POSTDATA' except the ones in @generalparamlis
 sub fetchParameters {
-    my @generalparamlist = qw(userName password pretty debug xcoll);
+    my @generalparamlist = qw(userName userPW pretty debug xcoll);
     # 1st check for put/post data and put that in the hash
     my $pdata;
     if (isPut()) { 
