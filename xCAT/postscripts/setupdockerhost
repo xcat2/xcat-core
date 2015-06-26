@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------------------------------
+#=head1  setupdockerhost
+#=head2  Used on Linux only. Configure docker host
+#
+#  You can run the following commands on MN:
+#       updatenode noderange setupdockerhost (To use the default bridge mydocker0 for docker services)
+#       updatenode noderange "setupdockerhost -b=dockerbr0" (To specify the bridge which will be used by docker services)
+#
+#
+#=cut
+#-------------------------------------------------------------------------------
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+fi
+
+# When running setupdockerhost, we suppose either the default bridge mydocker0 or the specified bridge had been configured, check it here before doing anything else
+
+dockerbr="mydocker0"
+for arg in "$@"
+do 
+    if [ "${arg:0:2}" = "-b" ];then
+        dockerbr=${arg#-b=}
+    fi
+done
+
+# To check whether the brctl have been installed
+if ! which brctl > /dev/null; then
+    echo "No bridge-utils installed, can not check bridge info"
+    exit 1
+fi
+
+old_ifs=$IFS
+IFS=$','
+dockerbrs=($dockerbr)
+IFS=$old_ifs
+for br in ${dockerbrs[@]}
+do 
+    if ! brctl showstp $br > /dev/null; then
+        echo "$br: doesn't configured properly"
+        exit 1
+    fi 
+done
+
+#After check the bridge, we need to replace or add bridge for docker options
+# 3 scenarios
+# 1. No DOCKER_OPTS ====> add DOCKER_OPTS="-b=$dockerbr" line
+# 2. Have DOCKER_OPTS but no "-b" parameter ====> append "-b=$dockerbr" to DOCKER_OPTS
+# 3. Have "-b" parameter in DOCKER_OPTS ====> replace "-b=xxx" with "-b=$dockerbr"
+docker_conf_file="/etc/default/docker"
+if [ ! -f "$docker_conf_file" ]; then
+    echo "Error: file $docker_conf_file not exist"
+    exit 1
+fi
+if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
+    echo "DOCKER_OPTS=\"-b=$dockerbr\"" >> $docker_conf_file
+else
+    sed -i "s/-b=[^ |^\"]*//g" $docker_conf_file
+    sed -i "s/\"$/ -b=$dockerbr\"/g" $docker_conf_file
+fi
+
+#Restart docker service
+restartservice docker
