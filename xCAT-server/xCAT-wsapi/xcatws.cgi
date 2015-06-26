@@ -696,6 +696,20 @@ my %URIdef = (
 
             }
         },
+        getbmcipsource => {
+            desc => "[URI:/services/getbmcipsource] - Get BMC IP Address source.",
+            matcher => '^/services/getbmcipsource/[^/]*/[^/]+$',
+            GET => {
+                desc => "Get BMC IP Address source.",
+                usage => "||$usagemsg{objreturn}|",
+                example => "|Get BMC IP Address source.|GET|/services/getbmcipsource||",
+                cmd => "bmcdiscover",
+                fhandler => \&bmccheckhdl,
+                outhdler => \&defout_remove_appended_info,
+
+            }
+        },
+
         dhcp => {
             desc => "[URI:/services/dhcp] - The dhcp service resource.",
             matcher => '^/services/dhcp$',
@@ -2247,6 +2261,7 @@ sub tablenodehdl {
     return $responses;
 }
 
+#get bmc ip address source
 #check if bmc user or password is correct 
 sub bmccheckhdl {
 
@@ -2295,7 +2310,18 @@ sub bmccheckhdl {
             push @args, $bmc_pw;
             push @args, "-c";
         }
+    }
 
+    if ($params->{'resourcename'} eq "getbmcipsource") {
+        if (isGET()) {
+            push @args, "-i";
+            push @args, $bmc_ip;
+            push @args, "-u";
+            push @args, $bmc_user;
+            push @args, "-p";
+            push @args, $bmc_pw;
+            push @args, "-s";
+        }
     }
 
     push @{$request->{arg}}, @args;
