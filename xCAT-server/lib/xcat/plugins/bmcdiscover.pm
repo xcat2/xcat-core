@@ -109,6 +109,10 @@ sub bmcdiscovery_usage {
     my $rsp;
     push @{ $rsp->{data} },
       "\nUsage: bmcdiscover - discover bmc using scan method,now scan_method can be nmap .\n";
+    push @{ $rsp->{data} },
+      "\n                   - check if BMC username or password is correct or not .\n";
+    push @{ $rsp->{data} },
+      "\n                   - get BMC IP Address source, DHCP Address or static Address  .\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]\n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-m|--method] scan_method [-r|--range] ip_range \n ";
@@ -156,6 +160,7 @@ sub bmcdiscovery_processargs {
                               'check|c' => \$::opt_C,
                               'bmcuser|u=s' => \$::opt_U,
                               'bmcpwd|p=s' => \$::opt_P,
+                              'ipsource|s' => \$::opt_S,
                               'version|v' => \$::opt_v,
     );
 
@@ -225,9 +230,9 @@ sub bmcdiscovery_processargs {
     # Option -i -u -p -c should be used together
     ######################################
 
-    if ( defined($::opt_U) ||  defined($::opt_P) || defined($::opt_C) || defined($::opt_I) )
+    if ( defined($::opt_C) )
     {
-        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_C) && defined($::opt_I) ) 
+        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_I) ) 
         {
              my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
              return $res;
@@ -240,8 +245,27 @@ sub bmcdiscovery_processargs {
              xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
              return 2;
         }
-
     }
+        #########################################
+        # Option -i -u -p -s should be used together
+        ######################################
+    if ( defined($::opt_S) )
+    {
+        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_I) )
+        {
+             my $res=get_bmc_ip_source($::opt_I,$::opt_U,$::opt_P);
+             return $res;
+        }
+        else
+        {
+             my $msg = "Can not get BMC IP Address source.";
+             my $rsp = {};
+             push @{ $rsp->{data} }, "$msg";
+             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+             return 2;
+        }
+    }
+
 
     #########################################
     # Other attributes are not allowed
@@ -249,6 +273,60 @@ sub bmcdiscovery_processargs {
 
     return 4;
 }
+
+#----------------------------------------------------------------------------
+
+=head3   get_bmc_ip_source
+
+        get bmc ip address source
+        Returns:
+                0 - OK
+                2 - Error
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub get_bmc_ip_source{
+
+    my $bmcip = shift;
+    my $bmcuser = shift;
+    my $bmcpw = shift;
+    my $callback = $::CALLBACK;
+    my $bmcerror = "Can not find IP Address Source.";
+
+    my $pcmd;
+
+    if ( $bmcuser eq "none" )
+    {
+       $pcmd = "/opt/xcat/bin/ipmitool-xcat -I lanplus -P $bmcpw -H $bmcip lan print ";
+    }
+    else
+    {
+       $pcmd = "/opt/xcat/bin/ipmitool-xcat -I lanplus -U $bmcuser -P $bmcpw -H $bmcip lan print ";
+
+    }
+    my $output = xCAT::Utils->runcmd("$pcmd", -1);
+    if ( $output !~ $ipsource_t )
+    {
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$bmcerror";
+        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+        return 2;
+    }
+    else
+    {
+        my $rsp = {};
+        my $ipsource=`echo "$output"|grep "IP Address Source"|awk -F":" '{print \$2}'`;
+        push @{ $rsp->{data} }, "$ipsource";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        return 0;
+    
+    }
+
+
+
+}
+
 
 #----------------------------------------------------------------------------
 
