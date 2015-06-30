@@ -4592,7 +4592,7 @@ sub lookupNetboot{
        if ($osarch =~ /^x86_64$/i){
            $ret= "xnba,pxe";
        }elsif($osarch =~ /^ppc64$/i){
-          if(($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and $osn < 12)){
+          if(($osv =~ /rh/i and $osn < 7) or ($osv =~ /sles/i and ($osn < 11 or ($osn == 11 and $osm < 4)))){
              $ret="yaboot";
           }else{
              $ret="grub2,grub2-tftp,grub2-http";
