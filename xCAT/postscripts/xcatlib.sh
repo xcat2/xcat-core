@@ -610,3 +610,85 @@ function disableservice {
    
    eval $cmd
 }
+
+declare -a array_nic_params
+declare -a array_extra_param_names
+declare -a array_extra_param_values
+
+# This function parse the NICEXTRAPARAMS into an array. 
+# Each arry element contains all the extra params for an ip
+# For example:
+#    
+#    NICEXTRAPARAMS="eth0!MTU=1500 sonething=x|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes"
+#    get_nic_extra_params $eth0 $NICEXTRAPARAMS
+#  After the function is called:
+#    array_nic_param[0]="MTU=1500 sonething=x"
+#    array_nic_param[1]="MTU=1460"
+function get_nic_extra_params() {
+    nic=$1
+    nic_extra=$2
+
+    unset array_nic_params
+
+    if [ ! "$nic_extra" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_conf_temp=($nic_extra)
+    IFS=$old_ifs
+    #echo "nic_extra=$nic_extra"
+
+    i=0
+    while [ $i -lt ${#array_conf_temp[@]} ]
+    do
+        token="${array_conf_temp[$i]}"
+        D=
+        if echo "$token" | grep "!"; then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo "$token" | cut -d"$D" -f 1`
+        #echo "key=$key nic=$nic"
+		if [ "$key" == "$nic" ]; then
+			str_temp_value=`echo "$token" | cut -d"$D" -f 2`
+            #echo "token=$token, str_temp_value=$str_temp_value"
+			old_ifs=$IFS
+			IFS=$'|'
+			array_nic_params=($str_temp_value)
+			IFS=$old_ifs
+			return
+		fi
+		i=$((i+1))
+    done
+}
+
+# This functions parse the extra parameters for an ip address of a nic
+# Input is like this:
+#     MTU=65520 something=yes
+# After the function is called:
+#     array_extra_param_names[0]="MTU"
+#     array_extra_param_values[0]="65520" 
+#     array_extra_param_names[1]="something"
+#     array_extra_param_values[0]="yes" 
+#     
+function parse_nic_extra_params() {
+    str_extra=$1
+   
+    unset array_extra_param_names
+    unset array_extra_param_values
+
+	old_ifs=$IFS
+	IFS=$' '
+	params_temp=($str_extra)
+	IFS=$old_ifs
+	k=0
+	while [ $k -lt ${#params_temp[@]} ]
+	do
+		token2="${params_temp[$k]}"
+		array_extra_param_names[$k]=`echo "$token2" | cut -d'=' -f 1`
+		array_extra_param_values[$k]=`echo "$token2" | cut -d'=' -f 2`	
+		k=$((k+1))
+	done
+}
