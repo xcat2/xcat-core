@@ -16,7 +16,7 @@ os:rhels
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=yaboot
-eck:rc==0
+check:rc==0
 cmd: mkdef "rhels7.5-ppc64-install-compute" -u profile=compute provmethod=install osvers=rhels7.5
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels7.5-ppc64-install-compute"
@@ -33,7 +33,7 @@ os:rhels
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels5.5 netboot=yaboot
-eck:rc==0
+check:rc==0
 cmd: mkdef "rhels5.5-ppc64-install-compute" -u profile=compute provmethod=install osvers=rhels5.5
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels5.5-ppc64-install-compute"
@@ -49,7 +49,7 @@ os:rhels
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels7.5 netboot=grub2
-eck:rc==0
+check:rc==0
 cmd: mkdef "rhels7.5-ppc64-install-compute" -u profile=compute provmethod=install osvers=rhels7.5
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels7.5-ppc64-install-compute"
@@ -64,7 +64,7 @@ os:rhels
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=rhels6.8 netboot=grub2
-eck:rc==0
+check:rc==0
 cmd: mkdef "rhels6.8-ppc64-install-compute" -u profile=compute provmethod=install osvers=rhels6.8
 check:rc==0
 cmd:nodeset testnode1 osimage="rhels6.8-ppc64-install-compute"
@@ -80,7 +80,7 @@ os:ubuntu
 cmd:mkdef -t node -o testnode1 arch=x86_64 cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=ubuntu14.04.5 netboot=grub2
-eck:rc==0
+check:rc==0
 cmd: mkdef "ubuntu14.04.5-x86_64-install-compute" -u profile=compute provmethod=install osvers=ubuntu14.04.5
 check:rc==0
 cmd:nodeset testnode1 osimage="ubuntu14.04.5-x86_64-install-compute"
@@ -95,15 +95,13 @@ start:nodeset_check_grub2_sles11
 os:sles
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
-cmd:chdef testnode1 os=sles11.9 netboot=grub2
-eck:rc==0
-cmd: mkdef "sles11.9-ppc64-install-compute" -u profile=compute provmethod=install osvers=sles11.9
+cmd:chdef testnode1 os=sles11.4 netboot=grub2
 check:rc==0
-cmd:nodeset testnode1 osimage="sles11.9-ppc64-install-compute"
+cmd:copycds $$ISO
+check:rc==0
+cmd:nodeset testnode1 osimage="sles11.4-ppc64-install-compute"
 check:rc!=0
-check:output=~grub2 is not valid when provisioning sles11.9-ppc64-install-compute 
-check:output=~valid options: "yaboot"
-cmd:rmdef -t osimage -o "sles11.9-ppc64-install-compute"
+check:output=~install sles11.4-ppc64-compute 
 cmd:noderm testnode1
 end
 
@@ -112,12 +110,13 @@ start:nodeset_check_yaboot_sles11
 os:sles
 cmd:mkdef -t node -o testnode1 arch=ppc64 cons=hmc groups=lpar hcp=hmc1 hwtype=lpar  id=1 ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=hmc monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi parent=fsp1 pprofile=testnode1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
-cmd:chdef testnode1 os=sles11.9 netboot=yaboot
-eck:rc==0
+cmd:chdef testnode1 os=sles11.4 netboot=yaboot
+check:rc==0
 cmd: mkdef "sles11.9-ppc64-install-compute" -u profile=compute provmethod=install osvers=sles11.9
 check:rc==0
 cmd:nodeset testnode1 osimage="sles11.9-ppc64-install-compute"
-check:output=~Failed to detect copycd configured install source at /install/sles11.9/ppc64
+check:rc!=0
+check:output=~yaboot is not valid when provisioning sles11.9-ppc64-install-compute
 cmd:rmdef -t osimage -o "sles11.9-ppc64-install-compute"
 cmd:noderm testnode1
 end
@@ -127,7 +126,7 @@ os:sles
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles12 netboot=grub2
-eck:rc==0
+check:rc==0
 cmd: mkdef "sles12-ppc64el-install-compute" -u profile=compute provmethod=install osvers=sles12
 check:rc==0
 cmd:nodeset testnode1 osimage="sles12-ppc64el-install-compute"
@@ -142,7 +141,7 @@ os:sles
 cmd:mkdef -t node -o testnode1 arch=ppc64el cons=kvm groups=kvm ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06 mgt=kvm monserver=10.1.1.1 nameservers=10.1.1.1 1 profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1
 check:rc==0
 cmd:chdef testnode1 os=sles12 netboot=yaboot
-eck:rc==0
+check:rc==0
 cmd: mkdef "sles12-ppc64el-install-compute" -u profile=compute provmethod=install osvers=sles12
 check:rc==0
 cmd:nodeset testnode1 osimage="sles12-ppc64el-install-compute"
