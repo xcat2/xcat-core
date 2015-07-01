@@ -30,12 +30,12 @@ foreach (@extSchema) {
     my $modname = $1;
     no strict 'refs';
     my $warning;
-    # `logger -t xCAT processing $_`; 
+    # `logger -t xcat processing $_`; 
     eval {require($_)};
     if ($@) { 
 	$warning ="Warning: The user defined database table schema file $file cannot be located or has compiling errors.\n";
         print $warning;
-        `logger -p local4.warning -t xCAT $warning`; 
+        `logger -p local4.warning -t xcat $warning`; 
 	next;
     }   
     if (${"xCAT_schema::" . "$modname" . "::"}{tabspec}) {
@@ -44,7 +44,7 @@ foreach (@extSchema) {
             if (exists($ext_tabspec{$tabname})) {
 		$warning = "Warning: File $file: the table name $tabname is used by other applications. Please rename the table.\n";
                 print $warning;
-               `logger -p local4.warning -t xCAT $warning`; 
+               `logger -p local4.warning -t xcat $warning`; 
 	    } else {
 		$ext_tabspec{$tabname}=$tabspec{$tabname};
 	    }
@@ -52,7 +52,7 @@ foreach (@extSchema) {
     } else {
 	$warning ="\n  Warning: Cannot find \%tabspec variable in the user defined database table schema file $file\n";
          print $warning;
-         `logger -p local4.warning -t xCAT $warning`; 
+         `logger -p local4.warning -t xcat $warning`; 
     }
    
     #get the defspec from each file and merge them into %ext_defspec
@@ -74,7 +74,7 @@ foreach (@extSchema) {
 			if (exists($tmp_hash{$attrname})) {
 			    $warning= "  Warning: Conflict when adding user defined defspec from file $file. Attribute name $attrname is already defined in object $objname.  \n";
                             print $warning;
-                           `logger  -p local4.warning  -t xCAT $warning`; 
+                           `logger  -p local4.warning  -t xcat $warning`; 
 			} else {
 			    #print "\ngot here objname=$objname, attrname=" . $h->{attr_name} . "\n";
 			    push(@{$ext_defspec{$objname}->{'attrs'}}, $h); 

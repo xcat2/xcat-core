@@ -19,7 +19,7 @@ if ($useSocketSSL) {
 my $port = "3001";
 my $remote = IO::Socket::SSL->new( Proto => "tcp", PeerAddr => $ENV{MASTER}, PeerPort  => $port, );
 unless ($remote) {
-  `logger -t xCAT -p local4.err "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
+  `logger -t xcat -p local4.err "startsyncfiles: Cannot connect to host $ENV{MASTER}"`;
   exit 0;
 }
 

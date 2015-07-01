@@ -22,18 +22,18 @@ if [ -z "$NODE" ]; then
    NODE=`hostname`
 fi
 
-#logger -t xCAT -p local4.info "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
+#logger -t xcat -p local4.info "configrmcnode: ADD=$ADD, NODE=$NODE, NODEID=$NODEID MONMASTER=$MONMASTER,MS_NODEID=$MS_NODEID"
 
 #check if rsct is installed and running
 if [ ! -e /usr/bin/lsrsrc ]; then  
-   logger -t xCAT -p local4.err "RMC setup on node $NODE: RSCT is not is not installed."
+   logger -t xcat -p local4.err "RMC setup on node $NODE: RSCT is not is not installed."
   exit 1;
 else
   PID=`/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep | /bin/awk '{print $2}'`
   if [ -z "$PID" ]; then
     result=`/usr/sbin/rsct/bin/rmcctrl -s 2>&1`;
     if [ $? -gt 0 ]; then
-       logger -t xCAT -p local4.err "RMC deamon cannot be started on node $NODE:$result"
+       logger -t xcat -p local4.err "RMC deamon cannot be started on node $NODE:$result"
       exit 1;
     fi
   fi
@@ -61,7 +61,7 @@ do
 done
 if [[ $rc -ne 0 ]]
 then
-   logger -t xCAT -p local4.err "RMC subsystem has not started"
+   logger -t xcat -p local4.err "RMC subsystem has not started"
   exit 1
 fi
 
@@ -79,7 +79,7 @@ if [ $ADD -eq 1 ]; then
           result=`/usr/sbin/rsct/install/bin/recfgctnid $NODEID 2>&1`
           if [ $? -ne 0 ]; then
             echo "Reset nodeid: $result" 
-            logger -t xCAT -p local4.info "Reset nodeid: $result" 
+            logger -t xcat -p local4.info "Reset nodeid: $result" 
           fi
         else 
           #stop all rmc daemons
@@ -103,7 +103,7 @@ if [ $ADD -eq 1 ]; then
           result=`/usr/sbin/rsct/install/bin/recfgct -s 2>&1`
           if [ $? -ne 0 ]; then
             echo "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
-            logger -t xCAT -p local4.warning "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
+            logger -t xcat -p local4.warning "RMC setup on node $NODE: Cannot reconfig RSCT with new node id" 
           fi
         fi
       fi
@@ -115,7 +115,7 @@ if [ $ADD -eq 1 ]; then
       result=`/usr/sbin/rsct/bin/rmcctrl -s 2>&1`;
       if [ $? -gt 0 ]; then
         echo "RMC deamon cannot be started on node $NODE:$result"
-        logger -t xCAT -p local4.err "RMC deamon cannot be started on node $NODE:$result"
+        logger -t xcat -p local4.err "RMC deamon cannot be started on node $NODE:$result"
         exit 1;
       fi
     fi
@@ -142,7 +142,7 @@ if [ $ADD -eq 1 ]; then
     done
     if [[ $rc -ne 0 ]]
     then
-      logger -t xCAT  -p local4.err "RMC subsystem has not started"
+      logger -t xcat  -p local4.err "RMC subsystem has not started"
       exit 1
     fi
 
@@ -162,14 +162,14 @@ if [ $ADD -eq 1 ]; then
       ms_ip=`expr substr "$result" $pos $length`
     else
       echo "RMC setup on node $NODE:$result" 
-      logger -t xCAT -p local4.info "RMC setup on node $NODE:$result"
+      logger -t xcat -p local4.info "RMC setup on node $NODE:$result"
     fi
   
     #define resource in IBM.MCP class on node       
     result1=`/usr/bin/mkrsrc-api IBM.MCP::MNName::"$NODE"::KeyToken::"$MONMASTER"::IPAddresses::"{\"$ms_ip\"}"::NodeID::0x$MS_NODEID 2>&1`
     if [ $? -gt 0 ]; then
       echo "Define resource in IBM.MCP class on node $NODE. result=$result1" 
-      logger -t xCAT -p local4.err  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
+      logger -t xcat -p local4.err  "Define resource in IBM.MCP class on node $NODE. result=$result1" 
       exit 1
     fi
   fi
@@ -209,7 +209,7 @@ if [ $ADD -eq 1 ]; then
       fi
       if [ $? -gt 0 ]; then
 	  echo "Failed to mount:$result"
-	  logger -t xCAT -p local4.err "Failed to mount $result"
+	  logger -t xcat -p local4.err "Failed to mount $result"
 	  exit 1
       fi
       mkdir -p /var/xcat/rmcmon/scripts
@@ -236,7 +236,7 @@ else
       fi
     else
       echo "$result"
-      logger -t xCAT -p local4.err "$result"
+      logger -t xcat -p local4.err "$result"
       exit 1
     fi
   fi
@@ -245,13 +245,13 @@ else
   result2=`/usr/bin/rmrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID" 2>&1`
   if [ $? -gt 0 ]; then
     echo "Remove resource in IBM.MCP class on noderesult=$result2"
-    logger -t xCAT  -p local4.err "Remove resource in IBM.MCP class on noderesult=$result2"
+    logger -t xcat  -p local4.err "Remove resource in IBM.MCP class on noderesult=$result2"
     exit 1
   fi
 fi
 
 echo "done"
-logger -t xCAT -p local4.info "done"
+logger -t xcat -p local4.info "done"
 exit 0;
 
 

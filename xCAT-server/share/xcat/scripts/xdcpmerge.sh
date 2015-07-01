@@ -13,7 +13,7 @@
 # Check for Linux, AIX not supported 
 
 if [ "$(uname -s)" != "Linux" ]; then
-  logger -t xCAT -p local4.err "Merge: xdcp merge is only supported on Linux" 
+  logger -t xcat -p local4.err "Merge: xdcp merge is only supported on Linux" 
   exit 1
 fi
 #this is the base path to the merge directory
@@ -42,7 +42,7 @@ for i in $*; do
   # if curfile not /etc/passwd  or /etc/shadow or /etc/group 
   # exit error
   #if [ "$curfile" != "/etc/passwd" ] && [ "$curfile" != "/etc/shadow" ] && [ "$curfile" != "/etc/group" ]; then
-  #  logger -t xCAT -p local4.err "Merge: $curfile is not /etc/passwd or /etc/shadow or /etc/group. It cannot be processes." 
+  #  logger -t xcat -p local4.err "Merge: $curfile is not /etc/passwd or /etc/shadow or /etc/group. It cannot be processes." 
   #   exit 1
   #fi 
   # get the directory to backup the original file  

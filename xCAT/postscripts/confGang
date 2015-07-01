@@ -2,10 +2,10 @@
 #get IP address of MS
 OS=`uname`
 echo "the OS is $OS"
-logger -t xCAT  -p local4.info "the OS is $OS"
+logger -t xcat  -p local4.info "the OS is $OS"
 ms_ip=$MONMASTER
 echo "MS IP is $ms_ip"
-logger -t xCAT  -p local4.info "the MS is $ms_ip"
+logger -t xcat  -p local4.info "the MS is $ms_ip"
 result=`ping -c1 $MONMASTER 2>&1`
  if [ $? -eq 0 ]; then
    index1=`expr index "$result" "\("`
@@ -17,12 +17,12 @@ result=`ping -c1 $MONMASTER 2>&1`
    ms_ip=`expr substr "$result" $pos $length`
    echo final is $ms_ip
  else
-   logger -t xCAT  -p local4.info "Gangliamon setup"
+   logger -t xcat  -p local4.info "Gangliamon setup"
  fi
 
 CLUSTER=\"$MONSERVER\"
 echo "cluster is $CLUSTER"
-logger -t xCAT  -p local4.info  "cluster is $CLUSTER"
+logger -t xcat  -p local4.info  "cluster is $CLUSTER"
 MASTER=$ms_ip
 #echo "The new IP is: $NEW_IP"
 #echo "I will replace now....
@@ -31,10 +31,10 @@ gmond_conf_old="/etc/gmond.conf"
  
     if [ $OS == "AIX" ]; then
       echo "into AIX loop"
-      logger -t xCAT  -p local4.info  "into AIX loop"
+      logger -t xcat  -p local4.info  "into AIX loop"
       if [ -f  $gmond_conf_old ]; then
        echo "ganglia version 3.0.7"
-       logger -t xCAT  -p local4.info "ganglia version 3.0.7"
+       logger -t xcat  -p local4.info "ganglia version 3.0.7"
        grep "xCAT gmond settings done" $gmond_conf_old
          if [ $? -gt 0 ]; then
            /bin/cp -f $gmond_conf_old /etc/gmond.conf.orig
@@ -53,10 +53,10 @@ gmond_conf_old="/etc/gmond.conf"
 
     if [ $OS == "AIX" ]; then
       echo "into AIX new loop"
-      logger -t xCAT  -p local4.info "into AIX new loop"
+      logger -t xcat  -p local4.info "into AIX new loop"
       if [ -f  $gmond_conf ]; then
       echo "ganglia version v3.10"
-      logger -t xCAT  -p local4.info  "ganglia version v3.10"
+      logger -t xcat  -p local4.info  "ganglia version v3.10"
        grep "xCAT gmond settings done" $gmond_conf
          if [ $? -gt 0 ]; then
            /bin/cp -f $gmond_conf /etc/ganglia/gmond.conf.orig
@@ -78,7 +78,7 @@ gmond_conf_old="/etc/gmond.conf"
 
      if [ $OS != "AIX" ]; then
        echo "not AIX"
-       logger -t xCAT  -p local4.info "not AIX"
+       logger -t xcat  -p local4.info "not AIX"
      if [ -f  $gmond_conf ]; then
        grep "xCAT gmond settings done" $gmond_conf
          if [ $? -gt 0 ]; then
@@ -97,7 +97,7 @@ gmond_conf_old="/etc/gmond.conf"
 
  if [ $OS != "AIX" ]; then
        echo "not AIX"
-       logger -t xCAT  -p local4.info "not AIX"
+       logger -t xcat  -p local4.info "not AIX"
 
     if [ -f $gmond_conf_old ]; then
       grep "xCAT gmond settings done" $gmond_conf_old
@@ -117,13 +117,13 @@ fi
      if [ ! -f  $gmond_conf ]; then 
        #  echo "file not found"
           logger -t gmonfail "gmond configuration file not found"
-          logger -t xCAT  -p local4.warning "gmond configuration file not found"
+          logger -t xcat  -p local4.warning "gmond configuration file not found"
      fi
 
      if [ ! -f  $gmond_conf_old ]; then
        #  echo "file not found"
        logger -t gmonfail "gmond configuration file not found"
-          logger -t xCAT -p local4.warning "gmond configuration file not found"
+          logger -t xcat -p local4.warning "gmond configuration file not found"
      fi
 
 exit 0 

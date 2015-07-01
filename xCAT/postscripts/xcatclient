@@ -44,7 +44,7 @@ export USEOPENSSLFORXCAT
      done
    else
      ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/xcat_client_cred`
-     logger -t xCAT -p local4.err xcat_client_cred Error: $ERR_MSG
+     logger -t xcat -p local4.err xcat_client_cred Error: $ERR_MSG
      RETURNVAL=-1
    fi
    rm /tmp/xcat_client_cred

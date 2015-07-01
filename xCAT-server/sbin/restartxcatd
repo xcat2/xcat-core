@@ -73,11 +73,11 @@ if (xCAT::Utils->isLinux())
     xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC == 0) {
         print "[  OK  ]\n";
-        system ("logger -p local4.info -t xCAT Restart xcatd: [ OK ].");
+        system ("logger -p local4.info -t xcat Restart xcatd: [ OK ].");
         exit 0;
     } else {
         print "[ FAILED  ]\n";
-        system ("logger -p local4.info -t xCAT Restart xcatd: [ FAILED ].");
+        system ("logger -p local4.info -t xcat Restart xcatd: [ FAILED ].");
         exit 1;
     }
 } elsif (!(xCAT::Utils->isAIX())) {

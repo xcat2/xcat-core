@@ -225,7 +225,7 @@ if [ -e "/sbin/rsyslogd" -o -e "/usr/sbin/rsyslogd" ]; then
     if ( pmatch $SYSLOGPROD "*rsyslogd*" ) && ( pmatch $SYSLOGVER "8*" ); then
       config_rsyslog_V8 
       #keep a record
-      logger -t xCAT -p local4.info "Install: rsyslog version 8 setup"
+      logger -t xcat -p local4.info "Install: rsyslog version 8 setup"
       exit 0
     fi
 fi
@@ -451,5 +451,5 @@ else
 fi
 
 #keep a record
-logger -t xCAT -p local4.info "Install: syslog setup"
+logger -t xcat -p local4.info "Install: syslog setup"
 exit 0

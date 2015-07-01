@@ -16,7 +16,7 @@ if [ "$NODESETSTATE" = "netboot" -o \
      "$NODESETSTATE" = "statelite" -o \
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ]; then
-    logger -t xCAT -p local4.info "setuppostbootscripts: Nothing to do for stateless and statelite nodes."
+    logger -t xcat -p local4.info "setuppostbootscripts: Nothing to do for stateless and statelite nodes."
     exit 0
 fi
 
@@ -34,7 +34,7 @@ fi
 if [ -f $infofile ]; then
     value=`grep "RUNBOOTSCRIPTS=$RUNBOOTSCRIPTS" $infofile`
     if [[ -n $value ]]; then  # match
-      logger -t xCAT -p local4.info "setuppostbootscripts: xcatinfo uptodate, nothing to do."
+      logger -t xcat -p local4.info "setuppostbootscripts: xcatinfo uptodate, nothing to do."
       exit 0
     fi
 fi

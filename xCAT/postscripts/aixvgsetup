@@ -21,7 +21,7 @@ cmd="/usr/sbin/extendvg -f rootvg hdisk1"
 result=`$cmd 2>/dev/null` 
 rc=$?
 if [ $rc -ne 0 ]; then
-	logger -t xCAT -p local4.err  "Could not run $cmd, error = $rc"
+	logger -t xcat -p local4.err  "Could not run $cmd, error = $rc"
 	echo "Could not run $cmd, error = $rc"
 	exit 1
 fi
@@ -31,7 +31,7 @@ cmd="/usr/sbin/mirrorvg -S rootvg  hdisk1"
 result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then
-    logger -t xCAT  -p local4.err "Could not run $cmd, error = $rc"
+    logger -t xcat  -p local4.err "Could not run $cmd, error = $rc"
     echo "Could not run $cmd, error = $rc"
     exit 1
 fi
@@ -41,7 +41,7 @@ cmd="/usr/sbin/bosboot -ad /dev/hdisk1"
 result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then
-    logger -t xCAT -p local4.err  "Could not run $cmd, error = $rc"
+    logger -t xcat -p local4.err  "Could not run $cmd, error = $rc"
     echo "Could not run $cmd, error = $rc"
     exit 1
 fi
@@ -51,7 +51,7 @@ cmd="/usr/bin/bootlist -m normal hdisk0 hdisk1"
 result=`$cmd 2>/dev/null`
 rc=$?
 if [ $rc -ne 0 ]; then
-    logger -t xCAT -p local4.err  "Could not run $cmd, error = $rc"
+    logger -t xcat -p local4.err  "Could not run $cmd, error = $rc"
     echo "Could not run $cmd, error = $rc"
     exit 1
 fi

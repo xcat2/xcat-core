@@ -62,7 +62,7 @@ if (!$batch) {
 	    if ($attrName eq '"Status"') { $status = $attrValue; }
 	}
     }  else {
-	`logger -t xCAT -p local4.err  "[mon]: updatexcatnodestatus: This script does not handle condition $cond_name"`;
+	`logger -t xcat -p local4.err  "[mon]: updatexcatnodestatus: This script does not handle condition $cond_name"`;
 	exit 1;
     }
     my $status_string;
@@ -82,12 +82,12 @@ if (!$batch) {
     my $result=`$::XCATROOT/sbin/chtab node=$node nodelist.status=$status_string nodelist.statustime="$currtime" 2>&1`;
     my $code=$?;
     if ($code) {
-	`logger -t xCAT  -p local4.err "[mon]: Error saving node status ($node,$status_string) to xCAT:$result"`;
+	`logger -t xcat -p local4.err "[mon]: Error saving node status ($node,$status_string) to xCAT:$result"`;
 	exit $code;
     }
 } else { #batch event
     if ($cond_name ne "NodeReachability_Batch") {
-	`logger -t xCAT -p local4.err  "[mon]: updatexcatnodestatus: This script does not handle condition $cond_name"`;
+	`logger -t xcat -p local4.err  "[mon]: updatexcatnodestatus: This script does not handle condition $cond_name"`;
 	exit 1;
     }
     if ($ENV{ERRM_COND_BATCH_NUM} > 0) {
@@ -157,7 +157,7 @@ if (!$batch) {
 	    my $result=`XCATBYPASS=Y $::XCATROOT/bin/nodech $node_string nodelist.status=active nodelist.statustime="$currtime" 2>&1`;
 	    my $code=$?;
 	    if ($code) {
-		`logger -t xCAT -p local4.warning "[mon]: Error saving node status ($node_string,active) to xCAT:$result"`;
+		`logger -t xcat -p local4.warning "[mon]: Error saving node status ($node_string,active) to xCAT:$result"`;
 	    }
 	}
         if (@inactive > 0) {
@@ -176,7 +176,7 @@ if (!$batch) {
 
 	    my $code=$?;
 	    if ($code) {
-		`logger -t xCAT -p local4.warning  "[mon]: Error saving node status ($node_string,inactive) to xCAT:$result"`;
+		`logger -t xcat -p local4.warning  "[mon]: Error saving node status ($node_string,inactive) to xCAT:$result"`;
 	    }
 	}
     } 

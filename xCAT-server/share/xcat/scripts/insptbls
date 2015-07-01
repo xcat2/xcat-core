@@ -55,7 +55,7 @@ my $DBname = xCAT::Utils->get_DBName;
 if ($DBname ne "DB2") {
  
    print " Inspect of table only supported for DB2 database\n";
-   `logger -p local4.err -txcat "insptbls:Only supports DB2 database"` ;
+   `logger -p local4.err -t xcat "insptbls:Only supports DB2 database"` ;
     exit 1;
   
 }
@@ -66,7 +66,7 @@ if ($tablelist) {  # input list of tables
   @tablist = xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-   `logger  -p local4.err -txcat " insptbls:error in select tabname from syscat.tables"` ;
+   `logger -p local4.err -t xcat " insptbls:error in select tabname from syscat.tables"` ;
    exit 1;
   }
 }
@@ -106,26 +106,26 @@ foreach my $table (@tablist) {
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger  -p local4.warning -txcat " insptbls:error $cmd"`;
+    `logger -p local4.warning -t xcat " insptbls:error $cmd"`;
   } else {
-    `logger  -p local4.info -txcat " insptbls: $cmd"`;
+    `logger -p local4.info -t xcat " insptbls: $cmd"`;
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"INSPECT ROWCOMPESTIMATE TABLE NAME $table results keep $table.res;\"";
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger  -p local4.warning -txcat " insptbls:error INSPECT ROWCOMPESTIMATE TABLE NAME $table"`;
+    `logger -p local4.warning -t xcat " insptbls:error INSPECT ROWCOMPESTIMATE TABLE NAME $table"`;
   } else {
-    `logger  -p local4.info -txcat " insptbls: INSPECT ROWCOMPESTIMATE TABLE NAME $table"`;
+    `logger -p local4.info -t xcat " insptbls: INSPECT ROWCOMPESTIMATE TABLE NAME $table"`;
   }
   $cmd=" \"db2inspf $execdir$table.res /tmp/$table.out;\"";
   system("su - xcatdb -c $cmd");
 
   if ($? > 0)    # error
   {
-    `logger  -p local4.warning -txcat "insptbls:error db2inspf $table.res"`;
+    `logger -p local4.warning -t xcat "insptbls:error db2inspf $table.res"`;
   } else {
-    `logger  -p local4.info -txcat " insptbls:db2inspf $table.res"`;
+    `logger -p local4.info -t xcat " insptbls:db2inspf $table.res"`;
   }
 }
 exit 0;

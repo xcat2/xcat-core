@@ -58,10 +58,10 @@ start)
 
         # Run $SCRIPT according to node type
         if [ $STATELITE -ne 0 ]; then
-            logger -t xCAT -p local4.info "Call $SCRIPT for statelite mode"
+            logger -t xcat -p local4.info "Call $SCRIPT for statelite mode"
             "$SCRIPT" 4
         else
-            logger -t xCAT -p local4.info  "Call $SCRIPT for stateless mode"
+            logger -t xcat -p local4.info  "Call $SCRIPT for stateless mode"
             "$SCRIPT"
         fi
   ;;

@@ -59,7 +59,7 @@ chown $SUDOER:users $HOME/.ssh/authorized_keys
 
 
 # Restart the SSHD for syncfiles postscript to do the sync work
-logger -t xCAT -p local4.info "Restarting SSHD"
+logger -t xcat -p local4.info "Restarting SSHD"
 #if [ -f "/etc/debian_version" ];then
 #    service ssh restart
 #else

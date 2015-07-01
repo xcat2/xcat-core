@@ -90,7 +90,7 @@ sub process_request
       $notmpfiles=1;  # no tmp files and no files 
       $nofiles=1; # do not create /tftpboot/mypostscript/mypostscript.<nodename>
       @scriptcontents = xCAT::Postage::makescript([$client],$state,$callback,$notmpfiles,$nofiles);
-       `logger -t xCAT -p local4.info "getpostscript: sending data"` ;
+       `logger -t xcat -p local4.info "getpostscript: sending data"` ;
        $rsp->{data} = \@scriptcontents;
        $callback->($rsp);
     } else {  # version 2, make files, do not return array

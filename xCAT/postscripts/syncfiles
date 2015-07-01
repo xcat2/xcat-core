@@ -10,7 +10,7 @@
 # do nothing when UPDATENODE=1 because it is done from the top down
 if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    #echo "  Did not sync any files. Use updatenode -F to sync the files."
-   logger -t xCAT -p local4.err "$0: Did not sync any files. Use updatenode -F to sync the files."
+   logger -t xcat -p local4.err "$0: Did not sync any files. Use updatenode -F to sync the files."
   
    exit 0
 fi
@@ -18,17 +18,17 @@ fi
 #do nothing id there is no sync file template for the node
 if [ -n "$NOSYNCFILES" ] && [ $NOSYNCFILES -eq 1 ]; then
    echo "  Did not sync any files."
-   logger -t xCAT -p local4.err "$0: there is no sync file template for the node"
+   logger -t xcat -p local4.err "$0: there is no sync file template for the node"
    exit 0
 fi
 
-logger -t xCAT -p local4.info "Performing syncfiles postscript"
+logger -t xcat -p local4.info "Performing syncfiles postscript"
 
 osname=`uname`
 # run the xdcp on the MN/SN
 xcatpostdir="/xcatpost"
 
-logger -t xCAT -p local4.info "$0: the OS name = $osname"
+logger -t xcat -p local4.info "$0: the OS name = $osname"
 quit="no"
 count=5
 while [ $quit = "no" ]; do
@@ -54,9 +54,9 @@ done
 
 if [ $returncode -eq 0 ]
 then
-  logger -t xCAT -p local4.info "$0: Perform Syncing File action successfully"
+  logger -t xcat -p local4.info "$0: Perform Syncing File action successfully"
 else
-  logger -t xCAT -p local4.err "$0: Perform Syncing File action encountered error"
+  logger -t xcat -p local4.err "$0: Perform Syncing File action encountered error"
 fi
 
 exit 0

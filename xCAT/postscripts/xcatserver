@@ -47,12 +47,12 @@ sleep 1
 mkdir -p /etc/xcat/cert
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+  logger -t xcat -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
  /$xcatpost/xcatflowrequest $master 3001
  rc=$?
- logger -t xCAT -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
+ logger -t xcat -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
  if [ $rc -ne 0 ]; then
-      logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+      logger -t xcat -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
  fi
 
@@ -64,7 +64,7 @@ getcredentials.awk xcat_server_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/
 grep -E '<error>' /etc/xcat/cert/server-cred.pem
 if [ $? -ne 0 ]; then
         #the message received is the data
-   logger -t xCAT -p local4.info "xcatserver: getting server-cred.pem"
+   logger -t xcat -p local4.info "xcatserver: getting server-cred.pem"
     MAX_RETRIES=10
     RETRY=0
     MYCONT=`cat /etc/xcat/cert/server-cred.pem` 
@@ -84,12 +84,12 @@ if [ $? -ne 0 ]; then
                 fi
                 if [ $useflowcontrol = "1" ]; then
                   #first contact daemon  xcatflowrequest <server> 3001
-                  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+                  logger -t xcat -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
                   /$xcatpost/xcatflowrequest $master 3001
                   rc=$?
-                  logger -t xCAT -p local4.info "xcatserver:xcatflowrequest return=$rc"
+                  logger -t xcat -p local4.info "xcatserver:xcatflowrequest return=$rc"
                   if [ $rc -ne 0 ]; then
-                    logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+                    logger -t xcat -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
                     useflowcontrol=0
                   fi
                 fi
@@ -103,7 +103,7 @@ if [ $? -ne 0 ]; then
 else  # error from first getcredential call
         #the message received is an error from credentials.pm, so parse it
         ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /etc/xcat/cert/server-cred.pem`
-        logger -t xCAT -p local4.err xcatserver: $ERR_MSG
+        logger -t xcat -p local4.err xcatserver: $ERR_MSG
         rm /etc/xcat/cert/server-cred.pem 
 fi
 
@@ -111,12 +111,12 @@ fi
 
 if [ $useflowcontrol = "1" ]; then
   #first contact daemon  xcatflowrequest <server> 3001
-  logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+  logger -t xcat -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
  /$xcatpost/xcatflowrequest $master 3001
  rc=$?
- logger -t xCAT -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
+ logger -t xcat -p local4.info "xcatserver:xcatflowrequest received response return=$rc"
  if [ $rc -ne 0 ]; then
-    logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+    logger -t xcat -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
     useflowcontrol=0
  fi
 
@@ -127,7 +127,7 @@ getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -
 grep -E '<error>' /etc/xcat/cfgloc
 if [ $? -ne 0 ]; then
         #the message received is the data
-   logger -t xCAT -p local4.info "xcatserver: getting cfgloc"
+   logger -t xcat -p local4.info "xcatserver: getting cfgloc"
     MAX_RETRIES=10
     RETRY=0
     MYCONT=`cat /etc/xcat/cfgloc` 
@@ -147,12 +147,12 @@ if [ $? -ne 0 ]; then
       fi
       if [ $useflowcontrol = "1" ]; then
          #first contact daemon  xcatflowrequest <server> 3001
-         logger -t xCAT -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
+         logger -t xcat -p local4.info "xcatserver: sending xcatflowrequest $master 3001"
          /$xcatpost/xcatflowrequest $master 3001
          rc=$?
-         logger -t xCAT -p local4.info "xcatserver:xcatflowrequest return=$rc"
+         logger -t xcat -p local4.info "xcatserver:xcatflowrequest return=$rc"
          if [ $rc -ne 0 ]; then
-           logger -t xCAT -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
+           logger -t xcat -p local4.info "xcatserver: error from xcatflowrequest, will not use flow control"
            useflowcontrol=0
          fi
       fi
@@ -178,7 +178,7 @@ if [ $? -ne 0 ]; then
 else  # error from first getcredentials call
         #the message received is an error from credentials.pm, so parse it
         ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /etc/xcat/cfgloc`
-        logger -t xCAT -p local4.err xcatserver: $ERR_MSG
+        logger -t xcat -p local4.err xcatserver: $ERR_MSG
         rm /etc/xcat/cfgloc
 fi
 

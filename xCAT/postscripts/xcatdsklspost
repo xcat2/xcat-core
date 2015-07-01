@@ -23,7 +23,7 @@ update_VPD()
 {
     if [ -f /usr/sbin/vpdupdate ]; then
         vpdupdate
-	logger -t xCAT -p local4.info "xcatdsklspost: updating VPD database"
+	logger -t xcat -p local4.info "xcatdsklspost: updating VPD database"
     fi
 }
 
@@ -75,7 +75,7 @@ download_postscripts()
          fi
 
 	retry=$(($retry+1))
-        logger -t xCAT -p local4.err "download_postscripts retry $retry"
+        logger -t xcat -p local4.err "download_postscripts retry $retry"
 	if [ $retry -eq $max_retries ]; then
             break
 	fi
@@ -228,7 +228,7 @@ if [ ! `uname` = Linux ]; then
    cp /xcatmnt/xcataixpost /$xcatpost
    umount /xcatmnt
    rmdir /xcatmnt
-  logger -t xCAT -p local4.err "Running xcataixpost $*"
+  logger -t xcat -p local4.err "Running xcataixpost $*"
   # note not supporting -F or -V on AIX
   echo "/$xcatpost/xcataixpost $1 $2 $3 '"$4"' $5 $6 $7 $8 $9 ${10} ${11}"
   exec /$xcatpost/xcataixpost $1 $2 $3 "$4" $5 $6 $7 $8 $9 ${10} ${11} 
@@ -274,7 +274,7 @@ if [ "$MODE" = "4" ]; then # for statelite mode
     else
         echo "xCAT management server IP can't be determined.";
 	echo "exiting...";
-        logger -t xCAT -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
+        logger -t xcat -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
 
@@ -326,7 +326,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
         if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then # updatenode 
             hn=`hostname`
             echo "Cannot download the postscripts from $SIP  for $hn check /tmp/wget.log on the node."
-            logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
+            logger -t xcat -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
             exit  
         fi
 
@@ -404,7 +404,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     if [ $downloaded -eq 0 ]; then
         hn=`hostname`
         echo "Cannot download the postscripts from the xCAT server for node $hn"
-        logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
+        logger -t xcat -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
         exit  
     fi
 
@@ -500,12 +500,12 @@ fi
 if [ ! -x /$xcatpost/mypostscript ]; then
   if [ $useflowcontrol = "1" ]; then
     # first contact daemon  xcatflowrequest <server> 3001
-    logger -t xCAT -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
+    logger -t xcat -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
    /$xcatpost/xcatflowrequest $SIP 3001
    rc=$?
-   logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+   logger -t xcat -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
    if [ $rc -ne 0 ]; then
-      logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+      logger -t xcat -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
    fi 
   fi
@@ -531,12 +531,12 @@ if [ ! -x /$xcatpost/mypostscript ]; then
 
     if [ $useflowcontrol = "1" ]; then
       # contact daemon  xcatflowrequest <server> 3001
-      logger -t xCAT -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
+      logger -t xcat -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
       /$xcatpost/xcatflowrequest $SIP 3001
       rc=$?
-      logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+      logger -t xcat -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
       if [ $rc -ne 0 ]; then
-        logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+        logger -t xcat -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
         useflowcontrol=0
       fi 
     fi
