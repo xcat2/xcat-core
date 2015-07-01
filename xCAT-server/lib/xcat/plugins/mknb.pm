@@ -61,6 +61,13 @@ sub process_request {
       $callback->({error=>"Unable to find directory $::XCATROOT/share/xcat/netboot/$arch or $::XCATROOT/share/xcat/netboot/genesis/$arch",errorcode=>[1]});
       return;
    }
+   my $configfileonly = $request->{arg}->[1];
+   if ($configfileonly and $configfileonly ne "-c" and $configfileonly ne "--configfileonly") {
+      $callback->({error=>"The option $configfileonly is not supported", errorcode=>[1]}) ;
+      return;
+   } elsif ($configfileonly) {
+      goto CREAT_CONF_FILE;
+   }
    unless ( -r "/root/.ssh/id_rsa.pub" ) {
       if (-r "/root/.ssh/id_rsa") {
          $callback->({data=>["Extracting ssh public key from private key"]});
@@ -155,11 +162,17 @@ sub process_request {
        $callback->({data=>["Creating filesystem file in $tftpdir/xcat failed"]});
        return;
    }
+
+CREAT_CONF_FILE:
    my $hexnets = xCAT::NetworkUtils->my_hexnets();
    my $normnets = xCAT::NetworkUtils->my_nets();
    my $consolecmdline;
    if (defined($serialport) and $serialspeed) {
-       $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";
+       if ($arch =~ /ppc/) {
+           $consolecmdline = "console=tty0 console=hvc$serialport,$serialspeed";
+       } else {
+           $consolecmdline = "console=tty0 console=ttyS$serialport,$serialspeed";
+       }
       if ($serialflow =~ /cts/ or $serialflow =~ /hard/) {
          $consolecmdline .= "n8r";
       } 
@@ -293,9 +306,9 @@ sub process_request {
       }
    }
 
-
-   
-
+   if ($configfileonly) {
+       $callback->({data=>["Write netboot config file done"]});
+   }
 }
 
 1;
