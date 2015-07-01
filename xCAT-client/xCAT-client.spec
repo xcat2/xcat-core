@@ -338,7 +338,6 @@ XCATROOT=$RPM_INSTALL_PREFIX0
 PATH=\$XCATROOT/bin:\$XCATROOT/sbin:\$XCATROOT/share/xcat/tools:$PATH
 MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
-export XCATSSLVER=TLSv1
 " >>/etc/profile
 fi
 %endif
