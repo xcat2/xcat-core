@@ -420,8 +420,16 @@ sub testVersion_deb
       if ($::VERBOSE) {
            print "dpkg --compare-versions $version1 $operator $version2 \n";
         }
-      my $result =`dpkg --compare-versions $version1 $operator $version2`;
-
+      my $cmd ="dpkg --compare-versions $version1 $operator $version2";
+      my $outref = [];
+      my $result = 0;
+      @$outref = `$cmd 2>&1`;
+      $result = $? ;
+      if ($result)
+      {    
+         $result = $result >> 8;
+      }
+      
       return $result;
 
 }
