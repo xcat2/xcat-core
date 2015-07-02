@@ -75,8 +75,15 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
     fi
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
+        declare -a ipaddrs=`ip addr | grep 'inet' | awk {'print $2'} | cut -d/ -f1 | grep -v : | tr '\n' ' '`
+        for IP in ${ipaddrs[*]}; do 
+            if [[ "${CONSERVER}" == "${IP}" ]]; then 
+                # conserver is the same node, do not connect using -s
+                CONSERVER=""
+                break
+            fi
+        done
     fi
-    
     if [ -z "$CONSERVER" ]; then
 	CONSERVER=$XCATHOST
     fi
