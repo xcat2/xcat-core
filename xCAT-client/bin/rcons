@@ -65,7 +65,12 @@ if [ "$CONSOLE_SERVICE_KEYWORD" == "consoleservice" ]; then
 fi
 
 if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/usr/bin/confetty" ] || [ -x "/usr/local/bin/confetty" ]); then
-    #use confluent
+    # use confluent, make sure conserver is not also running
+    CONSERVER_RC=`service conserver status >> /dev/null; echo $?`
+    if [[ ${CONSERVER_RC} == 0 ]]; then 
+        echo "Error: consoleservice is set to 'confluent' but conserver is running.  Stop conserver, run makeconfluentcfg, and retry..."
+        exit 1
+    fi
     CONFETTY="confetty"
     if [ -x "/opt/confluent/bin/confetty" ]; then
 	CONFETTY="/opt/confluent/bin/confetty"
@@ -92,7 +97,13 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
     fi
     $CONFETTY $CONSCONTROLPATH $CONSERVER  $1
 elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
-    #use conserver
+    # use conserver, make sure confluent is not also running
+    CONFLUENT_RC=`service confluent status >> /dev/null; echo $?`
+    if [[ ${CONFLUENT_RC} == 0 ]]; then 
+        echo "Error: consoleservice is set to 'conserver' but confluent is running.  Stop confluent, run makeconservercf, and retry..."
+        exit 1
+    fi
+
     if [ -z "$CONSERVER" ]; then
         CONSERVER=`nodels $1 nodehm.conserver 2>/dev/null | awk -F: '{print $2}' | tr -d ' '`
     fi
