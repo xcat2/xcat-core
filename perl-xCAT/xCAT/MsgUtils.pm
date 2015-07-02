@@ -470,7 +470,7 @@ sub message
     {
         # If they want this msg to also go to syslog, do that now
         eval {
-            openlog("xCAT", "nofatal,pid", "local4");
+            openlog("xcat", "nofatal,pid", "local4");
             if ($sev eq 'SE') {
               syslog("err", $rsp);
             } else {
@@ -516,7 +516,7 @@ sub message
             {
                 print $stdouterrf "Unable to open auditlog\n";
                 eval {
-                    openlog("xCAT", "nofatal,pid", "local4");
+                    openlog("xcat", "nofatal,pid", "local4");
                     syslog("err", "Unable to write to auditlog");
                     closelog();
                 };
@@ -533,7 +533,7 @@ sub message
         {    # error
             print $stdouterrf "Unable to open auditlog\n";
             eval {
-                openlog("xCAT", "nofatal,pid", "local4");
+                openlog("xcat", "nofatal,pid", "local4");
                 syslog("err", "Unable to open auditlog");
                 closelog();
             };

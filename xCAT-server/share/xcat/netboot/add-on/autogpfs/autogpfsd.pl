@@ -369,7 +369,7 @@ sub logger {
 	my $msg = shift;
 
 	setlogsock('unix');
-	openlog('autogpfsd','','local0');
+	openlog('xcat','','local0');
 	syslog($type,$msg);
 	closelog();
 

@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
         if (strcmp(argv[i], "-V") == 0) {
             verbose = 1;
             setlogmask(LOG_UPTO(LOG_DEBUG));
-            openlog("proxydhcp", LOG_NDELAY, LOG_LOCAL0);
+            openlog("xcat", LOG_NDELAY, LOG_LOCAL0);
         }
     }
 
@@ -276,7 +276,3 @@ int main(int argc, char *argv[]) {
 
     if (verbose) { closelog();}
 }
-
-
-	
-	

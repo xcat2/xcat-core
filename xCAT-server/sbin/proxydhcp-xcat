@@ -34,7 +34,7 @@ if ($tobedaemon) {
 }
 
 # open syslog 
-openlog("proxydhcp", "nofatal", "local4");
+openlog("xcat", "nofatal", "local4");
 
 my $socket;
 my $retry = 5;

@@ -137,7 +137,7 @@ sub process_request {
     my $doreq = shift;
     my $node = $request->{node}->[0];
     my $clientip = $request->{'_xcat_clientip'};
-    openlog("xCAT node discovery",'','local0');
+    openlog("xcat",'','local0');
   
     
     #First, fill in tables with data fields..

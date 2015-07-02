@@ -81,7 +81,7 @@ function submit_request($req, $skipVerify, $opts_array){
 
     // Open syslog, include the process ID and also send the log to standard error,
     // and use a user defined logging mechanism
-    openlog("xCAT-UI", LOG_PID | LOG_PERROR, LOG_LOCAL0);
+    openlog("xcat", LOG_PID | LOG_PERROR, LOG_LOCAL0);
 
     // Open a socket to xcatd
     syslog(LOG_INFO, "Opening socket to xcatd...");

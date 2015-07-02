@@ -124,7 +124,7 @@ sub logger {
 	my $msg = shift;
 
 	setlogsock('unix');
-	openlog('autogpfsc','','local0');
+	openlog('xcat','','local0');
 	syslog($type,$msg);
 	closelog();
 }
