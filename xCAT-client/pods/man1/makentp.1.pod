@@ -6,12 +6,12 @@ B<makentp> - Setup NTP server on the management node and the service node.
 
 =head1 SYNOPSIS
 
-I<switchdiscover [-h|--help]>
+I<makentp [-h|--help]>
 
-I<switchdiscover [-v|--version]>
+I<makentp [-v|--version]>
 
 
-I<switchdiscover [-a|--all] [-V|--verbose]>
+I<makentp [-a|--all] [-V|--verbose]>
 
 
 

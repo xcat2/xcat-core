@@ -111,9 +111,9 @@ restrict 127.0.0.1" >>$conf_file
     #ntpdate program is deprecated on SuSE
     if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
         if [ -f /usr/sbin/rcntpd ]; then
-            cmd="rcntpd ntptimeset"
+            cmd="/usr/sbin/rcntpd ntptimeset"
         elif [ -f /usr/sbin/rcntp ]; then
-            cmd="rcntp ntptimeset"
+            cmd="/usr/sbin/rcntp ntptimeset"
         else
             cmd="sntp -P no -r $ntp_master"
         fi

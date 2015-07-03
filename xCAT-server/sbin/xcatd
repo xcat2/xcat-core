@@ -110,7 +110,7 @@ use xCAT::ExtTab;
 use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
-openlog("xcatd",,"local4");
+openlog("xcat",,"local4");
 # turn off warnings for call to setlogsock.  puts out warning message if
 #   syslog tcp port not defined in /etc/services.  this can safely be ignored.
 no warnings;
@@ -671,7 +671,7 @@ sub do_udp_service { #This function opens up a UDP port
       sleep 0.05;
   }
 
-  openlog("xCAT UDP",'','local4');
+  openlog("xcat",'','local4');
   unless ($socket) {
      xCAT::MsgUtils->message("S","xCAT UDP service unable to open port $port: $!");
     closelog();
@@ -1050,7 +1050,7 @@ $chrselect->add($chreadpipe);
 my $peername;
 my $ssltimeout;
 my $retry=1;
-openlog("xCAT SSL","","local4");
+openlog("xcat","","local4");
 my $listener;
 my $mainpidfile;
 $SIG{USR2} = sub { 

@@ -116,13 +116,11 @@ fi
 
      if [ ! -f  $gmond_conf ]; then 
        #  echo "file not found"
-          logger -t gmonfail "gmond configuration file not found"
           logger -t xcat  -p local4.warning "gmond configuration file not found"
      fi
 
      if [ ! -f  $gmond_conf_old ]; then
        #  echo "file not found"
-       logger -t gmonfail "gmond configuration file not found"
           logger -t xcat -p local4.warning "gmond configuration file not found"
      fi
 

@@ -757,6 +757,18 @@ my %URIdef = (
                 fhandler => \&common,
             },
         },
+        #### definition for mknb <ppc64|x86_64> [-c]
+        nbimage => {
+            desc => "[URI:/nbimage] - Create netboot root image for specified arch.",
+            matcher => '^/services/nbimage/arch/[ppc64|x86_64]',
+            POST => {
+                desc => "creates a network boot root image",
+                usage => "|$usagemsg{objchparam} DataBody: {\"onlyconfigfile\":\"[true|yes|Y|1]|[false|no|N|0]\"}.|$usagemsg{non_getreturn}|",
+                example => "|Create a network boot root iamge for the specified arch|",
+                cmd => "mknb",
+                fhandler => \&actionhdl,
+            },
+        },
     },
     
     #### definition for network resources
@@ -2064,6 +2076,20 @@ sub actionhdl {
                 push @args, ('-n', $paramhash->{'newNode'});
             }
         }
+    } elsif ($params->{'resourcename'} eq "nbimage") {
+        delete $request->{noderange};
+        push @args, $urilayers[3];
+        if (isPost()) {
+            if (defined($paramhash->{'onlyconfigfile'})) {
+                my $tmp_value = $paramhash->{'onlyconfigfile'};
+                if ($tmp_value =~ /true|yes|Y|1/i) {
+                    push @args, "-c";     
+                } elsif ($tmp_value !~ /false|no|N|0/i) {
+                    error ("Option value \"$tmp_value\" invalid.", $STATUS_BAD_REQUEST, 3);
+                }
+            }
+        }
+
     }
 
     push @{$request->{arg}}, @args;  

@@ -306,7 +306,7 @@ if ($LOG || (keys(%hashL)==0)) {
   if ($briefmsg) { $body=$briefmsg;} 
   else { $body=$message; }
 
-  openlog("xCATMon Event","","local4");  
+  openlog("xcat","","local4");  
   if ($severity_type eq "Informational") {
     syslog("local4|info", "$head\n$body\n");
   } else {

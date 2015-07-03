@@ -19,6 +19,7 @@ sub process_request {
    my $serialport;
    my $serialspeed;
    my $serialflow;
+   my $initrd_file = undef;
    my $xcatdport = 3001;
    #if ($sitetab) {
       #my $portent = $sitetab->getAttribs({key=>'defserialport'},'value');
@@ -130,7 +131,6 @@ sub process_request {
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
-   my $initrd_file = undef;
    my $lzma_exit_value=1;
    if ($invisibletouch) {
        my $done=0;
@@ -164,6 +164,22 @@ sub process_request {
    }
 
 CREAT_CONF_FILE:
+   if ($configfileonly) {
+      unless (-e "$tftpdir/xcat/genesis.kernel.$arch") {
+         $callback->({error=>["No kernel file found in $tftpdir/xcat, pls run \"mknb $arch\" instead."],errorcode=>[1]});
+         return;
+      }
+      if (-e "$tftpdir/xcat/genesis.fs.$arch.lzma") {
+         $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.lzma";
+      } elsif (-e "$tftpdir/xcat/genesis.fs.$arch.gz") {
+         $initrd_file = "$tftpdir/xcat/genesis.fs.$arch.gz";
+      } elsif (-e "$tftpdir/xcat/nbfs.$arch.gz") {
+         $initrd_file = "$tftpdir/xcat/nbfs.$arch.gz";
+      } else {
+         $callback->({error=>["No filesystem file found in $tftpdir/xcat, pls run \"mknb $arch\" instead."],errorcode=>[1]});
+         return;
+      }
+   }
    my $hexnets = xCAT::NetworkUtils->my_hexnets();
    my $normnets = xCAT::NetworkUtils->my_nets();
    my $consolecmdline;
@@ -305,7 +321,6 @@ CREAT_CONF_FILE:
          close($cfgfile);
       }
    }
-
    if ($configfileonly) {
        $callback->({data=>["Write netboot config file done"]});
    }

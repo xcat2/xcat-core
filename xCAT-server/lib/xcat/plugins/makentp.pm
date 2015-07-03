@@ -324,9 +324,9 @@ sub process_request {
         my $cmd;
         if ($os =~ /sles/) {
             if (-f "/usr/sbin/rcntpd") {
-                $cmd = "rcntpd ntptimeset";
+                $cmd = "/usr/sbin/rcntpd ntptimeset";
             } elsif (-f "/usr/sbin/rcntp") {
-                $cmd = "rcntp ntptimeset";
+                $cmd = "/usr/sbin/rcntp ntptimeset";
             } else {
                 $cmd = "sntp -P no -r $ntp_master";
             }
