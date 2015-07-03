@@ -230,13 +230,23 @@ if [ "$GIT" = "1" ]; then
             exit 3
         fi
         if [ -z "$GITUP" ]; then
-            GITUP=../coregitup
-            echo "git pull > $GITUP"
-            git pull > $GITUP
-            if [[ $? != 0 ]]; then
-                # do not continue so we do not build with old files
-                echo "The 'git pull' command failed.  Exiting the build."
-                exit 3
+            if [ ! -z "$COMMITID" ]; then
+                echo "git checkout $COMMITID"
+                git checkout $COMMITID
+                if [[ $? != 0 ]]; then
+                    # do not continue so we do not build with old files
+                    echo "The 'git checkout' command failed.  Exiting the build."
+                    exit 3
+                fi
+            else
+                GITUP=../coregitup
+                echo "git pull > $GITUP"
+                git pull > $GITUP
+                if [[ $? != 0 ]]; then
+                    # do not continue so we do not build with old files
+                    echo "The 'git pull' command failed.  Exiting the build."
+                    exit 3
+                fi
             fi
         fi
         if ! $GREP 'Already up-to-date' $GITUP; then
