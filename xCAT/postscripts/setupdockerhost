@@ -77,60 +77,36 @@ if ! docker ps >/dev/null 2>&1; then
 fi
 
 #Setup TLS 
-if [ ! -d /etc/xcat ]; then
-    mkdir -p /etc/xcat
-    mkdir -p /etc/xcat/tool
-    mkdir -p /etc/xcat/ca
-    mkdir -p /etc/xcat/ca/private
-    mkdir -p /etc/xcat/ca/certs
-fi
 master=$MASTER
 if ! ping $master -c 1 > /dev/null 2>&1 ; then  
     echo "Host $master is not reachable"
     exit 1
 fi 
-scp $master:/opt/xcat/share/xcat/scripts/setup-server-cert.sh /etc/xcat/tool/
-scp $master:/etc/xcat/ca/openssl.cnf /etc/xcat/ca
-scp $master:/etc/xcat/ca/private/* /etc/xcat/ca/private/  #The private key must be xCAT MN private key
 
-if [ ! -e /etc/xcat/tool/setup-server-cert.sh ]; then
-    echo "Get cert creating tool Failed"
-    exit 1
-fi
-chmod +x /etc/xcat/tool/setup-server-cert.sh
-cp /xcatpost/ca/ca-cert.pem /etc/xcat/ca/
-touch /etc/xcat/ca/index
-echo "00" > /etc/xcat/ca/serial
-# Need to add -batch for openssl ca to not prompt anything
-/etc/xcat/tool/setup-server-cert.sh `hostname`
-
-if [ ! -e /etc/xcat/cert/server-key.pem -o ! -e /etc/xcat/cert/server-cert.pem ]; then
-    echo "Setup server certification failed"
-    exit 1
-fi
-
-if [ ! -d /root/.docker/ ];then
+if [ ! -d /root/.docker ]; then
     mkdir -p /root/.docker
 fi
-CN_CA_PEM="/root/.docker/ca-cert.pem"
-CN_KEY_PEM="/root/.docker/key.pem"
-CN_CERT_PEM="/root/.docker/cert.pem"
-cp /etc/xcat/ca/ca-cert.pem $CN_CA_PEM
-cp /etc/xcat/cert/server-key.pem $CN_KEY_PEM
-cp /etc/xcat/cert/server-cert.pem $CN_CERT_PEM
 
-#DOCKER_OPTS="-b=mydocker0 -H tcp://c910f03c04k03:2375 --tls --tlscacert=/root/.docker/ca-cert.pem --tlscert=/root/.docker/cert.pem --tlskey=/root/.docker/key.pem --tlsverify=true"
-# 3 scenarios
-# 1. No DOCKER_OPTS ====> add DOCKER_OPTS="-b=$dockerbr" line
-# 2. Have DOCKER_OPTS but no "-b" parameter ====> append "-b=$dockerbr" to DOCKER_OPTS
-# 3. Have "-b" parameter in DOCKER_OPTS ====> replace "-b=xxx" with "-b=$dockerbr"
+HOST_CA_PEM="/root/.docker/ca-cert.pem"
+HOST_KEY_PEM="/root/.docker/dockerhost-key.pem"
+HOST_CERT_PEM="/root/.docker/dockerhost-cert.pem"
+
+scp $master:/etc/xcatdockerca/cert/dockerhost-cert.pem $HOST_CERT_PEM
+scp $master:/etc/xcatdockerca/cert/dockerhost-key.pem $HOST_KEY_PEM
+scp $master:/etc/xcatdockerca/cert/ca-cert.pem $HOST_CA_PEM
+
+if [ ! -e $HOST_CA_PEM -o ! -e $HOST_KEY_PEM -o ! -e $HOST_CERT_PEM ];then
+    echo "Can not get dockerhost certificate files"
+    exit 1
+fi
+
 docker_conf_file="/etc/default/docker"
 if [ ! -f "$docker_conf_file" ]; then
     echo "Error: file $docker_conf_file not exist"
     exit 1
 fi
 if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
-    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=/root/.docker/ca-cert.pem --tlscert=/root/.docker/cert.pem --tlskey=/root/.docker/key.pem --tlsverify=true\"" >> $docker_conf_file
+    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_KEY_PEM --tlsverify=true\"" >> $docker_conf_file
 else
     if grep "^DOCKER_OPTS.*tlsverify" $docker_conf_file > /dev/null 2>&1; then
         sed -i "s@-H [^ |^\"]*@@g" $docker_conf_file
@@ -141,9 +117,7 @@ else
         sed -i "s@--tls@@g" $docker_conf_file
         sed -i "s@\ \{2,\}@@g" $docker_conf_file
     fi 
-    cat $docker_conf_file
-    #sed -i "s/^\(DOCKER_OPTS\=\"[^\"]*\"\)/\1 -H tcp:\/\/`hostname`:2375 --tls --tlscacert=\/root\/.docker\/ca-cert.pem --tlscert=\/root\/.docker\/cert.pem --tlskey=\/root\/.docker\/key.pem --tlsverify=true\"/" $docker_conf_file
-    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$CN_CA_PEM --tlscert=$CN_CERT_PEM --tlskey=$CN_KEY_PEM --tlsverify=true\"@" $docker_conf_file
+    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_KEY_PEM --tlsverify=true\"@" $docker_conf_file
     sed -i 's/\"\{2,\}/"/' $docker_conf_file
 fi
 

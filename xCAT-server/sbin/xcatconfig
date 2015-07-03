@@ -1620,10 +1620,7 @@ sub genCredentials
         xCAT::MsgUtils->message('E',
                        "Could not create $::INSTALLDIR/postscripts/ca directory.");
     }
-    else
-    {
-        verbose("Created $::INSTALLDIR/postscripts/ca directory.");
-    }
+
     $cmd = "/bin/cp -p /etc/xcat/ca/ca-cert.pem $::INSTALLDIR/postscripts/ca/ca-cert.pem";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
@@ -1661,6 +1658,17 @@ sub genCredentials
               xCAT::MsgUtils->message('E', "Could not create policy definition.$chtabcmds.");
             }
          }
+        }
+    }
+    if ((! -d "/etc/xcatdockerca/cert") || $::FORCE || $::genCredentials) {
+        my $cmd = "echo 'y\ny\ny\ny' |$::XCATROOT/share/xcat/scripts/setup-dockerhost-cert.sh";
+        verbose("Running $cmd");
+        my $rc = system($cmd);
+        if ($rc >> 8) {
+            xCAT::MsgUtils->message('E',
+                        "Could not create xCAT dockerhost certificate in /etc/xcatdockerca/cert.");
+        } else {
+            verbose("Create xCAT dockerhost certificate in /etc/xcatdockerca/cert directory.");
         }
     }
 
