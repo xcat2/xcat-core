@@ -249,8 +249,10 @@ if [ "$GIT" = "1" ]; then
                 fi
             fi
         fi
-        if ! $GREP 'Already up-to-date' $GITUP; then
-            SOMETHINGCHANGED=1
+        if [ -f "$GITUP" ]; then
+            if ! $GREP 'Already up-to-date' $GITUP; then
+                SOMETHINGCHANGED=1
+            fi
         fi
     fi
 else
