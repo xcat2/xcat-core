@@ -43,6 +43,13 @@
 UPLOADUSER=litingt
 FRS=/home/frs/project/x/xc/xcat
 
+if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
+    echo "Usage:"
+    echo "      ./buildcore.sh [-h | --help]"
+    echo "      ./buildcore.sh [UP=1] [RPMSIGN=1] [EMBED=<embedded-environment>] [COMMITID=<id>] [GITPULL=0]"
+    exit 0
+fi
+
 # For users to build from source code, simply run ./buildcore.sh
 #  1. Do not sign RPM by default
 #  2. Build all packages by default
@@ -73,51 +80,51 @@ FSMLINK=""
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
-	# upper case the variable name
-	varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
-	export $varstring
+    # upper case the variable name
+    varstring=`echo "$i"|cut -d '=' -f 1|tr '[a-z]' '[A-Z]'`=`echo "$i"|cut -d '=' -f 2`
+    export $varstring
 done
 if [ "$VERBOSE" = "1" -o "$VERBOSE" = "yes" ]; then
-	set -x
-	VERBOSEMODE=1
+    set -x
+    VERBOSEMODE=1
 fi
 
 # Find where this script is located to set some build variables
 cd `dirname $0`
 # strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
 if [ -z "$REL" ]; then
-	curdir=`pwd`
-	D=${curdir%/src/xcat-core}
-	REL=`basename $D`
+    curdir=`pwd`
+    D=${curdir%/src/xcat-core}
+    REL=`basename $D`
 fi
 OSNAME=$(uname)
 
 if [ "$OSNAME" != "AIX" ]; then
-	GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
-	
+    GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
+    
         if [ "$(id -u)" == "0" ]; then
-	    # Get a lock, so can not do 2 builds at once
-	    exec 8>/var/lock/xcatbld-$REL.lock
-	    if ! flock -n 8; then
+        # Get a lock, so can not do 2 builds at once
+        exec 8>/var/lock/xcatbld-$REL.lock
+        if ! flock -n 8; then
                 echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
                 exit 1
-	    fi
-	    # This is so rpm and gpg will know home, even in sudo
-	    export HOME=/root
+        fi
+        # This is so rpm and gpg will know home, even in sudo
+        export HOME=/root
         fi
 fi
 
 # for the git case, query the current branch and set REL (changing master to devel if necessary)
 function setbranch {
-	REL=`git name-rev --name-only HEAD`
-	if [ "$REL" = "master" ]; then
-		REL="devel"
-	fi
+    REL=`git name-rev --name-only HEAD`
+    if [ "$REL" = "master" ]; then
+        REL="devel"
+    fi
 }
 
-if [ "$REL" = "xcat-core" ]; then	# using git
-	GIT=1
-	setbranch			# this changes the REL variable
+if [ "$REL" = "xcat-core" ]; then    # using git
+    GIT=1
+    setbranch            # this changes the REL variable
 fi
 
 YUMDIR=$FRS
@@ -125,50 +132,50 @@ YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
 
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
-	EMBEDDIR="/$EMBED"
-	if [ "$EMBED" = "zvm" ]; then
-		EMBEDBUILD=$ZVMBUILD
-		EMBEDLINK=$ZVMLINK
-	elif [ "$EMBED" = "pcm" ]; then
-		EMBEDBUILD=$PCMBUILD
-		EMBEDLINK=$PCMLINK
-	elif [ "$EMBED" = "fsm" ]; then
-		EMBEDBUILD=$FSMBUILD
-		EMBEDLINK=$FSMLINK
-	else
-		echo "Error: EMBED setting $EMBED not recognized."
-		exit 2
-	fi
+    EMBEDDIR="/$EMBED"
+    if [ "$EMBED" = "zvm" ]; then
+        EMBEDBUILD=$ZVMBUILD
+        EMBEDLINK=$ZVMLINK
+    elif [ "$EMBED" = "pcm" ]; then
+        EMBEDBUILD=$PCMBUILD
+        EMBEDLINK=$PCMLINK
+    elif [ "$EMBED" = "fsm" ]; then
+        EMBEDBUILD=$FSMBUILD
+        EMBEDLINK=$FSMLINK
+    else
+        echo "Error: EMBED setting $EMBED not recognized."
+        exit 2
+    fi
 else
-	EMBEDDIR=""
-	EMBEDBUILD=$ALLBUILD
-	EMBEDLINK=""
+    EMBEDDIR=""
+    EMBEDBUILD=$ALLBUILD
+    EMBEDLINK=""
 fi
 
-XCATCORE="xcat-core"		# core-snap is a sym link to xcat-core
+XCATCORE="xcat-core"        # core-snap is a sym link to xcat-core
 
-if [ "$GIT" = "1" ]; then	# using git - need to include REL in the path where we put the built rpms
-	#DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
+if [ "$GIT" = "1" ]; then    # using git - need to include REL in the path where we put the built rpms
+    #DESTDIR=../../$REL$EMBEDDIR/$XCATCORE
         DESTDIR=$HOME/xcatbuild/$REL$EMBEDDIR/$XCATCORE
 else
-	#DESTDIR=../..$EMBEDDIR/$XCATCORE
+    #DESTDIR=../..$EMBEDDIR/$XCATCORE
         DESTDIR=$HOME/xcatbuild/..$EMBEDDIR/$XCATCORE
 fi
 SRCD=core-snap-srpms
 
 # currently aix builds ppc rpms, but someday it should build noarch
 if [ "$OSNAME" = "AIX" ]; then
-	NOARCH=ppc
-	SYSGRP=system
+    NOARCH=ppc
+    SYSGRP=system
 else
-	NOARCH=noarch
-	SYSGRP=$(id -g)
+    NOARCH=noarch
+    SYSGRP=$(id -g)
 fi
 
 function setversionvars {
-	VER=`cat Version`
-	SHORTVER=`cat Version|cut -d. -f 1,2`
-	SHORTSHORTVER=`cat Version|cut -d. -f 1`
+    VER=`cat Version`
+    SHORTVER=`cat Version|cut -d. -f 1,2`
+    SHORTSHORTVER=`cat Version|cut -d. -f 1`
 }
 
 
@@ -176,205 +183,208 @@ if [ "$PROMOTE" != 1 ]; then      # very long if statement to not do builds if w
 # we are doing a snap build
 CORE="core-snap"
 if [ "$OSNAME" = "AIX" ]; then
-	TARNAME=core-aix-snap.tar.gz
+    TARNAME=core-aix-snap.tar.gz
 else
-	TARNAME=core-rpms-snap.tar.bz2
+    TARNAME=core-rpms-snap.tar.bz2
 fi
 mkdir -p $DESTDIR
 SRCDIR=$DESTDIR/../$SRCD
 mkdir -p $SRCDIR
 if [ -n "$VERBOSEMODE" ]; then
-	GREP=grep
+    GREP=grep
 else
-	GREP="grep -q"
+    GREP="grep -q"
 fi
 UPLOAD=0
 if [ "$OSNAME" = "AIX" ]; then
-	source=/opt/freeware/src/packages
+    source=/opt/freeware/src/packages
 else
-	source=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
-	if [ $? -gt 0 ]; then
-		echo "Error: Could not determine rpmbuild's root directory."
-		exit 2
-	fi
-	#echo "source=$source"
+    source=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+    if [ $? -gt 0 ]; then
+        echo "Error: Could not determine rpmbuild's root directory."
+        exit 2
+    fi
+    #echo "source=$source"
 fi
 
 # If they have not given us a premade update file, do an svn update or git pull and capture the results
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
-	# using git
-
-	# Do some error checking for the build before starting...
-	# check if there's any modifications to git current repo
-	MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
-	if [ $MODIFIED_FILES ]; then
-		echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
-		echo "Not a clean build, aborting..."
-		exit 3
-	fi
-	# check if there's any modifications to git current repo
-	UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
-	if [ -n "$UNTRACKED_FILES" ]; then
-		echo "The following files are not tracked in git: $UNTRACKED_FILES..."
-		echo "Not a clean build, aborting..."
-		exit 3
-	fi
-	if [ -z "$GITUP" ]; then
-		GITUP=../coregitup
-		echo "git pull > $GITUP"
-		git pull > $GITUP
-		if [[ $? != 0 ]]; then
-			# do not continue so we do not build with old files
-			echo "The 'git pull' command failed.  Exiting the build."
-			exit 3
-		fi
-	fi
-	if ! $GREP 'Already up-to-date' $GITUP; then
-		SOMETHINGCHANGED=1
-	fi
+    # using git
+    # Run git pull by default, unless the GITPULL=0,
+    # if GITPULL=0, it is mainly for develpor to test local code
+    if [ -z "$GITPULL" ] || [ "$GITPULL" = "1" ]; then
+        # Do some error checking for the build before starting...
+        # check if there's any modifications to git current repo
+        MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
+        if [ $MODIFIED_FILES ]; then
+                echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
+                echo "Not a clean build, aborting..."
+                exit 3
+        fi
+        # check if there's any modifications to git current repo
+        UNTRACKED_FILES=`git ls-files --others | tr '\n' ', '`
+        if [ -n "$UNTRACKED_FILES" ]; then
+            echo "The following files are not tracked in git: $UNTRACKED_FILES..."
+            echo "Not a clean build, aborting..."
+            exit 3
+        fi
+        if [ -z "$GITUP" ]; then
+            GITUP=../coregitup
+            echo "git pull > $GITUP"
+            git pull > $GITUP
+            if [[ $? != 0 ]]; then
+                # do not continue so we do not build with old files
+                echo "The 'git pull' command failed.  Exiting the build."
+                exit 3
+            fi
+        fi
+        if ! $GREP 'Already up-to-date' $GITUP; then
+            SOMETHINGCHANGED=1
+        fi
+    fi
 else
-	# using svn
-	GIT=0
-	if [ -z "$SVNUP" ]; then
-		SVNUP=../coresvnup
-		echo "svn up > $SVNUP"
-		svn up > $SVNUP
-	fi
-	if ! $GREP 'At revision' $SVNUP; then
-		SOMETHINGCHANGED=1
-	fi
-	# copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
-	GITUP=$SVNUP
+    # using svn
+    GIT=0
+    if [ -z "$SVNUP" ]; then
+        SVNUP=../coresvnup
+        echo "svn up > $SVNUP"
+        svn up > $SVNUP
+    fi
+    if ! $GREP 'At revision' $SVNUP; then
+        SOMETHINGCHANGED=1
+    fi
+    # copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
+    GITUP=$SVNUP
 fi
 
 setversionvars
 
 # Function for making the noarch rpms
 function maker {
-	rpmname="$1"
-	./makerpm $rpmname "$EMBED"
-	if [ $? -ne 0 ]; then
-		FAILEDRPMS="$FAILEDRPMS $rpmname"
-	else
-		rm -f $DESTDIR/$rpmname*rpm
-		rm -f $SRCDIR/$rpmname*rpm
-		mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR
-		mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
-	fi
+    rpmname="$1"
+    ./makerpm $rpmname "$EMBED"
+    if [ $? -ne 0 ]; then
+        FAILEDRPMS="$FAILEDRPMS $rpmname"
+    else
+        rm -f $DESTDIR/$rpmname*rpm
+        rm -f $SRCDIR/$rpmname*rpm
+        mv $source/RPMS/$NOARCH/$rpmname-$VER*rpm $DESTDIR
+        mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+    fi
 }
 
 # If anything has changed, we should always rebuild perl-xCAT
-if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# Use to be:  $GREP perl-xCAT $GITUP; then
-	if [[ " $EMBEDBUILD " = *\ perl-xCAT\ * ]]; then
-		UPLOAD=1
-		maker perl-xCAT
-	fi
+if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then        # Use to be:  $GREP perl-xCAT $GITUP; then
+    if [[ " $EMBEDBUILD " = *\ perl-xCAT\ * ]]; then
+        UPLOAD=1
+        maker perl-xCAT
+    fi
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	# For the 1st one we overwrite, not append
-	echo "rpm -Uvh perl-xCAT-$SHORTSHORTVER*rpm" > $DESTDIR/instxcat
+    # For the 1st one we overwrite, not append
+    echo "rpm -Uvh perl-xCAT-$SHORTSHORTVER*rpm" > $DESTDIR/instxcat
 fi
 
 # Build the rest of the noarch rpms
 for rpmname in xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT-SoftLayer xCAT-vlan xCAT-confluent; do
-	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-vlan" ]; then continue; fi      # do not build xCAT-vlan on aix
-	if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-confluent" ]; then continue; fi # do not build xCAT-confluent on aix
-	if $GREP $rpmname $GITUP || [ "$BUILDALL" == 1 ]; then
-		UPLOAD=1
-		maker $rpmname
-	fi
-	if [ "$OSNAME" = "AIX" ]; then
-		if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then
-			# we do not automatically install the rest of the rpms on AIX
-			echo "rpm -Uvh $rpmname-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
-		fi
-	fi
+    if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
+    if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-buildkit" ]; then continue; fi  # do not build xCAT-buildkit on aix
+    if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-SoftLayer" ]; then continue; fi # do not build xCAT-softlayer on aix
+    if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-vlan" ]; then continue; fi      # do not build xCAT-vlan on aix
+    if [ "$OSNAME" = "AIX" -a "$rpmname" = "xCAT-confluent" ]; then continue; fi # do not build xCAT-confluent on aix
+    if [ "$BUILDALL" == 1 ] || $GREP $rpmname $GITUP;  then
+        UPLOAD=1
+        maker $rpmname
+    fi
+    if [ "$OSNAME" = "AIX" ]; then
+        if [ "$rpmname" = "xCAT-client" -o "$rpmname" = "xCAT-server" ]; then
+            # we do not automatically install the rest of the rpms on AIX
+            echo "rpm -Uvh $rpmname-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
+        fi
+    fi
 done
 
 # Build xCAT-genesis-scripts for xcat-core.  xCAT-genesis-base gets built by hand and put in xcat-dep.
 # The mknb cmd combines them at install time.
 if [ "$OSNAME" != "AIX" ]; then
-	if [[ " $EMBEDBUILD " = *\ xCAT-genesis-scripts\ * ]]; then
-		if $GREP xCAT-genesis-scripts $GITUP || [ "$BUILDALL" == 1 ]; then
-			UPLOAD=1
-			ORIGFAILEDRPMS="$FAILEDRPMS"
-			./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
-			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
-			./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
-			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
-			if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
-				rm -f $DESTDIR/xCAT-genesis-scripts*rpm
-				rm -f $SRCDIR/xCAT-genesis-scripts*rpm
-				mv $source/RPMS/noarch/xCAT-genesis-scripts-*rpm $DESTDIR
-				mv $source/SRPMS/xCAT-genesis-scripts-*rpm $SRCDIR
-			fi
-		fi
-	fi
+    if [[ " $EMBEDBUILD " = *\ xCAT-genesis-scripts\ * ]]; then
+        if [ "$BUILDALL" == 1 ] || $GREP xCAT-genesis-scripts $GITUP; then
+            UPLOAD=1
+            ORIGFAILEDRPMS="$FAILEDRPMS"
+            ./makerpm xCAT-genesis-scripts x86_64 "$EMBED"
+            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-x86_64"; fi
+            ./makerpm xCAT-genesis-scripts ppc64 "$EMBED"
+            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS xCAT-genesis-scripts-ppc64"; fi
+            if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
+                rm -f $DESTDIR/xCAT-genesis-scripts*rpm
+                rm -f $SRCDIR/xCAT-genesis-scripts*rpm
+                mv $source/RPMS/noarch/xCAT-genesis-scripts-*rpm $DESTDIR
+                mv $source/SRPMS/xCAT-genesis-scripts-*rpm $SRCDIR
+            fi
+        fi
+    fi
 fi
 
 # Build the xCAT and xCATsn rpms for all platforms
 for rpmname in xCAT xCATsn; do 
-	if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
-	if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then		# used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
-		UPLOAD=1
-		ORIGFAILEDRPMS="$FAILEDRPMS"
-		if [ "$OSNAME" = "AIX" ]; then
-			if [ "$rpmname" = "xCAT-OpenStack" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" ]; then continue; fi 		# do not bld openstack on aix
-			./makerpm $rpmname "$EMBED"
-			if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
-		else
-			for arch in x86_64 ppc64 ppc64le s390x; do
-				if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi 		# only bld openstack for x86_64 for now
-				./makerpm $rpmname $arch "$EMBED"
-				if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
-			done
-		fi
-		if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then	# all succeeded
-			rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
-			rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
-			mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
-			mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
-		fi
-	fi
+    if [[ " $EMBEDBUILD " != *\ $rpmname\ * ]]; then continue; fi
+    if [ $SOMETHINGCHANGED == 1 -o "$BUILDALL" == 1 ]; then        # used to be:  if $GREP -E "^[UAD] +$rpmname/" $GITUP; then
+        UPLOAD=1
+        ORIGFAILEDRPMS="$FAILEDRPMS"
+        if [ "$OSNAME" = "AIX" ]; then
+            if [ "$rpmname" = "xCAT-OpenStack" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" ]; then continue; fi         # do not bld openstack on aix
+            ./makerpm $rpmname "$EMBED"
+            if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname"; fi
+        else
+            for arch in x86_64 ppc64 ppc64le s390x; do
+                if [ "$rpmname" = "xCAT-OpenStack" -a "$arch" != "x86_64" ] || [ "$rpmname" = "xCAT-OpenStack-baremetal" -a "$arch" != "x86_64" ] ; then continue; fi         # only bld openstack for x86_64 for now
+                ./makerpm $rpmname $arch "$EMBED"
+                if [ $? -ne 0 ]; then FAILEDRPMS="$FAILEDRPMS $rpmname-$arch"; fi
+            done
+        fi
+        if [ "$FAILEDRPMS" = "$ORIGFAILEDRPMS" ]; then    # all succeeded
+            rm -f $DESTDIR/$rpmname-$SHORTSHORTVER*rpm
+            rm -f $SRCDIR/$rpmname-$SHORTSHORTVER*rpm
+            mv $source/RPMS/*/$rpmname-$VER*rpm $DESTDIR
+            mv $source/SRPMS/$rpmname-$VER*rpm $SRCDIR
+        fi
+    fi
 done
 # no longer put in xCAT-rmc
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
+    echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 fi
 
 # Make sym links in the embed subdirs for the rpms we do not have to build special
 if [ -n "$EMBED" -a -n "$EMBEDLINK" ]; then
-	cd $DESTDIR
-	maindir="../../$XCATCORE"
-	for rpmname in $EMBEDLINK; do
-		if [ "$rpmname" = "xCAT" -o "$rpmname" = "xCATsn" ]; then
-			if [ "$EMBED" = "zvm" ]; then
-				echo "Creating link for $rpmname-$SHORTSHORTVER"'*.s390x.rpm'
-				rm -f $rpmname-$SHORTSHORTVER*rpm
-				ln -s $maindir/$rpmname-$SHORTSHORTVER*.s390x.rpm .
-			fi
-		else
-			echo "Creating link for $rpmname-$SHORTSHORTVER"'*rpm'
-			rm -f $rpmname-$SHORTSHORTVER*rpm
-			ln -s $maindir/$rpmname-$SHORTSHORTVER*rpm .
-		fi
-	done
-	cd - >/dev/null
+    cd $DESTDIR
+    maindir="../../$XCATCORE"
+    for rpmname in $EMBEDLINK; do
+        if [ "$rpmname" = "xCAT" -o "$rpmname" = "xCATsn" ]; then
+            if [ "$EMBED" = "zvm" ]; then
+                echo "Creating link for $rpmname-$SHORTSHORTVER"'*.s390x.rpm'
+                rm -f $rpmname-$SHORTSHORTVER*rpm
+                ln -s $maindir/$rpmname-$SHORTSHORTVER*.s390x.rpm .
+            fi
+        else
+            echo "Creating link for $rpmname-$SHORTSHORTVER"'*rpm'
+            rm -f $rpmname-$SHORTSHORTVER*rpm
+            ln -s $maindir/$rpmname-$SHORTSHORTVER*rpm .
+        fi
+    done
+    cd - >/dev/null
 fi
 
 
 # Decide if anything was built or not
 if [ -n "$FAILEDRPMS" ]; then
-	echo "Error:  build of the following RPMs failed: $FAILEDRPMS"
-	exit 2
+    echo "Error:  build of the following RPMs failed: $FAILEDRPMS"
+    exit 2
 fi
 if [ $UPLOAD == 0 -a "$UP" != 1 ]; then
-	echo "Nothing new detected"
-	exit 0
+    echo "Nothing new detected"
+    exit 0
 fi
 #else we will continue
 
@@ -387,37 +397,37 @@ fi
 # get gpg keys in place
 if [ "$OSNAME" != "AIX" ]; then
     if [ -z "$RPMSIGN" -o "$RPMSIGN" == "1" ]; then
-	mkdir -p $HOME/.gnupg
-	for i in pubring.gpg secring.gpg trustdb.gpg; do
-		if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
-			rm -f $HOME/.gnupg/$i
-			${WGET_CMD} -P $HOME/.gnupg $GSA/keys/$i
-			chmod 600 $HOME/.gnupg/$i
-		fi
-	done
-	# tell rpm to use gpg to sign
-	MACROS=$HOME/.rpmmacros
-	if ! $GREP '%_signature gpg' $MACROS 2>/dev/null; then
-		echo '%_signature gpg' >> $MACROS
-	fi
-	if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
-		echo '%_gpg_name xCAT Security Key' >> $MACROS
-	fi
-	echo "Signing RPMs..."
-	build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-	build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
-	createrepo --checksum sha $DESTDIR			# specifying checksum so the repo will work on rhel5
-	createrepo --checksum sha $SRCDIR
-	rm -f $SRCDIR/repodata/repomd.xml.asc
-	rm -f $DESTDIR/repodata/repomd.xml.asc
-	gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
-	gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
-	if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
-		${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
-	fi
-	if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
-		${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
-	fi
+    mkdir -p $HOME/.gnupg
+    for i in pubring.gpg secring.gpg trustdb.gpg; do
+        if [ ! -f $HOME/.gnupg/$i ] || [ `wc -c $HOME/.gnupg/$i|cut -f 1 -d' '` == 0 ]; then
+            rm -f $HOME/.gnupg/$i
+            ${WGET_CMD} -P $HOME/.gnupg $GSA/keys/$i
+            chmod 600 $HOME/.gnupg/$i
+        fi
+    done
+    # tell rpm to use gpg to sign
+    MACROS=$HOME/.rpmmacros
+    if ! $GREP '%_signature gpg' $MACROS 2>/dev/null; then
+        echo '%_signature gpg' >> $MACROS
+    fi
+    if ! $GREP '%_gpg_name' $MACROS 2>/dev/null; then
+        echo '%_gpg_name xCAT Security Key' >> $MACROS
+    fi
+    echo "Signing RPMs..."
+    build-utils/rpmsign.exp `find $DESTDIR -type f -name '*.rpm'` | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+    build-utils/rpmsign.exp $SRCDIR/*rpm | grep -v -E '(already contains identical signature|was already signed|rpm --quiet --resign|WARNING: standard input reopened)'
+    createrepo --checksum sha $DESTDIR            # specifying checksum so the repo will work on rhel5
+    createrepo --checksum sha $SRCDIR
+    rm -f $SRCDIR/repodata/repomd.xml.asc
+    rm -f $DESTDIR/repodata/repomd.xml.asc
+    gpg -a --detach-sign $DESTDIR/repodata/repomd.xml
+    gpg -a --detach-sign $SRCDIR/repodata/repomd.xml
+    if [ ! -f $DESTDIR/repodata/repomd.xml.key ]; then
+        ${WGET_CMD} -q -P $DESTDIR/repodata $GSA/keys/repomd.xml.key
+    fi
+    if [ ! -f $SRCDIR/repodata/repomd.xml.key ]; then
+        ${WGET_CMD} -P $SRCDIR/repodata $GSA/keys/repomd.xml.key
+    fi
    else
      createrepo --checksum sha $DESTDIR
      createrepo --checksum sha $SRCDIR 
@@ -426,34 +436,34 @@ fi
 
 # set group and permissions correctly on the built rpms
 if [ "$OSNAME" = "AIX" ]; then
-	chmod +x $DESTDIR/instxcat
+    chmod +x $DESTDIR/instxcat
 fi
 chgrp -R $SYSGRP $DESTDIR
 chmod -R g+w $DESTDIR
 chgrp -R $SYSGRP $SRCDIR
 chmod -R g+w $SRCDIR
 
-else		# end of very long if-not-promote
-	# we are only promoting (not building)
-	setversionvars
-	setbranch
-	CORE="xcat-core"
-	if [ "$OSNAME" = "AIX" ]; then
-		TARNAME=core-aix-$VER.tar.gz
-	else
-		TARNAME=xcat-core-$VER.tar.bz2
-	fi
+else        # end of very long if-not-promote
+    # we are only promoting (not building)
+    setversionvars
+    setbranch
+    CORE="xcat-core"
+    if [ "$OSNAME" = "AIX" ]; then
+        TARNAME=core-aix-$VER.tar.gz
+    else
+        TARNAME=xcat-core-$VER.tar.bz2
+    fi
 fi
 
 cd $DESTDIR
 
 if [ "$OSNAME" != "AIX" ]; then
 
-	# Modify the repo file to point to either xcat-core or core-snap
-	# Always recreate it, in case the whole dir was copied from devel to 2.x
-	if [ -n "$1" ]; then embed="$1/"
-	else embed=""; fi
-	cat >xCAT-core.repo << EOF
+    # Modify the repo file to point to either xcat-core or core-snap
+    # Always recreate it, in case the whole dir was copied from devel to 2.x
+    if [ -n "$1" ]; then embed="$1/"
+    else embed=""; fi
+    cat >xCAT-core.repo << EOF
 [xcat-2-core]
 name=xCAT 2 Core packages
 baseurl=$YUMREPOURL/$REL$EMBEDDIR/$CORE
@@ -463,8 +473,8 @@ gpgkey=$YUMREPOURL/$REL$EMBEDDIR/$CORE/repodata/repomd.xml.key
 EOF
 
 
-	# Create the mklocalrepo script
-	cat >mklocalrepo.sh << 'EOF2'
+    # Create the mklocalrepo script
+    cat >mklocalrepo.sh << 'EOF2'
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xCAT-*.repo`
@@ -484,49 +494,49 @@ cd -
 EOF2
 chmod 775 mklocalrepo.sh
 
-fi	# not AIX
+fi    # not AIX
 
 # Build the tarball
 cd ..
 if [ -n "$VERBOSEMODE" ]; then
-	verboseflag="-v"
+    verboseflag="-v"
 else
-	verboseflag=""
+    verboseflag=""
 fi
 echo "Creating $(dirname $DESTDIR)/$TARNAME ..."
 if [[ -e $TARNAME ]]; then
-	mkdir -p previous
-	mv -f $TARNAME previous
+    mkdir -p previous
+    mv -f $TARNAME previous
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
-	gzip ${TARNAME%.gz}
+    tar $verboseflag -hcf ${TARNAME%.gz} $XCATCORE
+    gzip ${TARNAME%.gz}
 else
-	tar $verboseflag -hjcf $TARNAME $XCATCORE
+    tar $verboseflag -hjcf $TARNAME $XCATCORE
 fi
 chgrp $SYSGRP $TARNAME
 chmod g+w $TARNAME
 
 # Decide whether to upload or not
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
-	exit 0;
+    exit 0;
 fi
 #else we will continue
 
 # Upload the individual RPMs to sourceforge
 if [ "$OSNAME" = "AIX" ]; then
-	YUM=aix
+    YUM=aix
 else
-	YUM=yum
+    YUM=yum
 fi
 if [ ! -e core-snap ]; then
-	ln -s xcat-core core-snap
+    ln -s xcat-core core-snap
 fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
-	i=0
-	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
-	do : ; done
+    i=0
+    echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    do : ; done
 fi
 
 # Upload the individual source RPMs to sourceforge
@@ -537,39 +547,39 @@ do : ; done
 
 # Upload the tarball to sourceforge
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
-	# upload tarball to FRS area
-	i=0
-	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
-	do : ; done
+    # upload tarball to FRS area
+    i=0
+    echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    do : ; done
 else
-	i=0
-	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
-	do : ; done
+    i=0
+    echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    do : ; done
 fi
 
 # Extract and upload the man pages in html format
 if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
-	echo "Extracting and uploading man pages to htdocs/ ..."
-	mkdir -p man
-	cd man
-	rm -rf opt
-	rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
-	#rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-vlan-*.$NOARCH.rpm | cpio -id '*.html'
-	i=0
-	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
-	do : ; done
+    echo "Extracting and uploading man pages to htdocs/ ..."
+    mkdir -p man
+    cd man
+    rm -rf opt
+    rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
+    rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
+    rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
+    rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
+    #rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
+    rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
+    rpm2cpio ../$XCATCORE/xCAT-vlan-*.$NOARCH.rpm | cpio -id '*.html'
+    i=0
+    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+    do : ; done
 
-	# extract and upload the tools readme
-	rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
-	i=0
-	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
-	do : ; done
-	cd ..
+    # extract and upload the tools readme
+    rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
+    i=0
+    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
+    do : ; done
+    cd ..
 fi
