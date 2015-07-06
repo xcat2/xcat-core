@@ -353,6 +353,35 @@ sub check_newinstall
 
 #-------------------------------------------------------
 
+=head3 get local otherpkgdir
+
+  otherpkgdir can be mixed http source and local dir
+  Split otherpkgdir 
+  get local otherpkgdir
+
+=cut
+
+#-------------------------------------------------------
+
+sub get_local_otherpkgdir
+{
+      $otherpkgdir = shift;
+      my $localdir = "";
+      my @tempdirarray = split /,/, $otherpkgdir;
+         foreach my $tempdir (@tempdirarray){
+             $tempdir=~s/(^ +| +$)//g;
+             if ($tempdir !~ /^http.*/){
+                  $localdir = $tempdir;
+                  last;
+             }
+        }
+     return $localdir;  
+      
+}
+
+
+#-------------------------------------------------------
+
 =head3 assign_to_osimage
 
   Assign a kit component to osimage
@@ -397,6 +426,9 @@ sub assign_to_osimage
                 my $rootimgdir;
                 if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
                     $otherpkgdir = $linuximagetable->{otherpkgdir};
+                    #support mixed otherpkgdir http and local dir
+                    $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
+
                 } else {
                     $callback->({error => ["Could not read otherpkgdir from osimage $osimage"],errorcode=>[1]});
                     return 1;
@@ -576,6 +608,8 @@ sub assign_to_osimage
 
             if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
                 my $otherpkgdir = $linuximagetable->{otherpkgdir};
+                #support mixed otherpkgdir http and local dir
+                $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
                 my $kitrepodir = $kitrepotable->{kitrepodir};
 
                 # Create otherpkgdir if it doesn't exist
@@ -2743,6 +2777,8 @@ sub rmkitcomp
     if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
+        #support mixed otherpkgdir http and local dir
+        $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
         foreach my $kitcomponent (keys %kitcomps) {
 
             my %newosikitcomponents;
@@ -3265,6 +3301,8 @@ sub rmkitcomp
     if ( $linuximagetable and $linuximagetable->{otherpkgdir} ) {
 
         my $otherpkgdir = $linuximagetable->{otherpkgdir};
+        $otherpkgdir = get_local_otherpkgdir($otherpkgdir);
+
         foreach my $kitcomponent (keys %kitcomps) {
 
             my %newosikitcomponents;
