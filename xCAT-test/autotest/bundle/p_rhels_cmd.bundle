@@ -254,3 +254,9 @@ nodeset_check_yaboot_no
 nodeset_check_yaboot_yes
 nodeset_check_grub2_yes
 nodeset_check_grub2_no
+makentp_v
+makentp_h
+makentp_V
+makentp
+makentp_a
+updatenode_computenode_P_setupntp
