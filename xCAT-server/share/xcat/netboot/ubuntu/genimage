@@ -490,12 +490,21 @@ unless ($onlyinitrd) {
             if($_ eq "INCLUDEBAD")  {
              xdie "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
             }
-
-            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
-            if ($otherpkgsdir_local) { print $aptconfig "deb file:///mnt/otherpkgdir/$_ ./\n"};
-            $index++;
-            my $pa=$extra_hash{$pass}{$_};
-            $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+                if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
+                #if there is no Packages file in otherpkgsdir local, it will not be added into source list
+                if ($otherpkgsdir_local) 
+                {
+                      my $tmppkg=$otherpkgsdir_local."/".$_."/Packages";
+                      my $tmpdir=$otherpkgsdir_local."/".$_;
+                      `ls $tmppkg 2>&1`;
+                      if(!$?)
+                      {
+                          print $aptconfig "deb file:///mnt/otherpkgdir/$_ ./\n"
+                      }
+                };
+                $index++;
+                my $pa=$extra_hash{$pass}{$_};
+                $extrapkgnames{$pass} .= " " . join(' ', @$pa);
         }
       }
       close($aptconfig);
