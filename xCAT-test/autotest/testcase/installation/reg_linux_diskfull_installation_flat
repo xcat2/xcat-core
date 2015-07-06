@@ -23,7 +23,7 @@ cmd:sleep 10
 cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.leases|grep $$CN;elif cat /etc/*release |grep "Red Hat" >/dev/null;then cat /var/lib/dhcpd/dhcpd.leases|grep $$CN;fi     
 check:output=~$$CN
 
-cmd:copycds -n $$OS  $$ISO
+cmd:copycds   $$ISO
 check:rc==0
 cmd:if cat /etc/*release |grep "7.0" |grep "Red Hat">/dev/null;then mkdef $$STATELITE -u profile=compute provmethod=statelite osvers=rhels7;else mkdef $$STATELITE -u profile=compute provmethod=statelite; fi
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
