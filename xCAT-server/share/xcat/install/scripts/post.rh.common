@@ -38,7 +38,7 @@ fi
 IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 if [ -z $IP ]
 then
-	dhclient eth0
+	dhclient $PRINIC
 	#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
         IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 fi
