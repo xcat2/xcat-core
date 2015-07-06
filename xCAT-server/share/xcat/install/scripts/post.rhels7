@@ -12,17 +12,3 @@ do
   sed -i '/HWADDR/d' $i
 done
 
-  if[ -f "/usr/lib/systemd/system/NetworkManager.service" ];then
-    systemctl stop NetworkManager
-    systemctl disable NetworkManager
-  fi
-
-  if[ -f "/usr/lib/systemd/system/NetworkManager-dispatcher.service" ];then
-    systemctl stop NetworkManager-dispatcher
-    systemctl disable NetworkManager-dispatcher
-  fi
-  
-  if[ -f "/usr/lib/systemd/system/NetworkManager-wait-online.service" ];then
-    systemctl stop NetworkManager-wait-online
-    systemctl disable NetworkManager-wait-online
-  fi

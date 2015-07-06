@@ -4,6 +4,7 @@
 #
 #   xCAT script for running postboot scripts for full install case.
 #################################################################
+. /xcatpost/xcatlib.sh
 
 if [ ! `uname` = Linux ]; then
    logger -t xcat -p local4.err "$0: the OS name is not Linux"
@@ -70,6 +71,14 @@ else
 fi
 " >> /xcatpost/mypostscript.post
 fi
+
+stopservice NetworkManager
+stopservice NetworkManager-dispatcher
+stopservice NetworkManager-wait-online
+
+disableservice NetworkManager
+disableservice NetworkManager-dispatcher 
+disableservice NetworkManager-wait-online
 
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
