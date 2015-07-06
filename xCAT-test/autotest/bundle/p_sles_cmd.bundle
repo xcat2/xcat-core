@@ -252,3 +252,9 @@ switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_grub2_sles11
 nodeset_check_yaboot_sles11
+makentp_v
+makentp_h
+makentp_V
+makentp
+makentp_a
+updatenode_computenode_P_setupntp
