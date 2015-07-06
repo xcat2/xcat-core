@@ -97,11 +97,14 @@ if [ $USE_CONFLUENT == "1" ] && ([ -x "/opt/confluent/bin/confetty" ] || [ -x "/
     fi
     $CONFETTY $CONSCONTROLPATH $CONSERVER  $1
 elif [ -f "/usr/bin/console" ] || [ -f "/bin/console" ]; then
-    # use conserver, make sure confluent is not also running
-    CONFLUENT_RC=`service confluent status >> /dev/null; echo $?`
-    if [[ ${CONFLUENT_RC} == 0 ]]; then 
-        echo "Error: consoleservice is set to 'conserver' but confluent is running.  Stop confluent, run makeconservercf, and retry..."
-        exit 1
+    # use conserver
+    # make sure confluent is not also running, only if confluent is installed
+    if [[ -f "/etc/init.d/confluent" ]]; then 
+        CONFLUENT_RC=`service confluent status >> /dev/null; echo $?`
+        if [[ ${CONFLUENT_RC} == 0 ]]; then 
+            echo "Error: consoleservice is set to 'conserver' but confluent is running.  Stop confluent, run makeconservercf, and retry..."
+            exit 1
+        fi
     fi
 
     if [ -z "$CONSERVER" ]; then
