@@ -297,6 +297,15 @@ sub process_request
 	   unlink "/tmp/xcat/client.cert.$$";
            my $certcontents = join('',@certdata);
            push @{$rsp->{'data'}},{content=>[$certcontents],desc=>[$parm]};
+       } elsif ($parm =~ /xcat_dockerhost_cert/) {
+          `logger -t xcat -p local4.info "credentials: sending $parm"` ;
+          unless (-r "/etc/xcatdockerca/cert/dockerhost-cert.pem") {
+            push @{$rsp->{'error'}},"Unable to read /etc/xcatdockerca/cert/dockerhost-cert.pem ";
+            `logger -t xcat -p local4.info "credentials: Unable to read /etc/xcatdockerca/cert/dockerhost-cert.pem"` ;
+            next;
+          }
+          $tfilename = "/etc/xcatdockerca/cert/dockerhost-cert.pem";
+
        } else {
           next;
        }

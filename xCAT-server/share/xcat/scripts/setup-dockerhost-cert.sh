@@ -45,12 +45,14 @@ if [ ! -e $XCATDOCKERCADIR/openssl.cnf ]; then
 fi
 sed -i "s@^dir.*=.*/etc/xcat/ca@dir = $XCATDOCKERCADIR@g" $XCATDOCKERCADIR/openssl.cnf 
 
-if [ ! -e $XCATDOCKERCADIR/index ]; then
-  touch $XCATDOCKERCADIR/index
+if [  -e $XCATDOCKERCADIR/index ]; then
+  rm -f $XCATDOCKERCADIR/index*
 fi
-if [ ! -e $XCATDOCKERCADIR/serial ]; then
-  echo "00" > $XCATDOCKERCADIR/serial
-fi
+touch $XCATDOCKERCADIR/index
+
+echo "00" > $XCATDOCKERCADIR/serial
+
+
 if [ ! -e $XCATDOCKERCADIR/certs ]; then
   mkdir -p $XCATDOCKERCADIR/certs
 fi
@@ -73,8 +75,7 @@ if [ -f $CNA\.cert ]; then
     rm $CNA\.csr
 fi
 
-cp ca-cert.pem $XCATDOCKERDIR/cert/
 mv $CNA\.cert $XCATDOCKERDIR/cert/dockerhost-cert.pem
-mv dockerhost-key.pem $XCATDOCKERDIR/cert/
+cat dockerhost-key.pem >> $XCATDOCKERDIR/cert/dockerhost-cert.pem
 
 cd -

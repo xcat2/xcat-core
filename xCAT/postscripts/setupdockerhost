@@ -12,6 +12,7 @@
 #
 #=cut
 #-------------------------------------------------------------------------------
+set -x
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
     str_dir_name=`dirname $0`
     . $str_dir_name/xcatlib.sh
@@ -67,6 +68,7 @@ else
     sed -i "s@\ \{2,\}@@g" $docker_conf_file
     sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -b=$dockerbr\"@" $docker_conf_file
     sed -i "s/\"+$/\"/" $docker_conf_file
+    sed -i "s/\"\{2,\}/\"/" $docker_conf_file
 fi
 
 #Restart docker service
@@ -88,14 +90,28 @@ if [ ! -d /root/.docker ]; then
 fi
 
 HOST_CA_PEM="/root/.docker/ca-cert.pem"
-HOST_KEY_PEM="/root/.docker/dockerhost-key.pem"
 HOST_CERT_PEM="/root/.docker/dockerhost-cert.pem"
 
-scp $master:/etc/xcatdockerca/cert/dockerhost-cert.pem $HOST_CERT_PEM
-scp $master:/etc/xcatdockerca/cert/dockerhost-key.pem $HOST_KEY_PEM
-scp $master:/etc/xcatdockerca/cert/ca-cert.pem $HOST_CA_PEM
+allowcred.awk &
+CREDPID=$!
+sleep 1
 
-if [ ! -e $HOST_CA_PEM -o ! -e $HOST_KEY_PEM -o ! -e $HOST_CERT_PEM ];then
+getcredentials.awk xcat_dockerhost_cert | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>' | sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/xcat_dockerhost_cert
+
+kill -9 $CREDPID
+
+grep -E '<error>' /tmp/xcat_dockerhost_cert
+if [ $? -ne 0 ]; then
+    cat /tmp/xcat_dockerhost_cert |  
+    cat /tmp/xcat_dockerhost_cert | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >$HOST_CERT_PEM
+else 
+    echo "Can not get dockerhost certificate files"
+    exit 1
+fi
+
+cp /xcatpost/ca/ca-cert.pem $HOST_CA_PEM
+
+if [ ! -e $HOST_CA_PEM -o ! -e $HOST_CERT_PEM ];then
     echo "Can not get dockerhost certificate files"
     exit 1
 fi
@@ -106,7 +122,7 @@ if [ ! -f "$docker_conf_file" ]; then
     exit 1
 fi
 if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
-    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_KEY_PEM --tlsverify=true\"" >> $docker_conf_file
+    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"" >> $docker_conf_file
 else
     if grep "^DOCKER_OPTS.*tlsverify" $docker_conf_file > /dev/null 2>&1; then
         sed -i "s@-H [^ |^\"]*@@g" $docker_conf_file
@@ -117,8 +133,8 @@ else
         sed -i "s@--tls@@g" $docker_conf_file
         sed -i "s@\ \{2,\}@@g" $docker_conf_file
     fi 
-    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_KEY_PEM --tlsverify=true\"@" $docker_conf_file
-    sed -i 's/\"\{2,\}/"/' $docker_conf_file
+    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
+    sed -i 's/\"\{2,\}/\"/' $docker_conf_file
 fi
 
 #Restart docker service
