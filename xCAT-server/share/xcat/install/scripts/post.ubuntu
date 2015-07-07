@@ -2,7 +2,13 @@
 #
 # Setup hostname
 #
+
 echo "post scripts" >/root/post.log
+
+[ $XCATDEBUGMODE ] || export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+[ $MASTER_IP ] || export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
 then
@@ -23,6 +29,17 @@ then
 	#IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
         IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 fi
+
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC,IP=$IP" "/var/log/xcat/xcat.log"
+fi
+
+
+
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "generating /etc/resolv.conf" "/var/log/xcat/xcat.log"
+fi
+
 echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
 for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
@@ -35,7 +52,7 @@ ln -sf /bin/bash /bin/sh
 #sed -i 's/^deb.*updates.*$/#&/g' /etc/apt/sources.list
 # Run xCAT post install
 #
-export MASTER_IP="#XCATVAR:XCATMASTER#"
+export MASTER_IP="#ENV:MASTER_IP#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 export INSTALLDIR=#TABLE:site:key=installdir:value#
@@ -50,43 +67,55 @@ do
 	GOTIT=0
 	for i in $MASTER_IPS
 	do
+
+        if [ "$XCATDEBUGMODE" > "0" ]; then
+           msgutil_r "$MASTER_IP" "debug" "downloading postscripts from http://$i$INSTALLDIR/postscripts/" "/var/log/xcat/xcat.log"
+        fi
+
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
 		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
 		if [ "$?" = "0" ]
 		then
-         if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
-            exit 1
-         fi
-       	 USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
-     	 export USEOPENSSLFORXCAT
-         XCATSERVER=$i:3001
-         export XCATSERVER
-         mv $i/postscripts /xcatpost
-         rm -rf $i
-         # To support the postscripts in the subdirectories under /install/postscripts
-         #chmod +x /xcatpost/*
-         chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-         MYCONT=`grep MASTER /xcatpost/mypostscript`
-         MAX_RETRIES=10
-         RETRY=0
-         while [ -z "$MYCONT" ]; do
-            RETRY=$(($RETRY+1))
-            if [ $RETRY -eq $MAX_RETRIES ]
-            then
-                break
-            fi
+                    if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
+                       if [ "$XCATDEBUGMODE" > "0" ]; then
+                          msgutil_r "$MASTER_IP" "debug" "/usr/bin/openssl does not exist,exit..." "/var/log/xcat/xcat.log"
+                       fi
+                       exit 1
+                    fi
+       	            USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     	            export USEOPENSSLFORXCAT
+                    XCATSERVER=$i:3001
+                    export XCATSERVER
+                    mv $i/postscripts /xcatpost
+                    rm -rf $i
+                    # To support the postscripts in the subdirectories under /install/postscripts
+                    #chmod +x /xcatpost/*
+                    chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
+                   
+                    if [ "$XCATDEBUGMODE" > "0" ]; then
+                       msgutil_r "$MASTER_IP" "debug" "trying to get mypostscript with getpostscript.awk" "/var/log/xcat/xcat.log"
+                    fi
+                    /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+                    MYCONT=`grep MASTER /xcatpost/mypostscript`
+                    MAX_RETRIES=10
+                    RETRY=0
+                    while [ -z "$MYCONT" ]; do
+                       RETRY=$(($RETRY+1))
+                       if [ $RETRY -eq $MAX_RETRIES ]
+                       then
+                           break
+                       fi
 
-            let SLI=$RANDOM%10+10
-            sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-            MYCONT=`grep MASTER /xcatpost/mypostscript`
-         done
+                       let SLI=$RANDOM%10+10
+                       sleep $SLI
+                       /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+                       MYCONT=`grep MASTER /xcatpost/mypostscript`
+                    done
 
-            
-         chmod +x /xcatpost/mypostscript
-			GOTIT=1
-			break
+                       
+                    chmod +x /xcatpost/mypostscript
+                    GOTIT=1
+                    break
 		fi
 	done
 	if [ "$GOTIT" = "1" ]
@@ -116,29 +145,33 @@ export PATH=$PATH:/xcatpost
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
 echo "
+. /xcatpost/xcatlib.sh
+
+# global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript fa
+iled
 return_value=0
 # subroutine used to run postscripts
 run_ps () {
- logdir=\"/var/log/xcat\"
- mkdir -p \$logdir
- logfile=\"/var/log/xcat/xcat.log\"
- 
- if [ -f \$1 ]; then 
-  echo "\"\`date\` Running postscript: \$@\"" | tee -a \$logfile
-  #./\$@ 2>&1 1> /tmp/tmp4xcatlog
-  #cat /tmp/tmp4xcatlog | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a \$logfile
+ local ret_local=0
+ local logfile=\"/var/log/xcat/xcat.log\"
+
+ if [ -f \$1 ]; then
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$@\"" \"\$logfile\"
+  bash -x ./\$@ 2>&1 | tee -a \$logfile
   ret_local=\${PIPESTATUS[0]}
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$@ return with \$ret_local\"" \"\$logfile\"
   if [ \"\$ret_local\" -ne \"0\" ]; then
-    return_value=\$ret_local
+     return_value=\$ret_local
   fi
+
  else
-   echo "\"\`date\` Postscript \$1 does NOT exist.\"" | tee -a \$logfile
-   return_value=-1
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Postscript \$1 does NOT exist.\"" \"\$logfile\"
+  return_value=-1
  fi
+
+ return 0
 }
 # subroutine end
-
 " > /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
@@ -163,9 +196,10 @@ if [ -f /xcatpost/mypostscript.post ]; then
     RUNBOOTSCRIPTS=`grep 'RUNBOOTSCRIPTS=' /xcatpost/mypostscript.post |cut -d= -f2`
 fi
 if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
+    msgutil_r "$MASTER_IP" "debug" "update-rc.d -f xcatpostinit1 remove" "/var/log/xcat/xcat.log"
     update-rc.d -f xcatpostinit1 remove
 fi
-echo "REBOOT=TRUE" >> /opt/xcat/xcatinf
+echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
@@ -181,7 +215,14 @@ chmod 755 /opt/xcat/xcatdsklspost
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
 
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "running mypostscript" "/var/log/xcat/xcat.log"
+fi
 /xcatpost/mypostscript
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "mypostscript return" "/var/log/xcat/xcat.log"
+fi
+
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
@@ -235,6 +276,10 @@ fi
 #sed -i 's/^\(\s*deb-src.*install.*\)$/#\1/g' /etc/apt/sources.list
 #delete the 127.0.1.1 line from /etc/hosts
 sed -i '/127.0.1.1/d' /etc/hosts
+
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "installation finished, reporting status..." "/var/log/xcat/xcat.log"
+fi
 updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost

@@ -1,0 +1,29 @@
+declare -F msgutil_r &>/dev/null  || function msgutil_r {
+   local logserver=$1
+   local msgtype=$2
+   local msgstr=$3
+   local logfile=$4
+
+   if [ -z "$msgtype"  ]; then
+      msgtype="debug"
+   fi
+
+   logger -n $logserver -t xcat -p local4.$msgtype "$msgstr"
+
+   if [ -n "$logfile"  ]; then
+      local logdir="$(dirname $logfile)"
+      if [ ! -d "$logdir" ]; then
+         mkdir -p "$logdir"
+         touch "$logfile"
+      fi
+
+      #   echo "$msgstr" | tee -a $logfile
+      #else
+      echo "$msgstr" >> $logfile
+   fi
+
+}
+
+declare -F msgutil &>/dev/null  || function msgutil {
+    msgutil_r "localhost" "$@"
+}

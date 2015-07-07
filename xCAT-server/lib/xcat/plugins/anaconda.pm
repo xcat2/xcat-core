@@ -745,6 +745,16 @@ sub mknetboot
            $kcmdline .= " nonodestatus ";
         }
 
+        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+
+           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+           if($ipaddr){
+              $kcmdline .=" LOGSERVER=$ipaddr ";
+           }
+
+           $kcmdline .= " xcatdebugmode=1 ";
+        }
+
         # Add kernel parameters to specify the boot network interface
         my $installnic;
         my $primarynic;
@@ -1481,7 +1491,6 @@ sub mkinstall
            }
               
            if($::XCATSITEVALS{xcatdebugmode} eq "1"){
-
                  unless($instserver eq '!myipfn!'){
                     my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver=$ip;

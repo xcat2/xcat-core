@@ -106,6 +106,7 @@ sub create_mypostscript_or_not {
 }
 
 
+
 #-----------------------------------------------------------------------------
 
 =head3 makescript 
@@ -338,6 +339,8 @@ sub makescript {
     }
   }
 
+  
+
   #Some of the strings are same to all the nodes.
   #So move the string substitutions outside the loop
   $t_inc =~ s/#SITE_TABLE_ALL_ATTRIBS_EXPORT#/$allattribsfromsitetable/eg;
@@ -525,10 +528,18 @@ sub makescript {
         $macaddress = xCAT::Utils->parseMacTabEntry($macmac, $node);
     }
 
+  
+  my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
+  my $master_ip;
+  if($ipaddr){
+     $master_ip="$ipaddr";
+  }
+
   #ok, now do everything else..
   #$inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
-  #$inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  #$inc =~ s/#ENV:([^#]+)#/xCAT::Template::envvar($1)/eg;
   #$inc =~ s/#NODE#/$node/eg;
+  $inc =~ s/#MASTER_IP_ADDR#/$master_ip/eg;
   $inc =~ s/\$NODE/$node/eg;
   #$inc =~ s/#TABLE:([^:]+):([^:]+):([^:]+):BLANKOKAY#/tabdb($1,$2,$3,1)/eg; 
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/xCAT::Template::tabdb($1,$2,$3)/eg; 

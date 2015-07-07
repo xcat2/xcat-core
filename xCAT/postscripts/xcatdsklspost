@@ -19,11 +19,65 @@
 #
 #####################################################
 
+
+[ -f "/xcatpost/xcatlib.sh" ] &&  . /xcatpost/xcatlib.sh 
+
+
+if [ -f /xcatpost/mypostscript.post ]; then
+    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+else
+    for param in `cat /proc/cmdline`; do
+            key=`echo $param|awk -F= '{print $1}'`
+            if [ "$key" = "xcatdebugmode" ]; then
+                    XCATDEBUGMODE=`echo $param|awk -F= '{print $2}'`
+            fi
+
+            if [ "$key" = "LOGSERVER" ]; then
+                    MASTER_IP=`echo $param|awk -F= '{print $2}'`
+            fi
+    done
+fi
+
+
+#echolog: process message log and echo in xcatdsklspost
+#arguments:
+#          msgtype: message type, valid values:debug,info,warning,err
+#          msgstr : the string of message
+#description:
+#          echo messages only when ($msgtype != debug) or ($msgtype = debug && $VERBOSE = 1)
+#          log "debug" messages only when (site.xcatdebugmode=1),log all messages with other types
+#          append the "debug" messages to "/var/log/xcat/xcat.log" when (site.xcatdebugmode=1)
+#          append all the other type messages  to "/var/log/xcat/xcat.log"
+echolog()
+{
+   local msgtype=$1
+   local msgstr=$2
+
+   if [ "$msgtype" = "debug"  ];then
+      if [ "$VERBOSE" = "1"  ]; then
+         echo "$msgstr"
+      fi
+      if [ "$XCATDEBUGMODE" = "1" ]; then
+            msgutil_r  "$MASTER_IP" "$msgtype" "$msgstr" "/var/log/xcat/xcat.log"
+      fi
+   else
+      echo "$msgstr"  
+      msgutil_r "$MASTER_IP"  "$msgtype" "$msgstr" "/var/log/xcat/xcat.log" 
+   fi
+   
+}
+
+
+
+
+
 update_VPD()
 {
     if [ -f /usr/sbin/vpdupdate ]; then
         vpdupdate
-	logger -t xcat -p local4.info "xcatdsklspost: updating VPD database"
+	#logger -t xCAT -p local4.info "xcatdsklspost: updating VPD database"
+        echolog "info" "xcatdsklspost: updating VPD database"
     fi
 }
 
@@ -52,6 +106,8 @@ download_postscripts()
         fi
     fi
 
+    #logger -t xCAT -p local4.debug "$0 : trying to download postscripts from http://$server$INSTALLDIR/postscripts/"
+    echolog "debug" "xcatdsklspost : trying to download postscripts from http://$server$INSTALLDIR/postscripts/"
     max_retries=5
     retry=0
     rc=1  # this is a fail return 
@@ -69,14 +125,16 @@ download_postscripts()
            grep -i -E "ERROR 404: Not Found.$" /tmp/wget.log 
            rc2=$?
            # check to see no errors at all, grep returns 1
-           if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then   
+           if [ $rc1 -eq 1 ] && [ $rc2 -eq 1 ]; then  
+              echolog "debug" "$0 : download_postscripts return successfully " 
               return 0 
            fi
          fi
 
 	retry=$(($retry+1))
-        logger -t xcat -p local4.err "download_postscripts retry $retry"
+        echolog "debug" "download_postscripts retry $retry"
 	if [ $retry -eq $max_retries ]; then
+            echolog "debug" "$0 : download_postscripts failed"
             break
 	fi
 
@@ -103,18 +161,21 @@ download_mypostscript()
     rc=1
  
 
+    echolog "debug" "$0 :  trying to download http://$server$TFTPDIR/mypostscripts/mypostscript.$node"
     while [ 0 -eq 0 ]; do
         wget -N --waitretry=10 --random-wait -T 60 http://$server$TFTPDIR/mypostscripts/mypostscript.$node  -P /$xcatpost 2>> /tmp/wget.log
         rc=$?
         # if no error and the file  was downloaded
         if [ $rc -eq 0 ] && [ -f /$xcatpost/mypostscript.$node ]; then
                 mv /$xcatpost/mypostscript.$node /$xcatpost/mypostscript
+                echolog "debug" "$0 download_mypostscript return successfully "
 	        return 0;
         fi
 
         
 	retry=$(($retry+1))
 	if [ $retry -eq $max_retries ]; then
+            echolog "debug" "$0 : download_mypostscript failed"
             break
 	fi
 
@@ -198,6 +259,9 @@ fi
 xcatpost="/xcatpost"
 # Check for debug mode and you have nodename available you can change the path for debug
 
+echolog "debug" "running $0 $@"
+
+
 if [ -n "$XCATDEBUG" ]; then
   if [ -n "$NODE" ]; then
      xcatpost="/xcatpost.$NODE"
@@ -272,9 +336,10 @@ if [ "$MODE" = "4" ]; then # for statelite mode
             fi
         fi
     else
-        echo "xCAT management server IP can't be determined.";
-	echo "exiting...";
-        logger -t xcat -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
+        #echo "xCAT management server IP can't be determined.";
+	#echo "exiting...";
+        #logger -t xCAT -p local4.err "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
+        echolog "err" "xcatdsklspost:xCAT management server IP can't be determined.\nexiting..."
         exit;
     fi
 
@@ -325,8 +390,9 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
         # return an error
         if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then # updatenode 
             hn=`hostname`
-            echo "Cannot download the postscripts from $SIP  for $hn check /tmp/wget.log on the node."
-            logger -t xcat -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
+            #echo "Cannot download the postscripts from $SIP  for $hn check /tmp/wget.log on the node."
+            #logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
+            echolog "err" "xcatdsklspost:Cannot download the postscripts from the xCAT server $SIP for node $hn check /tmp/wget.log on the node."
             exit  
         fi
 
@@ -403,9 +469,12 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
     #no hope to download postscripts, now let's get out of here.
     if [ $downloaded -eq 0 ]; then
         hn=`hostname`
-        echo "Cannot download the postscripts from the xCAT server for node $hn"
-        logger -t xcat -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
-        exit  
+        #echo "Cannot download the postscripts from the xCAT server for node $hn"
+        #logger -t xCAT -p local4.err "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
+        echolog "err" "xcatdsklspost: Cannot download the postscripts from the xCAT server for node $hn"
+        exit
+    else
+        echolog "info" "xcatdsklspost: downloaded postscripts successfully"  
     fi
 
 fi # finish the postscripts download
@@ -454,7 +523,7 @@ else
     node_short=`hostname -s`
   fi
 fi
-    
+
 max_retries=2
 # try short hostname first
 if [ -n "$node_short" ]; then 
@@ -498,14 +567,18 @@ fi
 # We need to call getpostscript.awk .
 
 if [ ! -x /$xcatpost/mypostscript ]; then
+  echolog "info" "xcatdsklspost: failed to download mypostscript.<nodename>, trying to call getpostscript.awk..."
   if [ $useflowcontrol = "1" ]; then
     # first contact daemon  xcatflowrequest <server> 3001
-    logger -t xcat -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
+    #logger -t xCAT -p local4.info "xcatdsklspost:sending xcatflowrequest $SIP 3001"
+    echolog "debug" "xcatdsklspost:sending xcatflowrequest $SIP 3001"
    /$xcatpost/xcatflowrequest $SIP 3001
    rc=$?
-   logger -t xcat -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+   #logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+   echolog "debug" "xcatdsklspost:xcatflowrequest return=$rc"
    if [ $rc -ne 0 ]; then
-      logger -t xcat -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+      #logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+      echolog "debug" "xcatdsklspost: error from xcatflowrequest, will not use flow control"
       useflowcontrol=0
    fi 
   fi
@@ -531,12 +604,15 @@ if [ ! -x /$xcatpost/mypostscript ]; then
 
     if [ $useflowcontrol = "1" ]; then
       # contact daemon  xcatflowrequest <server> 3001
-      logger -t xcat -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
+      #logger -t xCAT -p local4.info "xcatdsklspost: sending xcatflowrequest $SIP 3001"
+      echolog "debug" "xcatdsklspost: sending xcatflowrequest $SIP 3001"
       /$xcatpost/xcatflowrequest $SIP 3001
       rc=$?
-      logger -t xcat -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+      #logger -t xCAT -p local4.info "xcatdsklspost:xcatflowrequest return=$rc"
+      echolog "debug" "xcatdsklspost:xcatflowrequest return=$rc"
       if [ $rc -ne 0 ]; then
-        logger -t xcat -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+        #logger -t xCAT -p local4.info "xcatdsklspost: error from xcatflowrequest, will not use flow control"
+        echolog "debug" "xcatdsklspost: error from xcatflowrequest, will not use flow control"
         useflowcontrol=0
       fi 
     fi
@@ -739,6 +815,8 @@ fi
 # use the run_ps subroutine to run the postscripts
 TMP=`sed "/# postscripts-start-here/,/# postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /$xcatpost/mypostscript`
 echo "
+. /xcatpost/xcatlib.sh
+
 # global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
 # subroutine used to run postscripts
@@ -749,15 +827,24 @@ run_ps () {
  logfile=\"/var/log/xcat/xcat.log\"
  
  if [ -f \$1 ]; then 
-  echo \"\`date\` Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a \$logfile
-  ret_local=\${PIPESTATUS[0]}
+  echo \"\`date\` Running postscript: \$@\" 
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Running postscript: \$@\" \"\$logfile\"
+  if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
+     bash -x ./\$@ 2>&1 | tee -a \$logfile
+     ret_local=\${PIPESTATUS[0]}
+  else
+     ./\$@ 2>&1 | tee -a \$logfile
+     ret_local=\${PIPESTATUS[0]}
+  fi
+
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"Postscript: \$@ exited with code \$ret_local\" | tee -a \$logfile
+  echo \"Postscript: \$@ exited with code \$ret_local\" 
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$@ exited with code \$ret_local\" \"\$logfile\"
  else
-  echo \"\`date\` Postscript \$1 does NOT exist.\" | tee -a \$logfile
+  echo \"\`date\` Postscript \$1 does NOT exist.\" 
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$@ exited with code \$ret_local\" \"\$logfile\"
   return_value=-1
  fi
 
@@ -778,8 +865,10 @@ if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ] || [ "$MODE" = "6" ]; then
 #       echo "$TMP"> /$xcatpost/mypostscript
         echo "
 if [ \"\$return_value\" -eq \"0\" ]; then
+   msgutil_r \$MASTER_IP \"debug\" \"node booted successfully,reporting status...\" \"/var/log/xcat/xcat.log\"
    updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
+   msgutil_r \$MASTER_IP \"debug\" \"node boot failed,reporting status...\" \"/var/log/xcat/xcat.log\"
    updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
         " >> /$xcatpost/mypostscript
@@ -804,13 +893,15 @@ fi
 
 chmod +x /$xcatpost/mypostscript
 if [ -x /$xcatpost/mypostscript ];then
+   echolog "debug" "running /$xcatpost/mypostscript"   
    /$xcatpost/mypostscript
    VRET_POST=$?   
+   echolog "debug" "/$xcatpost/mypostscript return with $VRET_POST"   
 fi
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
-  echo "returned from postscript"
+  echolog "info" "returned from postscript"
 fi
 
 exit $VRET_POST

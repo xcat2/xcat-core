@@ -4,10 +4,16 @@
 #
 #   xCAT script for running postboot scripts for full install case.
 #################################################################
+
 . /xcatpost/xcatlib.sh
+if [ -f /xcatpost/mypostscript.post ]; then
+    XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+fi
+
 
 if [ ! `uname` = Linux ]; then
-   logger -t xcat -p local4.err "$0: the OS name is not Linux"
+   msgutil_r "$MASTER_IP" "err" "$0: the OS name is not Linux" "/var/log/xcat/xcat.log"
    exit
 fi
 SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
@@ -23,9 +29,8 @@ do
     sleep 2
     RETRY=$[ $RETRY + 1 ]
     if [ $RETRY -eq 90  ];then
-       logger -t xcat -p local4.err "Network not configured, please check..."
-       echo `date` "xcatinstallpost: Network not configured, please check..." >> /var/log/xcat/xcat.log 
-       exit 1
+          msgutil_r "$MASTER_IP" "err" `date`" xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
+          exit 1
     fi
 
 done
@@ -64,9 +69,16 @@ if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" 
 #echo "$TMP"> /xcatpost/mypostscript.post
 
 echo "
+
 if [ \"\$return_value\" -eq \"0\" ]; then
+   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+      msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
+   fi
    updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
+   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+      msgutil_r \"\$MASTER_IP\" \"info\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\"
+   fi
    updateflag.awk \$MASTER 3002 \"installstatus failed\"
 fi
 " >> /xcatpost/mypostscript.post
@@ -79,8 +91,9 @@ stopservice NetworkManager-wait-online
 disableservice NetworkManager
 disableservice NetworkManager-dispatcher 
 disableservice NetworkManager-wait-online
-
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
+   msgutil_r "$MASTER_IP" "info" "running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log"
    /xcatpost/mypostscript.post
+   msgutil_r "$MASTER_IP" "info" "/xcatpost/mypostscript.post return" "/var/log/xcat/xcat.log"
 fi

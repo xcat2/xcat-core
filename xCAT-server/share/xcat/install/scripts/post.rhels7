@@ -1,9 +1,18 @@
 #the nic name might change between the installation and 1st boot
 #active all the nics with network link during system boot
+
+
+[ $XCATDEBUGMODE ] || export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+[ $MASTER_IP ] || export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
 for i in $(find /etc/sysconfig/network-scripts/ifcfg-*|egrep -v ifcfg-lo )
 do 
   nicname=$(echo $i|awk -F 'ifcfg-' '{print $2}')
   if ethtool $nicname|grep -E -i "Link detected.*yes" >/dev/null 2>&1
+     if [ "$XCATDEBUGMODE" > "0" ]; then
+        msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
+     fi
      then sed -i 's/ONBOOT=no/ONBOOT=yes/' $i 
   fi
 
@@ -11,4 +20,3 @@ do
   #nic name change during the install and first_reboot
   sed -i '/HWADDR/d' $i
 done
-

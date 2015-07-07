@@ -96,6 +96,11 @@ sub subvars {
   }
   $ENV{XCATMASTER}=$master;
 
+  my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
+  if($ipaddr){
+     $ENV{MASTER_IP}="$ipaddr";
+  }
+
   my @nodestatus = xCAT::TableUtils->get_site_attribute("nodestatus");
   my $tmp=$nodestatus[0];
   if( defined($tmp)  ){
@@ -1459,6 +1464,7 @@ sub command
 
 sub envvar
 {
+
 	my $envvar = shift;
 
 	if($envvar =~ /^\$/) {
@@ -1496,7 +1502,6 @@ sub tabdb
 	my $field = shift;
    my $blankok = shift;
    
-
    if( %::GLOBAL_TAB_HASH && defined( $::GLOBAL_TAB_HASH{$table} ) ) {
         if( !defined( $::GLOBAL_TAB_HASH{$table}{$key}) ) {
             return "''";   

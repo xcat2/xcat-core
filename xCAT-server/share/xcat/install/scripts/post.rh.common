@@ -3,6 +3,9 @@
 #
 echo "post scripts" >/root/post.log
 
+[ $XCATDEBUGMODE ] || export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+[ $MASTER_IP ] || export MASTER_IP="#ENV:MASTER_IP#"
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
 export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac" ]
@@ -34,6 +37,7 @@ elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-F
     #export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
     export PRINIC=`ip -o link|grep -i "$PRINIC"|awk  '{print $2}'|sed s/://`
 fi
+
 #IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
 IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 if [ -z $IP ]
@@ -44,6 +48,11 @@ then
 fi
 
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
+
+if [ "$XCATDEBUGMODE" > "0" ]; then
+   msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC, IP=$IP,HOSTNAME=$HOSTNAME" "/var/log/xcat/xcat.log"
+fi
+
 hostname $HOSTNAME
 
 if [ -f /boot/efi/efi/redhat/grub.conf ]; then #RedHat bug, grub.efi corrupts console unless we are careful...
