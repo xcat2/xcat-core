@@ -1,16 +1,13 @@
-#!/bin/awk -f
+#!/bin/sh 
 #usage:
 #runcmdinstaller: issue command which run in the installer and print the command output
 #runcmdinstaller <node> "<command>"
-BEGIN {
-node = ARGV[1]
-#port = ARGV[2]
-port = 3001
-#action = ARGV[3]
-action = "sh"
-cmd = ARGV[2]
 
-if(ARGC !=3 || ! node || ! cmd){
+
+awk  -v argc="$#" -v node="$1" -v cmd="$2" 'BEGIN {
+port = 3001
+action = "sh"
+if( node=="-h" || argc !=2 || ! node || ! cmd){
   print "Usage:\n\n   runcmdinstaller <node> \"<command>\"\n"
   print           "   make sure all the commands are quoted by \"\"\n";
   exit 1;
@@ -27,4 +24,4 @@ print $0
 close(ns)
 
 exit 0
-}
+}'
