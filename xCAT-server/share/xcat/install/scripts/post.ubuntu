@@ -147,8 +147,7 @@ TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/
 echo "
 . /xcatpost/xcatlib.sh
 
-# global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript fa
-iled
+# global value to store the running status of the postbootscripts,the value is non-zero if one postbootscript failed
 return_value=0
 # subroutine used to run postscripts
 run_ps () {
