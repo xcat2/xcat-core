@@ -225,9 +225,9 @@ sub setdestiny {
 
                 my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch},$ref->{imagetype});
                 unless($netbootval =~ /$curnetboot/i){
-                    $errored =1; 
-                    $callback->({errorcode=>[1],error=> [join(",",@{$req->{node}}).": $curnetboot is not valid when provisioning $target,valid options: \"$netbootval\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
-                    return;
+                    #$errored =1; 
+                    $callback->({warning=> [join(",",@{$req->{node}}).": $curnetboot is not valid when provisioning $target,valid options: \"$netbootval\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
+                    #return;
                 }               
 
 
