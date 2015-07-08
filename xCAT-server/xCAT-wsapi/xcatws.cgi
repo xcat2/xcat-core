@@ -532,8 +532,8 @@ my %URIdef = (
             matcher => '^/nodes/[^/]*/nodeshell$',
             POST => {
                 desc => "Run the command in the shell of the node {noderange}.",
-                usage => "|$usagemsg{objchparam} DataBody: {command:[cmd1,cmd2]}.|$usagemsg{objreturn}|",
-                example => "|Run the \'data\' command on the node2.|POST|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|{\n   \"node2\":[\n      \" Wed Apr  3 08:30:26 CST 2013\",\n      \" testline1\",\n      \" testline2\"\n   ]\n}|",
+                usage => "|$usagemsg{objchparam} DataBody: set environment {ENV:{en1:v1,en2:v2}}, raw command {raw:[op1,op2]}, direct command {command:[cmd1,cmd2]}.|$usagemsg{objreturn}|",
+                example => "|Run the \'date\' command on the node2.|POST|/nodes/node2/nodeshell {\"command\":[\"date\",\"ls\"]}|{\n   \"node2\":[\n      \" Wed Apr  3 08:30:26 CST 2013\",\n      \" testline1\",\n      \" testline2\"\n   ]\n}|Use ENV and raw command on the node2.|POST|/nodes/node2/nodeshell {\"ENV\":{\"DSH_REMOTE_PASSWORD\":\"cluster\",\"DSH_FROM_USERID\":\"root\",\"DSH_TO_USERID\":\"root\"},\"raw\":[\"-K\"]}|[\n  \"/usr/bin/ssh setup is complete.\",\n  \"return code = 0\"\n]|",
                 cmd => "xdsh",
                 fhandler => \&actionhdl,
                 outhdler => \&infoout,
@@ -1696,7 +1696,11 @@ sub infoout {
                 push @{$jsonnode->{$1}}, $2 if ($2 !~ /^\s*$/);
             }
         }
-        addPageContent($JSON->encode($jsonnode), 1) if ($jsonnode);
+        if (!$jsonnode && $json)
+        {
+            push (@{$jsonnode},@{$json});
+        }
+        addPageContent($JSON->encode($jsonnode), 1);
         return;
     }
     if ($json) {
@@ -1968,15 +1972,39 @@ sub actionhdl {
             push @args, join (',', @{$paramhash->{'scripts'}});
         }
     } elsif ($params->{'resourcename'} eq "nodeshell") {
-        if (defined ($paramhash->{'command'})) {
-            if (ref($paramhash->{'command'}) eq "ARRAY") {
-                push @args, join (';', @{$paramhash->{'command'}});
-            } else {
-                push @args, $paramhash->{'command'};
+        if(%$paramhash)
+        {
+          foreach my $key1 (keys %$paramhash) {
+            if ( $key1 eq "ENV" && defined ($paramhash->{'ENV'})) {
+                 foreach my $key (keys %{$paramhash->{'ENV'}}) {
+                      if (($key ne '') and (exists($paramhash->{'ENV'}->{$key}))) {
+                          push (@{$request->{env}},"$key=$paramhash->{'ENV'}->{$key}");
+                      }
+                 }
+                 next;
             }
-        } else {
+            elsif ( $key1 eq "raw" && defined ($paramhash->{'raw'})) {
+                 if (ref($paramhash->{'raw'}) eq "ARRAY") {
+                     push @args, join (';', @{$paramhash->{'raw'}});
+                 } else {
+                     push @args, $paramhash->{'raw'};
+                 }
+                 next;
+            }
+            elsif ( $key1 eq "command" && defined ($paramhash->{'command'})) {
+                 if (ref($paramhash->{'command'}) eq "ARRAY") {
+                      push @args, join (';', @{$paramhash->{'command'}});
+                 } else {
+                      push @args, $paramhash->{'command'};
+                 }
+                 next;
+            }
+         }
+        }
+        else {
             error ("Lack of operation data.",$STATUS_BAD_REQUEST,3);
         }
+
     } elsif ($params->{'resourcename'} eq "nodecopy") {
         if (defined ($paramhash->{'src'})) {
             push @args, @{$paramhash->{'src'}};
