@@ -345,7 +345,62 @@ sub process_request {
             return 1;
         }
     }
-    
+
+    #setup the hardware clock
+    my $hwcmd = "/sbin/hwclock --systohc --utc";
+    if ($verbose) {
+        send_msg(\%request, 0, " ...updating the hwclock now. $hwcmd");
+    }
+    my $hwresult = xCAT::Utils->runcmd($hwcmd, 0);
+    if ($verbose) {
+        send_msg(\%request, 0, "    $hwresult");
+    }
+    if ($::RUNCMD_RC != 0) {
+        send_msg(\%request, 1, "Error from command $hwcmd\n    $hwresult.");
+        return 1;
+    }
+
+    my $grep_cmd;
+    my $rc;
+    #setup the RTC is UTC format, which will be used by os
+    if ($os =~ /sles/) {
+        `sed -i 's/.*HWCLOCK.*/HWCLOCK="-u"/' /etc/sysconfig/clock`;
+    } elsif ( -f "/etc/debian_version" ){
+        `sed -i "s/.*UTC.*/UTC=yes/" /etc/default/rcS`;
+    } else {
+        if ( -f "/etc/sysconfig/clock" ) { 
+           $grep_cmd = "grep -i utc /etc/sysconfig/clock";
+           $rc = xCAT::Utils->runcmd($grep_cmd, 0);
+           if ($::RUNCMD_RC != 0){ 
+              `sed -i 's/.*UTC.*/UTC=yes/' /etc/sysconfig/clock`;
+           } else {
+              `echo "UTC=yes" >> /etc/sysconfig/clock`;
+           }
+        } else {
+           `type -P timedatectl >/dev/null 2>&1`; 
+           `timedatectl set-local-rtc 0`;
+        }
+    } 
+
+    #update the hardware clock automaticly
+    if ( -f "/etc/sysconfig/ntpd" ) {
+        $grep_cmd = "grep -i SYNC_HWCLOCK /etc/sysconfig/ntpd";
+        $rc = xCAT::Utils->runcmd($grep_cmd, 0);
+        if ($::RUNCMD_RC != 0) { 
+            `sed -i "s/.*SYNC_HWCLOCK.*/SYNC_HWCLOCK=yes/" /etc/sysconfig/ntpd`;
+        } else {
+            `echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd`;
+        }
+    } else {
+        my $cron_file="/etc/cron.daily/xcatsethwclock";
+        if ( ! -f "$cron_file" ) {
+            `echo "#!/bin/sh" > $cron_file` ;
+            `echo "/sbin/hwclock --systohc --utc" >> $cron_file`;
+            `chmod a+x $cron_file`;
+            #service cron restart
+            xCAT::Utils->startservice("cron");
+        }
+    } 
     #start ntpd
     if ($verbose) {
         send_msg(\%request, 0, " ...starting $ntp_service" );
@@ -377,13 +432,11 @@ sub process_request {
                     },
                     $sub_req, -1, 1
                 );
-            if ($verbose) {
-                send_msg(\%request, 0, " ...updatnode returns the following result: @$ret" );
+            my $msg;
+            foreach my $line (@$ret) {
+                $msg .= "$line\n";
             }
-            if ($::RUNCMD_RC != 0) {
-                send_msg(\%request, 1, "Error in updatenode: $ret" );
-
-            }
+            send_msg(\%request, 1, "$msg");
         }
     }
 

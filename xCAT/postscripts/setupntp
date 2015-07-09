@@ -119,10 +119,12 @@ restrict 127.0.0.1" >>$conf_file
         fi
         echo "$cmd"
         logger -t xcat "$cmd"
-        eval $cmd
-        if [ "$?" != "0" ];then
-            echo "  $cmd failed"
+        output=`eval $cmd 2>&1`
+        rc=$?
+        if [ "$rc" != "0" ] || (pmatch "$output" "Time could not*");then
+            echo "$cmd failed, NTP maynot be synchronized, please wait for NTP synchronized then run updatenode nodename -P setupntp"
             logger -t xcat "$cmd failed"
+            exit 1
         fi
     else
         logger -t xcat "ntpdate -t5 $master "
