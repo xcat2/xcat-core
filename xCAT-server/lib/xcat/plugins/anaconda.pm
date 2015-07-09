@@ -750,6 +750,8 @@ sub mknetboot
            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
            if($ipaddr){
               $kcmdline .=" LOGSERVER=$ipaddr ";
+           }else{
+              $kcmdline .=" LOGSERVER=$xcatmaster ";
            }
 
            $kcmdline .= " xcatdebugmode=1 ";
