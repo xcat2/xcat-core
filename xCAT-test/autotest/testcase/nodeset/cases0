@@ -164,3 +164,12 @@ check:rc==0
 cmd:rmdef -t osimage -o "rhels7.5-ppc64el-install-compute"
 cmd:noderm testnode1
 end
+start:nodeset_check_warninginfo
+cmd:mkdef -t node -o testnode1 arch=ppc64el cons=ipmi groups=pbmc mgt=ipmi ip=10.1.1.200 mac=e6:d4:d2:3a:ad:06  monserver=10.1.1.1 nameservers=10.1.1.1 nodetype=ppc,osi profile=compute tftpserver=10.1.1.1 xcatmaster=10.1.1.1 netboot=petitboot
+check:rc==0
+cmd:nodeset testnode1 osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+check:output=~Warning: testnode1: petitboot might be invalid
+cmd:noderm testnode1
+end
+
