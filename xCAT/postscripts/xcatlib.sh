@@ -757,5 +757,5 @@ function msgutil_r {
 #               logfile:  the path of the file to append the log 
 ####################################################################
 function msgutil {
-    msgutil_r "localhost" "$@"
+   msgutil_r "" "$@"
 }
