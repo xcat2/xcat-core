@@ -733,8 +733,6 @@ sub runcase
         $total = $total + 1;
         my $now1=timelocal(localtime());
         my $time1=gmtime $now1;
-         my @outnew = `ls -al  /opt/xcat/share/xcat/netboot/SL`;
-       log_this ("outputnew is @outnew");
         log_this("------START:$$case{name}::Time:$time1------");
         push @record, "------START:$$case{name}::Time:$time1------";
         push @record, "FILENAME:$$case{filename}";
