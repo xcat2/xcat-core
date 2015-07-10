@@ -714,7 +714,21 @@ function msgutil_r {
       msgtype="debug"
    fi
 
-   logger -n $logserver -t xcat -p local4.$msgtype "$msgstr"
+
+   if [ -n "logserver" ];then
+      logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
+      if [ "$?" != "0" ];then
+         exec 3<>/dev/udp/$logserver/514 >/dev/null 2>&1;logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1
+         if [ "$?" != "0" ];then
+            logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
+            if [ "$?" != "0" ];then
+               logger -t xcat -p local4.$msgtype "$msgstr"
+            fi
+         fi
+      fi
+   else
+       logger -t xcat -p local4.$msgtype "$msgstr"
+   fi
 
    if [ -n "$logfile"  ]; then
       local logdir="$(dirname $logfile)"
