@@ -226,7 +226,7 @@ sub setdestiny {
                 my $netbootval=xCAT::Utils->lookupNetboot($ref->{osvers},$ref->{osarch},$ref->{imagetype});
                 unless($netbootval =~ /$curnetboot/i){
                     #$errored =1; 
-                    $callback->({warning=> [join(",",@{$req->{node}}).": $curnetboot is not valid when provisioning $target,valid options: \"$netbootval\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
+                    $callback->({warning=> [join(",",@{$req->{node}}).": $curnetboot might be invalid when provisioning $target,valid options: \"$netbootval\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
                     #return;
                 }               
 
@@ -313,8 +313,8 @@ sub setdestiny {
  
                     #if any node with inappropriate noderes.netboot,report the error and return
                     foreach my $tmpimage(keys %$invalidosimghash){
-                           $errored =1;
-                           $callback->({errorcode=>[1],error=> [join(",",@{$invalidosimghash->{$tmpimage}->{nodes}}).": $curnetboot is not valid when provisioning $tmpimage,valid options: \"$invalidosimghash->{$tmpimage}->{netboot}\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
+                           #$errored =1;
+                           $callback->({warning=> [join(",",@{$invalidosimghash->{$tmpimage}->{nodes}}).": $curnetboot might be invalid when provisioning $tmpimage,valid options: \"$invalidosimghash->{$tmpimage}->{netboot}\". \nFor more details see the 'netboot' description in the output of \"tabdump -d noderes\"."]});
                     }
                       
                     if("$errored" ne "0"){
