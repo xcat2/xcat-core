@@ -21,7 +21,6 @@ descriptiop:makentp
 cmd:date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w ; fi
-check:output=~2015
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
 cmd:makentp 
