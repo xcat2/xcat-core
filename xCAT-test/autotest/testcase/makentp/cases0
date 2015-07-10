@@ -21,6 +21,7 @@ descriptiop:makentp
 cmd:date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock -w;else hwclock -w ; fi
+check:output=~2015
 cmd:chtab key=extntpservers site.value="$$extntpserversip"
 check:rc==0
 cmd:makentp 
@@ -28,8 +29,8 @@ check:rc==0
 check:output=~configuring management node
 cmd:date
 check:output=~2015
-#cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-#check:output=~2015
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
+check:output=~2015
 end
 start:makentp_a
 descriptiop:makentp -a
@@ -43,8 +44,8 @@ check:rc==0
 check:output=~configuring management node
 cmd:date
 check:output=~2015
-#cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-#check:output=~2015
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
+check:output=~2015
 end
 
 start:updatenode_computenode_P_setupntp
@@ -61,7 +62,7 @@ check:output=~Running of postscripts has completed
 cmd:sleep 120
 cmd:xdsh $$CN date
 check:output=~2015
-#cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock ;else xdsh $$CN hwclock  ; fi
-#check:output=~2015
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock ;else xdsh $$CN hwclock  ; fi
+check:output=~2015
 end
 
