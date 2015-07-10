@@ -217,7 +217,7 @@ sub getConfig
             }
         } elsif ($type eq "Varible") {
             ##NODE_BLOCK##
-            if($line =~ /(\w+)\s*=\s*([\w\.\-\/]+)/) {
+            if($line =~ /(\w+)\s*=\s*([\w\.\-\+\/]+)/) {
                 $config{var}{$1} = $2;
             }
         }
