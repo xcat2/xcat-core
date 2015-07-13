@@ -1401,6 +1401,21 @@ sub mknetboot
         if(($nodestatus eq "n") or ($nodestatus eq "N") or ($nodestatus eq "0")){
             $kcmdline .= " nonodestatus ";
         }
+
+
+        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+
+           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+           if($ipaddr){
+              $kcmdline .=" LOGSERVER=$ipaddr ";
+           }else{
+              $kcmdline .=" LOGSERVER=$xcatmaster ";
+           }
+
+           $kcmdline .= " xcatdebugmode=1 ";
+        }
+
+
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
         # the redhat5.x os will ignore it

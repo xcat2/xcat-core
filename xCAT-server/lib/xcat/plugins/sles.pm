@@ -576,6 +576,20 @@ sub mknetboot
            $kcmdline .= " nonodestatus ";
         }
 
+
+        if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+
+           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+           if($ipaddr){
+              $kcmdline .=" LOGSERVER=$ipaddr ";
+           }else{
+              $kcmdline .=" LOGSERVER=$xcatmaster ";
+           }
+
+           $kcmdline .= " xcatdebugmode=1 ";
+        }
+
+
         $kcmdline .= "NODE=$node ";
         # add flow control setting
         $kcmdline .= "FC=$useflowcontrol ";
