@@ -1,0 +1,62 @@
+start:runcmdinstaller
+descriptiop:runcmdinstaller -h
+cmd:runcmdinstaller
+##check:rc==0
+check:output=~runcmdinstaller <node> "<command>"
+end
+start:runcmdinstaller_command
+descriptiop:runcmdinstaller
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 300
+cmd:xdsh $$CN date
+check:output=~2015
+cmd:runcmdinstaller $$CN "ls -al /tmp"
+check:rc==0
+check:output=~yum
+cmd:chtab key=xcatdebugmode site.value="0"
+end
+start:get_xcat_install_loginfo
+description:xcatdebugloginfo for install
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 300
+cmd:cat /var/log/messages |grep "packaging: Installing"
+check:rc==0
+cmd:chtab key=xcatdebugmode site.value="0"
+end
+start:get_xcat_postscripts_loginfo
+description:get xcat post scripts loginfo
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+check:rc==0
+cmd:sleep 1200
+cmd:cat /var/log/messages |grep "Running post-installation scripts"
+cmd:rc==0
+cmd:cat /var/log/messages |grep "program: ++"
+cmd:rc==0
+cmd:chtab key=xcatdebugmode site.value="0"
+end
+start:updatenode_postscripts_loginfo
+description:get updatenode postsripts log info
+cmd:chtab key=xcatdebugmode site.value="1"
+check:rc==0
+cmd:chdef $$CN -p  postscripts=setupntp
+check:rc==0
+cmd:updatenode $$CN -P setupntp
+check:output=~$$CN: +
+cmd:cat /var/log/messages |grep "trying to download postscripts"
+check:rc==0
+cmd:chtab key=xcatdebugmode site.value="0"
+end
