@@ -257,3 +257,8 @@ makentp
 makentp_a
 updatenode_computenode_P_setupntp
 nodeset_check_warninginfo
+runcmdinstaller
+runcmdinstaller_command
+get_xcat_install_loginfo
+get_xcat_postscripts_loginfo
+updatenode_postscripts_loginfo
