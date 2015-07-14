@@ -276,6 +276,7 @@ my %MFG_ID = (
 	2 => "IBM",
 	343 => "Intel",
 	20301 => "IBM",
+    19046 => "Lenovo",
 );
 
 my %PROD_ID = (
@@ -1301,6 +1302,10 @@ sub idpxthermprofile {
     return (0,"OK");
 }
 
+sub is_systemx {
+    my $sessdata = shift;
+    return ($sessdata->{mfg_id} == 20301 or $sessdata->{mfg_id} == 2 or $sessdata->{mfg_id} == 19046);
+}
 
 sub getrvidparms {
     my $sessdata = shift;
@@ -1325,7 +1330,7 @@ sub getrvidparms {
         xCAT::SvrUtils::sendmsg("jnlp:$response",$callback,$sessdata->{node},%allerrornodes);
         return;
     }
-    unless ($sessdata->{mfg_id} == 2 or $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
+    unless ($sessdata->{mfg_id} == 2 or $sessdata->{mfg_id} == 01) { #Only implemented for IBM servers
         xCAT::SvrUtils::sendmsg([1,"Remote video is not supported on this system"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
@@ -1681,7 +1686,7 @@ sub power {
 	my $code;
     if ($sessdata->{subcommand} eq "reseat") {
         reseat_node($sessdata);
-    } elsif (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
+    } elsif (not $sessdata->{acpistate} and is_systemx($sessdata)) { #Only implemented for IBM servers
 		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[1],callback=>\&power_with_acpi,callback_args=>$sessdata);
 	} else {
 		$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
@@ -2425,7 +2430,7 @@ sub initfru_withguid {
     my $prod_id = $sessdata->{prod_id};
 	my $mprom;
 
-	if($mfg_id == 20301 or $mfg_id == 2 && $prod_id != 34869) {
+	if(is_systemx($sessdata) && $prod_id != 34869) {
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&got_bmc_fw_info,callback_args=>$sessdata);
 	} else {
         got_bmc_fw_info(0,$sessdata);
@@ -5039,7 +5044,7 @@ sub checkleds {
 	my $key;
 	my $mfg_id=$sessdata->{mfg_id};
 #TODO device id
-	if ($mfg_id != 2 and $mfg_id != 20301) {
+	unless (is_systemx($sessdata)) {
 		xCAT::SvrUtils::sendmsg("LED status not supported on this system",$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
@@ -6057,7 +6062,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 
 	my $sdr = SDR->new();
 
-	if (($mfg_id == 2 || $mfg_id == 20301) && $sdr_type==0xC0 && $sdr_data[9] == 0xED) {
+	if (is_systemx($sessdata) && $sdr_type==0xC0 && $sdr_data[9] == 0xED) {
 			#printf("%02x%02x\n",$sdr_data[13],$sdr_data[12]);
 		$sdr->rec_type($sdr_type);
 		$sdr->sensor_type($sdr_data[9]);
