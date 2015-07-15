@@ -53,11 +53,12 @@ cmd:xdsh $$CN date -s 20000101
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock -w;else xdsh $$CN hwclock -w ; fi
 cmd:chdef $$CN -p  postscripts=setupntp
-#cmd:chtab key=extntpservers site.value=""
-#check:rc==0
+cmd:chtab key=extntpservers site.value=""
+check:rc==0
 cmd:updatenode $$CN -P setupntp
 check:rc==0
 check:output=~Running of postscripts has completed
+check:output=~Running postscript: setupntp
 cmd:sleep 120
 cmd:xdsh $$CN date
 check:output=~2015
