@@ -259,7 +259,7 @@ fi
 xcatpost="/xcatpost"
 # Check for debug mode and you have nodename available you can change the path for debug
 
-echolog "debug" "running $0 $@"
+echolog "debug" "running $0 $*"
 
 
 if [ -n "$XCATDEBUG" ]; then
@@ -827,8 +827,8 @@ run_ps () {
  logfile=\"/var/log/xcat/xcat.log\"
  
  if [ -f \$1 ]; then 
-  echo \"\`date\` Running postscript: \$@\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Running postscript: \$@\" \"\$logfile\"
+  echo \"\`date\` Running postscript: \$*\" 
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Running postscript: \$*\" \"\$logfile\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
      bash -x ./\$@ 2>&1 | tee -a \$logfile
      ret_local=\${PIPESTATUS[0]}
@@ -840,11 +840,11 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"Postscript: \$@ exited with code \$ret_local\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$@ exited with code \$ret_local\" \"\$logfile\"
+  echo \"Postscript: \$* exited with code \$ret_local\" 
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$@ exited with code \$ret_local\" \"\$logfile\"
+  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
   return_value=-1
  fi
 
