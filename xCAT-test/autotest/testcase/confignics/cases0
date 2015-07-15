@@ -201,4 +201,11 @@ check:output!~100.1.0.100
 cmd:rmdef -t network -o 100_1_0_0-255_255_0_0
 cmd:chtab node=$$CN nics.disable=0
 end
-
+start:confignics_s
+description:confignics_s
+cmd:updatenode $$CN  "confignics -s"
+check:rc==0
+check:output!~invalid
+cmd:if cat /etc/*release |grep "Red Hat" >/dev/null;then xdsh $$CN  "cat /etc/sysconfig/network-scripts/ifcfg-eth0 |grep IPADDR=$$NODEIP";elif cat /etc/*release |grep SUSE >/dev/null; then xdsh $$CN "cat /etc/sysconfig/network/ifcfg-eth0 |grep IPADDR=$$NODEIP";fi
+check:rc==0
+end
