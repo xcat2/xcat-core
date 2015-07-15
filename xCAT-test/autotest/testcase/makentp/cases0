@@ -63,5 +63,6 @@ cmd:xdsh $$CN date
 check:output=~2015
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock ;else xdsh $$CN hwclock  ; fi
 check:output=~2015
+cmd:chdef $$CN -m postscripts=setupntp
 end
 
