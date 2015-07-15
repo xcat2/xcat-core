@@ -1047,7 +1047,7 @@ Usage:
         }
 
         setrsp_progress("Re-creating nodes...");
-        $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"], node=>$nodes, macflag=>[1]}, $request_command, 0, 2);
+        $retref = xCAT::Utils->runxcmd({command=>["kitnodeadd"],  node=>$nodes, sequential=>[1], macflag=>[1]}, $request_command, 0, 2);
         $retstrref = parse_runxcmd_ret($retref);
         if ($::RUNCMD_RC != 0){
             setrsp_progress("Warning: failed to call kit commands.");
