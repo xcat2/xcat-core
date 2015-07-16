@@ -1629,6 +1629,12 @@ EOMS
    print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/\n";
    print $inifile "cp /etc/HOSTNAME \$NEWROOT/etc/\n";
    print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
+   
+   #details, see defect https://sourceforge.net/p/xcat/bugs/4741/
+   if($osver =~ /sles11.4/i){
+      print $inifile "export ROOTFS_BLKDEV=\"\/\"\n";     
+   }
+   
    print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console \$NEWROOT /sbin/init\n";
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
