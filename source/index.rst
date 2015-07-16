@@ -25,7 +25,6 @@ Content
    developers/index
    advanced/index
    help
-   notes/index
 
 
 Indices and tables
