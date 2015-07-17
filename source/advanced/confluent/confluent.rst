@@ -8,9 +8,12 @@ Download
 --------
 
 confluent
-^^^^^^^^^
+~~~~~~~~~
 
-The latest confluent rpms are built and provided for your convenience:  `confluent rpms <https://sourceforge.net/projects/xcat/files/confluent/rpms>`_
+rpms
+^^^^
+
+The latest confluent rpms are built and provided for your convenience:  `confluent rpms <https://sourceforge.net/projects/xcat/files/confluent/rpms>`_.  However, the rpms are not built on a regular release schedule.  To use the latest code base, consider building the rpms from :ref:`label_confluent_source`.
 
 The following example downloads the confluent tar package and creates a local repository on your management node::
 
@@ -21,9 +24,25 @@ The following example downloads the confluent tar package and creates a local re
     cd confluent-X.X
     ./mklocalrepo.sh 
 
+.. _label_confluent_source:
+
+source
+^^^^^^
+
+To build from source, ensure your development machine has the correct development packages to create rpms, then execute hte following:
+
+    * Clone the git repo:  ::
+
+        git clone https://github.com/xcat2/confluent.git
+
+    * Build the ``confluent-server`` and ``confluent-client`` packages: ::
+
+        cd confluent/confluent_server ; ./buildrpm ; cd -
+        cd confluent/confluent_client ; ./buildrpm ; cd -
+
 
 confluent-dep
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 The latest confluent dependency packages are provided for your convenience: `confluent-deps <http://sourceforge.net/projects/xcat/files/confluent-dep/>`_ 
 
