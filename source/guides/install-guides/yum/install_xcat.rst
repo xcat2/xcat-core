@@ -1,27 +1,27 @@
 Install xCAT
 ============
 
-xCAT consists of two software packages: 
+xCAT consists of two software packages:
 
-#. **xcat-core**  xCAT's main software package. 
-    
+#. **xcat-core**  xCAT's main software package.
+
      The xcat-core package is provided in one of the following options:
-     
+
      * **Latest Release (Stable) Builds**
-       
+
          *This is the latest GA (Generally Availability) build that has been tested throughly*
-     
+
      * **Latest Snapshot Builds**
-       
+
          *This is the latest snapshot of the GA version build that may contain bug fixes but has not yet been tested throughly*
-     
+
      * **Development Builds**
-     
+
          *This is the snapshot builds of the new version of xCAT in development. This version has not been released yet, use as your own risk*
-     
+
 #. **xcat-dep**  xCAT's dependency package.  This is provided as a convenience for the user and contains dependency packages required by xCAT that are not provided by the operating system.
 
-xCAT is installed by configuring software repositories for ``xcat-core`` and ``xcat-dep`` and using yum package manager.  The software repositoreies can publically hosted (requires internet connectivity) or locally configured. 
+xCAT is installed by configuring software repositories for ``xcat-core`` and ``xcat-dep`` and using yum package manager.  The software repositoreies can publically hosted (requires internet connectivity) or locally configured.
 
 Configure xCAT Software Repository
 ----------------------------------
@@ -29,7 +29,7 @@ Configure xCAT Software Repository
 Public Internet Repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TODO: Need to fill this out 
+TODO: Need to fill this out
 
 Locally Configured Repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,13 +39,13 @@ From the xCAT software download page: `<https://sourceforge.net/p/xcat/wiki/Down
 xcat-core
 ^^^^^^^^^
 
-#. Download xcat-core, if downloading the latest devepment build: :: 
+#. Download xcat-core, if downloading the latest devepment build: ::
 
         cd /root
         mkdir -p ~/xcat
         cd ~/xcat/
         wget http://sourceforge.net/projects/xcat/files/yum/devel/core-rpms-snap.tar.bz2
-  
+
 
 #. Extract xcat-core: ::
 
@@ -55,7 +55,7 @@ xcat-core
 #. Configure the local repository, by runnin the ``mklocalrepo.sh`` script: ::
 
         cd ~/xcat/xcat-core/
-        ./mklocalrepo.sh 
+        ./mklocalrepo.sh
 
 
 xcat-dep
@@ -80,7 +80,7 @@ Unless you are downloading ``xcat-dep`` for a specific GA version of xCAT, selec
         cd ~/xcat/xcat-dep/
         # for redhat 6.5 on ppc64...
         cd rh6/ppc64
-        ./mklocalrepo.sh 
+        ./mklocalrepo.sh
 
 Install xCAT
 ------------
@@ -111,7 +111,7 @@ Quick verificaiton can be done with the following steps:
 
 #. Check the xCAT Install version: ::
 
-        lsxcatd -a 
+        lsxcatd -a
 
 #. Check to see the database is initialized by dumping the site table: ::
 
@@ -125,9 +125,10 @@ Quick verificaiton can be done with the following steps:
         "fsptimeout","0",,
         "installdir","/install",,
         "ipmimaxp","64",,
+        "ipmiretries","3",,
         ...
 
-Starting and Stopping 
+Starting and Stopping
 ---------------------
 
 You can easily start, stop, restart, and check xCAT status using Linux systemd or systemctl:
@@ -135,16 +136,16 @@ You can easily start, stop, restart, and check xCAT status using Linux systemd o
 * start xCAT: ::
 
     service xcatd start
-    systemctl xcatd.service start 
+    systemctl xcatd.service start
 
-* stop xCAT: :: 
+* stop xCAT: ::
 
-    service xcatd stop 
+    service xcatd stop
     systemctl xcatd.service stop
 
 * restart xCAT: ::
 
-    service xcatd restart 
+    service xcatd restart
     systemctl xcatd.service restart
 
 * check xCAT status: ::
@@ -153,7 +154,7 @@ You can easily start, stop, restart, and check xCAT status using Linux systemd o
     systemctl xcatd.service status
 
 
-Updating xCAT 
+Updating xCAT
 -------------
 
 If at a later date you want to update xCAT, simply update the software repository and run: ::
