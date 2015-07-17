@@ -34,4 +34,16 @@ Add xCAT Rest API to support docker.
 
 URI - /xcatws/<node>/start
 
+::
+  #curl 
+  #wget
 
+Add a Table
+^^^^^^^^^^^
++-----------+------------+-------------+
+|Operation  |Params      |Result       |
++===========+============+=============+
+|GET        |node        |on/off       |
++-----------+------------+-------------+
+|PUT        |node        |on/off       |
++-----------+------------+-------------+
