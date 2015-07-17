@@ -8,3 +8,4 @@ This page is for developers interested in working with xCAT.
    :maxdepth: 2
 
    git
+   mini-design
