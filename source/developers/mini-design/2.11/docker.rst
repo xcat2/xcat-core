@@ -16,7 +16,7 @@ Will add several new commands to support docker.
 
 * docker create
 
-  * Create Only
+  * Create only
   * Start after creating
 
 * docker stop
