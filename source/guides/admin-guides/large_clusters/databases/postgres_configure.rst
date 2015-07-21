@@ -18,13 +18,14 @@ For service nodes, add the IP address of each service nodes to the postgres conf
 
 If you had the following two service nodes: ::
 
-    sn10 192.168.1.10
-    sn11 192.168.1.11
+
+    sn10, ip: 192.168.1.10 with netmask 255.255.255.0
+    sn11, ip: 192.168.1.11 with netmask 255.255.255.0
 
 You would add the following to ``/var/lib/pgsql/data/pg_hba.conf`` ::
 
-    host    all          all        11.16.1.230/32      md5
-    host    all          all        11.16.2.230/32      md5
+    host    all          all        192.168.1.10/24      md5
+    host    all          all        192.168.1.11/24      md5
 
 Restart PostgreSQL after editing the file: ::
 
