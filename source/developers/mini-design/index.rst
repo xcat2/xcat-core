@@ -13,12 +13,12 @@ The **Design Document** for certain feature.
 .. toctree::
    :maxdepth: 1
 
-   mini-design/2.11/docker
-   mini-design/2.11/docker-swarm
+   2.11/docker.rst
+   2.11/docker-swarm.rst
 
 2.10
 ----
 .. toctree::
    :maxdepth: 1
 
-   mini-design/2.10/xcatdebugmode
+   2.10/xcatdebugmode.rst
