@@ -12,4 +12,5 @@ Confluent is a new codebase with a few goals in mind:
 .. toctree::
    :maxdepth: 2
 
-   confluent.rst
+   server/index.rst
+   client/index.rst

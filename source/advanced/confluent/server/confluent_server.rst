@@ -1,17 +1,18 @@
+
 Getting Started 
----------------
+===============
 
 For xCAT 2.9.1 and later, confluent is intended to be used in conjunction with xCAT. 
 The following documentation assumes that xCAT is already installed and configured on the management node.
 
 Download
---------
+========
 
 confluent
-~~~~~~~~~
+---------
 
 rpms
-^^^^
+~~~~
 
 The latest confluent rpms are built and provided for your convenience:  `confluent rpms <https://sourceforge.net/projects/xcat/files/confluent/rpms>`_.  However, the rpms are not built on a regular release schedule.  To use the latest code base, consider building the rpms from :ref:`label_confluent_source`.
 
@@ -27,7 +28,7 @@ The following example downloads the confluent tar package and creates a local re
 .. _label_confluent_source:
 
 source
-^^^^^^
+~~~~~~
 
 To build from source, ensure your machine has the correct development packages to build rpms, then execute hte following:
 
@@ -42,7 +43,7 @@ To build from source, ensure your machine has the correct development packages t
 
 
 confluent-dep
-~~~~~~~~~~~~~
+-------------
 
 The latest confluent dependency packages are provided for your convenience: `confluent-deps <http://sourceforge.net/projects/xcat/files/confluent-dep/>`_ 
 
@@ -60,7 +61,7 @@ please send an email to the xcat-users mailing list: xcat-users@lists.sourceforg
 
 
 Install 
--------
+=======
 
 *confluent and confluent-deps must be downloaded to the management node before installing*
 
@@ -77,10 +78,10 @@ You may find it helpful to add the confluent paths into your system path::
     export MANPATH=$CONFLUENTROOT/share/man:$MANPATH
 
 Configuration
--------------
+=============
 
 Starting/Stopping confluent
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------
 
 To start confluent::
 
@@ -95,7 +96,7 @@ If you want confluent daemon to start automatically at bootup, add confluent ser
     chkconfig --add confluent
 
 Replacing conserver with confluent
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------
 
 A new keyword, ``consoleservice``, has been added to the xCAT site table to allow the system administrator to control between **conserver** and **confluent**.  If ``consoleservice`` is not set, default behavior is to use **conserver**.
 
@@ -118,7 +119,7 @@ Use ``rcons`` as before to start the console session.::
 
 
 Web Browser access
-------------------
+==================
 
 Confluent-api and confluent-consoles are able to be accessed from the browser.
 It is **highly** recommended that you create a non-root user to access the sessions::
@@ -134,7 +135,7 @@ It is **highly** recommended that you create a non-root user to access the sessi
     password="********"
 
 Rest Explorer
-^^^^^^^^^^^^^
+=============
 
 TODO: some intro text
 
@@ -154,7 +155,7 @@ Configure the httpd configuration for confluent-api by creating a ``confluent.co
 Now point your browser to: ``http://<server ip>:<port>`` and log in with the non-root user and password created above. 
 
 Confluent consoles
-^^^^^^^^^^^^^^^^^^
+==================
 
 confluent-web is provided in a subdirectory under the confluent project `confluent_web <https://sourceforge.net/p/xcat/confluent/ci/master/tree/confluent_web/>`_
 

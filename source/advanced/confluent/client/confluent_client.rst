@@ -1,5 +1,4 @@
 
-
 Starting the confetty client
 ============================
 
