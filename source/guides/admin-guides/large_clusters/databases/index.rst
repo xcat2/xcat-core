@@ -14,9 +14,11 @@ SQLite
 
 SQLite database is the default database used by xCAT and is initialized when xCAT is installed on the management node.
 
-SQLite is a small, light-weight, daemon-less database that requires no configuration or maintenance. This database is sufficient for small to moderate size systems ( < 1000 nodes ) when xCAT hierarchy (*service nodes*) is not being used.  The SQLite database cannot be used for hierarchy because service nodes requires remote access to the database and SQLite does not support remote access.  
+SQLite is a small, light-weight, daemon-less database that requires no configuration or maintenance.  This database is sufficient for small to moderate size systems ( < 1000 nodes ) 
 
-For hierarchy, you will need to use one of the following alternate databases. 
+**The SQLite database can NOT be used for xCAT hierarchy support because service nodes requires remote access to the database and SQLite does NOT support remote access.**
+
+For xCAT hierarchy, you will need to use one of the following alternate databases:
 
 MySQL/MariaDB
 -------------
