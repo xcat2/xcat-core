@@ -700,8 +700,8 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
             result=`echo $dir | grep -E "^http:.*"`
             if [ $? -eq 0 ]; then
                 echo "deb $dir" > "${repoprefix}${repocount}.list"
-            else
-                echo "deb http://$NFSSERVER/$dir ./"  > "${repoprefix}${repocount}.list"
+            #else
+             #   echo "deb http://$NFSSERVER/$dir ./"  > "${repoprefix}${repocount}.list"
             fi
             repocount=$(($repocount+1))
         done
