@@ -15,6 +15,7 @@ share/xcat/cons/ivm opt/xcat/share/xcat/cons
 share/xcat/ib/scripts/* opt/xcat/share/xcat/ib/scripts
 share/xcat/devicetype/IBSwitch/Mellanox/* opt/xcat/share/xcat/ib/scripts/Mellanox
 share/xcat/devicetype/IBSwitch/QLogic/* opt/xcat/share/xcat/ib/scripts/QLogic
+share/xcat/devicetype/* opt/xcat/share/xcat/devicetype
 share/xcat/ib/netboot/sles/* opt/xcat/share/xcat/ib/netboot/sles
 share/xcat/ib/netboot/rh/* opt/xcat/share/xcat/ib/netboot/rh
 

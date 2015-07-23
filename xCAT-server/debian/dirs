@@ -13,6 +13,7 @@ opt/xcat/share/xcat/rollupdate
 opt/xcat/share/xcat/installp_bundles
 opt/xcat/share/xcat/image_data
 opt/xcat/share/xcat/cons
+opt/xcat/share/xcat/devicetype
 opt/xcat/share/xcat/ib
 opt/xcat/share/xcat/ib/scripts
 opt/xcat/share/xcat/ib/scripts/Mellanox
