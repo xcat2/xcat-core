@@ -242,7 +242,7 @@ if [ `uname -m` = "ppc64" ]; then
 fi
 if [ -d /sys/firmware/efi ]; then 
     echo 'bootloader --driveorder='$instdisk >> /tmp/partitioning
-	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype $EFIFSTYPE' >> /tmp/partitioning
+	echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype '$EFIFSTYPE >> /tmp/partitioning
 else
     echo 'bootloader' >> /tmp/partitioning
 fi
