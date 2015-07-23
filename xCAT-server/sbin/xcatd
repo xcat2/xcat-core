@@ -1131,9 +1131,10 @@ closelog();
 my @pendingconnections;
 my $tconn;
 my $sslfudgefactor = 0;
+my $udpalive = 1;
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
-  while ($udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
+  while ($udpalive and $udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
       eval {
           my $msg = fd_retrieve($udpctl);
           if ($msg->{req} eq 'get_client_count') {
@@ -1143,6 +1144,10 @@ until ($quit) {
             store_fd({'clientfudge'=>$sslfudgefactor, 'sslclientcount' => $sslclients}, $udpctl);
           }
       };
+      if ($@) {
+	$udpalive = 0;
+	$bothwatcher->remove($udpctl);
+      }
   }
   if (@pendingconnections) {
 	while ($listenwatcher->can_read(0)) { #grab everything we can, but don't spend any time waiting for more
