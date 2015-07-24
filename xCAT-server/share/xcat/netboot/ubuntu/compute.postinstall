@@ -28,7 +28,7 @@ proc    /proc    proc     defaults       0 0
 sysfs   /sys     sysfs    defaults       0 0
 tmpfs   /tmp     tmpfs    defaults             0 2
 tmpfs   /var/tmp     tmpfs    defaults       0 2
-compute_ppc64el    /   tmpfs   rw  0 1
+${profile}_${arch}    /   tmpfs   rw  0 1
 END
 
 
