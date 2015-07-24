@@ -1156,7 +1156,17 @@ until ($quit) {
 		push @pendingconnections,$tconn;
 	}
   } else {
-    $bothwatcher->can_read(30);
+    # if select returned with no ready fds, there might be udpctl broken.
+    if (not $bothwatcher->can_read(30)) {
+        # if the errno is 'bad fd', check the health of the udpctl
+        if ($! == EBADF) {
+            $udpwatcher->can_read(0);
+            if ($! == EBADF) {
+                # if udpctl cannot be read and said 'bad fd', remove it from $bothwatcher
+                $udpalive = 0;$bothwatcher = IO::Select->new($listener);
+            }
+        }
+    }
     if (not $listenwatcher->can_read(0)) {  # check for udpctl messages since
         # we have no listen to hear
         next;
