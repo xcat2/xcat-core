@@ -256,7 +256,6 @@ makentp_h
 makentp_V
 makentp
 makentp_a
-updatenode_computenode_P_setupntp
 nodeset_check_warninginfo
 runcmdinstaller
 runcmdinstaller_command
