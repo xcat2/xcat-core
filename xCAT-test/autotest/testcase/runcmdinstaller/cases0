@@ -59,4 +59,5 @@ check:output=~$$CN: +
 cmd:cat /var/log/messages |grep "trying to download postscripts"
 check:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
+cmd:chdef $$CN  -m  postscripts=setupntp 
 end
