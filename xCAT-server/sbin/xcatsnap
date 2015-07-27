@@ -194,7 +194,7 @@ sub snap_it {
             "/etc/hosts",                "/etc/conserver.cf",
             "/var/log/conserver",        "/etc/db_file.cr",
             "/etc/dhcpsd.cnf",           "/var/adm/ras/nimlog",
-            "/etc/resolv.conf", "/etc/named.conf",  "/var/log/messages");
+            "/etc/resolv.conf", "/etc/named.conf",  "/var/log/messages", "/var/log/xcat/*");
     }
 
     elsif ( $OSname eq "Linux" ) {
@@ -206,7 +206,7 @@ sub snap_it {
             "/etc/*-release",              "/etc/dhcpd.conf",
             "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
             "/etc/named.conf", "/etc/conserver.cf",           "/var/log/conserver",
-            "/etc/nsswitch.conf",          "/var/log/messages");
+            "/etc/nsswitch.conf",          "/var/log/messages", "/var/log/xcat/*");
         print("@files_array \n");
     }
             foreach my $item (@files_array) {
