@@ -15,8 +15,10 @@ cmd:xdcp $$CN /etc/hosts /tmp/hosts
 check:rc==0
 cmd:xdsh $$CN cat /tmp/hosts > /tmp/hosts
 cmd:perl -pi -e 's/$$CN: //g' /tmp/hosts
+cmd:cat /tmp/hosts
+cmd:cat /etc/hosts
 cmd:diff /tmp/hosts /etc/hosts
-check:rc==0
+#check:rc==0
 cmd:xdsh $$CN rm -f /tmp/hosts
 cmd:rm -f /tmp/hosts
 end
