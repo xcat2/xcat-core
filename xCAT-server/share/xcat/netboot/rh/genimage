@@ -1683,14 +1683,6 @@ sub using_systemd {
         if ($1 >= 7) {
             return 1;
         }
-    }elsif ($os =~/centos(\d+)/){
-        if($1 >= 7){
-            return 1;
-        }
-    }elsif ($os =~/rhelhpc(\d+)/){
-        if($1 >= 7){
-            return 1;
-        }
     }
 
     return 0;
