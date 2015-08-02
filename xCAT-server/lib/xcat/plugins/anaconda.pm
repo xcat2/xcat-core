@@ -749,9 +749,17 @@ sub mknetboot
 
            my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
            if($ipaddr){
+              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
               $kcmdline .=" LOGSERVER=$ipaddr ";
+             
+              #for use in syslog dracut module in the initrd 
+              $kcmdline .=" syslog.server=$ipaddr syslog.type=rsyslogd syslog.filter=*.* ";
            }else{
+              #for use in postscript and postbootscript in xcatdsklspost in the rootimg
               $kcmdline .=" LOGSERVER=$xcatmaster ";
+
+              #for use in syslog dracut module in the initrd 
+              $kcmdline .=" syslog.server=$xcatmaster syslog.type=rsyslogd syslog.filter=*.* ";
            }
 
            $kcmdline .= " xcatdebugmode=1 ";

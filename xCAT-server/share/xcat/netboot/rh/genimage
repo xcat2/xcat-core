@@ -582,11 +582,13 @@ foreach my $dn (@ndrivers) {
 }
 @ndrivers = @fulldrivers;
 
+my $dracutver;
+
 unlink "/tmp/genimage.$$.yum.conf";
 if ( (-d "$rootimg_dir/usr/share/dracut") or (-d "$rootimg_dir/usr/lib/dracut") ) {
     $dracutmode = 1;
     # get dracut version
-    my $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
+    $dracutver = `rpm --root $rootimg_dir -qi dracut | grep Version | awk -F' ' '{print \$3}'`;
     chomp($dracutver);
     if ($dracutver =~ /^\d\d\d$/) {
         if ($dracutver >= "033") {
@@ -826,6 +828,27 @@ sub mkinitrd_dracut {
        $dracutmoduledir="$rootimg_dir/usr/lib/dracut/modules.d/";
     }
 
+
+    if ($dracutver > "033") {
+       my $perm = (stat("$fullpath/$dracutdir/patch/initqueue.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/initqueue.sh", $dracutmoduledir."99base/");
+       chmod($perm&07777, $dracutmoduledir."99base/"."initqueue.sh");
+
+
+       $perm = (stat("$fullpath/$dracutdir/patch/module-setup.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/module-setup.sh", $dracutmoduledir."98syslog/");
+       chmod($perm&07777, $dracutmoduledir."98syslog/"."module-setup.sh");
+
+       $perm = (stat("$fullpath/$dracutdir/patch/rsyslogd-start.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/rsyslogd-start.sh", $dracutmoduledir."98syslog/");
+       chmod($perm&07777, $dracutmoduledir."98syslog/"."rsyslogd-start.sh");
+
+       $perm = (stat("$fullpath/$dracutdir/patch/syslog-genrules.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/syslog-genrules.sh", $dracutmoduledir."98syslog/");
+       chmod($perm&07777, $dracutmoduledir."98syslog/"."syslog-genrules.sh");
+
+    }
+
     my $dracutmpath = $dracutmoduledir."97xcat/";
     mkpath($dracutmpath);
 
@@ -910,10 +933,10 @@ sub mkinitrd_dracut {
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
         if (-d glob($dracutmoduledir."[0-9]*fadump")){
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump syslog"\n};
         }
         else{
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
+            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules syslog"\n};
         }
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
@@ -929,6 +952,8 @@ sub mkinitrd_dracut {
 	close $ETC_CMDLINE;
 	$additional_options= qq{--include /tmp/cmdline /etc/cmdline};
     }
+
+
 
     # force the dracut run in non-hostonly mode for dracut higher than version 033
     if ($dracutver > "033") {
