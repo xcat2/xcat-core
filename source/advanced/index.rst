@@ -6,4 +6,5 @@ Advanced Topics
 
    confluent/index
    docker/index
+   hamn/index
    mixed_cluster
