@@ -829,22 +829,23 @@ sub mkinitrd_dracut {
     }
 
 
-    if ($dracutver > "033") {
-       my $perm = (stat("$fullpath/$dracutdir/patch/initqueue.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/initqueue.sh", $dracutmoduledir."99base/");
+    if ($dracutver >= "033") {
+
+       my $perm = (stat("$fullpath/$dracutdir/patch/base/initqueue.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/base/initqueue.sh", $dracutmoduledir."99base/");
        chmod($perm&07777, $dracutmoduledir."99base/"."initqueue.sh");
 
 
-       $perm = (stat("$fullpath/$dracutdir/patch/module-setup.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/module-setup.sh", $dracutmoduledir."98syslog/");
+       $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/syslog/module-setup.sh", $dracutmoduledir."98syslog/");
        chmod($perm&07777, $dracutmoduledir."98syslog/"."module-setup.sh");
 
-       $perm = (stat("$fullpath/$dracutdir/patch/rsyslogd-start.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/rsyslogd-start.sh", $dracutmoduledir."98syslog/");
+       $perm = (stat("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/syslog/rsyslogd-start.sh", $dracutmoduledir."98syslog/");
        chmod($perm&07777, $dracutmoduledir."98syslog/"."rsyslogd-start.sh");
 
-       $perm = (stat("$fullpath/$dracutdir/patch/syslog-genrules.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/syslog-genrules.sh", $dracutmoduledir."98syslog/");
+       $perm = (stat("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh"))[2];
+       cp("$fullpath/$dracutdir/patch/syslog/syslog-genrules.sh", $dracutmoduledir."98syslog/");
        chmod($perm&07777, $dracutmoduledir."98syslog/"."syslog-genrules.sh");
 
     }
