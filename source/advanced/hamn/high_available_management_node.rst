@@ -55,9 +55,9 @@ The configuration for the high availability applications is usually complex, it 
 
 The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, trouble shooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs ... 
 
-*********************
+=====================
 Configuration Options
-*********************
+=====================
 
 The combinations of data synchronization mechanism and manual/automatic failover indicates different HAMN configuration options, the table below list all the combinations (the bold numbers are the combinations xCAT has documented and tested): 
 
