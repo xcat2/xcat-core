@@ -122,5 +122,6 @@ opt/xcat/bin/xcatclientnnr opt/xcat/bin/rmzone
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/slpdiscover
 opt/xcat/bin/xcatclient    opt/xcat/bin/xCATWorld
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/switchdiscover
+opt/xcat/bin/xcatclientnnr opt/xcat/bin/bmcdiscover
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/makentp
 
