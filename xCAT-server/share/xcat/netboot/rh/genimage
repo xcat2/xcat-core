@@ -831,12 +831,7 @@ sub mkinitrd_dracut {
 
     if ($dracutver >= "033") {
 
-       my $perm = (stat("$fullpath/$dracutdir/patch/base/initqueue.sh"))[2];
-       cp("$fullpath/$dracutdir/patch/base/initqueue.sh", $dracutmoduledir."99base/");
-       chmod($perm&07777, $dracutmoduledir."99base/"."initqueue.sh");
-
-
-       $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
+       my $perm = (stat("$fullpath/$dracutdir/patch/syslog/module-setup.sh"))[2];
        cp("$fullpath/$dracutdir/patch/syslog/module-setup.sh", $dracutmoduledir."98syslog/");
        chmod($perm&07777, $dracutmoduledir."98syslog/"."module-setup.sh");
 
