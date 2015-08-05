@@ -226,7 +226,7 @@ sub setstate {
               print $pcfg "\n";
             }
             print $pcfg "IPAPPEND 2\n";
-	    if ($kern->{kernel} =~ /esxi5/) { #Make uefi boot provisions
+	    if ($kern->{kernel} =~ /esxi[56]/) { #Make uefi boot provisions
 	       my $ucfg;
 	       open($ucfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".uefi");
 	       if ($kern->{kcmdline} =~ / xcat\/netboot/) {
