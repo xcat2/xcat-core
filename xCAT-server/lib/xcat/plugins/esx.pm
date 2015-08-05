@@ -4961,7 +4961,7 @@ sub mkcommonboot {
 		}
         $append = $prepend.$append;
 	}
-	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
+	elsif ($osver =~ /esxi[56]/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
       if (-r "$tftpdir/$tp/boot.cfg.$bootmode.tmpl") { #so much for straightforward..
 	  	$shortappend = "-c $tp/boot.cfg.$bootmode.$node";
