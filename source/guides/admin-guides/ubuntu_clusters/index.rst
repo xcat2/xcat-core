@@ -1,11 +1,10 @@
 Managing Ubuntu/Debian Clusters
 =======================
 
-* xCAT on Ubuntu Server
-* Preparing the Management Node
-* Installing xCAT
-* Configure xCAT
-* Deploying Nodes
-* Advanced Topics
-* Known Issues
+.. toctree::
+   :maxdepth: 2
+
+
+   xCAT_on_Ubuntu_Server
+   ../../install-guides/common/prepare_mgmt_node
 
