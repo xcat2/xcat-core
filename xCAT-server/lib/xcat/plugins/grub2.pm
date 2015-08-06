@@ -168,6 +168,12 @@ sub setstate {
     if ($cref->{currstate}) {
        print $pcfg "#".$cref->{currstate}."\n";
     }
+
+
+    if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+       print $pcfg "set debug=all\n";
+    }
+
     print $pcfg "set timeout=5\n";
     
     $normalnodes{$node}=1; #Assume a normal netboot (well, normal dhcp, 

@@ -1,4 +1,6 @@
 #!/bin/sh
+
+
 NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
@@ -16,8 +18,14 @@ if [ $? -ne 0 ]; then
 XCATIPORT="3002"
 fi
 
+xcatdebugmode="$(getarg xcatdebugmode=)"
+
+[  "$xcatdebugmode" = "1" ] &&  logger -t xcat -p debug "running xcatroot...."
+
+[  "$xcatdebugmode" = "1" ] &&  logger -t xcat -p debug "MASTER=$MASTER XCATIPORT=$XCATIPORT"
 
 if [ $NODESTATUS -ne 0 ];then
+[  "$xcatdebugmode" = "1" ] &&  logger -t xcat -p debug "nodestatus: netbooting,reporting..."
 /tmp/updateflag $MASTER $XCATIPORT "installstatus netbooting"
 fi
 
@@ -26,8 +34,10 @@ if [ ! -z "$imgurl" ]; then
 		NFS=0
 		FILENAME=${imgurl##*/}
 		while [ ! -r "$FILENAME" ]; do
+                        [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "downloading $imgurl...."
 			echo Getting $imgurl...
 			if ! wget $imgurl; then
+                                [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "downloading $imgurl failed,retrying...."
 				rm -f $FILENAME
 				sleep 27
 			fi
@@ -58,6 +68,7 @@ if [ -r /rootimg.sfs ]; then
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.gz ]; then
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "rootimg.gz downloaded,setting up RAM-root tmpfs...."
   echo Setting up RAM-root tmpfs.
   if [ -z $rootlimit ];then
     mount -t tmpfs -o mode=755 rootfs $NEWROOT
@@ -66,6 +77,7 @@ elif [ -r /rootimg.gz ]; then
   fi
 
   cd $NEWROOT
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "Extracting root filesystem:"
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
     gzip -cd /rootimg.gz |/bin/cpio -idum
@@ -73,6 +85,7 @@ elif [ -r /rootimg.gz ]; then
     gzip -cd /rootimg.gz |cpio -idum
   fi
   $NEWROOT/etc/init.d/localdisk
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "Done...."
   echo Done
 elif [ -r /rootimg-statelite.gz ]; then
   echo Setting up RAM-root tmpfs for statelite mode.
@@ -197,11 +210,18 @@ elif [ -r /rootimg-statelite.gz ]; then
   mount -n --bind /sys $NEWROOT/sys
 
 else
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "Failed to download image, panicing in 5..."
   echo -n Failed to download image, panicing in 5...
   for i in 4 3 2 1 0; do
     /bin/sleep 1
+    [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "$i..."
     echo -n $i...
   done
+
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "You're dead.  rpower nodename reset to play again."
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "* Did you packimage with -m cpio, -m squashfs, or -m nfs?"
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "* If using -m squashfs did you include aufs.ko with geninitrd? e.g.:  -n tg3,squashfs,aufs,loop"
+  [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "If using -m nfs did you export NFS and sync rootimg?  And did you include the aufs and nfs modules in the proper order: e.g.:  -n tg3,aufs,loop,sunrpc,lockd,nfs_acl,nfs"
   echo
   echo "You're dead.  rpower nodename reset to play again.
 
@@ -242,6 +262,7 @@ if [ -z $STATEMNT ]; then
     netif=${lf#*.}
     netif=${netif%.*}
     cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+    [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "saving $NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
   done
 
   if [ ! -z "$ifname" ]; then
@@ -257,8 +278,10 @@ if [ -z $STATEMNT ]; then
 
   if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
     if [ ! -e $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX ]; then
-        touch $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
+       [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "creating $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX" 
+       touch $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
     fi
+    [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "writing $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX: DEVICE=$ETHX;BOOTPROTO=dhcp;HWADDR=$MACX;ONBOOT=yes"
     echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
     echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
     echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network/ifcfg-$ETHX
@@ -266,13 +289,18 @@ if [ -z $STATEMNT ]; then
   fi
 fi
 
+[  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "saving $NEWROOT/etc/resolv.conf"
 cp /etc/resolv.conf "$NEWROOT/etc/"
 
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
+        [  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "disable selinux ..."
 	echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
 
+[  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "setting hostname..."
 echo `hostname` > $NEWROOT/etc/hostname
+
+[  "$xcatdebugmode" = "1" ] && logger -t xcat -p debug "exiting xcatroot..."
 
 # inject new exit_if_exists
 echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > $hookdir/initqueue/xcat.sh
