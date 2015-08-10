@@ -63,6 +63,11 @@ d-i partman/early_command string \
         mount $d /tmp/mymount || rc=$?; \
         if [[ $rc -eq 0 ]]; then \
             [[ -d /tmp/mymount/boot ]] && echo $d >>/tmp/devs-with-boot; \
+            for i in /tmp/mymount/vmlinuz* ; do \
+                if [ -e $i ]; then \
+                    echo $d >>/tmp/devs-with-boot; break; \
+                fi; \
+            done; \
             umount /tmp/mymount; \
         fi \
     done; \
