@@ -6,9 +6,11 @@ B<bmcdiscover> - Discover bmc using scan method, now scan_method can be nmap.
 
 B<bmcdiscover> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<-m>|B<--method>] I<scan_method> [B<-r>|B<--range>] I<ip_range> 
+B<bmcdiscover> [B<-s>] I<scan_method> [B<--range>] I<ip_ranges> [B<-z>] [B<-w>]
 
 B<bmcdiscover> [B<-i>|B<--bmcip>] I<bmc_ip> [B<-u>|B<--bmcuser>] I<bmcusername> [B<-p>|B<--bmcpwd>] I<bmcpassword> [B<-c>|B<--check>]
+
+B<bmcdiscover> [B<-i>|B<--bmcip>] I<bmc_ip> [B<-u>|B<--bmcuser>] I<bmcusername> [B<-p>|B<--bmcpwd>] I<bmcpassword> [B<--ipsource>]
 
 =head1 DESCRIPTION
 
@@ -16,9 +18,9 @@ The B<bmcdiscover> command will discover bmc using scan method.
 
 This command will use nmap scan active nodes, ip range format should be the same format with that is used by nmap.
 
-Note: scan method can only be nmap now.
+Note: scan method can only be nmap now, default scan method is nmap.
 
-This command can check if bmc username or password is correct or not
+This command can check if bmc username or password is correct or not. It can get BMC IP Address source, DHCP Address or static Address.
 
 =head1 OPTIONS
 
@@ -32,13 +34,21 @@ Display usage message.
 
 Command version.
 
-=item B<-m|--method> I<scan_method>
+=item B<-s> I<scan_method>
 
 Scan method, now it is nmap.
 
-=item B<-r|--range> I<ip_range>
+=item B<--range> I<ip_ranges>
 
-Ip range should be a string, can pass hostnames, IP addresses, networks, etc.
+Ip ranges should be a string, can pass hostnames, IP addresses, networks, etc.
+
+=item B<-z>
+
+List the stanza formate data.
+
+=item B<-w>
+
+Write to the database.
 
 =item B<-i|--bmcip> I<bmc_ip>
 
@@ -56,6 +66,10 @@ BMC user password.
 
 Check.
 
+=item B<--ipsource>
+
+BMC IP source.
+
 =back
 
 =head1 RETURN VALUE
@@ -68,7 +82,7 @@ Check.
 
 1. To get all bmc from ip range
 
-bmcdiscover -m nmap -r "10.4.23.100-254 50.3.15.1-2"
+bmcdiscover -s nmap --range "10.4.23.100-254 50.3.15.1-2"
 
 Output is similar to:
 
@@ -77,7 +91,47 @@ Output is similar to:
 
 Note: input for ip range can also be like scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
 
-2. To check if user name or password is correct or not for bmc
+2. After discover bmc, list the stanza format data
+
+bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
+
+Output is similar to:
+
+node10422254:
+        objtype=node
+        groups=all
+        bmc=10.4.22.254
+        cons=ipmi
+        mgt=ipmi
+
+node10423254:
+        objtype=node
+        groups=all
+        bmc=10.4.23.254
+        cons=ipmi
+        mgt=ipmi
+
+3. After discover bmc, write host node definition into the database, and the same time, give out stanza format data
+
+bmcdiscover -s nmap --range "10.4.22-23.100-254" -w
+
+Output is similar to:
+
+node10422254:
+        objtype=node
+        groups=all
+        bmc=10.4.22.254
+        cons=ipmi
+        mgt=ipmi
+
+node10423254:
+        objtype=node
+        groups=all
+        bmc=10.4.23.254
+        cons=ipmi
+        mgt=ipmi
+
+4. To check if user name or password is correct or not for bmc
 
 bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
 
@@ -102,6 +156,14 @@ bmcdiscover -i 10.4.23.2541234 -u USERID -p PASSW0RD -c
 Output is similar to:
 
 Error: Not bmc
+
+5. Get BMC IP Address source, DHCP Address or static Address
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --ipsource
+
+Output is similar to:
+
+Static Address
 
 =head1 SEE ALSO
 
