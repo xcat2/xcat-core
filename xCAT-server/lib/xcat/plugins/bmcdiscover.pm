@@ -71,7 +71,7 @@ sub process_request
     my $callback = shift;
     my $request_command = shift;
     $::CALLBACK = $callback;
-    $::args     = $request->{arg};
+    #$::args     = $request->{arg};
 
     unless(defined($request->{arg})){
         bmcdiscovery_usage();
@@ -115,16 +115,19 @@ sub bmcdiscovery_usage {
       "\n                   - get BMC IP Address source, DHCP Address or static Address  .\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]\n ";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-m|--method] scan_method [-r|--range] ip_range \n ";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-s] scan_method [--range] ip_range [-z] [-w] \n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword [-c|--check]\n ";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword [--ipsource]\n ";
     push @{ $rsp->{data} }, "\tFor example: \n ";
-    push @{ $rsp->{data} }, "\t1, bmcdiscover -m nmap -r \"10.4.23.100-254 50.3.15.1-2\" \n ";
+    push @{ $rsp->{data} }, "\t1, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" \n ";
     push @{ $rsp->{data} }, "\t   Note : ip_range should be a string, can pass hostnames, IP addresses, networks, etc. \n ";
     push @{ $rsp->{data} }, "\t   If there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
     push @{ $rsp->{data} }, "\t   Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
-    push @{ $rsp->{data} }, "\t2, bmcdiscover -i <bmc_ip> -u <bmcusername> -p <bmcpassword> -c\n ";
-    push @{ $rsp->{data} }, "\t   Note : check if bmc username and password are correct or not. If bmc has no username,\n";
-    push @{ $rsp->{data} }, "\t   use none instead, Ex: bmcdiscover -i p8bmc -u none -p passw0rd -c\n";
+    push @{ $rsp->{data} }, "\t2, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" -z \n ";
+    push @{ $rsp->{data} }, "\t3, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" -w \n ";
+    push @{ $rsp->{data} }, "\t4, bmcdiscover -i <bmc_ip> -u <bmcusername> -p <bmcpassword> -c\n ";
+    push @{ $rsp->{data} }, "\t   Note : check if bmc username and password are correct or not. \n";
+    push @{ $rsp->{data} }, "\t5, bmcdiscover -i <bmc_ip> -u <bmcusername> -p <bmcpassword> --ipsource\n ";
 
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -145,22 +148,30 @@ sub bmcdiscovery_usage {
 #-----------------------------------------------------------------------------
 sub bmcdiscovery_processargs {
 
-    if ( defined ($::args) && @{$::args} ){
-        @ARGV = @{$::args};
-    }
+    #if ( defined ($::args) && @{$::args} ){
+    #    @ARGV = @{$::args};
+    #}
+    my $request = shift;
+    my $callback = shift;
+    my $request_command = shift;
 
+    my $rc = 0;
+
+    
     # parse the options
     # options can be bundled up like -v, flag unsupported options
     Getopt::Long::Configure( "bundling", "no_ignore_case", "no_pass_through" );
     my $getopt_success = Getopt::Long::GetOptions(
                               'help|h|?'  => \$::opt_h,
-                              'method|m=s' => \$::opt_M,
-                              'range|r=s' => \$::opt_R,
+                              's=s' => \$::opt_M,
+                              'range=s' => \$::opt_R,
                               'bmcip|i=s' => \$::opt_I,
+                              'z' => \$::opt_Z,
+                              'w' => \$::opt_W,
                               'check|c' => \$::opt_C,
                               'bmcuser|u=s' => \$::opt_U,
                               'bmcpwd|p=s' => \$::opt_P,
-                              'ipsource|s' => \$::opt_S,
+                              'ipsource' => \$::opt_S,
                               'version|v' => \$::opt_v,
     );
 
@@ -197,9 +208,9 @@ sub bmcdiscovery_processargs {
     }
 
     #########################################
-    # Option -m -r should be together
+    # Option -s -r should be together
     ######################################
-    if ( defined($::opt_M) && defined($::opt_R) ) 
+    if ( defined($::opt_R) ) 
     {
 
             ######################################
@@ -221,7 +232,7 @@ sub bmcdiscovery_processargs {
                 return 1;
 
             }
-           scan_process($::opt_M,$::opt_R);
+           scan_process($::opt_M,$::opt_R,$::opt_Z,$::opt_W,$request_command);
 
            return 0;
     }
@@ -232,10 +243,19 @@ sub bmcdiscovery_processargs {
 
     if ( defined($::opt_C) )
     {
-        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_I) ) 
+        if ( defined($::opt_P) && defined($::opt_I) )
         {
-             my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
-             return $res;
+             if ( defined($::opt_U) )
+             {
+                 my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
+                 return $res;
+             }
+             else
+             {
+                 my $res=check_auth_process($::opt_I,"none",$::opt_P);
+                 return $res;
+
+             }
         }
         else
         {
@@ -251,10 +271,18 @@ sub bmcdiscovery_processargs {
         ######################################
     if ( defined($::opt_S) )
     {
-        if ( defined($::opt_U) && defined($::opt_P) && defined($::opt_I) )
+        if ( defined($::opt_P) && defined($::opt_I) )
         {
-             my $res=get_bmc_ip_source($::opt_I,$::opt_U,$::opt_P);
-             return $res;
+             if ( defined($::opt_U))
+             {
+                my $res=get_bmc_ip_source($::opt_I,$::opt_U,$::opt_P);
+                return $res;
+             }
+             else
+             {
+                my $res=get_bmc_ip_source($::opt_I,"none",$::opt_P);
+                return $res;
+             }
         }
         else
         {
@@ -421,13 +449,19 @@ sub check_auth_process{
 sub scan_process{
 
     my $method = shift;
-    my $range = shift; 
+    my $range = shift;
+    my $opz = shift;
+    my $opw = shift;
+    my $request_command = shift; 
     my $callback = $::CALLBACK;
     my $children;    # The number of child process
     my %sp_children;    # Record the pid of child process
     my $sub_fds = new IO::Select;    # Record the parent fd for each child process
   
-
+    if ( !defined($method) )
+    {
+       $method="nmap";
+    }
 
     my $ip_list;
     ############################################################
@@ -501,7 +535,7 @@ sub scan_process{
                if ($child == 0) {
                     close($cfd);
                     $callback = \&send_rep;
-                       bmcdiscovery_ipmi(${$live_ip}[$i]);
+                       bmcdiscovery_ipmi(${$live_ip}[$i],$opz,$opw,$request_command);
                     exit 0;
                } else {
 
@@ -529,6 +563,58 @@ sub scan_process{
           }
         }
     }
+}
+
+#----------------------------------------------------------------------------
+=head3  format_stanza
+      list the stanza format for node
+    Arguments:
+      bmc ip 
+    Returns:
+      lists as stanza format for nodes
+=cut
+#--------------------------------------------------------------------------------
+sub format_stanza {
+    my $bmcip = shift;
+    my $host = "node$bmcip";
+       $host =~ s/\.//g;
+    my $result;
+    if (defined($bmcip)){     
+        $result .= "$host:\n\tobjtype=node\n";
+        $result .= "\tgroups=all\n";
+        $result .= "\tbmc=$bmcip\n";
+        $result .= "\tcons=ipmi\n";
+        $result .= "\tmgt=ipmi\n";
+        my $rsp = {};
+        push @{ $rsp->{data} }, "$result";
+        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+   }
+   return ($result);
+}
+
+#----------------------------------------------------------------------------
+=head3  write_to_xcatdb
+      write node definition into xcatdb
+    Arguments:
+      $node_stanza:
+    Returns:
+=cut
+#--------------------------------------------------------------------------------
+sub write_to_xcatdb {
+    my $bmcip = shift;
+    my $request_command = shift;
+    my $ret;
+    my $host = "node$bmcip";
+       $host =~ s/\.//g;
+
+       $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"bmc=$bmcip","cons=ipmi","mgt=ipmi","groups=all"] }, $request_command, 0, 1);
+       if ($::RUNCMD_RC != 0) {
+            my $rsp = {};
+            push @{ $rsp->{data} }, "create or modify node is failed.\n";
+            xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+            return 2;
+        }
+
 }
 
 #----------------------------------------------------------------------------
@@ -655,9 +741,9 @@ sub create_error_response {
 #-----------------------------------------------------------------------------
 sub bmcdiscovery {
 
-    #my $request = shift;
-    #my $callback = shift;
-    #my $request_command = shift;
+    my $request = shift;
+    my $callback = shift;
+    my $request_command = shift;
 
     my $rc = 0;
 
@@ -665,7 +751,7 @@ sub bmcdiscovery {
     # process the command line
     # 0=success, 1=version, 2=error for check_auth_, other=error
     ##############################################################
-    $rc = bmcdiscovery_processargs(@_);
+    $rc = bmcdiscovery_processargs($request,$callback,$request_command);
     if ( $rc != 0 ) {
        if ( $rc != 1 ) 
        {
@@ -698,13 +784,26 @@ sub bmcdiscovery {
 
 sub bmcdiscovery_ipmi {
     my $ip = shift;
+    my $opz = shift;
+    my $opw = shift;
+    my $request_command = shift;
     my $bmcstr = "BMC Session ID";
     my $icmd = "/opt/xcat/bin/ipmitool-xcat -vv -I lanplus -U USERID -P PASSW0RD -H $ip chassis status ";
     my $output = xCAT::Utils->runcmd("$icmd", -1);
     if ( $output =~ $bmcstr ){
-        my $rsp = {};
-        push @{ $rsp->{data} }, "$ip";
-        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+       if ( defined($opz) || defined($opw) )
+       {
+          format_stanza($ip);
+          if (defined($opw))
+          {
+              write_to_xcatdb($ip,$request_command);
+          }
+       }
+       else{
+          my $rsp = {};
+          push @{ $rsp->{data} }, "$ip";
+          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+       }
     }
 }
 
