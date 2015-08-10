@@ -26,7 +26,10 @@ timezone --utc "#TABLE:site:key=timezone:value#"
 rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 #partition / --ondisk=/dev/mapper/ibmpkvm_vg_root-ibmpkvm_lv_root
-partition / --ondisk=/dev/sda
+part PV.01 --ondisk=/dev/sda
+volgroup ibmpkvm_rootvg PV.01
+#logvol / --vgname=VOLGROUP_NAME --noformat
+#partition / --ondisk=/dev/sda
 #the --devicename must specify right now, but without network command, it can also work, so we delete it.
 #network --bootproto dhcp
 
