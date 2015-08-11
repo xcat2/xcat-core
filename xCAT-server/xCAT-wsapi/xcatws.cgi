@@ -2434,8 +2434,11 @@ sub bmclisthdl {
 
     if ($params->{'resourcename'} eq "bmcdiscover") {
         if (isGET()) {
-            push @args, "-s";
-            push @args, $m_value;
+            if ( defined($m_value) )
+            {
+               push @args, "-s";
+               push @args, $m_value;
+            }
             push @args, "--range";
             push @args, $ip_range;
         }
