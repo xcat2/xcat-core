@@ -2357,10 +2357,15 @@ sub bmccheckhdl {
     
     if ($params->{'resourcename'} eq "checkbmcauth") {
         if (isGET()) {
+
             push @args, "-i";
             push @args, $bmc_ip;
-            push @args, "-u";
-            push @args, $bmc_user;
+            if ( defined($bmc_user) && $bmc_user ne "none")
+            {
+                push @args, "-u";
+                push @args, $bmc_user;
+
+            }
             push @args, "-p";
             push @args, $bmc_pw;
             push @args, "-c";
@@ -2371,11 +2376,14 @@ sub bmccheckhdl {
         if (isGET()) {
             push @args, "-i";
             push @args, $bmc_ip;
-            push @args, "-u";
-            push @args, $bmc_user;
+            if ( defined($bmc_user) && $bmc_user ne "none" )
+            {
+                push @args, "-u";
+                push @args, $bmc_user;
+            }
             push @args, "-p";
             push @args, $bmc_pw;
-            push @args, "-s";
+            push @args, "--ipsource";
         }
     }
 
@@ -2426,9 +2434,12 @@ sub bmclisthdl {
 
     if ($params->{'resourcename'} eq "bmcdiscover") {
         if (isGET()) {
-            push @args, "-m";
-            push @args, $m_value;
-            push @args, "-r";
+            if ( defined($m_value) )
+            {
+               push @args, "-s";
+               push @args, $m_value;
+            }
+            push @args, "--range";
             push @args, $ip_range;
         }
 
