@@ -1763,8 +1763,7 @@ sub actionout {
                     push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } elsif ($param->{'resourcename'} =~ /(vitals|inventory)/) {
                     # handle output of rvital and rinv for ppc node
-                    #push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
-                    push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}->{Message}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
+                    push @{$jsonnode->{$d->{node}->[0]->{name}->[0]}}, $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 } else {
                     $jsonnode->{$d->{node}->[0]->{name}->[0]}->{$param->{'resourcename'}} = $d->{node}->[0]->{data}->[0]->{contents}->[0];
                 }
@@ -2434,9 +2433,9 @@ sub bmclisthdl {
 
     if ($params->{'resourcename'} eq "bmcdiscover") {
         if (isGET()) {
-            push @args, "-m";
+            push @args, "-s";
             push @args, $m_value;
-            push @args, "-r";
+            push @args, "--range";
             push @args, $ip_range;
         }
 
