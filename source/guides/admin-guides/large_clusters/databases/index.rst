@@ -1,27 +1,16 @@
 Configure a Database
 ====================
 
-xCAT requires a database to hold persistent information and currently supports the following:
+xCAT uses the SQLite database (https://www.sqlite.org/) as the default database and it is initialized during xCAT installation of the Management Node.  If using Service Nodes, SQLite **cannot** be used because Service Nodes require remote access to the xCAT database.  One of the following databases should be used:
 
-    * SQLite
-    * MySQL/MariaDB
-    * PostgreSQL
+    * :ref:`mysql_reference_label`
+    * :ref:`postgresql_reference_label`
 
 
-SQLite
-------
-
-The SQLite database (https://www.sqlite.org/) is the default database used by xCAT and is initialized when xCAT is installed on the management node.
-SQLite is a small, light-weight, daemon-less database that requires very little configuration and maintenance.  This database is sufficient for smarll to moderately sized systems (typeically < 1000 nodes).
-
-xCAT Hierarchy (Service Nodes)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The SQLite datacase **CAN NOT** be used when using xCAT hierarchy support because the xCAT service nodes require remote access to the database.  This is one reason you would need to configure one of the alternative databases listed below:
+.. _mysql_reference_label:
 
 MySQL/MariaDB
 -------------
-
 .. toctree::
    :maxdepth: 2
 
@@ -31,9 +20,10 @@ MySQL/MariaDB
    mysql_remove.rst
 
 
+.. _postgresql_reference_label:
+
 PostgreSQL
 ----------
-
 .. toctree::
    :maxdepth: 2
 
@@ -41,3 +31,4 @@ PostgreSQL
    postgres_configure.rst
    postgres_using.rst
    postgres_remove.rst
+
