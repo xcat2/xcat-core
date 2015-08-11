@@ -6,11 +6,11 @@ B<bmcdiscover> - Discover bmc using scan method, now scan_method can be nmap.
 
 B<bmcdiscover> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<-s>] I<scan_method> [B<--range>] I<ip_ranges> [B<-z>] [B<-w>]
+B<bmcdiscover> [B<-s> I<scan_method>] B<--range> I<ip_ranges> [B<-z>] [B<-w>]
 
-B<bmcdiscover> [B<-i>|B<--bmcip>] I<bmc_ip> [B<-u>|B<--bmcuser>] I<bmcusername> [B<-p>|B<--bmcpwd>] I<bmcpassword> [B<-c>|B<--check>]
+B<bmcdiscover> B<-i>|B<--bmcip> I<bmc_ip> [B<-u>|B<--bmcuser> I<bmcusername>] B<-p>|B<--bmcpwd> I<bmcpassword> B<-c>|B<--check>
 
-B<bmcdiscover> [B<-i>|B<--bmcip>] I<bmc_ip> [B<-u>|B<--bmcuser>] I<bmcusername> [B<-p>|B<--bmcpwd>] I<bmcpassword> [B<--ipsource>]
+B<bmcdiscover> B<-i>|B<--bmcip> I<bmc_ip> [B<-u>|B<--bmcuser> I<bmcusername>] B<-p>|B<--bmcpwd> I<bmcpassword> B<--ipsource>
 
 =head1 DESCRIPTION
 
@@ -26,6 +26,42 @@ This command can check if bmc username or password is correct or not. It can get
 
 =over 10
 
+=item B<--range>       
+
+Specify one or more IP ranges. Ip ranges should be a string, can pass hostnames, IP addresses, networks, etc. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the bmcdiscover may take a very long time to scan. So the range should be exactly specified. For nmap scan method, it accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100, scanme.nmap.org, microsoft.com/24.
+
+=item B<-s>            
+
+Scan method, now it is nmap.
+
+=item B<-z>            
+
+List the stanza formate data.
+
+=item B<-w>            
+
+Write to the database.
+
+=item B<-i|--bmcip>    
+
+BMC ip.
+
+=item B<-u|--bmcuser>  
+
+BMC user name.
+
+=item B<-p|--bmcpwd>   
+
+BMC user password.
+
+=item B<-c|--check>    
+
+Check.
+
+=item B<--ipsource>    
+
+BMC IP source.
+
 =item B<-h|--help>
 
 Display usage message.
@@ -33,42 +69,6 @@ Display usage message.
 =item B<-v|--version>
 
 Command version.
-
-=item B<-s> I<scan_method>
-
-Scan method, now it is nmap.
-
-=item B<--range> I<ip_ranges>
-
-Ip ranges should be a string, can pass hostnames, IP addresses, networks, etc.
-
-=item B<-z>
-
-List the stanza formate data.
-
-=item B<-w>
-
-Write to the database.
-
-=item B<-i|--bmcip> I<bmc_ip>
-
-BMC ip.
-
-=item B<-u|--bmcuser> I<bmcusername>
-
-BMC user name.
-
-=item B<-p|--bmcpwd> I<bmcpassword>
-
-BMC user password.
-
-=item B<-c|--check> 
-
-Check.
-
-=item B<--ipsource>
-
-BMC IP source.
 
 =back
 
