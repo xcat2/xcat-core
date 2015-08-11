@@ -6,7 +6,6 @@ xCAT requires a database to hold persistent information and currently supports t
     * SQLite
     * MySQL/MariaDB
     * PostgreSQL
-    * DB2
 
 
 SQLite
