@@ -1,6 +1,6 @@
 #!/bin/bash  
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
-
+set -x 
 #-------------------------------------------------------------------------------
 #=head1  ospkgs
 #=head2  Used on Linux only. It installs/updates the rpms thta are from OS distro. 
@@ -232,7 +232,7 @@ fi
     fi
 
     array_ospkgdirs=($OSPKGDIR)   
-    IFS=$OIFS
+
     array_empty os_path
     index=0
     for dir in  ${array_ospkgdirs[@]}  
@@ -305,6 +305,7 @@ fi
             
    done    
 
+    IFS=$OIFS
  
 
 
@@ -343,39 +344,54 @@ if ( pmatch "$OSVER" "ubuntu*" ); then
     IFS=$(printf ',')
 fi
 pkgarray=($OSPKGS)
-IFS=$OIFS
+
 
 for x in ${pkgarray[@]};
 do
+    #a flag indication the operation to current pkg/group
+    # 0:install;1:remove
+    remove=0
+
     #remove leading and trailing spaces
     x=`echo $x |sed 's/^ *//;s/ *$//'`
     #echo "x=$x"
     pos=`expr index  "$x" -`
     if [ $pos -eq 1 ]; then 
-	pkgs_d="$pkgs_d ${x#-}"
-    else
-	pos=`expr index  "$x" @`
-	if [ $pos -eq 1 ]; then 
-	    #remove leading @
-	    tmp=${x#@}
-            #remove leading and trailing spaces
-	    tmp=`echo $tmp |sed 's/^ *//;s/ *$//'`
-            #if there are spaces in the middle of the name, quote it
-	    pos=`expr index "$tmp" "\ "`
-	    if [ $pos -gt 0  ]; then
-		groups="$groups \"$tmp\""
-	    else
-		groups="$groups $tmp"
-	    fi
-	else
-            if ( pmatch  "$x" "cuda*" ); then
-                cudapkgs="$cudapkgs $x" 
-            else
-                pkgs="$pkgs $x"
-            fi
-	fi
+       remove=1
+       x=${x#-}
     fi
+
+    pos=`expr index  "$x" @`
+    if [ $pos -eq 1 ]; then 
+        #remove leading @
+        tmp=${x#@}
+        #remove leading and trailing spaces
+        tmp=`echo $tmp |sed 's/^ *//;s/ *$//'`
+        #if there are spaces in the middle of the name, quote it
+        pos=`expr index "$tmp" "\ "`
+        if [ $pos -gt 0  ]; then
+           tmp="\"$tmp\""
+        fi
+
+        if [ $remove -eq 0 ]; then
+    	   groups="$groups $tmp"
+        else
+           groups_d="$groups_d $tmp"
+        fi
+    else
+        if ( pmatch  "$x" "cuda*" ); then
+            cudapkgs="$cudapkgs $x" 
+        else
+            if [ $remove -eq 0 ]; then
+               pkgs="$pkgs $x"
+            else
+               pkgs_d="$pkgs_d $x"
+            fi
+        fi
+    fi
+
 done
+IFS=$OIFS
 
 if [ $debug -ne 0 ]; then
     echo "pkgs=$pkgs"
@@ -383,6 +399,7 @@ if [ $debug -ne 0 ]; then
         echo "cudapkgs=$cudapkgs"
     fi
     echo "groups=$groups"
+    echo "remove groups=$groups_d"
     echo "remove pkgs=$pkgs_d"
 fi
 
@@ -643,6 +660,26 @@ elif ( pmatch "$OSVER" "sles*" ); then
 	fi
     fi
 
+
+    
+    #remove  patterns if any
+    if [ -n "$groups_d" ]; then
+	cmd="$ENVLIST zypper remove -y  -t pattern $groups_d"
+	result=`eval $cmd 2>&1`
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
+	    logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
+    fi
+
     #remove some packages if specified
     if [ -n "$pkgs_d" ]; then
 	cmd="$ENVLIST zypper remove -y $pkgs_d"
@@ -833,7 +870,8 @@ else
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
+	#cmd="echo $groups| $ENVLIST xargs yum -y groupinstall"
+	cmd="$ENVLIST yum -y groupinstall $groups"
 	result=`eval $cmd 2>&1`
         R=$?
         if [ $R -ne 0 ]; then
@@ -865,6 +903,24 @@ else
 		echo $result
 	    fi
 	fi
+    fi
+
+    #remove some groups if specified
+    if [ -n "$groups_d" ]; then
+        cmd="$ENVLIST yum -y groupremove $groups_d"
+        result=`eval $cmd 2>&1`
+        R=$?
+        if [ $R -ne 0 ]; then
+           RETURNVAL=$R
+            logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+            echo "ospkgs: $cmd"
+            echo $result
+        else
+            if [ $debug -ne 0 ]; then
+                echo "ospkgs: $cmd"
+                echo $result
+            fi
+        fi
     fi
 
     #remove some rpms if specified
