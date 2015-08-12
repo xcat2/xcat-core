@@ -121,7 +121,7 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "\tFor example: \n ";
     push @{ $rsp->{data} }, "\t1, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" \n ";
     push @{ $rsp->{data} }, "\t   Note : ip_range should be a string, can pass hostnames, IP addresses, networks, etc. \n ";
-    push @{ $rsp->{data} }, "\t   If there is bmc,bmcdiscover returns bmc ip or hostname, or else, it returns null. \n ";
+    push @{ $rsp->{data} }, "\t   If there is bmc,bmcdiscover returns bmc ip, or else, it returns null. \n ";
     push @{ $rsp->{data} }, "\t   Ex: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254 \n ";
     push @{ $rsp->{data} }, "\t2, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" -z \n ";
     push @{ $rsp->{data} }, "\t3, bmcdiscover -s nmap --range \"10.4.23.100-254 50.3.15.1-2\" -w \n ";
@@ -164,6 +164,7 @@ sub bmcdiscovery_processargs {
     my $getopt_success = Getopt::Long::GetOptions(
                               'help|h|?'  => \$::opt_h,
                               's=s' => \$::opt_M,
+                              'm=s' => \$::opt_M,
                               'range=s' => \$::opt_R,
                               'bmcip|i=s' => \$::opt_I,
                               'z' => \$::opt_Z,
