@@ -2,8 +2,8 @@ Install Guides
 ==============
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   yum/index
-   zypper/index
-   apt/index 
+   yum/index.rst
+   zypper/index.rst
+   apt/index.rst
