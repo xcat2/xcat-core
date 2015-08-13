@@ -20,6 +20,7 @@ Content
 .. toctree::
    :maxdepth: 2
 
+   overview/index.rst
    guides/install-guides/index.rst
    guides/admin-guides/index.rst
    developers/index.rst
