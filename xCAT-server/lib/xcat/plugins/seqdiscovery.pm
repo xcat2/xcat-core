@@ -888,7 +888,7 @@ Usage:
         } else {
             $ent->{'node'} = 'undef' unless ($ent->{'node'});
             $ent->{'method'} = 'undef' unless ($ent->{'method'});
-            push @discoverednodes, sprintf("  %-40s%-20s%-15s%-10s%-10s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'},0,8));
+            push @discoverednodes, sprintf("  %-37s%-20s%-15s%-10s%-13s", $ent->{'uuid'}, $ent->{'node'}, $ent->{'method'}, $ent->{'mtm'}, substr($ent->{'serial'},0,12));
         }
     }
 
@@ -898,7 +898,7 @@ Usage:
     }
     if (@discoverednodes) {
         unless ($long) {
-            push @{$rsp->{data}}, sprintf("  %-40s%-20s%-15s%-10s%-10s", 'UUID', 'NODE', ,'METHOD', 'MTM', 'SERIAL');
+            push @{$rsp->{data}}, sprintf("  %-37s%-20s%-15s%-10s%-13s", 'UUID', 'NODE', ,'METHOD', 'MTM', 'SERIAL');
         }
         foreach (@discoverednodes) {
              push @{$rsp->{data}}, "$_"; 
