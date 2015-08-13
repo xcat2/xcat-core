@@ -409,7 +409,7 @@ if [ $debug -ne 0 ]; then
     echo "remove pkgs=$pkgs_d"
 fi
 
-#perform the software maintainancei with the available package management tools, the process:
+#perform the software maintenance with the available package management tools, the process:
 #1.make sure the necessary package management tool is available 
 #2.enable all the available repositories and refresh the relevant metadata
 #3.upgrade all the existing packages
