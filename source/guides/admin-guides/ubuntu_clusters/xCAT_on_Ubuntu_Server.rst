@@ -1,3 +1,0 @@
-xCAT on Ubuntu Server
-=====================
-
