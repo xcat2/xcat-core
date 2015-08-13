@@ -9,6 +9,6 @@ xCAT uses git for source code version control.  There are many resources and doc
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
 

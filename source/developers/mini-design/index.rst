@@ -11,7 +11,7 @@ The **Design Document** for certain feature.
 ----
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    2.11/docker.rst
    2.11/docker-swarm.rst
@@ -19,6 +19,6 @@ The **Design Document** for certain feature.
 2.10
 ----
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    2.10/xcatdebugmode.rst

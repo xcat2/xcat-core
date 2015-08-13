@@ -6,6 +6,6 @@ For the list of currently supported RHEL operating systems, see :ref:`rhels-os-s
 .. toctree::
    :maxdepth: 2
 
-   prepare_mgmt_node
-   install_xcat
-   configure_xcat
+   prepare_mgmt_node.rst
+   install_xcat.rst
+   configure_xcat.rst

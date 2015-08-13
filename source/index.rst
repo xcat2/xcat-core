@@ -20,11 +20,11 @@ Content
 .. toctree::
    :maxdepth: 2
 
-   guides/install-guides/index 
-   guides/admin-guides/index 
-   developers/index
-   advanced/index
-   help
+   guides/install-guides/index.rst
+   guides/admin-guides/index.rst
+   developers/index.rst
+   advanced/index.rst
+   help.rst
 
 
 Indices and tables

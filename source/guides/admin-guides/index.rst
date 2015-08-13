@@ -2,7 +2,7 @@ Admin Guide
 ===========
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    large_clusters/index.rst
    ubuntu_clusters/index.rst
