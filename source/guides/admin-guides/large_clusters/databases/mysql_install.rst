@@ -44,7 +44,7 @@ Redhat Enterprise Linux
 Suse Linux Enterprise Server
 ----------------------------
 
-* MySQL - Using ``yum``, ensure that the following packages are installed on the management node: ::
+* MySQL - Using ``zypper``, ensure that the following packages are installed on the management node: ::
 
        mysql-client-5*
        libmysqlclient_r15*
@@ -53,7 +53,7 @@ Suse Linux Enterprise Server
        perl-DBD-mysql-4*
        mysql-5*
 
-* MariaDB - Using ``yum``, ensure that the following packages are installed on the management node: ::
+* MariaDB - Using ``zypper``, ensure that the following packages are installed on the management node: ::
 
        mariadb-client-10.*
        mariadb-10.*
