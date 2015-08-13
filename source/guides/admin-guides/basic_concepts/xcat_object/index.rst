@@ -1,12 +1,9 @@
-xCAT Object
-===========
+Objects
+=======
 
-Node Object
------------
-Node Range
+.. toctree::
+   :maxdepth: 2
 
-OSimage Object
---------------
-
-Group Object
-------------
+   node.rst
+   osimage.rst
+   nodegroup.rst 
