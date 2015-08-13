@@ -1,6 +1,5 @@
 #!/bin/bash  
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
-set -x 
 #-------------------------------------------------------------------------------
 #=head1  ospkgs
 #=head2  Used on Linux only. It installs/updates the rpms thta are from OS distro. 
@@ -225,87 +224,90 @@ if [ "$KERNELDIR" != "" ]; then
     OSPKGDIR="$OSPKGDIR,$KERNELDIR"
 fi 
 
-    OIFS=$IFS
-    IFS=$','
-    if ( pmatch "$OSVER" "ubuntu*" ); then
-        IFS=$(printf ',')
+OIFS=$IFS
+IFS=$','
+if ( pmatch "$OSVER" "ubuntu*" ); then
+    IFS=$(printf ',')
+fi
+
+array_ospkgdirs=($OSPKGDIR)   
+
+#initialize the array "os_path" with all the valid repository paths 
+#under the directories specified in "OSPKGDIR"
+
+array_empty os_path
+index=0
+for dir in  ${array_ospkgdirs[@]}  
+do
+     
+    default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
+    OSPKGDIR="$OSPKGDIR" 
+    if [ $mounted -eq 0 ]; then
+        #OSPKGDIR="$OSPKGDIR" 
+        ospkgdir="$NFSSERVER$dir"
+    else 
+        ospkgdir="$dir"
     fi
-
-    array_ospkgdirs=($OSPKGDIR)   
-
-    array_empty os_path
-    index=0
-    for dir in  ${array_ospkgdirs[@]}  
-    do
-         
-        default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-        OSPKGDIR="$OSPKGDIR" 
-        if [ $mounted -eq 0 ]; then
-            #OSPKGDIR="$OSPKGDIR" 
-            ospkgdir="$NFSSERVER$dir"
-        else 
-            ospkgdir="$dir"
+    
+    # for the os base pkg dir(default_pkgdir) , there are some special cases.
+    # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
+    # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
+    # (3)for SL5, we should append the /SL
+    # (4) for other os, we just keep it here.
+    # For other pkg paths, we just keep it here.
+    if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
+        if ( pmatch "$OSVER" "sles*" ); then
+            OSPKGDIR="$OSPKGDIR/1"
+            ospkgdir="$ospkgdir/1"
+        elif ( pmatch "$OSVER" "SL5*" ); then
+            OSPKGDIR="$OSPKGDIR/SL"
+            ospkgdir="$ospkgdir/SL"
         fi
-        
-        # for the os base pkg dir(default_pkgdir) , there are some special cases.
-        # (1)for rhels6, there is one repodata in the os base dir; so keep it here, and handle the other cases below
-        # (2)for sles, we should specified the baseurl should be ./install/sles11/ppc64/1
-        # (3)for SL5, we should append the /SL
-        # (4) for other os, we just keep it here.
-        # For other pkg paths, we just keep it here.
+    fi
+    array_set_element os_path $index $ospkgdir
+     
+    if ( pmatch "$OSVER" "rhel*" ); then
+        #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
         if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-            if ( pmatch "$OSVER" "sles*" ); then
-                OSPKGDIR="$OSPKGDIR/1"
-                ospkgdir="$ospkgdir/1"
-            elif ( pmatch "$OSVER" "SL5*" ); then
-                OSPKGDIR="$OSPKGDIR/SL"
-                ospkgdir="$ospkgdir/SL"
-            fi
-        fi
-        array_set_element os_path $index $ospkgdir
-         
-        if ( pmatch "$OSVER" "rhel*" ); then
-            #default_pkgdir="$INSTALLDIR/$OSVER/$ARCH"
-            if [ $dir == $default_pkgdir ] || [ $dir == "$default_pkgdir/" ]; then
-          
-                if ( pmatch "$OSVER" "rhels6*" ); then
-                   if [ $ARCH == "ppc64" ]; then
-                       ospkgdir_ok="$ospkgdir/Server"
-                       index=$(expr $index + 1)          
-                       array_set_element os_path $index $ospkgdir_ok
-                   fi               
- 
-                   if [ $ARCH == "x86_64" ]; then
-                        for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
-                        do
-                            ospkgdir_ok="$ospkgdir/$arg"
-                            index=$(expr $index + 1)          
-                            array_set_element os_path $index $ospkgdir_ok
-                        done
-                    fi               
+      
+            if ( pmatch "$OSVER" "rhels6*" ); then
+               if [ $ARCH == "ppc64" ]; then
+                   ospkgdir_ok="$ospkgdir/Server"
+                   index=$(expr $index + 1)          
+                   array_set_element os_path $index $ospkgdir_ok
+               fi               
 
-                elif ( pmatch "$OSVER" "rhels5*" ); then
-                     # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
-                     ospkgdir_ok="$ospkgdir/Server"
-                     array_set_element os_path $index $ospkgdir_ok
-               
-                     if [ $ARCH == "x86_64" ]; then
-                         for arg in "Cluster" "ClusterStorage"
-                         do
-                             ospkgdir_ok="$ospkgdir/$arg"
-                             index=$(expr $index + 1)          
-                             array_set_element os_path $index $ospkgdir_ok
-                         done
-                     fi   # x86_64
-                fi # if...elif..fi
-             fi  # eq default_pkgdir
-          fi    # match rhel*
+               if [ $ARCH == "x86_64" ]; then
+                    for arg in "Server" "ScalableFileSystem" "HighAvailability" "ResilientStorage" "LoadBalancer" 
+                    do
+                        ospkgdir_ok="$ospkgdir/$arg"
+                        index=$(expr $index + 1)          
+                        array_set_element os_path $index $ospkgdir_ok
+                    done
+                fi               
 
-          index=$(expr $index + 1)          
-            
-   done    
+            elif ( pmatch "$OSVER" "rhels5*" ); then
+                 # for rhels5, the repodata is in ./Server, ./Cluster, ./CusterStorage, not in ./
+                 ospkgdir_ok="$ospkgdir/Server"
+                 array_set_element os_path $index $ospkgdir_ok
+           
+                 if [ $ARCH == "x86_64" ]; then
+                     for arg in "Cluster" "ClusterStorage"
+                     do
+                         ospkgdir_ok="$ospkgdir/$arg"
+                         index=$(expr $index + 1)          
+                         array_set_element os_path $index $ospkgdir_ok
+                     done
+                 fi   # x86_64
+            fi # if...elif..fi
+         fi  # eq default_pkgdir
+      fi    # match rhel*
 
-    IFS=$OIFS
+      index=$(expr $index + 1)          
+        
+done    
+
+IFS=$OIFS
  
 
 
@@ -335,6 +337,7 @@ fi
 
 pkgs=''  #packages
 groups=''   #groups
+groups_d=''   #groups to remove
 pkgs_d=''   #packages to remove
 cudapkgs='' #cuda pkg set
 
@@ -345,7 +348,8 @@ if ( pmatch "$OSVER" "ubuntu*" ); then
 fi
 pkgarray=($OSPKGS)
 
-
+#parse the pkglist file, categorize the pkglist entries according to 
+#the type(package/group/patterns) and action(install/remove)
 for x in ${pkgarray[@]};
 do
     #a flag indication the operation to current pkg/group
@@ -372,7 +376,8 @@ do
         if [ $pos -gt 0  ]; then
            tmp="\"$tmp\""
         fi
-
+        
+        #categorize the groups according to the action(install/remove)
         if [ $remove -eq 0 ]; then
     	   groups="$groups $tmp"
         else
@@ -382,6 +387,7 @@ do
         if ( pmatch  "$x" "cuda*" ); then
             cudapkgs="$cudapkgs $x" 
         else
+            #categorize the packages according to the action(install/remove)
             if [ $remove -eq 0 ]; then
                pkgs="$pkgs $x"
             else
@@ -403,6 +409,14 @@ if [ $debug -ne 0 ]; then
     echo "remove pkgs=$pkgs_d"
 fi
 
+#perform the software maintainancei with the available package management tools, the process:
+#1.make sure the necessary package management tool is available 
+#2.enable all the available repositories and refresh the relevant metadata
+#3.upgrade all the existing packages
+#4.install specified package groups if any
+#5.install specified packages if any
+#6.remove specified package groups if any
+#7.remove specified packages if any
 if ( pmatch "$OSVER" "sles10*" ); then
     #check if rug is installed
     result=`rpm -q rug`
@@ -765,6 +779,9 @@ elif ( pmatch "$OSVER" "ubuntu*" ); then
                    RETURNVAL=$R
                 fi
 	fi
+  
+        #remove package group is not supported in ubuntu, 
+        #cause there is no  rpm-like "groups" supported by dpkg/apt
 
 	# install packages
 	if [ -n "$pkgs" ]; then
