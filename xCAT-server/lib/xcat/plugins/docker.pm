@@ -225,12 +225,19 @@ sub process_request {
 
 =head3  genreq
 
-  Generate the REST API http request
+  Generate the docker REST API http request
   Input:
         $dochost: hash, keys: name, port, user, pw
         $method: GET, PUT, POST, DELETE
         $api: the url of rest api
         $content: an xml section which including the data to perform the rest api
+  Return:
+        The REST API http request
+  Usage example:
+         my $api = "/images/json";
+         my $method = "GET";
+         my %dockerhost = ( name => "bybc0604", port => "2375", );
+         my $request = genreq(\%dockerhost, $method,$api, "");
 
 =cut
 
@@ -276,7 +283,9 @@ sub genreq {
           2-http response error;
           3-return a http error message;
           5-operation failed
-
+          $response is the output of docker REST API. 
+  Usage example:
+          my ($rc, $response) = send_req(\%dockerhost,\%ssl_file,$request->as_string());
 
 =cut
 
