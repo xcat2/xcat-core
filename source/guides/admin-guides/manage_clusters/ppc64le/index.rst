@@ -1,4 +1,4 @@
-IBM Power8 LE / OpenPOWER
+IBM Power LE / OpenPOWER
 =========================
 
 .. toctree::
