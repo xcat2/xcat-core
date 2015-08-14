@@ -6,4 +6,5 @@ Objects
 
    node.rst
    osimage.rst
+   group.rst
    nodegroup.rst 
