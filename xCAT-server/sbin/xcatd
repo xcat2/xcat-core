@@ -27,6 +27,11 @@ my $sslctl;
 my $udpctl;
 my $pid_UDP;
 my $pid_MON;
+
+#----used for command log start---------
+my $cmdlog_svrpid;
+#----used for command log end---------
+
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
 if ($^O =~ /^aix/i) {
@@ -156,7 +161,6 @@ if (xCAT::Utils->isLinux()) {
   }  
 }
 
-
 my $quit = 0;
 my $port;
 my $sport;
@@ -197,7 +201,18 @@ my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
 ($tmp) = $sitetab->getAttribs({'key'=>'xcatconfdir'},'value');
 $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 
+#----used for command log start-------
+my $cmdlog_logfile="/var/log/xcat/commands.log";
+my $cmdlog_port=3003;
+($tmp) = $sitetab->getAttribs({'key'=>'xcatcport'},'value');
+if ($tmp) {
+	$cmdlog_port = $tmp->{value};
+}
+my $cmdlog_alllog="====================================================\n";
+#----used for command log end---------
+
 $sitetab->close;
+
 my $progname;
 my $pipeexpected;
 $SIG{PIPE} = sub { 
@@ -943,6 +958,13 @@ $SIG{TERM} = $SIG{INT} = sub {
    if ($dbmaster) {
       kill 2, $dbmaster;
    }
+   
+   #----used for command log start---------
+   if ($cmdlog_svrpid) {
+       kill 2, $cmdlog_svrpid;
+   }
+   #----used for command log end--------- 
+   
    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 5 second grace period"; };
    alarm(2);
    };
@@ -1122,6 +1144,53 @@ if ($startupparent) {
    close($startupparent);
 }
 
+#----used for command log start---------
+$cmdlog_svrpid = fork();
+if( !defined($cmdlog_svrpid)){
+    print "xCAT command log sever unable to fork";
+	xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
+}elsif($cmdlog_svrpid ==0){
+    $$progname="xcatd: Command log writer";
+	my $clientsock;
+	my @waittowritepro;
+	
+	xCAT::MsgUtils->trace(0,"I","xcatd: command log process start");
+	
+	unless (open (CMDLOGFILE, ">>$cmdlog_logfile")) {
+        #print "Can't open xcat command log file $cmdlog_logfile";
+	    #xCAT::MsgUtils->message("S","Can't open xcat command log file $cmdlog_logfile");
+	
+	    xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile");
+	    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+		exit(0);
+    }
+	select(CMDLOGFILE);
+	$|=1;
+   
+	my $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+							   Type => SOCK_STREAM,
+							   Reuse => 1,
+							   Listen => 8192);
+	while (1)
+	{
+	    my $clientsock = $cmdlogsvrlistener->accept;
+	    unless ($clientsock) { next; } 
+	    my $log = "";
+	    my $bytesread;
+	    do { 
+	    $bytesread=sysread($clientsock,$log,65536,length($log)) 
+	    } while ($bytesread);
+	    close($clientsock);
+		#print "[server]<<<<<<<<<<<<<<<<<<<<<<<<<\n$log";
+		print CMDLOGFILE $log;
+	}
+	
+	close($cmdlogsvrlistener);
+	close(CMDLOGFILE);
+	
+	xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+}
+#----used for command log end---------
 
 #only write to pid file if we have listener, listener ownership serves as lock to protect integrity
 open($mainpidfile,">","/var/run/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
@@ -1281,8 +1350,15 @@ if ($inet6support) {
     $peerhost && $peerhost =~ s/-myri\d*$//;
     $peerhost && $peerhost =~ s/-ib\d*$//;
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
+	
+	my $debugmsg = "xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
+	xCAT::MsgUtils->trace(0,"D","$debugmsg");
+	
     $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
     service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
+	
+    $debugmsg = "xcatd: close connection with ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
+    xCAT::MsgUtils->trace(0,"D","$debugmsg");
     xexit(0);
   }
   if ($sslfudgefactor) { $sslfudgefactor -= 1; }
@@ -1552,6 +1628,9 @@ sub plugin_command {
                    store_fd(\$rescanrequest,$rescanwritepipe);
                  }
                } else {
+                 my $debuglog= "xcatd: call plugin <$modname> to handle command <$req->{command}->[0]>";
+                 xCAT::MsgUtils->trace(0,"D","$debuglog");
+				 
                  ${"xCAT_plugin::".$modname."::"}{process_request}->($req,$callback,\&do_request);
                }
             }
@@ -1822,6 +1901,23 @@ sub dispatch_request {
    # save the old signal
    my $old_sig_chld = $SIG{CHLD};
 
+   #----used for trace start---------
+   my $str_cmd=$req->{command}->[0]." ";
+   if(exists($req->{noderange})){
+       foreach my $n (@{$req->{noderange}}) {
+           $str_cmd .= $n.",";
+       }
+       $str_cmd =~ s/(.+),$/$1 /g;
+    }
+   if(exists($req->{arg})){
+       foreach my $arg (@{$req->{arg}}) {
+           $str_cmd .= $arg." ";
+       }
+	   $str_cmd =~ s/(.+) $/$1/g;
+    }
+   xCAT::MsgUtils->trace(0,"D","xcatd: dispatch request '$str_cmd' to plugin '$modname'");
+   #----used for trace end---------
+   
    #Hierarchy support.  Originally, the default scope for noderange commands was
    #going to be the servicenode associated unless overriden.
    #However, assume for example that you have blades and a blade is the service node
@@ -1832,6 +1928,7 @@ sub dispatch_request {
    #If the plugin offers a preprocess method, use it to set the request array
    if ((not (defined $req->{_xcatpreprocessed}->[0] and $req->{_xcatpreprocessed}->[0] == 1)) and (defined(${"xCAT_plugin::".$modname."::"}{preprocess_request}))) {
     $SIG{CHLD}='DEFAULT';
+    xCAT::MsgUtils->trace(0,"D","xcatd: handle request '$req->{command}->[0]' by plugin '$modname''s preprocess_request");
     $reqs = ${"xCAT_plugin::".$modname."::"}{preprocess_request}->($req,$dispatch_cb,\&do_request);
    } else { #otherwise, pass it in without hierarchy support
     $reqs = [$req];
@@ -1889,6 +1986,7 @@ sub dispatch_request {
             store_fd(\$rescanrequest,$rescanwritepipe);
           }
         } else {
+          xCAT::MsgUtils->trace(0,"D","xcatd: handle request '$_->{command}->[0]' by plugin '$modname''s process_request");
           ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
         }
         return;
@@ -1951,6 +2049,8 @@ sub dispatch_request {
             undef $_->{'_xcatdest'};
             #mainly used by SN to filter out the incorrect module that xcat command came into
             $_->{'_modname'} = $modname;
+			
+            xCAT::MsgUtils->trace(0,"D","dispatch hierarchical sub-command $_->{command}->[0] to $ENV{XCATHOST}");
             xCAT::Client::submit_request($_,\&dispatch_callback,$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/server-cred.pem",$xcatdir."/cert/ca.pem"); 
             };
             if ($@) {
@@ -1984,6 +2084,7 @@ sub dispatch_request {
                 store_fd(\$rescanrequest,$rescanwritepipe);
               }
             } else {
+              xCAT::MsgUtils->trace(0,"D","handle command $_->{command}->[0] by plugin $modname 's process_request"); 
               ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
             }
             last;
@@ -2203,6 +2304,11 @@ sub send_response {
                 } while (($! == EAGAIN) or ($! == ECHILD));
             }
 	    };
+		
+	    #----used for command log start-------
+	    cmdlog_collectlog($response);
+	    #----used for command log end -------- 
+		
     } elsif ($encode eq "storable") {
         if ($response->{xcatresponse}) {
             $response = $response->{xcatresponse};
@@ -2279,6 +2385,32 @@ sub service_connection {
       #}
       $req = get_request($sock,$globalencode,$line);
       unless ($req) { last; }
+	  
+      #----used for command log start----------
+      my ($sec,$min,$hour,$mday,$mon,$year) = localtime(time());
+      $year += 1900;
+      $cmdlog_alllog .= "[Date]       $year-$mon-$mday $hour:$min:$sec\n"; 
+	  
+      #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
+      #print Dumper $req;
+	  
+      $cmdlog_alllog .= "[ClientType] ".$req->{clienttype}->[0]." \n";   
+      $cmdlog_alllog .= "[Request]    ".$req->{command}->[0]." "; 
+      if(exists($req->{noderange})){
+          foreach my $node (@{$req->{noderange}}) {
+              $cmdlog_alllog .= $node.",";
+          }
+          $cmdlog_alllog =~ s/(.+),$/$1 /g;
+    }
+    
+    if(exists($req->{arg})){
+        foreach my $arg (@{$req->{arg}}) {
+	        $cmdlog_alllog .= $arg." ";
+        }
+    }
+    $cmdlog_alllog .= "\n[Response]\n";
+    #----used for command log end----------
+	  
       { #TODO: find closing brace..
         #first change peername on 'becomeuser' tag if present and valid
         if (defined $req->{becomeuser}) {
@@ -2344,6 +2476,10 @@ sub service_connection {
 	  if($peerhost){
           	$$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
 	  }
+	  
+          my $debuglog= "xcatd: open new process : $$progname";
+          xCAT::MsgUtils->trace(0,"D","$debuglog");
+	  
           if ($req->{command}->[0] eq "authcheck") { #provide a method for UI to verify a user without actually requesting action
               my $resp;
               if ($peername or $peername eq "0") {
@@ -2432,6 +2568,11 @@ sub service_connection {
       #should be no longer possible to hit this condition.
       send_response({error=>"A child jumped to where it should never ever be, this shouldn't be possible, please report this bug"},$sock);
   }
+  
+  #----used for command log start-------
+  cmdlog_submitlog();
+  #----used for command log end---------
+  
   $SIG{ALRM}= sub { xCAT::MsgUtils->message("S","$$ failed shutting down"); die;};
   alarm(10);
   foreach (keys %tables) {
@@ -2493,6 +2634,12 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
             close($cin);
          }
          xCAT::MsgUtils->message("S", "Client abort requested");
+		 
+         #----used for command log start-------  
+         $cmdlog_alllog .= "Client abort requested\n";
+         cmdlog_submitlog(); 
+         #----used for command log end---------
+		 
          exit(0);
       }
    }
@@ -2709,5 +2856,209 @@ sub disable_callingtrace {
   xCAT::MsgUtils->stop_logging();
 }
 
+sub cmdlog_collectlog(){
+    my $rsponse= shift;
+    my $rsp_log="";
+=pod
+    print ">>>>[$$]cmdlog_collectlog dumper all rsponse>>>>>\n";
+    print Dumper $rsponse;   
+    return 0;
+=cut    
 
+    if((exists($rsponse->{serverdone})) && (! exists($rsponse->{error}) )){return 0;}
+    my $rsp;
+    if(exists($rsponse->{xcatresponse})){
+        $rsp = $rsponse->{xcatresponse};
+    }else{
+        $rsp = $rsponse;
+    }
+	if (ref($rsp) ne 'ARRAY') {return 0;}
+    if (scalar(@$rsp) == 0) {return 0;}
+	
+	foreach my $tmprsp (@{$rsp}) {
+        $rsp = $tmprsp;
+
+    #print ">>>>[$$]cmdlog_collectlog dumper valid rsponse>>>>>\n";
+    #print Dumper $rsponse;  
+    #return 0;
+
+    #handle response 
+    #Handle errors
+    if ($rsp->{error}) {
+        if (ref($rsp->{error}) eq 'ARRAY') {
+            foreach my $text (@{$rsp->{error}}) {
+                if ($rsp->{NoErrorPrefix}) {
+                    $rsp_log.=$text;
+                } else {
+                    $rsp_log.="Error: $text\n";
+                }
+            }
+        }
+        else {
+            if ($rsp->{NoErrorPrefix}) {
+                $rsp_log.= $rsp->{error}."\n";
+            } else {
+                $rsp_log.= "Error: ".$rsp->{error}."\n";
+            }
+        }
+    }
+    
+    if ($rsp->{warning}) {
+        if (ref($rsp->{warning}) eq 'ARRAY') {
+            foreach my $text (@{$rsp->{warning}}) {
+                if ($rsp->{NoWarnPrefix}) {
+                    $rsp_log.= "$text\n";
+                } else {
+                    $rsp_log.= "Warning: $text\n";
+                }
+            }
+        }
+        else {
+            if ($rsp->{NoWarnPrefix}) {
+                $rsp_log.= $rsp->{warning}."\n";
+            } else {
+                $rsp_log.= "Warning: ".$rsp->{warning}."\n";
+            }
+        }
+    }
+    
+    if ($rsp->{info}) {
+        if (ref($rsp->{info}) eq 'ARRAY') {
+            foreach my $text (@{$rsp->{info}}) {
+                $rsp_log.= "$text\n";
+            }
+        }
+        else {
+            $rsp_log.= $rsp->{info}."\n";
+        }
+    }
+
+    if ($rsp->{sinfo}) {
+        if (ref($rsp->{sinfo}) eq 'ARRAY') {
+            foreach my $text (@{$rsp->{sinfo}}) {
+                $rsp_log.= "$text\r";
+            }
+        }
+        else {
+            $rsp_log.= $rsp->{sinfo}."\r";
+        }
+    }
+    
+    #Handle {node} structure
+    my $errflg=0;
+    my $nodes=($rsp->{node});
+    unless (ref $nodes eq 'ARRAY') {
+        $nodes = [$nodes];
+    }
+    if (scalar @{$nodes}) {
+        my $node;
+        foreach $node (@$nodes) {
+            my $desc;
+            if (ref($node->{name}) eq 'ARRAY') {
+                $desc=$node->{name}->[0];
+            } else {
+                $desc=$node->{name};
+            }
+            if ($node->{error}) {
+                $desc.=": Error: ".$node->{error}->[0];
+                $errflg=1;
+            }
+            if ($node->{warning}) {
+                $desc.=": Warning: ".$node->{warning}->[0];
+                $errflg=1;
+            }
+            if ($node->{data}) {
+                if (ref(\($node->{data})) eq 'SCALAR') {
+                    $desc=$desc.": ".$node->{data};
+                } elsif (ref($node->{data}) eq 'HASH') {
+                    if ($node->{data}->{desc}) {
+                        if (ref($node->{data}->{desc}) eq 'ARRAY') {
+                            $desc=$desc.": ".$node->{data}->{desc}->[0];
+                        } else {
+                            $desc=$desc.": ".$node->{data}->{desc};
+                        }
+                    }
+                    if ($node->{data}->{contents}) {
+                        if (ref($node->{data}->{contents}) eq 'ARRAY') {
+                            $desc="$desc: ".$node->{data}->{contents}->[0];
+                        } else {
+                            $desc="$desc: ".$node->{data}->{contents};
+                        }
+                    }
+                } elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
+                    $desc=$desc.": ".$node->{data}->[0];
+                } else {
+                    if ($node->{data}->[0]->{desc}) {
+                        $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+                    }
+                    if ($node->{data}->[0]->{contents}) {
+                        $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc) {
+                if ($errflg == 1) {
+                    $rsp_log.= "$desc\n";
+                } else {
+                    $rsp_log.= "$desc\n";
+                }
+            }
+        }
+    }
+
+    # Handle {data} structure with no nodes
+	foreach my $mykey ( keys %{$rsp} ) 
+	{
+	if ($mykey ne "data") {next;}
+    if ($rsp->{data}) {
+        my $data=($rsp->{data});
+        my $data_entry;
+        foreach $data_entry (@$data) {
+            my $desc;
+            if (ref(\($data_entry)) eq 'SCALAR') {
+                $desc=$data_entry;
+            } else {
+                if ($data_entry->{desc}) {
+                    $desc=$data_entry->{desc}->[0];
+                }
+                if ($data_entry->{contents}) {
+                    if ($desc) {
+                        $desc="$desc: ".$data_entry->{contents}->[0];
+                    } else {
+                        $desc=$data_entry->{contents}->[0];
+                    }
+                }
+            }
+            if ($desc) { 
+                $rsp_log.= "$desc\n";
+            }
+        }
+    }
+	}
+	}
+    #print "$rsp_log\n";
+    $cmdlog_alllog .= $rsp_log; 
+   
+    return 0;
+}
+
+sub cmdlog_submitlog() {
+
+   if( $cmdlog_alllog =~ /getipmicons/) {return 1;}
+=pod   
+   print ">>>>[$$]cmdlog_submitlog >>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
+   print $cmdlog_alllog;
+   return 0;
+=cut
+    my $mysocket;
+    while (1){
+        $mysocket = IO::Socket::INET->new(PeerAddr => "127.0.0.1",
+									   PeerPort => $cmdlog_port,
+									   Proto => "tcp");
+        if($mysocket) { last;}
+    }
+    print $mysocket $cmdlog_alllog;
+	#print "[client]>>>>>>>>>>>>>>>>>>>>>>>>>>\n$cmdlog_alllog";
+    close ($mysocket);
+}
 
