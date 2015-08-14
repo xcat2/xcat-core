@@ -1,5 +1,5 @@
-Hardware Architectures 
-======================
+Manage Clusters
+===============
 
 .. toctree::
    :maxdepth: 2
