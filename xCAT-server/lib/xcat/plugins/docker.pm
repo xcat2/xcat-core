@@ -29,9 +29,13 @@ Getopt::Long::Configure("bundling");
 use HTTP::Headers;
 use HTTP::Request;
 use XML::LibXML;
-
-use xCAT::Usage;
 use xCAT::Utils;
+use xCAT::MsgUtils;
+use Getopt::Long;
+use File::Basename;
+use Cwd;
+use IO::Select;
+use xCAT::Usage;
 
 my %globalopt;
 my @filternodes;
@@ -221,13 +225,19 @@ sub process_request {
 
 =head3  genreq
 
-  Generate the REST API http request
+  Generate the docker REST API http request
   Input:
+        $dochost: hash, keys: name, port, user, pw
         $method: GET, PUT, POST, DELETE
         $api: the url of rest api
         $content: an xml section which including the data to perform the rest api
-        $dochost
-        $port
+  Return:
+        The REST API http request
+  Usage example:
+         my $api = "/images/json";
+         my $method = "GET";
+         my %dockerhost = ( name => "bybc0604", port => "2375", );
+         my $request = genreq(\%dockerhost, $method,$api, "");
 
 =cut
 
@@ -235,7 +245,6 @@ sub process_request {
 sub genreq {
     my $dochost = shift;
     my $method = shift;
-    my $port = shift;
     my $api = shift;
     my $content = shift;
 
@@ -243,13 +252,13 @@ sub genreq {
     my $header = HTTP::Headers->new('content-type' => 'application/xml',
                              'Accept' => 'application/xml',
                              #'Connection' => 'keep-alive',
-                             'Host' => $dochost->{name}.':'.$port);
+                             'Host' => $dochost->{name});
     $header->authorization_basic($dochost->{user}.'@internal', $dochost->{pw});
 
     my $ctlen = length($content);
     $header->push_header('Content-Length' => $ctlen);
 
-    my $url = "https://".$dochost->{name}.$port.$api;
+    my $url = "https://".$dochost->{name}.":".$dochost->{port}.$api;
     my $request = HTTP::Request->new($method, $url, $header, $content);
     $request->protocol('HTTP/1.1');
 
@@ -265,36 +274,50 @@ sub genreq {
   Receive the response from docker daemon
   Handle the error cases
 
-  Input: $dochost
-         $port
+  Input: $dochost: hash, keys: name, port, user, pw
+         $ssl_file: hash, keys: ssl_ca_file, ssl_cert_file, ssl_key_file
          $request: the REST API http request
-         $ssl_ca_file: path to ssl ca file
+
 
   return: 1-ssl connection error;
           2-http response error;
           3-return a http error message;
           5-operation failed
-
+          $response is the output of docker REST API. 
+  Usage example:
+          my ($rc, $response) = send_req(\%dockerhost,\%ssl_file,$request->as_string());
 
 =cut
 
 #-------------------------------------------------------
 sub send_req {
     my $dochost = shift;
+    my $ssl_file = shift;
     my $request = shift;
-    my $ssl_ca_file = shift;
-    my $port = shift;
 
+    my $ssl_ca_file = $ssl_file->{ssl_ca_file};
+    my $ssl_cert_file = $ssl_file->{ssl_cert_file};
+    my $key_file = $ssl_file->{ssl_key_file};
     my $doc_hostname = $dochost->{name};
-
+    my $port = $dochost->{port};
     my $rc = 0;
     my $response;
     my $connect;
     my $socket = IO::Socket::INET->new( PeerAddr => $doc_hostname,
                                                               PeerPort => $port,
-                                                              Timeout => 15);
+                                                              Timeout => 2,
+                                                              Blocking => 0
+                                      );
     if ($socket) {
-        $connect = IO::Socket::SSL->start_SSL($socket, SSL_ca_file => $ssl_ca_file, Timeout => 0);
+        $connect = IO::Socket::SSL->start_SSL( $socket,
+                                                   SSL_verify_mode => SSL_VERIFY_PEER,
+                                                   SSL_ca_file => $ssl_ca_file,
+                                                   SSL_cert_file =>$ssl_cert_file,
+                                                   SSL_key_file => $key_file,
+                                                   Timeout => 0
+                                      );
+
+
         if ($connect) {
             my $flags=fcntl($connect,F_GETFL,0);
             $flags |= O_NONBLOCK;
