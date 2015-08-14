@@ -740,5 +740,52 @@ sub verbose_message
         xCAT::MsgUtils->message("I", $data);
     }
 }
+
+sub trace(){
+    shift;
+    my $verbose = shift;
+    my $level = shift;
+	my $logcontent = shift;
+
+	my $prefix = "";
+	if(($level eq "E")||($level eq "e")){$prefix="ERR";}
+	if(($level eq "W")||($level eq "w")){$prefix="WARNING";}
+	if(($level eq "I")||($level eq "i")){$prefix="INFO";}
+	if(($level eq "D")||($level eq "d")){$prefix="DEBUG";}
+	#print "prefix = $prefix\n";	
+
+	my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+	my $xcatdebugmode=$tmp[0];
+	#print ">>>>>>>xcatdebugmode = $xcatdebugmode  >>>>>>>>>>>>\n";
+
+	if (($level eq "E") 
+	  ||($level eq "e")
+	  ||($level eq "I")
+	  ||($level eq "i") 
+	  ||($level eq "W")
+	  ||($level eq "w")){
+		my $msg = $prefix." ".$logcontent;
+		eval {
+			#print "msg = $msg\n";
+			openlog("xCAT", "nofatal,pid", "local4");
+			syslog("$prefix", $msg);
+			closelog();
+		};
+	}
+	
+    if (($level eq "D") 
+	  ||($level eq "d")){
+          if(($verbose == 1 )||($xcatdebugmode  eq "1")){
+            my $msg = $prefix." ".$logcontent;
+            eval {
+                #print "msg = $msg\n";
+                openlog("xCAT", "nofatal,pid", "local4");
+                syslog("$prefix", $msg);
+                closelog();
+            }
+        }
+    }
+}
+
 1;
 
