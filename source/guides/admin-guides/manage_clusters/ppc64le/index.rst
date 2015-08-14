@@ -1,11 +1,11 @@
-IBM Power8 LE and OpenPOWER
-===========================
+IBM Power8 LE / OpenPOWER
+=========================
 
 .. toctree::
    :maxdepth: 2
 
-   ../common/discovery.rst
+   discovery/index.rst
    management/index.rst
-   ../common/diskful.rst
-   ../common/diskless.rst 
-   power8le_kvm/index.rst
+   diskful/index.rst
+   diskless/index.rst
+   virtual_machines/index.rst
