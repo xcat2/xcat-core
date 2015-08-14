@@ -1020,7 +1020,9 @@ sub preprocess_request
     my $callback = shift;
     my $rc       = 0;
    
-
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose_on_off=0;
+	
     Getopt::Long::Configure("bundling");
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("no_pass_through");
@@ -1042,7 +1044,8 @@ sub preprocess_request
                      'n'  => \$opt{n},
                      'r'  => \$opt{r},
                      's=s'  => \$statements,  # $statements is declared globally
-                     'q'  => \$opt{q}
+                     'q'  => \$opt{q},
+					  'V'  => \$opt{V}     #>>>>>>>used for trace log>>>>>>>
                    ))
     {
         # If the arguements do not pass GetOptions then issue error message and return
@@ -1052,9 +1055,13 @@ sub preprocess_request
         return 1;
     }
 
+    #>>>>>>>used for trace log>>>>>>>
+	if($opt{V}){ $verbose_on_off=1;}
+	
     # check the syntax
     $rc = check_options($req, \%opt,$callback);
     if ( $rc ) {
+        xCAT::MsgUtils->trace($verbose_on_off,"e","dhcp: command syntax error");
         return [];
     }
     
@@ -1064,6 +1071,7 @@ sub preprocess_request
     if (defined($t_entry)) {
 	$snonly=$t_entry;
     }
+    xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: disjointdhcps = $t_entry");
     my @requests=();
     my $hasHierarchy=0;
 
@@ -1134,6 +1142,11 @@ sub preprocess_request
 	}
 	}
 
+	#>>>>>>>used for trace log>>>>>>>
+	my $str_node;
+	foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
+	xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: nodes are $str_node");
+
     # If service node and not -n option
     if (($snonly == 1) && (!$opt{n})) {
 	# if a list of nodes are specified
@@ -1193,6 +1206,8 @@ sub preprocess_request
 	}
     }
 
+    xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: hasHierarchy = $hasHierarchy");
+	
     if ( $hasHierarchy)
     {  
         #hierarchy detected, enforce more rigorous sanity
@@ -1228,6 +1243,9 @@ sub process_request
     my $rsp;
     #print Dumper($req);
 
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose_on_off=0;
+	
     Getopt::Long::Configure("bundling");
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure("no_pass_through");
@@ -1247,7 +1265,8 @@ sub process_request
                      'n'  => \$opt{n},
                      'r'  => \$opt{r},
                      's=s'  => \$statements,  # $statements is declared globally
-                     'q'  => \$opt{q}
+                     'q'  => \$opt{q},
+					 'V'  => \$opt{V}     #>>>>>>>used for trace log>>>>>>>
                    ))
     {
         # If the arguements do not pass GetOptions then issue error message and return
@@ -1257,12 +1276,15 @@ sub process_request
         return 1;
      }
 
-
+     #>>>>>>>used for trace log>>>>>>>
+     if($opt{V}){ $verbose_on_off=1;}
+	
     # Check options again in case we are called from plugin and options have not been processed
     my $rc       = 0;
     $rc = check_options($req, \%opt,$callback);
 
     if ( $rc ) {
+        xCAT::MsgUtils->trace($verbose_on_off,"e","dhcp: there is invalid option in command");
         return [];
     }
 
@@ -1293,6 +1315,7 @@ sub process_request
     }
     
     if($isok == 0) { #do nothing if it is a service node, but not dhcpserver
+	xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: it is a service node, but not dhcpserver. Do nothing");
 	print "Do nothing\n";
 	return;  
     }
@@ -1387,6 +1410,11 @@ sub process_request
         } else {
 			$site_domain = $t_entry;
 		}
+		
+		xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: sitelogservers = $sitelogservers");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: sitentpservers = $sitentpservers");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: sitenameservers = $sitenameservers");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: site_domain = $site_domain");
     }
 
     @dhcpconf = ();
@@ -1397,6 +1425,7 @@ sub process_request
     flock($dhcplockfd,LOCK_EX);
     if ($::XCATSITEVALS{externaldhcpservers}) { 
         # do nothing if remote dhcpservers at this point
+		xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: remote dhcpservers at this point, do nothing");
     } elsif ($opt{n}) {
         if (-e $dhcpconffile) {
             if ($^O eq 'aix') {
@@ -1426,10 +1455,12 @@ sub process_request
 
             my $bakname = "$dhcpconffile.xcatbak";
             rename("$dhcpconffile", $bakname);
+			xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: Renamed existing dhcp configuration file to  $dhcpconffile.xcatbak");
         }
     }
     else
     {
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: load dhcp config file $dhcpconffile");
         my $rconf;
         open($rconf, $dhcpconffile);    # Read file into memory
         if ($rconf)
@@ -1920,7 +1951,8 @@ sub process_request
     }
     writeout();
     if (not $::XCATSITEVALS{externaldhcpservers} and $restartdhcp) {
-        if ( $^O eq 'aix')
+        xCAT::MsgUtils->trace($verbose_on_off,"d","dhcp: restart dhcp service");       
+	   if ( $^O eq 'aix')
         {
             restart_dhcpd_aix();
         }

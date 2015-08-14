@@ -752,6 +752,21 @@ sub mkinstall
     my $osimagetab;
     my $osdistrouptab;
 
+    #>>>>>>>used for trace log start>>>>>>>
+    my @args=();
+    my %opt;
+    if (ref($request->{arg})) {
+        @args=@{$request->{arg}};
+    } else {
+        @args=($request->{arg});
+    }
+    @ARGV = @args;
+    GetOptions('V'  => \$opt{V});
+    my $verbose_on_off=0;
+    if($opt{V}){$verbose_on_off=1;}
+    xCAT::MsgUtils->trace(0,"d","sles->mkinstall: opt{V}=$opt{V} verbose_on_off=$verbose_on_off");
+    #>>>>>>>used for trace log end>>>>>>>
+	
     my $ntents = $ostab->getNodesAttribs($request->{node}, ['os', 'arch', 'profile', 'provmethod']);
     my %img_hash=();
     my $installroot;
@@ -779,7 +794,9 @@ sub mkinstall
             $installroot = $t_entry;
         }
     #}
-
+	
+    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: installroot = $installroot");
+	
     my %donetftp;
     require xCAT::Template; #only used here, load so memory can be COWed
     # Define a variable for driver update list
@@ -829,7 +846,9 @@ sub mkinstall
         } else {
 	   $tftpdir = $globaltftpdir;
         }
-
+		
+        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: tftpdir = $tftpdir");
+		
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    $imagename=$ent->{provmethod};
 	    if (!exists($img_hash{$imagename})) {
@@ -914,6 +933,12 @@ sub mkinstall
 	    $netdrivers = $ph->{netdrivers};
 	    $driverupdatesrc = $ph->{driverupdatesrc};
 	    $osupdir = $ph->{'osupdir'};
+		
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: imagename = $imagename");
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: pkgdir = $pkgdir");
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: pkglistfile = $pkglistfile");
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: tmplfile = $tmplfile");
+	    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: partfile = $partfile");
 	}
 	else {
 	    $os = $ent->{os};
@@ -939,7 +964,12 @@ sub mkinstall
 
         #get the partition file from the linuximage table
         my $imgname = "$os-$arch-install-$profile";
-
+		
+        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: imagename = $imgname");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: pkgdir = $pkgdir");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: pkglistfile = $pkglistfile");
+		xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: tmplfile = $tmplfile");
+		
         if (! $linuximagetab) {
             $linuximagetab = xCAT::Table->new('linuximage');
         }
@@ -948,6 +978,7 @@ sub mkinstall
             (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
             if ( $ref1 and $ref1->{'partitionfile'}){
                 $partfile = $ref1->{'partitionfile'};
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: partfile = $partfile");
             }
         }
         else {
@@ -1080,18 +1111,21 @@ sub mkinstall
                         copy("$pkgdir/1/boot/$arch/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/$arch/loader/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd.img and linux to $tftppath");
                     }
                 } elsif ($arch =~ /x86/) {
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/boot/i386/loader/linux", "$tftppath");
                         copy("$pkgdir/1/boot/i386/loader/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd.img and linux to $tftppath");
                     }
                 } elsif ($arch eq "ppc64le") {
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/boot/$arch/linux", "$tftppath");
                         copy("$pkgdir/1/boot/$arch/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd.img and linux to $tftppath");
                     }
                 }
                 elsif ($arch =~ /ppc/)
@@ -1099,6 +1133,7 @@ sub mkinstall
                     unless ($noupdateinitrd) {
                         copy("$pkgdir/1/suseboot/inst64", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy inst64 to $tftppath");
                     }
                 }
             }
@@ -1278,6 +1313,9 @@ sub mkinstall
             {
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline = $kcmdline");
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kernal = $kernelpath");
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: initrd = $initrdpath");
                 $bptab->setNodeAttribs(
                                         $node,
                                         {
@@ -1290,6 +1328,9 @@ sub mkinstall
             elsif ($arch =~ /ppc/)
             {
                 $kernelpath = "$rtftppath/inst64";
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline = $kcmdline");
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kernal = $kernelpath");
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: initrd = ");
                 $bptab->setNodeAttribs(
                                         $node,
                                         {

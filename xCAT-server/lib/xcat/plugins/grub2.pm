@@ -341,9 +341,15 @@ sub preprocess_request {
     @ARGV = @args;
     my $nodes = $req->{node};
     #use Getopt::Long;
+    my $HELP;
+    my $VERSION;
+    my $VERBOSE;
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
-    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) {
+    if (!GetOptions('h|?|help'  => \$HELP, 
+	'v|version' => \$VERSION,
+	'V'  => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>
+	) ) {
       if($usage{$command}) {
           my %rsp;
           $rsp{data}->[0]=$usage{$command};
@@ -352,6 +358,12 @@ sub preprocess_request {
       return;
     }
 
+    #>>>>>>>used for trace log start>>>>>>
+    my $verbose_on_off=0;  
+	if($VERBOSE){$verbose_on_off=1;}
+	#xCAT::MsgUtils->trace(1,"d","grub2: VERBOSE=$VERBOSE  verbose_on_off=$verbose_on_off ");
+	#>>>>>>>used for trace log end>>>>>>>
+	
     if ($HELP) { 
         if($usage{$command}) {
             my %rsp;
@@ -383,6 +395,8 @@ sub preprocess_request {
    #if they specify no sharedtftp in site table
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
+   
+   xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: sharedtftp = $t_entry");
    
    if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
@@ -423,6 +437,21 @@ sub process_request {
     my @args;
     my @nodes;
     my @rnodes;
+	
+    #>>>>>>>used for trace log start>>>>>>>
+    #my @args=();
+    my %opt;
+    my $verbose_on_off=0;
+    if (ref($::XNBA_request->{arg})) {
+        @args=@{$::XNBA_request->{arg}};
+    } else {
+        @args=($::XNBA_request->{arg});
+    }
+    @ARGV = @args;
+    GetOptions('V'  => \$opt{V});
+    if($opt{V}){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>	
+
     if (ref($request->{node})) {
         @rnodes = @{$request->{node}};
     } else {
@@ -448,7 +477,12 @@ sub process_request {
     } else {
         @nodes = @rnodes;
     }
-  
+	
+    #>>>>>>>used for trace log>>>>>>>
+	my $str_node;
+	foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
+	xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: nodes are $str_node");
+	  
     # return directly if no nodes in the same network
     unless (@nodes) {
         xCAT::MsgUtils->message("S", "xCAT: grub2 netboot: no valid nodes. Stop the operation on this server.");
@@ -465,11 +499,15 @@ sub process_request {
     unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
         $errored=0;
         if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
-  	  $sub_req->({command=>['runbeginpre'],
+	 xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: the call is distrubuted to the service node already, so only need to handles my own children");
+	 xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue runbeginpre request");  	 
+	 $sub_req->({command=>['runbeginpre'],
   		      node=>\@nodes,
   		      arg=>[$args[0], '-l']},\&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
-  	  $sub_req->({command=>['runbeginpre'],   
+  	 xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: nodeset did not distribute to the service node");
+	 xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue runbeginpre request");  	 
+	 $sub_req->({command=>['runbeginpre'],   
   		      node=>\@rnodes,
   		      arg=>[$args[0]]},\&pass_along);
         }
@@ -488,6 +526,7 @@ sub process_request {
     if (!$inittime) { $inittime=0;}
     $errored=0;
     unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+	xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue setdestiny request");
       $sub_req->({command=>['setdestiny'],
   		node=>\@nodes,
   		inittime=>[$inittime],
@@ -594,9 +633,11 @@ sub process_request {
             }
             if ($do_dhcpsetup) {
                 if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+				xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue makedhcp request");
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}}}, $callback);
                 } else {
+				xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue makedhcp request");
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}}},$callback);
                 }
@@ -610,10 +651,12 @@ sub process_request {
         }
         if ($do_dhcpsetup) {
           if ($request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+		  xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue makedhcp request");
               $sub_req->({command=>['makedhcp'],
                node=>\@breaknetboot,
                arg=>['-l']},$callback);
           } else {
+		  xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue makedhcp request");
               $sub_req->({command=>['makedhcp'],
                node=>\@breaknetboot},$callback);
           }
@@ -624,10 +667,12 @@ sub process_request {
     unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
         $errored=0;
         if ($request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
-  	  $sub_req->({command=>['runendpre'],
+  	  xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue runendpre request");
+	  $sub_req->({command=>['runendpre'],
   		      node=>\@nodes,
   		      arg=>[$args[0], '-l']},\&pass_along);
         } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
+		xCAT::MsgUtils->trace($verbose_on_off,"d","grub2: issue runendpre request");
   	  $sub_req->({command=>['runendpre'],   
   		      node=>\@rnodes,
   		      arg=>[$args[0]]},\&pass_along);
