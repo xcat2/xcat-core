@@ -741,45 +741,80 @@ sub verbose_message
     }
 }
 
+#--------------------------------------------------------------------------------
+
+=head3 trace
+
+    Display different level trace message in systemd.
+    
+    Arguments:
+        $verbose: indicate whether current command is with -V option. 1 is yes and 0 is no.  
+        $level: the level of trace message, can be one of "I","W","E","D","i","w","e","d".
+            "I" or "i": means information level.
+            "W" or "w": means warning level.
+            "E" or "e": means error level.
+            "D" or "d": means debug level.
+        
+            As long as the trace subroutine is called, "information", "warning" and "error" level message will be displayed in systemd.
+            The "debug" level message is displayed in systemd noly when any one of the below two conditions is true
+            1. The current command with -V option. i.e. $verbose=1.
+            2. The xcatdebugmode, which is an attribute of site table, equals 1. 
+        
+            If $level is not any one of "I","W","E","D","i","w","e","d", the trace subroutine do nothing.
+        
+        $logcontent: the specific message wanted to be displayed in systemd
+    
+    Returns:
+        none
+		
+    Error:
+        none
+		
+    Note:
+        Label "xcat" and trace message level, such as "INFO", "ERR", "WARNING" AND "DEBUG", will be added before real trace message automatically. It's convenient to filter in systemd.
+    
+    Example:
+        xCAT::MsgUtils->trace(1,"D","this is debug trace message");
+        xCAT::MsgUtils->trace(0,"i","this is information trace message");
+        xCAT::MsgUtils->trace(0,"E","this is error trace message");
+=cut
+
+#--------------------------------------------------------------------------------
 sub trace(){
     shift;
     my $verbose = shift;
     my $level = shift;
-	my $logcontent = shift;
-
-	my $prefix = "";
-	if(($level eq "E")||($level eq "e")){$prefix="ERR";}
-	if(($level eq "W")||($level eq "w")){$prefix="WARNING";}
-	if(($level eq "I")||($level eq "i")){$prefix="INFO";}
-	if(($level eq "D")||($level eq "d")){$prefix="DEBUG";}
-	#print "prefix = $prefix\n";	
-
-	my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
-	my $xcatdebugmode=$tmp[0];
-	#print ">>>>>>>xcatdebugmode = $xcatdebugmode  >>>>>>>>>>>>\n";
-
-	if (($level eq "E") 
-	  ||($level eq "e")
-	  ||($level eq "I")
-	  ||($level eq "i") 
-	  ||($level eq "W")
-	  ||($level eq "w")){
-		my $msg = $prefix." ".$logcontent;
-		eval {
-			#print "msg = $msg\n";
-			openlog("xCAT", "nofatal,pid", "local4");
-			syslog("$prefix", $msg);
-			closelog();
-		};
-	}
-	
+    my $logcontent = shift;
+    
+    my $prefix = "";
+    if(($level eq "E")||($level eq "e")){$prefix="ERR";}
+    if(($level eq "W")||($level eq "w")){$prefix="WARNING";}
+    if(($level eq "I")||($level eq "i")){$prefix="INFO";}
+    if(($level eq "D")||($level eq "d")){$prefix="DEBUG";}
+    
+    my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
+    my $xcatdebugmode=$tmp[0];
+    
+    if (($level eq "E") 
+    ||($level eq "e")
+    ||($level eq "I")
+    ||($level eq "i") 
+    ||($level eq "W")
+    ||($level eq "w")){
+        my $msg = $prefix." ".$logcontent;
+        eval {
+            openlog("xcat", "nofatal,pid", "local4");
+            syslog("$prefix", $msg);
+            closelog();
+        };
+    }
+    
     if (($level eq "D") 
-	  ||($level eq "d")){
-          if(($verbose == 1 )||($xcatdebugmode  eq "1")){
+    ||($level eq "d")){
+        if(($verbose == 1 )||($xcatdebugmode  eq "1")){
             my $msg = $prefix." ".$logcontent;
             eval {
-                #print "msg = $msg\n";
-                openlog("xCAT", "nofatal,pid", "local4");
+                openlog("xcat", "nofatal,pid", "local4");
                 syslog("$prefix", $msg);
                 closelog();
             }
