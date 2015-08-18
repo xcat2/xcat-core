@@ -21,7 +21,8 @@
 # you can change this if you need to
 UPLOADUSER=litingt
 
-FRS=/home/frs/project/x/xc/xcat
+#FRS=/home/frs/project/x/xc/xcat
+FRS=/var/www/xcat.org/files
 OSNAME=$(uname)
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
@@ -252,13 +253,15 @@ else
 	links="-l"
 fi
 echo "Uploading RPMs from xcat-dep to $YUMDIR/$YUM/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
+#while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
+while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep xcat@xcat.org:$YUMDIR/$YUM/
 do : ; done
 
 # Upload the tarball to the SF FRS Area
 i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+#while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
 # Upload the README to the SF FRS Area
@@ -268,6 +271,7 @@ sed "6 iThe latest xcat-dep tar ball is ${DFNAME}" -i README
 
 i=0
 echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+#while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v README xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
