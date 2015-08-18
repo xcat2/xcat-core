@@ -494,10 +494,8 @@ unless ($onlyinitrd) {
                 #if there is no Packages file in otherpkgsdir local, it will not be added into source list
                 if ($otherpkgsdir_local) 
                 {
-                      my $tmppkg=$otherpkgsdir_local."/".$_."/Packages";
                       my $tmpdir=$otherpkgsdir_local."/".$_;
-                      `ls $tmppkg 2>&1`;
-                      if(!$?)
+                      if (-f $tmpdir . '/Packages' || -f $tmpdir . '/Packages.gz')
                       {
                           print $aptconfig "deb file:///mnt/otherpkgdir/$_ ./\n"
                       }
