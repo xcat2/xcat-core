@@ -964,7 +964,6 @@ sub mkinstall
     GetOptions('V'  => \$opt{V});
     my $verbose_on_off=0;
     if($opt{V}){$verbose_on_off=1;}
-    xCAT::MsgUtils->trace(0,"d","anaconda->mkinstall: opt{V}=$opt{V} verbose_on_off=$verbose_on_off");
     #>>>>>>>used for trace log end>>>>>>>
 	
     #if ($sitetab)
@@ -976,8 +975,6 @@ sub mkinstall
     {
         $installroot = $site_ent;
     }
-	
-    xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: installroot = $installroot");
 		
     #( $ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
     @ents = xCAT::TableUtils->get_site_attribute("tftpdir");
@@ -986,7 +983,7 @@ sub mkinstall
     {
         $globaltftpdir = $site_ent;
     }
-    xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: globaltftpdir = $globaltftpdir");
+    xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: installroot=$installroot globaltftpdir=$globaltftpdir");
     #}
 
     my $node;
@@ -1053,8 +1050,6 @@ sub mkinstall
         } else {
             $xcatmaster = '!myipfn!';
         }
-
-        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: xcatmaster = $xcatmaster");
 		
         my $osinst;
         if ($rents{$node}->[0] and $rents{$node}->[0]->{tftpdir}) {
@@ -1062,9 +1057,11 @@ sub mkinstall
         } else {
 		$tftpdir = $globaltftpdir;
         }
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: tftpdir = $tftpdir");
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: provmethod = $ent->{provmethod}");
+        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: xcatmaster=$xcatmaster tftpdir=$tftpdir provmethod=$ent->{provmethod}");
+		
+		
+		
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    $imagename=$ent->{provmethod};
 	    #print "imagename=$imagename\n";
@@ -1179,11 +1176,7 @@ sub mkinstall
 	    $driverupdatesrc = $ph->{driverupdatesrc};
 	    $osupdir = $ph->{'osupdir'};
 		
-        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename = $imagename");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: pkgdir = $pkgdir");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: pkglistfile = $pkglistfile");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: tmplfile = $tmplfile");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: partfile = $partfile");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile partfile=$partfile");
 	}
 	else {
 	    $os = $ent->{os};
@@ -1213,10 +1206,7 @@ sub mkinstall
         #get the partition file from the linuximage table
         my $imgname = "$os-$arch-install-$profile";
 
-        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename = $imgname");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: pkgdir = $pkgdir");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: pkglistfile = $pkglistfile");
-		xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: tmplfile = $tmplfile");
+        xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename=$imgname pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
 		
         if ( ! $linuximagetab ) {
             $linuximagetab = xCAT::Table->new('linuximage');
@@ -1226,7 +1216,7 @@ sub mkinstall
             (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'partitionfile');
             if ( $ref1 and $ref1->{'partitionfile'}){
                 $partfile = $ref1->{'partitionfile'};
-				xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: partfile = $partfile");
+                xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: partfile = $partfile");
             }
         }
         #can not find the linux osiamge object, tell users to run "nodeset <nr> osimage=***"
@@ -1618,9 +1608,7 @@ sub mkinstall
                     $i = "$rtftppath/initrd.img";
             }
 			
-			xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: kcmdline = $kcmdline");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: kernal = $k");
-			xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: initrd = $i");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: kcmdline=$kcmdline kernal=$k initrd=$i");
 			
             $bptab->setNodeAttribs(
                 $node,

@@ -375,11 +375,10 @@ sub preprocess_request {
       return;
     }
 	
-	#>>>>>>>used for trace log start>>>>>>
+    #>>>>>>>used for trace log start>>>>>>
     my $verbose_on_off=0;  
-	if($VERBOSE){$verbose_on_off=1;}
-	#xCAT::MsgUtils->trace(1,"d","yaboot: VERBOSE=$VERBOSE  verbose_on_off=$verbose_on_off ");
-	#>>>>>>>used for trace log end>>>>>>>
+    if($VERBOSE){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
 	
     if ($HELP) { 
 	if($usage{$command}) {
@@ -413,7 +412,7 @@ sub preprocess_request {
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
    
-   xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: sharedtftp = $t_entry");
+   xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: sharedtftp=$t_entry");
    
    if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
@@ -496,10 +495,9 @@ sub process_request {
      @nodes = @rnodes;
   }
 
-      #>>>>>>>used for trace log>>>>>>>
-	my $str_node;
-	foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
-	xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: nodes are $str_node");
+  #>>>>>>>used for trace log>>>>>>>
+  my $str_node = join(" ",@nodes);
+  xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: nodes are $str_node");
   
   # return directly if no nodes in the same network
   unless (@nodes) {
@@ -750,12 +748,12 @@ sub process_request {
                         }
                     }
                     if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-					xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                    xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}},
                          arg=>['-l']},$::YABOOT_callback);
                     } else {
-					xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                    xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
                     $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     }
@@ -767,24 +765,24 @@ sub process_request {
                     }
 
                     if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
-					xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
-                    $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                        $sub_req->({command=>['makedhcp'],arg=>['-l'],
                            node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     } else {
-					 xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
-                    $sub_req->({command=>['makedhcp'],
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                        $sub_req->({command=>['makedhcp'],
                          node=>\@{$osimagenodehash{$osimage}}},$::YABOOT_callback);
                     }
                 }
             }
         } else {
             if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command, only change local settings if already farmed
-			xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
-            $sub_req->({command=>['makedhcp'],arg=>['-l'],
+                xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                $sub_req->({command=>['makedhcp'],arg=>['-l'],
                    node=>\@normalnodeset},$::YABOOT_callback);
             } else {
-			xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
-            $sub_req->({command=>['makedhcp'],
+                xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+                $sub_req->({command=>['makedhcp'],
                  node=>\@normalnodeset},$::YABOOT_callback);
             }
         }
@@ -794,12 +792,12 @@ sub process_request {
             }
         }
         if ($::YABOOT_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
-		    xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
             $sub_req->({command=>['makedhcp'],
              node=>\@breaknetboot,
              arg=>['-l']},$::YABOOT_callback);
         } else {
-		    xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","yaboot: issue makedhcp request");
             $sub_req->({command=>['makedhcp'],
              node=>\@breaknetboot}, $::YABOOT_callback);
         }

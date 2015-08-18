@@ -457,7 +457,6 @@ sub mkinstall {
     GetOptions('V'  => \$opt{V});
     my $verbose_on_off=0;
     if($opt{V}){$verbose_on_off=1;}
-    xCAT::MsgUtils->trace(0,"d","debian->mkinstall: opt{V}=$opt{V} verbose_on_off=$verbose_on_off");
     #>>>>>>>used for trace log end>>>>>>>
 	
     my $installroot;
@@ -471,7 +470,7 @@ sub mkinstall {
         }
     }
 	
-    xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: installroot = $installroot");
+    xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: installroot=$installroot");
 	
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
@@ -620,10 +619,7 @@ sub mkinstall {
             }
             $pkglistfile=$ph->{pkglist};
 			
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: imagename = $imagename");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkgdir = $pkgdir");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkglistfile = $pkglistfile");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: tmplfile = $tmplfile");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
         else {
             $os = $ent->{os};
@@ -644,9 +640,7 @@ sub mkinstall {
             }
 
             $pkgdir="$installroot/$os/$arch";
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkgdir = $pkgdir");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkglistfile = $pkglistfile");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: tmplfile = $tmplfile");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
 
         if ($arch eq "x86_64") {
@@ -905,9 +899,7 @@ sub mkinstall {
                 $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
             }
 
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: kcmdline = $kcmdline");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: kernal = $rtftppath/vmlinuz");
-            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: initrd = $rtftppath/initrd.img");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
 			
             $bptab->setNodeAttribs($node, { kernel   => "$rtftppath/vmlinuz",
                                             initrd   => "$rtftppath/initrd.img",

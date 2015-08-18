@@ -55,7 +55,6 @@ sub preprocess_request
     @ARGV = @args;
     GetOptions('V'  => \$opt{V});
     if($opt{V}){$verbose_on_off=1;}
-    xCAT::MsgUtils->trace(0,"d","prescripts->preprocess_request: opt{V}=$opt{V} verbose_on_off=$verbose_on_off");
     #>>>>>>>used for trace log end>>>>>>>
 	
     #if already preprocessed, go straight to request
@@ -94,9 +93,9 @@ sub preprocess_request
     
     # if no nodes left to process, we are done
     if (! @nodes) { 
-        xCAT::MsgUtils->trace($verbose_on_off,"d",        "prescripts->preprocess_request: no nodes left to process, we are done");
+        xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts->preprocess_request: no nodes left to process, we are done");
         return; 
-	}
+    }
 
     my $service = "xcat";
     @args=();
@@ -110,11 +109,9 @@ sub preprocess_request
     #print "prepscripts: preprocess_request get called, args=@args, nodes=@$nodes\n";
     
     #>>>>>>>used for trace log>>>>>>
-    my $str_node;
-	my $str_args;
-	foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
-    foreach my $str_a (@args){$str_args .=  $str_a." ";}
-    xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts->preprocess_request: get called, args=$str_args, nodes=$str_node");
+    my $str_node=join(" ",@nodes);
+    my $str_args=join(" ",@args);
+    xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts->preprocess_request: get called, args='$str_args', nodes='$str_node'");
 	
     #use Getopt::Long;
     Getopt::Long::Configure("bundling");
@@ -142,7 +139,7 @@ sub preprocess_request
 	    $reqcopy->{'_xcatdest'} = $hostinfo[0];
 	    $reqcopy->{_xcatpreprocessed}->[0] = 1;
 	    push @requests, $reqcopy;
-		xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts: handle request in $hostinfo[0]");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","prescripts: handle request in $hostinfo[0]");
 	    return \@requests;
 	}
     } else { #run on mn and need to dispatch the requests to the service nodes

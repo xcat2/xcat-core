@@ -267,9 +267,8 @@ sub preprocess_request {
 
     #>>>>>>>used for trace log start>>>>>>
     my $verbose_on_off=0;  
-	if($VERBOSE){$verbose_on_off=1;}
-	#xCAT::MsgUtils->trace(1,"d","petitboot: VERBOSE=$VERBOSE  verbose_on_off=$verbose_on_off ");
-	#>>>>>>>used for trace log end>>>>>>>
+    if($VERBOSE){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
 	
     if ($HELP) { 
 	if($usage{$command}) {
@@ -355,7 +354,6 @@ sub process_request {
   if ($::XCATSITEVALS{"httpmethod"}) { $httpmethod = $::XCATSITEVALS{"httpmethod"}; }
   if ($::XCATSITEVALS{"httpport"}) { $httpport = $::XCATSITEVALS{"httpport"}; }
 
-  #my @args;
   my @nodes;
   my @rnodes;
   if (ref($request->{node})) {
@@ -385,8 +383,7 @@ sub process_request {
   }
 
   #>>>>>>>used for trace log>>>>>>>
-  my $str_node;
-  foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
+  my $str_node = join(" ",@nodes);
   xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: nodes are $str_node");
   
   # return directly if no nodes in the same network
@@ -411,8 +408,8 @@ sub process_request {
 		      node=>\@nodes,
 		      arg=>[$args[0], '-l']},\&pass_along);
       } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
-      xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: nodeset did not distribute to the service node");
-	  xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: issue runbeginpre request");
+          xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: nodeset did not distribute to the service node");
+          xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: issue runbeginpre request");
 	  $sub_req->({command=>['runbeginpre'],   
 		      node=>\@rnodes,
 		      arg=>[$args[0]]},\&pass_along);
@@ -519,7 +516,7 @@ sub process_request {
                               arg=>['-l']},$callback);
                               #arg=>['-l','-s','option conf-file \"'.$fpath.'\";']},$callback);
               } else {
-			  xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: issue makedhcp request");                  
+                  xCAT::MsgUtils->trace($verbose_on_off,"d","petitboot: issue makedhcp request");                  
                   $sub_req->({command=>['makedhcp'],
                               node=> [$node]}, $callback);
                               #arg=>['-s','option conf-file \"'.$fpath.'\";']},$callback);

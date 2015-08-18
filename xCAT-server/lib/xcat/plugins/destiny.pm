@@ -93,10 +93,11 @@ sub setdestiny {
     @ARGV = @{$req->{arg}};
     my $noupdateinitrd;
     my $ignorekernelchk;
-    my $verbose;  #>>>>>>>used for trace log>>>>>>>
+    #>>>>>>>used for trace log>>>>>>>
+    my $verbose; 
     GetOptions('noupdateinitrd' => \$noupdateinitrd,
                'ignorekernelchk' => \$ignorekernelchk,
-			   'V'  => \$verbose);      #>>>>>>>used for trace log>>>>>>>
+	       'V'  => \$verbose);      #>>>>>>>used for trace log>>>>>>>
    
     #>>>>>>>used for trace log start>>>>>>>
     my $verbose_on_off=0;

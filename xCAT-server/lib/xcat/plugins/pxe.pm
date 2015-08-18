@@ -314,9 +314,8 @@ sub preprocess_request {
 
     #>>>>>>>used for trace log start>>>>>>
     my $verbose_on_off=0;  
-	if($VERBOSE){$verbose_on_off=1;}
-	#xCAT::MsgUtils->trace(1,"d","pxe: VERBOSE=$VERBOSE  verbose_on_off=$verbose_on_off ");
-	#>>>>>>>used for trace log end>>>>>>>
+    if($VERBOSE){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
 	
     if ($HELP) {
         if($usage{$command}) {
@@ -347,7 +346,7 @@ sub preprocess_request {
    #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
-   xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: sharedtftp = $t_entry");
+   xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: sharedtftp=$t_entry");
    if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
@@ -425,8 +424,7 @@ sub process_request {
   }
 
   #>>>>>>>used for trace log>>>>>>>
-  my $str_node;
-  foreach my $str_n (@nodes){$str_node .=  $str_n." ";}
+  my $str_node = join(" ",@nodes);
   xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: nodes are $str_node");
   
   # return directly if no nodes in the same network
@@ -445,15 +443,15 @@ sub process_request {
    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
        $errored=0;
        if ($::PXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
-       xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: the call is distrubuted to the service node already, so only need to handles my own children");
-       xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
+           xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: the call is distrubuted to the service node already, so only need to handles my own children");
+           xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
            $sub_req->({command=>['runbeginpre'],
            node=>\@nodes,
            arg=>[$args[0], '-l']},\&pass_along);
        } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
-       xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: nodeset did not distribute to the service node");
-       xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
-        $sub_req->({command=>['runbeginpre'],   
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: nodeset did not distribute to the service node");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
+            $sub_req->({command=>['runbeginpre'],   
                     node=>\@rnodes,
                     arg=>[$args[0]]},\&pass_along);
        }
@@ -489,7 +487,7 @@ sub process_request {
   if (exists($::PXE_request->{inittime})) { $inittime= $::PXE_request->{inittime}->[0];}
   if (!$inittime) { $inittime=0;}
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
-   xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue setdestiny request");
+    xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue setdestiny request");
     $sub_req->({command=>['setdestiny'],
                node=>\@nodes,
                inittime=>[$inittime],
