@@ -104,8 +104,10 @@ local_dep_repo_path="$curdir/../../xcat-dep/xcat-dep"
 
 #define the url used for creating the source list file
 #define the upload dir used for uploading packages
-sf_repo_url="https://sourceforge.net/projects/xcat/files/ubuntu"
-sf_dir="/home/frs/project/x/xc/xcat"
+#sf_repo_url="https://sourceforge.net/projects/xcat/files/ubuntu"
+sf_repo_url="https://xcat.org/files/ubuntu"
+#sf_dir="/home/frs/project/x/xc/xcat"
+sf_dir="/var/www/xcat.org/files"
 
 #use flock to only one person build at the same time
 # Get a lock, so can not do 2 builds at once
@@ -367,7 +369,8 @@ __EOF__
     if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
         i=0
         echo "Uploading RPMs from $upload_dir to ${sf_dir}/ubuntu/${REL}/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        # while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir xcat@xcat.org:${sf_dir}/ubuntu/${REL}/ 
         do : ; done
     fi
 
@@ -377,12 +380,14 @@ __EOF__
     if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
         i=0
         echo "Uploading $tar_name to ${sf_dir}/xcat/${REL}.x_Ubuntu/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat/${REL}.x_Ubuntu/
+        #while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat/${REL}.x_Ubuntu/
+        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  xcat@xcat.org:${sf_dir}/xcat/${REL}.x_Ubuntu/
         do : ; done
     else
         i=0
         echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        #while [ $((i+=1)) -le 5 ] && ! rsync -v $tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/${REL}/
+        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name xcat@xcat.org:${sf_dir}/ubuntu/${REL}/
         do : ; done
     fi
     
@@ -501,19 +506,22 @@ __EOF__
     #upload the dep packages
     i=0
     echo "Uploading debs from xcat-dep to ${sf_dir}/ubuntu/xcat-dep/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/
-         do : ; done
+    #while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep ${uploader},xcat@web.sourceforge.net:${sf_dir}/ubuntu/
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep xcat@xcat.org:${sf_dir}/ubuntu/     
+    do : ; done
     #upload the tarball
     i=0
     echo "Uploading $dep_tar_name to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v $dep_tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    #while [ $((i+=1)) -le 5 ] && ! rsync -v $dep_tar_name ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name xcat@xcat.org:${sf_dir}/xcat-dep/2.x_Ubuntu/
     do : ; done
 
     #upload the README file
     cd debs
     i=0
     echo "Uploading README to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v README ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    #while [ $((i+=1)) -le 5 ] && ! rsync -v README ${uploader},xcat@web.sourceforge.net:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README xcat@xcat.org:${sf_dir}/xcat-dep/2.x_Ubuntu/
     do : ; done
 
     cd $old_pwd
