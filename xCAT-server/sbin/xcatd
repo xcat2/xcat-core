@@ -204,7 +204,7 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 #----used for command log start-------
 my $cmdlog_logfile="/var/log/xcat/commands.log";
 my $cmdlog_port=3003;
-($tmp) = $sitetab->getAttribs({'key'=>'xcatcport'},'value');
+($tmp) = $sitetab->getAttribs({'key'=>'xcatlport'},'value');
 if ($tmp) {
 	$cmdlog_port = $tmp->{value};
 }
@@ -1148,47 +1148,51 @@ if ($startupparent) {
 $cmdlog_svrpid = fork();
 if( !defined($cmdlog_svrpid)){
     print "xCAT command log sever unable to fork";
-	xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
+    xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
 }elsif($cmdlog_svrpid ==0){
     $$progname="xcatd: Command log writer";
-	my $clientsock;
-	my @waittowritepro;
+    my $clientsock;
+    my @waittowritepro;
 	
-	xCAT::MsgUtils->trace(0,"I","xcatd: command log process start");
-	
-	unless (open (CMDLOGFILE, ">>$cmdlog_logfile")) {
-        #print "Can't open xcat command log file $cmdlog_logfile";
-	    #xCAT::MsgUtils->message("S","Can't open xcat command log file $cmdlog_logfile");
-	
-	    xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile");
-	    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
-		exit(0);
+    $SIG{TERM} = $SIG{INT} = sub {
+        if ($cmdlog_svrpid) {
+            kill 2, $cmdlog_svrpid;
+        }
+        $SIG{ALRM} = sub { xexit 0; };
+        alarm(2);
+    };   
+
+    xCAT::MsgUtils->trace(0,"I","xcatd: command log process start");
+    
+    unless (open (CMDLOGFILE, ">>$cmdlog_logfile")) {
+        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile");
+        xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+        exit(0);
     }
-	select(CMDLOGFILE);
-	$|=1;
-   
-	my $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
-							   Type => SOCK_STREAM,
-							   Reuse => 1,
-							   Listen => 8192);
-	while (1)
-	{
-	    my $clientsock = $cmdlogsvrlistener->accept;
-	    unless ($clientsock) { next; } 
-	    my $log = "";
-	    my $bytesread;
-	    do { 
-	    $bytesread=sysread($clientsock,$log,65536,length($log)) 
-	    } while ($bytesread);
-	    close($clientsock);
-		#print "[server]<<<<<<<<<<<<<<<<<<<<<<<<<\n$log";
-		print CMDLOGFILE $log;
-	}
-	
-	close($cmdlogsvrlistener);
-	close(CMDLOGFILE);
-	
-	xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+    select(CMDLOGFILE);
+    $|=1;
+    
+    my $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+        Type => SOCK_STREAM,
+        Reuse => 1,
+        Listen => 8192);
+    while (1)
+    {
+        my $clientsock = $cmdlogsvrlistener->accept;
+        unless ($clientsock) { next; } 
+        my $log = "";
+        my $bytesread;
+        do { 
+            $bytesread=sysread($clientsock,$log,65536,length($log)) 
+        } while ($bytesread);
+        close($clientsock);
+        print CMDLOGFILE $log;
+    }
+
+    close($cmdlogsvrlistener);
+    close(CMDLOGFILE);
+
+    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
 }
 #----used for command log end---------
 
@@ -1908,13 +1912,13 @@ sub dispatch_request {
            $str_cmd .= $n.",";
        }
        $str_cmd =~ s/(.+),$/$1 /g;
-    }
+   }
    if(exists($req->{arg})){
        foreach my $arg (@{$req->{arg}}) {
            $str_cmd .= $arg." ";
        }
-	   $str_cmd =~ s/(.+) $/$1/g;
-    }
+       $str_cmd =~ s/(.+) $/$1/g;
+   }
    xCAT::MsgUtils->trace(0,"D","xcatd: dispatch request '$str_cmd' to plugin '$modname'");
    #----used for trace end---------
    
@@ -2856,14 +2860,21 @@ sub disable_callingtrace {
   xCAT::MsgUtils->stop_logging();
 }
 
+#--------------------------------------------------------------------------------
+=head3 cmdlog_collectlog
+
+    Used by recording command output feature.
+    collecting each output for one specific command
+    The most part of this subroutine logic comes from handle_response subroutine in Client.pm
+	
+    Returns:
+        0 -> successful
+        1 -> failed
+=cut
+#--------------------------------------------------------------------------------
 sub cmdlog_collectlog(){
     my $rsponse= shift;
     my $rsp_log="";
-=pod
-    print ">>>>[$$]cmdlog_collectlog dumper all rsponse>>>>>\n";
-    print Dumper $rsponse;   
-    return 0;
-=cut    
 
     if((exists($rsponse->{serverdone})) && (! exists($rsponse->{error}) )){return 0;}
     my $rsp;
@@ -2872,193 +2883,222 @@ sub cmdlog_collectlog(){
     }else{
         $rsp = $rsponse;
     }
-	if (ref($rsp) ne 'ARRAY') {return 0;}
+    if (ref($rsp) ne 'ARRAY') {return 0;}
     if (scalar(@$rsp) == 0) {return 0;}
 	
-	foreach my $tmprsp (@{$rsp}) {
+    foreach my $tmprsp (@{$rsp}) {
         $rsp = $tmprsp;
 
-    #print ">>>>[$$]cmdlog_collectlog dumper valid rsponse>>>>>\n";
-    #print Dumper $rsponse;  
-    #return 0;
-
-    #handle response 
-    #Handle errors
-    if ($rsp->{error}) {
-        if (ref($rsp->{error}) eq 'ARRAY') {
-            foreach my $text (@{$rsp->{error}}) {
-                if ($rsp->{NoErrorPrefix}) {
-                    $rsp_log.=$text;
-                } else {
-                    $rsp_log.="Error: $text\n";
-                }
-            }
-        }
-        else {
-            if ($rsp->{NoErrorPrefix}) {
-                $rsp_log.= $rsp->{error}."\n";
-            } else {
-                $rsp_log.= "Error: ".$rsp->{error}."\n";
-            }
-        }
-    }
-    
-    if ($rsp->{warning}) {
-        if (ref($rsp->{warning}) eq 'ARRAY') {
-            foreach my $text (@{$rsp->{warning}}) {
-                if ($rsp->{NoWarnPrefix}) {
-                    $rsp_log.= "$text\n";
-                } else {
-                    $rsp_log.= "Warning: $text\n";
-                }
-            }
-        }
-        else {
-            if ($rsp->{NoWarnPrefix}) {
-                $rsp_log.= $rsp->{warning}."\n";
-            } else {
-                $rsp_log.= "Warning: ".$rsp->{warning}."\n";
-            }
-        }
-    }
-    
-    if ($rsp->{info}) {
-        if (ref($rsp->{info}) eq 'ARRAY') {
-            foreach my $text (@{$rsp->{info}}) {
-                $rsp_log.= "$text\n";
-            }
-        }
-        else {
-            $rsp_log.= $rsp->{info}."\n";
-        }
-    }
-
-    if ($rsp->{sinfo}) {
-        if (ref($rsp->{sinfo}) eq 'ARRAY') {
-            foreach my $text (@{$rsp->{sinfo}}) {
-                $rsp_log.= "$text\r";
-            }
-        }
-        else {
-            $rsp_log.= $rsp->{sinfo}."\r";
-        }
-    }
-    
-    #Handle {node} structure
-    my $errflg=0;
-    my $nodes=($rsp->{node});
-    unless (ref $nodes eq 'ARRAY') {
-        $nodes = [$nodes];
-    }
-    if (scalar @{$nodes}) {
-        my $node;
-        foreach $node (@$nodes) {
-            my $desc;
-            if (ref($node->{name}) eq 'ARRAY') {
-                $desc=$node->{name}->[0];
-            } else {
-                $desc=$node->{name};
-            }
-            if ($node->{error}) {
-                $desc.=": Error: ".$node->{error}->[0];
-                $errflg=1;
-            }
-            if ($node->{warning}) {
-                $desc.=": Warning: ".$node->{warning}->[0];
-                $errflg=1;
-            }
-            if ($node->{data}) {
-                if (ref(\($node->{data})) eq 'SCALAR') {
-                    $desc=$desc.": ".$node->{data};
-                } elsif (ref($node->{data}) eq 'HASH') {
-                    if ($node->{data}->{desc}) {
-                        if (ref($node->{data}->{desc}) eq 'ARRAY') {
-                            $desc=$desc.": ".$node->{data}->{desc}->[0];
-                        } else {
-                            $desc=$desc.": ".$node->{data}->{desc};
-                        }
-                    }
-                    if ($node->{data}->{contents}) {
-                        if (ref($node->{data}->{contents}) eq 'ARRAY') {
-                            $desc="$desc: ".$node->{data}->{contents}->[0];
-                        } else {
-                            $desc="$desc: ".$node->{data}->{contents};
-                        }
-                    }
-                } elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
-                    $desc=$desc.": ".$node->{data}->[0];
-                } else {
-                    if ($node->{data}->[0]->{desc}) {
-                        $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
-                    }
-                    if ($node->{data}->[0]->{contents}) {
-                        $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
-                    }
-                }
-            }
-            if ($desc) {
-                if ($errflg == 1) {
-                    $rsp_log.= "$desc\n";
-                } else {
-                    $rsp_log.= "$desc\n";
-                }
-            }
-        }
-    }
-
-    # Handle {data} structure with no nodes
-	foreach my $mykey ( keys %{$rsp} ) 
-	{
-	if ($mykey ne "data") {next;}
-    if ($rsp->{data}) {
-        my $data=($rsp->{data});
-        my $data_entry;
-        foreach $data_entry (@$data) {
-            my $desc;
-            if (ref(\($data_entry)) eq 'SCALAR') {
-                $desc=$data_entry;
-            } else {
-                if ($data_entry->{desc}) {
-                    $desc=$data_entry->{desc}->[0];
-                }
-                if ($data_entry->{contents}) {
-                    if ($desc) {
-                        $desc="$desc: ".$data_entry->{contents}->[0];
+        #handle response 
+        #Handle errors
+        if ($rsp->{error}) {
+            if (ref($rsp->{error}) eq 'ARRAY') {
+                foreach my $text (@{$rsp->{error}}) {
+                    if ($rsp->{NoErrorPrefix}) {
+                        $rsp_log.=$text;
                     } else {
-                        $desc=$data_entry->{contents}->[0];
+                        $rsp_log.="Error: $text\n";
                     }
                 }
             }
-            if ($desc) { 
-                $rsp_log.= "$desc\n";
+            else {
+                if ($rsp->{NoErrorPrefix}) {
+                    $rsp_log.= $rsp->{error}."\n";
+                } else {
+                    $rsp_log.= "Error: ".$rsp->{error}."\n";
+                }
+            }
+        }
+    
+        if ($rsp->{warning}) {
+            if (ref($rsp->{warning}) eq 'ARRAY') {
+                foreach my $text (@{$rsp->{warning}}) {
+                    if ($rsp->{NoWarnPrefix}) {
+                        $rsp_log.= "$text\n";
+                    } else {
+                        $rsp_log.= "Warning: $text\n";
+                    }
+                }
+            }
+            else {
+                if ($rsp->{NoWarnPrefix}) {
+                    $rsp_log.= $rsp->{warning}."\n";
+                } else {
+                    $rsp_log.= "Warning: ".$rsp->{warning}."\n";
+                }
+            }
+        }
+    
+        if ($rsp->{info}) {
+            if (ref($rsp->{info}) eq 'ARRAY') {
+                foreach my $text (@{$rsp->{info}}) {
+                    $rsp_log.= "$text\n";
+                }
+            }else{
+                $rsp_log.= $rsp->{info}."\n";
+            }
+        }
+
+        if ($rsp->{sinfo}) {
+            if (ref($rsp->{sinfo}) eq 'ARRAY') {
+                foreach my $text (@{$rsp->{sinfo}}) {
+                    $rsp_log.= "$text\r";
+                }
+            }else{
+                $rsp_log.= $rsp->{sinfo}."\r";
+            } 
+        }
+    
+        #Handle {node} structure
+        my $errflg=0;
+        my $nodes=($rsp->{node});
+        unless (ref $nodes eq 'ARRAY') {
+            $nodes = [$nodes];
+        }
+        if (scalar @{$nodes}) {
+            my $node;
+            foreach $node (@$nodes) {
+                my $desc;
+                if (ref($node->{name}) eq 'ARRAY') {
+                    $desc=$node->{name}->[0];
+                } else {
+                    $desc=$node->{name};
+                }
+                if ($node->{error}) {
+                    $desc.=": Error: ".$node->{error}->[0];
+                    $errflg=1;
+                }
+                if ($node->{warning}) {
+                    $desc.=": Warning: ".$node->{warning}->[0];
+                    $errflg=1;
+                }
+                if ($node->{data}) {
+                    if (ref(\($node->{data})) eq 'SCALAR') {
+                        $desc=$desc.": ".$node->{data};
+                    } elsif (ref($node->{data}) eq 'HASH') {
+                        if ($node->{data}->{desc}) {
+                            if (ref($node->{data}->{desc}) eq 'ARRAY') {
+                                $desc=$desc.": ".$node->{data}->{desc}->[0];
+                            } else {
+                                $desc=$desc.": ".$node->{data}->{desc};
+                            }
+                        }
+                        if ($node->{data}->{contents}) {
+                            if (ref($node->{data}->{contents}) eq 'ARRAY') {
+                                $desc="$desc: ".$node->{data}->{contents}->[0];
+                            }else{
+                                $desc="$desc: ".$node->{data}->{contents};
+                            }
+                        }
+                    }elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
+                        $desc=$desc.": ".$node->{data}->[0];
+                    }else{
+                        if ($node->{data}->[0]->{desc}) {
+                            $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+                        }
+                        if ($node->{data}->[0]->{contents}) {
+                            $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+                        }
+                    }
+                }
+                if ($desc) {
+                    if ($errflg == 1) {
+                        $rsp_log.= "$desc\n";
+                    }else{
+                        $rsp_log.= "$desc\n";
+                    }
+                }
+            }
+        }
+
+        # Handle {data} structure with no nodes
+        foreach my $mykey ( keys %{$rsp} ) {
+            if ($mykey ne "data") {next;}
+            if ($rsp->{data}) {
+                my $data=($rsp->{data});
+                my $data_entry;
+                foreach $data_entry (@$data) {
+                    my $desc;
+                    if (ref(\($data_entry)) eq 'SCALAR') {
+                        $desc=$data_entry;
+                    } else {
+                        if ($data_entry->{desc}) {
+                            $desc=$data_entry->{desc}->[0];
+                        }
+                        if ($data_entry->{contents}) {
+                            if ($desc) {
+                                $desc="$desc: ".$data_entry->{contents}->[0];
+                            } else {
+                                $desc=$data_entry->{contents}->[0];
+                            }
+                        }
+                    }
+                    if ($desc) { 
+                        $rsp_log.= "$desc\n";
+                    }
+                }
             }
         }
     }
-	}
-	}
-    #print "$rsp_log\n";
     $cmdlog_alllog .= $rsp_log; 
-   
     return 0;
 }
 
-sub cmdlog_submitlog() {
+#--------------------------------------------------------------------------------
+=head3 cmdlog_submitlog
 
-   if( $cmdlog_alllog =~ /getipmicons/) {return 1;}
-=pod   
-   print ">>>>[$$]cmdlog_submitlog >>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n";
-   print $cmdlog_alllog;
-   return 0;
+    Used by recording command output feature.
+    After collecting all output for one specific command, using this subroutine to transfer output to 'Command log writer' process
+    
+    Arguments:
+        $cmdlog_alllog: this is a golbal attribute in a specific process which was forked for handle one specific command.
+            $cmdlog_alllog save the whole command output log, the format likes below:
+            ====================================================
+            [Date]       2015-7-13 23:14:45
+            [ClientType] cli 
+            [Request]    nodeset c910f02c02p30 osimage=rhels6.5-ppc64-install-compute 
+            [Response]
+            c910f02c02p30: install rhels6.5-ppc64-compute
+    Returns:
+        0 -> successful
+        1 -> failed
+	
+    Note:
+        When connect with 'Command log writer' process by tcp, cmdlog_submitlog is only try 3 times. 
+        If all 3 times are failed, cmdlog_submitlog will drop the command output log and issue a trace information to systemd to record this drop event.
 =cut
+#--------------------------------------------------------------------------------
+sub cmdlog_submitlog() {
+    my $tmpreq;
     my $mysocket;
-    while (1){
-        $mysocket = IO::Socket::INET->new(PeerAddr => "127.0.0.1",
-									   PeerPort => $cmdlog_port,
-									   Proto => "tcp");
-        if($mysocket) { last;}
+    my $trytime=3;
+    my @tmplog=split(/\n/, $cmdlog_alllog);
+    foreach my $item (@tmplog) {
+        if($item =~ /\[Request\]/){
+            $tmpreq = $item;
+        }
     }
-    print $mysocket $cmdlog_alllog;
-	#print "[client]>>>>>>>>>>>>>>>>>>>>>>>>>>\n$cmdlog_alllog";
-    close ($mysocket);
+    $tmpreq =~ s/\[Request\](.+)/$1/g;
+    if( $tmpreq =~ /getipmicons/) {return 1;}
+	
+    while ($trytime>0){
+        $mysocket = IO::Socket::INET->new(PeerAddr => "127.0.0.1",
+                                          PeerPort => $cmdlog_port,
+                                          Proto => "tcp");
+        if($mysocket) { 
+            last;
+        }else{
+            $trytime--;
+            sleep(0.05);
+        }
+    }
+    if($mysocket){
+        print $mysocket $cmdlog_alllog;
+        close ($mysocket);
+        return 0;
+    }else{
+        xCAT::MsgUtils->trace(0,"I","xcatd: Drop request '$tmpreq' output due to connection with 'Command log writer' process failed");
+        return 1;
+    }
 }
 
