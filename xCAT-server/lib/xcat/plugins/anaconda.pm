@@ -1172,10 +1172,10 @@ sub mkinstall
 	    }
 	    $pkglistfile=$ph->{pkglist};
 
-	    $netdrivers = $ph->{netdrivers};
-	    $driverupdatesrc = $ph->{driverupdatesrc};
-	    $osupdir = $ph->{'osupdir'};
-		
+            $netdrivers = $ph->{netdrivers};
+            $driverupdatesrc = $ph->{driverupdatesrc};
+            $osupdir = $ph->{'osupdir'};
+
             xCAT::MsgUtils->trace($verbose_on_off,"d","anaconda->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile partfile=$partfile");
 	}
 	else {
