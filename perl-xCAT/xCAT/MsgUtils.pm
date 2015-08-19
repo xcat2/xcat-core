@@ -756,7 +756,7 @@ sub verbose_message
             "D" or "d": means debug level.
         
             As long as the trace subroutine is called, "information", "warning" and "error" level message will be displayed in syslog.
-            The "debug" level message is displayed in syslog noly when any one of the below two conditions is true
+            The "debug" level message is displayed in syslog only when any one of the below two conditions is true
             1. The current command with -V option. i.e. $verbose=1.
             2. The xcatdebugmode, which is an attribute of site table, equals 1. 
         
