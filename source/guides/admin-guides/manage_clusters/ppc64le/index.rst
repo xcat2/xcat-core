@@ -8,4 +8,6 @@ IBM Power LE / OpenPOWER
    management/index.rst
    diskful/index.rst
    diskless/index.rst
+   updatenode.rst
+   parallel_cmd.rst
    virtual_machines/index.rst
