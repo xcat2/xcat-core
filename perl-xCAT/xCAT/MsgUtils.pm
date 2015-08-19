@@ -745,7 +745,7 @@ sub verbose_message
 
 =head3 trace
 
-    Display different level trace message in systemd.
+    Display different level trace message in syslog.
     
     Arguments:
         $verbose: indicate whether current command is with -V option. 1 is yes and 0 is no.  
@@ -755,15 +755,14 @@ sub verbose_message
             "E" or "e": means error level.
             "D" or "d": means debug level.
         
-            As long as the trace subroutine is called, "information", "warning" and "error" level message will be displayed in systemd.
-            The "debug" level message is displayed in systemd noly when any one of the below two conditions is true
+            As long as the trace subroutine is called, "information", "warning" and "error" level message will be displayed in syslog.
+            The "debug" level message is displayed in syslog noly when any one of the below two conditions is true
             1. The current command with -V option. i.e. $verbose=1.
             2. The xcatdebugmode, which is an attribute of site table, equals 1. 
         
             If $level is not any one of "I","W","E","D","i","w","e","d", the trace subroutine do nothing.
         
-        $logcontent: the specific message wanted to be displayed in systemd
-    
+        $logcontent: the specific message wanted to be displayed in syslog   
     Returns:
         none
 		
@@ -771,7 +770,7 @@ sub verbose_message
         none
 		
     Note:
-        Label "xcat" and trace message level, such as "INFO", "ERR", "WARNING" AND "DEBUG", will be added before real trace message automatically. It's convenient to filter in systemd.
+        Label "xcat" and trace message level, such as "INFO", "ERR", "WARNING" AND "DEBUG", will be added before real trace message automatically. It's convenient to filter in syslog.
     
     Example:
         xCAT::MsgUtils->trace(1,"D","this is debug trace message");
