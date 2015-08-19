@@ -26,24 +26,28 @@ INSTALLNIC=`ip -o link|grep -i $MACADDR|awk  '{print $2}'|sed s/://`
 
 #the nics have not been configured when running the PBS sometimes, need to make sure... 
 RETRY=0
+NETUP=0
 while true; do
-      #scan the nics with the specified mac address
-      #there will be multiple nic names for a mac address when the network bridge exists
-      for nic in $INSTALLNIC ;do
-          #check whether the nic is configured and linkup
-          ip -4 --oneline addr show dev $nic |grep inet >/dev/null && exit 0
-      done
+    #scan the nics with the specified mac address
+    #there will be multiple nic names for a mac address when the network bridge exists
+    for nic in $INSTALLNIC ;do
+        #check whether the nic is configured and linkup
+        ip -4 --oneline addr show dev $nic |grep inet >/dev/null && NETUP=1 && break
+    done
+    
+    #nic is configured,terminate scan...
+    [ $NETUP -ne 0 ] && break;    
 
-      RETRY=$[ $RETRY + 1 ]
+    RETRY=$[ $RETRY + 1 ]
 
-      if [ $RETRY -eq 90 ];then
-         #timeout, complain and exit
-         msgutil_r "$MASTER_IP" "err" `date`" xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
-         exit 1
-      fi
-      
-      #sleep sometime before the next scan  
-      sleep 2
+    if [ $RETRY -eq 90 ];then
+       #timeout, complain and exit
+       msgutil_r "$MASTER_IP" "err" `date`" xcatinstallpost: Network not configured, please check..." "/var/log/xcat/xcat.log"
+       exit 1
+    fi
+    
+    #sleep sometime before the next scan  
+    sleep 2
 done
 
 
