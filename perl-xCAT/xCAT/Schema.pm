@@ -1207,6 +1207,7 @@ site => {
    "                      Value must be less than xcatmaxconnections. Default is 50.\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n".
+   " xcatlport:  The port used by xcatd command log writer process to collect command output.\n\n".
    " xcatsslversion:  The ssl version by xcatd. Default is SSLv3.\n\n".
    " xcatsslciphers:  The ssl cipher by xcatd. Default is 3DES.\n\n",
   value => 'The value of the attribute specified in the "key" column.',
