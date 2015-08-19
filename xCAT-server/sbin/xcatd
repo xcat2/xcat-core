@@ -961,6 +961,7 @@ $SIG{TERM} = $SIG{INT} = sub {
    
    #----used for command log start---------
    if ($cmdlog_svrpid) {
+       xCAT::MsgUtils->trace(0,"I","xcatd: 'Command log writer' process is killed by parent process");
        kill 2, $cmdlog_svrpid;
    }
    #----used for command log end--------- 
@@ -1153,32 +1154,34 @@ if( !defined($cmdlog_svrpid)){
     $$progname="xcatd: Command log writer";
     my $clientsock;
     my @waittowritepro;
+    my $cmdlogsvrlistener;
+    my $cmdlogfile;
 	
     $SIG{TERM} = $SIG{INT} = sub {
-        if ($cmdlog_svrpid) {
-            kill 2, $cmdlog_svrpid;
-        }
-        $SIG{ALRM} = sub { xexit 0; };
-        alarm(2);
-    };   
+        xCAT::MsgUtils->trace(0,"I","xcatd: 'Command log writer' process is terminated by TERM or INT signal");
+        if($cmdlogfile){close($cmdlogfile);}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if($clientsock){close($clientsock);}
+        exit(0);
+    };  
 
     xCAT::MsgUtils->trace(0,"I","xcatd: command log process start");
     
-    unless (open (CMDLOGFILE, ">>$cmdlog_logfile")) {
+    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile");
         xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
         exit(0);
     }
-    select(CMDLOGFILE);
+    select($cmdlogfile);
     $|=1;
     
-    my $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+    $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
         Type => SOCK_STREAM,
         Reuse => 1,
         Listen => 8192);
     while (1)
     {
-        my $clientsock = $cmdlogsvrlistener->accept;
+        $clientsock = $cmdlogsvrlistener->accept;
         unless ($clientsock) { next; } 
         my $log = "";
         my $bytesread;
@@ -1186,11 +1189,11 @@ if( !defined($cmdlog_svrpid)){
             $bytesread=sysread($clientsock,$log,65536,length($log)) 
         } while ($bytesread);
         close($clientsock);
-        print CMDLOGFILE $log;
+        print $cmdlogfile $log;
     }
 
     close($cmdlogsvrlistener);
-    close(CMDLOGFILE);
+    close($cmdlogfile);
 
     xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
 }
