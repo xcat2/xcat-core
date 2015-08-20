@@ -1518,10 +1518,19 @@ sub rflash {
     my $sessdata = shift;
     if (isfirestone($sessdata)) {
         # Do firmware update for firestone here.
-        if (grep /^(-c|--check)$/, @{$sessdata->{extraargs}}) {
-            $sessdata->{subcommand} = "check";
+
+        foreach my $opt (@{$sessdata->{extraargs}}) {
+            if ($opt =~ /^(-c|--check)$/i) {
+                $sessdata->{subcommand} = "check";
+            } elsif ($opt !~ /.*\.hpm/i) {
+                xCAT::SvrUtils::sendmsg ([1,"The option $opt is not supported"],$callback,$sessdata->{node},%allerrornodes);
+                return;
+            }
+        }
+        if ($sessdata->{subcommand} eq 'check') {
             return do_firmware_update(0, $sessdata);
         }
+
         if (!exists($hpm_data_hash{deviceID}) || !exists($hpm_data_hash{manufactureID}) || !exists($hpm_data_hash{productID})) {
             xCAT::SvrUtils::sendmsg ([1,"The image file parsing failed"],$callback,$sessdata->{node},%allerrornodes);
             return;
@@ -7214,7 +7223,7 @@ sub hpm_data_parse {
             $hpm_context_string = substr($hpm_context_string, 31+$hpm_data_hash{$component_id}{action_length});
         }
     } 
-    # We suppose component 2 adn component 4 must exists in the HPM file
+    # We suppose component 2 and component 4 must exists in the HPM file
     if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
         return -1;
     }
@@ -7326,11 +7335,17 @@ sub process_request {
 
     if ($request->{command}->[0] eq "rflash") {
         my $check = 0;
+        if (!defined($extrargs)) {
+            return;
+        }
         foreach my $opt (@$extrargs) {
             if ($opt =~ /^(-c|--check)$/i) {
                 $check = 1;
             } elsif ($opt =~ /.*\.hpm/i) {
-                if (hpm_data_parse($opt)) { return;}
+                if (hpm_data_parse($opt)) { 
+                    $callback->({errorcode=>[1],data=>["Parse hpm file $opt failed"]});
+                    return;
+                }
             }
         }
         if ($check) {
