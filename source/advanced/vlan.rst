@@ -1,2 +1,2 @@
-Hardware Discovery
+VLAN Configuration
 ==================

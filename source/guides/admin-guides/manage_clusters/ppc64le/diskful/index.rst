@@ -4,7 +4,6 @@ Diskful Installation
 .. toctree::
    :maxdepth: 2
 
-   image_mgmt.rst
-   advanced_topics/index.rst
+   copy_image.rst
+   customize_image/index.rst
    deploy_os.rst
-

@@ -23,8 +23,8 @@ Content
    overview/index.rst
    guides/install-guides/index.rst
    guides/admin-guides/index.rst
-   developers/index.rst
    advanced/index.rst
+   developers/index.rst
    help.rst
 
 

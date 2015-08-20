@@ -1,5 +1,5 @@
-High Available Management Node
-==============================
+Highly Available Management Node
+================================
 
 .. toctree::
    :maxdepth: 2

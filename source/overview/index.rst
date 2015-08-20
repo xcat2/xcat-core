@@ -11,3 +11,4 @@ xCAT is known for exceptional scaling, wide variety of supported hardware, opera
    features.rst
    support_list.rst
    architecture.rst
+   setup_cluster_process.rst
