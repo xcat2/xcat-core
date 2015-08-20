@@ -1358,24 +1358,30 @@ sub updatenode
     # if immediate return of status not requested (PCM), then update the DB here
     # in one transaction, otherwise it is updated in getdata callback and buildnodestatus
     if (!(defined($request->{status})) || ($request->{status} ne "yes")) {
-      # update the node status, this is done when -F -S -P are run
-      # make sure the nodes only appear in one array good or bad 
-      &cleanstatusarrays;  
+         # update the node status, this is done when -F -S -P are run
+         # make sure the nodes only appear in one array good or bad 
+           &cleanstatusarrays;  
 	   if(@::SUCCESSFULLNODES)
 	   {
-	     
-            my $stat="synced";
-            xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
+                my $stat="synced";
+                xCAT::TableUtils->setUpdateStatus(\@::SUCCESSFULLNODES, $stat);
                       
 	   }
 	   if(@::FAILEDNODES)
 	   {
-	     
-            my $stat="failed";
-            xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
+                my $stat="failed";
+                xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	   }
-	 }
+           # -P -S are not run
+           # -F is run, but there is no syncfiles
+           if(!(@::SUCCESSFULLNODES || @::FAILEDNODES) && $::NOSYNCFILE)
+           {
+                my $stat="synced";
+                xCAT::TableUtils->setUpdateStatus(\@$nodes,$stat);
+           }
+    }
+
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
     # node files in the noderange in  /tftpboot/mypostscripts
@@ -1607,6 +1613,10 @@ sub updatenodesyncfiles
     my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
+    
+    # $::NOSYNCFILE default value is 0
+    # if there is no syncfiles, set $::NOSYNCFILE=1
+    $::NOSYNCFILE=0;
     # if running -P or -S do not report  or no status requested
     if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested 
       if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||  
@@ -1722,13 +1732,12 @@ sub updatenodesyncfiles
        }
     }
     else
-    {    # no syncfiles defined
+    {   # no syncfiles defined
         my $rsp = {};
         $rsp->{data}->[0] =
           "There were no syncfiles defined to process. File synchronization has completed.";
         $callback->($rsp);
-        my $stat="synced";
-        xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        $::NOSYNCFILE=1;
 
     }
     # report final status PCM
