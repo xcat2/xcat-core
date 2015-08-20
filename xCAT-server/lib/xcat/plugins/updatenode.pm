@@ -1375,6 +1375,12 @@ sub updatenode
             xCAT::TableUtils->setUpdateStatus(\@::FAILEDNODES, $stat);
                       
 	   }
+           if(!(@::SUCCESSFULLNODES || @::FAILEDNODES) && $::NOSYNCFILE)
+           {
+            my $stat="synced";
+            xCAT::TableUtils->setUpdateStatus(\@$nodes,$stat);
+           }
+
 	 }
     #  if site.precreatemypostscripts = not 1 or yes or undefined,
     # remove all the
@@ -1607,6 +1613,7 @@ sub updatenodesyncfiles
     my $localhostname      = hostname();
     my %syncfile_node      = ();
     my %syncfile_rootimage = ();
+    $::NOSYNCFILE=0;
     # if running -P or -S do not report  or no status requested
     if ((defined($request->{status})) && ($request->{status} eq "yes")) { # status requested 
       if (($request->{rerunps} && $request->{rerunps}->[0] eq "yes") ||  
@@ -1727,8 +1734,9 @@ sub updatenodesyncfiles
         $rsp->{data}->[0] =
           "There were no syncfiles defined to process. File synchronization has completed.";
         $callback->($rsp);
-        my $stat="synced";
-        xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        #my $stat="synced";
+        #xCAT::TableUtils->setUpdateStatus(\@$nodes, $stat);
+        $::NOSYNCFILE=1;
 
     }
     # report final status PCM
