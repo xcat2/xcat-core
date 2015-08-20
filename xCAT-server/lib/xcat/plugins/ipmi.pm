@@ -31,6 +31,7 @@ use xCAT::Usage;
 use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
+use Time::HiRes qw/time/;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
@@ -1517,7 +1518,8 @@ sub rflash {
     my $sessdata = shift;
     if (isfirestone($sessdata)) {
         # Do firmware update for firestone here.
-        if ($sessdata->{subcommand} eq 'check') {
+        if (grep /^(-c|--check)$/, @{$sessdata->{extraargs}}) {
+            $sessdata->{subcommand} = "check";
             return do_firmware_update(0, $sessdata);
         }
         if (!exists($hpm_data_hash{deviceID}) || !exists($hpm_data_hash{manufactureID}) || !exists($hpm_data_hash{productID})) {
@@ -1530,6 +1532,7 @@ sub rflash {
             xCAT::SvrUtils::sendmsg ([1,"The image file doesn't match this machine"],$callback,$sessdata->{node},%allerrornodes);
             return;
         }
+        # Before doing firmware update, protect BMC memory data
         $sessdata->{ipmisession}->subcmd(netfn=>0x32, command=>0xba,
                                             data=>[0x18,0],
                                             callback=>\&do_firmware_update,
@@ -1650,6 +1653,36 @@ sub fpc_firmxfer_watch {
     }
 }
 
+# Waiting 30s for uploading action data block done
+
+sub do_waiting_update {
+    my $rsp = shift;
+    my $sessdata  = shift;
+    my $component_id = $sessdata->{component_id}; 
+    my $start_time = $sessdata->{action_data}->{$component_id}->{start_time};
+    if ($rsp->{error}) {
+        $sessdata->{action_data}->{$component_id}->{update_status} = -1;
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+        return;
+    } 
+    if ($rsp->{data}->[2] == 0) {
+        return;
+    } elsif ($rsp->{data}->[2] == 0x80 || $rsp->{data}->[2] == 0xd5) {
+        sleep 1;
+        my $curr = time();
+        if ($curr < $start_time + 30) {
+            $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x34,
+                                        data=>[0],
+                                        callback=>\&do_waiting_update,
+                                        callback_args=>$sessdata); 
+        }
+    }
+    $sessdata->{action_data}->{$component_id}->{update_status} = -1;
+    xCAT::SvrUtils::sendmsg([1, "Upload action data for component $component_id timeout"],$callback,$sessdata->{node},%allerrornodes);
+    return;
+}
+
+# The main uploading function
 sub do_action_update {
     my $rsp = shift;
     my $sessdata = shift;
@@ -1681,6 +1714,19 @@ sub do_action_update {
         } else {
             xCAT::SvrUtils::sendmsg([1,"Upload action data for component $component_id failed"],$callback,$sessdata->{node},%allerrornodes);
             return;                    
+        }
+    }
+    # Uploading in progress, need to check updating status in 30s
+    if ($rsp->{code} == 0x80) {
+        # get updating status  
+        $sessdata->{action_data}->{$component_id}->{start_time} = time();
+        $sessdata->{action_data}->{$component_id}->{update_status} = 0;
+        $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x34,
+                                        data=>[0],
+                                        callback=>\&do_waiting_update,
+                                        callback_args=>$sessdata);
+        if ($sessdata->{action_data}->{$component_id}->{update_status}) {
+            return; 
         }
     }
     # action_data: @{$hpm_data_hash{$component_id}{action_data}} 
@@ -1727,6 +1773,7 @@ sub do_action_update {
     } elsif ($send_length == $total_length) {
         xCAT::SvrUtils::sendmsg("Upload action data for component $component_id: done", $callback, $sessdata->{node},%allerrornodes);
         $sessdata->{action_data}->{$component_id}->{upload_done} = 1;
+        # The last step to update action data, finish_upload
         $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x33,
                                             data=>[0, $component_id, $total_length],
                                             callback=>\&do_action_update,
@@ -1745,7 +1792,7 @@ sub check_obj_fwversion {
         shift @{$rsp->{data}};
         if ($sessdata->{subcommand} eq "check") {
             my $ver = "$rsp->{data}->[0]-$rsp->{data}->[1]:$rsp->{data}->[2].$rsp->{data}->[3].$rsp->{data}->[4].$rsp->{data}->[5]";
-            xCAT::SvrUtils::sendmsg("Version for component $component_id: $ver",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Node firmware version for component $component_id: $ver",$callback,$sessdata->{node},%allerrornodes);
         } else {
             if (($rsp->{data}->[0] != $hpm_data_hash{$component_id}{action_version}[0]) ||
                 ($rsp->{data}->[1] != $hpm_data_hash{$component_id}{action_version}[1]) ||
@@ -1753,7 +1800,10 @@ sub check_obj_fwversion {
                 ($rsp->{data}->[3] != $hpm_data_hash{$component_id}{action_version}[3]) ||
                 ($rsp->{data}->[4] != $hpm_data_hash{$component_id}{action_version}[4]) ||
                 ($rsp->{data}->[5] != $hpm_data_hash{$component_id}{action_version}[5])) {
-                # TBD 
+                # TD:
+                # Need to deal with firmware compatible problem
+
+                # The 1st step to update action data, init_upload
                 $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x31,
                                                  data=>[0,$component_id,2],
                                                  callback=>\&do_action_update,
@@ -1774,7 +1824,7 @@ sub check_obj_fwversion {
     }
 }
 
-
+# check object firmware level
 sub do_firmware_update {
     my $rsp = shift;
     my $sessdata = shift;
@@ -7164,12 +7214,26 @@ sub hpm_data_parse {
             $hpm_context_string = substr($hpm_context_string, 31+$hpm_data_hash{$component_id}{action_length});
         }
     } 
-    if (!exists($hpm_data_hash{1}) || !exists($hpm_data_hash{2})) {
+    # We suppose component 2 adn component 4 must exists in the HPM file
+    if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
         return -1;
     }
     # The last 16 bytes are image checksum
     @hpm_context = ();
     return 0; 
+}
+
+sub hpm_action_version {
+    if (!exists($hpm_data_hash{2}) || !exists($hpm_data_hash{4})) {
+        return -1;
+    }
+    my $version_array = $hpm_data_hash{2}{action_version};
+    my $ver = "$version_array->[0]-$version_array->[1]:$version_array->[2].$version_array->[3].$version_array->[4].$version_array->[5]";
+    $callback->({data=>"HPM firmware version for component 2:$ver"});
+
+    $version_array = $hpm_data_hash{4}{action_version};
+    $ver = "$version_array->[0]-$version_array->[1]:$version_array->[2].$version_array->[3].$version_array->[4].$version_array->[5]";
+    $callback->({data=>"HPM firmware version for component 4:$ver"});
 }
 
    
@@ -7261,10 +7325,16 @@ sub process_request {
     }
 
     if ($request->{command}->[0] eq "rflash") {
-        if ($extrargs->[0] =~ /.*\.hpm/i) {
-            if (hpm_data_parse($extrargs->[0])) {
-                return;
+        my $check = 0;
+        foreach my $opt (@$extrargs) {
+            if ($opt =~ /^(-c|--check)$/i) {
+                $check = 1;
+            } elsif ($opt =~ /.*\.hpm/i) {
+                if (hpm_data_parse($opt)) { return;}
             }
+        }
+        if ($check) {
+            hpm_action_version();
         }
     }
 
