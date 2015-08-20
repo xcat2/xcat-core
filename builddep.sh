@@ -8,7 +8,7 @@
 #  - You need to install gsa-client on the build machine.
 #  - You probably want to put root's pub key from the build machine onto sourceforge for
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://sourceforge.net/account/ssh
+#    at https://xcat.org/setting/ssh
 #  - Also make sure createrepo is installed on the build machine
 
 # Usage:  builddep.sh [attr=value attr=value ...]
@@ -20,8 +20,9 @@
 
 # you can change this if you need to
 UPLOADUSER=litingt
+USER=xcat
+TARGET_MACHINE=xcat.org
 
-#FRS=/home/frs/project/x/xc/xcat
 FRS=/var/www/xcat.org/files
 OSNAME=$(uname)
 
@@ -44,8 +45,10 @@ else
 fi
 
 # this is needed only when we are transitioning the yum over to frs
-YUMREPOURL1="http://xcat.sourceforge.net/yum"
-YUMREPOURL2="https://sourceforge.net/projects/xcat/files/yum"
+#YUMREPOURL1="http://xcat.sourceforge.net/yum"
+YUMREPOURL1="http://xcat.org/yum"
+#YUMREPOURL2="https://sourceforge.net/projects/xcat/files/yum"
+YUMREPOURL2="http://xcat.org/files/yum"
 if [ "$FRSYUM" != 0 ]; then
 	YUMDIR=$FRS
 	YUMREPOURL="$YUMREPOURL2"
@@ -254,14 +257,16 @@ else
 fi
 echo "Uploading RPMs from xcat-dep to $YUMDIR/$YUM/ ..."
 #while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/
-while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep xcat@xcat.org:$YUMDIR/$YUM/
+#while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep xcat@xcat.org:$YUMDIR/$YUM/
+while [ $((i+=1)) -le 5 ] && ! rsync $links -ruv --delete xcat-dep $USER@$TARGET_MACHINE:$YUMDIR/$YUM/
 do : ; done
 
 # Upload the tarball to the SF FRS Area
 i=0
 echo "Uploading $DFNAME to $FRS/xcat-dep/$FRSDIR/ ..."
 #while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
-while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
+#while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v $DFNAME  $USER@$TARGET_MACHINE:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
 # Upload the README to the SF FRS Area
@@ -272,6 +277,7 @@ sed "6 iThe latest xcat-dep tar ball is ${DFNAME}" -i README
 i=0
 echo "Uploading README to $FRS/xcat-dep/$FRSDIR/ ..."
 #while [ $((i+=1)) -le 5 ] && ! rsync -v README $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat-dep/$FRSDIR/
-while [ $((i+=1)) -le 5 ] && ! rsync -v README xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
+#while [ $((i+=1)) -le 5 ] && ! rsync -v README xcat@xcat.org:$FRS/xcat-dep/$FRSDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -v README  $USER@$TARGET_MACHINE:$FRS/xcat-dep/$FRSDIR/
 do : ; done
 
