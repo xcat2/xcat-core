@@ -1,7 +1,9 @@
 **The xCAT Community Individual Contributor License Agreement ("Agreement")**
 
   
-In order to clarify the intellectual property license granted with Contributions from any person or entity made for the benefit of the xCAT Community, a Contributor License Agreement ("CLA") must be on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of the xCAT Community and its users; it does not change your rights to use your own Contributions for any other purpose. If you have not already done so, please print this form, complete it, sign it, and send a scanned copy via email to **xcat-legal@lists.sourceforge.net** . 
+In order to clarify the intellectual property license granted with Contributions from any person or entity made for the benefit of the xCAT Community, a Contributor License Agreement ("CLA") must be on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of the xCAT Community and its users; it does not change your rights to use your own Contributions for any other purpose. 
+
+If you have not already done so, please complete and sign, then scan and email a PDF file of this Agreement to: **xcat-legal@lists.sourceforge.net** 
     
     
     

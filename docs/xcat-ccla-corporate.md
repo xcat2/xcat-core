@@ -5,7 +5,7 @@ In order to clarify the intellectual property license granted with Contributions
 
 This version of the Agreement allows an entity (the "Corporation") to submit Contributions to the xCAT Community, to authorize Contributions submitted by its designated employees to the xCAT Community, and to grant copyright and patent licenses thereto. 
 
-If you have not already done so, please print this form, complete it, sign it, and send a scanned copy via email to **xcat-legal@lists.sourceforge.net** . Please read this document carefully before signing and keep a copy for your records. 
+If you have not already done so, please complete and sign, then scan and email a PDF file of this Agreement to: **xcat-legal@lists.sourceforge.net** .  Please read this document carefully before signing and keep a copy for your records. 
     
     
     
