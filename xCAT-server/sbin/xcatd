@@ -960,9 +960,8 @@ $SIG{TERM} = $SIG{INT} = sub {
    }
    
    #----used for command log start---------
-   if ($cmdlog_svrpid) {
-       xCAT::MsgUtils->trace(0,"I","xcatd: 'Command log writer' process is killed by parent process");
-       kill 2, $cmdlog_svrpid;
+   if ($cmdlog_svrpid) 
+      kill 2, $cmdlog_svrpid;
    }
    #----used for command log end--------- 
    
@@ -1158,7 +1157,7 @@ if( !defined($cmdlog_svrpid)){
     my $cmdlogfile;
 	
     $SIG{TERM} = $SIG{INT} = sub {
-        xCAT::MsgUtils->trace(0,"I","xcatd: 'Command log writer' process is terminated by TERM or INT signal");
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process is terminated by TERM or INT signal");
         if($cmdlogfile){close($cmdlogfile);}
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if($clientsock){close($clientsock);}
@@ -3081,7 +3080,7 @@ sub cmdlog_submitlog() {
             $tmpreq = $item;
         }
     }
-    $tmpreq =~ s/\[Request\](.+)/$1/g;
+    $tmpreq =~ s/\[Request\]\s+(.+)/$1/g;
     if( $tmpreq =~ /getipmicons/) {return 1;}
 	
     while ($trytime>0){
