@@ -10,3 +10,5 @@
 *man7
 *man8
 *.tmp
+# ignore the documentation build files
+docs/build
