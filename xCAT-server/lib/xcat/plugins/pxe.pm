@@ -295,9 +295,15 @@ sub preprocess_request {
         @args=($req->{arg});
     }
     @ARGV = @args;
+    my $HELP;
+    my $VERSION;
+    my $VERBOSE;	
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("pass_through");
-    if (!GetOptions('h|?|help' => \$HELP, 'v|version' => \$VERSION) ) {
+    if (!GetOptions('h|?|help' => \$HELP, 
+	'v|version' => \$VERSION,
+	'V'  => \$VERBOSE    #>>>>>>>used for trace log>>>>>>>	
+	) ) {
         if($usage{$command}) {
             my %rsp;
             $rsp{data}->[0]=$usage{$command};
@@ -306,6 +312,11 @@ sub preprocess_request {
         return;
     }
 
+    #>>>>>>>used for trace log start>>>>>>
+    my $verbose_on_off=0;  
+    if($VERBOSE){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
+	
     if ($HELP) {
         if($usage{$command}) {
             my %rsp;
@@ -335,6 +346,7 @@ sub preprocess_request {
    #my $sent = $stab->getAttribs({key=>'sharedtftp'},'value');
    my @entries =  xCAT::TableUtils->get_site_attribute("sharedtftp");
    my $t_entry = $entries[0];
+   xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: sharedtftp=$t_entry");
    if ( defined($t_entry)  and ($t_entry eq "0" or $t_entry eq "no" or $t_entry eq "NO")) {
       # check for  computenodes and servicenodes from the noderange, if so error out
       my @SN;
@@ -370,6 +382,20 @@ sub process_request {
   my @args;
   my @nodes;
   my @rnodes;
+  
+  #>>>>>>>used for trace log start>>>>>>>
+  my %opt;
+  my $verbose_on_off=0;
+  if (ref($::PXE_request->{arg})) {
+    @args=@{$::PXE_request->{arg}};
+  } else {
+    @args=($::PXE_request->{arg});
+  }
+  @ARGV = @args;
+  GetOptions('V'  => \$opt{V});
+  if($opt{V}){$verbose_on_off=1;}
+  #>>>>>>>used for trace log end>>>>>>>
+  
   if (ref($::PXE_request->{node})) {
     @rnodes = @{$::PXE_request->{node}};
   } else {
@@ -397,6 +423,10 @@ sub process_request {
      @nodes = @rnodes;
   }
 
+  #>>>>>>>used for trace log>>>>>>>
+  my $str_node = join(" ",@nodes);
+  xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: nodes are $str_node");
+  
   # return directly if no nodes in the same network
   unless (@nodes) {
      xCAT::MsgUtils->message("S", "xCAT: pxe netboot: no valid nodes. Stop the operation on this server.");
@@ -413,11 +443,15 @@ sub process_request {
    unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
        $errored=0;
        if ($::PXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+           xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: the call is distrubuted to the service node already, so only need to handles my own children");
+           xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
            $sub_req->({command=>['runbeginpre'],
            node=>\@nodes,
            arg=>[$args[0], '-l']},\&pass_along);
        } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
-        $sub_req->({command=>['runbeginpre'],   
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: nodeset did not distribute to the service node");
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runbeginpre request");
+            $sub_req->({command=>['runbeginpre'],   
                     node=>\@rnodes,
                     arg=>[$args[0]]},\&pass_along);
        }
@@ -453,6 +487,7 @@ sub process_request {
   if (exists($::PXE_request->{inittime})) { $inittime= $::PXE_request->{inittime}->[0];}
   if (!$inittime) { $inittime=0;}
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') {
+    xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue setdestiny request");
     $sub_req->({command=>['setdestiny'],
                node=>\@nodes,
                inittime=>[$inittime],
@@ -518,9 +553,11 @@ sub process_request {
       
       if ($do_dhcpsetup) {
         if ($::PXE_request->{'_disparatetftp'}->[0]) { #reading hint from preprocess_command
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue makedhcp request");
             $sub_req->({command=>['makedhcp'],arg=>['-l'],
                         node=>\@nodes},$::PXE_callback);
         } else {
+            xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue makedhcp request");
             $sub_req->({command=>['makedhcp'],
                        node=>\@nodes},$::PXE_callback);
         }
@@ -575,10 +612,12 @@ sub process_request {
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;
       if ($::PXE_request->{'_disparatetftp'}->[0]) {  #the call is distrubuted to the service node already, so only need to handles my own children
+         xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runendpre request");
          $sub_req->({command=>['runendpre'],
                      node=>\@nodes,
                      arg=>[$args[0], '-l']},\&pass_along);
       } else { #nodeset did not distribute to the service node, here we need to let runednpre to distribute the nodes to their masters
+         xCAT::MsgUtils->trace($verbose_on_off,"d","pxe: issue runendpre request");
          $sub_req->({command=>['runendpre'],   
                      node=>\@rnodes,
                      arg=>[$args[0]]},\&pass_along);

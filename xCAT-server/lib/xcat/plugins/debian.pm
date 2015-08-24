@@ -445,6 +445,20 @@ sub mkinstall {
     my $osimagetab;
     my %img_hash=();
 
+    #>>>>>>>used for trace log start>>>>>>>
+    my @args=();
+    my %opt;
+    if (ref($request->{arg})) {
+        @args=@{$request->{arg}};
+    } else {
+        @args=($request->{arg});
+    }
+    @ARGV = @args;
+    GetOptions('V'  => \$opt{V});
+    my $verbose_on_off=0;
+    if($opt{V}){$verbose_on_off=1;}
+    #>>>>>>>used for trace log end>>>>>>>
+	
     my $installroot;
     $installroot = "/install";
     if ($sitetab)
@@ -455,7 +469,9 @@ sub mkinstall {
             $installroot = $ref->{value};
         }
     }
-
+	
+    xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: installroot=$installroot");
+	
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my %donetftp;
@@ -602,6 +618,8 @@ sub mkinstall {
                 $pkgdir="$installroot/$os/$arch";
             }
             $pkglistfile=$ph->{pkglist};
+			
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: imagename=$imagename pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
         else {
             $os = $ent->{os};
@@ -622,6 +640,7 @@ sub mkinstall {
             }
 
             $pkgdir="$installroot/$os/$arch";
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: pkgdir=$pkgdir pkglistfile=$pkglistfile tmplfile=$tmplfile");
         }
 
         if ($arch eq "x86_64") {
@@ -880,6 +899,8 @@ sub mkinstall {
                 $kcmdline .= " live-installer/net-image=http://${instserver}${pkgdir}/install/filesystem.squashfs";
             }
 
+            xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: kcmdline=$kcmdline kernal=$rtftppath/vmlinuz initrd=$rtftppath/initrd.img");
+			
             $bptab->setNodeAttribs($node, { kernel   => "$rtftppath/vmlinuz",
                                             initrd   => "$rtftppath/initrd.img",
                                             kcmdline => $kcmdline });
