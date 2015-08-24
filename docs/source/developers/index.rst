@@ -10,5 +10,4 @@ This page is for developers interested in working with xCAT.
    developer_guide.rst
    programming_tips.rst
    debug_xcat.rst
-   license/index.rst
    git/index.rst
