@@ -960,7 +960,7 @@ $SIG{TERM} = $SIG{INT} = sub {
    }
    
    #----used for command log start---------
-   if ($cmdlog_svrpid) 
+   if ($cmdlog_svrpid){ 
       kill 2, $cmdlog_svrpid;
    }
    #----used for command log end--------- 
