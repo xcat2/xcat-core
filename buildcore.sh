@@ -4,12 +4,9 @@
 # Build and upload the xcat-core code, on either linux or aix.
 
 # Getting Started:
-#  - Check out the xcat-core svn repository (either the trunk or a branch) into
+#  - Check out the xcat-core github repository (either the trunk or a branch) into
 #    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
-#    uploaded to in sourceforge (e.g. devel, or 2.3).
-#  - You probably also want to put root's pub key from the build machine onto sourceforge for
-#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://sourceforge.net/account/ssh
+#    uploaded to in xcat.org (e.g. devel, or 2.3).
 #  - On Linux:  make sure createrepo is installed on the build machine
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
@@ -22,12 +19,12 @@
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #    Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
-#                    xcat, just uploads the most recent snap build to https://sourceforge.net/projects/xcat/files/xcat/ .
-#                    If not specified, a snap build is assumed, which uploads to https://sourceforge.net/projects/xcat/files/yum/
-#                    or https://sourceforge.net/projects/xcat/files/aix/.
+#                    xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
+#                    If not specified, a snap build is assumed, which uploads to http://xcat.org/files/yum/
+#                    or http//xcat.org/files/aix/.
 #        PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
 #                  a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
-#                  https://sourceforge.net/projects/xcat/files/yum/ or https://sourceforge.net/projects/xcat/files/aix/
+#                  http://xcar.org/files/yum/ or http://xcat.org/files/aix/
 #                  (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
 #                  release this build, use PROMOTE=1 without PREGA
 #        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
@@ -41,7 +38,10 @@
 
 # you can change this if you need to
 UPLOADUSER=litingt
-FRS=/home/frs/project/x/xc/xcat
+USER=xcat
+FRS=/var/www/xcat.org/files
+TARGET_MACHINE=xcat.org
+RELEASE=github.com/xcat2/xcat-core/releases
 
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "Usage:"
@@ -128,7 +128,7 @@ if [ "$REL" = "xcat-core" ]; then    # using git
 fi
 
 YUMDIR=$FRS
-YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
+YUMREPOURL="http://xcat.org/files/yum"
 
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
@@ -535,7 +535,7 @@ if [ -n "$UP" ] && [ "$UP" == 0 ]; then
 fi
 #else we will continue
 
-# Upload the individual RPMs to sourceforge
+# Upload the individual RPMs to xcat.org 
 if [ "$OSNAME" = "AIX" ]; then
     YUM=aix
 else
@@ -547,51 +547,57 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
-# Upload the individual source RPMs to sourceforge
+# Upload the individual source RPMs to xcat.org 
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
-# Upload the tarball to sourceforge
+# Upload the tarball to xcat.org 
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    do : ; done
+
+    # upload tarball to github when we release the build.
+    i=0
+    echo "Uploading $TARNAME to https://github.com/xcat2/xcat-core/releases ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $UPLOADUSER@$RELEASE/
     do : ; done
 else
     i=0
     echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
 # Extract and upload the man pages in html format
-if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
-    echo "Extracting and uploading man pages to htdocs/ ..."
-    mkdir -p man
-    cd man
-    rm -rf opt
-    rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
-    rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
-    rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
-    rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
-    #rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
-    rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
-    rpm2cpio ../$XCATCORE/xCAT-vlan-*.$NOARCH.rpm | cpio -id '*.html'
-    i=0
-    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
-    do : ; done
-
-    # extract and upload the tools readme
-    rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
-    i=0
-    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
-    do : ; done
-    cd ..
-fi
+#if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
+#    echo "Extracting and uploading man pages to htdocs/ ..."
+#    mkdir -p man
+#    cd man
+#    rm -rf opt
+#    rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
+#    rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
+#    rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
+#    rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
+#    #rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
+#    rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
+#    rpm2cpio ../$XCATCORE/xCAT-vlan-*.$NOARCH.rpm | cpio -id '*.html'
+#    i=0
+#    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+#    do : ; done
+#
+#    # extract and upload the tools readme
+#    rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
+#    i=0
+#    while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
+#    do : ; done
+#    cd ..
+#fi
