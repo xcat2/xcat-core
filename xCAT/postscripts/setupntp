@@ -121,7 +121,7 @@ restrict 127.0.0.1" >>$conf_file
         logger -t xcat "$cmd"
         output=`eval $cmd 2>&1`
         rc=$?
-        if [ "$rc" != "0" ] || (pmatch "$output" "Time could not*");then
+        if [ "$rc" != "0" ] || (pmatch "$output" "*Time could not*");then
             echo "$cmd failed, NTP maynot be synchronized, please wait for NTP synchronized then run updatenode nodename -P setupntp"
             logger -t xcat "$cmd failed"
             exit 1
