@@ -165,7 +165,7 @@ sub xCATreg_init{
 
     #init important attributes
     
-    $date = `date  +"%Y%m%d"`; 
+    $date = `date  +"%Y%m%d%H%M%S"`; 
     chomp($date);
 
     &runcmd("mkdir -p $logfiledir") if(! -e $logfiledir);
@@ -330,30 +330,30 @@ sub down_dep{
     my $deplink;
     if (! -f "$downxcatdepdir/curlhtml1"){
        send_msg(2, "it is first time to down xcatdep");
-       ` curl  "$curllink"  |grep "$curllink" |grep "href"|grep -v "README" > "$downxcatdepdir/curlhtml1" `;
-       ` sed -n '1p'  "$downxcatdepdir/curlhtml1" >  "$downxcatdepdir/curlfile"`;
-       $deplink = `cat "$downxcatdepdir"/"curlfile" |sed "s/<a/\\ /" |sed 's/href="/\ /' |sed 's/"/\ /' | sed 's/^[[:space:]]*//'  |sed 's#/download##g'  `;
+       ` curl  "$curllink"  |grep "xcat-dep-"  > "$downxcatdepdir/curlhtml1" `;
+       ` tail -1  "$downxcatdepdir/curlhtml1" >  "$downxcatdepdir/curlfile"`;
+       $deplink = `cat "$downxcatdepdir"/"curlfile" |awk '{print \$6}' |sed 's/"/ /g' |awk '{print \$2}'  `;
        print "deplink is $deplink\n";
        `mkdir -p $xcatdepdir/$mn`;
-       ` wget  -P "$xcatdepdir/$mn" -c $deplink `;
+       ` wget  -P "$xcatdepdir/$mn" -c $curllink$deplink `;
           if($?){
               send_msg(0, "download xcatdep failed");
               return 1;
            }
        $depupdateflag=1;
     }else{
-       `curl  "$curllink"  |grep "$curllink" |grep "href" |grep -v "README" > "$downxcatdepdir"/"curlhtml2"`;
+       `curl  "$curllink"  |grep "xcat-dep-"  > "$downxcatdepdir/curlhtml1" `;
        ` diff  "$downxcatdepdir"/"curlhtml1"  "$downxcatdepdir"/"curlhtml2"`;
        if ($?==0) {
           send_msg(2, "no update for  xcatdep ");
           $depupdateflag=0;
        }else{
-          ` sed -n '1p'  "$downxcatdepdir"/"curlhtml2"> "$downxcatdepdir"/"curlfile"`;
-          $deplink = `cat "$downxcatdepdir"/"curlfile" |sed "s/<a/\\ /" |sed 's/href="/\ /' |sed 's/"/\ /' | sed 's/^[[:space:]]*//'  |sed 's#/download##g'  `;
+          ` tail -1  "$downxcatdepdir"/"curlhtml2"> "$downxcatdepdir"/"curlfile"`;
+          $deplink = `cat "$downxcatdepdir"/"curlfile" |awk '{print \$6}' |sed 's/"/ /g' |awk '{print \$2}'  `;
           print "deplink is $deplink\n";
           ` rm -rf  $xcatdepdir/$mn`;
           `mkdir -p $xcatdepdir/$mn`;
-          ` wget  -P "$xcatdepdir/$mn" -c $deplink `;
+          ` wget  -P "$xcatdepdir/$mn" -c $curllink$deplink `;
           if($?){
              send_msg(2, "download xcatdep failed");
              return 1;
