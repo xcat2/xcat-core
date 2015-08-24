@@ -4,12 +4,9 @@
 # Build and upload the xcat-core code, on either linux or aix.
 
 # Getting Started:
-#  - Check out the xcat-core svn repository (either the trunk or a branch) into
+#  - Check out the xcat-core github repository (either the trunk or a branch) into
 #    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
 #    uploaded to in xcat.org (e.g. devel, or 2.3).
-#  - You probably also want to put root's pub key from the build machine onto xcat.org for
-#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://github.com/settings/ssh 
 #  - On Linux:  make sure createrepo is installed on the build machine
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
@@ -24,7 +21,7 @@
 #        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
 #                    xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
 #                    If not specified, a snap build is assumed, which uploads to http://xcat.org/files/yum/
-#                    or https//xcat.org/files/aix/.
+#                    or http//xcat.org/files/aix/.
 #        PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
 #                  a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
 #                  http://xcar.org/files/yum/ or http://xcat.org/files/aix/
@@ -550,14 +547,14 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-     while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
 # Upload the individual source RPMs to xcat.org 
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
- while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
 # Upload the tarball to xcat.org 
@@ -565,13 +562,13 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-     while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
     do : ; done
 
     # upload tarball to github when we release the build.
     i=0
     echo "Uploading $TARNAME to https://github.com/xcat2/xcat-core/releases ..."
-     while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $UPLOADUSER@$RELEASE/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $UPLOADUSER@$RELEASE/
     do : ; done
 else
     i=0
