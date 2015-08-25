@@ -7,12 +7,12 @@ To build the docs locally:
 
 * Clone the project
 * Using pip, install sphinx (See: http://pip.readthedocs.org/)
-~~~~
+```
     pip install sphinx  
-~~~~
+```
 * Build the Docs
-~~~~  
+```
     cd xcat-docs/docs
     make html
-~~~~
+```
 * View the docs by opening index.html from a web browser under xcat-docs/docs/build/html/index.html
