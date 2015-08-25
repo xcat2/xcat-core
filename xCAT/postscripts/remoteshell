@@ -281,8 +281,7 @@ if [ -f /etc/ssh/ssh_host_ecdsa_key ]; then
 	if ! grep "PRIVATE KEY" /etc/ssh/ssh_host_ecdsa_key > /dev/null 2>&1 ; then
    		rm /etc/ssh/ssh_host_ecdsa_key
 	else
-		ssh-keygen -t ecdsa -y -f /etc/ssh/ssh_host_ecdsa_key -P ""
-		if [ "x$?" = "x0" ]; then
+		if ssh-keygen -t ecdsa -y -f /etc/ssh/ssh_host_ecdsa_key -P "" &>/dev/null ; then
 			ssh-keygen -y -f /etc/ssh/ssh_host_ecdsa_key > /etc/ssh/ssh_host_ecdsa_key.pub
 			chmod 644 /etc/ssh/ssh_host_ecdsa_key.pub
 			chown root /etc/ssh/ssh_host_ecdsa_key.pub
