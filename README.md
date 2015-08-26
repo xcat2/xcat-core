@@ -1,13 +1,12 @@
-xCAT - eXtreme Cloud Administration Toolkit
+xCAT stands for eXtreme Cloud/Cluster Administration Toolkit
 
 xCAT is a toolkit for the deployment and administration of clusters.
-
 xCAT documentation is available at: http://xcat-docs.readthedocs.org/en/latest/
 
 xCAT is made available as open source software under the EPL license:
 http://www.opensource.org/licenses/eclipse-1.0.php
 
-
+Interested in contributing? See our [Contributors and Maintainers Agreements](./CONTRIBUTING.md) page.
 
 
 
