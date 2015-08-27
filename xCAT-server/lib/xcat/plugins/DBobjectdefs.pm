@@ -4040,11 +4040,9 @@ sub defmk_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4083,11 +4081,9 @@ sub defch_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4125,11 +4121,9 @@ sub defls_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4166,11 +4160,9 @@ sub defrm_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
