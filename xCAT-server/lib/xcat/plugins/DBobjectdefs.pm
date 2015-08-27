@@ -3061,20 +3061,20 @@ sub defls
                             $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'provmethod'} = $provmethod;
 
                             # pkgdir both diskful and diskless
-			                $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
-			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
+                            $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
                             # rootimgdir only for diskless
-			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
-			                {
-			                   $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
-			                   $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
-			                }
+                            if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+                            {
+                               $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                               $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                            }
                             # otherpkgdir for both diskful and diskless
-			                $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
-			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+                            $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
 
                             # template file only for diskful
-			                if ($provmethod eq 'install')
+                            if ($provmethod eq 'install')
                             {
                                 my $tmplfile = xCAT::SvrUtils->get_tmpl_file_name($custpath, $profile, $os, $arch, $os);
                                 if (!$tmplfile)
@@ -3110,7 +3110,7 @@ sub defls
                                 $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkglist'} = $otherpkgsfile;
                             }
                             # postinstall and exlist only for diskless
-			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+                            if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
                             {
                                 # Get postinstall file
                                 my $postfile = xCAT::SvrUtils->get_postinstall_file_name($custpath, $profile, $os, $arch);
