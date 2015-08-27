@@ -3267,10 +3267,9 @@ sub defls
                     else
                     {
                         $myhash{$obj}{postscripts} = $xcatdefaultsps;
-                    }
-                    if($::opt_V && ($myhash{$obj}{postscripts} eq $xcatdefaultsps))
-                    {
-                        $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
+                        if($::opt_V) {
+                            $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
+                        }
                     }
                 }
                 if($xcatdefaultspbs)
