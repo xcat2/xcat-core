@@ -33,7 +33,6 @@
 #   NETWORKS_LINE1=netname=10_0_0_0-255_255_255_0||net=10.0.0.0||mask=255.255.255.0||mgtifname=eth1||gateway=<xcatmaster>||dhcpserver=||tftpserver=10.0.0.10||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=
 #   NETWORKS_LINE2=netname=10_0_2_0-255_255_255_0||net=10.0.2.0||mask=255.255.255.0||mgtifname=eth0||gateway=10.0.2.2||dhcpserver=||tftpserver=10.0.2.15||nameservers=||ntpservers=||logservers=||dynamicrange=||staticrange=||staticrangeincrement=||nodehostname=||ddnsdomain=||vlanid=||domain=||disable=||comments=
 
-
 # load library for network caculation
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
@@ -54,6 +53,10 @@ function showmsg() {
     
     echo $msg
 }
+
+declare -a array_nic_params
+declare -a array_extra_param_names
+declare -a array_extra_param_values
 
 # Check OS version and get the directory of network configuration file
 str_bond_name=''
@@ -146,6 +149,14 @@ else
     done
 fi
 
+get_nic_extra_params $str_bond_name
+
+if [ ${#array_nic_params[@]} -gt 0 ]; then
+        str_extra_params=${array_nic_params[0]}
+        parse_nic_extra_params "$str_extra_params"
+fi
+
+
 # remove the left part from |. that means only keeping the first ip in the interface if there are alias ip
 str_bond_ip=${str_bond_ip%%|*}
 
@@ -196,7 +207,59 @@ NETMASK=${str_bond_mask}
 ONBOOT=yes
 USERCTL=no
 BONDING_OPTS="${array_bond_opts[*]}"
+NM_CONTROLLED=no
 EOF
+
+
+	#add extra params
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+		name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
+                echo "  $i: name=$name value=$value"
+		echo "${name}=${value}" >> $str_master_file
+		i=$((i+1))
+	done
+
+    if [[ ${str_bond_name} == [a-zA-Z0-9]*.[0-9]* ]]; then
+        echo "VLAN=yes" >> $str_master_file
+
+        str_parent_device=`echo ${str_bond_name} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
+        str_parent_file=`echo ${str_cfg_dir}/ifcfg-${str_bond_name} | sed -e 's/\([a-zA-Z0-9]*\)\.[0-9]*/\1/g'`
+
+        if [[ ! -e ${str_parent_file} ]] ; then
+
+get_nic_extra_params $str_parent_device
+if [ ${#array_nic_params[@]} -gt 0 ]; then
+	str_extra_params=${array_nic_params[0]}
+	parse_nic_extra_params "$str_extra_params"
+fi
+
+            cat > $str_parent_file <<EOF
+DEVICE=${str_parent_device}
+BOOTPROTO=none
+ONBOOT=yes
+USERCTL=no
+BONDING_OPTS="${array_bond_opts[*]}"
+NM_CONTROLLED=no
+EOF
+          #add extra params
+	  i=0
+	  while [ $i -lt ${#array_extra_param_names[@]} ]
+	  do
+		name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
+                echo "  $i: name=$name value=$value"
+		echo "${name}=${value}" >> $str_parent_file
+		i=$((i+1))
+	  done
+
+        fi
+
+        str_bond_name_old=${str_bond_name}
+        str_bond_name=${str_parent_device}
+    fi
 
     # Create the slave files
     for slave in ${array_bond_slaves[*]}; do
@@ -208,6 +271,7 @@ SLAVE=yes
 BOOTPROTO=none
 ONBOOT=yes
 USERCTL=no
+NM_CONTROLLED=no
 EOF
     done
 
@@ -223,6 +287,17 @@ STARTMODE=onboot
 USERCONTROL=no
 BONDING_MODULE_OPTS="${array_bond_opts[*]}"
 EOF
+
+	#add extra params
+	i=0
+	while [ $i -lt ${#array_extra_param_names[@]} ]
+	do
+		name="${array_extra_param_names[$i]}"
+		value="${array_extra_param_values[$i]}"
+                echo "  $i: name=$name value=$value"
+		echo "${name}=${value}" >> $str_master_file
+		i=$((i+1))
+	done
 
    # Create the slave entries and files
    num_index=0
@@ -247,6 +322,7 @@ done
 
 # Bring up bond device
 $(ifup ${str_bond_name} &>/dev/null)
+[[ -n ${str_bond_name_old} ]] && $(ifup ${str_bond_name_old} &>/dev/null)
 
 if [ $? -ne 0 ]; then
     showmsg "Failed to bring up $str_bond_name" "error"
