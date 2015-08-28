@@ -195,7 +195,7 @@ Rerun Postscripts or Run Additional Postcripts with the updatenode Command
 You can use the updatenode command to perform the following functions after the nodes are up and running: 
 
   * Rerun postscripts defined in the postscripts table. You might want to do this, for example, if you changed database attributes that affect the running of the postscripts. 
-  * Run any additional postscript one time. (If you want it run every time the node is deployed, you should add it to the postscript or postbootscript attribute of the nodes or node group.) The reason you might want to run a postscript on the nodes once, instead of running a script via xdsh or psh, is that the former approach will make a lot of environment variables available to the postscript that contain the node database values. See [Postscripts_and_Prescripts] for more information. 
+  * Run any additional postscript one time. (If you want it run every time the node is deployed, you should add it to the postscript or postbootscript attribute of the nodes or node group.) The reason you might want to run a postscript on the nodes once, instead of running a script via xdsh or psh, is that the former approach will make a lot of environment variables available to the postscript that contain the node database values. See [[**TODO** :Postscripts_and_Prescripts]] for more information. 
 
 To rerun all the postscripts for the nodes. (In general, xCAT postscripts are structured such that it is not harmful to run them multiple times.) ::
    
