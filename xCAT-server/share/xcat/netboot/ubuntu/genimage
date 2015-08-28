@@ -1629,39 +1629,50 @@ EOMS
 #   }
 
     system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
-	# Copy udev and network scripts into initrd for s390x, which also works for other platforms
-	# udev
-	system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
-	system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
-	system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
-	system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
-	system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
-	system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
-	
-	# Network related scripts
-        #system("echo $kernelver\n");
-	#system("mkdir -p /tmp/xcatinitrd.$$/sbin");
-	#system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
-	#system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
-	#system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
-	#system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
-	#system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
-	#system("mkdir -p /tmp/xcatinitrd.$$/lib64");
-	#system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
-	#system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
-        symlink("busybox","/tmp/xcatinitrd.$$/bin/pivot_root");
-        symlink("busybox", "/tmp/xcatinitrd.$$/bin/udhcpc");
-        symlink("busybox", "/tmp/xcatinitrd.$$/sbin/ifconfig");
-        symlink("busybox", "/tmp/xcatinitrd.$$/bin/hostname");
-        symlink("busybox", "/tmp/xcatinitrd.$$/bin/route");
-        symlink("busybox", "/tmp/xcatinitrd.$$/bin/nc");
-        symlink("bash", "/tmp/xcatinitrd.$$/bin/sh");
-        symlink("bash", "/tmp/xcatinitrd.$$/sbin/sh");
+    # Copy udev and network scripts into initrd for s390x, which also works for other platforms
+    # udev
+    system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+    system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+    system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+    system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+    system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
+    system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
+    
+    # Network related scripts
+    #system("echo $kernelver\n");
+    #system("mkdir -p /tmp/xcatinitrd.$$/sbin");
+    #system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
+    #system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
+    #system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
+    #system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
+    #system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
+    #system("mkdir -p /tmp/xcatinitrd.$$/lib64");
+    #system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
+    #system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
+    symlink("busybox","/tmp/xcatinitrd.$$/bin/pivot_root");
+    symlink("busybox", "/tmp/xcatinitrd.$$/bin/udhcpc");
+    symlink("busybox", "/tmp/xcatinitrd.$$/sbin/ifconfig");
+    symlink("busybox", "/tmp/xcatinitrd.$$/bin/hostname");
+    symlink("busybox", "/tmp/xcatinitrd.$$/bin/route");
+    symlink("busybox", "/tmp/xcatinitrd.$$/bin/nc");
+    symlink("bash", "/tmp/xcatinitrd.$$/bin/sh");
+    symlink("bash", "/tmp/xcatinitrd.$$/sbin/sh");
 
-	
-   #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-   system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");
-   system("rm -rf /tmp/xcatinitrd.$$");
+
+    my $compress="gzip";
+    #if pigz is available,use pigz instead of gzip
+    my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+    if($ispigz == 0){
+       $compress="pigz";
+    }else{
+       $compress="gzip";
+    }
+
+
+    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
+    print "\ncd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz \n";
+    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz");
+    system("rm -rf /tmp/xcatinitrd.$$");
 
 }
 
