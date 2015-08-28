@@ -65,7 +65,7 @@ sub getObjectsOfType
     {
 
         # get the key for this type object
-        # 	ex. for "network" type the key is "netname"
+        # ex. for "network" type the key is "netname"
         # get the data type spec from Schema.pm
         my $datatype = $xCAT::Schema::defspec{$type};
 
@@ -116,7 +116,7 @@ sub getObjectsOfType
                 }
             }
         }
-		
+
         @{$::saveObjList{$type}} = @objlist;
     }
 
@@ -143,7 +143,7 @@ sub getObjectsOfType
                 %tabhash = xCAT::DBobjUtils->getobjattrs(\%typehash);
 
         Comments:
-			For now - only support tables that have 'node' as key !!!
+                For now - only support tables that have 'node' as key !!!
 =cut
 
 #-----------------------------------------------------------------------------
@@ -172,10 +172,10 @@ sub getobjattrs
     # go through each object type and look up all the info for each object
     foreach my $objtype (keys %objtypelist) {
     
-    	  # only do node type for now 
+         # only do node type for now 
          if ($objtype eq 'node') {
             # find the list of tables and corresponding attrs 
-            #	- for this object type
+            # - for this object type
             # get the object type decription from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$objtype};
             foreach my $this_attr (@{$datatype->{'attrs'}}) {
@@ -215,8 +215,8 @@ sub getobjattrs
                 
                 # fill in %tabhash with any values that are set
                 foreach my $n (@objlist) {
-                	my $tmp1=$rec->{$n}->[0];
-                	foreach $a (@{$tableattrs{$table}}) {
+                    my $tmp1=$rec->{$n}->[0];
+                    foreach $a (@{$tableattrs{$table}}) {
                         if (defined($tmp1->{$a})) {
                             $tabhash{$table}{$n}{$a} = $tmp1->{$a};
                             #print "obj = $n, table = $table, attr =$a, val = $tabhash{$table}{$n}{$a}\n";
@@ -224,7 +224,7 @@ sub getobjattrs
                             # Add a has been searched flag to improve the performance
                             $tabhash{$table}{$n}{"$a"."_hassearched"} = 1;
                         }
-                	}
+                    }
                 }
                 #$thistable->commit;
             }
@@ -252,11 +252,11 @@ sub getobjattrs
         Error:
         Example:
 
-		To use create hash for objectname and object type
-            ex. $objhash{$obj} = $type;
+                To use create hash for objectname and object type
+                ex. $objhash{$obj} = $type;
 
-        - then call as follows:
-			%myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+                - then call as follows:
+                %myhash = xCAT::DBobjUtils->getobjdefs(\%objhash);
 
         Comments:
 
@@ -359,13 +359,13 @@ sub getobjdefs
                 {
                     my $rsp;
                     $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'site\' table.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);	
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                 }
             }
         } elsif ($objtype eq 'monitoring') {
             # need a special case for the monitoring table
-            # 	- need to check the monsetting table for entries that contain
-            #	 the same name as the monitoring table entry.
+            # - need to check the monsetting table for entries that contain
+            # the same name as the monitoring table entry.
             my @TableRowArray = xCAT::DBobjUtils->getDBtable('monsetting');
             foreach my $objname (sort @{$type_obj{$objtype}}) {
                 if (@TableRowArray) {
@@ -394,7 +394,7 @@ sub getobjdefs
                 {
                     my $rsp;
                     $rsp->{data}->[0] ="Could not read the \'$objname\' object from the \'monsetting\' table.";
-                    xCAT::MsgUtils->message("E", $rsp, $::callback);	
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
                 }
             }
         } elsif (($objtype eq 'auditlog') || ($objtype eq 'eventlog')) {
@@ -472,7 +472,7 @@ sub getobjdefs
                     #  !!!! some tables depend on the value of certain attrs
                     #   we need to look up attrs in the correct order or we will
                     #   not be able to determine what tables to look
-                    #	in for some attrs.
+                    #   in for some attrs.
                     if (exists($this_attr->{only_if}))
                     {
                          my ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
@@ -605,7 +605,7 @@ sub getDBtable
     my ($class, $table) = @_;
     my @rows = [];
 
-	# save this table info - in case this subr gets called multiple times
+    # save this table info - in case this subr gets called multiple times
     # --nocache flag specifies not to use cahe
     if (grep(/^$table$/, @::foundTableList) && !$::opt_nc)
     {
@@ -617,35 +617,35 @@ sub getDBtable
     else
     {
 
-    	# need to get info from DB
-    	my $thistable = xCAT::Table->new($table, -create => 1);
-    	if (!$thistable)
-    	{
-        	return undef;
-    	}
+        # need to get info from DB
+        my $thistable = xCAT::Table->new($table, -create => 1);
+        if (!$thistable)
+        {
+            return undef;
+        }
 
-    	#@rows = $thistable->getTable;
-	@rows = @{$thistable->getAllEntries()};
+        #@rows = $thistable->getTable;
+        @rows = @{$thistable->getAllEntries()};
 
-    	#   !!!! this routine returns rows even if the table is empty!!!!!!
+        #   !!!! this routine returns rows even if the table is empty!!!!!!
 
-		#  keep track of the fact that we checked this table
+        #  keep track of the fact that we checked this table
         #   - even if it's empty!
         push(@::foundTableList, $thistable->{tabname});
 
         @{$::TableHash{$table}} = @rows;
 
-    	#$thistable->commit;
+        #$thistable->commit;
 
-	} # end if not cached
+    } # end if not cached
 
-   	if (@rows)
-   	{
-       	return @rows;
-   	}
-   	else
-   	{
-       	return undef;
+    if (@rows)
+    {
+         return @rows;
+    }
+    else
+    {
+         return undef;
     }
 }
 
@@ -665,11 +665,11 @@ sub getDBtable
         Example:
 
         To use:
-		 	-create hash for objectname and object type
-            	ex. $objhash{$object}{$attribute} = value;
+                -create hash for objectname and object type
+                ex. $objhash{$object}{$attribute} = value;
 
-			-then call as follows:
-				if (xCAT::DBobjUtils->setobjdefs(\%objhash) != 0)
+                -then call as follows:
+                if (xCAT::DBobjUtils->setobjdefs(\%objhash) != 0)
 
         Comments:
 
@@ -704,9 +704,9 @@ sub setobjdefs
     %DBattrvals = xCAT::DBobjUtils->getobjdefs(\%DBhash, 0, \@attrs);
 
     # for each object figure out:
-    #	- what tables to update
-    #	- which table attrs correspond to which object attrs
-    #	- what the keys are for each table
+    #   - what tables to update
+    #   - which table attrs correspond to which object attrs
+    #   - what the keys are for each table
     # update the tables a row at a time
     foreach my $objname (keys %objhash)
     {
@@ -714,7 +714,7 @@ sub setobjdefs
         # get attr=val that are set in the DB ??
         my $type = $objhash{$objname}{objtype};
 
-		# handle the monitoring table as a special case !!!!!
+        # handle the monitoring table as a special case !!!!!
         if ($type eq 'monitoring')
         {
 
@@ -727,7 +727,7 @@ sub setobjdefs
             my @attrlist;
             foreach my $entry (@{$datatype->{'attrs'}})
             {
-            	   push(@attrlist, $entry->{'attr_name'});
+                push(@attrlist, $entry->{'attr_name'});
             }
 
             # open the tables (monitoring and monsetting)
@@ -918,9 +918,9 @@ sub setobjdefs
                     {
                         my $rsp;
                         $rsp->{data}->[0] =
-                        	"Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.";
+                                "Could not set the \'$attr\' attribute of the \'$objname\' object in the xCAT database.";
                         $rsp->{data}->[1] =
-                        	"Error returned is \'$str->errstr\'.";
+                                "Error returned is \'$str->errstr\'.";
                         xCAT::MsgUtils->message("I", $rsp, $::callback);
                     }
                         $ret = 1;
@@ -943,7 +943,7 @@ sub setobjdefs
         # get the object type decription from Schema.pm
         my $datatype = $xCAT::Schema::defspec{$type};
 
-		# get the object key to look for, for this object type
+        # get the object key to look for, for this object type
         my $objkey = $datatype->{'objkey'};
 
         #  get a list of valid attr names
@@ -1034,7 +1034,7 @@ sub setobjdefs
 
                     # need to check the attrs we are setting for the object
                     #   as well as the attrs for this object that may be
-                   	#   already set in DB
+                    #   already set in DB
 
                     if ( !($objhash{$objname}{$check_attr})  && !($DBattrvals{$objname}{$check_attr}) ) {
                         # if I didn't already check for this attr
@@ -1143,7 +1143,7 @@ sub setobjdefs
             {
 
                 # remove the specified list of values from the current
-                #	attr values.
+                # attr values.
                 if ($DBattrvals{$objname}{$attr_name})
                 {
 
@@ -1159,12 +1159,12 @@ sub setobjdefs
                             if (($::opt_t eq 'group') && ($DBattrvals{$objname}{'grouptype'} ne 'dynamic'))
                             {
                                 my $rsp;
-			        $rsp->{data}->[0] = "$objname is not a member of \'$em\'.";
-			        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                                $rsp->{data}->[0] = "$objname is not a member of \'$em\'.";
+                                xCAT::MsgUtils->message("W", $rsp, $::callback);
                              } else {
                                 my $rsp;
-			        $rsp->{data}->[0] = "$em is not in the attribute of \'$attr_name\' for the \'$objname\' definition.";
-			        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                                $rsp->{data}->[0] = "$em is not in the attribute of \'$attr_name\' for the \'$objname\' definition.";
+                                xCAT::MsgUtils->message("W", $rsp, $::callback);
                              }
                         }
                     }
@@ -1217,30 +1217,30 @@ my $tt = $invalidattr->{$att}->{valid};
         }
 
 
-# TODO - need to get back to this
-if (0) {
-		#
-		#  check to see if all the attrs got set
-		#
+        # TODO - need to get back to this
+        if (0) {
+            #
+            #  check to see if all the attrs got set
+            #
 
-		my @errlist;
-		foreach $a (@attrprovided)
-        {	
-			#  is this attr was not set then add it to the error list
-			if (!grep(/^$a$/, @setattrlist))
-			{			
-				push(@errlist, $a);
-				$ret = 2;
-			}
+            my @errlist;
+            foreach $a (@attrprovided)
+            {
+                #  is this attr was not set then add it to the error list
+                if (!grep(/^$a$/, @setattrlist))
+                {
+                    push(@errlist, $a);
+                    $ret = 2;
+                }
 
-		}
-		if ($ret == 2) {
-			my $rsp;
-			$rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
-		}
+            }
+            if ($ret == 2) {
+                my $rsp;
+                $rsp->{data}->[0] = "Could not set the following attributes for the \'$objname\' definition in the xCAT database: \'@errlist\'";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+            }
 
-}
+        }
 
     }    # end - foreach object
 #==========================================================#
@@ -1284,22 +1284,22 @@ if (0) {
 #         'tabattrs' => HASH(0x127842f4)
 #            'comments' => 'ddee'
 #=================================================================#
-	# now set the attribute values in the tables
-	#   - handles all except site, monitoring & monsetting for now
-	if ($setattrs) {
-            foreach my $table (keys %allupdates) {
+    # now set the attribute values in the tables
+    #   - handles all except site, monitoring & monsetting for now
+    if ($setattrs) {
+        foreach my $table (keys %allupdates) {
             
-            # get the keys for this table
+        # get the keys for this table
             my $schema = xCAT::Table->getTableSchema($table);
             my $keys = $schema->{keys};
             
             # open the table
             my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
             if (!$thistable) {
-            	my $rsp;
-            	$rsp->{data}->[0] = "Could not set the \'$thistable\' table.";
-            	xCAT::MsgUtils->message("E", $rsp, $::callback);
-            	return 1;
+                my $rsp;
+                $rsp->{data}->[0] = "Could not set the \'$thistable\' table.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
             }
             
             # Special case for the postscripts table
@@ -1450,10 +1450,10 @@ if (0) {
         Error:
         Example:
 
-		To use create hash for object name and object type
-            ex. $objhash{$obj} = $type;
-        - then call as follows:
-			xCAT::DBobjUtils->rmobjdefs(\%objhash);
+                To use create hash for object name and object type
+                ex. $objhash{$obj} = $type;
+                - then call as follows:
+                xCAT::DBobjUtils->rmobjdefs(\%objhash);
 
         Comments:
 
@@ -1630,7 +1630,7 @@ sub rmobjdefs
 =head3   readFileInput
 
         Process the command line input piped in from a file.
-		 	(Support stanza or xml format.)
+                (Support stanza or xml format.)
 
         Arguments:
         Returns:
@@ -1641,8 +1641,8 @@ sub rmobjdefs
         Example:
 
         Comments:
-			Set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
-				(i.e.- $::FILEATTRS{objname}{attr}=val)
+                Set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
+                (i.e.- $::FILEATTRS{objname}{attr}=val)
 
 =cut
 
@@ -1650,7 +1650,7 @@ sub rmobjdefs
 sub readFileInput
 {
     my ($class, $filedata) = @_;
-	my ($objectname, $junk1, $junk2);
+    my ($objectname, $junk1, $junk2);
 
     @::fileobjnames = ();
 
@@ -1666,7 +1666,7 @@ sub readFileInput
     #}
 
     my $look_for_colon = 1;    # start with first line that has a colon
-	my $objtype;
+    my $objtype;
 
     foreach my $l (@lines)
     {
@@ -1748,10 +1748,10 @@ sub readFileInput
                 $::FILEATTRS{$objectname}{$attr} = $val;
 
                 # if the attr being set is "objtype" then check
-                # 	to see if we have any defaults set for this type
+                # to see if we have any defaults set for this type
                 # the objtype should be the first etntry in each stanza
-                #	so after we set the defaults they will be overwritten
-                #	by any values that appear in the rest of the stanza
+                # so after we set the defaults they will be overwritten
+                # by any values that appear in the rest of the stanza
                 if ($attr eq 'objtype')
                 {
                     push(@::fileobjtypes, $val);
@@ -1793,15 +1793,15 @@ sub readFileInput
         Globals:
         Error:
         Example:
-			To use:
+        To use:
             - create hash for objectname and and attr values  (need group 
-				name (object), and grouptype  & members attr values at a
-				minimum.)
-			
-                ex. $objhash{$obj}{$attr} = value;
+              name (object), and grouptype  & members attr values at a
+              minimum.)
+
+              ex. $objhash{$obj}{$attr} = value;
 
             - then call as follows:
-                xCAT::DBobjUtils->getGroupMembers($objectname, \%objhash);
+              xCAT::DBobjUtils->getGroupMembers($objectname, \%objhash);
 
         Comments:
 
@@ -1834,7 +1834,7 @@ sub getGroupMembers
         {
 
             # if find the group name in the "groups" attr value then add the
-            #	 node name to the member list
+            # node name to the member list
             #if ($_->{'groups'} =~ /$objectname/)
 
             my @nodeGroupList = split(',', $_->{'groups'});
@@ -1856,7 +1856,7 @@ sub getGroupMembers
     {
 
         # find all nodes that satisfy the criteria specified in "wherevals"
-        #	value
+        # value
         my %whereHash;
         my %tabhash;
 
@@ -1879,7 +1879,7 @@ sub getGroupMembers
         my @tmplist = xCAT::DBobjUtils->getObjectsOfType('node');
 
         # create a hash of obj names and types
-		my %tmphash;
+        my %tmphash;
         foreach my $n (@tmplist)
         {
             $tmphash{$n} = 'node';
@@ -1930,102 +1930,102 @@ sub getGroupMembers
 
                 %nethash = xCAT::DBobjUtils->getNetwkInfo(\@targetnodes);
 
-		Comments:
+        Comments:
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub getNetwkInfo
 {
-	my ($class, $ref_nodes) = @_;
-	my @nodelist    = @$ref_nodes;
+    my ($class, $ref_nodes) = @_;
+    my @nodelist    = @$ref_nodes;
 
-	my %nethash;
-	my @attrnames;
+    my %nethash;
+    my @attrnames;
 
-	# get the current list of network attrs (networks table columns)
+    # get the current list of network attrs (networks table columns)
     my $datatype = $xCAT::Schema::defspec{'network'};
-	foreach my $a (@{$datatype->{'attrs'}}) {
-		my $attr = $a->{attr_name};
-		push(@attrnames, $attr);
-	}
+    foreach my $a (@{$datatype->{'attrs'}}) {
+        my $attr = $a->{attr_name};
+        push(@attrnames, $attr);
+    }
 
-	# read the networks table
-	my @TableRowArray = xCAT::DBobjUtils->getDBtable('networks');
-	if (! @TableRowArray)
+    # read the networks table
+    my @TableRowArray = xCAT::DBobjUtils->getDBtable('networks');
+    if (! @TableRowArray)
     {
-		return undef;
-	}
+        return undef;
+    }
 
-	# for each node - get the network info
-	foreach my $node (@nodelist)
+    # for each node - get the network info
+    foreach my $node (@nodelist)
     {
 
-		# get, check, split the node IP
-		my $IP = xCAT::NetworkUtils->getipaddr($node);
-		chomp $IP;
-		unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
-		{
-    		next;
-		}
-		my ($ia, $ib, $ic, $id) = split('\.', $IP);
+        # get, check, split the node IP
+        my $IP = xCAT::NetworkUtils->getipaddr($node);
+        chomp $IP;
+        unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
+        {
+            next;
+        }
+        my ($ia, $ib, $ic, $id) = split('\.', $IP);
 
-		# check the entries of the networks table
-		# - if the bitwise AND of the IP and the netmask gives you 
-		#	the "net" name then that is the entry you want.
-		foreach (@TableRowArray) {
-			my $NM = $_->{'mask'};
-			my $net=$_->{'net'};
-			chomp $NM;
-			chomp $net;
+        # check the entries of the networks table
+        # - if the bitwise AND of the IP and the netmask gives you 
+        # the "net" name then that is the entry you want.
+        foreach (@TableRowArray) {
+            my $NM = $_->{'mask'};
+            my $net=$_->{'net'};
+            chomp $NM;
+            chomp $net;
 
-                        if(xCAT::NetworkUtils->ishostinsubnet($IP, $NM, $net))
-                        {
-				# fill in the hash - 
-				foreach my $attr (@attrnames) {
-					if ( defined($_->{$attr}) ) {
-						$nethash{$node}{$attr} = $_->{$attr};
-					}
-                                }
-                                if($nethash{$node}{'gateway'} eq '<xcatmaster>')
-                                {
-                                    if(xCAT::NetworkUtils->ip_forwarding_enabled())
-                                    {
-                                        $nethash{$node}{'gateway'} = xCAT::NetworkUtils->my_ip_in_subnet($net, $NM);
-                                    }
-                                    else
-                                    {
-                                        $nethash{$node}{'gateway'} = '';
-                                    }
-                                    $nethash{$node}{'myselfgw'} = 1;
-                                    # For hwctrl commands, it is possible that this subroutine is called
-                                    # on MN instead of SN, if the hcp SN is not set
-                                    if (xCAT::Utils->isMN() && !$nethash{$node}{'gateway'})
-                                    {
-                                        # does not have ip address in this subnet,
-                                        # use the node attribute 'xcatmaster' or site.master
-                                        my @nodes = ("$node");
-                                        my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes,"xcat","Node");
-                                        my $snkey = (keys %{$sn})[0];
-                                        my $gw = xCAT::NetworkUtils->getipaddr($snkey);
-                                        # two possible cases when this code is run:
-                                        # 1. flat cluster: ip forwarding is not enabled on MN
-                                        # 2. hw ctrl in hierarchy cluster, in which HCP SN is not set
-                                        # in either case, MN itself should not be the gateway
-                                         if (xCAT::NetworkUtils->thishostisnot($gw)) {
-                                             $nethash{$node}{'gateway'} = $gw;
-                                         }
-                                    }
-                                
-                                }
-                                next;
+            if(xCAT::NetworkUtils->ishostinsubnet($IP, $NM, $net))
+            {
+                # fill in the hash - 
+                foreach my $attr (@attrnames) {
+                    if ( defined($_->{$attr}) ) {
+                        $nethash{$node}{$attr} = $_->{$attr};
+                    }
+                }
+                if($nethash{$node}{'gateway'} eq '<xcatmaster>')
+                {
+                    if(xCAT::NetworkUtils->ip_forwarding_enabled())
+                    {
+                        $nethash{$node}{'gateway'} = xCAT::NetworkUtils->my_ip_in_subnet($net, $NM);
+                    }
+                    else
+                    {
+                        $nethash{$node}{'gateway'} = '';
+                    }
+                    $nethash{$node}{'myselfgw'} = 1;
+                    # For hwctrl commands, it is possible that this subroutine is called
+                    # on MN instead of SN, if the hcp SN is not set
+                    if (xCAT::Utils->isMN() && !$nethash{$node}{'gateway'})
+                    {
+                        # does not have ip address in this subnet,
+                        # use the node attribute 'xcatmaster' or site.master
+                        my @nodes = ("$node");
+                        my $sn = xCAT::ServiceNodeUtils->get_ServiceNode(\@nodes,"xcat","Node");
+                        my $snkey = (keys %{$sn})[0];
+                        my $gw = xCAT::NetworkUtils->getipaddr($snkey);
+                        # two possible cases when this code is run:
+                        # 1. flat cluster: ip forwarding is not enabled on MN
+                        # 2. hw ctrl in hierarchy cluster, in which HCP SN is not set
+                        # in either case, MN itself should not be the gateway
+                        if (xCAT::NetworkUtils->thishostisnot($gw)) {
+                            $nethash{$node}{'gateway'} = $gw;
                         }
+                    }
+                                
+                }
+                next;
+            }
                             
-		}
+        }
 
-	} #end - for each node
+    } #end - for each node
 
-	return %nethash;
+    return %nethash;
 }
 #----------------------------------------------------------------------------
 
@@ -2054,7 +2054,7 @@ sub getNetwkInfo
         Error:
         Example:
 
-		To parse the access_tabentry field
+                To parse the access_tabentry field
 
                 my $rc = xCAT::DBobjUtils->parse_access_tabentry($objname, $this_attr->{access_tabentry}, \%tabentry);
 
@@ -2541,14 +2541,14 @@ sub getcecchildren
             foreach (@{$PARENT_CHILDREN_CEC{$parent}}) {
                 push @children, $_;        
             }
-  	    return \@children;
-        }	
+            return \@children;
+        }
     } else {  # already built the HASH
         if (exists($PARENT_CHILDREN_CEC{$parent})) {
             foreach (@{$PARENT_CHILDREN_CEC{$parent}}) {
                 push @children, $_;
             }
-	    return \@children;			
+            return \@children;
         }
     }
     return undef;
