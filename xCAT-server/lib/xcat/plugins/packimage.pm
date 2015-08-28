@@ -369,7 +369,7 @@ sub process_request {
 
     my $compress="gzip";
     #use "pigz" as the compress tool instead of gzip if "pigz" exist
-    my $ispigz=system("bash -c 'type -p pigz'");
+    my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
     if($ispigz == 0){
        $compress="pigz";
     }
@@ -385,7 +385,6 @@ sub process_request {
             if ($includestr) {
             	system("$includestr >> $xcat_packimg_tmpfile"); 
             }
-            #$excludestr =~ s!-a \z!|cpio -H newc -o | $compress -c - > ../rootimg.gz!;
             $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;

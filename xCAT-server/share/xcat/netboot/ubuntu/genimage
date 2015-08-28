@@ -1645,16 +1645,12 @@ EOMS
     symlink("bash", "/tmp/xcatinitrd.$$/bin/sh");
     symlink("bash", "/tmp/xcatinitrd.$$/sbin/sh");
 
-
     my $compress="gzip";
     #if pigz is available,use pigz instead of gzip
     my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
     if($ispigz == 0){
        $compress="pigz";
-    }else{
-       $compress="gzip";
     }
-
 
     #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
     print "\ncd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz \n";

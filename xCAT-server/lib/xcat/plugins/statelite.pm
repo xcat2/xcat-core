@@ -523,10 +523,9 @@ sub process_request {
         $callback->({data=>["$verb contents of $rootimg_dir"]});
         unlink("$destdir/rootimg-statelite.gz");
 
-
         my $compress="gzip";
         #use "pigz" as the compress tool instead of gzip if "pigz" exist
-        my $ispigz=system("bash -c 'type -p pigz'");
+        my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
         if($ispigz == 0){
            $compress="pigz";
         }
