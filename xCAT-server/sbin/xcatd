@@ -1053,7 +1053,7 @@ if( !defined($cmdlog_svrpid)){
         if($cmdlogfile){close($cmdlogfile);}
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if($clientsock){close($clientsock);}
-		unlink("/var/run/xcat/cmdlogservice.pid");
+        unlink("/var/run/xcat/cmdlogservice.pid");
         exit(0);
     };  
 	
@@ -1062,7 +1062,7 @@ if( !defined($cmdlog_svrpid)){
         if($cmdlogfile){close($cmdlogfile);}
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if($clientsock){close($clientsock);}
-		unlink("/var/run/xcat/cmdlogservice.pid");
+        unlink("/var/run/xcat/cmdlogservice.pid");
         exit(0);
     };  
 
@@ -1093,7 +1093,7 @@ if( !defined($cmdlog_svrpid)){
     }	
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
-		if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         exit(0);
     }
     select($cmdlogfile);
