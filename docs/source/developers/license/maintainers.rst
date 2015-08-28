@@ -23,5 +23,5 @@ All decisions by the maintainers are made by consensus.
 
 When a **maintainer** merges a pull request for a **contributor** they must:
 
-  * Require that each code contributor complete and sign the :ref:`xCAT Individual CLA <xcat-individual-contributor-license-label>` or :ref:`xCAT Corporate CLA <xcat-corporate-contributor-license-label>` email a PDF copy to xcat-legal@lists.sourceforge.net .
+  * Require that each code contributor complete and sign the :download:`CLA here <xcat-project-individual-cla.pdf>` or :download:`CCLA here <xcat-project-corporate-ccla.pdf>` email a PDF copy to xcat-legal@lists.sourceforge.net .
   * Require that all code be contributed under the EPL.
