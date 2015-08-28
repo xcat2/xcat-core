@@ -366,17 +366,26 @@ sub process_request {
     $callback->({data=>["$verb contents of $rootimg_dir"]});
     unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.sfs");
+
+    my $compress="gzip";
+    #use "pigz" as the compress tool instead of gzip if "pigz" exist
+    my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+    if($ispigz == 0){
+       $compress="pigz";
+    }
+
+    $callback->({info=>["compress method:$compress"]});
+ 
     if ($method =~ /cpio/) {
         if ( ! $exlistloc ) {
-            $excludestr = "find . -xdev |cpio -H newc -o | gzip -c - > ../rootimg.gz";
+            $excludestr = "find . -xdev |cpio -H newc -o | $compress -c - > ../rootimg.gz";
         }else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile"); 
             if ($includestr) {
             	system("$includestr >> $xcat_packimg_tmpfile"); 
             }
-            #$excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | gzip -c - > ../rootimg.gz";
+            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
