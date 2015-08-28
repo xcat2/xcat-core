@@ -1006,7 +1006,7 @@ unless ($pid_UDP) {
     if ($pid_disco) {
         kill 2, $pid_disco;
     }
-    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period"; };
+    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period"; 
     alarm(2);
   };
 
@@ -1035,11 +1035,12 @@ unless ($pid_MON) {
 }
 
 #----used for command log start---------
-$cmdlog_svrpid = fork();
-if( !defined($cmdlog_svrpid)){
+$cmdlog_svrpid = xCAT::Utils->xfork;
+if (! defined $cmdlog_svrpid) { 
     print "xCAT command log sever unable to fork";
     xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
-}elsif($cmdlog_svrpid ==0){
+}
+unless ($cmdlog_svrpid){
     $$progname="xcatd: Command log writer";
     my $clientsock;
     my @waittowritepro;
