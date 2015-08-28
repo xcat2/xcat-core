@@ -172,8 +172,8 @@ sub getobjattrs
     # go through each object type and look up all the info for each object
     foreach my $objtype (keys %objtypelist) {
 
-         # only do node type for now
-         if ($objtype eq 'node') {
+        # only do node type for now
+        if ($objtype eq 'node') {
             # find the list of tables and corresponding attrs
             # - for this object type
             # get the object type decription from Schema.pm
@@ -433,17 +433,17 @@ sub getobjdefs
                             last;
                         } # end if($entry->
                     } # end foreach my $entry
-               } # end if(@TableTowArray
-           } # end foreach my $objname
+                } # end if(@TableTowArray
+            } # end foreach my $objname
         } else {
             # get the object type decription from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$objtype};
             # get the key to look for, for this object type
             my $objkey = $datatype->{'objkey'};
 
-           # go through the list of valid attrs
-           foreach my $this_attr (@{$datatype->{'attrs'}})
-           {
+            # go through the list of valid attrs
+            foreach my $this_attr (@{$datatype->{'attrs'}})
+            {
                 my $ent;
                 my $attr = $this_attr->{attr_name};
 
@@ -475,10 +475,10 @@ sub getobjdefs
                     #   in for some attrs.
                     if (exists($this_attr->{only_if}))
                     {
-                         my ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
-                         # if the object value is not the value we need
-                         #   to match then try the next only_if value
-                         next if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) );
+                        my ($check_attr, $check_value) = split('\=', $this_attr->{only_if});
+                        # if the object value is not the value we need
+                        #   to match then try the next only_if value
+                        next if ( !($objhash{$objname}{$check_attr} =~ /\b$check_value\b/) );
                     }
 
 
@@ -490,11 +490,11 @@ sub getobjdefs
                                                                      $this_attr->{access_tabentry}, \%tabentry);
                     if ($rc != 0)
                     {
-                         my $rsp;
-                         $rsp->{data}->[0] =
-                           "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
-                          xCAT::MsgUtils->message("E", $rsp, $::callback);
-                         next;
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                            "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        next;
                     }
                     #
                     # Only allow one table in the access_tabentry
@@ -552,19 +552,19 @@ sub getobjdefs
                                 }
                                 if ($match == 1)
                                 {
-                                     if ($verbose == 1)
-                                     {
-                                         my @lookup_attrs = keys %{$tabentry{'lookup_attrs'}};
-                                         $objhash{$objname}{$attr} = "$rowent->{$tabattr}\t(Table:$lookup_table - Key: @lookup_attrs - Column:$tabattr)";
-                                     }
-                                     else
-                                     {
-                                         $objhash{$objname}{$attr} = $rowent->{$tabattr};
-                                     }
-                                     if (defined $chname_ref) {
-                                         push @{$chname_ref->{$lookup_table}}, ($tabentry{'lookup_attrs'}, (keys %{$tabentry{'lookup_attrs'}}) [0]);
-                                     }
-                                 } #end if ($match...
+                                    if ($verbose == 1)
+                                    {
+                                        my @lookup_attrs = keys %{$tabentry{'lookup_attrs'}};
+                                        $objhash{$objname}{$attr} = "$rowent->{$tabattr}\t(Table:$lookup_table - Key: @lookup_attrs - Column:$tabattr)";
+                                    }
+                                    else
+                                    {
+                                        $objhash{$objname}{$attr} = $rowent->{$tabattr};
+                                    }
+                                    if (defined $chname_ref) {
+                                        push @{$chname_ref->{$lookup_table}}, ($tabentry{'lookup_attrs'}, (keys %{$tabentry{'lookup_attrs'}}) [0]);
+                                    }
+                                } #end if ($match...
                             } #end foreach
                         } # end if (defined...
                     } #end if ($intabhash...
@@ -593,7 +593,7 @@ sub getobjdefs
         Example:
 
         call as follows
-          my @TableRowArray= xCAT::DBobjUtils->getDBtable($tablename);
+                my @TableRowArray= xCAT::DBobjUtils->getDBtable($tablename);
 
         Comments:
 
@@ -641,11 +641,11 @@ sub getDBtable
 
     if (@rows)
     {
-         return @rows;
+        return @rows;
     }
     else
     {
-         return undef;
+        return undef;
     }
 }
 
@@ -686,7 +686,7 @@ sub setobjdefs
     my $setattrs=0;
 
     # get the attr=vals for these objects from the DB - if any
-    #       - so we can figure out where to put additional attrs
+    #   - so we can figure out where to put additional attrs
     # The getobjdefs call was in the foreach loop,
     # it caused mkdef/chdef performance issue,
     # so it is moved out of the foreach loop
@@ -1089,8 +1089,8 @@ sub setobjdefs
                     my $rsp;
                     $rsp->{data}->[0] =
                       "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
-                     xCAT::MsgUtils->message("E", $rsp, $::callback);
-                     next;
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
                 }
                 $lookup_table = $tabentry{'lookup_table'};
                 # Set the lookup criteria for this attribute into %allupdates
@@ -1130,8 +1130,8 @@ sub setobjdefs
                         {
                             push @DBattrarray, $objattr;
                         }
-                     }
-                     $val = join($delim, @DBattrarray);
+                    }
+                    $val = join($delim, @DBattrarray);
                 }
                 else
                 {
@@ -1161,11 +1161,11 @@ sub setobjdefs
                                 my $rsp;
                                 $rsp->{data}->[0] = "$objname is not a member of \'$em\'.";
                                 xCAT::MsgUtils->message("W", $rsp, $::callback);
-                             } else {
+                            } else {
                                 my $rsp;
                                 $rsp->{data}->[0] = "$em is not in the attribute of \'$attr_name\' for the \'$objname\' definition.";
                                 xCAT::MsgUtils->message("W", $rsp, $::callback);
-                             }
+                            }
                         }
                     }
                     # make a new list without the one specified
@@ -1336,12 +1336,12 @@ my $tt = $invalidattr->{$att}->{valid};
                                    && defined($allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
                         foreach my $tempps (split(/,/, $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'})) {
                             if (grep(/^$tempps$/, @xcatdefps)) {
-                                 my $rsp;
-                                 $rsp->{data}->[0] = "$obj: postscripts \'$tempps\' is already included in the \'xcatdefaults\'.";
-                                 xCAT::MsgUtils->message("E", $rsp, $::callback);
-                             } else {
-                                 push @newps, $tempps;
-                             }
+                                my $rsp;
+                                $rsp->{data}->[0] = "$obj: postscripts \'$tempps\' is already included in the \'xcatdefaults\'.";
+                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            } else {
+                                push @newps, $tempps;
+                            }
                         }
                         $allupdates{$table}{$obj}{'postscripts'}{'tabattrs'}{'postscripts'} = join(',', @newps);
                     }
@@ -1358,7 +1358,7 @@ my $tt = $invalidattr->{$att}->{valid};
                             }
                         }
                         $allupdates{$table}{$obj}{'postbootscripts'}{'tabattrs'}{'postbootscripts'} = join(',', @newpbs);
-                     }
+                    }
                 }
             }
 
@@ -1515,8 +1515,8 @@ sub rmobjdefs
                 my $rsp;
                 $rsp->{data}->[0] =
                   "access_tabentry \'$this_attr->{access_tabentry}\' is not valid.";
-                 xCAT::MsgUtils->message("E", $rsp, $::callback);
-                 next;
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                next;
             }
 
             # Only allow one table in the access_tabentry
@@ -1818,7 +1818,7 @@ sub getGroupMembers
 
     # set 'static' as the dafault of nodetype
     if (!defined($objhash{$objectname}{'grouptype'}) ||
-          $objhash{$objectname}{'grouptype'} eq "") {
+            $objhash{$objectname}{'grouptype'} eq "") {
         $objhash{$objectname}{'grouptype'} = 'static';
     }
 
@@ -2037,16 +2037,16 @@ sub getNetwkInfo
                 $objname: objectname=>objtype hash
                 $access_tabentry: the access_tabentry defined in Schema.pm
                 $tabentry_ref: return the parsed result through this hash ref
-                                  The structure of the hash is:
-                                  {
-                                      'lookup_tables' => <table_name>
-                                      'lookup_attrs' =>
-                                      {
-                                          'attr1' => 'val1'
-                                          'attr2' => 'val2'
-                                          ...
-                                       }
-                                  }
+                                The structure of the hash is:
+                                {
+                                    'lookup_tables' => <table_name>
+                                    'lookup_attrs' =>
+                                    {
+                                        'attr1' => 'val1'
+                                        'attr2' => 'val2'
+                                        ...
+                                    }
+                                }
         Returns:
                 0 - success
                 1 - failed
@@ -2096,28 +2096,28 @@ sub parse_access_tabentry()
             return 1;
         }
 
-       if ($lookup_type eq 'attr')
-       {
-           # TODO: may need to update in the future
-           # for now, the "val" in attr:val in
-           # Schema.pm can only be the object name
-           # In the future, even if we need to change here,
-           # be caution about the performance
-           # looking up table is time consuming
-           $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $objname;
-       }
-       elsif ($lookup_type eq 'str')
-       {
-           $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $lookup_data;
-       }
-       else
-       {
-           my $rsp;
-           $rsp->{data}->[0] =
+        if ($lookup_type eq 'attr')
+        {
+            # TODO: may need to update in the future
+            # for now, the "val" in attr:val in
+            # Schema.pm can only be the object name
+            # In the future, even if we need to change here,
+            # be caution about the performance
+            # looking up table is time consuming
+            $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $objname;
+        }
+        elsif ($lookup_type eq 'str')
+        {
+            $tabentry_ref->{'lookup_attrs'}->{$lookup_attr} = $lookup_data;
+        }
+        else
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
                  "The access_tabentry \"$access_tabentry\" is not valid, the lookup type can only be 'attr' or 'str'.";
-           xCAT::MsgUtils->message("E", $rsp, $::callback);
-           return 1;
-       }
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
     }
     return 0;
 }
@@ -2128,17 +2128,17 @@ sub parse_access_tabentry()
         single hostname
         optional port number
     Returns:
-       array of fsp/bpa hostnames (IPs)
-       if specified port, it will just return nodes within the port.
+        array of fsp/bpa hostnames (IPs)
+        if specified port, it will just return nodes within the port.
     Globals:
         %PPCHASH - HASH of nodename -> array of ip addresses
-                     where the nodetype is fsp or bpa
+                    where the nodetype is fsp or bpa
     Error:
-       $::RUNCMD_RC = 1;
-       Writes error to syslog
+        $::RUNCMD_RC = 1;
+        Writes error to syslog
     Example:
-         $c1 = getchildren($nodetocheck);
-         $c1 = getchildren($nodetocheck,$port);
+        $c1 = getchildren($nodetocheck);
+        $c1 = getchildren($nodetocheck,$port);
     Comments:
         none
 =cut
@@ -2161,9 +2161,9 @@ sub getchildren
     if (!%PPCHASH) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
         unless ($ppctab) {   # cannot open  the table return with error
-          xCAT::MsgUtils->message('S', "getchildren:Unable to open ppc table.\n");
-          $::RUNCMD_RC = 1;
-          return undef;
+            xCAT::MsgUtils->message('S', "getchildren:Unable to open ppc table.\n");
+            $::RUNCMD_RC = 1;
+            return undef;
         }
         my @ps = $ppctab->getAllNodeAttribs(['node','parent','nodetype','hcp']);
         foreach my $entry ( @ps ) {
@@ -2171,25 +2171,25 @@ sub getchildren
             my $c = $entry->{node};
             my $t = $entry->{nodetype};
             if ( $p and $c) {
-              if ($t)  {  # the nodetype exists in the ppc table, use it
-                if ( $t eq 'fsp' or $t eq 'bpa') {
-                    # build hash of ppc.parent -> ppc.node
-                    push @{$PPCHASH{$p}}, $c;
+                if ($t)  {  # the nodetype exists in the ppc table, use it
+                    if ( $t eq 'fsp' or $t eq 'bpa') {
+                        # build hash of ppc.parent -> ppc.node
+                        push @{$PPCHASH{$p}}, $c;
+                    }
+                    elsif ($t eq 'blade') {
+                        push @{$PPCHASH{$c}}, $entry->{hcp};
+                    }
+                } else { # go look in the nodetype table to find nodetype
+                    my $type = getnodetype($c, "ppc");
+                    if ( $type eq 'fsp' or $type eq 'bpa')
+                    {
+                        # build hash of ppc.parent -> ppc.node
+                        push @{$PPCHASH{$p}}, $c;
+                    }
+                    elsif ($type eq "blade") {
+                        push @{$PPCHASH{$c}}, $entry->{hcp};
+                    }
                 }
-                elsif ($t eq 'blade') {
-                    push @{$PPCHASH{$c}}, $entry->{hcp};
-                }
-              } else { # go look in the nodetype table to find nodetype
-                 my $type = getnodetype($c, "ppc");
-                 if ( $type eq 'fsp' or $type eq 'bpa')
-                 {
-                     # build hash of ppc.parent -> ppc.node
-                      push @{$PPCHASH{$p}}, $c;
-                 }
-                 elsif ($type eq "blade") {
-                     push @{$PPCHASH{$c}}, $entry->{hcp};
-                 }
-              }
             }  # not $p and $c
         }
         # Find parent in the hash and build return values
@@ -2208,30 +2208,30 @@ sub getchildren
     {
         return \@children;
     } else {
-     if (@children) {
-       my $vpdtab = xCAT::Table->new( 'vpd' );
-       unless ($vpdtab) {   # cannot open  the table return with error
-       xCAT::MsgUtils->message('S', "getchildren:Unable to open vpd table.\n");
-          $::RUNCMD_RC = 1;
-          return undef;
-       }
-       my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
-       if(!$sides)
-       {
-           return undef;
-       }
-       foreach my $n (@children)
-       {
-            my $nside = $sides->{$n}->[0];
-            if ($nside->{side} =~ /$port/)
-            {
-                push @children_port, $n;
+        if (@children) {
+            my $vpdtab = xCAT::Table->new( 'vpd' );
+            unless ($vpdtab) {   # cannot open  the table return with error
+                xCAT::MsgUtils->message('S', "getchildren:Unable to open vpd table.\n");
+                $::RUNCMD_RC = 1;
+                return undef;
             }
+            my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
+            if(!$sides)
+            {
+                return undef;
+            }
+            foreach my $n (@children)
+            {
+                my $nside = $sides->{$n}->[0];
+                if ($nside->{side} =~ /$port/)
+                {
+                    push @children_port, $n;
+                }
+            }
+            return \@children_port;
+        } else {  # no children
+            return undef;
         }
-        return \@children_port;
-     } else {  # no children
-         return undef;
-     }
     }
 }
 #-------------------------------------------------------------------------------
@@ -2239,7 +2239,7 @@ sub getchildren
 =head3   getnodetype
     Query ppc table, if no type found query nodetype table
     Arguments:
-       An array of nodenames or 1 nodename
+        An array of nodenames or 1 nodename
     Returns:
         If the input is an array, it returns a hash,
         for the nodes that can't get node type, it will be 'node' => undef;
@@ -2251,10 +2251,10 @@ sub getchildren
         $::RUNCMD_RC = 1;
         Errors written to syslog
     Example:
-         $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
-         $type = xCAT::DBobjUtils->getnodetype($node);
-         $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes, "PPC");
-         $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes);
+        $type = xCAT::DBobjUtils->getnodetype($node, "ppc");
+        $type = xCAT::DBobjUtils->getnodetype($node);
+        $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes, "PPC");
+        $typerefer = xCAT::DBobjUtils->getnodetype(\@nodes);
     Comments:
         none
 =cut
@@ -2494,7 +2494,7 @@ sub getnodetype
     Error:
         none
     Example:
-         @frame_members = getcecchildren($frame);
+        @frame_members = getcecchildren($frame);
     Comments:
         none
 =cut
@@ -2512,9 +2512,9 @@ sub getcecchildren
     if (!%PARENT_CHILDREN_CEC) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
         unless ($ppctab) {   # cannot open  the table return with error
-          xCAT::MsgUtils->message('S', "getcecchildren:Unable to open ppc table.\n");
-          $::RUNCMD_RC = 1;
-          return undef;
+            xCAT::MsgUtils->message('S', "getcecchildren:Unable to open ppc table.\n");
+            $::RUNCMD_RC = 1;
+            return undef;
         }
         if ($ppctab)
         {
@@ -2524,17 +2524,17 @@ sub getcecchildren
                 my $c = $entry->{node};
                 my $t = $entry->{nodetype};
                 if ( $p and $c) {
-                   if ($t)  {  # the nodetype exists in the ppc table, use it
-                     if ( $t eq 'cec') {
-                       # build hash of ppc.parent -> ppc.node
-                       push @{$PARENT_CHILDREN_CEC{$p}}, $c;
-                     }
-                   } else { # go look in the nodetype table to find nodetype
-                     my $type = getnodetype($c);
-                     if ( $type eq 'cec') {
-                        push @{$PARENT_CHILDREN_CEC{$p}}, $c;
-                     }
-                   }
+                    if ($t)  {  # the nodetype exists in the ppc table, use it
+                        if ( $t eq 'cec') {
+                            # build hash of ppc.parent -> ppc.node
+                            push @{$PARENT_CHILDREN_CEC{$p}}, $c;
+                        }
+                    } else { # go look in the nodetype table to find nodetype
+                        my $type = getnodetype($c);
+                        if ( $type eq 'cec') {
+                            push @{$PARENT_CHILDREN_CEC{$p}}, $c;
+                        }
+                    }
                 }
             }
             # find a match for the parent and build the return array
@@ -2566,7 +2566,7 @@ sub getcecchildren
     Error:
         none
     Example:
-         $result = judge_node($nodetocheck);
+        $result = judge_node($nodetocheck);
     Comments:
         none
 =cut
@@ -2749,33 +2749,33 @@ sub collapsenicsattr()
         # it will be overwritten by the attributes with the postfix .ethx,
         if ($nodeattr =~ /^(nic\w+)\.(.*)$/)
         {
-           if ($1 && $2)
-           {
-               # chdef <noderange> nicips.eth2= to remove the definition for eth2
-               # in this case, the $nodeattrhash->{'nicips.eth0'} is blank
-               if ($nodeattrhash->{$nodeattr})
-               {
-                   # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
-                   $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr};
-               }
+            if ($1 && $2)
+            {
+                # chdef <noderange> nicips.eth2= to remove the definition for eth2
+                # in this case, the $nodeattrhash->{'nicips.eth0'} is blank
+                if ($nodeattrhash->{$nodeattr})
+                {
+                    # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
+                    $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr};
+                }
 
-               # remove nicips.eth0 from the %::FILEATTRS
-               delete $nodeattrhash->{$nodeattr};
-           }
+                # remove nicips.eth0 from the %::FILEATTRS
+                delete $nodeattrhash->{$nodeattr};
+            }
         }
     }
     # $nicattrs{'nicips'}{'eth0'} = "1.1.1.1|1.2.1.1"
     # $nicattrs{'nicips'}{'eth1'} = "2.1.1.1|2.2.1.1"
     foreach my $nicattr (keys %nicattrs)
     {
-       my @tmparray = ();
-       foreach my $nicname (keys %{$nicattrs{$nicattr}})
-       {
-           # eth0!1.1.1.1|1.2.1.1
-           push @tmparray, "$nicname!$nicattrs{$nicattr}{$nicname}";
-       }
-       # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
-       $nodeattrhash->{$nicattr} = join(',', @tmparray);
+        my @tmparray = ();
+        foreach my $nicname (keys %{$nicattrs{$nicattr}})
+        {
+            # eth0!1.1.1.1|1.2.1.1
+            push @tmparray, "$nicname!$nicattrs{$nicattr}{$nicname}";
+        }
+        # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
+        $nodeattrhash->{$nicattr} = join(',', @tmparray);
     }
 }
 
