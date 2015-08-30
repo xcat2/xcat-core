@@ -8,7 +8,7 @@ xCAT is made available as open source software under the EPL license:
 http://www.opensource.org/licenses/eclipse-1.0.php
 
 
-
-
-
-
+Developers and prospective contributors are encouraged to read the developers guide:
+http://xcat-docs.readthedocs.org/en/latest/developers/
+and in particular the github related subsection:
+http://xcat-docs.readthedocs.org/en/latest/developers/github/
