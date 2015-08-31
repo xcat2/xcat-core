@@ -3,9 +3,7 @@ Parallel Commands
 
 xCAT delivers a set of commands that can be run remote commands (ssh,scp,rsh,rcp,rsync,ping,cons) in parallel on multiple nodes. In addition the command have the capability of formatting the output from the commands, so the results are easier to process. These commands will make it much easier to administer your large cluster.
 
-For a list of the Parallel Commands and their man pages:
-
-TODO: doc link to [parallel-commands]
+For a list of the Parallel Commands and their man pages doc `parallel commands`_.
 
 Examples for xdsh
 -----------------
