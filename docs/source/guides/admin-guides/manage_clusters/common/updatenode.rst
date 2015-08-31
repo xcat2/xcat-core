@@ -36,7 +36,7 @@ Install Additional non-OS Packages
 
 If you have additional packages (packages not in the distro) that you also want installed, make a directory to hold them, create a list of the packages you want installed, and add that information to the osimage definition. How to add Additional Other Packages, go to `Install Additional Other Packages <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg.html#install-additional-other-packages>`_
 
-Update Stateful Nodes
+Update Nodes
 ^^^^^^^^^^^^^^^^^^^^^
 
 Run the updatenode command to push the new software to the nodes: ::
@@ -53,23 +53,7 @@ If you have a configuration script that is necessary to configure the new softwa
 
 The next time you re-install these nodes, the additional software will be automatically installed.
 
-Update Stateless Nodes
-^^^^^^^^^^^^^^^^^^^^^^
-
-Run the updatenode command to push the new software to the nodes: ::
-
-    updatenode <noderange> -S
-
-
-The -S flag updates the nodes with all the new or updated rpms specified in both .pkglist and .otherpkgs.pkglist.
-
-If you have a configuration script that is necessary to configure the new software, then instead run: ::
-
-    cp myconfigscript /install/postscripts/
-    chdef -p -t compute postbootscripts=myconfigscript
-    updatenode <noderange> ospkgs,otherpkgs,myconfigscript
-
-**You must also do this next step**, otherwise the next time you reboot the stateless nodes, the new software won't be on the nodes. Run genimage and packimage to install the extra rpms into the image: ::
+**If you update stateless nodes, you must also do this next step**, otherwise the next time you reboot the stateless nodes, the new software won't be on the nodes. Run genimage and packimage to install the extra rpms into the image: ::
 
     genimage <osimage>
     packimage <osimage>
