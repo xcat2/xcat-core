@@ -22,3 +22,4 @@ Advanced Topics
    vlan.rst
    zone.rst
    softlayer.rst
+   firmware_inventory.rst
