@@ -1006,7 +1006,7 @@ unless ($pid_UDP) {
     if ($pid_disco) {
         kill 2, $pid_disco;
     }
-    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period"; };
+    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period"; 
     alarm(2);
   };
 
@@ -1033,6 +1033,98 @@ unless ($pid_MON) {
   do_installm_service;
   xexit(0);
 }
+
+#----used for command log start---------
+$cmdlog_svrpid = xCAT::Utils->xfork;
+if (! defined $cmdlog_svrpid) { 
+    print "xCAT command log sever unable to fork";
+    xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
+}
+unless ($cmdlog_svrpid){
+    $$progname="xcatd: Command log writer";
+    my $clientsock;
+    my @waittowritepro;
+    my $cmdlogsvrlistener;
+    my $cmdlogfile;
+    my $cmdlogpidfile;
+    my $retry=200;
+
+    $SIG{USR2} = sub {
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
+        if($cmdlogfile){close($cmdlogfile);}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if($clientsock){close($clientsock);}
+        unlink("/var/run/xcat/cmdlogservice.pid");
+        exit(0);
+    };  
+	
+    $SIG{TERM} = $SIG{INT} = sub {
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
+        if($cmdlogfile){close($cmdlogfile);}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if($clientsock){close($clientsock);}
+        unlink("/var/run/xcat/cmdlogservice.pid");
+        exit(0);
+    };  
+
+    $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+                                               Type => SOCK_STREAM,
+                                               Reuse => 1,
+                                               Listen => 8192);
+  
+    if(not $cmdlogsvrlistener and open($cmdlogpidfile,"<","/var/run/xcat/cmdlogservice.pid")) { 
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
+        my $pid = <$cmdlogpidfile>;
+        if ($pid) {
+            kill 12, $pid;
+        }
+        close($cmdlogpidfile);
+    }  
+    while (not $cmdlogsvrlistener and $retry) {
+        $retry--;
+        $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+                                                   Type => SOCK_STREAM,
+                                                   Reuse => 1,
+                                                   Listen => 8192);
+        sleep(0.05);
+    }	
+    unless ($cmdlogsvrlistener) {
+        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open command log service on port $cmdlog_port,command log process $$ stop.");
+        exit(0);
+    }	
+    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
+        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        exit(0);
+    }
+    select($cmdlogfile);
+    $|=1;
+
+    open($cmdlogpidfile,">/var/run/xcat/cmdlogservice.pid"); 
+    print $cmdlogpidfile $$;
+    close($cmdlogpidfile);	
+    xCAT::MsgUtils->trace(0,"I","xcatd: command log process $$ start");  
+	
+    while (1)
+    {
+        $clientsock = $cmdlogsvrlistener->accept;
+        unless ($clientsock) { next; } 
+        my $log = "";
+        my $bytesread;
+        do { 
+            $bytesread=sysread($clientsock,$log,65536,length($log)) 
+        } while ($bytesread);
+        close($clientsock);
+        print $cmdlogfile $log;
+    }
+
+    close($cmdlogsvrlistener);
+    close($cmdlogfile);
+
+    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+}
+#----used for command log end---------
+
 $$progname="xcatd: SSL listener";
 
 # Enable the signals for the subroutine calling trace
@@ -1143,60 +1235,6 @@ if ($startupparent) {
    print $startupparent "SUCCESS\n";
    close($startupparent);
 }
-
-#----used for command log start---------
-$cmdlog_svrpid = fork();
-if( !defined($cmdlog_svrpid)){
-    print "xCAT command log sever unable to fork";
-    xCAT::MsgUtils->message("S","xCAT command log sever unable to fork");
-}elsif($cmdlog_svrpid ==0){
-    $$progname="xcatd: Command log writer";
-    my $clientsock;
-    my @waittowritepro;
-    my $cmdlogsvrlistener;
-    my $cmdlogfile;
-	
-    $SIG{TERM} = $SIG{INT} = sub {
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process is terminated by TERM or INT signal");
-        if($cmdlogfile){close($cmdlogfile);}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-        if($clientsock){close($clientsock);}
-        exit(0);
-    };  
-
-    xCAT::MsgUtils->trace(0,"I","xcatd: command log process start");
-    
-    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
-        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile");
-        xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
-        exit(0);
-    }
-    select($cmdlogfile);
-    $|=1;
-    
-    $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
-        Type => SOCK_STREAM,
-        Reuse => 1,
-        Listen => 8192);
-    while (1)
-    {
-        $clientsock = $cmdlogsvrlistener->accept;
-        unless ($clientsock) { next; } 
-        my $log = "";
-        my $bytesread;
-        do { 
-            $bytesread=sysread($clientsock,$log,65536,length($log)) 
-        } while ($bytesread);
-        close($clientsock);
-        print $cmdlogfile $log;
-    }
-
-    close($cmdlogsvrlistener);
-    close($cmdlogfile);
-
-    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
-}
-#----used for command log end---------
 
 #only write to pid file if we have listener, listener ownership serves as lock to protect integrity
 open($mainpidfile,">","/var/run/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
@@ -2299,7 +2337,7 @@ sub send_response {
         }
   		$xml =~ tr/\011-\177/?/c;
       	eval {
-		    my $rsplen = length($xml);
+            my $rsplen = length($xml);
             my $blocks = int($rsplen/4096)-1;
             if ($rsplen%4096) {
                 $blocks += 1;
@@ -2309,11 +2347,11 @@ sub send_response {
                     syswrite($sock,$xml,4096,$_*4096);
                 } while (($! == EAGAIN) or ($! == ECHILD));
             }
-	    };
+        };
 		
-	    #----used for command log start-------
-	    cmdlog_collectlog($response);
-	    #----used for command log end -------- 
+        #----used for command log start-------
+        cmdlog_collectlog($response);
+        #----used for command log end -------- 
 		
     } elsif ($encode eq "storable") {
         if ($response->{xcatresponse}) {
@@ -2883,7 +2921,7 @@ sub cmdlog_collectlog(){
     if(exists($rsponse->{xcatresponse})){
         $rsp = $rsponse->{xcatresponse};
     }else{
-        $rsp = $rsponse;
+        push @{$rsp}, $rsponse;
     }
     if (ref($rsp) ne 'ARRAY') {return 0;}
     if (scalar(@$rsp) == 0) {return 0;}
@@ -2944,10 +2982,10 @@ sub cmdlog_collectlog(){
         if ($rsp->{sinfo}) {
             if (ref($rsp->{sinfo}) eq 'ARRAY') {
                 foreach my $text (@{$rsp->{sinfo}}) {
-                    $rsp_log.= "$text\r";
+                    $rsp_log.= "$text ";
                 }
             }else{
-                $rsp_log.= $rsp->{sinfo}."\r";
+                $rsp_log.= $rsp->{sinfo}." ";
             } 
         }
     
@@ -3017,27 +3055,31 @@ sub cmdlog_collectlog(){
         foreach my $mykey ( keys %{$rsp} ) {
             if ($mykey ne "data") {next;}
             if ($rsp->{data}) {
-                my $data=($rsp->{data});
-                my $data_entry;
-                foreach $data_entry (@$data) {
-                    my $desc;
-                    if (ref(\($data_entry)) eq 'SCALAR') {
-                        $desc=$data_entry;
-                    } else {
-                        if ($data_entry->{desc}) {
-                            $desc=$data_entry->{desc}->[0];
-                        }
-                        if ($data_entry->{contents}) {
-                            if ($desc) {
-                                $desc="$desc: ".$data_entry->{contents}->[0];
-                            } else {
-                                $desc=$data_entry->{contents}->[0];
+                if (ref($rsp->{data}) eq 'ARRAY') {
+                    my $data=($rsp->{data});
+                    my $data_entry;
+                    foreach $data_entry (@$data) {
+                        my $desc;
+                        if (ref(\($data_entry)) eq 'SCALAR') {
+                            $desc=$data_entry;
+                        } else {
+                            if ($data_entry->{desc}) {
+                                $desc=$data_entry->{desc}->[0];
+                            }
+                            if ($data_entry->{contents}) {
+                                if ($desc) {
+                                    $desc="$desc: ".$data_entry->{contents}->[0];
+                                } else {
+                                    $desc=$data_entry->{contents}->[0];
+                                }
                             }
                         }
+                        if ($desc) { 
+                            $rsp_log.= "$desc\n";
+                        }
                     }
-                    if ($desc) { 
-                        $rsp_log.= "$desc\n";
-                    }
+                }else{
+                    $rsp_log.= $rsp->{data}."\n";
                 }
             }
         }
@@ -3082,6 +3124,10 @@ sub cmdlog_submitlog() {
     }
     $tmpreq =~ s/\[Request\]\s+(.+)/$1/g;
     if( $tmpreq =~ /getipmicons/) {return 1;}
+
+    if( $cmdlog_alllog !~ /\n$/) {
+        $cmdlog_alllog .= "\n";
+    }
 	
     while ($trytime>0){
         $mysocket = IO::Socket::INET->new(PeerAddr => "127.0.0.1",

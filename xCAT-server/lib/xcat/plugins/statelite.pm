@@ -522,15 +522,25 @@ sub process_request {
         my $oldmask;
         $callback->({data=>["$verb contents of $rootimg_dir"]});
         unlink("$destdir/rootimg-statelite.gz");
+
+        my $compress="gzip";
+        #use "pigz" as the compress tool instead of gzip if "pigz" exist
+        my $ispigz=system("bash -c 'type -p pigz' >/dev/null 2>&1");
+        if($ispigz == 0){
+           $compress="pigz";
+        }
+
+        $callback->({info=>["compress method: $compress"]});  
+
         if ($exlistloc) {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile");
             if ( $includestr) {
                 system("$includestr >> $xcat_packimg_tmpfile");
             }
-            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
         } else {
-            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+            $excludestr = "find . |cpio -H newc -o | $compress -c - > ../rootimg-statelite.gz";
         }
         $oldmask = umask 0077;
         chdir("$rootimg_dir");
