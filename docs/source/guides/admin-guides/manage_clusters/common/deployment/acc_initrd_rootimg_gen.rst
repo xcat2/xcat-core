@@ -1,7 +1,9 @@
 Accelerating the diskless initrd and rootimg generating
 ========================================================
 
-Generating diskless initrd and rootimg is a time-comsuming process, it can be accelerated by enabling paralell compression tool ``pigz`` on the management node with multiple processors and cores.
+Generating diskless initrd with ``genimage`` and compressed rootimg with ``packimage`` and ``liteimg`` is a time-comsuming process, it can be accelerated by enabling paralell compression tool ``pigz`` on the management node with multiple processors and cores.
+
+The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` package on the management server or diskless rootimg. Depending on the method of generating the initrd and compressed rootimg, the steps differ in different Linux distributions. 
 
 
 Enabling the ``pigz`` on :ref:`Ubuntu Server LTS<ubuntu-os-support-label>`
