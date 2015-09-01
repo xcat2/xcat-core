@@ -310,7 +310,7 @@ sub send_req {
                                       );
     if ($socket) {
         $connect = IO::Socket::SSL->start_SSL( $socket,
-                                                   SSL_verify_mode => SSL_VERIFY_PEER,
+                                                   SSL_verify_mode => "SSL_VERIFY_PEER",
                                                    SSL_ca_file => $ssl_ca_file,
                                                    SSL_cert_file =>$ssl_cert_file,
                                                    SSL_key_file => $key_file,
