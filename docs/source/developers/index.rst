@@ -9,7 +9,7 @@ This page is for developers interested in working with xCAT.
 
    license/index.rst
    github/index.rst
-   edit_tips.rst
+   doc_guidelines.rst
    developer_guide.rst
    programming_tips.rst
    debug_xcat.rst
