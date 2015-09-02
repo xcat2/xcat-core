@@ -1,5 +1,5 @@
-Mixed Cluster Management
-========================
+Managing Clusters
+=================
 
 PPC64 MN deploying a System x86_64
 ----------------------------------
@@ -75,6 +75,8 @@ Troubleshooting
 
 The syslinux network booting files are missing.  
 Install the sylinux-xcat package provided in the xcat-deps repository: ``yum -y install syslinux-xcat``
+
+.. _Building_a_Stateless_Image_of_a_Different_Architecture_or_OS:
 
 Building a Stateless Image of a Different Architecture of OS
 ------------------------------------------------------------
