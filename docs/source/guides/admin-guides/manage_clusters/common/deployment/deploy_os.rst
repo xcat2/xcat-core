@@ -1,3 +1,5 @@
+.. _deploy_os:
+
 Initialize the Compute for Deployment
 =====================================
 
