@@ -1,3 +1,5 @@
+.. _create_img:
+
 Select or Create an osimage Definition
 ======================================
 
