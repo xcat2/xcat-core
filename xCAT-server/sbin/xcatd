@@ -2433,6 +2433,7 @@ sub service_connection {
       #----used for command log start----------
       my ($sec,$min,$hour,$mday,$mon,$year) = localtime(time());
       $year += 1900;
+      $mon += 1;
       $cmdlog_alllog .= "[Date]       $year-$mon-$mday $hour:$min:$sec\n"; 
 	  
       #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
