@@ -1,3 +1,5 @@
+.. _diskful_installation:
+
 Diskful Installation
 ====================
 
