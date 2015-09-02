@@ -46,9 +46,12 @@ Enumerated List
 '''''''''''''''
 
 1. Item 1
+
   a) item a
   b) item b
+
 2. Item 2
+
   a) item a
 
 ::
@@ -80,9 +83,9 @@ Add links to refer other web page  is a very common way in writting document, it
 
 ..
 
- Link to the customized link target ``my_link_target``: `my_link_target`_: ::
+ Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`: ::
 
-    Link to the customized link target ``my_link_target``: my_link_target_.
+    Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`
 
 ..
 
