@@ -75,7 +75,7 @@ Run the chdef command to change the following attributes for the vm1:
 
     chdef vm1 serialport=0 serialspeed=115200
 
-9. (optional)For monitor the installing process from kimchi, set vidpassword value: ::
+9. (optional)For monitor the installing process from vnc client, set vidpassword value: ::
 
     chtab node=vm1 vm.vidpassword=abc123
 
@@ -105,8 +105,11 @@ Run the chdef command to change the following attributes for the vm1:
 
 Create the virtual machine
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+If vmstorage is on a nfs server or a device of hypervisor, for example ::
 
-Create the virtual machine kvm1 with 20G hard disk. ::
+  mkvm vm1
+
+If create the virtual machine kvm1 with 20G hard disk from a large disk directory, for example ::
 
   mkvm vm1 -s 20G
    
@@ -162,6 +165,7 @@ You can use console in xcat management node or kvm hypervisor to monitor the pro
 
 * Use rcons/wcons on the xCAT management node to open text console: ::
 
+   cons=kvm
    makeconservercf vm1
    rcons vm1
    wcons vm1
