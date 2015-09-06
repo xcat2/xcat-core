@@ -2,11 +2,11 @@ Support Matrix
 ==============
 
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
-|         | RedHat  | SLES    | RedHat  | SLES    | Ubuntu  | RedHat  | SLES    | Ubuntu  | AIX  |
+|         | RHEL    | SLES    | RHEL    | SLES    | Ubuntu  | RHEL    | SLES    | Ubuntu  | AIX  |
 |         | ppc64   | ppc64   | x86_64  | x86_64  | x86_64  | ppc64le | ppc64le | ppc64el | CN   |
 |         | CN      | CN      | CN      | CN      | CN      | CN      | CN      | CN      |      |
 +=========+=========+=========+=========+=========+=========+=========+=========+=========+======+
-| RedHat  |         |         |         |         |         |         |         |         |      |
+| RHEL    |         |         |         |         |         |         |         |         |      |
 | ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |  no  |
 | MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |      |
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
@@ -14,7 +14,7 @@ Support Matrix
 | ppc64   |  yes    |  yes    | yes     | yes     | yes     |  yes    |  yes    |  yes    |  no  |
 | MN/SN   |         |         | [1]_    | [1]_    | [1]_    |         |         |         |      |
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
-| RedHat  |         |         |         |         |         |         |         |         |      |
+| RHEL    |         |         |         |         |         |         |         |         |      |
 | x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no  |
 | MN/SN   | [4]_    | [4]_    |         |         |         |         |         |         |      |
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
@@ -26,7 +26,7 @@ Support Matrix
 | x86_64  | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no  |
 | MN/SN   | [5]_    | [5]_    |         |         |         |         |         |         |      |
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
-| RedHat  |         |         |         |         |         |         |         |         |      |
+| RHEL    |         |         |         |         |         |         |         |         |      |
 | ppc64le | yes     | yes     |  yes    |  yes    |  yes    |  yes    |  yes    |  yes    |  no  |
 | MN/SN   | [2]_    | [2]_    |         |         |         |         |         |         |      |
 +---------+---------+---------+---------+---------+---------+---------+---------+---------+------+
@@ -44,11 +44,9 @@ Support Matrix
 
 Notes:
 
-* All the "yes" and "no" statements in the table are referring to hardware control and os provisioning, for the general purpose management like file sync and parallel commands, we do not see any obvious problem with any of the combination.
+* The support statements refers to hardware control, operating system (os) provisioning, and general purpose system management where we do not see any obvious problems with the indicated combination.
 
-* The "yes" means should work but may or may not have been verified by the xCAT development/testing team. 
-
-* For diskless node, need another node that has the same os version and arch with the compute nodes to create diskless image, see :ref:`Building_a_Stateless_Image_of_a_Different_Architecture_or_OS` for more details.
+* For diskless mixed cluster support, the initial diskless image must be created on a node running the target operating system version and architecture. see :ref:`Building_a_Stateless_Image_of_a_Different_Architecture_or_OS` for more details.
 
 .. rubric:: Footnotes
 
