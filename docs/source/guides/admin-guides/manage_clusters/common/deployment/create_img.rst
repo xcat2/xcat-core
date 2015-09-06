@@ -5,7 +5,7 @@ Select or Create an osimage Definition
 
 Before creating image by xCAT, distro media should be prepared ahead. That can be ISOs or DVDs.
 
-XCAT use 'copycds' command to create image which will be available to install nodes. 'copycds' command copies the contents of distro from media to /install/<os>/<arch> on management node.
+XCAT use 'copycds' command to create image which will be available to install nodes. "copycds" will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
 
 If using an ISO, copy it to (or NFS mount it on) the management node, and then run:
 ::
@@ -15,7 +15,6 @@ If using a DVD, put it in the DVD drive of the management node and run:
 ::
     copycds /dev/<dvd-drive-name> 
 
-The 'copycds' command automatically creates several osimage defintions in the database that can be used for node deployment. 
 To see the list of osimages, run
 ::
     lsdef -t osimage 
@@ -45,5 +44,5 @@ If need to change osimage name to your favorite name, below statement maybe help
 ::
     lsdef -t osimage -z rhels6.2-x86_64-install-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
 
-	
+
 

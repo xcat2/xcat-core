@@ -18,14 +18,14 @@ Choose such additional attribute of nodeset according to your requirement, if wa
 Start the OS Deployment
 =======================
 
-Start the deployment involves two key operations. One is setup node boot from network, another is reboot ndoe:
+Start the deployment involves two key operations. First specify the boot device of the next boot to be network, then reboot the node:
 
 For Power machine, those two operations can be completed by one command '**rnetboot**', 
 ::
     rnetboot <node>
 
 But for x server, those two operations need two independent commands.
-Set x server boot from network, run	
+Specify the boot device boot from network next time, run	
 ::
     rsetboot <node> net
 
