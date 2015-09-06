@@ -1,4 +1,4 @@
-.. _diskful_installation:
+.. _diskfull_installation:
 
 Diskful Installation
 ====================
