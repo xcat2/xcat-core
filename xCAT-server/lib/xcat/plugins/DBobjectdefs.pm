@@ -195,7 +195,7 @@ sub parse_attr_for_osimage{
         if (!exists($attr_hash->{osvers})) {
             $tmp_osvers = xCAT::Utils->osver("all");
             $tmp_osvers =~ s/,//;
-            $attr_hash->{osvers} = $tmp_osvers; 
+            $attr_hash->{osvers} = $tmp_osvers;
         } else {
             $tmp_osvers =$attr_hash->{osvers};
         }
@@ -208,17 +208,17 @@ sub parse_attr_for_osimage{
         } else {
             $tmp_arch = $attr_hash->{osarch};
         }
-         
+
         #for ubuntu,the the arch attribute "ppc64le" should be modified to "ppc64el"
         if(($tmp_osvers =~ /^ubuntu/i) && ($tmp_arch =~ /^ppc64le/i)){
             $tmp_arch="ppc64el";
-            $attr_hash->{osarch} = "ppc64el"; 
-        } 
-        
+            $attr_hash->{osarch} = "ppc64el";
+        }
+
         $tmp_osname = $tmp_osvers;
         $tmp_ostype="Linux";  #like Linux, Windows
         $tmp_imagetype="linux";
-        my $prov_dir = ($tmp_provmethod eq "install") ? "install" : "netboot"; 
+        my $prov_dir = ($tmp_provmethod eq "install") ? "install" : "netboot";
         if (($tmp_osvers =~ /^win/) || ($tmp_osvers =~ /^imagex/)) {
             $tmp_osname="windows";
             $tmp_ostype="Windows";
@@ -243,7 +243,7 @@ sub parse_attr_for_osimage{
         $tmp_genos =~ s/\..*//;
         if ($tmp_genos =~ /rh.*s(\d*)/) {
             $tmp_genos = "rhel$1";
-        }             
+        }
         if (exists($attr_hash->{imagetype}) && ($attr_hash->{imagetype} !~ /^$tmp_imagetype/i)) {
             my $rsp;
             $rsp->{data}->[0] = "The input imagetype:$attr_hash->{imagetype} not match $tmp_imagetype.";
@@ -259,7 +259,7 @@ sub parse_attr_for_osimage{
             return -1;
         } elsif (!exists($attr_hash->{osname})) {
             $attr_hash->{osname} = $tmp_ostype;
-        } 
+        }
         #if (!exists($attr_hash->{osdistroname})) {
             $attr_hash->{osdistroname} = "$tmp_osvers-$tmp_arch";
         #}
@@ -300,7 +300,7 @@ sub parse_attr_for_osimage{
                 my $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($cuspath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
                 if (!$tmp_tmplfile) {
                     $tmp_tmplfile = xCAT::SvrUtils->get_tmpl_file_name($defpath, $tmp_profile, $tmp_osvers, $tmp_arch, $tmp_genos);
-                } 
+                }
                 if ($tmp_tmplfile) {
                     $attr_hash->{template} = $tmp_tmplfile;
                 }
@@ -399,16 +399,16 @@ sub processArgs
         }
     }
     if ( defined ($::args) && @{$::args} ) {
-      if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
-      {
-        if ($::command eq "lsdef") {
-            push @ARGV, "-t";
-            push @ARGV, "node";
-            push @ARGV, "-s";
-        } else {
-            return 2;
+        if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+        {
+            if ($::command eq "lsdef") {
+                push @ARGV, "-t";
+                push @ARGV, "node";
+                push @ARGV, "-s";
+            } else {
+                return 2;
+            }
         }
-      }
     }
 
     if ($::command eq "lsdef") {
@@ -427,8 +427,8 @@ sub processArgs
     if (scalar(@ARGV) <= 0) {
         return 2;
     }
-   
-    # clean up all the global variables for each options 
+
+    # clean up all the global variables for each options
     # so def command can be called multiple times in one process
     undef $::opt_a;
     undef $::opt_c;
@@ -488,7 +488,6 @@ sub processArgs
         )
       )
     {
-
         my $rsp;
         $rsp->{data}->[0] = "Invalid option..";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
@@ -529,8 +528,7 @@ sub processArgs
     {
 
         my $rsp;
-        $rsp->{data}->[0] =
-          "The \'-x\' (XML format) option is not yet implemented.";
+        $rsp->{data}->[0] = "The \'-x\' (XML format) option is not yet implemented.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -627,10 +625,10 @@ sub processArgs
             # can not have spaces in the noderange
             if ($noderangespace)
             {
-               my $rsp;
-               $rsp->{data}->[0] = "noderange can not contain spaces.";
-               xCAT::MsgUtils->message("E", $rsp, $::callback);
-               return 2;
+                my $rsp;
+                $rsp->{data}->[0] = "noderange can not contain spaces.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 2;
             }
             $noderangespace++;
             # the first arg could be a noderange or a list of args
@@ -716,8 +714,8 @@ sub processArgs
     # use -o instead
     if ($::command eq 'rmdef')
     {
-        if (defined($::opt_d) || defined($::opt_i) || defined($::opt_l) 
-           || defined($::opt_m) || defined($::opt_p) || defined($::opt_w) 
+        if (defined($::opt_d) || defined($::opt_i) || defined($::opt_l)
+           || defined($::opt_m) || defined($::opt_p) || defined($::opt_w)
            || defined($::opt_x) || defined($::opt_z) || defined($::opt_s))
         {
             my $rsp;
@@ -792,8 +790,7 @@ sub processArgs
             if ($gotattrs)
             {
                 my $rsp;
-                $rsp->{data}->[0] =
-                  "Cannot combine multiple types with \'att=val\' pairs on the command line.";
+                $rsp->{data}->[0] = "Cannot combine multiple types with \'att=val\' pairs on the command line.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 3;
             }
@@ -819,8 +816,7 @@ sub processArgs
             if (!grep(/^$t$/, @xdeftypes))
             {
                 my $rsp;
-                $rsp->{data}->[0] =
-                  "\nType \'$t\' is not a valid xCAT object type.";
+                $rsp->{data}->[0] = "\nType \'$t\' is not a valid xCAT object type.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 3;
             }
@@ -866,7 +862,7 @@ sub processArgs
                 my $schema = xCAT::Table->getTableSchema('site');
                 my $desc;
 
-                $rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT."; 
+                $rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT.";
 
                 $desc = $schema->{descriptions}->{'key'};
                 $rsp->{data}->[1] = $desc;
@@ -918,8 +914,8 @@ sub processArgs
                     }
                 }
                 my $desc = $this_attr->{description};
-                if (!defined($desc)) {     
-                    # description key not there, so go to the corresponding 
+                if (!defined($desc)) {
+                    # description key not there, so go to the corresponding
                     #    entry in tabspec to get the description
                     my ($tab, $at) = split(/\./, $this_attr->{tabentry});
                     my $schema = xCAT::Table->getTableSchema($tab);
@@ -949,7 +945,7 @@ sub processArgs
             if ($t eq 'monitoring') {
                 $rsp->{data}->[3] = "\nYou can also include additional monitoring plug-in specific settings. These settings will be used by the monitoring plug-in to customize the behavior such as event filter, sample interval, responses etc.";
             }
-            
+
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
 
@@ -1029,8 +1025,7 @@ sub processArgs
         if (($::command eq 'rmdef') || ($::command eq 'chdef'))
         {
             my $rsp;
-            $rsp->{data}->[0] =
-              "No object names were provided.";
+            $rsp->{data}->[0] = "No object names were provided.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
@@ -1059,8 +1054,7 @@ sub processArgs
                     unless (@tmplist)
                     {
                         my $rsp;
-                        $rsp->{data}->[0] =
-                          "Could not get objects of type \'$t\'.";
+                        $rsp->{data}->[0] = "Could not get objects of type \'$t\'.";
                         #$rsp->{data}->[1] = "Skipping to the next type.\n";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         return 3;
@@ -1084,8 +1078,7 @@ sub processArgs
     {
 
         my $rsp;
-        $rsp->{data}->[0] =
-          "Cannot use \'-a\' with \'-o\', a noderange or file input.";
+        $rsp->{data}->[0] = "Cannot use \'-a\' with \'-o\', a noderange or file input.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
@@ -1125,8 +1118,7 @@ sub processArgs
     if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "No object names were provided.";
+        $rsp->{data}->[0] = "No object names were provided.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
@@ -1135,7 +1127,6 @@ sub processArgs
     @::allobjnames = @::clobjnames;
     if (scalar(@::fileobjnames) > 0)
     {
-
         # add list from stanza or xml file
         push @::allobjnames, @::fileobjnames;
     }
@@ -1175,7 +1166,7 @@ sub processArgs
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     return 1;
                 }
-             }
+            }
         }
     }
 
@@ -1183,8 +1174,7 @@ sub processArgs
     if ($::opt_i && ($::command ne 'lsdef'))
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "The \'-i\' option is only valid for the lsdef command.";
+        $rsp->{data}->[0] = "The \'-i\' option is only valid for the lsdef command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
@@ -1199,7 +1189,7 @@ sub processArgs
         {
             if($::AttrList[$i] =~ /^(nic\w+)\.(.*)$/)
             {
-                $::AttrList[$i] = $1; 
+                $::AttrList[$i] = $1;
                 push @{$::NicsAttrHash{$::AttrList[$i]}}, $2;
             }
         }
@@ -1269,8 +1259,7 @@ sub defmk
 
         # error
         my $rsp;
-        $rsp->{data}->[0] =
-          "The \'-p\' and \'-m\' options are not valid for the mkdef command.";
+        $rsp->{data}->[0] = "The \'-p\' and \'-m\' options are not valid for the mkdef command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defmk_usage;
         return 1;
@@ -1279,8 +1268,7 @@ sub defmk
     if ($::opt_t && ($::opt_a || $::opt_z || $::opt_x))
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.";
+        $rsp->{data}->[0] = "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defmk_usage;
         return 1;
@@ -1360,8 +1348,7 @@ sub defmk
                 if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
+                    $rsp->{data}->[0] = "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
                     $rsp->{data}->[1] = "Skipping to the next attribute.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
@@ -1444,9 +1431,9 @@ sub defmk
 
         # we don't want to overwrite any existing table row.  This could
         #    happen if there are multiple table keys. (ex. networks table -
-        #        where the object name is not either of the table keys - net 
+        #        where the object name is not either of the table keys - net
         #        & mask)
-        #  just handle network objects for now - 
+        #  just handle network objects for now -
         if ($type eq 'network') {
             my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
             my %objhash;
@@ -1462,7 +1449,7 @@ sub defmk
                     $error = 1;
                     delete $::FINALATTRS{$obj};
                     next OBJ;
-                }    
+                }
             }
         }
 
@@ -1478,8 +1465,7 @@ sub defmk
                 {
                     $error = 1;
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not remove the definition for \'$obj\'.";
+                    $rsp->{data}->[0] = "Could not remove the definition for \'$obj\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                 }
             }
@@ -1488,12 +1474,9 @@ sub defmk
 
                 #  won't remove the old one unless the force option is used
                 my $rsp;
-                $rsp->{data}->[0] =
-                  "\nA definition for \'$obj\' already exists.";
-                $rsp->{data}->[1] =
-                  "To remove the old definition and replace it with \na new definition use the force \'-f\' option.";
-                $rsp->{data}->[2] =
-                  "To change the existing definition use the \'chdef\' command.";
+                $rsp->{data}->[0] = "\nA definition for \'$obj\' already exists.";
+                $rsp->{data}->[1] = "To remove the old definition and replace it with \na new definition use the force \'-f\' option.";
+                $rsp->{data}->[2] = "To change the existing definition use the \'chdef\' command.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 $error = 1;
                 delete $::FINALATTRS{$obj};
@@ -1514,7 +1497,7 @@ sub defmk
             {
                 if ($::opt_d)
                 {
-                    # For dynamic node group, 
+                    # For dynamic node group,
                     # can not assign attributes for inherit
                     # only the 'objtype' in %::FINALATTRS
                     if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
@@ -1525,7 +1508,7 @@ sub defmk
                         $error = 1;
                         delete($::FINALATTRS{$obj});
                         next;
-                    } 
+                    }
                     $::FINALATTRS{$obj}{grouptype} = 'dynamic';
                     $::FINALATTRS{$obj}{members}   = 'dynamic';
                 }
@@ -1548,8 +1531,7 @@ sub defmk
                     else
                     {
                         my $rsp;
-                        $rsp->{data}->[0] =
-                          "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.";
+                        $rsp->{data}->[0] = "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.";
                         $rsp->{data}->[1] = "Skipping to the next group.";
                         xCAT::MsgUtils->message("E", $rsp, $::callback);
                         next;
@@ -1563,8 +1545,7 @@ sub defmk
                 if ($::opt_w && $::FINALATTRS{$obj}{members})
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Cannot use a list of members together with the \'-w\' option.";
+                    $rsp->{data}->[0] = "Cannot use a list of members together with the \'-w\' option.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     return 1;
                 }
@@ -1618,8 +1599,7 @@ sub defmk
                     else
                     {
                         my $rsp;
-                        $rsp->{data}->[0] =
-                          "Cannot determine a member list for group \'$obj\'.";
+                        $rsp->{data}->[0] = "Cannot determine a member list for group \'$obj\'.";
                         xCAT::MsgUtils->message("W", $rsp, $::callback);
                     }
                 }
@@ -1703,8 +1683,7 @@ sub defmk
         if (($type eq "node") && (!defined($::FINALATTRS{$obj}{groups}) || !$::FINALATTRS{$obj}{groups}))
         {
             my $rsp;
-            $rsp->{data}->[0] =
-            "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
+            $rsp->{data}->[0] = "Attribute \'groups\' is not specified for node \'$obj\', skipping to the next node.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             $error = 1;
             next;
@@ -1718,8 +1697,8 @@ sub defmk
             if ($rc) {
                 $error = $rc;
                 next;
-            } 
-        } 
+            }
+        }
 
     } # end of each obj
 
@@ -1739,8 +1718,7 @@ sub defmk
     if ($error)
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
+        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -1751,8 +1729,7 @@ sub defmk
 
             #  give results
             my $rsp;
-            $rsp->{data}->[0] =
-              "The database was updated for the following objects:";
+            $rsp->{data}->[0] = "The database was updated for the following objects:";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
 
             my $n = 1;
@@ -1767,8 +1744,7 @@ sub defmk
         {
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
-            $rsp->{data}->[0] =
-              "$nodenum object definitions have been created or modified.";
+            $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         return 0;
@@ -1850,8 +1826,7 @@ sub defch
 
         if (scalar (@::clobjnames) > 1) {
             my $rsp;
-            $rsp->{data}->[0] =
-              "The \'-n\' option (changing object name) can only work on one object.";
+            $rsp->{data}->[0] = "The \'-n\' option (changing object name) can only work on one object.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             &defch_usage;
             return 1;
@@ -1862,8 +1837,7 @@ sub defch
         my @validnode = xCAT::DBobjUtils->getObjectsOfType($::clobjtypes[0]);
         if (! grep /^$::clobjnames[0]$/, @validnode) {
             my $rsp;
-            $rsp->{data}->[0] =
-              "The $::clobjnames[0] is not a valid object.";
+            $rsp->{data}->[0] = "The $::clobjnames[0] is not a valid object.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 1;
         }
@@ -1881,14 +1855,14 @@ sub defch
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 1;
             }
-            
+
             my $index = 0;
             my @taben = @{$chnamehash{$tb}};
-            # In the @taben, there are several pair of value for 
+            # In the @taben, there are several pair of value for
             # changing the key value of a table entry
             my @keystrs = ();
             while ($taben[$index]) {
-                # Make a key word string to avoid that changing 
+                # Make a key word string to avoid that changing
                 # one table record multiple times
                 my $keystr;
                 foreach my $key (sort(keys %{$taben[$index]})) {
@@ -1909,7 +1883,7 @@ sub defch
         my $rsp;
         push @{$rsp->{data}}, "Changed the object name from $::clobjnames[0] to $::opt_n.";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
-        
+
         return 0;
     }
 
@@ -1918,8 +1892,7 @@ sub defch
 
         # error
         my $rsp;
-        $rsp->{data}->[0] =
-          "The \'-f\' option is not valid for the chdef command.";
+        $rsp->{data}->[0] = "The \'-f\' option is not valid for the chdef command.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defch_usage;
         return 1;
@@ -1928,8 +1901,7 @@ sub defch
     if ($::opt_t && ($::opt_a || $::opt_z || $::opt_x))
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.";
+        $rsp->{data}->[0] = "Cannot combine \'-t\' and \'-a\', \'-z\', or \'-x\' options.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defch_usage;
         return 1;
@@ -1945,7 +1917,7 @@ sub defch
         &defch_usage;
         return 1;
     }
-    
+
     if ($::opt_t eq "osimage" && $::opt_setattr && ($::opt_p || $::opt_m)) {
         my $rsp;
         $rsp->{data}->[0] = "Cannot use \'-u\' with \'-p\' or \'-m\'.";
@@ -2004,8 +1976,7 @@ sub defch
                 if (!defined($list{$attr}) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
+                    $rsp->{data}->[0] = "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
                     $rsp->{data}->[1] = "Skipping to the next attribute.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
@@ -2106,8 +2077,7 @@ sub defch
 
             #error - cannot remove items from an object that does not exist.
             my $rsp;
-            $rsp->{data}->[0] =
-              "The \'-m\' option is not valid since the \'$obj\' definition does not exist.";
+            $rsp->{data}->[0] = "The \'-m\' option is not valid since the \'$obj\' definition does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             $error = 1;
             next;
@@ -2127,18 +2097,18 @@ sub defch
             my %objhash;
             if ($::opt_d)
             {
-               # For dynamic node group,
-               # can not assign attributes for inherit
-               # only the 'objtype' in %::FINALATTRS
-               if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
-               {
-                   my $rsp;
-                   $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
-                   xCAT::MsgUtils->message("E", $rsp, $::callback);
-                   $error = 1;
-                   delete($::FINALATTRS{$obj});
-                   next;
-               }
+                # For dynamic node group,
+                # can not assign attributes for inherit
+                # only the 'objtype' in %::FINALATTRS
+                if (scalar(keys %{$::FINALATTRS{$obj}}) > 1)
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    delete($::FINALATTRS{$obj});
+                    next;
+                }
             }
             if ($isDefined)
             {
@@ -2149,8 +2119,7 @@ sub defch
                 if (!(%grphash))
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not get xCAT object definitions.";
+                    $rsp->{data}->[0] = "Could not get xCAT object definitions.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     return 1;
 
@@ -2159,11 +2128,11 @@ sub defch
                 if (($grptype eq "dynamic") && (scalar(keys %{$::FINALATTRS{$obj}}) > 1))
                 {
                     my $rsp;
-                   $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
-                   xCAT::MsgUtils->message("E", $rsp, $::callback);
-                   $error = 1; 
-                   delete($::FINALATTRS{$obj});
-                   next;
+                    $rsp->{data}->[0] = "Can not assign attributes to dynamic node group \'$obj\'.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    delete($::FINALATTRS{$obj});
+                    next;
                 }
                 # for now all groups are static
                 #$grptype = 'static';
@@ -2205,8 +2174,7 @@ sub defch
                 if ($::opt_w && $::FINALATTRS{$obj}{members})
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Cannot use a list of members together with the \'-w\' option.";
+                    $rsp->{data}->[0] = "Cannot use a list of members together with the \'-w\' option.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
                     next;
@@ -2244,10 +2212,10 @@ sub defch
                     my $rc = xCAT::Utils->parse_selection_string(\@wherevals, \%::WhereHash);
                     if ($rc != 0)
                     {
-                         my $rsp;
-                         $rsp->{data}->[0] = "Incorrect selection string";
-                         xCAT::MsgUtils->message("E", $rsp, $::callback);
-                         return 3;
+                        my $rsp;
+                        $rsp->{data}->[0] = "Incorrect selection string";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
                     }
 
                     # get the attrs for these nodes
@@ -2299,8 +2267,7 @@ sub defch
                         if (!$::FINALATTRS{$obj}{wherevals})
                         {
                             my $rsp;
-                            $rsp->{data}->[0] =
-                              "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.";
+                            $rsp->{data}->[0] = "The \'where\' attributes and values were not provided for dynamic group \'$obj\'.";
                             $rsp->{data}->[1] = "Skipping to the next group.";
                             xCAT::MsgUtils->message("E", $rsp, $::callback);
                             $error = 1;
@@ -2501,12 +2468,11 @@ sub defch
         #        xCAT::MsgUtils->message("E", $rsp, $::callback);
         $error = 1;
     }
-    
+
     if ($error)
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
+        $rsp->{data}->[0] = "One or more errors occured when attempting to create or modify xCAT \nobject definitions.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -2519,8 +2485,7 @@ sub defch
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
             if ($nodenum) {
-                $rsp->{data}->[0] =
-                  "The database was updated for the following objects:";
+                $rsp->{data}->[0] = "The database was updated for the following objects:";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
 
                 my $n = 1;
@@ -2530,8 +2495,7 @@ sub defch
                     $n++;
                 }
             } else {
-                $rsp->{data}->[0] = 
-                "No database was updated";
+                $rsp->{data}->[0] = "No database was updated";
             }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
@@ -2540,11 +2504,9 @@ sub defch
             my $rsp;
             my $nodenum = scalar(keys %::FINALATTRS);
             if ($nodenum) {
-                $rsp->{data}->[0] =
-                  "$nodenum object definitions have been created or modified.";
+                $rsp->{data}->[0] = "$nodenum object definitions have been created or modified.";
             } else {
-               $rsp->{data}->[0] =
-                  "No object definitions have been created or modified.";
+               $rsp->{data}->[0] = "No object definitions have been created or modified.";
             }
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
@@ -2570,9 +2532,8 @@ sub defch
                     $rsp->{data}->[0] = "The node name \'$invalidnodename\' contains capital letters which may not be resolved correctly by the dns server.";
                     xCAT::MsgUtils->message("W", $rsp, $::callback);
                 }
-   
             }
-        }  
+        }
         return 0;
     }
 }
@@ -2659,8 +2620,7 @@ sub setFINALattrs
                 {
 
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
+                    $rsp->{data}->[0] = "\'$attr\' is not a valid attribute name for an object type of \'$::objtype\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     $error = 1;
                     next;
@@ -2681,7 +2641,7 @@ sub setFINALattrs
                 }
 
             }
-            # need to make sure the node attr is set otherwise nothing 
+            # need to make sure the node attr is set otherwise nothing
             #    gets set in the nodelist table
             if ($::FINALATTRS{$objname}{objtype} eq "node") {
                 $::FINALATTRS{$objname}{node} = $objname;
@@ -2715,7 +2675,7 @@ sub setFINALattrs
                             $rsp->{data}->[0] = "Could not open the \'nics\' table.";
                             xCAT::MsgUtils->message("E", $rsp, $::callback);
                             return 1;
-                        } 
+                        }
                         my $nichash = $nicstable->getNodeAttribs($objname, [$tmpnicattr]);
                         if ($nichash && $nichash->{$tmpnicattr})
                         {
@@ -2764,7 +2724,7 @@ sub setFINALattrs
             }
 
         }
-        # need to make sure the node attr is set otherwise nothing 
+        # need to make sure the node attr is set otherwise nothing
         #   gets set in the nodelist table
         if ($::FINALATTRS{$objname}{objtype} eq "node") {
             $::FINALATTRS{$objname}{node} = $objname;
@@ -2853,9 +2813,9 @@ sub defls
     if ($::opt_s) {
         $long = 0;
     }
-    
+
     # which attrs do we want?
-    # this is a temp hack to help scaling when you only 
+    # this is a temp hack to help scaling when you only
     #   want a list of nodes - needs to be fully implemented
     if ($::opt_l || $::opt_w) {
         # if long or -w then get all the attrs
@@ -2893,7 +2853,7 @@ sub defls
             @neededattrs = (@neededattrs, @whereattrs);
         }
     }
-    
+
     if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
         my $type = $::clobjtypes[0];
@@ -2958,8 +2918,7 @@ sub defls
                 else
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not get objects of type \'$t\'.";
+                    $rsp->{data}->[0] = "Could not get objects of type \'$t\'.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
                 }
             }
@@ -3043,14 +3002,14 @@ sub defls
                     my $osimagename;
                     #provmethod can be set to osimage name
                     if($myhash{$obj}{'provmethod'} && ($myhash{$obj}{'provmethod'} ne 'install')
-                      && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite')) 
+                      && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite'))
                     {
                         $osimagename = $myhash{$obj}{'provmethod'};
                     }
                     else
                     {
                         # prvomethod = install/netboot/statelite,
-                        # search /opt/xcat/share/xcat/<provmethod/<platform> 
+                        # search /opt/xcat/share/xcat/<provmethod/<platform>
                         # and /install/custom/<provmethod/<platform>
                         my $profile = $myhash{$obj}{'profile'};
                         my $os = $myhash{$obj}{'os'};
@@ -3078,7 +3037,7 @@ sub defls
                             $nodeosimagehash{$obj}{'provmethod'} = $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'provmethod'};
                             next;
                         }
-                        if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'} 
+                        if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'}
                            && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
                         {
                             #$osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
@@ -3100,22 +3059,22 @@ sub defls
                             $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'profile'} = $profile;
                             $nodeosimagehash{$obj}{'provmethod'} = $provmethod;
                             $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'provmethod'} = $provmethod;
-                                
+
                             # pkgdir both diskful and diskless
-			                $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
-			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
+                            $nodeosimagehash{$obj}{'pkgdir'} = "$installroot/$os/$arch";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'pkgdir'} = "$installroot/$os/$arch";
                             # rootimgdir only for diskless
-			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
-			                {
-			                   $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
-			                   $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
-			                }
+                            if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+                            {
+                               $nodeosimagehash{$obj}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                               $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'rootimgdir'} = "$installroot/netboot/$os/$arch/$profile";
+                            }
                             # otherpkgdir for both diskful and diskless
-			                $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
-			                $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+                            $nodeosimagehash{$obj}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
+                            $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkgdir'} = "$installroot/post/otherpkgs/$os/$arch";
 
                             # template file only for diskful
-			                if ($provmethod eq 'install')
+                            if ($provmethod eq 'install')
                             {
                                 my $tmplfile = xCAT::SvrUtils->get_tmpl_file_name($custpath, $profile, $os, $arch, $os);
                                 if (!$tmplfile)
@@ -3151,7 +3110,7 @@ sub defls
                                 $tmpprofilelist{$os}{$arch}{$provmethod}{$profile}{'otherpkglist'} = $otherpkgsfile;
                             }
                             # postinstall and exlist only for diskless
-			                if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
+                            if (($provmethod eq 'netboot') || ($provmethod eq 'statelite'))
                             {
                                 # Get postinstall file
                                 my $postfile = xCAT::SvrUtils->get_postinstall_file_name($custpath, $profile, $os, $arch);
@@ -3187,8 +3146,7 @@ sub defls
                         else
                         {
                             my $rsp;
-                            $rsp->{data}->[0] =
-                            "Missing attributes for node $obj, check the node attributes \'os\', \'arch\',\'profile\' and \'provmethod\'.";
+                            $rsp->{data}->[0] = "Missing attributes for node $obj, check the node attributes \'os\', \'arch\',\'profile\' and \'provmethod\'.";
                             xCAT::MsgUtils->message("E", $rsp, $::callback);
                             next;
                         }
@@ -3215,7 +3173,7 @@ sub defls
 
             # Put the osimage definition in %nodeosimagehash
             foreach my $obj (keys %myhash)
-            {    
+            {
                 if ($myhash{$obj}{'objtype'} eq 'node')
                 {
                     my $imgname = $nodeosimgname{$obj};
@@ -3255,46 +3213,45 @@ sub defls
                     $xcatdefaultspbs = $tablerow->{postbootscripts};
                     last;
                 }
-             }
-         }
-         foreach my $obj (keys %myhash)
-         {
-             if ($myhash{$obj}{objtype} eq 'node')
-             {
-                 if($xcatdefaultsps)
-                 {
-                     if ($myhash{$obj}{postscripts})
-                     {
-                         $myhash{$obj}{postscripts} = $xcatdefaultsps . ',' . $myhash{$obj}{postscripts};
-                     }
-                     else
-                     {
-                         $myhash{$obj}{postscripts} = $xcatdefaultsps;
-                     }
-                     if($::opt_V && ($myhash{$obj}{postscripts} eq $xcatdefaultsps))
-                     {
-                         $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
-                     }
-                 }
-                 if($xcatdefaultspbs)
-                 {
-                     if ($myhash{$obj}{postbootscripts})
-                     {
-                         $myhash{$obj}{postbootscripts} = $xcatdefaultspbs . ',' . $myhash{$obj}{postbootscripts};
-                     }
-                     else
-                     {
-                         $myhash{$obj}{postbootscripts} = $xcatdefaultspbs;
-                     }
-                     if($::opt_V && ($myhash{$obj}{postbootscripts} eq $xcatdefaultspbs))
-                     {
-                         $myhash{$obj}{postbootscripts} .= "       (Table:postscripts - Key:node - Column:postbootscripts)";
-                     }
-                 }
-             }
-         }
+            }
+        }
+        foreach my $obj (keys %myhash)
+        {
+            if ($myhash{$obj}{objtype} eq 'node')
+            {
+                if($xcatdefaultsps)
+                {
+                    if ($myhash{$obj}{postscripts})
+                    {
+                        $myhash{$obj}{postscripts} = $xcatdefaultsps . ',' . $myhash{$obj}{postscripts};
+                    }
+                    else
+                    {
+                        $myhash{$obj}{postscripts} = $xcatdefaultsps;
+                        if($::opt_V) {
+                            $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
+                        }
+                    }
+                }
+                if($xcatdefaultspbs)
+                {
+                    if ($myhash{$obj}{postbootscripts})
+                    {
+                        $myhash{$obj}{postbootscripts} = $xcatdefaultspbs . ',' . $myhash{$obj}{postbootscripts};
+                    }
+                    else
+                    {
+                        $myhash{$obj}{postbootscripts} = $xcatdefaultspbs;
+                    }
+                    if($::opt_V && ($myhash{$obj}{postbootscripts} eq $xcatdefaultspbs))
+                    {
+                        $myhash{$obj}{postbootscripts} .= "       (Table:postscripts - Key:node - Column:postbootscripts)";
+                    }
+                }
+            }
+        }
     }
-      
+
     # the list of objects may be limited by the "-w" option
     # see which objects have attr/val that match the where values
     #        - if provided
@@ -3324,17 +3281,17 @@ sub defls
     # for each type
     foreach my $type (@::clobjtypes)
     {
-       # Check if -i specifies valid attributes
-       # get the data type definition from Schema.pm
-       my %validattrslist;
-       if ($::opt_i)
-       {
-           my $datatype = $xCAT::Schema::defspec{$type};
-           foreach my $this_attr (sort @{$datatype->{'attrs'}})
-           {
-               my $a = $this_attr->{attr_name};
-               $validattrslist{$a} = 1;
-           }
+        # Check if -i specifies valid attributes
+        # get the data type definition from Schema.pm
+        my %validattrslist;
+        if ($::opt_i)
+        {
+            my $datatype = $xCAT::Schema::defspec{$type};
+            foreach my $this_attr (sort @{$datatype->{'attrs'}})
+            {
+                my $a = $this_attr->{attr_name};
+                $validattrslist{$a} = 1;
+            }
         }
 
         my %defhash;
@@ -3355,45 +3312,43 @@ sub defls
         if ($numobjects == 0)
         {
             my $rsp;
-            $rsp->{data}->[0] =
-              "Could not find any object definitions to display.";
+            $rsp->{data}->[0] = "Could not find any object definitions to display.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             return 0;
         }
 
-        
+
         if ($type eq "node") {
             my %newhash;
             my $listtab  = xCAT::Table->new( 'nodelist' );
             if (!$listtab) {
                 my $rsp;
-                $rsp->{data}->[0] =
-                 "Could not open nodelist table.";
+                $rsp->{data}->[0] = "Could not open nodelist table.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 return 1;
-            } 
-            
+            }
+
             if (!defined($::opt_S) ) {
                 #my $tmp1=$listtab->getAllEntries("all");
                 #if (defined($tmp1) && (@$tmp1 > 0)) {
                 #    foreach(@$tmp1) {
                 #        $newhash{$_->{node}} = 1;
                 #    }
-                #}                
-            
+                #}
+
                 foreach my $n (keys %defhash) {
                     #if ($newhash{$n} eq 1) {
                         my ($hidhash) = $listtab->getNodeAttribs($n ,['hidden']);
                         if ($hidhash) {
-                            if ( $hidhash->{hidden} eq 1)  {  
+                            if ( $hidhash->{hidden} eq 1)  {
                                 delete $defhash{$n};
                             }
                         }
                     #}
                 }
             }
-        }            
-            
+        }
+
         # Get all the objects of this type
         my @allobjoftype;
         @allobjoftype = xCAT::DBobjUtils->getObjectsOfType($type);
@@ -3401,8 +3356,7 @@ sub defls
         unless (@allobjoftype)
         {
             my $rsp;
-            $rsp->{data}->[0] =
-              "Could not find any objects of type \'$type\'.";
+            $rsp->{data}->[0] = "Could not find any objects of type \'$type\'.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             next;
         }
@@ -3427,19 +3381,18 @@ sub defls
                             }
                         } else {
                             my $rsp;
-                            $rsp->{data}->[0] =
-                                "\'$attr\' is not a valid attribute name for an object type of \'$type\'.";
+                            $rsp->{data}->[0] = "\'$attr\' is not a valid attribute name for an object type of \'$type\'.";
                             xCAT::MsgUtils->message("E", $rsp, $::callback);
                             next;
                         }
-                   }
+                    }
                 }
             } else {
                 # get the list of all attrs for this type object
                 # get the data type  definition from Schema.pm
                 my $datatype =
                   $xCAT::Schema::defspec{$type};
-    
+
                 foreach my $this_attr (@{$datatype->{'attrs'}})
                 {
                     if (!grep(/^$this_attr->{attr_name}$/, @attrlist)) {
@@ -3448,7 +3401,7 @@ sub defls
                 }
             }
         }
-            
+
         # for each object
         foreach my $obj (sort keys %defhash)
         {
@@ -3475,8 +3428,7 @@ sub defls
                 if (!grep(/^$obj$/, @allobjoftype))
                 {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not find an object named \'$obj\' of type \'$type\'.";
+                    $rsp->{data}->[0] = "Could not find an object named \'$obj\' of type \'$type\'.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
                     next;
                 }
@@ -3498,7 +3450,7 @@ sub defls
             }
             else
             {
-                
+
                 # display all data
                 # do we want the short or long output?
                 if ($long)
@@ -3519,7 +3471,7 @@ sub defls
                             if (!$::opt_c)
                             {
                                 push (@{$rsp_info->{data}}, "Object name: $obj");
-                            } 
+                            }
                         }
                     }
 
@@ -3588,12 +3540,12 @@ sub defls
                                         if (!$::opt_c)
                                         {
                                             push (@{$rsp_info->{data}}, "    $showattr=$attrval");
-                                        } 
+                                        }
                                         else
                                         {
                                             push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
 
-                                        } 
+                                        }
                                     }
                                 }
                             }
@@ -3711,8 +3663,7 @@ sub defls
     #    }
     #}else {
     #    my $rsp;
-    #    $rsp->{data}->[0] =
-    #     "Could not open nodelist table.";
+    #    $rsp->{data}->[0] = "Could not open nodelist table.";
     #    xCAT::MsgUtils->message("I", $rsp, $::callback);
     #}
 
@@ -3720,7 +3671,7 @@ sub defls
     if (defined($rsp_info->{data}) && scalar(@{$rsp_info->{data}}) > 0) {
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
     }
-    
+
     return 0;
 }
 
@@ -3782,8 +3733,7 @@ sub defrm
     if ($::opt_a && !$::opt_f)
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "You must use the \'-f\' option when using the \'-a\' option.";
+        $rsp->{data}->[0] = "You must use the \'-f\' option when using the \'-a\' option.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defrm_usage;
         return 1;
@@ -3829,8 +3779,7 @@ sub defrm
     if ($::opt_w)
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "The \'-w\' option is not supported for the rmdef command.";
+        $rsp->{data}->[0] = "The \'-w\' option is not supported for the rmdef command.";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         $error = 1;
         return 1;
@@ -3893,8 +3842,7 @@ sub defrm
             if (!(%grphash))
             {
                 my $rsp;
-                $rsp->{data}->[0] =
-                  "Could not get xCAT object definition for \'$obj\'.";
+                $rsp->{data}->[0] = "Could not get xCAT object definition for \'$obj\'.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
                 next;
             }
@@ -3933,8 +3881,7 @@ sub defrm
                     my $rsp;
                 my @nodes = keys %nhash;
                 my $m = join ',', @nodes;
-                    $rsp->{data}->[0] =
-                      "Could not get xCAT object definition for \'$m\'.";
+                    $rsp->{data}->[0] = "Could not get xCAT object definition for \'$m\'.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
                     next;
                 }
@@ -3991,7 +3938,7 @@ sub defrm
             if ( $ntype =~ /^(cec|frame)$/ )  {
                 my $cnodep = xCAT::DBobjUtils->getchildren($tob);
                 if ($cnodep) {
-                    my $cnode = join ',', @$cnodep;            
+                    my $cnode = join ',', @$cnodep;
                     $childrenhash{$tob} = $cnode;
                     $typehash{$tob} = $ntype;
                 }
@@ -4007,8 +3954,7 @@ sub defrm
     if ($error)
     {
         my $rsp;
-        $rsp->{data}->[0] =
-          "One or more errors occured when attempting to remove xCAT object definitions.";
+        $rsp->{data}->[0] = "One or more errors occured when attempting to remove xCAT object definitions.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
@@ -4043,17 +3989,15 @@ sub defrm
             for my $tn (keys %objhash)  {
                 if ( $childrenhash{$tn} ) {
                     my $rsp;
-                    $rsp->{data}->[0] =
-                      "You have removed a $typehash{$tn} node, please remove these nodes belongs to it manually: $childrenhash{$tn} .";
-                    xCAT::MsgUtils->message("W", $rsp, $::callback);                
+                    $rsp->{data}->[0] = "You have removed a $typehash{$tn} node, please remove these nodes belongs to it manually: $childrenhash{$tn} .";
+                    xCAT::MsgUtils->message("W", $rsp, $::callback);
                 }
-            }            
+            }
         }
         else
         {
             my $rsp;
-            $rsp->{data}->[0] =
-              "No objects have been removed from the xCAT database.";
+            $rsp->{data}->[0] = "No objects have been removed from the xCAT database.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
         return 0;
@@ -4083,17 +4027,12 @@ sub defrm
 sub defmk_usage
 {
     my $rsp;
-    $rsp->{data}->[0] =
-      "\nUsage: mkdef - Create xCAT data object definitions.\n";
+    $rsp->{data}->[0] = "\nUsage: mkdef - Create xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  mkdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] =
-      "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
-    $rsp->{data}->[3] =
-      "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
-    $rsp->{data}->[4] =
-      "      [-f | --force] [noderange] [attr=val [attr=val...]]";
-    $rsp->{data}->[5] =
-      "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[2] = "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
+    $rsp->{data}->[3] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
+    $rsp->{data}->[4] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
+    $rsp->{data}->[5] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
@@ -4101,11 +4040,9 @@ sub defmk_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4130,18 +4067,13 @@ sub defmk_usage
 sub defch_usage
 {
     my $rsp;
-    $rsp->{data}->[0] =
-      "\nUsage: chdef - Change xCAT data object definitions.\n";
+    $rsp->{data}->[0] = "\nUsage: chdef - Change xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  chdef [-h | --help ] [-t object-types]\n";
     $rsp->{data}->[2] = "  chdef [-t object-types] [-o object-names] [-n new-name] [node]\n";
-    $rsp->{data}->[3] =
-      "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
-    $rsp->{data}->[4] =
-      "    [-z | --stanza] [-m | --minus] [-p | --plus]";
-    $rsp->{data}->[5] =
-      "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
-    $rsp->{data}->[6] =
-      "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[3] = "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
+    $rsp->{data}->[4] = "    [-z | --stanza] [-m | --minus] [-p | --plus]";
+    $rsp->{data}->[5] = "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 7;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
@@ -4149,11 +4081,9 @@ sub defch_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4180,14 +4110,10 @@ sub defls_usage
     my $rsp;
     $rsp->{data}->[0] = "\nUsage: lsdef - List xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  lsdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] =
-      "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
-    $rsp->{data}->[3] =
-      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
-    $rsp->{data}->[4] =
-      "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
-    $rsp->{data}->[5] =
-      "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[2] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
+    $rsp->{data}->[3] = "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
+    $rsp->{data}->[4] = "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
+    $rsp->{data}->[5] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
@@ -4195,11 +4121,9 @@ sub defls_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
@@ -4224,15 +4148,11 @@ sub defls_usage
 sub defrm_usage
 {
     my $rsp;
-    $rsp->{data}->[0] =
-      "\nUsage: rmdef - Remove xCAT data object definitions.\n";
+    $rsp->{data}->[0] = "\nUsage: rmdef - Remove xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  rmdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] =
-      "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
-    $rsp->{data}->[3] =
-      "    [-o object-names] [-w attr=val,[attr=val...] [noderange]\n";
-    $rsp->{data}->[4] =
-      "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[2] = "  rmdef [-V | --verbose] [-t object-types] [-a | --all] [-f | --force]";
+    $rsp->{data}->[3] = "    [-o object-names] [-w attr=val,[attr=val...] [noderange]\n";
+    $rsp->{data}->[4] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 5;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
@@ -4240,11 +4160,9 @@ sub defrm_usage
         $rsp->{data}->[$n] = "$t";
         $n++;
     }
-    $rsp->{data}->[$n] =
-      "\nUse the \'-h\' option together with the \'-t\' option to";
+    $rsp->{data}->[$n] = "\nUse the \'-h\' option together with the \'-t\' option to";
     $n++;
-    $rsp->{data}->[$n] =
-      "get a list of valid attribute names for each object type.\n";
+    $rsp->{data}->[$n] = "get a list of valid attribute names for each object type.\n";
     xCAT::MsgUtils->message("I", $rsp, $::callback);
     return 0;
 }
