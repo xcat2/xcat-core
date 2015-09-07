@@ -1,5 +1,0 @@
-Using Prescript
-===============
-
-Using Postscript
-================
