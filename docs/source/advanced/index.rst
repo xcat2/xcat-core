@@ -5,7 +5,7 @@ Advanced Topics
    :maxdepth: 2
 
    restapi/index.rst
-   mixed_cluster.rst
+   mixed_cluster/index.rst   
    hierarchy_cluster.rst
    hamn/index.rst
    change_mn_ip.rst
