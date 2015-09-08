@@ -541,7 +541,14 @@ foreach my $node (sort keys %$cfgenthash) {
       push @$content,"  master ".$cfgent->{conserver}.";\n";
     } else { # handle it here
       my $locerror = $isSN ? "PERL_BADLANG=0 " : '';    # on service nodes, often LC_ALL is not set and perl complains
-      push @$content,"  exec $locerror".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
+
+      # add XCATSSLVER environment variable when it's set on sles11.x mn 
+      # for cons script to communicate with xcatd through tls
+      my $env;
+      if (defined($ENV{'XCATSSLVER'})) {
+        $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
+      }
+      push @$content,"  exec $locerror $env ".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
     }
   }
   if (defined($cfgent->{consoleondemand})) {
