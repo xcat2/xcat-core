@@ -100,6 +100,7 @@ function makexcat {
 			tar --exclude .svn -czf $RPMROOT/SOURCES/prescripts.tar.gz  prescripts
 			tar --exclude .svn -czf $RPMROOT/SOURCES/templates.tar.gz templates
 			tar --exclude .svn -czf $RPMROOT/SOURCES/winpostscripts.tar.gz winpostscripts
+			tar --exclude .svn -czf $RPMROOT/SOURCES/etc.tar.gz etc
 			cp xcat.conf $RPMROOT/SOURCES
 			cp xcat.conf.apach24 $RPMROOT/SOURCES
 			cp xCATMN $RPMROOT/SOURCES
