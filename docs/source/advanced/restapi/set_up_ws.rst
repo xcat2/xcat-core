@@ -14,7 +14,7 @@ To improve the security between the REST API client and server, enabling the HTT
 		service httpd restart
 		yum install perl-JSON
 
-* **[RHEL 5 (ppc64)]** ::
+* **[RHEL 5 (ppc64)]**
 
   Uninstall httpd.ppc64 and install httpd.ppc: ::
 
@@ -37,7 +37,7 @@ To improve the security between the REST API client and server, enabling the HTT
 		ln -s ../sites-available/default-ssl.conf  /etc/apache2/sites-enabled/ssl.conf
 		sudo service apache2 restart
 
-  verify it is loaded: ::
+  Verify it is loaded: ::
 
 		sudo apache2ctl -t -D DUMP_MODULES | grep ssl
 		apt-get install libjson-perl
@@ -104,14 +104,14 @@ password: Pass the password of the account (xCAT earlier than 2.10)
 You can use the root userid for your API calls, but we recommend you create a new userid (for example wsuser) for the API calls and give it the specific privileges you want it to have.
 
 Use root Account
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 Since the certificate and ssh keys for **root** account has been created during the install of xCAT. And the public ssh key has been uploaded to computer node so that xCAT MN can ssh to CN without password. Then the only thing needs to do is to add the password for the **root** in the passwd table. ::
 
 		tabch key=xcat,username=root passwd.password=<root-pw>
 	
 Use non-root Account
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Create new user and setup the password and policy rules. ::
 
