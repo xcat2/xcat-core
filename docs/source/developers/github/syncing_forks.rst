@@ -8,7 +8,7 @@ Before the Syncing
 
 References: https://help.github.com/articles/syncing-a-fork/
 
-From time to time, your master branch will start to **fall behind** the upstream/master because changes are being pulled into the `xcat2/xcat-core`` project from other developers. 
+From time to time, your master branch will start to **fall behind** the upstream/master because changes are being pulled into the ``xcat2/xcat-core`` project from other developers. 
 
 .. image:: github-behind_master.png
 
