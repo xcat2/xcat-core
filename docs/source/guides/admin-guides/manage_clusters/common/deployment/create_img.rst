@@ -23,12 +23,26 @@ To see the attributes of a particular osimage, run
 ::
     lsdef -t osimage <osimage-name>
 
-Initially, some attributes of osimage is assigned to default value by xCAT, they all can work correctly, cause the files or templates invoked by those attributes are shipped with xCAT by default.	If need to customize those attribute, refer to next section "Customize osimage". 
+Initially, some attributes of osimage is assigned to default value by xCAT, they all can work correctly, cause the files or templates invoked by those attributes are shipped with xCAT by default.	If need to customize those attribute, refer to next section :doc:`Customize osimage </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/index>`
 	
+Below is an example of osimage definitions created by 'copycds'
+::
+	[root@server ~]# lsdef -t osimage
+	rhels7.2-ppc64le-install-compute  (osimage)
+	rhels7.2-ppc64le-install-service  (osimage)
+	rhels7.2-ppc64le-netboot-compute  (osimage)
+	rhels7.2-ppc64le-stateful-mgmtnode  (osimage)
+
+In these osimage definitions shown above 
+
+* **<os>-<arch>-install-compute** is the default osimage definition used for diskfull installation
+* **<os>-<arch>-netboot-compute** is the default osimage definition used for diskless installation
+* **<os>-<arch>-install-service** is the default osimage definition used for service node deployment which shall be used in hierarchical environment
 
 **[Below tips maybe helpful for you]** 
 
 **[Tips 1]**
+
 If this is the same distro version as what your management node used, create a .repo file in /etc/yum.repos.d with content similar to:
 ::
     [local-<os>-<arch>]
@@ -40,7 +54,14 @@ If this is the same distro version as what your management node used, create a .
 In this way, if you need install some additional RPMs into your MN later, you can simply install them by yum. Or if you are installing a software on your MN that depends some RPMs from the this disto, those RPMs will be found and installed automatically.
 
 **[Tips 2]**
-If need to change osimage name to your favorite name, below statement maybe help:
+
+Sometime you can create/modify a osimage definition easily based on the default osimage definition. the general steps can be:
+
+* lsdef -t osimage -z <os>-<arch>-install-compute   >   <filename>.stanza
+* modify <filename>.stanza depending on your requirement	
+* cat <filename>.stanza| mkdef -z 
+
+For example, if need to change osimage name to your favorite name, below statement maybe helpful:
 ::
     lsdef -t osimage -z rhels6.2-x86_64-install-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
 
