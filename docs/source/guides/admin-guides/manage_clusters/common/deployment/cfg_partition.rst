@@ -5,7 +5,7 @@ By default, xCAT will install the operating system on the first disk and with de
 
 - 'Partition definition file' way can be used for RedHat, SLES and Ubuntu.
 - 'partition definition script' way was tested only for RedHat and Ubuntu, use this feature on SLES at your own risk.
-- Cause disk configuration for Ubuntu is different from RedHat, so there are some specific section for ubuntu.
+- Because disk configuration for ubuntu is different from Redhat, there maybe some section special for ubuntu.
 .. END_Overview
 
 .. BEGIN_partition_definition_file_Overview
@@ -36,7 +36,7 @@ The partition file must follow the partitioning syntax of the installer(e.g. kic
 Here is partition definition file example for RedHat standard partition in IBM Power machines
 ::
     # Uncomment this PReP line for IBM Power servers
-    #part None --fstype "PPC PReP Boot" --size 8 --ondisk sda
+    part None --fstype "PPC PReP Boot" --size 8 --ondisk sda
     # Uncomment this efi line for x86_64 servers
     #part /boot/efi --size 50 --ondisk /dev/sda --fstype efi
     part /boot --size 256 --fstype ext4
@@ -49,7 +49,7 @@ Here is partition definition file example for RedHat standard partition in IBM P
 Here is partition definition file example for RedHat LVM partition in IBM Power machines
 ::
     # Uncomment this PReP line for IBM Power servers
-    #part None --fstype "PPC PReP Boot" --ondisk /dev/sda --size 8
+    part None --fstype "PPC PReP Boot" --ondisk /dev/sda --size 8
     # Uncomment this efi line for x86_64 servers
     #part /boot/efi --size 50 --ondisk /dev/sda --fstype efi
     part /boot --size 256 --fstype ext4 --ondisk /dev/sda
@@ -61,7 +61,7 @@ Here is partition definition file example for RedHat LVM partition in IBM Power 
 .. END_partition_definition_file_example_RedHat_LVM_for_IBM_Power_machines
 
 .. BEGIN_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
-Partition definition file example for RedHat RAID1 please refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_ 
+Partition definition file example for RedHat RAID1 please refer to :doc:`Configure RAID before Deploy OS </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg>`
 .. END_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
 
 .. BEGIN_partition_definition_file_example_SLES_Standard_Partitions_for_X86_64
@@ -97,8 +97,8 @@ Here is partition definition file example for SLES standard partition in X86_64 
 	   
 .. END_partition_definition_file_example_SLES_Standard_Partitions_for_X86_64
 
-.. BEGIN_partition_definition_file_example_SLES_LVM_for_X86_64
-Here is partition definition file example for SLES LVM partition in X86_64 machines
+.. BEGIN_partition_definition_file_example_SLES_LVM_for_ppc64
+Here is partition definition file example for SLES LVM partition in P server
 ::
 	<drive>
 	  <device>/dev/sda</device>
@@ -209,7 +209,7 @@ Here is partition definition file example for SLES LVM partition in X86_64 machi
 	  <use>all</use>
 	</drive>
 	   
-.. END_partition_definition_file_example_SLES_LVM_for_X86_64
+.. END_partition_definition_file_example_SLES_LVM_for_ppc64
 
 .. BEGIN_partition_definition_file_example_SLES_Standard_partition_for_ppc64
 Here is partition definition file example for SLES standard partition in ppc64 machines
@@ -273,37 +273,16 @@ Partition definition file example for SLES RAID1 please refer to `Configure RAID
 .. BEGIN_partition_definition_file_example_Ubuntu_Standard_partition_for_PPC64le
 Here is partition definition file example for Ubuntu standard partition in ppc64le machines
 ::
-	8 1 32 prep
-			$primary{ }
-			$bootable{ }
-			method{ prep } .
-
-	256 256 512 ext3
-			$primary{ }
-			method{ format }
-			format{ }
-			use_filesystem{ }
-			filesystem{ ext3 }
-			mountpoint{ /boot } .
-
-	64 512 300% linux-swap
-			method{ swap }
-			format{ } .
-
-	512 1024 4096 ext3
-			$primary{ }
-			method{ format }
-			format{ }
-			use_filesystem{ }
-			filesystem{ ext4 }
-			mountpoint{ / } .
-
-	100 10000 1000000000 ext3
-			method{ format }
-			format{ }
-			use_filesystem{ }
-			filesystem{ ext4 }
-			mountpoint{ /home } .
+	ubuntu-boot ::
+	8 1 1 prep
+		$primary{ } $bootable{ } method{ prep }
+		.
+	500 10000 1000000000 ext4
+		method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / }
+		.
+	2048 512 300% linux-swap
+		method{ swap } format{ }
+		.
 		
 .. END_partition_definition_file_example_Ubuntu_Standard_partition_for_PPC64le
 
