@@ -2495,7 +2495,12 @@ sub gen_net_boot_params
     # just use the installnic to generate the nic related kernel parameters
     my $mac;
     my $nicname;
-    
+
+    # set the default nicname to nodebootif from image definition
+    if ($nodebootif) {
+        $nicname = $nodebootif;
+    }
+
     if ((! defined ($installnic)) || ($installnic eq "") || ($installnic =~ /^mac$/i)) {
         $mac = $macmac;
         $net_params->{mac} = $mac;
@@ -2509,20 +2514,19 @@ sub gen_net_boot_params
         $net_params->{nicname} = $nicname;
         $net_params->{mac} = $mac;
     }
-    if ($nicname) {
+
+    # if nicname is set and mac.mac is NOT set to <mac address>, use nicname in the boot parameters
+    if ($nicname && ! defined ($net_params->{setmac})) {
         $net_params->{ksdevice} = "ksdevice=$nicname";
         $net_params->{ip} = "ip=$nicname:dhcp";
         $net_params->{netdev} = "netdev=$nicname";
         $net_params->{netdevice} = "netdevice=$nicname";
-        $net_params->{ifname} = "ifname=$nicname:$mac";
+        $net_params->{ifname} = "ifname=$nicname:$mac"; # todo: may not use mac arbitrary
     } elsif ($mac) {
         $net_params->{ksdevice} = "ksdevice=$mac";
         $net_params->{BOOTIF} = "BOOTIF=$mac";
         $net_params->{bootdev} = "bootdev=$mac";
         $net_params->{ip} = "ip=dhcp";
-        if ($nodebootif) {
-            $net_params->{ifname} = "ifname=$nodebootif:$mac";
-        }
         $net_params->{netdevice} = "netdevice=$mac";
     }
 
