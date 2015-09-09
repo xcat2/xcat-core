@@ -15,7 +15,7 @@ Define configuration information for the Secondary Adapters in the nics table
 
 There are 3 ways to complete this operation.
 
-**First way is use command line input. below is a example**
+**First way is to use command line input. below is a example**
 ::
     [root@ls21n01 ~]# mkdef cn1 groups=all nicips.eth1="11.1.89.7|12.1.89.7" nicnetworks.eth1="net11|net12" nictypes.eth1="Ethernet"
     1 object definitions have been created or modified.
@@ -23,7 +23,7 @@ There are 3 ways to complete this operation.
     [root@ls21n01 ~]# chdef cn1 nicips.eth2="13.1.89.7|14.1.89.7" nicnetworks.eth2="net13|net14" nictypes.eth2="Ethernet"
     1 object definitions have been created or modified.
 
-**Second way is using stanza file**
+**Second way is to use stanza file**
 
 prepare your stanza file <filename>.stanza. the content of <filename>.stanza like below:
 ::
@@ -45,7 +45,7 @@ define configuration information by <filename>.stanza
 ::
     cat <filename>.stanza | mkdef -z
 
-**Third way is use 'tabedit' to edit the nics table directly**
+**Third way is to use 'tabedit' to edit the nics table directly**
 
 The 'tabedit' command opens the specified table in the user's editor(such as VI), allows user to edit any text, and then writes changes back to the database table.	But it's tedious and error prone, so don't recommended this way. if using this way, notices the **nicips**, **nictypes** and **nicnetworks** attributes are required.
 
