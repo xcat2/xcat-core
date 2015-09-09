@@ -16,20 +16,19 @@ You could create a customized osimage partition file, say /install/custom/my-par
 
 The partition file must follow the partitioning syntax of the installer(e.g. kickstart for RedHat, AutoYaST for SLES, Preseed for Ubuntu). you could refer to the `Kickstart documentation  <http://fedoraproject.org/wiki/Anaconda/Kickstart#part_or_partition>`_ or `Autoyast documentation  <https://doc.opensuse.org/projects/autoyast/configuration.html#CreateProfile.Partitioning>`_ or `Preseed documentation  <https://www.debian.org/releases/stable/i386/apbs04.html.en#preseed-partman>`_  write your own partitions layout. Meanwhile, RedHat and SuSE provides some tools that could help generate kickstart/autoyast templates, in which you could refer to the partition section for the partitions layout information:
 
-#. RedHat:
+* **[RedHat]**
 
-- The file /root/anaconda-ks.cfg is a sample kickstart file created by RedHat installer during the installation process based on the options that you selected.
-- system-config-kickstart is a tool with graphical interface for creating kickstart files
+  - The file /root/anaconda-ks.cfg is a sample kickstart file created by RedHat installer during the installation process based on the options that you selected.
+  - system-config-kickstart is a tool with graphical interface for creating kickstart files
 
-#. SLES
+* **[SLES]**
 
-- Use yast2 autoyast in GUI or CLI mode to customize the installation options and create autoyast file
-- Use yast2 clone_system to create autoyast configuration file /root/autoinst.xml to clone an existing system
+  - Use yast2 autoyast in GUI or CLI mode to customize the installation options and create autoyast file
+  - Use yast2 clone_system to create autoyast configuration file /root/autoinst.xml to clone an existing system
 
-#. Ubuntu
+* **[Ubuntu]**
 
-- For detailed information see the files partman-auto-recipe.txt and partman-auto-raid-recipe.txt included in the debian-installer package. Both files are also available from the debian-installer source repository. Note that the supported functionality may change between releases.
-
+  - For detailed information see the files partman-auto-recipe.txt and partman-auto-raid-recipe.txt included in the debian-installer package. Both files are also available from the debian-installer source repository. Note that the supported functionality may change between releases.
 .. END_partition_definition_file_content
 
 .. BEGIN_partition_definition_file_example_RedHat_Standard_Partitions_for_IBM_Power_machines
