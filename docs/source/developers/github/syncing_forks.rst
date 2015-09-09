@@ -17,6 +17,8 @@ Update the **master branch** of your forked copy from xcat2/xcat-core
 
 #. Pull the ahead commits from the ``upstream master`` to your local master branch. ::
 
+    $ git checkout master
+
     $ git pull upstream master
     remote: Counting objects: 38, done.
     remote: Compressing objects: 100% (15/15), done.
