@@ -1,7 +1,7 @@
 Software and Firmware Inventory
 ===============================
 
-xCAT provides a command '**sinv'** that checks the software and firmware configuration in this cluster.
+xCAT provides a command **sinv** that checks the software and firmware inventory in this cluster.
 
 The command creates an inventory of the input software/firmware check, comparing to other machines in the cluster and produces an output of node that are installed the same and those that are not.
 
