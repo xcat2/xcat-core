@@ -9,27 +9,27 @@ List of Supported Arch and OS
 +------------------+-------------+----------------+-------------+------------------------------------------------------+
 |   xCAT version   |     OS      | Tested Version | ARCH        |                Feature                               |
 +==================+=============+================+=============+======================================================+
-| 2.8.2 and later  | Centos      | 6.3 5.9        | x86_64      | Basic clone node                                     |
+| 2.8.2 and later  | CentOS      | 6.3 5.9        | x86_64      | Basic clone node                                     |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | redhat      | 6.4 5.9        | x86_64      | Basic clone node                                     |
+|                  | RHEL        | 6.4 5.9        | x86_64      | Basic clone node                                     |
 +------------------+-------------+----------------+-------------+------------------------------------------------------+
-| 2.8.3 and later  | sles        | 11.3 10.4      | x86_64      | Basic clone node                                     |
+| 2.8.3 and later  | SLES        | 11.3 10.4      | x86_64      | Basic clone node                                     |
 +------------------+-------------+----------------+-------------+------------------------------------------------------+
-| 2.8.5 and later  | Centos      | 6.3            | x86_64      | Add feature: update delta changes(has limitation)    |
+| 2.8.5 and later  | CentOS      | 6.3            | x86_64      | Add feature: update delta changes(has limitation)    |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | redhat      | 6.4            | x86_64      | Add feature: update delta changes(has limitation)    |
+|                  | RHEL        | 6.4            | x86_64      | Add feature: update delta changes(has limitation)    |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | sles        | 11.3           | x86_64      | Add feature: update delta changes                    |
+|                  | SLES        | 11.3           | x86_64      | Add feature: update delta changes                    |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | sles        | 10.x           | x86_64      | Not support any more                                 |
+|                  | SLES        | 10.x           | x86_64      | Not support any more                                 |
 +------------------+-------------+----------------+-------------+------------------------------------------------------+
-| 2.9 and later    | redhat      | 6.4            | ppc64       | Basic clone node/update delta changes/LVM            |
+| 2.9 and later    | RHEL        | 6.4            | ppc64       | Basic clone node/update delta changes/LVM            |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | sles        | 11.3           | ppc64       | Basic clone node/update delta changes                |
+|                  | SLES        | 11.3           | ppc64       | Basic clone node/update delta changes                |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | redhat      | 7.0            | ppc64       | Basic clone node/update delta changes/LVM            |
+|                  | RHEL        | 7.0            | ppc64       | Basic clone node/update delta changes/LVM            |
 +                  +-------------+----------------+-------------+------------------------------------------------------+
-|                  | redhat      | 6.4 7.0        | x86_64      | support LVM                                          |
+|                  | RHEL        | 6.4 7.0        | x86_64      | support LVM                                          |
 +------------------+-------------+----------------+-------------+------------------------------------------------------+
 
 Using Sysclone to Install Nodes
@@ -40,7 +40,7 @@ This document describes how to install and configure a template node (called gol
 Prepare the xCAT Management Node for Support Sysclone
 `````````````````````````````````````````````````````
 
-How to configure xCAT management node please refer to section [TODO] :ref:`Install Guides <install_guides>`
+How to configure xCAT management node please refer to section :ref:`Install Guides <install_guides>`
 
 For support Sysclone, we need to install some extra rpms on management node and the golden client.
 
@@ -65,23 +65,23 @@ For support Sysclone, we need to install some extra rpms on management node and 
     Compilation failed in require at /usr/sbin/si_mkrsyncd_conf line 28.
     BEGIN failed--compilation aborted at /usr/sbin/si_mkrsyncd_conf line 28.
 
-3. Do some preparation for install and configure golden client in management node. Copy the xcat-dep-XXX.tar.bz2 file to directory "/install/post/otherpkgs/<osversion>/<arch>/xcat/" of the management node according your golden client's OS version and system architecture, then decompression it. For example: 
+3. Do some preparation for install and configure golden client in management node. Copy the xcat-dep-XXX.tar.bz2 file to directory ``/install/post/otherpkgs/<os>/<arch>/xcat/`` of the management node according your golden client's OS version and system architecture, then decompression it. For example: 
 
-* **[Centos6.3 and x86_64]**::
+* **[CentOS6.3 and x86_64]**::
     
-    mkdir -p /install/post/otherpkgs/centos6.3/x86_64/xcat
-    cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/centos6.3/x86_64/xcat
-    cd /install/post/otherpkgs/centos6.3/x86_64/xcat
+    mkdir -p /install/post/otherpkgs/CentOS6.3/x86_64/xcat
+    cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/CentOS6.3/x86_64/xcat
+    cd /install/post/otherpkgs/CentOS6.3/x86_64/xcat
     tar jxvf xcat-dep-*.tar.bz2
 
 * **[SLES11.3 and x86_64]**::
 
-    mkdir -p /install/post/otherpkgs/sles11.3/x86_64/xcat
-    cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/sles11.3/x86_64/xcat
-    cd /install/post/otherpkgs/sles11.3/x86_64/xcat
+    mkdir -p /install/post/otherpkgs/SLES11.3/x86_64/xcat
+    cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/SLES11.3/x86_64/xcat
+    cd /install/post/otherpkgs/SLES11.3/x86_64/xcat
     tar jxvf xcat-dep-*.tar.bz2
 
-* **[Redhat6.4 and ppc64 system]**::
+* **[RHEL6.4 and ppc64]**::
     
     mkdir -p /install/post/otherpkgs/rhels6.4/ppc64/xcat
     cp xcat-dep-*.tar.bz2  /install/post/otherpkgs/rhels6.4/ppc64/xcat
@@ -95,33 +95,33 @@ The Golden Client acts as a regular node for xCAT, just have some extra rpms to 
 
 For information of how to install a regular node, please refer to section :ref:`Diskful Installation <diskfull_installation>`
 
-For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. then the golden client will have extra rpms to support clone. If you have deployed your golden client already, using 'updatenode' command to push these extra rpms to golden client. Centos share the same pkglist file with redhat. For example: 
+For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image definition which will be used to deploy golden client, then deploy golden client as normal. then the golden client will have extra rpms to support clone. If you have deployed your golden client already, using 'updatenode' command to push these extra rpms to golden client. CentOS share the same pkglist file with RHEL. For example: 
 
-* **[RH6.4 and x86_64 system]**::
+* **[RH6.4 and x86_64]**::
 
-    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/instal /rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
+    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/instal/rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.4/x86_64
     updatenode <golden-cilent> -S
 
-* **[Centos6.3 and x86_64]**::
+* **[CentOS6.3 and x86_64]**::
 
-    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install /rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
-    chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/centos6.3/x86_64
+    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/rh/sysclone.rhels6.x86_64.otherpkgs.pkglist
+    chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/CentOS6.3/x86_64
     updatenode <golden-cilent> -S
 
-* **[SLES11.3 and x86_64 system]**::
+* **[SLES11.3 and x86_64]**::
  
-    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install /sles/sysclone.sles11.x86_64.otherpkgs.pkglist
-    chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/sles11.3/x86_64
+    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/sles/sysclone.sles11.x86_64.otherpkgs.pkglist
+    chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/SLES11.3/x86_64
     updatenode <golden-cilent> -S
 
-* **[For RH6.3 and ppc64 system]**::
+* **[RH6.3 and ppc64]**::
 
-    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install  /rh/sysclone.rhels6.ppc64.otherpkgs.pkglist
+    chdef -t osimage -o <osimage-name> otherpkglist=/opt/xcat/share/xcat/install/rh/sysclone.rhels6.ppc64.otherpkgs.pkglist
     chdef -t osimage -o <osimage-name> -p otherpkgdir=/install/post/otherpkgs/rhels6.3/ppc64
     updatenode <golden-cilent> -S
 
-*[Note]: If you install systemimager RPMs on Centos 6.5 node by above steps, you maybe hit failure. this is a known issue because some defect of Centos6.5 itself. Please refer to known issue section for help.*
+*[Note]: If you install systemimager RPMs on CentOS 6.5 node by above steps, you maybe hit failure. this is a known issue because some defect of CentOS6.5 itself. Please refer to known issue section for help.*
 
 Capture Image from Golden Client
 ````````````````````````````````
@@ -139,7 +139,7 @@ Install the target nodes with the image from the golden-client
 
 following below commands to install the target nodes with the image captured from golden client.
 
-* **[x86_64 system]**::
+* **[x86_64]**::
 
     nodeset <target-node> osimage=<mycomputeimage>
     rsetboot <target-node> net
@@ -156,7 +156,7 @@ Update Nodes Later On
 
 If, at a later time, you need to make changes to the golden client (install new rpms, change config files, etc.), you can capture the changes and push them to the already cloned nodes without need to restart cloned nodes. This process will only transfer the deltas, so it will be much faster than the original cloning.
 
-**[Limitation]**: In xcat2.8.5, this feature has limitation in redhat and centos. when your delta changes related bootloader, it would encounter error. This issue will be fixed in xcat higher version. So up to now, in redhat and centos, this feature just update files not related bootloader.
+**[Limitation]**: In xcat2.8.5, this feature has limitation in RHEL and CentOS. when your delta changes related bootloader, it would encounter error. This issue will be fixed in xcat higher version. So up to now, in RHEL and CentOS, this feature just update files not related bootloader.
 
 Update delta changes please follow below steps:
 
@@ -177,9 +177,9 @@ From one of the nodes you want to update, test the update to see which files wil
 	
 If it lists files and directories that you do not think should be updated, you need to add them to the exclude list in 3 places
 
-* On the golden node: /etc/systemimager/updateclient.local.exclude
-* On the mgmt node: /install/sysclone/images/<myimagename>/etc/systemimager/updateclient.local.exclude
-* On all of the nodes to be updated: /etc/systemimager/updateclient.local.exclude
+* On the golden node: ``/etc/systemimager/updateclient.local.exclude``
+* On the mgmt node: ``/install/sysclone/images/<myimagename>/etc/systemimager/updateclient.local.exclude``
+* On all of the nodes to be updated: ``/etc/systemimager/updateclient.local.exclude``
 
 From the mgmt node, push the updates out to the other nodes::
 
@@ -187,7 +187,7 @@ From the mgmt node, push the updates out to the other nodes::
 
 b) If you are running xCAT 2.8.5 or later:
 
-you could push the updates out to the other nodes quickly by below command::
+You could push the updates out to the other nodes quickly by below command::
 
     updatenode <target-node-range> -S
 
@@ -195,10 +195,10 @@ you could push the updates out to the other nodes quickly by below command::
 Known Issue
 -----------
 
-Can not install systemimager RPMs in centos6.5 by yum
+Can not install systemimager RPMs in CentOS6.5 by yum
 ``````````````````````````````````````````````````````
 
-If you install systemimager RPMs on Centos 6.5 node by yum, you maybe hit failure because some defect of Centos6.5 itself. So please copy related RPMs to Centos 6.5 node and install them by hand.
+If you install systemimager RPMs on CentOS 6.5 node by yum, you maybe hit failure because some defect of CentOS6.5 itself. So please copy related RPMs to CentOS 6.5 node and install them by hand.
 
 * **On management node**::
 
@@ -206,17 +206,17 @@ If you install systemimager RPMs on Centos 6.5 node by yum, you maybe hit failur
     [root@MN xcat-dep]# scp systemimager-client-4.3.0-0.1.noarch.rpm \
                             systemconfigurator-2.2.11-1.noarch.rpm \
                             systemimager-common-4.3.0-0.1.noarch.rpm \
-                            perl-AppConfig-1.52-4.noarch.rpm   <Centos-node-ip>:/<savepath>
+                            perl-AppConfig-1.52-4.noarch.rpm   <CentOS-node-ip>:/<savepath>
 
 * **On golden client**::
 
-    [root@Centos6.5 node]# cd /<savepath>
-    [root@Centos6.5 node]# rpm -ivh perl-AppConfig-1.52-4.noarch.rpm 
-    [root@Centos6.5 node]# rpm -ivh systemconfigurator-2.2.11-1.noarch.rpm
-    [root@Centos6.5 node]# rpm -ivh systemimager-common-4.3.0-0.1.noarch.rpm
-    [root@Centos6.5 node]# rpm -ivh systemimager-client-4.3.0-0.1.noarch.rpm
+    [root@CentOS6.5 node]# cd /<savepath>
+    [root@CentOS6.5 node]# rpm -ivh perl-AppConfig-1.52-4.noarch.rpm 
+    [root@CentOS6.5 node]# rpm -ivh systemconfigurator-2.2.11-1.noarch.rpm
+    [root@CentOS6.5 node]# rpm -ivh systemimager-common-4.3.0-0.1.noarch.rpm
+    [root@CentOS6.5 node]# rpm -ivh systemimager-client-4.3.0-0.1.noarch.rpm
 
-Kernel panic at times when install target node with rhels7.0 in power 7 server
+Kernel panic at times when install target node with rhels7.0 in Power 7 server
 ``````````````````````````````````````````````````````````````````````````````
 
-When you clone rhels7.0 image to target node which is power 7 server lpar, maybe you will hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without resolve yet. up to now, we recommend you try again. 
+When you clone rhels7.0 image to target node which is Power 7 server lpar, maybe you will hit Kernel panic problem at times after boot loader grub2 download kernel and initrd. This is an known issue but without resolve yet. up to now, we recommend you try again. 
