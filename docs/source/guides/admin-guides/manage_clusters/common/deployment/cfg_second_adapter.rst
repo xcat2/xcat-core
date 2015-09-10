@@ -1,9 +1,7 @@
-Configure Secondary Network Adapter
-===================================
+Configure Additional Network Interfaces
+=======================================
 
-Introduction
-------------
-The **nics** table and the **confignics** postscript can be used to automatically configure additional **ethernet** and **Infiniband** adapters on nodes as they are being deployed. ("Additional adapters" means adapters other than the primary adapter that the node is being installed/booted over.)
+The **nics** table and the **confignics** postscript can be used to automatically configure additional network interfaces (mutltiple ethernets adapters, InfiniBand, etc) on the nodes as they are being deployed.
 
 The way the confignics postscript decides what IP address to give the secondary adapter is by checking the nics table, in which the nic configuration information is stored.
 
@@ -15,7 +13,9 @@ Define configuration information for the Secondary Adapters in the nics table
 
 There are 3 ways to complete this operation.
 
-**First way is to use command line input. below is a example**
+1. Using command line
+
+Below is a example
 ::
     [root@ls21n01 ~]# mkdef cn1 groups=all nicips.eth1="11.1.89.7|12.1.89.7" nicnetworks.eth1="net11|net12" nictypes.eth1="Ethernet"
     1 object definitions have been created or modified.
@@ -23,9 +23,9 @@ There are 3 ways to complete this operation.
     [root@ls21n01 ~]# chdef cn1 nicips.eth2="13.1.89.7|14.1.89.7" nicnetworks.eth2="net13|net14" nictypes.eth2="Ethernet"
     1 object definitions have been created or modified.
 
-**Second way is to use stanza file**
+2. Using stanza file
 
-prepare your stanza file <filename>.stanza. the content of <filename>.stanza like below:
+Prepare your stanza file <filename>.stanza. the content of <filename>.stanza like below:
 ::
     # <xCAT data object stanza file>
     cn1:
@@ -45,7 +45,7 @@ define configuration information by <filename>.stanza
 ::
     cat <filename>.stanza | mkdef -z
 
-**Third way is to use 'tabedit' to edit the nics table directly**
+3. Using 'tabedit' to edit the nics table
 
 The 'tabedit' command opens the specified table in the user's editor(such as VI), allows user to edit any text, and then writes changes back to the database table.	But it's tedious and error prone, so don't recommended this way. if using this way, notices the **nicips**, **nictypes** and **nicnetworks** attributes are required.
 
