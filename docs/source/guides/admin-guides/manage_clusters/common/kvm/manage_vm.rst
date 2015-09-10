@@ -1,10 +1,12 @@
-Manage Virtual Machine
-======================
+Manage Virtual Machine (VMs)
+============================
 
-Create Virtual Machine
+Create the Virtual Machine
 ----------------------
 
-Define Virtual node "vm1"
+In this doc, we assume the powerKVM hypervisor host node001 is ready to use.
+
+Create VM Node Definition
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Define virtual machine vm1, add it to xCAT under the vm group, its ip is x.x.x.x, use makehost to add hostname and ip into /etc/hosts file: ::
@@ -18,8 +20,8 @@ Update DNS with this new node: ::
   makedns -n
   makedns -a
 
-Define the attributes of virtual machine
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Define attributes for the VM
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Run the chdef command to change the following attributes for the vm1: 
 
@@ -31,7 +33,7 @@ Run the chdef command to change the following attributes for the vm1:
  
     chdef vm1 vmhost=node001
 
-3. Define the virtual memory size, the unit is Megabit, for example, define 1G memory to the vm1: ::
+3. Define the virtual memory size, the unit is Megabit. For example, to define 1GB of memory to vm1: ::
 
     chdef vm1 vmmemory=1024
 
@@ -52,20 +54,21 @@ Run the chdef command to change the following attributes for the vm1:
 
 7. Define the storage for the vm1, three formats for the storage source are supported.
 
-   A. Create storage on a nfs server.
-      The format is 'nfs://<IP>/dir', that means the kvm disk files will be created at 'nfs://<IP>/dir': ::
+   A. Create storage on a nfs server
 
-       chdef vm1 vmstorage=nfs://<IP of nfs server>/install/vms/
+      The format is ``nfs://<IP_of_NFS_server>/dir``, that means the kvm disk files will be created at ``nfs://<IP_of_NFS_server>/dir``: ::
+
+       chdef vm1 vmstorage=nfs://<IP_of_NFS_server>/install/vms/
 
    B. Create storage on a device of hypervisor
 
-      The format is 'phy:/dev/sdb1': ::
+      Instead of the format is 'phy:/dev/sdb1': ::
 
        chdef vm1 vmstorage=phy:/dev/sdb1
 
    C. Create storage on a directory of hypervisor
 
-      The format is 'dir:/install/vms': ::
+      Instead of he format is 'dir:/install/vms': ::
 
        chdef vm1 vmstorage=dir:///install/vms
 
@@ -103,8 +106,8 @@ Run the chdef command to change the following attributes for the vm1:
       cp /tftpboot/boot/grub2/powerpc-ieee1275/core.elf /tftpboot/boot/grub2/grub2.ppc
       /bin/cp -rf /tmp/iso/boot/grub/powerpc-ieee1275/elf.mod /tftpboot/boot/grub2/powerpc-ieee1275/
 
-Create the virtual machine
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Make the VM under xCAT
+^^^^^^^^^^^^^^^^^^^^^^
 If vmstorage is on a nfs server or a device of hypervisor, for example ::
 
   mkvm vm1
@@ -120,12 +123,6 @@ Create osimage object
 
 After you download the OS ISO, refer to :ref:`create_img` to create osimage objects.
 
-Configure password for root in xCAT MN
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-::
-
-   chtab key=system passwd.username=root passwd.password=xxxxxx
-
 Configure DHCP 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ::
@@ -133,14 +130,14 @@ Configure DHCP
    makedhcp -n
    makedhcp -a
 
-Set the boot state
-^^^^^^^^^^^^^^^^^^^
+Prepare the VM for installation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ::
 
    nodeset vm1 osimage=<osimage_name>
 
-Power on the virtual machine to start OS installation 
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Start VM Installation 
+^^^^^^^^^^^^^^^^^^^^^
 
 ::
 
@@ -154,8 +151,8 @@ If the vm1 was powered on successfully, you can get following information when r
       6 vm1                 running
 
 
-Use console to monitor the installing process
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Monitoring the Virtual Machine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can use console in xcat management node or kvm hypervisor to monitor the process. 
 
@@ -205,7 +202,7 @@ You can use console in xcat management node or kvm hypervisor to monitor the pro
   Open "https://<pkvm_ip>:8001" to open kimchi. There will be a “connect” button you can use below "Actions" button and input Password required:abc123 your have set before mkvm, then you could get the console.
 
 
-Remove a virtual machine
+Remove the virtual machine
 ------------------------ 
 
 Remove the kvm1 even when it is in power on status. ::
@@ -217,8 +214,8 @@ Remove the definition of kvm and related storage. ::
     rmvm vm1 -p
 
 
-Clone a kvm node
-----------------
+Clone the virtual machine
+-------------------------
 
 Clone is a concept that create a new node from the old one by reuse most of data that has been installed on the old node. Before creating a new node, a vm (virtual machine) master must be created first. The new node will be created from the vm master. The new node can attach to the vm master or not.
 The node can NOT be run without the vm master if choosing to make the node attach to the vm master. The advantage is that the less disk space is needed.
