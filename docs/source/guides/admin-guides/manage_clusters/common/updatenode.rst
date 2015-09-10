@@ -1,20 +1,20 @@
-Update Compute Nodes
-====================
+Using Updatenode
+================
 
 Introduction
 ------------------
 
-After initial node deployment, you inevitably need to make changes/updates to your nodes. The updatenode command is for this purpose. It allows you to add or modify the followings on your nodes:
+After initial node deployment, you may need to make changes/updates to your nodes. The ``updatenode`` command is for this purpose. It allows you to add or modify the followings on your nodes:
 
 #. Add additional software
 #. Rerun postscripts or Run Additional Postcripts 
 #. Synchronize new/updated configuration files
 #. Update ssh keys and xCAT certificates
 
-Each of these will be explained in the document. The basic way to use updatenode is to set the definition of nodes on the management node the way you want it and then run updatenode to push those changes out to the actual nodes. Using options to the command, you can control which of the above categories updatenode pushes out to the nodes.
+Each of these will be explained in the document. The basic way to use ``updatenode`` is to set the definition of nodes on the management node the way you want it and then run ``updatenode`` to push those changes out to the actual nodes. Using options to the command, you can control which of the above categories ``updatenode`` pushes out to the nodes.
 
 Most of what is described in this document applies to **stateful** and **stateless** nodes.
-In addition to the information in this document, check out the updatenode man page.
+In addition to the information in this document, check out the ``updatenode`` man page.
 
 Add Additional Software 
 -------------------------
@@ -27,19 +27,19 @@ The packages that will be installed on the node are stored in the packages list 
 Installing Additional OS Distro Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For packages from the OS distro, add the new package names (without the version number) in the .pkglist file. If you have newer updates to some of your operating system packages that you would like to apply to your OS image, you can place them in another directory, and add that directory to your osimage pkgdir attribute. How to add additional OS distro packages, go to `Install Additional OS Packages <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg.html>`_
+For packages from the OS distro, add the new package names (without the version number) in the .pkglist file. If you have newer updates to some of your operating system packages that you would like to apply to your OS image, you can place them in another directory, and add that directory to your osimage pkgdir attribute. How to add additional OS distro packages, go to :ref:`Install-Additional-OS-Packages-label`
 
 Note:If the objective node is not installed by xCAT, please make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
 
 Install Additional non-OS Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you have additional packages (packages not in the distro) that you also want installed, make a directory to hold them, create a list of the packages you want installed, and add that information to the osimage definition. How to add Additional Other Packages, go to `Install Additional Other Packages <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg.html#install-additional-other-packages>`_
+If you have additional packages (packages not in the distro) that you also want installed, make a directory to hold them, create a list of the packages you want installed, and add that information to the osimage definition. How to add Additional Other Packages, go to :ref:`Install-Additional-Other-Packages-label`
 
 Update Nodes
 ^^^^^^^^^^^^^^^^^^^^^
 
-Run the updatenode command to push the new software to the nodes: ::
+Run the ``updatenode`` command to push the new software to the nodes: ::
 
     updatenode <noderange> -S
 
@@ -61,21 +61,21 @@ The next time you re-install these nodes, the additional software will be automa
 Update the delta changes in Sysclone environment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See **TODO:Using_Clone_to_Deploy_Server#Update_Nodes_Later_On_** for more information. ::
+Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`Using_Clone_to_Deploy_Server#Update_Nodes_Later_On` for more information. ::
 
     updatenode <targetnoderange> -S
 
 Rerun Postscripts or Run Additional Postcripts 
 --------------------------------------------------------------------------
 
-You can use the updatenode command to perform the following functions after the nodes are up and running:
+You can use the ``updatenode`` command to perform the following functions after the nodes are up and running:
 
   * Rerun postscripts defined in the postscripts table.
   * Run any additional postscript one time. 
 
-Go to `Using Postscript <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/pre_post_script.html>`_  to see how to configure postscript.
+Go to :ref:`Using-Postscript-label` to see how to configure postscript.
 
-Go to `Using Prescript <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/pre_post_script.html>`_ to see how to configure prepostscript.
+Go to :ref:`Using-Prescript-label` to see how to configure prepostscript.
 
 To rerun all the postscripts for the nodes. (In general, xCAT postscripts are structured such that it is not harmful to run them multiple times.) ::
 
@@ -89,15 +89,13 @@ To run a list of your own postscripts, make sure the scripts are copied to /inst
 
     updatenode <noderange> -P "script1,script2"
 
-If you need to, you can also pass arguments to your scripts (this will work in xCAT 2.6.7 and greater): ::
+If you need to, you can also pass arguments to your scripts: ::
 
     updatenode <noderange> -P "script1 p1 p2,script2"
 
-mypostscript template for updatenode
+mypostscript template for ``updatenode``
 
-As of xCAT 2.8, you can customize what attributes you want made available to the post*script, using the shipped mypostscript.tmpl file.
-
-[[**TODO**:include ref=Template_of_mypostscript]]
+You can customize what attributes you want made available to the post*script, using the shipped mypostscript.tmpl file :ref:`Using-the-mypostscript-template`.
 
 Synchronize new/updated configuration files
 -------------------------------------------
@@ -105,7 +103,7 @@ Synchronize new/updated configuration files
 Setting up syncfile 
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use instuctions in `Sync Files to Compute Node <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/syncfile.html>`_
+Use instuctions in :ref:`Sync-Files-label`
 
 syncfiles to the nodes
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,7 +112,7 @@ After compute node is installed, you would like to sync files to the nodes: ::
 
     updatenode <noderange> -F
 
-**With the updatenode command the syncfiles postscript cannot be used to sync files to the nodes.** Therefore, if you run updatenode <noderange> -P syncfiles, nothing will be done. A messages will be logged that you must use updatenode <noderange> -F to sync files using updatenode.
+**With the ``updatenode`` command the syncfiles postscript cannot be used to sync files to the nodes.** Therefore, if you run ``updatenode <noderange> -P syncfiles``, nothing will be done. A messages will be logged that you must use updatenode <noderange> -F to sync files using updatenode.
 
 Update the ssh Keys and Credentials on the Nodes
 ------------------------------------------------
