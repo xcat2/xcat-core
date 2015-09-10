@@ -49,7 +49,7 @@ The "4.6.ppc64le" is replaced with "4-ppc64le": ::
 Run genimage/packimage to update the image with the new kernel. 
 Note: If downgrading the kernel, you may need to first remove the rootimg directory.
 
-Since the kernel version name is different from the kernel rpm package name, the -g flag MUST to be specified on the genimage command. :: 
+Since the kernel version name is different from the kernel rpm package name, the -k flag MUST to be specified on the genimage command. :: 
 
          genimage <imagename> -k 3.12.28-4-ppc64le 3.12.28-4.6
          packimage <imagename>
