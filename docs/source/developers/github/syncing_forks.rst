@@ -12,12 +12,28 @@ From time to time, your master branch will start to **fall behind** the upstream
 
 .. image:: github-behind_master.png
 
-Update the **master branch** of your forked copy from xcat2/xcat-core
----------------------------------------------------------------------
+Temporarily Stashing work (optional)
+------------------------------------
 
-#. Pull the ahead commits from the ``upstream master`` to your local master branch. ::
+If working on changes in another branch, it's recommended to stash the work before switching to the ``master`` branch so the pull does not wipe out any uncommitted changes.  To stash work in the current branch:
+
+#. Add (*not commit*) any untracked files and directories: ::
+
+    $ git add <untracked_files_and_directories>
+
+#. Stash the work: ::
+
+    $ git stash
+
+
+Switch and Update the **master branch** of your forked copy
+-----------------------------------------------------------
+
+#. Switch to the master branch. ::
 
     $ git checkout master
+
+#. Pull the commits from the ``upstream master`` (xcat2/xcat-core) to your local master branch. ::
 
     $ git pull upstream master
     remote: Counting objects: 38, done.
@@ -31,9 +47,11 @@ Update the **master branch** of your forked copy from xcat2/xcat-core
     Fast-forward
     ...
 
-#. Push the commits from your local master to your forked copy in GitHub: ::
+#. Push the commits from ``upstream`` merged to your local master to your forked copy in GitHub: ::
 
     $ git push origin master
+
+
 
 After the Syncing
 -----------------
@@ -43,6 +61,8 @@ Your fork master branch should now be **even** with ``xcat2/xcat-core``
 .. image:: github-even_with_master.png 
 
 
+Unstashing work (optional)
+--------------------------
 
-
+If work has been stashed, to continue back where you left off, switch to the target branch and run : ``git stash pop``
 
