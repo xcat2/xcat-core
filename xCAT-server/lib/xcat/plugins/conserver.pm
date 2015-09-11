@@ -548,7 +548,7 @@ foreach my $node (sort keys %$cfgenthash) {
       if (defined($ENV{'XCATSSLVER'})) {
         $env = "XCATSSLVER=$ENV{'XCATSSLVER'} ";
       }
-      push @$content,"  exec $locerror $env ".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
+      push @$content,"  exec $locerror$env".$::XCATROOT."/share/xcat/cons/".$cmeth." ".$node.";\n"
     }
   }
   if (defined($cfgent->{consoleondemand})) {
