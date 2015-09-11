@@ -13,7 +13,7 @@ If you want to manually define an 'undefined' node to a specific free node name,
 Before doing that, a node with desired IP address for hsot and FSP/BMC shall be defined first::
 
     #nodeadd cn1 groups=pkvm,all
-    #chdef cn1 mgt=ipmi cons=ipmi ip=10.1.101.1 bmc=10.2.101.1 netboot=petitboot installnic=mac primarynic=mac
+    #chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
 
 For example, if you want to assign the undefined node whose uuid is 'fa2cec8a-b724-4840-82c7-3313811788cd' to cn1, run::
 

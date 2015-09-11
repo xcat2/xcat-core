@@ -12,20 +12,20 @@ After environment is ready, and the server is powered, we can start server disco
 
 The following command can be used to discovery FSP/BMC within an IP range and write the discovered node definition into a stanza file::
 
-# lsslp -s PBMC -u --range 10.2.100.1-100 -z > ./pbmc.stanza
+# lsslp -s PBMC -u --range 50.0.100.1-100 -z > ./pbmc.stanza
 
 You need to modify the node definition in stanza file before using them, the stanza file will be like this::
  
   # cat pbmc.stanza
   cn1:
-	  objtype=node
-  	  bmc=10.2.100.1
-	  nodetype=mp
-	  mtm=8247-42L
-	  serial=10112CA
-	  groups=pbmc,all
-	  mgt=ipmi
-	  hidden=0
+      objtype=node
+      bmc=50.0.100.1
+      nodetype=mp
+      mtm=8247-42L
+      serial=10112CA
+      groups=pbmc,all
+      mgt=ipmi
+      hidden=0
 
 Then, define it into xCATdb::
   
@@ -36,7 +36,7 @@ The server definition will be like this::
 
   # lsdef cn1
   Object name: cn1
-      bmc=10.2.100.1
+      bmc=50.0.100.1
       groups=pbmc,all
       hidden=0
       mgt=ipmi
@@ -48,7 +48,7 @@ The server definition will be like this::
 
 After the physical server is defined into xCATdb, the next thing is update the node definition with the scheduled node info like this::
 
-  # chdef cn1 ip=10.1.101.1 cons=ipmi
+  # chdef cn1 ip=10.0.101.1
   1 object definitions have been created or modified.
 
 Then, add node info into /etc/hosts and DNS::
@@ -65,6 +65,7 @@ To start discovery process, just need to power on the host remotely with the fol
 
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
+  #chdef cn1 cons=ipmi
   #makeconsercf
   #rcons cn1
 

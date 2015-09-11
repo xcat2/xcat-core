@@ -5,13 +5,13 @@ After environment is ready, and the server is powered, we can start server disco
 
 The following command can be used to discovery FSP/BMC within an IP range and write the discovered node definition into xCAT database::
 
-# lsslp -s PBMC -u --range 10.2.100.1-100 -w
+# lsslp -s PBMC -u --range 50.0.100.1-100 -w
 
 The discovered PBMC node will be like this::
 
-    # lsdef Server-8247-22L-SN01112CA
-    Object name: Server-8247-22L-SN01112CA
-    bmc=10.2.100.1
+    # lsdef Server-8247-22L-SN10112CA
+    Object name: Server-8247-22L-SN10112CA
+    bmc=50.0.100.1
     groups=pbmc,all
     hidden=0
     hwtype=pbmc
@@ -29,11 +29,11 @@ Start discovery process
 
 To start discovery process, just need to power on the PBMC node remotely with the following command, and the discovery process will start automatically after the host is powered on::
 
-#rpower Server-8247-22L-SN01112CA on
+#rpower Server-8247-22L-SN10112CA on
 
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
-  #chdef Server-8247-22L-SN01112CA cons=ipmi
+  #chdef Server-8247-22L-SN10112CA cons=ipmi
   #makeconsercf
-  #rcons Server-8247-22L-SN01112CA
+  #rcons Server-8247-22L-SN10112CA
 

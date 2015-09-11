@@ -10,27 +10,27 @@ In this document, we use the following configuration as the example
 MN info::
 
     MN Hostname: xcat1
-    MN NIC info for Host network: eth1, 10.1.1.1/16
-    MN NIC info for FSP/BMC network: eth2, 10.2.1.1/16
-    Dynamic IP range for Hosts: 10.1.100.1-10.1.100.100
-    Dynamic IP range for FSP/BMC: 10.2.100.1-10.2.100.100
+    MN NIC info for Host network: eth1, 10.0.1.1/16
+    MN NIC info for FSP/BMC network: eth2, 50.0.1.1/16
+    Dynamic IP range for Hosts: 10.0.100.1-10.0.100.100
+    Dynamic IP range for FSP/BMC: 50.0.100.1-50.0.100.100
 
 Switch info::
 
     Switch name: switch1
     Switch username: xcat
     Switch password: passw0rd
-    Switch IP Address: 10.1.201.1
+    Switch IP Address: 10.0.201.1
 
 CN info::
 
     CN Hostname: cn1
     Machine type/model: 8247-22L
     Serial: 10112CA
-    Host IP Address: 10.1.101.1
+    Host IP Address: 10.0.101.1
     Host Root Password: cluster
-    Desired FSP/BMC IP Address: 10.2.101.1
-    DHCP assigned FSP/BMC IP Address: 10.2.100.1
+    Desired FSP/BMC IP Address: 50.0.101.1
+    DHCP assigned FSP/BMC IP Address: 50.0.100.1
     FSP/BMC username: ADMIN
     FSP/BMC Password: admin
     Switch info: switch1, port0
@@ -43,7 +43,7 @@ Predefine Nodes
 In order to differentiate a node from the other, the admin need to predefine node in xCAT database based on the switches information. So, 2 parts included.
 
 Predefine Switches
-^^^^^^^^^^^^^^^^^^
+``````````````````
 
 The predefined switches will represent devices that the physical servers are connected to. xCAT need to access those switches to get server related information through SNMP v3.
 
@@ -52,7 +52,7 @@ So the admin need to make sure those switches are configured correctly with SNMP
 Then, define switch info into xCAT::
     
     #nodeadd switch1 groups=switch,all
-    #chdef switch1 ip=10.1.201.1
+    #chdef switch1 ip=10.0.201.1
     #tabch switch=switch1 switches.snmpversion=3 switches.username=xcat switches.password=passw0rd switches.auth=sha
 
 After that, add switch into DNS::
@@ -61,12 +61,12 @@ After that, add switch into DNS::
     #makedns -n
 
 Predefine Server node
-^^^^^^^^^^^^^^^^^^^^^
+`````````````````````
 
 After switches are defined, the server node can be predefined as network scheduled::
 
     #nodeadd cn1 groups=pkvm,all
-    #chdef cn1 mgt=ipmi cons=ipmi ip=10.1.101.1 bmc=10.2.101.1 netboot=petitboot installnic=mac primarynic=mac
+    #chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
     #chdef cn1 switch=switch1 switchport=0
 
 Add cn1 into DNS::
@@ -84,13 +84,13 @@ The server node definition will be like this after hardware discovery process::
   #lsdef cn1
   Object name: cn1
       arch=ppc64
-      bmc=10.2.101.1
+      bmc=50.0.101.1
       cons=ipmi
       cpucount=192
       cputype=POWER8E (raw), altivec supported
       groups=pkvm,all
       installnic=mac
-      ip=10.1.101.1
+      ip=10.0.101.1
       mac=6c:ae:8b:02:12:50
       memory=65118MB
       mgt=ipmi
