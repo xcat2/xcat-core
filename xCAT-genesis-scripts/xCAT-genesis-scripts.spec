@@ -78,6 +78,7 @@ touch /etc/xcat/genesis-scripts-updated
 #%dir %attr(-,root,root) %{rpminstallroot}
 %{rpminstallroot}/bin/allowcred.awk
 %{rpminstallroot}/bin/bmcsetup
+%{rpminstallroot}/bin/diskdiscover
 %{rpminstallroot}/bin/dodiscovery
 %{rpminstallroot}/bin/dosysclone
 %{rpminstallroot}/bin/doxcat
