@@ -13,21 +13,21 @@ To add a node object::
 
 To change node attributes::
 
-    #chdef cn1 mgt=ipmi cons=ipmi ip=10.1.101.1 netboot=petitboot
-    #chdef cn1 bmc=10.2.101.1 bmcusername=ADMIN bmcpassword=admin
+    #chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 netboot=petitboot
+    #chdef cn1 bmc=50.0.101.1 bmcusername=ADMIN bmcpassword=admin
     #chdef cn1 installnic=mac primarynic=mac mac=6c:ae:8b:6a:d4:e4 
 
 The manually defined node will be like this::
 
     # lsdef cn1
     Object name: cn1
-        bmc=10.2.101.1
+        bmc=50.0.101.1
         bmcpassword=admin
         bmcusername=ADMIN
         cons=ipmi
         groups=pkvm,all
         installnic=mac
-        ip=10.1.101.1
+        ip=10.0.101.1
         mac=6c:ae:8b:6a:d4:e4
         mgt=ipmi
         netboot=petitboot

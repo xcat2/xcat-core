@@ -11,15 +11,15 @@ Prepare node pool
 To prepare the node pool, shall predefine nodes first, then initialize the discovery process with the predefined nodes. 
 
 Predefine nodes
-^^^^^^^^^^^^^^^
+```````````````
 
 Predefine a group of node with desired IP address for host and IP address for FSP/BMC::
 
     #nodeadd cn1 groups=pkvm,all
-    #chdef cn1 mgt=ipmi cons=ipmi ip=10.1.101.1 bmc=10.2.101.1 netboot=petitboot installnic=mac primarynic=mac
+    #chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
  
 Initialize the discovery process
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+````````````````````````````````
 
 Specify the predefined nodes to the nodediscoverstart command to initialize the discovery process::
 
@@ -28,7 +28,7 @@ Specify the predefined nodes to the nodediscoverstart command to initialize the 
 Pls see "nodediscoverstart man page<TBD>" for more details.
 
 Display information about the discovery process
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````````````````````````````````
 
 There are additional nodediscover commands you can run during the discovery process. See their man pages for more details.
 
