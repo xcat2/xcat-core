@@ -25,19 +25,19 @@ The packages that will be installed on the node are stored in the packages list 
 #. The **other package list file** contains the names of the packages that do **NOT** come from the os distro. They are stored in **.otherpkgs.pkglist** file.
 
 Installing Additional OS Distro Packages
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+````````````````````````````````````````
 
 For packages from the OS distro, add the new package names (without the version number) in the .pkglist file. If you have newer updates to some of your operating system packages that you would like to apply to your OS image, you can place them in another directory, and add that directory to your osimage pkgdir attribute. How to add additional OS distro packages, go to :ref:`Install-Additional-OS-Packages-label`
 
 Note:If the objective node is not installed by xCAT, please make sure the correct osimage pkgdir attribute so that you could get the correct repository data.
 
 Install Additional non-OS Packages
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``````````````````````````````````
 
 If you have additional packages (packages not in the distro) that you also want installed, make a directory to hold them, create a list of the packages you want installed, and add that information to the osimage definition. How to add Additional Other Packages, go to :ref:`Install-Additional-Other-Packages-label`
 
 Update Nodes
-^^^^^^^^^^^^^^^^^^^^^
+````````````
 
 Run the ``updatenode`` command to push the new software to the nodes: ::
 
@@ -59,7 +59,7 @@ The next time you re-install these nodes, the additional software will be automa
     packimage <osimage>
 
 Update the delta changes in Sysclone environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+````````````````````````````````````````````````
 
 Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`Using_Clone_to_Deploy_Server#Update_Nodes_Later_On` for more information. ::
 
@@ -101,12 +101,12 @@ Synchronize new/updated configuration files
 -------------------------------------------
 
 Setting up syncfile 
-^^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````
 
 Use instuctions in :ref:`Sync-Files-label`
 
 syncfiles to the nodes
-^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````````
 
 After compute node is installed, you would like to sync files to the nodes: ::
 
