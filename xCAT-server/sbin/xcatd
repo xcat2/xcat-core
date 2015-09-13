@@ -1048,31 +1048,61 @@ unless ($cmdlog_svrpid){
     my $cmdlogfile;
     my $cmdlogpidfile;
     my $retry=200;
-
+    my $writing=0;
+    my $cmdlogfileswitch=0;
+    my $cmdlogservicefile="/var/run/xcat/cmdlogservice.pid";
+	
     $SIG{USR2} = sub {
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");
+        while($writing){sleep(0.01);}
         if($cmdlogfile){close($cmdlogfile);}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if($clientsock){close($clientsock);}
-        unlink("/var/run/xcat/cmdlogservice.pid");
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");		
         exit(0);
     };  
 	
     $SIG{TERM} = $SIG{INT} = sub {
-        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
+        while($writing){sleep(0.01);}
         if($cmdlogfile){close($cmdlogfile);}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if($clientsock){close($clientsock);}
-        unlink("/var/run/xcat/cmdlogservice.pid");
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+        if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
+        xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
         exit(0);
     };  
 
+    $SIG{HUP} = sub {
+        my $trytime=200;
+        while($writing){sleep(0.01);}
+        $cmdlogfileswitch=0;
+        if($cmdlogfile){close($cmdlogfile);}
+        while(!$cmdlogfileswitch and $trytime){
+            unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
+                $trytime--;
+                xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile.");
+                sleep(0.05);
+                next;
+            }
+            select($cmdlogfile);
+            $|=1;
+            $cmdlogfileswitch=1;
+        }
+        if(!$trytime){
+            xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
+            kill 2, $$;			
+        }else{
+            xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
+        }
+    };
+	
     $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+                                               LocalAddr => "127.0.0.1",
                                                Type => SOCK_STREAM,
                                                Reuse => 1,
                                                Listen => 8192);
   
-    if(not $cmdlogsvrlistener and open($cmdlogpidfile,"<","/var/run/xcat/cmdlogservice.pid")) { 
+    if(not $cmdlogsvrlistener and open($cmdlogpidfile,"<","$cmdlogservicefile")) { 
         xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
         my $pid = <$cmdlogpidfile>;
         if ($pid) {
@@ -1083,6 +1113,7 @@ unless ($cmdlog_svrpid){
     while (not $cmdlogsvrlistener and $retry) {
         $retry--;
         $cmdlogsvrlistener = IO::Socket::INET->new(LocalPort => $cmdlog_port,
+                                                   LocalAddr => "127.0.0.1",
                                                    Type => SOCK_STREAM,
                                                    Reuse => 1,
                                                    Listen => 8192);
@@ -1092,6 +1123,7 @@ unless ($cmdlog_svrpid){
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open command log service on port $cmdlog_port,command log process $$ stop.");
         exit(0);
     }	
+	
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
@@ -1099,8 +1131,9 @@ unless ($cmdlog_svrpid){
     }
     select($cmdlogfile);
     $|=1;
-
-    open($cmdlogpidfile,">/var/run/xcat/cmdlogservice.pid"); 
+    $cmdlogfileswitch=1;
+	
+    open($cmdlogpidfile,">$cmdlogservicefile"); 
     print $cmdlogpidfile $$;
     close($cmdlogpidfile);	
     xCAT::MsgUtils->trace(0,"I","xcatd: command log process $$ start");  
@@ -1115,13 +1148,18 @@ unless ($cmdlog_svrpid){
             $bytesread=sysread($clientsock,$log,65536,length($log)) 
         } while ($bytesread);
         close($clientsock);
+        until($cmdlogfileswitch){
+            sleep(0.05);
+        }
+        $writing=1;           
         print $cmdlogfile $log;
+        $writing=0;
     }
 
-    close($cmdlogsvrlistener);
-    close($cmdlogfile);
-
-    xCAT::MsgUtils->trace(0,"I","xcatd: command log process stop");
+    if($cmdlogfile){close($cmdlogfile);}
+    if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
+    if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
+    xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ stop");
 }
 #----used for command log end---------
 
@@ -2335,7 +2373,10 @@ sub send_response {
         } else {
             $xml = XMLout($response,RootName => 'xcatresponse',NoAttr=>1);
         }
-  		$xml =~ tr/\011-\177/?/c;
+        $xml =~ tr/\011-\177/?/c;
+        #----used for command log start-------
+        my $tmp_xml = $xml;
+        #----used for command log end -------- 
       	eval {
             my $rsplen = length($xml);
             my $blocks = int($rsplen/4096)-1;
@@ -2350,8 +2391,12 @@ sub send_response {
         };
 		
         #----used for command log start-------
-        cmdlog_collectlog($response);
-        #----used for command log end -------- 
+        my $cmdlog_xml="<massresponse>";
+        $tmp_xml =~ s/\e/xxxxESCxxxx/g;
+        $cmdlog_xml .= $tmp_xml."</massresponse>";
+        my $cmdlog_rsp = XMLin($cmdlog_xml,SuppressEmpty=>undef,ForceArray=>1);
+        cmdlog_collectlog($cmdlog_rsp);
+        #----used for command log end --------  
 		
     } elsif ($encode eq "storable") {
         if ($response->{xcatresponse}) {
@@ -2434,7 +2479,12 @@ sub service_connection {
       my ($sec,$min,$hour,$mday,$mon,$year) = localtime(time());
       $year += 1900;
       $mon += 1;
-      $cmdlog_alllog .= "[Date]       $year-$mon-$mday $hour:$min:$sec\n"; 
+      my $strmon = ($mon>9? $mon:"0".$mon);
+      my $strmday = ($mday>9? $mday:"0".$mday);
+      my $strhour = ($hour>9? $hour:"0".$hour);
+      my $strmin = ($min>9? $min:"0".$min);
+      my $strsec = ($sec>9? $sec:"0".$sec);
+      $cmdlog_alllog .= "[Date]       $year-$strmon-$strmday $strhour:$strmin:$strsec\n"; 
 	  
       #print ">>>>>>>cmdlog request dumper>>>>>>>>\n";
       #print Dumper $req;
@@ -2450,7 +2500,12 @@ sub service_connection {
     
     if(exists($req->{arg})){
         foreach my $arg (@{$req->{arg}}) {
-	        $cmdlog_alllog .= $arg." ";
+            if($arg =~ /[^A-Za-z0-9.-]/){
+                $arg =~ s/'/'\\''/g;
+                $cmdlog_alllog .= "'".$arg."' ";
+            }else{
+                $cmdlog_alllog .= $arg." ";
+            }
         }
     }
     $cmdlog_alllog .= "\n[Response]\n";
@@ -2917,7 +2972,7 @@ sub cmdlog_collectlog(){
     my $rsponse= shift;
     my $rsp_log="";
 
-    if((exists($rsponse->{serverdone})) && (! exists($rsponse->{error}) )){return 0;}
+    if((exists($rsponse->{xcatresponse}->[0]->{serverdone})) && (! exists($rsponse->{xcatresponse}->[0]->{error}))){return 0;}
     my $rsp;
     if(exists($rsponse->{xcatresponse})){
         $rsp = $rsponse->{xcatresponse};
