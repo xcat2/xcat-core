@@ -3,11 +3,15 @@ Accelerating the diskless initrd and rootimg generating
 
 Generating diskless initrd with ``genimage`` and compressed rootimg with ``packimage`` and ``liteimg`` is a time-comsuming process, it can be accelerated by enabling paralell compression tool ``pigz`` on the management node with multiple processors and cores. See :ref:`Appendix <pigz_example>` for an example on ``packimage`` performance optimized with ``pigz`` enabled.
 
+
+
+Enabling the ``pigz`` for diskless initrd and rootimg generating
+----------------------------------------------------------------
+
 The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` package on the management server or diskless rootimg. Depending on the method of generating the initrd and compressed rootimg, the steps differ in different Linux distributions. 
 
 
 * Enabling the ``pigz`` on :ref:`Ubuntu Server LTS<ubuntu-os-support-label>`
---------------------------------------------------------------------------
 
 Make sure the ``pigz`` is installed on the management node with the following command::
 
@@ -19,7 +23,6 @@ If not, ``pigz`` can be installed with the following command::
 
 
 * Enabling the ``pigz`` on :ref:`Suse Linux Enterprise Server (SLES)<sles-os-support-label>`
-------------------------------------------------------------------------------------------
 
 1) Enabling the ``pigz`` in ``genimage`` (only supported in SLES12 or above) 
 
@@ -37,7 +40,6 @@ If not, ``pigz`` can be installed with the following command::
 
 
 * Enabling the ``pigz`` on :ref:`Red Hat Enterprise Linux (RHEL)<rhels-os-support-label>`
----------------------------------------------------------------------------------------
 
 The package ``pigz`` is shipped in Extra Packages for Enterprise Linux (or EPEL) instead of Redhat iso, this involves some complexity.
 
