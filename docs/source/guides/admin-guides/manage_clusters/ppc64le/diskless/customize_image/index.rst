@@ -12,4 +12,5 @@ Optional means all the subitems in this page are not necessary to finish an OS d
    additional_pkg.rst
    cfg_second_adapter.rst
    enable_kdump.rst
-   install_new_kernel.rst   
+   install_new_kernel.rst  
+   acc_initrd_rootimg_gen_ppc64le.rst 
