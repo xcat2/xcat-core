@@ -1056,8 +1056,8 @@ unless ($cmdlog_svrpid){
         while($writing){sleep(0.01);}
         if($cmdlogfile){close($cmdlogfile);}
         if($clientsock){close($clientsock);}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by USR2 signal");		
         exit(0);
     };  
@@ -1066,12 +1066,15 @@ unless ($cmdlog_svrpid){
         while($writing){sleep(0.01);}
         if($cmdlogfile){close($cmdlogfile);}
         if($clientsock){close($clientsock);}
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
+        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is terminated by TERM or INT signal");
         exit(0);
     };  
 
+    #To support another separate feature "logrotate", that feature will change commands.log name every certain time.
+    #when it changes the commands.log name, it will send HUP signal to 'command log writer' process.
+    #so when 'command log writer' process receives the HUP siganl, it should reopen the commands.log to make log writing correctly.
     $SIG{HUP} = sub {
         my $trytime=200;
         while($writing){sleep(0.01);}
@@ -1158,7 +1161,6 @@ unless ($cmdlog_svrpid){
 
     if($cmdlogfile){close($cmdlogfile);}
     if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-    if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
     xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ stop");
 }
 #----used for command log end---------
