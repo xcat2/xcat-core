@@ -117,7 +117,7 @@ sub process_request {
     elsif (-r $file and -f $file) # Assume ISO file
       { $mntopts .= " -o ro,loop"; }
     else {
-       $callback->({error=>"The management server was unable to find/read $file. Ensure that file exists on the server at the specified location.",errorcode=>[1]});      
+       $callback->({error=>"The management server was unable to find/read '$file'. Ensure that file exists on the server at the specified location.",errorcode=>[1]});      
        return;
     }
 
@@ -131,7 +131,7 @@ sub process_request {
 
 
     if (system("mount $mntopts '$file' $mntpath")) {
-	eval { $callback->({error=>"copycds was unable to mount $file to $mntpath.",errorcode=>[1]}) };
+	eval { $callback->({error=>"copycds was unable to mount '$file' to '$mntpath'.",errorcode=>[1]}) };
 	chdir("/"); 
         system("umount  $mntpath"); 
       	return;
