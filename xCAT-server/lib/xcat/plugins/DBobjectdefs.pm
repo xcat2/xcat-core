@@ -1868,6 +1868,14 @@ sub defch
             return 1;
         }
 
+        # Ensure that the target object doesn't exist
+        if (grep /^$::opt_n$/, @validnode) {
+            my $rsp;
+            push @{$rsp->{data}}, "Object $::opt_n already exists.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+
         # Use the getobjdefs function to get a hash which including
         # all the records in the table that should be changed
         my %chnamehash = ();
