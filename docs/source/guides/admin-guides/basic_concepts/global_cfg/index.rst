@@ -71,7 +71,7 @@ INSTALL/DEPLOYMENT ATTRIBUTES
 The local directory name used to hold the node deployment packages.
 
 * runbootscripts:  
-If set to ``yes`` the scripts listed in the postbootscripts attribute in the osimage and postscripts tables will be run during each reboot of stateful (diskful) nodes. This attribute has no effect on stateless and statelite nodes. Please run the following command after you change the value of this attribute :: 
+If set to ``yes`` the scripts listed in the postbootscripts attribute in the osimage and postscripts tables will be run during each reboot of stateful (diskful) nodes. This attribute has no effect on stateless nodes. Please run the following command after you change the value of this attribute :: 
 
    updatenode <nodes> -P setuppostbootscripts
 
