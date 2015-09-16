@@ -1,7 +1,7 @@
 Network Configuration
 =====================
 
-This section introduces the network structure in xCAT and present some consideration on planning the xCAT network.
+This section introduces the network structure in xCAT and presents some consideration on planning the xCAT network.
 
 
 .. toctree::
