@@ -1,5 +1,5 @@
-Hardware Discoveriy & Define Node
-=================================
+Hardware Discovery & Define Node
+================================
 
 .. toctree::
    :maxdepth: 2
