@@ -119,7 +119,7 @@ XCAT DAEMON ATTRIBUTES
 The port used by the xcatd daemon for client/server communication.
 
 * xcatiport:  
-The port used by xcatd to receive install status updates from nodes.
+The port used by xcatd to receive installation status updates from nodes.
 
 * xcatlport:  
 The port used by xcatd command log writer process to collect command output.
