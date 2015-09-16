@@ -11,12 +11,11 @@
 #  Examples:
 #  1. When PCI_ID value is 1014:034a, execute "diskdiscover 1014:034a", the output format is as following:
 #   
-#       PCI_ID=1014:034a
-#       ----------------------------------------------------------------------------
-#       PCI_SLOT_NAME Resource_Path Device Description   Status
-#       ------------- ------------- ------ -----------   ---------------------------
-#       0001:08:00.0  0:0:0:0       sg0    0 Array Member Active
-#       0001:08:00.0  0:0:1:0       sg1    Function Disk Active
+#       --------------------------------------------------------------------------
+#       PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
+#       ------     -------------  -------------  ------  -----------   ----------------
+#       1014:034a  0001:08:00.0   0:0:0:0        sg0     0 Array Member Active
+#       1014:034a  0001:08:00.0   0:0:1:0        sg1     Function Disk Active
 #       ---------------------------------------------------------------------------
 #       Get ipr RAID arrays by PCI_SLOT_NAME: 0001:08:00.0
 #       ---------------------------------------------------------------------------
@@ -47,364 +46,20 @@
 # 1014 03ff     PCIe3 x8 SAS RAID Internal Adapter 6Gb (57D7)   <-- use this subsys id to represent internal SAS adapter
 # 1014 033b     PCIe2 6Gb SAS RAID Adapter Quad-port (57B4)     <-- use this subsys id to represent GTO adapter
 
-# declare all commands
-iprconfig="iprconfig"
-awk="awk"
-sed="sed"
-cut="cut"
-sleep="sleep"
-sort="sort"
-ps="ps"
-head="head"
-readlink="readlink"
-basename="basename"
-udevadm="udevadm"
-touch="touch"
-tail="tail"
-dmesg="dmesg"
-grep="grep"
-lspci="lspci"
-
-################################################################
+############################################
 #
-#  Input PCI_ID to get PCI location
+# source raidutils
 #
-################################################################
-function get_pciloc_by_id {
-    local __in_pciid=$1
-    if echo "$__in_pciid" | $grep -sq "_"; then
-        __in_pciid=`echo "$__in_pciid" | $sed -e 's/_/:/'`
-    fi
-    local sysdevdir=/sys/bus/pci/devices
-    local pcilocs=`cd $sysdevdir 2>/dev/null && for dev in *
-    do
-        lines=$($udevadm info --query=property --path=$sysdevdir/$dev)
-        if echo "$lines" | $grep -i -sq -E "^PCI_ID=$__in_pciid$|^PCI_SUBSYS_ID=$__in_pciid$"; then
-            echo $dev
-        fi
-    done `
-    [ -z "$pcilocs" ] && return 1
-    echo "$pcilocs"
-    return 0
-}
+###########################################
+str_dir_name=`dirname $0`
+. $str_dir_name/raidutils
 
-######################################################
+
+############################################
 #
-# get pci_slot scsi device
+# Usage
 #
-######################################################
-function convert_sloc_to_sg {
-    local __slocs="$*"
-    for __sloc in $__slocs
-    do
-        if echo "$__sloc" | grep -sq "[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+"; then
-            __sg=`$readlink /sys/class/scsi_device/$__sloc/device/generic`
-            if [ "$__sg" ]; then
-                __sg=`$basename $__sg`
-            fi
-        elif echo "$__sloc" | grep -sq -E '^sg[0-9]+|^sd[a-z]+'; then
-            __sg="$__sloc"
-            __sloc=`convert_sg_to_sloc $__sg | $awk -F= '{print $2}'`
-        fi
-        echo "$__sloc=$__sg"
-    done
-    return 0
-}
-
-#################################################################
-#
-#  Through PCI/SCSI device to find PCI/SCSI location
-#
-################################################################
-function convert_sg_to_sloc {
-    local __sgs="$*"
-    local __sloc=""
-    for __sg in $__sgs
-    do
-        if echo "$__sg" | grep -sq "^sg[0-9]\+"; then
-            __sloc=`$readlink /sys/class/scsi_generic/$__sg/device`
-            if [ "$__sloc" ]; then
-                __sloc=`$basename $__sloc`
-            fi
-        elif echo "$__sg" | grep -sq "^sd[a-z]\+"; then
-            __sloc=`$readlink /sys/block/$__sg/device`
-            if [ "$__sloc" ]; then
-                __sloc=`$basename $__sloc`
-            fi
-        elif echo "$__sg" | grep -sq "[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+"; then
-            __sloc="$__sg"
-            __sg=`convert_sloc_to_sg $__sloc | $awk -F= '{print $2}'`
-        fi
-        echo "$__sg=$__sloc"
-    done
-    return 0
-}
-
-############################################################################
-# get devices which are qualified to be used to create raid
-# it should equals to "query-raid-create" after all array had
-# been deleted.
-# Note: output format of this command is multilines
-# <pciloc_of_ioa1>=<sloc_of_disk1>,<sloc_of_disk2>,...
-# <pciloc_of_ioa2>=<sloc_of_disk1>,<sloc_of_disk2>,...
-# ...
-###########################################################################
-function get_raid_create_devices_by_pciloc {
-    local lines=""
-    local pcilocs="$*"
-    [ -z "$pcilocs" ] && return 1
-
-    # reorder ipr ioa pcilocs by its Primary and Secondary state
-    local ioas=`get_ipr_ioas_by_pciloc $pcilocs`
-    pcilocs=`get_sg_pciloc $ioas | $awk -F= '{print $2}' `
-    lines=`$iprconfig -c show-config`
-    local slocs=""
-    local line=""
-    for pciloc in $pcilocs
-    do
-        # exclude:
-        # 1) scsi adapter(ioa);
-        # 2) scsi enclosure;
-        # 3) disk array;
-        slocs=`echo "$lines" \
-        | grep '^.*[ ]\+'$pciloc'\/[0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+.*$' \
-        | grep -v -E "Adapter|Enclosure|Disk Array" \
-        | cut_sloc_from_iprconfig_line \
-        | $sort -V \
-        | $sed -e 's/ /,/g' \
-        | awk '{printf (NR>1)?","$0:$0}'`
-        if [ -n "$slocs" ]; then
-            line="$pciloc=$slocs"
-            echo "$line"
-        fi
-    done
-    return 0
-}
-
-########################################################################################
-#
-# return list of ioas on target pciloc with order of Primary --> Secondary --> Others
-#
-#########################################################################################
-function get_ipr_ioas_by_pciloc {
-    local pcilocs="$*"
-    [ -z "$pcilocs" ] && return 1
-
-    # find out all ioas and its current adapter state
-    #local ioas_all=`$iprconfig -c show-ioas | grep "^sg[0-9]\+.*Operational" | $awk '{print $1}' `
-local ioas_all=`$iprconfig -c show-ioas | grep "^sg[0-9]\+.*Operational" | $awk '{print $1}'`
-    # group them into "Primary" and "Secondary" groups
-    local lines=`for ioa in $ioas_all
-    do
-        state=$($iprconfig -c show-details $ioa | grep "Current Dual Adapter State" | $sed -e 's/^.* : \+\(.*\)$/\1/')
-        echo "$state=$ioa"
-    done`
-    local ioa_primary=`echo "$lines" | $awk -F= '($1 == "Primary") {print $2}'`
-    local ioa_secondary=`echo "$lines" | $awk -F= '($1 == "Secondary") {print $2}'`
-    local ioa_others=`echo "$lines" | $awk -F= '($1 != "Primary") && ($1 != "Secondary") {print $2}'`
-    ioas_all="$ioa_primary $ioa_secondary $ioa_others"
-
-    # pick up ioa on target pciloc
-    lines=`echo "$pcilocs" | $sed -e 's/[, ]/\n/g'`
-    local ioas_in=""
-    if [ "$lines" = "all" ]; then
-        ioas_in="$ioas_all"
-    else
-        ioas_in=`for ioa in $ioas_all
-        do
-            ioa_pciloc=$(get_sg_pciloc $ioa | awk -F= '{print $2}')
-            if echo "$lines" | grep -sq -i "^${ioa_pciloc}$"; then
-                echo $ioa
-            fi
-        done `
-    fi
-    [ -z "$ioas_in" ] && return 1
-    echo "$ioas_in"
-    return 0
-}
-
-###############################################
-#
-# use udev to determine pciloc of sg device
-#
-###############################################
-function get_sg_pciloc {
-    local sgs="$*"
-    [ -z "$sgs" ] && return 1
-
-    local sg=""
-    local pciloc=""
-    for item in $sgs
-    do
-        sg=`convert_sloc_to_sg $item | $awk -F= '{print $2}'`
-        [ -z "$sg" ] && continue
-        pciloc=`$iprconfig -c show-details $sg | grep "^PCI Address" | $sed -e 's/.*:[ ]\+\([0-9]\+:[0-9]\+:[0-9]\+\.[0-9]\+\).*$/\1/'`
-
-        if [ -n "$pciloc" ]; then
-            echo "$sg=$pciloc"
-        fi
-    done
-    return 0
-}
-
-######################################################
-#
-# cut resouce_path
-#
-#####################################################
-function cut_sloc_from_iprconfig_line {
-    $sed -e 's/^.*[ ]\+\(.*\)\/\([0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+\).*$/\2/g'
-}
-
-###################################################
-#
-# find descriptions and status for device
-#
-###################################################
-function find_desc_status_sg {
-    local lines=""
-    local pciscsilocs="$*"
-    [ -z "$pciscsilocs" ] && return 1
-
-    lines=`$iprconfig -c show-config`
-    local slocs=""
-    local line=""
-    for pciscsiloc in $pciscsilocs
-    do
-        slocs=`echo "$lines" \
-        | $grep "${pciscsilocs}" \
-        | awk '{for(i=3;i<=NF;++i) printf $i "\t";printf "\n"}'`
-        echo $slocs
-    done
-    return 0
-    
-}
-
-#######################################################
-#
-#  get disk devices through pci_id
-#
-#######################################################
-function get_devices_by_pciid {
-
-    local pciid="$*"
-    [ -z "$pciid" ] && return 1
-
-    echo "PCI_ID=$pciid"
-
-    pcilocs=`get_pciloc_by_id $pciid`
-
-
-    if [ -z "$pcilocs" ]; then
-        echo "There is no PCI_SLOT_NAME for PCI_ID:$pciid."
-        return 1
-    fi
-    slocs_grps=`get_raid_create_devices_by_pciloc $pcilocs`
-    if [ -z "$slocs_grps" ]; then
-        echo "Could not find any disk on target pciloc ${pcilocs}!"
-        return 1
-    fi
-
-    # find the required member disks
-    echo "----------------------------------------------------------------------------"
-    echo "PCI_SLOT_NAME Resource_Path Device Description   Status"
-    echo "------------- ------------- ------ -----------   ---------------------------"  
-    slocs=""
-    for item in $slocs_grps
-    do 
-            pciloc=`echo "$item" | $awk -F= '{print $1}'`
-            slocs_grp=`echo "$item" | $awk -F= '{print $2;}'i \
-                                    | $sed 's/,/ /g'`
-            for sloc in $slocs_grp
-            do
-                 pciscsiloc="$pciloc/$sloc"
-                 desc=`find_desc_status_sg $pciscsiloc` 
-                 disk=`convert_sloc_to_sg $sloc | $awk -F= '{print $2}'` 
-                 echo "$pciloc  $sloc       $disk    $desc "
-            done
-            echo "---------------------------------------------------------------------------"
-            echo "Get ipr RAID arrays by PCI_SLOT_NAME: $pciloc"
-            echo "---------------------------------------------------------------------------"
-            get_ipr_arrays_by_pciloc $pciloc
-
-    done
-}
-
-######################################################################
-#
-# get ipr raid arrays by PCI location
-#
-#####################################################################
-function get_ipr_arrays_by_pciloc {
-    local pcilocs="$*"
-    [ -z "$pcilocs" ] && return 1
-
-    # reorder ipr ioa pcilocs by its Primary and Secondary state
-    local ioas=`get_ipr_ioas_by_pciloc $pcilocs`
-    pcilocs=`get_sg_pciloc $ioas | $awk -F= '{print $2}' `
-
-    local lines=$($iprconfig -c show-arrays)
-    local slocs=`for pciloc in $pcilocs
-    do
-        echo "$lines" 
-    done `
-    [ -n "$slocs" ] && echo "$slocs"
-    return 0
-}
-
-#####################################################################
-#
-# get all af and jbod disks 
-#
-####################################################################
-function get_all_devices_for_raid {
-
-    pcilocs=`$iprconfig -c show-config \
-             | $grep -v -E "Adapter|Enclosure|Disk Array" \
-             | $grep '^.*[ ]\+\(.*\)\/\([0-9]\+:[0-9]\+:[0-9]\+:[0-9]\+\).*$'|$sed 's/ /,/g'|cut -c 8-19`
-
-    [ -z "$pcilocs" ] && return 1
-    slocs_grps=`get_raid_create_devices_by_pciloc $pcilocs`
-    if [ -z "$slocs_grps" ]; then
-        echo "Could not find any disk on target pciloc ${pcilocs}!"
-    fi
-    # find the required member disks
-    echo "--------------------------------------------------------------------------"
-    echo "PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status"
-    echo "------     -------------  -------------  ------  -----------   ----------------"
-    slocs=""
-    for item in $slocs_grps
-    do
-            pciloc=`echo "$item" | $awk -F= '{print $1}'`
-            slocs_grp=`echo "$item" | $awk -F= '{print $2;}'i \
-                                    | $sed 's/,/ /g'`
-            pciid=`get_PCI_ID $pciloc`
-            for sloc in $slocs_grp
-            do
-                 pciscsiloc="$pciloc/$sloc"
-                 desc=`find_desc_status_sg $pciscsiloc`
-                 disk=`convert_sloc_to_sg $sloc | $awk -F= '{print $2}'`
-                 #vendor=`find_Vendor_PID_sg disk`
-                 echo "$pciid  $pciloc   $sloc        $disk     $desc "
-            done
-            echo "-------------------------------------------------------------------"
-            echo "Get ipr RAID arrays by PCI_SLOT_NAME: $pciloc"
-            echo "-------------------------------------------------------------------"
-            get_ipr_arrays_by_pciloc $pciloc
-    done
-}
-
-###############################################################
-#
-# get PCI_ID through lspci
-#
-###############################################################
-function get_PCI_ID {
-    pcislot=$1
-    pciid=`$lspci | $grep ${pcislot} | $awk '{print $5}'`
-    echo $pciid
-}
-
+############################################
 function usagesc {
     echo "Usage: diskdiscover <PCI_ID>"
     echo "       If input parameter is <PCI_ID>, return devices and RAID arrays info by PCI_ID."
@@ -414,7 +69,7 @@ function usagesc {
 
 ########################################
 #
-# Main processi:
+# Main process:
 #
 # if input parameter is PCI_ID:
 #     Get devices and RAID arrays info by PCI_ID

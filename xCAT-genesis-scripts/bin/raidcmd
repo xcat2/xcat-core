@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+#  There are functions to handle iprconfig commands.
+#
+iprconfig="iprconfig"
+
+########################################
+#
+#  iprconfig show-config 
+# 
+########################################
+function cmd_show_config {
+    local lines=""
+    lines=`$iprconfig -c show-config`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig show-ioas
+#
+########################################
+function cmd_show_ioas {
+    local lines=""
+    lines=`$iprconfig -c show-ioas`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c show-details
+#
+########################################
+function cmd_show_details {
+    local lines=""
+    local dev=$*
+    lines=`$iprconfig -c show-details $dev`
+    echo "$lines"
+}
+
+########################################
+#
+#  iprconfig -c show-arrays
+#
+########################################
+function cmd_show_arrays {
+    local lines=""
+    lines=`$iprconfig -c show-arrays`
+    echo "$lines"
+}
+
