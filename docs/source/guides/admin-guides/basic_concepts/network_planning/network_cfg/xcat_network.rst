@@ -9,7 +9,7 @@ used by the management node to install and manage the OS of the nodes. The MN an
 
 Service network
 ---------------
-used by the management node to control the nodes out of band via the BMC. If the BMCs are configured in shared mode, then this network can be combined with the management network.
+used by the management node to control the nodes out of band via the BMC. If the BMCs are configured in shared mode [1]_, then this network can be combined with the management network.
 
 Application network 
 ------------------- 
@@ -20,3 +20,4 @@ Site (Public) network
 used to access the management node and sometimes for the compute nodes to provide services to the site.
 
 
+.. [1] shared mode: In "Shared" mode, the BMC network interface and the in-band network interface will share the same network port.
