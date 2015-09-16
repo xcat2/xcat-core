@@ -1,7 +1,7 @@
 Hardware Discovery & Define Node
 ================================
 
-Hardware discovery is used to configure the FSP/BMC and get the hardware configuration information for the physical server. The physical server can be defined into xCAT database manually, or though our hardware discovery process which include mtms based, switch based and sequential based hardware discovery progress. 
+Hardware discovery is used to configure the FSP/BMC to get the hardware configuration information for the physical servers. The physical servers can be defined into xCAT database manually, or though our hardware discovery process. The available options for hardware discovery are MTMS based, switch based and sequential based. 
 
 .. toctree::
    :maxdepth: 2

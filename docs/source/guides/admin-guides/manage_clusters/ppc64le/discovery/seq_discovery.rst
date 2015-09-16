@@ -15,15 +15,15 @@ Predefine nodes
 
 Predefine a group of node with desired IP address for host and IP address for FSP/BMC::
 
-    #nodeadd cn1 groups=pkvm,all
-    #chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
+    nodeadd cn1 groups=powerLE,all
+    chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
  
 Initialize the discovery process
 ````````````````````````````````
 
 Specify the predefined nodes to the nodediscoverstart command to initialize the discovery process::
 
-#nodediscoverstart noderange=cn1
+    nodediscoverstart noderange=cn1
 
 Pls see "nodediscoverstart man page<TBD>" for more details.
 
