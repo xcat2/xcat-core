@@ -18,6 +18,7 @@ Source5: xCATMN
 %ifos linux
 Source4: prescripts.tar.gz
 Source6: winpostscripts.tar.gz
+Source8: etc.tar.gz
 %endif
 
 Source7: xcat.conf.apach24
@@ -86,6 +87,7 @@ hardware management and software management.
 tar zxf %{SOURCE2}
 tar zxf %{SOURCE4}
 tar zxf %{SOURCE6}
+tar zxf %{SOURCE8}
 %else
 rm -rf postscripts
 cp %{SOURCE2} /opt/freeware/src/packages/BUILD
@@ -125,6 +127,8 @@ fi
 mkdir -p $RPM_BUILD_ROOT/etc/xcat/conf.orig
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
+mkdir -p $RPM_BUILD_ROOT/etc/logrotate.d
+mkdir -p $RPM_BUILD_ROOT/etc/rsyslog.d
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/install/prescripts
 mkdir -p $RPM_BUILD_ROOT/install/kdump
@@ -138,6 +142,13 @@ cp %{SOURCE3} $RPM_BUILD_ROOT/%{prefix}/share/xcat
 gunzip -f templates.tar.gz
 tar -xf templates.tar
 rm templates.tar
+%endif
+
+cd -
+cd $RPM_BUILD_ROOT
+
+%ifos linux
+tar zxf %{SOURCE8}
 %endif
 
 cd -
@@ -190,6 +201,8 @@ then
    cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
+# Lets rsyslogd perform close all open files
+kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
 %endif
 
 # create dir for the current pid
@@ -232,6 +245,9 @@ exit 0
 /install/postscripts
 /install/prescripts
 %ifos linux
+/etc/logrotate.d/xcat
+/etc/rsyslog.d/xcat-cluster.conf
+/etc/rsyslog.d/xcat-compute.conf
 /install/winpostscripts
 %endif
 %defattr(-,root,root)

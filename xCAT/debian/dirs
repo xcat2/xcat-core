@@ -7,4 +7,6 @@ opt/xcat/share/xcat
 etc/apache2/conf.d
 etc/apache2/conf-available
 etc/apache2/conf-enabled
+etc/logrotate.d
+etc/rsyslog.d
 opt/xcat/share/doc/packages/xCAT

@@ -45,6 +45,8 @@ case "$1" in
          ln -s -f /etc/apache2/conf-available/xcat.conf.apach24 /etc/apache2/conf-enabled/xcat.conf
 
 	/etc/init.d/apache2 restart
+
+	kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
