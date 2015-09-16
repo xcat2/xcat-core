@@ -1,6 +1,7 @@
-.. include:: ../../common/discover/mtms_discovery.rst
+MTMS-based Discovery
+====================
 
-The idea of mtms based hardware discovery is that the admin know the physical location information of the server with specified MTMS. Then the admin can assign nodename, host ip address for the physical server.
+MTMS is short for Machine Type/Model and Serial which is unique for a physical server. The idea of MTMS based hardware discovery is that the admin know the physical location information of the server with specified MTMS. Then the admin can assign nodename and host ip address for the physical server.
 
 .. include:: schedule_environment.rst
 .. include:: config_environment.rst 
@@ -12,7 +13,7 @@ After environment is ready, and the server is powered, we can start server disco
 
 The following command can be used to discovery FSP/BMC within an IP range and write the discovered node definition into a stanza file::
 
-# lsslp -s PBMC -u --range 50.0.100.1-100 -z > ./pbmc.stanza
+  lsslp -s PBMC -u --range 50.0.100.1-100 -z > ./pbmc.stanza
 
 You need to modify the node definition in stanza file before using them, the stanza file will be like this::
  
@@ -53,20 +54,20 @@ After the physical server is defined into xCATdb, the next thing is update the n
 
 Then, add node info into /etc/hosts and DNS::
 
-  # makehosts cn1
-  # makedns -n
+  makehosts cn1
+  makedns -n
 
 Start discovery process
 -----------------------
 
 To start discovery process, just need to power on the host remotely with the following command, and the discovery process will start automatically after the host is powered on::
 
-#rpower cn1 on
+  rpower cn1 on
 
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
-  #chdef cn1 cons=ipmi
-  #makeconsercf
-  #rcons cn1
+  chdef cn1 cons=ipmi
+  makeconsercf
+  rcons cn1
 
 .. include:: standard_cn_definition.rst
