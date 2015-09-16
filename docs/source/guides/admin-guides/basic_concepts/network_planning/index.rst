@@ -1,7 +1,7 @@
 Network Planning
 ================
 
-This section introduces xCAT node types, the network services in xCAT, the network structure and present some considerations on planning the xCAT network.
+This section introduces xCAT node types, the network services in xCAT, the network structure and presents some considerations on planning the xCAT network.
 
 
 .. toctree::
