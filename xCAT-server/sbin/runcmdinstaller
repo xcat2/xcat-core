@@ -10,7 +10,7 @@ action = "sh"
 if( node=="-h" || argc !=2 || ! node || ! cmd){
   print "Usage:\n\n   runcmdinstaller <node> \"<command>\"\n"
   print           "   make sure all the commands are quoted by \"\"\n";
-  exit 1;
+  exit 0;
 }
 
 ns = "/inet/tcp/0/" node "/" port
