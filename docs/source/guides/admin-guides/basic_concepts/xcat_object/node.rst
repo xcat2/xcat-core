@@ -4,7 +4,7 @@ node
 Description
 -----------
 
-The physical unit in the cluster, such as lpar,virtual machine, frame, cec, hmc, switch. 
+The definition of physical units in the cluster, such as lpar,virtual machine, frame, cec, hmc, switch. 
 
 Key Attrubutes
 --------------
@@ -60,9 +60,9 @@ Use Cases
 ---------
 
 * Case 1: 
-There is a ppc64 lpar named "cn1", the hardware management method is "hmc", the mac of installation NIC is "ca:68:d3:ae:db:03", the ip assigned is "10.0.0.100", the network boot method is "grub2", place it into the group "all". Use the following command ::
+There is a ppc64le node named "cn1", the mac of installation NIC is "ca:68:d3:ae:db:03", the ip assigned is "10.0.0.100", the network boot method is "grub2", place it into the group "all". Use the following command ::
 
-    mkdef -t node -o cn1 arch=ppc64 mgt=hmc mac="ca:68:d3:ae:db:03" ip="10.0.0.100" netboot="grub2" groups="all"
+    mkdef -t node -o cn1 arch=ppc64 mac="ca:68:d3:ae:db:03" ip="10.0.0.100" netboot="grub2" groups="all"
 
 * Case 2:
 List all the node objects ::
@@ -99,7 +99,6 @@ The content of "/tmp/cn.stanza" will look like ::
         groups=all
         ip=10.0.0.100
         mac=ca:68:d3:ae:db:03
-        mgt=hmc
         netboot=grub2
 
 *step 2*: modify the "/tmp/cn.stanza" according to the "cn2" attributes ::
@@ -111,7 +110,6 @@ The content of "/tmp/cn.stanza" will look like ::
         groups=all
         ip=10.0.0.101
         mac=ca:68:d3:ae:db:04
-        mgt=hmc
         netboot=grub2
 
 *step 3*: create "cn2" definition with "cn.stanza" ::
