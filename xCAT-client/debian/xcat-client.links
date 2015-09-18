@@ -124,4 +124,5 @@ opt/xcat/bin/xcatclient    opt/xcat/bin/xCATWorld
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/switchdiscover
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/bmcdiscover
 opt/xcat/bin/xcatclientnnr opt/xcat/bin/makentp
+opt/xcat/bin/xcatclientnnr opt/xcat/sbin/rescanplugins
 
