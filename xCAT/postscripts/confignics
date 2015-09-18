@@ -315,7 +315,7 @@ do
                 continue
             fi
         fi
-        if [ `echo $key | grep -E 'e(n|th|m)[0-9a-z]+'` ];then
+        if [ `echo $key | grep -E 'e(n|th|m)[0-9a-zA-Z]+'` ];then
             str_nic_type="ethernet"
         elif [ `echo $key | grep -E 'ib[0-9]+'` ];then
             str_nic_type="infiniband"
