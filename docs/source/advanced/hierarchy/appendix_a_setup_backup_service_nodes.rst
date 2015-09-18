@@ -83,7 +83,7 @@ rhsn. lsdef cn4 | grep servicenode. ::
 
   servicenode=service1,rhsn
 
-f a service node is offline ( e.g. service1), then you will see errors on
+If a service node is offline ( e.g. service1), then you will see errors on
 your xdcp command, and yet if rhsn is online then the xdcp will actually
 work. This may be a little confusing. For example, here service1 is offline,
 but we are able to use rhsn to complete the xdcp. ::

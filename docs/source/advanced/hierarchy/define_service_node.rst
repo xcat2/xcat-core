@@ -45,7 +45,7 @@ appropriate for SNs. Display the list of osimages and choose one with
    lsdef -t osimage
 
 For this example, let's assume you chose the stateful osimage definition for 
-rhels 6.3: rhels6.3-x86_64-install-service . If you want to modify any of the 
+rhels 7: rhels7-x86_64-install-service . If you want to modify any of the
 osimage attributes (e.g. ``kickstart/autoyast`` template, pkglist, etc),
 make a copy of the osimage definition and also copy to ``/install/custom``
 any files it points to that you are modifying.
@@ -53,12 +53,12 @@ any files it points to that you are modifying.
 Now set some of the common attributes for the SNs at the group level: ::
 
   chdef -t group service arch=x86_64 \
-                         os=rhels6.3 \
+                         os=rhels7 \
                          nodetype=osi
                          profile=service \
                          netboot=xnba installnic=mac \
                          primarynic=mac \
-                         provmethod=rhels6.3-x86_64-install-service
+                         provmethod=rhels7-x86_64-install-service
 
 Add Service Nodes to the servicenode Table
 ------------------------------------------
@@ -305,7 +305,7 @@ the keyword. Here is an example:
 The ipforward attribute should be enabled on all the xcatmaster nodes that 
 will be acting as default gateways. You can set ipforward to 1 in the 
 servicenode table or add the line "net.ipv4.ip_forward = 1" in file 
-``/etc/sysctl``.conf and then run "sysctl -p /etc/sysctl.conf" manually to
+``/etc/sysctl.conf`` and then run "sysctl -p /etc/sysctl.conf" manually to
 enable the ipforwarding.
 
 Note:If using service node pools, the networks table dhcpserver attribute can 
@@ -339,7 +339,7 @@ ethernet network adapters connected to the HW service VLAN be configured.
 Configuring Secondary Adapters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-o configure secondary adapters, see `Configuring_Secondary_Adapters
+To configure secondary adapters, see `Configuring_Secondary_Adapters
 <http://localhost/fake_todo>`_
 
 
