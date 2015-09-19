@@ -28,26 +28,45 @@ Another example is if "node1" is assigned the IP address "10.0.0.1", node2 is as
 
 In this example, the regular expression in the ``ip`` attribute uses ``|`` to separate the 1st and 2nd part. This means that xCAT will allow arithmetic operations in the 2nd part. In the 1st part, ``(\d+)``, will match the number part of the node name and put that in a variable called ``$1``. The 2nd part is what value to give the ``ip`` attribute. In this case it will set it to the string "10.0.0." and the number that is in ``$1``. (Zero is added to ``$1`` just to remove any leading zeroes.)
 
-A more involved example is with the ``mp`` table. If your blades have node names node01, node02, etc., and your chassis node names are cmm01, cmm02, etc., then you might have an ``mp`` table like ::
+A more involved example is with the ``vm`` table. If your kvm nodes have node names c01f01x01v01, c01f02x03v04, etc., and the kvm host names are c01f01x01, c01f02x03, etc., then you might have an ``vm`` table like ::
 
-    #node,mpa,id,nodetype,comments,disable
-    "blade","|\D+(\d+)|cmm(sprintf('%02d',($1-1)/14+1))|","|\D+(\d+)|(($1-1)%14+1)|",,
+    #node,mgr,host,migrationdest,storage,storagemodel,storagecache,storageformat,cfgstore,memory,cpus,nics,nicmodel,bootorder,clockoffset,virtflags,master,vncport,textconsole,powerstate,beacon,datacenter,cluster,guestostype,othersettings,physlots,vidmodel,vidproto,vidpassword,comments,disable
+   "kvms",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|",,"|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|",,,,,"3072","2","virbr2","virtio",,,,,,,,,,,,,,,,,,   
 
 Before you panic, let me explain each column:
 
-``blade``
+``kvms``
 
-    This is a group name. In this example, we are assuming that all of your blades belong to this group. Each time the xCAT software accesses the ``mp`` table to get the management module and slot number of a specific blade (e.g. node20), this row will match (because node20 is in the blade group). Once this row is matched for node20, then the processing described in the following items will take place.
+    This is a group name. In this example, we are assuming that all of your kvm nodes belong to this group. Each time the xCAT software accesses the ``vm`` table to get the kvm host ``host`` and storage file ``vmstorage`` of a specific kvm node (e.g. c01f02x03v04), this row will match (because c01f02x03v04 is in the kvms group). Once this row is matched for c01f02x03v04, then the processing described in the following items will take place.
 
-``|\D+(\d+)|cmm(sprintf('%02d',($1-1)/14+1))|``
+``|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|c($1)f($2)x($3)|``
 
-    This is a perl substitution pattern that will produce the value for the second column of the table (the management module hostname). The text ``\D+(\d+)`` between the 1st two vertical bars is a regular expression that matches the node name that was searched for in this table (in this example node20). The text that matches within the 1st set of parentheses is set to ``$1``. (If there was a 2nd set of parentheses, it would be set to ``$2``, and so on.) In our case, the ``\D+`` matches the non-numeric part of the name (node) and the ``\d+`` matches the numeric part (20). So ``$1`` is set to 20. The text ``cmm(sprintf('%02d',($1-1)/14+1))`` between the 2nd and 3rd vertical bars produces the string that should be used as the value for the ``mpa`` attribute for node20. Since ``$1`` is set to 20, the expression ``($1-1)/14+1`` equals "19/14 + 1", which equals "2". (The division is integer division, so "19/14" equals 1. Fourteen is used as the divisor, because there are 14 blades in each chassis.) The value of 2 is then passed into sprintf() with a format string to add a leading zero, if necessary, to always make the number two digits. Lastly the string cmm is added to the beginning, making the resulting string ``cmm02``, which will be used as the hostname of the management module.
+    This is a perl substitution pattern that will produce the value for the 3rd column of the table (the kvm host). The text ``\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)`` between the 1st two vertical bars is a regular expression that matches the node name that was searched for in this table (in this example c01f02x03v04). The text that matches within the 1st set of parentheses is set to ``$1``, 2nd set of parentheses is set to ``$2`` ,3rd set of parentheses is set to ``$3``,and so on. In our case, the ``\D+`` matches the non-numeric part of the name ("c","f","x","v") and the ``\d+`` matches the numeric part ("01","02","03","04"). So ``$1`` is set to "01", ``$2`` is set to "02", ``$3`` is set to "03", and ``$4`` is set to "04". The text ``c($1)f($2)x($3)`` between the 2nd and 3rd vertical bars produces the string that should be used as the value for the ``host`` attribute for c01f02x03v04, i.e,"c01f02x03".
 
-``|\D+(\d+)|(($1-1)%14+1)|``
+``|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|``
 
-    This item is similar to the one above. This substituion pattern will produce the value for the 3rd column (the chassis slot number for this blade). Because this row was the match for node20, the parentheses within the 1st set of vertical bars will set ``$1`` to 20. Since ``%`` means modulo division, the expression ``($1-1)%14+1`` will evaluate to 6.
+    This item is similar to the one above. This substituion pattern will produce the value for the 5th column (a list of storage files or devices to be used). Because this row was the match for "c01f02x03v04", the produced value is "dir:///install/vms/vm4".
 
-See `perlre <http://www.perl.com/doc/manual/html/pod/perlre.html>`_ for information on perl regular expressions.
+Just as the explained above, when the node definition "c01f02x03v04" is created  with ::
+
+    # mkdef -t node -o c01f02x03v04 groups=kvms
+    1 object definitions have been created or modified.
+
+The generated node deinition is ::
+
+    # lsdef c01f02x03v04
+    Object name: c01f02x03v04
+        groups=kvms
+        postbootscripts=otherpkgs
+        postscripts=syslog,remoteshell,syncfiles
+        vmcpus=2
+        vmhost=c01f02x03
+        vmmemory=3072
+        vmnicnicmodel=virtio
+        vmnics=virbr2
+        vmstorage=dir:///install/vms/vm4
+
+See `perlre <http://www.perl.com/doc/manual/html/pod/perlre.html>`_ for more information on perl regular expressions.
 
 
 Easy Regular expressions
