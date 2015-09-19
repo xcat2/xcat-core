@@ -1,4 +1,4 @@
-GROUPS AND REGULAR EXPRESSIONS IN TABLES
+Groups and Regular Expressions in Tables
 ========================================
 
 Using Regular Expressions in the xCAT Tables
