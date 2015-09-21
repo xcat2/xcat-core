@@ -1,16 +1,21 @@
 xCAT stands for E\ **x**\ treme **C**\ loud/\ **C**\ luster **A**\ dministration **T**\ oolkit.
 
-xCAT offers complete management of clouds, clusters (HPC), grids, datacenters, 
+xCAT offers complete management of clouds, clusters (HPC), grids, datacenters,
 renderfarms, online gaming infrastructure, and whatever tomorrows next buzzword may be.
 
-xCAT enables the administrator to:
+**xCAT enables the administrator to:**
+   #. Discover the hardware servers
+   #. Execute remote system management against the discovered server
+   #. Provision Operating Systems on physical (Bare-metal) or virtual machines
+   #. Provision machines in Diskful and Diskless
+   #. Install and configure user applications
+   #. Parallel system management
+   #. Integrate xCAT in Cloud
 
-    #.  provision operating systems on physical (“bare metal”) or virtual machines.
-    #.  provision machines using scripted install, stateless, statelite, iSCSI, or cloning.
-    #.  remotely manage systems (lights out management, remote console support, distributed shell support).
-    #.  quickly configure and control management nodes services: dns, http, dhcp, tftp, nfs, etc.
+**xCAT** is an open source project hosted on `GitHub/xcat2 <https://github.com/xcat2/xcat-core/>`_. You can get the **source code**
+, submit **bug/question/requirement** and contribute **code, doc** here.
 
-**xCAT** is an open source project hosted on `SourceForge <http://sourceforge.net/p/xcat/wiki/Main_Page/>`_ and currently mirrored on `GitHub <https://github.com/xcat2/xcat-core/>`_.  (We hope to be natively hosted on GitHub in the near future)
+**xCAT**'s landing page is http://xcat.org. You can get the **download packages** and **release notes** here.
 
 Enjoy!
 
