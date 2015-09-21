@@ -1,20 +1,16 @@
 Database
 ========
 
-xCAT stores all the persistent data used to manage clusters in a database. 
+xCAT stores all the persistent data including global configuration, user settings and cluster information in a database. 
 
-As the administrator, you can use a set of table oriented commands to modify the data (**recommended**), or directly modify the table using the ``tabedit`` command.
+This section introduces some database related xCAT commands, some key xCAT database tables and, the usage of regular expressions in xCAT database. 
 
-For a more indepth overview see the manpage for xcatdb: ``man xcatdb``
+For a complete reference, see the manpage for xcatdb: ``man xcatdb``
 
-Commands
---------
 
-Object Definitions
-------------------
-
-Node Groups
------------
-
-Regular Expressions
--------------------
+.. toctree::
+      :maxdepth: 2
+          
+   dbcmd.rst
+   dbtables.rst
+   regexp_db.rst 
