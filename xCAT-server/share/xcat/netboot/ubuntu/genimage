@@ -354,8 +354,8 @@ unless ($onlyinitrd) {
 
    close($aptconfig);
 
-   # run apt-get upgrade to update any installed debs
-   my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
+   # run apt-get dist-upgrade to update any installed debs
+   my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " dist-upgrade  ";
    $rc = system("$aptgetcmd_update");
         
    # Start to install pkgs in pkglist
@@ -575,10 +575,10 @@ unless ($onlyinitrd) {
    }
 
    if (!$noupdate) {
-       # run apt-get upgrade to update any installed debs
+       # run apt-get dist-upgrade to update any installed debs
        # needed when running genimage again after updating software in repositories
        #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
-       my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
+       my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " dist-upgrade  ";
        $rc = system("$aptgetcmd_update");
 #       if ($kernelimage) {
 #           if ($kernelver) {
