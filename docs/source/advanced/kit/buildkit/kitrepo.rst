@@ -5,21 +5,22 @@ After the buildkit configuration file is validated, run the "buildrepo" subcomma
 
 IBM HPC Products are using pre-built rpms.  There are no OS/arch specific in the kitcomponent meta-package rpm and should be able to build all repositories on the same server.
 
-To list the repos defined in the buildkit.conf:
-::
+To list the repos defined in the buildkit.conf: ::
+
   buildkit listrepo
 
-To build the repositories, specifiy a particular reporitory:
-::
+To build the repositories, specifiy a particular reporitory: ::
+
   buildkit buildrepo <kit repo name>
 
-or build all the repositories for this kit:
-::
+or build all the repositories for this kit: ::
+
   buildkit buildrep all
 
 The repository would be built in <Kit directory location>/build/kit_repodir/ subdirectory.
 If the Kit Package Repository is already fully built, then this command performs no operation.
 If the Kit Package Repository is not fully built, the command builds it as follows:
+
     #. Create the Kit Package Repository directory .<Kit directory location>/build/kit_repodir/<Kit Pkg Repo> .
     #. Build the Component Meta-Packages associated with this Kit Package Repository. Create the packages under the Kit Package Repository directory
     #. Build the Kit Packages associated with this Kit Package Repository. Create the packages under the Kit Package Repository directory

@@ -56,8 +56,8 @@ In order for a kit command to process a kit properly it must be compatible with 
 
 Both the kit commands and the actual kits contain the current framework they support as well as any backlevel versions also supported.
 
-View the supported framework and compatible framework values for a command can be used the "-v|--version" option.
-::
+View the supported framework and compatible framework values for a command can be used the "-v|--version" option.  ::
+
    addkit -v
    addkit - xCAT Version 2.8.3 (built Sat Aug 31 11:11:31 EDT 2013)
            kitframework = 2

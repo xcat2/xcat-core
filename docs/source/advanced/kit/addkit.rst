@@ -6,9 +6,9 @@ Adding a complete Kit to xCAT
 
 A complete kit must be added to the xCAT management node and defined in the xCAT database before its kit components can be added to xCAT osimages or used to update diskful cluster nodes.
 
-To add a kit run the following command:
-::
-  addkit <complete kit tarfile>
+To add a kit run the following command: ::
+
+    addkit <complete kit tarfile>
 
 The addkit command will expand the kit tarfile. The default location will be <site.installdir>/kits directory but an alternate location may be specified. (Where site.installdir is the value of the installdir attribute in the xCAT site definition.)
 
@@ -18,11 +18,11 @@ Kits are added to the kit table in the xCAT database keyed by a combination of k
 
 Listing a kit
 ^^^^^^^^^^^^^
-The xCAT kit object definition may be listed using the xCAT lsdef command.
-::
-  lsdef -t kit -l <kit name>
+The xCAT kit object definition may be listed using the xCAT lsdef command.  ::
 
-The contents of the kit may be listed by using the lskit command.
-::
-  lskit <kit name>
+    lsdef -t kit -l <kit name>
+
+The contents of the kit may be listed by using the lskit command.  ::
+
+    lskit <kit name>
 

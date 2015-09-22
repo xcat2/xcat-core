@@ -1,16 +1,16 @@
 Build the Kit Tarfile
 =====================
 
-After the Kit package repositories are built, run the "buildtar" subcommand in the Kit directory to build the final kit tarfile.
-::
+After the Kit package repositories are built, run the "buildtar" subcommand in the Kit directory to build the final kit tarfile.  ::
+
   buildkit buildtar
 
-The tar file will be built in the kit directory location.  A complete kit will be named:
-::
+The tar file will be built in the kit directory location.  A complete kit will be named: ::
+
   ex: kitname-1.0.0-x86_64.tar.bz2
 
-A partial kit will have "NEED_PRODUCT_PKGS" string in its name:
-::
+A partial kit will have "NEED_PRODUCT_PKGS" string in its name: ::
+
   ex: kitname-1.0.0-x86_64.NEED_PRODUCT_PKGS.tar.bz2
 
 
@@ -20,8 +20,8 @@ If the product packages are for a newer version or release than what specified i
 
 Note: Basically, the latest partial kit available online will work until there is a newer version available.
 
-To build a complete kit with the new software, user can provide the new version and/or release of the software on the buildkit command line.
-::
+To build a complete kit with the new software, user can provide the new version and/or release of the software on the buildkit command line.  ::
+
   buildkit addpkgs <kitname.NEED_PRODUCT_PKGS.tar.bz2> --pkgdir <product package directories> \
        --kitversion <new version> --kitrelease <new release>
 
@@ -31,11 +31,14 @@ For example, if the partial kit was created for a product version of 1.3.0.2 but
 Completing a partial kit
 ^^^^^^^^^^^^^^^^^^^^^^^^
 Follow these steps to complete the kit build process for a partial kit.
+
   #. copy the partial kit to a working directory
   #. copy the product software packages to a convenient location or locations
   #. cd to the working directory
-  #. Build the complete kit tarfile
-  ::
+  #. Build the complete kit tarfile 
+
+::
+
     buildkit addpkgs <kit.NEED_PRODUCT_PKGS.tar.bz2> --pkgdir <product package directories>
 
 The Complete kit tar file will be created in the working directory

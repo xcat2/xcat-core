@@ -10,24 +10,24 @@ Some kitcomponents have dependencies on other kitcomponents. For example, a kit 
 
 Note: A kit component in the latest product kit may have a dependency on a license kit component from an earlier kit version.
 
-To check if a kitcomponent is valid for an existing OS image definition run the chkkitcomp command:
-::
+To check if a kitcomponent is valid for an existing OS image definition run the chkkitcomp command: ::
+
   chkkitcomp -i <osimage> <kitcompname>
 
-If the kit component is compatible then add the kitcomponent to the OS image defintion using the addkitcomp command.
-::
+If the kit component is compatible then add the kitcomponent to the OS image defintion using the addkitcomp command.  ::
+
   addkitcomp -a -i <osimage> <kitcompname>
 
 When a kitcomponent is added to an OS image definition, the addkitcomp command will update several attributes in the xCAT database.
 
 Listing kit components
 ^^^^^^^^^^^^^^^^^^^^^^
-The xCAT kitcomponent object definition may be listed using the xCAT lsdef command.
-::
+The xCAT kitcomponent object definition may be listed using the xCAT lsdef command.  ::
+
   lsdef -t kitcomponent -l <kit component name>
 
-The contents of the kit component may be listed by using the lskitcomponent command.
-::
+The contents of the kit component may be listed by using the lskitcomponent command.  ::
+
   lskitcomp <kit component name>
 
 
@@ -40,8 +40,8 @@ Currently, it is not possible to install multiple versions of a product into an 
 
 Some software products have designed their packaging to leave previous versions of the software installed in an OS image even when the product is upgraded. This is done by using different package names for each version/release, so that the package manager does not see the new version as an upgrade, but rather as a new package install. In this case, it is possible to use xCAT to install multiple versions of the product into the same image.
 
-By default, when a newer version/release of a kitcomponent is added to an existing OS image definition, addkitcomp will automatically upgrade the kitcomponent by removing the old version first and then adding the new one. However, user can force both versions of the kitcomponent to be included in the OS image definition by specifying the full kitcomponent name and using the addkitcomp -n (--noupgrade) flag with two separate command calls. For example, to include both myprod_compute.1-0.1 and myprod_compute.1-0.2 into an the compute osimage, you would run in this order:
-::
+By default, when a newer version/release of a kitcomponent is added to an existing OS image definition, addkitcomp will automatically upgrade the kitcomponent by removing the old version first and then adding the new one. However, user can force both versions of the kitcomponent to be included in the OS image definition by specifying the full kitcomponent name and using the addkitcomp -n (--noupgrade) flag with two separate command calls. For example, to include both myprod_compute.1-0.1 and myprod_compute.1-0.2 into an the compute osimage, you would run in this order: ::
+
   addkitcomp -i compute myprod_compute.1-0.1
   addkitcomp -i compute -n myprod_compute.1-0.2
 
@@ -54,12 +54,12 @@ When building a diskless image for the first time, or when deploying a diskfull 
 Modifying Kit Deployment Parameters for an OS Image Definition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Some product software kits include kit deployment parameter files to set environment variables when the product packages are being installed in order to control some aspects of the install process. To determine if a kit includes such a file:
-::
+Some product software kits include kit deployment parameter files to set environment variables when the product packages are being installed in order to control some aspects of the install process. To determine if a kit includes such a file: ::
+
   lsdef -t kit -o <kitname> -i kitdeployparams
 
-If the kit does contain a deployment parameter file, the contents of the file will be included in the OS image definition when user add one of the kitcomponents to the image. User can view or change these values if need to change the install processing that they control for the software product:
-::
+If the kit does contain a deployment parameter file, the contents of the file will be included in the OS image definition when user add one of the kitcomponents to the image. User can view or change these values if need to change the install processing that they control for the software product: ::
+
   addkitcomp -i <image> <kitcomponent name>
   vi /install/osimages/<image>/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist
 

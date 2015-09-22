@@ -1,7 +1,7 @@
 Install the xCAT-buildkit RPM
 -----------------------------
-check to see if xCAT-buildkit RPM is installed in the build server
-::
+check to see if xCAT-buildkit RPM is installed in the build server ::
+
   rpm -qa | grep xCAT-buildkit
 
 
@@ -10,8 +10,8 @@ The xCAT-buildkit RPM is required to build a kit.  It will be installed automati
     #. Download the xCAT tar file and install the xCAT-buildkit RPM from the local repositroy
     #. Install the RPM directly from the internet-hosted repository
 
-Once the repositories are setup, use yum to install xCAT-buildkit and all its dependencies
-::
+Once the repositories are setup, use yum to install xCAT-buildkit and all its dependencies ::
+
    yum clean metadata
    yum install xCAT-buildkit
 

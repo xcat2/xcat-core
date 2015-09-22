@@ -9,6 +9,5 @@ Building Kits
    validatekit.rst
    kitrepo.rst
    kittarfile.rst
-   kitconfile.rst
 
 
