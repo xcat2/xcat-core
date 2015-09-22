@@ -16,7 +16,8 @@ Contents of a software Kit
 --------------------------
 A software kit is a tar file that contains the following
 
-**Kit Configuration File** --- A file describing the contents of this kit. This file contains following information 
+**Kit Configuration File** --- A file describing the contents of this kit and contains following information 
+
   * Kit name, version, description, supported OS distributions, license information, and deployment parameters
   * Kit repository information including name, supported OS distributions, and supported architectures 
   * Kit component information including name, version, description, server roles, scripts, and other data
@@ -57,8 +58,8 @@ Both the kit commands and the actual kits contain the current framework they sup
 
 View the supported framework and compatible framework values for a command can be used the "-v|--version" option.
 ::
-  addkit -v
-  addkit - xCAT Version 2.8.3 (built Sat Aug 31 11:11:31 EDT 2013)
+   addkit -v
+   addkit - xCAT Version 2.8.3 (built Sat Aug 31 11:11:31 EDT 2013)
            kitframework = 2
            compatible_frameworks = 0,1,2
 
