@@ -33,7 +33,7 @@ After submitting a pull request, you may get comments from reviewer that somethi
 
 #. Push the new commit to remote repository. Then the commit will be displayed in pull request automatically. ::
 
-    $git push origin <mybranch>
+    $git push origin <mybranch> -f
 
 Resolving Conflit in the Pull Request
 ------------------------------------
@@ -63,7 +63,7 @@ During the reviewing of your pull request, some one may change certain code whic
 
 #. Push the change to the remote repository ::
 
-    $git push origin <mybranch>
+    $git push origin <mybranch> -f
 
 Then you will see the pull request is enabled to be merged automatically.
 
