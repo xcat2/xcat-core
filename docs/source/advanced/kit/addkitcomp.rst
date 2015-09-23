@@ -2,7 +2,7 @@ Adding Kit Components
 ---------------------
 
 Adding Kit Components to an OS Image Definition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````````````````````````````````
 
 In order to add a kitcomponent to an OS image definition, the kitcomponent must support the OS distro, version, architecture, serverrole for that OS image.
 
@@ -21,7 +21,7 @@ If the kit component is compatible then add the kitcomponent to the OS image def
 When a kitcomponent is added to an OS image definition, the addkitcomp command will update several attributes in the xCAT database.
 
 Listing kit components
-^^^^^^^^^^^^^^^^^^^^^^
+``````````````````````
 The xCAT kitcomponent object definition may be listed using the xCAT lsdef command.  ::
 
   lsdef -t kitcomponent -l <kit component name>
@@ -32,7 +32,7 @@ The contents of the kit component may be listed by using the lskitcomponent comm
 
 
 Adding Multiple Versions of the Same Kit Component to an OS Image Definition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`````````````````````````````````````````````````````````````````````````````
 
 xCAT allows to have multiple versions/releases of a product software kit available in the cluster. Typically, different OS image definitions corresponding to the different versions/releases of a product software stack.  However, in some instances, may need mulitple versions/releases of the same product available within a single OS image. This is only feasible if the software product supports the install of multiple versions or releases of its product within an OS image.
 
@@ -52,7 +52,7 @@ By default, when a newer version/release of a kitcomponent is added to an existi
 When building a diskless image for the first time, or when deploying a diskfull node, xCAT will first install version 1-0.1 of myprod, and then in a separate yum or zypper call, xCAT will install version 1-0.2. The second install will either upgrade the product rpms or install the new versions of the rpms depending on how the product named the packages.
 
 Modifying Kit Deployment Parameters for an OS Image Definition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````````````````````````````````````````````````
 
 Some product software kits include kit deployment parameter files to set environment variables when the product packages are being installed in order to control some aspects of the install process. To determine if a kit includes such a file: ::
 

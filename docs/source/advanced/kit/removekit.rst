@@ -1,8 +1,8 @@
-Remove Kit
-----------
+Removing Kit
+------------
 
 Removing Kit Components from an OS Image Definition
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+````````````````````````````````````````````````````
 To remove a kit component from an OS image definition, first list the existing kitcomponents to get the name to remove: ::
 
   lsdef -t osimage -o <image> -i kitcomponents
@@ -22,7 +22,7 @@ Note that this ONLY removes the kitcomponent from the image definition in the xC
 The next time when run genimage for the diskless image, or updatenode to the fulldisk nodes, the software product will be un-installed.
 
 Removing a Kit from the xCAT Management Node
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+````````````````````````````````````````````
 
 To remove a kit from xCAT, first make sure that no OS images are assigned any of the kitcomponents. To do this, run the following database queries: ::
 

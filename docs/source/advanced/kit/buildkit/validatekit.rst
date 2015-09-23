@@ -1,6 +1,7 @@
-Validate the Kit Configuration
-==============================
-After modify the buildkit.conf file and copy all necessary files to the kit directories, use the 'chkconfig" subcommand to validate the build configuration file.  ::
+Validating the Kit Configuration
+--------------------------------
+
+After modify the buildkit.conf file and copy all necessary files to the kit directories, use the ``chkconfig`` subcommand to validate the build configuration file.  ::
 
   buildkit chkconfig
 

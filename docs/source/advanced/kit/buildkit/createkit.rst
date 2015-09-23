@@ -1,5 +1,5 @@
-Create a New Kit
-================
+Creating a New Kit
+-------------------
 
 Use the **buildkit** command to create a kit template directory structure ::
 
@@ -7,32 +7,40 @@ Use the **buildkit** command to create a kit template directory structure ::
 
 
 The Kit Directory 
-^^^^^^^^^^^^^^^^^
+`````````````````
 
-The Kit directory location will be automatically  populated with additional subdirecotries and samples: ::
+The Kit directory location will be automatically  populated with additional subdirecotries and samples: 
 
-     **buildkit.conf** -  The sample Kit build configuration file.
-     **source_packages** - This directory stores the source packages for Kit Packages and Non-Native Packages.
-                           The **buildkit** command will search these directories for source packages when building packages.
-                           This directory stores:
-                               * RPM spec and tarballs. (A sample spec file is provided.)
-                               * Source RPMs.
-                               * Pre-built RPMs (contained in a subdirectory of source_packages)
-                               * Non-Native Packages
-     **scripts** - This directory stores the Kit Deployment Scripts.  Samples are provided for each type of script.
-     **plugins** - This directory stores the Kit Plugins. Samples are provided for each type of plugin.
-     **docs** - This directory stores the Kit documentation files.
-     **other_files**
-                  * **kitdeployparams.lst**: Kit Deployment parameters file
-                  * **exclude.lst**: File containing files/dirs to exclude in stateless image.
-     **build** - This directory stores files when the Kit is built.
-     **build/kit_repodir** - This directory stores the fully built Kit Package Repositories
-     **build/<kitbasename>** -  This directory stores the contents of the Kit tarfile before it is tar'red up.
-     **<kit directory location>/<kitname>** - The kit tar file, partial kit name or complete kit tar file name (ex. kitname.tar.bz2)
+**buildkit.conf** -  The sample Kit build configuration file.
+
+**source_packages** - This directory stores the source packages for Kit Packages and Non-Native Packages.  The **buildkit** command will search these directories for source packages when building packages.  This directory stores:
+  
+  * RPM spec and tarballs. (A sample spec file is provided.)
+  * Source RPMs.
+  * Pre-built RPMs (contained in a subdirectory of source_packages)
+  * Non-Native Packages
+
+**scripts** - This directory stores the Kit Deployment Scripts.  Samples are provided for each type of script.
+
+**plugins** - This directory stores the Kit Plugins. Samples are provided for each type of plugin.
+
+**docs** - This directory stores the Kit documentation files.
+
+**other_files**
+
+  * **kitdeployparams.lst**: Kit Deployment parameters file
+  * **exclude.lst**: File containing files/dirs to exclude in stateless image.
+
+**build** - This directory stores files when the Kit is built.
+
+  * **kit_repodir** - This directory stores the fully built Kit Package Repositories
+  * **<kitbasename>** -  This directory stores the contents of the Kit tarfile before it is tar'red up.
+
+**<kitname>** - The kit tar file, partial kit name or complete kit tar file name (ex. kitname.tar.bz2)
 
 
 The Kit Configuration File
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+```````````````````````````
 
 The sample buildkit.conf file contains a description of all the supported attributes and an indication of whether or not they are required or optional.  The user need to modify this file for the product kit he/she is building. The file contains stanza format.
 
@@ -127,11 +135,11 @@ The sample buildkit.conf file contains a description of all the supported attrib
       kitrepoid=rhels6_x86_64,sles11_x86_64
 
 
-**Note**:  The latest version of the buildkit.conf file is located in the /opt/xcat/share/xcat/kits/kit_template directory.
+**Note**:  The latest version of the buildkit.conf file is located in the ``/opt/xcat/share/xcat/kits/kit_template`` directory.
 
 
 Partial vs. Complete Kits
-^^^^^^^^^^^^^^^^^^^^^^^^^
+`````````````````````````
 A **Complete** software kit includes all the product software.  A **Partial** kit is one that does not include the product packages. the "isexternalpkg=yes" needs to set in the "kitpackage" stanzas in the buildkit.conf file if user wants a parital kit.  ::
 
   kitpackage:
