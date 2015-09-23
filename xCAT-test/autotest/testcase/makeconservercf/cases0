@@ -4,7 +4,7 @@ cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:cat /etc/conserver.cf
 check:output=~console testnodetmp {
-check:output=~ exec /opt/xcat/share/xcat/cons/hmc testnodetmp;
+check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
 check:output=~}
 cmd:rmdef -t node testnodetmp
 end
@@ -15,7 +15,7 @@ cmd:makeconservercf testnodetmp
 check:rc==0
 cmd:cat /etc/conserver.cf
 check:output=~console testnodetmp {
-check:output=~ exec /opt/xcat/share/xcat/cons/hmc testnodetmp;
+check:output=~  /opt/xcat/share/xcat/cons/hmc testnodetmp;
 check:output=~}
 cmd:rmdef -t node testnodetmp
 end
