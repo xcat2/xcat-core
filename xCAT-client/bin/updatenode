@@ -81,9 +81,9 @@ push (@{$cmdref->{arg}}, @ARGV);
 # check the syntax
 if (
     !GetOptions(
-				'A|updateallsw'    => \$::ALLSW,
+                'A|updateallsw'    => \$::ALLSW,
                 'c|cmdlineonly'    => \$::CMDLINE,
-				'd=s'              => \$::ALTSRC,
+                'd=s'              => \$::ALTSRC,
                 'h|help'           => \$::HELP,
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,
@@ -98,6 +98,7 @@ if (
                 'o|os:s'      	   => \$::OS,
                 'fanout=i'         => \$::fanout,
                 't|timetout=i'     => \$::timeout,
+                'n|noverify'       => \$::NOVERIFY,
     )
   ) {
     &updatenode_usage();

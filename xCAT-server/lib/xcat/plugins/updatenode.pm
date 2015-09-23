@@ -209,7 +209,7 @@ sub preprocess_updatenode
     }
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -231,6 +231,7 @@ sub preprocess_updatenode
                     'o|os:s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
+                    'n|noverify'    => \$NOVERIFY, 
 
         )
       )
@@ -251,6 +252,11 @@ sub preprocess_updatenode
        $::timeout=$timeout;
     } else {
        undef $::timeout;
+    }
+    if (defined($NOVERIFY)) {
+       $::NOVERIFY=$NOVERIFY;
+    } else {
+       undef $::NOVERIFY;
     }
     if (defined($fanout)) {
        $::fanout=$fanout;
@@ -1078,7 +1084,7 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout,$NOVERIFY); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
@@ -1100,6 +1106,7 @@ sub updatenode
                     'o|os:s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
+                    'n|noverify'    => \$NOVERIFY,
         )
       )
     {
@@ -1116,6 +1123,11 @@ sub updatenode
        $::timeout=$timeout;
     } else {
        undef $::timeout;
+    }
+    if (defined($NOVERIFY)) {
+       $::NOVERIFY=$NOVERIFY;
+    } else {
+       undef $::NOVERIFY;
     }
     if (defined($fanout)) {
        $::fanout=$fanout;
@@ -1521,20 +1533,22 @@ sub updatenoderunps
 
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
-             push @$args1,"-f" ;
-             push @$args1,$::fanout;
+               push @$args1,"-f" ;
+               push @$args1,$::fanout;
             }
             if (defined($::timeout))  {  # timeout 
-             push @$args1,"-t" ;
-             push @$args1,$::timeout;
+               push @$args1,"-t" ;
+               push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
-             push @$args1,"--sudo" ;
-             push @$args1,"-l" ;
-             push @$args1,"$::USER" ;
+               push @$args1,"--sudo" ;
+               push @$args1,"-l" ;
+               push @$args1,"$::USER" ;
             }
             push @$args1,"-s";  # streaming
-            push @$args1,"-v";  # streaming
+            if (!defined($::NOVERIFY))  {  # NOVERIFY
+               push @$args1,"-v";  # streaming
+            }
             push @$args1,"-e";  # execute 
             push @$args1,"$runpscmd"; # the command 
 
@@ -1946,20 +1960,22 @@ sub updatenodesoftware
             # build xdsh command
             push @$args1,"--nodestatus"; # return nodestatus
             if (defined($::fanout))  {  # fanout
-             push @$args1,"-f" ;
-             push @$args1,$::fanout;
+               push @$args1,"-f" ;
+               push @$args1,$::fanout;
             }
             if (defined($::timeout))  {  # timeout 
-             push @$args1,"-t" ;
-             push @$args1,$::timeout;
+               push @$args1,"-t" ;
+               push @$args1,$::timeout;
             }
             if (defined($::USER))  {  # -l contains sudo user
-             push @$args1,"--sudo" ;
-             push @$args1,"-l" ;
-             push @$args1,"$::USER" ;
+               push @$args1,"--sudo" ;
+               push @$args1,"-l" ;
+               push @$args1,"$::USER" ;
             }
             push @$args1,"-s";  # streaming
-            push @$args1,"-v";  # streaming
+            if (!defined($::NOVERIFY))  {  # NOVERIFY
+               push @$args1,"-v";  # streaming
+            }
             push @$args1,"-e";  # execute 
             push @$args1,"$cmd"; # the command 
 
@@ -2966,11 +2982,13 @@ sub updateAIXsoftware
 			my $args1;
 			push @$args1,"--nodestatus";
 			push @$args1,"-s";
-			push @$args1,"-v";
+			if (!defined($::NOVERIFY))  {  # NOVERIFY
+			    push @$args1,"-v";
+			}
 			push @$args1,"-e";
 			if (defined($::fanout))  {  # fanout input
-				push @$args1,"-f" ;
-				push @$args1,$::fanout;
+			    push @$args1,"-f" ;
+			    push @$args1,$::fanout;
 			}
          if (defined($::timeout))  {  # timeout 
             push @$args1,"-t" ;

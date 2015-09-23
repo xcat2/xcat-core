@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<--fanout>] [B<-t timeout>} [B<attr=val> [B<attr=val...>]]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<--fanout>] [B<-t timeout>} [B<attr=val> [B<attr=val...>]] [B<-n>|B<--noverify>]
 
 B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t timeout>]
 
@@ -367,6 +367,10 @@ be run during install.  You should use updatenode <noderange> -F instead.
 =item B<-S|--sw>
 
 Specifies that node software should be updated.  In Sysclone environment, specifies pushing the delta changes to target nodes.
+
+=item B<-n|--noverify>
+
+Specifies that node network availability verification will be skipped.
 
 =item B<-s|--sn>
 
