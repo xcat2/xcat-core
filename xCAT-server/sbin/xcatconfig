@@ -522,91 +522,12 @@ if ($::INITIALINSTALL || $::FORCE)
           }
      }
 
-     # Configure static ip addresses on the network interfaces
-     # This does not make too much sense, comment it out,
-     # should be done manually or through DHCP
-     #if (-f "$::INSTALLDIR/postscripts/hardeths")
-     #{
-     #    my $cmd = "$::INSTALLDIR/postscripts/hardeths";
-     #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-     #    if ($::RUNCMD_RC != 0)
-     #    {
-     #        xCAT::MsgUtils->message('E', "Failed to configure static ip addresses");
-     #    }
-     #}
-
-    # Setup ntp server
-    if (-f "/etc/ntp.conf")
-    {
-        my $cmd = "echo 'driftfile /var/lib/ntp/drift' > /etc/ntp.conf; echo 'disable auth' >> /etc/ntp.conf; echo 'restrict 127.0.0.1' >> /etc/ntp.conf; echo 'server  127.127.1.0' >> /etc/ntp.conf; echo 'fudge   127.127.1.0 stratum 10' >> /etc/ntp.conf";
-        my $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "Failed to update /etc/ntp.conf");
-        }
-
-        #my $ntpserv;
-        #if (-f "/etc/redhat-release")
-        #{
-        #    $ntpserv = "ntpd";
-        #}
-        #else
-        #{
-        #    $ntpserv = "ntp";
-        #}
-        #$cmd = "service $ntpserv restart";
-        #$outref = xCAT::Utils->runcmd("$cmd", 0);
-        #if ($::RUNCMD_RC != 0)
-        my $ret=xCAT::Utils->restartservice("ntpserver");
-        if($ret !=0)
-        {
-            xCAT::MsgUtils->message('E', "Failed to start ntp service");
-        }
-        #if (-f "/sbin/chkconfig")
-        #{
-        #    $cmd = "chkconfig $ntpserv on";
-        #    $outref = xCAT::Utils->runcmd("$cmd", 0);
-        $ret=xCAT::Utils->enableservice("ntpserver");
-        #    if ($::RUNCMD_RC != 0)
-        if($ret!=0)  
-            {
-                xCAT::MsgUtils->message('E', "Failed to enable ntp service on every boot");
-            }
-        #}
-    }
-
-    # Disable firewall
-    #my $fwserv;
-    #if(-f "/etc/SuSE-release")
-    #{
-    #   $fwserv = "SuSEfirewall2_setup";
-    #}
-    #elsif(-f "/etc/redhat-release")
-    #{
-    #    $fwserv = "iptables";
-    #    if( -f "/usr/sbin/firewalld" )
-    #    {
-    #       $fwserv = "firewalld";
-    #    }
-    #}
-    #else
-    #{
-    #    #Ubuntu: FIXME
-    #}
-
-    #if($fwserv)
-    #{
-    #    my $cmd = "service $fwserv stop";
-    #    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    #    if ($::RUNCMD_RC != 0)
     my $ret=xCAT::Utils->stopservice("firewall");
     if($ret!=0)
         {
             xCAT::MsgUtils->message('E', "Failed to stop firewall");
         }
-    #    $cmd = "chkconfig $fwserv off";
-    #    $outref = xCAT::Utils->runcmd("$cmd", 0);
-    #    if ($::RUNCMD_RC != 0)
+
     $ret=xCAT::Utils->disableservice("firewall");
     if($ret!=0)
         {
