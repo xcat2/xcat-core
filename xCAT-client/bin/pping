@@ -54,6 +54,8 @@ unless (@ARGV) {
 }
 my $noderange = $ARGV[0];
 my @nodes=();
+my $cmd="id -u";
+my $userid = xCAT::Utils->runcmd("$cmd", -1);
 
 if ($::NOEXPAND) {		# this is when ppping is calling us and has already expanded the noderange
 	@nodes = split(/,/, $noderange);
@@ -170,16 +172,23 @@ sub fping_pping {
 }
 
 sub nmap_pping {
-	my $nodes = shift;
+    my $nodes = shift;
     my %deadnodes;
+    my @nmap_options;
+    my $more_options;
+    my $tcmd;
     foreach (@$nodes) {
         $deadnodes{$_}=1;
     }
-	# get additional options from site table
-	my @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions"); 
-	my $more_options = $nmap_options[0];
-
-    open (FPING, "nmap -PE --unprivileged --system-dns --send-ip -sP $more_options ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
+    if ( $userid != 0 ) {
+        $tcmd ="tabdump site|grep nmapoptions|awk -F, '{print $2}'|sed -e 's/\"//g'|awk -F, '{print $1}'";
+        $more_options = xCAT::Utils->runcmd($tcmd, -1); 
+    } else {
+        # get additional options from site table
+        @nmap_options = xCAT::TableUtils->get_site_attribute("nmapoptions");
+        $more_options = $nmap_options[0];
+    } 
+    open (FPING, "nmap -PE --system-dns --send-ip -sP $more_options ".join(' ',@$nodes). " 2> /dev/null|") or die("Cannot open nmap pipe: $!");
     my $node;
     while (<FPING>) {
       if (/Host (.*) \(.*\) appears to be up/) {
