@@ -2273,7 +2273,7 @@ sub fru_initted {
     my @types = @{$sessdata->{invtypes}};
 	my $format = "%-20s %s";
 
-	foreach $key (sort keys %{$sessdata->{fru_hash}}) {
+       foreach $key (sort {$a <=> $b} keys %{$sessdata->{fru_hash}}) {
 		my $fru = $sessdata->{fru_hash}->{$key};
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
@@ -3285,6 +3285,7 @@ sub readcurrfrudevice {
         }
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
+            add_fruhash($sessdata);
             xCAT::SvrUtils::sendmsg([1,"Received incorrect data from BMC"],$callback,$sessdata->{node},%allerrornodes);
             return;
         }
