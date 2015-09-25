@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Usage:
+#
+# This script is to discover disk devices.
+#
+# Input parameter : <PCI_ID> or nothing
+# 
+# Output : disk and RAID arrys information
+#
+#  Examples:
+#  1. When PCI_ID value is 1014:034a, execute "diskdiscover 1014:034a", the output format is as following:
+#   
+#       --------------------------------------------------------------------------
+#       PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
+#       ------     -------------  -------------  ------  -----------   ----------------
+#       1014:034a  0001:08:00.0   0:0:0:0        sg0     0 Array Member Active
+#       1014:034a  0001:08:00.0   0:0:1:0        sg1     Function Disk Active
+#       ---------------------------------------------------------------------------
+#       Get ipr RAID arrays by PCI_SLOT_NAME: 0001:08:00.0
+#       ---------------------------------------------------------------------------
+#       Name   PCI/SCSI Location         Description               Status
+#       ------ ------------------------- ------------------------- -----------------
+#       sda    0001:08:00.0/0:2:0:0       RAID 0 Disk Array         Optimized
+#
+#  2. Execute "diskdiscover", the output format is as following:
+#
+#       --------------------------------------------------------------------------
+#       PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
+#       ------     -------------  -------------  ------  -----------   ----------------
+#       1014:034a  0001:08:00.0   0:0:0:0        sg0     0 Array Member Active
+#       1014:034a  0001:08:00.0   0:0:1:0        sg1     Function Disk Active
+#       -------------------------------------------------------------------
+#       Get ipr RAID arrays by PCI_SLOT_NAME: 0001:08:00.0
+#       -------------------------------------------------------------------
+#       Name   PCI/SCSI Location         Description               Status
+#       ------ ------------------------- ------------------------- -----------------
+#       sda    0001:08:00.0/0:2:0:0       RAID 0 Disk Array         Optimized
+#
+#  3. Print help: diskdiscover --help|-h
+
+# P8 SAS adapter info
+# http://pci-ids.ucw.cz/read/PC/1014/034a
+# 1014 034a     PCI-E IPR SAS Adapter (ASIC)
+# Subsystems
+# 1014 03ff     PCIe3 x8 SAS RAID Internal Adapter 6Gb (57D7)   <-- use this subsys id to represent internal SAS adapter
+# 1014 033b     PCIe2 6Gb SAS RAID Adapter Quad-port (57B4)     <-- use this subsys id to represent GTO adapter
+
+############################################
+#
+# source raidutils
+#
+###########################################
+str_dir_name=`dirname $0`
+. $str_dir_name/raidutils
+
+
+############################################
+#
+# Usage
+#
+############################################
+function usagesc {
+    echo "Usage: diskdiscover <PCI_ID>"
+    echo "       If input parameter is <PCI_ID>, return devices and RAID arrays info by PCI_ID."
+    echo "       If there is no value for <PCI_ID>, return all af/jbod disks and RAID arrays info."
+                       
+}
+
+########################################
+#
+# Main process:
+#
+# if input parameter is PCI_ID:
+#     Get devices and RAID arrays info by PCI_ID
+# if there is no input parameter for PCI_ID :
+#     Get all af disks and jbod disks info 
+#     Get all RAID arrays info
+#
+##########################################
+input=$1
+if [ "x$input" == "x--help" -o "x$input" == "x-h" ]; then
+      usagesc
+      exit 0
+fi
+if [ -z $input ]; then
+      get_all_devices_for_raid
+else
+      get_devices_by_pciid $input
+fi
