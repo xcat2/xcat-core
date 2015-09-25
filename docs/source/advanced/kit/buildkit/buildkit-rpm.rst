@@ -22,5 +22,5 @@ Once the repositories are setup, install xCAT-buildkit and all its dependencies.
 **[UBUNTU]** ::
 
   apt-get clean
-  apt-get install xCAT-buildkit
+  apt-get install xcat-buildkit
 
