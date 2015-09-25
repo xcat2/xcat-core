@@ -81,6 +81,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/raidcmd
 %{rpminstallroot}/bin/raidutils
 %{rpminstallroot}/bin/diskdiscover
+%{rpminstallroot}/bin/configraid
 %{rpminstallroot}/bin/dodiscovery
 %{rpminstallroot}/bin/dosysclone
 %{rpminstallroot}/bin/doxcat
