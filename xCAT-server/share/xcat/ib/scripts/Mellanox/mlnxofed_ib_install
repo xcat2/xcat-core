@@ -113,26 +113,26 @@ if [ $OS != "AIX" ]; then
         then
             nodename=`hostname`
             echo "$nodename 's operating system is Ubuntu."
-            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access public network."
-            echo -n "checking $nodename 's ability to access public network..........."
-            if ping -c 3 91.189.88.140 > /dev/null;then 
+            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access www.ports.ubuntu.com"
+            echo -n "checking $nodename 's ability to access www.ports.ubuntu.com ..........."
+            if ping -c 3 www.ports.ubuntu.com > /dev/null;then 
                echo "[OK]"
             else
                echo "[Failed]"
-               echo "please make your $nodename have ability to access public network"
+               echo "please make your $nodename have ability to access www.ports.ubuntu.com"
                exit 1
             fi
                             
            cp /etc/apt/sources.list  /etc/apt/sources.list.bak
-           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty main/d"  /etc/apt/sources.list
-           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates main/d"  /etc/apt/sources.list
-           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty universe/d" /etc/apt/sources.list
-           sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates universe/d" /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d"  /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" /etc/apt/sources.list
+           sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" /etc/apt/sources.list
                     
-           echo "deb http://91.189.88.140/ubuntu-ports/ trusty main
-deb http://91.189.88.140/ubuntu-ports/ trusty-updates main
-deb http://91.189.88.140/ubuntu-ports/ trusty universe
-deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sources.list
+           echo "deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sources.list
                 
            apt-get clean all
            sleep 1
@@ -146,13 +146,16 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             cat /etc/os-release|grep NAME|grep Ubuntu>/dev/null &&
             uname -m |grep ppc64 >/dev/null
         then
-            echo "ARCH=powerpc perl -x mlnxofedinstall --without-fw-update $mlnxofed_options"
-            ARCH=powerpc perl -x mlnxofedinstall --without-fw-update $mlnxofed_options
+            echo "perl -x mlnxofedinstall --without-fw-update $mlnxofed_options"
+            {
+                unset ARCH
+                perl -x mlnxofedinstall --without-fw-update $mlnxofed_options
+            }
             sleep 1
             service openibd restart
         else
-            echo  "perl -x mlnxofedinstall $mlnxofed_options"
-            perl -x mlnxofedinstall $mlnxofed_options
+            echo  "perl -x mlnxofedinstall --without-fw-update $mlnxofed_options"
+            perl -x mlnxofedinstall --without-fw-update $mlnxofed_options
         fi
         rm -Rf /tmp/ofed
         #force openibd load all modules in need, restart again
@@ -193,7 +196,7 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             echo "$nodename 's operating system is Ubuntu."
             echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access public network."
             echo -n "checking $nodename 's ability to access public network..........."
-            if ping -c 3 91.189.88.140 > /dev/null;then 
+            if ping -c 3 www.ports.ubuntu.com > /dev/null;then 
                 echo "[OK]"
             else
                 echo "[Failed]"
@@ -204,15 +207,15 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> /etc/apt/sour
             sourceslist="$installroot/etc/apt/sources.list"
             cp  $sourceslist $sourceslist.bak 
 
-            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
-            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist 
-            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty universe/d" $sourceslist 
-            sed -i "/deb http:\\/\\/91.189.88.140\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist 
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist 
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" $sourceslist 
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist 
                     
-            echo "deb http://91.189.88.140/ubuntu-ports/ trusty main
-deb http://91.189.88.140/ubuntu-ports/ trusty-updates main
-deb http://91.189.88.140/ubuntu-ports/ trusty universe
-deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist 
+            echo "deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
+deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe" >> $sourceslist 
                 
             chroot $installroot apt-get clean all
             sleep 1
@@ -276,7 +279,7 @@ deb http://91.189.88.140/ubuntu-ports/ trusty-updates universe" >> $sourceslist
             ( cd "$OFED_DIR" && tar cf - . ) | ( cd "$installroot/tmp/ofed_install/ofed" && tar xf - )
             chroot $installroot rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
             #chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-32bit --force
-            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall $mlnxofed_options
+            chroot $installroot perl -x /tmp/ofed_install/ofed/mlnxofedinstall --without-fw-update $mlnxofed_options
             rm -rf $installroot/tmp/ofed_install
         fi
 
