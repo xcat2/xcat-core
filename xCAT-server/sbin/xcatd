@@ -2503,8 +2503,9 @@ sub service_connection {
     if(exists($req->{arg})){
         foreach my $arg (@{$req->{arg}}) {
             if($arg =~ /[^A-Za-z0-9.-]/){
-                $arg =~ s/'/'\\''/g;
-                $cmdlog_alllog .= "'".$arg."' ";
+                my $tmparg = $arg;
+                $tmparg =~ s/'/'\\''/g;
+                $cmdlog_alllog .= "'".$tmparg."' ";
             }else{
                 $cmdlog_alllog .= $arg." ";
             }
