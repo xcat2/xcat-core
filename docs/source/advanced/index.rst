@@ -11,7 +11,7 @@ Advanced Topics
    change_mn_ip.rst
    change_node_ip.rst
    xcat_security.rst
-   kit.rst
+   kit/index.rst
    ib.rst
    confluent/index.rst
    docker/index.rst
