@@ -232,3 +232,10 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
    Refer to the doc: :doc:`Developer Guide <../developers/index>` to learn how to contribute to xCAT community.
 
+xCAT2 Release Information
+-------------------------
+
+The following documents the releases information of xCAT and describes the supported os, hardware and features sets in each version of xCAT. 
+
+:doc:`New supported OS, Hardware and Features in xCAT2 Releases <xcat2_release>`
+
