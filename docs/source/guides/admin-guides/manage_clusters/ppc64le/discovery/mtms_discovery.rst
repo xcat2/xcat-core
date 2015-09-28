@@ -11,9 +11,13 @@ Discover server and define
 
 After environment is ready, and the server is powered, we can start server discovery process. The first thing to do is discovering the FSP/BMC of the server. It is automatically powered on when the physical server is powered.
 
-The following command can be used to discovery FSP/BMC within an IP range and write the discovered node definition into a stanza file::
+The following command can be used to discovery BMC within an IP range and write the discovered node definition into a stanza file::
 
-  lsslp -s PBMC -u --range 50.0.100.1-100 -z > ./pbmc.stanza
+  bmcdiscover -s nmap --range 50.0.100.1-100 -z > ./bmc.stanza
+
+**Note**: bmcdiscover will use username/password pair set in ``passwd`` table with **key** equal **ipmi**. If you'd like to use other username/password, you can use ::
+
+        bmcdiscover -s nmap --range 50.0.100.1-100 -z -u <username> -p <password> > ./bmc.stanza
 
 You need to modify the node definition in stanza file before using them, the stanza file will be like this::
  
@@ -21,12 +25,10 @@ You need to modify the node definition in stanza file before using them, the sta
   cn1:
       objtype=node
       bmc=50.0.100.1
-      nodetype=mp
       mtm=8247-42L
       serial=10112CA
       groups=pbmc,all
       mgt=ipmi
-      hidden=0
 
 Then, define it into xCATdb::
   
@@ -47,7 +49,7 @@ The server definition will be like this::
       postscripts=syslog,remoteshell,syncfiles
       serial=10112CA
 
-After the physical server is defined into xCATdb, the next thing is update the node definition with the scheduled node info like this::
+After the physical server is defined into xCATdb, the next thing is update the node definition with the example node attributes::
 
   # chdef cn1 ip=10.0.101.1
   1 object definitions have been created or modified.
@@ -56,6 +58,8 @@ Then, add node info into /etc/hosts and DNS::
 
   makehosts cn1
   makedns -n
+
+
 
 Start discovery process
 -----------------------

@@ -33,17 +33,6 @@ Update DHCP configuration file::
     makedhcp -n
     makedhcp -a
 
-setup DNS
-`````````
-
-Set site.forwarders to your site-wide DNS servers that can resolve site or public hostnames. The DNS on the MN will forward any requests it can't answer to these servers::
-
-    chdef -t site forwarders=8.8.8.8
-
-Run makedns to get the hostname/IP pairs copied from /etc/hosts to the DNS on the MN::
-
-    makedns -n
-
 Config passwd table
 ```````````````````
 
@@ -55,10 +44,6 @@ Set required passwords for xCAT to do hardware management and/or OS provisioning
 For hardware management with ipmi, add the following line::
 
     "ipmi","ADMIN","admin",,,,
-
-For OS provisioning, add the following line::
-
-    "system","root","cluster",,,,
 
 Verify the genesis pkg
 ``````````````````````
