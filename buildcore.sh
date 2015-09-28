@@ -32,12 +32,19 @@
 #        LOG=<filename> - provide an LOG file option to redirect some output into log file
 #        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without RPMSIGN specified
 
-# you can change this if you need to
+#
+# The following environment variables can be modified if you need
+#
+
 UPLOADUSER=litingt
 USER=xcat
-FRS=/var/www/xcat.org/files
-TARGET_MACHINE=xcat.org
+SERVER=xcat.org
+FILES_PATH="files_new"
+FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
+
+YUMDIR=$FRS
+YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repo/yum"
 
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "Usage:"
@@ -123,9 +130,6 @@ if [ "$REL" = "xcat-core" ]; then    # using git
     setbranch            # this changes the REL variable
 fi
 
-YUMDIR=$FRS
-YUMREPOURL="http://xcat.org/files/yum"
-
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
     EMBEDDIR="/$EMBED"
@@ -209,12 +213,12 @@ fi
 # 
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
-    # using git
-    # Run git pull by default, unless the GITPULL=0,
-    # if GITPULL=0, it is mainly for develpor to test local code
-    if [ -z "$GITPULL" ] || [ "$GITPULL" = "1" ]; then
-        # Do some error checking for the build before starting...
-        # check if there's any modifications to git current repo
+    # 
+    # To enable local sandbox build, GITPULL is disabled by default. 
+    #
+    if [ "$GITPULL" = "1" ] || [ ${PWD} == *"autobuild"* ]; then
+        # TODO: This is really not necessary since the autobuild scripts
+        #       are building the xcat code in a new directory each time
         MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
         if [ $MODIFIED_FILES ]; then
                 echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
@@ -533,14 +537,14 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
 # Upload the individual source RPMs to xcat.org 
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
 # Upload the tarball to xcat.org 
@@ -548,7 +552,7 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
     do : ; done
 
     # upload tarball to github when we release the build.
@@ -559,7 +563,7 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 else
     i=0
     echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
