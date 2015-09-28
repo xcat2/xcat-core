@@ -822,13 +822,12 @@ return_value=0
 # subroutine used to run postscripts
 run_ps () {
  local ret_local=0
- logdir=\"/var/log/xcat\"
- mkdir -p \$logdir
- logfile=\"/var/log/xcat/xcat.log\"
- 
+ mkdir -p "\"/var/log/xcat\""
+ local logfile=\"/var/log/xcat/xcat.log\"
+
  if [ -f \$1 ]; then 
   echo \"\`date\` Running postscript: \$*\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Running postscript: \$*\" \"\$logfile\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
      bash -x ./\$@ 2>&1 | tee -a \$logfile
      ret_local=\${PIPESTATUS[0]}
@@ -841,10 +840,10 @@ run_ps () {
      return_value=\$ret_local
   fi
   echo \"Postscript: \$* exited with code \$ret_local\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$* return with \$ret_local\"" \"\$logfile\"
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" 
-  msgutil_r \$MASTER_IP \"debug\" \"\`date\` Postscript: \$* exited with code \$ret_local\" \"\$logfile\"
+  msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Postscript \$1 does NOT exist.\"" \"\$logfile\"
   return_value=-1
  fi
 
