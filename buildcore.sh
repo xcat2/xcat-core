@@ -4,18 +4,15 @@
 # Build and upload the xcat-core code, on either linux or aix.
 
 # Getting Started:
-#  - Check out the xcat-core github repository (either the trunk or a branch) into
-#    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
-#    uploaded to in xcat.org (e.g. devel, or 2.3).
+#  - Clone the xcat-core GitHub repository
 #  - On Linux:  make sure createrepo is installed on the build machine
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
 #        conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
 #        popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  
 #        Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
-#  - Run this script from the local svn repository you just created.  It will create the other
-#    directories that are needed.
-
+#  - Run this script from the xcat-core directory.  It will create the other directories that are needed.
+#
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #    Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
@@ -29,7 +26,6 @@
 #                  release this build, use PROMOTE=1 without PREGA
 #        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 #        UP=0 or UP=1 - override the default upload behavior 
-#        SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
 #        GITUP=<filename> - control which rpms get built by specifying a coregitup file
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
@@ -207,7 +203,10 @@ else
     #echo "source=$source"
 fi
 
-# If they have not given us a premade update file, do an svn update or git pull and capture the results
+# 
+# If no pre-defined update file is provided, do a "git pull" to try and detect 
+# if anything has changed in the source directories
+# 
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
     # using git
@@ -255,19 +254,6 @@ if [ "$GIT" = "1" ]; then
             fi
         fi
     fi
-else
-    # using svn
-    GIT=0
-    if [ -z "$SVNUP" ]; then
-        SVNUP=../coresvnup
-        echo "svn up > $SVNUP"
-        svn up > $SVNUP
-    fi
-    if ! $GREP 'At revision' $SVNUP; then
-        SOMETHINGCHANGED=1
-    fi
-    # copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
-    GITUP=$SVNUP
 fi
 
 setversionvars
