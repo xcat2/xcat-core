@@ -23,3 +23,4 @@ Advanced Topics
    zone.rst
    softlayer.rst
    firmware_inventory.rst
+   configraid.rst
