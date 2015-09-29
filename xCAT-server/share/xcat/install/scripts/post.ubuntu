@@ -159,8 +159,12 @@ run_ps () {
   echo \"\`date\` Running postscript: \$*\" 
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
-     bash -x ./\$@ 2>&1 | tee -a \$logfile
-     ret_local=\${PIPESTATUS[0]}
+     local compt=\$(file \$1)
+     local reg=\"shell script\"
+     if [[ \"\$compt\" =~ \$reg ]]; then
+        bash -x ./\$@ 2>&1 | tee -a \$logfile
+        ret_local=\${PIPESTATUS[0]}
+     fi
   else
      ./\$@ 2>&1 | tee -a \$logfile
      ret_local=\${PIPESTATUS[0]}
