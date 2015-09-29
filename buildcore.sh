@@ -39,7 +39,7 @@
 UPLOADUSER=litingt
 USER=xcat
 SERVER=xcat.org
-FILES_PATH="files_new"
+FILES_PATH="files"
 FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
 
