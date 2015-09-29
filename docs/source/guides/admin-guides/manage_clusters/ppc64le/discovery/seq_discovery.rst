@@ -47,5 +47,5 @@ Stop the current sequential discovery process::
 
 Note: The sequential discovery process will be stopped automatically when all of the node names in the node pool are used up. 
 
-.. include:: pbmc_discovery.rst
+.. include:: pbmc_discovery_with_bmcdiscover.rst
 .. include:: standard_cn_definition.rst

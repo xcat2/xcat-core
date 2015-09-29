@@ -57,7 +57,7 @@ Add cn1 into DNS::
     makehosts cn1
     maekdns -n
 
-.. include:: pbmc_discovery.rst
+.. include:: pbmc_discovery_with_bmcdiscover.rst
 
 Verify node definition
 ----------------------
