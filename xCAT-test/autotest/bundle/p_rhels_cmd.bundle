@@ -1,3 +1,15 @@
+updatenode_h
+updatenode_V
+updatenode_diskful_syncfiles
+updatenode_diskful_syncfiles_rename
+updatenode_diskful_syncfiles_dir
+updatenode_diskful_syncfiles_multi_files
+updatenode_syncfile_EXECUTE
+updatenode_syncfile_EXECUTEALWAYS
+updatenode_syncfile_APPEND
+updatenode_syncfile_MERGE
+updatenode_P_script1
+updatenode_P_script2
 chdef_null
 chdef_t_node
 chdef_t_network
