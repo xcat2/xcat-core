@@ -1,22 +1,16 @@
 Manually Define Nodes
 =====================
 
-Manually define node means the admin know detailed information of the physical server and defines it into xCAT database with commands.
+**Manually Define Node** means the admin knows the detailed information of the physical server and manually defines it into xCAT database with ``mkdef`` commands.
 
 .. include:: schedule_environment.rst
 
-Manually define node
+Manually Define Node
 --------------------
 
-To add a node object::
+Execute ``mkdef`` command to define the node: ::
 
-    nodeadd cn1 groups=powerLE,all
-
-Use the ``chdef`` command to add and change node attributes: ::
-
-    chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 netboot=petitboot
-    chdef cn1 bmc=50.0.101.1 bmcusername=ADMIN bmcpassword=admin
-    chdef cn1 installnic=mac primarynic=mac mac=6c:ae:8b:6a:d4:e4 
+    mkdef -t node cn1 groups=powerLE,all mgt=ipmi cons=ipmi ip=10.0.101.1 netboot=petitboot bmc=50.0.101.1 bmcusername=ADMIN bmcpassword=admin installnic=mac primarynic=mac mac=6c:ae:8b:6a:d4:e4
 
 The manually defined node will be like this::
 
