@@ -44,7 +44,7 @@ FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
 
 YUMDIR=$FRS
-YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repo/yum"
+YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
 
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "Usage:"
