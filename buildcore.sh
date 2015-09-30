@@ -4,18 +4,15 @@
 # Build and upload the xcat-core code, on either linux or aix.
 
 # Getting Started:
-#  - Check out the xcat-core github repository (either the trunk or a branch) into
-#    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
-#    uploaded to in xcat.org (e.g. devel, or 2.3).
+#  - Clone the xcat-core GitHub repository
 #  - On Linux:  make sure createrepo is installed on the build machine
 #  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #        apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
 #        conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
 #        popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  
 #        Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
-#  - Run this script from the local svn repository you just created.  It will create the other
-#    directories that are needed.
-
+#  - Run this script from the xcat-core directory.  It will create the other directories that are needed.
+#
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #    Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
@@ -29,19 +26,25 @@
 #                  release this build, use PROMOTE=1 without PREGA
 #        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
 #        UP=0 or UP=1 - override the default upload behavior 
-#        SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
 #        GITUP=<filename> - control which rpms get built by specifying a coregitup file
 #        EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. zvm or flex
 #        VERBOSE=1 - to see lots of verbose output
 #        LOG=<filename> - provide an LOG file option to redirect some output into log file
 #        RPMSIGN=0 or RPMSIGN=1 - Sign the RPMs using the keys on GSA, the default is to sign the rpms without RPMSIGN specified
 
-# you can change this if you need to
+#
+# The following environment variables can be modified if you need
+#
+
 UPLOADUSER=litingt
 USER=xcat
-FRS=/var/www/xcat.org/files
-TARGET_MACHINE=xcat.org
+SERVER=xcat.org
+FILES_PATH="files"
+FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
+
+YUMDIR=$FRS
+YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
 
 if [ "$1" = "-h"  ] || [ "$1" = "-help"  ] || [ "$1" = "--help"  ]; then
     echo "Usage:"
@@ -127,9 +130,6 @@ if [ "$REL" = "xcat-core" ]; then    # using git
     setbranch            # this changes the REL variable
 fi
 
-YUMDIR=$FRS
-YUMREPOURL="http://xcat.org/files/yum"
-
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
     EMBEDDIR="/$EMBED"
@@ -207,15 +207,18 @@ else
     #echo "source=$source"
 fi
 
-# If they have not given us a premade update file, do an svn update or git pull and capture the results
+# 
+# If no pre-defined update file is provided, do a "git pull" to try and detect 
+# if anything has changed in the source directories
+# 
 SOMETHINGCHANGED=0
 if [ "$GIT" = "1" ]; then
-    # using git
-    # Run git pull by default, unless the GITPULL=0,
-    # if GITPULL=0, it is mainly for develpor to test local code
-    if [ -z "$GITPULL" ] || [ "$GITPULL" = "1" ]; then
-        # Do some error checking for the build before starting...
-        # check if there's any modifications to git current repo
+    # 
+    # To enable local sandbox build, GITPULL is disabled by default. 
+    #
+    if [ "$GITPULL" = "1" ] || [ ${PWD} == *"autobuild"* ]; then
+        # TODO: This is really not necessary since the autobuild scripts
+        #       are building the xcat code in a new directory each time
         MODIFIED_FILES=`git ls-files --modified | tr '\n' ', '`
         if [ $MODIFIED_FILES ]; then
                 echo "The following files have been modified in the local repository: $MODIFIED_FILES..."
@@ -255,19 +258,6 @@ if [ "$GIT" = "1" ]; then
             fi
         fi
     fi
-else
-    # using svn
-    GIT=0
-    if [ -z "$SVNUP" ]; then
-        SVNUP=../coresvnup
-        echo "svn up > $SVNUP"
-        svn up > $SVNUP
-    fi
-    if ! $GREP 'At revision' $SVNUP; then
-        SOMETHINGCHANGED=1
-    fi
-    # copy the SVNUP variable to GITUP so the rest of the script doesnt have to worry whether we did svn or git
-    GITUP=$SVNUP
 fi
 
 setversionvars
@@ -547,14 +537,14 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
     i=0
     echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
 # Upload the individual source RPMs to xcat.org 
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
 # Upload the tarball to xcat.org 
@@ -562,7 +552,7 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
     # upload tarball to FRS area
     i=0
     echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
     do : ; done
 
     # upload tarball to github when we release the build.
@@ -573,7 +563,7 @@ if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 else
     i=0
     echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$TARGET_MACHINE:$YUMDIR/$YUM/$REL$EMBEDDIR/
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
     do : ; done
 fi
 
