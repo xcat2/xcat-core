@@ -2,7 +2,7 @@ Manage Virtual Machine (VMs)
 ============================
 
 Create the Virtual Machine
-----------------------
+--------------------------
 
 In this doc, we assume the powerKVM hypervisor host cn1 is ready to use.
 
@@ -84,27 +84,24 @@ Run the chdef command to change the following attributes for the vm1:
 
 10. Set 'netboot' attribute
 
-    * **[x86_64]**
-
-    ::
+    * **[x86_64]** ::
  
-     chdef vm1 netboot=xnba
+        chdef vm1 netboot=xnba
 
-    * **[PPC64LE]**
-    :: 
+    * **[PPC64LE]** ::
   
-     chdef vm1 netboot=grub2
+        chdef vm1 netboot=grub2
 
     Make sure the grub2 had been installed on your Management Node: ::
 
-      rpm -aq | grep grub2
-      grub2-xcat-1.0-1.noarch
+        rpm -aq | grep grub2
+        grub2-xcat-1.0-1.noarch
 
     Note: If you are working with xCAT-dep oldder than 20141012, the modules for xCAT shipped grub2 can not support ubuntu LE smoothly. So the following steps needed to complete the grub2 setting. ::
 
-      rm /tftpboot/boot/grub2/grub2.ppc
-      cp /tftpboot/boot/grub2/powerpc-ieee1275/core.elf /tftpboot/boot/grub2/grub2.ppc
-      /bin/cp -rf /tmp/iso/boot/grub/powerpc-ieee1275/elf.mod /tftpboot/boot/grub2/powerpc-ieee1275/
+        rm /tftpboot/boot/grub2/grub2.ppc
+        cp /tftpboot/boot/grub2/powerpc-ieee1275/core.elf /tftpboot/boot/grub2/grub2.ppc
+        /bin/cp -rf /tmp/iso/boot/grub/powerpc-ieee1275/elf.mod /tftpboot/boot/grub2/powerpc-ieee1275/
 
 Make the VM under xCAT
 ``````````````````````
@@ -205,7 +202,7 @@ You can use console in xcat management node or kvm hypervisor to monitor the pro
 
 
 Remove the virtual machine
------------------------- 
+--------------------------
 
 Remove the vm1 even when it is in power on status. ::
 

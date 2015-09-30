@@ -1,4 +1,5 @@
 .. BEGIN_Overview
+
 By default, xCAT will install the operating system on the first disk and with default partitions layout in the node. However, you may choose to customize the disk partitioning during the install process and define a specific disk layout. You can do this in one of two ways: '**partition definition file**' or '**partition definition script**'.
 
 **Notes**
@@ -6,11 +7,16 @@ By default, xCAT will install the operating system on the first disk and with de
 - 'Partition definition file' way can be used for RedHat, SLES and Ubuntu.
 - 'partition definition script' way was tested only for RedHat and Ubuntu, use this feature on SLES at your own risk.
 - Because disk configuration for ubuntu is different from Redhat, there maybe some section special for ubuntu.
+
 .. END_Overview
 
+
 .. BEGIN_partition_definition_file_Overview
+
 You could create a customized osimage partition file, say /install/custom/my-partitions, that contains the disk partitioning definition, then associate the partition file with osimage, the nodeset command will insert the contents of this file directly into the generated autoinst configuration file that will be used by the OS installer. 
+
 .. END_partition_definition_file_Overview
+
 
 .. BEGIN_partition_definition_file_content
 
@@ -29,10 +35,13 @@ The partition file must follow the partitioning syntax of the installer(e.g. kic
 * **[Ubuntu]**
 
   - For detailed information see the files partman-auto-recipe.txt and partman-auto-raid-recipe.txt included in the debian-installer package. Both files are also available from the debian-installer source repository. Note that the supported functionality may change between releases.
+
 .. END_partition_definition_file_content
 
 .. BEGIN_partition_definition_file_example_RedHat_Standard_Partitions_for_IBM_Power_machines
+
 Here is partition definition file example for RedHat standard partition in IBM Power machines
+
 ::
     # Uncomment this PReP line for IBM Power servers
     part None --fstype "PPC PReP Boot" --size 8 --ondisk sda
@@ -45,7 +54,9 @@ Here is partition definition file example for RedHat standard partition in IBM P
 .. END_partition_definition_file_example_RedHat_Standard_Partitions_for_IBM_Power_machines
 
 .. BEGIN_partition_definition_file_example_RedHat_LVM_for_IBM_Power_machines
+
 Here is partition definition file example for RedHat LVM partition in IBM Power machines
+
 ::
     # Uncomment this PReP line for IBM Power servers
     part None --fstype "PPC PReP Boot" --ondisk /dev/sda --size 8
@@ -60,45 +71,51 @@ Here is partition definition file example for RedHat LVM partition in IBM Power 
 .. END_partition_definition_file_example_RedHat_LVM_for_IBM_Power_machines
 
 .. BEGIN_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
+
 Partition definition file example for RedHat RAID1 please refer to :doc:`Configure RAID before Deploy OS </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg>`
+
 .. END_partition_definition_file_example_RedHat_RAID1_for_IBM_Power_machines
 
 .. BEGIN_partition_definition_file_example_SLES_Standard_Partitions_for_X86_64
+
 Here is partition definition file example for SLES standard partition in X86_64 machines
-::
-      <drive>
-         <device>/dev/sda</device>
-         <initialize config:type="boolean">true</initialize>
-         <use>all</use>
-         <partitions config:type="list">
-           <partition>
-             <create config:type="boolean">true</create>
-             <filesystem config:type="symbol">swap</filesystem>
-             <format config:type="boolean">true</format>
-             <mount>swap</mount>
-             <mountby config:type="symbol">path</mountby>
-             <partition_nr config:type="integer">1</partition_nr>
-             <partition_type>primary</partition_type>
-             <size>32G</size>
-           </partition>
-           <partition>
-             <create config:type="boolean">true</create>
-             <filesystem config:type="symbol">ext3</filesystem>
-             <format config:type="boolean">true</format>
-             <mount>/</mount>
-             <mountby config:type="symbol">path</mountby>
-             <partition_nr config:type="integer">2</partition_nr>
-             <partition_type>primary</partition_type>
-             <size>64G</size>
-           </partition>
-         </partitions>
-       </drive>
+
+.. code-block:: xml
+
+    <drive>
+        <device>/dev/sda</device>
+        <initialize config:type="boolean">true</initialize>
+        <use>all</use>
+        <partitions config:type="list">
+            <partition>
+                <create config:type="boolean">true</create>
+                <filesystem config:type="symbol">swap</filesystem>
+                <format config:type="boolean">true</format>
+                <mount>swap</mount>
+                <mountby config:type="symbol">path</mountby>
+                <partition_nr config:type="integer">1</partition_nr>
+                <partition_type>primary</partition_type>
+                <size>32G</size>
+            </partition>
+            <partition>
+                <create config:type="boolean">true</create>
+                <filesystem config:type="symbol">ext3</filesystem>
+                <format config:type="boolean">true</format>
+                <mount>/</mount>
+                <mountby config:type="symbol">path</mountby>
+                <partition_nr config:type="integer">2</partition_nr>
+                <partition_type>primary</partition_type>
+                <size>64G</size>
+            </partition>
+        </partitions>
+    </drive>
 	   
 .. END_partition_definition_file_example_SLES_Standard_Partitions_for_X86_64
 
 .. BEGIN_partition_definition_file_example_SLES_LVM_for_ppc64
-Here is partition definition file example for SLES LVM partition in P server
-::
+
+The following is an example of a partition definition file for a SLES LVM Partition on Power Server:  ::
+
 	<drive>
 	  <device>/dev/sda</device>
 	  <initialize config:type="boolean">true</initialize>
@@ -211,67 +228,73 @@ Here is partition definition file example for SLES LVM partition in P server
 .. END_partition_definition_file_example_SLES_LVM_for_ppc64
 
 .. BEGIN_partition_definition_file_example_SLES_Standard_partition_for_ppc64
+
 Here is partition definition file example for SLES standard partition in ppc64 machines
-::
+
+.. code-block:: xml
+
     <drive>
-      <device>/dev/sda</device>
-      <initialize config:type="boolean">true</initialize>
-      <partitions config:type="list">
-        <partition>
-          <create config:type="boolean">true</create>
-          <crypt_fs config:type="boolean">false</crypt_fs>
-          <filesystem config:type="symbol">ext3</filesystem>
-          <format config:type="boolean">false</format>
-          <loop_fs config:type="boolean">false</loop_fs>
-          <mountby config:type="symbol">device</mountby>
-          <partition_id config:type="integer">65</partition_id>
-          <partition_nr config:type="integer">1</partition_nr>
-          <resize config:type="boolean">false</resize>
-          <size>auto</size>
-        </partition>
-        <partition>
-          <create config:type="boolean">true</create>
-          <crypt_fs config:type="boolean">false</crypt_fs>
-          <filesystem config:type="symbol">swap</filesystem>
-          <format config:type="boolean">true</format>
-          <fstopt>defaults</fstopt>
-          <loop_fs config:type="boolean">false</loop_fs>
-          <mount>swap</mount>
-          <mountby config:type="symbol">id</mountby>
-          <partition_id config:type="integer">130</partition_id>
-          <partition_nr config:type="integer">2</partition_nr>
-          <resize config:type="boolean">false</resize>
-          <size>auto</size>
-        </partition>
-        <partition>
-          <create config:type="boolean">true</create>
-          <crypt_fs config:type="boolean">false</crypt_fs>
-          <filesystem config:type="symbol">ext3</filesystem>
-          <format config:type="boolean">true</format>
-          <fstopt>acl,user_xattr</fstopt>
-          <loop_fs config:type="boolean">false</loop_fs>
-          <mount>/</mount>
-          <mountby config:type="symbol">id</mountby>
-          <partition_id config:type="integer">131</partition_id>
-          <partition_nr config:type="integer">3</partition_nr>
-          <resize config:type="boolean">false</resize>
-          <size>max</size>
-        </partition>
-      </partitions>
-      <pesize></pesize>
-      <type config:type="symbol">CT_DISK</type>
-      <use>all</use>
+        <device>/dev/sda</device>
+        <initialize config:type="boolean">true</initialize>
+        <partitions config:type="list">
+            <partition>
+                <create config:type="boolean">true</create>
+                <crypt_fs config:type="boolean">false</crypt_fs>
+                <filesystem config:type="symbol">ext3</filesystem>
+                <format config:type="boolean">false</format>
+                <loop_fs config:type="boolean">false</loop_fs>
+                <mountby config:type="symbol">device</mountby>
+                <partition_id config:type="integer">65</partition_id>
+                <partition_nr config:type="integer">1</partition_nr>
+                <resize config:type="boolean">false</resize>
+                <size>auto</size>
+            </partition>
+            <partition>
+                <create config:type="boolean">true</create>
+                <crypt_fs config:type="boolean">false</crypt_fs>
+                <filesystem config:type="symbol">swap</filesystem>
+                <format config:type="boolean">true</format>
+                <fstopt>defaults</fstopt>
+                <loop_fs config:type="boolean">false</loop_fs>
+                <mount>swap</mount>
+                <mountby config:type="symbol">id</mountby>
+                <partition_id config:type="integer">130</partition_id>
+                <partition_nr config:type="integer">2</partition_nr>
+                <resize config:type="boolean">false</resize>
+                <size>auto</size>
+            </partition>
+            <partition>
+                <create config:type="boolean">true</create>
+                <crypt_fs config:type="boolean">false</crypt_fs>
+                <filesystem config:type="symbol">ext3</filesystem>
+                <format config:type="boolean">true</format>
+                <fstopt>acl,user_xattr</fstopt>
+                <loop_fs config:type="boolean">false</loop_fs>
+                <mount>/</mount>
+                <mountby config:type="symbol">id</mountby>
+                <partition_id config:type="integer">131</partition_id>
+                <partition_nr config:type="integer">3</partition_nr>
+                <resize config:type="boolean">false</resize>
+                <size>max</size>
+            </partition>
+        </partitions>
+        <pesize></pesize>
+        <type config:type="symbol">CT_DISK</type>
+        <use>all</use>
     </drive>
 	
 .. END_partition_definition_file_example_SLES_Standard_partition_for_ppc64
 
 .. BEGIN_partition_definition_file_example_SLES_RAID1
+
 Partition definition file example for SLES RAID1 please refer to `Configure RAID before Deploy OS <http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/raid_cfg.html>`_ 
+
 .. END_partition_definition_file_example_SLES_RAID1
 
 .. BEGIN_partition_definition_file_example_Ubuntu_Standard_partition_for_PPC64le
-Here is partition definition file example for Ubuntu standard partition in ppc64le machines
-::
+
+Here is partition definition file example for Ubuntu standard partition in ppc64le machines ::
+
 	ubuntu-boot ::
 	8 1 1 prep
 		$primary{ } $bootable{ } method{ prep }
@@ -286,8 +309,9 @@ Here is partition definition file example for Ubuntu standard partition in ppc64
 .. END_partition_definition_file_example_Ubuntu_Standard_partition_for_PPC64le
 
 .. BEGIN_partition_definition_file_example_Ubuntu_Standard_partition_for_x86_64
-Here is partition definition file example for Ubuntu standard partition in x86_64 machines
-::
+
+Here is partition definition file example for Ubuntu standard partition in x86_64 machines: ::
+
 	256 256 512 vfat
 			$primary{ }
 			method{ format }
@@ -326,8 +350,9 @@ Here is partition definition file example for Ubuntu standard partition in x86_6
 .. END_partition_definition_file_example_Ubuntu_Standard_partition_for_x86_64
 
 .. BEGIN_partition_definition_file_Associate_partition_file_with_osimage_common
-Run below commands to associate the partition with the osimage
-::
+
+Run the following commands to associate the partition with the osimage: ::
+
       chdef -t osimage <osimagename> partitionfile=/install/custom/my-partitions
       nodeset <nodename> osimage=<osimage>
 
@@ -339,56 +364,62 @@ Run below commands to associate the partition with the osimage
 
 
 .. BEGIN_Partition_Definition_Script_overview
+
 Create a shell script that will be run on the node during the install process to dynamically create the disk partitioning definition. This script will be run during the OS installer %pre script on Redhat or preseed/early_command on Unbuntu execution and must write the correct partitioning definition into the file /tmp/partitionfile on the node 
+
 .. END_Partition_Definition_Script_overview
 
 .. BEGIN_Partition_Definition_Script_Create_partition_script_content
+
 The purpose of the partition script is to create the /tmp/partionfile that will be inserted into the kickstart/autoyast/preseed template, the script could include complex logic like select which disk to install and even configure RAID, etc
 
 **Note**: the partition script feature is not thoroughly tested on SLES, there might be problems, use this feature on SLES at your own risk.
+
 .. END_Partition_Definition_Script_Create_partition_script_content
 
 .. BEGIN_Partition_Definition_Script_Create_partition_script_example_redhat_sles
-Here is an example of the partition script on Redhat and SLES, the partitioning script is /install/custom/my-partitions.sh:
-::
-	instdisk="/dev/sda"
 
-	modprobe ext4 >& /dev/null
-	modprobe ext4dev >& /dev/null
-	if grep ext4dev /proc/filesystems > /dev/null; then
-			FSTYPE=ext3
-	elif grep ext4 /proc/filesystems > /dev/null; then
-			FSTYPE=ext4
-	else
-			FSTYPE=ext3
-	fi
-	BOOTFSTYPE=ext3
-	EFIFSTYPE=vfat
-	if uname -r|grep ^3.*el7 > /dev/null; then
-		FSTYPE=xfs
-		BOOTFSTYPE=xfs
-		EFIFSTYPE=efi
-	fi
+Here is an example of the partition script on Redhat and SLES, the partitioning script is ``/install/custom/my-partitions.sh``: ::
 
-	if [ `uname -m` = "ppc64" ]; then
-			echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
-	fi
-	if [ -d /sys/firmware/efi ]; then
-		echo 'bootloader --driveorder='$instdisk >> /tmp/partitionfile
-			echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype $EFIFSTYPE' >> /tmp/partitionfile
-	else
-		echo 'bootloader' >> /tmp/partitionfile
-	fi
+    instdisk="/dev/sda"
 
-	echo "part /boot --size 512 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitionfile
-	echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitionfile
-	echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitionfile
-	
+    modprobe ext4 >& /dev/null
+    modprobe ext4dev >& /dev/null
+    if grep ext4dev /proc/filesystems > /dev/null; then
+        FSTYPE=ext3
+    elif grep ext4 /proc/filesystems > /dev/null; then
+        FSTYPE=ext4
+    else
+        FSTYPE=ext3
+    fi
+    BOOTFSTYPE=ext3
+    EFIFSTYPE=vfat
+    if uname -r|grep ^3.*el7 > /dev/null; then
+        FSTYPE=xfs
+        BOOTFSTYPE=xfs
+        EFIFSTYPE=efi
+    fi
+
+    if [ `uname -m` = "ppc64" ]; then
+        echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitionfile
+    fi
+    if [ -d /sys/firmware/efi ]; then
+        echo 'bootloader --driveorder='$instdisk >> /tmp/partitionfile
+        echo 'part /boot/efi --size 50 --ondisk '$instdisk' --fstype $EFIFSTYPE' >> /tmp/partitionfile
+    else
+        echo 'bootloader' >> /tmp/partitionfile
+    fi
+
+    echo "part /boot --size 512 --fstype $BOOTFSTYPE --ondisk $instdisk" >> /tmp/partitionfile
+    echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitionfile
+    echo "part / --size 1 --grow --ondisk $instdisk --fstype $FSTYPE" >> /tmp/partitionfile
+
 .. END_Partition_Definition_Script_Create_partition_script_example_redhat_sles
 
 .. BEGIN_Partition_Definition_Script_Create_partition_script_example_ubuntu
-The following is an example of the partition script on Ubuntu, the partitioning script is /install/custom/my-partitions.sh:
-::
+
+The following is an example of the partition script on Ubuntu, the partitioning script is /install/custom/my-partitions.sh: ::
+
 	if [ -d /sys/firmware/efi ]; then
 		echo "ubuntu-efi ::" > /tmp/partitionfile
 		echo "    512 512 1024 fat16" >> /tmp/partitionfile
@@ -410,35 +441,40 @@ The following is an example of the partition script on Ubuntu, the partitioning 
 .. END_Partition_Definition_Script_Create_partition_script_example_ubuntu
 
 .. BEGIN_Partition_Definition_Script_Associate_partition_script_with_osimage_common
-Run below commands to associate partition script with osimage:
-::
-    chdef -t osimage <osimagename> partitionfile='s:/install/custom/my-partitions.sh'
-    nodeset <nodename> osimage=<osimage>
 
-- The "s:" preceding the filename tells nodeset that this is a script.
-- For Redhat, when nodeset runs and generates the /install/autoinst file for a node, it will add the execution of the contents of this script to the %pre section of that file. The nodeset command will then replace the #XCAT_PARTITION_START#...#XCAT_PARTITION_END# directives from the osimage template file with "%include /tmp/partitionfile" to dynamically include the tmp definition file your script created.
-- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will replace the "#XCA_PARTMAN_RECIPE_SCRIPT#" directive and add the execution of the contents of this script to the /install/autoinst/<node>.pre, the /install/autoinst/<node>.pre script will be run in the preseed/early_command.
+Run below commands to associate partition script with osimage: ::
+
+        chdef -t osimage <osimagename> partitionfile='s:/install/custom/my-partitions.sh'
+        nodeset <nodename> osimage=<osimage>
+
+    - The "s:" preceding the filename tells nodeset that this is a script.
+    - For Redhat, when nodeset runs and generates the /install/autoinst file for a node, it will add the execution of the contents of this script to the %pre section of that file. The nodeset command will then replace the #XCAT_PARTITION_START#...#XCAT_PARTITION_END# directives from the osimage template file with "%include /tmp/partitionfile" to dynamically include the tmp definition file your script created.
+    - For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will replace the "#XCA_PARTMAN_RECIPE_SCRIPT#" directive and add the execution of the contents of this script to the /install/autoinst/<node>.pre, the /install/autoinst/<node>.pre script will be run in the preseed/early_command.
+
 .. END_Partition_Definition_Script_Associate_partition_script_with_osimage_common
 
 .. BEGIN_Partition_Disk_File_ubuntu_only
-The disk file contains the name of the disks to partition in traditional, non-devfs format and delimited with space " ", for example,
-::
+
+The disk file contains the name of the disks to partition in traditional, non-devfs format and delimited with space " ", for example : ::
+
     /dev/sda /dev/sdb
 
 If not specified, the default value will be used.
 
-**Associate partition disk file with osimage**
-::
+**Associate partition disk file with osimage** ::
+
     chdef -t osimage <osimagename> -p partitionfile='d:/install/custom/partitiondisk'
     nodeset <nodename> osimage=<osimage>
 
 - the 'd:' preceding the filename tells nodeset that this is a partition disk file.
 - For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the content of the partition disk file to /tmp/boot_disk, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
+
 .. END_Partition_Disk_File_ubuntu_only
 
 .. BEGIN_Partition_Disk_Script_ubuntu_only
-The disk script contains a script to generate a partitioning disk file named "/tmp/boot_disk". for example,
-::
+
+The disk script contains a script to generate a partitioning disk file named "/tmp/boot_disk". for example: ::
+
     rm /tmp/devs-with-boot 2>/dev/null || true; 
     for d in $(list-devices partition); do 
         mkdir -p /tmp/mymount; 
@@ -460,20 +496,23 @@ The disk script contains a script to generate a partitioning disk file named "/t
 
 If not specified, the default value will be used.
 
-**Associate partition disk script with osimage**
-::
+**Associate partition disk script with osimage** ::
+
     chdef -t osimage <osimagename> -p partitionfile='s:d:/install/custom/partitiondiskscript'
     nodeset <nodename> osimage=<osimage>
 
 - the 's:' prefix tells nodeset that is a script, the 's:d:' preceding the filename tells nodeset that this is a script to generate the partition disk file.
 - For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
+
 .. END_Partition_Disk_Script_ubuntu_only
 
 
 .. BEGIN_Additional_preseed_configuration_file_ubuntu_only
+
 To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed configuration entries should be specified.
-If using file way, 'c:<the absolute path of the additional preseed config file>', the additional preseed config file contains the additional preseed entries in "d-i ..." syntax. When "nodeset", the #XCA_PARTMAN_ADDITIONAL_CFG# directive in /install/autoinst/<node> will be replaced with content of the config file, an example:
-::
+
+If using file way, 'c:<the absolute path of the additional preseed config file>', the additional preseed config file contains the additional preseed entries in "d-i ..." syntax. When "nodeset", the #XCA_PARTMAN_ADDITIONAL_CFG# directive in /install/autoinst/<node> will be replaced with content of the config file.  For example: ::
+
     d-i partman-auto/method string raid
     d-i partman-md/confirm boolean true
 	
@@ -481,9 +520,11 @@ If not specified, the default value will be used.
 .. END_Additional_preseed_configuration_file_ubuntu_only
 
 .. BEGIN_Additional_preseed_configuration_script_ubuntu_only
+
 To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed configuration entries should be specified.
-If using script way, 's:c:<the absolute path of the additional preseed config script>',  the additional preseed config script is a script to set the preseed values with "debconf-set". When "nodeset", the #XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT# directive in /install/autoinst/<node>.pre will be replaced with the content of the script, an example:
-::
+
+If using script way, 's:c:<the absolute path of the additional preseed config script>',  the additional preseed config script is a script to set the preseed values with "debconf-set". When "nodeset", the #XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT# directive in /install/autoinst/<node>.pre will be replaced with the content of the script.  For example: ::
+
     debconf-set partman-auto/method string raid
     debconf-set partman-md/confirm boolean true
 	

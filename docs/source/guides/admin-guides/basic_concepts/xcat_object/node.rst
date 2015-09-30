@@ -60,59 +60,58 @@ Use Cases
 ---------
 
 * Case 1: 
-There is a ppc64le node named "cn1", the mac of installation NIC is "ca:68:d3:ae:db:03", the ip assigned is "10.0.0.100", the network boot method is "grub2", place it into the group "all". Use the following command ::
+  There is a ppc64le node named "cn1", the mac of installation NIC is "ca:68:d3:ae:db:03", the ip assigned is "10.0.0.100", the network boot method is "grub2", place it into the group "all". Use the following command ::
 
     mkdef -t node -o cn1 arch=ppc64 mac="ca:68:d3:ae:db:03" ip="10.0.0.100" netboot="grub2" groups="all"
 
 * Case 2:
-List all the node objects ::
+
+  List all the node objects ::
 
     nodels
 
-This can also be done with ::
+  This can also be done with ::
 
     lsdef -t node
 
 * Case 3:
-List the mac of object "cn1" ::
+  List the mac of object "cn1" ::
 
     lsdef -t node -o cn1 -i mac
 
 * Case 4: 
-There is a node definition "cn1", modify its network boot method  to "yaboot" ::
+  There is a node definition "cn1", modify its network boot method  to "yaboot" ::
 
     chdef -t node -o cn1 netboot=yaboot
     
 * Case 5:
-There is a node definition "cn1", create a node definition "cn2" with the same attributes with "cn1", except the mac addr(ca:68:d3:ae:db:04) and ip address(10.0.0.101) 
+  There is a node definition "cn1", create a node definition "cn2" with the same attributes with "cn1", except the mac addr(ca:68:d3:ae:db:04) and ip address(10.0.0.101) 
 
-*step 1*:  write the definition of "cn1" to a stanza file named "cn.stanza" ::
+  *step 1*:  write the definition of "cn1" to a stanza file named "cn.stanza" ::
 
-    lsdef -z cn1 > /tmp/cn.stanza
+      lsdef -z cn1 > /tmp/cn.stanza
 
-The content of "/tmp/cn.stanza" will look like ::
+  The content of "/tmp/cn.stanza" will look like ::
 
-    # <xCAT data object stanza file>
-    
-    cn1:
-        objtype=node
-        groups=all
-        ip=10.0.0.100
-        mac=ca:68:d3:ae:db:03
-        netboot=grub2
+      # <xCAT data object stanza file>
+      cn1:
+          objtype=node
+          groups=all
+          ip=10.0.0.100
+          mac=ca:68:d3:ae:db:03
+          netboot=grub2
+  
+  *step 2*: modify the "/tmp/cn.stanza" according to the "cn2" attributes ::
+  
+      # <xCAT data object stanza file>
+      cn2:
+          objtype=node
+          groups=all
+          ip=10.0.0.101
+          mac=ca:68:d3:ae:db:04
+          netboot=grub2
+  
+  *step 3*: create "cn2" definition with "cn.stanza" ::
 
-*step 2*: modify the "/tmp/cn.stanza" according to the "cn2" attributes ::
-
-    # <xCAT data object stanza file>
-
-    cn2:
-        objtype=node
-        groups=all
-        ip=10.0.0.101
-        mac=ca:68:d3:ae:db:04
-        netboot=grub2
-
-*step 3*: create "cn2" definition with "cn.stanza" ::
-
-    cat /tmp/cn.stanza |mkdef -z   
+      cat /tmp/cn.stanza |mkdef -z   
 

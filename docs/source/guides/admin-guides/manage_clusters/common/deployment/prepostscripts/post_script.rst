@@ -6,7 +6,7 @@ Using Postscript
 xCAT automatically runs a few postscripts and postbootscripts that are delivered with xCAT to set up the nodes. You can also add your own scripts to further customize the nodes. This explains the xCAT support to do this.
 
 Types of scripts
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 There are two types of scripts in the postscripts table ( postscripts and postbootscripts). The types are based on when in the install process they will be executed. Run the following for more information:  
 
@@ -83,7 +83,7 @@ Recommended Postscript design
 * Postscripts should be well documented. At the top of the script, the first few lines should describe the function and inputs and output. You should have comments throughout the script. This is especially important if using regx.
 
 PostScript/PostbootScript execution
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When your script is executed on the node, all the attributes in the site table are exported as variables for your scripts to use. You can add extra attributes for yourself. See the sample mypostscript file below.
 

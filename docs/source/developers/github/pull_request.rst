@@ -36,7 +36,7 @@ After submitting a pull request, you may get comments from reviewer that somethi
     $git push origin <mybranch> -f
 
 Resolving Conflit in the Pull Request
-------------------------------------
+-------------------------------------
 
 During the reviewing of your pull request, some one may change certain code which conflict with your change so that your pull request can NOT be merged automatically. You can use following steps to resolve the conflict.
 

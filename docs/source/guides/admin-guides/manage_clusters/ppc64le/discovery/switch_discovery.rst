@@ -15,7 +15,7 @@ Switch info::
 .. include:: config_environment.rst
 
 Predefined Nodes
----------------
+----------------
 
 In order to differentiate one node from another, the admin needs to predefine node in xCAT database based on the switches information. This consists of two parts:
 

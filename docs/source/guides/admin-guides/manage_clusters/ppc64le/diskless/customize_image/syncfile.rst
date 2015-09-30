@@ -1,2 +1,1 @@
-.. include:: ../../../common/deployment/syncfile.rst
-
+../../diskful/customize_image/syncfile.rst
