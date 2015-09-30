@@ -1,2 +1,1 @@
-.. include:: ../../../common/deployment/pre_post_script.rst
-
+../../diskful/customize_image/pre_post_script.rst

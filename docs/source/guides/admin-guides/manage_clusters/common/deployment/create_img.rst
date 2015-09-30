@@ -1,5 +1,3 @@
-.. _create_img:
-
 Select or Create an osimage Definition
 ======================================
 
@@ -7,27 +5,27 @@ Before creating image by xCAT, distro media should be prepared ahead. That can b
 
 XCAT use 'copycds' command to create image which will be available to install nodes. "copycds" will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
 
-If using an ISO, copy it to (or NFS mount it on) the management node, and then run:
-::
+If using an ISO, copy it to (or NFS mount it on) the management node, and then run: ::
+
     copycds <path>/<specific-distro>.iso
 	
-If using a DVD, put it in the DVD drive of the management node and run:
-::
+If using a DVD, put it in the DVD drive of the management node and run: ::
+
     copycds /dev/<dvd-drive-name> 
 
-To see the list of osimages, run
-::
+To see the list of osimages: ::
+
     lsdef -t osimage 
 	
-To see the attributes of a particular osimage, run
-::
+To see the attributes of a particular osimage: ::
+
     lsdef -t osimage <osimage-name>
 
 Initially, some attributes of osimage is assigned to default value by xCAT, they all can work correctly, cause the files or templates invoked by those attributes are shipped with xCAT by default.	If need to customize those attribute, refer to next section :doc:`Customize osimage </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/index>`
 	
-Below is an example of osimage definitions created by 'copycds'
-::
-	[root@server ~]# lsdef -t osimage
+Below is an example of osimage definitions created by ``copycds``: ::
+
+	# lsdef -t osimage
 	rhels7.2-ppc64le-install-compute  (osimage)
 	rhels7.2-ppc64le-install-service  (osimage)
 	rhels7.2-ppc64le-netboot-compute  (osimage)
@@ -43,8 +41,8 @@ In these osimage definitions shown above
 
 **[Tips 1]**
 
-If this is the same distro version as what your management node used, create a .repo file in /etc/yum.repos.d with content similar to:
-::
+If this is the same distro version as what your management node used, create a .repo file in /etc/yum.repos.d with content similar to: ::
+
     [local-<os>-<arch>]
     name=xCAT local <os> <version>
     baseurl=file:/install/<os>/<arch>
@@ -61,8 +59,8 @@ Sometime you can create/modify a osimage definition easily based on the default 
 * modify <filename>.stanza depending on your requirement	
 * cat <filename>.stanza| mkdef -z 
 
-For example, if need to change osimage name to your favorite name, below statement maybe helpful:
-::
+For example, if need to change osimage name to your favorite name, below statement maybe helpful: ::
+
     lsdef -t osimage -z rhels6.2-x86_64-install-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
 
 

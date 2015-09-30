@@ -1,5 +1,6 @@
+Synchronizing Files
+===================
 
-.. include:: ../../../common/deployment/syncfile/syncfile.rst
 .. toctree::
    :maxdepth: 2
 

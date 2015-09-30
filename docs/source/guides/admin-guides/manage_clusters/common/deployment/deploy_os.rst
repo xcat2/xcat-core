@@ -3,10 +3,9 @@
 Initialize the Compute for Deployment
 =====================================
 
-XCAT use '**nodeset**' command to associate a specific image to a node which will be installed with this image.
-::
+XCAT use '**nodeset**' command to associate a specific image to a node which will be installed with this image. :: 
+
     nodeset <nodename> osimage=<osimage>
-	
 
 There are more attributes of nodeset used for some specific purpose or specific machines, for example:
 
@@ -21,18 +20,19 @@ Start the OS Deployment
 
 Start the deployment involves two key operations. First specify the boot device of the next boot to be network, then reboot the node:
 
-For **Power machine**, those two operations can be completed by one command '**rnetboot**'
-::
+For **Power servers**, those two operations can be completed by one command ``rnetboot``: ::
+
     rnetboot <node>
 
-But for **x86_64 server**, those two operations need two independent commands.
-Specify the boot device boot from network next time, run	
-::
-    rsetboot <node> net
+For **x86_64 servers**, those two operations need two independent commands.
 
-Reboot x server:
-::
-    rpower <node> reset
+    #. set the next boot device to be from the "network" ::
+
+        rsetboot <node> net
+
+    #. Reboot the xSeries server: :::
+
+        rpower <node> reset
 
 	
 

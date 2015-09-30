@@ -1,2 +1,1 @@
-.. include:: ../../../common/deployment/additional_pkg.rst
-
+../../diskful/customize_image/additional_pkg.rst

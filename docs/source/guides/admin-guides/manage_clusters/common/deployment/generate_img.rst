@@ -95,7 +95,7 @@ Very often, the user wants to make a copy of an existing image on the same xCAT 
         imgimport myimage.tgz -p group1 -f compute2
 
 Modify an image (optional)
--------------------------
+--------------------------
 
 Skip this section if you want to use the image as is.
 
@@ -116,6 +116,7 @@ Skip this section if you want to use the image as is.
 2, Run genimage: ::
 
         genimage image_name
+
 3, Run packimage: ::
 
         packimage image_name
@@ -181,7 +182,7 @@ In the above example, we have a directive of where the files came from and what 
 Note that even though source destination information is included, all files that are standard will be copied to the appropriate place that xCAT thinks they should go.
 
 Exported files
-~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 The following files will be exported, assuming x is the profile name:
 

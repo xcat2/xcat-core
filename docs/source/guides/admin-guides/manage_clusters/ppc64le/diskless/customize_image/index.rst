@@ -1,7 +1,7 @@
 Customize osimage (Optional)
 ============================
-Optional means all the subitems in this page are not necessary to finish an OS deployment. If you are new to xCAT, you can just jump
- to `Initialize the Compute for Deployment`.
+
+Optional means all the subitems in this page are not necessary to finish an OS deployment. If you are new to xCAT, you can just jump to `Initialize the Compute for Deployment`.
 
 .. toctree::
    :maxdepth: 2

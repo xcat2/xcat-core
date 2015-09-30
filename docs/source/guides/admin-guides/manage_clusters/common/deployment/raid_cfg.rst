@@ -8,11 +8,11 @@ This section describes how to use xCAT to deploy diskful nodes with RAID1 setup,
 
 All the examples in this section are based on three configuration scenarios:
 
-1. RHEL6 on a system p machine with two SCSI disks sda and sdb
+#. RHEL6 on a system p machine with two SCSI disks sda and sdb
 
-2. RHEL6 on a system p machine with two SAS disks and multipath configuration.
+#. RHEL6 on a system p machine with two SAS disks and multipath configuration.
 
-3. SLES 11 SP1 on a system p machine with two SCSI disks sda and sdb
+#. SLES 11 SP1 on a system p machine with two SCSI disks sda and sdb
 
 If you are not using the configuration scenarios listed above, you may need to modify some of the steps in this documentation to make it work in your environment.
 
@@ -21,8 +21,8 @@ Deploy Diskful Nodes with RAID1 Setup on RedHat
 
 xCAT provides two sample kickstart template files with the RAID1 settings, ``/opt/xcat/share/xcat/install/rh/service.raid1.rhel6.ppc64.tmpl`` is for the configuration scenario **1** listed above and ``/opt/xcat/share/xcat/install/rh/service.raid1.multipath.rhel6.ppc64.tmpl`` is for the configuration scenario **2** listed above. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
 
-Here is the RAID1 partitioning section in service.raid1.rhel6.ppc64.tmpl:
-::
+Here is the RAID1 partitioning section in ``service.raid1.rhel6.ppc64.tmpl``: ::
+
      #Full RAID 1 Sample
      part None --fstype "PPC PReP Boot" --size 8 --ondisk sda --asprimary
      part None --fstype "PPC PReP Boot" --size 8 --ondisk sdb --asprimary
@@ -39,8 +39,8 @@ Here is the RAID1 partitioning section in service.raid1.rhel6.ppc64.tmpl:
      part raid.22 --size 1 --fstype ext4 --grow --ondisk sdb
      raid / --level 1 --device md2 raid.21 raid.22
 
-And here is the RAID1 partitioning section in service.raid1.multipath.rhel6.ppc64.tmpl
-::
+Here is the RAID1 partitioning section in ``service.raid1.multipath.rhel6.ppc64.tmpl``: ::
+
      #Full RAID 1 Sample
      part None --fstype "PPC PReP Boot" --size 8 --ondisk mpatha --asprimary
      part None --fstype "PPC PReP Boot" --size 8 --ondisk mpathb --asprimary
@@ -61,9 +61,9 @@ The samples above created one PReP partition, one 200MB ``/boot`` partition and 
 
 After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
 
-Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node.
-::
-     [root@server ~]# mount
+Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
+
+     # mount
      /dev/md2 on / type ext4 (rw)
      proc on /proc type proc (rw)
      sysfs on /sys type sysfs (rw)
@@ -72,9 +72,9 @@ Mount command shows the ``/dev/mdx`` devices are mounted to various file systems
      /dev/md0 on /boot type ext4 (rw)
      none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)
 
-The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat`` in the non-multipath environment:
-::
-     [root@server ~]# cat /proc/mdstat
+The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat`` in the non-multipath environment: ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 sda5[0] sdb5[1]
            19706812 blocks super 1.1 [2/2] [UU]
@@ -88,9 +88,9 @@ The file ``/proc/mdstat`` includes the RAID devices status on the system, here i
 
      unused devices: <none>
 
-On the system with multipath configuration, the ``/proc/mdstat`` looks like:
-::
-     [root@server ~]# cat /proc/mdstat
+On the system with multipath configuration, the ``/proc/mdstat`` looks like: ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 dm-11[0] dm-6[1]
            291703676 blocks super 1.1 [2/2] [UU]
@@ -103,18 +103,20 @@ On the system with multipath configuration, the ``/proc/mdstat`` looks like:
            204788 blocks super 1.0 [2/2] [UU]
 
      unused devices: <none>
+
 	
-The command mdadm can query the detailed configuration for the RAID partitions:
-::
+The command ``mdadm`` can query the detailed configuration for the RAID partitions: ::
+
     mdadm --detail /dev/md2
+
 
 Deploy Diskful Nodes with RAID1 Setup on SLES
 ---------------------------------------------
 
 xCAT provides one sample autoyast template files with the RAID1 settings ``/opt/xcat/share/xcat/install/sles/service.raid1.sles11.tmpl``. You can customize the template file and put it under ``/install/custom/install/<platform>/`` if the default one does not match your requirements.
 
-Here is the RAID1 partitioning section in service.raid1.sles11.tmpl:
-::
+Here is the RAID1 partitioning section in service.raid1.sles11.tmpl: :: 
+
      <partitioning config:type="list">
         <drive>
           <device>/dev/sda</device>
@@ -208,8 +210,8 @@ Here is the RAID1 partitioning section in service.raid1.sles11.tmpl:
 
 The samples above created one 24MB PReP partition on each disk, one 2GB mirrored swap partition and one mirrored ``/`` partition uses all the disk space. If you want to use different partitioning scheme in your cluster, modify this RAID1 section in the autoyast template file accordingly.
 
-Since the PReP partition can not be mirrored between the two disks, some additional postinstall commands should be run to make the second disk bootable, here the the commands needed to make the second disk bootable:
-::
+Since the PReP partition can not be mirrored between the two disks, some additional postinstall commands should be run to make the second disk bootable, here the the commands needed to make the second disk bootable: ::
+
      # Set the second disk to be bootable for RAID1 setup
      parted -s /dev/sdb mkfs 1 fat16
      parted /dev/sdb set 1 type 6
@@ -221,8 +223,8 @@ The procedure listed above has been added to the file ``/opt/xcat/share/xcat/ins
 
 After the diskful nodes are up and running, you can check the RAID1 settings with the following commands:
 
-Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node.
-::
+Mount command shows the ``/dev/mdx`` devices are mounted to various file systems, the ``/dev/mdx`` indicates that the RAID is being used on this node. ::
+
      server:~ # mount
      /dev/md1 on / type reiserfs (rw)
      proc on /proc type proc (rw)
@@ -232,8 +234,8 @@ Mount command shows the ``/dev/mdx`` devices are mounted to various file systems
      tmpfs on /dev/shm type tmpfs (rw,mode=1777)
      devpts on /dev/pts type devpts (rw,mode=0620,gid=5)
 
-The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat``:
-::
+The file ``/proc/mdstat`` includes the RAID devices status on the system, here is an example of ``/proc/mdstat``: ::
+
      server:~ # cat /proc/mdstat
      Personalities : [raid1] [raid0] [raid10] [raid6] [raid5] [raid4]
      md0 : active (auto-read-only) raid1 sda2[0] sdb2[1]
@@ -246,8 +248,8 @@ The file ``/proc/mdstat`` includes the RAID devices status on the system, here i
 
      unused devices: <none>
 
-The command mdadm can query the detailed configuration for the RAID partitions:
-::
+The command mdadm can query the detailed configuration for the RAID partitions: ::
+
     mdadm --detail /dev/md1
 
 Disk Replacement Procedure
@@ -255,9 +257,9 @@ Disk Replacement Procedure
 
 If any one disk fails in the RAID1 arrary, do not panic. Follow the procedure listed below to replace the failed disk and you will be fine.
 
-Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``:
-::
-     [root@server ~]# cat /proc/mdstat
+Faulty disks should appear marked with an (F) if you look at ``/proc/mdstat``: ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 dm-11[0](F) dm-6[1]
            291703676 blocks super 1.1 [2/1] [_U]
@@ -276,27 +278,27 @@ We can see that the first disk is broken because all the RAID partitions on this
 Remove the failed disk from RAID arrary
 ---------------------------------------
 
-``mdadm`` is the command that can be used to query and manage the RAID arrays on Linux. To remove the failed disk from RAID array, use the command:
-::
+``mdadm`` is the command that can be used to query and manage the RAID arrays on Linux. To remove the failed disk from RAID array, use the command: ::
+
      mdadm --manage /dev/mdx --remove /dev/xxx
 
 Where the ``/dev/mdx`` are the RAID partitions listed in ``/proc/mdstat`` file, such as md0, md1 and md2; the ``/dev/xxx`` are the backend devices like dm-11, dm-8 and dm-9 in the multipath configuration and sda5, sda3 and sda2 in the non-multipath configuration.
 
-Here is the example of removing failed disk from the RAID1 array in the non-multipath configuration:
-::
+Here is the example of removing failed disk from the RAID1 array in the non-multipath configuration: ::
+
      mdadm --manage /dev/md0 --remove /dev/sda3
      mdadm --manage /dev/md1 --remove /dev/sda2
      mdadm --manage /dev/md2 --remove /dev/sda5
 
-Here is the example of removing failed disk from the RAID1 array in the multipath configuration:
-::
+Here is the example of removing failed disk from the RAID1 array in the multipath configuration: ::
+
      mdadm --manage /dev/md0 --remove /dev/dm-9
      mdadm --manage /dev/md1 --remove /dev/dm-8
      mdadm --manage /dev/md2 --remove /dev/dm-11
 
-After the failed disk is removed from the RAID1 array, the partitions on the failed disk will be removed from ``/proc/mdstat`` and the "mdadm --detail" output also.
-::
-     [root@server ~]# cat /proc/mdstat
+After the failed disk is removed from the RAID1 array, the partitions on the failed disk will be removed from ``/proc/mdstat`` and the "mdadm --detail" output also. ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 dm-6[1]
            291703676 blocks super 1.1 [2/1] [_U]
@@ -310,7 +312,7 @@ After the failed disk is removed from the RAID1 array, the partitions on the fai
 
      unused devices: <none>
 
-     [root@server ~]# mdadm --detail /dev/md0
+     # mdadm --detail /dev/md0
      /dev/md0:
              Version : 1.0
        Creation Time : Tue Jul 19 02:39:03 2011
@@ -343,24 +345,24 @@ Replace the disk
 Depends on the hot swap capability, you may simply unplug the disk and replace with a new one if the hot swap is supported; otherwise, you will need to power off the machine and replace the disk and the power on the machine.
 Create partitions on the new disk
 
-The first thing we must do now is to create the exact same partitioning as on the new disk. We can do this with one simple command:
-::
+The first thing we must do now is to create the exact same partitioning as on the new disk. We can do this with one simple command: ::
+
      sfdisk -d /dev/<good_disk> | sfdisk /dev/<new_disk>
 
-For the non-mulipath configuration, here is an example:
-::
+For the non-mulipath configuration, here is an example: ::
+
      sfdisk -d /dev/sdb | sfdisk /dev/sda
 
-For the multipath configuration, here is an example:
-::
+For the multipath configuration, here is an example: ::
+
      sfdisk -d /dev/dm-1 | sfdisk /dev/dm-0
 
-If you got error message "sfdisk: I don't like these partitions - nothing changed.", you can add "--force" option to the sfdisk command:
-::
+If you got error message "sfdisk: I don't like these partitions - nothing changed.", you can add "--force" option to the sfdisk command: ::
+
      sfdisk -d /dev/sdb | sfdisk /dev/sda --force
 
-You can run
-::
+You can run: ::
+
      fdisk -l
 
 To check if both hard drives have the same partitioning now.
@@ -368,29 +370,29 @@ To check if both hard drives have the same partitioning now.
 Add the new disk into the RAID1 array
 -------------------------------------
 
-After the partitions are created on the new disk, you can use command
-::
+After the partitions are created on the new disk, you can use command: ::
+
      mdadm --manage /dev/mdx --add /dev/xxx
 
 To add the new disk to the RAID1 array. Where the ``/dev/mdx`` are the RAID partitions like md0, md1 and md2; the ``/dev/xxx`` are the backend devices like dm-11, dm-8 and dm-9 in the multipath configuration and sda5, sda3 and sda2 in the non-multipath configuration.
 
-Here is an example for the non-multipath configuration:
-::
+Here is an example for the non-multipath configuration: ::
+
      mdadm --manage /dev/md0 --add /dev/sda3
      mdadm --manage /dev/md1 --add /dev/sda2
      mdadm --manage /dev/md2 --add /dev/sda5
 
-Here is an example for the multipath configuration:
-::
+Here is an example for the multipath configuration: ::
+
      mdadm --manage /dev/md0 --add /dev/dm-9
      mdadm --manage /dev/md1 --add /dev/dm-8
      mdadm --manage /dev/md2 --add /dev/dm-11
 
 All done! You can have a cup of coffee to watch the fully automatic reconstruction running...
 
-While the RAID1 array is reconstructing, you will see some progress information in ``/proc/mdstat``:
-::
-     [root@server raid1]# cat /proc/mdstat
+While the RAID1 array is reconstructing, you will see some progress information in ``/proc/mdstat``: ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 dm-11[0] dm-6[1]
            291703676 blocks super 1.1 [2/1] [_U]
@@ -407,9 +409,9 @@ While the RAID1 array is reconstructing, you will see some progress information 
 
      unused devices: <none>
 
-After the reconstruction is done, the ``/proc/mdstat`` becomes like:
-::
-     [root@server ~]# cat /proc/mdstat
+After the reconstruction is done, the ``/proc/mdstat`` becomes like: ::
+
+     # cat /proc/mdstat
      Personalities : [raid1]
      md2 : active raid1 dm-11[0] dm-6[1]
            291703676 blocks super 1.1 [2/2] [UU]
