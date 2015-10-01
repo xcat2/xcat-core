@@ -202,7 +202,11 @@ then
 fi
 
 # Lets rsyslogd perform close all open files
-kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
+if [ -e /var/run/rsyslogd.pid ]; then
+    kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
+elif [ -e /var/run/syslogd.pid ]; then
+    kill -HUP $(</var/run/syslogd.pid) >/dev/null 2>&1 || :
+fi
 %endif
 
 # create dir for the current pid
