@@ -24,3 +24,4 @@ Advanced Topics
    softlayer.rst
    firmware_inventory.rst
    configraid.rst
+   cuda.rst
