@@ -1,5 +1,5 @@
-Configuring hardware RAID in xCAT cluster
-=========================================
+Hardware RAID
+=============
 
 Overview
 --------

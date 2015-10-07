@@ -4,24 +4,22 @@ Advanced Topics
 .. toctree::
    :maxdepth: 2
 
-   restapi/index.rst
-   mixed_cluster/index.rst   
-   hierarchy_cluster.rst
+   confluent/index.rst
+   cluster_maintenance/index.rst
+   docker/index.rst
+   gpu/index.rst
    hamn/index.rst
+   hierarchy/index.rst
+   mixed_cluster/index.rst
+   networks/index.rst
    change_mn_ip.rst
    change_node_ip.rst
-   xcat_security.rst
+   ports/xcat_ports.rst
+   raid/index.rst
+   security/index.rst
+   softlayer/index.rst
    kit/index.rst
-   ib.rst
-   confluent/index.rst
-   docker/index.rst
-   ipv6_support.rst
-   xcat_port.rst
-   sysclone.rst
-   switch_mgmt.rst
-   vlan.rst
-   zone.rst
-   softlayer.rst
-   firmware_inventory.rst
-   configraid.rst
-   cuda.rst
+   switches/index.rst
+   sysclone/index.rst
+   webservices/index.rst
+   zones/index.rst

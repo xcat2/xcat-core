@@ -1,5 +1,5 @@
-xCAT Web Services REST API
-==========================
+Web Services
+============
 
 .. toctree::
    :maxdepth: 2

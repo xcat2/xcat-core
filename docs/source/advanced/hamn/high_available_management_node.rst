@@ -1,22 +1,17 @@
-========
 Overview
 ========
-
 
 The xCAT management node plays an important role in the cluster, if the management node is down for whatever reason, the administrators will lose the management capability for the whole cluster, until the management node is back up and running. In some configuration, like the Linux nfs-based statelite in a non-hierarchy cluster, the compute nodes may not be able to run at all without the management node. So, it is important to consider the high availability for the management node. 
 
 The goal of the HAMN(High Availability Management Node) configuration is, when the primary xCAT management node fails, the standby management node can take over the role of the management node, either through automatic failover or through manual procedure performed by the administrator, and thus avoid long periods of time during which your cluster does not have active cluster management function available. 
 
-============================
 Configuration considerations
 ============================
 
-
 xCAT provides several configuration options for the HAMN, you can select one of the option based on your failover requirements and hardware configuration, the following configuration considerations should be able to help you to make the decision. 
 
-******************************
 Data synchronization mechanism
-******************************
+------------------------------
 
 The data synchronization is important for any high availability configuration. When the xCAT management node failover occurs, the xCAT data needs to be exactly the same before failover, and some of the operating system configuration should also be synchronized between the two management nodes. To be specific, the following data should be synchronized between the two management nodes to make the xCAT HAMN work: 
 
@@ -35,9 +30,8 @@ Warning: Running database through network file system has a lot of potential pro
 
 **3\. Mirroring**: each of the management node has its own copy of the xCAT data, and the two copies of data are syncronized through mirroring mechanism. DRBD is used widely in the high availability configuration scenarios, to provide data replication by mirroring a whole block device via network. If we put all the important data for xCAT onto the DRBD devices, then it could assure the data is synchronized between the two management nodes. Some parallel file system also provides capability to mirror data through network. 
 
-*************************************
-Manual failover VS automatic failover
-*************************************
+Manual vs. Automatic Failover
+-----------------------------
 
 When the primary management node fails, the backup management node could automatically take over, or the administrator has to perform some manual procedure to finish the failover. In general, the automatic failover takes less time to detect the failure and perform and failover, comparing with the manual failover, but the automatic failover requires more complex configuration. We could not say the automatic failover is better than the manual failover in all cases, the following factors should be considered when deciding the manual failover or automatic failover: 
 
@@ -55,7 +49,6 @@ The configuration for the high availability applications is usually complex, it 
 
 The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, trouble shooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs ... 
 
-=====================
 Configuration Options
 =====================
 
