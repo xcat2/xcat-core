@@ -1,2 +1,2 @@
-Configuring IPv6 in xCAT Cluster
+Changing the hostname/IP address
 ================================

@@ -1,2 +1,2 @@
-xCAT 2 Security
+Configure Zones
 ===============

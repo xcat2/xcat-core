@@ -1,2 +1,0 @@
-Managing Ethernet Switches
-==========================

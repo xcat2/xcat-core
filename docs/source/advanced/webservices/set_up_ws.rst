@@ -1,7 +1,7 @@
-Set Up Web Service for REST API
-===============================
+Configure Web Services
+======================
 
-The following steps describe how to setup the WEB Service to use the REST API
+The following steps describe how to setup the Web Service to use the REST API
 
 Enable the HTTPS service for REST API
 -------------------------------------

@@ -2,12 +2,12 @@ IBM HPC Product Software Kits
 -----------------------------
 
 Obtaining the Kits
-```````````````````
+``````````````````
 
-Complete kits for some product software is shipped on the product distribution media. For other software, only partial kits may be available. The partial product kits are available from the FixCentral download site.  For the IBM XLF and XLC Compilers,  xCAT ships Ubuntu partial Kits on Sourceforge. the current redhat7.2 partial Kits, it ships on GitHub: http://xcat.org/files_new/kits/hpckits/2.11/rhels7.2/ppc64le/
+Complete kits for some product software is shipped on the product distribution media. For other software, only partial kits may be available. The partial product kits are available from the FixCentral download site.  For the IBM XLF and XLC Compilers,  xCAT ships Ubuntu partial Kits on Sourceforge. the current redhat7.2 partial Kits, it ships on xcat.org: http://xcat.org/files/kits/hpckits/2.11/rhels7.2/ppc64le/
 
 General Instructions for all HPC Kits
-``````````````````````````````````````
+`````````````````````````````````````
 
 This is a quick overview of the commands will use to add kits to the xCAT cluster and use them in the Linux OS images.
 
@@ -185,7 +185,7 @@ For XLC 13.1.1.0 and XLF 15.1.1.0, xCAT ships partial software kits for Ubuntu o
 
 For XLC 13.1.2.0 and XLF 15.1.2.0, xCAT ships partial software kits for rhels7.2 on github
 
-  http://xcat.org/files_new/kits/hpckits/2.11/rhels7.2/ppc64le/
+  http://xcat.org/files/kits/hpckits/2.11/rhels7.2/ppc64le/
   
 For older Linux releases on System P, and for AIX, use the xCAT HPC Integration Support
 

@@ -1,5 +1,7 @@
-Highly Available Management Node
-================================
+High Avaiability
+================
+
+The following pages describes ways to configure the xCAT Management Node for High Availbility. 
 
 .. toctree::
    :maxdepth: 2
