@@ -6829,151 +6829,153 @@ sub randomizelist { #in place shuffle of list
 }
 
 sub preprocess_request { 
-  my $request = shift;
-  if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
-  #exit if preprocessed
-  my $callback=shift;
-  my @requests;
+    my $request = shift;
+    if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { 
+        # exit if preprocessed
+        return [$request];
+    }
+    my $callback=shift;
+    my @requests;
 
-  my $realnoderange = $request->{node}; #Should be arrayref
-  my $command = $request->{command}->[0];
-  my $extrargs = $request->{arg};
-  my @exargs=($request->{arg});
-  my $delay=0;
-  my $delayincrement=0;
-  my $chunksize=0;
-  if (ref($extrargs)) {
-    @exargs=@$extrargs;
-  }
+    my $realnoderange = $request->{node}; #Should be arrayref
+    my $command = $request->{command}->[0];
+    my $extrargs = $request->{arg};
+    my @exargs=($request->{arg});
+    my $delay=0;
+    my $delayincrement=0;
+    my $chunksize=0;
+    if (ref($extrargs)) {
+        @exargs=@$extrargs;
+    }
 
-  my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-  if ($usage_string) {
-    $callback->({data=>$usage_string});
-    $request = {};
-    return;
-  }
+    my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+    if ($usage_string) {
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
+    }
 
-  if ($command eq "rpower") {
-      my $subcmd=$exargs[0];
-			if($subcmd eq ''){
-	  		#$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
-                        #Above statement will miss error code, so replaced by the below statement
-                        $callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
-	  		$request = {};
-				return 0;
+    if ($command eq "rpower") {
+        my $subcmd=$exargs[0];
+        if($subcmd eq ''){
+            #$callback->({data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+            #Above statement will miss error code, so replaced by the below statement
+            $callback->({errorcode=>[1],data=>["Please enter an action (eg: boot,off,on, etc)",  $usage_string]});
+            $request = {};
+            return 0;
+        }
 
-			}
-      if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
-	 #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
-          #Above statement will miss error code, so replaced by the below statement
-          $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
-	  $request = {};
-	  return;
-      }
-      if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
-		unless($::XCATSITEVALS{syspowermaxnodes}) {
-			$callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
-		        $request = {};
-			return 0;
-		}
-	$chunksize=$::XCATSITEVALS{syspowermaxnodes};
-        $delayincrement=$::XCATSITEVALS{syspowerinterval};
-      }
-  } elsif ($command eq "renergy") {
+        if ( ($subcmd ne 'reseat') && ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
+            #$callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
+            #Above statement will miss error code, so replaced by the below statement
+            $callback->({errorcode=>[1],data=>["Unsupported command: $command $subcmd", $usage_string]});
+            $request = {};
+            return;
+        }
+        if (($subcmd eq 'on' or $subcmd eq 'reset' or $subcmd eq 'boot') and $::XCATSITEVALS{syspowerinterval}) {
+            unless($::XCATSITEVALS{syspowermaxnodes}) {
+                $callback->({errorcode=>[1],error=>["IPMI plugin requires syspowermaxnodes be defined if syspowerinterval is defined"]});
+                $request = {};
+                return 0;
+            }
+            $chunksize=$::XCATSITEVALS{syspowermaxnodes};
+            $delayincrement=$::XCATSITEVALS{syspowerinterval};
+        }
+    } elsif ($command eq "renergy") {
       # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
-  } elsif ($command eq "rspconfig") {
-      # filter out the nodes which should be handled by ipmi.pm
-      my (@bmcnodes, @nohandle);
-      xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
-      $realnoderange = \@bmcnodes;
-  } elsif ($command eq "rinv") {
-      if ($exargs[0] eq "-t" and $#exargs == 0) {
-          unshift @{$request->{arg}}, 'all';
-      } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
-          $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
-          $request = {};
-          return 0;
-      }
-  }
-  if (!$realnoderange) {
-    $usage_string=xCAT::Usage->getUsage($command);
-    $callback->({data=>$usage_string});
-    $request = {};
-    return;
-  }   
-  
-  #print "noderange=@$noderange\n";
+        my (@bmcnodes, @nohandle);
+        xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+        $realnoderange = \@bmcnodes;
+    } elsif ($command eq "rspconfig") {
+        # filter out the nodes which should be handled by ipmi.pm
+        my (@bmcnodes, @nohandle);
+        xCAT::Utils->filter_nodes($request, undef, undef, \@bmcnodes, \@nohandle);
+        $realnoderange = \@bmcnodes;
+    } elsif ($command eq "rinv") {
+        if ($exargs[0] eq "-t" and $#exargs == 0) {
+            unshift @{$request->{arg}}, 'all';
+        } elsif ((grep /-t/, @exargs) and !(grep /(all|vpd)/, @exargs) ) {
+            $callback->({errorcode=>[1],error=>["option '-t' can only work with 'all' or 'vpd'"]});
+            $request = {};
+            return 0;
+        }
+    }
+    if (!$realnoderange) {
+        $usage_string=xCAT::Usage->getUsage($command);
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
+    }   
 
-  # find service nodes for requested nodes
-  # build an individual request for each service node
-  my @noderanges;
-  srand();
-  if ($chunksize) {
-     #first, we try to spread out the chunks so they don't happen to correlate to constrained service nodes or circuits
-     #for now, will get the sn map for all of them and interleave if dispatching
-     #if not dispatching, will randomize the noderange instead to lower likelihood of turning everything on a circuit at once
-     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
-	randomizelist($realnoderange);
-     } else { # sn is indicated
-	my $bigsnmap = xCAT::ServiceNodeUtils->get_ServiceNode($realnoderange, "xcat", "MN");
-     	foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
-		randomizelist($bigsnmap->{$servicenode})
-	}
-	#now merge the per-servicenode list into a big list again
-	$realnoderange=[];
-	while (keys %$bigsnmap) {
-		foreach my $servicenode (keys %$bigsnmap) {
-			if (@{$bigsnmap->{$servicenode}}) {
-				push(@$realnoderange,pop(@{$bigsnmap->{$servicenode}}));
-			} else {
-				delete $bigsnmap->{$servicenode};
-			}
-		}
-	}
-	
-     }
-     while (scalar(@$realnoderange)) {
-             my @tmpnoderange;
-	     while (scalar(@$realnoderange) and $chunksize) {
-		push @tmpnoderange,(shift @$realnoderange);
-		$chunksize--;
-	     }
-	     push @noderanges,\@tmpnoderange;
-	     $chunksize=$::XCATSITEVALS{syspowermaxnodes};
-      }	
-  } else {
-     @noderanges=($realnoderange);
-  }
-  foreach my $noderange (@noderanges) {  
-     my $sn;
-     if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
-        $sn = { '!xcatlocal!' => $noderange };
-     } else {
-        $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
-     }
+    #print "noderange=@$noderange\n";
 
-     # build each request for each service node
- 
-     foreach my $snkey (keys %$sn)
-     {
-       #print "snkey=$snkey\n";
-       my $reqcopy = {%$request};
-       $reqcopy->{node} = $sn->{$snkey};
-       unless ($snkey eq '!xcatlocal!') {
-          $reqcopy->{'_xcatdest'} = $snkey;
-       }
-       $reqcopy->{_xcatpreprocessed}->[0] = 1;
-       if ($delay) { $reqcopy->{'_xcatdelay'} = $delay; }
-       push @requests, $reqcopy;
-     }
-     $delay += $delayincrement;
-  }
-  return \@requests;
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    my @noderanges;
+    srand();
+    if ($chunksize) {
+        #first, we try to spread out the chunks so they don't happen to correlate to constrained service nodes or circuits
+        #for now, will get the sn map for all of them and interleave if dispatching
+        #if not dispatching, will randomize the noderange instead to lower likelihood of turning everything on a circuit at once
+        if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) { #no SN indicated, instead do randomize
+            randomizelist($realnoderange);
+        } else { # sn is indicated
+            my $bigsnmap = xCAT::ServiceNodeUtils->get_ServiceNode($realnoderange, "xcat", "MN");
+            foreach my $servicenode (keys %$bigsnmap) { #let's also shuffle within each service node responsibliity
+                randomizelist($bigsnmap->{$servicenode})
+            }
+            #now merge the per-servicenode list into a big list again
+            $realnoderange=[];
+            while (keys %$bigsnmap) {
+                foreach my $servicenode (keys %$bigsnmap) {
+                    if (@{$bigsnmap->{$servicenode}}) {
+                        push(@$realnoderange,pop(@{$bigsnmap->{$servicenode}}));
+                    } else {
+                    delete $bigsnmap->{$servicenode};
+                    }
+                }
+            }
+        }
+        while (scalar(@$realnoderange)) {
+            my @tmpnoderange;
+            while (scalar(@$realnoderange) and $chunksize) {
+                push @tmpnoderange,(shift @$realnoderange);
+                $chunksize--;
+            }
+            push @noderanges,\@tmpnoderange;
+            $chunksize=$::XCATSITEVALS{syspowermaxnodes};
+        }	
+    } else {
+        @noderanges=($realnoderange);
+    }
+    foreach my $noderange (@noderanges) {  
+        my $sn;
+        if (defined $::XCATSITEVALS{ipmidispatch} and $::XCATSITEVALS{ipmidispatch} =~ /0|n/i) {
+            $sn = { '!xcatlocal!' => $noderange };
+        } else {
+            $sn = xCAT::ServiceNodeUtils->get_ServiceNode($noderange, "xcat", "MN");
+        }
+
+        # build each request for each service node
+
+        foreach my $snkey (keys %$sn) {
+            #print "snkey=$snkey\n";
+            my $reqcopy = {%$request};
+            $reqcopy->{node} = $sn->{$snkey};
+            unless ($snkey eq '!xcatlocal!') {
+                $reqcopy->{'_xcatdest'} = $snkey;
+            }
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            if ($delay) { 
+                $reqcopy->{'_xcatdelay'} = $delay;
+            }
+            push @requests, $reqcopy;
+        }
+        $delay += $delayincrement;
+    }
+    return \@requests;
 }
-    
+
      
 sub getipmicons {
     my $argr=shift;
