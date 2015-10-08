@@ -12,8 +12,6 @@ Advanced Topics
    hierarchy/index.rst
    mixed_cluster/index.rst
    networks/index.rst
-   change_mn_ip.rst
-   change_node_ip.rst
    ports/xcat_ports.rst
    raid/index.rst
    security/index.rst
