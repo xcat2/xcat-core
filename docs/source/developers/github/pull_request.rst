@@ -35,10 +35,10 @@ After submitting a pull request, you may get comments from reviewer that somethi
 
     $ git push origin <mybranch> -f
 
-Resolving Conflict in the Pull Request
---------------------------------------
+Resolving Conflicts in the Pull Request
+---------------------------------------
 
-During the reviewing of your pull request, another pull request may be merged which contains changes that conflict with your change so that your pull request can no longer be merged automatically.  You can use following steps to resolve the conflict.
+During the reviewing of your pull request, another pull request may be merged which contains changes that conflicts with your change so that your pull request can no longer be merged automatically.  You can use following steps to resolve the conflicts.
 
 #. Update the upstream, replace <upstream> with the name if your upstream repo ::
 
@@ -52,20 +52,20 @@ During the reviewing of your pull request, another pull request may be merged wh
 
     $ git rebase <upstream>/master
 
-#. In the previous step, you will see some CONFLICT when merging certain files.  Edit the files to resolve the conflicts manually and then **add** the files to be tracked in git. ::
+#. In the previous step, If there are conflicts, the rebase will stop and you will see CONFLICT messages for certain files.  Edit the files to resolve the conflicts manually and then use **git add** the re-add the files to be tracked in git. ::
 
     $ vi  <files>
     $ git add <files>
 
-#. Continue the rebase and repeate the above step for any additional CONFLITs ::
+#. Continue the rebase repeat the step above for any additional conflicts ::
 
     $ git rebase --continue
 
-#. Once the rebase is complete and CONFLICTs resolved, **force** push the change to your repository ::
+#. Once the rebase is complete and conflicts are resolved, **force** push the change to your repository ::
 
     $ git push origin <mybranch> -f
 
-If the CONFLICTs are resolved, the pull request should automaically turn green and able to be merged automatically. 
+If all the conflicts are resolved, the pull request should automaically turn green again and is able to be merged automatically. 
 
 Reviewing Pull Requests as a Maintainer
 ---------------------------------------
