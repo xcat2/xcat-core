@@ -1490,9 +1490,9 @@ sub process_request
     #       - include the site domain - if any
     my $nettab = xCAT::Table->new("networks");
     my @doms = $nettab->getAllAttribs('domain');
-    foreach(@doms){
-        if ($_->{domain}) {
-            push (@alldomains, $_->{domain});
+    foreach my $netdom (@doms){
+        if ($netdom->{domain}) {
+            push (@alldomains, $netdom->{domain}) unless grep(/^$netdom->{domain}$/, @alldomains);
         }
     }
     $nettab->close;
