@@ -23,49 +23,49 @@ After submitting a pull request, you may get comments from reviewer that somethi
 
 #. Change any code and add them to be tracked in git ::
 
-    $git checkout <mybranch>
-    $vi <files>
-    $git add <files>
+    $ git checkout <mybranch>
+    $ vi <files>
+    $ git add <files>
 
 #. Commit the change to last commit in the branch instead of creating a new commit. This step is useful to keep the change of this pull request in one commit instead of multiple ones. ::
 
-    $git commit --amend
+    $ git commit --amend
 
 #. Push the new commit to remote repository. Then the commit will be displayed in pull request automatically. ::
 
-    $git push origin <mybranch> -f
+    $ git push origin <mybranch> -f
 
-Resolving Conflit in the Pull Request
--------------------------------------
+Resolving Conflict in the Pull Request
+--------------------------------------
 
-During the reviewing of your pull request, some one may change certain code which conflict with your change so that your pull request can NOT be merged automatically. You can use following steps to resolve the conflict.
+During the reviewing of your pull request, another pull request may be merged which contains changes that conflict with your change so that your pull request can no longer be merged automatically.  You can use following steps to resolve the conflict.
 
-#. Update the upstream ::
+#. Update the upstream, replace <upstream> with the name if your upstream repo ::
 
-    $git fetch <upstream>
+    $ git fetch <upstream>
 
 #. Checkout to your working branch ::
 
-    $git checkout <mybranch>
+    $ git checkout <mybranch>
 
 #. rebase your branch to the master branch in the <upstream> ::
 
-    $git rebase <upstream>/master
+    $ git rebase <upstream>/master
 
-#. In the previous step, you should see there are some conflicts in certain files. Edit the files to resolve the conflicts manually and add the files to be tracked in git. ::
+#. In the previous step, you will see some CONFLICT when merging certain files.  Edit the files to resolve the conflicts manually and then **add** the files to be tracked in git. ::
 
-    $vi  <files>
-    $git add <files>
+    $ vi  <files>
+    $ git add <files>
 
-#. Continue the rebase ::
+#. Continue the rebase and repeate the above step for any additional CONFLITs ::
 
-    $git rebase --continue
+    $ git rebase --continue
 
-#. Push the change to the remote repository ::
+#. Once the rebase is complete and CONFLICTs resolved, **force** push the change to your repository ::
 
-    $git push origin <mybranch> -f
+    $ git push origin <mybranch> -f
 
-Then you will see the pull request is enabled to be merged automatically.
+If the CONFLICTs are resolved, the pull request should automaically turn green and able to be merged automatically. 
 
 Reviewing Pull Requests as a Maintainer
 ---------------------------------------
