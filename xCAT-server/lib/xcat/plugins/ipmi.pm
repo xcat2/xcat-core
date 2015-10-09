@@ -2207,66 +2207,66 @@ sub beacon_answer {
 
 sub inv {
     my $sessdata = shift;
-	my $subcommand = $sessdata->{subcommand};
+    my $subcommand = $sessdata->{subcommand};
 
-	my $rc = 0;
-	my $text;
-	my @output;
-	my @types;
+    my $rc = 0;
+    my $text;
+    my @output;
+    my @types;
 
 
     unless ($subcommand) {
         $subcommand = "all";
     }
-	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc hw asset firmware mac wwn);
-	}
-	elsif($subcommand eq "asset") {
+    if($subcommand eq "all") {
+        @types = qw(model serial deviceid mprom guid misc hw asset firmware mac wwn);
+    }
+    elsif($subcommand eq "asset") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(asset);
-	}
-	elsif($subcommand eq "firm" || $subcommand eq "firmware") {
+        @types = qw(asset);
+    }
+    elsif($subcommand eq "firm" || $subcommand eq "firmware") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(firmware);
-	}
-	elsif($subcommand eq "model") {
+        @types = qw(firmware);
+    }
+    elsif($subcommand eq "model") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(model);
-	}
-	elsif($subcommand eq "serial") {
+        @types = qw(model);
+    }
+    elsif($subcommand eq "serial") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(serial);
-	}
-	elsif($subcommand eq "vpd") {
+        @types = qw(serial);
+    }
+    elsif($subcommand eq "vpd") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(model serial deviceid mprom);
-	}
-	elsif($subcommand eq "mprom") {
+        @types = qw(model serial deviceid mprom);
+    }
+    elsif($subcommand eq "mprom") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(mprom);
-	}
-	elsif($subcommand eq "misc") {
+        @types = qw(mprom);
+    }
+    elsif($subcommand eq "misc") {
         $sessdata->{skipotherfru}=1;
-		@types = qw(misc);
-	}
-	elsif($subcommand eq "deviceid") {
+        @types = qw(misc);
+    }
+    elsif($subcommand eq "deviceid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(deviceid);
-	}
-	elsif($subcommand eq "guid") {
+        @types = qw(deviceid);
+    }
+    elsif($subcommand eq "guid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(guid);
-	}
-	elsif($subcommand eq "uuid") {
+        @types = qw(guid);
+    }
+    elsif($subcommand eq "uuid") {
         $sessdata->{skipfru}=1; #full fru read is expensive, skip it
-		@types = qw(guid);
-	}
-	else {
+        @types = qw(guid);
+    }
+    else {
         @types = ($subcommand);
-		#return(1,"unsupported BMC inv argument $subcommand");
-	}
+        #return(1,"unsupported BMC inv argument $subcommand");
+    }
     $sessdata->{invtypes} = \@types;
-	initfru($sessdata);
+    initfru($sessdata);
 }
 sub fru_initted {
     my $sessdata = shift;
