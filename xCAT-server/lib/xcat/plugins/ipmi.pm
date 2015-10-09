@@ -3428,6 +3428,9 @@ sub parsefru {
     unless (ref $bytes) {
         return $bytes,undef;
     }
+    if (!defined $bytes->[0]) {
+        return "clear",undef;
+    }
     unless ($bytes->[0]==1) {
         if ($bytes->[0]==0 or $bytes->[0]==0xff) { #not in spec, but probably unitialized, xCAT probably will rewrite fresh
             return "clear",undef;
