@@ -578,13 +578,15 @@ sub set_arith {
 #  - exsitenode: whether or not to honor site.excludenodes to automatically exclude those nodes from all noderanges
 #  - options: genericrange - a purely syntactical expansion of the range, not using the db at all, e.g not expanding group names
 sub noderange {
-  $missingnodes=[];
   #We for now just do left to right operations
   my $range=shift;
   $range =~ s/['"]//g;
   my $verify = (scalar(@_) >= 1 ? shift : 1);
   my $exsitenode = (scalar(@_) >= 1 ? shift : 1);   # if 1, honor site.excludenodes
   my %options = @_;      # additional options
+  unless ($options{keepmissing}) {
+  	$missingnodes=[];
+  }
 
   unless ($nodelist) { 
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
@@ -609,8 +611,8 @@ sub noderange {
     $start =~ s/,-$//;
     $start =~ s/,$//;
     $start =~ s/\@$//;
-    %nodes = map { $_ => 1 } noderange($start,$verify,$exsitenode,%options);
-    my %innernodes = map { $_ => 1 } noderange($middle,$verify,$exsitenode,%options);
+    %nodes = map { $_ => 1 } noderange($start,$verify,$exsitenode,%options,keepmissing=>1);
+    my %innernodes = map { $_ => 1 } noderange($middle,$verify,$exsitenode,%options,keepmissing=>1);
     set_arith(\%nodes,$op,\%innernodes);
     $range = $end;
   }
