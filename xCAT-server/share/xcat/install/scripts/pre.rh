@@ -237,7 +237,7 @@ else
 fi
 BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
-if uname -r|grep ^3.*el7 > /dev/null; then
+if uname -r|grep -q '^3.*el7'; then
     FSTYPE=xfs
     BOOTFSTYPE=xfs
     EFIFSTYPE=efi
