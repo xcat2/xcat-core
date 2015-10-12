@@ -38,7 +38,7 @@ if [ "$OSNAME" == "AIX" ]; then
 	DFNAME=dep-aix-`date +%Y%m%d%H%M`.tar.gz
 	GSA=/gsa/pokgsa/projects/x/xcat/build/aix/xcat-dep
 else
-	DFNAME=xcat-dep-snap`date +%Y%m%d%H%M`.tar.bz2
+	DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
 	GSA=/gsa/pokgsa/projects/x/xcat/build/linux/xcat-dep
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
