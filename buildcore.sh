@@ -17,11 +17,11 @@
 #    Before running buildcore.sh, you must change the local git repo to the branch you want built, using: git checkout <branch>
 #        PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not actually build
 #                    xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
-#                    If not specified, a snap build is assumed, which uploads to http://xcat.org/files/yum/
+#                    If not specified, a snap build is assumed, which uploads to http://xcat.org/files/xcat/repos/yum/
 #                    or http//xcat.org/files/aix/.
 #        PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
 #                  a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
-#                  http://xcar.org/files/yum/ or http://xcat.org/files/aix/
+#                  http://xcar.org/files/xcat/repos/yum/
 #                  (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
 #                  release this build, use PROMOTE=1 without PREGA
 #        BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
