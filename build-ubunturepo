@@ -17,15 +17,16 @@
 
 # Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
 #               PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
-#                                       actually build xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
-#                                       If not specified, a snap build is assumed, which uploads to https://xcat.org/files/yum/
-#                                       or https://xcat.org/files/aix/.
-#               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this build is
-#                                       a GA candidate build, not to be released yet.  This will result in the tarball being uploaded to
-#                                       http://xcat.org/files/yum/ or http://xcat.org/files/aix/
-#                                       (but the tarball file name will be like a released tarball, not a snap build).  When you are ready to
-#                                       release this build, use PROMOTE=1 without PREGA
-#               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in prep for a release.
+#                           actually build xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
+#                           If not specified, a snap build is assumed, which uploads to https://xcat.org/files/yum/
+#                           or https://xcat.org/files/aix/.
+#               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this 
+#                           build is a GA candidate build, not to be released yet.  This will result in the tarball 
+#                           being uploaded to http://xcat.org/files/xcat/repos/apt
+#                           (but the tarball file name will be like a released tarball, not a snap build).  
+#                           When you are ready to release this build, use PROMOTE=1 without PREGA
+#               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in 
+#                            prep for a release.
 #               UP=0 or UP=1 - override the default upload behavior
 #               LOG=<filename> - provide an LOG file option to redirect some output into log file
 #
@@ -43,7 +44,17 @@ printusage()
     echo "    -d : Create the xcat dep repo. Building the xcat dep packages can refer \"build-debs-all\" from svn"
 }
 # For the purpose of getting the distribution name
+if [[ ! -f /etc/lsb-release ]]; then 
+    echo "ERROR: Could not find /etc/lsb-release, is this script executed on a Ubuntu machine?"
+    exit 1
+fi 
 . /etc/lsb-release
+
+REPREPRO=`which reprepro >> /dev/null 2>&1; echo $?`
+if [[ ${REPREPRO} != 0 ]]; then
+    echo "ERROR: Could not find reprepro, verify that reprepro is installed on this machine.  Cannot continue!"
+    exit 1
+fi
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
@@ -93,9 +104,14 @@ fi
 
 
 uploader="litingt"
-user="xcat"
-target_machine="xcat.org"
+USER="xcat"
+SERVER="xcat.org"
+FILES_PATH="files"
+FRS="/var/www/${SERVER}/${FILES_PATH}"
 release="github.com/xcat2/xcat-core/releases"
+APT_DIR="${FRS}/xcat"
+APT_REPO_DIR="${APT_DIR}/repos/apt"
+
 # Find where this script is located to set some build variables
 old_pwd=`pwd`
 cd `dirname $0`
@@ -347,53 +363,24 @@ __EOF__
         ln -s xcat-core core-snap
     fi
 
-    #
-    # remove the changes to changelog since the files get changed and created in xcat-core..
-    # left over files not commited to git will prevent switching from branch to branch ...
-    echo "Cleaning up modified changelog files..."
-    cleanup_oldpwd=`pwd`
-    # go to the xcat-core git repo directory 
-    #
-    cd $local_core_repo_path
-    cd ../xcatbuild/xcat-core
-    find ./ -name "changelog" -print | xargs git checkout
-    cd $cleanup_oldpwd
-
-    # Decide whether to upload or not
-    if [ -n "$UP" ] && [ "$UP" == 0 ]; then
-        echo "No need to upload"
+    # Decide whether to upload or not (default NOT to upload)
+    if [ "$UP" != "1" ]; then 
+        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd
         exit 0
     fi
 
     #upload the deb packages
-    if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
-        i=0
-        echo "Uploading RPMs from $upload_dir to ${sf_dir}/ubuntu/${REL}/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir  $user@$target_machine:${sf_dir}/ubuntu/${REL}/
-        do : ; done
-    fi
+    i=0
+    echo "Uploading RPMs from $upload_dir to ${APT_REPO_DIR}/${REL}/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $upload_dir  $USER@${SERVER}:${APT_REPO_DIR}/${REL}/
+    do : ; done
 
     #upload the tar ball
-    #for the GA build, upload to http://xcat.org/files/xcat/<version>.x_Ubuntu/ and https://github.com/xcat2/xcat-core/releases
-    #for other scenario, upload to http://xcat.org/files/ubuntu/<version>
-    if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
-        i=0
-        echo "Uploading $tar_name to ${sf_dir}/xcat/${REL}.x_Ubuntu/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  $user@$target_machine:${sf_dir}/xcat/${REL}.x_Ubuntu/
-        do : ; done
-        
-        #at the same time upload the GA build to github.
-        i=0
-        echo "Uploading $tar_name to https://github.com/xcat2/xcat-core/releases ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  $uploader@$release/
-        do : ; done
-    else
-        i=0
-        echo "Uploading $tar_name to ${sf_dir}/ubuntu/${REL}/ ..."
-        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  $user@$target_machine:${sf_dir}/ubuntu/${REL}/
-        do : ; done
-    fi
+    i=0
+    echo "Uploading $tar_name to ${APT_DIR}/xcat-core/${REL}/Ubuntu/core-snap/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_name  $USER@${SERVER}:${APT_DIR}/xcat-core/${REL}/Ubuntu/core-snap/
+    do : ; done
     
     cd $old_pwd   
 fi
@@ -404,20 +391,24 @@ then
     echo "# Creating xcat-dep repository #"
     echo "################################"
 
-
     #the path of ubuntu xcat-dep deb packages on GSA
     GSA="/gsa/pokgsa/projects/x/xcat/build/ubuntu/xcat-dep"
  
-
     if [ ! -d $GSA ]; then
        echo "build-ubunturepo:  It appears that you do not have gsa installed to access the xcat-dep pkgs."
        exit 1;
     fi
 
     # Sync from the GSA master copy of the dep rpms
+    echo "Creating directory $local_dep_repo_path"
+    mkdir -p $local_dep_repo_path/
+
     echo "Syncing RPMs from $GSA/ to $local_dep_repo_path/../ ..."
     rsync -ilrtpu --delete $GSA/ $local_dep_repo_path/../
-
+    if [ $? -ne 0 ]; then 
+        echo "Error from rsync, cannot continue!"
+        exit 1
+    fi 
 
     #clean all old files
     if [ -e $local_dep_repo_path ];then
@@ -492,37 +483,35 @@ __EOF__
     chmod -R g+w xcat-dep
 
     #create the tar ball
-    dep_tar_name=xcat-dep-ubuntu-snap`date +%Y%m%d`.tar.bz
+    dep_tar_name=xcat-dep-ubuntu-`date +%Y%m%d%H%M`.tar.bz
     tar -hjcf $dep_tar_name xcat-dep
     chgrp root $dep_tar_name
     chmod g+w $dep_tar_name
 
-    # remove the changes to changelog since the builds are occuring in xcat-core, will prevent
-    # switching from branch to branch without a new clone of the repository
-    find ./ -name "changelog" -print | xargs git checkout
-
-    if [ -n "$UP" ] && [ "$UP" == 0 ];then
-        echo "No need to upload the dep packages"
+    # Decide whether to upload or not (default NOT to upload)
+    if [ "$UP" != "1" ]; then 
+        echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd
         exit 0
     fi
 
     #upload the dep packages
     i=0
-    echo "Uploading debs from xcat-dep to ${sf_dir}/ubuntu/xcat-dep/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep $user@$target_machine:${sf_dir}/ubuntu/     
+    echo "Uploading debs from xcat-dep to ${APT_REPO_DIR}/xcat-dep/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete xcat-dep $USER@${SERVER}:${APT_REPO_DIR}/
     do : ; done
+
     #upload the tarball
     i=0
-    echo "Uploading $dep_tar_name to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name $user@$target_machine:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    echo "Uploading $dep_tar_name to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $dep_tar_name $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
     do : ; done
 
     #upload the README file
     cd debs
     i=0
-    echo "Uploading README to ${sf_dir}/xcat-dep/2.x_Ubuntu/ ..."
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README $user@$targe_machine:${sf_dir}/xcat-dep/2.x_Ubuntu/
+    echo "Uploading README to ${APT_DIR}/xcat-dep/2.x_Ubuntu/ ..."
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force README $USER@${SERVER}:${APT_DIR}/xcat-dep/2.x_Ubuntu/
     do : ; done
 
     cd $old_pwd
