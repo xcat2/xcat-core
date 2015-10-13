@@ -201,7 +201,7 @@ then
    cp /etc/xcat/conf.orig/xcat.conf.apach24 /etc/apache2/conf.d/xcat.conf
 fi
 
-# Lets rsyslogd perform close all open files
+# Let rsyslogd perform close of any open files
 if [ -e /var/run/rsyslogd.pid ]; then
     kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
 elif [ -e /var/run/syslogd.pid ]; then
