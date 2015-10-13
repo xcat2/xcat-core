@@ -46,7 +46,12 @@ case "$1" in
 
 	/etc/init.d/apache2 restart
 
-	kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
+        # Let rsyslogd perform close of any open files
+        if [ -e /var/run/rsyslogd.pid ]; then
+            kill -HUP $(</var/run/rsyslogd.pid) >/dev/null 2>&1 || :
+        elif [ -e /var/run/syslogd.pid ]; then
+            kill -HUP $(</var/run/syslogd.pid) >/dev/null 2>&1 || :
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
