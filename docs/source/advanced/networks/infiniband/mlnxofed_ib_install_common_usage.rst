@@ -1,4 +1,5 @@
 .. BEGIN_Preparation_For_V2
+
 Before start, here are some preparation and concept should be known.
 
 Obtain the Mellanox OFED ISO file from `Mellanox official site <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_ and put it under the /install directory following the xCAT directory structure: ``/install/post/otherpkgs/<osver>/<arch>/ofed``.
@@ -65,6 +66,7 @@ If not, change it ::
 .. END_Diskfull_step_For_V2
 
 .. BEGIN_Diskless_step_For_V2
+
 Let's start configuration.
 
 **[Note]** step 1 is only need by RHEL and SLES
@@ -113,6 +115,7 @@ Edit ``/install/custom/netboot/<ostype>/<profile>.postinstall`` and add: ::
 .. END_Diskless_step_For_V2
 
 .. BEGIN_Preparation_For_V1
+
 Obtain the Mellanox OFED ISO file from `Mellanox official site <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_  and mount it onto suggested target location on the XCAT MN according your OS and ARCH: ::
 
     mkdir -p /install/post/otherpkgs/<osver>/<arch>/ofed
@@ -144,6 +147,7 @@ The **mlnxofed_ib_install** invokes a script ``mlnxofedinstall`` shipped by Mell
 .. END_Preparation_For_V1
 
 .. BEGIN_Diskfull_step_For_V1
+
 Let's start configuration.
 
 1. Set script ``mlnxofed_ib_install`` as postbootscript ::
@@ -177,6 +181,7 @@ If not, change it ::
 .. END_Diskfull_step_For_V1
 
 .. BEGIN_Diskless_step_For_V1
+
 Let's start configuration.
 
 **[Note]** step 1 is only need by RHEL and SLES
