@@ -37,8 +37,12 @@
 #		VERBOSE=1 - to see lots of verbose output
 
 # you can change this if you need to
-UPLOADUSER=bp-sawyers
-FRS=/home/frs/project/x/xc/xcat
+UPLOADUSER=litingt
+USER=xcat
+SERVER=xcat.org
+FILES_PATH="files"
+FRS=/var/www/${SERVER}/${FILES_PATH}
+RELEASE=github.com/xcat2/xcat-core/releases
 
 # These are the rpms that should be built for each kind of xcat build
 ALLBUILD="perl-xCAT xCAT-client xCAT-server xCAT-IBMhpc xCAT-rmc xCAT-UI xCAT-test xCAT-buildkit xCAT xCATsn xCAT-genesis-scripts xCAT-OpenStack xCAT-SoftLayer xCAT-OpenStack-baremetal"
@@ -104,7 +108,7 @@ if [ "$REL" = "xcat-core" ]; then			# using git
 fi
 
 YUMDIR=$FRS
-YUMREPOURL="https://sourceforge.net/projects/xcat/files/yum"
+YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
 
 # Set variables based on which type of build we are doing
 if [ -n "$EMBED" ]; then
@@ -465,50 +469,50 @@ fi
 if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
 	i=0
 	echo "Uploading RPMs from $CORE to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
-	do : ; done
+	while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $CORE $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
+        do : ; done
 fi
 
-# Upload the individual source RPMs to sourceforge
+# Upload the individual source RPMs to xcat.org 
 i=0
 echo "Uploading src RPMs from $SRCD to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
+while [ $((i+=1)) -le 5 ] && ! rsync -urLv --delete $SRCD $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
 do : ; done
 
-# Upload the tarball to sourceforge
+# Upload the tarball to xcat.org 
 if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
 	i=0
 	echo "Uploading $TARNAME to $FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
-	do : ; done
+	while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$FRS/xcat/$REL.x_$OSNAME$EMBEDDIR/
+        do : ; done
 else
 	i=0
 	echo "Uploading $TARNAME to $YUMDIR/$YUM/$REL$EMBEDDIR/ ..."
-	while [ $((i+=1)) -le 5 ] && ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:$YUMDIR/$YUM/$REL$EMBEDDIR/
-	do : ; done
+	while [ $((i+=1)) -le 5 ] && ! rsync -v --force $TARNAME $USER@$SERVER:$YUMDIR/$YUM/$REL$EMBEDDIR/
+        do : ; done
 fi
 
 # Extract and upload the man pages in html format
-if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
-	echo "Extracting and uploading man pages to htdocs/ ..."
-	mkdir -p man
-	cd man
-	rm -rf opt
-	rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
-	rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
-	i=0
-	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
-	do : ; done
-
-	# extract and upload the tools readme
-	rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
-	i=0
-	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
-	do : ; done
-	cd ..
-fi
+#if [ "$OSNAME" != "AIX" -a "$REL" = "devel" -a "$PROMOTE" != 1 -a -z "$EMBED" ]; then
+#	echo "Extracting and uploading man pages to htdocs/ ..."
+#	mkdir -p man
+#	cd man
+#	rm -rf opt
+#	rpm2cpio ../$XCATCORE/xCAT-client-*.$NOARCH.rpm | cpio -id '*.html'
+#	rpm2cpio ../$XCATCORE/perl-xCAT-*.$NOARCH.rpm | cpio -id '*.html'
+#	rpm2cpio ../$XCATCORE/xCAT-test-*.$NOARCH.rpm | cpio -id '*.html'
+#	rpm2cpio ../$XCATCORE/xCAT-buildkit-*.$NOARCH.rpm | cpio -id '*.html'
+#	rpm2cpio ../$XCATCORE/xCAT-OpenStack-*.x86_64.rpm | cpio -id '*.html'
+#	rpm2cpio ../$XCATCORE/xCAT-SoftLayer-*.$NOARCH.rpm | cpio -id '*.html'
+#	i=0
+#	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag -r opt/xcat/share/doc/man1 opt/xcat/share/doc/man3 opt/xcat/share/doc/man5 opt/xcat/share/doc/man7 opt/xcat/share/doc/man8 $UPLOADUSER,xcat@web.sourceforge.net:htdocs/
+#	do : ; done
+#
+#	# extract and upload the tools readme
+#	rpm2cpio ../$XCATCORE/xCAT-server-*.$NOARCH.rpm | cpio -id ./opt/xcat/share/xcat/tools/README.html
+#	i=0
+#	while [ $((i+=1)) -le 5 ] && ! rsync $verboseflag opt/xcat/share/xcat/tools/README.html $UPLOADUSER,xcat@web.sourceforge.net:htdocs/tools/
+#	do : ; done
+#	cd ..
+#fi
