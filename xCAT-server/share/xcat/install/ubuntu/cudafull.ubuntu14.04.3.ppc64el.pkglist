@@ -1,0 +1,7 @@
+#INCLUDE:compute.ubuntu14.04.3.ppc64el.pkglist#
+build-essential
+dkms
+
+zlib1g-dev
+
+cuda
