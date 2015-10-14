@@ -1,10 +1,3 @@
-Overview
-========
-
-The xCAT management node plays an important role in the cluster, if the management node is down for whatever reason, the administrators will lose the management capability for the whole cluster, until the management node is back up and running. In some configuration, like the Linux nfs-based statelite in a non-hierarchy cluster, the compute nodes may not be able to run at all without the management node. So, it is important to consider the high availability for the management node. 
-
-The goal of the HAMN(High Availability Management Node) configuration is, when the primary xCAT management node fails, the standby management node can take over the role of the management node, either through automatic failover or through manual procedure performed by the administrator, and thus avoid long periods of time during which your cluster does not have active cluster management function available. 
-
 Configuration considerations
 ============================
 
@@ -16,9 +9,9 @@ Data synchronization mechanism
 The data synchronization is important for any high availability configuration. When the xCAT management node failover occurs, the xCAT data needs to be exactly the same before failover, and some of the operating system configuration should also be synchronized between the two management nodes. To be specific, the following data should be synchronized between the two management nodes to make the xCAT HAMN work: 
 
 * xCAT database 
-* xCAT configuration files, like /etc/xcat, ~/.xcat, /opt/xcat 
+* xCAT configuration files, like ``/etc/xcat``, ``~/.xcat``, ``/opt/xcat`` 
 * The configuration files for the services that are required by xCAT, like named, DHCP, apache, nfs, ssh, etc. 
-* The operating systems images repository and users customization data repository, the /install directory contains these repositories in most cases. 
+* The operating systems images repository and users customization data repository, the ``/install`` directory contains these repositories in most cases. 
 
 There are a lot of ways for data syncronization, but considering the specific xCAT HAMN requirements, only several of the data syncronziation options are practical for xCAT HAMN. 
 
@@ -47,7 +40,7 @@ The configuration for the high availability applications is usually complex, it 
 
 **3\. Maintenance effort**
 
-The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, trouble shooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs ... 
+The automatic failover brings in several high availability applications, after the initial configuration is done, additional maintenance effort will be needed. For example, taking care of the high availability applications during cluster update, the updates for the high availability applications themselves, trouble shooting any problems with the high availability applications. A simple question may be able to help you to decide: could you get technical support if some of the high availability applications run into problems? All software has bugs.
 
 Configuration Options
 =====================
@@ -59,7 +52,17 @@ The combinations of data synchronization mechanism and manual/automatic failover
 +-------------------+-------------------------+-----------------+--------------+
 |Manual Failover    | **1**                   | **2**           | 3            |
 +-------------------+-------------------------+-----------------+--------------+
-|Automatic Failover | 4                       | 5               | **6**        |
+|Automatic Failover | 4                       | **5**           | **6**        |
 +-------------------+-------------------------+-----------------+--------------+
 
+Option 1, :ref:`setup_ha_mgmt_node_with_raid1_and disks_move` 
 
+Option 2, :ref:`setup_ha_mgmt_node_with_shared_data` 
+
+Option 3, it is doable but not currently supported.
+
+Option 4, it is not practical.
+
+Option 5, :ref:`setup_xcat_high_available_management_node_with_nfs` 
+
+Option 6, :ref:`setup_ha_mgmt_node_with_drbd_pacemaker_corosync`
