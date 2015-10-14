@@ -1,6 +1,6 @@
 
-CUDA Installation
-=================
+CUDA Installation Based on RHEL
+===============================
 
 Overview
 --------
@@ -14,7 +14,7 @@ xCAT supports CUDA installation for Ubuntu and rhel7.2 on PowerNV (p8le node wit
 
 It's suggested to only installing the **cudaruntime** package set on the Compute Nodes (CNs), and the **cudafull** package set on the Management Node or the monitor/development nodes.
 
-In this documentation, xCAT will provide CUDA installation based on rhel7.2 Power 8 firestone nodes.  User can find Ubuntu CUDA installation document here: http://sourceforge.net/p/xcat/wiki/xCAT_P8LE_cuda_installing/
+In this documentation, xCAT will provide CUDA installation based on rhel7.2 Power 8 firestone nodes.
 
 
 CUDA Repository
