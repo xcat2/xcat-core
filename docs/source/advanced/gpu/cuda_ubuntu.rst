@@ -7,14 +7,14 @@ Overview
 
 CUDA (Compute Unified Device Architecture) is a parallel computing platform and programming model created by NVIDIA.  It can be used by the graphics processing units (GPUs) for general purpose processing.
 
-xCAT supports CUDA installation for Ubuntu and rhel7.2 on PowerNV (p8le node with NVIDIA GPU Support) for both diskless and diskful nodes.  The CUDA packages provided by NVIDIA include both the runtime libraries for computing and development tools for programming and monitoring. The full package set is very large, so in xCAT, it's suggested that the packages be split into two package sets: 
+xCAT supports CUDA installation for Ubuntu 14.04.3 and RHEL 7.2LE on PowerNV (Non-Virtualized) for both diskless and diskful nodes.  The CUDA packages provided by NVIDIA include both the runtime libraries for computing and development tools for programming and monitoring. The full package set is very large, so in xCAT, it's suggested that the packages be split into two package sets: 
 
 #. **cudaruntime** package set 
 #. **cudafull** package set  
 
 It's suggested to only installing the **cudaruntime** package set on the Compute Nodes (CNs), and the **cudafull** package set on the Management Node or the monitor/development nodes.
 
-In this documentation, xCAT will provide CUDA installation based on Ubuntu Power 8 firestone nodes.
+In this documentation, xCAT will provide CUDA installation based on Ubuntu 14.04.3 running on IBM Power Systems S822LC nodes.
 
 
 CUDA Repository
@@ -86,8 +86,6 @@ User can generate a new CUDA osimage object based on another osimage definition 
       dkms
 
 
-
-**NOTE: After CUDA are installed, the nodes require a reboot**
 
 The following are some sample osimage definitions:   
 
@@ -181,13 +179,13 @@ After download NVML and put it under /install/postscripts on MN, the following s
 Deployment of CUDA node
 -----------------------
 
-**To provision diskful nodes:** ::
+* To provision diskful nodes: ::
 
-    nodeset <node> osimage=<diskless_osimage_object_name>
+    nodeset <node> osimage=<diskfull_osimage_object_name>
     rsetboot <node> net
     rpower <node> boot 
 	
-**To provision diskless nodes:**
+* To provision diskless nodes:
 
 To generate stateless image for a diskless installation, the acpid is needed to be installed on MN or the host on which you generate stateless image. ::
 
@@ -215,7 +213,7 @@ The command below can be used to display GPU or Unit info on the node. ::
 	dkms install nvidia-346/346.46
     dkms install nvidia-346-uvm/346.46
 	
-* Verify the Driver Version ::
+Verify the Driver Version. ::
     
     # cat /proc/driver/nvidia/version
       NVRM version: NVIDIA UNIX ppc64le Kernel Module  346.46  Tue Feb 17 17:18:33 PST 2015
