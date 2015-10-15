@@ -7,14 +7,14 @@ Overview
 
 CUDA (Compute Unified Device Architecture) is a parallel computing platform and programming model created by NVIDIA.  It can be used by the graphics processing units (GPUs) for general purpose processing.
 
-xCAT supports CUDA installation for Ubuntu and rhel7.2 on PowerNV (p8le node with NVIDIA GPU Support) for both diskless and diskful nodes.  The CUDA packages provided by NVIDIA include both the runtime libraries for computing and development tools for programming and monitoring. The full package set is very large, so in xCAT, it's suggested that the packages be split into two package sets: 
+xCAT supports CUDA installation for Ubuntu 14.04.3 and RHEL 7.2LE on PowerNV (Non-Virtualized) for both diskless and diskful nodes.  The CUDA packages provided by NVIDIA include both the runtime libraries for computing and development tools for programming and monitoring. The full package set is very large, so in xCAT, it's suggested that the packages be split into two package sets: 
 
 #. **cudaruntime** package set 
 #. **cudafull** package set  
 
 It's suggested to only installing the **cudaruntime** package set on the Compute Nodes (CNs), and the **cudafull** package set on the Management Node or the monitor/development nodes.
 
-In this documentation, xCAT will provide CUDA installation based on rhel7.2 Power 8 firestone nodes.
+In this documentation, xCAT will provide CUDA installation based on RHEL 7.2LE running on IBM Power Systems S822LC nodes.
 
 
 CUDA Repository
