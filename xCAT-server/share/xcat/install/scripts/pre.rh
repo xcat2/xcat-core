@@ -237,11 +237,6 @@ else
 fi
 BOOTFSTYPE=ext3
 EFIFSTYPE=vfat
-if uname -r|grep -q '^3.*el7'; then
-    FSTYPE=xfs
-    BOOTFSTYPE=xfs
-    EFIFSTYPE=efi
-fi
 
 if [ `uname -m` = "ppc64" ]; then
 	echo 'part None --fstype "PPC PReP Boot" --ondisk '$instdisk' --size 8' >> /tmp/partitioning 
