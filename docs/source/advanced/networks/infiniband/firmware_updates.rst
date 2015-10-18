@@ -36,7 +36,7 @@ Note: the above 0002:01:00.0 device location was used as an example only. it is 
 Mellanox Switch Firmware Upgrade
 --------------------------------
 
-This section provides manual procedure to help update the firmware for Mellanox Infiniband (IB) Switches. You can down load IB switch firmware like IB6131 (image-PPC_M460EX-SX_3.2.xxx.img) from the Mellanox website `http://www.mellanox.com/page/firmware_table_IBM <http://www.mellanox.com/page/firmware_table_IBM>`_ and place into your XCAT Management Node or server that can communicate to Flex IB6131 switch module. There are two ways to update the MLNX-OS switch package. This process works regardless if updating an internal PureFlex chassis Infiniband switch (IB6131 or for an external Mellanox switch.
+This section provides manual procedure to help update the firmware for Mellanox Infiniband (IB) Switches. You can down load IB switch firmware like IB6131 (image-PPC_M460EX-SX_3.2.xxx.img) from the Mellanox website `http://www.mellanox.com/page/firmware_table_IBM <http://www.mellanox.com/page/firmware_table_IBM>`_ and place into your xCAT Management Node or server that can communicate to Flex IB6131 switch module. There are two ways to update the MLNX-OS switch package. This process works regardless if updating an internal PureFlex chassis Infiniband switch (IB6131 or for an external Mellanox switch.
 
 Update via Browser
 ^^^^^^^^^^^^^^^^^^

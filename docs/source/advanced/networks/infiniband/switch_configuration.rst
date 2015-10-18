@@ -1,10 +1,10 @@
 IB Switch Configuration
 =======================
 
-Setup the XCAT Database
+Setup the xCAT Database
 -----------------------
 
-The Mellanox Switch is only supported in XCAT Release 2.7 or later.
+The Mellanox Switch is only supported in xCAT Release 2.7 or later.
 
 Add the switch ip address in the ``/etc/hosts`` file
 
@@ -21,7 +21,7 @@ The switches table will look like this: ::
 	#switch,...,sshusername,sshpassword,switchtype,....  
 	"mswitch",,,,,,,"admin","admin","MellanoxIB",,
 
-If there is only one admin and one password for all the switches then put the entry in the XCAT passwd table for the admin id and password to use to login. ::
+If there is only one admin and one password for all the switches then put the entry in the xCAT passwd table for the admin id and password to use to login. ::
 
 	tabch key=mswitch  passwd.username=admin passwd.password=admin
 
@@ -33,7 +33,7 @@ The passwd table will look like this: ::
 Setup ssh connection to the Mellanox Switch
 -------------------------------------------
 
-To run commands like xdsh and script to the Mellanox Switch, we need to setup ssh to run without prompting for a password to the Mellanox Switch. To do this, first you must add a configuration file. This configuration file is NOT needed for XCAT 2.8 and later. ::
+To run commands like xdsh and script to the Mellanox Switch, we need to setup ssh to run without prompting for a password to the Mellanox Switch. To do this, first you must add a configuration file. This configuration file is NOT needed for xCAT 2.8 and later. ::
 
 	mkdir -p /var/opt/xcat/IBSwitch/Mellanox
 	cd /var/opt/xcat/IBSwitch/Mellanox
@@ -72,13 +72,14 @@ Use the following command to consolidate the syslog to the Management Node or Se
 
 Configure xdsh for Mellanox Switch
 ----------------------------------
-To run xdsh commands to the Mellanox Switch, you must use the --devicetype input flag to xdsh. In addition, for XCAT versions less than 2.8, you must add a configuration file, please see **"Setup ssh connection to the Mellanox Switch"** section.
+To run xdsh commands to the Mellanox Switch, you must use the --devicetype input flag to xdsh. In addition, for xCAT versions less than 2.8, you must add a configuration file, please see `Setup ssh connection to the Mellanox Switch`_ section.
 
-For the Mellanox Switch the --devicetype is "IBSwitch::Mellanox". See xdsh man page: TODO `http://xcat.sourceforge.net/man1/xdsh.1.html <http://xcat.sourceforge.net/man1/xdsh.1.html>`_ for details.
+For the Mellanox Switch the ``--devicetype`` is ``IBSwitch::Mellanox``. See :doc:`xdsh man page <../../../guides/admin-guides/references/man/xdsh.1.html>` for details.
 
 Now you can run the switch commands from the mn using xdsh. For example: ::
 
-	xdsh mswitch -l admin --devicetype IBSwitch::Mellanox 'enable;configure terminal;show ssh server host-keys'
+	xdsh mswitch -l admin --devicetype IBSwitch::Mellanox \
+     'enable;configure terminal;show ssh server host-keys'
 
 Commands Supported for the Mellanox Switch
 ------------------------------------------
@@ -115,7 +116,7 @@ For doing other tasks on the switch, use xdsh. For example: ::
 
 Interactive commands are not supported by xdsh. For interactive commands, use ssh.
 
-Send SNMP traps to XCAT Management Node
+Send SNMP traps to xCAT Management Node
 ---------------------------------------
 
 First, get `http://www.mellanox.com/related-docs/prod_ib_switch_systems/MELLANOX-MIB.zip <http://www.mellanox.com/related-docs/prod_ib_switch_systems/MELLANOX-MIB.zip>`_ , unzip it. Copy the mib file MELLANOX-MIB.txt to ``/usr/share/snmp/mibs`` directory on the mn and sn (if the sn is the snmp trap destination.)

@@ -2,12 +2,12 @@ UFM Configuration
 =================
 
 
-UFM server are just regular Linix boxes with UFM installed. XCAT can help install and configure the UFM servers. The XCAT mn can send remote command to UFM through xdsh. It can also collect SNMP traps and syslogs from the UFM servers.
+UFM server are just regular Linux boxes with UFM installed. xCAT can help install and configure the UFM servers. The XCAT mn can send remote command to UFM through xdsh. It can also collect SNMP traps and syslogs from the UFM servers.
 
 Setup xdsh to UFM and backup
 ----------------------------
 
-Assume we have two hosts with UFM installed, called host1 and host2. First define the two hosts in the XCAT cluster. Usually the network that the UFM hosts are in a different than the compute nodes, make sure to assign correct servicenode and xcatmaster in the noderes table. And also make sure to assign correct os and arch values in the nodetype table for the UFM hosts. For example: ::
+Assume we have two hosts with UFM installed, called host1 and host2. First define the two hosts in the xCAT cluster. Usually the network that the UFM hosts are in a different than the compute nodes, make sure to assign correct servicenode and xcatmaster in the noderes table. And also make sure to assign correct os and arch values in the nodetype table for the UFM hosts. For example: ::
 
 	mkdef -t node -o host1,host2 groups=ufm,all os=sles11.1 arch=x86_64 servicenode=10.0.0.1 xcatmaster=10.0.0.1
 
@@ -22,16 +22,16 @@ Now we can run xdsh on the UFM hosts. ::
 Consolidate syslogs
 -------------------
 
-Run the following command to make the UFM hosts to send the syslogs to the XCAT mn:  ::
+Run the following command to make the UFM hosts to send the syslogs to the xCAT mn:  ::
 
 	updatenode ufm -P syslog
 
-To test, run the following commands on the UFM hosts and see if the XCAT MN receives the new messages in /var/log/messages  ::
+To test, run the following commands on the UFM hosts and see if the xCAT MN receives the new messages in /var/log/messages  ::
 
 	logger xCAT "This is a test"
 
 
-Send SNMP traps to XCAT Management Node
+Send SNMP traps to xCAT Management Node
 ---------------------------------------
 
 You need to have the Advanced License for UFM in order to send SNMP traps.
