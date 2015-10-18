@@ -44,14 +44,10 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
-my $IOCompress =1;
 my $os = xCAT::Utils->osver();
 my $arch = `uname -p`;
 # These do not have the IO::Uncompress rpm available
-if (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))){ 
- $IOCompress =0;
-}
-if ($IOCompress == 1 ) {
+unless (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))){ 
    eval {require IO::Uncompress::Gunzip;}
 }
 use File::Path;
