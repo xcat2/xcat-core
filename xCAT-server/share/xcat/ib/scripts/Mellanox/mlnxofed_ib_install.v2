@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This is the second version of Mellanox IB driver installation sample script
 # This is also the version we recommend to use right now.
@@ -63,7 +63,7 @@
 OS="$(uname)"
 if [ "$OS" = "Linux" ]; then
     str_dir_name="${0%/*}"
-    . "$str_dir_name/xcatlib.sh"
+    . "$str_dir_name/xcatlib.sh" 2>/dev/null
 fi
 
 #--------------------------------------------------------
@@ -114,17 +114,17 @@ do
     shift
 done
 
-if [ -z "$OFED_PATH" ]; then
+if [ ! -f "$OFED_PATH" ]; then
     echo "[Error] Without Mellanox OFED file path, please assign correct path"
     exit 1
 fi
 
-if [ "$NODESETSTATE" = "genimage"  -a  -z "$IMGROOTPATH" ]; then
+if [ "$NODESETSTATE" = "genimage"  -a  ! -d "$IMGROOTPATH" ]; then
     echo "[Error] this is for diskless installation, please assign correct diskless image root path"
     exit 1
 fi
 
-[ "${#MLNXOFED_OPTS}" = 0 ] && MLNXOFED_OPTS=(--without-32bit --without-fw-update --force)
+[ "${#MLNXOFED_OPTS[@]}" = 0 ] && MLNXOFED_OPTS=(--without-32bit --without-fw-update --force)
 
 OFED_DIR=${OFED_PATH%/*}
 OFED_NAME=${OFED_PATH##*/}
@@ -135,9 +135,42 @@ echo "Mellanox OFED options are ${MLNXOFED_OPTS[@]}"
 echo "image root path is $IMGROOTPATH"
 echo "NODESETSTATE is $NODESETSTATE"
 
+
+function cleanup()
+{
+    if [ "$NODESETSTATE" != "genimage" ]; then
+        if mount |grep "/tmp/ofed/mountpoint"; then
+            umount /tmp/ofed/mountpoint
+        fi
+        if [ -d "/tmp/ofed" ]; then
+            rm -rf -- /tmp/ofed
+        fi
+    else
+        if mount |grep "$IMGROOTPATH/tmp/ofed/mountpoint"; then
+           umount "$IMGROOTPATH/tmp/ofed/mountpoint"
+        fi
+        if mount |grep "$IMGROOTPATH/dev/"; then
+           umount "$IMGROOTPATH/dev/"
+        fi
+        if mount |grep "$IMGROOTPATH/sys"; then
+           umount "$IMGROOTPATH/sys"
+        fi
+        if mount |grep "$IMGROOTPATH/proc"; then
+           umount "$IMGROOTPATH/proc"
+        fi
+        if [ -d "$IMGROOTPATH/tmp/ofed" ]; then
+            rm -rf -- "$IMGROOTPATH/tmp/ofed"
+        fi        
+    fi
+
+}
+
+trap 'cleanup' 0
+
+
 if [ "$OS" != "AIX" ]; then
     if [ "$NODESETSTATE" = "install" -o "$NODESETSTATE" = "boot" ]; then
-        
+	
         #if the host is ubuntn, need to do some network check and configuration
         if grep -q Ubuntu /etc/os-release 2>/dev/null
         then
@@ -145,7 +178,7 @@ if [ "$OS" != "AIX" ]; then
             echo "$nodename 's operating system is Ubuntu."
             echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access www.ports.ubuntu.com"
             echo -n "checking $nodename 's ability to access www.ports.ubuntu.com..........."
-            if ping -c 3 www.ports.ubuntu.com > /dev/null;then 
+            if ping -c 3 ports.ubuntu.com > /dev/null;then 
                 echo "[OK]"
             else
                 echo "[Failed]"
@@ -181,7 +214,6 @@ EOF
         wget -l inf -N --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --no-parent "http://$MASTER/$OFED_DIR/$OFED_NAME" 2> /tmp/wget.log
         if [ ! -f "/tmp/ofed/$OFED_NAME" ]; then
             echo "[Failed]"
-            rm -rf -- /tmp/ofed
             exit 1
         fi
         echo "[OK]"
@@ -190,15 +222,12 @@ EOF
         mount -o loop "/tmp/ofed/$OFED_NAME"  /tmp/ofed/mountpoint
         if [ ! -f "/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
             echo "[Failed]"
-            rm -rf -- /tmp/ofed
             exit 1
         fi		
         echo "[OK]"
 
         echo "Start Mellanox OFED installation ........."
-        env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall ${MLNXOFED_OPTS[@]}
-        umount /tmp/ofed/mountpoint
-        rm -rf -- /tmp/ofed
+        env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
 		
         #force openibd load all modules in need, restart again
         sleep 1
@@ -208,13 +237,11 @@ EOF
     if [[ $NODESETSTATE == "genimage" ]]; then
         rm -rf -- "$IMGROOTPATH/tmp/ofed"
         mkdir -p "$IMGROOTPATH/tmp/ofed/mountpoint"
-        cp -r "$OFED_DIR/$OFED_NAME" "$IMGROOTPATH/tmp/ofed/"
    
-        echo "Mounting Mellanox OFED file $OFED_NAME ........."
-        mount -o loop "$IMGROOTPATH/tmp/ofed/$OFED_NAME"  "$IMGROOTPATH/tmp/ofed/mountpoint"
+        echo "Mounting Mellanox OFED file $OFED_DIR/$OFED_NAME ........."
+        mount -o loop "$OFED_DIR/$OFED_NAME"  "$IMGROOTPATH/tmp/ofed/mountpoint"
         if [ ! -f "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
             echo "[Failed]"
-            rm -rf -- "$IMGROOTPATH/tmp/ofed"
             exit 1
         fi		
         echo "[OK]"
@@ -229,22 +256,17 @@ EOF
             mount --bind  /proc "$IMGROOTPATH/proc"
             chroot "$IMGROOTPATH" rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null 
             chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall ${MLNXOFED_OPTS[@]}
-            umount "$IMGROOTPATH/dev/"
-            umount "$IMGROOTPATH/sys"
-            umount "$IMGROOTPATH/proc"
+            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
         elif grep -q Ubuntu /etc/os-release 2>/dev/null; then
             nodename=`hostname`
             echo "$nodename 's operating system is Ubuntu."
             echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access www.ports.ubuntu.com"
             echo -n "checking $nodename 's ability to access www.ports.ubuntu.com..........."
-            if ping -c 3 www.ports.ubuntu.com > /dev/null; then 
+            if ping -c 3 ports.ubuntu.com > /dev/null; then 
                 echo "[OK]"
             else
                 echo "[Failed]"
                 echo "please make your $nodename has ability to access www.ports.ubuntu.com"
-                umount "$IMGROOTPATH/tmp/ofed/mountpoint"
-                rm -rf -- "$IMGROOTPATH/tmp/ofed"
                 exit 1
             fi
 
@@ -299,20 +321,14 @@ EOF
             chmod 0755 "${IMGROOTPATH}/bin/uname"
              
             chroot "$IMGROOTPATH" sh -c 'apt-get install -y linux-headers-$(uname -r)'
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall ${MLNXOFED_OPTS[@]}
+            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
 			
             mv "${IMGROOTPATH}/bin/uname.nouse" "${IMGROOTPATH}/bin/uname"
-            umount "$IMGROOTPATH/dev"
-            umount "$IMGROOTPATH/proc"
-            umount "$IMGROOTPATH/sys"
         else
             chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall ${MLNXOFED_OPTS[@]}
+            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
             
         fi
-		
-        umount "$IMGROOTPATH/tmp/ofed/mountpoint"
-        rm -rf -- "$IMGROOTPATH/tmp/ofed"
     fi
 fi
 
