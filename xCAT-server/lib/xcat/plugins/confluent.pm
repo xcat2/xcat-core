@@ -362,7 +362,7 @@ sub donodeent {
   }
   my @cfgroups;
   foreach (keys %$groupdata) {
-      push @cfgroups, split /,/,$groupdata->{$_}->[0]->{groups};
+      push @cfgroups, grep {defined && length} split /,/,$groupdata->{$_}->[0]->{groups};
   }
   $confluent->read('/nodegroups/');
   my $currgroup = $confluent->next_result();
@@ -419,7 +419,7 @@ foreach my $node (sort keys %$cfgenthash) {
   } elsif ($::XCATSITEVALS{'consoleondemand'} and $::XCATSITEVALS{'consoleondemand'} !~ m/^n/) {
     $parameters{'console.logging'} = 'none';
   }
-  $parameters{'groups'} = [split /,/,$groupdata->{$node}->[0]->{'groups'}];
+  $parameters{'groups'} = [grep {defined && length} split /,/,$groupdata->{$node}->[0]->{'groups'}];
   if (exists $currnodes{$node}) {
     $confluent->update('/nodes/'.$node.'/attributes/current', parameters=>\%parameters);
     my $rsp = $confluent->next_result();
