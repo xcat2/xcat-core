@@ -834,6 +834,9 @@ run_ps () {
      if [[ \"\$compt\" =~ \$reg ]]; then
         bash -x ./\$@ 2>&1 | tee -a \$logfile
         ret_local=\${PIPESTATUS[0]}
+     else
+        ./\$@ 2>&1 | tee -a \$logfile
+        ret_local=\${PIPESTATUS[0]}
      fi
   else
      ./\$@ 2>&1 | tee -a \$logfile
