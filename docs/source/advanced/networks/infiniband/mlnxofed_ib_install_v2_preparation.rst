@@ -15,8 +15,8 @@ Copy **mlnxofed_ib_install.v2** into ``/install/postscripts`` and change name to
 	   
 	chmod +x /install/postscripts/mlnxofed_ib_install
 	
-Some options of mlnxofed_ib_install should be assigned values when it's used.
-These options are:
+``mlnxofed_ib_install`` has some options, **'-p' is always needed**.
+Below are the details of these options:
 
 * **-p**: [required]--the directory where the OFED iso file is located
 * **-m**: [optional]--the mlnxofed_ib_install invokes a script ``mlnxofedinstall`` shipped by Mellanox OFED iso. Use this option to pass arguments to the ``mlnxofedinstall``. You must include ``-end-`` at the completion of the options to distinguish the option list. if you don't pass any argument to ``mlnxofedinstall``, defualt value ``--without-32bit --without-fw-update --force`` will be passed to ``mlnxofedinstall`` by xCAT. 

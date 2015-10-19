@@ -3,18 +3,34 @@ Configuration for Diskless Installation
 
 1. Specify dependence package **[required for RHEL and SLES]**
 
-  a) Copy a correct pkglist file shipped by xCAT according your environment to the ``/install/custom/netboot/<ostype>/`` directory ::
+  a) Copy a correct pkglist file **shipped by xCAT** according your environment to the ``/install/custom/netboot/<ostype>/`` directory ::
 
 	cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist \
 	   /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
 
-  b) Edit your ``/install/custom/netboot/<ostype>/<profile>.pkglist`` and add below line ::
+  b) Edit your ``/install/custom/netboot/<ostype>/<profile>.pkglist`` and add below line
+    ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#``
 
-	#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
+    Take RHEL 6.4 on x86_64 for example ::
+
+        cp /opt/xcat/share/xcat/netboot/rh/compute.rhels6.x86_64.pkglist \
+        /install/custom/netboot/rh/compute.rhels6.x86_64.pkglist
+ 
+    Edit the ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` and add below line   
+    ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#`` 
+  
+    Then ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` looks like below ::
+
+        #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#
+        bash 
+        nfs-utils
+        openssl
+        dhclient 
+        .....
 
 2. Prepare postinstall scripts 
 
-  a) Specify postinstall scripts ::
+  a) Specify a correct postinstall script **shipped by xCAT** ::
   
 	mkdir -p /install/custom/netboot/<ostype>/
 	
@@ -23,12 +39,19 @@ Configuration for Diskless Installation
 	   
 	chmod +x /install/custom/netboot/<ostype>/<profile>.postinstall
 
+    Take RHEL 6.4 on x86_64 for example ::
+	
+        mkdir -p /install/custom/netboot/rh/
+        cp /opt/xcat/share/xcat/netboot/rh/compute.rhels6.x86_64.postinstall \
+	       /install/custom/netboot/rh/
+        chmod +x /install/custom/netboot/rh/compute.rhels6.x86_64.postinstall
+		
   b) Edit ``/install/custom/netboot/<ostype>/<profile>.postinstall`` and add below line in the end ::
 
 	/install/postscripts/mlnxofed_ib_install \
 	   -p /install/<path>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
-		
+	
 3. Set the related osimage using the customized pkglist and compute.postinsall
 
 * [RHEL/SLES] ::
