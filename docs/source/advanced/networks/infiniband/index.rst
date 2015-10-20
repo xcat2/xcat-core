@@ -1,6 +1,8 @@
 Infiniband (Mellanox)
 =====================
 
+xCAT offers a certain degree support for Mellanox infiniband product, it help you to configurate Mellanox infiniband products easily.
+ 
 .. toctree::
    :maxdepth: 2
 
