@@ -211,11 +211,6 @@ sub execute_dcp
                     $::DCP_API_MESSAGE .=
                         join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-                        print STDOUT @{$output_buffers{$user_target}};
-                        print STDERR @{$error_buffers{$user_target}};
-                    }
                 }
                 else
                 {
@@ -580,21 +575,6 @@ sub _execute_dsh
                         $::DSH_API_MESSAGE
                       . join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-
-                        # print STDOUT @{$output_buffers{$user_target}};
-                        # print STDERR @{$error_buffers{$user_target}};
-                        chomp(@{$output_buffers{$user_target}});
-                        chomp(@{$error_buffers{$user_target}});
-                        my $rsp = {};
-                        push @{$rsp->{data}}, @{$output_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
-                        $rsp = {};
-                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
-                        $rsp->{NoErrorPrefix} = 1;
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
-                    }
                 }
                 else
                 {
