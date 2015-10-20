@@ -5685,10 +5685,6 @@ sub run_rsync_postscripts
         # return from rsync is tmp/file1  not /tmp/file1
         substr($tmppostfile,0,1)=""; 
 
-        # now remove .post from the postscript file for the compare
-        # with the returned file name
-        my($tp,$post) = split(/\.post/,$tmppostfile);
-        $tmppostfile = $tp;
         foreach my $line (@rsync_output) {
             my($hostname,$ps) = split(/: /, $line);
             chomp $ps;
