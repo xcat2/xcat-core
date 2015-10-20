@@ -1,3 +1,4 @@
+.. _mysql_setup_target:
 
 ############
 mysqlsetup.1
