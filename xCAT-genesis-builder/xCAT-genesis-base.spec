@@ -5,7 +5,7 @@
 %ifarch x86_64
 %define tarch x86_64
 %endif
-%ifarch ppc ppc64
+%ifarch ppc ppc64 ppc64le
 %define tarch ppc64
 %endif
 BuildArch: noarch

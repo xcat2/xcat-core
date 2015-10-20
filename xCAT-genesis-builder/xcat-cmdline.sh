@@ -45,6 +45,11 @@ while :; do screen -ln < /dev/tty2 > /dev/tty2 2>&1; done &
 # Need to wait for NIC initialization
 sleep 20
 ARCH=`uname -m`
+#For Openpower
+if [ $ARCH = "ppc64le" ]; then
+    ARCH="ppc64"
+fi
+
 if [ $ARCH == 'ppc64' ]; then
 
     ALL_NICS=`ip link show | grep -v "^ " | awk '{print $2}' | sed -e 's/:$//' | grep -v lo`
