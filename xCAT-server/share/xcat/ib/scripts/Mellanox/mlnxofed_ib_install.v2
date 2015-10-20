@@ -115,12 +115,12 @@ do
 done
 
 if [ ! -f "$OFED_PATH" ]; then
-    echo "[Error] Without Mellanox OFED file path, please assign correct path"
+    echo "[Error] Without Mellanox OFED file path, please assign correct path" >&2
     exit 1
 fi
 
 if [ "$NODESETSTATE" = "genimage"  -a  ! -d "$IMGROOTPATH" ]; then
-    echo "[Error] this is for diskless installation, please assign correct diskless image root path"
+    echo "[Error] this is for diskless installation, please assign correct diskless image root path" >&2
     exit 1
 fi
 
@@ -168,21 +168,20 @@ function cleanup()
 trap 'cleanup' 0
 
 
-if [ "$OS" != "AIX" ]; then
+if [ "$OS" = "Linux" ]; then
     if [ "$NODESETSTATE" = "install" -o "$NODESETSTATE" = "boot" ]; then
 	
         #if the host is ubuntn, need to do some network check and configuration
         if grep -q Ubuntu /etc/os-release 2>/dev/null
         then
-            nodename=`hostname`
-            echo "$nodename 's operating system is Ubuntu."
-            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access www.ports.ubuntu.com"
-            echo -n "checking $nodename 's ability to access www.ports.ubuntu.com..........."
+            echo "$HOSTNAME 's operating system is Ubuntu."
+            echo "If you want to install Mellanox_OFED in $HOSTNAME, $HOSTNAME must have ability to access ports.ubuntu.com"
+            echo -n "checking $HOSTNAME 's ability to access ports.ubuntu.com..........."
             if ping -c 3 ports.ubuntu.com > /dev/null;then 
                 echo "[OK]"
             else
-                echo "[Failed]"
-                echo "please make your $nodename has ability to access www.ports.ubuntu.com"
+                echo "[Failed]" >&2
+                echo "[Error] please make your $HOSTNAME has ability to access ports.ubuntu.com" >&2
                 exit 1
             fi
                             
@@ -205,23 +204,31 @@ EOF
         fi
 		
         #  Being run from a stateful install postscript
-        #  Copy rpms directly from the xCAT management node and install
+        #  Copy ISO directly from the xCAT management node and install
         rm -rf -- /tmp/ofed
         mkdir -p /tmp/ofed/mountpoint
+        if [ "$?" != "0" ] ;then
+            echo "[Error] We are in trouble to mkdir /tmp/ofed/mountpoint, please check your node" >&2
+            exit 1
+        fi
+
         cd /tmp/ofed/
         echo "Downloading Mellanox OFED file $OFED_NAME form http://$MASTER/$OFED_DIR .........."
-        num=`echo "$OFED_DIR" | awk -F"/" '{if($NF==""){print NF-2}else{print NF-1}}'`
-        wget -l inf -N --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=$num --no-parent "http://$MASTER/$OFED_DIR/$OFED_NAME" 2> /tmp/wget.log
+        wget -l inf -N --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --no-parent "http://$MASTER/$OFED_DIR/$OFED_NAME" 2> /tmp/wget.log
+        if [ "$?" != "0" ]; then
+            echo "[Error] Downloading Mellanox OFED file $OFED_NAME failed" >&2
+            exit 1
+        fi        
         if [ ! -f "/tmp/ofed/$OFED_NAME" ]; then
-            echo "[Failed]"
+            echo "[Failed]" >&2
             exit 1
         fi
         echo "[OK]"
 		
         echo "Mounting Mellanox OFED file $OFED_NAME ........."
         mount -o loop "/tmp/ofed/$OFED_NAME"  /tmp/ofed/mountpoint
-        if [ ! -f "/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
-            echo "[Failed]"
+        if [ ! -f "/tmp/ofed/mountpoint/mlnxofedinstall" -o ! -x "/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
+            echo "[Failed]" >&2
             exit 1
         fi		
         echo "[OK]"
@@ -234,14 +241,18 @@ EOF
         service openibd restart
     fi
 
-    if [[ $NODESETSTATE == "genimage" ]]; then
+    if [[ "$NODESETSTATE" == "genimage" ]]; then
         rm -rf -- "$IMGROOTPATH/tmp/ofed"
         mkdir -p "$IMGROOTPATH/tmp/ofed/mountpoint"
-   
+        if [ "$?" != "0" ] ;then
+           echo "[Error] We are in trouble to mkdir $IMGROOTPATH/tmp/ofed/mountpoint, please check your node" >&2
+           exit 1
+        fi  
+
         echo "Mounting Mellanox OFED file $OFED_DIR/$OFED_NAME ........."
         mount -o loop "$OFED_DIR/$OFED_NAME"  "$IMGROOTPATH/tmp/ofed/mountpoint"
-        if [ ! -f "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
-            echo "[Failed]"
+        if [ ! -f "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" -o ! -x "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
+            echo "[Failed]" >&2
             exit 1
         fi		
         echo "[OK]"
@@ -258,21 +269,21 @@ EOF
             chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
             chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
         elif grep -q Ubuntu /etc/os-release 2>/dev/null; then
-            nodename=`hostname`
-            echo "$nodename 's operating system is Ubuntu."
-            echo "If you want to install Mellanox_OFED in $nodename, $nodename must have ability to access www.ports.ubuntu.com"
-            echo -n "checking $nodename 's ability to access www.ports.ubuntu.com..........."
+            echo "$HOSTNAME 's operating system is Ubuntu."
+            echo "If you want to install Mellanox_OFED in $HOSTNAME, $HOSTNAME must have ability to access ports.ubuntu.com"
+            echo -n "checking $HOSTNAME 's ability to access ports.ubuntu.com..........."
             if ping -c 3 ports.ubuntu.com > /dev/null; then 
                 echo "[OK]"
             else
-                echo "[Failed]"
-                echo "please make your $nodename has ability to access www.ports.ubuntu.com"
+                echo "[Failed]" >&2
+                echo "please make your $HOSTNAME has ability to access ports.ubuntu.com" >&2
                 exit 1
             fi
 
             sourceslist="$IMGROOTPATH/etc/apt/sources.list"
             cp "$sourceslist" "${sourceslist}.bak"
 
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist 
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" $sourceslist 
