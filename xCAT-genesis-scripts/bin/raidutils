@@ -1319,12 +1319,12 @@ function sort_devices_by_resource_path {
     return 0
 }
 
-#########################################################################################
+##########################################################################################################################
 #
 # wait to check ipr device status
-# usage: wait_for_ipr_device_status "tryCnt=<minitutes> tryInt=<seconds> cmd=<command_string>"
+# usage: wait_for_ipr_device_status tryCnt=<minitutes> tryInt=<interval_seconds> cmd="check_cmd_line" -- "sg0,sg1,...,sgn"
 #
-#########################################################################################
+#########################################################################################################################
 function wait_for_ipr_device_status {
     local tryCnt=1
     local tryInt=10
@@ -1390,6 +1390,31 @@ function wait_for_ipr_device_status {
     fi
 
     return $rc
+}
+
+##############################################################
+#
+# check status of ipr devices
+# input : slocs list, for example, 0:0:0:0 0:0:1:0
+# usage : check_ipr_device_status <sloc1> <sloc2> ... <slocn>
+#
+##############################################################
+function check_ipr_device_status {
+    local sgs="$*"
+    local lines=`convert_sloc_to_sg $sgs`
+
+    local item
+    for item in $sgs
+    do
+        declare sg=`echo "$lines" | $awk -F= -vkey=$item '$1 == key {print $2;}'`
+        declare _sg_status=`$iprconfig -c status $sg`
+        if [ "$_sg_status" = "Rebuilding" ]; then
+            declare _sg_status_alt=`cmd_alt_status $sg`
+            [ -n "$_sg_status_alt" ] && _sg_status="$_sg_status, $_sg_status_alt"
+        fi
+        echo "$item=$_sg_status"
+    done
+    return 0
 }
 
 
