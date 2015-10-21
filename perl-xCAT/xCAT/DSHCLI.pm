@@ -211,11 +211,6 @@ sub execute_dcp
                     $::DCP_API_MESSAGE .=
                         join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-                        print STDOUT @{$output_buffers{$user_target}};
-                        print STDERR @{$error_buffers{$user_target}};
-                    }
                 }
                 else
                 {
@@ -580,21 +575,6 @@ sub _execute_dsh
                         $::DSH_API_MESSAGE
                       . join("", @{$output_buffers{$user_target}})
                       . join("", @{$error_buffers{$user_target}});
-                    if ($$options{'display_output'})
-                    {
-
-                        # print STDOUT @{$output_buffers{$user_target}};
-                        # print STDERR @{$error_buffers{$user_target}};
-                        chomp(@{$output_buffers{$user_target}});
-                        chomp(@{$error_buffers{$user_target}});
-                        my $rsp = {};
-                        push @{$rsp->{data}}, @{$output_buffers{$user_target}};
-                        xCAT::MsgUtils->message("D", $rsp, $::CALLBACK);
-                        $rsp = {};
-                        push @{$rsp->{error}}, @{$error_buffers{$user_target}};
-                        $rsp->{NoErrorPrefix} = 1;
-                        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK,0);
-                    }
                 }
                 else
                 {
@@ -5694,39 +5674,35 @@ sub run_rsync_postscripts
     my $dshparms; 
     my $firstpass=1;
     foreach my $postsfile (@::postscripts) {
-       my $tmppostfile = $postsfile ;
- 
-       # if service node need to add the SNsyncfiledir to the path
-       if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $tmppostfile;
-         $tmppostfile = $tmpp;
-       }
-       # remove  first character for the compare, we have to do this because the
-       # return from rsync is tmp/file1  not /tmp/file1
-       substr($tmppostfile,0,1)=""; 
+        my $tmppostfile = $postsfile ;
 
-       # now remove .post from the postscript file for the compare
-       # with the returned file name
-       my($tp,$post) = split(/\.post/,$tmppostfile);
-       $tmppostfile = $tp;
-       foreach my $line (@rsync_output) {
-         my($hostname,$ps) = split(/: /, $line);
-         chomp $ps;
-         chomp $hostname;
-         if ($ps eq "rsync") {  # this is a line that is not an update 
-             # save output , if firstpass through output
-             if ($firstpass == 1) {
-               push @newoutput, $line;
-               $firstpass = 0;
-             }
-             next;
-         }
-         if ($tmppostfile eq $ps) { 
-           # build xdsh queue 
-           # build host and all scripts to execute
-           push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
-         }
-       }
+        # if service node need to add the SNsyncfiledir to the path
+        if (xCAT::Utils->isServiceNode()) {
+            my $tmpp=$syncdir . $tmppostfile;
+            $tmppostfile = $tmpp;
+        }
+        # remove  first character for the compare, we have to do this because the
+        # return from rsync is tmp/file1  not /tmp/file1
+        substr($tmppostfile,0,1)=""; 
+
+        foreach my $line (@rsync_output) {
+            my($hostname,$ps) = split(/: /, $line);
+            chomp $ps;
+            chomp $hostname;
+            if ($ps eq "rsync") {  # this is a line that is not an update 
+                # save output , if firstpass through output
+                if ($firstpass == 1) {
+                    push @newoutput, $line;
+                    $firstpass = 0;
+                }
+                next;
+            }
+            if ($tmppostfile eq $ps) { 
+                # build xdsh queue 
+                # build host and all scripts to execute
+                push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
+            }
+        }
     }
     # now if we have postscripts to run, run xdsh
     my $out;
@@ -5738,25 +5714,24 @@ sub run_rsync_postscripts
         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
         my @args=();
         if ($$options{'nodestatus'}) {
-          push @args,"--nodestatus" ;
+            push @args,"--nodestatus" ;
         }
         push @args,"-e";
-        # if on the service node need to add the $syncdir directory 
-        # to the path
+        #
+        # if on the service node need to add the $syncdir directory to the path
+        #
         if (xCAT::Utils->isServiceNode()) {
-         my $tmpp=$syncdir . $ps;
-         $ps=$tmpp;
+            my $tmpp=$syncdir . $ps;
+            $ps=$tmpp;
         }
         push @args,$ps;
         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                    node    => \@nodes,
-                                    arg     => \@args, 
-                             }, $::SUBREQ, 0,1);
-        foreach my $r (@$out){
-                push(@newoutput, $r);
-
+                                     node    => \@nodes,
+                                     arg     => \@args, 
+                                   }, $::SUBREQ, 0,1);
+        foreach my $r (@$out) {
+            push(@newoutput, $r);
         }
-        #     $ranaps=1;
     }
     return @newoutput;
 }
