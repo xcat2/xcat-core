@@ -7,5 +7,4 @@ For the list of currently supported RHEL operating systems, see :ref:`rhels-os-s
    :maxdepth: 2
 
    prepare_mgmt_node.rst
-   install_xcat.rst
-   configure_xcat.rst
+   install.rst

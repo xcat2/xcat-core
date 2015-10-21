@@ -1,0 +1,234 @@
+
+.. BEGIN_install_os_mgmt_node
+
+
+The system requirements for your xCAT management node largely depends on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
+
+**Memory Requirements:**
+
++--------------+-------------+
+| Cluster Size | Memory (GB) |
++==============+=============+
+| Small (< 16) | 4-6         |
++--------------+-------------+
+| Medium       | 6-8         |
++--------------+-------------+
+| Large        | > 16        |
++--------------+-------------+
+
+
+.. END_install_os_mgmt_node
+
+.. BEGIN_setup_mgmt_node_network
+
+The Management Node IP address should be set to a **static** ip address.  
+
+Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network-scripts`` and configure a static IP address.
+
+.. END_setup_mgmt_node_network
+
+.. BEGIN_install_xcat_introduction
+
+xCAT consists of two software packages: ``xcat-core`` and ``xcat-dep``
+
+#. **xcat-core**  xCAT's main software package and is provided in one of the following options: 
+
+     * **Latest Release (Stable) Builds**
+
+         *This is the latest GA (Generally Availability) build that has been tested throughly*
+
+     * **Latest Snapshot Builds**
+
+         *This is the latest snapshot of the GA version build that may contain bug fixes but has not yet been tested throughly*
+
+     * **Development Builds**
+
+         *This is the snapshot builds of the new version of xCAT in development. This version has not been released yet, use as your own risk*
+
+#. **xcat-dep**  xCAT's dependency package.  This package is provided as a convenience for the user and contains dependency packages required by xCAT that are not provided by the operating system.
+
+
+.. END_install_xcat_introduction 
+
+.. BEGIN_configure_xcat_local_repo_xcat-core_RPM
+
+**[xcat-core]**
+
+#. Download xcat-core: ::
+
+        # downloading the latest development build, core-rpms-snap.tar.bz2
+        mkdir -p ~/xcat
+        cd ~/xcat/
+        wget http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2
+
+
+#. Extract xcat-core: ::
+
+        tar jxvf core-rpms-snap.tar.bz2
+
+#. Configure the local repository for xcat-core by running ``mklocalrepo.sh`` script in the ``xcat-core`` directory: ::
+
+        cd ~/xcat/xcat-core
+        ./mklocalrepo.sh
+
+
+.. END_configure_xcat_local_repo_xcat-core_RPM
+
+.. BEGIN_configure_xcat_local_repo_xcat-core_DEBIAN
+
+**[xcat-core]**
+
+#. Download xcat-core: ::
+
+        # downloading the latest development build, core-rpms-snap.tar.bz2
+        mkdir -p ~/xcat
+        cd ~/xcat/
+        wget http://xcat.org/files/xcat/xcat-core/devel/Ubuntu/core-snap/core-debs-snap.tar.bz2
+
+
+#. Extract xcat-core: ::
+
+        tar jxvf core-debs-snap.tar.bz2
+
+#. Configure the local repository for xcat-core by running ``mklocalrepo.sh`` script in the ``xcat-core`` directory: ::
+
+        cd ~/xcat/xcat-core
+        ./mklocalrepo.sh
+
+
+.. END_configure_xcat_local_repo_xcat-core_DEBIAN
+
+.. BEGIN_configure_xcat_local_repo_xcat-dep_RPM
+
+**[xcat-dep]**
+
+Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep. 
+
+
+#. Download xcat-dep: ::
+
+        # if downloading xcat-dep from June 11, 2015, xcat-dep-201506110324.tar.bz2
+        mkdir -p ~/xcat/
+        cd ~/xcat
+        wget http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-201506110324.tar.bz2
+
+#. Extract xcat-dep: ::
+
+        tar jxvf xcat-dep-201506110324.tar.bz2
+
+#. Configure the local repository for xcat-dep by switching to the architecture and os subdirectory of the node you are installing on, then run the ``mklocalrepo.sh`` script: ::
+
+        cd ~/xcat/xcat-dep/
+        # Example, on redhat 7.1 ppc64le: cd rh7/ppc64le
+        cd <os>/<arch>
+        ./mklocalrepo.sh
+
+.. END_configure_xcat_local_repo_xcat-dep_RPM
+
+.. BEGIN_configure_xcat_local_repo_xcat-dep_DEBIAN
+
+**[xcat-dep]**
+
+Unless you are downloading ``xcat-dep`` to match a specific package tested with a GA release, it's recommended to download the latest version of xcat-dep. 
+
+
+#. Download xcat-dep: ::
+
+        # if downloading xcat-dep from June 11, 2015, xcat-dep-ubuntu-snap20150611.tar.bz
+        mkdir -p ~/xcat/
+        cd ~/xcat
+        wget http://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-ubuntu-snap20150611.tar.bz
+
+#. Extract xcat-dep: ::
+
+        tar jxvf xcat-dep-ubuntu-snap20150611.tar.bz
+
+#. Configure the local repository for xcat-dep by running the ``mklocalrepo.sh`` script: ::
+
+        cd ~/xcat/xcat-dep/
+        ./mklocalrepo.sh
+
+.. END_configure_xcat_local_repo_xcat-dep_DEBIAN
+
+.. BEGIN_installing_xcat
+
+Install xCAT with the following command: ::
+
+        yum clean all (optional)
+        yum install xCAT
+
+
+**Note:** During the install, you must accept the *xCAT Security Key* to continue: ::
+
+        Retrieving key from file:///root/xcat/xcat-dep/rh6/ppc64/repodata/repomd.xml.key
+        Importing GPG key 0xC6565BC9:
+         Userid: "xCAT Security Key <xcat@cn.ibm.com>"
+         From  : /root/xcat/xcat-dep/rh6/ppc64/repodata/repomd.xml.key
+        Is this ok [y/N]:
+
+.. END_installing_xcat
+
+
+.. BEGIN_verifying_xcat
+
+Quick verification of the xCAT Install can be done running the following steps:
+
+#. Source the profile to add xCAT Commands to your path: ::
+
+        source /etc/profile.d/xcat.sh
+
+#. Check the xCAT version: ::
+
+        lsxcatd -a
+
+#. Check to verify that the xCAT database is initialized by dumping out the site table: ::
+
+        tabdump site
+
+   The output should be similar to the following: ::
+
+        #key,value,comments,disable
+        "blademaxp","64",,
+        "domain","pok.stglabs.ibm.com",,
+        "fsptimeout","0",,
+        "installdir","/install",,
+        "ipmimaxp","64",,
+        "ipmiretries","3",,
+        ...
+
+Starting and Stopping
+---------------------
+
+xCAT is started automatically after the installation, but the following commands can be used to start, stop, restart, and check xCAT status. 
+
+* start xCAT: ::
+
+    service xcatd start
+    [systemd] systemctl xcatd.service start
+
+* stop xCAT: ::
+
+    service xcatd stop
+    [systemd] systemctl xcatd.service stop
+
+* restart xCAT: ::
+
+    service xcatd restart
+    [systemd] systemctl xcatd.service restart
+
+* check xCAT status: ::
+
+    service xcatd status
+    [systemd] systemctl xcatd.service status
+
+
+.. END_verifying_xcat 
+
+.. BEGIN_update_xcat
+
+If at a later date you want to update xCAT, first, update the software repositories and then run: ::
+
+    yum clean metadata # or, yum clean all
+    yum update '*xCAT*'
+
+.. END_update_xcat

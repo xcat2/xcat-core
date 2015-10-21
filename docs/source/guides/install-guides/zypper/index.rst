@@ -7,5 +7,4 @@ For the list of currently supported SLES operating systems, see :ref:`sles-os-su
    :maxdepth: 2
 
    prepare_mgmt_node.rst
-..   install_xcat.rst
-..   configure_xcat.rst
+   install.rst 
