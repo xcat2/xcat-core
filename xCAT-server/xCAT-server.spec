@@ -402,6 +402,12 @@ if [ -x /usr/sbin/emgr ]; then          # Check for emgr cmd
 fi
 %endif
 
+# The Juniper directory is switched to Jun and a sylink is created
+if [ -d $RPM_INSTALL_PREFIX0/share/xcat/devicetype/EthSwitch/Juniper ]; then 
+    # need to remove the old directory otherwise the symlink won't get creatd correctly
+    rm -rf $RPM_INSTALL_PREFIX0/share/xcat/devicetype/EthSwitch/Juniper
+fi
+
 %post
 %ifos linux
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
