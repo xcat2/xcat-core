@@ -22,48 +22,65 @@ Command ``diskdiscover`` scans disk devices, it can get the overview of disks an
 
 Here are steps to use ``diskdiscover``:
 
-1. Start xCAT genesis system in compute node, let compute node ``cn1`` enter xCAT genesis system shell:::
+#. Start xCAT genesis system in compute node, let compute node ``cn1`` enter xCAT genesis system shell: ::
 
-    mknb <arch>
     nodeset cn1 shell
     rpower cn1 reset
 
-2. On xcat management node, executing ``xdsh`` to use ``diskdiscover``: ::
+   ``Note``: If user modify ``diskdiscover`` or ``configraid`` scripts, he needs to run the ``mknb <arch>`` command before ``nodeset`` command to update network boot root image.
+
+#. On xcat management node, executing ``xdsh`` to use ``diskdiscover``: ::
+
+    xdsh cn1 diskdiscover
+
+   Or: ::
 
     xdsh cn1 'diskdiscover <pci_id>'
 
-   Or::
+   The outputs format is as following: ::
+   
+    # xdsh cn1 diskdiscover
+    cn1: --------------------------------------------------------------------------
+    cn1: PCI_ID     PCI_SLOT_NAME  Resource_Path  Device  Description   Status
+    cn1: ------     -------------  -------------  ------  -----------   ----------------
+    cn1: 1014:034a  0001:08:00.0   0:0:0:0        sg0     Function Disk Active
+    cn1: 1014:034a  0001:08:00.0   0:0:1:0        sg1     0 Array Member Active
+    cn1: -------------------------------------------------------------------
+    cn1: Get ipr RAID arrays by PCI_SLOT_NAME: 0001:08:00.0
+    cn1: -------------------------------------------------------------------
+    cn1: Name   PCI/SCSI Location         Description               Status
+    cn1: ------ ------------------------- ------------------------- -----------------
+    cn1: sda    0001:08:00.0/0:2:0:0       RAID 0 Disk Array         Optimized
 
-    xdsh cn1 diskdiscover
 
 Configuring hardware RAID
 -------------------------
 
 Command configraid introduction
 ````````````````````````````````
+
 We can use ``configraid`` to delete RAID arrays or create RAID arrays: ::
 
   configraid delete_raid=[all|"<raid_array_list>"|null]
              stripe_size=[16|64|256]
              create_raid="rl#<raidlevel>|[pci_id#<num>|pci_slot_name#<pci_slot_name>|disk_names#<sg0>#..#<sgn>]|disk_num#<number>" ...
 
-
 Here are the input parameters introduction:
 
-1. **delete_raid** : List raid arrays which should be removed.
+#. **delete_raid** : List raid arrays which should be removed.
 
      * If its value is all, all raid arrays detected should be deleted.
      * If its value is a list of raid array names, these raid arrays will be deleted. Raid array names should be seperated by ``#``.
      * If its value is null or there is no delete_raid, no raid array will be deleted.
      * If there is no delete_raid, the default value is null.
 
-2. **stripe_size** : It is optional used when creating RAID arrays. If stripe size is not specified, it will default to the recommended stripe size for the selected RAID level.
+#. **stripe_size** : It is optional used when creating RAID arrays. If stripe size is not specified, it will default to the recommended stripe size for the selected RAID level.
 
-3. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are seperated by ``#``. The formats are as followings: 
+#. **create_raid** : To create a raid array, add a line beginning with create_raid, all attributes keys and values are seperated by ``#``. The formats are as followings: 
 
-     * ``rl`` means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6. ``rl`` is a mandatory attribute for every create_raid.
+     * ``rl`` means RAID level, RAID level can be any supported RAID level for the given adapter, such as 0, 10,  5,  6. ``rl`` is a mandatory attribute for every create_raid. Supported RAID level is depend on pysical server's RAID adapter.
 
-     * User can select disks based on following attributes value.
+     * User can select disks based on following attributes value. User can find these value based on ``diskdiscover`` outputs as above section described.
  
          a. ``pci_id`` is PCI vender and device ID.
          b. ``pci_slot_name`` is the specified PCI location. If using ``pci_slot_name``, this RAID array will be created using disks from it.
@@ -95,39 +112,42 @@ More examples of input parameters:
 
 Configuring RAID arrays process
 ````````````````````````````````
+
 Command ``configraid`` is running in xcat genesis system, its log is saved under ``/tmp`` on compute node genesis system.
 
 Configuring RAID in hardware discovery procedure
 '''''''''''''''''''''''''''''''''''''''''''''''''
 
-1. Using ``runcmd`` facility to configure raid in the hardware discovery procedure, after configuring RAID, compute node enter xcat genesis system shell. In the following example, ``configraid`` deletes all original RAID arrays, it creates one RAID 0 array with first two disks from pci_id ``1014:034a``: ::
+#. Using ``runcmd`` facility to configure raid in the hardware discovery procedure, after configuring RAID, compute node enter xcat genesis system shell. In the following example, ``configraid`` deletes all original RAID arrays, it creates one RAID 0 array with first two disks from pci_id ``1014:034a``: ::
     
     nodeset cn1 runcmd="configraid delete_raid=all create_raid=rl#0|pci_id#1014:034a|disk_num#2",shell
     rpower cn1 reset
 
-2. Monitoring or debug the ``configraid`` process.
-
-   Using ``rcons`` to monitor the process: ::
+#. Using ``rcons`` to monitor the process: ::
 
     rcons cn1
 
 Configuring RAID manually in xcat genesis system shell
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-1. Starting xCAT genesis system in compute node, let compute node ``cn1`` enter xCAT genesis system shell: ::
+#. Starting xCAT genesis system in compute node, let compute node ``cn1`` enter xCAT genesis system shell: ::
 
     nodeset cn1 shell
     rpower cn1 reset
 
-2. On xcat management node, executing ``xdsh`` to use ``configraid`` to configure RAID: ::
+#. On xcat management node, executing ``xdsh`` to use ``configraid`` to configure RAID: ::
 
     xdsh cn1 'configraid delete_raid=all create_raid="rl#0|pci_id#1014:034a|disk_num#2"'
 
 Monitoring and debuging RAID configration process
 ''''''''''''''''''''''''''''''''''''''''''''''''''
 
-1. Creating some RAID level arrays take very long time, for example, If user creates RAID 10, it will cost tens of minutes or hours. During this period, you can use xCAT xdsh command to monitor the progress of raid configuration. ::
+#. Creating some RAID level arrays take very long time, for example, If user creates RAID 10, it will cost tens of minutes or hours. During this period, you can use xCAT xdsh command to monitor the progress of raid configuration. ::
 
     xdsh cn1 iprconfig -c show-config
 
-2. Logs for ``configraid`` is saved under ``tmp`` in compute node genesis system. User can login compute node and check ``configraid`` logs to debug.
+#. Logs for ``configraid`` is saved under ``tmp`` in compute node genesis system. User can login compute node and check ``configraid`` logs to debug.
+
+#. When configuring RAID in hardware discovery procedure, user can use ``rcons`` command to monitor or debug the process: ::
+ 
+    rcons cn1
