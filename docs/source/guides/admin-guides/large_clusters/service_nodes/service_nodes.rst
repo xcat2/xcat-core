@@ -1,5 +1,5 @@
-Service Nodes 101
-=================
+Service Nodes
+=============
 
 Service Nodes are similar to the xCAT Management Node in that each service Nodes runs an instance of the xCAT daemon: ``xcatd``.  ``xcatd``'s communicate with each other using the same XML/SSL protocol that the xCAT client uses to communicate with ``xcatd`` on the Management Node. 
 

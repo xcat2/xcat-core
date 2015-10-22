@@ -62,6 +62,7 @@ Following are the brief characters and adaptability of each method, you can sele
 * **Sequential-based Discovery**
 
   **Step1**: **Pre-define** the **Node Object** for all the nodes in the cluster.
+
   **Step2**: Manually power on the node one by one. The booted node will be discovered, each new discovered node will be assigned to one of the **Pre-defined** node in **Sequential**.
 
   * pros
