@@ -45,5 +45,5 @@ Set up Network
 
 The management node IP address should be set to a **static** ip address.  
 
-Modify the ifcfg-<nic> file under ``/etc/sysconfig/network-scripts`` and configure a static IP address.
+Modify the ifcfg-<nic> file under ``/etc/sysconfig/network`` and configure a static IP address.
 
