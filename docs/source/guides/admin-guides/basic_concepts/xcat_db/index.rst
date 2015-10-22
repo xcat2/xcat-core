@@ -1,7 +1,7 @@
 xCAT Database
 =============
 
-All of the xCAT Objects and Configuration data are stored in xCAT database. By default, xCAT uses **SQLite** - an OS contained simple database engine. The powerful open source dtabase engines like MySQL, MariaDB, PostgreSQL are also supported for a large cluster.
+All of the xCAT Objects and Configuration data are stored in xCAT database. By default, xCAT uses **SQLite** - an OS contained simple database engine. The powerful open source database engines like MySQL, MariaDB, PostgreSQL are also supported for a large cluster.
 
 xCAT defines about 70 tables to store different data. You can get the xCAT database definition from file ``/opt/xcat/lib/perl/xCAT/Schema.pm``.
 

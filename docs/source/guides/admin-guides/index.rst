@@ -7,7 +7,7 @@ Now you can start to learn how to manage a cluster by xCAT. This chapter include
 
 * **Basic Concepts**
 
-  This Section will give you the introduction of some basic concepts in xCAT like the **Object Concept**, **Database**, **Global Configuration**, **Network** and **NOde Type**.
+  This Section will give you the introduction of some basic concepts in xCAT like the **Object Concept**, **Database**, **Global Configuration**, **Network** and **Node Type**.
 
 * **Manage Cluster**
 

@@ -14,7 +14,7 @@ With xCAT, the end user can turn the beacon light on or off with the commands sh
     rbeacon cn1 on
     rbeacon cn1 off
 
-Please notice, the current state of the beacon light can not be inquery remotely. As a workaround, one can always use the ``rbeacon`` command to trun all the beacon lights in one frame off, and then turn a particular beancon light on. ::
+Please notice, the current state of the beacon light can not be inquery remotely. As a workaround, one can always use the ``rbeacon`` command to turn all the beacon lights in one frame off, and then turn a particular beancon light on. ::
 
     rbeacon a_group_of_cn off
     rbeacon cn5 on
@@ -104,7 +104,7 @@ Firmware Updating
 Configures Nodes' Service Processors
 ````````````````````````````````````
 
-Here comes the command, ``rspconfig``. It is used to configure the service processor of a phyisical machine. On a OpenPower system, the service processor is the BMC, BAse Motherboard Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among difference machine model type.
+Here comes the command, ``rspconfig``. It is used to configure the service processor of a phyisical machine. On a OpenPower system, the service processor is the BMC, Base Motherboard Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among difference machine model type.
 
 Examples
 
