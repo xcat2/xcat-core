@@ -10,12 +10,12 @@ The following configurations are supported:
     * Having a pool of service nodes, any of which can respond to an installation request from a compute node (*Requires service nodes to be aligned with networks broadcast domains, compute node chooses service nodes based on who responds to DHCP request first.*)
     * A hybrid of the above, where each specific set of compute nodes have 2 or more service nodes in a pool
 
-The following documentation assumes an xCAT cluster has already been configured and covers the additional steps needed to suport xCAT Hierarchy via Service Nodes.
+The following documentation assumes an xCAT cluster has already been configured and covers the additional steps needed to support xCAT Hierarchy via Service Nodes.
 
 .. toctree::
    :maxdepth: 2
 
-   service_nodes/service_nodes101.rst
+   service_nodes/service_nodes.rst
    databases/index.rst
    service_nodes/define_service_nodes.rst
    service_nodes/provision_service_nodes.rst
