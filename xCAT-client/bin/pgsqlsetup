@@ -164,7 +164,7 @@ if ($::RUNCMD_RC != 0)
 #
 # check to see if postgresql is installed
 #
-my $cmd = "rpm -q postgresql-server";
+my $cmd = "rpm -qa | grep postgresql | grep server";
 if ($debianflag){
     $cmd = "dpkg -l | grep postgresql | awk '{print \$2}'";
 }
