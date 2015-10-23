@@ -33,7 +33,7 @@ Below is an example of osimage definitions created by ``copycds``: ::
 
 In these osimage definitions shown above 
 
-* **<os>-<arch>-install-compute** is the default osimage definition used for diskfull installation
+* **<os>-<arch>-install-compute** is the default osimage definition used for diskful installation
 * **<os>-<arch>-netboot-compute** is the default osimage definition used for diskless installation
 * **<os>-<arch>-install-service** is the default osimage definition used for service node deployment which shall be used in hierarchical environment
 
