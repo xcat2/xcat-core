@@ -117,7 +117,7 @@ sub bmcdiscovery_usage {
       "\n                   - get BMC IP Address source, DHCP Address or static Address  .\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-h|--help|-?]\n";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]\n ";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-s] scan_method [--range] ip_range [-z] [-w] \n ";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-s] scan_method [--range] ip_range [-z] [-w] [-t]\n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword [-c|--check]\n ";
     push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword [--ipsource]\n ";
     push @{ $rsp->{data} }, "\tFor example: \n ";
@@ -176,6 +176,7 @@ sub bmcdiscovery_processargs {
                               'bmcpwd|p=s' => \$::opt_P,
                               'ipsource' => \$::opt_S,
                               'version|v' => \$::opt_v,
+                              't' => \$::opt_T,
     );
 
     if (!$getopt_success) {
@@ -593,7 +594,7 @@ sub scan_process{
 sub format_stanza {
     my $node = shift;
     my $data = shift;
-    my ($bmcip,$bmcmtm,$bmcserial,$bmcuser,$bmcpass) = split(/,/,$data);
+    my ($bmcip,$bmcmtm,$bmcserial,$bmcuser,$bmcpass,$nodetype,$hwtype) = split(/,/,$data);
     my $result;
     if (defined($bmcip)){     
         $result .= "$node:\n\tobjtype=node\n";
@@ -613,6 +614,10 @@ sub format_stanza {
         if ($bmcpass) {
             $result .= "\tbmcpassword=$bmcpass\n";
         }
+        if ($nodetype && $hwtype) {
+            $result .= "\tnodetype=$nodetype\n";
+            $result .= "\thwtype=$hwtype\n";
+        }
         my $rsp = {};
         push @{ $rsp->{data} }, "$result";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
@@ -631,11 +636,11 @@ sub format_stanza {
 sub write_to_xcatdb {
     my $node = shift;
     my $data = shift;
-    my ($bmcip,$bmcmtm,$bmcserial,$bmcuser,$bmcpass) = split(/,/,$data);
+    my ($bmcip,$bmcmtm,$bmcserial,$bmcuser,$bmcpass,$nodetype,$hwtype) = split(/,/,$data);
     my $request_command = shift;
     my $ret;
 
-       $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"bmc=$bmcip","cons=ipmi","mgt=ipmi","mtm=$bmcmtm","serial=$bmcserial","bmcusername=$bmcuser","bmcpassword=$bmcpass","groups=all"] }, $request_command, 0, 1);
+       $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$node,"bmc=$bmcip","cons=ipmi","mgt=ipmi","mtm=$bmcmtm","serial=$bmcserial","bmcusername=$bmcuser","bmcpassword=$bmcpass","nodetype=$nodetype","hwtype=$hwtype","groups=all"] }, $request_command, 0, 1);
        if ($::RUNCMD_RC != 0) {
             my $rsp = {};
             push @{ $rsp->{data} }, "create or modify node is failed.\n";
@@ -886,6 +891,11 @@ sub bmcdiscovery_ipmi {
                 } else {
                     $ip .= ",,$::opt_P";
                 }
+            } else {
+                $ip .= ",,";
+            }
+            if ($::opt_T) {
+                $ip .= ",mp,bmc";
             }
             if ($mtm and $serial) {
                 $node = "node-$mtm-$serial";
