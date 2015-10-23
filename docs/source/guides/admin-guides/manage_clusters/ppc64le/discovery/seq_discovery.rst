@@ -47,5 +47,9 @@ Stop the current sequential discovery process::
 
 Note: The sequential discovery process will be stopped automatically when all of the node names in the node pool are used up. 
 
-.. include:: pbmc_discovery_with_bmcdiscover.rst
+Start discovery process
+-----------------------
+
+To start discovery process, the system administrator need to power on the servers one by one manually. Then the hardware discovery process will start automatically.
+
 .. include:: standard_cn_definition.rst
