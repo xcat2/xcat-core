@@ -7,7 +7,7 @@ Introduction
 After initial node deployment, you may need to make changes/updates to your nodes. The ``updatenode`` command is for this purpose. It allows you to add or modify the followings on your nodes:
 
 #. Add additional software
-#. Rerun postscripts or Run Additional Postcripts 
+#. Rerun Postscripts or Run Additional Postcripts 
 #. Synchronize new/updated configuration files
 #. Update ssh keys and xCAT certificates
 
