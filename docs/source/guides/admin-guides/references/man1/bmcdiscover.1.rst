@@ -1,0 +1,225 @@
+
+#############
+bmcdiscover.1
+#############
+
+.. highlight:: perl
+
+
+****
+NAME
+****
+
+
+\ **bmcdiscover**\  - Discover bmc using scan method, now scan_method can be nmap.
+
+
+********
+SYNOPSIS
+********
+
+
+\ **bmcdiscover**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **--range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ]
+
+\ **bmcdiscover**\  \ **-i**\ |\ **--bmcip**\  \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\  \ *bmcusername*\ ] \ **-p**\ |\ **--bmcpwd**\  \ *bmcpassword*\  \ **-c**\ |\ **--check**\ 
+
+\ **bmcdiscover**\  \ **-i**\ |\ **--bmcip**\  \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\  \ *bmcusername*\ ] \ **-p**\ |\ **--bmcpwd**\  \ *bmcpassword*\  \ **--ipsource**\ 
+
+
+***********
+DESCRIPTION
+***********
+
+
+The \ **bmcdiscover**\  command will discover bmc using scan method.
+
+This command will use nmap scan active nodes, ip range format should be the same format with that is used by nmap.
+
+Note: scan method can only be nmap now, default scan method is nmap.
+
+This command can check if bmc username or password is correct or not. It can get BMC IP Address source, DHCP Address or static Address.
+
+
+*******
+OPTIONS
+*******
+
+
+
+\ **--range**\ 
+ 
+ Specify one or more IP ranges. Ip ranges should be a string, can pass hostnames, IP addresses, networks, etc. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the bmcdiscover may take a very long time to scan. So the range should be exactly specified. For nmap scan method, it accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100, scanme.nmap.org, microsoft.com/24.
+ 
+
+
+\ **-s**\ 
+ 
+ Scan method, now it is nmap.
+ 
+
+
+\ **-z**\ 
+ 
+ List the stanza formate data.
+ 
+
+
+\ **-w**\ 
+ 
+ Write to the database.
+ 
+
+
+\ **-i|--bmcip**\ 
+ 
+ BMC ip.
+ 
+
+
+\ **-u|--bmcuser**\ 
+ 
+ BMC user name.
+ 
+
+
+\ **-p|--bmcpwd**\ 
+ 
+ BMC user password.
+ 
+
+
+\ **-c|--check**\ 
+ 
+ Check.
+ 
+
+
+\ **--ipsource**\ 
+ 
+ BMC IP source.
+ 
+
+
+\ **-h|--help**\ 
+ 
+ Display usage message.
+ 
+
+
+\ **-v|--version**\ 
+ 
+ Command version.
+ 
+
+
+
+************
+RETURN VALUE
+************
+
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+
+********
+EXAMPLES
+********
+
+
+1. To get all bmc from ip range
+
+bmcdiscover -s nmap --range "10.4.23.100-254 50.3.15.1-2"
+
+Output is similar to:
+
+10.4.23.254
+50.3.15.1
+
+Note: input for ip range can also be like scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
+
+2. After discover bmc, list the stanza format data
+
+bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
+
+Output is similar to:
+
+node10422254:
+        objtype=node
+        groups=all
+        bmc=10.4.22.254
+        cons=ipmi
+        mgt=ipmi
+
+node10423254:
+        objtype=node
+        groups=all
+        bmc=10.4.23.254
+        cons=ipmi
+        mgt=ipmi
+
+3. After discover bmc, write host node definition into the database, and the same time, give out stanza format data
+
+bmcdiscover -s nmap --range "10.4.22-23.100-254" -w
+
+Output is similar to:
+
+node10422254:
+        objtype=node
+        groups=all
+        bmc=10.4.22.254
+        cons=ipmi
+        mgt=ipmi
+
+node10423254:
+        objtype=node
+        groups=all
+        bmc=10.4.23.254
+        cons=ipmi
+        mgt=ipmi
+
+4. To check if user name or password is correct or not for bmc
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
+
+Output is similar to:
+
+Correct ADMINISTRATOR
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD1 -c
+
+Output is similar to:
+
+Error: Wrong bmc password
+
+bmcdiscover -i 10.4.23.254 -u USERID1 -p PASSW0RD1 -c
+
+Output is similar to:
+
+Error: Wrong bmc user
+
+bmcdiscover -i 10.4.23.2541234 -u USERID -p PASSW0RD -c
+
+Output is similar to:
+
+Error: Not bmc
+
+5. Get BMC IP Address source, DHCP Address or static Address
+
+bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --ipsource
+
+Output is similar to:
+
+Static Address
+
+
+********
+SEE ALSO
+********
+
+
+lsslp(1)|lsslp.1
+
