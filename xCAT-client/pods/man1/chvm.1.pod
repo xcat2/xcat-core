@@ -28,7 +28,15 @@ B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
                [B<add_vmnics=vlan1[,vlan2..]]> [B<add_vmstorage=<N|viosnode:slotid>>] [B<--vios>]
                [B<del_physlots=drc_index1,drc_index2...>]
                [B<del_vadapter=slotid>]
-               
+
+B<chvm> I<noderange> [B<--cpupin> I<hostcpuset>]
+
+B<chvm> I<noderange> [B<--membind> I<numanodeset>]
+
+B<chvm> I<noderange> [B<--devpassthru> I<pcidevice>...]     
+
+
+   
 =head2 VMware/KVM specific:
 
 B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
@@ -214,6 +222,30 @@ To delete physical slots which are specified by the I<drc_index1,drc_index2...>.
 =item B<del_vadapter=slotid>
 
 To delete a virtual adapter specified by the I<slotid>.
+
+=item B<--cpupin hostcpuset>
+
+To pin guest domain virtual CPUs to physical host CPUs specified with I<hostcpuset>.
+I<hostcpuset> is a list of physical CPU numbers. Its syntax is a comma separated list and a special
+markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed. The '-' denotes the range and
+the '^' denotes exclusive. 
+
+Note: The expression is sequentially evaluated, so "0-15,^8" is identical to "9-14,0-7,15" but not
+identical to "^8,0-15".
+
+=item B<--membind numanodeset>
+
+It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes I<numanodeset>. 
+If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
+access will be local, which improves memory access performance.
+
+=item B<--devpassthru pcidevice1,pcidevice2...>
+
+The PCI passthroug gives a guest VM direct access to I/O devices I<pcidevice1,pcidevice2...>. 
+The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
+The devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained
+by running B<virsh nodedev-list> on the host.  
+
 
 =back
 
