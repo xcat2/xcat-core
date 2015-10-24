@@ -32,8 +32,25 @@ for d in allfiles:
         print "Removing file %s" %(d)
         os.remove(d)
 
+# The database man pages are created in the perl-xCAT subdirectory
+# using the db2man script
+def build_db_man_pages():
+    thepwd = os.getcwd()
+    os.chdir("perl-xCAT")
+    cmd = "./db2man"
+    os.system(cmd)
+    os.chdir(thepwd)
+
+def cleanup_db_man_pages_dir():
+    shutil.rmtree("perl-xCAT/pods")
+    shutil.rmtree("perl-xCAT/share")
+
+   
+
+build_db_man_pages()
+
 # List the xCAT component directory which contain pod pages
-COMPONENTS = ['xCAT-SoftLayer', 'xCAT-test', 'xCAT-client', 'xCAT-vlan']
+COMPONENTS = ['xCAT-SoftLayer', 'xCAT-test', 'xCAT-client', 'xCAT-vlan', 'perl-xCAT']
 
 for component in COMPONENTS: 
     for root,dirs,files in os.walk("%s" %(component)):
@@ -63,3 +80,6 @@ for component in COMPONENTS:
                 cmd = "pod2rst --infile=%s --outfile=%s --title=%s.%s" %(pod_input, rst_output, title, man_ver)
                 print cmd 
                 os.system(cmd)
+
+cleanup_db_man_pages_dir()
+
