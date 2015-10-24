@@ -1,55 +1,37 @@
 .. _setup_service_node_stateful_label:
 
-Set Up the Service Nodes for Stateful (Diskful) Installation (optional)
-=======================================================================
+Set Up the Service Nodes for Stateful (Diskful) Installation
+============================================================
 
-Any cluster using statelite compute nodes must use a stateful (diskful) service
-nodes.
+Any cluster using statelite compute nodes must use a stateful (diskful) service nodes.
 
-Note: If you are using diskless service nodes, go to
-:ref:`setup_service_node_stateless_label`.
+**Note: All xCAT service nodes must be at the exact same xCAT version as the xCAT Management Node**. Copy the files to the Management Node (MN) and untar them in the appropriate sub-directory of ``/install/post/otherpkgs``
 
-First, go to the `Download_xCAT <http://localhost/fake_todo>`_ site and
-download the level of the xCAT tarball you desire. Then go to
-http://localhost/fake_todo and get the latest xCAT dependency tarball.
-**Note: All xCAT service nodes must be at the exact same xCAT version as the
-xCAT Management Node**. Copy the files to the Management Node (MN) and untar
-them in the appropriate sub-directory of ``/install/post/otherpkgs``
-
-**Note for the appropriate directory below, check the
-``otherpkgdir=/install/post/otherpkgs/rhels7/x86_64`` attribute of the
-osimage defined for the servicenode.**
+**Note for the appropriate directory below, check the ``otherpkgdir=/install/post/otherpkgs/rhels7/x86_64`` attribute of the osimage defined for the servicenode.**
  
 For example, for osimage rhels7-x86_64-install-service ::
 
- mkdir -p /install/post/otherpkgs/**rhels7**/x86_64/xcat
- cd /install/post/otherpkgs/**rhels7**/x86_64/xcat
- tar jxvf core-rpms-snap.tar.bz2
- tar jxvf xcat-dep-*.tar.bz2
+    mkdir -p /install/post/otherpkgs/**rhels7**/x86_64/xcat
+    cd /install/post/otherpkgs/**rhels7**/x86_64/xcat
+    tar jxvf core-rpms-snap.tar.bz2
+    tar jxvf xcat-dep-*.tar.bz2
 
-Next, add rpm names into your own version of 
-service.<osver>.<arch>.otherpkgs.pkglist file. In most cases, you can find an 
-initial copy of this file under /opt/xcat/share/xcat/install/<platform> . If 
-not, copy one from a similar platform.
-::
+Next, add rpm names into your own version of service.<osver>.<arch>.otherpkgs.pkglist file. In most cases, you can find an initial copy of this file under ``/opt/xcat/share/xcat/install/<platform>`` . Or copy one from another similar platform. :: 
 
-  mkdir -p /install/custom/install/rh
-  cp /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist \
-     /install/custom/install/rh
-  vi /install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
+    mkdir -p /install/custom/install/rh
+    cp /opt/xcat/share/xcat/install/rh/service.rhels7.x86_64.otherpkgs.pkglist \
+       /install/custom/install/rh
+    vi /install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist
 
 Make sure the following entries are included in the
-/install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist:
-::
+/install/custom/install/rh/service.rhels7.x86_64.otherpkgs.pkglist: ::
 
-  xCATsn
-  conserver-xcat
-  perl-Net-Telnet
-  perl-Expect
+    xCATsn
+    conserver-xcat
+    perl-Net-Telnet
+    perl-Expect
 
-**Note: you will be installing the xCAT Service Node rpm xCATsn meta-package
-on the Service Node, not the xCAT Management Node meta-package. Do not install
-both.**
+**Note: you will be installing the xCAT Service Node rpm xCATsn meta-package on the Service Node, not the xCAT Management Node meta-package. Do not install both.**
 
 Update the rhels6 RPM repository (rhels6 only)
 ----------------------------------------------
@@ -58,14 +40,13 @@ Update the rhels6 RPM repository (rhels6 only)
 * The direct rpm download link is:
   ``ftp://linuxpatch.ncsa.uiuc.edu/PERCS/powerpc-utils-1.2.2-18.el6.ppc64.rpm``
 * The update steps are as following:
-  - put the new rpm in the base OS packages
-    ::
+  - put the new rpm in the base OS packages ::
 
-      cd /install/rhels6/ppc64/Server/Packages
-      mv powerpc-utils-1.2.2-17.el6.ppc64.rpm /tmp
-      cp /tmp/powerpc-utils-1.2.2-18.el6.ppc64.rpm .
-      # make sure that the rpm is be readable by other users
-      chmod +r powerpc-utils-1.2.2-18.el6.ppc64.rpm
+        cd /install/rhels6/ppc64/Server/Packages
+        mv powerpc-utils-1.2.2-17.el6.ppc64.rpm /tmp
+        cp /tmp/powerpc-utils-1.2.2-18.el6.ppc64.rpm .
+        # make sure that the rpm is be readable by other users
+        chmod +r powerpc-utils-1.2.2-18.el6.ppc64.rpm
 
 * create the repodata ::
 
