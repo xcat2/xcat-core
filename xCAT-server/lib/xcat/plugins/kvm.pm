@@ -694,7 +694,6 @@ sub build_xmldesc {
         $xtree{memory}->{content}=524288;
     }
     
-    print "xxx $confdata->{vm}->{$node}->[0]->{othersettings} ";
     my %cpupinhash;
     my @prdevices;
     my $memnumanodes;
