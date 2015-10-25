@@ -38,7 +38,7 @@ Everyone wants their cluster to be as reliable and available as possible, but th
 
 This approach is most often used with stateless nodes because that environment is more dynamic. It can possibly be used with stateful nodes (with a little more effort), but that type of node doesn't netboot nearly as often so a more manual operation (snmove) is needed in that case move a node to different SNs.
 
-It is best to have the SNs be as robust as possible, for example, if they are diskfull, configure them with at least 2 disks that are RAID'ed together.
+It is best to have the SNs be as robust as possible, for example, if they are diskful, configure them with at least 2 disks that are RAID'ed together.
 
 In smaller clusters, the management node (MN) can be part of the SN pool with one other SN.
 

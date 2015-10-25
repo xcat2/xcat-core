@@ -38,7 +38,7 @@ Note: There is a current restriction that exported 2.7 xCAT images cannot be imp
 
 We want to create a system of making xCAT images more portable so that they can be shared and prevent people from reinventing the wheel. While every install is unique there are some things that can be shared among different sites to make images more portable. In addition, creating a method like this allows us to create snap shots of images we may find useful to revert to in different situations.
 
-Image exporting and importing are supported for statefull (diskfull) and stateless (diskless) clusters.  The following documentation will show how to use :doc:`imgexport </guides/admin-guides/references/man1/imgexport.1>` to export images and :doc:`imgimport </guides/admin-guides/references/man1/imgimport.1>` to import images.
+Image exporting and importing are supported for stateful (diskful) and stateless (diskless) clusters.  The following documentation will show how to use :doc:`imgexport </guides/admin-guides/references/man1/imgexport.1>` to export images and :doc:`imgimport </guides/admin-guides/references/man1/imgimport.1>` to import images.
 
 
 Exporting an image
@@ -70,7 +70,7 @@ Exporting an image
         imgexport myimage -p node1 -e /install/postscripts/myscript1 -e /install/postscripts/myscript2
         (-p and -e are optional)
 
-A bundle file called myimage.tgz will be created under the current directory. The bundle file contains the ramdisk, boot kernel, the root image and all the configuration files for generating the image for a diskless cluster. For diskfull, it contains the kickstart/autoyast configuration file. (see appendix). The -p flag puts the names of the postscripts for node1 into the image bundle. The -e flags put additional files into the bundle. In this case two postscripts myscript1 and myscript2 are included.
+A bundle file called myimage.tgz will be created under the current directory. The bundle file contains the ramdisk, boot kernel, the root image and all the configuration files for generating the image for a diskless cluster. For diskful, it contains the kickstart/autoyast configuration file. (see appendix). The -p flag puts the names of the postscripts for node1 into the image bundle. The -e flags put additional files into the bundle. In this case two postscripts myscript1 and myscript2 are included.
 This image can now be used on other systems.
 
 Importing an image
@@ -106,7 +106,7 @@ Skip this section if you want to use the image as is.
 
 * Modify .otherpkgs.pkglist to add or remove packages from other sources. Please refer to ``Using_Updatenode`` for details 
 
-* For diskfull, modify the .tmpl file to change the kickstart/autoyast configuration
+* For diskful, modify the .tmpl file to change the kickstart/autoyast configuration
 
 * Modify .synclist file to change the files that are going to be synchronized to the nodes
 
@@ -187,7 +187,7 @@ Exported files
 
 The following files will be exported, assuming x is the profile name:
 
-For diskfull: ::
+For diskful: ::
 
              x.pkglist
              x.otherpkgs.pkglist
