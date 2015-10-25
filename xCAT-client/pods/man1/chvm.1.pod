@@ -237,14 +237,13 @@ identical to "^8,0-15".
 
 It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes I<numanodeset>. 
 If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
-access will be local, which improves memory access performance.
+access is local and improves memory access performance.
 
 =item B<--devpassthru pcidevice1,pcidevice2...>
 
-The PCI passthroug gives a guest VM direct access to I/O devices I<pcidevice1,pcidevice2...>. 
+The PCI passthrough gives a guest VM direct access to I/O devices I<pcidevice1,pcidevice2...>. 
 The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
-The devices list are a list of PCI device names delimited with comma, the PCI device names can be obtained
-by running B<virsh nodedev-list> on the host.  
+The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.  
 
 
 =back
