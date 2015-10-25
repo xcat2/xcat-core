@@ -45,7 +45,7 @@ Key Attrubutes
               +-------------------------------------------------+-----------------------------------+
  
 * postscripts: 
-    Comma separated list of scripts, that should be run on this node after diskfull installation or diskless boot, finish some system configuration and maintenance work. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. 
+    Comma separated list of scripts, that should be run on this node after diskful installation or diskless boot, finish some system configuration and maintenance work. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. 
 
 * postbootscripts: 
     Comma separated list of scripts, that should be run on this node as a SysV init job on the 1st reboot after installation or diskless boot, finish some system configuration and maintenance work. 

@@ -12,7 +12,7 @@ Appendix B: Diagnostics
   xCAT rpms in :ref:`setup_service_node_stateful_label`. If rpms
   missing check your install setup as outlined in Build the Service Node
   Stateless Image for diskless or :ref:`setup_service_node_stateful_label` for
-  diskfull installs.
+  diskful installs.
 * **otherpkgs(including xCAT rpms) installation failed on the SN** --The OS
   repository is not created on the SN. When the "yum" command is processing
   the dependency, the rpm packages (including expect, nmap, and httpd, etc)
