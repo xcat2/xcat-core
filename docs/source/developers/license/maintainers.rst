@@ -5,7 +5,7 @@ If you are an experienced xCAT user and plan to contribute to the xCAT code regu
 
 * If approved, complete and sign our :download:`xCAT Maintainer License Agreement <xcat-project-maintainer-agreement.pdf>`, then scan and email a PDF file to xcat-legal@lists.sourceforge.net .
 
-* Additional infominformation can be found in our :ref:`maintainers guide <xcat-maintainer-guide-label>` below:
+* Additional information can be found in our :ref:`maintainers guide <xcat-maintainer-guide-label>` below:
 
 .. _xcat-maintainer-guide-label: 
 
