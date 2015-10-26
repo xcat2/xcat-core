@@ -4,7 +4,7 @@
 # This is also the version we recommend to use right now.
 # What are changed in this version
 #    1. The usage interface is changed, using command line arguments instead of using environment attribute
-#    2. The way of downloading Mellanox OFED files.  
+#    2. The way of downloading Mellanox OFED files.
 #    3. Some structure of code
 #
 # For AIX:
@@ -19,38 +19,38 @@
 #
 #usage:
 #
-#      Copy the xCAT mlnxofed_ib_install.v2 script file to postscripts directory and rename to  mlnxofed_ib_install: 
+#      Copy the xCAT mlnxofed_ib_install.v2 script file to postscripts directory and rename to  mlnxofed_ib_install:
 #      cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 /install/postscripts/mlnxofed_ib_install
 #
-#      Prepare Mellanox OFED ISO file and save it into any subdirectory under /install. 
+#      Prepare Mellanox OFED ISO file and save it into any subdirectory under /install.
 #
 #   1. install the ofed driver for diskfull node
 #      [NOTE] step 1.1-1.2 are only needed by redhat and sles
-#      1.1  copy the pkglist to the custom directory: 
+#      1.1  copy the pkglist to the custom directory:
 #         cp /opt/xcat/share/xcat/install/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
-#         Edit your /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist and add: 
+#         Edit your /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist and add:
 #             #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
-#      1.2 Make the related osimage use the customized pkglist. 
+#      1.2 Make the related osimage use the customized pkglist.
 #          chdef  -t osimage -o <osver>-<arch>-install-compute pkglist=/install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
 #      1.3 set mlnxofed_ib_install as postbootscripts for the target node. assign necessary attribute for mlnxofed_ib_install at same time.
 #      chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<path>/<OFED.ISO>"
 #      [NOTE] The default options input into Mellanox are '--without-32bit --without-fw-update --force'
 #             you can appoint the options by yourslef with '-m' option of mlnxofed_ib_install
 #             In order to distinguish which options are tranfered to Mellanox and which options are belong to mlnxofed_ib_install, any options wanted to transfered to Mellanox must follow behind -m and end with "-end-", for example:
-#      chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<path>/<OFED.ISO> -m --without-32bit --add-kernel-support --force -end-"   
+#      chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<path>/<OFED.ISO> -m --without-32bit --add-kernel-support --force -end-"
 #      1.4 do the diskfull installation
 #           nodeset <node> osimage=<osimage>  ......
 #
 #   2. install the ofed driver for diskless images:
 #      [NOTE] step 2.1 is only needed by redhat and sles
-#      2.1 copy the pkglist to the custom directory: 
+#      2.1 copy the pkglist to the custom directory:
 #            cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
-#         Edit your /install/custom/netboot/<ostype>/<profile>.pkglist and add: 
+#         Edit your /install/custom/netboot/<ostype>/<profile>.pkglist and add:
 #          #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
 #       2.2 Add to postinstall scripts
-#       Edit your /install/custom/netboot/<ostype>/<profile>.postinstall and add: 
+#       Edit your /install/custom/netboot/<ostype>/<profile>.postinstall and add:
 #          /install/postscripts/mlnxofed_ib_install -p /install/<path>/<OFED.ISO> -n genimage  -i $1
-#       2.3 Make sure the related osimage use the customized pkglist and customized compute.postinsall 
+#       2.3 Make sure the related osimage use the customized pkglist and customized compute.postinsall
 #          lsdef -t osimage -o  <osver>-<arch>-netboot-compute
 #       if not, change it:
 #           chdef  -t osimage -o <osver>-<arch>-netboot-compute pkglist=/install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist postinstall=/install/custom/netboot/<ostype>/<profile>.postinstall
@@ -72,7 +72,7 @@ declare -a MLNXOFED_OPTS
 function usage() {
     echo "Usage: mlnxofed_ib_install [-attribute]"
     echo "  attribute include:"
-    echo "    -h: print this help message"		
+    echo "    -h: print this help message"
     echo "    -p: the path where OFED file is saved. this is necessary attribute"
     echo "    -m: the options inputted into mlnxofedinstall script, defualt value are --without-32bit --without-fw-update --force"
     echo "    -i: the image root path. this is necessary attribute in diskless scenario"
@@ -88,7 +88,7 @@ do
             ;;
         "-m")
             shift
-            while [ "-end-" != "$1" ]
+            while [ "$#" -gt "0" -a "-end-" != "$1" ]
             do
                 MLNXOFED_OPTS=("${MLNXOFED_OPTS[@]}" "$1")
                 shift
@@ -135,6 +135,36 @@ echo "Mellanox OFED options are ${MLNXOFED_OPTS[@]}"
 echo "image root path is $IMGROOTPATH"
 echo "NODESETSTATE is $NODESETSTATE"
 
+function hack_uname()
+{
+    mv "$1/bin/uname" "$1/bin/uname.save"
+    cat <<-EOF >"$1/bin/uname"
+		#!/bin/sh
+		case "\$1" in
+		"-m")
+			ARCH="\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$("\$0" -r) --qf '%{arch}' 2>/dev/null)"
+			case "\$ARCH" in
+			"amd64")
+				ARCH="x86_64"
+				;;
+			"ppc64el")
+			        ARCH="ppc64le"
+				;;
+			esac
+			echo "\$ARCH"
+			;;
+		"-r")
+			cd /lib/modules && for d in * ; do : ; done && echo \$d
+			;;
+		"-s"|"")
+			echo "Linux"
+			;;
+		esac
+		exit 0
+		EOF
+
+    chmod 0755 "$1/bin/uname"
+}
 
 function cleanup()
 {
@@ -160,49 +190,52 @@ function cleanup()
         fi
         if [ -d "$IMGROOTPATH/tmp/ofed" ]; then
             rm -rf -- "$IMGROOTPATH/tmp/ofed"
-        fi        
+        fi
+        # Clean up the uname hacking
+        if [ -f "$IMGROOTPATH/bin/uname.save" ]; then
+            mv "IMGROOTPATH/bin/uname.save" "IMGROOTPATH/bin/uname"
+        fi
     fi
 
 }
-
 trap 'cleanup' 0
 
 
 if [ "$OS" = "Linux" ]; then
     if [ "$NODESETSTATE" = "install" -o "$NODESETSTATE" = "boot" ]; then
-	
+
         #if the host is ubuntn, need to do some network check and configuration
         if grep -q Ubuntu /etc/os-release 2>/dev/null
         then
             echo "$HOSTNAME 's operating system is Ubuntu."
             echo "If you want to install Mellanox_OFED in $HOSTNAME, $HOSTNAME must have ability to access ports.ubuntu.com"
             echo -n "checking $HOSTNAME 's ability to access ports.ubuntu.com..........."
-            if ping -c 3 ports.ubuntu.com > /dev/null;then 
+            if ping -c 3 ports.ubuntu.com > /dev/null;then
                 echo "[OK]"
             else
                 echo "[Failed]" >&2
                 echo "[Error] please make your $HOSTNAME has ability to access ports.ubuntu.com" >&2
                 exit 1
             fi
-                            
+
             cp /etc/apt/sources.list /etc/apt/sources.list.bak
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  /etc/apt/sources.list
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d"  /etc/apt/sources.list
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" /etc/apt/sources.list
             sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" /etc/apt/sources.list
-                    
+
             cat <<-EOF >>/etc/apt/sources.list
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe
 EOF
-                
+
             apt-get clean all
             sleep 1
             apt-get update
         fi
-		
+
         #  Being run from a stateful install postscript
         #  Copy ISO directly from the xCAT management node and install
         rm -rf -- /tmp/ofed
@@ -218,24 +251,24 @@ EOF
         if [ "$?" != "0" ]; then
             echo "[Error] Downloading Mellanox OFED file $OFED_NAME failed" >&2
             exit 1
-        fi        
+        fi
         if [ ! -f "/tmp/ofed/$OFED_NAME" ]; then
             echo "[Failed]" >&2
             exit 1
         fi
         echo "[OK]"
-		
+
         echo "Mounting Mellanox OFED file $OFED_NAME ........."
         mount -o loop "/tmp/ofed/$OFED_NAME"  /tmp/ofed/mountpoint
         if [ ! -f "/tmp/ofed/mountpoint/mlnxofedinstall" -o ! -x "/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
             echo "[Failed]" >&2
             exit 1
-        fi		
+        fi
         echo "[OK]"
 
         echo "Start Mellanox OFED installation ........."
         env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
-		
+
         #force openibd load all modules in need, restart again
         sleep 1
         service openibd restart
@@ -247,32 +280,34 @@ EOF
         if [ "$?" != "0" ] ;then
            echo "[Error] We are in trouble to mkdir $IMGROOTPATH/tmp/ofed/mountpoint, please check your node" >&2
            exit 1
-        fi  
+        fi
 
         echo "Mounting Mellanox OFED file $OFED_DIR/$OFED_NAME ........."
         mount -o loop "$OFED_DIR/$OFED_NAME"  "$IMGROOTPATH/tmp/ofed/mountpoint"
         if [ ! -f "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" -o ! -x "$IMGROOTPATH/tmp/ofed/mountpoint/mlnxofedinstall" ]; then
             echo "[Failed]" >&2
             exit 1
-        fi		
+        fi
         echo "[OK]"
 
         echo "Start Mellanox OFED installation ........."
-		
+
+        mount --bind  /dev   "$IMGROOTPATH/dev/"
+        mount --bind  /proc  "$IMGROOTPATH/proc/"
+        mount --bind  /sys   "$IMGROOTPATH/sys/"
+
+        hack_uname "${IMGROOTPATH}"
+             
         # Being called from <image>.postinstall script
         # Assume we are on the same machine
         if [ -f /etc/SuSE-release ]; then
-            mount --bind  /dev  "$IMGROOTPATH/dev/"
-            mount --bind  /sys  "$IMGROOTPATH/sys"
-            mount --bind  /proc "$IMGROOTPATH/proc"
-            chroot "$IMGROOTPATH" rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null 
-            chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
+            chroot "$IMGROOTPATH" rpm -e --noscripts --allmatches mlnx-ofa_kernel-kmp-default 2>/dev/null
+            chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null
         elif grep -q Ubuntu /etc/os-release 2>/dev/null; then
             echo "$HOSTNAME 's operating system is Ubuntu."
             echo "If you want to install Mellanox_OFED in $HOSTNAME, $HOSTNAME must have ability to access ports.ubuntu.com"
             echo -n "checking $HOSTNAME 's ability to access ports.ubuntu.com..........."
-            if ping -c 3 ports.ubuntu.com > /dev/null; then 
+            if ping -c 3 ports.ubuntu.com > /dev/null; then
                 echo "[OK]"
             else
                 echo "[Failed]" >&2
@@ -283,63 +318,27 @@ EOF
             sourceslist="$IMGROOTPATH/etc/apt/sources.list"
             cp "$sourceslist" "${sourceslist}.bak"
 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" $sourceslist 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist 
-                    
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist
+
             cat <<-EOF >>"$sourceslist"
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
 deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe
 EOF
-                
+
             chroot "$IMGROOTPATH" apt-get clean all
             sleep 1
             chroot "$IMGROOTPATH" apt-get update
-            mount --bind  /dev   "$IMGROOTPATH/dev/"
-            mount --bind  /proc  "$IMGROOTPATH/proc/" 
-            mount --bind  /sys   "$IMGROOTPATH/sys/"
 
-            mv "${IMGROOTPATH}/bin/uname" "${IMGROOTPATH}/bin/uname.nouse"
-            cat <<-EOF >"${IMGROOTPATH}/bin/uname"
-		#!/bin/sh 
-		case "\$1" in
-		"-m")
-			ARCH="\$(dpkg --print-architecture || rpm -q kernel-\$("\$0" -r) --qf '%{arch}')"
-			case "\$ARCH" in
-			"amd64")		
-				ARCH="x86_64"
-				;;
-			"ppc64el")
-			        ARCH="ppc64le"		
-				;;	
-			esac
-			echo "\$ARCH"	
-			;;
-		"-r")	
-			cd /lib/modules && for d in * ; do : ; done && echo \$d	
-			;;
-		"-s"|"")
-			echo "Linux"	
-			;;
-		esac
-		exit 0
-		EOF
-
-            chmod 0755 "${IMGROOTPATH}/bin/uname"
-             
             chroot "$IMGROOTPATH" sh -c 'apt-get install -y linux-headers-$(uname -r)'
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
-			
-            mv "${IMGROOTPATH}/bin/uname.nouse" "${IMGROOTPATH}/bin/uname"
-        else
-            chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null 
-            chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
-            
+        else #for rhels
+            chroot "$IMGROOTPATH" rpm -e --nodeps --allmatches libibverbs 2>/dev/null
         fi
+        chroot "$IMGROOTPATH" env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
     fi
 fi
-
