@@ -165,7 +165,7 @@ Execute steps on xCAT MN rhmn1
     "4.8",,,"litetree",,,,"allow",,
     "6","hpcpeadmin",,,,,,"allow",,
 
-#. Make sure xCAT commands are in the user's path ::
+#. Make sure xCAT commands are in the users path ::
 
     # su - hpcpeadmin
     $ echo $PATH | grep xcat

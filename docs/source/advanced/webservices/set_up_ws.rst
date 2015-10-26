@@ -122,7 +122,7 @@ Create new user and setup the password and policy rules. ::
 
 Note: in the tabch command above you can put the salted password (from /etc/shadow) in the xCAT passwd table instead of the clear text password, if you prefer. 
 
-Create the SSL certificate under that user's home directory so that user can be authenticated to xCAT. This is done by running the following command on the Management node as root: ::
+Create the SSL certificate under that users home directory so that user can be authenticated to xCAT. This is done by running the following command on the Management node as root: ::
 
 		/opt/xcat/share/xcat/scripts/setup-local-client.sh <username>
 
