@@ -14,14 +14,12 @@ MySQL or MariaDB
 
 * Follow this documentation and be sure to use the xCAT provided mysqlsetup
   command to setup the database for xCAT:
-  .. TODO http link
 
-  - `Setting_Up_MySQL_as_the_xCAT_DB <http://localhost/fake_todo>`_
+  -  :doc:`/guides/admin-guides/large_clusters/databases/mysql_install`
 
 PostgreSQL:
 -----------
 * Follow this documentation and be sure and use the xCAT provided pgsqlsetup
   command to setup the database for xCAT:
-  .. TODO http link
 
-  - `Setting_Up_PostgreSQL_as_the_xCAT_DB <http://localhost/fake_todo>`_
+  -  :doc:`/guides/admin-guides/large_clusters/databases/postgres_install`
