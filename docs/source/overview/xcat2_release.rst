@@ -1,11 +1,14 @@
+xCAT2 Release Information
+=========================
+
 The following table is a summary of the New Operating System, New Hardware and New features that are supported in certain xCAT release.
 
 The New OS and New Hardware which listed in the table have been fully tested. The OS which comes with the same source code or Hardware comes with the same CPU should also work, but you need to try it by yourself.
 
 For a complete list of new functions, bug fixes, restrictions, and known problems, refer to the individual release notes.
 
-xCAT 2.10 Releases
-==================
+xCAT 2.10.x
+-----------
 
 +------------------------------+---------------+-------------+----------------------------------+
 |xCAT                          |New OS         |New          |New Feature                       |
@@ -27,8 +30,8 @@ xCAT 2.10 Releases
 |                              |               |             |- nodeset only accecpt osimage=   |
 +------------------------------+---------------+-------------+----------------------------------+
 
-xCAT 2.9 Releases
-=================
+xCAT 2.9.x
+----------
 
 +------------------------------+---------------+-------------+----------------------------------+
 |xCAT                          |New OS         |New          |New Feature                       |
@@ -58,8 +61,8 @@ xCAT 2.9 Releases
 |                              |               |             |                                  |
 +------------------------------+---------------+-------------+----------------------------------+
 
-xCAT 2.8 Releases
-=================
+xCAT 2.8.x 
+----------
 
 +------------------------------+---------------+-------------+----------------------------------+
 |xCAT                          |New OS         |New          |New Feature                       |
@@ -110,8 +113,8 @@ xCAT 2.8 Releases
 |                              |               |             |- updatenode enhancements         |
 +------------------------------+---------------+-------------+----------------------------------+
 
-xCAT 2.7 Releases
-=================
+xCAT 2.7.x
+----------
 
 +------------------------------+---------------+-------------+----------------------------------+
 |xCAT                          |New OS         |New          |New Feature                       |
