@@ -220,13 +220,13 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
    When you manage a cluster which has hundreds or thousands of nodes, you always need to do something for a bunch of nodes in parallel. xCAT has some parallel commands can help you on these task.
 
-     * Parallel Shell
+     * Parallel shell
      * Parallel copy
      * parallel ping
 
    Refer to the doc: :doc:`Parallel Commands <../guides/admin-guides/manage_clusters/ppc64le/parallel_cmd>` to learn how to use parallel commands.
 
-#. Contribute to xCAT (OPtional)
+#. Contribute to xCAT (Optional)
 
    During your using of xCAT, if you find something (code, document ...) that can be improved and you want to contribute that to xCAT, please do that for the behalf of yours and other xCAT user's. And welcome to xCAT community!
 
