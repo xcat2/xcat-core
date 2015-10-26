@@ -13,7 +13,7 @@ MySQL or MariaDB
 ----------------
 
 * Follow this documentation and be sure to use the xCAT provided mysqlsetup
-  command to setup the database for xCAT 3:
+  command to setup the database for xCAT:
 
   -  :doc:`/guides/admin-guides/large_clusters/databases/mysql_install`
 
