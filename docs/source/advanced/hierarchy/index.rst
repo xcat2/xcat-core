@@ -5,7 +5,7 @@ Hierarchical Clusters
    :maxdepth: 2
 
    introduction.rst
-   setup_mn_hierachical_database.rst
+   setup_mn_hierarchical_database.rst
    define_service_node.rst
    configure_dhcp.rst
    setup_service_node.rst
