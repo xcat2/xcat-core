@@ -193,7 +193,7 @@ function cleanup()
         fi
         # Clean up the uname hacking
         if [ -f "$IMGROOTPATH/bin/uname.save" ]; then
-            mv "IMGROOTPATH/bin/uname.save" "IMGROOTPATH/bin/uname"
+            mv "$IMGROOTPATH/bin/uname.save" "$IMGROOTPATH/bin/uname"
         fi
     fi
 
