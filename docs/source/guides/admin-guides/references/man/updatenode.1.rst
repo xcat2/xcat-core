@@ -1,3 +1,4 @@
+.. _updatenode_target:
 
 ############
 updatenode.1
