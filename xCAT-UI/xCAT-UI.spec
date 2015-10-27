@@ -4,7 +4,7 @@ Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
 License: EPL
 Group: Applications/System
-URL: http://xcat.sourceforge.net/
+URL: http://xcat.org
 Packager: IBM
 Vendor: IBM
 

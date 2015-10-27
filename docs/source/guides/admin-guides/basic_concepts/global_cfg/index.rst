@@ -10,7 +10,7 @@ Database Attributes
 -------------------
 
 * excludenodes: 
-  A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes for any xCAT commands. See the [TODO noderange] manpage for details on supported formats.
+  A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes for any xCAT commands. See :doc:`noderange </guides/admin-guides/references/man3/noderange>` for details on supported formats.
 
 * nodestatus:  
   If set to ``n``, the ``nodelist.status`` column will not be updated during the node deployment, node discovery and power operations. The default is to update.

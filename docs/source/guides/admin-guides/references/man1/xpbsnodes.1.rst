@@ -24,11 +24,12 @@ SYNOPSIS
 \ **xpbsnodes**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
 
 
-*******************************************************************************************************
+***********
 DESCRIPTION
-\ **xpbsnodes**\  is a front-end to PBS pbsnode but uses xCAT's noderange to specify nodes.
-*******************************************************************************************************
+***********
 
+
+\ **xpbsnodes**\  is a front-end to PBS pbsnode but uses xCAT's noderange to specify nodes.
 
 
 *******

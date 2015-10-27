@@ -14,7 +14,7 @@ confluent
 rpms
 ~~~~
 
-The latest confluent rpms are built and provided for your convenience:  `confluent rpms <https://sourceforge.net/projects/xcat/files/confluent/rpms>`_.  However, the rpms are not built on a regular release schedule.  To use the latest code base, consider building the rpms from :ref:`label_confluent_source`.
+The latest confluent rpms are built and provided for your convenience:  `confluent rpms <http://xcat.org/files/confluent/confluent/rpms/>`_.  However, the rpms are not built on a regular release schedule.  To use the latest code base, consider building the rpms from :ref:`label_confluent_source`.
 
 The following example downloads the confluent tar package and creates a local repository on your management node::
 
@@ -45,7 +45,7 @@ To build from source, ensure your machine has the correct development packages t
 confluent-dep
 -------------
 
-The latest confluent dependency packages are provided for your convenience: `confluent-deps <http://sourceforge.net/projects/xcat/files/confluent-dep/>`_ 
+The latest confluent dependency packages are provided for your convenience: `confluent-deps <http://xcat.org/files/confluent/confluent-dep/>`_ 
 
 The following example describes the steps for **rhels7.1** on **ppc64le**::
 
@@ -57,7 +57,7 @@ The following example describes the steps for **rhels7.1** on **ppc64le**::
     ./mklocalrepo.sh 
 
 **Note:** If the OS/architecture you are looking for is not provided under confluent-dep, 
-please send an email to the xcat-users mailing list: xcat-users@lists.sourceforge.net
+please send an email to the xcat-user mailing list: xcat-user@lists.sourceforge.net
 
 
 Install 
@@ -157,7 +157,7 @@ Now point your browser to: ``http://<server ip>:<port>`` and log in with the non
 Confluent consoles
 ==================
 
-confluent-web is provided in a subdirectory under the confluent project `confluent_web <https://sourceforge.net/p/xcat/confluent/ci/master/tree/confluent_web/>`_
+confluent-web is provided in a subdirectory under the confluent project `confluent_web <https://github.com/xcat2/confluent/tree/master/confluent_web/>`_
 
 Download the content of that directory to ``/var/www/html/confluent`` and point your browser to::
 

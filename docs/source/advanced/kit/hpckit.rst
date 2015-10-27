@@ -179,13 +179,13 @@ IBM Compilers
 
 XLC and XLF software kits are available for Linux XLC 12.1.0.3 and XLF 14.1.0.3, and newer releases on System P.
 
-For XLC 13.1.1.0 and XLF 15.1.1.0, xCAT ships partial software kits for Ubuntu on sourceforge:
+For XLC 13.1.1.0 and XLF 15.1.1.0, xCAT ships partial software kits for Ubuntu at:
 
-  https://sourceforge.net/projects/xcat/files/kits/hpckits/2.9/Ubuntu/ppc64_Little_Endian/
+  http://xcat.org/files/xcat/kits/hpckits/2.9/Ubuntu/ppc64_Little_Endian/
 
-For XLC 13.1.2.0 and XLF 15.1.2.0, xCAT ships partial software kits for rhels7.2 on github
+For XLC 13.1.2.0 and XLF 15.1.2.0, xCAT ships partial software kits for RHEL 7.2 at:
 
-  http://xcat.org/files/kits/hpckits/2.11/rhels7.2/ppc64le/
+  http://xcat.org/files/xcat/kits/hpckits/2.11/rhels7.2/ppc64le/
   
 For older Linux releases on System P, and for AIX, use the xCAT HPC Integration Support
 
