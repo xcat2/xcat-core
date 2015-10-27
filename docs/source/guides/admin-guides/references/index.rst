@@ -13,7 +13,10 @@ xCAT Man Pages
    :maxdepth: 1
    :glob:
 
-   man/*
+   man1/index.rst
+   man3/index.rst
+   man5/index.rst
+   man8/index.rst
         
 
 xCAT Database Tables
