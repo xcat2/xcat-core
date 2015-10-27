@@ -130,7 +130,7 @@ matches the service node's OS architecture.
   repository, you will need to download the ``xcat-core`` and ``xcat-dep`` tarballs
 
   - From http://xcat.org/download.html, download the ``xcat-core`` and ``xcat-dep`` tarball files.  
-    Please these into you ``otherpkgdir`` directory. 
+    Copy these into a subdirectory in the ``otherpkgdir`` directory. 
 
     ::
 
