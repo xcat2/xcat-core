@@ -18,7 +18,7 @@ The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc
 
 Before packing the diskless image, you have the opportunity to change any files in the image by changing to the ``rootimgdir`` and making modifications.  (e.g. ``/install/netboot/rhels7.1/ppc64le/compute/rootimg``). 
 
-However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable.Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
+However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable.Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
 
 
 Pack Diskless Image
