@@ -84,9 +84,7 @@ To set up the minimum recommended services on the service nodes: ::
 
 .. TODO
 
-See the setup* attributes in the `node object definition man page
-<http://localhost/fake_todo>`_  for the services available. (The HTTP server
-is also started when setupnfs is set.)
+See the ``setup*`` attributes in the :doc:`node manpage </guides/admin-guides/references/man7/node.7>` for the services available. (The HTTP server is also started when setupnfs is set.)
 
 If you are using the setupntp postscript on the compute nodes, you should also
 set setupntp=1. For clusters with subnetted management networks (i.e. the
