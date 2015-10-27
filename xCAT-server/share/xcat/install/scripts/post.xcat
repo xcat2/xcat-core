@@ -19,6 +19,9 @@ if [ -z "$TFTPDIR" ]; then
 
     TFTPDIR="/tftpboot"
 fi
+if [[ $TFTPDIR != /* ]]; then
+    TFTPDIR="/"$TFTPDIR
+fi
 
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
