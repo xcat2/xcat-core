@@ -179,8 +179,8 @@ function cleanup()
         if mount |grep "$IMGROOTPATH/tmp/ofed/mountpoint"; then
            umount "$IMGROOTPATH/tmp/ofed/mountpoint"
         fi
-        if mount |grep "$IMGROOTPATH/dev/"; then
-           umount "$IMGROOTPATH/dev/"
+        if mount |grep "$IMGROOTPATH/dev"; then
+           umount "$IMGROOTPATH/dev"
         fi
         if mount |grep "$IMGROOTPATH/sys"; then
            umount "$IMGROOTPATH/sys"
