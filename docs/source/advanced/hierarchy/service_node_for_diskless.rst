@@ -126,27 +126,27 @@ matches the service node's OS architecture.
     cp -Rp <current location of xcat-core>/xcat-core
     cp -Rp <current location of xcat-dep>/xcat-dep
 
-* If you installed your management node directly from the Linux online
-  repository, you will need to download the xcat-core and xcat-dep tarballs
+* If you installed your management node directly from the online
+  repository, you will need to download the ``xcat-core`` and ``xcat-dep`` tarballs
 
-  - Go to the `Download xCAT page  <http://localhost/fake_todo>`_ and download
-    the level of xCAT tarball you desire.
-  - Go to the `Download xCAT Dependencies  <http://localhost/fake_todo>`_ page
-    and download the latest xCAT dependency tarball. Place these into your
-    otherpkdir directory:
+  - From http://xcat.org/download.html, download the ``xcat-core`` and ``xcat-dep`` tarball files.  
+    Please these into you ``otherpkgdir`` directory. 
 
     ::
 
       lsdef -t osimage -o rhels6.3-ppc64-netboot-service -i otherpkgdir
       Object name: rhels6.3-ppc64-netboot-service
           otherpkgdir=/install/post/otherpkgs/rhels6.3/ppc64
+          
       cd /install/post/otherpkgs/rhels6.3/ppc64
       mkdir xcat
       cd xcat
-      mv <xcat-core tarball>  .
-      tar -jxvf <xcat-core tarball>
-      mv <xcat-dep tarball>   .
-      tar -jxvf <xcat-dep tarball>
+      
+      # copy the <xcat-core> and <xcat-deb> tarballs here
+      
+      # extract the tarballs
+      tar -jxvf <xcat-core>.tar.bz2
+      tar -jxvf <xcat-dep>.tar.bz2
 
 * Run image generation for your osimage definition:
 
