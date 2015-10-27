@@ -1,7 +1,7 @@
 Generate Diskless Image
 =======================
 
-The copycds command copies the contents of the linux distro media to /install/<os>/<arch> so that it will be available to install nodes with or create diskless images.  After you execute copycds, there are several osimage definition created.You can run "tabdump osimage" to get the default osimage definition: ::
+The ``copycds`` command copies the contents of the Linux media to ``/install/<os>/<arch>`` so that it will be available for installing nodes or creating diskless images.  After executing ``copycds``, there are serveral ``osimage`` definitions created by default.  Run ``tabdump osimage`` to view these images: ::
 
         tabdump osimage 
    
@@ -12,21 +12,21 @@ The output should be similar to the following: ::
         "rhels7.1-ppc64le-stateful-mgmtnode",,"compute","linux",,"install",,"rhels7.1-ppc64le",,,"Linux","rhels7.1","ppc64le",,,,,,,,
         "rhels7.1-ppc64le-netboot-compute",,"compute","linux",,"netboot",,"rhels7.1-ppc64le",,,"Linux","rhels7.1","ppc64le",,,,,,,,
 
-"rhels7.1-ppc64le-netboot-compute" is the default rhels7.1 ppc64le diskless osimage definition. Run genimage to generate the image based on the "rhels7.1-ppc64le-netboot-compute"  definition: ::
+The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc64le.  Run ``genimage`` to generatea diskless image based on the "rhels7.1-ppc64le-netboot-compute" definition: ::
 
-        genimage "rhels7.1-ppc64le-netboot-compute"
+        genimage rhels7.1-ppc64le-netboot-compute
 
-Before you pack the image, you have the opportunity to change any files in the image, by cd'ing to the rootimgdir (e.g./install/netboot/rhels7.1/ppc64le/compute/rootimg). Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.Refer to :ref:`Using-Prescript-label:` for more details.
+Before packing the diskless image, you have the opportunity to change any files in the image by changing to the ``rootimgdir`` and making modifications.  (e.g. ``/install/netboot/rhels7.1/ppc64le/compute/rootimg``). 
+
+However it's recommended that all changes to the image are made via post install scripts so that it's easily repeatable.Although, instead, we recommend that you make all changes to the image via your postinstall script, so that it is repeatable.  Refer to :doc:`guides/admin-guides/manage_clusters/ppc64le/diskless/customize_image/pre_post_script` for more details.
 
 
 Pack Diskless Image
 ===================
 
-After you run genimage to create the image, you can go ahead to pack the image to create the ramdisk: ::
+After you run ``genimage`` to create the image, you can go ahead to pack the image to create the ramdisk: ::
 
-        packimage "rhels7.1-ppc64le-netboot-compute"
-
-After you pack the image, you can go ahead to run nodeset to initialize the diskless installation. Refer to :doc:`deploy_os.rst` for details.
+        packimage rhels7.1-ppc64le-netboot-compute
 
 Export and Import Image
 =======================
