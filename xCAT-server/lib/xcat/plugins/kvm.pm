@@ -2038,7 +2038,13 @@ sub chvm {
                my ($left,$right)=($1,$2);
                @pcpumaparr[$left .. $right]=(1) x ($right-$left+1); 
              }elsif($rangeslice =~ /^\^(\d*)$/){
-               $pcpumaparr[$1]=0;
+               if($pcpumaparr[$1]==0){
+                 xCAT::SvrUtils::sendmsg([1,"\'$rangeslice\' is ignored, please make sure the specified cpu set is correct"],$callback,$node);
+                 return;
+               }else{
+                 $pcpumaparr[$1]=0;
+               }
+
              }elsif($rangeslice =~ /^(\d*)$/){
                $pcpumaparr[$1]=1;
              }
