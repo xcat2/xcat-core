@@ -7,7 +7,7 @@ Overview
 
 xCAT supports a unique software bundling concept called kits. A software kit combines all of the required product packages with configuration information, scripts, and other files to easily install a software product onto an xCAT node or in an xCAT OS image based on the role that node performs in the cluster. A software kit is made up of a collection of kit components, each of which is tailored to one specific environment for that particular version of the product.
 
-A software kit is available as a tar file that is downloaded and added to your xCAT management node. The kit components resident in that kit can then be added to an existing xCAT OS image definition and then either be installed on a statefull node during node deployment, added to an active statefull node with the updatenode command, or built into a diskless OS image with the genimage command.
+A software kit is available as a tar file that is downloaded and added to your xCAT management node. The kit components resident in that kit can then be added to an existing xCAT OS image definition and then either be installed on a stateful node during node deployment, added to an active stateful node with the updatenode command, or built into a diskless OS image with the genimage command.
 
 Typically, a software kit will contain all of the product package files. However, in some instances, software kits may be delivered as partial or incomplete kits, and not be bundled with all of the product packages. You will then need to obtain your product packages through your reqular distribution channels, download them to a server along with the partial kit, and run the buildkit addpkgs command to build a complete kit that can be used by xCAT.
 
@@ -46,7 +46,7 @@ Software Kits are deployed to xCAT nodes through the standard xCAT OS image depl
 
 When a kitcomponent is added to an OS image definition, these attributes are automatically updated.
 
-User can then use the genimage command to install the kitcomponents into the diskless OS image, the standard node deployment process for statefull nodes, or the xCAT updatenode command to update the OS on an active compute node. Since the kitcomponent meta package defines the product packages as dependencies, the OS package manager (yum, zypper, apt-get) automatically installs all the required product packages during the xCAT otherpkgs install process.
+User can then use the genimage command to install the kitcomponents into the diskless OS image, the standard node deployment process for stateful nodes, or the xCAT updatenode command to update the OS on an active compute node. Since the kitcomponent meta package defines the product packages as dependencies, the OS package manager (yum, zypper, apt-get) automatically installs all the required product packages during the xCAT otherpkgs install process.
 
 Kit Frameworks
 --------------

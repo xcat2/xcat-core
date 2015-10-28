@@ -31,7 +31,7 @@ DESCRIPTION
 
 The imgimport command will import an image that has been exported by \ *imgexport*\  from xCAT.  This is the easiest way to transfer/backup/, change or share images created by xCAT whether they be stateless or stateful. The bundle file will be unpacked in the current working directory. The xCAT configuration such as \ *osimage*\  and \ *linuximage*\  tables will then be updated.
 
-For statefull, the following files will be copied to the appropriate directories.
+For stateful, the following files will be copied to the appropriate directories.
   x.pkglist
   x.otherpkgs.pkglist
   x.tmpl
@@ -71,7 +71,7 @@ If -f flag is not specified, all the files will be copied to the same directorie
 
 After this command, you can run the \ *nodeset*\  command and then start deploying the nodes. You can also choose to modify the files and run the following commands before the node depolyment.
 
-For statefull:
+For stateful:
   nodeset
 
 For stateless: 
