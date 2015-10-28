@@ -2,8 +2,11 @@
 
 # xCAT documentation is hosted at http://xcat-docs.readthedocs.org/
 #
-# You can download copies of the documentation in PDF or HTML from Read The Docs
+# Documentation can be downloaded for offline viewing from ReadTheDocs
+# https://media.readthedocs.org/pdf/xcat-docs/latest/xcat-docs.pdf
 
-print "This command has been deprecetaed.\n\n";
-print "xCAT documentation is available at: http://xcat-docs.readthedocs.org/\n";
-print "Versions of the documentation can be downloaded for offline viewing from ReadTheDocs\n";
+print "This command has been deprecated.\n\n";
+print "xCAT documentation is available at: http://xcat-docs.readthedocs.org/\n\n";
+
+print "Documentation can be downloaded for offline viewing from ReadTheDocs.\n";
+print "\tPDF: https://media.readthedocs.org/pdf/xcat-docs/latest/xcat-docs.pdf\n";
