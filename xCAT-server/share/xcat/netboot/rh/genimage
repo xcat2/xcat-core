@@ -357,7 +357,6 @@ unless ($onlyinitrd) {
         %extra_hash = imgutils::get_package_names($otherpkglist);
     }
     my %extrapkgnames; 
-
     my %repohash;
     if (keys(%extra_hash) > 0) {
         open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
@@ -393,6 +392,11 @@ unless ($onlyinitrd) {
 #        for (1..$index) {
 #            $yumcmd .= "--enablerepo=otherpkgs$_ ";
 #        }
+
+        # Hack uname when deal otherpkgs
+        use_hackuname();
+        use_devnull();
+
 
         foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
             $yumcmd = $yumcmd_base;
@@ -438,6 +442,8 @@ unless ($onlyinitrd) {
                 my $rc = system("$envlist $yumcmd");
                 if ($rc) {
                     print "yum invocation failed\n";
+                    # remove the hacked uname file
+                    unuse_hackuname();
                     exit 1;
                 }
             } else {
@@ -466,6 +472,10 @@ unless ($onlyinitrd) {
                 $rc = system("$yumcmd_update");
             }
         }
+ 
+        # use the original uname binary
+        unuse_hackuname();
+
     }
     # ignore any return code
     postscripts(); #run 'postscripts'
@@ -2109,6 +2119,57 @@ sub load_dd ()
 
     return @dd_drivers;
 }
+
+sub use_devnull {
+    if ( -e "$rootimg_dir/dev/null" and ! -c "$rootimg_dir/dev/null" ) {
+        system("rm -f $rootimg_dir/dev/null");
+    }
+    if (! -e "$rootimg_dir/dev/null") {
+        system("mknod $rootimg_dir/dev/null c 1 3");
+    }
+}
+
+#To hack the uname, same function with the one in ubuntu genimage
+sub use_hackuname {
+    unless ( -e "$rootimg_dir/bin/uname-binary") {
+        if ( -e -x "$rootimg_dir/bin/uname" ) {
+            move("$rootimg_dir/bin/uname", "$rootimg_dir/bin/uname-binary");
+        }
+    }
+    
+    my $unamefile;
+    open($unamefile, ">", "$rootimg_dir/bin/uname");
+    print $unamefile <<UNAME_FILE;
+#!/bin/bash
+
+case "\$1" in 
+"-m")
+    ARCH=\"\$(dpkg --print-architecture 2>/dev/null || rpm -q kernel-\$(\"\$0\" -r) --qf '%{arch}' 2>/dev/null)\" 
+    case "\$ARCH" in 
+        "amd64") ARCH="x86_64" ;;
+        "ppc64el") ARCH="ppc64le" ;;
+        esac
+    echo "\$ARCH" ;;
+"-r")
+    cd /lib/modules && for d in * ; do : ; done && echo \$d ;; 
+"-s"|"")
+    echo "Linux";;
+    esac
+    exit 0
+
+UNAME_FILE
+    close $unamefile;
+    chmod(0755, "$rootimg_dir/bin/uname");
+}
+sub unuse_hackuname {
+    if ( -e "$rootimg_dir/bin/uname" ) {
+        system("rm -fr $rootimg_dir/bin/uname");
+    }
+    if ( -e -x "$rootimg_dir/bin/uname-binary") {
+        move("$rootimg_dir/bin/uname-binary", "$rootimg_dir/bin/uname");  
+    }
+}
+
 
 sub usage {
     print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <osver> -p <profile> -k <kernelver> [--permission <permission>] [--interactive]'."\n";

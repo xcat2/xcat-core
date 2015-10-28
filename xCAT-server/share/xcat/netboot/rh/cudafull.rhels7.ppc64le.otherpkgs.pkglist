@@ -1,4 +1,3 @@
-#INCLUDE:compute.rhels7.ppc64.pkglist#
 
 #For Cuda 7.5
 kernel-devel
