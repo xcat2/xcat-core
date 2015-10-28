@@ -15,7 +15,7 @@ Or, if know the basename of the kitcomponent, simply: ::
 
   rmkitcomp -i <image> <kitcompent basename>
 
-Note that this ONLY removes the kitcomponent from the image definition in the xCAT database, and it will NOT remove any product packages from the actual OS image. To set up for an uninstall of the kitcomponent from the diskless image or the statefull node, specify the uninstall option: ::
+Note that this ONLY removes the kitcomponent from the image definition in the xCAT database, and it will NOT remove any product packages from the actual OS image. To set up for an uninstall of the kitcomponent from the diskless image or the stateful node, specify the uninstall option: ::
 
   rmkitcomp -u -i <image> <kitcomponent>
 

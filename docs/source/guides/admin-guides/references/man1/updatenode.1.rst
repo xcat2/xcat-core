@@ -49,7 +49,7 @@ to perform the following node updates:
 
 2
  
- Install or update software on diskfull nodes.
+ Install or update software on diskful nodes.
  
 
 
@@ -114,7 +114,7 @@ The basic process for distributing and synchronizing nodes is:
 
 
 Files may be distributed and synchronized for both diskless and 
-diskfull nodes.  Syncing files to NFS-based statelite nodes is not supported.
+diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
 
 More information on using the  synchronization file function is in  
  the following doc: Using_Updatenode.
@@ -180,7 +180,7 @@ updatenode noderange -P "ospkgs --keeprepo,otherpkgs"
 
 \ **For AIX systems:**\ 
 
-Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
+Note: The updatenode command is used to update AIX diskful nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
 For information on updating software on AIX cluster:
 For diskful installs, read:
 XCAT_AIX_RTE_Diskfull_Nodes
@@ -215,7 +215,7 @@ executed on the nodes. The order of the scripts in the list
 determines the order in which they will be run.  You can use the 
 lsdef command to check the postscript order.
 
-Scripts can  be run on both diskless and diskfull nodes.
+Scripts can  be run on both diskless and diskful nodes.
 
 To run all the customization scripts that have been designated 
 for the nodes, (in the "postscripts and postbootscripts" attributes), type:
