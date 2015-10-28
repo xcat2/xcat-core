@@ -16,20 +16,20 @@
 #   Copy the xCAT mlnxofed_ib_install script file to postscripts directory: 
 #      cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install /install/postscripts/mlnxofed_ib_install
 #
-#   1. install the ofed driver for diskful node
-#      1.1 set the postscript as one postbootscripts for the node
+#   1. Install the ofed driver for diskful node
+#      1.1 Set the postscript as one postbootscripts for the node
 #              chdef xcat01 -p postbootscripts=mlnxofed_ib_install,configiba
-#      1.2  copy the pkglist to the custom directory: 
-#               cp /opt/xcat/share/xcat/install/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
-#           Edit your /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist and add: 
-#               #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
+#      1.2 Copy the pkglist to the custom directory: 
+#              cp /opt/xcat/share/xcat/install/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
+#          Edit your /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist and add: 
+#              #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
 #      1.3 Make sure the related osimage use the customized pkglist. 
 #             lsdef -t osimage -o  <osver>-<arch>-install-compute
 #          if not, change it:
 #             chdef  -t osimage -o <osver>-<arch>-install-compute pkglist=/install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
-#      1.4 do the diskful installation
+#      1.4 Do the diskful installation
 #   2. install the ofed driver for diskless images:
-#      2.1 copy the pkglist to the custom directory: 
+#      2.1 Copy the pkglist to the custom directory: 
 #              cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
 #          Edit your /install/custom/netboot/<ostype>/<profile>.pkglist and add: 
 #              #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#
@@ -40,9 +40,10 @@
 #              lsdef -t osimage -o  <osver>-<arch>-netboot-compute
 #          if not, change it:
 #              chdef  -t osimage -o <osver>-<arch>-netboot-compute pkglist=/install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist postinstall=/install/custom/netboot/<ostype>/<profile>.postinstall
-#      2.4 run genimage
+#      2.4 Run genimage
 #              genimage <osver>-<arch>-netboot-compute
-#          You can get more info at: http://xcat-docs.readthedocs.org/
+#
+#   You can obtain more information at: http://xcat-docs.readthedocs.org/
 #
 
 OS=`uname`
