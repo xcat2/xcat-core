@@ -4,4 +4,5 @@ GPUs
 .. toctree::
    :maxdepth: 2
 
-   cuda.rst 
+   cuda_rhel.rst
+   cuda_ubuntu.rst
