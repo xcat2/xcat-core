@@ -3,7 +3,7 @@ Ubuntu 14.04.3
 
 NVIDIA supports two types of debian repositories that can be used to install Cuda Toolkit: **local** and **network**.  You can download the installers from https://developer.nvidia.com/cuda-downloads.
 
-local
+Local
 -----
 
 A local package repo will contain all of the cuda packages.  
@@ -17,7 +17,7 @@ Extract the cuda packages into ``/install/cuda-repo/ppc64le``: ::
     dpkg -x /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb /install/cuda-repo/ppc64le
     
 
-network
+Network
 -------
 
 The online package repo provides a source list entry pointing to a URL containing the CUDA packages.  This can be used directly on the Compute Nodes.

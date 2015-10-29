@@ -144,15 +144,3 @@ cudaruntime
     packimage ubuntu14.04.3-ppc64el-netboot-cudaruntime
 
 
-Install NVIDIA Management Library (optional)
---------------------------------------------
-
-See https://developer.nvidia.com/nvidia-management-library-nvml for more information.
-
-The .run file can be downloaded from NVIDIAs website and placed into the ``/install/postscripts`` directory on the Management Node. 
-
-To enable installation of the management library after the node is install, add the runfile to the ``postbootscripts`` attribute for the nodes: :: 
-
-   chmod +x /install/postscripts/<gpu_deployment_kit>.run
-   chdef -t node -o <noderange> -p postbootscripts=<gpu_deployment_kit>.run \
-   --silent --installdir=<your_desired_install_dir>
