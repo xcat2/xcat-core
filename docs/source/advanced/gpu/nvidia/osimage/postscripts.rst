@@ -8,21 +8,9 @@ Setting PATH and LD_LIBRARY_PATH
 
 NVIDIA recommends various post-installation actions that should be performed to properly configure the nodes.  A sample script is provided by xCAT for this purpose ``config_cuda`` and can be modified to fit your specific installation.
 
-The ``config_cuda`` script sets the PATH and LD_LIBRARY_PATH: ::
+Add this script to your node object using the ``chdef`` command: ::
 
-    #!/bin/sh
-
-    # set the paths required for cuda7.5
-    CUDA_VER="cuda-7.5"
-    FILENAME="/etc/profile.d/xcat-${CUDA_VER}.sh"
-    
-    echo "export PATH=/usr/local/${CUDA_VER}/bin:\$PATH" > ${FILENAME}
-    echo "export LD_LIBRARY_PATH=/usr/local/${CUDA_VER}/lib64:\$LD_LIBRARY_PATH" >> ${FILENAME}
-
-
-Add this script to your node object using the chdef command: ::
-
-    chdef -t node -o <noderange> -p postscripts=/install/postscripts/config_cuda
+    chdef -t node -o <noderange> -p postscripts=config_cuda
 
 
 Setting GPU Configurations

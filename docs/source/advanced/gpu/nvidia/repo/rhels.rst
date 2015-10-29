@@ -23,8 +23,8 @@ RHEL 7.2 LE
     cd /install/cuda-repo/cuda-deps
 
     # Copy the DKMS rpm to this directory 
-    ls -ltr /install/cuda-repo/cuda-deps
-    -rw-r--r-- 1 root root 79048 Oct  5 10:58 dkms-2.2.0.3-30.git.7c3e7c5.el7.noarch.rpm  
+    ls
+    dkms-2.2.0.3-30.git.7c3e7c5.el7.noarch.rpm  
 
     # Execute createrepo in this directory 
     createrepo .
