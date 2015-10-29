@@ -12,7 +12,7 @@ Differentiators
 
 * Support Multiple OS
 
-  RH, Sles, Ubuntu, Debian, CentOS, Fedora, Scientific Linux, Oracle Linux, Windows, Esxi, RHEV
+  RHEL, SLES, Ubuntu, Debian, CentOS, Fedora, Scientific Linux, Oracle Linux, Windows, Esxi, RHEV
 
 * Support Multiple Hardware
 
