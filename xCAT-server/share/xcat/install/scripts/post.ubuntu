@@ -96,7 +96,7 @@ do
                        msgutil_r "$MASTER_IP" "debug" "trying to get mypostscript with getpostscript.awk" "/var/log/xcat/xcat.log"
                     fi
                     /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-                    MYCONT=`grep MASTER /xcatpost/mypostscript`
+                    MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
                     MAX_RETRIES=10
                     RETRY=0
                     while [ -z "$MYCONT" ]; do
@@ -109,7 +109,7 @@ do
                        let SLI=$RANDOM%10+10
                        sleep $SLI
                        /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-                       MYCONT=`grep MASTER /xcatpost/mypostscript`
+                       MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
                     done
 
                        
@@ -162,10 +162,10 @@ run_ps () {
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1 | tee -a \$logfile
+        bash -x ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      else
-        ./\$@ 2>&1 | tee -a \$logfile
+        ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      fi
   else
