@@ -15,7 +15,7 @@ After PowerKVM hypervisor is installed successfully, you can get the bridge info
   bridge name     bridge id               STP enabled     interfaces
   br0             8000.000000000000       no              eth0
 
-If there are no bridges configured, the xCAT post install script will not work. You must manually create a bridge. The following is provided as an example for creating a bridge bro using interface eth0 with IP address: 10.1.101.1/16, for example: ::
+If there are no bridges configured, the xCAT post install script will not work. You must manually create a bridge. The following is provided as an example for creating a bridge br0 using interface eth0 with IP address: 10.1.101.1/16, for example: ::
 
   IPADDR=10.1.101.1/16
   brctl addbr br0
