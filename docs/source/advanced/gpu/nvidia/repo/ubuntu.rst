@@ -11,10 +11,10 @@ A local package repo will contain all of the CUDA packages.  Extract the CUDA pa
     # For CUDA toolkit: /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb
     
     # Create the repo directory under xCAT /install dir
-    mkdir -p /install/cuda-repo/ppc64le
+    mkdir -p /install/cuda-repo/ppc64el
 
     # extract the package
-    dpkg -x /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb /install/cuda-repo/ppc64le
+    dpkg -x /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb /install/cuda-repo/ppc64el
 
     
 
