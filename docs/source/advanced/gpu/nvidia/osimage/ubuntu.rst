@@ -25,10 +25,10 @@ cudafull
 
 #. Add the CUDA repo created in the previous step to the ``pkgdir`` attribute.
 
-   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local``, add it to the pkgdir::
+   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local``, add it to the pkgdir::
 
     chdef -t osimage -o ubuntu14.04.3-ppc64el-install-cudafull \ 
-     -p pkgdir=http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local
+     -p pkgdir=http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local
 
 
    **TODO:** Need to add Ubuntu Port?  "http://ports.ubuntu.com/ubuntu-ports trusty main,http://ports.ubuntu.com/ubuntu-ports trusty-updates main"
@@ -49,10 +49,10 @@ cudaruntime
 
 #. Add the CUDA repo created in the previous step to the ``pkgdir`` attribute:
 
-   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local``, add it to the pkgdir::
+   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local``, add it to the pkgdir::
 
     chdef -t osimage -o ubuntu14.04.3-ppc64el-install-cudaruntime \
-     -p pkgdir=http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local
+     -p pkgdir=http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local
 
    **TODO:** Need to add Ubuntu Port?  "http://ports.ubuntu.com/ubuntu-ports trusty main,http://ports.ubuntu.com/ubuntu-ports trusty-updates main"
 
@@ -84,10 +84,10 @@ cudafull
 
 #. Add the CUDA repo created in the previous step to the ``otherpkgdir`` attribute. 
 
-   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local``, add it to the ``otherpkgdir``::
+   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local``, add it to the ``otherpkgdir``::
 
     chdef -t osimage -o ubuntu14.04.3-ppc64el-netboot-cudafull \
-    otherpkgdir=http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local
+    otherpkgdir=http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local
 
 #. Add the provided ``cudafull`` otherpkg.pkglist file to install the CUDA packages: ::
 
@@ -119,10 +119,10 @@ cudaruntime
 
 #. Add the CUDA repo created in the previous step to the ``otherpkgdir`` attribute. 
 
-   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local``, add it to the ``otherpkgdir``::
+   If your Management Node IP is 10.0.0.1, the URL for the repo would be ``http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local``, add it to the ``otherpkgdir``::
 
     chdef -t osimage -o ubuntu14.04.3-ppc64el-netboot-cudaruntime  \
-    otherpkgdir=http://10.0.0.1/install/cuda-repo/ppc64/var/cuda-repo-7-5-local
+    otherpkgdir=http://10.0.0.1/install/cuda-repo/ppc64el/var/cuda-repo-7-5-local
 
 #. Add the provided ``cudaruntime`` otherpkg.pkglist file to install the CUDA packages: ::
 
