@@ -417,7 +417,7 @@ sub vpd {
                 # Output value 
                 #############################
                 if ($_ eq 'model' and exists($request->{opt}->{t})) {
-		            my $tmp_pre = xCAT::data::ibmhwtypes::parse_args($data->{$_});
+		            my $tmp_pre = xCAT::data::ibmhwtypes::parse_group($data->{$_});
 		            if (defined($tmp_pre))  {
 			            xCAT::TableUtils->updatenodegroups($name, $tmp_pre);
 		            }
