@@ -67,15 +67,17 @@ cudafull
       | sed 's/netboot-compute:/netboot-cudafull:/' \
       | mkdef -z 
 
-#. If not done, add the CUDA repo created in the previous step into the directory specified by the ``otherpkgdir`` attribute.  The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
+#. Verify that the CUDA repo created in the previous step is available in the directory specified by the ``otherpkgdir`` attribute.  
 
-    # lsdef -t osimage rhels7.2-ppc64le-netboot-cudafull -i otherpkgdir
-    Object name: rhels7.2-ppc64le-netboot-cudafull
-        otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
+   The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
+
+       # lsdef -t osimage rhels7.2-ppc64le-netboot-cudafull -i otherpkgdir
+       Object name: rhels7.2-ppc64le-netboot-cudafull
+           otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
         
-   Create a symbolic link your CUDA repo to the directory specified by ``otherpkgdir`` ::
+   Create a symbolic link of the CUDA repository in the directory specified by ``otherpkgdir`` ::
 
-    ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
+       ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
 #. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
 
@@ -123,15 +125,17 @@ cudaruntime
       | sed 's/netboot-compute:/netboot-cudaruntime:/' \
       | mkdef -z
 
-#. If not done, add the CUDA repo created in the previous step into the directory specified by the ``otherpkgdir`` attribute.  The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
+#. Verify that the CUDA repo created in the previous step is available in the directory specified by the ``otherpkgdir`` attribute.  
 
-    # lsdef -t osimage rhels7.2-ppc64le-netboot-cudaruntime -i otherpkgdir
-    Object name: rhels7.2-ppc64le-netboot-cudaruntime
-        otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
+   The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
 
-   Create a symbolic link your CUDA repo to the directory specified by ``otherpkgdir`` ::
+       # lsdef -t osimage rhels7.2-ppc64le-netboot-cudaruntime -i otherpkgdir
+       Object name: rhels7.2-ppc64le-netboot-cudaruntime
+           otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
 
-    ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
+   Create a symbolic link of the CUDA repository in the directory specified by ``otherpkgdir`` ::
+
+       ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
 #. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
 
