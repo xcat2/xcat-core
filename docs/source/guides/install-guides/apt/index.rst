@@ -7,3 +7,4 @@ For the list of currently supported Ubuntu LTS operatin systems, see :ref:`ubunt
    :maxdepth: 2
 
    prepare_mgmt_node.rst
+   install.rst

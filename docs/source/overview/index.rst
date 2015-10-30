@@ -14,4 +14,3 @@ xCAT is known for exceptional scaling, wide variety of supported hardware and op
    architecture.rst
    quick_start.rst
    xcat2_release.rst
-

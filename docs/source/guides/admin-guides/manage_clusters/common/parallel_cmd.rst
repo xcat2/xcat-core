@@ -1,9 +1,22 @@
 Parallel Commands
 =================
 
-xCAT delivers a set of commands that can be run remote commands (ssh,scp,rsh,rcp,rsync,ping,cons) in parallel on multiple nodes. In addition the command have the capability of formatting the output from the commands, so the results are easier to process. These commands will make it much easier to administer your large cluster.
+xCAT provides a set of commands that can run common remote commands (``ssh, scp, rsh, rcp, rsync, ping, cons``) in parallel on xCAT managed nodes.  The xCAT commands will format the output making the results easier to parse and help administrators manage large clusters.
 
-For a list of the Parallel Commands and their man pages doc `parallel commands`_.
+The following commands are provided: 
+
+    * ``pcons`` - runs a command on the noderange using the out-of-band console
+    * ``pping`` - parallel ping
+    * ``ppping`` - parallel ping between nodes in a cluster
+    * ``prsync`` - parallel rsync
+    * ``pscp`` - parallel remote copy ( supports scp and not hierarchy)
+    * ``psh`` - parallel remote shell ( supports ssh and not hierarchy)
+    * ``pasu`` - parallel ASU utility
+    * ``xdcp`` - concurrently copies files too and from multiple nodes. ( scp/rcp and hierarchy)
+    * ``xdsh`` - concurrently runs commands on multiple nodes. ( supports ssh/rsh and hierarchy)
+    * ``xdshbak`` - formats the output of the xdsh command
+    * ``xcoll`` - Formats command output of the psh, xdsh, rinv command
+
 
 Examples for xdsh
 -----------------
