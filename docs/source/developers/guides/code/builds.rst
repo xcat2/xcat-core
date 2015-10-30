@@ -31,13 +31,13 @@ The following steps will help configure ``pod2rst`` and be able to generate the 
 
 #. For each of the above Perl modules:
 
-    * **[root]** Extract and build the Perl module ::
+    * **[as root]** Extract and build the Perl module ::
     
         perl Makefile.PL
         make
         make install
     
-    * **[non-root]** Extrat and build the Perl module using PREFIX to specify a directory that you have write permission ::
+    * **[as non-root]** Extrat and build the Perl module using PREFIX to specify a directory that you have write permission ::
     
         mkdir ~/perllib
         perl Makefile.PL PREFIX=~/perllib
@@ -46,12 +46,12 @@ The following steps will help configure ``pod2rst`` and be able to generate the 
     
 #. Execute the script ``create_man_pages.py`` to generate the .rst files into ``xcat-core/docs`` :
 
-    * **[root]** ::
+    * **[as root]** ::
  
         cd xcat-core
         ./create_man_pages.py
  
-    * **[non root]** ::
+    * **[as non root]** ::
 
         cd xcat-core
         ./create_man_pages.py --prefix=~/perllib
