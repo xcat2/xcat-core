@@ -1,9 +1,7 @@
 Overview
 ========
 
-xCAT enables you to easily manage large number of servers for any type of technical computing workload.
-
-xCAT is known for exceptional scaling, wide variety of supported hardware and operating systems, virtualization platforms, and complete "day0" setup capabilities.
+xCAT enables you to easily manage large number of servers for any type of technical computing workload. xCAT is known for exceptional scaling, wide variety of supported hardware and operating systems, virtualization platforms, and complete "day0" setup capabilities.
 
 .. toctree::
    :maxdepth: 1
