@@ -6,15 +6,16 @@ NVIDIA supports two types of debian repositories that can be used to install Cud
 Local
 -----
 
-A local package repo will contain all of the cuda packages.  
+A local package repo will contain all of the CUDA packages.  Extract the CUDA packages into ``/install/cuda-repo/ppc64le``: ::
 
-Extract the cuda packages into ``/install/cuda-repo/ppc64le``: ::
-
-    # For cuda toolkit name: /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb
-
+    # For CUDA toolkit: /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb
+    
     # Create the repo directory under xCAT /install dir
     mkdir -p /install/cuda-repo/ppc64le
+
+    # extract the package
     dpkg -x /root/cuda-repo-ubuntu1404-7-5-local_7.5-18_ppc64el.deb /install/cuda-repo/ppc64le
+
     
 
 Network
