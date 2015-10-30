@@ -1,17 +1,17 @@
 RHEL 7.2 LE
 ===========
 
+xCAT provides a sample package list files for CUDA. You can find them: 
+
+    * Diskful: ``/opt/xcat/share/xcat/instal/rh/cuda*``
+    * Diskless: ``/opt/xcat/share/xcat/instal/rh/cuda*``
+
 Diskful images
 ---------------
 
 The following examples will create diskful images for ``cudafull`` and ``cudaruntime``.  The osimage definitions will be created from the base ``rhels7.2-ppc64le-install-compute`` osimage. 
 
-xCAT provides a sample package list files for CUDA. You can find them at:
-
-    * ``/opt/xcat/share/xcat/instal/rh/cudafull.rhels7.ppc64le.pkglist``
-    * ``/opt/xcat/share/xcat/instal/rh/cudaruntime.rhels7.ppc64le.pkglist``
-
-**[diskful note]**: There is a requirement to reboot the machine after the CUDA drivers are installed.  To satisfy this requirement, the CUDA software is installed in the ``pkglist`` attribute of the osimage definition where the reboot happens after the Operating System is installed. 
+**[Note]**: There is a requirement to reboot the machine after the CUDA drivers are installed.  To satisfy this requirement, the CUDA software is installed in the ``pkglist`` attribute of the osimage definition where a reboot will happen after the Operating System is installed.
 
 cudafull
 ^^^^^^^^
@@ -56,7 +56,7 @@ Diskless images
 
 The following examples will create diskless images for ``cudafull`` and ``cudaruntime``.  The osimage definitions will be created from the base ``rhels7.2-ppc64le-netboot-compute`` osimage. 
 
-**[diskless note]**: For diskless images, the requirement for rebooting the machine is not applicable because the images is loaded on each reboot.  The install of the CUDA packages is required to be done in the ``otherpkglist`` **NOT** the ``pkglist``. 
+**[Note]**: For diskless, the install of the CUDA packages MUST be done in the ``otherpkglist`` and **NOT** the ``pkglist`` as with diskful.  The requirement for rebooting the machine is not applicable in diskless nodes because the image is loaded on each reboot. 
 
 cudafull
 ^^^^^^^^
@@ -67,19 +67,17 @@ cudafull
       | sed 's/netboot-compute:/netboot-cudafull:/' \
       | mkdef -z 
 
-#. Add the CUDA repo created in the previous step to the ``otherpkgdir`` attribute:
-
-   The default ``otherpkgdir`` should be **/install/post/otherpkgs/rhels7.2/ppc64le** ::
+#. If not done, add the CUDA repo created in the previous step into the directory specified by the ``otherpkgdir`` attribute.  The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
 
     # lsdef -t osimage rhels7.2-ppc64le-netboot-cudafull -i otherpkgdir
-    Object name: rhels7.2-ppc64le-netboot-compute
+    Object name: rhels7.2-ppc64le-netboot-cudafull
         otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
-
-   Symbol link your CUDA repo which was created in the previous step to this ``otherpkgdir`` ::
+        
+   Create a symbolic link your CUDA repo to the directory specified by ``otherpkgdir`` ::
 
     ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
-#. Generate a customized ``pkglist`` file to install the CUDA dependency packages: ::
+#. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
 
     # copy a pkglist file from /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
     mkdir -p /install/custom/netboot/rh/
@@ -125,19 +123,17 @@ cudaruntime
       | sed 's/netboot-compute:/netboot-cudaruntime:/' \
       | mkdef -z
 
-#. Add the CUDA repo created in the previous step to the ``otherpkgdir`` attribute:
-
-   The default ``otherpkgdir`` should be **/install/post/otherpkgs/rhels7.2/ppc64le** ::
+#. If not done, add the CUDA repo created in the previous step into the directory specified by the ``otherpkgdir`` attribute.  The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
 
     # lsdef -t osimage rhels7.2-ppc64le-netboot-cudaruntime -i otherpkgdir
-    Object name: rhels7.2-ppc64le-netboot-compute
+    Object name: rhels7.2-ppc64le-netboot-cudaruntime
         otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
 
-   Symbol link your CUDA repo which was created in the previous step to this ``otherpkgdir`` ::
+   Create a symbolic link your CUDA repo to the directory specified by ``otherpkgdir`` ::
 
     ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
-#. Generate a customized ``pkglist`` file to install the CUDA dependency packages: ::
+#. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
 
     # copy a pkglist file from /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
     mkdir -p /install/custom/netboot/rh/
