@@ -616,7 +616,22 @@ sub assign_to_osimage
                 unless ( -d "$otherpkgdir" ) {
                     mkpath("$otherpkgdir");
                 }
-                if ( $debianflag )
+		# Consider the mixed environment 
+		my $imagerhelflag = 0;
+		if ( $osimage =~ /rhel/ ){
+		    $imagerhelflag = 1;
+		}
+
+		if ( $debianflag && $imagerhelflag)
+                {
+                    unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
+                    {
+		        system("ln -sf $kitrepodir $otherpkgdir/$kitcomptable->{kitreponame} ");
+                    }
+                }
+
+
+                elsif ( $debianflag )
                 {
                     unless ( -d "$otherpkgdir/$kitcomptable->{kitreponame}" )
                     {
