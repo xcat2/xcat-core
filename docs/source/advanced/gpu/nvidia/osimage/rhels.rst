@@ -1,7 +1,7 @@
 RHEL 7.2 LE
 ===========
 
-xCAT provides a sample package list files for CUDA. You can find them: 
+xCAT provides a sample package list (pkglist) files for CUDA. You can find them: 
 
     * Diskful: ``/opt/xcat/share/xcat/install/rh/cuda*``
     * Diskless: ``/opt/xcat/share/xcat/install/rh/cuda*``
@@ -79,34 +79,46 @@ cudafull
 
        ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
-#. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
+#. Change the ``rootimgdir`` for the cudafull osimage: ::
 
-    # copy a pkglist file from /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
-    mkdir -p /install/custom/netboot/rh/
-    cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist \
-      /install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
-
-    # append the dependency packages for cuda
-    vi /install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
-      ...
-      kernel-devel
-      gcc
-      pciutils
-
-    # set the pkglist file to pkglist attribute
     chdef -t osimage -o rhels7.2-ppc64le-netboot-cudafull \
-      pkglist=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
+       rootimgdir=/install/netboot/rhels7.2/ppc64le/cudafull
 
-#. Generate ``cudafull`` ``otherpkglist.pkglist`` file to install the CUDA packages: ::
+#. Create a custom pkglist file to install additional operating system packages for your CUDA node. 
 
-    # generate the otherpkgs.pkglist for cudafull osimage
-    vi /install/custom/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist
-      cuda-7.5/ppc64le/cuda-deps/dkms
-      cuda-7.5/ppc64le/cuda-core/cuda
+    #. Copy the default compute pkglist file as a starting point: ::
 
-    # set the pkglist file to otherpkglist attribute
-    chdef -t osimage -o rhels7.2-ppc64le-netboot-cudafull \
-      otherpkglist=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist
+        mkdir -p /install/custom/netboot/rh/
+
+        cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist \
+          /install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
+
+    #. Edit the pkglist file and append any packages you desire to be installed.  For example: ::
+
+        vi /install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
+        ...
+        # Additional packages for CUDA
+        pciutils
+
+    #. Set the new file as the ``pkglist`` attribute for the cudafull osimage: ::
+
+        chdef -t osimage -o rhels7.2-ppc64le-netboot-cudafull \
+          pkglist=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.pkglist
+
+
+#. Create the ``otherpkg.pkglist`` file to do the install of the CUDA full packages:
+
+    #. Create the otherpkg.pkglist file for cudafull: ::
+
+        vi /install/custom/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist
+        # add the following packages 
+        cuda-7.5/ppc64le/cuda-deps/dkms
+        cuda-7.5/ppc64le/cuda-core/cuda
+
+    #. Set the ``otherpkg.pkglist`` attribute for the cudafull osimage: ::
+
+        chdef -t osimage -o rhels7.2-ppc64le-netboot-cudafull \
+          otherpkglist=/install/custom/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist
 
 #. Generate the image: ::
 
@@ -125,46 +137,37 @@ cudaruntime
       | sed 's/netboot-compute:/netboot-cudaruntime:/' \
       | mkdef -z
 
-#. Verify that the CUDA repo created in the previous step is available in the directory specified by the ``otherpkgdir`` attribute.  
+#. Verify that the CUDA repo created previously is available in the directory specified by the ``otherpkgdir`` attribute.  
 
-   The ``otherpkgdir`` directory can be obtained by running lsdef on the osimage: ::
+    #. Obtain the ``otherpkgdir`` directory using the ``lsdef`` command: ::
 
-       # lsdef -t osimage rhels7.2-ppc64le-netboot-cudaruntime -i otherpkgdir
-       Object name: rhels7.2-ppc64le-netboot-cudaruntime
-           otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
+        # lsdef -t osimage rhels7.2-ppc64le-netboot-cudaruntime -i otherpkgdir
+          Object name: rhels7.2-ppc64le-netboot-cudaruntime
+             otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
 
-   Create a symbolic link of the CUDA repository in the directory specified by ``otherpkgdir`` ::
+    #. Create a symbolic link to the CUDA repository in the directory specified by ``otherpkgdir`` ::
 
-       ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
+        ln -s /install/cuda-7.5 /install/post/otherpkgs/rhels7.2/ppc64le/cuda-7.5
 
-#. Generate a custom ``pkglist`` file to install the CUDA dependency packages: ::
+#. Change the ``rootimgdir`` for the cudaruntime osimage: ::
 
-    # copy a pkglist file from /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist
-    mkdir -p /install/custom/netboot/rh/
-    cp /opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.pkglist \
-      /install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.pkglist
-
-    # append the dependency packages for cuda
-    vi /install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.pkglist
-      ...
-      kernel-devel
-      gcc
-      pciutils
-
-    # set the pkglist file to pkglist attribute
     chdef -t osimage -o rhels7.2-ppc64le-netboot-cudaruntime \
-      pkglist=/install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.pkglist
+       rootimgdir=/install/netboot/rhels7.2/ppc64le/cudaruntime
 
-#. Generate ``cudaruntime`` ``otherpkglist.pkglist`` file to install the CUDA packages: ::
+#. Create the ``otherpkg.pkglist`` file to do the install of the CUDA runtime packages:
 
-    # generate the otherpkgs.pkglist for cudaruntime osimage
-    vi /install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.otherpkgs.pkglist
-      cuda-7.5/ppc64le/cuda-deps/dkms
-      cuda-7.5/ppc64le/cuda-core/cuda-runtime-7-5
+    #. Create the otherpkg.pkglist file for cudaruntime: ::
 
-    # set the pkglist file to otherpkglist attribute
-    chdef -t osimage -o rhels7.2-ppc64le-netboot-cudaruntime \
-      otherpkglist=/install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.otherpkgs.pkglist
+        vi /install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.otherpkgs.pkglist
+
+        # Add the following packages:
+        cuda-7.5/ppc64le/cuda-deps/dkms
+        cuda-7.5/ppc64le/cuda-core/cuda-runtime-7-5
+
+    #. Set the ``otherpkg.pkglist`` attribute for the cudaruntime osimage: ::
+
+        chdef -t osimage -o rhels7.2-ppc64le-netboot-cudaruntime \
+          otherpkglist=/install/custom/netboot/rh/cudaruntime.rhels7.ppc64le.otherpkgs.pkglist
 
 #. Generate the image: ::
 
