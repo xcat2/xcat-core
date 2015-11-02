@@ -50,7 +50,8 @@ sub net_parms {
     $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/ or next; #next if ipv6, TODO: IPv6 support
     my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
     if ($gw eq '<xcatmaster>') {
-	$gw=xCAT::NetworkUtils->my_ip_facing($ip);
+	my @gwd=xCAT::NetworkUtils->my_ip_facing($ip);
+	unless ($gwd[0]) { $gw = $gwd[1];}
     }
     if (($ipnum & $masknum)==$netnum) {
       return ($ip,$mask,$gw);

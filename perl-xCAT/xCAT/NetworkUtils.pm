@@ -1088,17 +1088,18 @@ sub my_if_netmap
 #-------------------------------------------------------------------------------
 
 =head3   my_ip_facing
-         Returns my ip address  
+         Returns my ip address in the same network with the specified node
          Linux only
     Arguments:
         nodename 
     Returns:
+	result and error message or my ip address
     Globals:
         none
     Error:
         none
     Example:
-        my $ip = xCAT::NetworkUtils->my_ip_facing($peerip)
+ 
         my @ip = xCAT::NetworkUtils->my_ip_facing($peerip)  # return multiple
     Comments:
         none
@@ -1112,10 +1113,15 @@ sub my_ip_facing
     {
         $peer = shift;
     }
+    
     return my_ip_facing_aix( $peer) if ( $^O eq 'aix');
+    my @rst;
     my $peernumber = inet_aton($peer); #TODO: IPv6 support
-    unless ($peernumber) { return undef; }
-    my $noden = unpack("N", inet_aton($peer));
+    unless ($peernumber) { 
+        $rst[0] = 1;
+        $rst[1] = "The $peer can not be resolved";
+	return @rst; }
+    
     my @nets = split /\n/, `/sbin/ip addr`;
 
     my @ips;
@@ -1127,23 +1133,21 @@ sub my_ip_facing
             next;
         }
         (my $curnet, my $maskbits) = split /\//, $elems[2];
-        my $curmask = 2**$maskbits - 1 << (32 - $maskbits);
-        my $curn = unpack("N", inet_aton($curnet));
-        if (($noden & $curmask) == ($curn & $curmask))
-        {
-            push @ips, $curnet;
-        }
+        
+	if (isInSameSubnet($peer, $curnet, $maskbits, 1))
+	{
+	    push @ips, $curnet;
+	}
     }
 
     if (@ips) {
-        if (wantarray) {
-            return @ips;
-        } else {
-            return $ips[0];
-        }
+        $rst[0] = 0;
+	push @rst, @ips;
     } else {
-        return undef;
+        $rst[0] = 2;
+	$rst[1] = "No found matching IP for $peer";
     }
+    return @rst;
 }
 
 #-------------------------------------------------------------------------------
@@ -1169,6 +1173,8 @@ sub my_ip_facing_aix
     my $peer = shift;
     my @nets = `ifconfig -a`;
     chomp @nets;
+    my @ips;
+    my @rst;
     foreach my $net (@nets)
     {
         my ($curnet,$netmask);
@@ -1186,10 +1192,20 @@ sub my_ip_facing_aix
         }
         if (isInSameSubnet($peer, $curnet, $netmask, 2))
         {
-            return $curnet;
+            push @ips, $curnet;
         }
     }
-    return undef;
+    if (@ips)
+    {
+        $rst[0] = 0;
+        push @rst, @ips;
+    }
+    else 
+    {
+        $rst[0] = 2;
+        $rst[1] = "No found matching IP for $peer";
+    }
+    return @rst;
 }
 
 #-------------------------------------------------------------------------------

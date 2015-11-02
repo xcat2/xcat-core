@@ -776,7 +776,8 @@ sub getdestiny {
     } elsif (defined( $master_value )) {
         $response{imgserver}=$master_value;
     } else {
-       $response{imgserver} = xCAT::NetworkUtils->my_ip_facing($node);
+       my @resd = xCAT::NetworkUtils->my_ip_facing($node);
+       unless ($resd[0]) { $response{imgserver} = $resd[1];}
     }
     
     #collect node status for certain states
