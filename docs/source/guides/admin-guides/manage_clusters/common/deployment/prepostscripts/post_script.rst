@@ -400,7 +400,7 @@ Kinds of variables in the template
     NTYPE=$NTYPE
     export NTYPE
 
-**Type 2:** This is the syntax to get the value of one attribute from the **<tablename>** and its key is **$NODE**. It does not support tables with 2 keys. Some of the tables with two keys are **(litefile,prodkey,deps,monsetting,mpa,networks)**. ::
+**Type 2:** This is the syntax to get the value of one attribute from the **<tablename>** and its key is **$NODE**. It does not support tables with two keys. Some of the tables with two keys are **(litefile,prodkey,deps,monsetting,mpa,networks)**. ::
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
@@ -450,7 +450,7 @@ Note: Type4 is not an open interface to add extensions to the templatel.
 Edit mypostscript.tmpl
 '''''''''''''''''''''''
 
-**Add new attribute into mypostscript.tmpl**
+**Add new attributes into mypostscript.tmpl**
 
 When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/templates/mypostcript/mypostscript.tmpl**.
 
