@@ -438,8 +438,6 @@ sub reconfigvm {
 sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
-    #$rethash{bios}->{useserial}='yes';
-   
     
     my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
     unless (defined($hypcpumodel) and $hypcpumodel eq "ppc64le") {
@@ -695,18 +693,25 @@ sub build_xmldesc {
     }
     
     my %cpupinhash;
-    my @prdevices;
+    my @passthrudevices;
     my $memnumanodes;
     my $advsettings=undef;
     if (defined $confdata->{vm}->{$node}->[0]->{othersettings}) {
         $advsettings=$confdata->{vm}->{$node}->[0]->{othersettings};
     }
-    
+   
+    #parse the additional settings in attrubute vm.othersettings 
+    #the settings are semicolon delimited, the format of each setting is:
+    #cpu pining:         "vcpupin:<physical cpu set>"
+    #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
+    #memory binding:     "membind:<numa node set>"
     if($advsettings){
         my @tmp_array=split ";",$advsettings;
         foreach(@tmp_array){
            if(/vcpupin:['"]?([^:'"]*)['"]?:?['"]?([^:'"]*)['"]?/){
              if($2){
+                #this is for cpu pining in the vcpu level,which is not currently supported
+                #reserved for future use
                 $cpupinhash{$1}=$2;
              }else{
                 $cpupinhash{ALL}=$1;
@@ -714,7 +719,7 @@ sub build_xmldesc {
            }
           
            if(/devpassthrough:(.*)/){
-              @prdevices=split ",",$1;
+              @passthrudevices=split ",",$1;
            }
  
            if(/membind:(.*)/){
@@ -724,28 +729,34 @@ sub build_xmldesc {
         }
     } 
 
+    #prepare the xml hash for memory binding
     if(defined $memnumanodes){
        my %numatunehash;
        $numatunehash{memory}=[{nodeset=>"$memnumanodes"}];
        $xtree{numatune}=\%numatunehash;
     }
 
+    #prepare the xml hash for cpu pining
     if(exists $cpupinhash{ALL}){
       $xtree{vcpu}->{placement}='static';
       $xtree{vcpu}->{cpuset}="$cpupinhash{ALL}";
       $xtree{vcpu}->{cpuset}=~s/\"\'//g;
     }
-
+  
+    #prepare the xml hash for pci passthrough
     my @prdevarray;
-    foreach my $devname(@prdevices){
+    foreach my $devname(@passthrudevices){
       my $devobj=$hypconn->get_node_device_by_name($devname);
       unless($devobj){
          return -1;
       }
+
+      #get the xml description of the pci device
       my $devxml=$devobj->get_xml_description();
       unless($devxml){
          return -1;
       }
+     
       my $devhash=XMLin($devxml);
       if(defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i ){
          my %tmphash;
@@ -763,7 +774,6 @@ sub build_xmldesc {
 
 
     if ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le") {
-    #if ($hypcpumodel eq "ppc64") {
         my %cpuhash = ();
         if ($hypcputype) {
             $cpuhash{model} = $hypcputype;
@@ -845,9 +855,7 @@ sub build_xmldesc {
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
-    } else {
-        #$xtree{devices}->{sound}->{model}='ac97';
-    }
+    } 
 
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
@@ -1702,7 +1710,7 @@ sub chvm {
     my $eject;
     my $pcpuset;
     my $numanodeset;
-    my $prdevices;
+    my $passthrudevices;
     @ARGV=@_;
     require Getopt::Long;
     GetOptions(
@@ -1716,7 +1724,7 @@ sub chvm {
         "resize=s%" => \%resize,
         "cpupin=s" => \$pcpuset,
         "membind=s" => \$numanodeset,
-        "devpassthru=s"=> \$prdevices,
+        "devpassthru=s"=> \$passthrudevices,
         );
     if (@derefdisks) {
         xCAT::SvrUtils::sendmsg([1,"Detach without purge TODO for kvm"],$callback,$node);
@@ -2066,7 +2074,6 @@ sub chvm {
           $vmxml=$dom->get_xml_description();
           my $parsed=$parser->parse_string($vmxml);
           my $ref=$parsed->findnodes("/domain/vcpu");
-          #$ref->[0]->setAttribute("cpuset","$pcpuset");
           $ref->[0]->removeAttribute("cpuset");
           $vmxml=$parsed->toString;
           if ($vmxml) {
@@ -2128,9 +2135,9 @@ sub chvm {
   
 
  
-    $prdevices=~s/["']//g; 
-    if(defined $prdevices){
-      my @prdevarr=split ",",$prdevices;
+    $passthrudevices=~s/["']//g; 
+    if(defined $passthrudevices){
+      my @prdevarr=split ",",$passthrudevices;
       unless(scalar @prdevarr){
         xCAT::SvrUtils::sendmsg([1,"device passthrough: no device specified"],$callback,$node);
         return;  
