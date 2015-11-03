@@ -397,7 +397,7 @@ sub assign_to_osimage
     my $tabs = shift;
 
     (my $kitcomptable) = $tabs->{kitcomponent}->getAttribs({kitcompname=> $kitcomp}, 'kitname', 'kitreponame', 'basename', 'kitcompdeps', 'kitpkgdeps', 'prerequisite', 'exlist', 'genimage_postinstall','postbootscripts', 'driverpacks');
-    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents');
+    (my $osimagetable) = $tabs->{osimage}->getAttribs({imagename=> $osimage}, 'provmethod', 'osarch', 'postbootscripts', 'kitcomponents', 'osvers');
     (my $linuximagetable) = $tabs->{linuximage}->getAttribs({imagename=> $osimage}, 'rootimgdir', 'exlist', 'postinstall', 'otherpkglist', 'otherpkgdir', 'driverupdatesrc');
 
     # Reading installdir.
@@ -618,9 +618,12 @@ sub assign_to_osimage
                 }
 		# Consider the mixed environment 
 		my $imagerhelflag = 0;
-		if ( $osimage =~ /rhel/ ){
-		    $imagerhelflag = 1;
-		}
+                if ( $osimagetable and $osimagetable->{osvers} ) {
+                    if ($osimagetable->{osvers} =~ /rhel/){
+                    $imagerhelflag = 1;
+                    }
+                }
+		
 
 		if ( $debianflag && $imagerhelflag)
                 {
