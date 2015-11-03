@@ -1,54 +1,46 @@
-Uninstall xCAT
-==============
+Remove xCAT
+===========
 
-Removing xCAT Trace
--------------------
+Backup xCAT User Data
+---------------------
 
-1. Backup your xCAT database ( if you want to keep it) ::
+Before removing xCAT, recommand to backup xCAT database. It's convenient to restore xCAT management environment in the future if needed ::
 
-    dumpxCATdb -p <path_to_where_to_save_the_database>
+    dumpxCATdb -p <path_to_save_the_database>
 
-2. Save your node information
+For more information of ``dumpxCATdb``, please refer to :doc:`command dumpxCATdb </guides/admin-guides/references/man/dumpxCATdb.1>`. For how to restore xcat DB, please refer to `Restore xCAT User Data`_
 
-  To create a stanza file of your node definitions (all group), run the following ::
+Clean Up xCAT Related Configuration
+-----------------------------------
 
-    lsdef -z all > <your_node_def_bak>.stanza
+1. To clean up the node information from dhcp ::
 
-3. Save your networks information
+    makedhcp -d all
 
-  To create a stanza file of your network information, run the following ::
-
-    lsdef -z -t network -l > <your_net_def_bak>.stanza
-
-4. Clean up tftpboot
-
-  To clean up the node information in tftpboot ::
+2. To clean up the node information in tftpboot ::
 
     nodeset all offline
 
-5. Cleanup dhcp
+3. To clean up the node information from ``/etc/hosts`` (optional)
 
-  You may want to remove all nodes from dhcp ::
+  Keep xCAT nodes information in ``/etc/hosts`` is harmless, But if really need to remove them from ``/etc/hosts``, you can edit ``/etc/hosts`` by 'vi' directly, or using xCAT command ``makehosts`` ::
 
-    makedhcp -d <noderange>
+    makehosts -d all  
 
-6. Clean up ``/etc/hosts``
+4. To clean up the node information from DNS (optional)
 
-  You may want to remove you cluster nodes from ``/etc/hosts``, you can edit ``/etc/hosts`` by 'vi' directly, or using xCAT command ``tabedit`` to remove all the nodes from the hosts table ::
-
-    tabedit hosts  
-
-7. Removing nodes from DNS
-
-  After removing all the nodes from ``/etc/hosts`` and the ``hosts`` table ::
+  After removing all the nodes from ``/etc/hosts``, run below command to clean up the node information from DNS ::
 
     makedns -n
 
-8. Stop xcatd ::
+Stop xCAT Service	
+-----------------
+	
+1. Stop xCAT service ::
 
     service xcatd stop
 
-9. Clean up network services(Optional)
+2. Stop xCAT related services(Optional)
 
   xCAT uses various network services on the management node and service nodes, the network services setup by xCAT may need to be cleaned up on the management node and service nodes before uninstalling xCAT.
 
@@ -58,76 +50,66 @@ Removing xCAT Trace
 * **DHCP**: stop dhcp service, remove the configuration made by xCAT in dhcp configuration files.
 * **DNS** : stop the named service, remove the named entries created by xCAT from the named database.
 
-Removing xCAT RPMs
-------------------
+Remove xCAT files
+-----------------
 
-1. Removing the xCAT RPMs 
+1. Remove the xCAT RPMs
+ 
+Generally, we use ``yum install xCAT`` to install xCAT. There isn't an easy way to remove all RPMs installed by xCAT(include xcat-core and xcat-dep). we have to remove the RPMs one by one. In addition to this, you have to make judgment by yourself before removing some dependance package, to avoid removing some files used by other application too in your environment.
 
-  Get xCAT RPM list by ``rpm`` command then remove them one by one ::
+You can obtain the RPM list from below link:
+
+  1). xCAT Core Packages (xcat-core):
   
-    [root@server ~]# rpm -qa | grep xCAT
-    xCAT-2.10-snap201505271151.ppc64
-    xCAT-client-2.10-snap201505271150.noarch
-    xCAT-genesis-scripts-ppc64-2.10-snap201505271151.noarch
-    xCAT-server-2.10-snap201505271151.noarch
-    xCAT-test-2.10-snap201505271151.noarch
-    xCAT-buildkit-2.10-snap201505271151.noarch
-    perl-xCAT-2.10-snap201505271150.noarch
-    xCAT-genesis-base-ppc64-2.10-snap201505172314.noarch
-	
-    [root@server ~]#rpm -e xCAT-genesis-scripts-ppc64-2.10-snap201505271151.noarch
-    [root@server ~]#rpm -e xCAT-genesis-base-ppc64-2.10-snap201505172314.noarch
-    ..........
+      `RPM Packages (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/2.10/xcat-core/>`_
+	  
+      `Debian Packages (Ubuntu) <http://xcat.org/files/xcat/repos/apt/2.10/xcat-core/>`_
+	  
+  2). xCAT Dependency Packages (xcat-dep):
+  
+      `RPM Packages (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
+	  
+      `Debian Packages (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
+	  
+2. Remove xCAT certificate file ::
 
-2. Removing OSS prerequisites installed for xCAT(Optional) ::
+    rm -rf $ROOTHOME/.xcat
+    rm -rf /root/.xcat
 
-    rpm -e fping-2.2b1-1
-    rpm -e perl-Digest-MD5-2.36-1
-    rpm -e perl-Net_SSLeay.pm-1.30-1
-    rpm -e perl-IO-Socket-SSL-1.06-1
-    rpm -e perl-IO-Stty-.02-1
-    rpm -e perl-IO-Tty-1.07-1
-    rpm -e perl-Expect-1.21-1
-    rpm -e conserver-8.1.16-2
-    rpm -e expect-5.42.1-3
-    rpm -e tk-8.4.7-3
-    rpm -e tcl-8.4.7-3
-    rpm -e perl-DBD-SQLite-1.13-1
-    rpm -e perl-DBI-1.55-1
-    .......
+3. Remove xCAT data file ::
 
-3. Removing root ssh keys(Optional) ::
-
-    rm -rf $ROOTHOME/.ssh
-
-  **[NOTE]** Be caution: do not remove the ``$ROOTHOME/.ssh`` if do not plan to remove ``/install/postscripts/_ssh`` directory
-
-4. Removing xCAT data directories ::
-
-    rm -rf /install 
-    rm -rf /tftpboot/xcat*
-    rm -rf /tftpboot/etc
     rm -rf /etc/xcat
-    rm -rf /etc/sysconfig/xcat ( may not exist)
-    rm /mnt/xcat  
-	
-  **[NOTE]** Remember to uninstall the packages ``elilo-xcat`` and ``xnba-undi``, otherwise the next time of xCAT installation will fail
-  
-5. Removing Extraneous files ::
 
-    rm /tmp/genimage*
-    rm /tmp/packimage*
-    rm /tmp/mknb*
-    rm /etc/yum.repos.d/*
+4. Remove xCAT related file(Optional)
 
-6. Clean up system files that were updated by xCAT (optional)
+  xCAT has ever operated below directory when it was running. Do judgment by yourself before removing these directory, to avoid removing some directories used for other purpose in your environment ::
 
-  There are multiple system configuration files that may have been updated while using xCAT to manage your cluster. In most cases you can determine what files have been updated by understanding the function of the commands that you run or by reading the xCAT documentation. There is no automated way to know what files should be cleaned up or removed. You will have to determine on a case by case basis whether or not a particular file should be updated to remove any leftover entries.
+    /isntall
+    /tftpboot
+    /etc/yum.repos.d/*
+    /etc/sysconfig/xcat
+    /etc/apache2/conf.d/xcat*   
+    /etc/logrotate.d/xcat*
+    /etc/rsyslogd.d/xcat*
+    /var/log/xcat	
+    /opt/xcat/
+    /mnt/xcat 
+    /tmp/genimage*
+    /tmp/genimage*
+    /tmp/packimage*
+    /tmp/mknb*
 
-Removing Databases
-------------------
+Remove Databases
+----------------
 
-* For PostgreSQL: See :ref:`Removing xCAT DB from PostgreSQL <removing_xcat_from_postgresql_target>`
-* For MySQL/MariaDB: See :ref:`Removing xCAT DB from MySQL/MariaDB <removing_xcat_from_mysql_target>`
+* For PostgreSQL: See :doc:`Removing xCAT DB from PostgreSQL  </guides/admin-guides/large_clusters/databases/postgres_remove>`
+* For MySQL/MariaDB: See :doc:`Removing xCAT DB from MySQL/MariaDB </guides/admin-guides/large_clusters/databases/mysql_remove>`
 
+Restore xCAT User Data
+----------------------
 
+If need to restore xCAT environment, after :doc:`xCAT software installation </guides/install-guides/index>`, you can restore xCAT DB by data files dumped in the past ::
+
+    restorexCATdb -p <path_to_save_the_database>
+
+For more information of ``restorexCATdb``, please refer to :doc:`command restorexCATdb </guides/admin-guides/references/man/restorexCATdb.1>`
