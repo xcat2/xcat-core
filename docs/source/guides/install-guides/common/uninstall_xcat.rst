@@ -54,29 +54,156 @@ Remove xCAT files
 -----------------
 
 1. Remove the xCAT RPMs
- 
-Generally, we use ``yum install xCAT`` to install xCAT. There isn't an easy way to remove all RPMs installed by xCAT(include xcat-core and xcat-dep). we have to remove the RPMs one by one. In addition to this, you have to make judgment by yourself before removing some dependance package, to avoid removing some files used by other application too in your environment.
 
-You can obtain the RPM list from below link:
+  There isn't an easy way to remove all RPMs installed because of xCAT. you can just remove the RPMs calculated by below command. Depending on the past experience, it's safe.
+  
+  [RHEL and SLES] ::
 
-  1). xCAT Core Packages (xcat-core):
+      rpm -qa |grep -i xcat
+
+  [Ubuntu] ::	  
   
-      `RPM Packages (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/2.10/xcat-core/>`_
-	  
-      `Debian Packages (Ubuntu) <http://xcat.org/files/xcat/repos/apt/2.10/xcat-core/>`_
-	  
-  2). xCAT Dependency Packages (xcat-dep):
+	  dpkg -l | awk  '{ print $2 }' |grep -i xcat
+
+  If you want to remove more cleanly. below list maybe helpful for you. They are the packages list of xcat installation tarball. These list are the whole RPMs list, it's possible for some RPMs not to be installed due to them are not suitable for your environment. Please do judgment by yourself.
+
+* xCAT Core Packages list (xcat-core):
+
+    [RHEL and SLES] ::
+	
+      perl-xCAT
+      xCAT
+      xCAT-buildkit
+      xCAT-client
+      xCAT-confluent
+      xCAT-genesis-scripts-ppc64
+      xCAT-genesis-scripts-x86_64
+      xCAT-server
+      xCATsn
+      xCAT-SoftLayer
+      xCAT-test
+      xCAT-vlan
+	
+    [Ubuntu] ::
+	
+      perl-xcat
+      xcat
+      xcat-buildkit
+      xcat-client
+      xcat-confluent
+      xcat-genesis-scripts
+      xcat-server
+      xcatsn
+      xcat-test
+      xcat-vlan
+
+* xCAT Dependency Packages (xcat-dep):	
+
+    [RHEL and SLES] ::
+	
+	conserver-xcat
+	cpio
+	cpio-lang
+	elilo-xcat
+	esxboot-xcat
+	fping
+	ganglia-devel
+	ganglia-gmetad
+	ganglia-gmond
+	ganglia-gmond-modules-python
+	ganglia-web
+	grub2-xcat
+	ipmitool-xcat
+	libconfuse
+	libconfuse-devel
+	libganglia
+	lldpd
+	net-snmp-perl
+	perl-AppConfig
+	perl-Compress-Raw-Zlib
+	perl-Crypt-Blowfish
+	perl-Crypt-CBC
+	perl-Crypt-Rijndael
+	perl-Crypt-SSLeay
+	perl-DBD-DB2
+	perl-DBD-DB2Lite
+	perl-DBD-Pg
+	perl-DBD-SQLite
+	perl-Expect
+	perl-HTML-Form
+	perl-IO-Compress-Base
+	perl-IO-Compress-Zlib
+	perl-IO-Socket-SSL
+	perl-IO-Stty
+	perl-IO-Tty
+	perl-JSON
+	perl-Net-DNS
+	perl-Net-Telnet
+	perl-SOAP-Lite
+	perl-Test-Manifest
+	perl-version
+	perl-XML-Simple
+	pyodbc
+	rrdtool
+	scsi-target-utils
+	stunnel
+	syslinux-xcat
+	systemconfigurator
+	systemimager-client
+	systemimager-common
+	systemimager-server
+	xCAT-genesis-base-ppc64
+	xCAT-genesis-base-x86_64
+	xCAT-genesis-x86_64
+	xCAT-UI-deps
+	xnba-kvm
+	xnba-undi
+	yaboot-xcat
+	zhcp
+
+    [Ubuntu] ::
+	
+	conserver-xcat
+	elilo-xcat
+	grub2-xcat
+	ipmitool-xcat
+	syslinux
+	syslinux-extlinux
+	syslinux-xcat
+	xcat-genesis-base-amd64
+	xcat-genesis-base-ppc64
+	xnba-undi	
+
+  Along with xCAT development, above list maybe change, you can get the latest list through below links:
+
   
-      `RPM Packages (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
+* xCAT Core Packages list (xcat-core)	
+
+  [RHEL and SLES] ::
+  
+    http://xcat.org/files/xcat/repos/yum/<version>/xcat-core/
+
+  [Ubuntu] ::	
+  
+    http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/
 	  
-      `Debian Packages (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
+* xCAT Dependency Packages (xcat-dep)
+
+      `RPM Packages List (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
 	  
+      `Debian Packages List (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
+	
+
+  Generally, we use ``yum install xCAT`` to install xCAT. so these are some RMPs shipped by operating system are installed during xCAT installation. We don't have a easy way to find out all of them, but keep these RPMs is harmless. 
+
+
 2. Remove xCAT certificate file ::
 
-    rm -rf $ROOTHOME/.xcat
     rm -rf /root/.xcat
 
-3. Remove xCAT data file ::
+3. Remove xCAT data file 
+
+  By default, xCAT use SQLite, remove SQLite data file under ``/etc/xcat/`` ::
 
     rm -rf /etc/xcat
 
@@ -84,20 +211,16 @@ You can obtain the RPM list from below link:
 
   xCAT has ever operated below directory when it was running. Do judgment by yourself before removing these directory, to avoid removing some directories used for other purpose in your environment ::
 
-    /isntall
+    /install
     /tftpboot
-    /etc/yum.repos.d/*
+    /etc/yum.repos.d/xCAT-*
     /etc/sysconfig/xcat
-    /etc/apache2/conf.d/xcat*   
-    /etc/logrotate.d/xcat*
-    /etc/rsyslogd.d/xcat*
+    /etc/apache2/conf.d/xCAT-*
+    /etc/logrotate.d/xCAT-*
+    /etc/rsyslogd.d/xCAT-*
     /var/log/xcat	
     /opt/xcat/
-    /mnt/xcat 
-    /tmp/genimage*
-    /tmp/genimage*
-    /tmp/packimage*
-    /tmp/mknb*
+    /mnt/xcat  
 
 Remove Databases
 ----------------
@@ -110,6 +233,6 @@ Restore xCAT User Data
 
 If need to restore xCAT environment, after :doc:`xCAT software installation </guides/install-guides/index>`, you can restore xCAT DB by data files dumped in the past ::
 
-    restorexCATdb -p <path_to_save_the_database>
+    restorexCATdb -p  <path_to_backup_saved_for_restore>
 
 For more information of ``restorexCATdb``, please refer to :doc:`command restorexCATdb </guides/admin-guides/references/man/restorexCATdb.1>`
