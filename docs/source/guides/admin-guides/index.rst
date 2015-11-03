@@ -1,13 +1,13 @@
 Admin Guide
 ===========
 
-When reading this chapter, assume you have read the :doc:`Overview of xCAT <../../overview/index>` to understand the architecture and features of xCAT, and have read the :doc:`xCAT Install Guide <../install-guides/index>` to have an xCAT Management Node installed.
+When reading this chapter, assume you have read the :doc:`Overview of xCAT <../../overview/index>` to understand the architecture and features of xCAT, and have read the :doc:`xCAT Install Guide <../install-guides/index>` to have a xCAT Management Node installed.
 
 Now you can start to learn how to manage a cluster by xCAT. This chapter includes following major sections:
 
 * **Basic Concepts**
 
-  This Section will give you the introduction of some basic concepts in xCAT like the **Object Concept**, **Database**, **Global Configuration**, **Network** and **Node Type**.
+  This section will give you the introduction of some basic concepts in xCAT like the **Object Concept**, **Database**, **Global Configuration**, **Network** and **Node Type**.
 
 * **Manage Cluster**
 
