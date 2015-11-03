@@ -96,17 +96,23 @@ elif [ $BUILDARCH = "ppc64" ]; then
         sed -i 's/\/lib\/libgcc_s.so.1/\/lib64\/libgcc_s.so.1/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
         # following changes are required on Fedora 20 ppc64
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        # sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 22 ppc64
+        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.21.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libc.so.6/\/lib64\/libc.so.6/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 22 ppc64
+        #sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.21.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libdl.so.2/\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libm.so.6/\/lib64\/libm.so.6/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libpthread.so.0/\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
         sed -i 's/\/lib64\/libncurses.so.5.7/\/lib64\/libncurses.so.5.9/' $DRACUTMODDIR/install
-        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 22 ppc64
+        #sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.19/' $DRACUTMODDIR/install
+        sed -i 's/\/usr\/lib64\/libstdc++.so.6.0.13/\/usr\/lib64\/libstdc++.so.6.0.21/' $DRACUTMODDIR/install
         sed -i 's/\/lib64\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.9/' $DRACUTMODDIR/install
         sed -i 's/\/usr\/lib64\/libsasl2.so.2/\/usr\/lib64\/libsasl2.so.3/' $DRACUTMODDIR/install
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
+        #sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/l\/linux/\/usr\/share\/terminfo\/l\/linux/g' $DRACUTMODDIR/install
         sed -i 's/\/lib\/terminfo\/v\/vt100/\/usr\/share\/terminfo\/v\/vt100/g' $DRACUTMODDIR/install
 fi

@@ -2358,7 +2358,7 @@ sub populate_mp_hash {
     unless ($mptab) {return;}
     my @entries = $mptab->getAllAttribs(qw/node nodetype/);
     foreach (@entries) {
-        if ($_->{nodetype} and $_->{nodetype} eq 'pbmc') {
+        if ($_->{nodetype} and $_->{nodetype} eq 'bmc') {
             $::XCATMPHASH{$_->{node}}=$_->{nodetype};
         }
     }

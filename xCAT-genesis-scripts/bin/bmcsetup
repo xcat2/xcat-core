@@ -15,7 +15,12 @@
 allowcred.awk &
 CREDPID=$!
 sleep 5
-modprobe ipmi_si
+HOST_ARCH=`uname -m`
+if [ "$HOST_ARCH" = 'ppc64' ]; then
+    modprobe ipmi_powernv
+else
+    modprobe ipmi_si
+fi
 modprobe ipmi_devintf
 IPCFGMETHOD=static
 while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
@@ -374,22 +379,24 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
-    echo -n "Putting SOL on channel $LANCHAN:"
-    while ! OUTPUT=`ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN 2>&1 > /dev/null`; do
-	if echo $OUTPUT|grep "Unknown (0x80)" > /dev/null; then
-		echo "Not Needed"
-		break
-        fi
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
+    
+    # 0xc 0x21 with data 7 is used to set payload channel, it is readonly in the ipmiv2.0 doc, so comment this section out.
+    #echo -n "Putting SOL on channel $LANCHAN:"
+    #while ! OUTPUT=`ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN 2>&1 > /dev/null`; do
+    #	if echo $OUTPUT|grep "Unknown (0x80)" > /dev/null; then
+    #		echo "Not Needed"
+    #		break
+    #    fi
+    #    sleep 1
+    #    let TRIES=TRIES+1
+    #    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    #done
+    #if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
 # Reset the BMC for the x3755 M4 (8722), otherwise the BMC will not be pingable after running of bmcsetup
 XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-if [ "$XPROD" = "309" ] ; then
+if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
     echo "Resetting BMC ..."
     ipmitool mc reset cold
     echo "Waiting for the BMC to appear ..."
