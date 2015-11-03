@@ -175,7 +175,6 @@ sub copyAndAddCustomizations {
 	
 sub copycd
 {
-    xCAT::MsgUtils->message("S","Doing debian copycds");
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
