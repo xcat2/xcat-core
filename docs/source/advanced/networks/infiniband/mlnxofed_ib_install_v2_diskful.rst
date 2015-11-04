@@ -54,3 +54,34 @@ Configuration for Diskful Installation
 	nodeset <node> osimage=<osver>-<arch>-install-compute
 	rsetboot <node> net
 	rpower <node> reset
+
+  After installation, you can login target ndoe and issue ``ibstat`` command to verify if your IB driver works well. if everything is fine, you can get the IB apater information ::
+	
+    [root@server ~]# ibstat
+    CA 'mlx4_0'
+        CA type: MT4099
+        Number of ports: 2
+        Firmware version: 2.11.500
+        Hardware version: 0
+        Node GUID: 0x5cf3fc000004ec02
+        System image GUID: 0x5cf3fc000004ec05
+        Port 1:
+                State: Initializing
+                Physical state: LinkUp
+                Rate: 40 (FDR10)
+                Base lid: 0
+                LMC: 0
+                SM lid: 0
+                Capability mask: 0x02594868
+                Port GUID: 0x5cf3fc000004ec03
+                Link layer: InfiniBand
+        Port 2:
+                State: Down
+                Physical state: Disabled
+                Rate: 10
+                Base lid: 0
+                LMC: 0
+                SM lid: 0
+                Capability mask: 0x02594868
+                Port GUID: 0x5cf3fc000004ec04
+                Link layer: InfiniBand
