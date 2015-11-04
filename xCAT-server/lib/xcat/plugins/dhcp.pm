@@ -1601,10 +1601,10 @@ sub process_request
                 my $generatedpath = "$syspath/$dhcpver";
                 my $dhcpd_key = "DHCPDARGS";
 
-                if ($os =~ /sles/i) {
+                if ($os =~ /sles/i || $os =~ /rhels7/i) {
                     $dhcpd_key = "DHCPD_INTERFACE";
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
-                        # For SLES, the dhcpd6 "dhcpver" is going to modify the dhcpd conf file with key=DHCPD6_INTERFACE
+                        # For SLES 11 and RHEL7, the dhcpd6/dhcpd config are stored in the same file
                         $dhcpd_key = "DHCPD6_INTERFACE";
                         $generatedpath = "$syspath/dhcpd";
                     }
@@ -1664,8 +1664,8 @@ sub process_request
         }
 
         if ($usingipv6) {
-            # sles had dhcpd and dhcpd6 config in the dhcp file
-            if ($os =~ /sles/i) {
+            # sles11.3 and rhels7 has dhcpd and dhcpd6 config in the dhcp file
+            if ($os =~ /sles/i || $os =~ /rhels7/i) {
                 if ($missingfiles{dhcpd}) {
                     $callback->({error=>["The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"]});
                 }
