@@ -105,19 +105,19 @@ Setting up syncfile
 
 Use instuctions in :ref:`Sync-Files-label`
 
-syncfiles to the nodes
+Syncfiles to the nodes
 ```````````````````````
 
 After compute node is installed, you would like to sync files to the nodes: ::
 
     updatenode <noderange> -F
 
-**With the ``updatenode`` command the syncfiles postscript cannot be used to sync files to the nodes.** Therefore, if you run ``updatenode <noderange> -P syncfiles``, nothing will be done. A messages will be logged that you must use updatenode <noderange> -F to sync files using updatenode.
+**With the ``updatenode`` command the syncfiles postscript cannot be used to sync files to the nodes.** Therefore, if you run ``updatenode <noderange> -P syncfiles``, nothing will be done. A message will be logged that you must use updatenode <noderange> -F to sync files.
 
 Update the ssh Keys and Credentials on the Nodes
 ------------------------------------------------
 
-If after node deployment, the ssh keys or xCAT ssl credentials become corrupted, xCAT provides a way to quickly fix the keys and credentials on your Service and compute nodes: ::
+If after node deployment, the ssh keys or xCAT ssl credentials become corrupted, xCAT provides a way to quickly fix the keys and credentials on your service and compute nodes: ::
 
      updatenode <noderange> -K
 
