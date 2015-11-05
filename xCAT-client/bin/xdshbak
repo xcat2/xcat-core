@@ -10,6 +10,9 @@ use xCAT::MsgUtils;
 use xCAT::DSHCLI;
 use locale;
 use Getopt::Std;
+
+eval "use Sort::Versions qw/versioncmp/; 1;" or  *versioncmp = sub ($$) { ($a,$b)= @_ ; return $a cmp $b };
+
 #####################################################################
 #                                                                   #
 # Module: xdshbak                                                   #
@@ -231,7 +234,7 @@ sub print_list
 
     local (@lines, $numhosts, $hn_string, $l_string);
 
-    foreach $hostname (sort @hs)
+    foreach $hostname (sort { versioncmp($a, $b) } @hs)
     {
         if (!$::opt_x) { ($num_hosts >= 1) && print "\n"; }
         $num_hosts++;
@@ -295,7 +298,7 @@ sub print_tree
         ($num_hosts >= 1) && print "\n";
         $num_hosts++;
         @wc = split(/:/, $hdr{$index});
-        @wc = sort(@wc);
+        @wc = sort { versioncmp($a, $b) } @wc;
 
         #system "$SPMSG DSH $MSGCAT  INFO511 'HOSTS '";
         xCAT::MsgUtils->message("I",
