@@ -4693,8 +4693,8 @@ sub getaddsensorevent {
         $text = sprintf ("Memory module %d",$event_data_3);
     }
 
-	if($sensor_type == 0x0f) {
-		if($offset == 0x00) {
+    if($sensor_type == 0x0f) {
+        if($offset == 0x00) {
 			my %extra = (
 				0x00 => "Unspecified",
 				0x01 => "No system memory installed",
@@ -5700,8 +5700,8 @@ sub sensor_was_read {
             $extext = "At or below lower non-recoverable threshold";
         }
     } elsif ($sdr->event_type_code == 0x6f) {
+	@exparts=();
         if ($sdr->sensor_type == 0x10) {
-	    @exparts=();
             if ($exdata1 & 1<<4) {
                 push @exparts,"SEL full";
             } elsif ($exdata1 & 1<<5) {
@@ -5714,9 +5714,6 @@ sub sensor_was_read {
 	       push @exparts,"All logging disabled";
 	    } elsif ($exdata1 & 1<<1) {
 	       push @exparts,"Some logging disabled";
-	    }
-	    if (@exparts) {
-	       $extext = join(",",@exparts);
 	    }
         } elsif ($sdr->sensor_type == 0x7) {
 	   @exparts=();
@@ -5753,6 +5750,12 @@ sub sensor_was_read {
 	   if ($exdata1 & 1<<10) {
 	      push @exparts,"Hardware throttled";
 	   }
+	   if ($exdata1 & 1<<11) {
+	      push @exparts,"Uncorrectable Machine Check Exception";
+	   }
+	   if ($exdata1 & 1<<12) {
+	      push @exparts,"Correctable Machine Check Error";
+	   }
         } elsif ($sdr->sensor_type == 0x8) {
 	   @exparts=();
 	   if ($exdata1 & 1) {
@@ -5775,6 +5778,9 @@ sub sensor_was_read {
 	   }
 	   if ($exdata1 & 1<<6) {
 	        push @exparts,"Configuration error";
+	   }
+	   if ($exdata1 & 1<<7) {
+	        push @exparts,"Power Supply Inactive";
 	   }
 	   if (@exparts) {
 	      $extext = join(",",@exparts);
@@ -5814,8 +5820,8 @@ sub sensor_was_read {
             if ($exdata1 & 1<<10) {
                 push @exparts,"Bus fatal error";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<11) {
+                push @exparts,"Bus Degraded";
             }
         } elsif ($sdr->sensor_type == 0xc) {
             @exparts=();
@@ -5845,6 +5851,12 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<8) {
                 push @exparts,"Spare";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Memory Automatically Throttled";
+            }
+            if ($exdata1 & 1<<10) {
+                push @exparts,"Critical Overtemperature";
             }
             if (@exparts) {
                 $extext = join(",",@exparts);
@@ -5892,16 +5904,13 @@ sub sensor_was_read {
             if ($exdata1 & 1<<2) {
                 push @exparts,"Firmware progress";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
-            }
         } elsif ($sdr->sensor_type == 0x9) {
 	   @exparts=();
 	   if ($exdata1 & 1) {
 	      push @exparts,"Power off";
 	   }
 	   if ($exdata1 & 1<<1) {
-	      push @exparts,"Power off";
+	      push @exparts,"Power Cycle";
 	   }
 	   if ($exdata1 & 1<<2) {
 	      push @exparts,"240VA Power Down";
@@ -5921,9 +5930,6 @@ sub sensor_was_read {
 	   if ($exdata1 & 1<<7) {
 	      push @exparts,"Power unit failure predicted";
 	   }
-	   if (@exparts) {
-	      $extext = join(",",@exparts);
-	   }
         } elsif ($sdr->sensor_type == 0x12) {
             @exparts=();
             if ($exdata1 & 1) {
@@ -5941,8 +5947,58 @@ sub sensor_was_read {
             if ($exdata1 & 1<<4) {
                 push @exparts,"PEF Action";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Timestamp Clock Synch";
+            }
+        } elsif ($sdr->sensor_type == 0x1e) {
+            if ($exdata1 & 1) {
+                push @exparts,"No bootable media";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Non-bootable diskette left in drive";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"PXE Server not found";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Invalid boot sector";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Timeout waiting for user selection";
+            }
+        } elsif ($sdr->sensor_type == 0x1f) {
+            if ($exdata1 & 1) {
+                push @exparts,"boot completed";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"boot completed";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"PXE boot completed";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Diagnostic boot completed";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"CD-ROM boot completed";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"ROM boot completed";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"boot completed-device not specified";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Base OS Installation started";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Base OS Installation completed";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Base OS Installation aborted";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"Base OS Installation failed";
             }
         } elsif ($sdr->sensor_type == 0x25) {
             if ($exdata1 & 1) {
@@ -5953,9 +6009,6 @@ sub sensor_was_read {
             }
             if ($exdata1 & 1<<2) {
                 push @exparts,"Disabled";
-            }
-            if (@exparts) {
-                $extext = join(",",@exparts);
             }
         } elsif ($sdr->sensor_type == 0x23) {
             if ($exdata1 & 1) {
@@ -5970,8 +6023,8 @@ sub sensor_was_read {
             if ($exdata1 & 1<<3) {
                 push @exparts,"Power Cycle";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Timer interrupt";
             }
         } elsif ($sdr->sensor_type == 0xd) {
             if ($exdata1 & 1) {
@@ -6001,8 +6054,67 @@ sub sensor_was_read {
             if ($exdata1 & 1<<8) {
                 push @exparts,"Rebuild aborted";
             }
-            if (@exparts) {
-                $extext = join(",",@exparts);
+        } elsif ($sdr->sensor_type == 0x20) {
+            if ($exdata1 & 1) {
+                push @exparts,"Critical stop during OS load";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Runtime Critical Stop";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"OS Graceful Stop";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"OS Graceful Shutdown";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"Soft Shutdown";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"Agent Not Responding";
+            }
+        } elsif ($sdr->sensor_type == 0x22) {
+            if ($exdata1 & 1) {
+                push @exparts,"working";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"sleeping";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"processor context lost";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"memory retained";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"non-volatile sleep";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"soft-off";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"soft-off";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"Mechanical off";
+            }
+            if ($exdata1 & 1<<8) {
+                push @exparts,"Sleeping in as S1,S2, or S3 states";
+            }
+            if ($exdata1 & 1<<9) {
+                push @exparts,"sleeping";
+            }
+            if ($exdata1 & 1<<10) {
+                push @exparts,"entered by override";
+            }
+            if ($exdata1 & 1<<11) {
+                push @exparts,"Legacy ON";
+            }
+            if ($exdata1 & 1<<12) {
+                push @exparts,"Legacy OFF";
+            }
+            if ($exdata1 & 1<<13) {
+                push @exparts,"Unknown";
             }
         } elsif ($sdr->sensor_type == 0x28) {
             if ($exdata1 & 1) {
@@ -6018,10 +6130,33 @@ sub sensor_was_read {
                 push @exparts,"Unavailable";
             }
             if ($exdata1 & 1<<4) {
-                push @exparts,"Failure";
+                push @exparts,"Sensor Failure";
             }
             if ($exdata1 & 1<<5) {
                 push @exparts,"FRU Failure";
+            }
+        } elsif ($sdr->sensor_type == 0x29) {
+            if ($exdata1 & 1) {
+                push @exparts,"battery low";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"battery failed";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"battery presence detected";
+            }
+        } elsif ($sdr->sensor_type == 0x2a) {
+            if ($exdata1 & 1) {
+                push @exparts,"Session Activated";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Session Deactivated";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Invalid username or password";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Invalid password disable";
             }
         } elsif ($sdr->sensor_type == 0x2b) {
             if ($exdata1 & 1) {
@@ -6055,9 +6190,39 @@ sub sensor_was_read {
             if ($exdata1 & 1<<1) {
                 push @exparts,"Incorrect cable connection";
             }
+    	} elsif ($sdr->sensor_type == 0x2c) {
+            if ($exdata1 & 1) {
+                push @exparts,"FRU Not Installed";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"FRU Inactive";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"FRU Activation Requested";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"FRU Activation In Progress";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"FRU Active";
+            }
+            if ($exdata1 & 1<<5) {
+                push @exparts,"FRU Deactivation Requested";
+            }
+            if ($exdata1 & 1<<6) {
+                push @exparts,"FRU Deactivation In Progress";
+            }
+            if ($exdata1 & 1<<7) {
+                push @exparts,"FRU Communication Lost";
+            }
+        } elsif ($sdr->sensor_type >= 0xc0) {
+            $extext = "OEM Reserved ".$sdr->sensor_type;
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
         }
+	if (@exparts) {
+	    $extext = join(",",@exparts);
+	}
     }
 
 	return sensorformat($sessdata,0,$text,$extext);
