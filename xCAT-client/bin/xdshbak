@@ -110,8 +110,7 @@ while (<STDIN>)
     #
     $num_lines++;
     if (!($quiet)) {
-      if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
-      else { $num_lines % 1000 == 0 && print STDOUT "."; }
+        $num_lines % 1000 == 0 && print STDOUT ".";
     }
     if (/: /)
     {
