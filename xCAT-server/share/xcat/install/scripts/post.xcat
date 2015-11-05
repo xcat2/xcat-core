@@ -150,7 +150,7 @@ run_ps () {
         bash -x ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      else
-        ./\$@ 2>&1 | tee -a \$logfile | | logger -t xcat -p debug
+        ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      fi
   else
