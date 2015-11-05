@@ -340,6 +340,24 @@ MANPATH=\$XCATROOT/share/man:\$MANPATH
 export XCATROOT PATH MANPATH
 " >>/etc/profile
 fi
+
+# add environment variable XCATSSLVER=TLSv1 for AIX MN which AIX version < 6.1.9.0 or < 7.1.3.0
+aixver=`lslpp -lc|grep 'bos.rte:'|head -1|cut -d: -f3`
+if [[ $aixver < '6.1.9.0' ]]; then
+    newssl=0
+elif [[ $aixver < '7' ]]; then
+    newssl=1
+elif [[ $aixver < '7.1.3.0' ]]; then
+    newssl=0
+else
+    newssl=1
+fi
+
+if [ $newssl == 0 ]; then
+  echo 'XCATSSLVER=TLSv1' >> /etc/environment
+  echo 'XCATSSLVER=TLSv1' >> /etc/profile
+fi
+
 %endif
 exit 0
 
