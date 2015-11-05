@@ -50,9 +50,11 @@ R:perl-IO-Tty*
 R:perl-Net-DNS*
 R:perl-Net-IP*
 R:perl-Net-Telnet*
-R:perl-Net_SSLeay.pm*
 R:perl-version-0.82-1*
-R:perl-Net_SSLeay.pm-1.30-2*
+# used for AIX 6.1.8 and older
+#R:perl-Net_SSLeay.pm-1.30-2*
+# used for AIX 6.1.9 and above
+R:perl-Net_SSLeay.pm-1.55-3*
 R:perl-IO-Socket-SSL*
 R:unixODBC*
 

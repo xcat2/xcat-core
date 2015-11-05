@@ -503,10 +503,29 @@ sub getmypost {
   if(!( -f $scriptname)) {
       my $port = "3001";
 	   # open a socket to request credentials
+      # force to use XCATSSLVER=TLSv1 for AIX MN which AIX version < 6.1.9.0 or < 7.1.3.0
+      my $aixver=`lslpp -lc|grep 'bos.rte:'|head -1|cut -d: -f3`;
+      chomp($aixver);
+      my $newssl;
+      if ($aixver le '6.1.9.0') {
+          $newssl=0;
+      } elsif ($aixver le '7') {
+          $newssl=1;
+      } elsif ($aixver le '7.1.3.0') {
+          $newssl=0;
+      } else {
+          $newssl=1;
+      }
+      my %sslargs;
+      unless ($newssl) {
+          $sslargs{SSL_version} = "TLSv1";
+      }
+
       my $remote = IO::Socket::SSL->new(
         PeerAddr => $servnode,
         PeerPort  => $port,
         Proto    => 'tcp',
+        %sslargs,
       );
       # get ready to create the file
 	  if (!open(POSTSCRIPT, ">$scriptname") ) {
