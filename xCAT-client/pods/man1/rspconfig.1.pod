@@ -455,7 +455,7 @@ Display the version number.
 
 To setup new ssh keys on the Management Module mm:
 
- B<rspconfig> mm snmpcfg=enable sshcfg=enable  
+B<rspconfig> mm snmpcfg=enable sshcfg=enable  
 
 =item *
 

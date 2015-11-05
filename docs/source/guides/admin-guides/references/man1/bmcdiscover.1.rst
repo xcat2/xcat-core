@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **--range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ]
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **--range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
 
 \ **bmcdiscover**\  \ **-i**\ |\ **--bmcip**\  \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\  \ *bmcusername*\ ] \ **-p**\ |\ **--bmcpwd**\  \ *bmcpassword*\  \ **-c**\ |\ **--check**\ 
 
@@ -69,6 +69,12 @@ OPTIONS
 \ **-w**\ 
  
  Write to the database.
+ 
+
+
+\ **-t**\ 
+ 
+ Genereate a BMC type node object.
  
 
 
