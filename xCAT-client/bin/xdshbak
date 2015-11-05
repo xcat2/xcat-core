@@ -169,7 +169,7 @@ while (<STDIN>)
 # The hostnames are sorted alphabetically
 #
 
-$num_lines > 999 && print STDOUT "\n";
+!($quiet) && $num_lines > 999 && print STDOUT "\n";
 if ($compress)
 {
     if ($long_ln eq $prev_ln)
