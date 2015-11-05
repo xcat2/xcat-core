@@ -241,7 +241,7 @@ sub print_list
         } else {
 
             #$hn_string = `$SPMSG DSH $MSGCAT  INFO510 'HOST: %1\$s\n' $hostname`;
-            xCAT::MsgUtils->message("I", "HOST:$hostname\n");
+            xCAT::MsgUtils->message("I", "HOST:$hostname");
 
             printf '%.' . (6 + length($hostname)) . "s\n",
               '---------------------------------------------------------------';
@@ -298,10 +298,9 @@ sub print_tree
         @wc = sort(@wc);
 
         #system "$SPMSG DSH $MSGCAT  INFO511 'HOSTS '";
-        xCAT::MsgUtils->message("I", "HOSTS:");
-
-        print
-          "-------------------------------------------------------------------------\n";
+        xCAT::MsgUtils->message("I",
+          "HOSTS -------------------------------------------------------------------------"
+        );
         &display_wc;
         print
           "-------------------------------------------------------------------------------\n";
