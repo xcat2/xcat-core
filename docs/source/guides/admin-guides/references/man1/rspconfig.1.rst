@@ -612,11 +612,7 @@ EXAMPLES
  
  To setup new ssh keys on the Management Module mm:
  
- 
- .. code-block:: perl
- 
-   B<rspconfig> mm snmpcfg=enable sshcfg=enable
- 
+ \ **rspconfig**\  mm snmpcfg=enable sshcfg=enable
  
 
 
