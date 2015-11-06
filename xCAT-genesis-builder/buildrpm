@@ -24,6 +24,11 @@ DIR=`dirname $0`
 DIR=`readlink -f $DIR`
 BUILDARCH=`uname -m`
 
+#For Openpower
+if [ $BUILDARCH = "ppc64le" ]; then
+    BUILDARCH="ppc64"
+fi
+
 # get the input files for dracut in the right place
 # Fedora 20 ppc64 uses /usr/lib/dracut/modules.d
 # CentOS 7 probably uses /usr/lib/dracut/modules.d also
@@ -53,6 +58,8 @@ if [ "$HOSTOS" = "mcp" ]; then
             sed -i 's/dracut_install dmidecode \/usr\/lib64\/libstdc++.so.5//' $DRACUTMODDIR/install
             sed -i 's/dmidecode//' $DRACUTMODDIR/install
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-2.17.so/' $DRACUTMODDIR/install
+            sed -i 's/\/lib64\/libsysfs.so.2//' $DRACUTMODDIR/install
+            sed -i 's/\/usr\/sbin\/iprconfig//' $DRACUTMODDIR/install
         else
             sed -i 's/\/lib\/ld-linux.so.2/\/usr\/lib64\/ld-linux-x86-64.so.2/' $DRACUTMODDIR/install
         fi

@@ -1347,12 +1347,23 @@ sub gen_chain_for_profiles{
     }
     #run bmcsetups.
     #PowerNV nodes can't use 'runcmd=bmcsetup' to set BMC.
-    if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig and $netboot ne 'petitboot'){ 
-        if (index($final_chain, "runcmd=bmcsetup") == -1){
-            $final_chain = 'runcmd=bmcsetup,'.$final_chain.':reboot4deploy';
-        }
-        else{
-            $final_chain = $final_chain.':reboot4deploy';
+    #But OpenPower need to support bmcsetup
+    my $nodehmtab = xCAT::Table->new('nodehm');
+    my $comments = "";
+    my $nodehmtab_entry = $nodehmtab->getNodeAttribs($hwprofile, ['comments']);
+    if (defined $nodehmtab_entry->{'comments'}) {
+       $comments = $nodehmtab_entry->{'comments'};
+    }
+
+    if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig){
+        if ((($netboot eq 'petitboot') and ($comments eq 'openpower')) or ($netboot ne 'petiboot'))
+        {
+            if (index($final_chain, "runcmd=bmcsetup") == -1){
+               $final_chain = 'runcmd=bmcsetup,'.$final_chain.':reboot4deploy';
+            }
+            else{
+                $final_chain = $final_chain.':reboot4deploy';
+            }
         }
     }
     return (0, $final_chain);
