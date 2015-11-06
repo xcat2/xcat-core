@@ -102,7 +102,7 @@ config_Rsyslog_C3()
   if [ $isLocal -eq 1 ]; then
       #enable the MN to log all the logs from CN and MN itself
       sed -i 's/\(^[^\#].*\/var\/log\/messages\)/\#\1/g' $2
-      echo "*.debug  /var/log/messages" >> $2
+      echo "#*.debug  /var/log/messages" >> $2
       touch  /var/log/messages  
       if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
         chown syslog:adm /var/log/messages
@@ -174,7 +174,7 @@ config_rsyslog_V8()
     sed -i '/^[^#].*\/var\/log\/messages/s/^/#/' $conf_file
 
     echo "# xCAT settings" >> $conf_file
-    echo "*.debug   /var/log/messages"  >> $conf_file
+    echo "#*.debug   /var/log/messages"  >> $conf_file
     # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
     # to make the MN be able to receive syslog from remote hosts
     if [ -f "$remoteconf" ]; then
