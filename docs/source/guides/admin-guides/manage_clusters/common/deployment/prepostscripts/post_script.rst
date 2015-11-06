@@ -226,7 +226,7 @@ Using the mypostscript template
 
 xCAT provides a way for the admin to customize the information that will be provide to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
 
-The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/templates/mypostscript directory.
+The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/mypostscript directory.
 
 If the admin customizes the mypostscript.tmpl, they should copy the mypostscript.tmpl to /install/postscripts/mypostscript.tmpl, and then edit it. The mypostscript for each node will be named mypostscript.<nodename>. The generated mypostscript.<nodename>. will be put in the /tftpboot/mypostscripts directory.
 
@@ -237,7 +237,7 @@ If the site table precreatemypostscripts attribute is set to 1 or yes, it will i
 
 If the precreatemyposcripts attribute is yes, and a database change is made or xcat code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
 
-When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl**. 
+When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. 
 
 
 Content of the template for mypostscript
@@ -321,7 +321,7 @@ The following sets the mac address. ::
      MACADDRESS=#TABLE:mac:$NODE:mac#
      export MACADDRESS
 
-IF vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following exports: ::
+If vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following exports: ::
 
     VMNODE='YES'
     export VMNODE
@@ -432,7 +432,7 @@ For the **#SITE_TABLE_ALL_ATTRIBS_EXPORT#** flag, the related subroutine will ge
 
 Other examples are: ::
 
-    #VLAN_VARS_EXPORT#  - gets all vlan related itesm
+    #VLAN_VARS_EXPORT#  - gets all vlan related items
     #MONITORING_VARS_EXPORT#  - gets all monitoring configuration and setup da ta
     #OSIMAGE_VARS_EXPORT# - get osimage related variables, such as ospkgdir, ospkgs ...
     #NETWORK_FOR_DISKLESS_EXPORT# - gets diskless network information
@@ -452,7 +452,7 @@ Edit mypostscript.tmpl
 
 **Add new attributes into mypostscript.tmpl**
 
-When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/templates/mypostcript/mypostscript.tmpl**.
+When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/postscripts/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/mypostcript/mypostscript.tmpl**.
 
 For example: ::
 
