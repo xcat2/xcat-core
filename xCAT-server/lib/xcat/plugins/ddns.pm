@@ -355,7 +355,10 @@ sub process_request {
         if ($net and $net->{nameservers})
         {
             my $valid = 0;
-            my @myips = xCAT::NetworkUtils->my_ip_facing($net->{net});
+            my @myips;
+   	    my @myipsd = xCAT::NetworkUtils->my_ip_facing($net->{net});
+	    my $myipsd_l = @myipsd;
+	    unless ($myipsd[0]) { @myips = @myipsd[1..($myipsd_l-1)];}
             foreach (split /,/, $net->{nameservers})
             {
                 chomp $_;

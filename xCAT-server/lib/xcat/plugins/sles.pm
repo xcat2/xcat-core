@@ -1212,7 +1212,8 @@ sub mkinstall
                         );
                }
                if($gateway eq '<xcatmaster>'){
-                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+		      unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                }
                $kcmdline .=" hostip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
 
@@ -1224,7 +1225,8 @@ sub mkinstall
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+		      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }

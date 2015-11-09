@@ -166,7 +166,8 @@ sub setstate {
       my $ipfn = '${next-server}';#xCAT::Utils->my_ip_facing($node);
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
       $elilokcmdline =~ s/!myipfn!/%N/g;
-      $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      unless ($ipfnd[0]) {$ipfn = $ipfnd[1];}
       unless ($ipfn) { $ipfn = $::XCATSITEVALS{master}; }
       if ($ipfn) {
       	$pxelinuxkcmdline =~ s/!myipfn!/$ipfn/g;

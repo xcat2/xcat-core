@@ -99,8 +99,18 @@ sub setstate {
       $kern->{initrd} = "$httpmethod://$installsrv:$httpport$tftpdir/".$kern->{initrd};
   }
   if ($kern->{kcmdline} =~ /!myipfn!/ or $kern->{kernel} =~ /!myipfn!/) {
-      my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
-      unless ($ipfn) {
+      my $ipfn;
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+
+      if ($ipfnd[0] eq 1) {
+          $::callback->(
+              {
+                 error => [$ipfnd[1]],
+                 errorcode => [1]
+              });
+          return;
+          }
+      elsif ($ipfnd[0] eq 2) {
           my $servicenodes = $nrhash{$node}->[0];
           if ($servicenodes and $servicenodes->{servicenode}) {
               my @sns = split /,/, $servicenodes->{servicenode};
@@ -132,6 +142,7 @@ sub setstate {
               return;
           }
       } else {
+          $ipfn = $ipfnd[1];
           $kern->{kernel} =~ s/!myipfn!/$ipfn/g;
           $kern->{initrd} =~ s/!myipfn!/$ipfn/g;
           $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;

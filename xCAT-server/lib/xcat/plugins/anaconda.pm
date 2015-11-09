@@ -1478,7 +1478,8 @@ sub mkinstall
                }         
 
                if($gateway eq '<xcatmaster>'){
-                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+		      unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                }
                
                if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
@@ -1503,7 +1504,8 @@ sub mkinstall
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+		      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }

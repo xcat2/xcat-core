@@ -83,7 +83,9 @@ sub subvars {
   if ( defined($tmp) ) {
       $master = $tmp;
   }
-  my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
+  my $ipfn; 
+  my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+  unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
   if ($ipfn) {
       $master = $ipfn;
   }
@@ -604,7 +606,8 @@ sub windows_net_cfg {
                             }
                             if ($gw) { $gateway = $gw; }
                             if ($gateway eq '<xcatmaster>') {
-                                $gateway = xCAT::NetworkUtils->my_ip_facing($ip);
+                                my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ip);
+				unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                             }
                             $interface_cfg .= '<IpAddress wcm:action="add" wcm:keyValue="'.$num++.'">'.$ip."/$netmask".'</IpAddress>';
                         }
@@ -951,7 +954,8 @@ sub kickstartnetwork {
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+		      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1051,7 +1055,8 @@ sub yast2network {
                 unless($ipaddr) { die "cannot resolve the network configuration of $node"; }
 
                 if($gateway eq '<xcatmaster>'){
-                   $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                   my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+		   unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                 }
 
                 my %nameservers=%{xCAT::NetworkUtils->getNodeNameservers([$node])};
@@ -1063,7 +1068,8 @@ sub yast2network {
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+		      unless ($ipd[0]) {$ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1560,7 +1566,9 @@ sub tabdb
     unless($ent and  defined($ent->{$field})) {
       unless ($blankok) {
          if ($field eq "xcatmaster") {
-           my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
+           my $ipfn;
+	   my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+	   unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
            if ($ipfn) {
              return $ipfn;
            }

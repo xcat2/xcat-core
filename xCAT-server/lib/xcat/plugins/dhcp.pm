@@ -509,7 +509,8 @@ sub addnode
                     $node_server = $nrent->{servicenode};
                 }
                 unless($node_server) {
-                    $nxtsrv = xCAT::NetworkUtils->my_ip_facing($node);
+                    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
+		    unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1];}
                     unless($nxtsrv) {
                         $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
                         return;
@@ -771,8 +772,9 @@ sub addrangedetection {
     my $begin;
     my $end;
     my $myip;
-    $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
-    
+    my @myipd = xCAT::NetworkUtils->my_ip_facing($net->{net});
+    unless ($myipd[0]) { $myip = $myipd[1];}
+
     # convert <xcatmaster> to nameserver IP
     if ($net->{nameservers} eq '<xcatmaster>')
     {
@@ -2283,7 +2285,8 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
-        $myip = xCAT::NetworkUtils->my_ip_facing($net);
+        my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
+	unless ($myipd[0]) {$myip = $myipd[1];}
         if ($nettab)
         {
             my $mask_formated = $mask;

@@ -1430,7 +1430,8 @@ sub  collect_all_attribs_for_tables_in_template
                                        $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} eq ""        ) )
                                   {
                                       my $value;
-                                      $value = xCAT::NetworkUtils->my_ip_facing($node);
+                                      my @valued = xCAT::NetworkUtils->my_ip_facing($node);
+				      unless ($valued[0]) { $value = $valued[1];}
                                       if ($value eq "0")
                                       {
                                          undef($value);
