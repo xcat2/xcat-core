@@ -5,7 +5,7 @@ The following diagram shows the basic structure of xCAT:
 
 .. image:: Xcat-arch.png
 
-Mgmt Node (xCAT Management Node):
+xCAT Management Node (xCAT Mgmt Node):
   The server which installed xCAT and is used to perform the system management for the whole cluster. Generally, the database is installed in this server to store the Definition of Compute Node; The network services like dhcpd, tftpd, httpd are enabled on this server for OS deployment.
 
 Service Node:
