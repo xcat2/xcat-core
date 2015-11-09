@@ -91,8 +91,18 @@ sub setstate {
   my $linuximghash = shift();
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if ($kern->{kcmdline} =~ /!myipfn!/) {
-      my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
-      unless ($ipfn) {
+      my $ipfn;
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      
+      if ($ipfnd[0] eq 1) { 
+          $::YABOOT_callback->(
+          {
+              error => [$ipfnd[1]],
+              errorcode => [1]
+          });
+	  return;
+      }
+      elsif ($ipfnd[0] eq 2) {
           my $servicenodes = $nrhash{$node}->[0];
           if ($servicenodes and $servicenodes->{servicenode}) {
               my @sns = split /,/, $servicenodes->{servicenode};
@@ -124,6 +134,7 @@ sub setstate {
               return;
           }
       } else {
+          $ipfn = $ipfnd[1];
           $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
       }
   }

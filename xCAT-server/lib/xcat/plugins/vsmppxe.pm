@@ -77,7 +77,9 @@ sub setstate {
         $kern->{kcmdline} .= " ".$kern->{addkcmdline};
   }
   if ($kern->{kcmdline} =~ /!myipfn!/) {
-      my $ipfn = xCAT::NetworkUtils->my_ip_facing($node);
+      my $ipfn; 
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      unless ($ipfnd[0]) {$ipfn = $ipfnd[1];}
       unless ($ipfn) {
         my @myself = xCAT::NetworkUtils->determinehostname();
         my $myname = $myself[(scalar @myself)-1];

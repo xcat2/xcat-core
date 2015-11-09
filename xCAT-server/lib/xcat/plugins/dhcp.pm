@@ -509,21 +509,23 @@ sub addnode
                     $node_server = $nrent->{servicenode};
                 }
                 unless($node_server) {
-                    $nxtsrv = xCAT::NetworkUtils->my_ip_facing($node);
-                    unless($nxtsrv) {
-                        $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                    my @nxtsrvd = xCAT::NetworkUtils->my_ip_facing($node);
+                    unless ($nxtsrvd[0]) { $nxtsrv = $nxtsrvd[1];}
+                    elsif ($nxtsrvd[0] eq 1) {$callback->({ error=> [$nxtsrvd[1]]});}
+                    else {
+                        $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1]});
                         return;
                     }
                 } else {
                     my $tmp_server = inet_aton($node_server);
                     unless($tmp_server) {
-                        $callback->({ error => ["Unable to resolve the tftpserver for node"], errorcode => [1]});
+                        $callback->({ error => ["Unable to resolve the tftpserver for $node"], errorcode => [1]});
                         return;
                     }
                     $nxtsrv = inet_ntoa($tmp_server);
                 }
                 unless ($nxtsrv) {
-                    $callback->({ error => ["Unable to determine the tftpserver for node"], errorcode => [1]});
+                    $callback->({ error => ["Unable to determine the tftpserver for $node"], errorcode => [1]});
                     return;
                 }
                 $guess_next_server = 0;
@@ -771,8 +773,9 @@ sub addrangedetection {
     my $begin;
     my $end;
     my $myip;
-    $myip = xCAT::NetworkUtils->my_ip_facing($net->{net});
-    
+    my @myipd = xCAT::NetworkUtils->my_ip_facing($net->{net});
+    unless ($myipd[0]) { $myip = $myipd[1];}
+
     # convert <xcatmaster> to nameserver IP
     if ($net->{nameservers} eq '<xcatmaster>')
     {
@@ -2283,7 +2286,8 @@ sub addnet
         my $tftp;
         my $range;
         my $myip;
-        $myip = xCAT::NetworkUtils->my_ip_facing($net);
+        my @myipd = xCAT::NetworkUtils->my_ip_facing($net);
+        unless ($myipd[0]) {$myip = $myipd[1];}
         if ($nettab)
         {
             my $mask_formated = $mask;

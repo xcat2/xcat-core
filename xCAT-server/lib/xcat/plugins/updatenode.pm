@@ -3114,7 +3114,9 @@ sub updateOS
     my $installDIR = xCAT::TableUtils->getInstallDir();
 
     # Get HTTP server
-    my $http = xCAT::NetworkUtils->my_ip_facing($node);
+    my $http;
+    my @httpd = xCAT::NetworkUtils->my_ip_facing($node);
+    unless ($httpd[0]) { $http = $httpd[1];}
     if (!$http)
     {
         push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
