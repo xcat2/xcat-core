@@ -37,3 +37,26 @@ declare -F msgutil_r &>/dev/null  || function msgutil_r {
 declare -F msgutil &>/dev/null  || function msgutil {
     msgutil_r "" "$@"
 }
+
+declare -F updateflag &>/dev/null  || function updateflag {
+    awk -v master="$1" -v port="$2" -v flag="$3" 'BEGIN{
+        ns = "/inet/tcp/0/" master "/" port
+        while(1) {
+           if((ns |& getline) > 0)
+               print $0 | "logger -t xcat -p local4.info"
+           else {
+               print "Retrying flag update" | "logger -t xcat -p local4.info"
+               close(ns)
+               system("sleep 10")
+           }
+
+           if($0 == "ready")
+               print flag |& ns
+           if($0 == "done")
+               break
+        }
+        close(ns)
+        exit 0
+    }'
+    return 0
+}

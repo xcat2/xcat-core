@@ -2,21 +2,27 @@
 # Run xCAT post install
 #
 export MASTER_IP="#ENV:MASTER_IP#"
-export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
 export NODESTATUS="#XCATVAR:NODESTATUS#"
+export XCATIPORT=#TABLE:site:key=xcatiport:value#
 export INSTALLDIR=#TABLE:site:key=installdir:value#
 export TFTPDIR=#TABLE:site:key=tftpdir:value#
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
 
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    set -x
+fi
 
+if [ -z "$XCATIPORT" ]; then
+    XCATIPORT="3002"
+fi
 if [ -z "$INSTALLDIR" ]; then
     INSTALLDIR="/install"
 fi
 if [ -z "$TFTPDIR" ]; then
-
     TFTPDIR="/tftpboot"
 fi
 if [[ $TFTPDIR != /* ]]; then
@@ -25,104 +31,114 @@ fi
 
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
-
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "debug" "sleep $RAND" "/var/log/xcat/xcat.log"
 fi
 sleep $RAND
 
-for t in $(seq 1 20)
-do
-	GOTIT=0
-	for i in $MASTER_IPS
-	do
+# Stop if no openssl to help the next bit
+if [ ! -x /usr/bin/openssl ]; then
+    msgutil_r "$MASTER_IP" "debug" "/usr/bin/openssl does not exist, halt ..." "/var/log/xcat/xcat.log"
+    updateflag $MASTER $XCATIPORT "installstatus failed"
+    sleep 36500d
+fi
 
-           if [ "$XCATDEBUGMODE" > "0" ]; then
-              msgutil_r "$MASTER_IP" "debug" "downloading postscripts from http://$i$INSTALLDIR/postscripts/" "/var/log/xcat/xcat.log"
-           fi
-           wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 0 -T 60 http://$i$INSTALLDIR/postscripts/ -P /xcatpost
-           if [ "$?" = "0" ]
-              then
-                   if [ "$XCATDEBUGMODE" > "0" ]; then
-                      msgutil_r "$MASTER_IP" "debug" "postscripts downloaded successfully" "/var/log/xcat/xcat.log"
-                   fi
-
-
-                   rm -rf /xcatpost/mypostscript
-                   export NODE=#TABLE:nodelist:THISNODE:node#
-                   if [ "$XCATDEBUGMODE" > "0" ]; then
-                      msgutil_r "$MASTER_IP" "debug" "trying to download precreated mypostscript file http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE" "/var/log/xcat/xcat.log"
-                   fi
-                   wget -N --waitretry=10 --random-wait -T 60 http://$i$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
-                   mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
-
-
-                   if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
-                      if [ "$XCATDEBUGMODE" > "0" ]; then
-                         msgutil_r "$MASTER_IP" "err" "/usr/bin/openssl does not exist,exit ..." "/var/log/xcat/xcat.log"
-                      fi
-                      exit 1
-                   fi
-       	           USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
-     	           export USEOPENSSLFORXCAT
-                   XCATSERVER=$i:3001
-                   export XCATSERVER
-
-                   # If mypostscript doesn't exist, we will get it through getpostscript.awk
-                   if [ ! -x /xcatpost/mypostscript ]; then
-                      if [ "$XCATDEBUGMODE" > "0" ]; then
-                         msgutil_r "$MASTER_IP" "info" "failed to download precreated mypostscript, trying to generate with getpostscript.awk" "/var/log/xcat/xcat.log"
-                      fi
-
-                      # To support the postscripts in the subdirectories under /install/postscripts
-                      # chmod +x /xcatpost/*
-                      chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
-                      /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-                      
-
-                      MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
-                      MAX_RETRIES=10
-                      RETRY=0
-                      while [ -z "$MYCONT" ]; do
-                         RETRY=$(($RETRY+1))
-                         if [ $RETRY -eq $MAX_RETRIES ]
-                         then
-                             break
-                         fi
-
-                         let SLI=$RANDOM%10+10
-                         sleep $SLI
-                         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
-
-                         MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
-                      done
-
-                   fi
-               
-                   chmod +x /xcatpost/mypostscript
-                   GOTIT=1
-	   	   break
-           fi
-	done
-	if [ "$GOTIT" = "1" ]
-	then
-            #save the master to /opt/xcat/xcatinfo file
-            if [ ! -f /opt/xcat/xcatinfo ]; then
-                mkdir -p /opt/xcat
-                touch /opt/xcat/xcatinfo
-            fi
-            echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
-	    break
-	fi
-	RAND=$(perl -e 'print int(rand(5)). "\n"')
-	sleep $RAND
-done
+#save to /opt/xcat/xcatinfo file
+if [ ! -f /opt/xcat/xcatinfo ]; then
+    mkdir -p /opt/xcat
+    touch /opt/xcat/xcatinfo
+fi
+echo "XCATSERVER=$MASTER_IP" > /opt/xcat/xcatinfo
 echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log"
-fi                                                      
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log"
+fi
 
-#echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
+
+# download the postscripts
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "trying to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/" "/var/log/xcat/xcat.log"
+fi
+
+# Stop if no wget to help the next bit
+if [ ! -x /usr/bin/wget ]; then
+    msgutil_r "$MASTER_IP" "debug" "/usr/bin/wget does not exist, halt ..." "/var/log/xcat/xcat.log"
+    updateflag $MASTER $XCATIPORT "installstatus failed"
+    sleep 36500d
+fi
+
+wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -e robots=off -nH --cut-dirs=2 --reject "index.html*" --no-parent -t 20 -T 60 http://$MASTER_IP$INSTALLDIR/postscripts/ -P /xcatpost
+if [ "$?" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "failed to download postscripts from http://$MASTER_IP$INSTALLDIR/postscripts/, halt ..." "/var/log/xcat/xcat.log"
+    updateflag $MASTER $XCATIPORT "installstatus failed"
+    sleep 36500d
+fi
+chmod -R +x `find /xcatpost/ -maxdepth 1 -print | grep -E -v '^(/xcatpost/|/xcatpost/_xcat|/xcatpost/_ssh|/xcatpost/ca|/xcatpost/hostkeys)$'`
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "postscripts downloaded successfully" "/var/log/xcat/xcat.log"
+fi
+
+
+# get the precreated mypostscript file
+if [ -x /xcatpost/mypostscript ]; then
+    rm -rf /xcatpost/mypostscript
+fi
+export NODE=#TABLE:nodelist:THISNODE:node#
+
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "trying to download precreated mypostscript file http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE" "/var/log/xcat/xcat.log"
+fi
+
+wget -N --waitretry=10 --random-wait --retry-connrefused -t 20 -T 60 http://$MASTER_IP$TFTPDIR/mypostscripts/mypostscript.$NODE  -P /xcatpost 2> /tmp/wget.log
+if [ "$?" = "0" ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "precreated mypostscript downloaded successfully" "/var/log/xcat/xcat.log"
+    fi
+    mv /xcatpost/mypostscript.$NODE /xcatpost/mypostscript
+    chmod +x /xcatpost/mypostscript
+fi
+
+USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+export USEOPENSSLFORXCAT
+XCATSERVER=$MASTER_IP:3001
+export XCATSERVER
+
+# If mypostscript doesn't exist, we will get it through getpostscript.awk
+if [ ! -x /xcatpost/mypostscript ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to download precreated mypostscript, trying to generate with getpostscript.awk" "/var/log/xcat/xcat.log"
+    fi
+
+    # To support the postscripts in the subdirectories under /install/postscripts
+    # chmod +x /xcatpost/*
+    # Stop if no getpostscript.awk to help the next bit
+    if [ ! -x /xcatpost/getpostscript.awk ]; then
+        msgutil_r "$MASTER_IP" "debug" "/xcatpost/getpostscript.awk does not exist, halt ..." "/var/log/xcat/xcat.log"
+        updateflag $MASTER $XCATIPORT "installstatus failed"
+        sleep 36500d
+    fi
+    /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+
+    MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
+    RETRY=0
+    while [ -z "$MYCONT" ]; do
+        RETRY=$(($RETRY+1))
+        if [ $RETRY -eq "10" ]; then
+            break
+        fi
+
+        let SLI=$RANDOM%10+10
+        sleep $SLI
+        /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
+
+        MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
+    done
+fi
+
+TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+echo "$TMP" > /xcatpost/mypostscript
+TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+
 cd /xcatpost
 #gunzip xcatpost.tar.gz
 #tar -xvf xcatpost.tar
@@ -130,7 +146,14 @@ cd /xcatpost
 export PATH=$PATH:/xcatpost
 
 # use the run_ps subroutine to run the postscripts
-TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
+
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    echo "set -x" > /xcatpost/mypostscript
+else
+    cat /dev/null > /xcatpost/mypostscript
+fi
+
 echo "
 
 . /xcatpost/xcatlib.sh
@@ -147,18 +170,18 @@ run_ps () {
  # did not have enough permission to write to log files under this directory.
  # As a dirty hack, change the ownership of directory /var/log/xcat to the
  # same ownership of directory /var/log.
- chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\"" 
+ chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\""
  local logfile=\"/var/log/xcat/xcat.log\"
 
- if [ -f \$1 ]; then 
-  echo \"\`date\` Running postscript: \$*\" 
+ if [ -f \$1 ]; then
+  echo \"\`date\` Running postscript: \$*\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
   if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
-        ret_local=\${PIPESTATUS[0]}
+        bash -x ./\$@ 2>&1
+        ret_local=\$?
      else
         ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
@@ -171,7 +194,7 @@ run_ps () {
   if [ \"\$ret_local\" -ne \"0\" ]; then
      return_value=\$ret_local
   fi
-  echo \"Postscript: \$* exited with code \$ret_local\" 
+  echo \"Postscript: \$* exited with code \$ret_local\"
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` postscript \$* return with \$ret_local\"" \"\$logfile\"
  else
   echo \"\`date\` Postscript \$1 does NOT exist.\" 
@@ -183,29 +206,78 @@ run_ps () {
 }
 # subroutine end
 
-" > /xcatpost/mypostscript
+" >> /xcatpost/mypostscript
 echo "$TMP" >> /xcatpost/mypostscript
-TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /xcatpost/mypostscript`
-echo "$TMP" > /xcatpost/mypostscript 
+
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    echo "set +x" >> /xcatpost/mypostscript
+fi
+
+chmod +x /xcatpost/mypostscript
+if [ ! -x /xcatpost/mypostscript ]; then
+    msgutil_r "$MASTER_IP" "debug" "generate mypostscript file failure, halt ..." "/var/log/xcat/xcat.log"
+    updateflag $MASTER $XCATIPORT "installstatus failed"
+    sleep 36500d
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "generate mypostscript file successfully" "/var/log/xcat/xcat.log"
+    fi
+fi
 
 
 #save the postboot scripts to /xcatpost/mypostscript.post
 TMP=`sed "/^#\s*postscripts-start-here/,/^#\s*postscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript.post
 chmod 755 /xcatpost/mypostscript.post
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "mypostscript.post  generated" "/var/log/xcat/xcat.log"
-fi                                                      
-                                                        
-#create the post init 
+
+if [ ! -x /xcatpost/mypostscript.post ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to generate /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log"
+    fi
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "/xcatpost/mypostscript.post generated" "/var/log/xcat/xcat.log"
+    fi
+fi
+
+
+#create the post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
 EOF
 chmod 755 /etc/init.d/xcatpostinit1
+
+if [ ! -x /etc/init.d/xcatpostinit1 ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to generate /etc/init.d/xcatpostinit1" "/var/log/xcat/xcat.log"
+    fi
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "/etc/init.d/xcatpostinit1 generated" "/var/log/xcat/xcat.log"
+    fi
+fi
+
 ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc3.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc4.d/S84xcatpostinit1
 ln -s /etc/init.d/xcatpostinit1 /etc/rc.d/rc5.d/S84xcatpostinit1
 
+export OSVER=#TABLE:nodetype:THISNODE:os#
+if [[ $OSVER == sles* ]]; then
+    if [[ $OSVER == sles10* ]]; then
+        /sbin/insserv xcatpostinit1
+    else
+        /sbin/insserv -p /etc/init.d xcatpostinit1
+    fi
+fi
+#chkconfig --add xcatpostinit1
+chkconfig xcatpostinit1 on
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
+fi
+
+
+#create the xcatinstallpost
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 
@@ -219,68 +291,83 @@ if [ "$RUNBOOTSCRIPTS" != "'yes'" ]; then
     chkconfig xcatpostinit1 off
 fi
 
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
+if [ "$XCATDEBUGMODE" != "0" ]; then
+    msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 disabled" "/var/log/xcat/xcat.log"
 fi
-#echo "REBOOT=TRUE" >> /opt/xcat/xcatinfo
 EOF
 chmod 755 /opt/xcat/xcatinstallpost
 
-export OSVER=#TABLE:nodetype:THISNODE:os#
-if [[ $OSVER == sles* ]]; then
-    if [[ $OSVER == sles10* ]];then
-        /sbin/insserv xcatpostinit1
-    else
-        /sbin/insserv -p /etc/init.d xcatpostinit1
+if [ ! -x /opt/xcat/xcatinstallpost ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to generate /opt/xcat/xcatinstallpost" "/var/log/xcat/xcat.log"
+    fi
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinstallpost generated" "/var/log/xcat/xcat.log"
     fi
 fi
-#chkconfig --add xcatpostinit1
-chkconfig xcatpostinit1 on
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "service xcatpostinit1 enabled" "/var/log/xcat/xcat.log"
-fi                                                      
+
 
 #create the dskls post 
 cat >/opt/xcat/xcatdsklspost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatdsklspost#
 EOF
 chmod 755 /opt/xcat/xcatdsklspost
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatdsklspost created" "/var/log/xcat/xcat.log"
-fi                                                      
 
-#only run the prebooot scripts here
+if [ ! -x /opt/xcat/xcatdsklspost ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to generate /opt/xcat/xcatdsklspost" "/var/log/xcat/xcat.log"
+    fi
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatdsklspost generated" "/var/log/xcat/xcat.log"
+    fi
+fi
+
+
+#create the preboot script and run here
 TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ d" /xcatpost/mypostscript`
 echo "$TMP" > /xcatpost/mypostscript
-if [ "$XCATDEBUGMODE" > "0" ]; then
-   msgutil_r "$MASTER_IP" "debug" "mypostscript generated" "/var/log/xcat/xcat.log"
-fi                                                      
+chmod 755 /xcatpost/mypostscript
+
+if [ ! -x /xcatpost/mypostscript ]; then
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "failed to generate /xcatpost/mypostscript" "/var/log/xcat/xcat.log"
+    fi
+else
+    if [ "$XCATDEBUGMODE" != "0" ]; then
+        msgutil_r "$MASTER_IP" "debug" "/xcatpost/mypostscript generated" "/var/log/xcat/xcat.log"
+    fi
+fi
 
 export NODE=#TABLE:nodelist:THISNODE:node#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "info" "running mypostscript" "/var/log/xcat/xcat.log"
-fi                                                      
+fi
 /xcatpost/mypostscript
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "info" "mypostscript returned" "/var/log/xcat/xcat.log"
-fi                                                      
+fi
 
 
 sed -i 's/^serial/#serial/' /boot/grub/grub.conf
 sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "debug" "/boot/grub/grub.conf updated" "/var/log/xcat/xcat.log"
-fi                                                      
+fi
 
-
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "info" "finished node installation, reporting status..." "/var/log/xcat/xcat.log"
-fi                                                      
+fi
 #the following command should always be run to prevent infinite installation loops
 updateflag.awk $MASTER 3002
 
 cd /
-#rm -Rf /xcatpost
-#rm -f /xcatpost/mypostscript
+
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    set +x
+fi
+

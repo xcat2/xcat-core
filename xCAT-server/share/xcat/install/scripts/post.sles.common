@@ -58,7 +58,7 @@ echo "Slept $jsi seconds before hostname made sense."
 HOSTNAME=$(hostname -s)
 echo $HOSTNAME
 
-if [ "$XCATDEBUGMODE" > "0" ]; then
+if [ "$XCATDEBUGMODE" != "0" ]; then
    msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC,HOSTNAME=$HOSTNAME" "/var/log/xcat/xcat.log"
 fi
 /sbin/portmap
