@@ -1,6 +1,8 @@
 Updating xCAT
 =============
+If at a later date you want to update xCAT, first, update the software repositories and then run: ::
 
-.. include:: ../common_sections.rst
-   :start-after: BEGIN_update_xcat
-   :end-before: END_update_xcat 
+    apt-get update
+    apt-get upgrade xcat
+
+
