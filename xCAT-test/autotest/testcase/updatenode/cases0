@@ -9,6 +9,13 @@ check:rc==0
 check:output=~Version
 end
 
+start:updatenode
+cmd:updatenode $$CN
+check:rc==0
+check:output=~File synchronization has completed
+check:output=~postscripts has completed
+check:output=~Software Maintenance has completed 
+end
 
 start:updatenode_diskful_syncfiles
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/ 
@@ -301,6 +308,44 @@ check:rc==0
 #cmd:rm /install/postscripts/updatenode_P_script_input
 end
 
+start:updatenode_diskful_syncfiles_P_script1
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
+check:rc==0
+cmd:echo "/etc/hosts -> /etc/hosts" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:echo "echo hello > /tmp/updatenode_P_script" > /tmp/script1
+check:rc==0
+cmd:chmod a+x /tmp/script1
+check:rc==0
+cmd:cp /tmp/script1 /install/postscripts
+check:rc==0
+cmd:chdef $$CN postscripts=script1
+check:rc==0
+cmd:updatenode $$CN -F -P script1
+check:rc==0
+check:output=~File synchronization has completed
+check:output=~postscripts has completed
+cmd:scp /etc/hosts root@$$CN:/tmp
+check:rc==0
+cmd:xdsh $$CN "ls -l /etc/hosts"
+check:rc==0
+cmd:xdsh $$CN diff /etc/hosts /tmp/hosts
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp/updatenode_P_script"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/updatenode_P_script"
+check:rc==0
+check:output=~hello
+cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
+check:rc==0
+cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:rm -f /install/script1
+end
 
 
 
