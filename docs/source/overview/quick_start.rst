@@ -33,7 +33,7 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
    Now you have the node definition. Take a try to confirm the hardware control for defined nodes is working. e.g. ``rpower <node> stat``.
 
-   Refer to the doc: :doc:`Hardware Management <../guides/admin-guides/manage_clusters/ppc64le/management>` to learn how to perform the remote hardware control.
+   Refer to the doc: :doc:`Hardware Management </guides/admin-guides/manage_clusters/ppc64le/management>` to learn how to perform the remote hardware control.
 
 #. Deploy OS for the target nodes
 
