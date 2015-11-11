@@ -37,6 +37,28 @@ In these osimage definitions shown above
 * **<os>-<arch>-netboot-compute** is the default osimage definition used for diskless installation
 * **<os>-<arch>-install-service** is the default osimage definition used for service node deployment which shall be used in hierarchical environment
 
+**Note**: There are more things needed for **ubuntu ppc64le** osimages:
+
+For ubuntu ppc64le, the shipped initrd.gz within ISO is not supported to do network booting. In order to install ubuntu with xCAT, you need to follow the steps below to complete the osimage definition.
+
+* Download mini.iso from
+
+  [ubuntu 14.04.1]: http://ports.ubuntu.com/ubuntu-ports/dists/$(lsb_release-sc)/main/installer-ppc64el/current/images/netboot/
+
+  [ubuntu 14.04.2]: http://ports.ubuntu.com/ubuntu-ports/dists/trusty-updates/main/installer-ppc64el/current/images/utopic-netboot/
+
+  [ubuntu 14.04.3]: http://ports.ubuntu.com/ubuntu-ports/dists/trusty-updates/main/installer-ppc64el/current/images/vivid-netboot/
+
+* Mount mini.iso ::
+
+    mkdir /tmp/iso
+    mount -o loop mini.iso /tmp/iso
+
+* Copy the netboot initrd.gz to osimage ::
+
+    mkdir -p /install/<ubuntu-version>/ppc64el/install/netboot
+    cp /tmp/iso/install/initrd.gz /install/<ubuntu-version>/ppc64el/installe/netboot
+
 **[Below tips maybe helpful for you]** 
 
 **[Tips 1]**
