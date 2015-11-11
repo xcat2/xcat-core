@@ -16,7 +16,8 @@ Pls run the following command to add networks in ``networks`` table if no entry 
 
     makenetworks
 
-setup DHCP
+.. _Set-up-dhcp:
+Setup DHCP
 ``````````
 
 Set the correct NIC from which DHCP server provide service::

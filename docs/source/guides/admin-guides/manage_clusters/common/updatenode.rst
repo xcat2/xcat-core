@@ -61,7 +61,7 @@ The next time you re-install these nodes, the additional software will be automa
 Update the delta changes in Sysclone environment
 ````````````````````````````````````````````````
 
-Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`Update-Node-Later-On` for more information. ::
+Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`update-node-later-on` for more information. ::
 
     updatenode <targetnoderange> -S
 
@@ -103,7 +103,7 @@ Synchronize new/updated configuration files
 Setting up syncfile 
 ```````````````````
 
-Use instuctions in :ref:`the_localtion_of_synclist_file_for_updatenode_label`
+Use instructions in :ref:`the_localtion_of_synclist_file_for_updatenode_label`.
 
 Syncfiles to the nodes
 ```````````````````````

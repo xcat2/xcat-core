@@ -152,8 +152,7 @@ following below commands to install the target nodes with the image captured fro
     nodeset <target-node> osimage=<mycomputeimage>
     rnetboot <target-node>
 
-.. _Update-Node-Later-On:
-
+.. _update-node-later-on:
 Update Nodes Later On
 ---------------------
 
