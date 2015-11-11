@@ -1,7 +1,7 @@
 Configure xCAT
 --------------
 
-configure network table
+Configure network table
 ```````````````````````
 
 
@@ -16,7 +16,7 @@ Pls run the following command to add networks in ``networks`` table if no entry 
 
     makenetworks
 
-.. _Set-up-dhcp:
+.. _Setup_dhcp:
 Setup DHCP
 ``````````
 
