@@ -38,5 +38,7 @@ xCAT uses the zypper package manager on SLES Linux distributions to install and 
 Set up Network
 --------------
 
+The Management Node IP address should be set to a **static** IP address.
+
 Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network/`` and configure a static IP address.
 

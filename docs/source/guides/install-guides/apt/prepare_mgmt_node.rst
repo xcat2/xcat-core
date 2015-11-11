@@ -38,7 +38,7 @@ xCAT uses the apt package manager on Ubuntu Linux distributions to install and r
 Set up Network
 --------------
 
-The Management Node IP address should be set to a **static** ip address.
+The Management Node IP address should be set to a **static** IP address.
 
 Modify the ``interfaces`` file in ``/etc/network`` and configure a static IP address.	::
     
