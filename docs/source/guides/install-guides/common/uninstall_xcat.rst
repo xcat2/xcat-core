@@ -15,7 +15,7 @@ Clean Up xCAT Related Configuration
 
 1. To clean up the node information from dhcp ::
 
-    makedhcp -d all
+    makedhcp -d -a
 
 2. To clean up the node information in tftpboot ::
 
