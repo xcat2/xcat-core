@@ -36,6 +36,7 @@ my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
 my $global_sessdata;
+my %child_pids;
 
 my $IPMIXCAT = "/opt/xcat/bin/ipmitool-xcat";
 my $NON_BLOCK = 1;
@@ -1574,12 +1575,12 @@ sub calc_ipmitool_version {
 #        0 when no response from bmc
 #----------------------------------------------------------------#
 sub check_bmc_status_with_ipmitool {
-	my $pre_cmd = shift;
-	my $interval = shift;
-	my $retry = shift;
-	my $count = 0;
-	my $cmd = $pre_cmd." power status";
-	while ($count < $retry) {
+    my $pre_cmd = shift;
+    my $interval = shift;
+    my $retry = shift;
+    my $count = 0;
+    my $cmd = $pre_cmd." power status";
+    while ($count < $retry) {
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0) {
             sleep($interval);
@@ -1640,7 +1641,6 @@ sub do_firmware_update {
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
-
     # step 2 reset cold
     $cmd = $pre_cmd." mc reset cold";
     $output = xCAT::Utils->runcmd($cmd, -1);
@@ -1694,14 +1694,22 @@ sub rflash {
         if ($sessdata->{subcommand} eq 'check') {
             my %firmware_version;
             check_firmware_version($sessdata, \%firmware_version);
-            foreach my $c_id (@{$sessdata->{component_ids}}) {
+            my $msg="";
+            my $i;
+            for ($i = 0; $i < scalar(@{$sessdata->{component_ids}}); $i++) {
+                my $c_id = ${$sessdata->{component_ids}}[$i];
                 my $version = $firmware_version{$c_id};
-                my $format_ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
+                my $format_ver = sprintf("%3d.%02x %02X%02X%02X%02X",
+                    $version->[0], $version->[1], $version->[2],
                     $version->[3], $version->[4], $version->[5]);
-                xCAT::SvrUtils::sendmsg("Node firmware version for component $c_id: $format_ver",
-                                $callback,$sessdata->{node},%allerrornodes);
+                $msg = $msg.$sessdata->{node}.": ".
+                    "Node firmware version for component $c_id: $format_ver";
+                if ( $i != scalar(@{$sessdata->{component_ids}}) -1 ) {
+                    $msg = $msg."\n";
+                }
 
             }
+            $callback->({data=>$msg});
             return;
         }
         return do_firmware_update($sessdata);
@@ -1718,20 +1726,74 @@ sub rflash {
     }
 }
 
-sub start_rflash_thread {
+#----------------------------------------------------------------#
+# Running rflash procedure in a child process
+# Note (chenglch) If the parent process abort unexpectedly, the
+# child process can not be terminated by xcat.
+#----------------------------------------------------------------#
+sub do_rflash_process {
     my $node = shift;
-    # NOTE (chenglch): Actually if multiple client or rest api works on the same node,
-    # the bmc of the node may not be protected while rflash is running. As xcat may not
-    # support lock on node level, just require a lock for rflash command for specific node.
-    my $lock = xCAT::Utils->acquire_lock("rflash_$node", $NON_BLOCK);
-    if (! $lock){
-        xCAT::SvrUtils::sendmsg ([1,"rflash is running on $node, please retry after a while"],
+    my $pid = xCAT::Utils->xfork;
+    if ( !defined($pid) ) {
+        xCAT::SvrUtils::sendmsg ([1,"Fork rflash process Error."],
             $callback,$node,%allerrornodes);
         return;
     }
-    donode($node, @_);
-    while (xCAT::IPMI->waitforrsp()) { yield };
-    xCAT::Utils->release_lock($lock, $NON_BLOCK);
+    # child
+    elsif ( $pid == 0 ) {
+        $SIG{CHLD} = $SIG{INT} = $SIG{TERM} = "DEFAULT";
+        # NOTE (chenglch): Actually if multiple client or rest api works on the same node,
+        # the bmc of the node may not be protected while rflash is running. As xcat may not
+        # support lock on node level, just require a lock for rflash command for specific node.
+        my $lock = xCAT::Utils->acquire_lock("rflash_$node", $NON_BLOCK);
+        if (! $lock){
+            xCAT::SvrUtils::sendmsg ([1,"rflash is running on $node, please retry after a while"],
+                $callback,$node,%allerrornodes);
+            exit(1);
+        }
+        donode($node, @_);
+        while (xCAT::IPMI->waitforrsp()) { yield };
+        xCAT::Utils->release_lock($lock, $NON_BLOCK);
+        exit(0);
+    }
+    # parent
+    else {
+        $child_pids{$pid} = $node;
+    }
+    return $pid;
+}
+
+sub start_rflash_processes {
+    my $donargs_ptr = shift;
+    my @donargs = @{$donargs_ptr};
+    my $ipmitimeout = shift;
+    my $ipmitrys = shift;
+    my $command = shift;
+    my %namedargs=@_;
+    my $extra=$namedargs{-args};
+    my @exargs=@$extra;
+
+    $SIG{INT} = $SIG{TERM} = sub {
+        foreach ( keys %child_pids ) {
+            kill 2, $_;
+        }
+        exit 0;
+    };
+    $SIG{CHLD} = sub {
+        my $cpid;
+        while ( ( $cpid = waitpid( -1, WNOHANG ) ) > 0 ) {
+            if ( $child_pids{$cpid} ) {
+                delete $child_pids{$cpid};
+            }
+        }
+    };
+    foreach (@donargs) {
+        do_rflash_process( $_->[0],$_->[1],$_->[2],$_->[3],$_->[4],
+            $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+    }
+    while ( ( scalar( keys %child_pids ) ) > 0 ) {
+        yield;
+    }
 }
 
 sub fpc_firmup_config {
@@ -7544,6 +7606,8 @@ sub process_request {
     if ($request->{command}->[0] eq "rflash") {
         my %args_hash;
         if (!defined($extrargs)) {
+                $callback->({error=>"No option or hpm file is provided.",
+                             errorcode=>1});
             return;
         }
         foreach my $opt (@$extrargs) {
@@ -7634,21 +7698,10 @@ sub process_request {
     }
   }
 
-    my $children = 0;
-    my $sub_fds = new IO::Select;
     # NOTE (chenglch) rflash for one node need about 5-10 minutes. There is no need to rflash node
-    # one by one, so parallel thread is used here.
+    # one by one, fork a process for each node.
     if ($command eq 'rflash') {
-        my %thread_group;
-        # TODO (chenglch) the size of the noderange maybe very large, so many thread is created here.
-        # Thread pool or limit size is needed.
-        foreach (@donargs) {
-            $thread_group{$_->[0]} = threads->new(\&start_rflash_thread, $_->[0],$_->[1],$_->[2],$_->[3],$_->[4],
-                $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
-        }
-        foreach (@donargs) {
-            $thread_group{$_->[0]}->join();
-        }
+        start_rflash_processes(\@donargs, $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
     }
     else {
         foreach (@donargs) {
@@ -7664,34 +7717,6 @@ sub process_request {
         }
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
-    if (keys %needbladeinv) {
-	#ok, we have some inventory data that, for now, suggests blade plugin to getdata from blade plugin
-#	my @bladenodes = keys %needbladeinv;
-#	$request->{arg}=['mac'];
-#        $request->{node}=\@bladenodes;
-#	require xCAT_plugin::blade;
-#	xCAT_plugin::blade::process_request($request,$callback);
-    }
-####return;
-####while ($sub_fds->count > 0 and $children > 0) {
-####  my $handlednodes={};
-####  forward_data($callback,$sub_fds,$handlednodes);
-####  #update the node status to the nodelist.status table
-####  if ($check) {
-####    updateNodeStatus($handlednodes, \@allerrornodes);
-####  }
-####}
-####
-#####Make sure they get drained, this probably is overkill but shouldn't hurt
-####my $rc=1;
-####while ( $rc>0 ) {
-####  my $handlednodes={};
-####  $rc=forward_data($callback,$sub_fds,$handlednodes);
-####  #update the node status to the nodelist.status table
-####  if ($check) {
-####    updateNodeStatus($handlednodes, \@allerrornodes);
-####  }
-####} 
 
     if ($check) {
         #print "allerrornodes=@allerrornodes\n";
