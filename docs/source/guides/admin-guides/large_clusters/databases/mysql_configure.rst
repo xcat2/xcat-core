@@ -11,7 +11,9 @@ The following utility is provided to migrate an existing xCAT database from SQLi
 
 If you need to update the database at a later time to give access to your service nodes, you can use the ``mysqlsetup -u -f`` command.  A file needs to be provided with all the hostnames and/or IP addresses of the servers that need to access the database on the Management node. Wildcards can be used. ::
 
-        TODO: Show an example here of file1 
+        cat /path/to/file1
+          service1
+          10.1.1.1 
 
         mysqlsetup -u -f /path/to/file1
 
