@@ -373,7 +373,11 @@ my %usage = (
  
     iDataPlex specific :
       renergy noderange [-V] [ { cappingmaxmin | cappingmax | cappingmin } ] [cappingstatus] [cappingvalue] [relhistogram]
-      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
+      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }
+
+    OpenPOWER server specific :
+      renergy noderange [ powerusage | temperature]
+",
   "updatenode" =>
 "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]

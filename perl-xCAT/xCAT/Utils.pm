@@ -3519,6 +3519,8 @@ sub filter_nodes{
 
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
+        }elsif (grep /^(powerusage|temperature)/, @args) {
+            push @{$bmcnodes}, @commonbmc;
         } else {
             push @{$mpnodes}, @ngpbmc;
         }
