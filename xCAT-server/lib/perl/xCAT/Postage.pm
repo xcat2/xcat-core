@@ -1429,12 +1429,10 @@ sub  collect_all_attribs_for_tables_in_template
                                      ( ! exists($::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster}) ||
                                        $::GLOBAL_TAB_HASH{noderes}{$node}{xcatmaster} eq ""        ) )
                                   {
-                                      my $value;
-                                      $value = xCAT::NetworkUtils->my_ip_facing($node);
-                                      if ($value eq "0")
-                                      {
-                                         undef($value);
-                                      }
+                                      my $value = undef;
+                                      my @valued = xCAT::NetworkUtils->my_ip_facing($node);
+                                      unless ($valued[0]) { $value = $valued[1];}
+
                                       $::GLOBAL_TAB_HASH{$tabname}{$node}{$attrib} = $value;
                                   }
 
