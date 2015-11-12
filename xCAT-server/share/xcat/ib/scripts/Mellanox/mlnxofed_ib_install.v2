@@ -114,7 +114,7 @@ do
     shift
 done
 
-if [ ! -f "$OFED_PATH" ]; then
+if [ -z "$OFED_PATH" ]; then
     echo "[Error] Without Mellanox OFED file path, please assign correct path" >&2
     exit 1
 fi
