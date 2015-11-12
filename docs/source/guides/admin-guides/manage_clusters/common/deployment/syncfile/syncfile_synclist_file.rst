@@ -1,3 +1,5 @@
+.. _The_synclist_file:
+
 The synclist file
 -----------------
 
