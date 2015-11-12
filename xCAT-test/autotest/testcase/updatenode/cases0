@@ -348,6 +348,67 @@ cmd:rm -f /install/script1
 end
 
 
+start:updatenode_script3
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input
+cmd:echo "if [ -n \$1 ]" >> /tmp/updatenode_P_script_input
+cmd:echo "then" >> /tmp/updatenode_P_script_input
+cmd:echo "    echo \"There is an input parameter: \$1.\" > /tmp/updatenode_P_script3" >> /tmp/updatenode_P_script_input
+cmd:echo "fi" >> /tmp/updatenode_P_script_input
+cmd:cp /tmp/updatenode_P_script_input /install/postscripts/
+check:rc==0
+cmd:chmod a+x /install/postscripts/updatenode_P_script_input
+check:rc==0
+cmd:chdef $$CN postscripts=updatenode_P_script_input
+check:rc==0
+cmd:updatenode $$CN "updatenode_P_script_input c"
+check:rc==0
+check:output=~updatenode_P_script_input
+cmd:xdsh $$CN "cat /tmp/updatenode_P_script3"
+check:output=~There is an input parameter: c
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:xdsh $$CN rm /tmp/updatenode_P_script3
+check:rc==0
+cmd:rm /tmp/updatenode_P_script_input
+check:rc==0
+end
+
+start:updatenode_P_script1_script2
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P1_script_input 
+cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P1_script_input
+cmd:echo "    if [[ \$1 == \"a\" ]];then" >>  /tmp/updatenode_P1_script_input
+cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P1_script" >> /tmp/updatenode_P1_script_input
+cmd:echo "    fi" >> /tmp/updatenode_P1_script_input
+cmd:echo "fi" >> /tmp/updatenode_P1_script_input
+cmd:cp /tmp/updatenode_P1_script_input /install/postscripts/
+check:rc==0
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P2_script_input 
+cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P2_script_input
+cmd:echo "    if [[ \$1 == \"b\" ]];then" >>  /tmp/updatenode_P2_script_input
+cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P2_script" >> /tmp/updatenode_P2_script_input
+cmd:echo "    fi" >> /tmp/updatenode_P2_script_input
+cmd:echo "fi" >> /tmp/updatenode_P2_script_input
+cmd:cp /tmp/updatenode_P2_script_input /install/postscripts/
+check:rc==0
+cmd:chmod a+x /install/postscripts/updatenode_P*_script_input
+check:rc==0
+cmd:chdef $$CN postscripts=updatenode_P1_script_input,updatenode_P2_script_input
+check:rc==0
+cmd:updatenode $$CN -P "updatenode_P1_script_input a,updatenode_P2_script_input b"
+check:rc==0
+check:output=~updatenode_P1_script_input
+check:output=~updatenode_P2_script_input
+cmd:xdsh $$CN "cat /tmp/updatenode_P1_script"
+check:output=~The input is a
+cmd:xdsh $$CN "cat /tmp/updatenode_P2_script"
+check:output=~The input is b
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:xdsh $$CN rm  /tmp/updatenode_P*_script
+check:rc==0
+cmd:rm /tmp/updatenode_P*_script_input
+cmd:rm /install/postscripts/updatenode_P*_script_input
+end
 
 
 
