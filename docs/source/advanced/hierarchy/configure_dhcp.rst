@@ -1,12 +1,7 @@
 Configure DHCP
 ==============
 
-Add the relevant networks into the DHCP configuration, refer to:
-
-.. include::/guides/admin-guides/manage_clusters/ppc64le/discovery/config_environment.rst
-
-:ref:`Setup-dhcp`
-
+Add the relevant networks into the DHCP configuration, refer to: :ref:`Setup-dhcp`
 
 Add the defined nodes into the DHCP configuration, refer to:
 `XCAT_pLinux_Clusters/#configure-dhcp <http://localhost/fake_todo>`_
