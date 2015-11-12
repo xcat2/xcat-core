@@ -32,6 +32,8 @@ use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
 use Time::HiRes qw/time/;
+use Coro;
+use AnyEvent::Util;
 my $iem_support;
 my $vpdhash;
 my %allerrornodes=();
@@ -1515,6 +1517,56 @@ sub isfirestone {
     }
 }
 
+#----------------------------------------------------------------#
+# sleep in coroutine
+#
+#  Arguments:
+#        time: in second
+#----------------------------------------------------------------#
+sub ae_sleep {
+    my ($secs) = @_;
+    my $cv = AE::cv();
+    my $guard = AE::timer( $secs, 0, $cv );
+    $cv->recv();
+}
+
+#----------------------------------------------------------------#
+# **Notice can be used in simple case, not completed**
+# Execute command in non block mode if coroutine is used
+#
+#  Arguments:
+#        cmd: should be executed
+#        out_ptr: pointer to the output buf, redirectted by stdout
+#        err_ptr: pointer to the error buf, redirectted by stderr
+#    Returns:
+#        0 : command is executed successfully
+#        other: command failed
+#----------------------------------------------------------------#
+sub green_exec {
+    my ( $cmd, $out_ptr, $err_ptr ) = @_;
+    $out_ptr = "/dev/null" if !$out_ptr;
+    $err_ptr = "/dev/null" if !$err_ptr;
+    my $event = AnyEvent->condvar();
+    my $result;
+    my $exitcode = 0;
+    $event->begin( sub { shift->send($result) } );
+    $event->begin;
+    my $task =
+      AnyEvent::Util::run_cmd( $cmd, "<", "/dev/null", ">", $out_ptr, "2>",
+        $err_ptr );
+    $task->cb(
+        sub {
+            # NOTE (chenglch) not sure here, if shift->recv is not 0,
+            # command fails.
+            $exitcode = shift->recv;
+            $event->end;
+        }
+    );
+    $event->end;
+    $event->recv;
+    return $exitcode;
+}
+
 sub check_firmware_version {
 
     sub _on_receive_version {
@@ -1541,13 +1593,15 @@ sub check_firmware_version {
 sub get_ipmitool_version {
     my $version_ptr = shift;
     my $cmd = "$IPMIXCAT -V";
-    my $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        $callback->({error=>"Running ipmitool command failed. Error Code: $::RUNCMD_RC",
+    my $out;
+    my $err;
+    my $rc = green_exec($cmd, \$out, \$err);
+    if ($rc != 0) {
+        $callback->({error=>"Running ipmitool command failed. Error Code: $rc",
                      errorcode=>1});
         return -1;
     }
-    $$version_ptr = (split(/ /, $output))[2];
+    $$version_ptr = (split(/ /, $out))[2];
     return 0;
 }
 
@@ -1574,15 +1628,16 @@ sub calc_ipmitool_version {
 #        0 when no response from bmc
 #----------------------------------------------------------------#
 sub check_bmc_status_with_ipmitool {
-	my $pre_cmd = shift;
-	my $interval = shift;
-	my $retry = shift;
-	my $count = 0;
-	my $cmd = $pre_cmd." power status";
-	while ($count < $retry) {
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            sleep($interval);
+    my $pre_cmd = shift;
+    my $interval = shift;
+    my $retry = shift;
+    my $count = 0;
+    my $cmd = $pre_cmd." power status";
+    my $rc;
+    while ($count < $retry) {
+        $rc = green_exec($cmd);
+        if ($rc != 0) {
+            ae_sleep($interval);
         }
         else {
             return 1;
@@ -1613,7 +1668,9 @@ sub do_firmware_update {
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
-    my $output;
+    my $rc;
+    my $out;
+    my $err;
     my $bmc_addr = $sessdata->{ipmisession}->{bmc};
     my $bmc_userid = $sessdata->{ipmisession}->{userid};
     my $bmc_password = undef;
@@ -1634,18 +1691,17 @@ sub do_firmware_update {
             $callback,$sessdata->{node},%allerrornodes);
     # step 1 power off
     my $cmd = $pre_cmd." chassis power off";
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+    $rc = green_exec($cmd, \$out, \$err);
+    if ($rc != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $out"],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
-
     # step 2 reset cold
     $cmd = $pre_cmd." mc reset cold";
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+    $rc = green_exec($cmd, \$out, \$err);
+    if ($rc != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $out"],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
@@ -1657,17 +1713,17 @@ sub do_firmware_update {
     }
     #step 3 protect network
     $cmd = $pre_cmd. " raw 0x32 0xba 0x18 0x00";
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+    $rc = green_exec($cmd);
+    if ($rc != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed."],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
     # step 4 upgrade firmware
     $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
-    $output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+    $rc = green_exec($cmd, \$out, \$err);
+    if ($rc != 0) {
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $out"],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
     }
@@ -7544,6 +7600,8 @@ sub process_request {
     if ($request->{command}->[0] eq "rflash") {
         my %args_hash;
         if (!defined($extrargs)) {
+            $callback->({error=>"No option or hpm file is provided.",
+                         errorcode=>1});
             return;
         }
         foreach my $opt (@$extrargs) {
@@ -7572,7 +7630,6 @@ sub process_request {
                 return;
             }
         }
-
         if (exists($args_hash{check})) {
             hpm_action_version();
         }
@@ -7640,11 +7697,11 @@ sub process_request {
     # one by one, so parallel thread is used here.
     if ($command eq 'rflash') {
         my %thread_group;
-        # TODO (chenglch) the size of the noderange maybe very large, so many thread is created here.
-        # Thread pool or limit size is needed.
         foreach (@donargs) {
-            $thread_group{$_->[0]} = threads->new(\&start_rflash_thread, $_->[0],$_->[1],$_->[2],$_->[3],$_->[4],
-                $ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+             $thread_group{$_->[0]} = async {
+                start_rflash_thread @_;
+             } $_->[0],$_->[1],$_->[2],$_->[3],$_->[4], $ipmitimeout,$ipmitrys,
+                $command,-args=>\@exargs;
         }
         foreach (@donargs) {
             $thread_group{$_->[0]}->join();
