@@ -4,7 +4,7 @@ Remove xCAT
 Backup xCAT User Data
 ---------------------
 
-Before removing xCAT, recommand to backup xCAT database. It's convenient to restore xCAT management environment in the future if needed ::
+Before removing xCAT, recommend to backup xCAT database. It's convenient to restore xCAT management environment in the future if needed ::
 
     dumpxCATdb -p <path_to_save_the_database>
 
@@ -55,7 +55,7 @@ Remove xCAT files
 
 1. Remove the xCAT RPMs
 
-  There isn't an easy way to remove all RPMs installed because of xCAT. you can just remove the RPMs calculated by below command. Depending on the past experience, it's safe.
+  There is no easy way to distinct all the packages depending by xCAT. For packages shipped by xCAT, you can remove them by the commands below.
   
   [RHEL and SLES] ::
 
@@ -63,7 +63,7 @@ Remove xCAT files
 
   [Ubuntu] ::	  
   
-	  dpkg -l | awk  '{ print $2 }' |grep -i xcat
+      dpkg -l | awk '/xcat/ { print $2 }'
 
   If you want to remove more cleanly. below list maybe helpful for you. They are the packages list of xcat installation tarball. These list are the whole RPMs list, it's possible for some RPMs not to be installed due to them are not suitable for your environment. Please do judgment by yourself.
 
@@ -194,7 +194,7 @@ Remove xCAT files
       `Debian Packages List (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
 	
 
-  Generally, we use ``yum install xCAT`` to install xCAT. so these are some RMPs shipped by operating system are installed during xCAT installation. We don't have a easy way to find out all of them, but keep these RPMs is harmless. 
+  Generally, we use ``yum install xCAT`` to install xCAT. so these are some RPMs shipped by operating system are installed during xCAT installation. We don't have an easy way to find out all of them, but keep these RPMs are harmless. 
 
 
 2. Remove xCAT certificate file ::
