@@ -2,6 +2,7 @@ rmblade
 =======
 
 ::
+
     Usage: rmblade [-h|--help]
 
     Response to SNMP for monsetting to remove blade from xCAT when trap is recieved.
