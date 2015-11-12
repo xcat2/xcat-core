@@ -60,7 +60,7 @@ The next time you re-install these nodes, the additional software will be automa
 
 Update the delta changes in Sysclone environment
 ````````````````````````````````````````````````
-
+.. include:: /advanced/sysclone/sysclone.rst
 Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`update-node-later-on` for more information. ::
 
     updatenode <targetnoderange> -S

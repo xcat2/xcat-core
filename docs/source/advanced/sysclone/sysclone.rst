@@ -153,6 +153,7 @@ following below commands to install the target nodes with the image captured fro
     rnetboot <target-node>
 
 .. _update-node-later-on:
+
 Update Nodes Later On
 ---------------------
 

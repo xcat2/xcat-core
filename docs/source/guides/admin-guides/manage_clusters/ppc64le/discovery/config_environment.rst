@@ -16,7 +16,7 @@ Pls run the following command to add networks in ``networks`` table if no entry 
 
     makenetworks
 
-.. _Setup_dhcp:
+.. _Setup-dhcp:
 Setup DHCP
 ``````````
 

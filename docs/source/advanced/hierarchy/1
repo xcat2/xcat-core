@@ -2,9 +2,7 @@ Configure DHCP
 ==============
 
 Add the relevant networks into the DHCP configuration, refer to:
-
 .. include::/guides/admin-guides/manage_clusters/ppc64le/discovery/config_environment.rst
-
 :ref:`Setup-dhcp`
 
 
