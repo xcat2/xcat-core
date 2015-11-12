@@ -60,8 +60,7 @@ The next time you re-install these nodes, the additional software will be automa
 
 Update the delta changes in Sysclone environment
 ````````````````````````````````````````````````
-
-Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See :ref:`Using_Clone_to_Deploy_Server#Update_Nodes_Later_On` for more information. ::
+Updatenode can also be used in Sysclone environment to push delta changes to target node. After capturing the delta changes from the golden client to management node, just run below command to push delta changes to target nodes. See Sysclone environment related section: :ref:`update-node-later-on` for more information. ::
 
     updatenode <targetnoderange> -S
 
@@ -103,7 +102,7 @@ Synchronize new/updated configuration files
 Setting up syncfile 
 ```````````````````
 
-Use instuctions in :ref:`Sync-Files-label`
+Use instructions in doc: :ref:`The_synclist_file`.
 
 Syncfiles to the nodes
 ```````````````````````
@@ -112,7 +111,7 @@ After compute node is installed, you would like to sync files to the nodes: ::
 
     updatenode <noderange> -F
 
-**With the ``updatenode`` command the syncfiles postscript cannot be used to sync files to the nodes.** Therefore, if you run ``updatenode <noderange> -P syncfiles``, nothing will be done. A message will be logged that you must use updatenode <noderange> -F to sync files.
+With the ``updatenode`` command the syncfiles postscript cannot be used to sync files to the nodes.Therefore, if you run ``updatenode <noderange> -P syncfiles``, nothing will be done. A message will be logged that you must use ``updatenode <noderange> -F`` to sync files.
 
 Update the ssh Keys and Credentials on the Nodes
 ------------------------------------------------
