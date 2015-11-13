@@ -20,8 +20,8 @@ Start/Stop MySQL/MariaDB service
     service mysql stop
 
 
-Basic mysql commands 
---------------------------------------
+Basic MySQL/MariaDB commands 
+-----------------------------
 
 Refer to `<https://www.mariadb.org/>`_ for the latest documentation.
 
