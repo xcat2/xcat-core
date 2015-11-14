@@ -64,7 +64,7 @@ DNS Attributes
   **NOTE**: if using this attribute to block certain interfaces, make sure the ip that maps to your hostname of xCAT MN is not blocked since xCAT needs to use this ip to communicate with the local DNS server on MN.
 
 
-Install/Deployment Attrubutes
+Install/Deployment Attributes
 -----------------------------
 
 * installdir:  
