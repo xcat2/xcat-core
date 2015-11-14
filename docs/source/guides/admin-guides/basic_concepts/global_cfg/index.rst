@@ -61,7 +61,7 @@ DNS Attributes
 
   In this example xcatmn is the name of the xCAT MN, and DNS there should listen on eth1 and eth2.  On all of the nodes in group ``service`` DNS should listen on the bond0 nic.
 
-  **NOTE**: if using this attribute to block certain interfaces, make sure the ip maps to your hostname of xCAT MN is not blocked since xCAT needs to use this ip to communicate with the local NDS server on MN.
+  **NOTE**: if using this attribute to block certain interfaces, make sure the ip that maps to your hostname of xCAT MN is not blocked since xCAT needs to use this ip to communicate with the local DNS server on MN.
 
 
 Install/Deployment Attrubutes
