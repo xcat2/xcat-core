@@ -86,7 +86,7 @@ Remoteshell Attributes
 ----------------------
 
 * sshbetweennodes: 
-  Comma separated list of groups of compute nodes to enable passwordless root ssh during install, or ``xdsh -K``. Default is ``ALLGROUPS``. Set to ``NOGROUPS``,if you do not wish to enabled any group of compute nodes.If using the ``zone`` table, this attribute in not used.
+  Comma separated list of groups of compute nodes to enable passwordless root ssh during install, or ``xdsh -K``. Default is ``ALLGROUPS``. Set to ``NOGROUPS`` if you do not wish to enable it for any group of compute nodes. If using the ``zone`` table, this attribute in not used.
 
 
 Services Attributes
