@@ -129,7 +129,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
     $ lsdef -t osimage
 
-  Display the detail attirbutes of one **osimage** named **rhels7.1-x86_64-install-compute**: ::
+  Display the detail attributes of one **osimage** named **rhels7.1-x86_64-install-compute**: ::
 
     $ lsdef -t osimage rhels7.1-x86_64-install-compute  
     Object name: rhels7.1-x86_64-install-compute        
