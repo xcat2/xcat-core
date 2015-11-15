@@ -1,88 +1,88 @@
-Manage Virtual Machine (VMs)
+Manage Virtual Machine (VM)
 ============================
 
-Create the Virtual Machine
---------------------------
 
-In this doc, we assume the powerKVM hypervisor host cn1 is ready to use.
+Now the MowerKVM hypervisor "kvmhost1" is ready, this section introduces the VM management in xCAT, including examples on how to create,remove and clone VMs.
+
+Create Virtual Machine
+----------------------
 
 Create VM Node Definition
 `````````````````````````
-
-Define virtual machine vm1, add it to xCAT under the vm group, its ip is x.x.x.x, use makehost to add hostname and ip into /etc/hosts file: ::
+Create a virtual machine node object "vm1", assign it to be a member of group "vm", its ip is "192.168.0.1", run ``makehost`` to add an entry in ``/etc/hosts`` file: ::
 
   mkdef vm1 groups=vm,all
-  chdef vm1 ip=x.x.x.x
+  chdef vm1 ip=192.168.0.1
   makehosts vm1
 
-Update DNS with this new node: ::
+Update DNS configuration and database: ::
 
   makedns -n
   makedns -a
 
-Define attributes for the VM
-`````````````````````````````
+Specify VM attributes 
+`````````````````````
 
-Run the chdef command to change the following attributes for the vm1: 
+After the VM object is created, several key attributes need to be specified with ``chdef`` : 
 
-1. Define the virtual cpu number: ::
+1. the number of virtual cpus in the VM: ::
 
-    chdef vm1 vmcpus=2
+     chdef vm1 vmcpus=2
 
-2. Define the kvm hypervisor of the virtual machine vm1, it should be set to cn1: ::
+2. the kvm hypervisor of the VM: ::
  
-    chdef vm1 vmhost=cn1
+     chdef vm1 vmhost=kvmhost1
 
-3. Define the virtual memory size, the unit is Megabit. For example, to define 1GB of memory to vm1: ::
+3. the virtual memory size, with the unit "Megabit". Specify 1GB memory to "vm1" here: ::
 
-    chdef vm1 vmmemory=1024
+     chdef vm1 vmmemory=1024
 
-   Note: For diskless node, the vmmemory should be set larger than 2048, otherwise the node cannot be booted up. 
+**Note**: For diskless node, the **vmmemory** should be at least 2048 MB, otherwise the node cannot boot up. 
 
-4. Define the hardware management module: ::
+4. the hardware management module, "kvm" for powerKVM: ::
 
     chdef vm1 mgt=kvm
 
-5. Define the virtual network card, it should be set to the bridge br0/virb0/default which defined in hypervisor. If no bridge was set explicitly, no network device will be created for the node vm1: ::
+5. Define the virtual network card, it should be set to the bridge "br0" which has been created in the hypervisor. If no bridge is specified, no network device will be created for the VM node "vm1": ::
 
     chdef vm1 vmnics=br0
 
-6. The vmnicnicmodel attribute is used to set the type and corresponding driver for the nic. If not set, the default value is 'virtio'.
+6. The **vmnicnicmodel** attribute is used to set the type and corresponding driver for the nic. If not set, the default value is 'virtio'.
    :: 
 
     chdef vm1 vmnicnicmodel=virtio
 
-7. Define the storage for the vm1, three formats for the storage source are supported.
+7. Define the storage for the vm1, three types of storage source format are supported.
 
-   A. Create storage on a nfs server
+   A. Create storage on a NFS server
 
       The format is ``nfs://<IP_of_NFS_server>/dir``, that means the kvm disk files will be created at ``nfs://<IP_of_NFS_server>/dir``: ::
 
-       chdef vm1 vmstorage=nfs://<IP_of_NFS_server>/install/vms/
+        chdef vm1 vmstorage=nfs://<IP_of_NFS_server>/install/vms/
 
    B. Create storage on a device of hypervisor
 
-      Instead of the format is 'phy:/dev/sdb1': ::
+      The format is 'phy:/dev/sdb1': ::
 
-       chdef vm1 vmstorage=phy:/dev/sdb1
+        chdef vm1 vmstorage=phy:/dev/sdb1
 
    C. Create storage on a directory of hypervisor
 
-      Instead of he format is 'dir:///var/lib/libvirt/images': ::
+      The format is 'dir:///var/lib/libvirt/images': ::
 
-       chdef vm1 vmstorage=dir:///var/lib/libvirt/images
+        chdef vm1 vmstorage=dir:///var/lib/libvirt/images
 
-    Note: The attribute vmstorage is only necessary for diskfull node. You can ignore it for diskless node. 
+   **Note**: The attribute **vmstorage** is only valid for diskfull VM node. 
 
-8. Define the console attributes for the virtual machine: ::
+8. Define the **console** attributes for VM: ::
 
-    chdef vm1 serialport=0 serialspeed=115200
+     chdef vm1 serialport=0 serialspeed=115200
 
-9. (optional)For monitor the installing process from vnc client, set vidpassword value: ::
+9. (optional)For monitoring and access the VM with vnc client, set **vidpassword** value: ::
 
-    chtab node=vm1 vm.vidpassword=abc123
+     chtab node=vm1 vm.vidpassword=abc123
 
-10. Set 'netboot' attribute
+10. Set **netboot** attribute
 
     * **[x86_64]** ::
  
@@ -92,60 +92,38 @@ Run the chdef command to change the following attributes for the vm1:
   
         chdef vm1 netboot=grub2
 
-    Make sure the grub2 had been installed on your Management Node: ::
+    Make sure "grub2" had been installed on the management node: ::
 
-        rpm -aq | grep grub2
+        #rpm -aq | grep grub2
         grub2-xcat-1.0-1.noarch
 
-    Note: If you are working with xCAT-dep oldder than 20141012, the modules for xCAT shipped grub2 can not support ubuntu LE smoothly. So the following steps needed to complete the grub2 setting. ::
 
-        rm /tftpboot/boot/grub2/grub2.ppc
-        cp /tftpboot/boot/grub2/powerpc-ieee1275/core.elf /tftpboot/boot/grub2/grub2.ppc
-        /bin/cp -rf /tmp/iso/boot/grub/powerpc-ieee1275/elf.mod /tftpboot/boot/grub2/powerpc-ieee1275/
+Make virtual machine 
+````````````````````
 
-Make the VM under xCAT
-``````````````````````
-
-If vmstorage is on a nfs server or a device of hypervisor, for example ::
+If **vmstorage** is a NFS mounted directory or a device on hypervisor, run ::
 
   mkvm vm1
 
-If create the virtual machine vm1 with 20G hard disk from a large disk directory, for example ::
+To create the virtual machine "vm1" with 20G hard disk on a hypervisor directory, run ::
 
   mkvm vm1 -s 20G
    
-If the vm1 was created successfully, a hard disk file named vm1.sda.qcow2 can be found in vmstorage location. And you can run the lsdef vm1 to see whether the mac attribute has been set automatically.
+When "vm1" is created successfully, a VM hard disk file with a name like "vm1.sda.qcow2" will be found in the location specified by **vmstorage**. What's more, the **mac** attribute of "vm1" is set automatically, please check it with: ::
 
+  lsdef vm1 -i mac
 
-Configure DHCP 
-```````````````
-::
-
-   makedhcp -n
-   makedhcp -a
-
-Create osimage object
-``````````````````````````````
-
-After you download the OS ISO, refer to :ref:`create_img` to create osimage objects.
-
-
-Prepare the VM for installation
-```````````````````````````````````````
-::
-
-   nodeset vm1 osimage=<osimage_name>
-
-Start VM Installation 
-``````````````````````
-
-::
+Now a VM "vm1" is created, it can be provisioned like any other nodes in xCAT. The VM node can be powered on by: ::
 
   rpower vm1 on
 
-If the vm1 was powered on successfully, you can get following information when running 'virsh list' on the kvm hypervisor cn1. ::
+If "vm1" is powered on successfully,  the VM status can be obtained by running the following command on management node ::
 
-    virsh list
+  rpower vm1 status
+
+or running the following command on the kvm hypervisor "kvmhost1" ::
+
+    #virsh list
      Id Name                 State
     --------------------------------   
       6 vm1                 running
@@ -154,61 +132,59 @@ If the vm1 was powered on successfully, you can get following information when r
 Monitoring the Virtual Machine
 ``````````````````````````````
 
-You can use console in xcat management node or kvm hypervisor to monitor the process. 
+When the VM has been created and powered on, please choose one of the following methods to monitor and access it. 
 
-* On the kvm hypervisor you can use virsh to open text console: ::
+* Open the console on kvm hypervisor: ::
 
    virsh console vm1
 
-* Use rcons/wcons on the xCAT management node to open text console: ::
+* Use **rcons/wcons** on xCAT management node to open text console: ::
 
    chdef vm1 cons=kvm
    makeconservercf vm1
    rcons vm1
 
-* Connecting to the virtual machine's vnc console
+* Connect to virtual machine through vnc console
 
-  In order to connect to the virtual machine's console, you need to generate a new set of credentials. You can do it by running: ::
+  In order to connect the virtual machine's vnc server, a new set of credentials need to be generated by running: ::
 
     xcatclient getrvidparms vm1
     vm1: method: kvm
     vm1: textconsole: /dev/pts/0
     vm1: password: JOQTUtn0dUOBv9o3
     vm1: vidproto: vnc
-    vm1: server: cn1
+    vm1: server: kvmhost1
     vm1: vidport: 5900
 
-  Note: Now just pick your favorite vnc client and connect to the hypervisor, using the password generated by "getrvidparms". If the vnc client complains the password is not valid, it is possible that your hypervisor and headnode clocks are out of sync! You can sync them by running "ntpdate <ntp server>" on both the hypervisor and the headnode. 
+  **Note**: Now just pick a favorite vnc client to connect the hypervisor, with the password generated by ``getrvidparms``. If the vnc client complains "the password is not valid",  the reason might be that the hypervisor and headnode clocks are out of sync! Please try to sync them by running ``ntpdate <ntp server>`` on both the hypervisor and the headnode. 
 
 
-* Use wvid on the xCAT management node
+* Use wvid on management node
  
-  Make sure firewalld service had been stopped. ::
+  Make sure **firewalld** service is stopped, disable it if not: ::
 
-   chkconfig firewalld off
+    chkconfig firewalld off
 
-  Note: Forwarding request to systemctl will disable firewalld.service. ::
+  or ::
 
-   rm /etc/systemd/system/basic.target.wants/firewalld.service 
-   rm /etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service
+    systemctl disable firewalld
 
-  Then, run wvid vm1 on MN::
 
-   wvid vm1
+  Then, run ``wvid`` on MN::
 
-* For powerKVM, we can use kimchi to monitor the installing process
+    wvid vm1
 
-  Open "https://<pkvm_ip>:8001" to open kimchi. There will be a “connect” button you can use below "Actions" button and input Password required:abc123 your have set before mkvm, then you could get the console.
+* For powerKVM,  **kimchi** on the kvm hypervisor can be used to monitor and access the VM.
 
 
 Remove the virtual machine
 --------------------------
 
-Remove the vm1 even when it is in power on status. ::
+Remove the VM "vm1" even when it is in "power-on" status: ::
 
     rmvm vm1 -f
 
-Remove the definition of kvm and related storage. ::
+Remove the definition of "vm1" and related storage: ::
 
     rmvm vm1 -p
 
@@ -216,107 +192,45 @@ Remove the definition of kvm and related storage. ::
 Clone the virtual machine
 -------------------------
 
-Clone is a concept that create a new node from the old one by reuse most of data that has been installed on the old node. Before creating a new node, a vm (virtual machine) master must be created first. The new node will be created from the vm master. The new node can attach to the vm master or not.
-The node can NOT be run without the vm master if choosing to make the node attach to the vm master. The advantage is that the less disk space is needed.
+**Clone** is an operation that creating a VM from an existed one by inheriting most of its attributes and data. 
+
+The general step of **clone** a VM is like this: first creating a **VM master** , then creating a VM with the newly created **VM master** in **attaching** or **detaching** mode.
+
 
 **In attaching mode**
 
-In this mode, all the nodes will be attached to the vm master. Lesser disk space will be used than the general node.
-Create the vm master vm5 from a node (vm1) and make the original node vm1 attaches to the new created vm master: ::
+In this mode, all the newly created VMs are attached to the VM master. Since the image of the newly created VM only includes the differences from the VM master, which requires less disk space. The newly created VMs can NOT run without the VM master. 
 
-    clonevm vm1 -t vm5
+An example is shown below:
+
+Create the VM master "vm5" from a VM node "vm1": ::
+
+    #clonevm vm1 -t vm5
     vm1: Cloning vm1.sda.qcow2 (currently is 1050.6640625 MB and has a capacity of 4096MB)
     vm1: Cloning of vm1.sda.qcow2 complete (clone uses 1006.74609375 for a disk size of 4096MB)
     vm1: Rebasing vm1.sda.qcow2 from master
     vm1: Rebased vm1.sda.qcow2 from master
 
-After the performing, you can see the following entry has been added into the vmmaster table. ::
+The newly created VM master "vm5" can be found in the **vmmaster** table. ::
 
-    tabdump vmmaster  
+    #tabdump vmmaster  
     name,os,arch,profile,storage,storagemodel,nics,vintage,originator,comments,disable
     "vm5","<os>","<arch>","compute","nfs://<storage_server_ip>/vms/kvm",,"br0","<date>","root",,
 
-Clone a new node vm2 from vm master vm5: ::
+Clone a new node vm2 from VM master vm5: ::
 
     clonevm vm2 -b vm5
 
 **In detaching mode**
 
-Create a vm master that the original node detaches with the created vm master. ::
+Create a VM master "vm6" . ::
 
-    clonevm vm2 -t vm6 -d
+    #clonevm vm2 -t vm6 -d
     vm2: Cloning vm2.sda.qcow2 (currently is 1049.4765625 MB and has a capacity of 4096MB)
     vm2: Cloning of vm2.sda.qcow2 complete (clone uses 1042.21875 for a disk size of 4096MB)
 
-Clone the vm3 from the vm6 with the detaching mode turn on: ::
+Clone a VM "vm3" from the VM master "vm6" in detaching mode: ::
 
-    clonevm vm3 -b vm6 -d
+    #clonevm vm3 -b vm6 -d
     vm3: Cloning vm6.sda.qcow2 (currently is 1042.21875 MB and has a capacity of 4096MB)
-
-FAQ
----
-
-1, libvirtd run into problem
-
-   **Issue**: One error as following message: ::
-
-    rpower vm1 on
-    vm1: internal error no supported architecture for os type 'hvm'
-
-   **Solution**: This error was fixed by restarting libvirtd on the host machine: ::
-
-    xdsh cn1 service libvirtd restart
-
-   Note: In any case that you find there is libvirtd error message in syslog, you can try to restart the libvirtd.
-
-2, Virtual disk has problem
-
-  **Issue**: When running command 'rpower vm1 on', get the following error message: ::
-
-    vm1: Error: unable to set user and group to '0:0'
-      on '/var/lib/xcat/pools/27f1df4b-e6cb-5ed2-42f2-9ef7bdd5f00f/vm1.sda.qcow2': Invalid argument:
-
-  **Solution**: try to figure out the ``nfs://<storage_server_ip>`` was exported correctly. The nfs client should have root authority.
-
-3, VNC client complains the credentials are not valid
-
-   **Issue**: When connecting to the hypervisor using VNC to get a VM console, the vnc client complains with "Authentication failed".
-
-   **Solution**: Check if the clocks on your hypervisor and headnode are in sync! 
-
-4, rpower fails with "qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vmXYZ.sda.qcow2: Permission denied" error message
-
-   **Issue**: When running rpower on a vm, rpower complains with the following error message: ::
-
-    rpower vm1 on
-    vm1: Error: internal error Process exited while reading console log output: char device redirected to /dev/pts/1
-    qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vm1.sda.qcow2: Permission denied: internal error Process exited while reading console log output: char device redirected to /dev/pts/1
-    qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vm1.sda.qcow2: Permission denied
-    [root@xcat xCAT_plugin]#
-
-   **Solution**: This might be caused by bad permissions in your NFS server / client (where clients will not mount the share with the correct permissions). Systems like CentOS 6 will have NFS v4 support activated by default. This might be causing the above mentioned problems so one solution is to simply disable NFS v4 support in your NFS server by uncommenting the following option in /etc/sysconfig/nfs: ::
-
-    RPCNFSDARGS="-N 4"
-
-   Finish by restarting your NFS services (i.e. service nfsd restart) and try powering on your VM again...
-   Note: if you are running a stateless hypervisor, we advise you to purge the VM (rmvm -p vmXYZ), restart the hypervisor and "mkvm vmXYZ -s 4" to recreate the VM as soon as the hypervisor is up and running.
-
-5, Error: Cannot communicate via libvirt to <host>
-
-   **Issue**: This error mostly caused by the incorrect setting of the ssh tunnel between xCAT management node and <host>.
-
-   **Solution**: Check that xCAT MN could ssh to the <host> without password.
-
-6, Cannot ping to the vm after the first boot of stateful install
-
-   **Issue**: The new installed stateful vm node is not pingable after the first boot, you may see the following error message in the console when vm booting: ::
-
-    ADDRCONF(NETDEV_UP): eth0 link is not ready.
-
-   **Solutoin**: This issue may be caused by the incorrect driver for vm. You can try to change driver to 'virtio' by following steps: :: 
-
-    rmvm vm1
-    chdef vm1 vmnicnicmodel=virtio
-    mkvm vm1
-
 
