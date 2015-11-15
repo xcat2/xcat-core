@@ -1,44 +1,98 @@
-PowerKVM
-========
-
-Install PowerKVM 
-----------------
-
-The process to set up PowerKVM hypervisors using xCAT is very similar to deploying diskful compute nodes.
-
-#. Download the PowerKVM iso and add it to xCAT using copycds: :: 
-
-    # if the iso file is: ibm-powerkvm-2.1.1.0-22.0-ppc64-gold-201410191558.iso
-    copycds -n pkvm2.1.1 ibm-powerkvm-2.1.1.0-22.0-ppc64-gold-201410191558.iso
-
-#. Then provision the target node using the PowerKVM osimage: ::
-
-       nodeset <noderange> osimage=pkvm2.1.1-ppc64-install-compute
-       rsetboot <noderange> net
-       rpower <noderange> reset
-
-   Refer to :doc:`/guides/admin-guides/manage_clusters/ppc64le/diskful/index` if you need more information.
+Setup PowerKVM Hypervisor
+=========================
 
 
-Verifying hypervisor bridges
-----------------------------
+Provision Hypervisor with PowerKVM
+----------------------------------
 
-In order to launch VMs, bridges must be configured on the PowerKVM hypervisors for the Virtual Machines to utilize.
 
-Check that at least one bridge is configured and mapped to a physical interface.   Show the bridge information using ``brctl show``: ::
+Please follow the ``Diskful Installation Documentation`` :ref:`Diskful Installation <diskfull_installation>` to provision kvm hypervisor with PowerKVM, several customization steps should be taken into consideration.
+
+To demonstrate the brief steps on hypervisor provision, take **ibm-powerkvm-3.1.0.0-39.0-ppc64le-gold-201511041419.iso** for example here:
+ 
+#. Obtain a PowerKVM iso and create PowerKVM osimages with it: :: 
+
+     copycds ibm-powerkvm-3.1.0.0-39.0-ppc64le-gold-201511041419.iso
+    
+   The following PowerKVM osimage will be created on success ::
+     
+     # lsdef -t osimage -o pkvm3.1-ppc64le-install-compute
+     Object name: pkvm3.1-ppc64le-install-compute
+         imagetype=linux
+         osarch=ppc64le
+         osdistroname=pkvm3.1-ppc64le
+         osname=Linux
+         osvers=pkvm3.1
+         otherpkgdir=/install/post/otherpkgs/pkvm3.1/ppc64le
+         pkgdir=/install/pkvm3.1/ppc64le
+         profile=compute
+         provmethod=install
+         template=/opt/xcat/share/xcat/install/pkvm/compute.pkvm3.ppc64le.tmpl
+
+#. Customize the hypervisor node definition to create network bridge
+
+   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Please specify the **xHRM** with appropraite parameters in  **postscripts** attibute. Here is some examples on this:
+
+   To create a bridge with default name 'default' against the installation network device which was specified by **installnic** attribute ::
+
+     chdef kvmhost1 -p postscripts="xHRM bridgeprereq"
+
+   To create a bridge named 'br0' against the installation network device which was specified by **installnic** attribute(recommended) ::
+
+     chdef kvmhost1 -p postscripts="xHRM bridgeprereq br0"
+
+   To create a bridge named 'br0' against the network device 'eth0' ::
+
+     chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
+
+   **Note**: The network bridge name you specified should avoid ``virbr0,virbr1...``, which might have beem taken on the PowerKVM installation [1]_. 
+
+
+#. Customize the hypervisor node definition to mount the shared kvm storage directory on management node(optional)
+
+   If the shared kvm storage directory on the management node has been exported, it can be mounted on powerKVM hypervisor for virtual machines hosting. 
+
+   An easy way to do this is to create another postscript named "mountvms" which creates a directory **/install/vms** on hypervisor and then mounts **/install/vms** from the management node, the content of "mountvms" can be: ::
+
+     logger -t xcat "Install: setting vms mount in fstab"
+     mkdir -p /install/vms
+     echo "$MASTER:/install/vms /install/vms nfs rsize=8192,wsize=8192,timeo=14,intr,nfsvers=2 1 2" >> /etc/fstab
+
+
+   Then set the file permission and specify the script in **postscripts** attribute of hypervisor node definition: ::
+
+     chmod 755 /install/postscripts/mountvms
+     chdef kvmhost1 -p postscripts=mountvms
+
+#. Provision the hypervisor node with the PowerKVM osimage ::
+
+    nodeset kvmhost1 osimage=pkvm3.1-ppc64le-install-compute
+    rpower kvmhost1 boot
+
+
+Create network bridge on hypervisor 
+------------------------------------
+
+To launch VMs, a network bridge must be created on the PowerKVM hypervisors. 
+
+If the hypervisor is provisioned successfully according to the steps described above, a network bridge will be created and attached to a physical interface. This can be checked by running ``brctl show`` on the hypervisor to show the network bridge information, please make sure a network bridge has been created and configured according to the parameters passed to postscript "xHRM" ::
 
    # brctl show
    bridge name     bridge id               STP enabled     interfaces
    br0             8000.000000000000       no              eth0
 
-If there are no bridges configured, the xCAT post install script will not work. You must manually create a bridge. The following is provided as an example for creating a bridge br0 using interface eth0 with IP address: 10.1.101.1/16, for example: ::
 
-  IPADDR=10.1.101.1/16
-  brctl addbr br0
-  brctl addif br0 eth0
-  brctl setfd br0 0
-  ip addr add dev br0 $IPADDR
-  ip link set br0 up
-  ip addr del dev eth0 $IPADDR
+If the network bridge is not created or configured successfully, please run "xHRM" with **updatenode** on managememt node to create it manually:::
 
-Note: During any of ubuntu installation, the virtual machines need to access Internet, so make sure the PowerKVM hypervisor is able to access Internet.
+   updatenode kvmhost1  -P "xHRM bridgeprereq eth0:br0"
+ 
+
+
+.. [1] Every standard libvirt installation during PowerKVM powervision provides NAT based connectivity to virtual machines out of the box. Some network bridges(virbr0,virbr1...) and dummy network devices(virbr0-nic,virbr1-nic...) will be created by default ::
+
+  #brctl show
+  #bridge name     bridge id               STP enabled     interfaces
+  #virbr0          8000.525400c7f843       yes             virbr0-nic
+  #virbr1          8000.5254001619f5       yes             virbr1-nic
+
+
