@@ -7,7 +7,7 @@ In the chapter :doc:`xCAT Object <../../../basic_concepts/xcat_object/index>`, i
 
 xCAT offers several powerful **Automatic Hardware Discovery** methods to simplify the procedure of SP configuration and server information collection. If your managed cluster has more than 10 servers, the automatic discovery is worth to take a try. If your cluster has more than 50 servers, the automatic discovery is recommended.
 
-Following are the brief characters and adaptability of each method, you can select a proper one according to your cluster size and other consideration.
+Following are the brief characteristics and adaptability of each method, you can select a proper one according to your cluster size and other consideration.
 
 * **Manually Define Nodes**
 
@@ -23,13 +23,13 @@ Following are the brief characters and adaptability of each method, you can sele
 
     It will take additional time to configure the SP (Management Modules like: BMC, FSP) and collect the server information like MTMS (Machine Type and Machine Serial) and Host MAC address for OS deployment ...
 
-    This method is inefficiency and error-prone for a large number of servers.
+    This method is inefficient and error-prone for a large number of servers.
 
 * **MTMS-based Discovery**
 
   **Step1**: **Automatically** search all the servers and collect server MTMS information.
 
-  **Step2**: Define the searched server to a **Node Object** automatically. In this case, the node name will be generate base on the **MTMS** string. Or admin can rename the **Node Object** to a reasonable name like **r1u1 (It means the physical location is in Rack1 and Unit1)** base on the **MTMS**.
+  **Step2**: Define the searched server to a **Node Object** automatically. In this case, the node name will be generated based on the **MTMS** string. The admin can rename the **Node Object** to a reasonable name like **r1u1** (It means the physical location is in Rack1 and Unit1).
 
   **Step3**: Power on the nodes, xCAT discovery engine will update additional information like the **MAC for deployment** for the nodes.
 
@@ -41,7 +41,7 @@ Following are the brief characters and adaptability of each method, you can sele
 
   * cons
 
-    Compare to **Switch-based Discovery**, admin needs to be involved to rename the auto discovered node if wanting to give node a reasonable name. It's hard to rename the node to a location awared name for a large number of server.
+    Compared to **Switch-based Discovery**, the admin needs to be involved to rename the automatically discovered node to a reasonable name (optional). It's hard to rename the node to a location-based name for a large number of server.
 
 * **Switch-based Discovery**
 
