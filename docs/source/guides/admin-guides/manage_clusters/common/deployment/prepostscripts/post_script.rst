@@ -405,7 +405,7 @@ Kinds of variables in the template
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
-For example, to get the new updatstatus attribute from the nodelist table: ::
+For example, to get the new updatestatus attribute from the nodelist table: ::
 
     UPDATESTATUS=#TABLE:nodelist:$NODE:updatestatus#
     export UPDATESTATUS
