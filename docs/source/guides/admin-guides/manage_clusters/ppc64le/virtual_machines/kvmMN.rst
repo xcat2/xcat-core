@@ -1,4 +1,4 @@
-Set Up the Management Server for KVM
+Set Up the Management Node for KVM
 ====================================
 
 
@@ -28,4 +28,4 @@ The easiest shared file system is ``/install`` directory on the management node,
       echo "/install/vms *(rw,no_root_squash,sync,fsid=0)" >> /etc/exports
       exportfs -r
 
-**Note**: make sure the root permission is turned on for nfs clients (i.e. use the ``no_root_squash`` option). Otherwise, the virtual disk file can not work. The option ``fsid=0`` is useful for NFSv4. 
+**Note**: make sure the root permission is turned on for nfs clients (i.e. use the ``no_root_squash`` option). Otherwise, the virtual disk file can not work.  

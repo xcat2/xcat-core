@@ -39,7 +39,7 @@ After the VM object is created, several key attributes need to be specified with
 
 **Note**: For diskless node, the **vmmemory** should be at least 2048 MB, otherwise the node cannot boot up. 
 
-4. the hardware management module, "kvm" for powerKVM: ::
+4. the hardware management module, "kvm" for PowerKVM: ::
 
     chdef vm1 mgt=kvm
 
@@ -174,7 +174,7 @@ When the VM has been created and powered on, please choose one of the following 
 
     wvid vm1
 
-* For powerKVM,  **kimchi** on the kvm hypervisor can be used to monitor and access the VM.
+* For PowerKVM,  **kimchi** on the kvm hypervisor can be used to monitor and access the VM.
 
 
 Remove the virtual machine

@@ -31,7 +31,7 @@ To demonstrate the brief steps on hypervisor provision, take **ibm-powerkvm-3.1.
 
 #. Customize the hypervisor node definition to create network bridge
 
-   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Please specify the **xHRM** with appropraite parameters in  **postscripts** attibute. Here is some examples on this:
+   xCAT ships a postscript **xHRM** to create a network bridge on kvm host during installation/netbooting. Please specify the **xHRM** with appropriate parameters in  **postscripts** attibute. Here is some examples on this:
 
    To create a bridge with default name 'default' against the installation network device which was specified by **installnic** attribute ::
 
@@ -45,18 +45,19 @@ To demonstrate the brief steps on hypervisor provision, take **ibm-powerkvm-3.1.
 
      chdef kvmhost1 -p postscripts="xHRM bridgeprereq eth0:br0"
 
-   **Note**: The network bridge name you specified should avoid ``virbr0,virbr1...``, which might have beem taken on the PowerKVM installation [1]_. 
+   **Note**: The network bridge name you use should not be the virtual bridges created by libvirt installation  [1]_. 
 
 
-#. Customize the hypervisor node definition to mount the shared kvm storage directory on management node(optional)
+#. Customize the hypervisor node definition to mount the shared kvm storage directory on management node **(optional)**
 
-   If the shared kvm storage directory on the management node has been exported, it can be mounted on powerKVM hypervisor for virtual machines hosting. 
+   If the shared kvm storage directory on the management node has been exported, it can be mounted on PowerKVM hypervisor for virtual machines hosting. 
 
    An easy way to do this is to create another postscript named "mountvms" which creates a directory **/install/vms** on hypervisor and then mounts **/install/vms** from the management node, the content of "mountvms" can be: ::
 
      logger -t xcat "Install: setting vms mount in fstab"
      mkdir -p /install/vms
-     echo "$MASTER:/install/vms /install/vms nfs rsize=8192,wsize=8192,timeo=14,intr,nfsvers=2 1 2" >> /etc/fstab
+     echo "$MASTER:/install/vms /install/vms nfs \
+           rsize=8192,wsize=8192,timeo=14,intr,nfsvers=2 1 2" >> /etc/fstab
 
 
    Then set the file permission and specify the script in **postscripts** attribute of hypervisor node definition: ::
