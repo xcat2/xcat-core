@@ -1,0 +1,358 @@
+#!/bin/bash
+#-------------------------------------------------------------------------------
+#=head1  confignetwork
+#=head2  Used on Redhat only. Configure bond/vlan/linux bridge/ on the nodes
+#
+#  You can configure nicdevice,nictypes,nicips,nicnetworks in nics table
+#  Then you can run the following commands on MN:
+#       updatenode noderange confignetwork
+#
+#  
+#
+#=cut
+#-------------------------------------------------------------------------------
+
+
+# load library 
+if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
+   str_dir_name=`dirname $0`
+   . $str_dir_name/xcatlib.sh
+   . $str_dir_name/nicsutils
+fi
+
+
+######################################################################
+#
+# OS support
+# Check OS version and get the directory of network configuration file
+#
+#####################################################################
+str_os_type=`uname | tr 'A-Z' 'a-z'`
+nwdir=''
+isRedhat=0
+isDebian=0
+isSLES=0
+if [ "$str_os_type" = "linux" ];then
+    str_temp=`echo $OSVER | grep -E '(sles|suse)'`
+    if [ -f "/etc/redhat-release" ];then
+        isRedhat=1
+        nwdir="/etc/sysconfig/network-scripts"
+    elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
+        isSLES=1
+        nwdir="/etc/sysconfig/network"
+        log_error "Only supports RHEL" "error"
+    elif [ -f "/etc/debian_version" ];then
+        nwdir="/etc/network/interfaces.d"
+        isDebian=1
+    else
+        log_error "Only supports RHEL" "error"
+        exit -1
+    fi
+else
+    log_error "Does NOT support non-Linux Operating System" "error"
+    exit -1
+fi
+
+#############################################################
+#
+# parser nicdevices from mypostscripts
+#
+# input : NICDEVICE from mypostsctipts
+#
+#################################################################
+function splitconfig(){
+    if [ ! "$1" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_conf_temp=($1)
+    IFS=$old_ifs
+    i=0
+    while [ $i -lt ${#array_conf_temp[@]} ]
+    do
+        token="${array_conf_temp[$i]}"
+        D=
+        if echo "$token" | grep "!" >/dev/null; then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo "$token" | cut -d"$D" -f 1`
+        str_temp_value=`echo "$token" | cut -d"$D" -f 2`
+
+        str_temp=$(hashget hash_defined_nics $key)
+        if [ -n "$str_temp" ];then
+           str_temp=$str_temp",${str_temp_value}"
+        else
+           str_temp="$str_temp_value"
+           str_all_nics=$str_all_nics"$key "
+        fi
+        hashset hash_defined_nics $key "$str_temp"
+        i=$((i+1))
+    done
+}
+
+
+
+#############################################################
+#
+# parser nictypes from mypostscripts
+# input : NICTYPES from mypostscripts
+#
+#################################################################
+function splittypes {
+    if [ ! "$1" ];then
+        return
+    fi
+    old_ifs=$IFS
+    IFS=$','
+    array_dev_temp=($1)
+    IFS=$old_ifs
+    i=0
+    while [ $i -lt ${#array_dev_temp[@]} ]
+    do
+        token="${array_dev_temp[$i]}"
+        D=
+        if echo "$token" | grep "!" >/dev/null; then
+            D="!"
+        else
+            D=":"
+        fi
+        key=`echo "$token" | cut -d"$D" -f 1`
+        str_temp_value=`echo "$token" | cut -d"$D" -f 2`
+
+        hashset hash_new_nics $key "$str_temp_value"
+        i=$((i+1))
+    done
+
+}
+
+
+################################################################
+#
+# find nic type
+# input : nic
+#
+###############################################################
+function find_nic_type {
+    if [ ! "$1" ];then
+        return
+    fi
+    nic=($1)
+    echo $(hashget hash_new_nics $nic)
+}
+
+################################################################
+#
+# parser nicdevices into nic device list
+# input : nicdevice hash
+#
+##############################################################
+function parser_nicdevices {
+
+    array_nics_temp=$*
+    for key in ${array_nics_temp[@]}
+    do
+         nic_dev=`echo $(hashget hash_defined_nics $key)|awk -F, '{print $1}'`
+         echo "$key $nic_dev"
+
+    done
+
+}
+
+#####################################################################
+#
+# nics list is nic and its device
+# sort the nicdevice raw logic according to nicdevice type
+# nicdevice type order is ethernet bond and vlan.
+# for example, after sorted, the order should be like:
+#     nicX  ethX
+#     nicY  bondU
+#     nicZ  vlanW
+# input : nic and nicdevice pair
+#     for example: nic1 nic2
+#                  nic3 nic4
+#
+#####################################################################
+function sort_nics_device_order {
+    nics_list=$*
+    
+    eth_slot=""
+    bond_slot=""
+    vlan_slot=""
+    num=1
+    max=`echo "$nics_list"|wc -l`
+    ((max+=1))
+    while [ $num -lt $max ];
+    do
+        right_nic=`echo "$nics_list" |sed -n "${num}p"|awk '{print $2}'`
+        if echo "$right_nic"|grep "@" >/dev/null; then
+            right_temp_nic=`echo $right_nic|awk -F@ '{print $1}'`
+        else
+            right_temp_nic=$right_nic
+        fi
+        right_type=`find_nic_type "$right_temp_nic"`
+        if [ x"$right_type" == "xethernet" ]; then
+            if [ x"$eth_slot" == x ]; then
+                eth_slot=$num
+            else
+                eth_slot=$eth_slot" "$num
+            fi
+        elif [ x"$right_type" == "xbond" ]; then
+            if [ x"$bond_slot" == x ]; then
+                bond_slot=$num
+            else
+                bond_slot=$bond_slot" "$num
+            fi
+        elif [ x"$right_type" == "xvlan" ]; then
+            if [ x"$vlan_slot" == x ]; then
+                vlan_slot=$num
+            else
+                vlan_slot=$vlan_slot" "$num
+            fi
+
+        fi
+        ((num+=1))
+    done
+    new_order=$eth_slot" "$bond_slot" "$vlan_slot
+    new_order_list=""
+    if [ -n "$new_order" ]; then
+    new_order_list=`for i in $new_order
+        do
+            echo "$nics_list" |sed -n "${i}p"
+        done`
+    fi
+    echo "$new_order_list"
+}
+
+#####################################################################################
+#
+# framework to configure bond/vlan/bridge
+#
+# input : orderd nic and its device
+# for example: nicx nicy
+#
+###################################################################################
+function parse_nics {
+    nics_pair=$*
+   
+    num=1
+    max=`echo "$nics_pair"|wc -l`
+    right_temp_nic=""
+    right_nic_t=""
+    line_num=""
+    ((max+=1))
+    #configure nic and its device pair one by one
+    while [ $num -lt $max ];
+    do
+        #"|" has problem in "ethX|ethY"
+        #replace "|" with "@" 
+        right_nic=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $2}'`
+        if echo "$right_nic"|grep "@" >/dev/null; then
+            right_temp_nic=`echo $right_nic|awk -F@ '{print $1}'`
+            right_nic_t=`echo $right_nic|sed 's/@/%2c/g'`
+        else
+            right_temp_nic=$right_nic
+        fi
+        right_type=`find_nic_type "$right_temp_nic"`
+        left_nic=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $1}'`
+        left_type=`find_nic_type "$left_nic"`
+        echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+        nic_pair=`echo "$nics_pair" |sed -n "${num}p"`
+        echo "configure nic and its device : $nic_pair"
+        #configure bridge
+        #linux bridge type is bridge
+        #openvswitch bridge type is bridge_ovs
+        if [ x"$right_type" == "xethernet" -a x"$left_type" == "xbridge" ] || \
+           [ x"$right_type" == "xethernet" -a x"$left_type" == "xbridge_ovs" ] || \
+           [ x"$right_type" == "xvlan" -a x"$left_type" == "xbridge" ] || \
+           [ x"$right_type" == "xvlan" -a x"$left_type" == "xbridge_ovs" ]; then
+            create_bridge_interface ifname=$left_nic _brtype=$left_type _port=$right_nic _pretype=$right_type
+
+        #configure vlan 
+        elif [ x"$right_type" == "xethernet" -a x"$left_type" == "xvlan" ] || \
+             [ x"$right_type" == "xbond" -a x"$left_type" == "xvlan" ]; then
+            if echo "$left_nic" | grep -sq ".*\.[0-9]\+"; then
+                vlanid=`echo "$left_nic" | $cut -s -d. -f2-`
+                vlanname=`echo "$left_nic" | $cut -s -d. -f1`
+            elif echo "$left_nic" | grep -sq ".*vla\?n\?[0-9]\+"; then
+                vlanid=`echo "$left_nic" | $sed -e 's/^\(.*\)vla\?n\?\([0-9]\+\)$/\2/'`
+                vlanname=`echo "$left_nic" | $sed -e 's/^\(.*\)vla\?n\?\([0-9]\+\)$/\1/'`
+            fi
+            create_vlan_interface ifname=$vlanname vlanid=$vlanid
+ 
+        #configure bond 
+        elif [ x"$right_type" == "xethernet" -a x"$left_type" == "xbond" ]; then
+            config_bond_vlan ifname=$left_nic mports=$right_nic_t ifcmd=$left_type
+       
+        #configure bridge/bridge_ovs     
+        elif [ x"$right_type" == "xbond" -a x"$left_type" == "xbridge" ] || \
+             [ x"$right_type" == "xbond" -a x"$left_type" == "xbridge_ovs" ]; then
+            create_bridge_interface ifname=${left_nic} _brtype=$left_type _port=${right_nic} _pretype=$right_type _bonding_opts="mode=802.3ad miimon=100"
+        else
+            log_error "Error : please check nictypes for $nic_pair."
+        fi 
+
+        ((num+=1))
+    done
+}
+
+############################################################################
+#
+# disable NetworkManager and start network
+#
+###########################################################################
+function enable_network_service {
+    checkservicestatus NetworkManager > /dev/null
+    if [ $? -eq 0 ]; then
+        log_info "NetworkManager is active. start to stop it ..."
+        stopservice NetworkManager | log_lines debug
+        disableservice NetworkManager
+        enableservice network
+        startservice network
+    else
+        log_info "NetworkManager is inactive."
+    fi 
+
+}
+
+############################################################################
+#
+# Main process
+#
+############################################################################
+
+#replace | with @, for example, eth1|eth2  ---->   eth1@eth2
+nicdevice=`echo "$NICDEVICE" | sed 's/|/@/g'`
+
+#make hash for nicdevice
+splitconfig "$nicdevice"
+
+#make hash for nic and its type
+splittypes "$NICTYPES"
+
+#get nic and its device pair, for example
+#eth0.6 eth0
+#eth0.7 eth0
+#br1 eth1
+#bond0 eth2@eth3
+new_nicdevice=`parser_nicdevices $str_all_nics`
+
+if [ -z "$new_nicdevice" ]; then
+    log_info "There is no nic device to configure."
+    exit 
+fi
+
+#enable network service
+enable_network_service
+
+#sort nics device pair based on device type
+#ethernet -> bond -> vlan
+sorted_nicdevice_list=`sort_nics_device_order "$new_nicdevice"`
+log_info "All nics and  device list:"
+echo "$sorted_nicdevice_list" |log_lines debug
+
+
+#config nics and ifcfg files
+parse_nics "$sorted_nicdevice_list"
