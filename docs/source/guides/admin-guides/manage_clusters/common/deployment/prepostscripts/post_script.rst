@@ -224,7 +224,7 @@ Using the mypostscript template
 Using the mypostscript template
 '''''''''''''''''''''''''''''''
 
-xCAT provides a way for the admin to customize the information that will be provide to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
+xCAT provides a way for the admin to customize the information that will be provided to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
 
 The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/mypostscript directory.
 
