@@ -7625,10 +7625,6 @@ sub process_request {
                     return;
                 }
                 $args_hash{hpm} = $opt;
-            } else {
-                $callback->({error=>"Error command: Option $opt is not supported.",
-                             errorcode=>1});
-                return;
             }
         }
         if (exists($args_hash{hpm})){
