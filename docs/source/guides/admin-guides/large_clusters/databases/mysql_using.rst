@@ -4,12 +4,12 @@ Using MySQL/MariaDB
 Start/Stop MySQL/MariaDB service
 --------------------------------
 
-**[RHEL]** for mariadb:  ::
+**[RHEL]** for MariaDB:  ::
 
     service mariadb start
     service mariadb stop
 
-**[RHEL]** for mysql::
+**[RHEL]** for MySQL::
 
     service mysqld start
     service mysqld stop
@@ -25,31 +25,31 @@ Basic MySQL/MariaDB commands
 
 Refer to `<https://www.mariadb.org/>`_ for the latest documentation.
 
-Using ``mysql``, connect to the xcat database:  ::
+* Using ``mysql``, connect to the xcat database:  ::
    
     mysql -u root -p
 
-list the hosts and users which managed by this xcat MN: ::
+* List the hosts and users which managed by this xcat MN: ::
    
     MariaDB> SELECT host, user FROM mysql.user;
 
-list the databases: ::
+* List the databases: ::
 
     MariaDB> SHOW DATABASES;
 
-use the xcatdb:  ::
+* Use the xcatdb:  ::
 
     MariaDB> use xcatdb;
 
-list all the tables: ::
+* List all the tables: ::
 
     MariaDB [xcatdb]> SHOW TABLES;
 
-show the entries in the nodelist table: ::
+* Show the entries in the nodelist table: ::
 
     MariaDB [xcatdb]> select * from nodelist;
 
-quit mysql: ::
+* Quit mysql: ::
 
     MariaDB [xcatdb]> quit;
 

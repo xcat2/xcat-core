@@ -27,4 +27,25 @@ where the /tmp/servicenodes contains a host per line: ::
 Granting/Revoking access to the database for Service Node Clients
 -----------------------------------------------------------------
 
-https://sourceforge.net/p/xcat/wiki/Setting_Up_MySQL_as_the_xCAT_DB/#granting-or-revoking-access-to-the-mysql-database-to-service-node-clients
+* Log into the MySQL interactive program.  ::
+
+    /usr/bin/mysql -r root -p
+
+* Granting access to the xCAT database.  Service Nodes are required for xCAT hierarchical support.  Compute nodes may also need access that depends on which application is going to run. (xcat201 is xcatadmin's password for following examples) ::
+
+    MariaDB > GRANT ALL on xcatdb.* TO xcatadmin@<servicenode(s)> IDENTIFIED BY 'xcat201';
+ 
+  Use the wildcards to do a GRANT ALL to every ipaddress or nodename that need to access the database. ::
+
+    MariaDB > GRANT ALL on xcatdb.* TO xcatadmin@'%.cluster.net' IDENTIFIED BY 'xcat201';
+    MariaDB > GRANT ALL on xcatdb.* TO xcatadmin@'8.113.33.%' IDENTIFIED BY 'xcat201';
+
+* To revoke access, run the following: ::
+
+    MariaDB > REVOKE ALL on xcatdb.* FROM xcatadmin@'8.113.33.%';
+
+* To Verify the user table was populated. ::
+
+   MariaDB > SELECT host, user FROM mysql.user;
+
+  

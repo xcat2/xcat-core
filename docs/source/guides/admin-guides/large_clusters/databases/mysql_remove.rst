@@ -1,21 +1,21 @@
 Removing ``xcatdb`` from MySQL/MariaDB
 ======================================
 
-For some reason, if you do not want to use MySQL/MariaDB to maintain ``xcatdb``, and like to switch to PostgreSQL or just default SQLite ( **Note:** SQLite does not support xCAT Hierarchy (has service nodes)), you can always to do that with the xCAT command.
+If you no longer want to use MySQL/MariaDB to maintain ``xcatdb``, and like to switch to PostgreSQL or just default SQLite ( **Note:** SQLite does not support xCAT Hierarchy (has service nodes)), use the following documentation as guide to remove ``xcatdb``.
 
 *  Run a backup of the database to save any information that is needed (optional): ::
 
       mkdir -p ~/xcat-dbback
       dumpxCATdb -p ~/xcat-dbback
 
-   If you want to restore this database: ::
+   If you want to restore this database later: ::
 
       XCATBYPASS=1 restorexCATdb -p ~/xcat-dbback
 
-*  Change to PostgrSQL, please follow link https://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/large_clusters/databases/postgres_install.html
+*  Change to PostgreSQL, please following documentation: :doc:`/guides/admin-guides/large_clusters/databases/postgres_install` 
 
 
-*  Change to default SQLite (**Note**:  xCAT Hierarchy cluster will no longer work)
+*  Change back to default xCAT database, SQLite (**Note**:  xCAT Hierarchy cluster will no longer work)
 
   #. Stop the ``xcatd`` daemon on the management node. :: 
 
