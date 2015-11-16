@@ -446,6 +446,7 @@ sub sshcfg {
     #####################################
     if ( !defined( $mode )) {
         my ($keytype, $key_string) = split  /\ /, $sshkey;
+        chomp($key_string);
         xCAT::MsgUtils->verbose_message($request, "rspconfig :check sshcfg for user:$logon on node:$server.");
         my $result = xCAT::PPCcli::send_cmd( $exp, "cat $auth" );
         my $Rc = shift(@$result);        
@@ -461,6 +462,7 @@ sub sshcfg {
         #################################
         foreach ( @$result ) {
             my ($tmp1, $tmp2) = split /\ /, $_;
+            chomp($tmp2);
             if ( "$tmp2" eq "$key_string" ) {
                 return( [[$server,"enabled",SUCCESS]] );
             }
