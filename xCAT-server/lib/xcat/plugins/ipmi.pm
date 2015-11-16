@@ -3292,7 +3292,8 @@ sub readcurrfrudevice {
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
             add_fruhash($sessdata);
-            xCAT::SvrUtils::sendmsg([1,"Received incorrect data from BMC"],$callback,$sessdata->{node},%allerrornodes);
+            my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
+            xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
             return;
         }
         shift @data;
