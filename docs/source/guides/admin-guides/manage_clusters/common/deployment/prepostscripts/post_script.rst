@@ -89,7 +89,7 @@ When your script is executed on the node, all the attributes in the site table a
 
 To run the postscripts, a script is built, so the above exported variables can be input. You can usually find that script in /xcatpost on the node and for example in the Linux case it is call mypostscript. A good way to debug problems is to go to the node and just run mypostscript and see errors. You can also check the syslog on the Management Node for errors.
 
-When writing you postscripts, it is good to follow the example of the current postscripts and write errors to syslog and in shell. See Suggestions for writing scripts.
+When writing you postscripts, it is good to follow the example of the current postscripts and write errors to syslog and in shell. See :ref:`Suggestions-for-write-scripts-label` .
 
 All attributes in the site table are exported and available to the postscript/postbootscript during execution. See the mypostscript file, which is generated and executed on the nodes to run the postscripts.
 
@@ -216,7 +216,7 @@ Example of mypostscript  ::
     run_ps script2
     # postscripts-end-here\n
 
-The mypostscript file is generated according to the mypostscript.tmpl file.
+The mypostscript file is generated according to the mypostscript.tmpl file and template details will show in below section.
 
 Using the mypostscript template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
