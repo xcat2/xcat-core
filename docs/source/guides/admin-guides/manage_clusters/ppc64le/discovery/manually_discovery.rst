@@ -1,6 +1,6 @@
 .. include:: ../../common/discover/manually_discovery.rst
 
-If you have a few nodes which were not discovered by automated hardware discovery process, you could find them in ``discoverydata`` table using the nodediscoverls. The undiscovered nodes are those that have a discovery method value of 'undef' in the ``discoverydata`` table.
+If you have a few nodes which were not discovered by automated hardware discovery process, you can find them in ``discoverydata`` table using the ``nodediscoverls`` command. The undiscovered nodes are those that have a discovery method value of 'undef' in the ``discoverydata`` table.
 
 Display the undefined nodes with the ``nodediscoverls`` command::
 
