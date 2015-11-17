@@ -19,7 +19,7 @@ Traditional cluster with OS on each node's local disk.
   Admin has to manage all of the individual OS copies, has to face the failure of hard disk. For certain application which requires all the compute nodes have exactly same state, this is also changeable for admin.
     
 
-Stateless(diskless)
+Stateless (diskless)
 -------------------
 
 Nodes boot from a RAMdisk OS image downloaded from the xCAT mgmt node or service node at boot time.
