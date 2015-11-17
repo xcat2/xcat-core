@@ -47,10 +47,10 @@ For hardware management with ipmi, add the following line::
 
     "ipmi","ADMIN","admin",,,,
 
-Verify the genesis pkg
+Verify the genesis packages
 ``````````````````````
 
-Genesis pkg is used to **create the root image for network boot** and it **MUST** be installed before doing hardware discovery. 
+Genesis packages are used to **create the root image for network boot** and **MUST** be installed before doing hardware discovery. 
 
 * **[RH]**::
 
@@ -64,4 +64,4 @@ Genesis pkg is used to **create the root image for network boot** and it **MUST*
     ii  xcat-genesis-base-ppc64 2.10-snap201505172314   all          xCAT Genesis netboot image
     ii  xcat-genesis-scripts    2.10-snap201507240105   ppc64el      xCAT genesis
 
-**Note:** If the two pkgs are not installed, pls installed them first and then run ``mknb ppc64`` to create the network boot root image.
+**Note:** If the two packages are not installed, install them first and then run ``mknb ppc64`` to create the network boot root image.
