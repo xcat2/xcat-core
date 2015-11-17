@@ -224,7 +224,7 @@ Using the mypostscript template
 Using the mypostscript template
 '''''''''''''''''''''''''''''''
 
-xCAT provides a way for the admin to customize the information that will be provide to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
+xCAT provides a way for the admin to customize the information that will be provided to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
 
 The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/mypostscript directory.
 
@@ -233,9 +233,9 @@ If the admin customizes the mypostscript.tmpl, they should copy the mypostscript
 site table precreatemypostscripts attribute
 '''''''''''''''''''''''''''''''''''''''''''
 
-If the site table precreatemypostscripts attribute is set to 1 or yes, it will instruct xcat at nodeset and updatenode time to query the db once for all of the nodes passed into the command and create the mypostscript file for each node and put them in a directory in $TFTPDIR(for example /tftpboot). The created mypostscript.<nodename>. file in the /tftpboot/mypostscripts directory will not be regenerated unless another nodeset or updatenode command is run to that node. This should be used when the system definition has stabilized. It saves time on the updatenode or reboot by not regenerating the mypostscript file.
+If the site table precreatemypostscripts attribute is set to 1 or yes, it will instruct xCAT at nodeset and updatenode time to query the db once for all of the nodes passed into the command and create the mypostscript file for each node and put them in a directory in $TFTPDIR(for example /tftpboot). The created mypostscript.<nodename>. file in the /tftpboot/mypostscripts directory will not be regenerated unless another nodeset or updatenode command is run to that node. This should be used when the system definition has stabilized. It saves time on the updatenode or reboot by not regenerating the mypostscript file.
 
-If the precreatemyposcripts attribute is yes, and a database change is made or xcat code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
+If the precreatemyposcripts attribute is yes, and a database change is made or xCAT code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
 
 When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. 
 
@@ -245,7 +245,8 @@ Content of the template for mypostscript
 
 **The attributes that are defined in the shipped mypostscript.tmpl file** should not be removed. The xCAT default postscripts rely on that information to run successfully. **The following will explain the entries in the mypostscript.tmpl file**.
 
-The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table. Note the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
+The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table. 
+Note: the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
 
         #SITE_TABLE_ALL_ATTRIBS_EXPORT#
 
@@ -404,7 +405,7 @@ Kinds of variables in the template
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
-For example, to get the new updatstatus attribute from the nodelist table: ::
+For example, to get the new updatestatus attribute from the nodelist table: ::
 
     UPDATESTATUS=#TABLE:nodelist:$NODE:updatestatus#
     export UPDATESTATUS
