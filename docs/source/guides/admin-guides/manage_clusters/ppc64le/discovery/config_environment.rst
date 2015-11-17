@@ -12,7 +12,7 @@ Normally, there will be at least two entries for the two subnet on MN in ``netwo
     "10_0_0_0-255_255_0_0","10.0.0.0","255.255.0.0","eth1","<xcatmaster>",,"10.0.1.1",,,,,,,,,,,,
     "50_0_0_0-255_255_0_0","50.0.0.0","255.255.0.0","eth2","<xcatmaster>",,"50.0.1.1",,,,,,,,,,,,
 
-Pls run the following command to add networks in ``networks`` table if no entry in ``networks`` table::
+Run the following command to add networks in ``networks`` table if there are no entries in it::
 
     makenetworks
 
