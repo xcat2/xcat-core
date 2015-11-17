@@ -9,7 +9,9 @@ detect_dhcpd
     
     Options:
         -i interface:  The interface which facing the target network.
-        -m macaddress: The mac that will be used to detect dhcp server. Recommend to use the real mac of the node that will be netboot. If no specified, the mac of interface which specified by -i will be used.
+        -m macaddress: The mac that will be used to detect dhcp server. Recommend to use the real mac
+                       of the node that will be netboot. If no specified, the mac of interface which 
+                       specified by -i will be used.
         -t timeout:    The time to wait to detect the dhcp messages. The default value is 10s.
     
 Author:  Wang, Xiao Peng
