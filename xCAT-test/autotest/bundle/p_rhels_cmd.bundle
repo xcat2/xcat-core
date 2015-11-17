@@ -274,3 +274,11 @@ runcmdinstaller_command
 get_xcat_install_loginfo
 get_xcat_postscripts_loginfo
 updatenode_postscripts_loginfo
+bmcdiscover_h
+bmcdiscover_nmap_range
+bmcdiscover_v
+bmcdiscover_check_paswd
+bmcdiscover_check_passwd_wrong
+bmcdiscover_get_ipsource
+bmcdiscover_range_w
+bmcdiscover_range_z
