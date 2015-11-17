@@ -99,12 +99,12 @@ As an example, get only the temperature information of a particular machine. ::
 
 Firmware Updating
 `````````````````
-**TODO**: For OpenPower machine, the firmware updating feature is not implement in the ``rflash`` command. The section should be updated after this feature get implemented.
+**TODO**: For OpenPower machines, the firmware updating feature is not implemented in the ``rflash`` command. The section should be updated after this feature is implemented.
 
 Configures Nodes' Service Processors
 ````````````````````````````````````
 
-Here comes the command, ``rspconfig``. It is used to configure the service processor of a phyisical machine. On a OpenPower system, the service processor is the BMC, Base Motherboard Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among difference machine model type.
+Here comes the command, ``rspconfig``. It is used to configure the service processor of a physical machine. On a OpenPower system, the service processor is the BMC, Baseboard Management Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among different machine-model types.
 
 Examples
 
