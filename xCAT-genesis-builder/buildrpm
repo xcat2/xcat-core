@@ -5,18 +5,7 @@
 #            this whole dir into it somewhere (like /tmp).
 # Then run this script.  The optional 1st arg should be mcp if you are building against mcp.
 
-# Currently, *Fedora 22* is the only OS supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
-
-
-# For building genesis-base based on Fedora 22 ppc64, the following steps are also needed before running this script
-#
-# 1. The Fedora 22 ppc64 can be installed either on pkvm VM or IBM Power S822LC machine.
-# 2. Install ipmitool with yum install ipmitool. It will install the default ipmitool-1.8.13.
-# 3. Download ipmitool-1.8.15 tar ball from https://sourceforge.net/projects/ipmitool/files/latest/download.
-# 4. Install gcc
-# 5. untar ipmitool-1.8.15 tar ball, cd into the top directory, then ./configure, make.
-#    The ipmitool-1.8.15 binary will be under ./src/.
-# 6, replace /usr/bin/ipmitool with ./src/ipmitool
+# Currently, *Fedora 23* is the only OS supported to build genesis-base for ppc64, and Centos 6.5 for x86_64
 
 HOSTOS="$1"
 DIR=`dirname $0`
@@ -118,12 +107,12 @@ elif [ $BUILDARCH = "ppc64" ]; then
         sed -i 's/\/lib\/libtinfo.so.5.7/\/lib64\/libtinfo.so.5.7/' $DRACUTMODDIR/install
         # following changes are required on Fedora 20 ppc64
         # sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.18.so/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 22 ppc64
-        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.21.so/' $DRACUTMODDIR/install
+        # following changes are required on Fedora 23 ppc64
+        sed -i 's/\/lib64\/libnss_dns-2.12.so/\/lib64\/libnss_dns-2.22.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libc.so.6/\/lib64\/libc.so.6/' $DRACUTMODDIR/install
-        # following changes are required on Fedora 22 ppc64
+        # following changes are required on Fedora 23 ppc64
         #sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.18.so/' $DRACUTMODDIR/install
-        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.21.so/' $DRACUTMODDIR/install
+        sed -i 's/\/lib\/ld-linux.so.2/\/lib64\/ld-2.22.so/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libdl.so.2/\/lib64\/libdl.so.2/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libm.so.6/\/lib64\/libm.so.6/' $DRACUTMODDIR/install
         sed -i 's/\/lib\/libpthread.so.0/\/lib64\/libpthread.so.0/' $DRACUTMODDIR/install
