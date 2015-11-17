@@ -1,6 +1,6 @@
 .. include:: ../../common/discover/switch_discovery.rst
 
-For switch based hardware discovery, the server are identified though the switches and switchposts they directly connect to. 
+For switch based hardware discovery, the servers are identified through the switches and switchposts they are directly connected to. 
 
 .. include:: schedule_environment.rst
 
