@@ -8,6 +8,6 @@
 #Type|URL|name
 #-- example:
 #Plaindir|file:/install/sles10sp2/x86_64/custom|custom
-rpm-md|http://xcat.sourceforge.net/yum/xcat-dep/sles11/ppc64|xcat-dep
-rpm-md|http://xcat.sourceforge.net/yum/devel/core-snap|core-snap
+rpm-md|http://xcat.org/files/xcat/repos/yum/xcat-dep/sles11/ppc64|xcat-dep
+rpm-md|http://xcat.org/files/xcat/repos/yum/devel/core-snap|core-snap
 #plaindir|file:///install/post/otherpkgs/sles11/ppc64|otherpkgs

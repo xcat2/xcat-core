@@ -6,20 +6,15 @@
 #
 # 
 # Getting Started:
-#  - Check out the xcat-core svn repository (either the trunk or a branch) into
-#    a dir called <rel>/src/xcat-core, where <rel> is the same as the release dir it will be
-#    uploaded to in sourceforge (e.g. devel, or 2.3).
-#  - You probably also want to put root's pub key from the build machine onto sourceforge for
-#    the upload user listed below, so you don't have to keep entering pw's.  You can do this
-#    at https://xcat.org/setting/ssh
+#  - Clone the xcat-core git repository int a directory called <rel>/src/xcat-core, where <rel>
+#    is the same name as the release dir it is uploaded to xcat.org (e.g devel, 2.9, 2.10)
 #  - make sure reprepro is installed on the build machine
-#  - Run this script from the local svn repository you just created.  It will create the other directories that are needed.
+#  - Run this script from the local git repository you just created.  It will create the other directories that are needed.
 
 # Usage:  attr=value attr=value ... ./build-ubunturepo { -c | -d }
 #               PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.  This does not
 #                           actually build xcat, just uploads the most recent snap build to http://xcat.org/files/xcat/ .
-#                           If not specified, a snap build is assumed, which uploads to https://xcat.org/files/yum/
-#                           or https://xcat.org/files/aix/.
+#                           If not specified, a snap build is assumed, which uploads to https://xcat.org/files/xcat/
 #               PREGA=1 - use this option with PROMOTE=1 on a branch that already has a released dot release, but this 
 #                           build is a GA candidate build, not to be released yet.  This will result in the tarball 
 #                           being uploaded to http://xcat.org/files/xcat/repos/apt

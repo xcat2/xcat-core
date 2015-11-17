@@ -38,7 +38,8 @@ Note: There is a current restriction that exported 2.7 xCAT images cannot be imp
 
 We want to create a system of making xCAT images more portable so that they can be shared and prevent people from reinventing the wheel. While every install is unique there are some things that can be shared among different sites to make images more portable. In addition, creating a method like this allows us to create snap shots of images we may find useful to revert to in different situations.
 
-Image exporting and importing are supported for statefull (diskfull), stateless (diskless) clusters. In the following chapters we'll show you how to use imgexport and imgimport commands to export and import images. The man pages for the commands can be found at `<http://xcat.sourceforge.net/man1/imgimport.1.html>`_ and `<http://xcat.sourceforge.net/man1/imgexport.1.html>`_
+Image exporting and importing are supported for statefull (diskfull) and stateless (diskless) clusters.  The following documentation will show how to use :doc:`imgexport </guides/admin-guides/references/man1/imgexport.1>` to export images and :doc:`imgimport </guides/admin-guides/references/man1/imgimport.1>` to import images.
+
 
 Exporting an image
 ------------------
