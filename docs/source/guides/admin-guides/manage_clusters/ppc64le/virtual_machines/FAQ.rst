@@ -1,5 +1,5 @@
-Problems and Solutions
-======================
+Trouble Shooting
+================
 
 
 VNC client complains the credentials are not valid
