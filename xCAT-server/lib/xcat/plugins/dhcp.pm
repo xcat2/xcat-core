@@ -1601,10 +1601,15 @@ sub process_request
                 my $generatedpath = "$syspath/$dhcpver";
                 my $dhcpd_key = "DHCPDARGS";
 
-                if ($os =~ /sles/i || $os =~ /rhels7/i) {
+                # For SLES11+ and RHEL7+ Operating system releases, the 
+                # dhcpd/dhcpd6 configuration is stored in the same file
+                my $os_ver = $os;
+                $os_ver =~ s/[^0-9.^0-9]//g;
+                if (($os =~ /sles/i && $os_ver >= 11) || 
+                    ($os =~ /rhels/i && $os_ver >= 7)) {
+
                     $dhcpd_key = "DHCPD_INTERFACE";
                     if ($usingipv6 and $dhcpver eq "dhcpd6") {
-                        # For SLES 11 and RHEL7, the dhcpd6/dhcpd config are stored in the same file
                         $dhcpd_key = "DHCPD6_INTERFACE";
                         $generatedpath = "$syspath/dhcpd";
                     }
