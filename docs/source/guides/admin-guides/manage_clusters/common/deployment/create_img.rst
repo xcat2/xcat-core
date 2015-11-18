@@ -1,9 +1,9 @@
 Select or Create an osimage Definition
 ======================================
 
-Before creating image by xCAT, distro media should be prepared ahead. That can be ISOs or DVDs.
+Before creating an image on xCAT, the distro media should be prepared ahead. That can be ISOs or DVDs.
 
-XCAT use 'copycds' command to create image which will be available to install nodes. "copycds" will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
+XCAT use 'copycds' command to create an image which will be available to install nodes. "copycds" will copy all contents of Distribution DVDs/ISOs or Service Pack DVDs/ISOs to a destination directory, and create several relevant osimage definitions by default.
 
 If using an ISO, copy it to (or NFS mount it on) the management node, and then run: ::
 
@@ -21,7 +21,7 @@ To see the attributes of a particular osimage: ::
 
     lsdef -t osimage <osimage-name>
 
-Initially, some attributes of osimage is assigned to default value by xCAT, they all can work correctly, cause the files or templates invoked by those attributes are shipped with xCAT by default.	If need to customize those attribute, refer to next section :doc:`Customize osimage </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/index>`
+Initially, some attributes of osimage are assigned default values by xCAT - they all can work correctly because the files or templates invoked by those attributes are shipped with xCAT by default. If you need to customize those attributes, refer to the next section :doc:`Customize osimage </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/index>`
 	
 Below is an example of osimage definitions created by ``copycds``: ::
 
@@ -39,7 +39,7 @@ In these osimage definitions shown above
 
 **Note**: There are more things needed for **ubuntu ppc64le** osimages:
 
-For ubuntu ppc64le, the shipped initrd.gz within ISO is not supported to do network booting. In order to install ubuntu with xCAT, you need to follow the steps below to complete the osimage definition.
+For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network booting. In order to install ubuntu with xCAT, you need to follow the steps below to complete the osimage definition.
 
 * Download mini.iso from
 
@@ -63,7 +63,7 @@ For ubuntu ppc64le, the shipped initrd.gz within ISO is not supported to do netw
 
 **[Tips 1]**
 
-If this is the same distro version as what your management node used, create a .repo file in /etc/yum.repos.d with content similar to: ::
+If this is the same distro version as what your management node uses, create a .repo file in /etc/yum.repos.d with contents similar to: ::
 
     [local-<os>-<arch>]
     name=xCAT local <os> <version>
@@ -71,17 +71,17 @@ If this is the same distro version as what your management node used, create a .
     enabled=1
     gpgcheck=0
 	
-In this way, if you need install some additional RPMs into your MN later, you can simply install them by yum. Or if you are installing a software on your MN that depends some RPMs from the this disto, those RPMs will be found and installed automatically.
+In this way, if you need to install some additional RPMs into your MN later, you can simply install them with ``yum``. Or if you are installing a software on your MN that depends some RPMs from this disto, those RPMs will be found and installed automatically.
 
 **[Tips 2]**
 
-Sometime you can create/modify a osimage definition easily based on the default osimage definition. the general steps can be:
+You can create/modify an osimage definition easily based on the default osimage definition. The general steps are:
 
 * lsdef -t osimage -z <os>-<arch>-install-compute   >   <filename>.stanza
-* modify <filename>.stanza depending on your requirement	
+* modify <filename>.stanza according to your requirements	
 * cat <filename>.stanza| mkdef -z 
 
-For example, if need to change osimage name to your favorite name, below statement maybe helpful: ::
+For example, if you need to change the osimage name to your favorite name, this command may be helpful: ::
 
     lsdef -t osimage -z rhels6.2-x86_64-install-compute | sed 's/^[^ ]\+:/mycomputeimage:/' | mkdef -z
 
