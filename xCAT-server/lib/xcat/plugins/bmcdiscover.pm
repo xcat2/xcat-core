@@ -905,9 +905,7 @@ sub bmcdiscovery_ipmi {
             xCAT::MsgUtils->message("I", {data=>["Warning: bmc username is incorrect for $node"]}, $::CALLBACK);
         } elsif ($output =~ /RAKP \S* \S* is invalid/) {
             xCAT::MsgUtils->message("I", {data=>["Warning: bmc password is incorrect for $node"]}, $::CALLBACK);
-        } else {
-            xCAT::MsgUtils->message("I", {data=>["Warning: other error for $node"]}, $::CALLBACK);
-        }
+        } 
        if ( defined($opz) || defined($opw) )
        {
           format_stanza($node, $ip);
