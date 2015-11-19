@@ -283,6 +283,11 @@ sub preprocess_updatenode
     } else {
        undef $::SETSERVER;
     }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
+    }
 
     # display the usage if -h or --help is specified
     if ($HELP)
@@ -1153,6 +1158,11 @@ sub updatenode
        $::SETSERVER=$SETSERVER;
     } else {
        undef $::SETSERVER;
+    }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
     }
 
     #
@@ -3127,7 +3137,7 @@ sub updateOS
     # Get OS to update to
     my $update2os = $os;
 
-    push @{$rsp->{data}}, "$node: Upgrading $node to $os";
+    push @{$rsp->{data}}, "$node: Upgrading $node to $os. Please wait may take a while";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     # Get the OS that is installed on the node
@@ -3172,7 +3182,7 @@ sub updateOS
     if (!($update2os =~ m/$installOS/i))
     {
         push @{$rsp->{data}},
-          "$node: (Error) Cannot not update $installOS$version to $os.  Linux distribution does not match";
+          "$node: (Error) Cannot not update $installOS.$version to $os.  Linux distribution does not match";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3247,14 +3257,30 @@ sub updateOS
     elsif ("$installOS$version" =~ m/rh/i)
     {
 
-        # Red Hat repository path - http://10.0.0.1/install/rhel5.4/s390x/Server/
-        $path = "http://$http$installDIR/$os/$arch/Server/";
-        if (!(-e "$installDIR/$os/$arch/Server/"))
+        my $verifyOS = $os;
+        $verifyOS =~ s/[^0-9]*([0-9]+).*/$1/;
+        if ($verifyOS < '7')
         {
-            push @{$rsp->{data}},
-              "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-            return;
+            $path = "http://$http$installDIR/$os/$arch/Server/";
+            if (!(-e "$installDIR/$os/$arch/Server/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
+        }
+		
+        else
+        {
+            $path = "http://$http$installDIR/$os/$arch/";
+            if (!(-e "$installDIR/$os/$arch/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
         }
 
         # Create a yum repository file
