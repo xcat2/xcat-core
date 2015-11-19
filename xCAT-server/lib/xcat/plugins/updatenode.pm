@@ -222,13 +222,13 @@ sub preprocess_updatenode
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
                     'g|genmypost'   => \$GENMYPOST,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
                     'n|noverify'    => \$NOVERIFY, 
@@ -1102,13 +1102,13 @@ sub updatenode
                     'v|version'     => \$VERSION,
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
                     'n|noverify'    => \$NOVERIFY,
@@ -3258,9 +3258,8 @@ sub updateOS
     {
 
         my $verifyOS = $os;
-        $verifyOS =~ s/[^0-9]*([0-9]+).*/$1/;
-        if ($verifyOS < '7')
-        {
+        $verifyOS =~ s/^\D+([\d.]+)$/$1/; 
+        if(xCAT::Utils->version_cmp($verifyOS,"7.0") < 0){
             $path = "http://$http$installDIR/$os/$arch/Server/";
             if (!(-e "$installDIR/$os/$arch/Server/"))
             {
@@ -3269,8 +3268,7 @@ sub updateOS
                 xCAT::MsgUtils->message("I", $rsp, $callback);
                 return;
             }
-        }
-		
+        }	
         else
         {
             $path = "http://$http$installDIR/$os/$arch/";
