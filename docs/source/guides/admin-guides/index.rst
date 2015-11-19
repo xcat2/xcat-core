@@ -25,6 +25,7 @@ Now you can start to learn how to manage a cluster by xCAT. This chapter include
    :maxdepth: 2
 
    basic_concepts/index.rst
+   large_clusters/index.rst
    manage_clusters/index.rst
    references/index.rst
-   large_clusters/index.rst
+
