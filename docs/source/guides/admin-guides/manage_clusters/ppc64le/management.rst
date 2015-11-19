@@ -99,7 +99,17 @@ As an example, get only the temperature information of a particular machine. ::
 
 Firmware Updating
 `````````````````
-**TODO**: For OpenPower machines, the firmware updating feature is not implemented in the ``rflash`` command. The section should be updated after this feature is implemented.
+
+For OpenPower machine, the firmware updating feature is implement in ``rflash``
+command.
+
+Collect firmware version of the node and the HPM file:  ::
+
+    rflash cn1 -c /firmware/8335_810.1543.20151021b_update.hpm
+
+Update node firmware to the version of the HPM file:  ::
+
+    rflash cn1 /firmware/8335_810.1543.20151021b_update.hpm
 
 Configures Nodes' Service Processors
 ````````````````````````````````````

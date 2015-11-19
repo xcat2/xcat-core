@@ -20,7 +20,11 @@ B<rflash> I<noderange> {B<--commit>|B<--recover>}
 
 =head2 NeXtScale FPC specific:
 
-B<rflash> I<noderange> I<http directory> 
+B<rflash> I<noderange> I<http directory>
+
+=head2 OpenPOWER BMC specific:
+
+B<rflash> I<noderange> I<hpm file path> [B<-c>|B<--check>]
 
 =head1 B<Description>
 
@@ -78,6 +82,9 @@ For more details about the Firmware Update using Direct FSP/BPA Management, refe
 The command will update firmware for NeXtScale FPC when given an FPC node and the http information needed to access the firmware. The http imformation required includes both the MN IP address as well as the directory containing the firmware. It is recommended that the firmware be downloaded and placed in the /install directory structure as the xCAT MN /install directory is configured with the correct permissions for http.  Refer to the doc to get more details:
  XCAT_NeXtScale_Clusters 
 
+=head2 OpenPOWER specific:
+
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
 
 =head1 B<Options>
 
@@ -86,6 +93,10 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 =item B<-h|--help>
 
 Writes the command's usage statement to standard output.
+
+=item B<-c|--check>
+
+Chech the firmware version of BMC and HPM file.
 
 =item B<-p directory>
 
@@ -150,6 +161,12 @@ To commit a firmware update to permanent flash for both managed system and the r
 To update the firmware on a NeXtScale FPC specify the FPC node name and the HTTP location of the file including the xCAT MN IP address  and the directory on the xCAT MN containing the firmware as follows:
 
  rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
+
+=item 5
+
+To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
+
+ rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
 
 =back
 
