@@ -58,7 +58,7 @@ our @EXPORT = qw(
 sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt', #done
-    renergy => 'nodehm:power,mgt',
+    renergy => 'nodehm:mgt', #support renergy for OperPOWER servers
     getipmicons => 'ipmi', #done
     rspconfig => 'nodehm:mgt', #done
     rspreset => 'nodehm:mgt', #done
@@ -83,7 +83,6 @@ use Class::Struct;
 use Digest::MD5 qw(md5);
 use POSIX qw(WNOHANG mkfifo strftime);
 use Fcntl qw(:flock);
-
 
 #local to module
 my $callback;
@@ -536,6 +535,10 @@ sub on_bmc_connect {
     } elsif($command eq "reventlog") {
         eventlog($sessdata);
     } elsif($command eq "renergy") {
+        unless (defined $sessdata->{device_id}) {
+            $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+	    return;
+        }
         renergy($sessdata);
     }
     return;
@@ -5462,10 +5465,170 @@ sub did_led {
         readsensor($sessdata); #next sensor
     }
 }
+
+sub done_powerusage {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1, "Get Power Reading failed"],$callback,$sessdata->{node},%allerrornodes);
+    } else {
+        my $e_id = shift(@{$rsp->{data}});
+        if ($e_id ne 0xdc)  {
+            xCAT::SvrUtils::sendmsg([1, "The Power Reading response is incorrect"],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            my $curr_power = $rsp->{data}->[0] + $rsp->{data}->[1] * 0x100;
+            my $mini_power = $rsp->{data}->[2] + $rsp->{data}->[3] * 0x100;
+            my $max_power  = $rsp->{data}->[4] + $rsp->{data}->[5] * 0x100;
+            my $aver_power = $rsp->{data}->[6] + $rsp->{data}->[7] * 0x100;
+            my $time_stamp = $rsp->{data}->[8] + $rsp->{data}->[9] * 0x100+
+                              $rsp->{data}->[10] * 0x10000+ $rsp->{data}->[11] * 0x1000000;
+            my ($sec,$min,$hour,$day,$mon,$year) = localtime($time_stamp);
+            $mon += 1;
+            $year += 1900;
+            my $time_period = $rsp->{data}->[12] + $rsp->{data}->[13] * 0x100+
+                              $rsp->{data}->[14] * 0x10000 + $rsp->{data}->[15] * 0x1000000;
+            my $reading_state = (($rsp->{data}->[16] & 0x40) >> 6) ? "Active" : "Inactivate";
+            xCAT::SvrUtils::sendmsg("Current Power                        : $curr_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Minimum Power over sampling duration : $mini_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Maximum Power over sampling duration : $max_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Average Power over sampling duration : $aver_power"."W",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Time Stamp                           : $mon/$day/$year - $hour:$min:$sec",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Statistics reporting time period     : $time_period milliseconds",$callback,$sessdata->{node},%allerrornodes);
+            xCAT::SvrUtils::sendmsg("Power Measurement                    : $reading_state", $callback,$sessdata->{node},%allerrornodes); 
+        }
+    } 
+    do_dcmi_operating($sessdata);
+}
+
+my %dcmi_sensors = (
+    0x37 => "Inlet Temperature",
+    0x03 => "CPU Temperature",
+    0x07 => "Baseboard temperature",
+);
+
+sub do_temperature {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $cur_sensor = $sessdata->{dcmi_sensor}->{cur_sensor};
+    my $sensor_dis = "unknown sensor";
+    if (defined($cur_sensor) and exists($dcmi_sensors{$cur_sensor})) {
+        $sensor_dis = $dcmi_sensors{$cur_sensor};
+    }
+    if ($rsp->{error}) {
+        xCAT::SvrUtils::sendmsg([1, "Get Power Reading failed for $sensor_dis"],$callback,$sessdata->{node},%allerrornodes);
+    } elsif (exists($rsp->{data})) {
+        my $e_id = shift(@{$rsp->{data}});
+        if ($e_id ne 0xdc)  {
+            xCAT::SvrUtils::sendmsg([1, "The Power Reading response is incorrect for $sensor_dis"],$callback,$sessdata->{node},%allerrornodes);
+        } else {
+            my $num_of_instances = shift(@{$rsp->{data}}) ;
+            my $num_cur = shift(@{$rsp->{data}});
+            if ($num_cur) {
+                while (scalar(@{$rsp->{data}})) {
+                    my $temp = shift(@{$rsp->{data}});
+                    my $iid  = shift(@{$rsp->{data}});
+                    my $flag = ($temp & 0x80) >> 7;
+                    $temp &= 0x7f;
+                    if ($flag) {
+                        $sessdata->{dcmi_sensor_instances}->{$cur_sensor}->{$iid} = "-$temp Centigrade";
+                    } else {
+                        $sessdata->{dcmi_sensor_instances}->{$cur_sensor}->{$iid} = "+$temp Centigrade";
+                    }
+                }
+            }
+        }
+    }
+    {
+        my $sensor_eid = shift(@{$sessdata->{dcmi_sensor}->{sensors}});
+        if ($sensor_eid) {
+             $sessdata->{dcmi_sensor}->{cur_sensor} = $sensor_eid;
+             # The raw format for dcmi command Get Temperature Reading
+             #  ipmitool-xcat -I lanplus -H <bmc_ip> -U <bmc_username> -P <bmc_password> raw 0x2c 0x10 0xdc 0x01 <sensor entity_id> 0 0
+             $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x10,
+                        data=>[0xdc,0x01,$sensor_eid,0, 0],
+                        callback=>\&do_temperature,
+                        callback_args=>$sessdata);
+
+             return;
+        }
+    }
+    done_temperature($sessdata);
+}
+
+sub done_temperature {
+    my $sessdata = shift;
+    foreach my $sid (sort keys %{$sessdata->{dcmi_sensor_instances}}) {
+        my $sensor_dis = "unknown sensor";
+        if (exists($dcmi_sensors{$sid})) {
+            $sensor_dis = $dcmi_sensors{$sid};
+        }
+        foreach my $instance_id (sort keys %{$sessdata->{dcmi_sensor_instances}->{$sid}}) {
+            my $temp = $sessdata->{dcmi_sensor_instances}->{$sid}->{$instance_id};
+            my $string = sprintf("%-36s", "$sensor_dis Instance $instance_id");
+            xCAT::SvrUtils::sendmsg("$string : $temp",$callback,$sessdata->{node},%allerrornodes);
+        }
+    } 
+    do_dcmi_operating($sessdata);
+}
+
+sub do_dcmi_operating {
+    my $sessdata = shift;
+    unless (scalar(@{$sessdata->{energy_options}})) {
+        return;
+    } else {
+        my $cur_op = shift(@{$sessdata->{energy_options}});
+        if ($cur_op eq "powerusage") {
+            # The raw format for dcmi command Get Power Reading: 
+            #  ipmitool-xcat -I lanplus -H <bmc_ip> -U <bmc_username> -P <bmc_password> raw 0x2c 0x02 0xdc 1 0 0
+            $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x02,
+                        data=>[0xdc,1,0,0],
+                        callback=>\&done_powerusage,
+                        callback_args=>$sessdata);
+        } elsif ($cur_op eq "temperature") {
+            # DCMI Sensor Entity ID
+            # 0x37/0x40 55 for Inlet Temperature
+            # 0x03/0x41 for CPU Temperature
+            # 0x07/0x42 for Baseboard temperature
+            @{$sessdata->{dcmi_sensor}->{sensors}} = qw/55 3 7/;
+            &do_temperature({startpoint=>1}, $sessdata);
+        }
+    }
+}
 	
 sub renergy {
     my $sessdata = shift;
     my @subcommands = @{$sessdata->{extraargs}};
+    if (isfirestone($sessdata)) {
+        unless (@subcommands) {
+            @subcommands = qw/powerusage temperature/;
+        } 
+        foreach (@subcommands) {
+            if ($_ eq "powerusage") {
+                push @{$sessdata->{energy_options}}, 'powerusage';
+            } elsif ($_ eq "temperature") {
+                push @{$sessdata->{energy_options}}, 'temperature';
+            } else {
+                if ($_ =~ /=/) {
+                    xCAT::SvrUtils::sendmsg([1,"Only Query is supported"], $callback, $sessdata->{node},%allerrornodes);
+                } else { 
+                    xCAT::SvrUtils::sendmsg([1,"The option $_ is not supported"], $callback, $sessdata->{node},%allerrornodes);
+                }
+                return;
+            }
+        }
+        # DCMI -- Data Center Manageability Interface, for more info, pls reference http://www.intel.com/content/www/us/en/data-center/dcmi/data-center-manageability-interface.html
+        do_dcmi_operating($sessdata);
+        return;
+    } else {
+        if (grep /powerusage/, @subcommands) {
+            xCAT::SvrUtils::sendmsg([1,"The option 'powerusage' is only supported for OpenPOWER servers"], $callback, $sessdata->{node},%allerrornodes);
+            return;
+        } 
+        if (grep /temperature/, @subcommands) {
+            xCAT::SvrUtils::sendmsg([1,"The option 'temperatue' is only supported for OpenPOWER servers"], $callback, $sessdata->{node},%allerrornodes);
+            return;
+        }
+    }
     unless ($iem_support) {
         xCAT::SvrUtils::sendmsg(":Command unsupported without IBM::EnergyManager installed",$callback,$sessdata->{node});
         return;
