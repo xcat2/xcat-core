@@ -986,29 +986,25 @@ so no additional plugins are needed for BladeCenter.)
  
 
 
-9
- 
- Query powerusage and temperature for OpenPOWER servers.
- 
- \ **renergy**\  ops01 powerusage temperature
- 
- The output will be like this:
- 
- 
- .. code-block:: perl
- 
-      ops01: Current Power                        : 591W
-      ops01: Minimum Power over sampling duration : 558W
-      ops01: Maximum Power over sampling duration : 607W
-      ops01: Average Power over sampling duration : 572W
-      ops01: Time Stamp                           : 11/18/2015 - 1:4:1
-      ops01: Statistics reporting time period     : 10000 milliseconds
-      ops01: Power Measurement                    : Active
-      ops01: CPU Temperature Instance 0           : +39 Centigrade
-      ops01: Baseboard temperature Instance 0     : +28 Centigrade
- 
- 
 
+Query powerusage and temperature for OpenPOWER servers.
+
+\ **renergy**\  ops01 powerusage temperature
+
+The output will be like this:
+
+
+.. code-block:: perl
+
+     ops01: Current Power                        : 591W
+     ops01: Minimum Power over sampling duration : 558W
+     ops01: Maximum Power over sampling duration : 607W
+     ops01: Average Power over sampling duration : 572W
+     ops01: Time Stamp                           : 11/18/2015 - 1:4:1
+     ops01: Statistics reporting time period     : 10000 milliseconds
+     ops01: Power Measurement                    : Active
+     ops01: CPU Temperature Instance 0           : +39 Centigrade
+     ops01: Baseboard temperature Instance 0     : +28 Centigrade
 
 
 ******************

@@ -827,6 +827,8 @@ The output of the setting operation:
     CEC1: Set cappingperc succeeded.
     CEC1: cappingvalue: 816     
 
+=back
+
 =item 9
 
 Query powerusage and temperature for OpenPOWER servers.
@@ -844,8 +846,6 @@ The output will be like this:
     ops01: Power Measurement                    : Active
     ops01: CPU Temperature Instance 0           : +39 Centigrade
     ops01: Baseboard temperature Instance 0     : +28 Centigrade
-
-=back
 
 =back
 
