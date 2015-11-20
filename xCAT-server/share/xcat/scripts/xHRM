@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
@@ -228,12 +228,12 @@ elif [ "bridgeprereq" = "$1" ]; then
     saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
     OIFS=$IFS
     IFS=$'\n'
-    saveip=`ip addr show dev $PORTS scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
-    #saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
     if [ ! -z "$saveip" ]; then
         for line in $saveip; do 
             IFS=$OIFS
-            ip addr add dev $BNAME $line
+            newline=`echo $line|sed 's/dynamic//g'`
+            ip addr add dev $BNAME $newline
         done
     else
         if [ ! -z "$3" ]; then
@@ -246,7 +246,8 @@ elif [ "bridgeprereq" = "$1" ]; then
         IFS=$'\n'
         for line in $saveip; do 
             IFS=$OIFS
-            ip addr del dev $PORTS $line
+           newline=`echo $line|sed 's/dynamic//g'`
+            ip addr del dev $PORTS $newline
         done
        IFS=$OIFS
     fi
@@ -365,7 +366,7 @@ EOF
         fi
     fi 
  
-    ifup $BNAME
+    ifdown $BNAME;ifup $BNAME
 fi #END bridge config.
 
     
