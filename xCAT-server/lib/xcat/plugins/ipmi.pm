@@ -1659,6 +1659,7 @@ sub do_firmware_update {
             return -1;
     }
     #check reset status
+    sleep(10);
     unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 12)) {
         xCAT::SvrUtils::sendmsg ([1,"Timeout to check the bmc status"],
             $callback,$sessdata->{node},%allerrornodes);
@@ -1673,12 +1674,20 @@ sub do_firmware_update {
             return -1;
     }
     # step 4 upgrade firmware
+    # NOTE(chenglch) some firmware may not stable enough, it can handle the ipmi session
+    # request, but failed to upgrade, add sleep function as a work around here to avoid of
+    # error.
+    sleep(60);
     $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
+
     if ($::RUNCMD_RC != 0) {
-        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed: $output"],
+        xCAT::SvrUtils::sendmsg ([1,"Running ipmitool command $cmd failed."],
             $callback,$sessdata->{node},%allerrornodes);
-            return -1;
+        # NOTE(chenglch) as the output message contains tty control text, just print
+        # the output message for debug.
+        print $output;
+        return -1;
     }
     xCAT::SvrUtils::sendmsg ("rflash completed.",$callback,$sessdata->{node},
         %allerrornodes);
