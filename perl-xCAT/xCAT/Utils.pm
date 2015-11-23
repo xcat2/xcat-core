@@ -3512,14 +3512,19 @@ sub filter_nodes{
         @{$fspnodes} = ();
         push @{$fspnodes}, @p6p7;
 
-        # for rnergy command, only the non-ppcle nodes get to the general ipmi.pm
+        # for renergy command, only the non-ppcle nodes get to the general ipmi.pm
         # ppcle of P8 and higher will get in the energy.pm
+        # But for option powerusage and temperature of renergy, they are only implementated in ipmi.pm
+        # So, all bmc node shall go to ipmi.pm. 
+
         @{$bmcnodes} = ();
         push @{$bmcnodes}, @nonppcle;
 
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
         }elsif (grep /^(powerusage|temperature)/, @args) {
+            # Clear the bmc nodes to avoid duplication for non ppc64* nodes.
+            @{$bmcnodes} = ();
             push @{$bmcnodes}, @commonbmc;
         } else {
             push @{$mpnodes}, @ngpbmc;
