@@ -5,7 +5,7 @@ shopt -s nullglob
 
 #first take the disk with the MAX WWN numer to be the installdisk
 if [ -z "$instdisk" ]; then
-   disks=$(awk -F' '  '{print $4  }' /proc/partitions |grep -e "sd[a-z]$")
+   disks=$(awk -F' '  '{print $4  }' /proc/partitions |grep -e "sd[a-z]+$")
    for disk in $disks; do
       diskinfo=$(udevadm info --name $disk)
       diskname=$(IFS= ;echo $diskinfo|grep '\<DEVNAME\>'|cut -d "=" -f2|tr A-Z a-z)
