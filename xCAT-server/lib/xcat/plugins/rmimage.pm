@@ -190,7 +190,7 @@ sub process_request {
    # umount the rootimg/dev
    my $devmount = `cat /proc/mounts |grep  "$imagedir/rootimg/dev"`; 
    if($devmount){
-       xCAT::Utils->runcmd("umount $imagedir/rootimg/dev");
+       xCAT::Utils->runcmd("umount -l  $imagedir/rootimg/dev");
        if($?){
            $callback->({error=>["$imagedir/rootimg/dev mount on /dev, and can't umount. remove $imagename will lead to unpredictable result, please umount manualy before try again"], errorcode=>[1]}); 
            return;
