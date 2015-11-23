@@ -141,6 +141,13 @@ return_value=0
 run_ps () {
  local ret_local=0
  mkdir -p "\"/var/log/xcat\""
+ # On some Linux distro, the rsyslogd daemon write log files with permision
+ # other than root:root. And in some case, the directory /var/log/xcat was
+ # created by xCAT, and had root:root ownership. In this way, rsyslogd
+ # did not have enough permission to write to log files under this directory.
+ # As a dirty hack, change the ownership of directory /var/log/xcat to the
+ # same ownership of directory /var/log.
+ chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\"" 
  local logfile=\"/var/log/xcat/xcat.log\"
 
  if [ -f \$1 ]; then 
@@ -277,5 +284,3 @@ updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost
 #rm -f /xcatpost/mypostscript
-
-

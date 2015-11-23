@@ -348,7 +348,8 @@ else
     #making sure all the messages goes to /var/log/messages
     touch  /var/log/messages 
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
-      chown syslog:adm /var/log/messages
+      chown --reference=/var/log /var/log/messages
+      chown --reference=/var/log /var/log/xcat
     fi
     if [ $ng -eq 0 ]; then
       if [ ! -f $conf_file.XCATORIG ]; then
