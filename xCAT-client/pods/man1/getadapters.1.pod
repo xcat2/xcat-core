@@ -29,7 +29,7 @@ B<pci>: the pci location
 B<mac>: the MAC address
 B<candidatename>: All the names which satisfy predictable network device naming scheme. I<(if xcat enhance confignic command later, user can use these names to configure their network adapter, even customize their name)>
 B<vender>:  the vender of network device
-B<modle>:  the modle of network device
+B<model>:  the model of network device
 
 =head1 OPTIONS
 
