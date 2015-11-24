@@ -57,7 +57,7 @@ for n in /sys/class/net/*; do
 done
 
 for pci in `lspci |awk '/Ethernet/ {print $1}' `; do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2 >/dev/null; then 
+    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
         tmp=`lspci |grep "$pci"`
         echo '<nic>' >> "$ADAPTERFILE"
         echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
@@ -67,7 +67,7 @@ for pci in `lspci |awk '/Ethernet/ {print $1}' `; do
 done
 
 for pci in `lspci |awk '/Network/ {print $1}' `; do
-    if ! grep -q "$pci" "$ADAPTERFILE" 2 >/dev/null; then 
+    if ! grep -q "$pci" "$ADAPTERFILE" 2>/dev/null; then 
         tmp=`lspci |grep "$pci"`
         echo '<nic>' >> "$ADAPTERFILE"
         echo "<pcilocation>$pci</pcilocation>" >> "$ADAPTERFILE"
@@ -90,23 +90,22 @@ echo "</xcatrequest>" >> "$ADAPTERFILE"
 
 cat "$ADAPTERFILE"
 
-if [ ! -z "$XCATMASTER" ]; then
+if [ -n  "$XCATMASTER" ]; then
     if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
         echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $XCATMASTER" >> "$SCANNICLOG"
-        cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATMASTER:$XCATPORT  2>&1  >>"$SCANNICLOG"
+        cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATMASTER:$XCATPORT >>"$SCANNICLOG" 2>&1
     else
         echo "transmit scan result without customer certificate to $XCATMASTER" >> "$SCANNICLOG"
-        cat "$ADAPTERFILE" | openssl s_client -connect $XCATMASTER:$XCATPORT  2>&1  >>"$SCANNICLOG"
+        cat "$ADAPTERFILE" | openssl s_client -connect $XCATMASTER:$XCATPORT >>"$SCANNICLOG" 2>&1
     fi
 else
-    for dhcps in `cat /var/lib/dhclient/dhclient.leases |grep dhcp-server|awk '{print $3}'|uniq|sed "s/;$//g"`; do
+    dhcps=`awk -F ' |;' '/dhcp-server/ { print $(NF-1) }' /var/lib/dhclient/dhclient.leases | tail -n 1`
+    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
         echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $dhcps" >> "$SCANNICLOG"
-        if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-            cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT 2>&1  >>"$SCANNICLOG"
-        else
-            echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
-            cat "$ADAPTERFILE" | openssl s_client -connect $dhcps:$XCATPORT 2>&1  >>"$SCANNICLOG"
-        fi
-    done
+        cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
+    else
+        echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
+        cat "$ADAPTERFILE" | openssl s_client -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
+    fi
 fi
 
