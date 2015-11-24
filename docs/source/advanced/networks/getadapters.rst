@@ -21,14 +21,14 @@ Then will get output like below ::
 
     The whole scan result:
     --------------------------------------
-    node1:1:hitn=enP3p3s0f0|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.0|mac=98be9459ea24|prdn=enP3p3s0f0,enx98be9459ea24|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
-    node1:2:hitn=enP3p3s0f1|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.1|mac=98be9459ea25|prdn=enP3p3s0f1,enx98be9459ea25|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
-    node1:3:hitn=enP3p3s0f2|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.2|mac=98be9459ea26|prdn=enP3p3s0f2,enx98be9459ea26|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
-    node1:4:hitn=enP3p3s0f3|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.3|mac=98be9459ea27|prdn=enP3p3s0f3,enx98be9459ea27|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
-    node1:5:pci=0001:01:00.0|mod=Mellanox Technologies MT27600 [Connect-IB]
+    node1:1:hitname=enP3p3s0f0|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.0|mac=98be9459ea24|candidatename=enP3p3s0f0,enx98be9459ea24|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node1:2:hitname=enP3p3s0f1|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.1|mac=98be9459ea25|candidatename=enP3p3s0f1,enx98be9459ea25|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node1:3:hitname=enP3p3s0f2|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.2|mac=98be9459ea26|candidatename=enP3p3s0f2,enx98be9459ea26|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node1:4:hitname=enP3p3s0f3|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.3|mac=98be9459ea27|candidatename=enP3p3s0f3,enx98be9459ea27|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node1:5:pci=0001:01:00.0|modle=Mellanox Technologies MT27600 [Connect-IB]
     --------------------------------------
-    node2:1:hitn=enP3p3s0f0|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.0|mac=98be9459ea24|prdn=enP3p3s0f0,enx98be9459ea24|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
-    node2:2:hitn=enP3p3s0f1|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.1|mac=98be9459ea25|prdn=enP3p3s0f1,enx98be9459ea25|vnd=Broadcom Corporationmod=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node2:1:hitname=enP3p3s0f0|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.0|mac=98be9459ea24|candidatename=enP3p3s0f0,enx98be9459ea24|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
+    node2:2:hitname=enP3p3s0f1|pci=/pci0003:00/0003:00:00.0/0003:01:00.0/0003:02:01.0/0003:03:00.1|mac=98be9459ea25|candidatename=enP3p3s0f1,enx98be9459ea25|vendor=Broadcom Corporation|modle=NetXtreme II BCM57800 1/10 Gigabit Ethernet
 
 
 Every node gets a separate section to display its all network adapters information, every network adapter owns single line which start as node name and followed by index and other information.
@@ -37,17 +37,17 @@ xCAT try its best to collect more information for each network adapter, but can�
     
 below are the possible information:
 
-* **hitn**: the consistent name which can be used in ``confignic`` derectly in operating system which follow the same naming scheme with rhels7. (``confignic`` doesn’t need to do more work)
+* **hitname**: the consistent name which can be used in ``confignic`` derectly in operating system which follow the same naming scheme with rhels7. (``confignic`` doesn’t need to do more work)
 
 * **pci**: the pci location
 
 * **mac**: the MAC address
 
-* **prdn**: All the names which satisfy predictable network device naming scheme, if customer needs to customize their network adapter name, they can choose one of them. (``confignic`` needs to do more work to support this. if customer want to use their own name, xcat should offer a interface to get customer’s input and change this column) 
+* **candidatename**: All the names which satisfy predictable network device naming scheme, if customer needs to customize their network adapter name, they can choose one of them. (``confignic`` needs to do more work to support this. if customer want to use their own name, xcat should offer a interface to get customer’s input and change this column) 
 
-* **vnd**:  the vender of network device
+* **vendor**:  the vender of network device
 
-* **mod**:  the modle of network device
+* **modle**:  the modle of network device
     
     
     
