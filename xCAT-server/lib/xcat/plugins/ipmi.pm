@@ -827,6 +827,12 @@ sub setuseraccess {
     return;
 }
 
+sub next_setnetinfo {
+    my $rsp = shift;
+    my $sessdata = shift;
+    &setnetinfo($sessdata);
+}
+
 sub setnetinfo {
     my $sessdata = shift;
     my $subcommand = $sessdata->{subcommand};
@@ -907,6 +913,14 @@ sub setnetinfo {
     } elsif ($subcommand =~ m/ip/ and $argument =~ m/dhcp/) {
         @cmd = (0x01,$channel_number,0x4,0x2);
     } elsif ($subcommand =~ m/ip/) {
+        # Need to set ipsrc to static for IBM POWER S822LC and S812LC
+        if (exists($sessdata->{netinfo_setinprogress})) {
+            unless($sessdata->{set_ipsrc_static}) {
+                $sessdata->{set_ipsrc_static} = 1;
+                $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x04,0x1], callback=>\&next_setnetinfo,callback_args=>$sessdata);
+                return;
+            }
+        }
         my $mip = inet_ntoa(inet_aton($argument));
         my @mask = split /\./, $mip;
         foreach (0..3) {
@@ -931,7 +945,8 @@ sub setnetinfo {
     }
     unless ($sessdata->{netinfo_setinprogress}) {
         $sessdata->{netinfo_setinprogress} = '1';
-        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&setnetinfo,callback_args=>$sessdata);
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun, command=>0x01, data=>[$channel_number,0x0,0x1], callback=>\&next_setnetinfo,callback_args=>$sessdata);
+        return;
     }
     my $command = shift @cmd;
     $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
