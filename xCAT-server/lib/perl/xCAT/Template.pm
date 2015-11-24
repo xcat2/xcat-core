@@ -115,6 +115,12 @@ sub subvars {
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   my $res;
   if ($pkglistfile) {
+
+      # ugly hack to work with multiple comma-separated files in pkglist
+      # (combined with the next regex replace below) to avoid this in kickstart:
+      # #INCLUDEBAD:cannot open file1,file2,file3#
+      $pkglistfile =~ s/,/#\n#INCLUDE:/g;
+
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
             
