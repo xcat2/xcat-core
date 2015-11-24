@@ -23,6 +23,7 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 use Data::Dumper;
 use Getopt::Long;
+use File::Path;
 use IO::Select;
 use Term::ANSIColor;
 use Time::Local;
@@ -66,7 +67,7 @@ sub process_request
     my $callback = shift;
     my $subreq   = shift;
     my $command  = $request->{command}->[0];
-	
+
     if ($command eq "getadapters"){
         &handle_getadapters($request, $callback, $subreq);
     }
@@ -74,7 +75,7 @@ sub process_request
     if ($command eq "findadapter"){
         &handle_findadapter($request, $callback);
     }
-	
+
     return;
 }
 
@@ -83,7 +84,7 @@ sub handle_getadapters{
     my $callback = shift;
     my $subreq   = shift;
     my $command  = $request->{command}->[0];
-	
+
     my @args=(); 
     my $HELP;
     my $VERSION;
@@ -95,11 +96,11 @@ sub handle_getadapters{
     }
     @ARGV = @args;
     Getopt::Long::Configure("bundling");    
-    Getopt::Long::Configure("no_pass_through");	
+    Getopt::Long::Configure("no_pass_through");
     if (!GetOptions("h|help"    => \$HELP, 
-	            "v|version" => \$VERSION,
-	            "f"         => \$FORCE,
-	            "V"         => \$VERBOSE   
+           "v|version" => \$VERSION,
+           "f"         => \$FORCE,
+           "V"         => \$VERBOSE
     ) ) {
         if($usage{$command}) {
             my $rsp = {};
@@ -117,8 +118,8 @@ sub handle_getadapters{
             $callback->(\%rsp);
         }
         return;
-    }	
-	
+    }
+
     if ($VERSION) {
         my $ver = xCAT::Utils->Version();
         my %rsp;
@@ -126,7 +127,7 @@ sub handle_getadapters{
         $callback->(\%rsp);
         return; 
     }
-	
+
     my $tmpnodes = join(",", @{$request->{node}});
     my $tmpargs = join(",", @args);
     xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: handling command <$command $tmpnodes $tmpargs>");
@@ -134,7 +135,7 @@ sub handle_getadapters{
     if($FORCE || ! -d $inforootdir) {
         my @tmpnodes = @{$request->{node}};
         $request->{missnode} = \@tmpnodes;
-        &scan_adapters($request, $callback, $subreq);            
+        &scan_adapters($request, $callback, $subreq);
     }else{
         my @nodes = @{$request->{node}};
         my $node;
@@ -144,7 +145,7 @@ sub handle_getadapters{
                 push @missnodes,$node;
             }  
         }
-		
+
         if(scalar(@missnodes) != 0){
            $request->{missnode} = \@missnodes;
            &scan_adapters($request, $callback, $subreq); 
@@ -161,16 +162,16 @@ sub handle_findadapter{
     my $request  = shift;
     my $callback = shift;
     my $hostname = $request->{hostname}->[0];
-	
-    xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: receiving a findadapter response from $hostname");	
+
+    xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: receiving a findadapter response from $hostname");
 
     my $nicnum = scalar @{$request->{nic}};
     my $content = "";
-    #print "-----------nicnum = $nicnum----------------\n";	 
+    #print "-----------nicnum = $nicnum----------------\n"; 
     for (my $i = 1; $i <= $nicnum; $i++) {
         $content .= "$i:";
         if(exists($request->{nic}->[$i-1]->{interface})){
-            $content .= "hitn=".$request->{nic}->[$i-1]->{interface}->[0]."|";
+            $content .= "hitname=".$request->{nic}->[$i-1]->{interface}->[0]."|";
         }
         if(exists($request->{nic}->[$i-1]->{pcilocation})){
             $content .= "pci=".$request->{nic}->[$i-1]->{pcilocation}->[0]."|";
@@ -179,13 +180,13 @@ sub handle_findadapter{
             $content .= "mac=".$request->{nic}->[$i-1]->{mac}->[0]."|";
         }
         if(exists($request->{nic}->[$i-1]->{predictablename})){
-            $content .= "prdn=".$request->{nic}->[$i-1]->{predictablename}->[0]."|";
+            $content .= "candidatename=".$request->{nic}->[$i-1]->{predictablename}->[0]."|";
         }
         if(exists($request->{nic}->[$i-1]->{vendor})){
-            $content .= "vnd=".$request->{nic}->[$i-1]->{vendor}->[0];
+            $content .= "vendor=".$request->{nic}->[$i-1]->{vendor}->[0]."|";
         }
         if(exists($request->{nic}->[$i-1]->{model})){
-            $content .= "mod=".$request->{nic}->[$i-1]->{model}->[0];
+            $content .= "modle=".$request->{nic}->[$i-1]->{model}->[0];
         }
         $content .= "\n";
     }
@@ -203,18 +204,18 @@ sub scan_adapters{
     if (scalar(@{$request->{node}}) == 0){
         return 1;
     }
-	
+
     my $tmptargetnodes = join(",", @targetscannodes);
     xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: issue new scaning for $tmptargetnodes");
-	
+
     my %autorsp;
     $autorsp{data}->[0]="-->Starting scan for: $tmptargetnodes";
-    $callback->(\%autorsp);	
-	
+    $callback->(\%autorsp);
+
     if ( ! -d $inforootdir){
-        xCAT::Utils->runcmd("mkdir -p $inforootdir");
+        mkpath("$inforootdir");
     }
-	
+
     my $node;
     foreach $node (@targetscannodes){
         if ( -e "$inforootdir/$node.info"){
@@ -228,7 +229,7 @@ sub scan_adapters{
     my $forkcount = 0;
     my %pidrecord;
     foreach $node (@targetscannodes){
-		
+
         $pid = xCAT::Utils->xfork();
         if (!defined($pid)){  
             $autorsp{info}->[0]="failed to fork process to restart $node";
@@ -250,14 +251,14 @@ sub scan_adapters{
                 my $tmp = join(" ", @$outref);
                 $autorsp{data}->[0]="$tmp";
                 $callback->(\%autorsp);
-                exit(1);				
+                exit(1);
             }
-			
-            my $tab = xCAT::Table->new("nodetype");
-            my $nthash = $tab->getNodeAttribs(["$node"], ['arch']);
+
+            my $tab = xCAT::Table->new("nodehm");
+            my $hmhash = $tab->getNodeAttribs(["$node"], ['mgt']);
             $tab->close();
-			
-            if ($nthash->{arch} ne "ppc64"){
+   
+            if ($hmhash->{mgt} eq "ipmi"){
                 $outref = xCAT::Utils->runxcmd(
                     {
                         command => ["rsetboot"],
@@ -269,9 +270,9 @@ sub scan_adapters{
                     my $tmp = join(" ", @$outref);
                     $autorsp{data}->[0]="$tmp";
                     $callback->(\%autorsp);
-                    exit(1);				
+                    exit(1);
                 }          
-				
+
                 $outref = xCAT::Utils->runxcmd(
                     {
                         command => ['rpower'],
@@ -283,7 +284,7 @@ sub scan_adapters{
                     my $tmp = join(" ", @$outref);
                     $autorsp{data}->[0]="$tmp";
                     $callback->(\%autorsp);
-                    exit(1);				
+                    exit(1);
                 }
             }else{
                 $outref = xCAT::Utils->runxcmd(
@@ -296,9 +297,9 @@ sub scan_adapters{
                     my $tmp = join(" ", @$outref);
                     $autorsp{data}->[0]="$tmp";
                     $callback->(\%autorsp);
-                    exit(1);				
-                }					
-            }	
+                    exit(1);
+                }
+            }
             # Exit process
             exit(0);
         }
@@ -331,7 +332,7 @@ sub get_info_from_loacal{
     my $callback = shift;
     my $retry = 60;
     my $rsp = {};
-	
+
     push @{$rsp->{data}}, "\nThe whole scan result:";      
 
     if (scalar(@{$request->{node}}) == 0){
@@ -339,21 +340,21 @@ sub get_info_from_loacal{
             error=>[qq{Please indicate the nodes which are needed to scan}], 
             errorcode=>[1]});
         return 1;
-	}
+    }
 
     if (exists($request->{missnode}) && (scalar(@{$request->{missnode}}) > 0)){
         my $nodenum = scalar @{$request->{missnode}}; 
         my $backnum = 0;
         while($retry && $backnum != $nodenum){
-            xCAT::Utils->runcmd("sleep 10");
+            sleep 10;
             $retry--;
             $backnum = 0;
             foreach $backnode (@{$request->{missnode}}){ 
                 if( -e "$inforootdir/$backnode.info" ){
                     $backnum++;
                     deletenode($request->{missnode}, "$backnode");
-                }				
-            }			
+                }
+            }
         }
     }
 
@@ -361,18 +362,18 @@ sub get_info_from_loacal{
         my $tmpnode = join(",", @{$request->{missnode}});
         xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: waiting scan result time out");
         push @{$rsp->{data}}, "waiting scan result for $tmpnode time out";
-    }	
-	
+    }
+
     my $node;
     foreach $node (@{$request->{node}}){
         push @{$rsp->{data}}, "--------------------------------------";
         if ( ! -e "$inforootdir/$node.info" &&  ! -e "$inforootdir/$node.info.bak" ){
-		
+
             #scan failed, but without old file
             push @{$rsp->{data}}, "[$node] Scan failed and without old data. there isn't data to show";
             
         }elsif( ! -e "$inforootdir/$node.info" && -e "$inforootdir/$node.info.bak" ){
-		
+
             #scan failed, using old file
             xCAT::Utils->runcmd("mv $inforootdir/$node.info.bak $inforootdir/$node.info");
             push @{$rsp->{data}}, "[$node] Scan failed but old data exist, using the old data:";
@@ -388,9 +389,9 @@ sub get_info_from_loacal{
                     push @{$rsp->{data}}, "[$node] Can't open $inforootdir/$node.info ";
                 }
             }
-			
+
         }elsif( -e "$inforootdir/$node.info" && ! -e "$inforootdir/$node.info.bak" ){
-		
+
             push @{$rsp->{data}}, "[$node] with no need for scan due to old data exist, using the old data:";
             if( -z "$inforootdir/$node.info"){
                 push @{$rsp->{data}}, "[$node] the old file is empty, nothing to show";
@@ -405,7 +406,7 @@ sub get_info_from_loacal{
                 }
             }
         }else{
-            xCAT::Utils->runcmd("rm -f $inforootdir/$node.info.bak");		
+            xCAT::Utils->runcmd("rm -f $inforootdir/$node.info.bak");
             push @{$rsp->{data}}, "[$node] scan successfully, below are the latest data:";
             #scan successfully, using new file
             if (open($myfile, "$inforootdir/$node.info")) {
@@ -415,34 +416,34 @@ sub get_info_from_loacal{
                 close($myfile); 
             }else{
                 push @{$rsp->{data}}, "[$node] Can't open $inforootdir/$node.info";
-            }	
-        }		
-    }	
-    $callback->($rsp);	
-	
+            }
+        }
+    }
+    $callback->($rsp);
+
     return;
 }
 
 sub deletenode{
     my $arrref = shift;
     my $targetnode = shift;
-    my $arrlong = scalar @$arrref;
+    my $arrcount = scalar @$arrref;
     my $targetindex=0;
-	
+
     if( "$targetnode" ne "all" ){
-        for (my $i = 0; $i < $arrlong; $i++){
+        for (my $i = 0; $i < $arrcount; $i++){
             if ("$arrref->[$i]" eq "$targetnode"){
                 $targetindex = $i;
                 last;
             }
         }
-        for (my $i = $targetindex; $i < $arrlong-1; $i++){
+        for (my $i = $targetindex; $i < $arrcount-1; $i++){
             $arrref->[$i] = $arrref->[$i+1] ;
         }
         pop @$arrref;
     }else{
-        for (my $i = 0; $i < $arrlong; $i++){
-            pop @$arrref;		
+        for (my $i = 0; $i < $arrcount; $i++){
+            pop @$arrref;
         }
     }
 }
