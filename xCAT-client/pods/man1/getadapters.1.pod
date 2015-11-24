@@ -24,12 +24,12 @@ if part nodes of I<noderange> don't have network device information in local and
 B<getadapters> tries to collect more information for the  target network device,  but doesn't guarantee collect same much information for every network device.
 
 Below are the possible information can be collect up to now:
-B<hitn>: the consistent name which can be used by confignic directly in operating system which follow the same naming scheme with rhels7
+B<hitname>: the consistent name which can be used by confignic directly in operating system which follow the same naming scheme with rhels7
 B<pci>: the pci location
 B<mac>: the MAC address
-B<prdn>: All the names which satisfy predictable network device naming scheme. I<(if xcat enhance confignic command later, user can use these names to configure their network adapter, even customize their name)>
-B<vnd>:  the vender of network device
-B<mod>:  the modle of network device
+B<candidatename>: All the names which satisfy predictable network device naming scheme. I<(if xcat enhance confignic command later, user can use these names to configure their network adapter, even customize their name)>
+B<vender>:  the vender of network device
+B<modle>:  the modle of network device
 
 =head1 OPTIONS
 
@@ -62,12 +62,12 @@ Output is similar to:
 The whole scan result:
 --------------------------------------
 [node1] with no need for scan due to old data exist, using the old data:
-node1:1:mac=98be9459ea24|pci=/0003:03:00.0|prdn=enx98be9459ea24|vnd=Broadcom Corporation 
-node1:2:mac=98be9459ea25|pci=/0003:03:00.1|prdn=enx98be9459ea25|vnd=Broadcom Corporation
+node1:1:mac=98be9459ea24|pci=/0003:03:00.0|candidatename=enx98be9459ea24|vender=Broadcom Corporation 
+node1:2:mac=98be9459ea25|pci=/0003:03:00.1|candidatename=enx98be9459ea25|vender=Broadcom Corporation
 --------------------------------------
 [node2] scan successfully, below are the latest data
-node2:1:mac=98be9459ea34|pci=/0003:03:00.0|prdn=enx98be9459ea34|vnd=Broadcom Corporation 
-node2:2:mac=98be9459ea35|pci=/0003:03:00.1|prdn=enx98be9459ea35|vnd=Broadcom Corporation
+node2:1:mac=98be9459ea34|pci=/0003:03:00.0|candidatename=enx98be9459ea34|vender=Broadcom Corporation 
+node2:2:mac=98be9459ea35|pci=/0003:03:00.1|candidatename=enx98be9459ea35|vender=Broadcom Corporation
 
 Every node gets a separate section to display its all network adapters information, every network adapter owns single line which start as node name and followed by index and other information.
 
