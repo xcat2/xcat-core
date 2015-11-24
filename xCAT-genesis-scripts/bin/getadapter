@@ -100,12 +100,14 @@ if [ -n  "$XCATMASTER" ]; then
     fi
 else
     dhcps=`awk -F ' |;' '/dhcp-server/ { print $(NF-1) }' /var/lib/dhclient/dhclient.leases | tail -n 1`
-    if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-        echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $dhcps" >> "$SCANNICLOG"
-        cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
-    else
-        echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
-        cat "$ADAPTERFILE" | openssl s_client -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
+    if [ -n "$dhcps" ]; then
+        if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+            echo "using /etc/xcat/certkey.pem and /etc/xcat/cert.pem to transmit scan result to $dhcps" >> "$SCANNICLOG"
+            cat "$ADAPTERFILE" | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
+        else
+             echo "transmit scan result without customer certificate to $dhcps" >> "$SCANNICLOG"
+             cat "$ADAPTERFILE" | openssl s_client -connect $dhcps:$XCATPORT >>"$SCANNICLOG" 2>&1
+        fi
     fi
 fi
 
