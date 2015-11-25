@@ -5780,7 +5780,7 @@ sub vitals {
 		$sensor_filters{0x02}=1;
 	}
     if(grep /watt/,@textfilters) {
-        $sensor_filters{0x03}=1;
+        $sensor_filters{watt}=1;
     }
 	if(grep /fan/,@textfilters) {
 		$sensor_filters{0x04}=1;
@@ -5814,6 +5814,9 @@ sub vitals {
 			my $sdr = $sdr_hash{$key};
 			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
+                push @{$sessdata->{sensorstoread}},$sdr;
+                $usedkeys{$key}=1;
+            } elsif ($filter eq "watt" and $sdr->sensor_units_2 and $sdr->sensor_units_2==0x06) {
                 push @{$sessdata->{sensorstoread}},$sdr;
                 $usedkeys{$key}=1;
             }
