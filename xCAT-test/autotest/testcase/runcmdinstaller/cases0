@@ -29,7 +29,7 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 cmd:sleep 300
-cmd:cat /var/log/messages |grep "packaging: Installing"
+cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "packaging: Installing"
 check:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
 end
@@ -42,9 +42,9 @@ check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
 check:rc==0
 cmd:sleep 1200
-cmd:cat /var/log/messages |grep "Running post-installation scripts"
+cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "Running post-installation scripts"
 cmd:rc==0
-cmd:cat /var/log/messages |grep "program: ++"
+cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "program: ++"
 cmd:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
 end
@@ -56,7 +56,7 @@ cmd:chdef $$CN -p  postscripts=setupntp
 check:rc==0
 cmd:updatenode $$CN -P setupntp
 check:output=~$$CN: +
-cmd:cat /var/log/messages |grep "trying to download postscripts"
+cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null |grep "trying to download postscripts"
 check:rc==0
 cmd:chtab key=xcatdebugmode site.value="0"
 cmd:chdef $$CN  -m  postscripts=setupntp 
