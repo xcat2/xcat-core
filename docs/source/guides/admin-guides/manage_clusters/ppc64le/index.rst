@@ -8,6 +8,7 @@ For a new user, you are recommended to read this chapter in order since later se
 .. toctree::
    :maxdepth: 2
 
+   configure_xcat.rst
    discovery/index.rst
    management.rst
    diskful/index.rst
