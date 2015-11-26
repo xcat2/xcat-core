@@ -56,6 +56,10 @@ else { usage("No node range specified\n\n"); }
 
 my  @user = getpwuid($>);
 my $homedir=$user[7];
+my %sslargs;
+if (defined($ENV{'XCATSSLVER'})) {
+    $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+}
 
 my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
@@ -63,7 +67,8 @@ my $client = IO::Socket::SSL->new(
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
-                #SSL_verify_mode => 1,
+                SSL_verify_mode => 1,
+                %sslargs,
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
