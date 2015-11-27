@@ -15,11 +15,10 @@ if [ -f "$ADAPTERFILE" ]; then
     rm -f "$ADAPTERFILE" >> "$SCANNICLOG"  2>&1
 fi
 
-
-echo '<xcatrequest>' > "$ADAPTERFILE"
-echo "<command>findadapter</command>" >> "$ADAPTERFILE"
-echo "<ClientType>cli</ClientType>" >> "$ADAPTERFILE"
-echo "<hostname>$HOSTNAME</hostname>" >> "$ADAPTERFILE"
+echo "<xcatrequest>
+<command>findadapter</command>
+<clienttype>cli</clienttype>
+<hostname>$HOSTNAME</hostname>"  >> "$ADAPTERFILE"
 
 #scan adapters have recognized by operating system
 for n in /sys/class/net/*; do
