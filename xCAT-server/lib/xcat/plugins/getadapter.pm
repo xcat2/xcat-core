@@ -331,6 +331,7 @@ sub scan_adapters{
                      deletenode($request->{missnode}, "$pidreord{$cpid}");
                 }
                 $forkcount--;
+                sleep 0.1;
             }
         }
     }
