@@ -188,7 +188,7 @@ sub handle_findadapter{
             $content .= "vendor=".$request->{nic}->[$i]->{vendor}->[0]."|";
         }
         if(exists($request->{nic}->[$i]->{model})){
-            $content .= "modle=".$request->{nic}->[$i]->{model}->[0];
+            $content .= "model=".$request->{nic}->[$i]->{model}->[0];
         }
         $content .= "\n";
     }
@@ -198,7 +198,7 @@ sub handle_findadapter{
     if(!open($fd,">$inforootdir/$hostname.info")) {
         xCAT::MsgUtils->trace($VERBOSE,"d","findadapter: can't open $inforootdir/$hostname.info to record adapter info");
     }else{
-        print $fd, "$content";
+        print $fd "$content";
         close($fd);
     }
 
