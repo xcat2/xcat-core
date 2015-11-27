@@ -54,6 +54,11 @@ After the physical server is defined into xCATdb, the next thing is update the n
   # chdef cn1 ip=10.0.101.1
   1 object definitions have been created or modified.
 
+In order to do BMC configuration during the discovery progress, the following command is needed, for more info about chain, pls refer the **Chain** document in **Advanced Topics** chapter::
+
+  # chdef cn1 chain="runcmd=bmcsetup"
+  1 object definitions have been created or modified.
+
 Then, add node info into /etc/hosts and DNS::
 
   makehosts cn1

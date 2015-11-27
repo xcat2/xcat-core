@@ -6,6 +6,7 @@ Advanced Topics
 
    confluent/index.rst
    cluster_maintenance/index.rst
+   chain/index.rst
    docker/index.rst
    gpu/index.rst
    hamn/index.rst

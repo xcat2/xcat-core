@@ -52,6 +52,10 @@ After switches are defined, the server node can be predefined with the following
     chdef cn1 mgt=ipmi cons=ipmi ip=10.0.101.1 bmc=50.0.101.1 netboot=petitboot installnic=mac primarynic=mac
     chdef cn1 switch=switch1 switchport=0
 
+In order to do BMC configuration during the discovery progress, the following command is needed, for more info about chain, pls refer the **Chain** document in **Advanced Topics** chapter::
+
+    chdef cn1 chain="runcmd=bmcsetup"
+
 Add cn1 into DNS::
 
     makehosts cn1
