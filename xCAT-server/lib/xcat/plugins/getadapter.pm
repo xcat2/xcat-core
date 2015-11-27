@@ -229,8 +229,10 @@ sub scan_adapters{
     my $node;
     foreach $node (@targetscannodes){
         if ( -e "$inforootdir/$node.info"){
-             rename("$inforootdir/$node.infoi", "$inforootdir/$node.info.bak");             
+             rename("$inforootdir/$node.info", "$inforootdir/$node.info.bak");             
              xCAT::MsgUtils->trace($VERBOSE,"d","getadapters: move $inforootdir/$node.info to $inforootdir/$node.info.bak");
+        }else{
+            open OUT,">$inforootdir/$node.first" 
         }  
     }
 
@@ -394,8 +396,11 @@ sub get_info_from_local{
         }elsif( ! -e "$inforootdir/$node.info" && -e "$inforootdir/$node.info.bak" ){
             rename("$inforootdir/$node.info.bak","$inforootdir/$node.info");
             push @{$rsp->{data}}, "[$node] Scan failed but old data exist, using the old data:";
-        }elsif( -e "$inforootdir/$node.info" && ! -e "$inforootdir/$node.info.bak" ){
+        }elsif( -e "$inforootdir/$node.info" && ! -e "$inforootdir/$node.info.bak" && ! -e "$inforootdir/$node.first"){
             push @{$rsp->{data}}, "[$node] with no need for scan due to old data exist, using the old data:";
+        }elsif(-e "$inforootdir/$node.info" && ! -e "$inforootdir/$node.info.bak" && -e "$inforootdir/$node.first"){
+            unlink "$inforootdir/$node.first";
+            push @{$rsp->{data}}, "[$node] scan successfully, below are the latest data:";
         }else{
             unlink "$inforootdir/$node.info.bak";
             push @{$rsp->{data}}, "[$node] scan successfully, below are the latest data:";
