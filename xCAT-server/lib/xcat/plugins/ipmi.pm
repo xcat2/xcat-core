@@ -1692,7 +1692,10 @@ sub do_firmware_update {
     # NOTE(chenglch) some firmware may not stable enough, it can handle the ipmi session
     # request, but failed to upgrade, add sleep function as a work around here to avoid of
     # error.
-    sleep(60);
+    my $rflash_delay = 120;
+    my $delay_config = xCAT::TableUtils->get_site_attribute("rflash_delay");
+    $rflash_delay = $delay_config if defined($delay_config) and $delay_config =~ /^\d+$/;
+    sleep($rflash_delay) if $rflash_delay != 0;
     $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
 
