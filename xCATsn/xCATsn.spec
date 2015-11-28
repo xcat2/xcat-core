@@ -28,6 +28,7 @@ Conflicts: xCAT
 # on RHEL7, need to specify it explicitly
 Requires: net-tools
 Requires: /usr/bin/killall
+Requires: /usr/bin/bc
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: httpd nfs-utils nmap bind
 # On RHEL this pulls in dhcp, on SLES it pulls in dhcp-server
