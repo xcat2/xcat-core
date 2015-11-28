@@ -1,8 +1,5 @@
 
 #For Cuda 7.5
-kernel-devel
-gcc
-pciutils
-dkms
-cuda
+cuda-7.5/ppc64le/cuda-deps/dkms
+cuda-7.5/ppc64le/cuda-deps/cuda
 
