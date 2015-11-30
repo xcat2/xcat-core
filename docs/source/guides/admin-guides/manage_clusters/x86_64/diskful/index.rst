@@ -1,2 +1,0 @@
-Diskful Installation
-====================
