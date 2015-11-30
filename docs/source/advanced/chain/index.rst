@@ -1,7 +1,7 @@
 Chain
 =====
 
-In xCAT, we introduced the **chain** mechanism which means a series of tasks that had been defined in it can be done one by one on the specified node.
+The **chain** mechanism is created to allow the administrator to define a series of tasks or operations that will be executed in series on the target node.
 
 The **chain** mechanism is implemented in xCAT genesis system. The genesis is a customized Linux system, if can be used to do discovery and configuration after booted on the specified node.
 

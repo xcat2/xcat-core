@@ -18,22 +18,25 @@ How to prepare a image for ``runimage`` in ``chain``
 
     * Create the directory for the image: ::
 
-      #mkdir -p /install/my_image
+        mkdir -p /install/my_image
 
     * Go to the direcotry and copy the rpm file into it: ::
 
-      #cd /install/my_image
-      #cp /tmp/a.rpm /install/my_image
+        cd /install/my_image
+        cp /tmp/a.rpm /install/my_image
 
     * Write the runme.sh script and modify the permission: ::
 
-       #cat runme.sh
-       echo "start installing a.rpm"
-       rpm -ivh a.rpm  
-       #chmod +x runme.sh
+         cat runme.sh
+         echo "start installing a.rpm"
+         rpm -ivh a.rpm  
+
+    * modify the runme.sh script permission: ::
+
+         chmod +x runme.sh
 
     * Create the tar ball for the directory: ::
 
-      #tar -zcvf my_image.tar .
+         tar -zcvf my_image.tgz .
 
 
