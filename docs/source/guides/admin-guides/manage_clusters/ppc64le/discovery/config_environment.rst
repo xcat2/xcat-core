@@ -48,7 +48,7 @@ For hardware management with ipmi, add the following line::
     "ipmi","ADMIN","admin",,,,
 
 Verify the genesis packages
-``````````````````````
+```````````````````````````
 
 Genesis packages are used to **create the root image for network boot** and **MUST** be installed before doing hardware discovery. 
 
