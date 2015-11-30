@@ -1070,6 +1070,9 @@ site => {
    "              through HMC. Default is 0.\n\n".
    " snmpc:  The snmp community string that xcat should use when communicating with the\n".
    "         switches.\n\n".
+   " rflash_delay:  Only for rflash command to upgrade firmware on OpenPOWER servers.\n".
+   "                This attribute is delay time to wait for the firmware initialization\n".
+   "                after cold reset. Default value is 120 in seconds. If set to 0, no delay.\n\n".
    " ---------------------------\n".
    "INSTALL/DEPLOYMENT ATTRIBUTES\n".
    " ---------------------------\n".
