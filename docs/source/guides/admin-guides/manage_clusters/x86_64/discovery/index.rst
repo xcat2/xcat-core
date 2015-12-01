@@ -1,2 +1,0 @@
-Hardware Discovery & Define Node
-================================
