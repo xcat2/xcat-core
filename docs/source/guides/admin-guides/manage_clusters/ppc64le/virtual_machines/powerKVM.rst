@@ -88,12 +88,4 @@ If the network bridge is not created or configured successfully, please run "xHR
    updatenode kvmhost1  -P "xHRM bridgeprereq eth0:br0"
  
 
-
-.. [1] Every standard libvirt installation during PowerKVM powervision provides NAT based connectivity to virtual machines out of the box. Some network bridges(virbr0,virbr1...) and dummy network devices(virbr0-nic,virbr1-nic...) will be created by default ::
-
-  #brctl show
-  #bridge name     bridge id               STP enabled     interfaces
-  #virbr0          8000.525400c7f843       yes             virbr0-nic
-  #virbr1          8000.5254001619f5       yes             virbr1-nic
-
-
+.. [1] Every standard libvirt installation provides NAT based connectivity to virtual machines out of the box using the "virtual bridge" interfaces (virbr0, virbr1, etc)  Those will be created by default.
