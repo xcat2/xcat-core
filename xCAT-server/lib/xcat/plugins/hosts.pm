@@ -394,13 +394,14 @@ sub process_request
        return;
     }
 
+    # get site FQDNfirst(Fully Qualified Domian Name)
+    my @FQDNfirst = xCAT::TableUtils->get_site_attribute("FQDNfirst");
+    if ( (defined($FQDNfirst[0])) && ( $FQDNfirst[0] =~ /^(1|yes|enable)$/i)) { $LONGNAME = "1"; }
+
     # get site domain for backward compatibility
-    my $sitetab = xCAT::Table->new('site');
-    if ($sitetab) {
-        my $dom = $sitetab->getAttribs({key=>'domain'},'value');
-        if ($dom and $dom->{value}) {
-            $::sitedomain=$dom->{value};
-        }
+    my @domain = xCAT::TableUtils->get_site_attribute("domain");
+    if ($domain[0]) {
+        $::sitedomain=$domain[0];
     }
 
     my $hoststab = xCAT::Table->new('hosts');
