@@ -20,19 +20,6 @@ check:rc==0
 check:output=~yum
 cmd:chtab key=xcatdebugmode site.value="0"
 end
-start:get_xcat_install_loginfo
-description:xcatdebugloginfo for install
-cmd:chtab key=xcatdebugmode site.value="1"
-check:rc==0
-cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
-check:rc==0
-cmd:sleep 300
-cmd:cat /var/log/messages /var/log/xcat/computes.log 2>/dev/null | grep "packaging: Installing"
-check:rc==0
-cmd:chtab key=xcatdebugmode site.value="0"
-end
 start:get_xcat_postscripts_loginfo
 description:get xcat post scripts loginfo
 cmd:chtab key=xcatdebugmode site.value="1"
