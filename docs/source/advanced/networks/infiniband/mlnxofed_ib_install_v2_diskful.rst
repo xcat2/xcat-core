@@ -55,12 +55,12 @@ Configuration for Diskful Installation
 	rsetboot <node> net
 	rpower <node> reset
 
-  **[Note]**: Dpending on Mellanox OFED user manual,  if you don't perform firmware updates to network adapter hardware, no need to reboot the machine, just restart the driver by running ``/etc/init.d/openibd``. But in Rhels7.x, after installation, ``openibd`` restart failed if not reboot the machine. so **we strongly recommend reboot note again to avoid unexpected problem in RHELS7.x.** If you perform firmware updates, whatever operating system you used, **don't forget to reboot machine** . 
+  **[Note]**: In RHEL7.x, after performing all steps above, ``openibd`` doesn't work well. you can resolve this problem depending on `Mellanox OFED Linux Release Notes <http://www.mellanox.com/related-docs/prod_software/Mellanox_OFED_Linux_Release_Notes_3_1-1_0_5.pdf>`_ by yourself. But reboot one more time can resolve all of these complex issues. so **we strongly recommend reboot machine again to avoid unexpected problem in RHEL7.x.**  
 
-  After steps above, you can login target ndoe and find the Mellanox IB drives are located under ``/lib/modules/<kernel_version>/extra/mlnx-ofa_kernel``. 
+  After steps above, you can login target ndoe and find the Mellanox IB drives are located under ``/lib/modules/<kernel_version>/extra/``. 
 
   Issue ``ibstat`` command you can get the IB apater information ::
-	
+
     [root@server ~]# ibstat
     CA 'mlx4_0'
         CA type: MT4099
