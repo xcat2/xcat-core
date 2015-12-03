@@ -55,7 +55,11 @@ Configuration for Diskful Installation
 	rsetboot <node> net
 	rpower <node> reset
 
-  **[Note]**: In RHEL7.x, after performing all steps above, ``openibd`` doesn't work well. you can resolve this problem depending on `Mellanox OFED Linux Release Notes <http://www.mellanox.com/related-docs/prod_software/Mellanox_OFED_Linux_Release_Notes_3_1-1_0_5.pdf>`_ by yourself. But reboot one more time can resolve all of these complex issues. so **we strongly recommend reboot machine again to avoid unexpected problem in RHEL7.x.**  
+  **[Note]**: 
+
+  * In RHEL7.x, after performing all steps above, ``openibd`` doesn't work well. you can resolve this problem depending on `Mellanox OFED Linux Release Notes <http://www.mellanox.com/related-docs/prod_software/Mellanox_OFED_Linux_Release_Notes_3_1-1_0_5.pdf>`_ by yourself. But reboot one more time can resolve all of these complex issues. so **we strongly recommend reboot machine again to avoid unexpected problem in RHEL7.x.**  
+
+  * If you performed firmware updates, i.e. you didn't pass ``--without-fw-update`` to option ``-m`` of ``mlnxofed_ib_install``, **reboot machine for all distro**
 
   After steps above, you can login target ndoe and find the Mellanox IB drives are located under ``/lib/modules/<kernel_version>/extra/``. 
 
