@@ -1,3 +1,6 @@
+Extreme Cloud/Cluster Administration Toolkit
+============================================
+
 xCAT stands for E\ **x**\ treme **C**\ loud/\ **C**\ luster **A**\ dministration **T**\ oolkit.
 
 xCAT offers complete management of clouds, clusters, HPC, grids, datacenters,
@@ -19,8 +22,8 @@ Go to GitHub to view the source, open issues, ask questions, and particpate in t
 
 Enjoy!
 
-Content
-=======
+Table of Contents
+=================
 
 .. toctree::
    :maxdepth: 2
@@ -31,12 +34,4 @@ Content
    advanced/index.rst
    developers/index.rst
    help.rst
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
