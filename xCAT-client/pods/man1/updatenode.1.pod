@@ -4,7 +4,7 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<--fanout>] [B<-t timeout>} [B<attr=val> [B<attr=val...>]] [B<-n>|B<--noverify>]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>]  [B<-l>  I<userID>]  [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<-o distroname>] [B<--fanout>] [B<-t timeout>} [B<attr=val> [B<attr=val...>]] [B<-n>|B<--noverify>]
 
 B<updatenode> B<noderange> [B<-k>|B<--security>] [B<-t timeout>]
 
@@ -302,6 +302,10 @@ using AIX software maintenance support.
 
 Used to specify a source directory other than the standard lpp_source directory specified in the xCAT osimage definition.  (AIX only)
 
+=item B<-o distroname>
+
+Should only use this option to upgrade the OS release in the same version.
+
 =item B<-F|--sync>
 
 Specifies that file synchronization should be
@@ -580,6 +584,12 @@ B<updatenode node1 -l user1 -P syslog>
 In Sysclone environment, after capturing the delta changes from golden client to management node, to run updatenode to push these delta changes to target nodes.
 
 B<updatenode target-node -S>
+
+=item 23
+
+To upgrade the packages for the node "node01" using the installation source in /install/rhels7.1 on the xCAT management node.
+
+B<updatenode node01 -o rhels7.1>
 
 
 =back
