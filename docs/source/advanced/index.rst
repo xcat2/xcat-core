@@ -7,6 +7,7 @@ Advanced Topics
    confluent/index.rst
    cluster_maintenance/index.rst
    docker/index.rst
+   domain_name_resolution/index.rst
    gpu/index.rst
    hamn/index.rst
    hierarchy/index.rst
