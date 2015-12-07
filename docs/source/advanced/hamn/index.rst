@@ -1,5 +1,5 @@
-High Avaiability
-================
+High Availability
+=================
 
 The xCAT management node plays an important role in the cluster, if the management node is down for whatever reason, the administrators will lose the management capability for the whole cluster, until the management node is back up and running. In some configuration, like the Linux nfs-based statelite in a non-hierarchy cluster, the compute nodes may not be able to run at all without the management node. So, it is important to consider the high availability for the management node.
 
