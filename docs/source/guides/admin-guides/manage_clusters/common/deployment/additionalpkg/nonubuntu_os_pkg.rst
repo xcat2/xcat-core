@@ -80,7 +80,7 @@ Note: the trailing **"#"** character at the end of the line. It is important to 
 Group/Pattern Names
 '''''''''''''''''''
 
-It is only supported for statefull deployment.
+It is only supported for stateful deployment.
 
 In Linux, a groups of rpms can be packaged together into one package. It is called a group on RedHat, CentOS, Fedora and Scientific Linux. To get the a list of available groups, run 
 
@@ -99,7 +99,7 @@ You can specify in this file the group/pattern names by adding a **'@'** and a s
 Remove RPMs After Installing
 ''''''''''''''''''''''''''''
 
-It is only supported for statefull deployment.
+It is only supported for stateful deployment.
 
 You can specify in this file that certain rpms to be removed after installing the new software. This is done by adding **'-'** before the rpm names you want to remove. For example: ::
 

@@ -49,7 +49,7 @@ By default, when a newer version/release of a kitcomponent is added to an existi
     Object name:  compute
     kitcomponents=myprod_compute.1-0.1,myprod_compute.1-0.2
 
-When building a diskless image for the first time, or when deploying a diskfull node, xCAT will first install version 1-0.1 of myprod, and then in a separate yum or zypper call, xCAT will install version 1-0.2. The second install will either upgrade the product rpms or install the new versions of the rpms depending on how the product named the packages.
+When building a diskless image for the first time, or when deploying a diskful node, xCAT will first install version 1-0.1 of myprod, and then in a separate yum or zypper call, xCAT will install version 1-0.2. The second install will either upgrade the product rpms or install the new versions of the rpms depending on how the product named the packages.
 
 Modifying Kit Deployment Parameters for an OS Image Definition
 ```````````````````````````````````````````````````````````````
@@ -63,4 +63,4 @@ If the kit does contain a deployment parameter file, the contents of the file wi
   addkitcomp -i <image> <kitcomponent name>
   vi /install/osimages/<image>/kits/KIT_DEPLOY_PARAMS.otherpkgs.pkglist
 
-NOTE: Please be sure to know how changing any kit deployment parameters will impact the install of the product into the OS image. Many parameters include settings for automatic license acceptance and other controls to ensure proper unattended installs into a diskless image or remote installs into a diskfull node. Changing these values will cause problems with genimage, updatenode, and other xCAT deployment commands.
+NOTE: Please be sure to know how changing any kit deployment parameters will impact the install of the product into the OS image. Many parameters include settings for automatic license acceptance and other controls to ensure proper unattended installs into a diskless image or remote installs into a diskful node. Changing these values will cause problems with genimage, updatenode, and other xCAT deployment commands.
