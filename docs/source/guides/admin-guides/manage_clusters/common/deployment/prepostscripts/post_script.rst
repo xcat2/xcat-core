@@ -12,7 +12,7 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
 
     ``man postscripts``
 
-* **postscripts attribute** - List of scripts that should be run on this node after diskfull installation or diskless boot.
+* **postscripts attribute** - List of scripts that should be run on this node after diskful installation or diskless boot.
 
            * **[RHEL]**
 
@@ -22,7 +22,7 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
 
            Postscripts will be run after the reboot but before the init.d process. For Linux diskless deployment, the postscripts will be run at the init.d time, and xCAT will automatically add the list of postscripts from the postbootscripts attribute to run after postscripts list.
 
-* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskfull installation reboot or diskless boot
+* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskful installation reboot or diskless boot
 * **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a site table attribute runbootscripts is available to change this default behavior. If set to yes, then the postbootscripts will be run on install and on reboot. 
  
 **xCAT automatically adds the postscripts from the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot.**

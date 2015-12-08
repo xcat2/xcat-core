@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **geninitrd**\  - Generate an initrd (initial ramfs) which to be used for statefull install or stateless netboot.
+\ **geninitrd**\  - Generate an initrd (initial ramfs) which to be used for stateful install or stateless netboot.
 
 
 ********
@@ -34,7 +34,7 @@ Generate the initrd for the osimage: \ **imagename**\  which is an xCAT object o
 \ **Diskfull Osimage**\ 
 
 
-If the \ **imagename**\  is a statefull one (The provmethod attribute for the osimage is 'install'), 
+If the \ **imagename**\  is a stateful one (The provmethod attribute for the osimage is 'install'), 
 this command is used to rebuild the initrd to inject the new drivers from driver rpms or 
 'update distro' and copy the rebuilt initrd and new kernel (If there's new kernel in 'update 
 distro') to the directory \ */tftpboot/xcat/<imagename*\ >.

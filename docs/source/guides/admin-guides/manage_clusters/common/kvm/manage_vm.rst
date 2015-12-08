@@ -72,7 +72,7 @@ After the VM object is created, several key attributes need to be specified with
 
         chdef vm1 vmstorage=dir:///var/lib/libvirt/images
 
-   **Note**: The attribute **vmstorage** is only valid for diskfull VM node. 
+   **Note**: The attribute **vmstorage** is only valid for diskful VM node. 
 
 8. Define the **console** attributes for VM: ::
 
