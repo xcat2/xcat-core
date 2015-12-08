@@ -51,8 +51,11 @@ The server definition will be like this::
 
 After the physical server is defined into xCATdb, the next thing is update the node definition with the example node attributes::
 
-  # chdef cn1 ip=10.0.101.1
-  1 object definitions have been created or modified.
+  chdef cn1 ip=10.0.101.1
+
+In order to do BMC configuration during the discovery process, set ``runcmd=bmcsetup``. For more info about chain, please refer to :doc:`Chain <../../../../../advanced/chain/index>`   ::
+
+  chdef cn1 chain="runcmd=bmcsetup"
 
 Then, add node info into /etc/hosts and DNS::
 
