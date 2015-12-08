@@ -78,7 +78,9 @@ OPTIONS
 
 \ **-n|--noupgrade**\ 
  
- Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade
+ 1. Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade.
+ 
+ 2. Kit components added by addkitcomp -n will be installed separately behind all other ones which have been added.
  
 
 
