@@ -1,40 +1,41 @@
-Installing other packages with Ubuntu official mirror
-=====================================================
+Install Additional Other Packages with Ubuntu official mirror
+==============================================================
 
-The Ubuntu iso is being used to install the compute nodes only include packages to run a base operating system, it is likely that users will need to install additional Ubuntu packages from the internet Ubuntu repo or local repo, this section describes how to install additional Ubuntu packages.
+The Ubuntu ISO used to install the compute nodes only include packages to run a minimal base operating system, it is likely that users will want to install additional Ubuntu packages from the internet Ubuntu repositories or local repositories, this section describes how to install additional Ubuntu packages.
 
-A1: Compute nodes can access the internet
------------------------------------------
+Compute nodes can access the internet
+-------------------------------------
 
-step1: Specify the repository
+#. : Specify the repository
 
-Use the internet repository directly when define the otherpkgdir attribute: ::
+Use the internet repository directly when defining the ** otherpkgdir ** attribute: ::
 
-    chdef -t osimage <osimage name> otherpkgdir="http://us.archive.ubuntu.com/ubuntu/ $(lsb_release -sc) main,http://us.archive.ubuntu.com/ubuntu/ $(lsb_release -sc)-update main"
+    chdef -t osimage <osimage name> otherpkgdir="http://us.archive.ubuntu.com/ubuntu/ \
+    $(lsb_release -sc) main,http://us.archive.ubuntu.com/ubuntu/ $(lsb_release -sc)-update main"
 
-step2: Specify otherpkglist file
+#. : Specify the otherpkglist file
 
 create an otherpkglist file,**/install/custom/install/ubuntu/compute.otherpkgs.pkglist**. Add the packages' name into thist file. And modify the otherpkglist attribute for osimage object. ::
 
     chdef -t osimage <osimage name> otherpkglist=/install/custom/install/ubuntu/compute.otherpkgs.pkglist
 
-step3: Run ``updatenode <nodename> -S`` or ``updatenode <nodename> -P otherpkgs`` 
+#. : Run ``updatenode <noderange> -S`` or ``updatenode <noderange> -P otherpkgs`` 
 
 Run ``updatenode -S`` to **install/update** the packages on the compute nodes ::
 
-    updatenode <nodename> -S
+    updatenode <noderange> -S
 
-Run ``updatenode`` otherpkgs to **install/update** the packages on the compute nodes ::
+Run ``updatenode -P`` otherpkgs to **install/update** the packages on the compute nodes ::
 
-    updatenode <nodename> -P otherpkgs
+    updatenode <noderange> -P otherpkgs
 
-A2: Compute nodes can not access the internet
-----------------------------------------------
+Compute nodes can not access the internet
+------------------------------------------
 
 If compute nodes cannot access the internet, there are two ways to install additional packages:use apt proxy or use local mirror;
 
-optional 1: Use apt proxy
-~~~~~~~~~~~~~~~~~~~~~~~~~
+option 1: Use apt proxy
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Step 1: Install **Squid** on the server which can access the internet (Here uses management node as the proxy server)::
 
