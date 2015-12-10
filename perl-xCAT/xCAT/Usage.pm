@@ -253,6 +253,7 @@ my %usage = (
        chvm <noderange> [--cpupin hostcpuset]
        chvm <noderange> [--membind numanodeset]
        chvm <noderange> [--devpassthru pcidevice1,pcidevice2... ]
+       chvm <noderange> [--devdetach pcidevice1,pcidevice2... ]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:
