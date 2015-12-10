@@ -8,12 +8,12 @@ Compute nodes can access the internet
 
 #. : Specify the repository
 
-Use the internet repository directly when defining the ** otherpkgdir ** attribute: ::
+Define the **otherpkgdir** attribute in osimage to use the internet repository directly.: ::
 
     chdef -t osimage <osimage name> otherpkgdir="http://us.archive.ubuntu.com/ubuntu/ \
     $(lsb_release -sc) main,http://us.archive.ubuntu.com/ubuntu/ $(lsb_release -sc)-update main"
 
-#. : Specify the otherpkglist file
+#. : Define the otherpkglist file
 
 create an otherpkglist file,**/install/custom/install/ubuntu/compute.otherpkgs.pkglist**. Add the packages' name into thist file. And modify the otherpkglist attribute for osimage object. ::
 
@@ -81,31 +81,8 @@ Step 7: Edit the otherpkgdir attribute for os image object, can use the internet
 
 Step 8: Run ``nodeset``, ``rsetboot``, rpower commands to provision the compute nodes.
 
-Optional 2: Use local mirror
+Optional 2: Use local mirror 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+To do will add link
 
-Find a server witch can connect the internet, and can be accessed by the compute nodes.
-
-step 1: Install apt-mirror ::
-
-    apt-get install apt-mirror
-
-step 2: Configure apt-mirror ::
-
-    vim /etc/apt/mirror.list
-
-step 3: Run apt-mirror to download the repositories(The needed space can be found in Ubuntu Mirrors )::
-
-    apt-mirror /etc/apt/mirror.list
-
-step 4: Install apache ::
-
-    apt-get install apache2
-
-step 5: Setup links to link our local repository folder to our shared apache directory ::
-
-    ln -s /var/spool/apt-mirror/mirror/archive.ubuntu.com /var/www/archive-ubuntu
-
-When setting the otherpkgdir attribute for the osimages, can use **http://<local mirror server ip>/archive-ubuntu/ $(lsb_release -sc) main**
-
-For more information about setting local repository mirror can refer How to Setup Local Repository Mirror
