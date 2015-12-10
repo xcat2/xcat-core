@@ -1,6 +1,6 @@
 .. _Install-Additional-Other-Packages-label:
 
-Install Additional Other Packages for Redhat and Sles
+Install Additional Other Packages for RHEL and SLES
 ------------------------------------------------------
 
 Install Additional Other Packages Steps
