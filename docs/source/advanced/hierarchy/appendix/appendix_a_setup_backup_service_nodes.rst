@@ -2,33 +2,25 @@ Appendix A: Setup backup Service Nodes
 ======================================
 
 For reliability, availability, and serviceability purposes you may wish to
-designate backup service nodes in your hierarchical cluster. The backup
-service node will be another active service node that is set up to easily
-take over from the original service node if a problem occurs. This is not an
+designate backup Service Nodes in your hierarchical cluster. The backup
+Service Node will be another active Service Node that is set up to easily
+take over from the original Service Node if a problem occurs. This is not an
 automatic failover feature. You will have to initiate the switch from the
-primary service node to the backup manually. The xCAT support will handle most
-of the setup and transfer of the nodes to the new service node. This
+primary Service Node to the backup manually. The xCAT support will handle most
+of the setup and transfer of the nodes to the new Service Node. This
 procedure can also be used to simply switch some compute nodes to a new
-service node, for example, for planned maintenance.
-
-Abbreviations used below:
-
-* MN - management node.
-* SN - service node.
-* CN - compute node.
+Service Node, for example, for planned maintenance.
 
 Initial deployment
 ------------------
 
-Integrate the following steps into the hierarchical deployment process
-described above.
+Integrate the following steps into the hierarchical deployment process described above.
 
 
 #. Make sure both the primary and backup service nodes are installed,
    configured, and can access the MN database.
 #. When defining the CNs add the necessary service node values to the
-   "servicenode" and "xcatmaster" attributes of the `node definitions
-   <http://localhost/fake_todo>`_.
+   "servicenode" and "xcatmaster" attributes of the :doc:`node </guides/admin-guides/references/man7/node.7>` definitions.
 #. (Optional) Create an xCAT group for the nodes that are assigned to each SN.
    This will be useful when setting node attributes as well as providing an
    easy way to switch a set of nodes back to their original server.
@@ -51,10 +43,8 @@ attributes you would run a command similar to the following. ::
 
   chdef <noderange>  servicenode="xcatsn1a,xcatsn2a" xcatmaster="xcatsn1b"
 
-The process can be simplified by creating xCAT node groups to use as the
-<noderange> in the `chdef <http://localhost/fake_todo>`_ command. To create an
-xCAT node group containing all the nodes that have the service node "SN27"
-you could run a command similar to the following. ::
+The process can be simplified by creating xCAT node groups to use as the <noderange> in the :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` command to create a
+xCAT node group containing all the nodes that belong to service node "SN27".  For example: ::
 
   mkdef -t group sn1group members=node[01-20]
 
@@ -64,10 +54,7 @@ the 1st SN as their primary SN, and the other half of CNs to use the 2nd SN
 as their primary SN. Then each SN would be configured to be the backup SN
 for the other half of CNs.**
 
-When you run `makedhcp <http://localhost/fake_todo>`_, it will configure dhcp
-and tftp on both the primary and backup SNs, assuming they both have network
-access to the CNs. This will make it possible to do a quick SN takeover
-without having to wait for replication when you need to switch.
+When you run :doc:`makedhcp </guides/admin-guides/references/man8/makedhcp.8>` command, it will configure dhcp and tftp on both the primary and backup SNs, assuming they both have network access to the CNs. This will make it possible to do a quick SN takeover without having to wait for replication when you need to switch.
 
 xdcp Behaviour with backup servicenodes
 ---------------------------------------
@@ -83,7 +70,7 @@ rhsn. lsdef cn4 | grep servicenode. ::
 
   servicenode=service1,rhsn
 
-If a service node is offline ( e.g. service1), then you will see errors on
+If a service node is offline (e.g. service1), then you will see errors on
 your xdcp command, and yet if rhsn is online then the xdcp will actually
 work. This may be a little confusing. For example, here service1 is offline,
 but we are able to use rhsn to complete the xdcp. ::
@@ -108,49 +95,39 @@ procedure to move its CNs over to the backup SN.
 Move the nodes to the new service nodes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use the xCAT `snmove <http://localhost/fake_todo>`_ to make the database
-updates necessary to move a set of nodes from one service node to another, and
-to make configuration modifications to the nodes.
+Use the :doc:`snmove </guides/admin-guides/references/man1/snmove.1>` command to make the database changes necessary to move a set of compute nodes from one Service Node to another. 
 
-For example, if you want to switch all the compute nodes that use service
-node "sn1" to the backup SN (sn2), run: ::
+To switch all the compute nodes from Service Node ``sn1`` to the backup Service Node ``sn2``, run: ::
 
-  snmove -s sn1
+    snmove -s sn1
 
 Modified database attributes
 """"""""""""""""""""""""""""
 
-The **snmove** command will check and set several node attribute values.
+The ``snmove`` command will check and set several node attribute values.
 
-**servicenode**: : This will be set to either the second server name in the
-servicenode attribute list or the value provided on the command line.
-**xcatmaster**: : Set with either the value provided on the command line or it
-will be automatically determined from the servicenode attribute.
-**nfsserver**: : If the value is set with the source service node then it will
-be set to the destination service node.
-**tftpserver**: : If the value is set with the source service node then it will
- be reset to the destination service node.
-**monserver**: : If set to the source service node then reset it to the
-destination servicenode and xcatmaster values.
-**conserver**: : If set to the source service node then reset it to the
-destination servicenode and run **makeconservercf**
+* **servicenode**: This will be set to either the second server name in the servicenode attribute list or the value provided on the command line.
+
+* **xcatmaster**: Set with either the value provided on the command line or it will be automatically determined from the servicenode attribute.
+
+* **nfsserver**: If the value is set with the source service node then it will be set to the destination service node.
+
+* **tftpserver**: If the value is set with the source service node then it will be reset to the destination service node.
+
+* **monserver**: If set to the source service node then reset it to the destination servicenode and xcatmaster values.
+* **conserver**: If set to the source service node then reset it to the destination servicenode and run ``makeconservercf``
 
 Run postscripts on the nodes
 """"""""""""""""""""""""""""
 
-If the CNs are up at the time the snmove command is run then snmove will run
-postscripts on the CNs to reconfigure them for the new SN. The "syslog"
-postscript is always run. The "mkresolvconf" and "setupntp" scripts will be
-run IF they were included in the nodes postscript list.
+If the CNs are up at the time the ``snmove`` command is run then ``snmove`` will run postscripts on the CNs to reconfigure them for the new SN. The "syslog" postscript is always run. The ``mkresolvconf`` and ``setupntp`` scripts will be run if they were included in the nodes postscript list.
 
 You can also specify an additional list of postscripts to run.
 
 Modify system configuration on the nodes
 """"""""""""""""""""""""""""""""""""""""
 
-If the CNs are up the snmove command will also perform some configuration on
-the nodes such as setting the default gateway and modifying some
-configuration files used by xCAT.
+If the CNs are up the ``snmove`` command will also perform some configuration on the nodes such as setting the default gateway and modifying some configuration files used by xCAT.
 
 Switching back
 --------------
@@ -161,7 +138,7 @@ need to set it up as an SN again and make sure the CN images are replicated
 to it. Once you've done this, or if the SN's configuration was not lost,
 then follow these steps to move the CNs back to their original SN:
 
-* Use snmove: ::
+* Use ``snmove``: ::
 
-  snmove sn1group -d sn1
+      snmove sn1group -d sn1
 

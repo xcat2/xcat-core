@@ -1,39 +1,30 @@
-.. _setup_service_node_stateless_label:
+Diskless (Stateless) Installation
+=================================
 
-Setup the Service Node for Stateless Deployment (optional)
-==========================================================
+**Note: The stateless Service Node is not supported in ubuntu hierarchy cluster. For ubuntu, please skip this section.**
 
-**Note: The stateless service node is not supported in ubuntu hierarchy
-cluster. For ubuntu, please skip this section.**
-
-If you want, your service nodes can be stateless (diskless). The service node
+If you want, your Service Nodes can be stateless (diskless). The Service Node
 must contain not only the OS, but also the xCAT software and its dependencies.
-In addition, a number of files are added to the service node to support the
-PostgreSQL, or MySQL database access from the service node to the Management
-node, and ssh access to the nodes that the service nodes services.
+In addition, a number of files are added to the Service Node to support the
+PostgreSQL, or MySQL database access from the Service Node to the Management
+node, and ssh access to the nodes that the Service Nodes services.
 The following sections explain how to accomplish this.
 
 
 Build the Service Node Diksless Image
---------------------------------------
+-------------------------------------
 
-This section assumes you can build the stateless image on the management node
-because the service nodes are the same OS and architecture as the management
-node. If this is not the case, you need to build the image on a machine that
-matches the service node's OS architecture.
+This section assumes you can build the stateless image on the management node because the Service Nodes are the same OS and architecture as the management node. If this is not the case, you need to build the image on a machine that matches the Service Node's OS architecture.
 
-* Create an osimage definition. When you run copycds, xCAT will create a
-  service node osimage definitions for that distribution. For a stateless
-  service node, use the *-netboot-service definition.
+* Create an osimage definition. When you run ``copycds``, xCAT will create a Service Node osimage definitions for that distribution. For a stateless
+  Service Node, use the ``*-netboot-service`` definition.  ::
 
-  ::
-
-    lsdef -t osimage | grep -i service
+    # lsdef -t osimage | grep -i service
     rhels6.4-ppc64-install-service  (osimage)
-    rhels6.4-ppc64-netboot-service  (osimage)
+    rhels6.4-ppc64-netboot-service  (osimage)  <================
     rhels6.4-ppc64-statelite-service  (osimage)
 
-    lsdef -t osimage -l rhels6.3-ppc64-netboot-service
+    # lsdef -t osimage -l rhels6.3-ppc64-netboot-service
     Object name: rhels6.3-ppc64-netboot-service
         exlist=/opt/xcat/share/xcat/netboot/rh/service.exlist
         imagetype=linux
@@ -50,14 +41,7 @@ matches the service node's OS architecture.
         provmethod=netboot
         rootimgdir=/install/netboot/rhels6.3/ppc64/service
 
-* You can check the service node packaging to see if it has all the rpms you
-  require. We ship a basic requirements lists that will create a fully
-  functional service node. However, you may want to customize your service
-  node by adding additional operating system packages or modifying the files
-  excluded by the exclude list. View the files referenced by the osimage
-  pkglist, otherpkglist and exlist attributes:
-
-  ::
+* You can check the Service Node packaging to see if it has all the rpms you require. We ship a basic requirements lists that will create a fully functional Service Node. However, you may want to customize your service node by adding additional operating system packages or modifying the files excluded by the exclude list. View the files referenced by the osimage pkglist, otherpkglist and exlist attributes: ::
 
     cd /opt/xcat/share/xcat/netboot/rh/
     view service.rhels6.ppc64.pkglist
@@ -74,10 +58,10 @@ matches the service node's OS architecture.
 
     xcat/xcat-core/xCATsn
 
-  This is required to install the xCAT service node function into your image.
+  This is required to install the xCAT Service Node function into your image.
 
   You may also choose to create an appropriate /etc/fstab file in your
-  service node image. Copy the script referenced by the postinstall
+  Service Node image. Copy the script referenced by the postinstall
   attribute to your directory and modify it as you would like:
 
   ::
@@ -108,9 +92,6 @@ matches the service node's OS architecture.
   While you are here, if you'd like, you can do the same for your compute node
   images, creating custom files and new custom osimage definitions as you need
   to.
-
-  For more information on the use and syntax of otherpkgs and pkglist files,
-  see `Update Service Node Stateless Image <http://localhost/fake_todo>`_
 
 * Make your xCAT software available for otherpkgs processing
 
@@ -161,7 +142,7 @@ matches the service node's OS architecture.
     chroot /install/netboot/rhels6.3/ppc64/service/rootimg chkconfig dhcpd off
     chroot /install/netboot/rhels6.3/ppc64/service/rootimg chkconfig dhcrelay off
 
-* IF using NFS hybrid mode, export /install read-only in service node image:
+* IF using NFS hybrid mode, export /install read-only in Service Node image:
 
   ::
 
@@ -181,7 +162,7 @@ matches the service node's OS architecture.
 
     nodeset service osimage=rhels6.3-ppc64-netboot-service
 
-*  To diskless boot the service nodes
+*  To diskless boot the Service Nodes
 
   ::
 
@@ -194,7 +175,7 @@ To update the xCAT software in the image at a later time:
 
   * Download the updated xcat-core and xcat-dep tarballs and place them in
     your osimage's otherpkgdir xcat directory as you did above.
-  * Generate and repack the image and reboot your service node.
+  * Generate and repack the image and reboot your Service Node.
   * Run image generation for your osimage definition.
 
   ::
@@ -204,9 +185,9 @@ To update the xCAT software in the image at a later time:
     nodeset service osimage=rhels6.3-ppc64-netboot-service
     rnetboot service
 
-Note: The service nodes are set up as NFS-root servers for the compute nodes.
+Note: The Service Nodes are set up as NFS-root servers for the compute nodes.
 Any time changes are made to any compute image on the mgmt node it will be
-necessary to sync all changes to all service nodes. In our case the
+necessary to sync all changes to all Service Nodes. In our case the
 ``/install`` directory is mounted on the servicenodes, so the update to the
 compute node image is automatically available.
 

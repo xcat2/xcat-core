@@ -20,7 +20,7 @@ Traditional cluster with OS on each node's local disk.
     
 
 Stateless (diskless)
--------------------
+--------------------
 
 Nodes boot from a RAMdisk OS image downloaded from the xCAT mgmt node or service node at boot time.
 

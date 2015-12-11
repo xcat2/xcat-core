@@ -1,5 +1,5 @@
-Test Service Node installation
-==============================
+Verify Service Node Installation
+================================
 
 * ssh to the service nodes. You should not be prompted for a password.
 * Check to see that the xcat daemon xcatd is running.
