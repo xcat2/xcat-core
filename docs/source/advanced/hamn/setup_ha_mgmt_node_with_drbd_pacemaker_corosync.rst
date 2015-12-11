@@ -255,7 +255,7 @@ To avoid RPM dependency issues, it is recommended to use ``yum/zypper`` install 
 
 #. Put all of these RPM packages into a directory, for example ``/root/hamn/packages``
 
-#. Add a new repository: 
+#. Add a new repository:
 
    * **[RedHat]**: ::
 
@@ -269,7 +269,7 @@ To avoid RPM dependency issues, it is recommended to use ``yum/zypper`` install 
 
       zypper ar file:///root/hamn/packages
 
-#. Install the packages: 
+#. Install the packages:
 
    * **[RedHat]**: ::
 
@@ -556,6 +556,9 @@ Here is an example of the ``/xCATdrbd/etc/drbdlinks.xCAT.conf`` content, you mig
      # ==== SSH  ====
      link('/etc/ssh')
      link('/root/.ssh')
+     #
+     # ==== SystemImager ====
+     #link('/etc/systemimager')
 
 ``Note``: Make sure that none of the directories we have specified in the ``drbdlinks`` config are not mount points. If any of them are, we should a new mount point for them and edit ``/etc/fstab`` to use the new mount point.
 
@@ -1035,7 +1038,7 @@ Correcting DRBD Differences (Optional)
 It is possible that the data between the two sides of the DRBD mirror could be different in a few chunks of data, although these differences might be harmless, but it will be good if we could discover and fix these differences in time.
 
 Add a crontab entry to check the differences
--------------------------------------------- 
+--------------------------------------------
  ::
 
      0 6 * * * /sbin/drbdadm verify all
@@ -1179,7 +1182,7 @@ Trouble shooting and debug tips
 Disable HA MN
 =============
 
-For whatever reason, the user might want to disable HA MN, here is the procedur of disabling HA MN: 
+For whatever reason, the user might want to disable HA MN, here is the procedur of disabling HA MN:
 
 * Shut down standby management node
 
@@ -1201,8 +1204,8 @@ If the HA MN configuration is still functioning, failover the primary management
 
 ifconfig to see the current xcat interface before shutting down HA services go to ``/etc/ifconfig/network-scripts`` and create the new interface: ::
 
-     /etc/init.d/pacemaker stop 
-     /etc/init.d/corosync stop 
+     /etc/init.d/pacemaker stop
+     /etc/init.d/corosync stop
      /etc/init.d/drbdlinksclean stop
 
 With drbd on and with the filesystem mounted look at each link in ``/etc/drbdlinks.xCAT.conf`` for each link, remove the link if it is still linked,
@@ -1219,6 +1222,30 @@ In our case, we handled the /install directory like this: ::
      unmount /oldinstall change fstab to mount /install mount /install
 
 start services by hand ( or reboot ) nfs nfslock dhcpd postgresql httpd (apache) named conserver xcatd
+
+Adding SystemImager support to HA
+=================================
+
+On each of the management nodes, we need to install ::
+
+     yum install systemimager-server
+
+Then we need to enable the systemimage in pacemaker, first we need to grab the configuration from the current setup ::
+
+     pcs cluster cib xcat_cfg
+
+Now we need add the relevant config to the ``xcat-cfg`` xml file ::
+
+     pcs -f xcat_cfg resource create systemimager_rsync_xCAT lsb:systemimager-server-rsyncd \
+          op monitor interval="37s"
+     pcs -f xcat_cfg constraint colocation add systemimager_rsync_xCAT grp_xCAT
+     pcs -f xcat_cfg constraint order grp_xCAT then systemimager_rsync_xCAT
+
+Finally we commit the changes that are in xcat_cfg into the live system: ::
+
+     pcs cluster push cib xcat_cfg
+
+We then need to make sure that the ``/xCATdrbd/etc/drbdlinks.xCAT.conf`` file has the systemimager portion uncommented, and re-do the initialisation of drbdlinks as they have been done earlier in the documentation
 
 Appendix A
 ==========
@@ -1530,4 +1557,340 @@ And the resulting output should be the following: ::
          fs_xCAT        (ocf::heartbeat:Filesystem):    Started x3550m4n01
          symlinks_xCAT  (ocf::tummy:drbdlinks): Started x3550m4n01
 
+Appendix C
+==========
+
+from RHEL 7, there more changes that we need to consider
+
+    yum -y install pcs
+
+In order to do similar configs to corosync, that we need to apply to cman, is shown below. ::
+
+    pcs cluster setup --local --name xcat-cluster x3550m4n01 x3550m4n02 --force
+
+As per Appendix A, a sample Pacemaker configuration through pcs on RHEL 7 is shown below; but there are some slight changes compared to RHEL 6.4 (So we need to keep these in mind). The commands below need to be run on the MN:
+
+Create a file to queue up the changes, this creates a file with the current configuration into a file xcat_cfg: ::
+
+     pcs cluster cib xcat_cfg
+
+We use the pcs -f option to make changes in the file, so this is not changing it live: ::
+
+     pcs -f xcat_cfg property set stonith-enabled=false
+     pcs -f xcat_cfg property set no-quorum-policy=ignore
+     pcs -f xcat_cfg resource op defaults timeout="120s"
+     pcs -f xcat_cfg resource create ip_xCAT ocf:heartbeat:IPaddr2 ip="10.1.0.1" \
+          iflabel="xCAT" cidr_netmask="24" nic="eno2"\
+          op monitor interval="37s"
+     pcs -f xcat-cfg resource create NFS_xCAT ocf:heartbeat:nfsserver nfs_shared_infodir=/var/lib/nfs \
+          rpcpipefs_dir=/var/lib/nfs_local/rpc_pipefs nfs_ip=10.12.0.221,10.12.0.222 \
+          op monitor interval="41s" start interval=10s timeout=20s
+     pcs -f xcat_cfg resource create apache_xCAT ocf:heartbeat:apache configfile="/etc/httpd/conf/httpd.conf" \
+          statusurl="http://127.0.0.1:80/icons/README.html" testregex="</html>" \
+          op monitor interval="57s"
+     pcs -f xcat_cfg resource create db_xCAT ocf:heartbeat:mysql config="/xCATdrbd/etc/my.cnf" test_user="mysql" \
+          binary="/usr/bin/mysqld_safe" pid="/var/run/mysqld/mysqld.pid" socket="/var/lib/mysql/mysql.sock" \
+          op monitor interval="57s"
+     pcs -f xcat_cfg resource create dhcpd systemd:dhcpd \
+          op monitor interval="37s"
+     pcs -f xcat_cfg resource create drbd_xCAT ocf:linbit:drbd drbd_resource=xCAT
+     pcs -f xcat_cfg resource master ms_drbd_xCAT drbd_xCAT master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+     pcs -f xcat_cfg resource create dummy ocf:heartbeat:Dummy
+     pcs -f xcat_cfg resource create fs_xCAT ocf:heartbeat:Filesystem device="/dev/drbd/by-res/xCAT" directory="/xCATdrbd" fstype="ext4" \
+          op monitor interval="57s"
+     pcs -f xcat_cfg resource create named systemd:named \
+          op monitor interval="37s"
+     pcs -f xcat_cfg resource create symlinks_xCAT ocf:tummy:drbdlinks configfile="/xCATdrbd/etc/drbdlinks.xCAT.conf" \
+          op monitor interval="31s"
+     pcs -f xcat_cfg resource create xCAT lsb:xcatd \
+          op monitor interval="42s"
+     pcs -f xcat-cfg resource create xCAT_conserver lsb:conserver \
+          op monitor interval="53"
+     pcs -f xcat_cfg resource clone named clone-max=2 clone-node-max=1 notify=false
+     pcs -f xcat_cfg resource group add grp_xCAT fs_xCAT symlinks_xCAT
+     pcs -f xcat_cfg constraint colocation add NFS_xCAT grp_xCAT
+     pcs -f xcat_cfg constraint colocation add apache_xCAT grp_xCAT
+     pcs -f xcat_cfg constraint colocation add dhcpd grp_xCAT
+     pcs -f xcat_cfg constraint colocation add db_xCAT grp_xCAT
+     pcs -f xcat_cfg constraint colocation add dummy grp_xCAT
+     pcs -f xcat_cfg constraint colocation add xCAT grp_xCAT
+     pcs -f xcat-cfg constraint colocation add xCAT_conserver grp_xCAT
+     pcs -f xcat_cfg constraint colocation add grp_xCAT ms_drbd_xCAT INFINITY with-rsc-role=Master
+     pcs -f xcat_cfg constraint colocation add ip_xCAT ms_drbd_xCAT INFINITY with-rsc-role=Master
+     pcs -f xcat_cfg constraint order xCAT then dummy
+     pcs -f xcat_cfg constraint order apache_xCAT then dummy
+     pcs -f xcat_cfg constraint order dhcpd then dummy
+     pcs -f xcat_cfg constraint order db_xCAT then dummy
+     pcs -f xcat_cfg constraint order NFS_xCAT then dummy
+     pcs -f xcat-cfg constraint order xCAT_conserver then dummy
+     pcs -f xcat_cfg constraint order fs_xCAT then symlinks_xCAT
+     pcs -f xcat_cfg constraint order ip_xCAT then db_xCAT
+     pcs -f xcat_cfg constraint order ip_xCAT then apache_xCAT
+     pcs -f xcat_cfg constraint order ip_xCAT then dhcpd
+     pcs -f xcat-cfg constraint order ip_xCAT then xCAT_conserver
+     pcs -f xcat_cfg constraint order grp_xCAT then NFS_xCAT
+     pcs -f xcat_cfg constraint order grp_xCAT then apache_xCAT
+     pcs -f xcat_cfg constraint order grp_xCAT then db_xCAT
+     pcs -f xcat_cfg constraint order grp_xCAT then dhcpd
+     pcs -f xcat-cfg constraint order grp_xCAT then xCAT_conserver
+     pcs -f xcat_cfg constraint order db_xCAT then xCAT
+     pcs -f xcat_cfg constraint order promote ms_drbd_xCAT then start grp_xCAT
+
+Finally we commit the changes that are in xcat_cfg into the live system: ::
+
+     pcs cluster cib-push xcat_cfg
+
+Once the changes have been commited, we can view the config, by running the command below: ::
+
+     pcs config
+
+which should result in the following output: ::
+
+     Cluster Name: xcat-cluster
+     Corosync Nodes:
+      x3550m4n01 x3550m4n02
+     Pacemaker Nodes:
+      x3550m4n01 x3550m4n02
+     
+     Resources:
+      Resource: ip_xCAT (class=ocf provider=heartbeat type=IPaddr2)
+       Attributes: ip=10.1.0.1 iflabel=xCAT cidr_netmask=22 nic=eno2
+       Operations: start interval=0s timeout=20s (ip_xCAT-start-timeout-20s)
+                   stop interval=0s timeout=20s (ip_xCAT-stop-timeout-20s)
+                   monitor interval=37s (ip_xCAT-monitor-interval-37s)
+      Resource: NFS_xCAT (class=ocf provider=heartbeat type=nfsserver)
+       Attributes: nfs_shared_infodir=/xcatdrbd/var/lib/nfs rpcpipefs_dir=/var/lib/nfs_local/rpc_pipefs nfs_ip=10.12.0.221,10.12.0.222
+       Operations: start interval=10s timeout=20s (NFS_xCAT-start-interval-10s-timeout-20s)
+                   stop interval=0s timeout=20s (NFS_xCAT-stop-timeout-20s)
+                   monitor interval=41s (NFS_xCAT-monitor-interval-41s)
+      Resource: apache_xCAT (class=ocf provider=heartbeat type=apache)
+       Attributes: configfile=/etc/httpd/conf/httpd.conf statusurl=http://127.0.0.1:80/icons/README.html testregex=</html>
+       Operations: start interval=0s timeout=40s (apache_xCAT-start-timeout-40s)
+                   stop interval=0s timeout=60s (apache_xCAT-stop-timeout-60s)
+                   monitor interval=57s (apache_xCAT-monitor-interval-57s)
+      Resource: db_xCAT (class=ocf provider=heartbeat type=mysql)
+       Attributes: config=/xcatdrbd/etc/my.cnf test_user=mysql binary=/usr/bin/mysqld_safe pid=/var/run/mariadb/mariadb.pid socket=/var/lib/mysql/mysql.sock
+       Operations: start interval=0s timeout=120 (db_xCAT-start-timeout-120)
+                   stop interval=0s timeout=120 (db_xCAT-stop-timeout-120)
+                   promote interval=0s timeout=120 (db_xCAT-promote-timeout-120)
+                   demote interval=0s timeout=120 (db_xCAT-demote-timeout-120)
+                   monitor interval=57s (db_xCAT-monitor-interval-57s)
+      Resource: dhcpd (class=systemd type=dhcpd)
+       Operations: monitor interval=37s (dhcpd-monitor-interval-37s)
+      Resource: dummy (class=ocf provider=heartbeat type=Dummy)
+       Operations: start interval=0s timeout=20 (dummy-start-timeout-20)
+                   stop interval=0s timeout=20 (dummy-stop-timeout-20)
+                   monitor interval=10 timeout=20 (dummy-monitor-interval-10)
+      Master: ms_drbd_xCAT
+       Meta Attrs: master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 notify=true
+       Resource: drbd_xCAT (class=ocf provider=linbit type=drbd)
+        Attributes: drbd_resource=xCAT
+        Operations: start interval=0s timeout=240 (drbd_xCAT-start-timeout-240)
+                    promote interval=0s timeout=90 (drbd_xCAT-promote-timeout-90)
+                    demote interval=0s timeout=90 (drbd_xCAT-demote-timeout-90)
+                    stop interval=0s timeout=100 (drbd_xCAT-stop-timeout-100)
+                    monitor interval=20 role=Slave timeout=20 (drbd_xCAT-monitor-interval-20-role-Slave)
+                    monitor interval=10 role=Master timeout=20 (drbd_xCAT-monitor-interval-10-role-Master)
+      Resource: xCAT (class=lsb type=xcatd)
+       Operations: monitor interval=42s (xCAT-monitor-interval-42s)
+      Resource: xCAT_conserver (class=lsb type=conserver)
+       Operations: monitor interval=53 (xCAT_conserver-monitor-interval-53)
+      Resource: gmetad (class=systemd type=gmetad)
+       Operations: monitor interval=57s (gmetad-monitor-interval-57s)
+      Resource: icinga (class=lsb type=icinga)
+       Operations: monitor interval=57s (icinga-monitor-interval-57s)
+      Clone: named-clone
+       Meta Attrs: clone-max=2 clone-node-max=1 notify=false
+       Resource: named (class=systemd type=named)
+        Operations: monitor interval=37s (named-monitor-interval-37s)
+      Group: grp_xCAT
+       Resource: fs_xCAT (class=ocf provider=heartbeat type=Filesystem)
+        Attributes: device=/dev/drbd/by-res/xCAT directory=/xcatdrbd fstype=xfs
+        Operations: start interval=0s timeout=60 (fs_xCAT-start-timeout-60)
+                    stop interval=0s timeout=60 (fs_xCAT-stop-timeout-60)
+                    monitor interval=57s (fs_xCAT-monitor-interval-57s)
+       Resource: symlinks_xCAT (class=ocf provider=tummy type=drbdlinks)
+        Attributes: configfile=/xcatdrbd/etc/drbdlinks.xCAT.conf
+        Operations: start interval=0s timeout=1m (symlinks_xCAT-start-timeout-1m)
+                    stop interval=0s timeout=1m (symlinks_xCAT-stop-timeout-1m)
+                    monitor interval=31s on-fail=ignore (symlinks_xCAT-monitor-interval-31s)
+     
+     Stonith Devices:
+     Fencing Levels:
+     
+     Location Constraints:
+     Ordering Constraints:
+       promote ms_drbd_xCAT then start grp_xCAT (kind:Mandatory) (id:order-ms_drbd_xCAT-grp_xCAT-mandatory)
+       start fs_xCAT then start symlinks_xCAT (kind:Mandatory) (id:order-fs_xCAT-symlinks_xCAT-mandatory)
+       start xCAT then start dummy (kind:Mandatory) (id:order-xCAT-dummy-mandatory)
+       start apache_xCAT then start dummy (kind:Mandatory) (id:order-apache_xCAT-dummy-mandatory)
+       start dhcpd then start dummy (kind:Mandatory) (id:order-dhcpd-dummy-mandatory)
+       start db_xCAT then start dummy (kind:Mandatory) (id:order-db_xCAT-dummy-mandatory)
+       start NFS_xCAT then start dummy (kind:Mandatory) (id:order-NFS_xCAT-dummy-mandatory)
+       start xCAT_conserver then start dummy (kind:Mandatory) (id:order-xCAT_conserver-dummy-mandatory)
+       start gmetad then start dummy (kind:Mandatory) (id:order-gmetad-dummy-mandatory)
+       start icinga then start dummy (kind:Mandatory) (id:order-icinga-dummy-mandatory)
+       start ip_xCAT then start db_xCAT (kind:Mandatory) (id:order-ip_xCAT-db_xCAT-mandatory)
+       start ip_xCAT then start apache_xCAT (kind:Mandatory) (id:order-ip_xCAT-apache_xCAT-mandatory)
+       start ip_xCAT then start dhcpd (kind:Mandatory) (id:order-ip_xCAT-dhcpd-mandatory)
+       start ip_xCAT then start xCAT_conserver (kind:Mandatory) (id:order-ip_xCAT-xCAT_conserver-mandatory)
+       start ip_xCAT then start named-clone (kind:Mandatory) (id:order-ip_xCAT-named-clone-mandatory)
+       start grp_xCAT then start NFS_xCAT (kind:Mandatory) (id:order-grp_xCAT-NFS_xCAT-mandatory)
+       start grp_xCAT then start apache_xCAT (kind:Mandatory) (id:order-grp_xCAT-apache_xCAT-mandatory)
+       start grp_xCAT then start db_xCAT (kind:Mandatory) (id:order-grp_xCAT-db_xCAT-mandatory)
+       start grp_xCAT then start dhcpd (kind:Mandatory) (id:order-grp_xCAT-dhcpd-mandatory)
+       start grp_xCAT then start gmetad (kind:Mandatory) (id:order-grp_xCAT-gmetad-mandatory)
+       start grp_xCAT then start icinga (kind:Mandatory) (id:order-grp_xCAT-icinga-mandatory)
+       start grp_xCAT then start xCAT_conserver (kind:Mandatory) (id:order-grp_xCAT-xCAT_conserver-mandatory)
+       start db_xCAT then start xCAT (kind:Mandatory) (id:order-db_xCAT-xCAT-mandatory)
+     Colocation Constraints:
+       grp_xCAT with ms_drbd_xCAT (score:INFINITY) (with-rsc-role:Master) (id:colocation-grp_xCAT-ms_drbd_xCAT-INFINITY)
+       ip_xCAT with ms_drbd_xCAT (score:INFINITY) (with-rsc-role:Master) (id:colocation-ip_xCAT-ms_drbd_xCAT-INFINITY)
+       NFS_xCAT with grp_xCAT (score:INFINITY) (id:colocation-NFS_xCAT-grp_xCAT-INFINITY)
+       apache_xCAT with grp_xCAT (score:INFINITY) (id:colocation-apache_xCAT-grp_xCAT-INFINITY)
+       dhcpd with grp_xCAT (score:INFINITY) (id:colocation-dhcpd-grp_xCAT-INFINITY)
+       db_xCAT with grp_xCAT (score:INFINITY) (id:colocation-db_xCAT-grp_xCAT-INFINITY)
+       dummy with grp_xCAT (score:INFINITY) (id:colocation-dummy-grp_xCAT-INFINITY)
+       xCAT with grp_xCAT (score:INFINITY) (id:colocation-xCAT-grp_xCAT-INFINITY)
+       xCAT_conserver with grp_xCAT (score:INFINITY) (id:colocation-xCAT_conserver-grp_xCAT-INFINITY)
+       gmetad with grp_xCAT (score:INFINITY) (id:colocation-gmetad-grp_xCAT-INFINITY)
+       icinga with grp_xCAT (score:INFINITY) (id:colocation-icinga-grp_xCAT-INFINITY)
+       ip_xCAT with grp_xCAT (score:INFINITY) (id:colocation-ip_xCAT-grp_xCAT-INFINITY)
+     
+     Cluster Properties:
+      cluster-infrastructure: corosync
+      cluster-name: ucl_cluster
+      dc-version: 1.1.12-a14efad
+      have-watchdog: false
+      last-lrm-refresh: 1445963044
+      no-quorum-policy: ignore
+      stonith-enabled: false
+
+Then we can check the status of the cluster by running the following command: ::
+
+    pcs status
+
+And the resulting output should be the following: ::
+
+     Cluster name: xcat-cluster
+     Last updated: Wed Oct 28 09:59:25 2015
+     Last change: Tue Oct 27 16:24:04 2015
+     Stack: corosync
+     Current DC: x3550m4n01 (1) - partition with quorum
+     Version: 1.1.12-a14efad
+     2 Nodes configured
+     17 Resources configured
+     
+     
+     Online: [ x3550m4n01 x3550m4n02 ]
+     
+     Full list of resources:
+     
+      ip_xCAT        (ocf::heartbeat:IPaddr2):       Started x3550m4n01
+      NFS_xCAT       (ocf::heartbeat:nfsserver):     Started x3550m4n01
+      apache_xCAT    (ocf::heartbeat:apache):        Started x3550m4n01
+      db_xCAT        (ocf::heartbeat:mysql): Started x3550m4n01
+      dhcpd  (systemd:dhcpd):        Started x3550m4n01
+      dummy  (ocf::heartbeat:Dummy): Started x3550m4n01
+      Master/Slave Set: ms_drbd_xCAT [drbd_xCAT]
+          Masters: [ x3550m4n01 ]
+          Slaves: [ x3550m4n02 ]
+      xCAT   (lsb:xcatd):    Started x3550m4n01
+      xCAT_conserver (lsb:conserver):        Started x3550m4n01
+      Clone Set: named-clone [named]
+          Started: [ x3550m4n01r x3550m4n02 ]
+      Resource Group: grp_xCAT
+          fs_xCAT    (ocf::heartbeat:Filesystem):    Started x3550m4n01
+          symlinks_xCAT      (ocf::tummy:drbdlinks): Started x3550m4n01
+     
+     PCSD Status:
+       x3550m4n01: Online
+       x3550m4n02: Online
+     Daemon Status:
+       corosync: active/disabled
+       pacemaker: active/disabled
+       pcsd: active/enabled
+
+Further from this, the following changes needed to be made for nfs in el7 ::
+
+     cat > /etc/systemd/system/var-lib-nfs_local-rpc_pipefs.mount << EOF
+     [Unit]
+     Description=RPC Pipe File System
+     DefaultDependencies=no
+     Conflicts=umount.target
+     
+     [Mount]
+     What=sunrpc
+     Where=/var/lib/nfs_local/rpc_pipefs
+     Type=rpc_pipefs
+     EOF
+
+
+     --- /usr/lib/systemd/system/rpc-svcgssd.service	2015-01-23 16:30:26.000000000 +0000
+     +++ /etc/systemd/system/rpc-svcgssd.service	2015-10-13 01:39:36.000000000 +0100
+     @@ -1,7 +1,7 @@
+      [Unit]
+      Description=RPC security service for NFS server
+     -Requires=var-lib-nfs-rpc_pipefs.mount
+     -After=var-lib-nfs-rpc_pipefs.mount
+     +Requires=var-lib-nfs_local-rpc_pipefs.mount
+     +After=var-lib-nfs_local-rpc_pipefs.mount
+      PartOf=nfs-server.service
+      PartOf=nfs-utils.service
+
+
+     --- /usr/lib/systemd/system/rpc-gssd.service	2015-01-23 16:30:26.000000000 +0000
+     +++ /etc/systemd/system/rpc-gssd.service	2015-10-13 01:39:36.000000000 +0100
+     @@ -2,8 +2,8 @@
+      Description=RPC security service for NFS client and server
+      DefaultDependencies=no
+      Conflicts=umount.target
+     -Requires=var-lib-nfs-rpc_pipefs.mount
+     -After=var-lib-nfs-rpc_pipefs.mount
+     +Requires=var-lib-nfs_local-rpc_pipefs.mount
+     +After=var-lib-nfs_local-rpc_pipefs.mount
+     
+      ConditionPathExists=/etc/krb5.keytab
+     
+
+     --- /usr/lib/systemd/system/nfs-secure.service	2015-01-23 16:30:26.000000000 +0000
+     +++ /etc/systemd/system/nfs-secure.service	2015-10-13 01:39:36.000000000 +0100
+     @@ -2,8 +2,8 @@
+      Description=RPC security service for NFS client and server
+      DefaultDependencies=no
+      Conflicts=umount.target
+     -Requires=var-lib-nfs-rpc_pipefs.mount
+     -After=var-lib-nfs-rpc_pipefs.mount
+     +Requires=var-lib-nfs_local-rpc_pipefs.mount
+     +After=var-lib-nfs_local-rpc_pipefs.mount
+     
+      ConditionPathExists=/etc/krb5.keytab
+     
+
+     --- /usr/lib/systemd/system/nfs-secure-server.service	2015-01-23 16:30:26.000000000 +0000
+     +++ /etc/systemd/system/nfs-secure-server.service	2015-10-13 01:39:36.000000000 +0100
+     @@ -1,7 +1,7 @@
+      [Unit]
+      Description=RPC security service for NFS server
+     -Requires=var-lib-nfs-rpc_pipefs.mount
+     -After=var-lib-nfs-rpc_pipefs.mount
+     +Requires=var-lib-nfs_local-rpc_pipefs.mount
+     +After=var-lib-nfs_local-rpc_pipefs.mount
+      PartOf=nfs-server.service
+      PartOf=nfs-utils.service
+     
+
+     --- /usr/lib/systemd/system/nfs-blkmap.service	2015-01-23 16:30:26.000000000 +0000
+     +++ /etc/systemd/system/nfs-blkmap.service	2015-10-13 01:39:36.000000000 +0100
+     @@ -2,8 +2,8 @@
+      Description=pNFS block layout mapping daemon
+      DefaultDependencies=no
+      Conflicts=umount.target
+     -After=var-lib-nfs-rpc_pipefs.mount
+     -Requires=var-lib-nfs-rpc_pipefs.mount
+     +After=var-lib-nfs_local-rpc_pipefs.mount
+     +Requires=var-lib-nfs_local-rpc_pipefs.mount
+     
+      Requisite=nfs-blkmap.target
+      After=nfs-blkmap.target
 
