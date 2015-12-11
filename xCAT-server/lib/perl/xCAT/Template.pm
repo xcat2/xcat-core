@@ -426,7 +426,7 @@ sub subvars {
      
  
       if ($diskfile && $doneincludes) {
-          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/boot_disk
+          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/install_disk
           # split the disk file out from the $inc
           ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
           ($diskcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONDISKFILEEND/, $diskcontent);
@@ -449,8 +449,8 @@ sub subvars {
                 $diskcontent .= "/tmp/diskscript\n";
              }else{
                 # Put the code to decode the preseed  disk file
-                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/boot_disk\n";
-                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/boot_disk\n";
+                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/install_disk\n";
+                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/install_disk\n";
 
              }
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
