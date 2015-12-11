@@ -1,9 +1,9 @@
 Hierarchical Clusters / Large Cluster Support
 =============================================
 
-xCAT supports management of very large sized cluster through the use of **Hierarchical Cluster** and the concept of **xCAT Service Nodes**.  
+xCAT supports management of very large sized cluster by creating a **Hierarchical Cluster** and the concept of **xCAT Service Nodes**.  
 
-When dealing with large clusters, to balance the load, it is recommended to have more than one node (Management Node, "MN") handling the installation and management of the compute nodes.  These additional *helper* nodes are referred to as **xCAT Service Nodes** ("SN").  The Management Node can delegate all management operational needs to the Service Node responsible for a set of compute node.
+When dealing with large clusters, to balance the load, it is recommended to have more than one node (Management Node, "MN") handling the installation and management of the Compute Nodes ("CN").  These additional *helper* nodes are referred to as **Service Nodes** ("SN").  The Management Node can delegate all management operational needs to the Service Node responsible for a set of compute node.
 
 The following configurations are supported:
     * Each service node installs/manages a specific set of compute nodes
