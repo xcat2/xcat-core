@@ -1,14 +1,10 @@
 Appendix C: Migrating a Management Node to a Service Node
 =========================================================
 
-If you find you want to convert an existing Management Node to a Service
-Node you need to work with the xCAT team. It is recommended for now, to
-backup your database, setup your new Management Server, and restore your
-database into it. Take the old Management Node and remove xCAT and all xCAT
-directories, and your database. See ``Uninstalling_xCAT
-<http://localhost/fake_todo>`_ and then follow the process for setting up a
-SN as if it is a new node.
+Directly converting an existing Management Node to a Service Node may have some issues and is not recommended.  Do the following steps to convert the xCAT Management Node into a Service node: 
 
+#. backup your xCAT database on the Management Node
+#. Install a new xCAT Management node
+#. Restore your xCAT database into the new Management Node
+#. Re-provision the old xCAT Management Node as a new Service Node 
 
-
-  

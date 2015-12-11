@@ -45,26 +45,26 @@ Remote Console
 
 Most enterprise level servers do not have video adapters installed with the machine. Meaning, the end user can not connect a monitor to the machine and get display output. In most cases, the console can be viewed using the serial port or LAN port, through Serial-over-LAN. Serial cable or network cable are used to get a command line interface of the machine. From there, the end user can get the basic machine booting information, firmware settings interface, local command line console, etc.
 
-In order to get the command line console remotely. xCAT provides the ``rcons`` command. ::
+In order to get the command line console remotely. xCAT provides the ``rcons`` command.
 
+#. Make sure the ``conserver`` is configured by running ``makeconservercf``.
 
-First of all, make sure the ``conserver`` is configured, if not, configue it with ::
-
-    makeconservercf
-
-Then check if the ``conserver`` is up and running ::
+#. Check if the ``conserver`` is up and running ::
 
     ps ax | grep conserver
 
-If the conserver is not running, or you just updated its configuration file, restart the conserver with ::
+#. If ``conserver`` is not running, start ::
 
-    service conserver restart
+    [sysvinit] service conserver start 
+    [systemd] systemctl start conserver.service
 
-In case you have ``systemd`` instead of ``sysvinit``, use the command below instead ::
+or restart, if changes to the configuration were made ::    
 
-    systemctl restart conserver.service
+    [sysvinit] service conserver restart 
+    [systemd] systemctl restart conserver.service
 
-After that, you can get the command line console for a specific machine with the ``rcons`` command ::
+
+#. After that, you can get the command line console for a specific machine with the ``rcons`` command ::
 
     rcons cn1
 
