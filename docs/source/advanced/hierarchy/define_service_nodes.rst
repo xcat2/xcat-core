@@ -3,7 +3,7 @@ Define Service Nodes
 
 This next part shows how to configure a xCAT Hierarchy and provision xCAT service nodes from an existing xCAT cluster.
 
-*The document assumes that the compute nodes part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT* 
+*The document assumes that the compute nodes that are part of your cluster have already been defined into the xCAT database and you have successfully provisioned the compute nodes using xCAT* 
 
 
 The following table illustrates the cluster being used in this example:
@@ -22,7 +22,7 @@ The following table illustrates the cluster being used in this example:
 |                      | r1n10                |
 +----------------------+----------------------+
 | Compute Nodes        | r2n01                |
-| (group=rack1)        | r2n02                |
+| (group=rack2)        | r2n02                |
 |                      | r2n03                |
 |                      | ...                  |
 |                      | r2n10                |
@@ -30,23 +30,27 @@ The following table illustrates the cluster being used in this example:
 
 #. Select the compute nodes that will become service nodes 
      
-        The first node in each rack, ``r1n01 and r2n01``, is selected to become the xCAT service nodes and manage the compute nodes in that rack
+        The first node in each rack, ``r1n01`` and ``r2n01``, is selected to become the xCAT service nodes and manage the compute nodes in that rack
 
 
 #. Change the attributes for the compute node to make them part of the **service** group:  ::
 
-        chdef -t node -o r1n01,r2n01 groups=service,all 
+        chdef -t node -o r1n01,r2n01 -p groups=service
 
-#. When ``copycds`` was run against the ISO image, several osimages are created into the ``osimage`` table. The ones containing "service" are provided to help easily provision xCAT service nodes. ::
+#. When ``copycds`` was run against the ISO image, several osimages are created into the ``osimage`` table. The ones named ``*-service`` are provided by easily help provision xCAT service nodes. ::
 
         # lsdef -t osimage | grep rhels7.1
           rhels7.1-ppc64le-install-compute  (osimage)
           rhels7.1-ppc64le-install-service  (osimage)   <======
           rhels7.1-ppc64le-netboot-compute  (osimage)
 
-#. Add the service nodes to the ``servicenode`` table: ::
+#. Add some common service node attributes to the ``service`` nodegroup: ::
 
-        chdef -t group -o service setupnfs=1 setupdhcp=1 setuptftp=1 setupnameserver=1 setupconserver=1
+        chdef -t group -o service setupnfs=1 \
+                                  setupdhcp=1 \
+                                  setuptftp=1 \ 
+                                  setupnameserver=1 \
+                                  setupconserver=1
 
    **Tips/Hint**
       * Even if you do not want xCAT to configure any services, you must define the service nodes in the ``servicenode`` table with at least one attribute, set to 0, otherwise xCAT will not recognize the node as a service node**
