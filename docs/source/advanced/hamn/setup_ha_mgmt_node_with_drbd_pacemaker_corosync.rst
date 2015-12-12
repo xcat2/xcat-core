@@ -402,7 +402,7 @@ Configure DRBD
            [>....................] sync'ed:  0.5% (101932/102400)M
            finish: 2:29:06 speed: 11,644 (11,444) K/sec
 
-   If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the syncronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see `http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html`_::
+   If a direct, back-to-back Gigabyte Ethernet connection is setup between the two management nodes and you are unhappy with the syncronization speed, it is possible to speed up the initial synchronization through some tunable parameters in DRBD. This setting is not permanent, and will not be retained after boot. For details, see http://www.drbd.org/users-guide-emb/s-configure-sync-rate.html.  ::
 
      drbdadm disk-options --resync-rate=110M xCAT
 
@@ -1168,13 +1168,13 @@ Trouble shooting and debug tips
 
    * **x3550m4n02** ::
 
-    drbdadm disconnect xCAT
-    drbdadm secondary xCAT
-    drbdadm connect --discard-my-data xCAT
+        drbdadm disconnect xCAT
+        drbdadm secondary xCAT
+        drbdadm connect --discard-my-data xCAT
 
    * **x3550m4n01** ::
 
-    drbdadm connect xCAT
+        drbdadm connect xCAT
 
 Disable HA MN
 =============
