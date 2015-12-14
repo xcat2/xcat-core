@@ -69,9 +69,9 @@ xCAT will not do a lot of switch management functions. Instead, it will configur
 Running Remote Commands in Parallel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: ::
+You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: 
 
-    Configure the switch to allow ssh or telnet. This varies for switch to switch. Please refer to the switch command references to find out how to do it.
+Note:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Please refer to the switch command references to find out how to do it.
 
 Add the switch in xCAT DB. Please refer to the "Discovering Switches" section if you want xCAT to discover and define the switches for you. ::
 
