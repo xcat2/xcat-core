@@ -13,21 +13,21 @@ For more information of ``dumpxCATdb``, please refer to :doc:`command dumpxCATdb
 Clean Up xCAT Related Configuration
 -----------------------------------
 
-1. To clean up the node information from dhcp. ::
+1. To clean up the node information from dhcp ::
 
     makedhcp -d -a
 
-2. To clean up the node information in tftpboot. ::
+2. To clean up the node information in tftpboot ::
 
     nodeset all offline
 
-3. To clean up the node information from ``/etc/hosts`` (optional).
+3. To clean up the node information from ``/etc/hosts`` (optional)
 
   Keep xCAT nodes information in ``/etc/hosts`` is harmless. But if really need to remove them from ``/etc/hosts``, you can edit ``/etc/hosts`` by 'vi' directly, or using xCAT command ``makehosts``. ::
 
     makehosts -d all  
 
-4. To clean up the node information from DNS (optional).
+4. To clean up the node information from DNS (optional)
 
   After removing all the nodes from ``/etc/hosts``, run below command to clean up the node information from DNS. ::
 
@@ -36,11 +36,11 @@ Clean Up xCAT Related Configuration
 Stop xCAT Service	
 -----------------
 	
-1. Stop xCAT service. ::
+1. Stop xCAT service ::
 
     service xcatd stop
 
-2. Stop xCAT related services(Optional).
+2. Stop xCAT related services(Optional)
 
   XCAT uses various network services on the management node and service nodes, the network services setup by xCAT may need to be cleaned up on the management node and service nodes before uninstalling xCAT.
 
@@ -53,7 +53,7 @@ Stop xCAT Service
 Remove xCAT Files
 -----------------
 
-1. Remove the xCAT RPMs.
+1. Remove the xCAT RPMs
 
   There is no easy way to distinct all the packages depending by xCAT. For packages shipped by xCAT, you can remove them by the commands below.
   
@@ -197,17 +197,17 @@ Remove xCAT Files
   Generally, we use ``yum install xCAT`` to install xCAT, so these are some RPMs shipped by operating system are installed during xCAT installation. We don't have an easy way to find out all of them, but keep these RPMs are harmless. 
 
 
-2. Remove xCAT certificate file. ::
+2. Remove xCAT certificate file ::
 
     rm -rf /root/.xcat
 
-3. Remove xCAT data file. 
+3. Remove xCAT data file 
 
   By default, xCAT use SQLite, remove SQLite data file under ``/etc/xcat/``. ::
 
     rm -rf /etc/xcat
 
-4. Remove xCAT related file(Optional).
+4. Remove xCAT related file(Optional)
 
   XCAT has ever operated below directory when it was running. Do judgment by yourself before removing these directory, to avoid removing some directories used for other purpose in your environment. ::
 
