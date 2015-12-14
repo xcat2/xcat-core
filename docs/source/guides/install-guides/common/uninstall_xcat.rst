@@ -67,7 +67,7 @@ Remove xCAT Files
 
   If you want to remove more cleanly. below list maybe helpful for you. They are the packages list of xcat installation tarball. These list are the whole RPMs list, it's possible for some RPMs not to be installed due to them are not suitable for your environment. Please do judgment by yourself.
 
-* xCAT Core Packages list (xcat-core):
+  * XCAT Core Packages list (xcat-core):
 
     [RHEL and SLES] ::
 	
@@ -97,7 +97,7 @@ Remove xCAT Files
       xcat-test
       xcat-vlan
 
-* xCAT Dependency Packages (xcat-dep):	
+  * XCAT Dependency Packages (xcat-dep):	
 
     [RHEL and SLES] ::
 	
@@ -177,20 +177,21 @@ Remove xCAT Files
   Along with xCAT development, above list maybe change, you can get the latest list through below links:
 
   
-* XCAT Core Packages List (xcat-core)	
+  * XCAT Core Packages List (xcat-core)	
 
-  [RHEL and SLES] ::
+    [RHEL and SLES] ::
   
-    http://xcat.org/files/xcat/repos/yum/<version>/xcat-core/
+        http://xcat.org/files/xcat/repos/yum/<version>/xcat-core/
 
-  [Ubuntu] ::	
+    [Ubuntu] ::	
   
-    http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/
+        http://xcat.org/files/xcat/repos/apt/<version>/xcat-core/
 	  
-* XCAT Dependency Packages (xcat-dep) 
-      `RPM Packages List (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
+  * XCAT Dependency Packages (xcat-dep) 
+
+   `RPM Packages List (RHEL and SLES) <http://xcat.org/files/xcat/repos/yum/xcat-dep/>`_
 	  
-      `Debian Packages List (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
+   `Debian Packages List (Ubuntu) <http://xcat.org/files/xcat/repos/apt/xcat-dep/>`_
 	
 
   Generally, we use ``yum install xCAT`` to install xCAT, so these are some RPMs shipped by operating system are installed during xCAT installation. We don't have an easy way to find out all of them, but keep these RPMs are harmless. 
