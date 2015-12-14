@@ -5,15 +5,15 @@ It is recommended that spanning tree be set in the switches to portfast or edge-
 
 It is recommended that lldp protocol in the switches is enabled to collect the switch and port information for compute node during discovery process.
 
-**Note**: this step is necessary if you want to use **xCAT**'s automatic switch-based discovery described in :ref:`Swith-based-discovery` for IPMI-controlled rack-mounted servers (Includes OpenPOWER server and x86_64 server) and Flex chassis. If you have a small cluster and prefer to use the sequential discover method described in :ref:`Sequential-based-discovery` or manually enter the MACs for the hardware, you can skip this section. Although you may want to still set up your switches for management so you can use xCAT tools to manage them, as described in refer to :ref:`Managing_Ethernet_Switches`.
+**Note**: this step is necessary if you want to use **xCAT**'s automatic switch-based discovery described in :doc:`switch-based discovery </guides/admin-guides/manage_clusters/ppc64le/discovery/switch_discovery>` for IPMI-controlled rack-mounted servers (Includes OpenPOWER server and x86_64 server) and Flex chassis. If you have a small cluster and prefer to use the sequential discover method described in :doc:`Sequential-based discovery </guides/admin-guides/manage_clusters/ppc64le/discovery/seq_discovery>` or manually enter the MACs for the hardware, you can skip this section. Although you may want to still set up your switches for management so you can use xCAT tools to manage them, as described in :ref:`Managing_Ethernet_Switches`.
 
 xCAT will use the ethernet switches during node discovery to find out which switch port a particular MAC address is communicating over. This allows xCAT to match a random booting node with the proper node name in the database. To set up a switch, give it an IP address on its management port and enable basic **SNMP** functionality. (Typically, the **SNMP** agent in the switches is disabled by default.) The easiest method is to configure the switches to give the **SNMP** version 1 community string called "public" read access. This will allow xCAT to communicate to the switches without further customization. (xCAT will get the list of switches from the **switch** table.) If you want to use **SNMP** version 3 (e.g. for better security), see the example below. With **SNMP** V3 you also have to set the user/password and AuthProto (default is **md5**) in the switches table.
 
-If for some reason you can't configure **SNMP** on your switches, you can use sequential discovery or the more manual method of entering the nodes' MACs into the database. See refer to :ref:`Discover_the_Nodes` for a description of your choices.
+If for some reason you can't configure **SNMP** on your switches, you can use sequential discovery or the more manual method of entering the nodes' MACs into the database. 
 
-**SNMP** V3 Configuration example: ::
+**SNMP** V3 Configuration example:   
 
-    xCAT supports many switch types, such as BNT and Cisco. Here is an example of configuring SNMP V3 on the Cisco switch 3750/3650:
+xCAT supports many switch types, such as **BNT** and **Cisco**. Here is an example of configuring **SNMP V3** on the **Cisco** switch 3750/3650:
 
 #. First, user should switch to the configure mode by the following commands: ::
 
@@ -62,7 +62,7 @@ Switch Management
 
 When managing Ethernet switches, the admin often logs into the switches one by one using SSH or Telnet and runs the switch commands. However, it becomes time consuming when there are a lot of switches in a cluster. In a very large cluster, the switches are often identical and the configurations are identical. It helps to configure and monitor them in parallel from a single command.
 
-For managing Mellanox IB switches and  Qlogic IB switches, see :ref:`Infiniband_label` 
+For managing Mellanox IB switches and  Qlogic IB switches, see :doc:`Mellanox IB switches and Qlogic IB switches </advanced/networks/infiniband/index>` 
 
 xCAT will not do a lot of switch management functions. Instead, it will configure the switch so that the admin can run remote command such as ``xdsh`` for it. Thus, the admin can use the ``xdsh`` to run proprietary switch commands remotely from the xCAT mn to enable **VLAN**, **bonding**, **SNMP** and others.
 
@@ -71,7 +71,7 @@ Running Remote Commands in Parallel
 
 You can use xdsh to run parallel commands on Ethernet switches. The following shows how to configure xCAT to run xdsh on the switches: 
 
-Note:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Please refer to the switch command references to find out how to do it.
+**[Note]**:Configure the switch to allow **ssh** or **telnet**. This varies for switch to switch. Please refer to the switch command references to find out how to do it.
 
 Add the switch in xCAT DB. Please refer to the "Discovering Switches" section if you want xCAT to discover and define the switches for you. ::
 
