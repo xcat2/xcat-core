@@ -1,10 +1,10 @@
 .. _Install-Additional-OS-Packages-label:
 
-Install Additional OS Packages for redhat and sles
------------------------------------------------------------
+Install Additional OS Packages for RHEL and SLES
+------------------------------------------------
 
 Install Additional Packages using OS Packages steps
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For rpms from the OS distro, add the new rpm names (without the version number) in the .pkglist file. For example, file **/install/custom/<inst_type>/<os>/<profile>.pkglist** will look like this after adding perl-DBI: ::
 
