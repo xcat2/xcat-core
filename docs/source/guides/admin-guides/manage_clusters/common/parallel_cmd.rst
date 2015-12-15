@@ -12,7 +12,7 @@ The following commands are provided:
     * ``pscp`` - parallel remote copy ( supports scp and not hierarchy)
     * ``psh`` - parallel remote shell ( supports ssh and not hierarchy)
     * ``pasu`` - parallel ASU utility
-    * ``xdcp`` - concurrently copies files too and from multiple nodes. ( scp/rcp and hierarchy)
+    * ``xdcp`` - concurrently copies files to and from multiple nodes. ( scp/rcp and hierarchy)
     * ``xdsh`` - concurrently runs commands on multiple nodes. ( supports ssh/rsh and hierarchy)
     * ``xdshbak`` - formats the output of the xdsh command
     * ``xcoll`` - Formats command output of the psh, xdsh, rinv command
