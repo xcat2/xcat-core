@@ -4,28 +4,28 @@ osimage
 Description
 -----------
 
-A logic definition of image which can be used to provision the node.
+A logical definition of image which can be used to provision the node.
 
 Key Attributes
 --------------
 
 * imagetype:
-   The type of operating system this definition represents (linux,AIX).
+   The type of operating system this definition represents (linux, AIX).
 
 * osarch:
    The hardware architecture of the nodes this image supports. Valid values: x86_64, ppc64, ppc64le. 
  
 * osvers:
-   The Linux distribution name and release number of the image. Valid values: rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).
+   The Linux distribution name and release number of the image. Valid values: rhels*, rhelc*, rhas*, centos*, SL*, fedora*, sles* (where * is the version #).
 
 * pkgdir:
-   The name of the directory where the copied in OS distro content are stored.
+   The name of the directory where the copied OS distro content are stored.
 
 * pkglist:
    The fully qualified name of a file, which contains the list of packages shipped in Linux distribution ISO which will be installed on the node.
 
 * otherpkgdir
-   When xCAT user need to install some additional packages not shipped in Linux distribution ISO, these packages can be placed in the directory specified in this attribute. xCAT user should take care the dependency problem themselves, put all the dependency packages not shipped in Linux distribution ISO in this directory and create repository in this directory.
+   When xCAT user needs to install some additional packages not shipped in Linux distribution ISO, those packages can be placed in the directory specified in this attribute. xCAT user should take care of dependency problems themselves, by putting all the dependency packages not shipped in Linux distribution ISO in this directory and creating repository in this directory.
 
 
 * otherpkglist:
@@ -46,7 +46,7 @@ List all the osimage objects ::
 
 * Case 2: 
 
-Create a osimage definition "customized-rhels7-ppc64-install-compute" based on an existed osimage "rhels7-ppc64-install-compute", the osimage "customized-rhels7-ppc64-install-compute" will inherit all the attributes of "rhels7-ppc64-install-compute" except installing the additional packages specified in the file "/tmp/otherpkg.list":
+Create a osimage definition "customized-rhels7-ppc64-install-compute" based on an existing osimage "rhels7-ppc64-install-compute", the osimage "customized-rhels7-ppc64-install-compute" will inherit all the attributes of "rhels7-ppc64-install-compute" except installing the additional packages specified in the file "/tmp/otherpkg.list":
 
 *step 1* : write the osimage definition "rhels7-ppc64-install-compute" to a stanza file "osimage.stanza" ::
 
@@ -89,6 +89,6 @@ The content will look like ::
        provmethod=install
        template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
 
-*step 3* : create the osimage "customized-rhels7-ppc64-install-compute" with the stanza file ::
+*step 3* : create the osimage "customized-rhels7-ppc64-install-compute" from the stanza file ::
 
    cat /tmp/osimage.stanza |mkdef -z

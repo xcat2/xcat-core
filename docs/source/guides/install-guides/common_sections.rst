@@ -2,7 +2,7 @@
 .. BEGIN_install_os_mgmt_node
 
 
-The system requirements for your xCAT management node largely depends on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
+The system requirements for your xCAT management node largely depend on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
 
 **Memory Requirements:**
 

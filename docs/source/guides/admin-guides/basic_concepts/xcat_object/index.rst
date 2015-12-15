@@ -8,7 +8,7 @@ Basically, xCAT has 20 types of objects. They are: ::
     node        notification  osdistro    osdistroupdate  osimage
     policy      rack          route       site            zone
 
-This section will introduce you several important types of object to give you an overview of how the object looks like and how to manipulate them.
+This section will introduce you to several important types of objects and give you an overview of how to view and manipulate them.
 
 You can get the detail description of each object by ``man <object type>`` e.g. ``man node``.
 
@@ -115,11 +115,11 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
           postscripts=syslog,remoteshell,syncfiles
           provmethod=rhels7.1-x86_64-install-compute
 
-    This is useful that define common attributes in **group object** so that new added node will inherits them automatically. Since the attributes are defined in the **group object**, it will make the change of attributes easier that you don't need to touch the individual nodes.
+    It is useful to define common attributes in **group object** so that newly added node will inherit them automatically. Since the attributes are defined in the **group object**, you don't need to touch the individual nodes attributes.
 
   * **Use Regular Expression to generate value for node attributes**
 
-    This is powerful feature in xCAT that you can generate individual attribute value from node name instead of sign them one by one. Refer to :doc:`Use Regular Expression in xCAT Database Table <../xcat_db/regexp_db>`.
+    This is powerful feature in xCAT that you can generate individual attribute value from node name instead of assigning them one by one. Refer to :doc:`Use Regular Expression in xCAT Database Table <../xcat_db/regexp_db>`.
 
 * **osimage Object**
 
@@ -154,7 +154,7 @@ You can get the detail description of each object by ``man <object type>`` e.g. 
 
   Then in the next network boot, the node **cn1** will start to deploy **rhles7.1**.
 
-* **Manipulate Object**
+* **Manipulating Objects**
 
   You already saw that I used the commands ``mkdef``, ``lsdef``, ``chdef`` to manipulate the objects. xCAT has 4 objects management commands to manage all the xCAT objects.
 
