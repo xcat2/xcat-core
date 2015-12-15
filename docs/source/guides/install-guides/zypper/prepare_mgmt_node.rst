@@ -1,7 +1,7 @@
 Prepare the Management Node
 ===========================
 
-These steps prepare the Management Node or xCAT Installation
+These steps prepare the Management Node for xCAT Installation
 
 Install an OS on the Management Node
 ------------------------------------
