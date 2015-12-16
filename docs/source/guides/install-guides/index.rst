@@ -7,4 +7,4 @@ Install Guides
    yum/index.rst
    zypper/index.rst
    apt/index.rst
-   common/uninstall_xcat.rst
+   maintenance/index.rst 
