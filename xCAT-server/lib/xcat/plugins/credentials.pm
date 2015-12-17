@@ -311,6 +311,9 @@ sub process_request
            @filecontent=();
        }
     }
+     `logger -t xcat -p local4.info "credentials: remove $client from known_hosts"` ;
+    system("ssh-keygen -R $client -f /root/.ssh/known_hosts");
+
     if (defined $rsp->{data}->[0]) {
 	#if we got the data from the file, send the data message to the client
         xCAT::MsgUtils->message("D", $rsp, $callback, 0);
