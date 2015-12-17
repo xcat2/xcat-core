@@ -5,7 +5,7 @@ All of the xCAT Objects and Configuration data are stored in xCAT database. By d
 
 xCAT defines about 70 tables to store different data. You can get the xCAT database definition from file ``/opt/xcat/lib/perl/xCAT/Schema.pm``.
 
-You can run ``tabdump`` command to get all the xCAT database tables. Or executing ``tabdump -d <tablename>`` or ``man <tablename>`` to get the detail columns of table definition. ::
+You can run ``tabdump`` command to get all the xCAT database tables. Or run ``tabdump -d <tablename>`` or ``man <tablename>`` to get the detail information on columns and table definitions. ::
 
     $ tabdump
     $ tabdump site
@@ -26,7 +26,7 @@ For a complete reference, see the man page for xcatdb: ``man xcatdb``.
 
 * **passwd table**
 
-  Contains default userids and passwords for xCAT to access cluster components. In most cases, xCAT will also actually set the userid/password in the relevant component (Generally for SP like bmc, fsp.) when it is being configured or installed. The default userids/passwords in passwd table for specific cluster components can be overridden by the columns in other tables, e.g. ``mpa`` , ``ipmi`` , ``ppchcp`` , etc.
+  Contains default userids and passwords for xCAT to access cluster components. In most cases, xCAT will also set the userid/password in the relevant component (Generally for SP like bmc, fsp.) when it is being configured or installed. The default userids/passwords in passwd table for specific cluster components can be overridden by the columns in other tables, e.g. ``mpa`` , ``ipmi`` , ``ppchcp`` , etc.
 
 * **networks table**
 
@@ -56,11 +56,11 @@ xCAT offers 5 commands to manipulate the databse tables:
 
 * ``dumpxCATdb``
 
-  Dumps all the xCAT db tables to CSV files under the specified directory, often used to backup the xCAT database in xCAT reinstallation or management node migration.
+  Dumps all the xCAT db tables to CSV files under the specified directory, often used to backup the xCAT database for xCAT reinstallation or management node migration.
 
 * ``restorexCATdb``
 
-  Restore the xCAT db tables with the CSV files under the specified directory.
+  Restore the xCAT db tables from the CSV files under the specified directory.
 
 **Advanced Topic: How to use Regular Expression in xCAT tables:**
 
