@@ -1212,7 +1212,8 @@ sub mkinstall
                         );
                }
                if($gateway eq '<xcatmaster>'){
-                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                }
                $kcmdline .=" hostip=$ipaddr netmask=$netmask gateway=$gateway  hostname=$hostname ";
 
@@ -1224,7 +1225,8 @@ sub mkinstall
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1768,8 +1770,13 @@ sub copycd
                                 # only set to $1 if the regex was successful
                                 if ($_ =~ /sles:(\d+),/) {
                                     $distname = "sles".$1;
+                                }  elsif ($_ =~ /sles:(\d+):sp(\d+),/) {
+                                    $distname = "sles".$1.".".$2;
                                 } elsif ($_ =~ /Software Development Kit\s*(\d+)/) {
                                     $distname = "sles".$1;
+                                    if ($_ =~ /sdk:(\d+):sp(\d+),/) {
+                                        $distname = "sles".$1.".".$2;
+                                    }
                                 }
                             }
                         }

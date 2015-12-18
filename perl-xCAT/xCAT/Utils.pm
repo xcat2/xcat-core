@@ -3512,13 +3512,20 @@ sub filter_nodes{
         @{$fspnodes} = ();
         push @{$fspnodes}, @p6p7;
 
-        # for rnergy command, only the non-ppcle nodes get to the general ipmi.pm
+        # for renergy command, only the non-ppcle nodes get to the general ipmi.pm
         # ppcle of P8 and higher will get in the energy.pm
+        # But for option powerusage and temperature of renergy, they are only implementated in ipmi.pm
+        # So, all bmc node shall go to ipmi.pm. 
+
         @{$bmcnodes} = ();
         push @{$bmcnodes}, @nonppcle;
 
         if (grep /^(relhistogram)/, @args) {
             push @{$bmcnodes}, @ngpbmc;
+        }elsif (grep /^(powerusage|temperature)/, @args) {
+            # Clear the bmc nodes to avoid duplication for non ppc64* nodes.
+            @{$bmcnodes} = ();
+            push @{$bmcnodes}, @commonbmc;
         } else {
             push @{$mpnodes}, @ngpbmc;
         }
@@ -4432,7 +4439,14 @@ sub cleanup_for_powerLE_hardware_discovery {
         }
         xCAT::MsgUtils->message("S", "Discovery info: configure password for pbmc_node:$pbmc_node.");
         if (defined($new_bmc_username) and $new_bmc_username ne '') {
-            `rspconfig $pbmc_node username=$new_bmc_username password=$new_bmc_password`;
+            if ($new_bmc_username eq "ADMIN" or $new_bmc_username eq 'USERID') {
+                # ADMIN is username for OpenPOWER server, it is not allowed to modify at present
+                # USERID is username for IBM system x server, just modify password
+                `rspconfig $pbmc_node userid=2 password=$new_bmc_password`;
+            } else {
+                # For other username, we'd better create new user for them
+                `rspconfig $pbmc_node userid=3 username=$new_bmc_username password=$new_bmc_password`;
+            }
         } else {
             `rspconfig $pbmc_node password=$new_bmc_password`;
         }

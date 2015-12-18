@@ -200,6 +200,7 @@ sub expandatom {
     }
 	my $verify = (scalar(@_) >= 1 ? shift : 1);
   my %options = @_;      # additional options
+        $options{keepmissing} = 1;
         my @nodes= ();
     #TODO: these env vars need to get passed by the client to xcatd
 	my $nprefix=(defined ($ENV{'XCAT_NODE_PREFIX'}) ? $ENV{'XCAT_NODE_PREFIX'} : 'node');

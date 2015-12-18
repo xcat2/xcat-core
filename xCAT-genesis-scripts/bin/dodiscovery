@@ -81,14 +81,14 @@ if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
 
 elif [ -r /proc/device-tree/model ]; then #POWER
 	#MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
-	MTM=`cat /proc/device-tree/model | sed -e 's/\^.*,//'`
+        MTM=`cat /proc/device-tree/model -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
         CPUCOUNT=`cat /proc/cpuinfo |grep -e "^cpu\s*:"|wc -l`
         PLATFORM=`cat /proc/cpuinfo | grep -e "^platform\s*:" | awk '{print \$3}'`
         grep -e "^cpu\s*:" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
 	    echo $line > /tmp/cpumod
         done
         CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
-        SERIAL=`cat /proc/device-tree/system-id`
+        SERIAL=`cat /proc/device-tree/system-id -vT | sed -e 's/^.*,//' | sed -e 's/^[\t ]*//'| sed -e 's/[\t ]*\^@//'`
         UUID=`sed -e 's/\(..\)\(..\)\(..\)\(..\)-\(..\)\(..\)-\(..\)\(..\)/\4\3\2\1-\6\5-\8\7/' /proc/sys/kernel/random/uuid`
 
 fi

@@ -1,6 +1,7 @@
 #!/bin/sh
-# Sample Linux postbootscript script for installing and configuring HPC software
-# for statefull (full-disk install) nodes
+# Sample Linux postbootscript script for installing and configuring
+# HPC software for stateful (full-disk install) nodes
+#
 # Make sure this runs after the otherpkgs postbootscript
 #
 

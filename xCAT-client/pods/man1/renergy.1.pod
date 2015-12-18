@@ -140,6 +140,14 @@ B<renergy> I<noderange> [-V] { cappingstatus={on | enable | off | disable}
 
 =back
 
+B<OpenPOWER server specific :>
+
+=over 2
+
+B<renergy> I<noderange> { powerusage | temperature }
+
+=back
+
 =head1 B<DESCRIPTION>
 
 This B<renergy> command can be used to manage the energy consumption of
@@ -168,6 +176,8 @@ The attributes listed in the B<SYNOPSIS> section are which ones can be handled b
 B<renergy> command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
+
+B<Note>: the options I<powerusage> and I<temperature> are only supported for B<OpenPOWER servers>.
 
 The supported attributes for each specific system p hardware type is listed as follows:
 
@@ -638,6 +648,15 @@ Query the system power consumed prior to power on.
 Query the thermal output (load) in BTUs per hour for the blade 
 center chassis.
 
+=item B<powerusage>
+
+Query System Power Statistics with DCMI (Data Center Manageability Interface).
+
+=item B<temperature>
+
+Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor. 
+Currently, only CPU temperature and baseboard temperature sensor available for OpenPOWER servers.
+
 =back
 
 =head1 B<RETURN VALUE>
@@ -808,8 +827,25 @@ The output of the setting operation:
     CEC1: Set cappingperc succeeded.
     CEC1: cappingvalue: 816     
 
-=back
+=item 9
 
+Query powerusage and temperature for OpenPOWER servers.
+
+B<renergy> ops01 powerusage temperature
+
+The output will be like this:
+
+    ops01: Current Power                        : 591W
+    ops01: Minimum Power over sampling duration : 558W
+    ops01: Maximum Power over sampling duration : 607W
+    ops01: Average Power over sampling duration : 572W
+    ops01: Time Stamp                           : 11/18/2015 - 1:4:1
+    ops01: Statistics reporting time period     : 10000 milliseconds
+    ops01: Power Measurement                    : Active
+    ops01: CPU Temperature Instance 0           : +39 Centigrade
+    ops01: Baseboard temperature Instance 0     : +28 Centigrade
+
+=back
 
 =head1 B<REFERENCES>
 

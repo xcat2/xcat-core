@@ -19,6 +19,9 @@ if [ -z "$TFTPDIR" ]; then
 
     TFTPDIR="/tftpboot"
 fi
+if [[ $TFTPDIR != /* ]]; then
+    TFTPDIR="/"$TFTPDIR
+fi
 
 cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
@@ -77,7 +80,7 @@ do
                       /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
                       
 
-                      MYCONT=`grep MASTER /xcatpost/mypostscript`
+                      MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
                       MAX_RETRIES=10
                       RETRY=0
                       while [ -z "$MYCONT" ]; do
@@ -91,7 +94,7 @@ do
                          sleep $SLI
                          /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' | sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" > /xcatpost/mypostscript
 
-                         MYCONT=`grep MASTER /xcatpost/mypostscript`
+                         MYCONT=`grep ^MASTER= /xcatpost/mypostscript`
                       done
 
                    fi
@@ -138,6 +141,13 @@ return_value=0
 run_ps () {
  local ret_local=0
  mkdir -p "\"/var/log/xcat\""
+ # On some Linux distro, the rsyslogd daemon write log files with permision
+ # other than root:root. And in some case, the directory /var/log/xcat was
+ # created by xCAT, and had root:root ownership. In this way, rsyslogd
+ # did not have enough permission to write to log files under this directory.
+ # As a dirty hack, change the ownership of directory /var/log/xcat to the
+ # same ownership of directory /var/log.
+ chown `ls -ld /var/log | awk '{ print \$3\":\"\$4 }'` "\"/var/log/xcat\"" 
  local logfile=\"/var/log/xcat/xcat.log\"
 
  if [ -f \$1 ]; then 
@@ -147,10 +157,10 @@ run_ps () {
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
-        bash -x ./\$@ 2>&1 | tee -a \$logfile
+        bash -x ./\$@ 2>&1 | tee -a \$logfile | logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      else
-        ./\$@ 2>&1 | tee -a \$logfile
+        ./\$@ 2>&1 | tee -a \$logfile |  logger -t xcat -p debug
         ret_local=\${PIPESTATUS[0]}
      fi
   else
@@ -274,5 +284,3 @@ updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost
 #rm -f /xcatpost/mypostscript
-
-

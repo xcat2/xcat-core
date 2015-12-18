@@ -219,19 +219,21 @@ ntpd -g -x
 # rv 0 state does not work with the new ntp versions
 #(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
 (while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}' | sed s/-//`" -ge 1000 ]; do sleep 1; done; hwclock --systohc) &
-IPMI_ERROR=`ipmitool mc info`
-IPMI_RC=$?
+
+HOST_ARCH=`uname -m`
+if echo $HOST_ARCH | grep "ppc64"; then
+    modprobe ipmi_powernv
+else
+    modprobe ipmi_si
+fi
+modprobe ipmi_devintf
+
+IPMI_RC=`ipmitool mc info >/dev/null 2>&1; echo $?`
 IPMI_SUPPORT=1
 if [ $IPMI_RC -ne 0 ]; then
     IPMI_SUPPORT=0
 fi
 
-if [ -f "/usr/sbin/dmidecode" ]; then
-    if dmidecode|grep IPMI > /dev/null; then
-        modprobe ipmi_si
-        modprobe ipmi_devintf
-    fi
-fi
 DEVICE=$bootnic
 export DEVICE
 

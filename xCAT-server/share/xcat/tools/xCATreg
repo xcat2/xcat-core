@@ -405,10 +405,12 @@ sub copy_code {
 	
     #copy xcat-core source code to MN:/
 	if($mn =~ /ubuntux/){
-        $res = system("xdsh $confkeys{$mn} 'mkdir -p /xcatbuild' && scp -r $xcatcoredir root\@$confkeys{$mn}:/xcatbuild/  >/dev/null");
+        #defect 107 Automation ENV replaces the link file to real file before running xcat build
+        $res = system("xdsh $confkeys{$mn} 'mkdir -p /xcatbuild' && rsync -avz $xcatcoredir root\@$confkeys{$mn}:/xcatbuild/  >/dev/null"); 
 	}else{
-        $res = system("scp -r $xcatcoredir root\@$confkeys{$mn}:/  >/dev/null");
-	}
+	#defect 107 Automation ENV replaces the link file to real file before running xcat build
+        $res = system("rsync -avz $xcatcoredir root\@$confkeys{$mn}:/  >/dev/null");
+        }
     if ($res){
         send_msg(0, "[$mn->$confkeys{$mn}][copy_code] copy the latest xcat code to $mn failed");
         return 1;

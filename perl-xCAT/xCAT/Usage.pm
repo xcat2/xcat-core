@@ -250,6 +250,9 @@ my %usage = (
                         [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
+       chvm <noderange> [--cpupin hostcpuset]
+       chvm <noderange> [--membind numanodeset]
+       chvm <noderange> [--devpassthru pcidevice1,pcidevice2... ]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:
@@ -302,7 +305,9 @@ my %usage = (
     PPC (using Direct FSP Management) specific:
 	rflash <noderange> -p <rpm_directory> --activate <disruptive|deferred> [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
-        rflash <noderange> [--bpa_acdl]",
+        rflash <noderange> [--bpa_acdl]
+    PPC64LE (using BMC Management) specific:
+        rflash <noderange> [-c | --check] <hpm_file>",
     "mkhwconn" =>
 "Usage:
     mkhwconn [-h|--help]
@@ -368,7 +373,11 @@ my %usage = (
  
     iDataPlex specific :
       renergy noderange [-V] [ { cappingmaxmin | cappingmax | cappingmin } ] [cappingstatus] [cappingvalue] [relhistogram]
-      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }",
+      renergy noderange [-V] { cappingstatus={on | enable | off | disable} | {cappingwatt|cappingvalue}=watt }
+
+    OpenPOWER server specific :
+      renergy noderange [ powerusage | temperature]
+",
   "updatenode" =>
 "Usage:
     updatenode [-h|--help|-v|--version | -g|--genmypost]

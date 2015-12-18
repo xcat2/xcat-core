@@ -829,7 +829,7 @@ sub  update_tables_with_mgt_image
     #if the osver does not match the osver of MN, return
     my $myosver = xCAT::Utils->osver("all");
     $myosver =~ s/,//;
-    if ( $osver ne $myosver ) {
+    if(xCAT::Utils->version_cmp("$osver","$myosver")!=0){
         return 0;
     }
 

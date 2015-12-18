@@ -10,7 +10,6 @@ use xCAT::GlobalDef;
 use xCAT::NodeRange;
 use xCAT::VMCommon;
 use xCAT_monitoring::monitorctrl;
-
 use xCAT::Table;
 use xCAT::Usage;
 use XML::LibXML; #now that we are in the business of modifying xml data, need something capable of preserving more of the XML structure
@@ -41,10 +40,9 @@ require Sys::Virt;
 if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
         die;
 }
-
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw store_fd fd_retrieve);
 use IO::Select;
@@ -440,7 +438,12 @@ sub reconfigvm {
 sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
-    $rethash{bios}->{useserial}='yes';
+    
+    my $hypcpumodel = $confdata->{$confdata->{vm}->{$node}->[0]->{host}}->{cpumodel};
+    unless (defined($hypcpumodel) and $hypcpumodel eq "ppc64le") {
+       $rethash{bios}->{useserial}='yes';
+    }
+
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
         my $bootorder = $confdata->{vm}->{$node}->[0]->{bootorder};
         my @bootdevs = split(/[:,]/,$bootorder);
@@ -688,7 +691,89 @@ sub build_xmldesc {
     } else {
         $xtree{memory}->{content}=524288;
     }
-    if ($hypcpumodel eq "ppc64") {
+    
+    my %cpupinhash;
+    my @passthrudevices;
+    my $memnumanodes;
+    my $advsettings=undef;
+    if (defined $confdata->{vm}->{$node}->[0]->{othersettings}) {
+        $advsettings=$confdata->{vm}->{$node}->[0]->{othersettings};
+    }
+   
+    #parse the additional settings in attrubute vm.othersettings 
+    #the settings are semicolon delimited, the format of each setting is:
+    #cpu pining:         "vcpupin:<physical cpu set>"
+    #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
+    #memory binding:     "membind:<numa node set>"
+    if($advsettings){
+        my @tmp_array=split ";",$advsettings;
+        foreach(@tmp_array){
+           if(/vcpupin:['"]?([^:'"]*)['"]?:?['"]?([^:'"]*)['"]?/){
+             if($2){
+                #this is for cpu pining in the vcpu level,which is not currently supported
+                #reserved for future use
+                $cpupinhash{$1}=$2;
+             }else{
+                $cpupinhash{ALL}=$1;
+             }
+           }
+          
+           if(/devpassthrough:(.*)/){
+              @passthrudevices=split ",",$1;
+           }
+ 
+           if(/membind:(.*)/){
+              $memnumanodes=$1;
+           }
+           
+        }
+    } 
+
+    #prepare the xml hash for memory binding
+    if(defined $memnumanodes){
+       my %numatunehash;
+       $numatunehash{memory}=[{nodeset=>"$memnumanodes"}];
+       $xtree{numatune}=\%numatunehash;
+    }
+
+    #prepare the xml hash for cpu pining
+    if(exists $cpupinhash{ALL}){
+      $xtree{vcpu}->{placement}='static';
+      $xtree{vcpu}->{cpuset}="$cpupinhash{ALL}";
+      $xtree{vcpu}->{cpuset}=~s/\"\'//g;
+    }
+  
+    #prepare the xml hash for pci passthrough
+    my @prdevarray;
+    foreach my $devname(@passthrudevices){
+      my $devobj=$hypconn->get_node_device_by_name($devname);
+      unless($devobj){
+         return -1;
+      }
+
+      #get the xml description of the pci device
+      my $devxml=$devobj->get_xml_description();
+      unless($devxml){
+         return -1;
+      }
+     
+      my $devhash=XMLin($devxml);
+      if(defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i ){
+         my %tmphash;
+         $tmphash{mode}='subsystem';
+         $tmphash{type}=$devhash->{capability}->{type};
+         $tmphash{managed}="yes";
+         $tmphash{driver}->{name}="vfio";
+         $tmphash{source}->{address}->[0]=\%{$devhash->{'capability'}->{'iommuGroup'}->{'address'}};
+         push(@prdevarray,\%tmphash);
+                
+      } 
+    }
+   
+    $xtree{devices}->{hostdev}=\@prdevarray;
+
+
+    if ($hypcpumodel eq "ppc64" or $hypcpumodel eq "ppc64le") {
         my %cpuhash = ();
         if ($hypcputype) {
             $cpuhash{model} = $hypcputype;
@@ -770,9 +855,7 @@ sub build_xmldesc {
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
-    } else {
-        $xtree{devices}->{sound}->{model}='ac97';
-    }
+    } 
 
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
@@ -1625,6 +1708,9 @@ sub chvm {
     my $memory;
     my $cdrom;
     my $eject;
+    my $pcpuset;
+    my $numanodeset;
+    my $passthrudevices;
     @ARGV=@_;
     require Getopt::Long;
     GetOptions(
@@ -1636,6 +1722,9 @@ sub chvm {
         "cpus|cpu=s" => \$cpucount,
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
+        "cpupin=s" => \$pcpuset,
+        "membind=s" => \$numanodeset,
+        "devpassthru=s"=> \$passthrudevices,
         );
     if (@derefdisks) {
         xCAT::SvrUtils::sendmsg([1,"Detach without purge TODO for kvm"],$callback,$node);
@@ -1645,7 +1734,23 @@ sub chvm {
         xCAT::SvrUtils::sendmsg([1,"Currently adding and purging concurrently is not supported"],$callback,$node);
         return;
     }
+   
 
+    if(defined $pcpuset){
+       $pcpuset=~s/["']//g;
+       if("###$pcpuset" eq "###" or $pcpuset =~ /[^\d\,\^\-]/ ){
+          xCAT::SvrUtils::sendmsg([1,"cpu pining: invalid cpuset"],$callback,$node);
+          return;          
+       }
+    }
+
+    if(defined $numanodeset){
+       $numanodeset=~s/["']//g;
+       if("###$numanodeset" eq "###" or $numanodeset =~ /[^\d\,\^\-]/ ){
+          xCAT::SvrUtils::sendmsg([1,"memory binding: invalid NUMA nodeset"],$callback,$node);
+          return;          
+       }
+    }
 
     my %useddisks;
     my $dom;
@@ -1913,6 +2018,222 @@ sub chvm {
             $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
         }
     }
+
+
+    if(defined $pcpuset){ 
+       if ($currstate eq 'on') { 
+          #get the vcpuinfo of the domain
+          my @vcpuinfo;
+          eval {  @vcpuinfo = $dom->get_vcpu_info(); };
+          if ($@) {
+             xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+             return;
+          }
+
+          #get the cpuinfo of the host
+          my ($totcpus, $onlinemap, $totonline);
+          eval {  ($totcpus, $onlinemap, $totonline) = $hypconn->get_node_cpu_map(); };
+          if ($@) {
+             xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+             return;
+          }
+
+          #convert the cpuset to bitmap,which is required by pin_vcpu() 
+          my @pcpumaparr=(0) x $totcpus;
+          my @cpurange=split ",",$pcpuset;
+          foreach my $rangeslice (@cpurange){
+             if( $rangeslice =~ /^(\d*)-(\d*)$/ ){
+               my ($left,$right)=($1,$2);
+               @pcpumaparr[$left .. $right]=(1) x ($right-$left+1); 
+             }elsif($rangeslice =~ /^\^(\d*)$/){
+               if($pcpumaparr[$1]==0){
+                 xCAT::SvrUtils::sendmsg([1,"\'$rangeslice\' is ignored, please make sure the specified cpu set is correct"],$callback,$node);
+                 return;
+               }else{
+                 $pcpumaparr[$1]=0;
+               }
+
+             }elsif($rangeslice =~ /^(\d*)$/){
+               $pcpumaparr[$1]=1;
+             }
+          }
+          
+          my $pcpumap=join //,@pcpumaparr; 
+          my $mask=pack("b*",$pcpumap);
+         
+          #Pin the virtual CPU given to physical CPUs given 
+          foreach(@vcpuinfo){
+             eval {
+               $dom->pin_vcpu($_->{number}, $mask);
+             };
+             if ($@) {
+               xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+             }
+          }
+
+          $vmxml=$dom->get_xml_description();
+          my $parsed=$parser->parse_string($vmxml);
+          my $ref=$parsed->findnodes("/domain/vcpu");
+          $ref->[0]->removeAttribute("cpuset");
+          $vmxml=$parsed->toString;
+          if ($vmxml) {
+             $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+          }
+       }else{
+          my $parsed=$parser->parse_string($vmxml);
+          my $ref=$parsed->findnodes("/domain/vcpu");
+          $ref->[0]->setAttribute("cpuset",$pcpuset);
+
+          #for virtual CPUs which have the vcpupin specified, 
+          # the cpuset specified by/domain/vcpu/cpuset  will be ignored
+          my $ref=$parsed->findnodes("/domain");
+          my $cputuneref=$parsed->findnodes("/domain/cputune");
+          $cputuneref->[0]->parentNode->removeChild($cputuneref->[0]);
+          $vmxml=$parsed->toString;
+          $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+       }      
+    }
+
+    if(defined $numanodeset){
+      if ($currstate eq 'on') {
+          eval {
+                  my %tmphash=(Sys::Virt::Domain->NUMA_NODESET => "$numanodeset");
+                  $dom->set_numa_parameters(\%tmphash);
+          };
+          if ($@) {
+                  xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+                  return;
+          } 
+          $vmxml=$dom->get_xml_description();
+          if ($vmxml) {
+             $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+          } 
+      }else{
+          my %numatunehash;
+          $numatunehash{memory}=[{nodeset=>"$numanodeset"}];
+          my $numatunexml=XMLout(\%numatunehash,RootName=>"numatune");
+            
+    
+          my $parsed=$parser->parse_string($vmxml);
+          my $numatuneref=$parsed->findnodes("/domain/numatune");
+
+          if($numatuneref)
+          {
+            #/domain/numatune exist,modify the numatune/nodeset
+            my $ref=$parsed->findnodes("/domain/numatune/memory");
+            $ref->[0]->setAttribute("nodeset",$numanodeset);             
+          }else{
+            #/domain/numatune does not exist,create one
+            my $ref=$parsed->findnodes("/domain");
+            my $numatunenode = $parser->parse_balanced_chunk($numatunexml);
+            $ref->[0]->appendChild($numatunenode);            
+          }
+          $vmxml=$parsed->toString;
+          $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+      }
+    }
+  
+
+ 
+    $passthrudevices=~s/["']//g; 
+    if(defined $passthrudevices){
+      my @prdevarr=split ",",$passthrudevices;
+      unless(scalar @prdevarr){
+        xCAT::SvrUtils::sendmsg([1,"device passthrough: no device specified"],$callback,$node);
+        return;  
+      }
+
+      foreach my $devname (@prdevarr){
+        my $devobj;
+        eval {
+          $devobj=$hypconn->get_node_device_by_name($devname);
+        };
+        if ($@) {
+          xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+          next;
+        }
+
+        my $devxml=$devobj->get_xml_description();
+        unless($devxml){
+           next;
+        }
+        my $devhash=XMLin($devxml);
+        if(defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i ){
+           my %tmphash;
+           $tmphash{mode}='subsystem';
+           $tmphash{type}=$devhash->{capability}->{type};
+           $tmphash{managed}="yes";
+           $tmphash{driver}->{name}="vfio";
+           $tmphash{source}->{address}->[0]=\%{$devhash->{'capability'}->{'iommuGroup'}->{'address'}};
+           
+           my $newxml=XMLout(\%tmphash,RootName=>"hostdev");
+
+           if ($currstate eq 'on') {
+                eval {
+                  $dom->attach_device($newxml);
+                };
+                if ($@) {
+                  xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+                  next;
+                }else{
+                  $vmxml=$dom->get_xml_description();
+                  if ($vmxml) {
+                     $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+                  }
+                  xCAT::SvrUtils::sendmsg([0,"passthrough: $devname attached to guest successfully "],$callback,$node);
+                }
+
+           }else{
+
+                my $hostdevfound;
+                $hostdevfound=0;
+                my $parsed=$parser->parse_string($vmxml);
+                my $ref=$parsed->findnodes("/domain/devices");
+
+                my @hostdevlist=$ref->[0]->findnodes("./hostdev");
+                #check whether the hostdev existed in guest xml
+                foreach my $hostdevref (@hostdevlist){
+                  my $devaddrref=$hostdevref->findnodes("./source/address");
+
+                  my $domain=$devaddrref->[0]->getAttribute("domain");
+                  my $bus=$devaddrref->[0]->getAttribute("bus");
+                  my $slot=$devaddrref->[0]->getAttribute("slot");
+                  my $function=$devaddrref->[0]->getAttribute("function");
+
+                  my $curdevaddr=\%{$devhash->{'capability'}->{'iommuGroup'}->{'address'}};
+
+
+
+                  if(("$curdevaddr->{domain}" eq "$domain") and 
+                     ("$curdevaddr->{bus}" eq "$bus") and 
+                     ("$curdevaddr->{slot}" eq "$slot") and  
+                     ("$curdevaddr->{function}" eq "$function")){
+
+                     #hostdev existed in guest xml
+                     $hostdevfound=1;
+                     goto PROCESS_HOSTDEV_XML;
+                  } 
+                } 
+
+
+
+                PROCESS_HOSTDEV_XML: 
+                unless($hostdevfound){
+                   #hostdev does not exist,add into guest xml
+                   my $hostdevnode = $parser->parse_balanced_chunk($newxml);
+                   $ref->[0]->appendChild($hostdevnode);
+                   $vmxml=$parsed->toString;
+                   $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+
+                }
+
+  
+           }
+        } 
+        
+       }
+    }  
+
 
 }
 sub get_disks_by_userspecs {

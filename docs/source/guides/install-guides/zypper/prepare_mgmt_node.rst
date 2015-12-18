@@ -1,7 +1,7 @@
 Prepare the Management Node
 ===========================
 
-These steps prepare the Management Node or xCAT Installation
+These steps prepare the Management Node for xCAT Installation
 
 Install an OS on the Management Node
 ------------------------------------
@@ -38,6 +38,7 @@ xCAT uses the zypper package manager on SLES Linux distributions to install and 
 Set up Network
 --------------
 
-.. include:: ../common_sections.rst
-  :start-after: BEGIN_setup_mgmt_node_network
-  :end-before: END_setup_mgmt_node_network 
+The Management Node IP address should be set to a **static** IP address.
+
+Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network/`` and configure a static IP address.
+

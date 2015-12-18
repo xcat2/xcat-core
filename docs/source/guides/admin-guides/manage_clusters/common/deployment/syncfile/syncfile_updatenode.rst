@@ -3,7 +3,7 @@ Run the Syncing File action in the updatenode process
 
 If run ``updatenode`` command with -F option, it syncs files which configured in the synclist to the nodes. ``updatenode`` does not sync images, use ``xdcp -i -F`` option to sync images.
 
-``updatenode`` can be used to sync files to to diskfull or diskless nodes. ``updatenode`` cannot be used to sync files to statelite nodes.
+``updatenode`` can be used to sync files to to diskful or diskless nodes. ``updatenode`` cannot be used to sync files to statelite nodes.
 
 Steps to make the Syncing File working in the ``updatenode -F`` command:
 

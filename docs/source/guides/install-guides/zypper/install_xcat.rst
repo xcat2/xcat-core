@@ -1,7 +1,11 @@
 Install xCAT
 ------------
 
-.. include:: ../common_sections.rst
-   :start-after: BEGIN_installing_xcat
-   :end-before: END_installing_xcat
+Install xCAT with the following command: ::
+
+        zypper clean all (optional)
+        zypper install xCAT
+
+
+**Note:** During the install, you must accept the *xCAT Security Key* to continue
 

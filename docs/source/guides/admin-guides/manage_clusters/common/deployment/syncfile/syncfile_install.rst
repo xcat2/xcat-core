@@ -19,8 +19,8 @@ If using Service nodes to manage you nodes, you should make sure that the servic
 
 ``updatenode compute -f``
 
-Diskfull installation
-~~~~~~~~~~~~~~~~~~~~~
+Diskful installation
+~~~~~~~~~~~~~~~~~~~~
 
 
 
@@ -39,9 +39,9 @@ Make sure your postscripts table has the syncfiles postscript listed
 Diskless Installation
 ~~~~~~~~~~~~~~~~~~~~~
 
-The diskless boot is similar with the diskfull installation for the synchronizing files operation, except that the packimage  commands will sync files to the root directories of image during the creating image process.
+The diskless boot is similar with the diskful installation for the synchronizing files operation, except that the packimage  commands will sync files to the root directories of image during the creating image process.
 
-Creating the synclist file as the steps in Diskfull installation section, then the synced files will be synced to the os image during the packimage and mkdsklsnode commands running.
+Creating the synclist file as the steps in Diskful installation section, then the synced files will be synced to the os image during the packimage and mkdsklsnode commands running.
 
 Also the files will always be re-synced during the booting up of the diskless node. 
 

@@ -242,22 +242,7 @@ sub preprocess_request
     # Exit if the packet has been preprocessed
     if (defined ($req->{_xcatpreprocessed}->[0]) && $req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    my ($rc, $args) = parse_args($req);
-    if ($rc) {
-        # error or message display happens
-        xCAT::MsgUtils->message("E", {error => [$args], errorcode => [$rc]}, $callback);
-        return [];
-    } else {
-        unless (ref($args)) {
-            xCAT::MsgUtils->message("I", {data => [$args]}, $callback);
-            return [];
-        }
-    }
 
-    # do nothing if no query or setting required. 
-    unless (defined ($args->{query_list}) || defined($args->{set_pair})) {
-        return [];
-    }
 
     # This plugin only handle the node which is 1. mgt=fsp, mtm=(p8); 2. mgt=ipmi, arch=ppc64le;
     # otherwise, make other plugin to handle it
@@ -272,6 +257,22 @@ sub preprocess_request
     # build request array
     my @requests;
     if (@nodes) {
+        my ($rc, $args) = parse_args($req);
+        if ($rc) {
+            # error or message display happens
+            xCAT::MsgUtils->message("E", {error => [$args], errorcode => [$rc]}, $callback);
+            return [];
+        } else {
+            unless (ref($args)) {
+                xCAT::MsgUtils->message("I", {data => [$args]}, $callback);
+                return [];
+            }
+        }
+
+        # do nothing if no query or setting required. 
+        unless (defined ($args->{query_list}) || defined($args->{set_pair})) {
+            return [];
+        }
         my $sn = xCAT::ServiceNodeUtils->get_ServiceNode( \@nodes, 'xcat', 'MN' );
     
         # Build each request for each service node

@@ -75,7 +75,7 @@ PPE requires the 32-bit version of libibverbs, but the default mlnxofed_ib_insta
 
 Starting with PE RTE 1.2.0.10, the PE RTE packages are designed so that when user upgrade the product to a newer version or release, the files from the previous version remain in the osimage along with the new version of the product.
 
-Normally only have one version of a kitcomponent present in the xCAT osimage. When run addkitcomp to add a newer version of the kitcomponent, xCAT will first remove the old version of the kitcomponent before adding the new one. If updating a previously built diskless image or an existing diskfull node with a newer version of PE RTE, run addkitcomp to add the new PE RTE kitcomponent, xCAT will replace the previous kitcomponent with the new one. For example, if current compute osimage has PE RTE 1.3.0.1 and want to upgrade to PE RTE 1.3.0.2 ::
+Normally only have one version of a kitcomponent present in the xCAT osimage. When run addkitcomp to add a newer version of the kitcomponent, xCAT will first remove the old version of the kitcomponent before adding the new one. If updating a previously built diskless image or an existing diskful node with a newer version of PE RTE, run addkitcomp to add the new PE RTE kitcomponent, xCAT will replace the previous kitcomponent with the new one. For example, if current compute osimage has PE RTE 1.3.0.1 and want to upgrade to PE RTE 1.3.0.2 ::
 
       lsdef -t osimage -o compute -i kitcomponents
          kitcomponents = pperte_compute-1.3.0.1-0-rhels-6-x86_64
@@ -89,14 +89,14 @@ To remove the previous version of the PE RTE product files from the osimage, nee
 
       chroot /install/netboot/rhels6/x86_64/compute/rootimg rpm -e ppe_rte_1302
 
-If building a new diskless image or installing a diskfull node, and need multiple versions of PE RTE present in the image as part of the initial install, need to have multiple versions of the corresponding kitcomponent defined in the xCAT osimage definition. To add multiple versions of PE RTE kitcomponents to an xCAT osimage, add the kitcomponent using the full name with separate addkitcomp commands and specifying the ``-n (--noupgrade)`` flag. For example, to add PE RTE 1.3.0.1 and PE RTE 1.3.0.2 to your compute osimage definition ::
+If building a new diskless image or installing a diskful node, and need multiple versions of PE RTE present in the image as part of the initial install, need to have multiple versions of the corresponding kitcomponent defined in the xCAT osimage definition. To add multiple versions of PE RTE kitcomponents to an xCAT osimage, add the kitcomponent using the full name with separate addkitcomp commands and specifying the ``-n (--noupgrade)`` flag. For example, to add PE RTE 1.3.0.1 and PE RTE 1.3.0.2 to your compute osimage definition ::
 
   addkitcomp -i compute pperte_compute-1.3.0.1-0-rhels-6-x86_64
   addkitcomp -i compute -n pperte_compute-1.3.0.2-0-rhels-6-x86_64
   lsdef -t osimage -o compute -i kitcomponents
     kitcomponents = pperte_compute-1.3.0.1-0-rhels-6-x86_64,pperte_compute-1.3.0.2-0-rhels-6-x86_64
 
-In this example, when building a diskless image for the first time, or when deploying a diskfull node, xCAT will first install PE RTE 1.3.0.1, and then in a separate yum or zypper call, xCAT will install PE RTE 1.3.0.2. The second install will upgrade the pperte-1.3.0.1 rpm to pperte-1.3.0.2, and will install the new ppe_rte_1302 rpm without removing the previous ppe_rte_1301 rpm.
+In this example, when building a diskless image for the first time, or when deploying a diskful node, xCAT will first install PE RTE 1.3.0.1, and then in a separate yum or zypper call, xCAT will install PE RTE 1.3.0.2. The second install will upgrade the pperte-1.3.0.1 rpm to pperte-1.3.0.2, and will install the new ppe_rte_1302 rpm without removing the previous ppe_rte_1301 rpm.
 
 **Starting PE on cluster nodes**
 
@@ -133,7 +133,7 @@ For older Linux releases on System P, and for AIX, use the xCAT HPC Integration 
 
 No special procedures are required for building the complete PESSL kit. If received an incomplete kit, simply follow the previously documented process for adding the product packages and building the complete kit
 
-When building a diskless image or installing a diskfull node, and want ESSL installed with compiler XLC/XLF kits, there is one change when add a ESSL kitcomponent to an xCAT osimage. To add ESSL kitcomponent to an xCAT osimage, add the kitcomponent using separate addkitcomp command and specifying the ``-n(--noupgrade)`` flag. For example, to add ESSL 5.2.0.1 kitcomponent to compute osimage definition ::
+When building a diskless image or installing a diskful node, and want ESSL installed with compiler XLC/XLF kits, there is one change when add a ESSL kitcomponent to an xCAT osimage. To add ESSL kitcomponent to an xCAT osimage, add the kitcomponent using separate addkitcomp command and specifying the ``-n(--noupgrade)`` flag. For example, to add ESSL 5.2.0.1 kitcomponent to compute osimage definition ::
 
     addkitcomp -i compute essl_compute-5.2.0.1-rhels-6-ppc64
     lsdef -t osimage -o compute -i kitcomponents
@@ -148,7 +148,7 @@ For older Linux releases on System P, and for AIX, use the xCAT HPC Integration 
 
 No special procedures are required for building the PESSL complete kit. If received an incomplete kit, simply follow the previously documented process for adding the product packages and building the complete kit
 
-When building a diskless image or installing a diskfull node, and want PESSL installed with ESSL kits, there is one change when add a PESSL kitcomponent to an xCAT osimage. To add PESSL kitcomponent to an xCAT osimage, add the kitcomponent using separate addkitcomp command and specifying the ``-n(--noupgrade)`` flag. For example, to add PESSL 4.2.0.0 kitcomponent to compute osimage definition ::
+When building a diskless image or installing a diskful node, and want PESSL installed with ESSL kits, there is one change when add a PESSL kitcomponent to an xCAT osimage. To add PESSL kitcomponent to an xCAT osimage, add the kitcomponent using separate addkitcomp command and specifying the ``-n(--noupgrade)`` flag. For example, to add PESSL 4.2.0.0 kitcomponent to compute osimage definition ::
 
      addkitcomp -i compute pessl_compute-4.2.0.0-rhels-6-ppc64
      lsdef -t osimage -o compute -i kitcomponents
@@ -179,13 +179,13 @@ IBM Compilers
 
 XLC and XLF software kits are available for Linux XLC 12.1.0.3 and XLF 14.1.0.3, and newer releases on System P.
 
-For XLC 13.1.1.0 and XLF 15.1.1.0, xCAT ships partial software kits for Ubuntu on sourceforge:
+For XLC 13.1.1.0 and XLF 15.1.1.0, xCAT ships partial software kits for Ubuntu at:
 
-  https://sourceforge.net/projects/xcat/files/kits/hpckits/2.9/Ubuntu/ppc64_Little_Endian/
+  http://xcat.org/files/xcat/kits/hpckits/2.9/Ubuntu/ppc64_Little_Endian/
 
-For XLC 13.1.2.0 and XLF 15.1.2.0, xCAT ships partial software kits for rhels7.2 on github
+For XLC 13.1.2.0 and XLF 15.1.2.0, xCAT ships partial software kits for RHEL 7.2 at:
 
-  http://xcat.org/files/kits/hpckits/2.11/rhels7.2/ppc64le/
+  http://xcat.org/files/xcat/kits/hpckits/2.11/rhels7.2/ppc64le/
   
 For older Linux releases on System P, and for AIX, use the xCAT HPC Integration Support
 

@@ -2,7 +2,7 @@
 .. BEGIN_install_os_mgmt_node
 
 
-The system requirements for your xCAT management node largely depends on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
+The system requirements for your xCAT management node largely depend on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
 
 **Memory Requirements:**
 
@@ -21,7 +21,7 @@ The system requirements for your xCAT management node largely depends on the siz
 
 .. BEGIN_setup_mgmt_node_network
 
-The Management Node IP address should be set to a **static** ip address.  
+The Management Node IP address should be set to a **static** IP address.  
 
 Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network-scripts`` and configure a static IP address.
 
@@ -150,24 +150,6 @@ Unless you are downloading ``xcat-dep`` to match a specific package tested with 
 
 .. END_configure_xcat_local_repo_xcat-dep_DEBIAN
 
-.. BEGIN_installing_xcat
-
-Install xCAT with the following command: ::
-
-        yum clean all (optional)
-        yum install xCAT
-
-
-**Note:** During the install, you must accept the *xCAT Security Key* to continue: ::
-
-        Retrieving key from file:///root/xcat/xcat-dep/rh6/ppc64/repodata/repomd.xml.key
-        Importing GPG key 0xC6565BC9:
-         Userid: "xCAT Security Key <xcat@cn.ibm.com>"
-         From  : /root/xcat/xcat-dep/rh6/ppc64/repodata/repomd.xml.key
-        Is this ok [y/N]:
-
-.. END_installing_xcat
-
 
 .. BEGIN_verifying_xcat
 
@@ -224,11 +206,3 @@ xCAT is started automatically after the installation, but the following commands
 
 .. END_verifying_xcat 
 
-.. BEGIN_update_xcat
-
-If at a later date you want to update xCAT, first, update the software repositories and then run: ::
-
-    yum clean metadata # or, yum clean all
-    yum update '*xCAT*'
-
-.. END_update_xcat

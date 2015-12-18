@@ -124,6 +124,11 @@ for the server which is running in OPAL mode.
 \ **renergy**\  \ *noderange*\  [-V] { cappingstatus={on | enable | off | disable}
 | {cappingwatt|cappingvalue}=watt }
 
+\ **OpenPOWER server specific :**\ 
+
+
+\ **renergy**\  \ *noderange*\  { powerusage | temperature }
+
 
 *******************
 \ **DESCRIPTION**\ 
@@ -156,6 +161,8 @@ The attributes listed in the \ **SYNOPSIS**\  section are which ones can be hand
 \ **renergy**\  command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
+
+\ **Note**\ : the options \ *powerusage*\  and \ *temperature*\  are only supported for \ **OpenPOWER servers**\ .
 
 The supported attributes for each specific system p hardware type is listed as follows:
 
@@ -743,6 +750,19 @@ so no additional plugins are needed for BladeCenter.)
  
 
 
+\ **powerusage**\ 
+ 
+ Query System Power Statistics with DCMI (Data Center Manageability Interface).
+ 
+
+
+\ **temperature**\ 
+ 
+ Query the temperature from DCMI (Data Center Manageability Interface) Temperature sensor. 
+ Currently, only CPU temperature and baseboard temperature sensor available for OpenPOWER servers.
+ 
+
+
 
 ********************
 \ **RETURN VALUE**\ 
@@ -962,6 +982,30 @@ so no additional plugins are needed for BladeCenter.)
  
       CEC1: Set cappingperc succeeded.
       CEC1: cappingvalue: 816
+ 
+ 
+
+
+9
+ 
+ Query powerusage and temperature for OpenPOWER servers.
+ 
+ \ **renergy**\  ops01 powerusage temperature
+ 
+ The output will be like this:
+ 
+ 
+ .. code-block:: perl
+ 
+      ops01: Current Power                        : 591W
+      ops01: Minimum Power over sampling duration : 558W
+      ops01: Maximum Power over sampling duration : 607W
+      ops01: Average Power over sampling duration : 572W
+      ops01: Time Stamp                           : 11/18/2015 - 1:4:1
+      ops01: Statistics reporting time period     : 10000 milliseconds
+      ops01: Power Measurement                    : Active
+      ops01: CPU Temperature Instance 0           : +39 Centigrade
+      ops01: Baseboard temperature Instance 0     : +28 Centigrade
  
  
 

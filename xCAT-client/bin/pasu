@@ -231,13 +231,19 @@ sub expandnoderange {
   my @nodes;
   my @user = getpwuid($>);
   my $homedir=$user[7];
+  my %sslargs;
+  if (defined($ENV{'XCATSSLVER'})) {
+      $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+  }
+
   my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
-                #SSL_verify_mode => 1,
+                SSL_verify_mode => 1,
+                %sslargs,
              );
   die "Connection failure: $!\n" unless ($client);
   #todo: get the bmc attr for each node, not the node name itself
@@ -280,13 +286,19 @@ sub getipmiattrs {
   my $nodeattrs = {};        # this will be a reference to a hash
   my @user = getpwuid($>);
   my $homedir=$user[7];
+  my %sslargs;
+  if (defined($ENV{'XCATSSLVER'})) {
+      $sslargs{SSL_version} = $ENV{'XCATSSLVER'};
+  }
+
   my $client = IO::Socket::SSL->new(
                 PeerAddr=>$xcathost,
                 SSL_key_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_cert_file=>$homedir."/.xcat/client-cred.pem",
                 SSL_ca_file => $homedir."/.xcat/ca.pem",
                 SSL_use_cert => 1,
-                #SSL_verify_mode => 1,
+                SSL_verify_mode => 1,
+                %sslargs,
              );
   die "Connection failure: $!\n" unless ($client);
   my %cmdref = (command => 'getipmicons', noderange => $noderange);

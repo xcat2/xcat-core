@@ -188,7 +188,7 @@ sub outwiki {
         $manpath =~ s/\.gz//;
 
         if ($manpath) {
-            print "Refer to the man page:[$def->{cmd}](http://xcat.sourceforge.net".$manpath.".html).\n\n";
+            print "Refer to the man page:[$def->{cmd}](http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/references/index.html#xcat-man-pages).\n\n";
         } else {
             print "Refer to the man page of ".$def->{cmd}." command.\n\n";
         }
@@ -260,7 +260,7 @@ sub outwiki {
 }
 
 
-# outmediawiki is the backup subroutine to generate restapi doc for mediawiki which has been obsoleted from sourceforge
+# outmediawiki is the backup subroutine to generate restapi doc for mediawiki 
 sub outmediawiki {
     my $def = shift;
     my $opt = shift;
@@ -292,7 +292,7 @@ sub outmediawiki {
         my $manpath = search_manpage($def->{cmd});
 
         if ($manpath) {
-            print "Refer to the man page:[http://xcat.sourceforge.net".$manpath.".html ".$def->{cmd}."]\n\n";
+            print "Refer to the man page:[http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/references/index.html#xcat-man-pages ".$def->{cmd}."]\n\n";
         } else {
             print "Refer to the man page of ".$def->{cmd}." command.\n\n";
         }
@@ -376,7 +376,7 @@ sub gendoc {
     }
 
     if ($format eq "wiki") {
-        print "![](http://sourceforge.net/p/xcat/wiki/XCAT_Documentation/attachment/Official-xcat-doc.png)\n\n";
+        print "![](http://xcat.org/images/Official-xcat-doc.png)\n\n";
         print "\n[TOC]\n";
     }
 

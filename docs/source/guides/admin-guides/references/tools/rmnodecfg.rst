@@ -2,6 +2,7 @@ rmnodecfg
 =========
 
 ::
+
     Usage: rmnodecfg [-h|--help] 
 
     Removes the configuration of a node so that the next time you reboot 

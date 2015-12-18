@@ -77,7 +77,7 @@ KITDATA=kitdata
 #rm -rf /root/.ssh
 #rm -rf /install/autoinst
 #rm -rf /install/postscripts
-#wget http://xcat.sourceforge.net/yum/devel/core-rpms-snap.tar.bz2
+#wget http://xcat.org/files/xcat/xcat-core/devel/Linux/core-snap/core-rpms-snap.tar.bz2
 #tar jxf core-rpms-snap.tar.bz2
 #./xcat-core/mklocalrepo.sh
 #mount -o loop /iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso /iso/1 -t iso9660

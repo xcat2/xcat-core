@@ -222,13 +222,13 @@ sub preprocess_updatenode
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
                     'g|genmypost'   => \$GENMYPOST,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
                     'n|noverify'    => \$NOVERIFY, 
@@ -282,6 +282,11 @@ sub preprocess_updatenode
        $::SETSERVER=$SETSERVER;
     } else {
        undef $::SETSERVER;
+    }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
     }
 
     # display the usage if -h or --help is specified
@@ -1097,13 +1102,13 @@ sub updatenode
                     'v|version'     => \$VERSION,
                     'V|verbose'     => \$VERBOSE,
                     'F|sync'        => \$FILESYNC,
-                    'l|user:s'      => \$USER,
+                    'l|user=s'      => \$USER,
                     'f|snsync'      => \$SNFILESYNC,
                     'S|sw'          => \$SWMAINTENANCE,
                     's|sn'          => \$SETSERVER,
                     'P|scripts:s'   => \$RERUNPS,
                     'k|security'    => \$SECURITY,
-                    'o|os:s'        => \$OS,
+                    'o|os=s'        => \$OS,
                     'fanout=i'      => \$fanout,
                     't|timetout=i'  => \$timeout,
                     'n|noverify'    => \$NOVERIFY,
@@ -1153,6 +1158,11 @@ sub updatenode
        $::SETSERVER=$SETSERVER;
     } else {
        undef $::SETSERVER;
+    }
+    if (defined($OS)) {
+       $::OS=$OS;
+    } else {
+       undef $::OS;
     }
 
     #
@@ -3114,7 +3124,9 @@ sub updateOS
     my $installDIR = xCAT::TableUtils->getInstallDir();
 
     # Get HTTP server
-    my $http = xCAT::NetworkUtils->my_ip_facing($node);
+    my $http;
+    my @httpd = xCAT::NetworkUtils->my_ip_facing($node);
+    unless ($httpd[0]) { $http = $httpd[1];}
     if (!$http)
     {
         push @{$rsp->{data}}, "$node: (Error) Missing HTTP server";
@@ -3125,7 +3137,7 @@ sub updateOS
     # Get OS to update to
     my $update2os = $os;
 
-    push @{$rsp->{data}}, "$node: Upgrading $node to $os";
+    push @{$rsp->{data}}, "$node: Upgrading $node to $os. Please wait may take a while";
     xCAT::MsgUtils->message("I", $rsp, $callback);
 
     # Get the OS that is installed on the node
@@ -3170,7 +3182,7 @@ sub updateOS
     if (!($update2os =~ m/$installOS/i))
     {
         push @{$rsp->{data}},
-          "$node: (Error) Cannot not update $installOS$version to $os.  Linux distribution does not match";
+          "$node: (Error) Cannot not update $installOS.$version to $os.  Linux distribution does not match";
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return;
     }
@@ -3245,14 +3257,28 @@ sub updateOS
     elsif ("$installOS$version" =~ m/rh/i)
     {
 
-        # Red Hat repository path - http://10.0.0.1/install/rhel5.4/s390x/Server/
-        $path = "http://$http$installDIR/$os/$arch/Server/";
-        if (!(-e "$installDIR/$os/$arch/Server/"))
+        my $verifyOS = $os;
+        $verifyOS =~ s/^\D+([\d.]+)$/$1/; 
+        if(xCAT::Utils->version_cmp($verifyOS,"7.0") < 0){
+            $path = "http://$http$installDIR/$os/$arch/Server/";
+            if (!(-e "$installDIR/$os/$arch/Server/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
+        }	
+        else
         {
-            push @{$rsp->{data}},
-              "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-            return;
+            $path = "http://$http$installDIR/$os/$arch/";
+            if (!(-e "$installDIR/$os/$arch/"))
+            {
+                push @{$rsp->{data}},
+                  "$node: (Error) Missing install directory $installDIR/$os/$arch/";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+                return;
+            }
         }
 
         # Create a yum repository file

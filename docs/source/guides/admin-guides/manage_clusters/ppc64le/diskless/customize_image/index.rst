@@ -14,3 +14,4 @@ Optional means all the subitems in this page are not necessary to finish an OS d
    enable_kdump.rst
    install_new_kernel.rst  
    acc_initrd_rootimg_gen_ppc64le.rst 
+   trim_diskless_rootimg.rst

@@ -10,6 +10,7 @@ B<xpbsnodes> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 
 =head1 DESCRIPTION
+
 B<xpbsnodes> is a front-end to PBS pbsnode but uses xCAT's noderange to specify nodes.
 
 =head1 OPTIONS

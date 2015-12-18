@@ -12,7 +12,7 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
 
     ``man postscripts``
 
-* **postscripts attribute** - List of scripts that should be run on this node after diskfull installation or diskless boot.
+* **postscripts attribute** - List of scripts that should be run on this node after diskful installation or diskless boot.
 
            * **[RHEL]**
 
@@ -22,7 +22,7 @@ There are two types of scripts in the postscripts table ( postscripts and postbo
 
            Postscripts will be run after the reboot but before the init.d process. For Linux diskless deployment, the postscripts will be run at the init.d time, and xCAT will automatically add the list of postscripts from the postbootscripts attribute to run after postscripts list.
 
-* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskfull installation reboot or diskless boot
+* **postbootscripts attribute** - list of postbootscripts that should be run on this Linux node at the init.d time after diskful installation reboot or diskless boot
 * **xCAT**, by default, for diskful installs only runs the postbootscripts on the install and not on reboot. In xCAT a site table attribute runbootscripts is available to change this default behavior. If set to yes, then the postbootscripts will be run on install and on reboot. 
  
 **xCAT automatically adds the postscripts from the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot.**
@@ -224,20 +224,20 @@ Using the mypostscript template
 Using the mypostscript template
 '''''''''''''''''''''''''''''''
 
-xCAT provides a way for the admin to customize the information that will be provide to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
+xCAT provides a way for the admin to customize the information that will be provided to the postscripts/postbootscripts when they run on the node. This is done by editing the mypostscript.tmpl file. The attributes that are provided in the shipped mypostscript.tmpl file should not be removed. They are needed by the default xCAT postscripts.
 
-The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/templates/mypostscript directory.
+The mypostscript.tmpl, is shipped in the /opt/xcat/share/xcat/mypostscript directory.
 
 If the admin customizes the mypostscript.tmpl, they should copy the mypostscript.tmpl to /install/postscripts/mypostscript.tmpl, and then edit it. The mypostscript for each node will be named mypostscript.<nodename>. The generated mypostscript.<nodename>. will be put in the /tftpboot/mypostscripts directory.
 
 site table precreatemypostscripts attribute
 '''''''''''''''''''''''''''''''''''''''''''
 
-If the site table precreatemypostscripts attribute is set to 1 or yes, it will instruct xcat at nodeset and updatenode time to query the db once for all of the nodes passed into the command and create the mypostscript file for each node and put them in a directory in $TFTPDIR(for example /tftpboot). The created mypostscript.<nodename>. file in the /tftpboot/mypostscripts directory will not be regenerated unless another nodeset or updatenode command is run to that node. This should be used when the system definition has stabilized. It saves time on the updatenode or reboot by not regenerating the mypostscript file.
+If the site table precreatemypostscripts attribute is set to 1 or yes, it will instruct xCAT at nodeset and updatenode time to query the db once for all of the nodes passed into the command and create the mypostscript file for each node and put them in a directory in $TFTPDIR(for example /tftpboot). The created mypostscript.<nodename>. file in the /tftpboot/mypostscripts directory will not be regenerated unless another nodeset or updatenode command is run to that node. This should be used when the system definition has stabilized. It saves time on the updatenode or reboot by not regenerating the mypostscript file.
 
-If the precreatemyposcripts attribute is yes, and a database change is made or xcat code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
+If the precreatemyposcripts attribute is yes, and a database change is made or xCAT code is upgraded, then you should run a new nodeset or updatenode to regenerate the /tftpboot/mypostscript/mypostscript.<nodename>. file to pick up the latest database setting. The default for precreatemypostscripts is no/0.
 
-When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl**. 
+When you run nodeset or updatenode, it will search the **/install/postscripts/mypostscript.tmpl** first. If the **/install/postscripts/mypostscript.tmpl** exists, it will use that template to generate the mypostscript for each node. Otherwise, it will use **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. 
 
 
 Content of the template for mypostscript
@@ -245,7 +245,8 @@ Content of the template for mypostscript
 
 **The attributes that are defined in the shipped mypostscript.tmpl file** should not be removed. The xCAT default postscripts rely on that information to run successfully. **The following will explain the entries in the mypostscript.tmpl file**.
 
-The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table. Note the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
+The SITE_TABLE_ALL_ATTRIBS_EXPORT line in the file directs the code to export all attributes defined in the site table. 
+Note: the attributes are not always defined exactly as in the site table to avoid conflict with other table attributes of the same name. For example, the site table master attribute is named SITEMASTER in the generated mypostscript file. ::
 
         #SITE_TABLE_ALL_ATTRIBS_EXPORT#
 
@@ -321,7 +322,7 @@ The following sets the mac address. ::
      MACADDRESS=#TABLE:mac:$NODE:mac#
      export MACADDRESS
 
-IF vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following exports: ::
+If vlan is setup, then the #VLAN_VARS_EXPORT# line will provide the following exports: ::
 
     VMNODE='YES'
     export VMNODE
@@ -404,7 +405,7 @@ Kinds of variables in the template
 
     VARNAME=#TABLE:tablename:$NODE:attribute#
 
-For example, to get the new updatstatus attribute from the nodelist table: ::
+For example, to get the new updatestatus attribute from the nodelist table: ::
 
     UPDATESTATUS=#TABLE:nodelist:$NODE:updatestatus#
     export UPDATESTATUS
@@ -432,7 +433,7 @@ For the **#SITE_TABLE_ALL_ATTRIBS_EXPORT#** flag, the related subroutine will ge
 
 Other examples are: ::
 
-    #VLAN_VARS_EXPORT#  - gets all vlan related itesm
+    #VLAN_VARS_EXPORT#  - gets all vlan related items
     #MONITORING_VARS_EXPORT#  - gets all monitoring configuration and setup da ta
     #OSIMAGE_VARS_EXPORT# - get osimage related variables, such as ospkgdir, ospkgs ...
     #NETWORK_FOR_DISKLESS_EXPORT# - gets diskless network information
@@ -452,7 +453,7 @@ Edit mypostscript.tmpl
 
 **Add new attributes into mypostscript.tmpl**
 
-When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/templates/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/templates/mypostcript/mypostscript.tmpl**.
+When you add new attributes into the template, you should edit the **/install/postscripts/mypostscript.tmpl** which you created by copying **/opt/xcat/share/xcat/mypostscript/mypostscript.tmpl**. Make all additions before the **# postscripts-start-here** section. xCAT will first look in **/install/postscripts/mypostscript.tmpl** for a file and then if not found will use the one in **/opt/xcat/share/xcat/mypostcript/mypostscript.tmpl**.
 
 For example: ::
 

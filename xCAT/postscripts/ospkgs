@@ -921,6 +921,29 @@ else
 	    fi
 	fi
     fi
+    
+    #install cuda package if any
+    if [ -n "$cudapkgs" ]; then
+        cmd="$ENVLIST yum -y install $cudapkgs"
+        original_arch=$ARCH
+        unset ARCH
+        result=`eval $cmd 2>&1`
+        # re declare the ARCH env after installing cuda command done
+        ARCH=$original_arch
+        export ARCH
+        R=$?
+        if [ $R -ne 0 ]; then
+            RETURNVAL=$R
+            logger -t xcat -p local4.info "ospkgs: $cmd\n    $result"
+            echo "ospkgs: $cmd"
+            echo $result
+        else
+            if [ $debug -ne 0 ]; then
+                echo "ospkgs: $cmd"
+                echo $result
+            fi
+        fi
+    fi
 
     #remove some groups if specified
     if [ -n "$groups_d" ]; then

@@ -69,22 +69,41 @@ d-i partman/early_command string \
                 fi; \
             done; \
             umount /tmp/mymount; \
-        fi \
+        fi; \
     done; \
     if [[ -e /tmp/devs-with-boot ]]; then \
         head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; \
         rm /tmp/devs-with-boot 2>/dev/null || true; \
     else \
-        DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; \
-        if [[ "$DEV" == "" ]]; then \
-            for line in $(list-devices disk); do \
-                DEV=$line; DEV=${DEV##/dev/}; break; \
-            done; \
-            if [[ "$DEV" == "" ]]; then \
-                DEV="sda"; \
-            fi \
+        if [[ -e /tmp/disk_info ]]; then \
+            rm -f /tmp/disk_info; \
         fi; \
-        echo "/dev/$DEV" > /tmp/boot_disk; \
+        for disk in $(list-devices disk); do \
+            diskbootable=''; \
+            currdriver=`udevadm info -a -n $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`; \
+            case "$currdriver" in \
+            "ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") \
+                diskbootable=$disk; \
+            ;; \
+            "mptsas"|"mpt2sas"|"mpt3sas") \
+                diskbootable=$disk; \
+            ;; \
+            *) \
+                diskbootable=''; \
+            ;; \
+            esac; \
+            if [ ! -z "$diskbootable" ]; then \
+                devpath=`udevadm info $diskbootable | grep DEVPATH`; \
+                echo $devpath ." $diskbootable" >> /tmp/disk_info; \
+            fi; \
+        done; \
+        if [[ -e /tmp/disk_info ]]; then \
+            DEV=`cat /tmp/disk_info | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '/dev/[s|h|v]d.*$'`; \
+        fi; \
+        if [[ "$DEV" == "" ]]; then \
+            DEV="/dev/sda"; \
+        fi; \
+        echo "$DEV" > /tmp/boot_disk; \
     fi; \
     debconf-set partman-auto/disk "$(cat /tmp/boot_disk)"
 d-i partman-auto/expert_recipe_file string /tmp/partitionfile

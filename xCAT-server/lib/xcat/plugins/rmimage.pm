@@ -186,6 +186,16 @@ sub process_request {
    `umount -l $imagedir/rootimg/proc 2>&1 1>/dev/null`;
    # also umount the rootimg/sys
    `umount -l $imagedir/rootimg/sys 2>&1 1>/dev/null`;
+   
+   # umount the rootimg/dev
+   my $devmount = `cat /proc/mounts |grep  "$imagedir/rootimg/dev"`; 
+   if($devmount){
+       xCAT::Utils->runcmd("umount -l  $imagedir/rootimg/dev");
+       if($?){
+           $callback->({error=>["$imagedir/rootimg/dev mount on /dev, and can't umount. remove $imagename will lead to unpredictable result, please umount manualy before try again"], errorcode=>[1]}); 
+           return;
+       }
+    }
 
    #Start removing the rootimg directory and files
    if (-d "$imagedir/rootimg") {

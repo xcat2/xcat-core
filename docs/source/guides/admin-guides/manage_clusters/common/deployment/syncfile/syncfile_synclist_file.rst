@@ -1,3 +1,5 @@
+.. _The_synclist_file:
+
 The synclist file
 -----------------
 
@@ -205,7 +207,7 @@ If the provisioning method for the node is install,or netboot then the path to t
        <profile>,<os>and <arch> are what you set for the node
 
 For example:
-The location of synclist file for the diskfull installation of <os> with 'compute' as the profile ::
+The location of synclist file for the diskful installation of <os> with 'compute' as the profile ::
 
        /install/custom/<inst_type>/<distro>/<profile>.<os>.synclist
 

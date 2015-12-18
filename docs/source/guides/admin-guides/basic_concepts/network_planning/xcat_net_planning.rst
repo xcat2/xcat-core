@@ -8,11 +8,11 @@ Do You Need Hierarchy in Your Cluster?
 
 Service Nodes
 `````````````
-For very large clusters, xCAT has the ability to distribute the management operations to service nodes. This allows the management node to delegate all management responsibilities for a set of compute or storage nodes to a service node so that the management node doesn't get overloaded. Although xCAT automates a lot of the aspects of deploying and configuring the services, it still adds complexity to your cluster. So the question is: at what size cluster do you need to start using service nodes?? The exact answer depends on a lot of factors (mgmt node size, network speed, node type, OS, frequency of node deployment, etc.), but here are some general guidelines for how many nodes a single mgmt node (or single service node) can handle:
+For very large clusters, xCAT has the ability to distribute the management operations to service nodes. This allows the management node to delegate all management responsibilities for a set of compute or storage nodes to a service node so that the management node doesn't get overloaded. Although xCAT automates a lot of the aspects of deploying and configuring the services, it still adds complexity to your cluster. So the question is: at what size cluster do you need to start using service nodes? The exact answer depends on a lot of factors (mgmt node size, network speed, node type, OS, frequency of node deployment, etc.), but here are some general guidelines for how many nodes a single management node (or single service node) can handle:
 
 * **[Linux]:**
-        Stateful or Stateless: 500 nodes
-        Statelite: 250 nodes
+        * Stateful or Stateless: 500 nodes
+        * Statelite: 250 nodes
 * **[AIX]:** 
         150 nodes
 
@@ -38,7 +38,7 @@ Everyone wants their cluster to be as reliable and available as possible, but th
 
 This approach is most often used with stateless nodes because that environment is more dynamic. It can possibly be used with stateful nodes (with a little more effort), but that type of node doesn't netboot nearly as often so a more manual operation (snmove) is needed in that case move a node to different SNs.
 
-It is best to have the SNs be as robust as possible, for example, if they are diskfull, configure them with at least 2 disks that are RAID'ed together.
+It is best to have the SNs be as robust as possible, for example, if they are diskful, configure them with at least 2 disks that are RAID'ed together.
 
 In smaller clusters, the management node (MN) can be part of the SN pool with one other SN.
 

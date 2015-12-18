@@ -1,2 +1,0 @@
-Using MySQL/MariaDB
-===================

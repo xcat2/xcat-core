@@ -1,11 +1,6 @@
 x86_64
 ======
 
-.. toctree::
-   :maxdepth: 2
+This section is not available at this time. 
 
-   discovery/index.rst
-   management/index.rst
-   diskful/index.rst
-   diskless/index.rst
-   virtual_machines/index.rst
+Please refer to `xCAT Documentation <https://sourceforge.net/p/xcat/wiki/XCAT_Documentation/>`_ on SourceForge for information on System X servers. 

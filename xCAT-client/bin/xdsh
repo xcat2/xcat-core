@@ -405,7 +405,7 @@ sub parse_args_xdsh
              # prompt for the password for the userid on the node that will be setup
             my $userpw;
             $msg =
-              "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
+              "The ssh keys will be updated for '$to_userid' on the node(s).\nPassword:";
             xCAT::MsgUtils->message("I", $msg);
             system("stty -echo");    # turn off keyboard
             chop($userpw = <STDIN>);

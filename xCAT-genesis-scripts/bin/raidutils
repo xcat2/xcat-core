@@ -1319,6 +1319,104 @@ function sort_devices_by_resource_path {
     return 0
 }
 
+##########################################################################################################################
+#
+# wait to check ipr device status
+# usage: wait_for_ipr_device_status tryCnt=<minitutes> tryInt=<interval_seconds> cmd="check_cmd_line" -- "sg0,sg1,...,sgn"
+#
+#########################################################################################################################
+function wait_for_ipr_device_status {
+    local tryCnt=1
+    local tryInt=10
+    local cmd="true"
+
+    # parser input arguments
+    while [ -n "$1" ];
+    do
+        local key=`echo "$1" | $cut -s -d= -f1`
+        if [ "$key" = "tryCnt" ] || \
+           [ "$key" = "tryInt" ] || \
+           [ "$key" = "cmd" ]; then
+            local val=`echo "$1" | $cut -s -d= -f2-`
+            eval "$key=\"$val\""
+        elif [ "$1" = "--" ]; then
+            shift
+            sgs="$*"
+            break
+        fi
+        shift
+    done
+    sgs=`echo "$sgs" | $sed -e "s/,/ /g"`
+    local cnt=0
+    local lines
+    while [ $cnt -lt $tryCnt -o $tryCnt -le 0 ];
+    do
+        # sleep for specific interval for next cycle
+        [ $cnt -gt 0 ] && $sleep $tryInt
+
+        lines=`check_ipr_device_status $sgs`
+        local status_lines=""
+        local neg=0
+        local sg
+        for sg in $sgs
+        do
+            local _sg_status=`echo "$lines" | grep "^$sg=" | $cut -d= -f2- -s`
+            echo "$_sg_status" | eval $cmd >&2
+            if [ $? -ne 0 ]; then
+                neg=1
+                status_lines="${status_lines}${status_lines:+,}status[$sg]=\"$_sg_status\""
+            fi
+        done
+
+        # break out if NO negative matching
+        # or, try next loop
+        if [ $neg -eq 0 ]; then
+            break
+        else
+            log_status "Wait for device status at time \""`date "+%Y-%m-%d %H:%M:%S"`"\": $status_lines, expect: \"$cmd\"."
+        fi
+
+        ((cnt+=1))
+    done
+    test $cnt -lt $tryCnt -o $tryCnt -le 0
+    local rc=$?
+
+    # log for debug
+    if [ $rc -eq 0 ]; then
+        log_info "Wait for status on devices: \"$sgs\" succeed! (expected: \"$cmd\")"
+    else
+        log_warn "Wait for status on devices: \"$sgs\" failed! (expected: \"$cmd\")"
+        echo "$lines" | $sed -e 's/^/last device status: >> /g' | log_lines debug
+    fi
+
+    return $rc
+}
+
+##############################################################
+#
+# check status of ipr devices
+# input : slocs list, for example, 0:0:0:0 0:0:1:0
+# usage : check_ipr_device_status <sloc1> <sloc2> ... <slocn>
+#
+##############################################################
+function check_ipr_device_status {
+    local sgs="$*"
+    local lines=`convert_sloc_to_sg $sgs`
+
+    local item
+    for item in $sgs
+    do
+        declare sg=`echo "$lines" | $awk -F= -vkey=$item '$1 == key {print $2;}'`
+        declare _sg_status=`$iprconfig -c status $sg`
+        if [ "$_sg_status" = "Rebuilding" ]; then
+            declare _sg_status_alt=`cmd_alt_status $sg`
+            [ -n "$_sg_status_alt" ] && _sg_status="$_sg_status, $_sg_status_alt"
+        fi
+        echo "$item=$_sg_status"
+    done
+    return 0
+}
+
 
 ######################################################
 #

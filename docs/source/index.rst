@@ -1,26 +1,29 @@
+Extreme Cloud/Cluster Administration Toolkit
+============================================
+
 xCAT stands for E\ **x**\ treme **C**\ loud/\ **C**\ luster **A**\ dministration **T**\ oolkit.
 
-xCAT offers complete management of clouds, clusters (HPC), grids, datacenters,
+xCAT offers complete management of clouds, clusters, HPC, grids, datacenters,
 renderfarms, online gaming infrastructure, and whatever tomorrows next buzzword may be.
 
 **xCAT enables the administrator to:**
    #. Discover the hardware servers
-   #. Execute remote system management against the discovered server
-   #. Provision Operating Systems on physical (Bare-metal) or virtual machines
-   #. Provision machines in Diskful and Diskless
+   #. Execute remote system management
+   #. Provision operating systems on physical or virtual machines
+   #. Provision machines in Diskful (stateful) and Diskless (stateless)
    #. Install and configure user applications
    #. Parallel system management
    #. Integrate xCAT in Cloud
 
-**xCAT** is an open source project hosted on `GitHub/xcat2 <https://github.com/xcat2/xcat-core/>`_. You can get the **source code**
-, submit **bug/question/requirement** and contribute **code, doc** here.
+You've reached xCAT documentation site, The main page product page is http://xcat.org
 
-**xCAT**'s landing page is http://xcat.org. You can get the **download packages** and **release notes** here.
+**xCAT** is an open source project hosted on `GitHub <https://github.com/xcat2/xcat-core/>`_. 
+Go to GitHub to view the source, open issues, ask questions, and particpate in the project. 
 
 Enjoy!
 
-Content
-=======
+Table of Contents
+=================
 
 .. toctree::
    :maxdepth: 2
@@ -31,12 +34,4 @@ Content
    advanced/index.rst
    developers/index.rst
    help.rst
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 

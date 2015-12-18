@@ -798,7 +798,7 @@ sub mknetboot
             $kcmdline .= "rdloaddriver=hf_if ";
         }
 
-        
+
         if (defined $sent->{serialport})
         {
 
@@ -816,6 +816,7 @@ sub mknetboot
                 next;
             }
             if ( $arch =~ /ppc64/i ) {
+
                 # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
                 # both the physical serial port or virtual serial port appeared
                 # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
@@ -1421,7 +1422,6 @@ sub mkinstall
             my $kversion=$os;
             $kversion =~ s/^\D*([\.0-9]+)/$1/;
             $kversion =~ s/\.$//;
-            print "xxx $kversion\n";
             if ($pkvm) {
                    $kcmdline = "ksdevice=bootif kssendmac text selinux=0 rd.dm=0 rd.md=0 repo=$httpmethod://$instserver:$httpport$httpprefix/packages/ kvmp.inst.auto=$httpmethod://$instserver:$httpport/install/autoinst/$node root=live:$httpmethod://$instserver:$httpport$httpprefix/LiveOS/squashfs.img";
             } else {
@@ -1478,7 +1478,8 @@ sub mkinstall
                }         
 
                if($gateway eq '<xcatmaster>'){
-                      $gateway = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      my @gatewayd = xCAT::NetworkUtils->my_ip_facing($ipaddr);
+                      unless ($gatewayd[0]) { $gateway = $gatewayd[1];}
                }
                
                if(xCAT::Utils->version_cmp($kversion,"7.0")<0){
@@ -1503,7 +1504,8 @@ sub mkinstall
                 {
                    my $ip;
                    if($_ eq '<xcatmaster>'){
-                      $ip = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      my @ipd = xCAT::NetworkUtils->my_ip_facing($gateway);
+                      unless ($ipd[0]) { $ip = $ipd[1];}
                    }else{
                       (undef,$ip) = xCAT::NetworkUtils->gethostnameandip($_);
                    }
@@ -1572,10 +1574,17 @@ sub mkinstall
                    $kcmdline .=" inst.cmdline ";
                 }
 
-                $kcmdline .=
-                    " console=tty0 console=ttyS"
-                  . $sent->{serialport} . ","
-                  . $sent->{serialspeed};
+                if ( $arch =~ /ppc64/i ) {
+
+                     # For IBM Power machines, either ppc64 or ppc64le (ppc64el),
+                     # both the physical serial port or virtual serial port appeared
+                     # in PowerVM LPAR or PowerKVM guest use device /dev/hvc0 or
+                     # /dev/hvc1 instead of /dev/ttyS0 or /dev/ttyS1
+                     $kcmdline .= " console=tty0 console=hvc" . $sent->{serialport} . "," . $sent->{serialspeed};
+                } else {
+                     $kcmdline .= " console=tty0 console=ttyS" . $sent->{serialport} . "," . $sent->{serialspeed};
+                }
+
                 if ($sent->{serialflow} =~ /(hard|cts|ctsrts)/)
                 {
                     $kcmdline .= "n8r";

@@ -51,7 +51,7 @@ function usagesc {
     echo '                pci_slot_name is the specified PCI location. If specify pci_slot_name, this raid will be created using disks from this pci_slot;'
     echo '                disk_names is a list of advanced format disk names. If specify disk_names, this raid will be created using these disks;'
     echo '          Example 1, create 2 raid0 arrays, one is using 3 disks, the other is using 2 disks, the disks PCI_ID is 1014:034a:'
-    echo '                     create_raid="rl#0|pci_id#1014:034a|disk_num#1 create_raid="rl#0|pci_id#1014:034a|disk_num#2'
+    echo '                     create_raid="rl#0|pci_id#1014:034a|disk_num#1" create_raid="rl#0|pci_id#1014:034a|disk_num#2"'
     echo '          Example 2, pci_slot_name is 0001:08:00.0, create raid10 array, using 2 disks '
     echo '                     create_raid="rl#10|pci_slot_name#0001:08:00.0|disk_num#2"'
     echo '          Example 3, create 1 raid0 array using advanced format disk sg1'

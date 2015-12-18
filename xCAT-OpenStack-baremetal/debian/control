@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: xCAT <xcat-user@lists.sourceforge.net>
 Build-Depends: debhelper (>= 8.0.0)
 Standards-Version: 3.9.4
-Homepage: http://xcat.sourceforge.net/
+Homepage: http://xcat.org
 #Vcs-Git: git://git.debian.org/collab-maint/xcat-openstack-baremetal.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/xcat-openstack-baremetal.git;a=summary
 

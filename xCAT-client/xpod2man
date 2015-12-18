@@ -156,7 +156,7 @@ descriptions of every table in the database.
 
 =head1 XCAT ADDITIONAL TOOLS
 
-Some additional tools have been contributed to xCAT.  You can read about them at http://xcat.sourceforge.net/tools/README.html
+Some additional tools have been contributed to xCAT.  You can read about them at http://xcat-docs.readthedocs.org/en/latest/guides/admin-guides/references/index.html
 or in /opt/xcat/share/xcat/tools/README.txt on your xCAT management node.
 
 =head1 XCAT COMMANDS

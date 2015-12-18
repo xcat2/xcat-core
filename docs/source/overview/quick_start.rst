@@ -5,9 +5,9 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
 #. Find a server as your xCAT management node
 
-   The server can be a bare-metal server or a virtual machine. The major factor to select a server is the machine number of your cluster. The bigger the cluster is, the performance of server need to be better.
+   The server can be a bare-metal server or a virtual machine. The major factor for selecting a server is the number of machines in your cluster. The bigger the cluster is, the performance of server need to be better.
 
-   ``NOTE``: The architecture of xCAT management node is recommended to be same with the target compute node in the cluster.
+   ``NOTE``: The architecture of xCAT management node is recommended to be same as the target compute node in the cluster.
 
 #. Install xCAT on your selected server
 
@@ -21,7 +21,7 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
 #. Discover target nodes in the cluster
 
-   You have to define the target nodes to the xCAT database before managing them.
+   You have to define the target nodes in the xCAT database before managing them.
 
    For a small cluster (less than 5), you can collect the information of target nodes one by one and then define them manually through ``mkdef`` command.
 
@@ -31,11 +31,11 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
 #. Try to perform the hardware control against the target nodes
 
-   Now you have the node definition. Take a try to confirm the hardware control for defined nodes is working. e.g. ``rpower <node> stat``.
+   Now you have the node definition. Verify the hardware control for defined nodes is working. e.g. ``rpower <node> stat``.
 
-   Refer to the doc: :doc:`Hardware Management <../guides/admin-guides/manage_clusters/ppc64le/management/index>` to learn how to perform the remote hardware control.
+   Refer to the doc: :doc:`Hardware Management </guides/admin-guides/manage_clusters/ppc64le/management>` to learn how to perform the remote hardware control.
 
-#. Deploy OS for the target nodes
+#. Deploy OS on the target nodes
 
    * Prepare the OS images
    * Customize the OS images (Optional)
@@ -55,17 +55,17 @@ If xCAT looks suitable for your requirement, following steps are recommended pro
 
 #. Run parallel commands
 
-   When you manage a cluster which has hundreds or thousands of nodes, you always need to do something for a bunch of nodes in parallel. xCAT has some parallel commands can help you on these task.
+When managing a cluster with hundreds or thousands of nodes, operating on many nodes in parallel might be necessary. xCAT has some parallel commands for that.
 
      * Parallel shell
      * Parallel copy
-     * parallel ping
+     * Parallel ping
 
    Refer to the :doc:`/guides/admin-guides/manage_clusters/ppc64le/parallel_cmd` to learn how to use parallel commands.
 
 #. Contribute to xCAT (Optional)
 
-   During your using of xCAT, if you find something (code, document ...) that can be improved and you want to contribute that to xCAT, please do that for the behalf of yours and other xCAT user's. And welcome to xCAT community!
+While using xCAT, if you find something (code, documentation, ...) that can be improved and you want to contribute that to xCAT, please do that for your and other xCAT users benefit. And welcome to xCAT community!
 
    Refer to the :doc:`/developers/index` to learn how to contribute to xCAT community.
 

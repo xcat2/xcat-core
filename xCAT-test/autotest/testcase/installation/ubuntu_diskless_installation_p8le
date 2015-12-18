@@ -1,19 +1,21 @@
-start:Ubuntu_diskless_installation_flat_p8le_vm
+start:Ubuntu_diskless_installation_flat_p8_le
 os:Linux
-cmd:makedns -n
+cmd:copycds $$ISO
 check:rc==0
-cmd:makeconservercf $$CN
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
+cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
 check:rc==0
-cmd:if [ ! -d /install/custom/netboot/ubuntu ]; then mkdir -p /install/custom/netboot/ubuntu; fi
+cmd:makeconservercf $$CN
 check:rc==0
-cmd:if [ ! -e /install/custom/netboot/ubuntu/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/ubuntu/compute.synclist; fi
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -d /install/custom/netboot/sles ]; then mkdir -p /install/custom/netboot/sles; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -d /install/custom/netboot/rh ]; then mkdir -p /install/custom/netboot/rh; fi; elif cat /etc/*release |grep "Ubuntu"  >/dev/null;then if   [ ! -d /install/custom/netboot/ubuntu ]; then mkdir -p /install/custom/netboot/ubuntu; fi; fi
 check:rc==0
-cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/ubuntu/compute.synclist
-cmd:rm -rf /install/netboot/__GETNODEATTR($$CN,os)__/x86_64/compute
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then if [ ! -e /install/custom/netboot/sles/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/sles/compute.synclist; fi; elif cat /etc/*release |grep "Red Hat" >/dev/null;then if [ ! -e /install/custom/netboot/rh/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/rh/compute.synclist; fi; elif cat /etc/*release |grep "Ubuntu"  >/dev/null;then if  [ ! -e /install/custom/netboot/ubuntu/compute.synclist ]; then echo "/etc/resolv.conf -> /etc/resolv.conf" > /install/custom/netboot/ubuntu/compute.synclist;fi; fi
+check:rc==0
+cmd:if cat /etc/*release |grep SUSE >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/sles/compute.synclist; elif cat /etc/*release |grep "Red Hat" >/dev/null;then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/rh/compute.synclist;elif  cat /etc/*release |grep "Ubuntu"  >/dev/null; then chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute synclists=/install/custom/netboot/ubuntu/compute.synclist;fi
 check:rc==0
 cmd:genimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
@@ -21,7 +23,7 @@ cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-comput
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
-cmd:rpower $$CN reset
+cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 200 
 cmd:lsdef -l $$CN | grep status
@@ -30,16 +32,6 @@ cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:nodeset $$CN osimage
-check:rc==0
-cmd:rpower $$CN reset
-check:rc==0
-cmd:sleep 200
-cmd:lsdef -l $$CN | grep status
-check:output=~booted
-cmd:xdsh $$CN date
-check:rc==0
-check:output=~\d\d:\d\d:\d\d
-cmd:nodeset $$CN netboot
 check:rc==0
 cmd:rpower $$CN reset
 check:rc==0

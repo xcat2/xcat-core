@@ -46,6 +46,13 @@ NeXtScale FPC specific:
 \ **rflash**\  \ *noderange*\  \ *http directory*\ 
 
 
+OpenPOWER BMC specific:
+=======================
+
+
+\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c**\ |\ **--check**\ ]
+
+
 
 *******************
 \ **Description**\ 
@@ -115,6 +122,13 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
  XCAT_NeXtScale_Clusters
 
 
+OpenPOWER specific:
+===================
+
+
+The command will update firmware for OpenPOWER BMC when given an OpenPOWER node and the hpm1 formatted file path.
+
+
 
 ***************
 \ **Options**\ 
@@ -125,6 +139,12 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
 \ **-h|--help**\ 
  
  Writes the command's usage statement to standard output.
+ 
+
+
+\ **-c|--check**\ 
+ 
+ Chech the firmware version of BMC and HPM file.
  
 
 
@@ -231,6 +251,18 @@ The command will update firmware for NeXtScale FPC when given an FPC node and th
  .. code-block:: perl
  
    rflash fpc01 http://10.1.147.169/install/firmware/fhet17a/ibm_fw_fpc_fhet17a-2.02_anyos_noarch.rom
+ 
+ 
+
+
+5
+ 
+ To update the firmware on OpenPOWER machine specify the node name and the file path of the HPM firmware file as follows:
+ 
+ 
+ .. code-block:: perl
+ 
+   rflash fs3 /firmware/8335_810.1543.20151021b_update.hpm
  
  
 

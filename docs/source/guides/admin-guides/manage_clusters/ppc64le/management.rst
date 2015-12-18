@@ -45,26 +45,26 @@ Remote Console
 
 Most enterprise level servers do not have video adapters installed with the machine. Meaning, the end user can not connect a monitor to the machine and get display output. In most cases, the console can be viewed using the serial port or LAN port, through Serial-over-LAN. Serial cable or network cable are used to get a command line interface of the machine. From there, the end user can get the basic machine booting information, firmware settings interface, local command line console, etc.
 
-In order to get the command line console remotely. xCAT provides the ``rcons`` command. ::
+In order to get the command line console remotely. xCAT provides the ``rcons`` command.
 
+#. Make sure the ``conserver`` is configured by running ``makeconservercf``.
 
-First of all, make sure the ``conserver`` is configured, if not, configue it with ::
-
-    makeconservercf
-
-Then check if the ``conserver`` is up and running ::
+#. Check if the ``conserver`` is up and running ::
 
     ps ax | grep conserver
 
-If the conserver is not running, or you just updated its configuration file, restart the conserver with ::
+#. If ``conserver`` is not running, start ::
 
-    service conserver restart
+    [sysvinit] service conserver start 
+    [systemd] systemctl start conserver.service
 
-In case you have ``systemd`` instead of ``sysvinit``, use the command below instead ::
+or restart, if changes to the configuration were made ::    
 
-    systemctl restart conserver.service
+    [sysvinit] service conserver restart 
+    [systemd] systemctl restart conserver.service
 
-After that, you can get the command line console for a specific machine with the ``rcons`` command ::
+
+#. After that, you can get the command line console for a specific machine with the ``rcons`` command ::
 
     rcons cn1
 
@@ -99,12 +99,31 @@ As an example, get only the temperature information of a particular machine. ::
 
 Firmware Updating
 `````````````````
-**TODO**: For OpenPower machine, the firmware updating feature is not implement in the ``rflash`` command. The section should be updated after this feature get implemented.
+
+For OpenPOWER machines, use the ``rflash`` command to update firmware.
+
+Check firmware version of the node and the HPM file:  ::
+
+    rflash cn1 -c /firmware/8335_810.1543.20151021b_update.hpm
+
+Update node firmware to the version of the HPM file
+
+**ATTENTION**
+
+* Currently rflash is not stable enough to select accurate time before
+  upgrading. A ``rflash_delay`` attribute can be set in site table to adjust the
+  wait time before upgrading. We suggest setting this value to 70 which means
+  wait 70 secondes after BMC reset cold.
+
+::
+
+    chdef -t site clustersite rflash_delay=70
+    rflash cn1 /firmware/8335_810.1543.20151021b_update.hpm
 
 Configures Nodes' Service Processors
 ````````````````````````````````````
 
-Here comes the command, ``rspconfig``. It is used to configure the service processor of a phyisical machine. On a OpenPower system, the service processor is the BMC, Base Motherboard Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among difference machine model type.
+Here comes the command, ``rspconfig``. It is used to configure the service processor of a physical machine. On a OpenPower system, the service processor is the BMC, Baseboard Management Controller. Various variables can be set through the command. But, please also notice, the actual configuration may change among different machine-model types.
 
 Examples
 

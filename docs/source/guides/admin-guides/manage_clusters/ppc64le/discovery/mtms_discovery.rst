@@ -11,7 +11,7 @@ Discover server and define
 
 After environment is ready, and the server is powered, we can start server discovery process. The first thing to do is discovering the FSP/BMC of the server. It is automatically powered on when the physical server is powered.
 
-The following command can be used to discovery BMC within an IP range and write the discovered node definition into a stanza file::
+The following command can be used to discover BMC(s) within an IP range and write the discovered node definition(s) into a stanza file::
 
   bmcdiscover -s nmap --range 50.0.100.1-100 -z > ./bmc.stanza
 
@@ -19,7 +19,7 @@ The following command can be used to discovery BMC within an IP range and write 
 
         bmcdiscover -s nmap --range 50.0.100.1-100 -z -u <username> -p <password> > ./bmc.stanza
 
-You need to modify the node definition in stanza file before using them, the stanza file will be like this::
+You need to modify the node definition(s) in stanza file before using them, the stanza file will be like this::
  
   # cat pbmc.stanza
   cn1:
@@ -51,8 +51,11 @@ The server definition will be like this::
 
 After the physical server is defined into xCATdb, the next thing is update the node definition with the example node attributes::
 
-  # chdef cn1 ip=10.0.101.1
-  1 object definitions have been created or modified.
+  chdef cn1 ip=10.0.101.1
+
+In order to do BMC configuration during the discovery process, set ``runcmd=bmcsetup``. For more info about chain, please refer to :doc:`Chain <../../../../../advanced/chain/index>`   ::
+
+  chdef cn1 chain="runcmd=bmcsetup"
 
 Then, add node info into /etc/hosts and DNS::
 

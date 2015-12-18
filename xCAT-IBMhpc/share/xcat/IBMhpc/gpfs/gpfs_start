@@ -1,9 +1,7 @@
 #!/bin/sh
-
-# Run this script as a postscript on any node (stateless, statefull,
-#  full-disk install, AIX, Linux) to start the GPFS daemon
+#
+# Run this script as a postscript on any node to start the GPFS daemon
 # 
-
 # If you have any special network dependencies, you may want to add code
 # to check them first
 
