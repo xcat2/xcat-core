@@ -1,4 +1,4 @@
-start:Ubuntu_diskless_installation_flat_p8_le
+start:Diskless_installation_flat_p8_le
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
