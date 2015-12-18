@@ -85,6 +85,7 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/bin/dodiscovery
 %{rpminstallroot}/bin/dosysclone
 %{rpminstallroot}/bin/doxcat
+%{rpminstallroot}/bin/getadapter
 %{rpminstallroot}/bin/getcert
 %{rpminstallroot}/bin/getdestiny
 %{rpminstallroot}/bin/getipmi
