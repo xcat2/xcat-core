@@ -387,6 +387,7 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] = "You can not specify both the -f and -F flags.";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     }
@@ -395,8 +396,8 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you specify the -f flag you must not specify either the -S or -k or -P or -F
- flags";
+          "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     } 
@@ -407,7 +408,8 @@ sub preprocess_updatenode
     {
         my $rsp = {};
         $rsp->{data}->[0] =
-          "If you use the -k flag, you cannot specify the -S,-P,-f  or -F flags.";
+          "If you use the -k flag, you cannot specify the -S,-P,-f or -F flags.";
+        $rsp->{errorcode}->[0] =1;
         $callback->($rsp);
         return;
     }

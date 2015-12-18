@@ -142,6 +142,12 @@ if (($SECURITY) && (($SWMAINTENANCE) || defined($RERUNPS) || ($FILESYNC) || ($SN
     exit 1;
 }
 
+if ($SNFILESYNC && ($SWMAINTENANCE || defined($RERUNPS) || $SECURITY || $FILESYNC)){
+    my $msg = "If you specify the -f flag you must not specify either the -S or -k or -P or -F flags";
+    xCAT::MsgUtils->message("E", $msg);
+    exit 1;
+}
+
 # determine who is running the command on the client and who we will run as 
 # on the node
 my $current_userid = getpwuid($>);
