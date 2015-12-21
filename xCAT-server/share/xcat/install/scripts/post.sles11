@@ -5,8 +5,11 @@
           <source>
 
 <![CDATA[
+mkdir -p /var/log/xcat/
+{
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.sles.common#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
+} >>/var/log/xcat/xcat.log 2>&1
 
 ]]>
 

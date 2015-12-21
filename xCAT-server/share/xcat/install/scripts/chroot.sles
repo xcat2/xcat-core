@@ -5,6 +5,8 @@
           <source>
 
 <![CDATA[
+mkdir -p /mnt/var/log/xcat/
+{
 #!/bin/sh
 
 AWK=`find / -name awk | head -1`
@@ -69,6 +71,7 @@ elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-F
     export PRINIC=`ip -o link|grep -i "$PRINIC"|awk  '{print $2}'|sed s/://`
 fi
 echo 'export PRINIC='"$PRINIC" > /mnt/tmp/prinicsetting
+} >>/mnt/var/log/xcat/xcat.log 2>&1
 ]]>
 
           </source>
