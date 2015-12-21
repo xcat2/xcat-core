@@ -35,6 +35,7 @@ B<chvm> I<noderange> [B<--membind> I<numanodeset>]
 
 B<chvm> I<noderange> [B<--devpassthru> I<pcidevice>...]     
 
+B<chvm> I<noderange> [B<--devdetach> I<pcidevice>...]     
 
    
 =head2 VMware/KVM specific:
@@ -244,6 +245,11 @@ access is local and improves memory access performance.
 The PCI passthrough gives a guest VM direct access to I/O devices I<pcidevice1,pcidevice2...>. 
 The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
 The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.  
+
+=item B<--devdetach pcidevice1,pcidevice2...>
+
+To detaching the PCI devices which are attached to VM guest via PCI passthrough from the VM guest. The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running B<virsh nodedev-list> on the host.  
+
 
 
 =back

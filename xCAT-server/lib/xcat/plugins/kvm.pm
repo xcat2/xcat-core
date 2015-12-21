@@ -36,7 +36,7 @@ my $parser;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 my $confdata; #a reference to serve as a common pointer betweer VMCommon functions and this plugin
-require Sys::Virt; 
+require Sys::Virt;
 if (Sys::Virt->VERSION =~ /^0\.[10]\./) {
         die;
 }
@@ -1711,9 +1711,12 @@ sub chvm {
     my $pcpuset;
     my $numanodeset;
     my $passthrudevices;
+    my $devicestodetach;
     @ARGV=@_;
     require Getopt::Long;
-    GetOptions(
+    Getopt::Long::Configure("bundling");
+    Getopt::Long::Configure("no_pass_through");
+    if (!GetOptions(
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem|memory=s"=>\$memory,
@@ -1725,7 +1728,14 @@ sub chvm {
         "cpupin=s" => \$pcpuset,
         "membind=s" => \$numanodeset,
         "devpassthru=s"=> \$passthrudevices,
-        );
+        "devdetach=s"=> \$devicestodetach,
+        )){
+        my $usage_string = xCAT::Usage->getUsage("chvm");
+        my $rsp;
+        push @{$rsp->{data}}, "$usage_string";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return;
+    };
     if (@derefdisks) {
         xCAT::SvrUtils::sendmsg([1,"Detach without purge TODO for kvm"],$callback,$node);
         return;
@@ -2157,6 +2167,9 @@ sub chvm {
         unless($devxml){
            next;
         }
+
+
+
         my $devhash=XMLin($devxml);
         if(defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i ){
            my %tmphash;
@@ -2169,11 +2182,40 @@ sub chvm {
            my $newxml=XMLout(\%tmphash,RootName=>"hostdev");
 
            if ($currstate eq 'on') {
+                #for a running KVM guest, first unbind the device from the existing driver, 
+                #reset the device, and bind it
+                #If the <hostdev> description of a PCI device includes the attribute managed='yes', 
+                #and the hypervisor driver supports it, then the device is in managed mode, and attempts to
+                #use that passthrough device in an active guest will automatically behave as if nodedev-detach
+                #(guest start, device hot-plug) and nodedev-reattach (guest stop, device hot-unplug) 
+                #were called at the right points.
+                #in case the hypervisor driver does not support managed mode, do this explicitly here
                 eval {
-                  $dom->attach_device($newxml);
+                   $devobj->dettach(undef,0);
                 };
                 if ($@) {
-                  xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+                  xCAT::SvrUtils::sendmsg([0,"detaching $devname from host:$@"],$callback,$node);
+                }
+
+                eval {
+                   $devobj->reset();
+                };
+                if ($@) {
+                  xCAT::SvrUtils::sendmsg([0,"resetting $devname:$@"],$callback,$node);
+                }
+
+                my $flag=0;
+                if($dom->is_persistent()){
+                  $flag=&Sys::Virt::Domain::DEVICE_MODIFY_LIVE|&Sys::Virt::Domain::DEVICE_MODIFY_CONFIG;
+                }else{
+                  $flag=&Sys::Virt::Domain::DEVICE_MODIFY_LIVE;
+                }
+
+                eval {
+                  $dom->attach_device($newxml,$flag);
+                };
+                if ($@) {
+                  xCAT::SvrUtils::sendmsg([1,"attaching device to guest:$@"],$callback,$node);
                   next;
                 }else{
                   $vmxml=$dom->get_xml_description();
@@ -2211,13 +2253,11 @@ sub chvm {
 
                      #hostdev existed in guest xml
                      $hostdevfound=1;
-                     goto PROCESS_HOSTDEV_XML;
+                     goto PROCESS_HOSTDEV_XML_ATTATCH;
                   } 
                 } 
 
-
-
-                PROCESS_HOSTDEV_XML: 
+                PROCESS_HOSTDEV_XML_ATTATCH: 
                 unless($hostdevfound){
                    #hostdev does not exist,add into guest xml
                    my $hostdevnode = $parser->parse_balanced_chunk($newxml);
@@ -2232,10 +2272,126 @@ sub chvm {
         } 
         
        }
-    }  
+    }
+  
+    $devicestodetach=~s/["']//g; 
+    if(defined $devicestodetach){
+      my @devarr=split ",",$devicestodetach;
+      unless(scalar @devarr){
+        xCAT::SvrUtils::sendmsg([1,"device detaching: no device specified"],$callback,$node);
+        return;
+      }
+
+      foreach my $devname (@devarr){
+        my $devobj;
+        eval {
+          $devobj=$hypconn->get_node_device_by_name($devname);
+        };
+        if ($@) {
+          xCAT::SvrUtils::sendmsg([1,"$@"],$callback,$node);
+          next;
+        }     
 
 
+        my $devxml=$devobj->get_xml_description();
+        unless($devxml){
+           next;
+        }
+
+        my $devhash=XMLin($devxml);
+        if(defined $devhash->{capability}->{type} and $devhash->{capability}->{type} =~ /pci/i ){
+           my %tmphash;
+           $tmphash{mode}='subsystem';
+           $tmphash{type}=$devhash->{capability}->{type};
+           $tmphash{managed}="yes";
+           $tmphash{driver}->{name}="vfio";
+           $tmphash{source}->{address}->[0]=\%{$devhash->{'capability'}->{'iommuGroup'}->{'address'}};
+
+           my $newxml=XMLout(\%tmphash,RootName=>"hostdev");
+           if ($currstate eq 'on') {
+                my $flag=0;
+                if($dom->is_persistent()){
+                  $flag=&Sys::Virt::Domain::DEVICE_MODIFY_LIVE|&Sys::Virt::Domain::DEVICE_MODIFY_CONFIG;
+                }else{
+                  $flag=&Sys::Virt::Domain::DEVICE_MODIFY_LIVE;
+                }
+                eval {
+                  $dom->detach_device($newxml,$flag);
+                };
+                if ($@) {
+                  xCAT::SvrUtils::sendmsg([1,"detaching device from guest:$@"],$callback,$node);
+                  next;
+                }else{
+                  $vmxml=$dom->get_xml_description();
+                  if ($vmxml) {
+                     $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+                  }
+                   
+                  eval {
+                     $devobj->reattach();
+                  };
+                  if ($@) {
+                     xCAT::SvrUtils::sendmsg([0,"reattaching device to host:$@"],$callback,$node);
+                  }
+
+                  xCAT::SvrUtils::sendmsg([0,"devdetach: $devname detached from guest successfully "],$callback,$node);
+                }
+
+           }else{
+
+                my $hostdevfound;
+                $hostdevfound=0;
+                my $hostdevobj;
+                my $parsed=$parser->parse_string($vmxml);
+                my $ref=$parsed->findnodes("/domain/devices");
+
+                my @hostdevlist=$ref->[0]->findnodes("./hostdev");
+                #check whether the hostdev existed in guest xml
+                foreach my $hostdevref (@hostdevlist){
+                  my $devaddrref=$hostdevref->findnodes("./source/address");
+
+                  my $domain=$devaddrref->[0]->getAttribute("domain");
+                  my $bus=$devaddrref->[0]->getAttribute("bus");
+                  my $slot=$devaddrref->[0]->getAttribute("slot");
+                  my $function=$devaddrref->[0]->getAttribute("function");
+
+                  my $curdevaddr=\%{$devhash->{'capability'}->{'iommuGroup'}->{'address'}};
+
+
+                  if(("$curdevaddr->{domain}" eq "$domain") and
+                     ("$curdevaddr->{bus}" eq "$bus") and
+                     ("$curdevaddr->{slot}" eq "$slot") and
+                     ("$curdevaddr->{function}" eq "$function")){
+
+                     #hostdev existed in guest xml
+                     $hostdevfound=1;
+                     $hostdevobj=$hostdevref;
+                     goto PROCESS_HOSTDEV_XML_DETATCH;
+                  }
+                }
+
+
+
+                PROCESS_HOSTDEV_XML_DETATCH:
+                if($hostdevfound){
+                   #hostdev exist,remove it from guest xml
+                   my $hostdevnode = $parser->parse_balanced_chunk($newxml);
+                   $hostdevobj->parentNode()->removeChild($hostdevobj);
+                   $vmxml=$parsed->toString;
+                   $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+                   xCAT::SvrUtils::sendmsg([0,"devdetach: $devname detached from guest $node successfully "],$callback,$node);
+
+                }else{
+                   xCAT::SvrUtils::sendmsg([1,"device detaching: the specified device $devname is not attached to $node yet"],$callback,$node);
+                   return;
+                }
+            }
+
+       }
+     }
+    }
 }
+
 sub get_disks_by_userspecs {
     my $specs = shift;
     my $xml = shift;
