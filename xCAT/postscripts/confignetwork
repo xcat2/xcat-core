@@ -41,9 +41,12 @@ if [ "$str_os_type" = "linux" ];then
         isSLES=1
         nwdir="/etc/sysconfig/network"
         log_error "Only supports RHEL" "error"
+        exit -1
     elif [ -f "/etc/debian_version" ];then
         nwdir="/etc/network/interfaces.d"
         isDebian=1
+        log_error "Only supports RHEL" "error"
+        exit -1
     else
         log_error "Only supports RHEL" "error"
         exit -1
