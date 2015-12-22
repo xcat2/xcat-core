@@ -49,11 +49,18 @@ PPC (using Direct FSP Management) specific:
                [\ **del_physlots=drc_index1,drc_index2...**\ ]
                [\ **del_vadapter=slotid**\ ]
 
+
+KVM specific:
+=============
+
+
 \ **chvm**\  \ *noderange*\  [\ **--cpupin**\  \ *hostcpuset*\ ]
 
 \ **chvm**\  \ *noderange*\  [\ **--membind**\  \ *numanodeset*\ ]
 
 \ **chvm**\  \ *noderange*\  [\ **--devpassthru**\  \ *pcidevice*\ ...]
+
+\ **chvm**\  \ *noderange*\  [\ **--devdetach**\  \ *pcidevice*\ ...]
 
 
 VMware/KVM specific:
@@ -158,13 +165,6 @@ The administrator should use lsvm to get the profile content, and then edit the 
 For normal power machine:
 
 chvm could be used to modify the resources assigned to partitions. The admin shall specify the attributes with options \ *vmcpus*\ , \ *vmmemory*\ , \ *add_physlots*\ , \ *vmothersetting*\ , \ *add_vmnics*\  and/or \ *add_vmstorage*\ . If nothing specified, nothing will be returned.
-
-
-VMware/KVM specific:
-====================
-
-
-The chvm command modifes the vm specified in noderange.  Calling with deregister or purge options at the same time as the resize option is not recommended.
 
 
 zVM specific:
@@ -303,34 +303,6 @@ PPC (using Direct FSP Management) specific:
  
 
 
-\ **--cpupin hostcpuset**\ 
- 
- To pin guest domain virtual CPUs to physical host CPUs specified with \ *hostcpuset*\ .
- \ *hostcpuset*\  is a list of physical CPU numbers. Its syntax is a comma separated list and a special
- markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed. The '-' denotes the range and
- the '^' denotes exclusive.
- 
- Note: The expression is sequentially evaluated, so "0-15,^8" is identical to "9-14,0-7,15" but not
- identical to "^8,0-15".
- 
-
-
-\ **--membind numanodeset**\ 
- 
- It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes \ *numanodeset*\ . 
- If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
- access is local and improves memory access performance.
- 
-
-
-\ **--devpassthru pcidevice1,pcidevice2...**\ 
- 
- The PCI passthrough gives a guest VM direct access to I/O devices \ *pcidevice1,pcidevice2...*\ . 
- The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
- The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
- 
-
-
 
 VMware/KVM specific:
 ====================
@@ -370,6 +342,46 @@ VMware/KVM specific:
 \ **--resize**\  \ **disk**\ =\ *size*\ 
  
  Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to \ *size*\  by using comma separated values on the left side of \ **=**\ .  The disks are specified by SCSI id.  Size defaults to GB.
+ 
+
+
+
+KVM specific:
+=============
+
+
+
+\ **--cpupin hostcpuset**\ 
+ 
+ To pin guest domain virtual CPUs to physical host CPUs specified with \ *hostcpuset*\ .
+ \ *hostcpuset*\  is a list of physical CPU numbers. Its syntax is a comma separated list and a special
+ markup using '-' and '^' (ex. '0-4', '0-3,^2') can also be allowed. The '-' denotes the range and
+ the '^' denotes exclusive.
+ 
+ Note: The expression is sequentially evaluated, so "0-15,^8" is identical to "9-14,0-7,15" but not
+ identical to "^8,0-15".
+ 
+
+
+\ **--membind numanodeset**\ 
+ 
+ It is possible to restrict a guest to allocate memory from the specified set of NUMA nodes \ *numanodeset*\ . 
+ If the guest vCPUs are also pinned to a set of cores located on that same set of NUMA nodes, memory
+ access is local and improves memory access performance.
+ 
+
+
+\ **--devpassthru pcidevice1,pcidevice2...**\ 
+ 
+ The PCI passthrough gives a guest VM direct access to I/O devices \ *pcidevice1,pcidevice2...*\ . 
+ The PCI devices are assigned to a virtual machine, and the virtual machine can use this I/O exclusively.
+ The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
+ 
+
+
+\ **--devdetach pcidevice1,pcidevice2...**\ 
+ 
+ To detaching the PCI devices which are attached to VM guest via PCI passthrough from the VM guest. The devices list are a list of comma separated PCI device names delimited with comma, the PCI device names can be obtained by running \ **virsh nodedev-list**\  on the host.
  
 
 
