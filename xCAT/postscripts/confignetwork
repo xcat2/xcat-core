@@ -14,10 +14,14 @@
 
 
 # load library 
-if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
-   str_dir_name=`dirname $0`
-   . $str_dir_name/xcatlib.sh
-   . $str_dir_name/nicsutils
+str_os_type=`uname -s`
+if [ x"$str_os_type" == "xLinux" ];then
+    str_dir_name="${0%/*}"
+    . $str_dir_name/xcatlib.sh
+    . $str_dir_name/nicsutils
+else
+    log_error "Does NOT support non-Linux Operating System" "error"
+    exit -1
 fi
 
 
@@ -27,32 +31,26 @@ fi
 # Check OS version and get the directory of network configuration file
 #
 #####################################################################
-str_os_type=`uname | tr 'A-Z' 'a-z'`
 nwdir=''
 isRedhat=0
 isDebian=0
 isSLES=0
-if [ "$str_os_type" = "linux" ];then
-    str_temp=`echo $OSVER | grep -E '(sles|suse)'`
-    if [ -f "/etc/redhat-release" ];then
-        isRedhat=1
-        nwdir="/etc/sysconfig/network-scripts"
-    elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
-        isSLES=1
-        nwdir="/etc/sysconfig/network"
-        log_error "Only supports RHEL" "error"
-        exit -1
-    elif [ -f "/etc/debian_version" ];then
-        nwdir="/etc/network/interfaces.d"
-        isDebian=1
-        log_error "Only supports RHEL" "error"
-        exit -1
-    else
-        log_error "Only supports RHEL" "error"
-        exit -1
-    fi
+str_temp=`echo $OSVER | grep -E '(sles|suse)'`
+if [ -f "/etc/redhat-release" ];then
+    isRedhat=1
+    nwdir="/etc/sysconfig/network-scripts"
+elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
+    isSLES=1
+    nwdir="/etc/sysconfig/network"
+    log_error "Only supports RHEL" "error"
+    exit -1
+elif [ -f "/etc/debian_version" ];then
+    nwdir="/etc/network/interfaces.d"
+    isDebian=1
+    log_error "Only supports RHEL" "error"
+    exit -1
 else
-    log_error "Does NOT support non-Linux Operating System" "error"
+    log_error "Only supports RHEL" "error"
     exit -1
 fi
 
