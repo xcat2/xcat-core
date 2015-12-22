@@ -108,9 +108,7 @@ function log_info {
 #
 ######################################################
 function log_debug {
-    local __msg="$*"
-    $log_print_cmd $log_print_arg "[I]: $__msg" >&2
-    return 0
+    log_info "$@"
 }
 
 ####################################################
