@@ -1356,7 +1356,7 @@ sub gen_chain_for_profiles{
     }
 
     if ((exists $netprofileattr->{"bmc"}) and $hw_reconfig){
-        if ((($netboot eq 'petitboot') and ($comments eq 'openpower')) or ($netboot ne 'petiboot'))
+        if ((($netboot eq 'petitboot') and ($comments eq 'openpower')) or ($netboot ne 'petitboot'))
         {
             if (index($final_chain, "runcmd=bmcsetup") == -1){
                $final_chain = 'runcmd=bmcsetup,'.$final_chain.':reboot4deploy';
