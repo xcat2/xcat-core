@@ -159,10 +159,10 @@ sub build_pool_xml {
     $pooldesc .= '</source>';
     $pooldesc .= '<target><path>/var/lib/xcat/pools/' . $uuid . '</path></target></pool>';
 
-#turns out we can 'define', then 'build', then 'create' on the poolobj instead of 'create', to get mkdir -p like function
-#system("ssh $mounthost mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
-#place to know uuid...  And yes, we must be allowed to ssh in
-#libvirt just isn't capable enough for this sort of usage
+    #turns out we can 'define', then 'build', then 'create' on the poolobj instead of 'create', to get mkdir -p like function
+    #system("ssh $mounthost mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
+    #place to know uuid...  And yes, we must be allowed to ssh in
+    #libvirt just isn't capable enough for this sort of usage
     return $pooldesc;
 }
 
@@ -262,9 +262,9 @@ sub get_multiple_paths_by_url {
         } elsif ($_->get_name() =~ /^$node\.([^\.]*)$/) {
             $paths{ $_->get_path() } = { device => $1, format => 'raw' };
 
-     #this requires any current user of qcow2 to migrate, unfortunate to escape
-     #a vulnerability where raw user could write malicious qcow2 to header
-     #and use that to get at files on the hypervisor os with escalated privilege
+            #this requires any current user of qcow2 to migrate, unfortunate to escape
+            #a vulnerability where raw user could write malicious qcow2 to header
+            #and use that to get at files on the hypervisor os with escalated privilege
         }
     }
     return \%paths;
@@ -292,8 +292,8 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
         $format = 'qcow2';
     }
 
-#print "url=$url, dev=$dev,create=$create, force=$force, format=$format\n";
-#ok, now that we have the pool, we need the storage volume from the pool for the node/dev
+    #print "url=$url, dev=$dev,create=$create, force=$force, format=$format\n";
+    #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Could not get storage pool for $url"; }
     eval { #make a refresh attempt non-fatal to fail, since cloning can block it
@@ -325,16 +325,16 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
             }
             my $vol = $poolobj->create_volume("<volume><name>" . $desiredname . "</name><target><format type='$format'/></target><capacity>100</capacity><backingStore><path>$src</path><format type='$fmt'/></backingStore></volume>");
 
-#ok, this is simply hinting, not the real deal, so to speak
-#  1)  sys::virt complains if capacity isn't defined.  We say '100', knowing full well it will be promptly ignored down the code.  This is aggravating
-#      and warrants recheck with the RHEL6 stack
-#  2) create_volume with backingStore is how we do the clone from master (i.e. a thin clone, a la qemu-img create)
-#     note how backing store is full path, allowing cross-pool clones
-#  3) clone_volume is the way to invoke qemu-img convert (i.e. to 'promote' and flatten a vm image to a standalone duplicate volume
-#     incidentally, promote to master will be relatively expensive compared to the converse operation, as expected
-#     will have to verify as it is investigated whether this can successfully cross pools (hope so)
-#  4) qemu-img was so much more transparent and easy to figure out than this
-#  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
+            #ok, this is simply hinting, not the real deal, so to speak
+            #  1)  sys::virt complains if capacity isn't defined.  We say '100', knowing full well it will be promptly ignored down the code.  This is aggravating
+            #      and warrants recheck with the RHEL6 stack
+            #  2) create_volume with backingStore is how we do the clone from master (i.e. a thin clone, a la qemu-img create)
+            #     note how backing store is full path, allowing cross-pool clones
+            #  3) clone_volume is the way to invoke qemu-img convert (i.e. to 'promote' and flatten a vm image to a standalone duplicate volume
+            #     incidentally, promote to master will be relatively expensive compared to the converse operation, as expected
+            #     will have to verify as it is investigated whether this can successfully cross pools (hope so)
+            #  4) qemu-img was so much more transparent and easy to figure out than this
+            #  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
         } else {
             my $vol;
             unless ($sparse) {    #skip allocation specification for now
@@ -439,7 +439,7 @@ sub reconfigvm {
         }
         unless ($needfixin) { return 0; }
 
-#ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
+        #ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
         foreach (@oldbootdevs) {
             $_->parentNode->removeChild($_);
         }
@@ -561,8 +561,8 @@ sub build_diskstruct {
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
 
-#See if there are any other options. If not, increment suffidx because the already determined device node was used.
-#evidently, we support specificying explicitly how to target the system..
+            #See if there are any other options. If not, increment suffidx because the already determined device node was used.
+            #evidently, we support specificying explicitly how to target the system..
             if (@disk_parts gt 1) {
                 my @disk_opts = split(/:/, $disk_parts[1]);
                 if ($disk_opts[0] ne '') {
@@ -729,19 +729,19 @@ sub build_xmldesc {
         $advsettings = $confdata->{vm}->{$node}->[0]->{othersettings};
     }
 
-  #parse the additional settings in attrubute vm.othersettings
-  #the settings are semicolon delimited, the format of each setting is:
-  #cpu pining:         "vcpupin:<physical cpu set>"
-  #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
-  #memory binding:     "membind:<numa node set>"
+    #parse the additional settings in attrubute vm.othersettings
+    #the settings are semicolon delimited, the format of each setting is:
+    #cpu pining:         "vcpupin:<physical cpu set>"
+    #pci passthrough:    "devpassthrough:<pci device name1>,<pci device name2>..."
+    #memory binding:     "membind:<numa node set>"
     if ($advsettings) {
         my @tmp_array = split ";", $advsettings;
         foreach (@tmp_array) {
             if (/vcpupin:['"]?([^:'"]*)['"]?:?['"]?([^:'"]*)['"]?/) {
                 if ($2) {
 
-      #this is for cpu pining in the vcpu level,which is not currently supported
-      #reserved for future use
+                    #this is for cpu pining in the vcpu level,which is not currently supported
+                    #reserved for future use
                     $cpupinhash{$1} = $2;
                 } else {
                     $cpupinhash{ALL} = $1;
@@ -950,11 +950,11 @@ sub getcons {
         $graphicsnode->setAttribute("passwd", $tpasswd);
         $dom->update_device($graphicsnode->toString());
 
-#$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
+        #$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
         $consdata->{password} = $tpasswd;
         return $consdata;
 
-#return (0,{$consdata->{vidproto}.'@'.$hyper.":".$consdata->{vidport}); #$consdata->{vncport});
+        #return (0,{$consdata->{vidproto}.'@'.$hyper.":".$consdata->{vidport}); #$consdata->{vncport});
     }
 }
 
@@ -1049,15 +1049,15 @@ sub migrate {
         return power("on");
     }
 
-#TODO: currently, we completely serialize migration events.  Some IO fabrics can facilitate concurrent migrations
-#One trivial example is an ethernet port aggregation where a single conversation may likely be unable to utilize all the links
-#because traffic is balanced by a mac address hashing algorithim, but talking to several hypervisors would have
-#distinct peers that can be balanced more effectively.
-#The downside is that migration is sufficiently slow that a lot can change in the intervening time on a target hypervisor, but
-#this should not be an issue if:
-#xCAT is the only path a configuration is using to make changes in the virtualization stack
-#xCAT implements a global semaphore mechanism that this plugin can use to assure migration targets do not change by our own hand..
-#failing that.. flock.
+    #TODO: currently, we completely serialize migration events.  Some IO fabrics can facilitate concurrent migrations
+    #One trivial example is an ethernet port aggregation where a single conversation may likely be unable to utilize all the links
+    #because traffic is balanced by a mac address hashing algorithim, but talking to several hypervisors would have
+    #distinct peers that can be balanced more effectively.
+    #The downside is that migration is sufficiently slow that a lot can change in the intervening time on a target hypervisor, but
+    #this should not be an issue if:
+    #xCAT is the only path a configuration is using to make changes in the virtualization stack
+    #xCAT implements a global semaphore mechanism that this plugin can use to assure migration targets do not change by our own hand..
+    #failing that.. flock.
     unless ($targ) {
         $targ = pick_target($node);
     }
@@ -1163,7 +1163,7 @@ sub migrate {
         $vmtab->setNodeAttribs($node, { host => $targ });
         return (0, "migrated to $targ");
 
-#return (1,"Unable to find $node on $prevhyp, vm.host may be incorrect or a split-brain condition, such as libvirt forgetting a guest due to restart or bug.");
+        #return (1,"Unable to find $node on $prevhyp, vm.host may be incorrect or a split-brain condition, such as libvirt forgetting a guest due to restart or bug.");
 
     }
     my $newdom;
@@ -1173,7 +1173,7 @@ sub migrate {
     };
     if ($@) { $errstr = $@; }
 
-#TODO: If it looks like it failed to migrate, ensure the guest exists only in one place
+    #TODO: If it looks like it failed to migrate, ensure the guest exists only in one place
     if ($errstr) {
         return (1, "Failed migration of $node from $prevhyp to $targ: $errstr");
     }
@@ -1185,7 +1185,7 @@ sub migrate {
         send($sock, "dummy", 0, $pa); #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
     }
 
-#BTW, this should all be moot since the underlying kvm seems good about gratuitous traffic, but it shouldn't hurt anything
+    #BTW, this should all be moot since the underlying kvm seems good about gratuitous traffic, but it shouldn't hurt anything
     refresh_vm($newdom);
 
     #The migration seems tohave suceeded, but to be sure...
@@ -1303,20 +1303,20 @@ sub xhrm_satisfy {
             $interface =~ s/primary(:)?//g;
         }
 
-       #print "interface=$interface nic=$nic vlanip=$vlanip netmask=$netmask\n";
+        #print "interface=$interface nic=$nic vlanip=$vlanip netmask=$netmask\n";
         if ($interface) {
             $rc |= system("ssh $hyp xHRM bridgeprereq $interface:$nic $vlanip $netmask");
         } else {
             $rc |= system("ssh $hyp xHRM bridgeprereq $nic $vlanip $netmask");
         }
 
-#TODO: surprise! there is relatively undocumented libvirt capability for this...
-#./tests/interfaceschemadata/ will have to do in lieu of documentation..
-#note that RHEL6 is where that party starts
-#of course, they don't have a clean 'migrate from normal interface to bridge' capability
-#consequently, would have to have some init script at least pre-bridge it up..
-#even then, may not be able to intelligently modify the bridge remotely, so may still not be feasible for our use..
-#this is sufficiently hard, punting to 2.6 at least..
+        #TODO: surprise! there is relatively undocumented libvirt capability for this...
+        #./tests/interfaceschemadata/ will have to do in lieu of documentation..
+        #note that RHEL6 is where that party starts
+        #of course, they don't have a clean 'migrate from normal interface to bridge' capability
+        #consequently, would have to have some init script at least pre-bridge it up..
+        #even then, may not be able to intelligently modify the bridge remotely, so may still not be feasible for our use..
+        #this is sufficiently hard, punting to 2.6 at least..
     }
     return $rc;
 }
@@ -1895,7 +1895,7 @@ sub chvm {
             push @diskstoadd, get_filepath_by_url(url => $location, dev => $dev, create => $_);
         }
 
-#now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
+        #now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
         foreach (@diskstoadd) {
             my $suffix;
             my $format;
@@ -1910,7 +1910,7 @@ sub chvm {
                 $format = $confdata->{vm}->{$node}->[0]->{storageformat};
             }
 
-#when creating a new disk not cloned from anything, disable cache as copy on write content similarity is a lost cause...
+            #when creating a new disk not cloned from anything, disable cache as copy on write content similarity is a lost cause...
             my $cachemode = 'none';
 
             #unless user knows better
@@ -2052,8 +2052,8 @@ sub chvm {
             if ($cpucount) { xCAT::SvrUtils::sendmsg([ 1, "Hot add of cpus not supported (VM must be powered down to successfuly change)" ], $callback, $node); }
             if ($cpucount) {
 
-  #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..
-  #xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported"],$callback,$node);
+                #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..
+                #xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported"],$callback,$node);
             }
             if ($memory) {
                 eval {
@@ -2259,14 +2259,14 @@ sub chvm {
 
                 if ($currstate eq 'on') {
 
-#for a running KVM guest, first unbind the device from the existing driver,
-#reset the device, and bind it
-#If the <hostdev> description of a PCI device includes the attribute managed='yes',
-#and the hypervisor driver supports it, then the device is in managed mode, and attempts to
-#use that passthrough device in an active guest will automatically behave as if nodedev-detach
-#(guest start, device hot-plug) and nodedev-reattach (guest stop, device hot-unplug)
-#were called at the right points.
-#in case the hypervisor driver does not support managed mode, do this explicitly here
+                    #for a running KVM guest, first unbind the device from the existing driver,
+                    #reset the device, and bind it
+                    #If the <hostdev> description of a PCI device includes the attribute managed='yes',
+                    #and the hypervisor driver supports it, then the device is in managed mode, and attempts to
+                    #use that passthrough device in an active guest will automatically behave as if nodedev-detach
+                    #(guest start, device hot-plug) and nodedev-reattach (guest stop, device hot-unplug)
+                    #were called at the right points.
+                    #in case the hypervisor driver does not support managed mode, do this explicitly here
                     eval {
                         $devobj->dettach(undef, 0);
                     };
@@ -2593,8 +2593,8 @@ sub promote_vm_to_master {
         return;
     }
 
-#arguments validated, on with our lives
-#firrder of business, calculate all the image names to be created and ensure none will conflict.
+    #arguments validated, on with our lives
+    #firrder of business, calculate all the image names to be created and ensure none will conflict.
     my @disks = $parsedxml->findnodes('/domain/devices/disk/source');
     my %volclonemap;
     foreach (@disks) {
@@ -2958,8 +2958,8 @@ sub power {
                 }
             }
 
-#TODO: here, storage validation is not necessarily performed, consequently, must explicitly do storage validation
-#this worked before I started doing the offline xml store because every rpower on tried to rebuild
+            #TODO: here, storage validation is not necessarily performed, consequently, must explicitly do storage validation
+            #this worked before I started doing the offline xml store because every rpower on tried to rebuild
             ($dom, $errstr) = makedom($node, $cdloc);
             if ($errstr) { return (1, $errstr); }
         } elsif (not $dom->is_active()) {
@@ -2987,7 +2987,7 @@ sub power {
             my $oldxml = $dom->get_xml_description();
             my $newxml = reconfigvm($node, $oldxml);
 
-#This *was* to be clever, but libvirt doesn't even frontend the capability, great...
+            #This *was* to be clever, but libvirt doesn't even frontend the capability, great...
             unless ($newxml) { $newxml = $oldxml; } #TODO: remove this when the 'else' line can be sanely filled out
             if ($newxml) {    #need to destroy and repower..
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $newxml;
@@ -3374,11 +3374,11 @@ sub process_request {
                 return 1;
             }
 
-#mkvm used to be able to happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
-#commenting that out for now
-#          foreach (keys %orphans) {
-#              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
-#          }
+            #mkvm used to be able to happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
+            #commenting that out for now
+            #          foreach (keys %orphans) {
+            #              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
+            #          }
         } else {
             $callback->({ error => "Can't find " . join(",", keys %orphans), errorcode => [1] });
             return;
@@ -3496,7 +3496,7 @@ sub process_request {
         }
     }
 
-#while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
+    #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
 
     #Make sure they get drained, this probably is overkill but shouldn't hurt
     #my $rc=1;
@@ -3556,7 +3556,7 @@ sub forward_data {
             eval { print $rfh "ACK\n"; }; #ignore failures to send inter-process ack
             foreach (@$responses) {
 
-#save the nodes that has errors and the ones that has no-op for use by the node status monitoring
+                #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
                 my $no_op = 0;
                 if ($_->{node}->[0]->{errorcode}) { $no_op = 1; }
                 else {
@@ -3571,7 +3571,7 @@ sub forward_data {
                     }
                 }
 
-           #print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
+                #print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
                 if ($no_op) {
                     if ($errornodes) { $errornodes->{ $_->{node}->[0]->{name}->[0] } = -1; }
                 } else {
@@ -3717,8 +3717,8 @@ sub dohyp {
         $tabhandle->setNodesAttribs($updatetable->{$_});
     }
 
-#my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
-#print $out $msgtoparent; #$node.": $_\n";
+    #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
+    #print $out $msgtoparent; #$node.": $_\n";
 }
 
 1;
