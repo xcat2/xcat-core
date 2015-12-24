@@ -1,7 +1,7 @@
 Backup and Restore xCAT
 =======================
 
-It's useful to backup xcat data sometime. For example, you need to change management server and move xcat form one to another, or you need to make backups regularly and restore production environment for any accident. Below section will help you backup and restore xcat data.
+It's useful to backup xcat data sometime. For example, you need to upgrading to another version of xCAT, or you need to change management server and move xcat form one to another, or you need to make backups regularly and restore production environment for any accident. Below section will help you backup and restore xcat data.
 
 Backup User Data
 ----------------
