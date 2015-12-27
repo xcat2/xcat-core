@@ -126,14 +126,12 @@ For support clone, add 'otherpkglist' and 'otherpkgdir' attributes to the image 
 Capture Image from Golden Client
 ````````````````````````````````
 
-On Management node, use xCAT command 'imgcapture' to capture an image from the golden-client. 
+On Management node, use xCAT command 'imgcapture' to capture an image from the golden-client.:: 
 
-::
     imgcapture <golden-client> -t sysclone -o <mycomputeimage>
 
-When imgcapture is running, it pulls the image from the golden-client, and creates a image files system and a corresponding osimage definition on the xcat management node. You can use below command to check the osimage attributes.
+When imgcapture is running, it pulls the image from the golden-client, and creates a image files system and a corresponding osimage definition on the xcat management node. You can use below command to check the osimage attributes.::
 
-::
     lsdef -t osimage <mycomputeimage>
 
 Install the target nodes with the image from the golden-client

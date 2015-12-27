@@ -68,8 +68,8 @@ The following examples will create diskless images for ``cudafull`` and ``cudaru
 
 xCAT provides a sample package list files for CUDA. You can find them at:
 
-    * ``/opt/xcat/share/xcat/netboot/rh/cudafull.rhels7.ppc64le.otherpkgs.pkglist``
-    * ``/opt/xcat/share/xcat/netboot/rh/cudaruntime.rhels7.ppc64le.otherpkgs.pkglist``
+    * ``/opt/xcat/share/xcat/netboot/ubuntu/cudafull.ubuntu14.04.3.ppc64el.pkglist``
+    * ``/opt/xcat/share/xcat/netboot/ubuntu/cudaruntime.ubuntu14.04.3.ppc64el.pkglist``
 
 **[diskless note]**: For diskless images, the requirement for rebooting the machine is not applicable because the images is loaded on each reboot.  The install of the CUDA packages is required to be done in the ``otherpkglist`` **NOT** the ``pkglist``. 
 

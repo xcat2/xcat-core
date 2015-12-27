@@ -52,7 +52,7 @@ Configuration for Diskless Installation
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
 
-    **[Note]** If you want ot customized kernel version (i.e the kernel version of the diskless image you want to generate is different with the kernel version of you management node), you need to pass ``--add-kernel-support`` attribute to Mellanox. the line added into ``<profile>.postinstall`` should like below ::
+    **[Note]** If you want to customized kernel version (i.e the kernel version of the diskless image you want to generate is different with the kernel version of you management node), you need to pass ``--add-kernel-support`` attribute to Mellanox. the line added into ``<profile>.postinstall`` should like below ::
   
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support -end- -i $1 -n genimage

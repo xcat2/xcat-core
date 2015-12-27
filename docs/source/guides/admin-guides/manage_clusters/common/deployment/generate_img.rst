@@ -12,7 +12,7 @@ The output should be similar to the following: ::
         "rhels7.1-ppc64le-stateful-mgmtnode",,"compute","linux",,"install",,"rhels7.1-ppc64le",,,"Linux","rhels7.1","ppc64le",,,,,,,,
         "rhels7.1-ppc64le-netboot-compute",,"compute","linux",,"netboot",,"rhels7.1-ppc64le",,,"Linux","rhels7.1","ppc64le",,,,,,,,
 
-The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc64le.  Run ``genimage`` to generatea diskless image based on the "rhels7.1-ppc64le-netboot-compute" definition: ::
+The ``netboot-compute`` is the default **diskless** osimage created rhels7.1 ppc64le.  Run ``genimage`` to generate a diskless image based on the "rhels7.1-ppc64le-netboot-compute" definition: ::
 
         genimage rhels7.1-ppc64le-netboot-compute
 
