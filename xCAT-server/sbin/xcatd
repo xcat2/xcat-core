@@ -2992,18 +2992,22 @@ sub cmdlog_collectlog(){
         if ($rsp->{error}) {
             if (ref($rsp->{error}) eq 'ARRAY') {
                 foreach my $text (@{$rsp->{error}}) {
-                    if ($rsp->{NoErrorPrefix}) {
-                        $rsp_log.=$text;
-                    } else {
-                        $rsp_log.="Error: $text\n";
+                    if (defined($text)) {
+                        if ($rsp->{NoErrorPrefix}) {
+                            $rsp_log.=$text;
+                        } else {
+                            $rsp_log.="Error: $text\n";
+                        }
                     }
                 }
             }
             else {
-                if ($rsp->{NoErrorPrefix}) {
-                    $rsp_log.= $rsp->{error}."\n";
-                } else {
-                    $rsp_log.= "Error: ".$rsp->{error}."\n";
+                if (defined($rsp->{error})) {
+                    if ($rsp->{NoErrorPrefix}) {
+                        $rsp_log.= $rsp->{error}."\n";
+                    } else {
+                        $rsp_log.= "Error: ".$rsp->{error}."\n";
+                    }
                 }
             }
         }
@@ -3011,18 +3015,22 @@ sub cmdlog_collectlog(){
         if ($rsp->{warning}) {
             if (ref($rsp->{warning}) eq 'ARRAY') {
                 foreach my $text (@{$rsp->{warning}}) {
-                    if ($rsp->{NoWarnPrefix}) {
-                        $rsp_log.= "$text\n";
-                    } else {
-                        $rsp_log.= "Warning: $text\n";
+                    if (defined ($text)) {
+                        if ($rsp->{NoWarnPrefix}) {
+                            $rsp_log.= "$text\n";
+                        } else {
+                            $rsp_log.= "Warning: $text\n";
+                        }
                     }
                 }
             }
             else {
-                if ($rsp->{NoWarnPrefix}) {
-                    $rsp_log.= $rsp->{warning}."\n";
-                } else {
-                    $rsp_log.= "Warning: ".$rsp->{warning}."\n";
+                if (defined ($rsp->{warning})) { 
+                    if ($rsp->{NoWarnPrefix}) {
+                        $rsp_log.= $rsp->{warning}."\n";
+                    } else {
+                        $rsp_log.= "Warning: ".$rsp->{warning}."\n";
+                    }
                 }
             }
         }
@@ -3030,20 +3038,28 @@ sub cmdlog_collectlog(){
         if ($rsp->{info}) {
             if (ref($rsp->{info}) eq 'ARRAY') {
                 foreach my $text (@{$rsp->{info}}) {
-                    $rsp_log.= "$text\n";
+                    if (defined($text)) {
+                        $rsp_log.= "$text\n";
+                    }
                 }
             }else{
-                $rsp_log.= $rsp->{info}."\n";
+                if (defined ($rsp->{info})) {
+                    $rsp_log.= $rsp->{info}."\n";
+                }
             }
         }
 
         if ($rsp->{sinfo}) {
             if (ref($rsp->{sinfo}) eq 'ARRAY') {
                 foreach my $text (@{$rsp->{sinfo}}) {
-                    $rsp_log.= "$text ";
+                    if (defined($text)) {
+                        $rsp_log.= "$text ";
+                    }
                 }
             }else{
-                $rsp_log.= $rsp->{sinfo}." ";
+                if (defined($rsp->{sinfo})) {
+                    $rsp_log.= $rsp->{sinfo}." ";
+                }
             }
         }
 
@@ -3063,39 +3079,59 @@ sub cmdlog_collectlog(){
                     $desc=$node->{name};
                 }
                 if ($node->{error}) {
-                    $desc.=": Error: ".$node->{error}->[0];
-                    $errflg=1;
+                    if (defined($node->{error}->[0])) {
+                        $desc.=": Error: ".$node->{error}->[0];
+                        $errflg=1;
+                    }
                 }
                 if ($node->{warning}) {
-                    $desc.=": Warning: ".$node->{warning}->[0];
-                    $errflg=1;
+                    if (defined($node->{warning}->[0])) {
+                        $desc.=": Warning: ".$node->{warning}->[0];
+                        $errflg=1;
+                    }
                 }
                 if ($node->{data}) {
                     if (ref(\($node->{data})) eq 'SCALAR') {
-                        $desc=$desc.": ".$node->{data};
+                        if (defined($node->{data})) {
+                            $desc=$desc.": ".$node->{data};
+                        }
                     } elsif (ref($node->{data}) eq 'HASH') {
                         if ($node->{data}->{desc}) {
                             if (ref($node->{data}->{desc}) eq 'ARRAY') {
-                                $desc=$desc.": ".$node->{data}->{desc}->[0];
+                                if (defined($node->{data}->{desc}->[0])) {
+                                    $desc=$desc.": ".$node->{data}->{desc}->[0];
+                                }
                             } else {
-                                $desc=$desc.": ".$node->{data}->{desc};
+                                if (defined($node->{data}->{desc})) {
+                                    $desc=$desc.": ".$node->{data}->{desc};
+                                }
                             }
                         }
                         if ($node->{data}->{contents}) {
                             if (ref($node->{data}->{contents}) eq 'ARRAY') {
-                                $desc="$desc: ".$node->{data}->{contents}->[0];
+                                if (defined($node->{data}->{contents}->[0])) {
+                                    $desc="$desc: ".$node->{data}->{contents}->[0];
+                                }
                             }else{
-                                $desc="$desc: ".$node->{data}->{contents};
+                                if (defined($node->{data}->{contents})) {
+                                    $desc="$desc: ".$node->{data}->{contents};
+                                }
                             }
                         }
                     }elsif (ref(\($node->{data}->[0])) eq 'SCALAR') {
-                        $desc=$desc.": ".$node->{data}->[0];
+                        if (defined($node->{data}->[0])) {
+                            $desc=$desc.": ".$node->{data}->[0];
+                        }
                     }else{
                         if ($node->{data}->[0]->{desc}) {
-                            $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+                            if (defined($node->{data}->[0]->{desc}->[0])) {
+                                $desc=$desc.": ".$node->{data}->[0]->{desc}->[0];
+                            }
                         }
                         if ($node->{data}->[0]->{contents}) {
-                            $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+                            if (defined($node->{data}->[0]->{contents}->[0])) {
+                                $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
+                            }
                         }
                     }
                 }
@@ -3126,7 +3162,9 @@ sub cmdlog_collectlog(){
                             }
                             if ($data_entry->{contents}) {
                                 if ($desc) {
-                                    $desc="$desc: ".$data_entry->{contents}->[0];
+                                    if (defined($data_entry->{contents}->[0])) {
+                                        $desc="$desc: ".$data_entry->{contents}->[0];
+                                    }
                                 } else {
                                     $desc=$data_entry->{contents}->[0];
                                 }
@@ -3182,8 +3220,10 @@ sub cmdlog_submitlog() {
             $tmpreq = $item;
         }
     }
+
     $tmpreq =~ s/\[Request\]\s+(.+)/$1/g;
-    if( $tmpreq =~ /getipmicons/) {return 1;}
+    if ($tmpreq =~ /getipmicons/) {return 1;}
+    if ($tmpreq =~ /getcons/) {return 1;} 
 
     if( $cmdlog_alllog !~ /\n$/) {
         $cmdlog_alllog .= "\n";
