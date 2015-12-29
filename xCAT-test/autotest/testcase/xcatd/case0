@@ -1,0 +1,33 @@
+start:xcatd_start
+description:start xcatd daemon
+os:linux
+cmd:service xcatd start
+check:rc==0
+check:output=~Starting xcatd
+check:output=~[  OK  ]
+end
+
+start:xcatd_stop
+description:stop xcatd daemon,then start to recover test environment
+os:linux
+cmd:service xcatd stop
+check:rc==0
+check:output=~Stopping xcatd
+check:output=~[  OK  ]
+cmd:service xcatd start
+check:rc==0
+cmd:service xcatd status
+check:output=~xCAT service is running
+end
+
+start:xcatd_restart
+description:restart xcatd daemon
+os:linux
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+end
+
+
+
