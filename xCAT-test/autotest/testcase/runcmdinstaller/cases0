@@ -14,7 +14,7 @@ cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[
 check:rc==0
 cmd:sleep 300
 cmd:xdsh $$CN date
-check:output=~2015
+check:output=~$$DATE
 cmd:runcmdinstaller $$CN "ls -al /tmp"
 check:rc==0
 check:output=~yum
