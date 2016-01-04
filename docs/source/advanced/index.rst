@@ -17,6 +17,7 @@ Advanced Topics
    networks/index.rst
    ports/xcat_ports.rst
    raid/index.rst
+   restapi/index.rst
    security/index.rst
    softlayer/index.rst
    switches/index.rst
