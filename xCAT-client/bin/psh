@@ -12,6 +12,7 @@ use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 #use Data::Dumper;
+use xCAT::Utils;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
@@ -30,9 +31,13 @@ if (!GetOptions(
   'f|fanout=s' => \$fanout,
   "nonodecheck" => \$::NONODECHECK,  #does not check the noderange, in this case, noderange need to be a list of nodes.
   'h|help' => \$help,
-  ) || $help || scalar(@ARGV)<2 ) {
-  print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] [--nonodecheck] [-t <timeout value in seconds>] <noderange> <command>\n";
-  exit;
+  "v|version"  => \$::VERSION,
+  ) || scalar(@ARGV)<2 ) {
+  if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
+  if ($help) {
+    print "Usage: psh [-i <interface>] [-l <user>] [-f <fanout>] [--nonodecheck] [-t <timeout value in seconds>] <noderange> <command>\n";
+    exit;
+  }
 }
 my %nodehdl;
 my $xcathost='localhost:3001';
