@@ -11,7 +11,7 @@ node, and ssh access to the nodes that the Service Nodes services.
 The following sections explain how to accomplish this.
 
 
-Build the Service Node Diksless Image
+Build the Service Node Diskless Image
 -------------------------------------
 
 This section assumes you can build the stateless image on the management node because the Service Nodes are the same OS and architecture as the management node. If this is not the case, you need to build the image on a machine that matches the Service Node's OS architecture.

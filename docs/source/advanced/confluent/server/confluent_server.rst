@@ -30,7 +30,7 @@ The following example downloads the confluent tar package and creates a local re
 source
 ~~~~~~
 
-To build from source, ensure your machine has the correct development packages to build rpms, then execute hte following:
+To build from source, ensure your machine has the correct development packages to build rpms, then execute the following:
 
     * Clone the git repo:  ::
 

@@ -3,54 +3,17 @@
 
 shopt -s nullglob
 
-#first take the disk with the MAX WWN numer to be the installdisk
-if [ -z "$instdisk" ]; then
-   disks=$(awk -F' '  '{print $4  }' /proc/partitions |grep -e "sd[a-z]\+$")
-   for disk in $disks; do
-      diskinfo=$(udevadm info --name $disk)
-      diskname=$(IFS= ;echo $diskinfo|grep '\<DEVNAME\>'|cut -d "=" -f2|tr A-Z a-z)
-      devtype=$(IFS= ;echo $diskinfo|grep '\<DEVTYPE\>'|cut -d "=" -f2|tr A-Z a-z)
-      devwwn=$(IFS= ;echo $diskinfo|grep '\<ID_WWN\>'|cut -d "=" -f2|tr A-Z a-z)
-      [  "$devtype" != "disk" ]  && continue
-      diskentry=$diskentry"$diskname $devwwn\n"
-   done
-   instdisk=$(echo -e $diskentry|grep -v "^$"|sort  -k 2 -b -r|cut -d" " -f1|head -n 1)
+#The script getinstdisk is common for rh/sles/pkvm/ubuntu, it will write the install_disk into /tmp/install_disk file
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
+if [ -e "/tmp/install_disk" ]; then
+    instdisk=`cat /tmp/install_disk`
 fi
 
-#TODO: ondisk detection, /dev/disk/by-id/edd-int13_dev80 for legacy maybe, and no idea about efi.  at least maybe blacklist SAN if mptsas/mpt2sas/megaraid_sas seen...
-if [ -z "$instdisk" ]; then
-	for disk in /dev/sd*[^0-9]; do
-		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
-		case "$currdriver" in 
-		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
-			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		"mptsas"|"mpt2sas"|"mpt3sas") #*PROBABLY* not SAN, but SAS SAN is possible
-			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		*)
-			if [ -z "$firstdisk" ]; then firstdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		esac
-	done
-fi
-
-if [ -z "$instdisk" ]; then
-	if [ ! -z "$firstdirectdisk" ]; then 
-		instdisk=$firstdirectdisk 
-	elif [ ! -z "$probablyfirstdirectdisk" ]; then
-		instdisk=$probablyfirstdirectdisk 
-	elif [ ! -z "$firstdisk" ]; then
-		instdisk=$firstdisk 
-	fi
-fi
 # Could not determine the install disk for whatever reason,
 # try the default /dev/sda
 if [ -z "$instdisk" ]; then
     instdisk="/dev/sda"
 fi
-
-
 
 echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitioning
 echo "volgroup ibmpkvm_rootvg PV.01" >> /tmp/partitioning	

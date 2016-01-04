@@ -150,6 +150,9 @@ reboot
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh.rhels7#
 %end
 %post
+mkdir -p /var/log/xcat/
+{
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.rhels7#
+} >>/var/log/xcat/xcat.log 2>&1
 %end

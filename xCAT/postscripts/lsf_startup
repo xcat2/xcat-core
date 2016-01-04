@@ -31,7 +31,7 @@ then
 fi
 
 #get lsf main version,
-LSF_VERSION=`find /$LSF_TOP -name hostsetup|head -1|awk '{print $5}'`
+LSF_VERSION="$(find /$LSF_TOP -path "*/install/hostsetup" | grep -o "/[^/]\+/install/hostsetup" | cut -d/ -f2)"
 
 if [[ x${LSF_ADD_SERVERS} != x ]]; then
      ALL_LSF_NODES=${LSF_MASTER_LIST}' '${LSF_ADD_SERVERS}

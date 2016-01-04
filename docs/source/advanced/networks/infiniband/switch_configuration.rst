@@ -98,7 +98,7 @@ Define the read only community for snmp version 1 and 2. ::
 
 	rspconfig <switch> community=<string>
 
-Enable/disable snmp function on the swithc. ::
+Enable/disable snmp function on the switch. ::
 
     rspconfig <switch> snmpcfg=enable/disable
 

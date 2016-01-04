@@ -1,4 +1,4 @@
-start:Ubuntu_full_installation_flat_p8_le
+start:Full_installation_flat_p8_le
 os:Linux
 cmd:copycds $$ISO
 check:rc==0

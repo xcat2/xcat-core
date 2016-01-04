@@ -467,13 +467,13 @@ If not specified, the default value will be used.
     nodeset <nodename> osimage=<osimage>
 
 - the 'd:' preceding the filename tells nodeset that this is a partition disk file.
-- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the content of the partition disk file to /tmp/boot_disk, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
+- For Ubuntu, when nodeset runs and generates the /install/autoinst file for a node, it will generate a script to write the content of the partition disk file to /tmp/install_disk, this context to run the script will replace the #XCA_PARTMAN_DISK_SCRIPT# directive in /install/autoinst/<node>.pre. 
 
 .. END_Partition_Disk_File_ubuntu_only
 
 .. BEGIN_Partition_Disk_Script_ubuntu_only
 
-The disk script contains a script to generate a partitioning disk file named "/tmp/boot_disk". for example: ::
+The disk script contains a script to generate a partitioning disk file named "/tmp/install_disk". for example: ::
 
     rm /tmp/devs-with-boot 2>/dev/null || true; 
     for d in $(list-devices partition); do 
@@ -486,12 +486,12 @@ The disk script contains a script to generate a partitioning disk file named "/t
         fi 
     done; 
     if [[ -e /tmp/devs-with-boot ]]; then 
-        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/boot_disk; 
+        head -n1 /tmp/devs-with-boot | egrep  -o '\S+[^0-9]' > /tmp/install_disk; 
         rm /tmp/devs-with-boot 2>/dev/null || true; 
     else 
         DEV=`ls /dev/disk/by-path/* -l | egrep -o '/dev.*[s|h|v]d[^0-9]$' | sort -t : -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -g | head -n1 | egrep -o '[s|h|v]d.*$'`; 
         if [[ "$DEV" == "" ]]; then DEV="sda"; fi; 
-        echo "/dev/$DEV" > /tmp/boot_disk; 
+        echo "/dev/$DEV" > /tmp/install_disk; 
     fi;
 
 If not specified, the default value will be used.

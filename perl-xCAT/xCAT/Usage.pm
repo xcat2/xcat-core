@@ -250,9 +250,11 @@ my %usage = (
                         [add_vmnics=vlan1,vlan2] [add_vmstorage=<N|viosnode:slotid>] [--vios]
        chvm <noderange> [del_physlots=drc_index1,drc_index2...]
        chvm <noderange> [del_vadapter=slotid]
+   KVM specific:
        chvm <noderange> [--cpupin hostcpuset]
        chvm <noderange> [--membind numanodeset]
        chvm <noderange> [--devpassthru pcidevice1,pcidevice2... ]
+       chvm <noderange> [--devdetach pcidevice1,pcidevice2... ]
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]
    zVM specific:

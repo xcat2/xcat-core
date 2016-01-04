@@ -5,6 +5,7 @@ BEGIN
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
 }
 use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
 use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -18,9 +19,12 @@ my $interface;
 GetOptions(
   "interface=s" => \$interface,
   "f|fanout=s" => \$fanout,
+  "h|help"     => \$usage,
+  "v|version" => \$::VERSION,
   );
 my %nodehdl;
 my $xcathost='localhost:3001';
+if ($::VERSION) {print xCAT::Utils->Version() . "\n"; exit 0}
 if ($ENV{XCATHOST}) {
           $xcathost=$ENV{XCATHOST};
 }

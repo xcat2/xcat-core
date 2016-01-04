@@ -106,7 +106,7 @@ More examples of input parameters:
 
         create_raid="rl#0|pci_id#1014:034a|disk_num#1" create_raid="rl#0|pci_slot_name#0001:08:00.0|disk_num#2" 
 
-    #. Create two RAID arrays, RAID level is 0, one array uses disks sg0 and sg1, the other array uses diskS sg2 and sg3: ::
+    #. Create two RAID arrays, RAID level is 0, one array uses disks sg0 and sg1, the other array uses disks sg2 and sg3: ::
 
         create_raid="rl#0|disk_names#sg0#sg1" create_raid="rl#0|disk_names#sg2#sg3"
 

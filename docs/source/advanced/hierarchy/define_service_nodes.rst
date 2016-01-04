@@ -67,7 +67,7 @@ The following table illustrates the cluster being used in this example:
 
    The node attributes ``servicenode`` and ``xcatmaster``, define which Service node will serve the particular compute node. 
    
-   * ``servicenode`` - defines which Service Node the **Management Node** should send commands to (e.g ``xdsh``) and should be set to the hostname or IP address of the service node that the management node can conttact it by.
+   * ``servicenode`` - defines which Service Node the **Management Node** should send commands to (e.g ``xdsh``) and should be set to the hostname or IP address of the service node that the management node can contact it by.
    * ``xcatmaster`` - defines which Service Node the **Compute Node** should boot from and should be set to the hostname or IP address of the service node that the compute node can contact it by.
 
    You must set both ``servicenode`` and ``xcatmaster`` regardless of whether or not you are using service node pools, for most scenarios, the value will be identical. ::

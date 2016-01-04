@@ -25,7 +25,7 @@ Set the correct NIC from which DHCP server provide service::
 
     chdef -t site dhcpinterfaces=eth1,eth2
 
-Add dynamic range in purpose of assigning temporary IP adddress for FSP/BMCs and hosts::
+Add dynamic range in purpose of assigning temporary IP address for FSP/BMCs and hosts::
 
     chdef -t network 10_0_0_0-255_255_0_0 dynamicrange="10.0.100.1-10.0.100.100"
     chdef -t network 50_0_0_0-255_255_0_0 dynamicrange="50.0.100.1-50.0.100.100"
