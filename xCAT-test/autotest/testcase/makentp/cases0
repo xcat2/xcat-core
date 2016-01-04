@@ -27,9 +27,9 @@ cmd:makentp
 check:rc==0
 check:output=~configuring management node
 cmd:date
-check:output=~2015
+check:output=~$$DATE
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-check:output=~2015
+check:output=~$$DATE
 end
 start:makentp_a
 descriptiop:makentp -a
@@ -42,9 +42,9 @@ cmd:makentp -a
 check:rc==0
 check:output=~configuring management node
 cmd:date
-check:output=~2015
+check:output=~$$DATE
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then clock ;else hwclock  ; fi
-check:output=~2015
+check:output=~$$DATE
 end
 
 start:updatenode_computenode_P_setupntp
@@ -61,9 +61,9 @@ check:output=~Running of postscripts has completed
 check:output=~Running postscript: setupntp
 cmd:sleep 120
 cmd:xdsh $$CN date
-check:output=~2015
+check:output=~$$DATE
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "rhel" ]];then xdsh $$CN clock ;else xdsh $$CN hwclock  ; fi
-check:output=~2015
+check:output=~$$DATE
 cmd:chdef $$CN -m postscripts=setupntp
 end
 
