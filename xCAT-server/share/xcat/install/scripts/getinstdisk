@@ -28,9 +28,9 @@ if [ -z "$install_disk" ]; then
         dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | awk -F = '{print $2}' | tr A-Z a-z)
         
         if [ "$dev_type" == "disk" ]; then
-            disks=$disks"$entry"
+            disks=$disks" $entry"
         elif [ "$dev_type" == "partition" ]; then
-            partitions=$partitions"$entry"
+            partitions=$partitions" $entry"
         fi
 
     done
@@ -114,15 +114,15 @@ if [ -z "$install_disk" ]; then
 
             "ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas")
                 echo "$disk $disk_wwn" >> /tmp/tmp_firstdisks
-                echo "Add disk:" $disk $driver $disk_wwn " into firstdisks" >> tmp/tmp/getinstalldisk_log
+                echo "Add disk:" $disk $driver $disk_wwn " into firstdisks" >> tmp/getinstalldisk_log
                 ;;
             "mptsas"|"mpt2sas"|"mpt3sas")
                 echo "$disk $disk_wwn" >> /tmp/tmp_seconddisks
-                echo "Add disk:" $disk $driver $disk_wwn " into seconddisks" >> tmp/tmp/getinstalldisk_log
+                echo "Add disk:" $disk $driver $disk_wwn " into seconddisks" >> tmp/getinstalldisk_log
                 ;;
             *)
                 echo "$disk $disk_wwn" >> /tmp/tmp_thirddisks
-                echo "Add disk:" $disk $driver $disk_wwn " into thirddisks" >> tmp/tmp/getinstalldisk_log
+                echo "Add disk:" $disk $driver $disk_wwn " into thirddisks" >> tmp/getinstalldisk_log
                 ;;
  
             esac
