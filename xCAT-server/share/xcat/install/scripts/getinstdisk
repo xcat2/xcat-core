@@ -17,6 +17,10 @@
 
 install_disk=""
 rm /tmp/install_disk
+tmpdir="/tmp/xcat.getinstalldisk"
+mkdir -p $tmpdir
+logfile="/tmp/xcat_getinstalldisk_log"
+tmpfile=$tmpdir"/getinstalldisk_"
 
 # Check if any disk have installed OS
 if [ -z "$install_disk" ]; then
@@ -35,16 +39,17 @@ if [ -z "$install_disk" ]; then
 
     done
 
+    mount_dir=$tmpdir"/xcat.getinstalldisk.mount"
+    mkdir -p $mount_dir;
+
     for partition in $partitions; do
 
-        echo Check the partition $partition >> /tmp/getinstalldisk_log
+        echo "Check the partition $partition." >> $logfile
 
-        if [ -e "/tmp/tmp_${partition%%[0-9]*}" ]; then
-            echo The disk had OS installed, check next partition. >> /tmp/getinstalldisk_log
+        if [ -e "$tmpfile${partition%%[0-9]*}" ]; then
+            echo "    The disk ${partition%%[0-9]*} had OS installed, check next partition." >> $logfile
             continue
         fi
-
-        mkdir -p /tmp/mymount;
 
         fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | awk -F = '{print $2}')
 
@@ -52,54 +57,60 @@ if [ -z "$install_disk" ]; then
 
         # mount partition based on fs type, if fs_type is swap, do not mount it, jump to next partition.
         if [ -z "$fs_type" ]; then
-            mount /dev/$partition /tmp/mymount 
+            mount /dev/$partition $mount_dir
             rc=$?
         elif [ "$fs_type" != "swap" ]; then
-            mount -t $fs_type /dev/$partition /tmp/mymount 
+            mount -t $fs_type /dev/$partition $mount_dir
             rc=$?
         fi
 
         if [ $rc -eq 0 ]; then
+      
+            haskernel=0
 
-            ker_dir="/tmp/mymount"            
+            echo "    Partition $partition mount success." >> $logfile
+
+            ker_dir=$mount_dir            
             
-            if [ -d /tmp/mymount/boot ]; then
-                ker_dir="/tmp/mymount/boot"
+            if [ -d "$mount_dir/boot" ]; then
+                ker_dir="$mount_dir/boot"
             fi
 
             for i in $ker_dir/vmlinuz*; do
                 disk_part=${partition%%[0-9]*}
                 disk_wwn=$(udevadm info --query=property --name=$disk_part | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
                 disk_array=$disk_array"$disk_part $disk_wwn\n"
-                touch /tmp/tmp_$disk_part
+                touch "$tmpfile$disk_part"
+                echo -e "    The partition $partition has kernel file." >> $logfile
+                haskernel=1
                 break
             done
+        
+            if [ $haskernel -ne 1 ]; then
+                echo "    The partition $partition does not have kernel file." >> $logfile
+            fi
              
-            echo -e The partition $partition has kernel file. >> /tmp/getinstalldisk_log
-
-            umount /tmp/mymount || echo $partition umount failed. >> /tmp/getinstalldisk_log
+            umount $mount_dir || echo "    $partition umount failed." >> $logfile
         else
-            echo Partition $partition mount failed or the partition is swap. >> /tmp/getinstalldisk_log
+            echo "    Partition $partition mount failed or the partition is swap." >> $logfile
         fi
     done
-    
+
     if [ "$disk_array" ]; then    
-        echo -e The disk_array: >> /tmp/getinstalldisk_log
-        echo -e $disk_array >> /tmp/getinstalldisk_log
+        echo -e "The disk_array:" >> $logfile
+        echo -e "    $disk_array" >> $logfile
 
         install_disk=/dev/$(echo -e $disk_array | grep -v "^$" | sort -t : -k 2 -b | cut -d " " -f1 | head -n 1)
    
-        echo -e The install_disk is $install_disk. >> /tmp/getinstalldisk_log
+        echo -e "The install_disk is $install_disk." >> $logfile
     fi
-    rm -f /tmp/tmp_*;
-    rmdir /tmp/mymount;
+    rmdir $mount_dir;
+    rm $tmpfile*;
 fi
 
 # Sort all disks based on their WWN and driver type, choose the first one
 if [ -z "$install_disk" ]; then
     
-    rm -f /tmp/tmp_*;
-
     for disk in $disks; do
 
         disk_wwn=$(udevadm info --query=property --name=$disk | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
@@ -108,21 +119,21 @@ if [ -z "$install_disk" ]; then
 
             disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'| head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | tr A-Z a-z)
 
-            echo -e The disk $disk information: disk_wwn=$disk_wwn disk_driver=$disk_driver. >> /tmp/getinstalldisk_log
+            echo -e "The disk $disk information: disk_wwn=$disk_wwn disk_driver=$disk_driver." >> $logfile
 
             case "$disk_driver" in
 
             "ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas")
-                echo "$disk $disk_wwn" >> /tmp/tmp_firstdisks
-                echo "Add disk:" $disk $driver $disk_wwn " into firstdisks" >> tmp/getinstalldisk_log
+                echo "$disk $disk_wwn" >> "$tmpfile""firstdisks"
+                echo "Add disk: $disk $driver $disk_wwn into firstdisks" >> $logfile
                 ;;
             "mptsas"|"mpt2sas"|"mpt3sas")
-                echo "$disk $disk_wwn" >> /tmp/tmp_seconddisks
-                echo "Add disk:" $disk $driver $disk_wwn " into seconddisks" >> tmp/getinstalldisk_log
+                echo "$disk $disk_wwn" >> "$tmpfile""seconddisks"
+                echo "Add disk: $disk $driver $disk_wwn into seconddisks" >> $logfile
                 ;;
             *)
-                echo "$disk $disk_wwn" >> /tmp/tmp_thirddisks
-                echo "Add disk:" $disk $driver $disk_wwn " into thirddisks" >> tmp/getinstalldisk_log
+                echo "$disk $disk_wwn" >> "$tmpfile""thirddisks"
+                echo "Add disk: $disk $driver $disk_wwn into thirddisks" >> $logfile
                 ;;
  
             esac
@@ -130,8 +141,8 @@ if [ -z "$install_disk" ]; then
     done
 
     for seq in first second third; do
-        if [ -s /tmp/tmp_${seq}disks ]; then
-            install_file="/tmp/tmp_${seq}disks"
+        if [ -s $tmpfile${seq}disks ]; then
+            install_file="$tmpfile${seq}disks"
             break
         fi
     done
@@ -139,16 +150,17 @@ if [ -z "$install_disk" ]; then
 
     if [ "$install_file" ] && [ -s $install_file ]; then
         install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -t : -k 2 -b | cut -d " " -f1 | head -n 1)
-        echo -e The install_disk is $install_disk by sorting WWN and DRIVER. >> /tmp/getinstalldisk_log
-        rm -f /tmp/tmp_*;
-    fi
-      
+        echo -e "The install_disk is $install_disk by sorting WWN and DRIVER." >> $logfile
+    fi    
+    rm $tmpfile*;
 fi
+
+rm -rf $tmpdir;
 
 # Cannot find proper disk for OS install, select the default one "/dev/sda"
 if [ -z "$install_disk" ]; then
     install_disk="/dev/sda"
-    echo -e The default install_disk is $install_disk. >> /tmp/getinstalldisk_log
+    echo -e "The default install_disk is $install_disk." >> $logfile
 fi
 
 # Output the result to /tmp/install_disk file
