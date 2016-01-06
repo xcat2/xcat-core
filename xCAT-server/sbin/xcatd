@@ -713,7 +713,8 @@ sub do_udp_service { #This function opens up a UDP port
 	   $part = $socket->recv($data,1500);
            $packets{$part} = [$part,$data];
            } elsif ($hdl == $sslctl) { 
-	   	update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
+               next;
+	   	#update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
            } elsif ($hdl == $discoctl) {  #got a discovery response....
            } else { 
 		print "Something is wrong in udp process (search xcatd for this string)\n";
@@ -933,7 +934,7 @@ $SIG{TERM} = $SIG{INT} = sub {
       kill 2, $_;
    }
    if ($pid_UDP) {
-      kill 2, $pid_UDP;
+      kill 12, $pid_UDP;
    }
    if ($pid_MON) {
       kill 2, $pid_MON;
