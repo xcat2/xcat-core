@@ -10,7 +10,7 @@ Database Attributes
 -------------------
 
 * excludenodes: 
-  A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes for any xCAT commands. See :doc:`noderange </guides/admin-guides/references/man3/noderange>` for details on supported formats.
+  A set of comma separated nodes and/or groups that would automatically be subtracted from any noderange, it can be used for excluding some failed nodes from any xCAT command. See :doc:`noderange </guides/admin-guides/references/man3/noderange>` for details on supported formats.
 
 * nodestatus:  
   If set to ``n``, the ``nodelist.status`` column will not be updated during the node deployment, node discovery and power operations. The default is to update.
@@ -93,7 +93,7 @@ Services Attributes
 -------------------
 
 * consoleondemand:  
-  When set to ``yes``, conserver connects and creates the console output only when the user opens the console. Default is ``no`` on Linux, yes on AIX.
+  When set to ``yes``, conserver connects and creates the console output only when the user opens the console. Default is ``no`` on Linux, ``yes`` on AIX.
 
 * timezone:  
   The timezone for all the nodes in the cluster(e.g. ``America/New_York``).
@@ -102,7 +102,7 @@ Services Attributes
   tftp directory path. Default is /tftpboot.
 
 * tftpflags:  
-  The flags that used to start tftpd. Default is ``-v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf`` if ``tftplfags`` is not set.
+  The flags used to start tftpd. Default is ``-v -l -s /tftpboot -m /etc/tftpmapfile4xcat.conf`` if ``tftplfags`` is not set.
 
 
 Virtualization Attributes
@@ -116,7 +116,7 @@ xCAT Daemon attributes
 ----------------------
 
 * xcatdport:  
-  The port used by the xcatd daemon for client/server communication.
+  The port used by xcatd daemon for client/server communication.
 
 * xcatiport:  
   The port used by xcatd to receive installation status updates from nodes.

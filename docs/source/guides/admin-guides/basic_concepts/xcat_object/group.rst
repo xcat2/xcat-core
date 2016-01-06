@@ -41,7 +41,7 @@ These two options will result in exactly the same definitions and attribute valu
 Creating a dynamic node group
 -----------------------------
 
-The selection criteria for a dynamic node group is specified by providing a list of ``attr<operator>val`` pairs that can be used to determine the members of a group. The valid operators include: ``==``, ``!=``, ``=~`` and ``!~``. The ``attr`` field can be any node definition attribute returned by the ``lsdef`` command. The ``val`` field in selection criteria can be a simple sting or a regular expression. A regular expression can only be specified when using the ``=~`` or ``!~`` operators. See <TODO http://www.perl.com/doc/manual/html/pod/perlre.html> for information on the format and syntax of regular expressions.
+The selection criteria for a dynamic node group is specified by providing a list of ``attr<operator>val`` pairs that can be used to determine the members of a group. The valid operators include: ``==``, ``!=``, ``=~`` and ``!~``. The ``attr`` field can be any node definition attribute returned by the ``lsdef`` command. The ``val`` field in selection criteria can be a simple sting or a regular expression. A regular expression can only be specified when using the ``=~`` or ``!~`` operators. See http://www.perl.com/doc/manual/html/pod/perlre.html for information on the format and syntax of regular expressions.
 
 Operator descriptions ::
 

@@ -4,19 +4,19 @@ node
 Description
 -----------
 
-The definition of physical units in the cluster, such as lpar,virtual machine, frame, cec, hmc, switch. 
+The definition of physical units in the cluster, such as lpar, virtual machine, frame, cec, hmc, switch. 
 
 Key Attrubutes
 --------------
 
 * os: 
-    The operating system deployed on this node. Valid values: AIX, rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #)
+    The operating system deployed on this node. Valid values: AIX, rhels*, rhelc*, rhas*, centos*, SL*, fedora*, sles* (where * is the version #)
 
 * arch: 
     The hardware architecture of this node. Valid values: x86_64, ppc64, x86, ia64.
 
 * groups:
-    Usually, there are a set of nodes with some attributes in common, xCAT admin can define a node group containing these nodes, so that the management task can be issued against the group instead of individual nodes. A node can be a memeber of different groups, so the value of this attributes is a comma-delimited list of groups. At least one group is required to create a node. The new created group names should not be prefixed with "__" as this token has been preserverd as the intrnal group name.
+    Usually, there are a set of nodes with some attributes in common, xCAT admin can define a node group containing these nodes, so that the management task can be issued against the group instead of individual nodes. A node can be a memeber of different groups, so the value of this attributes is a comma-delimited list of groups. At least one group is required to create a node. The new created group names should not be prefixed with "__" as this token has been preserverd as the internal group name.
 
 * mgt:
     The method to do general hardware management of the node. This attribute can be determined by the machine type of the node. Valid values: ipmi, blade, hmc, ivm, fsp, bpa, kvm, esx, rhevm. 
@@ -54,7 +54,7 @@ Key Attrubutes
     The provisioning method for node deployment. Usually, this attribute is an ``osimage`` object name. 
 
 * status:
-    The current status of the node, which is updated by xCAT. This value can be used to monitor the provision process. Valid values: powering-off,installing,booting/netbooting,booted.
+    The current status of the node, which is updated by xCAT. This value can be used to monitor the provision process. Valid values: powering-off, installing, booting/netbooting, booted.
 
 Use Cases
 ---------
