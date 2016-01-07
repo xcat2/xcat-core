@@ -7,11 +7,28 @@ This document does not give the coding rules one by one, but give a piece of exa
 
 This standard referred to the Perl code style from perldoc: http://perldoc.perl.org/perlstyle.html
 
+Tidy Your Code
+--------------
+
 Meanwhile, you are recommended to use following command line to tidy your code: ::
 
-    perltidy -w -syn -g -opt -i=4 -nt -io -nbbc -kbl=2 -pscf=-c -aws -pt=2 -bbc -nolc  <orig_code> -o <formatted_code>
+    perltidy -w -syn -g -opt -i=4 -nt -io -nbbc -kbl=2 -pscf=-c -aws \
+        -pt=2 -bbc -nolc  <orig_code> -o <formatted_code>
+
+How to install ``perltidy`` tool:
+
+* **[RHEL]** ::
+
+    yum install perltidy.noarch
     
-Code Standard Example: ::
+* **[UBUNTU]** ::
+
+    apt-get install perltidy
+
+Code Standard Example:
+----------------------
+
+::
 
     #! /usr/bin/perl
     
@@ -45,7 +62,7 @@ Code Standard Example: ::
     }
     
     
-    # Declar variables
+    # Declare variables
     my $a_local_scale;
     my @a_local_array;
     my %a_local_hash;
