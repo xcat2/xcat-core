@@ -2468,6 +2468,7 @@ my @nodeattrs = (
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmhost',
+                 only_if => 'mgt=kvm',
                  tabentry => 'vm.host',
                  access_tabentry => 'vm.node=attr:node',
                 },
@@ -2484,6 +2485,7 @@ my @nodeattrs = (
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmothersetting',
+                 only_if => 'mgt=kvm',
                  tabentry => 'vm.othersettings',
                  access_tabentry => 'vm.node=attr:node',
                 },
@@ -2504,10 +2506,12 @@ my @nodeattrs = (
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmmemory',
+                 only_if => 'mgt=kvm',
                  tabentry => 'vm.memory',
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmcpus',
+                 only_if => 'mgt=kvm',
                  tabentry => 'vm.cpus',
                  access_tabentry => 'vm.node=attr:node',
                 },
@@ -2547,6 +2551,34 @@ my @nodeattrs = (
                  tabentry => 'vm.cluster',
                  access_tabentry => 'vm.node=attr:node',
                 },
+
+############################################ 
+# docker attributes are mapped to vm table #
+# dockerhost --> vm.host
+# dockercpus  --> vm.cpus
+# dockermemory --> vm.memory
+# dockerflag --> vm.othersettings
+                {attr_name => 'dockerhost',
+                 only_if => 'mgt=docker',
+                 tabentry => 'vm.host',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'dockercpus',
+                 only_if => 'mgt=docker',
+                 tabentry => 'vm.cpus',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'dockermemory',
+                 only_if => 'mgt=docker',
+                 tabentry => 'vm.memory',
+                 access_tabentry => 'vm.node=attr:node',
+                },
+                {attr_name => 'dockerflag',
+                 only_if => 'mgt=docker',
+                 tabentry => 'vm.othersettings',
+                 access_tabentry => 'vm.ndoe=attr:node',
+                },
+
 ######################
 #  hypervisor table      #
 ######################
