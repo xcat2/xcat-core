@@ -1426,16 +1426,17 @@ sub initDB
             }
         }
 
-        # add default value to site.xcatsslversion
-        $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
-        $outref = xCAT::Utils->runcmd("$cmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',"Could not add default value for site.xcatsslversion.");
+        # Set default value for site.xcatsslversion when update xcat
+        $cmds = "XCATBYPASS=Y $::XCATROOT/sbin/tabdump site 2>/dev/null |grep xcatsslversion";
+        xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC != 0) {
+            # if site.xcatsslversion was not set, then set the default value TLSv1
+            $cmds = "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+            xCAT::Utils->runcmd("$cmds", 0);
+            if ($::RUNCMD_RC != 0) {
+                xCAT::MsgUtils->message('E',"Could not add default value for site.xcatsslversion.");
+            }
         }
-
-
-
    } 
    # remove xcatserver,xcatclient
    # from the postscripts. They are now called by servicenode

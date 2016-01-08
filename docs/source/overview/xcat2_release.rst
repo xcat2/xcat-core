@@ -7,6 +7,27 @@ The New OS and New Hardware which are listed in the table have been fully tested
 
 For a complete list of new functions, bug fixes, restrictions, and known problems, refer to the individual release notes.
 
+xCAT 2.11.x
+-----------
++---------------------------------+---------------+-------------+----------------------------------+
+|xCAT                             |New OS         |New          |New Feature                       |
+|Version                          |               |Hardware     |                                  |
++=================================+===============+=============+==================================+
+|| xCAT 2.11                      |- RHEL 7.2 LE  |- S822LC(GCA)|- NVIDIA GPU for OpenPOWER        |
+|| 2015/12/11                     |- UBT 14.4.3 LE|- S822LC(GTA)|- Infiniband for OpenPOWER        |
+||                                |- UBT 15.10 LE |- S812LC     |- KIT support for OpenPOWER       |
+| `2.11 Release Notes <https://   |- PowerKVM 3.1 |- NeuCloud OP|- renergy command for OpenPOWER   |
+| github.com/xcat2/xcat-core/     |               |- ZoomNet RP |- rlash command for OpenPOWER     |
+| wiki/XCAT_2.11_Release_Notes>`_ |               |             |- Add xCAT Troubleshooting Log    |
+|                                 |               |             |- xCAT Log Classification         |
+|                                 |               |             |- RAID Configuration              |
+|                                 |               |             |- Accelerate the genimage process |
+|                                 |               |             |- Add bmcdiscover Command         |
+|                                 |               |             |- Enhance the xcatdebugmode       |
+|                                 |               |             |- new xCAT doc in RTD             |
++---------------------------------+---------------+-------------+----------------------------------+
+
+
 xCAT 2.10.x
 -----------
 
@@ -37,6 +58,13 @@ xCAT 2.9.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.9.2 for AIX             |- AIX 6.1.8.6  |- Power 8    |- ssl version control in xcatd    |
+|| 2015/11/11                     |- AIX 6.1.9.5  |  for AIX    |                                  |
+||                                |- AIX 7.1.3.5  |             |                                  |
+| `2.9.2 Release Notes <https://  |               |             |                                  |
+| github.com/xcat2/xcat-core/     |               |             |                                  |
+| wiki/XCAT_2.9.2_Release_Notes>`_|               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.9.1                     |- RHEL 7.1     |             |- Nvidia GPU                      |
 || 2015/03/20                     |- UBT 14.4.2   |             |- Ubuntu Local Mirror             |
 ||                                |               |             |- Sles12 diskless                 |
