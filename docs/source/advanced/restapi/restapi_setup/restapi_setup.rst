@@ -1,7 +1,7 @@
 Enable the HTTPS service for REST API 
 =====================================
 
-To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT management is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'. 
+To improve the security between the REST API client and server, enabling the HTTPS service on the xCAT MN is recommended. And the REST API client should use the 'https' to access web server instead of the 'http'. 
 
 * **[RHEL6 (x86_64/ppc64) and RHEL5 (x86_64)]** ::
 
@@ -50,7 +50,7 @@ To change the hostname, edit /etc/sysconfig/network (RHEL) or /etc/HOSTNAME (SLE
 
     hostname <newFQDN>
 
-After change the hostname, run the xcat command ``xcatconfig`` to generate a new server certificate base on the correct hostname: ::
+After changing the hostname, run the xcat command ``xcatconfig`` to generate a new server certificate based on the correct hostname: ::
 
     xcatconfig -c
 
@@ -92,19 +92,20 @@ Some operations like 'create osimage' (copycds) need a long time (longer than 3 
 Set Up an Account for Web Service Access
 ========================================
 
-User needs a username and password to access the REST API. When the REST API request is passed to xcatd, the username and password will be verified base on the :doc:`xCAT passwd Table </guides/admin-guides/references/man5/passwd.5>`, and then xcatd will look in the `xCAT policy Table </guides/admin-guides/references/man5/policy.5>` to see if the user is allowed to perform the requested operation. 
+User needs a username and password to access the REST API. When the REST API request is passed to xcatd, the username and password will be verified based on the :doc:`xCAT passwd Table </guides/admin-guides/references/man5/passwd.5>`, and then xcatd will look in the :doc:`xCAT policy Table </guides/admin-guides/references/man5/policy.5>` to see if the user is allowed to perform the requested operation. 
 
-The account which key is **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL: 
-    userName: Pass the username of the account 
-    userPW:   Pass the password of the account (xCAT 2.10)
-    password: Pass the password of the account (xCAT earlier than 2.10)
+The account with key of **xcat** will be used for the REST API authentication. The username and password should be passed in as the attirbutes of URL: 
+
+* userName: Pass the username of the account 
+* userPW:   Pass the password of the account (xCAT 2.10)
+* password: Pass the password of the account (xCAT earlier than 2.10)
 
 You can use the root userid for your API calls, but we recommend you create a new userid (for example wsuser) for the API calls and give it the specific privileges you want it to have.
 
 Use root Account
 ----------------
 
-The certificate and ssh keys for **root** account has been created during the install of xCAT. The public ssh key also has been uploaded to computer node so that xCAT MN can ssh to CN without password. Then the only thing needs to do is to add the password for the **root** in the passwd table. ::
+The certificate and ssh keys for **root** account has been created during the install of xCAT. The public ssh key also has been uploaded to compute node so that xCAT MN can ssh to CN without password. Then the only thing left to do is to add the password for the **root** in the passwd table. ::
 
     tabch key=xcat,username=root passwd.password=<root-pw>
 
@@ -126,7 +127,7 @@ Create the SSL certificate under that user's home directory so that user can be 
 
 When running this command you'll see SSL certificates created. Enter "y" where prompted and take the defaults. 
 
-To enable the POST method of resources like nodeshell,nodecopy,updating,filesyncing for the non-root user, you need to enable the ssh communication between xCAT MN and CN without password. Log in as <username> and run following command: ::
+To enable the POST method of resources like nodeshell, nodecopy, updating and filesyncing for the non-root user, you need to enable the ssh communication between xCAT MN and CN without password. Log in as <username> and run following command: ::
 
     xdsh <noderange> -K
 

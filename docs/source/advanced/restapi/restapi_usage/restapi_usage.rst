@@ -22,7 +22,7 @@ xCAT REST API supports two ways to authenticate the access user: user account (u
 User Account
 ------------
 
-Follow the steps in `WEB Service Setup </advanced/restapi/restapi_setup/index>`, you have created an account for yourself. Use this pair of username and password, you can access the https server.
+Follow the steps in :doc:`WEB Service Setup </advanced/restapi/restapi_setup/index>`, you can create an account for yourself. Then use that username and password to access the https server.
 
 The general format of the URL used in the REST API call is: ::
 
@@ -42,7 +42,7 @@ Example: ::
 Access Token
 ------------
 
-xCAT also supports to use the Access Token to replace the using of username+password in every access. Before the access to any resource, you need get a token first with your account (username+password) ::
+xCAT also supports the use the Access Token to replace the using of username+password in every access. Before accessing any resource, you need get a token with your account (username+password) ::
 
     # curl -X POST --cacert /root/ca-cert.pem \
         'https://<FQDN of xCAT MN>/xcatws/tokens?pretty=1' -H Content-Type:application/json --data \
@@ -58,13 +58,13 @@ Then in the subsequent REST API access, the token can be used to replace the use
 
     curl -X GET --cacert /root/ca-cert.pem -H X-Auth-Token:5cabd675-bc2e-4318-b1d6-831fd1f32f97 'https://<FQDN of xCAT MN>/xcatws/<resource>?<parameters>
 
-The validity of token of 24 hours. If an used token has been expired, you will get a 'Authentication failure' error. Then you need reacquire a token with your account.
+The validity of token is 24 hours. If an old token has expired, you will get a 'Authentication failure' error. Then you need reacquire a token with your account.
 
 
 The Common Parameters for Resource URI
 ======================================
 
-xCAT REST API supports to use several common parameters in the resource URI to enable specific output:
+xCAT REST API supports several common parameters in the resource URI to enable specific output:
 
 * **pretty=1** \- It is used to format the json output for easier viewing on the screen. ::
 
@@ -86,7 +86,7 @@ xCAT REST API supports to use several common parameters in the resource URI to e
        }
      }
 
-``Note:`` All the above parameters can be used in mixed like following: ::
+``Note:`` All the above parameters can be used together like following: ::
 
     https://<xCAT MN>/xcatws/nodes?pretty=1&debug=1
 
@@ -101,7 +101,7 @@ When an Error occurs during the operation
 
 (i.e. there's error/errorcode in the output of xcat xml response):
 
-When error happens, for all the GET/PUT/POST/DELETE methods, the output will only includes 'error' and 'errorcode' properties: ::
+When error happens, for all the GET/PUT/POST/DELETE methods, the output will only include 'error' and 'errorcode' properties: ::
 
     {
        error:[
@@ -170,12 +170,12 @@ If the output is not object related, put all the output in a list (array): ::
 For the PUT/DELETE methods
 ``````````````````````````
 
-There will be no output for operations that succeed. (We made this decision because the output for them is always not formatted, and no program will read it if xcat indicates the operation has succeeded.)
+There will be no output for operations that succeeded. (We made this decision because the output for them not formatted, and no program will read it if xcat indicates the operation has succeeded.)
 
 For POST methods
 ````````````````
 
-Since POST methods can either be creates or general actions, there is not as much consistency. In the case of a create, the rule is the same as PUT/DELETE (no output if successful). For actions that have output that matters (e.g. nodeshell, filesyncing, sw, postscript), the rules are like the GET method.
+Since POST methods can either be creates or general actions, there is not much consistency. In the case of a create, the rule is the same as PUT/DELETE (no output if successful). For actions that have output that matters (e.g. nodeshell, filesyncing, sw, postscript), the rules are like the GET method.
 
 
 Testing the API
@@ -193,7 +193,7 @@ Refer to the file /opt/xcat/ws/xcatws-test.pl: ::
 An Example Script of How to Use curl to Test Your xCAT REST API Service
 -----------------------------------------------------------------------
 
-It can be used as an initial script to make your xCAT REST API script to access and control xCAT resources. From the output message, you also could get the idea of how to access xCAT resources. ::
+It can be used as an example script to access and control xCAT resources. From the output message, you also could get the idea of how to access xCAT resources. ::
 
     /opt/xcat/ws/xcatws-test.sh
     ./xcatws-test.sh -u root -p cluster
@@ -204,7 +204,7 @@ It can be used as an initial script to make your xCAT REST API script to access 
 
 But for exploration and experimentation, you can make API calls from your browser or using the **curl** command.
 
-To make an API call from your browser, use the desired URL from this document. To simplify the test step, all the examples for the resources uses 'curl -k' to use insecure http connection and use the 'username+password' to authenticate the user. ::
+To make an API call from your browser, uses the desired URL from this document. To simplify the test step, all the examples for the resources uses 'curl -k' to use insecure http connection and use the 'username+password' to authenticate the user. ::
 
     curl -X GET -k 'https://myserver/xcatws/nodes?userName=xxx&userPW=xxx&pretty=1'
 
