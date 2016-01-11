@@ -546,7 +546,9 @@ sub scan_process{
                if ($child == 0) {
                     close($cfd);
                     $callback = \&send_rep;
-                       bmcdiscovery_ipmi(${$live_ip}[$i],$opz,$opw,$request_command);
+                    # Set child process default, if not the function runcmd may return error
+                    $SIG{CHLD}='DEFAULT';
+                    bmcdiscovery_ipmi(${$live_ip}[$i],$opz,$opw,$request_command);
                     exit 0;
                } else {
 
@@ -866,23 +868,33 @@ sub bmcdiscovery_ipmi {
         if ($output =~ /System Power\s*:\s*\S*/) {
             my $mtm = '';
             my $serial = '';
-            # For system X and Tuleta, the fru 0 will contain the MTMS
-            my $fru0_cmd = "/opt/xcat/bin/ipmitool-xcat -I lanplus $bmcusername $bmcpassword -H $ip fru print 0";
-            my @fru0_output_array = xCAT::Utils->runcmd($fru0_cmd, -1);
-            my $fru0_output = join(" ", @fru0_output_array);
-            if (($fru0_output =~ /Product Part Number   :\s*(\S*).*Product Serial        :\s*(\S*)/)) {
-                $mtm = $1;
-                $serial = $2;
-            } else {
-                # For firestone and habanero, the fru 3 will contain the MTMS
-                my $fru3_cmd = "/opt/xcat/bin/ipmitool-xcat -I lanplus $bmcusername $bmcpassword -H $ip fru print 3";
-                my @fru3_output_array = xCAT::Utils->runcmd($fru3_cmd, -1);
-                my $fru3_output = join(" ", @fru3_output_array);
-                if (($fru3_output =~ /Chassis Part Number\s*:\s*(\S*).*Chassis Serial\s*:\s*(\S*)/)) {
-                    $mtm = $1;
-                    $serial = $2;
-                }
+
+            # For system X and Tuleta, the fru 0 will contain the MTMS; For firestone, fru 3; For habanero, fru 2
+            my @fru_num = (0, 2, 3);
+            foreach my $fru_cmd_num (@fru_num){
+                my $fru_cmd = "$::XCATROOT/bin/ipmitool-xcat -I lanplus $bmcusername $bmcpassword ".
+                              "\-H $ip fru print $fru_cmd_num";
+                my @fru_output_array = xCAT::Utils->runcmd($fru_cmd, -1);
+                if (($::RUNCMD_RC eq 0) && @fru_output_array){ 
+                    my $fru_output = join(" ", @fru_output_array);
+                
+                    if ($fru_cmd_num == 0) {
+                        if (($fru_output =~ /Product Part Number   :\s*(\S*).*Product Serial        :\s*(\S*)/)) {
+                            $mtm = $1;
+                            $serial = $2;
+                            last;
+                        }
+                    } 
+                    else {
+                        if (($fru_output =~ /Chassis Part Number\s*:\s*(\S*).*Chassis Serial\s*:\s*(\S*)/)) {
+                            $mtm = $1;
+                            $serial = $2;
+                            last;
+                        }
+                    }
+                }             
             }
+
             $ip .= ",$mtm";
             $ip .= ",$serial";
             if ($::opt_P) {
