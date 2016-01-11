@@ -1284,7 +1284,7 @@ my $xmlinstalled;    # Global var to speicfy whether the xml modules have been l
 # This script also support to generate the rest api doc automatically.
 # Following part of code will not be run when this script is called by http server
 my $dbgdata;
-sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g [wiki] (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
+sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g rst > ../../docs/source/advanced/restapi/restapi_resource/restapi_reference.rst (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
