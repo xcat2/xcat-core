@@ -301,6 +301,34 @@ check:rc==0
 #cmd:rm /install/postscripts/updatenode_P_script_input
 end
 
+start:updatenode_f_incompatible_flags
+description:check if -f flag incompatible with -S,-P or -F flags
+cmd:updatenode $$CN -f -S
+check:rc==1
+check:output=~If you specify the -f flag you must not specify either the -S or -k or -P or -F flags
+cmd:updatenode $$CN -f -P
+check:rc==1
+check:output=~If you specify the -f flag you must not specify either the -S or -k or -P or -F flags
+cmd:updatenode $$CN -f -F
+check:rc==1
+check:output=~Choose either -f to sync the service nodes, or -F  to sync the nodes
+end
+
+start:updatenode_k_incompatible_flags
+description:check if -k flag incompatible with -S,-P,-F or -f flags
+cmd:updatenode $$CN -k -S
+check:rc==1
+check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flags
+cmd:updatenode $$CN -k -P
+check:rc==1
+check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flags
+cmd:updatenode $$CN -k -F
+check:rc==1
+check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flags
+cmd:updatenode $$CN -k -f
+check:rc==1
+check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flags
+end
 
 
 
