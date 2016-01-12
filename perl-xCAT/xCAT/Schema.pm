@@ -1437,7 +1437,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases nicextraparams nicdevice comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases nicextraparams nicdevices comments disable)], 
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1480,7 +1480,7 @@ nics => {
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
-            nicdevice => 'Comma-separated list of NIC device per NIC. <nic1>!<dev1>,<nic2>!<dev2>, e.g. eth0!bond0,bond0!br0. The xCAT object definition commands support to use nicdevice.<nicname> as the sub attributes.',
+            nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -2411,8 +2411,8 @@ my @nodeattrs = (
 				tabentry => 'nics.nicextraparams',
 				access_tabentry => 'nics.node=attr:node',
 		},
-                {attr_name => 'nicdevice',
-                                tabentry => 'nics.nicdevice',
+                {attr_name => 'nicdevices',
+                                tabentry => 'nics.nicdevices',
                                 access_tabentry => 'nics.node=attr:node',
                 },
 #######################
