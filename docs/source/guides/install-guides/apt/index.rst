@@ -1,7 +1,9 @@
 Installation Guide for Ubuntu Server LTS
 ========================================
 
-For the list of currently supported Ubuntu LTS operatin systems, see :ref:`ubuntu-os-support-label`.
+.. include:: ../common_sections.rst
+   :start-after: BEGIN_see_release_notes
+   :end-before: END_see_release_notes
 
 .. toctree::
    :maxdepth: 2
