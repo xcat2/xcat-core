@@ -7,7 +7,7 @@ For the current list of operating systems supported and verified by the developm
 
 .. BEGIN_install_os_mgmt_node
 
-Install one of the supported operating systems on to your target management node.
+Install one of the supported operating systems on your target management node.
 
 The system requirements for your xCAT management node largely depend on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
 
