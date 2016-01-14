@@ -17,7 +17,7 @@ if [ x"$str_os_type" = "xLinux" ];then
     . $str_dir_name/xcatlib.sh
     . $str_dir_name/nicutils.sh
 else
-    log_error "Does NOT support non-Linux Operating System" "error"
+    log_error "Does NOT support non-Linux Operating System." 
     exit -1
 fi
 
