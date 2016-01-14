@@ -1225,7 +1225,7 @@ sub mkinstall
 
         if (
             (
-                $arch =~ /x86/ and
+                ( $arch =~ /x86/ or $arch =~ /aarch64/ ) and
                 (
                     -r "$pkgdir/images/pxeboot/vmlinuz"
                     and $kernpath = "$pkgdir/images/pxeboot/vmlinuz"
