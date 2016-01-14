@@ -1060,7 +1060,7 @@ sub initDB
     xCAT::Utils->runcmd(
        "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'", -1);
     foreach my $ip (@tmpnames) {
-      if (!grep(/$ip/, @MNnodeipaddr))
+      if (!grep(/^$ip$/, @MNnodeipaddr))
       {     # if not the MN
          push @names,$ip;  # add it as a forwarder
       }
