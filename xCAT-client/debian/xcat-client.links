@@ -25,6 +25,9 @@ opt/xcat/bin/xcatclient opt/xcat/bin/mkvm
 opt/xcat/bin/xcatclient opt/xcat/bin/rmvm
 opt/xcat/bin/xcatclient opt/xcat/bin/lsvm
 opt/xcat/bin/xcatclient opt/xcat/bin/chvm
+opt/xcat/bin/xcatclient opt/xcat/bin/mkdocker
+opt/xcat/bin/xcatclient opt/xcat/bin/rmdocker
+opt/xcat/bin/xcatclient opt/xcat/bin/lsdocker
 opt/xcat/bin/xcatclient opt/xcat/bin/tabgrep
 opt/xcat/bin/xcatclient opt/xcat/bin/renergy
 opt/xcat/bin/xcatclient opt/xcat/bin/litetree

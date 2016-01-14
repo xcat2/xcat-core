@@ -153,6 +153,9 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/chvm
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkdocker
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmdocker
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsdocker
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/tabgrep
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/renergy
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
