@@ -56,8 +56,9 @@ fi
 #
 # parser attribute from nics table into hash
 #
-# input : <NIC_attribute> nic attribute from mypostscript, for example, NICTYPES
-#         <String> any string
+# input : $1 <NIC_attribute> nic attribute from mypostscript,
+#            for example, $NICTYPES or $NICIPS or $NICNETWORKS or $NICEXTRAPARAMS or $NICDEVICES or $NICHOSTNAMESUFFIXES
+#         $2 <String> any string
 #
 # example : parser_nic_attribute "$NICTYPES" "nictypes"
 #
@@ -151,15 +152,20 @@ function find_ethernet_device {
 
 }
 
-################################################################
+######################################################################################
 #
-# find nic and base device from nic hash
+# find nic and base device from nic array
 #
-# input : nicdevice hash
+# In parser_nic_attribute "$nicdevice" "nicdevices", all nicdevices are saved as hash,
+# nic is the part of key, and its base device is value, find_nic_and_device_list print nic and its base device pair,
+# the output format include 2 columns,
+# one column is nic, the other column is it base device
+# `
+# input : nicdevice array
 #
 # output : <nic> <nic_base_device>
 #
-##############################################################
+####################################################################################
 function find_nic_and_device_list {
 
     array_nics_temp=$*
@@ -174,13 +180,15 @@ function find_nic_and_device_list {
 
 ############################################################################
 #
+# sort_nics_device_order
+# ordered nic and it's base devices
 # 1. nics list is nic and its base device
 # 2. sort the nicdevice raw logic according to nicdevice type,
 #    nicdevice type order is ethernet bond and vlan.
-#    for example, after sorted, the order should be like:
-#        nicX  ethX
-#        nicY  bondU
-#        nicZ  vlanW
+#        For example, after sorted, the order should be like:
+#            nicX  ethX
+#            nicY  bondU
+#            nicZ  vlanW
 # 3. at the same time, pick up the valid nic and its base nic device.
 #    The valid nic and its base nicdevice pair is as:
 #        bond_nic ethernet_nic
@@ -194,14 +202,16 @@ function find_nic_and_device_list {
 #        bridge_ovs_nic vlan_nic
 #
 # input : nic and its base nic device pair list
-#         for example: vlan1 bond0
-#                      bond0 eth1@eth2
-#                      bond1 vlan2
+#         for example:
+#                     vlan1 bond0
+#                     bond0 eth1@eth2
+#                     bond1 vlan2
 #
 # output : sorted nic and its base nic device pair list
 #          after sorted and remove invalid pair,
-#          for example: bond0 eth1@eth2
-#                       vlan1 bond0
+#          for example:
+#                     bond0 eth1@eth2
+#                     vlan1 bond0
 #
 ###############################################################################
 function sort_nics_device_order {
@@ -251,7 +261,7 @@ function sort_nics_device_order {
         if [ x"$base_nic_type" = "xethernet" ]&& \
            [ x"$nic_dev_type" = "xbond" -o x"$nic_dev_type" = "xvlan" -o x"$nic_dev_type" = "xbridge" -o x"$nic_dev_type" = "xbridge_ovs" ]; then
             
-            if [ x"$eth_slot" == x ]; then
+            if [ x"$eth_slot" = x ]; then
                 eth_slot=$num
             else
                 eth_slot=$eth_slot" "$num
@@ -305,7 +315,6 @@ function sort_nics_device_order {
 ###################################################################################
 function configure_nicdevice {
     nics_pair=$*
-
     #configure nic and its device pair one by one   
     num=1
     max=`echo "$nics_pair"|wc -l`
@@ -315,9 +324,6 @@ function configure_nicdevice {
     ((max+=1))
     while [ $num -lt $max ];
     do
-
-        #"|" has problem in "ethX|ethY"
-        #replace "|" with "@" 
         base_nic_dev=`echo "$nics_pair" |sed -n "${num}p"|awk '{print $2}'`
         if [ -n "$base_nic_dev" ]; then
             if echo "$base_nic_dev"|grep "@" >/dev/null; then
@@ -365,7 +371,7 @@ function configure_nicdevice {
 
         #configure bond 
         elif [ x"$nic_dev_type" = "xbond" ]; then
-           create_bond_interface ifname=bond0 slave_ports=$base_nic_for_bond       
+            create_bond_interface ifname=bond0 slave_ports=$base_nic_for_bond       
         else
             log_error "Error : please check nictypes for $nic_pair."
         fi 
@@ -400,7 +406,7 @@ function enable_network_service {
 #
 ############################################################################
 
-#replace | with @, for example, eth1|eth2  ---->   eth1@eth2
+#replace | with "@", for example, eth1|eth2  ---->   eth1@eth2
 nicdevice=`echo "$NICDEVICES" | sed 's/|/@/g'`
 
 #make hash for nicdevice
