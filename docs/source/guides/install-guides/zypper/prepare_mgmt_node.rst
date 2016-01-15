@@ -6,8 +6,6 @@ These steps prepare the Management Node for xCAT Installation
 Install an OS on the Management Node
 ------------------------------------
 
-Install one of the supported operating systems :ref:`sles-os-support-label` on to your target Management Node
-
 .. include:: ../common_sections.rst
    :start-after: BEGIN_install_os_mgmt_node
    :end-before: END_install_os_mgmt_node

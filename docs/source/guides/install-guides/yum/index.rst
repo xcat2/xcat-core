@@ -1,7 +1,9 @@
 Installation Guide for Red Hat Enterprise Linux
 ===============================================
 
-For the list of currently supported RHEL operating systems, see :ref:`rhels-os-support-label`.
+.. include:: ../common_sections.rst
+   :start-after: BEGIN_see_release_notes
+   :end-before: END_see_release_notes
 
 .. toctree::
    :maxdepth: 2

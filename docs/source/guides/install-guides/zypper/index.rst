@@ -1,7 +1,9 @@
 Installation Guide for SUSE Linux Enterprise Server
 ===================================================
 
-For the list of currently supported SLES operating systems, see :ref:`sles-os-support-label`.
+.. include:: ../common_sections.rst
+   :start-after: BEGIN_see_release_notes
+   :end-before: END_see_release_notes
 
 .. toctree::
    :maxdepth: 2
