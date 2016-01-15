@@ -1,6 +1,13 @@
 
+.. BEGIN_see_release_notes
+
+For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`. 
+
+.. END_see_release_notes
+
 .. BEGIN_install_os_mgmt_node
 
+Install one of the supported operating systems on your target management node.
 
 The system requirements for your xCAT management node largely depend on the size of the cluster you plan to manage and the type of provisioning used (diskful, diskless, system clones, etc).  The majority of system load comes during cluster provisioning time.
 
