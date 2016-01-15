@@ -63,7 +63,7 @@ You also can do this by running: ::
 Extra Setup for Remote Commands
 ```````````````````````````````
 
-To give a user the ability to run remote commands (xdsh,xdcp,psh,pcp) in some node, except above steps, also need to run below steps:  ::
+To give a user the ability to run remote commands (xdsh, xdcp, psh, pcp) in some node, except above steps, also need to run below steps:  ::
   
     su - <username>
     xdsh <noderange> -K
@@ -76,11 +76,11 @@ Set Up Login Node (Remote Client)
 
 In some cases, you don't want your **non-root** user login to management node but still can run some xCAT commands. This time, you need setup a login node(i.e. remote client) for these users.
 
-Delow are the steps of how to set up a login node.
+Below are the steps of how to set up a login node.
 
 1. Install the xCAT client
 
-  In order to avoid stucking in dependence problem in different distro. we recommand to create repository first by referring to below links.
+  In order to avoid stucking in dependence problem in different distro. We recommand to create repository first by referring to below links.
 
   * :doc:`Configure xCAT Software Repository in RHEL</guides/install-guides/yum/configure_xcat>`
 
@@ -119,7 +119,7 @@ Delow are the steps of how to set up a login node.
 
   Setup your ``policy`` table on the managment node with the permissions that you would like the non-root id to have. 
 
-  At this time, the id should be able to execute any commands that have been set in the ``policy`` table from the Login Node as their userid.
+  At this time, the non-root id should be able to execute any commands that have been set in the ``policy`` table from the Login Node.
 
   If any remote shell commmands (psh,xdsh) are needed, then you need to follow `Extra Setup For Remote Commands`_. 
 
@@ -127,7 +127,7 @@ Delow are the steps of how to set up a login node.
 Auditing
 --------
 
-XCAT logs xCAT commands run by the xcatd daemon to both the syslog and the auditlog table in the xCAT database. The commands that are audited can be "ALL" xCAT commands or a list provided by the admin. The auditlog table allows the admin to monitor any attacks against the system or simply over use of resources. The auditlog table is store in the xCAT database and contains the following record. ::
+XCAT logs all xCAT commands run by the xcatd daemon to both the syslog and the auditlog table in the xCAT database. The commands that are audited can be "ALL" xCAT commands or a list provided by the admin. The auditlog table allows the admin to monitor any attacks against the system or simply over use of resources. The auditlog table is store in the xCAT database and contains the following record. ::
 
     # tabdump -d auditlog
     recid:i     The record id.
@@ -174,7 +174,7 @@ On the MN, you will be prompted to add entries to ``known_hosts`` file for each 
 Restricting Node to Node SSH
 ````````````````````````````
 
-By default, all nodes installed by one management node are able to ssh to each without password. But there is a attribute ``sshbetweennodes`` in ``site`` table. This attributes defaults to ALLGROUPS, which means we setup ssh between all nodes during the install or when you run ``xdsh -K``, or ``updatenode -k`` as in the past. This attribute can be used to define a comma-separated list of groups and only the nodes in those groups will be setup with ssh between the nodes. The attribute can be set to NOGROUPS, to indicate no nodes (groups) will be setup. Service Nodes will always be setup with ssh between service nodes and all nodes. It is unaffected by this attribute. This also only affects root userid setup and does not affect the setup of devices.
+By default, all nodes installed by one management node are able to ssh to each without password. But there is an attribute ``sshbetweennodes`` in ``site`` table. This attributes defaults to ALLGROUPS, which means we setup ssh between all nodes during the install or when you run ``xdsh -K``, or ``updatenode -k`` as in the past. This attribute can be used to define a comma-separated list of groups and only the nodes in those groups will be setup with ssh between the nodes. The attribute can be set to NOGROUPS, to indicate no nodes (groups) will be setup. Service Nodes will always be setup with ssh between service nodes and all nodes. It is unaffected by this attribute. This also only affects root userid setup and does not affect the setup of devices.
 
 This setting of site.sshbetweennodes will only enable root ssh between nodes of the compute1 and compute 2 groups and all service nodes. ::
 
@@ -183,5 +183,6 @@ This setting of site.sshbetweennodes will only enable root ssh between nodes of 
 
 Secure Zones
 ````````````
-you can setup secure zones in xCAT in the cluster. A node in the zone can ssh without password to any other node in the zone, but not to nodes in other zones. Please refer :doc:`Zones </advanced/zones/index>`  for more information.
+
+You can set up multiple zones in an xCAT cluster. A node in the zone can ssh without password to any other node in the zone, but not to nodes in other zones. Please refer :doc:`Zones </advanced/zones/index>`  for more information.
 
