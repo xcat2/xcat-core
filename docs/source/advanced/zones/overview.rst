@@ -1,7 +1,7 @@
 Overview
 ========
 
-XCAT supports the concept of zones within a single xCAT cluster managed by one (1) Management Node.  The nodes in the cluster can be divided up into multiple zones that have different ssh keys managed separately. 
+XCAT supports the concept of zones within a single xCAT cluster managed by one Management Node.  The nodes in the cluster can be divided up into multiple zones that have different ssh keys managed separately. 
 
 Each defined zone has it own root's ssh RSA keys, so that any node can ssh without a password to any other node in the same zone,  cannot ssh without being prompted for a password to nodes in another zone.
 

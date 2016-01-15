@@ -13,5 +13,5 @@ There are three commands to support zones:
 * :doc:`chzone </guides/admin-guides/references/man1/chzone.1>` - changes a previously created zone
 * :doc:`rmzone </guides/admin-guides/references/man1/rmzone.1>` - removes a zone
 
-**Note**: It is highly recommended that you only use the zone commands for creating and maintaining your zones. They do a lot of maintaining of tables and directories for the zones when they are run.
+**Note**: It is highly recommended that you only use the zone commands for creating and maintaining your zones. They do a lot of maintaining of tables and directories for the zones when they are running.
 
