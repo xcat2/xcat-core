@@ -180,6 +180,11 @@ my %command_states = (
         },
     },
     rmdocker => {
+        force => {
+            state_machine_engine => \&single_state_engine,
+            init_method => "DELETE",
+            init_url => "/containers/#NODE#?force=1",
+        },
         all => {
             state_machine_engine => \&single_state_engine,
             init_method => "DELETE",
@@ -228,10 +233,10 @@ sub http_state_code_info {
     elsif ($state_code eq '304')  {
         if (defined $curr_status)  {
             if ($curr_status eq "INIT_TO_WAIT_FOR_START_DONE") {
-                return [1, "container already started"];
+                return [0, "container already started"];
             }
             else {
-                return [1, "container already stoped"];
+                return [0, "container already stoped"];
             }
         }
         else {
@@ -341,7 +346,6 @@ sub single_state_engine {
             return;
         }
     }   
-
     my @msg = ();
     $msg[0] = &http_state_code_info($res->code, $curr_state);
     unless ($res->is_success) {
@@ -351,12 +355,34 @@ sub single_state_engine {
     }
     if ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_STATE_DONE")  {
         if ($res->is_success) {
-            my @content_array = split /\n/, $content;
-            my $content_hash = decode_json $content_array[1];
-            my $node_state = $content_hash->{'State'}->{'Status'};
-            $msg[0] = [0, $node_state];
-            if ($nodelisttab) {
-                $nodelisttab->setNodeAttribs($node, {status=>$node_state});
+            my $node_state = undef;
+            if ($data_chunked) {
+                my @chunked_array = split /\r\n/, $content;
+                my $length = hex(shift @chunked_array);
+                while ($length) {
+                    my $content_hash = decode_json (shift @chunked_array);
+                    if (defined($content_hash->{'State'}->{'Status'})) {
+                        $node_state = $content_hash->{'State'}->{'Status'};
+                        last;
+                    }
+                    $length = hex(shift @chunked_array);
+                }
+                if (!defined($node_state) and $length) {
+                    $get_another_pkg = 1;
+                }
+            }
+            else {
+                my $content_hash = decode_json $content;
+                $node_state = $content_hash->{'State'}->{'Status'};
+            }
+            if (defined($node_state)) {
+                if ($nodelisttab) {
+                    $nodelisttab->setNodeAttribs($node, {status=>$node_state});
+                }
+                $msg[0] = [0, $node_state];
+            }
+            elsif (!$get_another_pkg) {
+                $msg[0] = [1, "Can not get status"];
             }
         }
         elsif ($res->code eq '404') {
@@ -373,7 +399,7 @@ sub single_state_engine {
             my $tmp_entry = shift(@content_array);
             my @data_array = ();
             my $tmp_len = hex($tmp_entry);
-            while ($tmp_len) {
+            while ($tmp_len and scalar(@content_array)) {
                 $tmp_entry = shift(@content_array);
                 push @data_array, $tmp_entry;
                 $tmp_entry = shift(@content_array);
@@ -399,7 +425,7 @@ sub single_state_engine {
                 if (defined($data_chunked)) {
                     my @content_array = split /\r\n/, $content;
                     my $tmp_entry = shift @content_array;
-                    while ($tmp_entry) {
+                    while ($tmp_entry and scalar(@content_array)) {
                         my $content_hash = decode_json (shift @content_array);
                         if (ref($content_hash) eq 'ARRAY') {
                             foreach (@$content_hash) {
@@ -443,7 +469,7 @@ sub single_state_engine {
     foreach my $tmp (@msg) {
         $tmp->[1] =~ s/\035//g;
         if ($tmp->[0]) {
-            $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"]}]},errorcode=>"$tmp->[0]");
+            $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"],errorcode=>["$tmp->[0]"]}]});
         } 
         else {
             $global_callback->({node=>[{name=>[$node],data=>["$tmp->[1]"]}]});
@@ -493,7 +519,7 @@ sub parse_docker_list_info {
         my ($sec,$min,$hour,$day,$mon,$year) = localtime($created);
         $mon += 1;
         $year += 1900;
-        $created = "$mon-$day-$year - $hour:$min:$sec";
+        $created = "$year-$mon-$day - $hour:$min:$sec";
     }
     else {
         $image = $docker_info_hash->{Config}->{'Image'};
@@ -501,7 +527,6 @@ sub parse_docker_list_info {
         $names = $docker_info_hash->{'Name'};
         $created = $docker_info_hash->{'Created'};
         $status = $docker_info_hash->{'State'}->{'Status'};
-        $created =~ s/T/ - /;
         $created =~ s/\..*$//;
     }
     return("$id\t$image\t$command\t$created\t$status\t$names");
@@ -653,9 +678,12 @@ sub parse_args {
         }
     }
     elsif ($cmd eq 'rmdocker') {
-        if (scalar (@ARGV)) {
-            return ( [1, "No option is supported for $cmd"]);
+        foreach my $op (@ARGV) {
+            if ($op ne '-f' and $op ne '--force') {
+                return ( [1, "Option $op is not supported for $cmd"]);
+            }
         }
+        $request->{arg}->[0] = "force";
     }
     elsif ($cmd eq 'lsdocker') {
         foreach my $op (@ARGV) {
@@ -783,7 +811,7 @@ sub process_request {
                     }
                     my $node_init_url = $init_url;
                     $node_init_url =~ s/#NODE#\///;
-                    push @nodeargs, [$node, {name=>$node,port=>'2376'}, $init_method, $node_init_url, $init_state, $state_machine_engine]; 
+                    push @nodeargs, [$node, {name=>$node,port=>'2375'}, $init_method, $node_init_url, $init_state, $state_machine_engine]; 
                 } 
                 else {
                     push @new_noderange, $node;
@@ -810,7 +838,7 @@ sub process_request {
                     next;
                 }
                 if (!defined($port)) {
-                    $port = 2376;
+                    $port = 2375;
                 }
                 my $node_init_url = $init_url;
                 $node_init_url =~ s/#NODE#/$node/;
