@@ -2581,7 +2581,7 @@ my @nodeattrs = (
                 {attr_name => 'dockerflag',
                  only_if => 'mgt=docker',
                  tabentry => 'vm.othersettings',
-                 access_tabentry => 'vm.ndoe=attr:node',
+                 access_tabentry => 'vm.node=attr:node',
                 },
 
 ######################
