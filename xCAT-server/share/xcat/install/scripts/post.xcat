@@ -330,16 +330,6 @@ TMP=`sed "/^#\s*postbootscripts-start-here/,/^#\s*postbootscripts-end-here/ d" /
 echo "$TMP" > /xcatpost/mypostscript
 chmod 755 /xcatpost/mypostscript
 
-if [ ! -x /xcatpost/mypostscript ]; then
-    if [ "$XCATDEBUGMODE" != "0" ]; then
-        msgutil_r "$MASTER_IP" "debug" "failed to generate /xcatpost/mypostscript" "/var/log/xcat/xcat.log"
-    fi
-else
-    if [ "$XCATDEBUGMODE" != "0" ]; then
-        msgutil_r "$MASTER_IP" "debug" "/xcatpost/mypostscript generated" "/var/log/xcat/xcat.log"
-    fi
-fi
-
 export NODE=#TABLE:nodelist:THISNODE:node#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
