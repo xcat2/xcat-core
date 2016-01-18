@@ -39,15 +39,15 @@ if [ -f "/etc/redhat-release" ];then
 elif [ -f "/etc/SuSE-release" -o -n "$str_temp" ];then
     is_sles=1
     nwdir="/etc/sysconfig/network"
-    log_error "Only supports RHEL" "error"
+    log_error "Only supports RHEL"
     exit -1
 elif [ -f "/etc/debian_version" ];then
     nwdir="/etc/network/interfaces.d"
     is_debian=1
-    log_error "Only supports RHEL" "error"
+    log_error "Only supports RHEL" 
     exit -1
 else
-    log_error "Only supports RHEL" "error"
+    log_error "Only supports RHEL" 
     exit -1
 fi
 
