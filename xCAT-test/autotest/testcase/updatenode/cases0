@@ -9,7 +9,6 @@ check:rc==0
 check:output=~Version
 end
 
-
 start:updatenode_diskful_syncfiles
 cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/ 
 check:rc==0
@@ -330,39 +329,128 @@ check:rc==1
 check:output=~If you use the -k flag, you cannot specify the -S,-P,-f or -F flags
 end
 
+start:updatenode_diskful_syncfiles_P_script1
+description:check updatenode noderange -F -P script1
+cmd:mkdir -p /install/custom/install/__GETNODEATTR($$CN,os)__/
+check:rc==0
+cmd:echo "/etc/hosts -> /etc/hosts" > /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=/install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:echo "echo hello > /tmp/updatenode_P_script" > /tmp/script1
+check:rc==0
+cmd:cp /tmp/script1 /install/postscripts
+check:rc==0
+cmd:ls /install/postscripts/
+check:rc==0
+check:output=~script1
+cmd:chdef $$CN postscripts=script1
+check:rc==0
+cmd:updatenode $$CN -F -P script1
+check:rc==0
+check:output!~(E|e)rror
+check:output=~File synchronization has completed
+check:output=~postscripts has completed
+cmd:scp /etc/hosts root@$$CN:/tmp
+check:rc==0
+cmd:xdsh $$CN "ls /tmp"
+check:rc==0
+check:output=~hosts
+cmd:xdsh $$CN "ls -l /etc/hosts"
+check:rc==0
+cmd:xdsh $$CN diff /etc/hosts /tmp/hosts
+check:rc==0
+cmd:xdsh $$CN "ls -l /tmp/updatenode_P_script"
+check:rc==0
+cmd:xdsh $$CN "cat /tmp/updatenode_P_script"
+check:rc==0
+check:output=~hello
+cmd:chdef -t osimage -o  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute synclists=
+check:rc==0
+cmd:rm -rf /install/custom/install/__GETNODEATTR($$CN,os)__/compute.$$OS.synclist
+check:rc==0
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:rm -f /install/script1
+end
 
+start:updatenode_script3
+description:check updatenode noderange -P "script c"
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P_script_input
+cmd:echo "if [ -n \$1 ]" >> /tmp/updatenode_P_script_input
+cmd:echo "then" >> /tmp/updatenode_P_script_input
+cmd:echo "    echo \"There is an input parameter: \$1.\" > /tmp/updatenode_P_script3" >> /tmp/updatenode_P_script_input
+cmd:echo "fi" >> /tmp/updatenode_P_script_input
+cmd:cp /tmp/updatenode_P_script_input /install/postscripts/
+check:rc==0
+cmd:ls /install/postscripts/
+check:rc==0
+check:output=~updatenode_P_script_input 
+cmd:chdef $$CN postscripts=updatenode_P_script_input
+check:rc==0
+cmd:updatenode $$CN "updatenode_P_script_input c"
+check:rc==0
+check:output!~(E|e)rror
+check:output=~updatenode_P_script_input
+cmd:xdsh $$CN "cat /tmp/updatenode_P_script3"
+check:output=~There is an input parameter: c
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:xdsh $$CN rm /tmp/updatenode_P_script3
+check:rc==0
+cmd:rm /tmp/updatenode_P_script_input
+check:rc==0
+end
 
+start:updatenode_P_script1_script2
+description:check updatenode noderange -P "script1 a,script2 b"
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P1_script_input 
+cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P1_script_input
+cmd:echo "    if [[ \$1 == \"a\" ]];then" >>  /tmp/updatenode_P1_script_input
+cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P1_script" >> /tmp/updatenode_P1_script_input
+cmd:echo "    fi" >> /tmp/updatenode_P1_script_input
+cmd:echo "fi" >> /tmp/updatenode_P1_script_input
+cmd:cp /tmp/updatenode_P1_script_input /install/postscripts/
+check:rc==0
+cmd:ls /install/postscripts/
+check:rc==0
+check:output=~updatenode_P1_script_input 
+cmd:echo "#!/bin/bash" > /tmp/updatenode_P2_script_input 
+cmd:echo "if [ -n \$1 ];then" >> /tmp/updatenode_P2_script_input
+cmd:echo "    if [[ \$1 == \"b\" ]];then" >>  /tmp/updatenode_P2_script_input
+cmd:echo "        echo \"The input is \$1.\" >> /tmp/updatenode_P2_script" >> /tmp/updatenode_P2_script_input
+cmd:echo "    fi" >> /tmp/updatenode_P2_script_input
+cmd:echo "fi" >> /tmp/updatenode_P2_script_input
+cmd:cp /tmp/updatenode_P2_script_input /install/postscripts/
+check:rc==0
+cmd:ls /install/postscripts/
+check:output=~updatenode_P2_script_input 
+cmd:chdef $$CN postscripts=updatenode_P1_script_input,updatenode_P2_script_input
+check:rc==0
+cmd:updatenode $$CN -P "updatenode_P1_script_input a,updatenode_P2_script_input b"
+check:rc==0
+check:output!~(E|e)rror
+check:output=~updatenode_P1_script_input
+check:output=~updatenode_P2_script_input
+cmd:xdsh $$CN "cat /tmp/updatenode_P1_script"
+check:output=~The input is a
+cmd:xdsh $$CN "cat /tmp/updatenode_P2_script"
+check:output=~The input is b
+cmd:chdef $$CN postscripts=
+check:rc==0
+cmd:xdsh $$CN rm  /tmp/updatenode_P*_script
+check:rc==0
+cmd:rm /tmp/updatenode_P*_script_input
+cmd:rm /install/postscripts/updatenode_P*_script_input
+end
 
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+start:updatenode_without_flag
+description:check updatenode without any flag
+cmd:updatenode $$CN
+check:rc==0
+check:output!~(E|e)rror
+check:output=~File synchronization has completed
+check:output=~postscripts has completed
+check:output=~Software Maintenance has completed
+end
 
