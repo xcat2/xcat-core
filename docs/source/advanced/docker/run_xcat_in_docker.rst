@@ -86,7 +86,7 @@ Now create the xCAT Docker container with the Docker image "xcat/xcat-ubuntu-x86
 * use ``--privileged=true`` to give extended privileges to this container
 * use ``--dns`` and ``--dns-search`` to specify the name server and dns domain for the container,which will be written to ``/etc/resolv.conf`` of the container
 * use ``--hostname`` to specify the hostname of the container, which is available inside the container
-* use ``--name`` to assign a name to the container 
+* use ``--name`` to assign a name to the container, this name can be used to manipulate the container on Docker host 
 * use ``--add-host`` to write the ``/etc/hosts`` entries of Docker host and Docker container to ``/etc/hosts`` in the container
 * use ``--net=none`` not to create networking for the container
 
