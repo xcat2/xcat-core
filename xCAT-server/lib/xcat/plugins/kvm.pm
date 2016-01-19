@@ -75,7 +75,7 @@ sub handled_commands {
         rinv     => 'nodehm:power,mgt',
         rmigrate => 'nodehm:mgt',
         getcons  => 'nodehm:mgt',
-
+        rscan => 'nodehm:mgt=ipmi',
         #rvitals => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
         getrvidparms  => 'nodehm:mgt',
@@ -3016,6 +3016,245 @@ sub power {
     return (0, $retstring);
 }
 
+sub rscan {
+    my $hyper = shift;
+    @ARGV=@_;
+    my ($write, $update, $stanza, $create);
+    GetOptions(
+        'w' => \$write,
+        'u' => \$update,
+        'z' => \$stanza,
+        'n' => \$create,
+    );
+    my @doms;
+    my $dom;
+    eval {
+        @doms = $hypconn->list_all_domains();
+    };
+    if ($@) {
+        xCAT::SvrUtils::sendmsg([1,"Unable to list all domains for $hyper: $@"], $callback);
+    }
+    my %host2kvm;
+    my @displaymsg;
+    if ($stanza) {
+        push @displaymsg, "# <xCAT data object stanza file>\n";
+    }
+    my $handle_vmtab;
+    $handle_vmtab = xCAT::Table->new( "vm", -create=>1, -autocommit=>0 );
+    if (!$handle_vmtab) {
+        xCAT::SvrUtils::sendmsg([1,"Can't open vm table"], $callback,$hyper);
+        return;
+    }
+
+    #get existing 'node' and 'host' attributes in current vm table...
+    my %hash_vm2host;
+    my @vm_nodes_hosts = $handle_vmtab->getAllNodeAttribs(['node','host']);
+    foreach my $vm_node_host (@vm_nodes_hosts) {
+        $hash_vm2host{$vm_node_host->{node}} = $vm_node_host->{host};
+    }
+
+    #operate every domain in current hypervisor
+    foreach $dom (@doms) {
+        my $name=$dom->get_name();
+        my $currxml=$dom->get_xml_description();
+        unless ($currxml) {
+            xCAT::SvrUtils::sendmsg([1,"fail to get the xml definition of $name"], $callback,$hyper);
+            next;
+        }
+        my $domain=$parser->parse_string($currxml);
+        my ($uuid, $node, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
+        my @uuidobj = $domain->findnodes("/domain/uuid");
+        if (@uuidobj and defined(@uuidobj->[0])) {
+            $uuid = @uuidobj->[0]->to_literal;
+            $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
+        }
+        my $type = $domain->findnodes("/domain")->[0]->getAttribute("type");
+        my @nodeobj = $domain->findnodes("/domain/name");
+        if (@nodeobj and defined(@nodeobj->[0])) {
+            $node = @nodeobj->[0]->to_literal;
+        }
+        my $hypervisor = $hyper;
+        my $id = $domain->findnodes("/domain")->[0]->getAttribute("id");
+        my @vmcpusobj = $domain->findnodes("/domain/vcpu");
+        if (@vmcpusobj and defined(@vmcpusobj->[0])) {
+            $vmcpus = @vmcpusobj->[0]->to_literal;
+        }
+        my @vmmemoryobj = $domain->findnodes("/domain/memory");
+        if (@vmmemoryobj and defined(@vmmemoryobj->[0])) {
+            my $mem = @vmmemoryobj->[0]->to_literal;
+            my $unit = @vmmemoryobj->[0]->getAttribute("unit");
+            if (($unit eq "KiB") or ($unit eq "k")) {
+                $vmmemory=($mem*1024)/(1024*1024);
+            } elsif ($unit eq "KB") {
+                $vmmemory=($mem*1000)/(1024*1024);
+            } elsif (($unit eq "MiB") or ($unit eq "M")) {
+                $vmmemory=$mem;
+            } elsif ($unit eq "MB") {
+                $vmmemory=($mem*1000000)/(1024*1024);
+            } elsif (($unit eq "GiB") or ($unit eq "G")) {
+                $vmmemory=$mem*1024;
+            } elsif ($unit eq "GB") {
+                $vmmemory=($mem*1000000000)/(1024*1024);
+            } elsif (($unit eq "TiB") or ($unit eq "T")) {
+                $vmmemory=$mem*1024*1024;
+            } elsif ($unit eq "TB") {
+                $vmmemory=($mem*1000000000000)/(1024*1024);
+            } else {
+                $vmmemory=($mem*1024)/(1024*1024);
+            }
+        }
+        my @vmstoragediskobjs = $domain->findnodes("/domain/devices/disk");
+        foreach my $vmstoragediskobj (@vmstoragediskobjs) {
+            if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "file")) {
+                my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
+                if (@vmstorageobj and defined(@vmstorageobj->[0])) {
+                    $vmstorage = @vmstorageobj->[0]->getAttribute("file");
+                    last;
+                }
+            }
+        }
+        my @archobj = $domain->findnodes("/domain/os/type");
+        if (@archobj and defined(@archobj->[0])) {
+            $arch = @archobj->[0]->getAttribute("arch");
+        }
+        my @interfaceobjs = $domain->findnodes("/domain/devices/interface");
+        foreach my $interfaceobj (@interfaceobjs) {
+            if (($interfaceobj->getAttribute("type")) eq "bridge" ) {
+                my @vmnicsobj = $interfaceobj->findnodes("./source");
+                my @macobj = $interfaceobj->findnodes("./mac");
+                my @vmnicnicmodelobj = $interfaceobj->findnodes("./model");
+                if ((@vmnicsobj and defined(@vmnicsobj->[0])) and (@macobj and defined(@macobj->[0])) and (@vmnicnicmodelobj and defined(@vmnicnicmodelobj->[0]))) {
+                    $vmnics = @vmnicsobj->[0]->getAttribute("bridge");
+                    $mac = @macobj->[0]->getAttribute("address");
+                    $vmnicnicmodel = @vmnicnicmodelobj->[0]->getAttribute("type");
+                    last;
+                }
+            }
+        }
+        push @{$host2kvm{$uuid}}, join( ",", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
+        if ($write) {
+            unless (exists $hash_vm2host{$node}) {
+                $updatetable->{vm}->{$node}->{host} = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics} = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{mac}->{$node}->{mac} = $mac;
+                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodetype}->{$node}->{arch} = $arch;
+                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+            }
+            else {
+                if ($hash_vm2host{$node} eq $hypervisor) {
+
+                #mark this node to delete in 'vm' 'mac' vpd' 'nodetype' 'nodehm' tables
+                $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+
+                $updatetable->{vm}->{$node}->{host} = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics} = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{mac}->{$node}->{mac} = $mac;
+                $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodetype}->{$node}->{arch} = $arch;
+                $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                }
+                else {
+                    $callback->({data=>"the name of KVM guest $node on $hypervisor conflicts with the existing node in xCAT table."});
+                }
+            }
+        }
+        if ($update) {
+            if ((exists $hash_vm2host{$node}) and ($hash_vm2host{$node} eq $hypervisor)) {
+                $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{vm}->{$node}->{host} = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics} = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{mac}->{$node}->{mac} = $mac;
+                $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodetype}->{$node}->{arch} = $arch;
+                $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+            }
+        }
+        if ($create) {
+            unless (exists $hash_vm2host{$node}) {
+                $updatetable->{vm}->{$node}->{host} = $hypervisor;
+                $updatetable->{vm}->{$node}->{storage} = $vmstorage;
+                $updatetable->{vm}->{$node}->{memory} = $vmmemory;
+                $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
+                $updatetable->{vm}->{$node}->{nics} = $vmnics;
+                $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{mac}->{$node}->{mac} = $mac;
+                $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodetype}->{$node}->{arch} = $arch;
+                $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+            }
+        }
+        if ($stanza) {
+            push @displaymsg, "$node";
+            push @displaymsg, "    arch=$arch";
+            push @displaymsg, "    mac=$mac";
+            push @displaymsg, "    mgt=$type";
+            push @displaymsg, "    vmcpus=$vmcpus";
+            push @displaymsg, "    vmhost=$hypervisor";
+            push @displaymsg, "    vmmemory=$vmmemory";
+            push @displaymsg, "    vmnicnicmodel=$vmnicnicmodel";
+            push @displaymsg, "    vmnics=$vmnics";
+            push @displaymsg, "    vmstorage=$vmstorage";
+        }
+    }
+
+    if (!$stanza) {
+        my $header;
+        my @rscan_header = (
+            ["type",          "%-8s" ],
+            ["name",          "%-9s" ],
+            ["hypervisor",    "%-15s"],
+            ["id",            "%-7s" ],
+            ["cpu",           "%-8s" ],
+            ["memory",        "%-11s"],
+            ["nic",           "%-8s" ],
+            ["disk",          "%-9s" ]);
+        foreach (@rscan_header) {
+            $header .= sprintf ( @$_[1], @$_[0] );
+        }
+        push @displaymsg, $header;
+        foreach (keys %host2kvm) {
+            my $entry;
+            my $host = $_;
+            my $i = 0;
+            my @data;
+            foreach (@{$host2kvm{$host}}) {
+                my $info = $_;
+                foreach (split(',', $info)) {
+                    my $attr = $_;
+                    push @data, "$attr";
+                }
+            }
+            foreach (@rscan_header) {
+                $entry .= sprintf ( @$_[1], $data[$i++] );
+            }
+            push @displaymsg, $entry;
+        }
+    }
+    $callback->({data=>\@displaymsg});
+    return;
+}
+
 sub lsvm {
     my $node = shift;
     my @doms = $hypconn->list_domains();
@@ -3053,6 +3292,8 @@ sub guestcmd {
         return getcons($node, @args);
     } elsif ($command eq "lsvm") {
         return lsvm($node, @args);
+    } elsif ($command eq "rscan") {
+        return rscan($node, @args);
     }
 
 =cut
@@ -3302,7 +3543,7 @@ sub process_request {
     if ($::XCATSITEVALS{usexhrm}) { $use_xhrm = 1; }
     $vmtab    = xCAT::Table->new("vm");
     $confdata = {};
-    unless ($command eq 'lsvm') {
+    unless ($command eq 'lsvm' or $command eq 'rscan') {
         xCAT::VMCommon::grab_table_data($noderange, $confdata, $callback);
         my $kvmdatatab = xCAT::Table->new("kvm_nodedata", -create => 0); #grab any pertinent pre-existing xml
         if ($kvmdatatab) {
@@ -3335,7 +3576,7 @@ sub process_request {
     my $inputs  = new IO::Select;
     my $sub_fds = new IO::Select;
     %hyphash = ();
-    if ($command eq 'lsvm') {    #command intended for hypervisors, not guests
+    if ($command eq 'lsvm' or $command eq 'rscan') {    #command intended for hypervisors, not guests
         foreach (@$noderange) { $hyphash{$_}->{nodes}->{$_} = 1; }
     } else {
         foreach (keys %{ $confdata->{vm} }) {
