@@ -1,4 +1,4 @@
-XCAT Security
+xCAT Security
 =============
 
 The security of a system covers a wide range of elements, from the security of system deployment and configuration, to the security of the system management, and the security of the software that is running on the system. This document will only discuss security features that are currently implemented in xCAT, not address the OS or any additional software packages that might be installed. 
@@ -7,10 +7,10 @@ The security of a system covers a wide range of elements, from the security of s
 Transmission Channel
 --------------------
 
-The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. All xCAT commands are initiated as an xCAT **client**, even when run commands from the xCAT management node. This **client** opens an SSL socket to the xCAT daemon, sends the command and receives responses through this one socket. XCAT has configured the certificate for root, if you nee to authorize other users, please refer to below section.
+The xCAT daemon uses SSL to only allow authorized users to run xCAT commands. All xCAT commands are initiated as an xCAT **client**, even when run commands from the xCAT management node. This **client** opens an SSL socket to the xCAT daemon, sends the command and receives responses through this one socket. xCAT has configured the certificate for root, if you nee to authorize other users, please refer to below section.
 
 
-Create SSL Certificate So That User Can Be Authenticated By XCAT
+Create SSL Certificate So That User Can Be Authenticated By xCAT
 ````````````````````````````````````````````````````````````````
 
 Running the following command on the Management node as root:  ::
@@ -31,10 +31,10 @@ This will create the following files in the <username> 's ``$HOME/.xcat`` direct
 Commands Access Control
 -----------------------
 
-Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. XCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, please refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
+Except SSL channel, xCAT only authorize root on the management node to run **xCAT** commands by default. But xCAT can be configured to allow both **non-root users** and **remote users** to run limited xCAT commands. For remote users, we mean the users who triggers the xCAT commands from other nodes and not have to login to the management node. xCAT uses the **policy** table to control who has authority to run specific xCAT commands. For a full explanation of the **policy** table, please refer to :doc:`policy </guides/admin-guides/references/man5/policy.5>` man page. 
 
 
-Granting Users XCAT Privileges
+Granting Users xCAT Privileges
 ``````````````````````````````
 
 To give a non-root user all xCAT commands privileges, run ``tabedit policy`` and add a line: ::
@@ -55,7 +55,7 @@ You also can do this by running: ::
 
     chdef -t policy -o 6.1 name=* commands=nodels rule=allow
 
-**Note** Make sure the directories that contain the xcat commands are in the user's ``$PATH``. If not, add them to ``$PATH`` as appropriate way in your system. ::
+**Note** Make sure the directories that contain the xCAT commands are in the user's ``$PATH``. If not, add them to ``$PATH`` as appropriate way in your system. ::
 
     echo $PATH | grep xcat
     /opt/xcat/bin:/opt/xcat/sbin: ....... 
@@ -127,7 +127,7 @@ Below are the steps of how to set up a login node.
 Auditing
 --------
 
-XCAT logs all xCAT commands run by the xcatd daemon to both the syslog and the auditlog table in the xCAT database. The commands that are audited can be "ALL" xCAT commands or a list provided by the admin. The auditlog table allows the admin to monitor any attacks against the system or simply over use of resources. The auditlog table is store in the xCAT database and contains the following record. ::
+xCAT logs all xCAT commands run by the xcatd daemon to both the syslog and the auditlog table in the xCAT database. The commands that are audited can be "ALL" xCAT commands or a list provided by the admin. The auditlog table allows the admin to monitor any attacks against the system or simply over use of resources. The auditlog table is store in the xCAT database and contains the following record. ::
 
     # tabdump -d auditlog
     recid:i     The record id.
@@ -146,7 +146,7 @@ XCAT logs all xCAT commands run by the xcatd daemon to both the syslog and the a
 Password Management
 -------------------
 
-XCAT is required to store passwords for various logons so that the application can login to the devices without having to prompt for a password. The issue is how to securely store these passwords.
+xCAT is required to store passwords for various logons so that the application can login to the devices without having to prompt for a password. The issue is how to securely store these passwords.
 
 Currently xCAT stores passwords in ``passwd`` table. You can store them as plaintext, you also can store them as MD5 ciphertext.  
 
@@ -160,9 +160,9 @@ Nodes Inter-Access in The Cluster
 ---------------------------------
 
 
-XCAT performs the setup for root to be able to ssh without password from the Management Node(MN) to all the nodes in the cluster. All nodes are able to ssh to each other without password or being prompted for a ``known_host`` entry, unless restricted. Nodes cannot ssh back to the Management Node or Service Nodes without a password by default. 
+xCAT performs the setup for root to be able to ssh without password from the Management Node(MN) to all the nodes in the cluster. All nodes are able to ssh to each other without password or being prompted for a ``known_host`` entry, unless restricted. Nodes cannot ssh back to the Management Node or Service Nodes without a password by default. 
 
-XCAT generates, on the MN, a new set of ssh hostkeys for the nodes to share, which are distributed to all the nodes during install. If ssh keys do not already exist for root on the MN, it will generate an id_rsa public and private key pair.
+xCAT generates, on the MN, a new set of ssh hostkeys for the nodes to share, which are distributed to all the nodes during install. If ssh keys do not already exist for root on the MN, it will generate an id_rsa public and private key pair.
 
 During node install, xCAT sends the ssh hostkeys to ``/etc/ssh`` on the node, the id_rsa private key and authorized_keys file to root's .ssh directory on the node to allow root on the MN to ssh to the nodes without password. This key setup on the node allows the MN to ssh to the node with no password prompting.
 
