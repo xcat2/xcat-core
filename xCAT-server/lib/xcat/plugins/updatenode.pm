@@ -209,12 +209,13 @@ sub preprocess_updatenode
     }
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$UPDATEONLY,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'A|updateallsw' => \$ALLSW,
+                    'u|updateony'   => \$UPDATEONLY,
                     'c|cmdlineonly' => \$CMDLINE,
                     'd=s'           => \$ALTSRC,
                     'h|help'        => \$HELP,
@@ -271,6 +272,11 @@ sub preprocess_updatenode
        $::ALLSW=$ALLSW;
     } else {
        undef $::ALLSW;
+    }
+    if (defined($UPDATEONLY)) {
+       $::UPDATEONLY=$UPDATEONLY;
+    } else {
+       undef $::UPDATEONLY;
     }
     if (defined($SETSERVER)) {
        $::SETSERVER=$SETSERVER;
@@ -1078,12 +1084,13 @@ sub updatenode
     chomp $nimprime;
 
     # parse the options
-    my ($ALLSW,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
+    my ($ALLSW,$UPDATEONLY,$CMDLINE,$ALTSRC,$HELP,$VERSION,$VERBOSE,$FILESYNC,$GENMYPOST,$USER,$SNFILESYNC,$SWMAINTENANCE,$SETSERVER,$RERUNPS,$SECURITY,$OS,$fanout,$timeout); 
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'A|updateallsw' => \$ALLSW,
+                    'u|updateonly'   => \$UPDATEONLY,
                     'c|cmdlineonly' => \$CMDLINE,
                     'd=s'           => \$ALTSRC,
                     'g|genmypost'   => \$GENMYPOST,
@@ -1136,6 +1143,11 @@ sub updatenode
        $::ALLSW=$ALLSW;
     } else {
        undef $::ALLSW;
+    }
+    if (defined($UPDATEONLY)) {
+       $::UPDATEONLY=$UPDATEONLY;
+    } else {
+       undef $::UPDATEONLY;
     }
     if (defined($SETSERVER)) {
        $::SETSERVER=$SETSERVER;
@@ -2931,6 +2943,10 @@ sub updateAIXsoftware
 		
 			if ($::ALLSW) {
 				$installcmd .= qq~ -a ~;
+			}
+
+			if ($::UPDATEONLY) {
+				$installcmd .= qq~ -u ~;
 			}
 
 			if ($::ALTSRC) {

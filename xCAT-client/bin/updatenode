@@ -81,9 +81,10 @@ push (@{$cmdref->{arg}}, @ARGV);
 # check the syntax
 if (
     !GetOptions(
-				'A|updateallsw'    => \$::ALLSW,
+                'A|updateallsw'    => \$::ALLSW,
+                'u|updateonly'     => \$::UPDATEONLY,
                 'c|cmdlineonly'    => \$::CMDLINE,
-				'd=s'              => \$::ALTSRC,
+                'd=s'              => \$::ALTSRC,
                 'h|help'           => \$::HELP,
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,
