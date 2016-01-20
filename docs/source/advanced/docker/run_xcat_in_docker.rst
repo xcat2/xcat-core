@@ -110,7 +110,7 @@ First, download the "pipework" ::
  
 install "pipework" by copying the script "pipework" to "/usr/local/bin/pipework" ::
    
-    cp ./pipework /usr/local/bin/pipework
+    cp pipework/pipework /usr/local/bin/pipework
 
 Assign a static IP address for Docker container and attach it to the customized network bridge with ::
   
