@@ -172,6 +172,11 @@ function cleanup()
     local -i max_retry=99
 	
     if [ "$NODESETSTATE" != "genimage" ]; then
+        # Clean up the uname hacking
+        if [ -f "/bin/uname.save" ]; then
+            mv -f "/bin/uname.save" "/bin/uname"
+        fi
+
         if mount | grep -q "/tmp/ofed/mountpoint"; then
             while ! umount "/tmp/ofed/mountpoint"
             do
@@ -293,6 +298,10 @@ EOF
             exit 1
         fi
         echo "[OK]"
+
+        if [ "$NODESETSTATE" = "install" ]; then
+            hack_uname
+        fi
 
         echo "Start Mellanox OFED installation ........."
         env -i "PATH=${PATH}" /tmp/ofed/mountpoint/mlnxofedinstall "${MLNXOFED_OPTS[@]}"
