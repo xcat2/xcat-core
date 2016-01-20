@@ -10,6 +10,7 @@
 #####################################################
 
 use XML::Simple;
+$XML::Simple::PREFERRED_PARSER='XML::Parser';
 
 my $useSocketSSL=eval { require IO::Socket::SSL; };
 if ($useSocketSSL) {
