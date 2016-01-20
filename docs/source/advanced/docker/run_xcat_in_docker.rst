@@ -140,12 +140,6 @@ Play with xCAT
 
 Once you attach or ssh to the container, you will find that xCAT is running and has already been well configured, you can play with xCAT and manage your cluster now. 
 
-Due to the features of Docker container, there are some differences from the xCAT documentation:
-
-* The "/install/sources" in the container is a data volume from Docker host to prevent the growth of the Docker container size. You should specify "-p /install/sources/<osver>/<arch>", for example ::
-
-   copycds -p /install/sources/rhels7.2/x86_64/  RHEL-7.2-Server-x86_64-dvd.iso
-
 
 Known Issues
 ------------
