@@ -63,6 +63,7 @@ $DBI::dbi_debug=9; # increase the debug output
 
 use strict;
 use Scalar::Util qw/weaken/;
+use xCAT::Utils;
 require xCAT::Schema;
 require xCAT::NodeRange;
 use Text::Balanced qw(extract_bracketed);
@@ -94,24 +95,45 @@ sub dbc_submit {
     $request->{'wantarray'} = wantarray();
     my $clisock;
     my $tries=300;
+    my $retdata;
+    my $err;
     while($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
         #print "waiting for clisock to be available\n";
+        if ($tries % 10 == 0 and $dbworkerpid != 0 and not xCAT::Utils::is_process_exists($dbworkerpid)) {
+            $dbworkerpid = 0;
+            xCAT::MsgUtils->message("S","xcatd: DB access process is down, xcat is running in direct access mode. "
+                                       ."Please restart xcatd to avoid of this error.");
+            return undef;
+        }
         sleep 0.1;
         $tries--;
     }
-    unless ($clisock) {
+    if ( $dbworkerpid !=0 and !$clisock) {
         use Carp qw/cluck/;
         cluck();
     }
-    store_fd($request,$clisock);
+    eval {
+        store_fd($request,$clisock);
+    };
+    if ($@) {
+        $err = $@;
+        xCAT::MsgUtils->message("S","xcatd: Error happend when sending data to DB access process ".$err);
+        return undef;
+    }
     #print $clisock $data;
     my $data="";
     my $lastline="";
-    my $retdata = fd_retrieve($clisock);
+    eval {
+        $retdata = fd_retrieve($clisock);
+    };
+    if ($@) {
+        $err = $@;
+        xCAT::MsgUtils->message("S","xcatd: Error happened when receiving data from DB access process ".$err);
+        return undef;
+    }
     close($clisock);
     if (ref $retdata eq "SCALAR") { #bug detected
         #in the midst of the operation, die like it used to die
-        my $err;
         $$retdata =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
         $err = $1;
         die $err;
@@ -2225,9 +2247,14 @@ sub getNodeAttribs
 {
     my $self    = shift;
     if ($dbworkerpid) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
-			#the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
-			#db worker scope
+                        #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
+                        #db worker scope
         return dbc_call($self,'getNodeAttribs',@_);
+    }
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S","xcatd: DBI is missing, Please check the db access process.");
+        return undef;
     }
     my $node    = shift;
     my @attribs;
@@ -2699,6 +2726,12 @@ sub getAllEntries
     if ($dbworkerpid) {
         return dbc_call($self,'getAllEntries',@_);
     }
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S","xcatd: DBI is missing, Please check the db access process.");
+        return undef;
+    }
+
     my $allentries = shift;
     my @rets;
     my $query;
@@ -2995,13 +3028,18 @@ sub getAllAttribs
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribs',@_);
     }
+
+    if (!defined($self->{dbh})) {
+        xCAT::MsgUtils->message("S","xcatd: DBI is missing, Please check the db access process.");
+        return undef;
+    }
     #print "Being asked to dump ".$self->{tabname}."for something\n";
     my @attribs = @_;
     my @results = ();
     if ($self->{_use_cache}) {
         if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
-		$self->_refresh_cache();
-	}
+            $self->_refresh_cache();
+        }
         my @results;
         my $cacheline;
         CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {

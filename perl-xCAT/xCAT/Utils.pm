@@ -4620,4 +4620,34 @@ sub lookupNetboot{
     return $ret;
 }
 
+#--------------------------------------------------------------------------------
+
+=head3  is_process_exists
+    Check whether a process is exist.
+    Arguments:
+      process id
+    Returns:
+      1 process is exist
+      0 process is not exist
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->is_process_exists($pid);
+    Comments:
+        none
+=cut
+
+#--------------------------------------------------------------------------------
+sub is_process_exists{
+    my $pid = shift;
+    my $cmd = "kill -0 $pid";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ( $::RUNCMD_RC == 0 ) {
+     return 1;
+    }
+    return 0;
+}
+
 1;
