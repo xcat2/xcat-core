@@ -5061,10 +5061,10 @@ sub parse_rsync_input_file_on_MN
            }
          } else {  # not processing EXECUTE, EXECUTEALWAYS or APPEND
           # otherwise it is just the synclist
-          # we can handle the format file -> file or file -> (target node) file
-          if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/)
-          {
-
+          # xCAT supports the syncfile format:
+          #   file -> file
+          #   file -> (noderange for permitted nodes) file
+          if ($line =~ /(.+) -> (.+)/ || $line =~ /(.+) -> +\((.+)\) +(.+)/) {
             $::process_line = 1;
             my $src_file;
             my $dest_file;
@@ -5077,7 +5077,7 @@ sub parse_rsync_input_file_on_MN
             } elsif ($line =~ /(.+) -> (.+)/) {
                 $src_file  = $1;
                 $dest_file = $2;
-            } 
+            }
 
             # get all the permitted nodes for the line
             $dest_node =~ s/\s//g;
@@ -5112,7 +5112,11 @@ sub parse_rsync_input_file_on_MN
 
             foreach my $target_node (@dest_host)
             {
+<<<<<<< HEAD
                 # skip the node if it's not in the permitted list
+=======
+                # skip the node if it's NOT in the permitted list
+>>>>>>> f5d7bdd407a5963b04b8f2943097678f318d507c
                 if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
                     next;
                 }
