@@ -5112,11 +5112,7 @@ sub parse_rsync_input_file_on_MN
 
             foreach my $target_node (@dest_host)
             {
-<<<<<<< HEAD
-                # skip the node if it's not in the permitted list
-=======
                 # skip the node if it's NOT in the permitted list
->>>>>>> f5d7bdd407a5963b04b8f2943097678f318d507c
                 if ($dest_node && ! grep /^$target_node$/, @dest_nodes) {
                     next;
                 }
