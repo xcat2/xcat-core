@@ -1,0 +1,184 @@
+#! /usr/bin/env perl
+
+# This script calls xCAT command 'nodestat' and 'xdsh' to
+# implement a status monitoring tool like CSM command 'csmstat
+#
+# Currently, it only runs as passing the flag:
+#   -d: -s Status,Network-Interfaces for 'csmstat' command:
+# #/opt/csm/bin/csmstat -d: -s Status,Network-Interfaces
+
+use Getopt::Long;
+Getopt::Long::Configure("bundling");
+Getopt::Long::Configure("pass_through");
+
+my $checkpowerstate = 0;
+
+my %nodestat;
+my @sshdnodes;
+my @nopingnodes;
+
+# Parse the arguments
+my $DILIMITER;
+my $SELECTOR;
+
+$::USAGE = "Usage: xcatstat [noderange]
+
+This command can be used to display the OS and network interface status (On or Off status) for compute nodes which are managed by current xCAT MN.
+
+The output is similar as the CSM command csmstat: /opt/csm/bin/csmstat -d: -s Status,Network-Interfaces
+
+noderange can be any valid xCAT noderange. If it's ignored, the nodes in the all group will be operated.
+
+Options:
+  -h : Display this usage message.
+
+Output:
+  For OS status: 1 means on; 0 means off; 127 means unknown
+  For nic interface status: the format is <nicname-<status>>. 1 means on; 0 means off; 127 means unknown
+
+Example: 
+  Get the status of three nodes: rh6mn,rh7mn,rh7cn
+   # ./xcatstat rh6mn,rh7mn,rh7cn
+     # Hostname:Status:Network-Interfaces:
+       rh6mn:1:eth0-1:
+       rh7cn:0:127:
+       rh7mn:1:docker0-2:eth0-1:
+
+Author:  Wang, Xiao Peng\n";
+
+if (!GetOptions(
+        'h|help' => \$::HELP,)) {
+    print $::USAGE;
+    exit 1;
+}
+
+if ($::HELP) { print $::USAGE; exit 0; }
+
+# Set the default value
+$DILIMITER = ':';
+$SELECTOR  = "Status,Network-Interfaces";
+
+# Get the noderange
+my $noderange;
+if ($#ARGV < 0) {
+    $noderange = "all";
+} else {
+    $noderange = $ARGV[0];
+}
+
+# Execute 'nodestat' to get the node status
+my $cmd    = "/opt/xcat/bin/nodestat $noderange 2>/dev/null";
+my @output = `$cmd`;
+
+foreach my $line (@output) {
+    if ($line =~ /^(.+): +(.+)$/) {
+        my $nodename = $1;
+        my $value    = $2;
+        if ($value =~ /sshd/) {    # it means the node has ssh enabled
+            $nodestat{$nodename}{status}      = "on";
+            $nodestat{$nodename}{powerstatus} = "on";
+            push @sshdnodes, $nodename;
+        }
+        elsif ($value =~ /ping/) {    # it means the node is pingable
+            $nodestat{$nodename}{status}      = "off";
+            $nodestat{$nodename}{powerstatus} = "on";
+        }
+        else {
+            $nodestat{$nodename}{status}      = "unknown";
+            $nodestat{$nodename}{powerstatus} = "unknown";
+            push @nopingnodes, $nodename;
+        }
+    }
+}
+
+# Check the Power Status for the nodes which are noping
+if ($checkpowerstate) {
+    $cmd    = "/opt/xcat/bin/rpower $nopingnodes stat 2>/dev/null";
+    @output = `$cmd`;
+
+    foreach my $line (@output) {
+        if ($line =~ /^(.+): +(.+)$/) {
+            my $nodename = $1;
+            my $value    = $2;
+            if ($vlaue =~ /^on/) {
+                $nodestat{$nodename}{powerstatus} = "on";
+            } elsif ($value =~ /^off/) {
+                $nodestat{$nodename}{powerstatus} = "off";
+            } else {
+                $nodestat{$nodename}{powerstatus} = "unknown";
+            }
+        }
+    }
+}
+
+# Check the network interfaces for the nodes which are sshd
+if (@sshdnodes) {
+    $cmd = "/opt/xcat/bin/xdsh " . join(',', @sshdnodes) . " ifconfig -a 2>/dev/null";
+    @output = `$cmd`;
+
+    my $nodename;
+    my $ifname;
+    foreach my $line (@output) {
+        if ($line =~ /^(.+): +(.+): (flags=.*)$/) {    # for aix and rh7
+            $nodename = $1;
+            $ifname   = $2;
+            if ($3 =~ /RUNNING/) {
+                $nodestat{$nodename}{netif}{$ifname} = "on";
+            } else {
+                $nodestat{$nodename}{netif}{$ifname} = "off";
+            }
+        } elsif ($line =~ /^(.+): ([^ ]+) +Link/) {    # for rh6
+            $nodename                            = $1;
+            $ifname                              = $2;
+            $nodestat{$nodename}{netif}{$ifname} = "off";
+        } elsif ($line =~ /UP.*RUNNING/) {
+            $nodestat{$nodename}{netif}{$ifname} = "on";
+        }
+    }
+}
+
+my @statusoutput;
+if ($DILIMITER) {
+    foreach my $node (keys %nodestat) {
+        my $statusstring;
+        if (defined($nodestat{$node}{status})
+            && $nodestat{$node}{status} eq "on") {
+            $statusstring = "$node$DILIMITER" . "1"; # 1 means on; 0 means off; 127 means unknown
+        } elsif (defined($nodestat{$node}{status})
+            && $nodestat{$node}{status} eq "unknown") {
+            $statusstring = "$node$DILIMITER" . "127";
+        } else {
+            $statusstring = "$node$DILIMITER" . "0";
+        }
+
+        if (defined($nodestat{$node}{netif})) {
+            foreach my $if (sort (keys %{ $nodestat{$node}{netif} })) {
+                if ($if =~ /^lo[\d]*/) {
+                    next;
+                }
+                if ($nodestat{$node}{netif}{$if} eq "on") {
+                    $statusstring .= "$DILIMITER" . "$if-1"; # 1 means online; 2 means offline
+                } else {
+                    $statusstring .= "$DILIMITER" . "$if-2";
+                }
+            }
+        } else {
+            if ($statusstring) {
+                $statusstring .= "$DILIMITER" . "127";
+            } else {
+                $statusstring = "$node$DILIMITER" . "127";
+            }
+        }
+
+        if ($statusstring) {
+            push @statusoutput, $statusstring;
+        }
+    }
+}
+
+print "# Hostname:Status:Network-Interfaces:\n";
+foreach (sort @statusoutput) {
+    print $_. ":\n";
+}
+
+exit 0;
