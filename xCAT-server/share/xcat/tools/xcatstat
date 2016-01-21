@@ -23,7 +23,7 @@ my $SELECTOR;
 
 $::USAGE = "Usage: xcatstat [noderange]
 
-This command can be used to display the OS and network interface status for compute nodes which are managed by current xCAT MN.
+This command can be used to display the OS and network interface status (On or Off status) for compute nodes which are managed by current xCAT MN.
 
 The output is similar as the CSM command csmstat: /opt/csm/bin/csmstat -d: -s Status,Network-Interfaces
 
@@ -40,9 +40,9 @@ Example:
   Get the status of three nodes: rh6mn,rh7mn,rh7cn
    # ./xcatstat rh6mn,rh7mn,rh7cn
      # Hostname:Status:Network-Interfaces:
-       rh6mn:1:eth0-1:lo-1:
+       rh6mn:1:eth0-1:
        rh7cn:0:127:
-       rh7mn:1:docker0-2:eth0-1:lo-1:
+       rh7mn:1:docker0-2:eth0-1:
 
 Author:  Wang, Xiao Peng\n";
 
@@ -153,7 +153,7 @@ if ($DILIMITER) {
 
         if (defined($nodestat{$node}{netif})) {
             foreach my $if (sort (keys %{ $nodestat{$node}{netif} })) {
-                if ($if =~ /^lo\d/) {
+                if ($if =~ /^lo[\d]*/) {
                     next;
                 }
                 if ($nodestat{$node}{netif}{$if} eq "on") {
