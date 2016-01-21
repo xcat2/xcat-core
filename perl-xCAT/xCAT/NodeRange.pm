@@ -226,8 +226,12 @@ sub expandatom {
         }
         if ($grptab and (($glstamp < (time()-5)) or (not $didgrouplist and not scalar @grplist))) { 
             $didgrouplist = 1;
-	    $glstamp=time();
-            @grplist = @{$grptab->getAllEntries()};
+            $glstamp=time();
+            my $grplist_ptr = $grptab->getAllEntries();
+            if (!$grplist_ptr) {
+               return undef;
+            }
+            @grplist = @{$grplist_ptr};
         }
         my $isdynamicgrp = 0;
         foreach my $grpdef_ref (@grplist) {
