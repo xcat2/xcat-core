@@ -1,0 +1,26 @@
+
+=head1 NAME
+
+B<rmdocker> - Remove docker instance.
+
+=head1 SYNOPSIS
+
+B<rmdocker> I<noderange>
+
+B<rmdocker> [B<-h>|B<--help>]
+
+B<rmdocker> {B<-v>|B<--version>}
+
+
+=head1 DESCRIPTION
+
+B<rmdocker> To remove docker instances with the specified node name.
+
+=head1 EXAMPLES
+
+    rmdocker host01c01
+    host01c01: success
+
+=head1 SEE ALSO
+
+L<mkdocker(1)|mkdocker.1>, L<lsdocker(1)|lsdocker.1>

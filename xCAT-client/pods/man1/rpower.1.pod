@@ -50,6 +50,10 @@ B<rpower> I<noderange> [B<cycle>|B<softoff>]
 
 B<rpower> I<noderange> [B<on>|B<off>|B<reset>|B<stat>|B<softoff>]
 
+=head2 docker specific:
+
+B<rpower> I<noderange> [B<start>|B<stop>|B<restart>|B<pause>|B<unpause>|B<state>]
+
 =head1 DESCRIPTION
 
 B<rpower> controls the power for a single or range of nodes,  via the out-of-band path.
@@ -198,6 +202,30 @@ To specify that the target node will be power down if B<suspend> action failed.
 =item B<-r>
 
 To specify that the target node will be reset if B<suspend> action failed.
+
+=item B<start>
+
+To start a created docker instance.
+
+=item B<stop>
+
+To stop a created docker instance.
+
+=item B<restart>
+
+To restart a created docker instance.
+
+=item B<pause>
+
+To pause all processes in the instance.
+
+=item B<unpause>
+
+To unpause all processes in the instance.
+
+=item B<state>
+
+To get state of the instance.
 
 =item B<-h>|B<--help>
 
