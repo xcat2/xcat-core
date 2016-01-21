@@ -13,8 +13,7 @@ any other tools.
 Backup your xCAT data
 ---------------------
 
-It is good to backup all your xCAT data at first if necessary. Clean up the
-database by running the following: ::
+Clean up the database by running ``tabprune`` command: ::
 
   tabprune -a auditlog
   tabprune -a eventlog
@@ -46,22 +45,22 @@ For example ::
   service postgresql stop
   service mysqld stop
 
-Change the Management Host name
+Change the Management Hostname
 -------------------------------
 
 * hostname command ::
 
-    hostname <newMNname>
+    hostname <new_MN_name>
 
 * Edit hostname configuration file
 
-  Add hostname in ``/etc/hostname``
-  Add HOSTNAME attribute in ``/etc/sysconfig/network`` (only for [RHEL])
+  |  Add hostname in ``/etc/hostname``
+  |  Add HOSTNAME attribute in ``/etc/sysconfig/network`` (only for [RHEL])
 
 Update Database Files
 ---------------------
 
-You need to update the new MN hostname or ip address in several database
+You need to update the new MN hostname or IP address in several database
 configuration files.
 
 SQLite
@@ -72,18 +71,18 @@ Nothing to do.
 Postgresql
 ^^^^^^^^^^
 
-- Edit ``/etc/xcat/cfgloc`` file, replace ``Pg:dbname=xcatdb;host=<oldMNip>|xcatadm|xcat20``
-  with ``Pg:dbname=xcatdb;host=<newMNip>|xcatadm|xcat20``.
+- Edit ``/etc/xcat/cfgloc`` file, replace ``Pg:dbname=xcatdb;host=<old_MN_ip>|xcatadm|xcat20``
+  with ``Pg:dbname=xcatdb;host=<new_MN_ip>|xcatadm|xcat20``.
 
 - Edit config database config file ``/var/lib/pgsql/data/pg_hba.conf``,
-  replace ``host    all          all        <oldMNip>/32      md5``
-  with ``host    all          all        <newMNip>/32      md5``.
+  replace ``host    all          all        <old_MN_ip>/32      md5``
+  with ``host    all          all        <new_MN_ip>/32      md5``.
 
 Mysql
 ^^^^^
 
-Edit ``/etc/xcat/cfglooc``, replace ``mysql:dbname=xcatdb;host=<oldMNip>|xcatadmin|xcat20``
-with ``mysql:dbname=xcatdb;host=<newMNip>|xcatadmin|xcat20``.
+Edit ``/etc/xcat/cfglooc``, replace ``mysql:dbname=xcatdb;host=<old_MN_ip>|xcatadmin|xcat20``
+with ``mysql:dbname=xcatdb;host=<new_MN_ip>|xcatadmin|xcat20``.
 
 Start the database
 ------------------
@@ -112,10 +111,10 @@ Change the site table master attribute
 
 ::
 
-  chdef -t site master=<new mn ip address>
+  chdef -t site master=<new_MN_ip>
 
-Change all ip address attribute relevant to the MN ipaddress
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Change all IP address attribute relevant to the MN IP address
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For example, old address was "10.6.0.1"
 
@@ -139,7 +138,7 @@ For example, old address was "10.6.0.1"
       servicenode=10.6.0.1
       xcatmaster=10.6.0.1
 
-* As the attribute with the old ip address is list above, take conserver as
+* As the attribute with the old IP address is list above, take conserver as
   a example, query the nodes with ``conserver=10.6.0.1``.
 
   ::
@@ -153,7 +152,7 @@ For example, old address was "10.6.0.1"
 
 * Change the conserver address for cn1,cn2,cn3,cn4 ::
 
-    chdef -t node cn1-cn4 conserver=<newipaddress>
+    chdef -t node cn1-cn4 conserver=<new_ip_address>
 
 Repeat the same process for the other attributes.
 
@@ -192,8 +191,8 @@ command.
     xcatconfig -c
 
 * Update the policy table with new MN name,
-  replace ``"1.4","oldMNname",,,,,,"trusted",,`` with
-  ``"1.4","newMNname",,,,,,"trusted",,``
+  replace ``"1.4","old_MN_name",,,,,,"trusted",,`` with
+  ``"1.4","new_MN_name",,,,,,"trusted",,``
 
 * Setup up conserver with new credentials ::
 
@@ -205,11 +204,11 @@ External DNS Server Changed
 * Update nameserver entries in ``/etc/resolv.conf``
 * Update nameserver attribute in ``site`` table ::
 
-    chdef -t site -o clustersite nameservers="newipaddress1,newipaddress2"
+    chdef -t site -o clustersite nameservers="new_ip_address1,new_ip_address2"
 
 * Update site forwarders in DB ::
 
-    chdef -t site -o clustersite forwarders="newipaddress1,newipaddress2"
+    chdef -t site -o clustersite forwarders="new_ip_address1,new_ip_address2"
 
 * Run command ``makedns -n``
 
@@ -225,13 +224,13 @@ Change the ``/etc/resolv.conf``, forwarders attribute in site table. ::
 
 Change the domain name in the xCAT database site table. ::
 
-  chdef -t site -o clustersite domain=<newdomainname>
+  chdef -t site -o clustersite domain=<new_domainname>
 
 From xCAT 2.8, multiple domains is supported in the cluster. Update the
 networks table definition. ::
 
   lsdef -t network -l
-  chdef -t network -o <netname> ddnsdomain=<newdomainname1,newdomainname2>
+  chdef -t network -o <network_name> ddnsdomain=<new_domainname1,new_domainname2>
 
 Update the Provision Environment
 --------------------------------
@@ -245,19 +244,19 @@ If it exists, then use the return name and do the following:
 
   - Remove the MN from DNS configuration ::
 
-      makedns -d <oldMNname>
+      makedns -d <old_MN_name>
 
   - Remove the MN from the DHCP configuration ::
 
-      makedns -d <oldMNname>
+      makedns -d <old_MN_name>
 
   - Remove the MN from the conserver configuration ::
 
-      makedns -d <oldMNname>
+      makedns -d <old_MN_name>
 
   - Change the MN name in the xCAT database ::
 
-      chdef -t node -o <oldMNname> -n <newMNname>
+      chdef -t node -o <old_MN_name> -n <new_MN_name>
 
   - Add the new MN to DNS ::
 

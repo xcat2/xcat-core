@@ -1,18 +1,18 @@
-Changing the hostname/IP address
+Changing the Hostname/IP address
 ================================
 
 Change compute node definition relevant to the service node
 -----------------------------------------------------------
 
 Change the settings in database. Below shows a method to find out where the old
-ip address settings (take 10.6.0.1 as a example) are used in Hierarchy
+IP address settings (take 10.6.0.1 as a example) are used in Hierarchy
 environment.
 
 * Query the old attribute ::
 
     lsdef -t node -l | grep "10.6.0.1"
     # below is output of the above command. We can find out that nfsserver
-    # and servicenode are using the old ip address setting.
+    # and servicenode are using the old IP address setting.
     nfsserver=10.6.0.1
     servicenode=10.6.0.1
 
@@ -29,7 +29,7 @@ environment.
 * Change the nfsserver address for cn1,cn2,cn3,cn4 by running the following
   command: ::
 
-    chdef -t node cn1-cn4 nfsserver=<new service node ip addresss>
+    chdef -t node cn1-cn4 nfsserver=<new service node IP addresss>
 
 Database Connection Changes
 ---------------------------
@@ -57,4 +57,4 @@ Reinstall the nodes to pick up all changes  ::
 
   nodeset <noderange> osimage=<osimagename>
 
-Then use your normal command to install the nodes like rinstall,rnetboot,etc.
+Then use your normal command to install the nodes like rinstall, rnetboot, etc.
