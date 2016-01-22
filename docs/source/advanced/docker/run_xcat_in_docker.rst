@@ -21,7 +21,7 @@ To demonstrate the steps to run xCAT in a Docker container, take a cluster with 
 
     Docker host: dockerhost1
     The Docker host network interface facing the compute nodes: eth0
-    The IP address of eth0: 10.5.106.1/24
+    The IP address of eth0 on Docker host: 10.5.106.1/24
     The customized docker bridge: br0
     The docker container name running xCAT: xcatmn 
     The hostname of container xcatmn: xcatmn
@@ -35,14 +35,18 @@ Create a customized bridge on the Docker host
 
 **Docker containers** connect to the Docker host network via a network bridge. To run xCAT in Docker, you should create a customized bridge according to the cluster network plan, instead of the default bridge "docker0".
 
-As an example, create a bridge "br0" and attach the network interface "eth0" to it ::   
+Since the commands to create the bridge will break the network connection on "eth0", you'd better create a script such as "mkbridge" to create the bridge instead of running the commands sequentially. As an example, create a bridge "br0" and attach the network interface "eth0" to it. ::   
 
+    [root@dockerhost1 ~]# cat /tmp/mkbridge
+    #!/bin/bash
     brctl addbr br0
     brctl setfd br0 0
     ip addr del dev eth0 10.5.106.1/24
     brctl addif br0 eth0
     ip link set br0 up
     ip addr add dev br0 10.5.106.1/24
+    [root@dockerhost1 ~]# chmod +x /tmp/mkbridge
+    [root@dockerhost1 ~]# /tmp/mkbridge 
 
 
 Pull the xCAT Docker image from DockerHub:
@@ -108,9 +112,9 @@ First, download the "pipework" ::
     
     git clone https://github.com/jpetazzo/pipework.git
  
-install "pipework" by copying the script "pipework" to "/usr/local/bin/pipework" ::
+install "pipework" by copying the script "pipework" to "/usr/bin/pipework" ::
    
-    cp pipework/pipework /usr/local/bin/pipework
+    cp pipework/pipework /usr/bin/pipework
 
 Assign a static IP address for Docker container and attach it to the customized network bridge with ::
   
