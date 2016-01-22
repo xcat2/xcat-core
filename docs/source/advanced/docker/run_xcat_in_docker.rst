@@ -35,7 +35,7 @@ Create a customized bridge on the Docker host
 
 **Docker containers** connect to the Docker host network via a network bridge. To run xCAT in Docker, you should create a customized bridge according to the cluster network plan, instead of the default bridge "docker0".
 
-Since the commands to create the bridge will break the network connection on "eth0", you'd better create a script such as "mkbridge" to create the bridge instead of running the commands sequencially. As an example, create a bridge "br0" and attach the network interface "eth0" to it. ::   
+Since the commands to create the bridge will break the network connection on "eth0", you'd better create a script such as "mkbridge" to create the bridge instead of running the commands sequentially. As an example, create a bridge "br0" and attach the network interface "eth0" to it. ::   
 
     [root@dockerhost1 ~]# cat /tmp/mkbridge
     #!/bin/bash
