@@ -228,10 +228,10 @@ sub http_state_code_info {
     elsif ($state_code eq '304')  {
         if (defined $curr_status)  {
             if ($curr_status eq "INIT_TO_WAIT_FOR_START_DONE") {
-                return [1, "container already started"];
+                return [0, "container already started"];
             }
             else {
-                return [1, "container already stoped"];
+                return [0, "container already stoped"];
             }
         }
         else {
@@ -443,7 +443,7 @@ sub single_state_engine {
     foreach my $tmp (@msg) {
         $tmp->[1] =~ s/\035//g;
         if ($tmp->[0]) {
-            $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"]}]},errorcode=>"$tmp->[0]");
+            $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"],errorcode=>["$tmp->[0]"]}]});
         } 
         else {
             $global_callback->({node=>[{name=>[$node],data=>["$tmp->[1]"]}]});
