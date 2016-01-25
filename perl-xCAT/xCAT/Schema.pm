@@ -1442,7 +1442,7 @@ firmware => {
 },
 
 nics => {
-        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases nicextraparams nicdevices comments disable)], 
+        cols => [qw(node nicips  nichostnamesuffixes nichostnameprefixes nictypes niccustomscripts nicnetworks nicaliases nicextraparams nicdevices nicsadapter comments disable)],
         keys => [qw(node)],
         tablespace =>'XCATTBS16K',
         table_desc => 'Stores NIC details.',
@@ -1486,6 +1486,8 @@ nics => {
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
             nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
+            nicsadapter => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
+                    <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.',
             comments => 'Any user-written notes.',
             disable => "Set to 'yes' or '1' to comment out this row.",
         },
@@ -1681,6 +1683,19 @@ token => {
         username => 'The user name.',
         expire => 'The expire time for this token.',
         comments => 'Any user-provided notes.',
+        disable =>  "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+taskstate => {
+    cols => [qw(node command state pid reserve)],
+    keys => [qw(node)],
+    table_desc => 'The task state for the node.',
+    descriptions => {       
+        node => 'The node name.',
+        command => 'Current command is running',
+        state => 'The task state(callback, running) for the node.',
+        pid => 'The process id of the request process.',
+        reserve => 'used to lock the node',  
         disable =>  "Set to 'yes' or '1' to comment out this row.",
     },
 },
@@ -2416,10 +2431,14 @@ my @nodeattrs = (
 				tabentry => 'nics.nicextraparams',
 				access_tabentry => 'nics.node=attr:node',
 		},
-                {attr_name => 'nicdevices',
+        {attr_name => 'nicdevices',
                                 tabentry => 'nics.nicdevices',
                                 access_tabentry => 'nics.node=attr:node',
-                },
+        },
+        {attr_name => 'nicsadapter',
+                tabentry => 'nics.nicsadapter',
+                access_tabentry => 'nics.node=attr:node',
+        },
 #######################
 #  prodkey table     #
 ######################
@@ -3580,6 +3599,37 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
 );
 
+###########################
+#  taskstate data object #
+###########################
+#     taskstate table    #
+###########################
+@{$defspec{taskstate}->{'attrs'}} = (
+        {attr_name => 'node',
+                 tabentry => 'taskstate.node',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+        {attr_name => 'command',
+                 tabentry => 'taskstate.command',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+        {attr_name => 'state',
+                 tabentry => 'taskstate.state',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+        {attr_name => 'pid',
+                 tabentry => 'taskstate.pid',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+        {attr_name => 'reserve',
+                 tabentry => 'taskstate.reserve',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+        {attr_name => 'disable',
+                 tabentry => 'taskstate.disable',
+                 access_tabentry => 'taskstate.node=attr:node',
+                 },
+);
 
 #############################
 #  auditlog object #

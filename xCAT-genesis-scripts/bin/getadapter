@@ -16,9 +16,10 @@ if [ -f "$ADAPTERFILE" ]; then
 fi
 
 echo "<xcatrequest>
-<command>findadapter</command>
+<command>getadapter</command>
 <clienttype>cli</clienttype>
-<hostname>$HOSTNAME</hostname>"  >> "$ADAPTERFILE"
+<noderange>$HOSTNAME</noderange>
+<action>update</action>"  >> "$ADAPTERFILE"
 
 #scan adapters have recognized by operating system
 for n in /sys/class/net/*; do
@@ -31,7 +32,7 @@ for n in /sys/class/net/*; do
         if [ -n "$tmp" ]; then
             echo "<interface>$tmp</interface>" >> "$ADAPTERFILE"
         fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_NET_NAME | awk -F '=' '{print $2}'|sort -u| tr -s "\n" "," | sed "s/,$//g"`
+        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_NET_NAME | awk -F '=' '{print $2}'|sort -u| tr -s "\n" "/" | sed "s/\/$//g"`
         if [ -n "$tmp" ]; then
             echo "<predictablename>$tmp</predictablename>" >> "$ADAPTERFILE"
         fi
@@ -39,17 +40,19 @@ for n in /sys/class/net/*; do
         if [ -n "$tmp" ]; then
             echo "<pcilocation>${tmp%/net*}</pcilocation>" >> "$ADAPTERFILE"
         fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_NET_NAME_MAC | awk -F '=' '{print $2}'`
-        if [ -n "$tmp" ]; then
-            echo "<mac>${tmp##*enx}</mac>" >> "$ADAPTERFILE"
-        fi
-        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_VENDOR_FROM_DATABASE | awk -F '=' '{print $2}' | tr -s "\n" "," | sed "s/,$//g"`
+        echo "<mac>`cat /sys/class/net/$nic/address`</mac>" >> "$ADAPTERFILE"
+        tmp=`udevadm info /sys/class/net/"$nic" | grep ID_VENDOR_FROM_DATABASE | awk -F '=' '{print $2}' | tr -s "\n" "/" | sed "s/\/$//g"`
         if [ -n "$tmp" ]; then
             echo "<vendor>$tmp</vendor>" >> "$ADAPTERFILE"
         fi
         tmp=`udevadm info /sys/class/net/"$nic" | grep ID_MODEL_FROM_DATABASE | awk -F '=' '{print $2}'`
         if [ -n "$tmp" ]; then
             echo "<model>$tmp</model>" >> "$ADAPTERFILE"
+        fi
+        tmp=`ip link show $nic`
+        if [ -n "$tmp" ]; then
+            tmp=${tmp#*state }
+            echo "<linkstate>${tmp% mode*}</linkstate>" >> "$ADAPTERFILE"
         fi
         echo '</nic>' >> "$ADAPTERFILE"
     fi

@@ -304,6 +304,10 @@ site(7)|site.7
 
 
 
+taskstate(7)|taskstate.7
+
+
+
 zone(7)|zone.7
 
 
@@ -679,6 +683,12 @@ switch(5)|switch.5
 switches(5)|switches.5
  
  Parameters to use when interrogating switches
+ 
+
+
+taskstate(5)|taskstate.5
+ 
+ The task state for the node.
  
 
 
