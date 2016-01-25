@@ -118,7 +118,7 @@ install "pipework" by copying the script "pipework" to "/usr/bin/pipework" ::
 
 Assign a static IP address for Docker container and attach it to the customized network bridge with ::
   
-    pipework <bridge name> <container name> <IP address/netmask for the container>@<gateway>
+    pipework <bridge name> <container name> <IP address/netmask for the container>@<IP address of the Docker host>
 
 As an example, run ::
 
