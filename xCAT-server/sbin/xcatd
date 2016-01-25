@@ -44,6 +44,7 @@ use xCAT::TableUtils;
 use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use xCAT::xcatd;
+use xCAT::State;
 my $os = xCAT::Utils->osver();
 my $arch = `uname -p`;
 # These do not have the IO::Uncompress rpm available
@@ -73,6 +74,9 @@ my %dispatched_children=();
 my $plugin_numchildren=0;
 my %plugin_children;
 my $inet6support;
+
+my @CALLBACK_COMMAND =('getadapter');
+
 if ($^O =~ /^aix/i) {  # disable AIX IPV6 TODO
     $inet6support = 0;
 } else {
@@ -111,7 +115,7 @@ use xCAT::ExtTab;
 use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
-openlog("xcat",,"local4");
+openlog("xcat","local4");
 # turn off warnings for call to setlogsock.  puts out warning message if
 # syslog tcp port not defined in /etc/services.  this can safely be ignored.
 no warnings;
@@ -1472,10 +1476,6 @@ xCAT_monitoring::monitorctrl::stop($$);
 my $parent_fd;
 my %resps;
 
-
-
-
-
 sub plugin_command {
     my $req = shift;
     my $sock = shift;
@@ -1744,6 +1744,7 @@ sub plugin_command {
         $parent_fd = $old_parent_fd;
     } else {
         my $req_back = undef;
+        my $command = $req->{'command'}->[0];
         # executing plugins parallel
         foreach (keys %handler_hash) {
             my $modname = $_;
@@ -1751,6 +1752,20 @@ sub plugin_command {
             if (-r $plugins_dir."/".$modname.".pm") {
                 require $plugins_dir."/".$modname.".pm";
                 $plugin_numchildren++;
+                # build the request queue for the callback command
+                if (grep (/^$command$/, @CALLBACK_COMMAND)) {
+                    no strict  "refs";                	
+                    if (defined(${"xCAT_plugin::".$modname."::"}{route_request})) {
+                        my $ret = ${"xCAT_plugin::".$modname."::"}{route_request}
+                        ($req,$callback,\&do_request);
+                        if ($ret == xCAT::State->REQUEST_ERROR) {
+                            xCAT::MsgUtils->message("S", "Request failed: $!");
+                            next;
+                        } elsif ($ret == xCAT::State->REQUEST_UPDATE) {
+                            next;
+                        }
+                    }
+                }
                 my $pfd; # will be referenced for inter-process messaging.
                 my $parfd; # not causing a problem that I discern yet, but theoretically
                 my $child;
