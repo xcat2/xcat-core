@@ -231,7 +231,7 @@ function sort_nics_device_order {
     while [ $num1 -lt $max1 ];
     do
         alonenic=`echo "$alone_nics"|sed -n "${num1}p"`
-        echo "$nics_list"| grep $alonenic >/dev/null
+        echo "$nics_list"| grep "$alonenic" >/dev/null
         if [ $? -ne 0 ]; then
             echo $alonenic
         fi
