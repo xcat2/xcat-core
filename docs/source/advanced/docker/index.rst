@@ -7,3 +7,4 @@ Placeholder for Docker related topics
    :maxdepth: 2
 
    run_xcat_in_docker.rst   
+   lifecycle_management.rst

@@ -73,7 +73,8 @@ fi
 
 #Restart docker service
 service docker restart
-if ! docker ps >/dev/null 2>&1; then 
+docker ps
+if [ $? -ne 0 ]; then
     echo "Docker service starting failed"
     exit 1
 fi
@@ -122,7 +123,7 @@ if [ ! -f "$docker_conf_file" ]; then
     exit 1
 fi
 if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
-    echo "DOCKER_OPTS=\"-H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"" >> $docker_conf_file
+    echo "DOCKER_OPTS=\"-H unix:///var/run/docker.sock -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"" >> $docker_conf_file
 else
     if grep "^DOCKER_OPTS.*tlsverify" $docker_conf_file > /dev/null 2>&1; then
         sed -i "s@-H [^ |^\"]*@@g" $docker_conf_file
@@ -133,14 +134,14 @@ else
         sed -i "s@--tls@@g" $docker_conf_file
         sed -i "s@\ \{2,\}@@g" $docker_conf_file
     fi 
-    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
+    sed -i "s@^\(DOCKER_OPTS\=\"[^\"]*\)@\1 -H unix:///var/run/docker.sock -H tcp://`hostname`:2375 --tls --tlscacert=$HOST_CA_PEM --tlscert=$HOST_CERT_PEM --tlskey=$HOST_CERT_PEM --tlsverify=true\"@" $docker_conf_file
     sed -i 's/\"\{2,\}/\"/' $docker_conf_file
 fi
 
 #Restart docker service
 service docker restart
-if ! docker ps >/dev/null 2>&1; then 
+docker ps
+if [ $? -ne 0 ]; then
     echo "Docker service starting failed"
     exit 1
 fi
-
