@@ -24,14 +24,16 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
     TIMEOUT=15
     BMCIP=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCVLAN=`grep taggedvlan /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    if [ -z "$BMCVLAN" ]; then BMCVLAN=off; fi
+    if [ -z "$BMCVLAN" ]; then 
+        BMCVLAN=off;
+    fi
     BMCGW=`grep gateway /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCNM=`grep netmask /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCUS=`grep username /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCPW=`grep password /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     IPCFGMETHOD=`grep ipcfgmethod /tmp/ipmicfg.xml|awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     if [ -z "$IPCFGMETHOD" ]; then
-	IPCFGMETHOD="static"
+        IPCFGMETHOD="static"
     fi
     if [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; then
         echo "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
@@ -42,25 +44,26 @@ kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
+
 if [ "$IPMIMFG" == 2 ]; then #IBM
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-	    let idev=0
-	    IFS=','
-	    for p in $BMCPORT; do
-            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-            	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
+            let idev=0
+            IFS=','
+            for p in $BMCPORT; do
+                ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                     sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                 done
-	    	let idev=idev+1
-	    done
-	    unset IFS
+                let idev=idev+1
+            done
+            unset IFS
         fi
     elif [ "$XPROD" == "291" ]; then
         LOCKEDUSERS=1
@@ -69,18 +72,18 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         if [ "$IBMFAM" == "59554f4f" ]; then
             BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
-		    IFS=','
-		    for p in $BMCPORT; do
-	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                let idev=0
+                IFS=','
+                for p in $BMCPORT; do
+                    ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
                     done
-		    	    let idev=idev+1
-		    done
-		    unset IFS
+                    let idev=idev+1
+                done
+                unset IFS
             fi
         fi
     fi
@@ -88,119 +91,130 @@ elif [ "$IPMIMFG" == 20301 ] ; then
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     if [ $IBMVPDV -eq 2 ]; then
-	ISITE=1;
+        ISITE=1;
     fi
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
-		    IFS=','
-		    for p in $BMCPORT; do
-	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
-                    # after this change, we need to watch and wait to see that it
-                    # actually takes effect.  On port change, the service processor
-                    # does not migrate the network configuration over
-                    # so we might be halfway through setting up when the net config 
-                    # reverts to dhcp then static, which setting a static ip for is
-                    # considered invalid
+            let idev=0
+            IFS=','
+            for p in $BMCPORT; do
+                ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                # after this change, we need to watch and wait to see that it
+                # actually takes effect.  On port change, the service processor
+                # does not migrate the network configuration over
+                # so we might be halfway through setting up when the net config 
+                # reverts to dhcp then static, which setting a static ip for is
+                # considered invalid
+                CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
+                while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
+                    sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
-                        sleep 1
-                        CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    done
-
-		    	let idev=idev+1
-		    done
-		    unset IFS
+                done
+                let idev=idev+1
+            done
+            unset IFS
         fi
 elif [ "$IPMIMFG" == "47488" ]; then
-        LOCKEDUSERS=1
+    LOCKEDUSERS=1
 fi
-echo -n "Auto detecting LAN channel..."
 
+echo -n "Auto detecting LAN channel..."
 while [ -z "$LANCHAN" ]; do 
-	for TLANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
-	   if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; 
-	   then 
-		LANCHAN=$TLANCHAN
-	        break; 
-	    fi; 
-	    echo -n "."
-	done
-	if [ -z "$LANCHAN" ]; then
-		echo "Unable to detect lan channel, retrying in 10 seconds";
-		sleep 10
-	fi
+    for TLANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
+        if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; 
+        then 
+            LANCHAN=$TLANCHAN
+            break; 
+        fi; 
+        echo -n "."
+    done
+    if [ -z "$LANCHAN" ]; then
+        echo "Unable to detect lan channel, retrying in 10 seconds";
+        sleep 10
+    fi
 done
 echo "Detected LAN channel $LANCHAN"
         
 let idev=NUMBMCS
 if [ $IPCFGMETHOD="static" ]; then
-	while [ $idev -gt 0 ]; do
-		let idev=idev-1
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-	done
-	let idev=0
-	for b in $BMCIP; do
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-		let idev=idev+1
-	done
-	let idev=0
-	for m in $BMCNM; do
-		TRIES=0
-		while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
-		    sleep 1
-		    let TRIES=TRIES+1
-		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		done
-		let idev=idev+1
-	done
-	TRIES=0
-	if [ ! -z "$BMCGW" ]; then
-	    let idev=0
-	    for g in $BMCGW; do
-	    	TRIES=0
-		    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
-		        sleep 1
-		        let TRIES=TRIES+1
-		        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-		    done
-	            let idev=idev+1
-	    done
-	    TRIES=0
-	fi
-else
-	 let idev=NUMBMCS
-	 while [ $idev -gt 0 ]; do
-                let idev=idev-1
-                TRIES=0
-                while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
-                    sleep 1
-                    let TRIES=TRIES+1
-                    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-                done
+    while [ $idev -gt 0 ]; do
+        let idev=idev-1
+        TRIES=0
+        while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
         done
+    done
+    let idev=0
+    for b in $BMCIP; do
+        TRIES=0
+        while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
+        done
+        let idev=idev+1
+    done
+    let idev=0
+    for m in $BMCNM; do
+        TRIES=0
+        while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then
+                break;
+            fi
+        done
+        let idev=idev+1
+    done
+    TRIES=0
+    if [ ! -z "$BMCGW" ]; then
+        let idev=0
+        for g in $BMCGW; do
+            TRIES=0
+            while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+                sleep 1
+                let TRIES=TRIES+1
+                if [ $TRIES -gt $TIMEOUT ]; then
+                    break;
+                fi
+            done
+            let idev=idev+1
+        done
+        TRIES=0
+    fi
+else
+    let idev=NUMBMCS
+    while [ $idev -gt 0 ]; do
+        let idev=idev-1
+        TRIES=0
+        while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
+            sleep 1
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then 
+                break;
+            fi
+        done
+    done
 fi
 
 let idev=0
 for b in $BMCVLAN; do
-	TRIES=0
-	while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
-	    sleep 1
-	    let TRIES=TRIES+1
-	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-	done
-	let idev=idev+1
+    TRIES=0
+    while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then 
+            break;
+        fi
+    done
+    let idev=idev+1
 done
 
 let idev=NUMBMCS-1
@@ -345,17 +359,15 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
         else
             NEWACCESS="$NEWACCESS"$elem
         fi
-	    i=$((i+1))
+        i=$((i+1))
     done
     if ipmitool lan set $LANCHAN cipher_privs $NEWACCESS > /dev/null; then
-		echo OK
+        echo OK
     else
-		echo ERROR
+        echo ERROR
     fi
 
-
     TRIES=0
-
     echo -n "Enabling SOL for channel $LANCHAN:"
     while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
         sleep 1
@@ -405,15 +417,14 @@ fi
 
 # update the node status to 'bmcready'
 for parm in `cat /proc/cmdline`; do
-	key=`echo $parm|awk -F= '{print $1}'`
-	if [ "$key" = "xcatd" ]; then
-		XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
-	fi
+    key=`echo $parm|awk -F= '{print $1}'`
+    if [ "$key" = "xcatd" ]; then
+        XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+    fi
 done
 if [ ! -z "$XCATMASTER" ]; then
     updateflag.awk $XCATMASTER 3002 "installstatus bmcready"
 fi
-#frume.awk
 
 echo "Lighting Identify Light"
 while :
