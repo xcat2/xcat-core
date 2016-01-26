@@ -1770,7 +1770,9 @@ sub copycd
                                 # only set to $1 if the regex was successful
                                 if ($_ =~ /sles:(\d+),/) {
                                     $distname = "sles".$1;
-                                }  elsif ($_ =~ /sles:(\d+):sp(\d+),/) {
+                                } elsif ($_ =~ /sles:(\d+):sp(\d+),/) {
+                                    $distname = "sles".$1.".".$2;
+                                } elsif ($_ =~ /Software Development Kit\s*(\d+)\s*SP(\d+)/) {
                                     $distname = "sles".$1.".".$2;
                                 } elsif ($_ =~ /Software Development Kit\s*(\d+)/) {
                                     $distname = "sles".$1;
