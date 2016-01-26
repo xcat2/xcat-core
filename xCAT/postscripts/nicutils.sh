@@ -647,7 +647,7 @@ function add_if() {
     BRIDGE=$3
 
     if [[ $BRIDGE == "bridge_ovs" ]]; then
-g_info "ovs-vsctl add-br $BNAME"
+         log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
 
         log_info "ovs-vsctl add-port $BNAME $PORT" 
