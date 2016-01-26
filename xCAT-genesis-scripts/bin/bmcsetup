@@ -399,10 +399,21 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     #if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
-# Reset the BMC for the x3755 M4 (8722), otherwise the BMC will not be pingable after running of bmcsetup
+#
+# Cold Reset the BMC for: 
+#    Product ID: 309   - x3755 M4 (8722)
+#    Product ID: 43707 - IBM Power S822LC and S812LC
+# Otherwise the BMC will not respond to ping after running bmcsetup 
+#
 XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-# Product ID with 43707 is for IBM Power S822LC and S812LC machine
 if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
+    if [ "$XPROD" = "43707" ]; then
+        # The IBM Power S822LC and S812LC should NOT need a reset to apply changes
+        # to the BMC.  However, it seems there's a problem with the BMC where after
+        # 15 seconds, it stops responding.  To work around until the firmware is fixed,
+        # have a sleep here for 30 seconds, then issue the reset of the BMC 
+        sleep 30
+    fi
     echo "Resetting BMC ..."
     ipmitool mc reset cold
     echo "Waiting for the BMC to appear ..."
