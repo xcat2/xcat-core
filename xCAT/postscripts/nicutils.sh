@@ -608,6 +608,8 @@ function migrate_ip {
 
 }
 
+
+
 ###############################################################################
 #
 # create bridge
@@ -621,9 +623,11 @@ function add_br() {
      BRIDGE=$2
 
      if [[ $BRIDGE == "bridge_ovs" ]]; then
-         log_info "ovs-vsctl add-br $BNAME" 
+         type brctl >/dev/null 2>/dev/null || echo "There is no ovs-vsctl" >&2 && exit 1
+         log_info "ovs-vsctl add-br $BNAME"
          ovs-vsctl add-br $BNAME
      elif [[ $BRIDGE == "bridge" ]]; then
+         type brctl >/dev/null 2>/dev/null || echo "There is no brctl" >&2 && exit 1
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
      fi
@@ -643,6 +647,9 @@ function add_if() {
     BRIDGE=$3
 
     if [[ $BRIDGE == "bridge_ovs" ]]; then
+         log_info "ovs-vsctl add-br $BNAME"
+         ovs-vsctl add-br $BNAME
+
         log_info "ovs-vsctl add-port $BNAME $PORT" 
         ovs-vsctl add-port $BNAME $PORT
     elif [[ $BRIDGE == "bridge" ]]; then
