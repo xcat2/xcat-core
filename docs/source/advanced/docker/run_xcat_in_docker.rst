@@ -17,7 +17,7 @@ You can select a baremental or virtual server with the Operating Systems which d
 Shutdown the SELinux/Apparmor on Docker host
 --------------------------------------------
 
-If the SELinux or Apparmor on Docker host is enabled, the services/applications inside Docker Container might be confined. 
+If the SELinux or Apparmor on Docker host is enabled, the services/applications inside Docker Container might be confined. To run xCAT in Docker container, SELinux and Apparmor on the Docker host must be disabled. 
 
 SELinux can be disabled with: ::
 
