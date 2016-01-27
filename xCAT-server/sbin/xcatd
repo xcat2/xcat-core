@@ -306,7 +306,7 @@ my $socket;
       my $pid = <$installpidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
-          kill 12,$pid;
+          kill 'USR2',  $pid;
           yield(); # let peer have a shot at closure
       }
       close($installpidfile);
@@ -549,69 +549,76 @@ sub grant_tcrequests {
 }
 
 sub do_discovery_process {
-	$SIG{TERM} = 'DEFAULT';
-	$SIG{INT} = 'DEFAULT';
-	my %args =@_;
-	my $broker = $args{broker};
-	my $quit=0;
-	my $vintage = time();
-   	$dispatch_requests=0;
-        populate_site_hash();
-        populate_vpd_hash();
-        populate_mp_hash();
-	while (not $quit) {
-           	if ((time()-$vintage)> 15) { 
-                    populate_site_hash(); 
-                    populate_vpd_hash();
-                    populate_mp_hash();
-                    $vintage = time();
-                } #site table reread every 15 second
-		my $msg = fd_retrieve($broker);
-		my $data;
-		my $client;
-		my $clientn;
-		my $clientip;
-		if (ref $msg eq 'HASH') { $data = $msg->{data}; } else { die "incorrect code to disco"; }
-		my $saddr = $msg->{sockaddr};
-	        if ($inet6support) { 
-			($client,$sport) = Socket6::getnameinfo($saddr);
-			($clientip,$sport) = Socket6::getnameinfo($saddr,Socket6::NI_NUMERICHOST());
-			if ($clientip =~ /::ffff:.*\..*\./) {
-				$clientip =~ s/^::ffff://; 
-			}
-			if ($client =~ /::ffff:.*\..*\./) {
-				$client =~ s/^::ffff://; 
-			}
-		} else {
-	        	($sport,$clientn) = sockaddr_in($saddr);
-			$clientip = inet_ntoa($clientn);
-			$client=gethostbyaddr($clientn,AF_INET);
-		}
-        	if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
-						#xcatrequest xml, so go ahead and decompress it
-	   		my $bigdata; 
-		   	IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);  
-		   	$data = $bigdata 
-		}
-        	my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
-	        if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { #only consider priveleged port requests to start with
-	          $req->{'_xcat_clienthost'}=$client;
-	          $req->{'_xcat_clientip'}=$clientip;
-	          $req->{'_xcat_clientport'}=$sport;
-	          if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { #only discover from ips that appear to be on a managed network
+    $SIG{TERM} = 'DEFAULT';
+    $SIG{INT} = 'DEFAULT';
+    my %args =@_;
+    my $broker = $args{broker};
+    my $quit=0;
+    my $vintage = time();
+    $dispatch_requests=0;
+    populate_site_hash();
+    populate_vpd_hash();
+    populate_mp_hash();
+    while (not $quit) {
+        eval {
+             if ((time()-$vintage)> 15) { 
+                 populate_site_hash(); 
+                 populate_vpd_hash();
+                 populate_mp_hash();
+                 $vintage = time();
+            } #site table reread every 15 second
+            my $msg = fd_retrieve($broker);
+            my $data;
+            my $client;
+            my $clientn;
+            my $clientip;
+            if (ref $msg eq 'HASH') { $data = $msg->{data}; } else { die "incorrect code to disco"; }
+            my $saddr = $msg->{sockaddr};
+            if ($inet6support) { 
+                ($client,$sport) = Socket6::getnameinfo($saddr);
+                ($clientip,$sport) = Socket6::getnameinfo($saddr,Socket6::NI_NUMERICHOST());
+                if ($clientip =~ /::ffff:.*\..*\./) {
+                    $clientip =~ s/^::ffff://; 
+                }
+                if ($client =~ /::ffff:.*\..*\./) {
+                    $client =~ s/^::ffff://; 
+                }
+            } else {
+                ($sport,$clientn) = sockaddr_in($saddr);
+                $clientip = inet_ntoa($clientn);
+                $client=gethostbyaddr($clientn,AF_INET);
+            }
+            if ($data =~ /^\037\213/) {  #per rfc 1952, these two bytes are gzip, and they are invalid for 
+                 #xcatrequest xml, so go ahead and decompress it
+                 my $bigdata; 
+                 IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);  
+                 $data = $bigdata 
+	    }
+            my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
+            if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { #only consider priveleged port requests to start with
+                $req->{'_xcat_clienthost'}=$client;
+	        $req->{'_xcat_clientip'}=$clientip;
+	        $req->{'_xcat_clientport'}=$sport;
+                if (defined($cmd_handlers{"findme"}) and xCAT::NetworkUtils->nodeonmynet($clientip)) { #only discover from ips that appear to be on a managed network
 	            xCAT::MsgUtils->message("S","xcatd: Processing discovery request from ".$req->{'_xcat_clientip'});
 	            $req->{cacheonly}->[0] = 1;
 	            plugin_command($req,undef,\&build_response);
 	  	    if ($req->{cacheonly}->[0]) {
 			delete $req->{cacheonly};
 	                plugin_command($req,undef,\&build_response);
-		    }
-	          } else {
+	            }
+                } else {
 	            xCAT::MsgUtils->message("S","xcatd: Skipping discovery from ".$client." because we either have no discovery plugins or the client address does not match an IP network that xCAT is managing");
-		  }
-	        }
-	}
+                }
+            }
+        }; #end of eval
+        if($@) {
+            xCAT::MsgUtils->message("S","xcatd: possible BUG encountered by xCAT Discovery worker: ".$@);
+            exit 1;
+        }
+    }
 }
+
 sub do_udp_service { #This function opens up a UDP port
   #It will do similar to the standard service, except:
   #-Obviously, unencrypted and messages are not guaranteed
@@ -651,7 +658,7 @@ sub do_udp_service { #This function opens up a UDP port
       my $pid = <$udppidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
-          kill 12,$pid;
+          kill 'USR2',  $pid;
           yield(); # let peer have a shot at closure
       }
       close($udppidfile);
@@ -713,8 +720,8 @@ sub do_udp_service { #This function opens up a UDP port
 	   $part = $socket->recv($data,1500);
            $packets{$part} = [$part,$data];
            } elsif ($hdl == $sslctl) { 
+	      #update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
                next;
-	   	#update_udpcontext_from_sslctl(udpcontext=>$udpcontext,select=>$select);
            } elsif ($hdl == $discoctl) {  #got a discovery response....
            } else { 
 		print "Something is wrong in udp process (search xcatd for this string)\n";
@@ -934,11 +941,11 @@ $SIG{TERM} = $SIG{INT} = sub {
       kill 2, $_;
    }
    if ($pid_UDP) {
-      kill 12, $pid_UDP;
+      kill 'USR2', $pid_UDP;
    }
    if ($pid_MON) {
       kill 2, $pid_MON;
-      kill 12, $pid_MON;
+      kill 'USR2', $pid_MON;
    }
    xCAT::Table::shut_dbworker;
    if ($dbmaster) {
@@ -1078,7 +1085,7 @@ $SIG{USR2} = sub {
       my $pid = <$mainpidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
-          kill 12,$pid;
+          kill 'USR2', $pid;
           yield(); # let peer have a shot at closure
       }
       close($mainpidfile);
