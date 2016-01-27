@@ -14,6 +14,21 @@ You can select a baremental or virtual server with the Operating Systems which d
 **Note:** **Docker image** can only run on the **Docker host** with the same architecture. Since xCAT currently only ships x86_64 and ppc64le Docker images, running xCAT in Docker requires x86_64 or ppc64le **Docker hosts**.
 
 
+Shutdown the SELinux/Apparmor on Docker host
+--------------------------------------------
+
+If the SELinux or Apparmor on Docker host is enabled, the services/applications inside Docker Container might be confined. 
+
+SELinux can be disabled with: ::
+
+    echo 0 > /selinux/enforce
+    sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+
+AppArmor can be disabled with: ::
+
+    /etc/init.d/apparmor teardown
+
+
 An example configuration in the documentation
 --------------------------------------------- 
 
