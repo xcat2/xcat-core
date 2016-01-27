@@ -371,7 +371,7 @@ function configure_nicdevice {
 
         #configure bond 
         elif [ x"$nic_dev_type" = "xbond" ]; then
-            create_bond_interface ifname=bond0 slave_ports=$base_nic_for_bond       
+            create_bond_interface ifname=$nic_dev slave_ports=$base_nic_for_bond       
         else
             log_error "Error : please check nictypes for $nic_pair."
         fi 
