@@ -14,6 +14,21 @@ You can select a baremental or virtual server with the Operating Systems which d
 **Note:** **Docker image** can only run on the **Docker host** with the same architecture. Since xCAT currently only ships x86_64 and ppc64le Docker images, running xCAT in Docker requires x86_64 or ppc64le **Docker hosts**.
 
 
+Shutdown the SELinux/Apparmor on Docker host
+--------------------------------------------
+
+If the SELinux or Apparmor on Docker host is enabled, the services/applications inside Docker Container might be confined. To run xCAT in Docker container, SELinux and Apparmor on the Docker host must be disabled. 
+
+SELinux can be disabled with: ::
+
+    echo 0 > /selinux/enforce
+    sed -i 's/^SELINUX=.*$/SELINUX=disabled/' /etc/selinux/config
+
+AppArmor can be disabled with: ::
+
+    /etc/init.d/apparmor teardown
+
+
 An example configuration in the documentation
 --------------------------------------------- 
 
@@ -85,7 +100,7 @@ Create the Docker container
 
 Now create the xCAT Docker container with the Docker image "xcat/xcat-ubuntu-x86_64" ::
 
-    [root@dockerhost1 ~]# sudo docker create -it --privileged=true  --dns=10.5.106.1  --dns-search=clusters.com --hostname=xcatmn --name=xcatmn --add-host=xcatmn:10.5.106.101 --add-host c910f05c01bc06:10.5.106.1 --net=none xcat/xcat-ubuntu-x86_64
+    [root@dockerhost1 ~]# sudo docker create -it --privileged=true  --dns=10.5.106.1  --dns-search=clusters.com --hostname=xcatmn --name=xcatmn --add-host=xcatmn:10.5.106.101 --add-host=c910f05c01bc06:10.5.106.1 --net=none xcat/xcat-ubuntu-x86_64
 
 * use ``--privileged=true`` to give extended privileges to this container
 * use ``--dns`` and ``--dns-search`` to specify the name server and dns domain for the container, which will be written to ``/etc/resolv.conf`` of the container
@@ -118,7 +133,7 @@ install "pipework" by copying the script "pipework" to "/usr/bin/pipework" ::
 
 Assign a static IP address for Docker container and attach it to the customized network bridge with ::
   
-    pipework <bridge name> <container name> <IP address/netmask for the container>@<gateway>
+    pipework <bridge name> <container name> <IP address/netmask for the container>@<IP address of the Docker host>
 
 As an example, run ::
 
@@ -132,7 +147,7 @@ You can attach to the container ::
     
     sudo docker attach xcatmn
 
-Besides the terminal opened by ``docker  attach``, you can also enable the ssh inside the container and login to the Docker container via "ssh". For Ubuntu, you can enable the ssh by:
+Besides the terminal opened by ``docker  attach``, you can also enable the ssh inside the container and login to the running Docker container via "ssh". For Ubuntu, you can enable the ssh by:
   
 * change the "PermitRootLogin" to "yes" in "/etc/ssh/sshd_config"      
 * set the password for "root" with ``passwd root``
