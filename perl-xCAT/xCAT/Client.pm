@@ -13,6 +13,7 @@ if ($^O =~ /^aix/i) {
 	unshift(@INC, qw(/usr/opt/perl5/lib/5.8.2/aix-thread-multi /usr/opt/perl5/lib/5.8.2 /usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi /usr/opt/perl5/lib/site_perl/5.8.2));
 }
 use IO::Handle;
+use MIME::Base64 qw(decode_base64);
 
 my $inet6support;
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
@@ -1218,6 +1219,9 @@ sub handle_response {
         $desc="$desc: ".$node->{data}->[0]->{contents}->[0];
             }
          }
+      }
+      if ($node->{base64_data})  {
+          $desc = $desc . ": " . decode_base64($node->{base64_data}->[0]);
       }
       if ($desc) {
 		if ($errflg == 1) {
