@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #-----------------------------------------------------------
 #
@@ -19,18 +19,29 @@ install_disk=""
 rm /tmp/install_disk
 tmpdir="/tmp/xcat.getinstalldisk"
 mkdir -p $tmpdir
+
+has_awk=$(find / -name "awk")
+
 logfile="/tmp/xcat_getinstalldisk_log"
 tmpfile=$tmpdir"/getinstalldisk_"
 
 # Check if any disk have installed OS
 if [ -z "$install_disk" ]; then
 
-    entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name")
+    if [ -z "$has_awk" ]; then
+        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h]d.*$")
+    else
+        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h]d.*$")
+    fi    
     
     for entry in $entries; do
 
-        dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | awk -F = '{print $2}' | tr A-Z a-z)
-        
+        if [ -z "$has_awk" ]; then
+            dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | cut -d "=" -f2 | tr A-Z a-z)
+        else
+            dev_type=$(udevadm info --query=property --name=/dev/$entry | grep -i "DEVTYPE" | awk -F = '{print $2}' | tr A-Z a-z)
+        fi        
+ 
         if [ "$dev_type" == "disk" ]; then
             disks=$disks" $entry"
         elif [ "$dev_type" == "partition" ]; then
@@ -51,7 +62,11 @@ if [ -z "$install_disk" ]; then
             continue
         fi
 
-        fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | awk -F = '{print $2}')
+        if [ -z "$has_awk" ]; then
+            fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | cut -d "=" -f2)
+        else
+            fs_type=$(udevadm info --query=property --name=/dev/$partition | grep -i "FS_TYPE" | awk -F = '{print $2}')
+        fi
 
         rc=255
 
@@ -66,7 +81,9 @@ if [ -z "$install_disk" ]; then
 
         if [ $rc -eq 0 ]; then
       
-            haskernel=0
+            has_kernel=0
+            has_wwn=0
+            has_path=0
 
             echo "    Partition $partition mount success." >> $logfile
 
@@ -78,15 +95,30 @@ if [ -z "$install_disk" ]; then
 
             for i in $ker_dir/vmlinuz*; do
                 disk_part=${partition%%[0-9]*}
-                disk_wwn=$(udevadm info --query=property --name=$disk_part | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
-                disk_array=$disk_array"$disk_part $disk_wwn\n"
                 touch "$tmpfile$disk_part"
                 echo -e "    The partition $partition has kernel file." >> $logfile
-                haskernel=1
+                has_kernel=1
                 break
             done
-        
-            if [ $haskernel -ne 1 ]; then
+            
+            if [ $has_kernel -eq 1 ]; then
+                disk_info=$(udevadm info --query=property --name=$disk_part)
+                disk_wwn=$(IFS= ;echo $disk_info | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
+                disk_path=$(IFS= ;echo $disk_info | grep DEVPATH | cut -d "=" -f2 | tr A-Z a-z)
+
+                if [ "$disk_wwn" ]; then
+                    has_wwn=1
+                    disk_array_wwn=$disk_array_wwn"$disk_part $disk_wwn\n"
+                    echo "    The disk $disk_part has wwn information $disk_wwn." >> $logfile
+                elif [ "$disk_path" ]; then
+                    has_path=1
+                    disk_array_path=$disk_array_path"$disk_part $disk_path\n"
+                    echo "    The disk $disk_part has path information $disk_path." >> $logfile
+                else
+                    disk_array_other=$disk_array_other"$disk_part\n"
+                    echo "    The disk $disk_part has no wwn and path information." >> $logfile
+                fi 
+            else
                 echo "    The partition $partition does not have kernel file." >> $logfile
             fi
              
@@ -95,6 +127,14 @@ if [ -z "$install_disk" ]; then
             echo "    Partition $partition mount failed or the partition is swap." >> $logfile
         fi
     done
+
+    if [ $has_wwn -eq 1 ]; then
+        disk_array=$disk_array_wwn
+    elif [ $has_path -eq 1 ]; then
+        disk_array=$disk_array_path
+    else
+        disk_array=$disk_array_other
+    fi
 
     if [ "$disk_array" ]; then    
         echo -e "The disk_array:" >> $logfile
@@ -113,36 +153,65 @@ if [ -z "$install_disk" ]; then
     
     for disk in $disks; do
 
-        disk_wwn=$(udevadm info --query=property --name=$disk | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
- 
+        disk_info=$(udevadm info --query=property --name=$disk)
+        disk_wwn=$(IFS= ;echo $disk_info | grep '\<ID_WWN\>' | cut -d "=" -f2 | tr A-Z a-z)
+        disk_path=$(IFS= ;echo $disk_info | grep DEVPATH | cut -d "=" -f2 | tr A-Z a-z)
+        disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
+                    \head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | tr A-Z a-z)
+
+        echo "The disk $disk information: disk_wwn=$disk_wwn disk_path=$disk_path disk_driver=$disk_driver." >> $logfile
+
         if [ "$disk_wwn" ]; then
 
-            disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'| head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | tr A-Z a-z)
+            has_wwn=1
+            file_pre="wwn"
+            disk_data=$disk_wwn
 
-            echo -e "The disk $disk information: disk_wwn=$disk_wwn disk_driver=$disk_driver." >> $logfile
+        elif [ $has_wwn -eq 1 ]; then
 
-            case "$disk_driver" in
+            echo "The disk $disk has no wwn info." >> $logfile
+            echo "There is other disk has wwn info, so don't record this disk." >> $logfile
+            continue;
 
-            "ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas")
-                echo "$disk $disk_wwn" >> "$tmpfile""firstdisks"
-                echo "Add disk: $disk $driver $disk_wwn into firstdisks" >> $logfile
-                ;;
-            "mptsas"|"mpt2sas"|"mpt3sas")
-                echo "$disk $disk_wwn" >> "$tmpfile""seconddisks"
-                echo "Add disk: $disk $driver $disk_wwn into seconddisks" >> $logfile
-                ;;
-            *)
-                echo "$disk $disk_wwn" >> "$tmpfile""thirddisks"
-                echo "Add disk: $disk $driver $disk_wwn into thirddisks" >> $logfile
-                ;;
+        elif [ "$disk_path" ]; then
+        
+            has_path=1
+            file_pre="path"
+            disk_data=$disk_path
+
+        elif [ $has_path -eq 1 ]; then        
  
-            esac
+            echo "The disk $disk has no wwn or path info." >> $logfile
+            echo "There is other disk has path info, so don't record this disk." >> $logfile
+            continue;
+  
+        else
+ 
+           file_pre="other"
+           disk_data=""
+  
         fi
+            
+        case "$disk_driver" in
+
+        "ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas")
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""firchodisks"
+            echo "    Add disk: $disk $disk_data $driver into $file_pre firchodisks" >> $logfile
+            ;;
+        "mptsas"|"mpt2sas"|"mpt3sas")
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""secchodisks"
+            echo "    Add disk: $disk $disk_data $driver into $file_pre secchodisks" >> $logfile
+            ;;
+        *)
+            echo "$disk $disk_data" >> "$tmpfile""$file_pre""thichodisks"
+            echo "    Add disk: $disk $disk_data $driver into $file_pre thichodisks" >> $logfile
+            ;;
+        esac
     done
 
-    for seq in first second third; do
-        if [ -s $tmpfile${seq}disks ]; then
-            install_file="$tmpfile${seq}disks"
+    for seq in fir sec thi; do
+        if [ -s $tmpfile$file_pre${seq}chodisks ]; then
+            install_file="$tmpfile$file_pre${seq}chodisks"
             break
         fi
     done
@@ -150,7 +219,7 @@ if [ -z "$install_disk" ]; then
 
     if [ "$install_file" ] && [ -s $install_file ]; then
         install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -t : -k 2 -b | cut -d " " -f1 | head -n 1)
-        echo -e "The install_disk is $install_disk by sorting WWN and DRIVER." >> $logfile
+        echo -e "The install_disk is $install_disk by sorting $file_pre and DRIVER." >> $logfile
     fi    
     rm $tmpfile*;
 fi
