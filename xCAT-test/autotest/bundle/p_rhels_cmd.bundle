@@ -10,6 +10,12 @@ updatenode_syncfile_APPEND
 updatenode_syncfile_MERGE
 updatenode_P_script1
 updatenode_P_script2
+updatenode_f_incompatible_flags
+updatenode_k_incompatible_flags
+updatenode_diskful_syncfiles_P_script1
+updatenode_script3
+updatenode_P_script1_script2
+updatenode_without_flag
 chdef_null
 chdef_t_node
 chdef_t_network
