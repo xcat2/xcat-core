@@ -1020,8 +1020,8 @@ function create_vlan_interface {
     do
         if [ $i -eq 0 ]; then
             # alternative cmd to "vconfig add $ifname $vlanid"
-            $ip link add link $ifname name $ifname.$vlanid type vlan id $vlanid
-            log_info "$ip link add link $ifname name $ifname.$vlanid type vlan id $vlanid"
+            $ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))
+            log_info "$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
         fi
         $sleep 0.5
         ((i+=1))
