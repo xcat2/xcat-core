@@ -110,6 +110,13 @@ sub subvars {
   }
   $ENV{PERSKCMDLINE}=getPersistentKcmdline($node);
 
+  my $installroot;
+  $installroot = xCAT::TableUtils->get_site_attribute("installdir");
+  if (!defined($installroot)) {
+      $installroot = "/install";
+  }
+  $ENV{INSTALLDIR} = $installroot;
+
 
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
@@ -457,6 +464,14 @@ sub subvars {
              $inc =~ s/#XCA_PARTMAN_DISK_SCRIPT#/$diskcontent/;
            }
       }
+      elsif ("ubuntu" eq $platform) {
+          my $default_script = "    wget http://`cat /tmp/xcatserver`".$ENV{INSTALLDIR}."/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
+          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/$default_script/;
+      }
+      else {
+          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/    /;
+      }
+
  
       if ($configfile && $doneincludes) {
           #the content of the specified file is the additional pressed config with 'd-i' or 

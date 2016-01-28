@@ -192,13 +192,6 @@ base64decode()
 	done
 }
 
-#The script getinstdisk is common for rh/sles/pkvm/ubuntu, it will write the install_disk into /tmp/install_disk file
-#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
-
-if [ ! -e /tmp/install_disk ]; then
-    echo "/dev/sda" > /tmp/install_disk
-fi
-
 if [ -d /sys/firmware/efi ]; then
     echo "ubuntu-efi ::" > /tmp/partitionfile
     echo "    512 512 1024 fat16" >> /tmp/partitionfile

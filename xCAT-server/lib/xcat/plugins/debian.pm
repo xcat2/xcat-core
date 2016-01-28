@@ -470,6 +470,11 @@ sub mkinstall {
     }
 	
     xCAT::MsgUtils->trace($verbose_on_off,"d","debian->mkinstall: installroot=$installroot");
+    
+    # Check whether the default getinstdisk script exist, if so, copy it into /install/autoinst/
+    if ( -r "$::XCATROOT/share/xcat/install/scripts/getinstdisk") {
+        copy("$::XCATROOT/share/xcat/install/scripts/getinstdisk", "$installroot/autoinst");
+    }
 	
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
