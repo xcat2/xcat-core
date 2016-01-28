@@ -26,6 +26,7 @@ ifconfig="ifconfig"
 brctl="brctl"
 uniq="uniq"
 xargs="xargs"
+modprobe="modprobe"
 
 ######################################################
 #
