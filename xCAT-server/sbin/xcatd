@@ -1128,6 +1128,11 @@ unless ($cmdlog_svrpid){
         exit(0);
     }
 
+    my @tmp =  split "/",$cmdlog_logfile;
+    splice (@tmp, -1);
+    my $cmdlog_logfile_path=join("/", @tmp);
+    mkdir("$cmdlog_logfile_path") unless(-d "$cmdlog_logfile_path");
+
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
