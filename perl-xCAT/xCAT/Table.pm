@@ -99,7 +99,7 @@ sub dbc_submit {
     my $err;
     while($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
         #print "waiting for clisock to be available\n";
-        if ($tries % 10 == 0 and $dbworkerpid != 0 and not xCAT::Utils::is_process_exists($dbworkerpid)) {
+        if ($tries % 10 == 0 and $dbworkerpid != 0 and not xCAT::Utils::is_pid_exists($dbworkerpid)) {
             $dbworkerpid = 0;
             xCAT::MsgUtils->message("S","xcatd: DB access process is down, xcat is running in direct access mode. "
                                        ."Please restart xcatd to avoid of this error.");
