@@ -51,6 +51,7 @@ my $arch = `uname -p`;
 unless (($^O =~ /^aix/i) || ($os =~ /^sle[sc]10/) || (($os =~ /^rh.*5$/) && ($arch =~ /ppc64/))){
     eval {require IO::Uncompress::Gunzip;}
 }
+use File::Basename;
 use File::Path;
 use Time::HiRes qw(sleep);
 use Thread qw(yield);
@@ -1127,6 +1128,9 @@ unless ($cmdlog_svrpid){
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open command log service on port $cmdlog_port,command log process $$ stop.");
         exit(0);
     }
+
+    my $cmdlog_logfile_path=dirname($cmdlog_logfile);
+    mkpath("$cmdlog_logfile_path") unless(-d "$cmdlog_logfile_path");
 
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
