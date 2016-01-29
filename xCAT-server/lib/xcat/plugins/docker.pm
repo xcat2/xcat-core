@@ -20,6 +20,7 @@ use POSIX qw(WNOHANG nice);
 use POSIX qw(WNOHANG setsid :errno_h);
 use Errno;
 use IO::Select;
+use MIME::Base64 qw(encode_base64);
 require IO::Socket::SSL; IO::Socket::SSL->import('inet4');
 use Time::HiRes qw(gettimeofday sleep);
 use Fcntl qw/:DEFAULT :flock/;
@@ -279,6 +280,7 @@ sub single_state_engine {
     if (!defined $node_hash_variable{$sockfd}) {
         return;
     }
+    my $info_flag = 'data';
     my $get_another_pkg = 0;
     my $node = $node_hash_variable{$sockfd}->{node};
     my $curr_state = $node_hash_variable{$sockfd}->{state};
@@ -286,6 +288,7 @@ sub single_state_engine {
     my $data_total_len = $node_hash_variable{$sockfd}->{total_len};
     my $data_get_len = $node_hash_variable{$sockfd}->{get_len};
     my $data_chunked = $node_hash_variable{$sockfd}->{chunked};
+    my @chunked_array = ();
     # The code logic to deal with http response and state machine
     #Need to Dumper to log file later
     my $res = HTTP::Response->parse($data);
@@ -345,7 +348,23 @@ sub single_state_engine {
             $pending_res++;
             return;
         }
-    }   
+    }  
+    if (defined($data_chunked)) {
+        while (length($content)) {
+            my $split_pos = index($content, "\r\n");
+            my $length_string = substr($content, 0, $split_pos);
+            my $data_length = hex($length_string);
+            if ($data_length lt 2) {
+                if ($data_length eq 0)  {
+                    push @chunked_array, '0';
+                }
+                last; 
+            }
+            push @chunked_array, $length_string;
+            push @chunked_array, substr($content, $split_pos + 2, $data_length);
+            $content = substr($content, $split_pos + 4 + $data_length); 
+        }
+    }
     my @msg = ();
     $msg[0] = &http_state_code_info($res->code, $curr_state);
     unless ($res->is_success) {
@@ -357,15 +376,14 @@ sub single_state_engine {
         if ($res->is_success) {
             my $node_state = undef;
             if ($data_chunked) {
-                my @chunked_array = split /\r\n/, $content;
-                my $length = hex(shift @chunked_array);
+                my $length = shift @chunked_array;
                 while ($length) {
                     my $content_hash = decode_json (shift @chunked_array);
                     if (defined($content_hash->{'State'}->{'Status'})) {
                         $node_state = $content_hash->{'State'}->{'Status'};
                         last;
                     }
-                    $length = hex(shift @chunked_array);
+                    $length = shift @chunked_array;
                 }
                 if (!defined($node_state) and $length) {
                     $get_another_pkg = 1;
@@ -392,41 +410,40 @@ sub single_state_engine {
         }
     } 
     elsif ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_LOG_DONE") {
-        if (!$msg[0]->[0] and $get_content_len) {
+        if (!$msg[0]->[0]) {
+            $info_flag = "base64_data";
             @msg = ();
-            my @content_array = split /\r\n/, $content;
-            #print Dumper(@content_array);
-            my $tmp_entry = shift(@content_array);
-            my @data_array = ();
-            my $tmp_len = hex($tmp_entry);
-            while ($tmp_len and scalar(@content_array)) {
-                $tmp_entry = shift(@content_array);
-                push @data_array, $tmp_entry;
-                $tmp_entry = shift(@content_array);
-                $tmp_len = hex($tmp_entry);
+            if (defined($data_chunked)) {
+                my @data_array = ();
+                my $tmp_len = shift(@chunked_array);
+                while ($tmp_len and scalar(@chunked_array)) {
+                    push @data_array, shift(@chunked_array);
+                    $tmp_len = shift(@chunked_array);
+                }
+                if ($tmp_len ne 0) {
+                    $get_another_pkg = 1;
+                }
+                if (scalar(@data_array)) {
+                    my $string = join('', @data_array);
+                    $msg[0] = [0, encode_base64($string)];
+                }
+                else {
+                    $msg[0] = [0, encode_base64("No logs")];
+                }
             }
-            if (scalar(@data_array)) {
-                $msg[0] = [0, join('', @data_array)];
-            } else {
-                $msg[0] = [0, "No logs"];
-            }
-            if ($tmp_entry ne 0) {
-                $get_another_pkg = 1;
+            else {
+                $msg[0] = [0, encode_base64($content)];
             }
         }
-        if ($get_content_len eq 0) {
-            $get_another_pkg = 1;
-        } 
     }
     elsif ($curr_state eq "INIT_TO_WAIT_FOR_QUERY_DOCKER_DONE") {
         if ($res->is_success) {
             @msg = ();
             if (!defined($content_length) or ($content_length > 3)) {
                 if (defined($data_chunked)) {
-                    my @content_array = split /\r\n/, $content;
-                    my $tmp_entry = shift @content_array;
-                    while ($tmp_entry and scalar(@content_array)) {
-                        my $content_hash = decode_json (shift @content_array);
+                    my $tmp_entry = shift @chunked_array;
+                    while ($tmp_entry and scalar(@chunked_array)) {
+                        my $content_hash = decode_json (shift @chunked_array);
                         if (ref($content_hash) eq 'ARRAY') {
                             foreach (@$content_hash) {
                                 push @msg, [0, parse_docker_list_info($_, 1)];
@@ -435,7 +452,7 @@ sub single_state_engine {
                         else {
                             push @msg, [0, parse_docker_list_info($content_hash, 0)];
                         }
-                        $tmp_entry = shift @content_array;
+                        $tmp_entry = shift @chunked_array;
                     }
                     if ($tmp_entry ne '0') {
                         $get_another_pkg = 1;
@@ -466,13 +483,13 @@ sub single_state_engine {
             $vmtab->setNodeAttribs($node,{othersettings=>$node_create_variable{$node}->{flag}});
         }
     }
+ 
     foreach my $tmp (@msg) {
-        $tmp->[1] =~ s/\035//g;
         if ($tmp->[0]) {
             $global_callback->({node=>[{name=>[$node],error=>["$tmp->[1]"],errorcode=>["$tmp->[0]"]}]});
         } 
         else {
-            $global_callback->({node=>[{name=>[$node],data=>["$tmp->[1]"]}]});
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["$tmp->[1]"]}]});
         }
     } 
     if ($get_another_pkg) {
