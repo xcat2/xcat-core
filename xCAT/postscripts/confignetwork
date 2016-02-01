@@ -249,11 +249,21 @@ function sort_nics_device_order {
         #find nicdevice type as base_nic_type
         base_nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $2}'`
         if echo "$base_nic_dev"|grep "@" >/dev/null; then
-            temp_base_nic_dev=`echo $base_nic_dev|awk -F@ '{print $1}'`
+            for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
+            do
+                temp_base_nic_type=`find_nic_type "$i"`
+                #all base ni devices types should be ethernet
+                #if one nic type is not ethernet, it is invalid
+                if [ x"$temp_base_nic_type" != "xethernet" ]; then
+                    break
+                fi
+            done
         else
             temp_base_nic_dev=$base_nic_dev
+            temp_base_nic_type=`find_nic_type "temp_base_nic_dev"`
         fi
-        base_nic_type=`find_nic_type "$temp_base_nic_dev"`
+
+        base_nic_type=$temp_base_nic_type
         nic_dev=`echo "$nics_list" |sed -n "${num}p"|awk '{print $1}'`
         nic_dev_type=`find_nic_type "$nic_dev"`
 
