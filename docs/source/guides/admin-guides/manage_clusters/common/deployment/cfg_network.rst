@@ -10,7 +10,7 @@ The ``confignetwork`` postscript can be used to configure the network interfaces
 
 The following example set the xCAT properties for compute node ``cn1`` to achieve the following network configuration using the ``confignetwork`` postscript:
 
-  * Compute node ``cn`` has two physical NICs: eth2 and eth3  
+  * Compute node ``cn1`` has two physical NICs: eth2 and eth3  
   * Bond eth2 and eth3 as ``bond0`` 
   * From ``bond0``, create 2 VLANs: ``bond0.1`` and ``bond0.2``
   * Make bridge ``br1`` using ``bond0.1`` with IP (10.0.0.1)
@@ -74,8 +74,8 @@ Define attributes in the ``nics`` table
           nictypes.br2=bridge 
           nicips.br1=10.0.0.1 
           nicips.br2=20.0.0.1 
-          nicnetworks.br1="net10" 
-          nicnetworks.br2="net20"
+          nicnetworks.br1=net10
+          nicnetworks.br2=net20
 
     - Using the ``mkdef -z`` option, define the stanza file to xCAT: ::
 
