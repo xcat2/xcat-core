@@ -388,6 +388,18 @@ sub process_request {
             $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | $compress -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;
+    } elsif ($method =~ /txc/) {
+        if ( ! $exlistloc ) {
+            $excludestr = "find . -xdev | tar --selinux --xattr-include='*' -T - -Jcvf ../rootimg.txz";
+        }else {
+            chdir("$rootimg_dir");
+            system("$excludestr >> $xcat_packimg_tmpfile"); 
+            if ($includestr) {
+            	system("$includestr >> $xcat_packimg_tmpfile"); 
+            }
+            $excludestr = "cat $xcat_packimg_tmpfile| tar --selinux --xattr-include='*' -T -Jcvf ../rootimg.txz";
+        }
+        $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       chmod 0755,$temppath;
