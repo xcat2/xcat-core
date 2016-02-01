@@ -26,6 +26,7 @@ ifconfig="ifconfig"
 brctl="brctl"
 uniq="uniq"
 xargs="xargs"
+modprobe="modprobe"
 
 ######################################################
 #
@@ -630,6 +631,8 @@ function add_br() {
          type brctl >/dev/null 2>/dev/null || echo "There is no brctl" >&2 && exit 1
          log_info "brctl addbr $BNAME" 
          brctl addbr $BNAME
+         log_info "brctl stp $BNAME on"
+         brctl stp $BNAME on
      fi
 }
 
@@ -656,6 +659,8 @@ function add_if() {
         log_info "brctl addif $BNAME $PORT" 
         brctl addif $BNAME $PORT
     fi
+    
+
 }
 
 ###############################################################################
@@ -844,7 +849,7 @@ function create_bridge_interface {
     # generate bridge interface definition
     cfg=""
     cfg="${cfg}${cfg:+,}ONBOOT=yes"
-
+    cfg="${cfg}${cfg:+,}STP=on"
     if grep -q -i "release 6" /etc/redhat-release ; then
         cfg="${cfg}${cfg:+,}NM_CONTROLLED=no"
     fi
@@ -1020,8 +1025,8 @@ function create_vlan_interface {
     do
         if [ $i -eq 0 ]; then
             # alternative cmd to "vconfig add $ifname $vlanid"
-            $ip link add link $ifname name $ifname.$vlanid type vlan id $vlanid
-            log_info "$ip link add link $ifname name $ifname.$vlanid type vlan id $vlanid"
+            $ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))
+            log_info "$ip link add link $ifname name $ifname.$vlanid type vlan id $(( 10#$vlanid ))"
         fi
         $sleep 0.5
         ((i+=1))
