@@ -1,0 +1,160 @@
+start:xcatd_stop_then_start
+description:stop then start xcatd daemon, and check all the 6 processes status
+os:linux
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:service xcatd stop
+check:rc==0
+check:output=~Stopping xcatd
+check:output=~[  OK  ]
+cmd:sleep 3
+cmd:service xcatd status
+check:output=~xCAT service is not running
+cmd:ps -ef | grep xcatd
+check:output!~SSL listener
+check:output!~DB Access
+check:output!~UDP listener
+check:output!~install monitor
+check:output!~Discovery worker
+check:output!~Command log writer
+cmd:service xcatd start
+check:rc==0
+check:output=~Starting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:ps -ef | grep "xcatd:" > /tmp/xcatd_processes.txt
+check:rc==0
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: SSL listener" -c
+check:output==1
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: DB Access" -c
+check:output==1
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: UDP listener" -c
+check:output==1
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: install monitor" -c
+check:output==1
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: Discovery worke" -c
+check:output==1
+check:cat /tmp/xcatd_processes.txt | grep "xcatd: Command log writer" -c
+check:output==1
+cmd:rm -rf /tmp//tmp/xcatd_processes.txt
+end
+
+start:xcatd_restart
+description:restart xcatd daemon
+os:linux
+cmd:service xcatd status
+check:output=~xCAT service is running
+check:rc==0
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd restart
+check:rc==0
+check:output=~Restarting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd status
+check:output=~xCAT service is running
+check:rc==0
+end
+
+start:run_command_with_XCATBYPASS
+description:with XCATBYPASS=YES, the command works either xcatd deamon running or not
+os:linux
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:XCATBYPASS=YES tabdump site
+check:rc==0
+cmd:service xcatd stop
+check:rc==0
+check:output=~Stopping xcatd
+check:output=~[  OK  ]
+cmd:sleep 3
+cmd:service xcatd status
+check:output=~xCAT service is not running
+cmd:tabdump site
+check:rc!=0
+cmd:XCATBYPASS=YES tabdump site
+check:rc==0
+cmd:service xcatd start
+check:rc==0
+check:output=~Starting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+end
+
+start:disable_root_permission_in_policy_table
+description:disable root permission, only with XCATBYPASS=YES, the command works 
+os:linux
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:chtab name=root policy.rule=disable
+check:rc==0
+cmd:lsdef
+check:output=~Error: Permission denied for request
+cmd:XCATBYPASS=YES lsdef
+check:rc==0
+cmd:XCATBYPASS=YES chtab name=root policy.rule=allow
+check:rc==0
+cmd:lsdef
+check:rc==0
+end
+
+start:assign_certain_command_permission
+description:assign root permission to certain command, only this command works 
+os:linux
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:lsdef
+check:rc==0
+cmd:tabdump policy
+check:rc==0
+cmd:chtab name=root policy.commands=lsdef policy.rule=allow
+check:rc==0
+cmd:lsdef
+check:rc==0 
+cmd:tabdump policy
+check:output=~Error: Permission denied for request
+cmd:chtab name=root policy.commands= policy.rule=allow
+check:rc==0
+end
