@@ -102,8 +102,8 @@ Use the ``chdef`` command to add/modify the networks in the ``networks`` table :
     chdef -t network net10 net=10.0.0.0 mask=255.0.0.0 mgtifname=eth0
     chdef -t network net20 net=20.0.0.0 mask=255.0.0.0 mgtifname=eth1
 
-Add confignetwork into the node's postscripts list
---------------------------------------------------
+Add ``confignetwork`` into the node's postscripts list
+------------------------------------------------------
 
 Using below command to add ``confignetwork`` into the node's postscripts list ::
 
