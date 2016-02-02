@@ -11,8 +11,8 @@ VNC client complains the credentials are not valid
    **Solution**: 
      Check whether the clocks on the hypervisor and headnode are synced
 
-rpower fails with "qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vmXYZ.sda.qcow2: Permission denied" 
------------------------------------------------------------------------------------------------------------------------------------------------
+rpower fails with "Error: internal error Process exited while reading console log qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vmXYZ.sda.qcow2: Permission denied" 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
    **Issue**: ::
 
@@ -29,6 +29,21 @@ rpower fails with "qemu: could not open disk image /var/lib/xcat/pools/2e66895a-
      Then restart the NFS services and try to power on the VM again...
    
      **Note**: For stateless hypervisor, please purge the VM by ``rmvm -p vm1``, reboot the hypervisor and then create the VM.
+
+rpower fails with "Error: internal error: process exited while connecting to monitor qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vmXYZ.sda.qcow2: Permission denied"
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+   **Issue**: ::
+
+    #rpower vm1 on
+    vm1: Error: internal error: process exited while connecting to monitor: 2016-02-03T08:28:54.104601Z qemu-system-ppc64: -drive file=/var/lib/xcat/pools/c7953a80-89ca-53c7-64fb-2dcfc549bd45/kvm106.sda.qcow2,if=none,id=drive-scsi0-0-0-0,format=qcow2,cache=none: Could not open '/var/lib/xcat/pools/c7953a80-89ca-53c7-64fb-2dcfc549bd45/kvm106.sda.qcow2': Permission denied
+
+   **Solution**:
+     Usually caused by policy in SELinux configuration. The solution is simply to disable SELinux on the vmhost/hypervisor by editing "/etc/selinux/config" and change the SELINUX line to SELINUX=disabled: ::
+
+       SELINUX=disabled
+
+     Then reboot the system and try to power on the VM again...
 
 "Error: Cannot communicate via libvirt to kvmhost1"
 ---------------------------------------------------

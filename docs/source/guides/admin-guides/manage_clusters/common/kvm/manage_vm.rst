@@ -234,3 +234,20 @@ Clone a VM "vm3" from the VM master "vm6" in detaching mode: ::
     #clonevm vm3 -b vm6 -d
     vm3: Cloning vm6.sda.qcow2 (currently is 1042.21875 MB and has a capacity of 4096MB)
 
+Migrate the virtual machine
+---------------------------
+
+**Migrate** is an operation that executing migration of a guest VM between hosts/hypervisors.
+
+Note: The directory used for storing disk images has to be mounted from shared storage on both vmhosts/hypervisors.
+
+Migrate the VM "kvm1" to hypervisor "hyp02", which is managed by hypervisor "hyp01": ::
+
+    #rmigrate kvm1 hyp02
+    kvm1: migrated to hyp02
+
+Migrate the VM "kvm1" to hypervisor "hyp02", which is already on host "hyp02": ::
+
+    #rmigrate kvm1 hyp02
+    kvm1: Guest is already on host hyp02
+
