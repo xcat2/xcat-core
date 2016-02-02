@@ -43,6 +43,7 @@ my $onlyinitrd  = 0;
 if ($name =~ /geninitrd/) {
     $onlyinitrd = 1;
 }
+
 my $rootlimit;
 my $tmplimit;
 my $installroot = "/install";
@@ -51,6 +52,7 @@ my $kernelver = "";    #`uname -r`;
 my $basekernelver;     # = $kernelver;
 my $customdir = $fullpath;
 $customdir =~ s/.*share\/xcat/$installroot\/custom/;
+
 my $imagename;
 my $pkglist;
 my $srcdir;
@@ -158,8 +160,6 @@ $rootimg_dir = "$destdir/rootimg";
 
 $kerneldir = "$installroot/kernels" unless ($kerneldir); # the default directory for 3rd-party kernel is "$installroot/kernels";
 
-#$updates{'kerneldir'} = $kerneldir if ($tempfile);
-
 # Get the subchannels of the given interface
 my $subchn;
 my $readChn;
@@ -241,7 +241,7 @@ unless ($onlyinitrd) {
             push @pkgdir_internet, $dir;
         } else {
 
-# If multiple pkgdirs are provided,  The first path in the value of osimage.pkgdir
+            # If multiple pkgdirs are provided,  The first path in the value of osimage.pkgdir
             if (!$srcdir) {
                 $srcdir = $dir;
                 find(\&isaptdir, <$dir/>);
@@ -359,12 +359,8 @@ unless ($onlyinitrd) {
     close($aptconfig);
 
     # run apt-get upgrade to update any installed debs
-
     my $aptgetcmd_update = $aptgetcmd . "&&" . $aptgetcmdby . " upgrade  ";
     print "$aptgetcmd_update ";
-
-    #print "wait for input\n";
-    #my $pause = <STDIN>;
     $rc = system("$aptgetcmd_update ");
 
     # Start to install pkgs in pkglist
@@ -538,14 +534,11 @@ unless ($onlyinitrd) {
                 }
             }
 
-            # mount /proc file system since several packages need it.
-
             # install extra packages
             my $aptgetcmd_base = $aptgetcmd;
 
             #env param need to be added before each chroot
             my $aptdevby = $aptgetcmd;
-
 
             $aptdevby .= "&& " . $envlist . " ";
             $aptdevby .= $aptgetcmdby;
@@ -587,10 +580,8 @@ unless ($onlyinitrd) {
     }
 
     if (!$noupdate) {
-
-    # run apt-get upgrade to update any installed debs
-    # needed when running genimage again after updating software in repositories
-    #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
+        # run apt-get upgrade to update any installed debs
+        # needed when running genimage again after updating software in repositories
         print "$aptgetcmd_update ";
         my $aptgetcmd_update = $aptgetcmd . "&&" . $aptgetcmdby . " upgrade  ";
         $rc = system("$aptgetcmd_update ");
@@ -601,7 +592,10 @@ unless ($onlyinitrd) {
 
     print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
     umount_chroot($rootimg_dir);
+    
+    #hack invoke.rc.d to prevent service start/stop/restart in chrooted environment
     restore_invoke_rc_d();
+
     `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
 
     #recover the /etc/hosts & /etc/reslov.conf
@@ -655,8 +649,6 @@ $basekernelver = `uname -r` unless ($basekernelver);
 
 $kernelver = $basekernelver unless ($kernelver);
 chomp($kernelver);
-
-#$updates{'kernelver'} = $kernelver if ($tempfile);
 
 # copy the kernel to $destdir
 if (-e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -797,7 +789,6 @@ system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/stateli
 
 # also need to add this file:
 # may have already been made into a symbolic link, if so ignore it
-
 unless ($dracutmode) {    #in dracut mode, we delegate all this activity
     unless (-l "$rootimg_dir/var/lib/dhclient") {
         mkpath "$rootimg_dir/var/lib/dhclient/";
@@ -823,11 +814,11 @@ if ($dracutmode) {
         open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
         open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
 
-# find the following lines,
-# if remount_needed ; then
-# action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
-# fi
-# and change "if remount_needed ; then" to "if false; then"
+        # find the following lines,
+        # if remount_needed ; then
+        # action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
+        # fi
+        # and change "if remount_needed ; then" to "if false; then"
         while (<$SYSINITFILE>) {
             if ($_ eq "if remount_needed ; then\n") {
                 $_ = "if false; then\n";
@@ -849,7 +840,6 @@ system("rm -rf $rootimg_dir/var/cache/apt/*");
 # for the genimage-enchement, need to create two initial ramdisks,
 # one is for stateless
 # the other one is for statelite
-
 if ($dracutmode) {
     mkinitrd_dracut("statelite");
     mkinitrd_dracut("stateless");
@@ -904,7 +894,6 @@ sub mkinitrd_dracut {
     my $DRACUTCONF;
 
     if ($mode eq "statelite") {
-
         # for statelite
         cp("$fullpath/$dracutdir/install.statelite", "$dracutmpath/install");
         $perm = (stat("$fullpath/$dracutdir/install.statelite"))[2];
@@ -979,7 +968,6 @@ sub mkinitrd {
     }
 
     mkpath("/tmp/xcatinitrd.$$/bin");
-
     symlink("bin", "/tmp/xcatinitrd.$$/sbin");
     mkpath("/tmp/xcatinitrd.$$/usr/bin");
     mkpath("/tmp/xcatinitrd.$$/usr/sbin");
@@ -1077,8 +1065,6 @@ EOS1
     print $inifile "busybox mount -t proc /proc /proc\n";
     print $inifile "busybox --install\n";
     print $inifile "mount -t sysfs /sys /sys\n";
-
-    #print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
     print $inifile "mount -t devtmpfs /dev /dev\n";
     print $inifile "mkdir /dev/pts\n";
     print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
@@ -1534,7 +1520,6 @@ esac
 
 exit 0
 EOF
-
     close($inifile);
 
     #if "nonodestatus" specified,do not update the nodestatus
@@ -1566,10 +1551,10 @@ EOMS
     close($inifile);
 
     chmod(0755, "/tmp/xcatinitrd.$$/usr/share/udhcpc/default.script");
-
     chmod(0755, "/tmp/xcatinitrd.$$/init");
     chmod(0755, "/tmp/xcatinitrd.$$/bin/netstart");
     chmod(0755, "/tmp/xcatinitrd.$$/tmp/updateflag");
+
     @filestoadd = ();
     foreach (@ndrivers) {
         if (-f "$customdir/$_") {
@@ -1609,8 +1594,6 @@ EOMS
 
     foreach (@filestoadd) {
         if (ref($_)) {
-
-            #print "$_->[0], $_->[1]\n";
             my $srcpath = "$rootimg_dir/" . $_->[0];
             if (-f "$customdir/" . $_->[0]) {
                 $srcpath = "$customdir/" . $_->[0];
@@ -1621,8 +1604,6 @@ EOMS
             copy($srcpath, "/tmp/xcatinitrd.$$/" . $_->[1]);
             chmod 0755, "/tmp/xcatinitrd.$$/" . $_->[1];
         } else {
-
-            #print "$_\n";
             my $srcpath = "$rootimg_dir/$_";
             if (-f "$customdir/$_") {
                 $srcpath = "$customdir/$_";
@@ -1648,8 +1629,8 @@ EOMS
 
     system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
 
-# Copy udev and network scripts into initrd for s390x, which also works for other platforms
-# udev
+    # Copy udev and network scripts into initrd for s390x, which also works for other platforms
+    # udev
     system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
     system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
     system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
@@ -1668,14 +1649,12 @@ EOMS
     symlink("bash",    "/tmp/xcatinitrd.$$/sbin/sh");
 
     my $compress = "gzip";
-
     #if pigz is available,use pigz instead of gzip
     my $ispigz = system("bash -c 'type -p pigz' >/dev/null 2>&1");
     if ($ispigz == 0) {
         $compress = "pigz";
     }
 
-    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
     print "\ncd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz \n";
     system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|$compress -9 -c - > $destdir/initrd-$mode.gz");
     system("rm -rf /tmp/xcatinitrd.$$");
@@ -1708,7 +1687,6 @@ sub postscripts {
     unless (-x "$rootimg_dir/sbin/fsck.nfs") {
         system("echo true > $rootimg_dir/sbin/fsck.nfs; chmod a+x $rootimg_dir/sbin/fsck.nfs");
     }
-
 
     if (!-d "$rootimg_dir/opt/xcat/") {
         mkdir "$rootimg_dir/opt/xcat/";
@@ -1837,7 +1815,6 @@ sub load_dd ()
 
     my @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
     chomp(@dd_list);
-
     if (!@dd_list) {
         return ();
     }
