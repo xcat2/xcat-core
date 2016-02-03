@@ -4,8 +4,6 @@ B<xcatconfig> - Sets up the  Management Node during the xCAT install.
 
 =head1 SYNOPSIS
 
-B<xcatconfig> 
-
 B<xcatconfig> {B<-h>|B<--help>}
 
 B<xcatconfig> {B<-v>|B<--version>}
@@ -84,34 +82,34 @@ This option will set tunable parameters on the Management and Service nodes reco
 
 =over 2
 
-=item *
+=item 1.
 
 To force regeneration of keys and credentials and reinitialize the site table:
 
-B<xcatconfig> I<-f>
+ xcatconfig -f
 
-=item *
+=item 2.
 
 To regenerate root's ssh keys:
 
-B<xcatconfig> I<-k>
+ xcatconfig -k
 
-=item *
+=item 3.
 
 To regenerate node host ssh keys:
 
-B<xcatconfig> I<-s>
+ xcatconfig -s
 
-=item *
+=item 4.
 
 To regenerate node host ssh keys and credentials:
 
-B<xcatconfig> I<-s> I<-c>
+ xcatconfig -s -c
 
-=item *
+=item 5.
 
 To add the Management Node to the DB:
 
-B<xcatconfig> I<-m> 
+ xcatconfig -m 
 
 =back

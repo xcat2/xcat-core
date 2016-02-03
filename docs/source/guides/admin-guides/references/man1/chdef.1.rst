@@ -72,7 +72,7 @@ OPTIONS
 \ **-n**\  \ *new-name*\ 
  
  Change the current object name to the new-name which is specified by the -n option.
- Objects of type site and monitoring cannot be renamed with the -n option.
+ Objects of type site, group and monitoring cannot be renamed with the -n option.
  Note: For the \ **-n**\  option, only one node can be specified. For some special nodes such as fsp, bpa, frame, cec etc., their name is referenced in their own hcp attribute, or the hcp attribute of other nodes. If you use \ **-n**\  option, you must manually change all hcp attributes that refer to this name.
  
 
