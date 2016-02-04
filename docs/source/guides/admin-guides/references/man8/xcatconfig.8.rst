@@ -19,8 +19,6 @@ SYNOPSIS
 ********
 
 
-\ **xcatconfig**\ 
-
 \ **xcatconfig**\  {\ **-h**\ |\ **--help**\ }
 
 \ **xcatconfig**\  {\ **-v**\ |\ **--version**\ }
@@ -131,43 +129,63 @@ EXAMPLES
 
 
 
-\*
+1.
  
  To force regeneration of keys and credentials and reinitialize the site table:
  
- \ **xcatconfig**\  \ *-f*\ 
+ 
+ .. code-block:: perl
+ 
+   xcatconfig -f
+ 
  
 
 
-\*
+2.
  
  To regenerate root's ssh keys:
  
- \ **xcatconfig**\  \ *-k*\ 
+ 
+ .. code-block:: perl
+ 
+   xcatconfig -k
+ 
  
 
 
-\*
+3.
  
  To regenerate node host ssh keys:
  
- \ **xcatconfig**\  \ *-s*\ 
+ 
+ .. code-block:: perl
+ 
+   xcatconfig -s
+ 
  
 
 
-\*
+4.
  
  To regenerate node host ssh keys and credentials:
  
- \ **xcatconfig**\  \ *-s*\  \ *-c*\ 
+ 
+ .. code-block:: perl
+ 
+   xcatconfig -s -c
+ 
  
 
 
-\*
+5.
  
  To add the Management Node to the DB:
  
- \ **xcatconfig**\  \ *-m*\ 
+ 
+ .. code-block:: perl
+ 
+   xcatconfig -m
+ 
  
 
 
