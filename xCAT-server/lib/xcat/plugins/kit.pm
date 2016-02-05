@@ -104,6 +104,7 @@ sub process_request
         $rc = lskit($request, $callback, $request_command);
     } elsif ($command eq "addkit"){
         $rc = addkit($request, $callback, $request_command);
+        system("rm -rf /tmp/tmpkit/");
     } elsif ($command eq "rmkit"){
         $rc = rmkit($request, $callback, $request_command);
     } elsif ($command eq "lskitcomp"){
@@ -1246,7 +1247,7 @@ sub addkit
             
             if($::VERBOSE){
                 my %rsp;
-                push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
+                push@{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
                 xCAT::MsgUtils->message( "I", \%rsp, $callback );
                 $rc = system("tar jxvf $kit -C /tmp/tmpkit/ --wildcards */kit.conf");
             } else {
@@ -1311,40 +1312,6 @@ sub addkit
         if ( &check_kit_config(\%tabs,$kit,$kithash,$kitrepohash,$kitcomphash) ) {
             return 1;
         }
-
-
-        if( !-d "$kit") {
-            # should be a tar.bz2 file
-
-            system("rm -rf /tmp/tmpkit/");
-            mkpath("/tmp/tmpkit/");
-
-            if($::VERBOSE){
-                my %rsp;
-                push@{ $rsp{data} }, "Extract Kit $kit to /tmp";
-                xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
-            } else {
-                $rc = system("tar jxf $kit -C /tmp/tmpkit/");
-            }
-
-            opendir($dir,"/tmp/tmpkit/");
-            my @files = readdir($dir);
-
-            foreach my $file ( @files ) {
-                next if ( $file eq '.' || $file eq '..' );
-                $kittmpdir = "/tmp/tmpkit/$file";
-                last;
-            }
-
-            if ( !$kittmpdir ) {
-                my %rsp;
-                push@{ $rsp{data} }, "Could not find extracted kit in /tmp/tmpkit";
-                xCAT::MsgUtils->message( "E", \%rsp, $callback );
-                return 1;
-            }
-        }
-
 
         my %rsp;
         push@{ $rsp{data} }, "Adding Kit $kithash->{kitname}";
