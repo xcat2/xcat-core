@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *makenetworks [-h|--help ]*\ 
+\ **makenetworks**\  [\ **-h**\  | \ **-**\ **-help**\  ]
 
-\ *makenetworks [-v| --version]*\ 
+\ **makenetworks**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ *makenetworks [-V|--verbose] [-d|--display]*\ 
+\ **makenetworks**\  [\ **-V**\  | \ **-**\ **-verbose**\ ] [\ **-d | -**\ **-display**\ ]
 
 
 ***********
@@ -73,13 +73,13 @@ OPTIONS
 *******
 
 
-\ **-d|--display**\        Display the network definitions but do not write to the definitions to the xCAT database. The output will be in stanza file format and can be redirected to a stanza file that can be used with \ **mkdef**\  or \ **chdef**\  commands to create or modify the network definitions.
+\ **-d|-**\ **-display**\        Display the network definitions but do not write to the definitions to the xCAT database. The output will be in stanza file format and can be redirected to a stanza file that can be used with \ **mkdef**\  or \ **chdef**\  commands to create or modify the network definitions.
 
-\ **-h | --help**\          Display usage message.
+\ **-h | -**\ **-help**\          Display usage message.
 
-\ **-v | --version**\       Command Version.
+\ **-v | -**\ **-version**\       Command Version.
 
-\ **-V |--verbose**\        Verbose mode.
+\ **-V |-**\ **-verbose**\        Verbose mode.
 
 
 ************
@@ -87,9 +87,14 @@ RETURN VALUE
 ************
 
 
-0 The command completed successfully.
 
-1 An error has occurred.
+0.  The command completed successfully.
+
+
+
+1.  An error has occurred.
+
+
 
 
 ********
@@ -97,29 +102,34 @@ EXAMPLES
 ********
 
 
-1.  Gather cluster network information and create xCAT network definitions.
+
+1. Gather cluster network information and create xCAT network definitions.
+ 
+ 
+ .. code-block:: perl
+ 
+  	makenetworks
+ 
+ 
 
 
-.. code-block:: perl
+2. Display cluster network information but do not write the network definitions to the xCAT database.
+ 
+ 
+ .. code-block:: perl
+ 
+  	makenetworks -d
+ 
+ 
+ The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the lsdef, mkdef, chdef and rmdef commands.
+ 
+ 9_114_37_0-255_255_255_0:
+     objtype=network
+     gateway=9.114.37.254
+     mask=255.255.255.0
+     net=9.114.37.0
+ 
 
- 	makenetworks
-
-
-2.  Display cluster network information but do not write the network definitions to the xCAT database.
-
-
-.. code-block:: perl
-
- 	makenetworks -d
-
-
-The output would be one or more stanzas of information similar to the following. The line that ends with a colon is the value of the "netname" attribute and is the name of the network object to use with the lsdef, mkdef, chdef and rmdef commands.
-
-9_114_37_0-255_255_255_0:
-    objtype=network
-    gateway=9.114.37.254
-    mask=255.255.255.0
-    net=9.114.37.0
 
 
 *****

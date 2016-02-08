@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **makeroutes**\  [\ **-r**\ |\ **--routename**\  \ *r1*\ [\ *,r2...*\ ]]
+\ **makeroutes**\  [\ **-r | -**\ **-routename**\  \ *r1*\ [\ *,r2...*\ ]]
 
-\ **makeroutes**\  \ **-d**\ |\ **--delete**\  [\ **-r**\ |\ **--routenames**\  \ *r1*\ [\ *,r2...*\ ]]
+\ **makeroutes**\  [\ **-d | -**\ **-delete**\ ] [\ **-r | -**\ **-routenames**\  \ *r1*\ [\ *,r2...*\ ]]
 
-\ **makeroutes**\  \ *noderange*\  [\ **-r**\ |\ **--routename**\  \ *r1*\ [\ *,r2...*\ ]]
+\ **makeroutes**\  \ *noderange*\  [\ **-r | -**\ **-routename**\  \ *r1*\ [\ *,r2...*\ ]]
 
-\ **makeroutes**\  \ *noderange*\  \ **-d**\ |\ **--delete**\  [\ **-r**\ |\ **--routenames**\  \ *r1*\ [\ *,r2...*\ ]]
+\ **makeroutes**\  \ *noderange*\  [\ **-d | -**\ **-delete**\ ] [\ **-r | -**\ **-routenames**\  \ *r1*\ [\ *,r2...*\ ]]
 
-\ **makeroutes**\  [\ **-h**\  \ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **makeroutes**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -54,25 +54,25 @@ OPTIONS
 
 
 
-\ **-d|--delete**\ 
+\ **-d|-**\ **-delete**\ 
  
  Specifies to delete the given routes. If not specified, the action is to add routes.
  
 
 
-\ **-r|--routename**\ 
+\ **-r|-**\ **-routename**\ 
  
  Specifies a list of comma separated route names defined in the \ **routes**\  table. If omitted, all routes defined in \ **noderes.routenames**\  for nodes or \ **site.mnroutenames**\  for the management node will be used.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
@@ -85,9 +85,7 @@ EXAMPLES
 
 
 
-1.
- 
- To add all routes from the \ **site.mnroutenames**\  to the os route table for the management node.
+1. To add all routes from the \ **site.mnroutenames**\  to the os route table for the management node.
  
  
  .. code-block:: perl
@@ -97,9 +95,7 @@ EXAMPLES
  
 
 
-2.
- 
- To add all the routes from \ **noderes.routenames**\  to the os route table for node1.
+2. To add all the routes from \ **noderes.routenames**\  to the os route table for node1.
  
  
  .. code-block:: perl
@@ -109,9 +105,7 @@ EXAMPLES
  
 
 
-3.
- 
- To add route rr1 and rr2 to the os route table for the management node.
+3. To add route rr1 and rr2 to the os route table for the management node.
  
  
  .. code-block:: perl
@@ -121,9 +115,7 @@ EXAMPLES
  
 
 
-4.
- 
- To delete route rr1 and rr2 from the os route table on node1 and node1.
+4. To delete route rr1 and rr2 from the os route table on node1 and node1.
  
  
  .. code-block:: perl

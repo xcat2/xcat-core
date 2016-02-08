@@ -16,7 +16,7 @@ B<makedhcp> I<noderange> [B<-s> I<statements>] [B<-l>|B<--localonly>]
 
 B<makedhcp> B<-q> I<noderange>
 
-B<makedhcp> [I<-h|--help>]
+B<makedhcp> B<[-h|--help]>
 
 =head1 DESCRIPTION
 
@@ -101,22 +101,26 @@ Display usage message.
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0.
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 =head1 EXAMPLES
 
-=over 3
+=over 2
 
 =item 1.
-
 Create a new DHCP configuration file and add the network definitions:
 
  makedhcp -n
 
 =item 2.
-
 Define all nodes to the dhcp server:
 
  makedhcp -a
@@ -124,13 +128,11 @@ Define all nodes to the dhcp server:
 Note:  This does not add nodes that will be installed with AIX/NIM.
 
 =item 3.
-
 Will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
 
  makedhcp node5 -s 'option root-path  \"172.16.0.1:/install/freebsd6.2/x86_64\";'
 
 =item 4.
-
 Query a node from the DHCP server. 
 
  # makedhcp -q node01 

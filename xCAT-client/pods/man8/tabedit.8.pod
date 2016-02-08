@@ -4,9 +4,9 @@ B<tabedit> - view an xCAT database table in an editor and make changes.
 
 =head1 SYNOPSIS
 
-B<tabedit> [I<table>]
+B<tabedit> I<table>
 
-B<tabedit> [I<-?> | I<-h> | I<--help>]
+B<tabedit> [B<-?> | B<-h> | B<--help>]
 
 =head1 DESCRIPTION
 
@@ -43,12 +43,10 @@ default to vi.
 
 =over 3
 
-=item 0
-
+=item 0. 
 The command completed successfully.
 
-=item 1
-
+=item 1. 
 An error has occurred.
 
 =back
@@ -57,11 +55,10 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To edit the site table:
 
-  B<tabedit> I<site>
+ tabedit site
 
 =back
 

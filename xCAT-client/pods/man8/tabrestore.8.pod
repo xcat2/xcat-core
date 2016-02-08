@@ -4,11 +4,11 @@ B<tabrestore> - replaces with or adds to a xCAT database table the contents in a
 
 =head1 SYNOPSIS
 
-B<tabrestore> [-a] I<table.csv>
+B<tabrestore> [B<-a>] I<table.csv>
 
-B<tabrestore> [I<-?> | I<-h> | I<--help>]
+B<tabrestore> [B<-?> | B<-h> | B<--help>]
 
-B<tabrestore> [I<v>  | I<--version>]
+B<tabrestore> [B<-v>  | B<--version>]
 
 =head1 DESCRIPTION
 
@@ -43,12 +43,10 @@ Add rows from the CSV file to the table instead of replacing the table with the 
 
 =over 3
 
-=item 0
-
+=item 0.
 The command completed successfully.
 
-=item 1
-
+=item 1.
 An error has occurred.
 
 =back
@@ -57,28 +55,25 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To replace the rows in the mp table with the rows in the mp.csv file:
 
-B< tabrestore> I<mp.csv>
+ tabrestore mp.csv
 
 The file mp.csv could contain something like:
 
   #node,mpa,id,comments,disable
   "blade","|\D+(\d+)|amm(($1-1)/14+1)|","|\D+(\d+)|(($1-1)%14+1)|",,
 
-=item *
+=item 2.
+To add the rows in the mp.csv file to the rows in the mp table:
 
-To add the rows in the mp.csv file to the  rows in the mp table:
+ tabrestore -a mp.csv
 
-B< tabrestore> -a I<mp.csv>
+=item 3.
+To restore database tables from restore_directory that we dumped with dumpxCATdb:
 
-=item *
-
-To restore database tables that we dumped with dumpxCATdb:
-
-restorexCATdb -p <restore directory>
+ restorexCATdb -p restore_directory
 
 =back
 

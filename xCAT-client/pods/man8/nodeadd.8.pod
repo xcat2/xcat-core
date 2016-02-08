@@ -7,7 +7,7 @@ B<nodeadd> - Adds nodes to the xCAT cluster database.
 
 B<nodeadd> I<noderange> B<groups>=I<groupnames> [I<table.column=value>] [I<...>]
 
-B<nodeadd> {B<-v> | B<--version>}
+B<nodeadd> [B<-v> | B<--version>]
 
 B<nodeadd> [B<-?> | B<-h> | B<--help>]
 
@@ -43,12 +43,10 @@ Display usage message.
 
 =over 3
 
-=item 0
-
+=item 0. 
 The command completed successfully.
 
-=item 1
-
+=item 1. 
 An error has occurred.
 
 =back
@@ -58,17 +56,15 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To add nodes in noderange  node1-node4 with group all:
 
-B<nodeadd> I<node1-node4 groups=all>
+ nodeadd node1-node4 groups=all
 
-=item *
-
+=item 2.
 To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
 
-B<nodeadd> I<node1-node4 groups=all,rhel5 nodetype.os=rhel5>
+ nodeadd node1-node4 groups=all,rhel5 nodetype.os=rhel5
 
 =back
 

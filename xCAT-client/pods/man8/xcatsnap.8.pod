@@ -2,13 +2,17 @@
 
 B<xcatsnap> - Gathers information for service about the current running xCAT environment.  
 
-B<xcatsnap> {B<-h>|B<--help>}
+=head1 SYNOPSIS
 
-B<xcatsnap> {B<-v>|B<--version>}
+B<xcatsnap>
 
-B<xcatsnap> {B<-B>|B<--BYPASS>}
+B<xcatsnap> [B<-h>|B<--help>]
 
-B<xcatsnap> {B<-d>|B<--dir>} 
+B<xcatsnap> [B<-v>|B<--version>]
+
+B<xcatsnap> [B<-B>|B<--bypass>]
+
+B<xcatsnap> [B<-d>|B<--dir>] 
 
 =head1 DESCRIPTION
 
@@ -44,17 +48,14 @@ The directory to put the snap information.  Default is /tmp/xcatsnap.
 
 =over 2
 
-=item *
-
+=item 1.
 Run the xcatsnap routine in bypass mode and put info in /tmp/mydir :
 
-B<xcatsnap> I<-B> I<-d> /tmp/mydir
+ xcatsnap -B -d /tmp/mydir
 
-=item * 
-
+=item 2. 
 To run the xcatsnap routine and use default directory /tmp/xcatsnap :
 
-B<xcatsnap>
-
+ xcatsnap
 
 =back

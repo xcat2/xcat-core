@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **makeknownhosts**\  \ *noderange*\  [\ **-r**\ |\ **--remove**\ ] [\ **-V**\ |\ **--verbose**\ ]
+\ **makeknownhosts**\  \ *noderange*\  [\ **-r | -**\ **-remove**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **makeknownhosts**\  {\ **-h**\ |\ **--help**\ }
+\ **makeknownhosts**\  [\ **-h | -**\ **-help**\ ]
 
 
 ***********
@@ -53,13 +53,13 @@ OPTIONS
  
 
 
-\ **-r|--remove**\ 
+\ **-r|-**\ **-remove**\ 
  
  Only removes the entries for the nodes from the known_hosts file.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -72,21 +72,33 @@ EXAMPLES
 
 
 
-\*
+1. To build the known_hosts entry for the nodes in the compute group
  
- makeknownhosts compute
  
-
-
-\*
+ .. code-block:: perl
  
- makeknownhosts lpars,service
+   makeknownhosts compute
+ 
  
 
 
-\*
+2. To build the known_hosts entry for the nodes in the lpars and service groups
  
- makeknownhosts node02 -r
+ 
+ .. code-block:: perl
+ 
+   makeknownhosts lpars,service
+ 
+ 
+
+
+3. To remove the known_hosts entry for node02
+ 
+ 
+ .. code-block:: perl
+ 
+   makeknownhosts node02 -r
+ 
  
 
 

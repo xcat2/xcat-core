@@ -53,14 +53,12 @@ Delete rather than create records. This will also delete any additional network 
 
 =over 2
 
-=item *
-
+=item 1.
 Add entries to /etc/hosts for all nodes included in the xCAT node group called "compute".
 
   makehosts compute
 
-=item *
-
+=item 2.
 If the xCAT hosts table contains:
 
   "compute","|node(\d+)|1.2.3.($1+0)|","|(.*)|($1).cluster.net|",,

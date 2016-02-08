@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **makeconservercf**\  [\ **-V|--verbose**\ ] [\ **-d|--delete**\ ] \ *noderange*\ 
+\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-d|-**\ **-delete**\ ] \ *noderange*\ 
 
-\ **makeconservercf**\  [\ **-V|--verbose**\ ] [\ **-l|--local**\ ] [\ *noderange*\ ]
+\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-l|-**\ **-local**\ ] [\ *noderange*\ ]
 
-\ **makeconservercf**\  [\ **-V|--verbose**\ ] [\ **-c|--conserver**\ ] [\ *noderange*\ ]
+\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] [\ **-c|-**\ **-conserver**\ ] [\ *noderange*\ ]
 
-\ **makeconservercf**\  [\ **-V|--verbose**\ ] \ *noderange*\  [\ **-t|--trust**\ ] \ *hosts*\ 
+\ **makeconservercf**\  [\ **-V|-**\ **-verbose**\ ] \ *noderange*\  [\ **-t|-**\ **-trust**\ ] \ *hosts*\ 
 
-\ **makeconservercf**\  [\ **-h|--help|-v|--version**\ ]
+\ **makeconservercf**\  [\ **-h|-**\ **-help|-v|-**\ **-version**\ ]
 
 
 ***********
@@ -52,46 +52,46 @@ OPTIONS
 
 
 
-\ **-d|--delete**\ 
+\ **-d|-**\ **-delete**\ 
  
  Delete rather than add or refresh the nodes specified as a noderange.
  
 
 
-\ **-c|--conserver**\ 
+\ **-c|-**\ **-conserver**\ 
  
  Only set up the conserver on the conserver host. If no conserver host
  is set for nodes, the conserver gets set up only on the management node.
  
 
 
-\ **-l|--local**\ 
+\ **-l|-**\ **-local**\ 
  
  Only run \ **makeconservercf**\  locally and create the local /etc/conserver.cf.  The default is to also
  run it on all service nodes, if there are any.
  
 
 
-\ **-t|--trust**\  \ *hosts*\ 
+\ **-t|-**\ **-trust**\  \ *hosts*\ 
  
  Add additional trusted hosts into /etc/conserver.cf. The \ *hosts*\  are comma separated list of
  ip addresses or host names.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Display version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -103,9 +103,14 @@ RETURN VALUE
 ************
 
 
-0 The command completed successfully.
 
-1 An error has occurred.
+0.  The command completed successfully.
+
+
+
+1.  An error has occurred.
+
+
 
 
 ********
@@ -114,9 +119,7 @@ EXAMPLES
 
 
 
-1.
- 
- To create conserver configuration for all the nodes.
+1. To create conserver configuration for all the nodes.
  
  
  .. code-block:: perl
@@ -126,9 +129,7 @@ EXAMPLES
  
 
 
-2.
- 
- To create conserver configuration for nodes node01-node10.
+2. To create conserver configuration for nodes node01-node10.
  
  
  .. code-block:: perl
@@ -138,9 +139,7 @@ EXAMPLES
  
 
 
-3.
- 
- To remove conserver configuration for node01.
+3. To remove conserver configuration for node01.
  
  
  .. code-block:: perl

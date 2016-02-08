@@ -19,23 +19,23 @@ SYNOPSIS
 ********
 
 
-\ **tabdump**\  [\ *-d*\ ] [\ *table*\ ]
+\ **tabdump**\ 
+
+\ **tabdump**\  [\ **-d**\ ] [\ *table*\ ]
 
 \ **tabdump**\  [\ *table*\ ]
 
-\ **tabdump**\  [\ *-f*\  \ *filename*\ ] [\ *table*\ ]
+\ **tabdump**\  [\ **-f**\  \ *filename*\ ] [\ *table*\ ]
 
-\ **tabdump**\  [\ *-n*\  \ *# of records*\ ] [\ *auditlog | eventlog*\ ]
+\ **tabdump**\  [\ **-n**\  \ *# of records*\ ] [\ **auditlog**\  | \ **eventlog**\ ]
 
-\ **tabdump**\  [\ *-w*\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *table*\ ]
+\ **tabdump**\  [\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *table*\ ]
 
-\ **tabdump**\  [\ *-w*\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *-f*\  \ *filename*\ ] [\ *table*\ ]
+\ **tabdump**\  [\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ **-f**\  \ *filename*\ ] [\ *table*\ ]
 
-\ **tabdump**\  [\ *-v*\  | \ *--version*\ ]
+\ **tabdump**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **tabdump**\  [\ *-?*\  | \ *-h*\  | \ *--help*\ ]
-
-\ **tabdump**\ 
+\ **tabdump**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -54,7 +54,7 @@ OPTIONS
 
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -107,16 +107,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0.  The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1.  An error has occurred.
+
 
 
 
@@ -126,85 +122,105 @@ EXAMPLES
 
 
 
-\*
+1. To display the contents of the site table:
  
- To display the contents of the site table:
  
- \ **tabdump**\  \ **site**\ 
+ .. code-block:: perl
  
-
-
-\*
+   tabdump site
  
- To display the contents of the nodelist table where the groups attribute is compute :
- 
- \ **tabdump**\   \ **-w 'groups==compute'**\  \ **nodelist**\ 
  
 
 
-\*
+2. To display the contents of the nodelist table where the groups attribute is compute :
  
- To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
  
- \ **tabdump**\   \ **-w 'groups=~comput%'**\  \ **-w 'status==booted'**\  \ **nodelist**\ 
+ .. code-block:: perl
  
-
-
-\*
+   tabdump -w 'groups==compute' nodelist
  
- To display the records of the auditlog on date  2011-04-18 11:30:00 :
- 
- \ **tabdump**\    \ **-w 'audittime==2011-04-18 11:30:00'**\  \ **auditlog**\ 
  
 
 
-\*
+3. To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
  
- To display the records of the auditlog starting on 2011-04-18:
  
- tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
+ .. code-block:: perl
  
-
-
-\*
+   tabdump -w 'groups=~comput%' -w 'status==booted' nodelist
  
- To display the 10 most recent entries in the auditlog:
- 
- tabdump -n 10 auditlog
  
 
 
-\*
+4. To display the records of the auditlog on date  2011-04-18 11:30:00 :
  
- To see what tables exist in the xCAT database:
  
- \ **tabdump**\ 
+ .. code-block:: perl
+ 
+   tabdump -w 'audittime==2011-04-18 11:30:00' auditlog
+ 
  
 
 
-\*
+5. To display the records of the auditlog starting on 2011-04-18:
  
- To back up all the xCAT database tables, instead of running \ **tabdump**\  multiple times, you can use the \ **dumpxCATdb**\  command as follows:
  
- \ **dumpxCATdb -p /tmp/xcatbak **\ 
+ .. code-block:: perl
+ 
+   tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
+ 
+ 
+
+
+6. To display the 10 most recent entries in the auditlog:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabdump -n 10 auditlog
+ 
+ 
+
+
+7. To see what tables exist in the xCAT database:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabdump
+ 
+ 
+
+
+8. To back up all the xCAT database tables, instead of running \ **tabdump**\  multiple times, you can use the \ **dumpxCATdb**\  command as follows:
+ 
+ 
+ .. code-block:: perl
+ 
+   dumpxCATdb -p /tmp/xcatbak
+ 
  
  See the \ **dumpxCATdb**\  man page for details.
  
 
 
-\*
+9. To display a summary description of each table:
  
- To display a summary description of each table:
  
- \ **tabdump**\  \ **-d**\ 
+ .. code-block:: perl
+ 
+   tabdump -d
+ 
  
 
 
-\*
+10. To display a description of each column in the nodehm table:
  
- To display a description of each column in the nodehm table:
  
- \ **tabdump**\  \ **-d nodehm**\ 
+ .. code-block:: perl
+ 
+   tabdump -d nodehm
+ 
  
 
 

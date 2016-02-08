@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xcatsetup**\  [\ **-s|--stanzas**\  \ *stanza-list*\ ] [\ **--yesreallydeletenodes**\ ] \ *cluster-config-file*\ 
+\ **xcatsetup**\  [\ **-s|-**\ **-stanzas**\  \ *stanza-list*\ ] [\ **-**\ **-yesreallydeletenodes**\ ] \ *cluster-config-file*\ 
 
-\ **xcatsetup**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **xcatsetup**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -35,49 +35,49 @@ representing this cluster configuration.  The \ **xcatsetup**\  command prepares
 the hardware that is connected to the service and cluster networks.  The typical steps of setting up a system p cluster are:
 
 
-\*
+1.
  
  Install the xCAT software on the management node
  
 
 
-\*
+2.
  
  Create the cluster config file and run xcatsetup
  
 
 
-\*
+3.
  
  Put hardware control passwords in the ppchcp or ppcdirect database table
  
 
 
-\*
+4.
  
  Run makenetworks and makedhcp
  
 
 
-\*
+5.
  
  Run the discovery commands (lsslp, mkhwconn, rspconfig) as described in the System P Hardware Management cookbook.
  
 
 
-\*
+6.
  
  Configure and start services using makehosts, makedns, mkconserver.cf, etc.
  
 
 
-\*
+7.
  
  Create the images that should be installed or booted on the nodes
  
 
 
-\*
+8.
  
  Run nodeset and rpower/rnetboot to boot up the nodes.
  
@@ -107,17 +107,15 @@ use individual rows for every node, you can do the following:
 Many of the sections and attributes in the configuration file can be omitted, if you have a simple cluster, or if you want
 to create just 1 or 2 of the object types at this time.  See the section \ **A Simpler Configuration File**\  for an example of this.
 
-If you want to delete all of the nodes that xcatsetup created, and start over, use the \ **--yesreallydeletenodes**\  option.
+If you want to delete all of the nodes that xcatsetup created, and start over, use the \ **-**\ **-yesreallydeletenodes**\  option.
 
 Restrictions
 ============
 
 
 
-\*
- 
- The \ **xcatsetup**\  command has only been implemented and tested for system p servers so far.
- 
+1. The \ **xcatsetup**\  command has only been implemented and tested for system p servers so far.
+
 
 
 
@@ -495,7 +493,7 @@ OPTIONS
 
 
 
-\ **-s|--stanzas**\  \ *stanza-list*\ 
+\ **-s|-**\ **-stanzas**\  \ *stanza-list*\ 
  
  A comma-separated list of stanza names that \ **xcatsetup**\  should process in the configuration file.  If not specified, it will process
  all the stanzas that start with 'xcat' and some other stanzas that give xCAT hints about how to set up the HPC products.
@@ -505,19 +503,19 @@ OPTIONS
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **--yesreallydeletenodes**\ 
+\ **-**\ **-yesreallydeletenodes**\ 
  
  Delete the nodes represented in the cluster config file, instead of creating them.  This is useful if your first attempt with the cluster
  config file wasn't quite right and you want to start over.  But use this option with extreme caution, because it will potentially delete
@@ -533,9 +531,14 @@ RETURN VALUE
 ************
 
 
-0  The command completed successfully.
 
-1  An error has occurred.
+0.   The command completed successfully.
+
+
+
+1.   An error has occurred.
+
+
 
 
 ********
@@ -544,10 +547,8 @@ EXAMPLES
 
 
 
-1.
- 
- Use the sample config.txt file at the beginning of this man page to create all the objects/nodes for a
- 2 building block cluster.
+1. Use the sample config.txt file at the beginning of this man page to create all the objects/nodes for a
+2 building block cluster.
  
  
  .. code-block:: perl
@@ -570,9 +571,7 @@ EXAMPLES
  
 
 
-2.
- 
- Use the simpler config file shown earlier in this man page to create just the frame and cec objects:
+2. Use the simpler config file shown earlier in this man page to create just the frame and cec objects:
  
  
  .. code-block:: perl

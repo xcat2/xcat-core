@@ -40,9 +40,7 @@ EXAMPLES
 
 
 
-1.
- 
- To start/stop/restart  xcatd on Linux, enter:
+1. To start/stop/restart  xcatd on Linux, enter:
  
  
  .. code-block:: perl
@@ -56,9 +54,7 @@ EXAMPLES
  
 
 
-2.
- 
- To start/stop/restart  xcatd on AIX, enter:
+2. To start/stop/restart  xcatd on AIX, enter:
  
  
  .. code-block:: perl

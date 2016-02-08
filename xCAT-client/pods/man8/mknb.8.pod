@@ -31,9 +31,15 @@ The hardware architecture for which to build the boot image: x86_64
 
 =head1 RETURN VALUE
 
-0 The command completed successfully.
+=over 2
 
-1 An error has occurred.
+=item 0. 
+The command completed successfully.
+
+=item 1. 
+An error has occurred.
+
+=back
 
 
 =head1 SEE ALSO
