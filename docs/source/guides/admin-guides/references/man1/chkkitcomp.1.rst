@@ -31,9 +31,9 @@ DESCRIPTION
 
 The \ **chkkitcomp**\  command will check if the kit components are compatible with the xCAT osimage.
 
-This command will ignore the current osimage.kitcomponents setting, and just to check if the kitcompname list in the cmdline are compatible with the osimage by osversion/ostype/osarch/ and kit component dependencies.
+This command will ignore the current osimage.kitcomponents setting and check if the kitcompname_list is compatible with the osimage and kit component dependencies.
 
-Note: The xCAT support for Kits is only available for Linux operating systems.
+\ **Note:**\  xCAT Kit support is ONLY available for Linux operating systems.
 
 
 *******
@@ -62,13 +62,13 @@ OPTIONS
 
 \ **-i**\  \ *osimage*\ 
  
- The name of the osimage is used for check.
+ The name of the osimage to check against.
  
 
 
 \ **kitcompname_list**\ 
  
- A comma-delimited list of valid full kit component names or kit component basenames that are to be checking to the osimage.
+ A comma-delimited list of valid full kit component names or kit component basenames that are to be checked against the osimage.
  
 
 
@@ -88,13 +88,13 @@ EXAMPLES
 ********
 
 
-1. To check if a kit component is fitting to an osimage
+1. To check if a kit component , \ *comp-test1-1.0-1-rhels-6.2-ppc64*\  can be added to osimage \ *rhels6.2-ppc64-netboot-compute*\ :
 
-chkkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
+.. code-block:: perl
 
-Kit components comp-test1-1.0-1-rhels-6.2-ppc64 fit to osimage rhels6.2-ppc64-netboot-compute
+    chkkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
 
 
 ********

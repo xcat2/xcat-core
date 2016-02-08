@@ -31,7 +31,7 @@ DESCRIPTION
 
 The \ **addkitcomp**\  command will assign kit components to an xCAT osimage. The kit component meta rpm, package rpm and deploy parameters will be added to osimage's otherpkg.pkglist and postbootscripts will be added to osimages's postbootscripts attribute.
 
-Note: The xCAT support for Kits is only available for Linux operating systems.
+\ **Note:**\  xCAT Kit support is ONLY available for Linux operating systems.
 
 
 *******
@@ -112,48 +112,37 @@ EXAMPLES
 ********
 
 
-1. To assign a kit component to osimage
+1. To add a single kit component to osimage "rhels6.2-ppc64-netboot-compute":
 
-addkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
+.. code-block:: perl
 
-Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+  addkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-2. To assign a kit component to osimage with its dependency.
 
-addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+2. To add a kit component to osimage with dependencies, use the -a (addeps) option:
 
-Output is similar to:
 
-Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.0-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+.. code-block:: perl
 
-3. To assign a kit component to osimage with incompatable osarch, osversion or ostype.
+  addkitcomp -a -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
 
-addkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
+3. To add a kit component to osimage with incompatable osarch, osversion or ostype, use the -f (force) option:
 
-Assigning kit component comp-test1-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test1-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
 
-4. To assign a new version of kit component to osimage without upgrade.
+.. code-block:: perl
 
-addkitcomp -n -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+  addkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
 
-Output is similar to:
 
-Assigning kit component comp-test1-1.0-1-rhels-6.0-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Assigning kit component comp-test2-1.0-1-rhels-6.2-ppc64 to osimage rhels6.2-ppc64-netboot-compute
-Kit components comp-test2-1.0-1-rhels-6.2-ppc64 were added to osimage rhels6.2-ppc64-netboot-compute successfully
+4. To add a new version of kit component to osimage without upgrade, use the -n (noupgrade) option:
 
-The result will be:
-lsdef -t osimage rhels6.2-ppc64-netboot-compute -i kitcomponents
-Object name: rhels6.2-ppc64-netboot-compute
-kitcomponents=comp-test2-1.0-0-rhels-6.2-ppc64,comp-test2-1.0-1-rhels-6.2-ppc64
+
+.. code-block:: perl
+
+  addkitcomp -n -i rhels6.2-ppc64-netboot-compute comp-test2-1.0-1-rhels-6.2-ppc64
+
 
 
 ********
