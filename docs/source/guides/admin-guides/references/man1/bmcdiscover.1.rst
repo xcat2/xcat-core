@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **bmcdiscover**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
+\ **bmcdiscover**\  [\ **-?**\ |\ **-h**\ |\ **--help**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
+\ **bmcdiscover**\  [\ **-v**\ |\ **--version**\ ]
 
-\ **bmcdiscover**\  \ **-i | -**\ **-bmcip**\  \ *bmc_ip*\  [\ **-u | -**\ **-bmcuser**\  \ *bmcusername*\ ] \ **-p | -**\ **-bmcpwd**\  \ *bmcpassword*\  \ **-c | -**\ **-check**\ 
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **--range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
 
-\ **bmcdiscover**\  \ **-i | -**\ **-bmcip**\  \ *bmc_ip*\  [\ **-u | -**\ **-bmcuser**\  \ *bmcusername*\ ] \ **-p | -**\ **-bmcpwd**\  \ *bmcpassword*\  \ **-**\ **-ipsource**\ 
+\ **bmcdiscover**\  [\ **-i**\ |\ **--bmcip**\ ] \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\ ] \ *bmcusername*\  [\ **-p**\ |\ **--bmcpwd**\ ] \ *bmcpassword*\  (\ **-c**\ |\ **--check**\ |\ **--ipsource**\ )
 
 
 ***********
@@ -56,7 +56,7 @@ OPTIONS
 
 \ **-s**\ 
  
- Scan method  (The only supported scan method at this time is 'nmap')
+ Scan method  (The only supported scan method at this time is \ **nmap**\ )
  
 
 
@@ -68,7 +68,7 @@ OPTIONS
 
 \ **-w**\ 
  
- Write to the xCAT database
+ Write to the xCAT database.
  
 
 
@@ -80,7 +80,7 @@ OPTIONS
 
 \ **-i|-**\ **-bmcip**\ 
  
- BMC IP
+ BMC IP address.
  
 
 
@@ -136,121 +136,38 @@ EXAMPLES
 ********
 
 
-1. To get all bmc from IP range
+1. To get all responding BMCs from IP range "10.4.23.100-254" and 50.3.15.1-2":
 
 
 .. code-block:: perl
 
-  bmcdiscover -s nmap --range "10.4.23.100-254 50.3.15.1-2"
+     bmcdiscover -s nmap --range "10.4.23.100-254 50.3.15.1-2"
 
 
-Output is similar to:
+Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
 
-
-.. code-block:: perl
-
-  10.4.23.254
-  50.3.15.1
-
-
-Note: input for IP range can also be like scanme.nmap.org, microsoft.com/24, 192.168.0.1; 10.0.0-255.1-254.
-
-2. After discover bmc, list the stanza format data
-
-bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
-
-Output is similar to:
+2. To get all BMSs in IP range "10.4.22-23.100-254", displayed in xCAT stanza format:
 
 
 .. code-block:: perl
 
-  node10422254:
-         objtype=node
-         groups=all
-         bmc=10.4.22.254
-         cons=ipmi
-         mgt=ipmi
- 
-  node10423254:
-         objtype=node
-         groups=all
-         bmc=10.4.23.254
-         cons=ipmi
-         mgt=ipmi
+     bmcdiscover -s nmap --range "10.4.22-23.100-254" -z
 
 
-3. After discover bmc, write host node definition into the database, and the same time, give out stanza format data
+3. Discover the BMCs and write the discovered-node definitions into the xCAT database and write out the stanza foramt to the console:
 
 
 .. code-block:: perl
 
-  bmcdiscover -s nmap --range "10.4.22-23.100-254" -w
+     bmcdiscover -s nmap --range "10.4.22-23.100-254" -w -z
 
 
-Output is similar to:
-
-
-.. code-block:: perl
-
-  node10422254:
-         objtype=node
-         groups=all
-         bmc=10.4.22.254
-         cons=ipmi
-         mgt=ipmi
- 
-  node10423254:
-         objtype=node
-         groups=all
-         bmc=10.4.23.254
-         cons=ipmi
-         mgt=ipmi
-
-
-4. To check if user name or password is correct or not for bmc
+4. To check if the username or password is correct against the BMC:
 
 
 .. code-block:: perl
 
-  bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-  Correct ADMINISTRATOR
- 
-  bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD1 -c
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-  Error: Wrong bmc password
- 
-  bmcdiscover -i 10.4.23.254 -u USERID1 -p PASSW0RD1 -c
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-  Error: Wrong bmc user
- 
-  bmcdiscover -i 10.4.23.2541234 -u USERID -p PASSW0RD -c
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-  Error: Not bmc
+     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
 
 
 5. Get BMC IP Address source, DHCP Address or static Address
@@ -258,15 +175,7 @@ Output is similar to:
 
 .. code-block:: perl
 
-  bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --ipsource
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-  Static Address
+     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --ipsource
 
 
 
