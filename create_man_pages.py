@@ -80,7 +80,22 @@ def cleanup_db_man_pages_dir():
     shutil.rmtree("perl-xCAT/pods")
     shutil.rmtree("perl-xCAT/share")
 
-   
+def fix_vertical_bar(rst_file):
+    print "Removing | from file %s, version %s" %(rst_file, man_ver)
+    # Verical bar can not appear with spaces around it, otherwise
+    # it gets displayed as a link in .html
+    sed_cmd = "sed 's/\*\*\\\ |\\\ \*\*/ | /g' %s > %s.sed1" %(rst_file, rst_file)
+    os.system(sed_cmd)
+
+def fix_double_dash(rst_file):
+    print "Fixing -- in file %s, version %s" %(rst_file, man_ver)
+    # -- gets displayed in .html as a sinle long dash, need to insert
+    # a non bold space between 2 dashes
+    sed_cmd = "sed 's/--/-\*\*\\\ \*\*-/g' %s.sed1 > %s" %(rst_file, rst_file)
+    os.system(sed_cmd)
+    #remove intermediate .sed1 file
+    rm_sed1file_cmd = "rm %s.sed1" %(rst_file)
+    os.system(rm_sed1file_cmd)   
 
 build_db_man_pages()
 
@@ -119,6 +134,9 @@ for component in COMPONENTS:
                 cmd += " --infile=%s --outfile=%s --title=%s.%s" %(pod_input, rst_output, title, man_ver)
                 print cmd 
                 os.system(cmd)
+		if man_ver == '8':
+                    fix_vertical_bar(rst_output)
+                    fix_double_dash(rst_output)
 
 cleanup_db_man_pages_dir()
 

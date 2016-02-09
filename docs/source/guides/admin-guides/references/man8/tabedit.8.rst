@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **tabedit**\  [\ *table*\ ]
+\ **tabedit**\  \ *table*\ 
 
-\ **tabedit**\  [\ *-?*\  | \ *-h*\  | \ *--help*\ ]
+\ **tabedit**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -43,7 +43,7 @@ OPTIONS
 
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -71,16 +71,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0.  The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1.  An error has occurred.
+
 
 
 
@@ -90,14 +86,12 @@ EXAMPLES
 
 
 
-\*
- 
- To edit the site table:
+1. To edit the site table:
  
  
  .. code-block:: perl
  
-    B<tabedit> I<site>
+   tabedit site
  
  
 

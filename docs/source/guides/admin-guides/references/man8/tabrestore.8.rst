@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **tabrestore**\  [-a] \ *table.csv*\ 
+\ **tabrestore**\  [\ **-a**\ ] \ *table.csv*\ 
 
-\ **tabrestore**\  [\ *-?*\  | \ *-h*\  | \ *--help*\ ]
+\ **tabrestore**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
-\ **tabrestore**\  [\ *v*\   | \ *--version*\ ]
+\ **tabrestore**\  [\ **-v**\   | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -47,19 +47,19 @@ OPTIONS
 
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Display version.
  
 
 
-\ **-a|--addrows**\ 
+\ **-a|-**\ **-addrows**\ 
  
  Add rows from the CSV file to the table instead of replacing the table with the CSV file.
  
@@ -72,16 +72,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0. The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1. An error has occurred.
+
 
 
 
@@ -91,11 +87,13 @@ EXAMPLES
 
 
 
-\*
+1. To replace the rows in the mp table with the rows in the mp.csv file:
  
- To replace the rows in the mp table with the rows in the mp.csv file:
  
- \ ** tabrestore**\  \ *mp.csv*\ 
+ .. code-block:: perl
+ 
+   tabrestore mp.csv
+ 
  
  The file mp.csv could contain something like:
  
@@ -108,19 +106,23 @@ EXAMPLES
  
 
 
-\*
+2. To add the rows in the mp.csv file to the rows in the mp table:
  
- To add the rows in the mp.csv file to the  rows in the mp table:
  
- \ ** tabrestore**\  -a \ *mp.csv*\ 
+ .. code-block:: perl
+ 
+   tabrestore -a mp.csv
+ 
  
 
 
-\*
+3. To restore database tables from restore_directory that we dumped with dumpxCATdb:
  
- To restore database tables that we dumped with dumpxCATdb:
  
- restorexCATdb -p <restore directory>
+ .. code-block:: perl
+ 
+   restorexCATdb -p restore_directory
+ 
  
 
 

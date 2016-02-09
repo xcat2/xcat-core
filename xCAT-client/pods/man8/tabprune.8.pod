@@ -4,15 +4,15 @@ B<tabprune> - Deletes records from the eventlog,auditlog,isnm_perf,isnm_perf_sum
 
 =head1 SYNOPSIS
 
-B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> |  B<-d> I<number of days> | B<-a>  
+B<tabprune> [B<eventlog | auditlog>]  [B<-V>] [B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> | B<-d> I<number of days> | B<-a>] 
 
-B<tabprune> B<tablename> B<-a>  
+B<tabprune> I<tablename> B<-a>  
 
 B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>] 
 
 =head1 DESCRIPTION
 
-The tabprune command is used to delete records from the auditlog,eventlog,isnm_perf,isnm_perf_sum tables. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format. The all records options (-a) can be used on any xCAT table. 
+The tabprune command is used to delete records from the auditlog, eventlog, isnm_perf, isnm_perf_sum tables. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format. The all records options (-a) can be used on any xCAT table. 
 
 =head1 OPTIONS
 
@@ -53,12 +53,10 @@ Remove all records that occurred >= than number of days ago.
 
 =over 3
 
-=item 0
-
+=item 0.
 The command completed successfully.
 
-=item 1
-
+=item 1.
 An error has occurred.
 
 =back
@@ -67,43 +65,35 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To remove all the records in the eventlog table:
 
-B<tabprune> I<eventlog> -a
+ tabprune eventlog -a
 
-=item *
-
+=item 2.
 To remove all the records in the eventlog table saving the deleted records in eventlog.csv:
 
-B<tabprune> I<eventlog> -V -a > eventlog.csv
+ tabprune eventlog -V -a > eventlog.csv
 
-=item *
-
+=item 3.
 To remove all the records before recid=200 in the auditlog table:
 
-B<tabprune> I<auditlog> -i 200
+ tabprune auditlog -i 200
 
-=item *
-
+=item 4.
 To remove 400 records from the auditlog table and display the remove records: 
 
-B<tabprune> I<auditlog> -V -n 400
+ tabprune auditlog -V -n 400
 
-=item *
-
+=item 5.
 To remove 50% of the  eventlog table: 
 
-B<tabprune> I<eventlog>  -p 50 
+ tabprune eventlog -p 50 
 
-=item *
-
+=item 6.
 To remove all records that occurred >= 5 days ago in the eventlog: 
 
-B<tabprune> I<eventlog>  -d 5 
-
-
+ tabprune eventlog -d 5 
 
 =back
 

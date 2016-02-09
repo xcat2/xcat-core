@@ -19,11 +19,13 @@ Name
 ****************
 
 
-\ **nodeset**\  [\ *noderange*\ ] [\ *boot*\ |\ *stat*\ |\ *iscsiboot*\ |\ *offline*\ |\ *runcmd=bmcsetup*\ |\ *osimage[=<imagename*\ >]|\ *shell*\ |\ *shutdown*\ ]
+\ **nodeset**\  [\ *noderange*\ ] [\ **boot**\  | \ **stat**\  | \ **iscsiboot**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ = \ *imagename*\  | \ **shell**\  | \ **shutdown**\ ]
 
-\ **nodeset**\  \ *noderange*\  \ *osimage=<imagename*\ > [\ *--noupdateinitrd*\ ] [\ *--ignorekernelchk*\ ]
+\ **nodeset**\  \ *noderange*\  \ **osimage=**\  \ *imagename*\  [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
-\ **nodeset**\  [\ *-h*\ |\ *--help*\ |\ *-v*\ |\ *--version*\ ]
+\ **nodeset**\  \ *noderange*\  \ **runimage=**\  \ *task*\ 
+
+\ **nodeset**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -72,26 +74,26 @@ A user can supply their own scripts to be run on the mn or on the service node (
  
 
 
-\ **osimage**\ |\ **osimage=<imagename**\ >
+\ **osimage | osimage=<imagename**\ >
  
  Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
  
 
 
-\ **--noupdateinitrd**\ 
+\ **-**\ **-noupdateinitrd**\ 
  
  Skip the rebuilding of initrd when the 'netdrivers', 'drvierupdatesrc' or 'osupdatename' were set for injecting new drviers to initrd. But, the geninitrd command
  should be run to rebuild the initrd for new drivers injecting. This is used to improve the performance of nodeset command.
  
 
 
-\ **--ignorekernelchk**\ 
+\ **-**\ **-ignorekernelchk**\ 
  
  Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
  
 
 
-\ **runimage**\ =<task>>
+\ **runimage**\ =\ *task*\ 
  
  If you would like to run a task after deployment, you can define that task with this attribute.
  
@@ -123,13 +125,13 @@ A user can supply their own scripts to be run on the mn or on the service node (
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  
@@ -163,19 +165,23 @@ root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
 
 
 
-\*
+1. To setup to install mycomputeimage on the compute node group.
  
- To setup to install mycomputeimage on the compute node group.
  
- nodeset compute osimage=mycomputeimage
+ .. code-block:: perl
+ 
+   nodeset compute osimage=mycomputeimage
+ 
  
 
 
-\*
+2. To run http://$master/image.tgz  after deployment:
  
- To run http://$master/image.tgz  after deployment:
  
- nodeset $node runimage=http://$MASTER/image.tgznodeset
+ .. code-block:: perl
+ 
+   nodeset $node runimage=http://$MASTER/image.tgz
+ 
  
 
 

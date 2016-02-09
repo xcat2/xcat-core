@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **makehosts**\  [\ **-n**\ ] [\ *noderange*\ ] [\ **-l**\ |\ **--longnamefirst**\ ] [\ **-d**\ ] [\ **-m**\ |\ **--mactolinklocal**\ ]
+\ **makehosts**\  [\ **-n**\ ] [\ *noderange*\ ] [\ **-l | -**\ **-longnamefirst**\ ] [\ **-d**\ ] [\ **-m | -**\ **-mactolinklocal**\ ]
 
-\ **makehosts**\  {\ **-h**\ |\ **--help**\ }
+\ **makehosts**\  {\ **-h | -**\ **-help**\ }
 
 
 ***********
@@ -56,7 +56,7 @@ OPTIONS
  
 
 
-\ **-l**\ |\ **--longnamefirst**\ 
+\ **-l | -**\ **-longnamefirst**\ 
  
  The FQDN (Fully Qualified Domain Name) of the host will appear before the PQDN (Partially Qualified Domain Name) for each host in the /etc/hosts file.
  The default is PQDN first.
@@ -64,7 +64,7 @@ OPTIONS
  
 
 
-\ **-m**\ |\ **--mactolinklocal**\ 
+\ **-m | -**\ **-mactolinklocal**\ 
  
  Updates /etc/hosts file with IPv6 link local addresses, the link local address is generated 
  from the mac address stored in mac table.
@@ -84,9 +84,7 @@ EXAMPLES
 
 
 
-\*
- 
- Add entries to /etc/hosts for all nodes included in the xCAT node group called "compute".
+1. Add entries to /etc/hosts for all nodes included in the xCAT node group called "compute".
  
  
  .. code-block:: perl
@@ -96,9 +94,7 @@ EXAMPLES
  
 
 
-\*
- 
- If the xCAT hosts table contains:
+2. If the xCAT hosts table contains:
  
  
  .. code-block:: perl

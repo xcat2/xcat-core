@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ *tabch [-h| --help]*\ 
+\ **tabch**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
-\ *tabch [-v| --version]*\ 
+\ **tabch**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
-\ *tabch [keycolname=keyvalue] [tablename.colname=newvalue] *\ 
+\ **tabch**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
 
-\ *tabch [keycolname=keyvalue] [tablename.colname+=newvalue] *\ 
+\ **tabch**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname+=newvalue*\ ]
 
-\ *tabch -d [keycolname=keyvalue] [tablename.colname=newvalue] *\ 
+\ **tabch -d**\  [\ *keycolname=keyvalue*\ ] [\ *tablename.colname=newvalue*\ ]
 
 
 ***********
@@ -43,9 +43,9 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
+\ **-h|-**\ **-help**\           Display usage message.
 
-\ **-v**\           Command Version.
+\ **-v|-**\ **-version**\           Command Version.
 
 \ **-d**\           Delete option.
 
@@ -55,9 +55,14 @@ RETURN VALUE
 ************
 
 
-0 The command completed successfully.
 
-1 An error has occurred.
+0.  The command completed successfully.
+
+
+
+1.  An error has occurred.
+
+
 
 
 ********
@@ -65,29 +70,66 @@ EXAMPLES
 ********
 
 
-1. To add a node=node1 to the nodelist table with groups=all:
 
-\ *tabch  node=node1 nodelist.groups=all *\ 
+1.  To add a node=node1 to the nodelist table with groups=all:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch  node=node1 nodelist.groups=all
+ 
+ 
 
-2. To add a keyword (tftpdir) and value (/tftpboot) to the site table:
 
-\ *tabch  key=tftpdir site.value=/tftpboot *\ 
+2.  To add a keyword (tftpdir) and value (/tftpboot) to the site table:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch  key=tftpdir site.value=/tftpboot
+ 
+ 
 
-3. To add node1 to the  nodetype table with os=rhel5:
 
-\ *tabch  node=node1 nodetype.os=rhel5*\ 
+3.  To add node1 to the  nodetype table with os=rhel5:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch  node=node1 nodetype.os=rhel5
+ 
+ 
 
-4. To change node1 in nodetype table setting os=sles:
 
-\ *tabch  node=node1 nodetype.os=sles*\ 
+4.  To change node1 in nodetype table setting os=sles:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch  node=node1 nodetype.os=sles
+ 
+ 
 
-5. To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
 
-\ *tabch node=node1 postscripts.postbootscripts+=otherpkgs*\ 
+5.  To change node1 by appending otherpkgs to the postbootscripts field in the postscripts table:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch node=node1 postscripts.postbootscripts+=otherpkgs
+ 
+ 
 
-6. To delete node1 from nodetype table:
 
-\ *tabch -d node=node1 nodetype*\ 
+6.  To delete node1 from nodetype table:
+ 
+ 
+ .. code-block:: perl
+ 
+   tabch -d node=node1 nodetype
+ 
+ 
+
 
 
 *****

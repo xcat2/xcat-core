@@ -2,15 +2,14 @@
 
 B<xcatdebug> - Enable or disable the trace facilities for xCAT. (Only supports Linux Operating System)
 
-B<xcatdebug> { [B<-f enable|disable> [B<-c configuration file | subroutine list>]] | [ B<-d enable |disable>]}
+=head1 SYNOPSIS
+B<xcatdebug> { [B<-f enable> | B<disable> [B<-c> {I<configuration file> | I<subroutine list>}]] | [ B<-d enable> | B<disable>]}
 
 =head1 DESCRIPTION
 
 xCAT offers two trace facilities to debug the xCAT:
 
 =over 3
-
-=item *
 
 B<Subroutine calling trace>
 
@@ -36,8 +35,6 @@ Otherwise, the package name of the plugin should be specified.
 The trace log will be written to /var/log/xcat/subcallingtrace. The log file subcallingtrace will be backed up for each running of the B<xcatdebug -f enable>.
 
 
-=item *
-
 B<Commented trace log>
 
 The trace log code is presented as comments in the code of xCAT. In general mode, it will be kept as comments. But in debug mode, it will be commented back as common code to display the trace log.
@@ -48,14 +45,10 @@ This facility offers two formats for the trace log code:
 
 =over 2
 
-=item *
-
 Trace section
     ## TRACE_BEGIN
     # print "In the debug\n";
     ## TRACE_END
-
-=item *
 
 Trace in a single line
     ## TRACE_LINE print "In the trace line\n";
@@ -90,15 +83,12 @@ Specify the configuration file or subroutine list.
 
 =over 2
 
-=item *
-
 B<configuration file>: a file contains multiple lines of B<SUBROUTINE_DEFINITION>
   e.g.
     (plugin_command)
     xCAT_plugin::DBobjectdefs(defls,process_request)
     xCAT::DBobjUtils(getobjdefs)
 
-=item *  
 B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION>|...
   e.g.
     "(plugin_command)|xCAT_plugin::DBobjectdefs(defls,process_request)|xCAT::DBobjUtils(getobjdefs)"
@@ -109,44 +99,37 @@ B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINIT
 
 Enable or disable the B<commented trace log>.
 
-Note: The xcatd will be restarted for the performing of B<-d>. 
+Note: The xcatd will be restarted for the performing of B<-d> 
 
 =back
 
 
 =head1 EXAMPLES
 
-=over 4
+=over 2
 
-=item 1
-
+=item 1.
 Enable the B<subroutine calling trace> for all the subroutines in the xcatd and plugin modules.
-  B<xcatdebug> -f enable
+ xcatdebug -f enable
 
-=item 2
-
+=item 2.
 Enable the B<subroutine calling trace> for the subroutines configured in the /opt/xcat/share/xcat/samples/tracelevel0
-  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
+ xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
 
-=item 3
-
+=item 3.
 Enable the B<subroutine calling trace> for the plugin_command in xcatd and defls,process_request in the xCAT_plugin::DBobjectdefs module.
-  B<xcatdebug> -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
+ xcatdebug -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
 
-=item 4
-
+=item 4.
 Disable the B<subroutine calling trace> for all the subroutines which have been enabled by B<xcatdebug -f enable>.
-  B<xcatdebug> -f disable
+ xcatdebug -f disable
 
-=item 5
-
+=item 5.
 Enable the B<commented trace log>
-  B<xcatdebug> -d enable
+ xcatdebug -d enable
 
-=item 6
-
+=item 6.
 Enable both the B<subroutine calling trace> and B<commented trace log>
-  B<xcatdebug> -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
-
+  xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
 
 =back

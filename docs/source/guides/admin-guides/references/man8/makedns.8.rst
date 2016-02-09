@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **makedns**\  [\ *-h*\ |\ *--help*\ ]
+\ **makedns**\  [\ **-h | -**\ **-help**\ ]
 
-\ **makedns**\  [-V|--verbose] [-e|--external] [\ *-n*\ |\ *--new*\ ] [\ *noderange*\ ]
+\ **makedns**\  [\ **-V | -**\ **-verbose**\ ] [\ **-e | -**\ **-external**\ ] [\ **-n | -**\ **-new**\ ] [\ *noderange*\ ]
 
-\ **makedns**\  [-V|--verbose] [-e|--external] [\ *-d*\ |\ *--delete*\  \ *noderange*\ ]
+\ **makedns**\  [\ **-V | -**\ **-verbose**\ ] [\ **-e | -**\ **-external**\ ] [\ **-d | -**\ **-delete**\  \ *noderange*\ ]
 
 
 ***********
@@ -59,25 +59,25 @@ OPTIONS
 
 
 
-\ **-V**\ |\ **--verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-n**\ |\ **--new**\ 
+\ **-n | -**\ **-new**\ 
  
  Use this flag to create new named configuration and db files.
  
 
 
-\ **-d**\ |\ **--delete**\ 
+\ **-d | -**\ **-delete**\ 
  
  Remove the DNS records.
  
 
 
-\ **-e**\ |\ **--external**\ 
+\ **-e | -**\ **-external**\ 
  
  Update DNS records to the external DNS server listed in /etc/resolv.conf.
  
@@ -98,35 +98,43 @@ Examples
 
 
 
-1
+1. To set up DNS for all the hosts in /etc/hosts file.
  
- To set up DNS for all the hosts in /etc/hosts file.
  
- \ **makedns**\ 
+ .. code-block:: perl
  
-
-
-2
+   makedns
  
- To set up DNS for \ *node1*\ .
- 
- \ **makedns**\  \ *node1*\ 
  
 
 
-3
+2. To set up DNS for \ *node1*\ .
  
- To create a new named configuration and db files for all hosts in /etc/hosts.
  
- \ **makedns**\  \ **-n**\ 
+ .. code-block:: perl
+ 
+   makedns node1
+ 
  
 
 
-4
+3. To create a new named configuration and db files for all hosts in /etc/hosts.
  
- To delete the DNS records for \ *node1*\ .
  
- \ **makedns**\  \ **-d**\  \ *node1*\ 
+ .. code-block:: perl
+ 
+   makedns -n
+ 
+ 
+
+
+4. To delete the DNS records for \ *node1*\ .
+ 
+ 
+ .. code-block:: perl
+ 
+   makedns -d node1
+ 
  
 
 

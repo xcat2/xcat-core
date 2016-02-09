@@ -19,19 +19,19 @@ SYNOPSIS
 ********
 
 
-\ **makedhcp**\  \ **-n**\  [\ **-l**\ |\ **--localonly**\ ]
+\ **makedhcp**\  \ **-n**\  [\ **-l | -**\ **-localonly**\ ]
 
-\ **makedhcp**\  \ **-a**\  [\ **-l**\ |\ **--localonly**\ ]
+\ **makedhcp**\  \ **-a**\  [\ **-l | -**\ **-localonly**\ ]
 
-\ **makedhcp**\  \ **-a -d**\  [\ **-l**\ |\ **--localonly**\ ]
+\ **makedhcp**\  \ **-a -d**\  [\ **-l | -**\ **-localonly**\ ]
 
-\ **makedhcp**\  \ **-d**\  \ *noderange*\  [\ **-l**\ |\ **--localonly**\ ]
+\ **makedhcp**\  \ **-d**\  \ *noderange*\  [\ **-l | -**\ **-localonly**\ ]
 
-\ **makedhcp**\  \ *noderange*\  [\ **-s**\  \ *statements*\ ] [\ **-l**\ |\ **--localonly**\ ]
+\ **makedhcp**\  \ *noderange*\  [\ **-s**\  \ *statements*\ ] [\ **-l | -**\ **-localonly**\ ]
 
 \ **makedhcp**\  \ **-q**\  \ *noderange*\ 
 
-\ **makedhcp**\  [\ *-h|--help*\ ]
+\ **makedhcp**\  \ **[-h|-**\ **-help]**\ 
 
 
 ***********
@@ -123,7 +123,7 @@ OPTIONS
  
 
 
-\ **-l**\ |\ **--localonly**\ 
+\ **-l | -**\ **-localonly**\ 
  
  Configure dhcpd on the local machine only.  Without this option, makedhcp will also send this
  operation to any service nodes that service the nodes in the noderange.
@@ -136,7 +136,7 @@ OPTIONS
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -148,9 +148,14 @@ RETURN VALUE
 ************
 
 
-0 The command completed successfully.
 
-1 An error has occurred.
+0. The command completed successfully.
+
+
+
+1.  An error has occurred.
+
+
 
 
 ********
@@ -159,9 +164,7 @@ EXAMPLES
 
 
 
-1.
- 
- Create a new DHCP configuration file and add the network definitions:
+1. Create a new DHCP configuration file and add the network definitions:
  
  
  .. code-block:: perl
@@ -171,9 +174,7 @@ EXAMPLES
  
 
 
-2.
- 
- Define all nodes to the dhcp server:
+2. Define all nodes to the dhcp server:
  
  
  .. code-block:: perl
@@ -185,9 +186,7 @@ EXAMPLES
  
 
 
-3.
- 
- Will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
+3. Will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
  
  
  .. code-block:: perl
@@ -197,9 +196,7 @@ EXAMPLES
  
 
 
-4.
- 
- Query a node from the DHCP server.
+4. Query a node from the DHCP server.
  
  
  .. code-block:: perl

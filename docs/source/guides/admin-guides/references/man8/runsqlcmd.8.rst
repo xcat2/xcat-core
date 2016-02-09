@@ -21,15 +21,15 @@ SYNOPSIS
 
 \ **runsqlcmd**\ 
 
-\ **runsqlcmd**\  {\ **-h**\ |\ **--help**\ }
+\ **runsqlcmd**\  [\ **-h | -**\ **-help**\ ]
 
-\ **runsqlcmd**\  {\ **-v**\ |\ **--version**\ }
+\ **runsqlcmd**\  [\ **-v | -**\ **-version**\ ]
 
-\ **runsqlcmd**\  {\ **-d**\ |\ **--dir**\  \ *directory_path*\ } {\ **-V**\ |\ **--verbose**\ }
+\ **runsqlcmd**\  [\ **-d | -**\ **-dir**\  \ *directory_path*\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **runsqlcmd**\  {\ **-f**\ |\ **--files**\  \ *list of files*\ } {\ **-V**\ |\ **--verbose**\ }
+\ **runsqlcmd**\  [\ **-f | -**\ **-files**\  \ *list of files*\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **runsqlcmd**\  {\ **-V**\ |\ **--verbose**\ } {\ **sql statement**\ }
+\ **runsqlcmd**\  [\ **-V | -**\ **-verbose**\ ] [\ *sql statement*\ ]
 
 
 ***********
@@ -49,31 +49,31 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Displays the usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Displays current code version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Displays extra debug information.
  
 
 
-\ **-d|--dir**\ 
+\ **-d|-**\ **-dir**\ 
  
  To use a directory other than the default directory,  enter the directory path here.
  
 
 
-\ **-f|--files**\ 
+\ **-f|-**\ **-files**\ 
  
  Comma separated list of files (full path), wildcard (\*) can be used.
  
@@ -87,7 +87,7 @@ OPTIONS
  
 
 
-\ **sql statement**\ 
+\ *sql statement*\ 
  
  Quoted sql statement syntax appropriate for the current database.
  
@@ -100,43 +100,53 @@ EXAMPLES
 
 
 
-\*
+1. To run the database appropriate \*.sql files in /opt/xcat/lib/perl/xCAT_schema :
  
- To run the database appropriate \*.sql files in /opt/xcat/lib/perl/xCAT_schema :
  
- \ **runsqlcmd**\ 
+ .. code-block:: perl
  
-
-
-\*
+   runsqlcmd
  
- To run the database appropriate \*.sql files in /tmp/mysql:
- 
- \ **runsqlcmd**\  \ *-d*\  \ */tmp/mysql*\ 
  
 
 
-\*
+2. To run the database appropriate \*.sql files in /tmp/mysql:
  
- To run the database appropriate \*.sql files in the input list:
  
- \ **runsqlcmd**\  \ *-f*\  \ *"/tmp/mysql/test\\*,/tmp/mysql/test1\\*"*\ 
+ .. code-block:: perl
  
-
-
-\*
+   runsqlcmd -d /tmp/mysql
  
- To checkout one DB2 sql file:
- 
- \ **runsqlcmd**\  \ *-f*\  \ */tmp/db2/test_db2.sql*\ 
  
 
 
-\*
+3. To run the database appropriate \*.sql files in the input list:
  
- To run the following command to the database:
  
- \ **runsqlcmd**\  \ *"Select \\* from site;"*\ 
+ .. code-block:: perl
+ 
+   runsqlcmd -f "/tmp/mysql/test*,/tmp/mysql/test1*"
+ 
+ 
+
+
+4. To checkout one DB2 sql file:
+ 
+ 
+ .. code-block:: perl
+ 
+   runsqlcmd -f /tmp/db2/test_db2.sql
+ 
+ 
+
+
+5. To run the following command to the database:
+ 
+ 
+ .. code-block:: perl
+ 
+   runsqlcmd "Select * from site;"
+ 
  
 
 

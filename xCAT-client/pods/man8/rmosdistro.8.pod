@@ -5,7 +5,7 @@ B<rmosdistro> - remove OS Distro
 
 =head1 SYNOPSIS
 
-B<rmosdistro> [B<-a>|B<--all>] [B<-f|--force>] B<osdistroname>  [B<osdistroname2 ...>]
+B<rmosdistro> [B<-a>|B<--all>] [B<-f>|B<--force>] I<osdistroname> [I<osdistroname2 ...>]
 
 
 B<rmosdistro> [B<-h>|B<--help>]
@@ -25,15 +25,15 @@ The OS Distro names to delete, delimited by blank space.
 
 =over 6
 
-=item {B<-a|--all>}
+=item B<-a>|B<--all>
 
 If specified, try to delete all the OS Distros.
 
-=item {B<-f|--force>}
+=item B<-f>|B<--force>
 
 Remove referenced OS Distros, never prompt. 
 
-=item {B<-h|--help>}
+=item B<-h>|B<--help>
 
 Show info of rmosdistro usage.
 
@@ -52,23 +52,20 @@ Nonzero:
 
 =over 2
 
-=item *
-
+=item 1.
 To remove OS Distro "rhels6.2-ppc64" and "sles11.2-ppc64":
 
-B<rmosdistro rhels6.2-ppc64 sles11.2-ppc64>
+ rmosdistro rhels6.2-ppc64 sles11.2-ppc64
 
-=item *
-
+=item 2.
 To remove OS Distro "rhels6.2-ppc64", regardless of whether is referenced by any osimage:
 
-B<rmosdistro -f rhels6.2-ppc64>
+ rmosdistro -f rhels6.2-ppc64
 
-=item *
-
+=item 3.
 To remove all OS Distros:
 
-B<rmosdistro -a>
+ rmosdistro -a
 
 
 =back
