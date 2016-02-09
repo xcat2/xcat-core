@@ -4,7 +4,6 @@ Configure xCAT
 Configure network table
 ```````````````````````
 
-
 Normally, there will be at least two entries for the two subnet on MN in ``networks`` table after xCAT is installed::
 
     #tabdump networks
@@ -50,18 +49,10 @@ For hardware management with ipmi, add the following line::
 Verify the genesis packages
 ```````````````````````````
 
-Genesis packages are used to **create the root image for network boot** and **MUST** be installed before doing hardware discovery. 
+The **xcat-genesis** packages should have been installed when xCAT was installed, but would cause problems if missing.  **xcat-genesis** packages are required to create the genesis root image to do hardware discovery and the genesis kernel sits in ``/tftpboot/xcat/``.  Verify that the ``genesis-scripts`` and ``genesis-base`` packages are installed: 
 
-* **[RH]**::
+* **[RHEL/SLES]**: ``rpm -qa | grep -i genesis``
 
-    # rpm -qa |grep -i genesis
-    xCAT-genesis-scripts-ppc64-2.10-snap201507240527.noarch
-    xCAT-genesis-base-ppc64-2.10-snap201505172314.noarch
+* **[Ubuntu]**: ``dpkg -l | grep -i genesis`` 
 
-* **[ubuntu]**::
-
-    # dpkg -l | grep genesis
-    ii  xcat-genesis-base-ppc64 2.10-snap201505172314   all          xCAT Genesis netboot image
-    ii  xcat-genesis-scripts    2.10-snap201507240105   ppc64el      xCAT genesis
-
-**Note:** If the two packages are not installed, install them first and then run ``mknb ppc64`` to create the network boot root image.
+If missing, install them from the ``xcat-deps`` package and run ``mknb ppc64`` to create the genesis network boot root image. 
