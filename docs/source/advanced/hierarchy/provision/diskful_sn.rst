@@ -108,5 +108,22 @@ Update Service Node Diskfull Image
 
 To update the xCAT software on the Service Node: 
 
-#. Obtain the new xcat-core and xcat-dep RPMS 
-#.
+#. Remove previous xcat-core, xcat-dep, and tar files in the NFS mounted ``/install/post/otherpkgs/`` directory: ::
+    
+    rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-core
+    rm /install/post/otherpkgs/<os>/<arch>/xcat/xcat-dep
+    rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-core.tar>
+    rm /install/post/otherpkgs/<os>/<arch>/xcat/<xcat-dep.tar>
+
+#. Download the desired tar files from xcat.org on to the Management Node, and untar them in the same NFS mounted ``/install/post/otherpkgs/`` directory: ::
+ 
+    cd /install/post/otherpkgs/<os>/<arch>/xcat/
+    tar jxvf <new-xcat-core.tar>
+    tar jxvf <new-xcat-dep.tar>
+
+#. On the Service Node, run the package manager commands relative to the OS to update xCAT.  For example, on RHEL, use the following yum commands: ::
+
+    yum clean metadata # or yum clean all
+    yum update '*xCAT*'
+
+
