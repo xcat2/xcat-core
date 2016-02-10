@@ -1249,10 +1249,8 @@ sub addkit
                 my %rsp;
                 push@{ $rsp{data} }, "Extract Kit $kit to /tmp/tmpkit";
                 xCAT::MsgUtils->message( "I", \%rsp, $callback );
-                $rc = system("tar jxvf $kit -C /tmp/tmpkit/ --wildcards */kit.conf");
-            } else {
-                $rc = system("tar jxf $kit -C /tmp/tmpkit/ --wildcards */kit.conf");
             }
+            $rc = system("tar jxvf $kit -C /tmp/tmpkit/");
 
             opendir($dir,"/tmp/tmpkit/");
             my @files = readdir($dir);
