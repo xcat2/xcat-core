@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ *makentp [-h|--help]*\ 
+\ **makentp [-h|-**\ **-help]**\ 
 
-\ *makentp [-v|--version]*\ 
+\ **makentp [-v|-**\ **-version]**\ 
 
-\ *makentp [-a|--all] [-V|--verbose]*\ 
+\ **makentp [-a|-**\ **-all] [-V|-**\ **-verbose]**\ 
 
 
 ***********
@@ -23,7 +23,7 @@ DESCRIPTION
 ***********
 
 
-\ *makentp*\  command sets up the NTP server on the xCAT management node and the service node.
+\ **makentp**\  command sets up the NTP server on the xCAT management node and the service node.
 
 By default, it sets up the NTP server for xCAT management node. If -a flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have \ *servicenode.ntpserver*\  set. It honors the site table attributes \ *extntpservers*\  and \ *ntpservers*\  described below:
 
@@ -41,25 +41,25 @@ OPTIONS
 
 
 
-\ **-a|--all**\ 
+\ **-a|-**\ **-all**\ 
  
  Setup NTP servers for both management node and the service node.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  
@@ -82,19 +82,23 @@ EXAMPLES
 
 
 
-\*
+1. To setup NTP server on the management node:
  
- To setup NTP server on the management node:
  
- \ **makentp**\ 
+ .. code-block:: perl
+ 
+   makentp
+ 
  
 
 
-\*
+2. To setup NTP servers on both management node and the service node:
  
- To setup NTP servers on both management node and the service node:
  
- \ **setupntp**\  \ *-a*\ 
+ .. code-block:: perl
+ 
+   setupntp -a
+ 
  
 
 

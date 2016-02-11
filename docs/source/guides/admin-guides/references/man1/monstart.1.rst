@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *monstart [-h| --help]*\ 
+\ **monstart [-h| -**\ **-help]**\ 
 
-\ *monstart [-v| --version]*\ 
+\ **monstart [-v| -**\ **-version]**\ 
 
-\ *monstart name [noderange] [-r|--remote]*\ 
+\ **monstart**\  \ *name*\  \ *[noderange]*\  [\ **-r|-**\ **-remote**\ ]
 
 
 ***********
@@ -31,15 +31,15 @@ DESCRIPTION
 ***********
 
 
-This command is used to start a 3rd party software, (for example start the daemons), to monitor the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the \ *-r*\  option is specified.
+This command is used to start a 3rd party software, (for example start the daemons), to monitor the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the \ **-r**\  option is specified.
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
-\ *name*\  is the name of the monitoring plug-in module. For example, if the the \ *name*\  is called \ *xxx*\ , then the actual file name that the xcatd looks for is \ */opt/xcat/lib/perl/xCAT_monitoring/xxx.pm*\ . Use \ *monls -a*\  command to list all the monitoring plug-in modules that can be used.
+\ *name*\  is the name of the monitoring plug-in module. For example, if the the \ *name*\  is called \ *xxx*\ , then the actual file name that the xcatd looks for is \ */opt/xcat/lib/perl/xCAT_monitoring/xxx.pm*\ . Use \ **monls -a**\  command to list all the monitoring plug-in modules that can be used.
 
 \ *noderange*\  is the nodes to be monitored. If omitted, all nodes will be monitored.
 
@@ -49,11 +49,11 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-r | --remote**\         Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be started.
+\ **-r | -**\ **-remote**\         Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be started.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\        Command Version.
 
 
 ************

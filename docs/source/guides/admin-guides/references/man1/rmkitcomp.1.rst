@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmkitcomp**\  [\ **-?**\ |\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **rmkitcomp**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **rmkitcomp**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-u**\ |\ **--uninstall**\ ] [\ **-f**\ |\ **--force**\ ] [\ **--noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
+\ **rmkitcomp**\  [\ **-V | -**\ **-verbose**\ ] [\ **-u | -**\ **-uninstall**\ ] [\ **-f | -**\ **-force**\ ] [\ **-**\ **-noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
 
 
 ***********
@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-The \ **rmkitcomp**\  command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|--uninstall> option.
+The \ **rmkitcomp**\  command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|-**\ **-uninstall> option.
 
 Note: The xCAT support for Kits is only available for Linux operating systems.
 
@@ -40,37 +40,37 @@ OPTIONS
 
 
 
-\ **-u|--uninstall**\ 
+\ **-u|-**\ **-uninstall**\ 
  
  All the kit component meta rpms and package rpms in otherpkglist will be uninstalled during genimage for stateless image and updatenode for stateful nodes.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command version.
  
 
 
-\ **-f|--force**\ 
+\ **-f|-**\ **-force**\ 
  
  Remove this kit component from osimage no matter it is a dependency of other kit components.
  
 
 
-\ **--noscripts**\ 
+\ **-**\ **-noscripts**\ 
  
  Do not remove kitcomponent's postbootscripts from osimage
  

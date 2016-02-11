@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nodediscoverstatus**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **nodediscoverstatus**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -36,11 +36,11 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
@@ -62,7 +62,11 @@ EXAMPLES
 
 To determine if there are some nodes discovered and the discovered nodes' status, enter the following command:
 
-nodediscoverstatus
+
+.. code-block:: perl
+
+  nodediscoverstatus
+
 
 
 ********

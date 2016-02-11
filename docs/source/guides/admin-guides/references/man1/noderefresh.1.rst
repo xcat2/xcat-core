@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **noderefresh**\  [-h| --help | -v | --version]
+\ **noderefresh [-h| -**\ **-help | -v | -**\ **-version]**\ 
 
-\ **noderefresh**\  <noderange>
+\ **noderefresh**\  \ *noderange*\ 
 
 
 ***********
@@ -37,15 +37,15 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ **noderange**\ 
+\ *noderange*\ 
 
 The nodes to be updated.
 
@@ -65,7 +65,11 @@ EXAMPLES
 ********
 
 
-noderefresh compute-000,compute-001
+
+.. code-block:: perl
+
+  noderefresh compute-000,compute-001
+
 
 
 ********

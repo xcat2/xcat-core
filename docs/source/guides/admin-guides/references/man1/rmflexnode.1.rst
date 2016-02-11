@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmflexnode**\  [-h | --help]
+\ **rmflexnode**\  [-h | -**\ **-help]
 
-\ **rmflexnode**\  [-v | --version]
+\ **rmflexnode**\  [-v | -**\ **-version]
 
 \ **rmflexnode**\  \ *noderange*\ 
 
@@ -48,13 +48,13 @@ OPTIONS
 
 
 
-\ **-h | --help**\ 
+\ **-h | -**\ **-help**\ 
  
  Display the usage message.
  
 
 
-\ **-v | --version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the version information.
  

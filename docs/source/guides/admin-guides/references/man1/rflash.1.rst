@@ -19,24 +19,24 @@ Name
 ****************
 
 
-\ **rflash**\  [\ **-h**\ |\ **--help**\  | \ **-v**\ |\ **--version**\ ]
+\ **rflash**\  [\ **-h | -**\ **-help**\  | \ **-v | -**\ **-version**\ ]
 
 PPC (with HMC) specific:
 ========================
 
 
-\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  {\ **--activate**\  \ **concurrent**\ |\ **disruptive**\ } [\ **-V**\ |\ **--verbose**\ ]
+\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  {\ **-**\ **-activate**\  \ **concurrent | disruptive**\ } [\ **-V | -**\ **-verbose**\ ]
 
-\ **rflash**\  \ *noderange*\  {\ **--commit**\ |\ **--recover**\ } [\ **-V**\ |\ **--verbose**\ ]
+\ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ } [\ **-V | -**\ **-verbose**\ ]
 
 
 PPC (without HMC, using Direct FSP Management) specific:
 ========================================================
 
 
-\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  \ **--activate**\  \ **disruptive**\ |\ **deferred**\  [\ **-d**\  \ *data_directory*\ ]
+\ **rflash**\  \ *noderange*\  \ **-p**\  \ *directory*\  \ **-**\ **-activate**\  \ **disruptive | deferred**\  [\ **-d**\  \ *data_directory*\ ]
 
-\ **rflash**\  \ *noderange*\  {\ **--commit**\ |\ **--recover**\ }
+\ **rflash**\  \ *noderange*\  {\ **-**\ **-commit | -**\ **-recover**\ }
 
 
 NeXtScale FPC specific:
@@ -50,7 +50,7 @@ OpenPOWER BMC specific:
 =======================
 
 
-\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c**\ |\ **--check**\ ]
+\ **rflash**\  \ *noderange*\  \ *hpm file path*\  [\ **-c | -**\ **-check**\ ]
 
 
 
@@ -77,13 +77,13 @@ The \ **rflash**\  command uses the \ **xdsh**\  command to connect to the HMC c
 
 \ **Warning!**\   This command may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems.
 
-Depending on the Licensed Internal Code update that is installed, the affected HMC-attached POWER5 and POWER6 systems may need to be recycled.  The \ **--activate**\  flag determines how the affected systems activate the new code.  The concurrent option activates code updates that do not require a system recycle (known as a "concurrent update").  If this option is given with an update that requires a system recycle (known as a "disruptive update"), a message will be returned, and no activation will be performed.  The disruptive option will cause any affected systems that are powered on to be powered down before installing and activating the update.  Once the update is complete, the command will attempt to power on any affected systems that it powered down.  Those systems that were powered down when the command was issued will remain powered down when the update is complete.
+Depending on the Licensed Internal Code update that is installed, the affected HMC-attached POWER5 and POWER6 systems may need to be recycled.  The \ **-**\ **-activate**\  flag determines how the affected systems activate the new code.  The concurrent option activates code updates that do not require a system recycle (known as a "concurrent update").  If this option is given with an update that requires a system recycle (known as a "disruptive update"), a message will be returned, and no activation will be performed.  The disruptive option will cause any affected systems that are powered on to be powered down before installing and activating the update.  Once the update is complete, the command will attempt to power on any affected systems that it powered down.  Those systems that were powered down when the command was issued will remain powered down when the update is complete.
 
 The flash chip of a POWER5 and POWER6 managed system or power subsystem stores firmware in two locations, referred to as the temporary side and the permanent side.  By default, most POWER5 and POWER6 systems boot from the temporary side of the flash.  When the \ **rflash**\  command updates code, the current contents of the temporary side are written to the permanent side, and the new code is written to the temporary side.  The new code is then activated.  Therefore, the two sides of the flash will contain different levels of code when the update has completed.
 
-The \ **--commit**\  flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The \ **--recover**\  flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
+The \ **-**\ **-commit**\  flag is used to write the contents of the temporary side of the flash to the permanent side.  This flag should be used after updating code and verifying correct system operation.  The \ **-**\ **-recover**\  flag is used to write the permanent side of the flash chip back to the temporary side.  This flag should be used to recover from a corrupt flash operation, so that the previously running code can be restored.
 
-\ **NOTE:**\ When the \ **--commit**\  or \ **--recover**\  two flags is used, the noderange \ **cannot**\  be BPA. It only \ **can**\  be CEC or LPAR ,and  will take effect for \ **both**\  managed systems and power subsystems.
+\ **NOTE:**\ When the \ **-**\ **-commit**\  or \ **-**\ **-recover**\  two flags is used, the noderange \ **cannot**\  be BPA. It only \ **can**\  be CEC or LPAR ,and  will take effect for \ **both**\  managed systems and power subsystems.
 
 xCAT recommends that you shutdown your Operating System images and power off your managed systems before applying disruptive updates to managed systems or power subsystems.
 
@@ -98,7 +98,7 @@ PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-In currently Direct FSP/BPA Management, our \ **rflash**\  doesn't support \ **concurrent**\  value of \ **--activate**\  flag, and supports \ **disruptive**\  and \ **deferred**\ . The \ **disruptive**\  option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update.
+In currently Direct FSP/BPA Management, our \ **rflash**\  doesn't support \ **concurrent**\  value of \ **-**\ **-activate**\  flag, and supports \ **disruptive**\  and \ **deferred**\ . The \ **disruptive**\  option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update.
 
 The \ **deferred**\  option will load the new firmware into the T (temp) side, but will not activate it like the disruptive firmware. The customer will continue to run the Frames and CECs working with the P (perm) side and can wait for a maintenance window where they can activate and boot the Frame/CECs with new firmware levels. Refer to the doc to get more details:
   XCAT_Power_775_Hardware_Management
@@ -136,13 +136,13 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Writes the command's usage statement to standard output.
  
 
 
-\ **-c|--check**\ 
+\ **-c|-**\ **-check**\ 
  
  Chech the firmware version of BMC and HPM file.
  
@@ -160,31 +160,31 @@ The command will update firmware for OpenPOWER BMC when given an OpenPOWER node 
  
 
 
-\ **--activate**\  \ **concurrent**\  | \ **disruptive**\ 
+\ **-**\ **-activate**\  \ **concurrent**\  | \ **disruptive**\ 
  
  Must be specified to activate the new Licensed Internal Code.  The "disruptive" option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
  
 
 
-\ **--commit**\ 
+\ **-**\ **-commit**\ 
  
  Used to commit the flash image in the temporary side of the chip to the permanent side for both managed systems and power subsystems.
  
 
 
-\ **--recover**\ 
+\ **-**\ **-recover**\ 
  
  Used to recover the flash image in the permanent side of the chip to the temporary side for both managed systems and power subsystems.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Displays the command's version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  

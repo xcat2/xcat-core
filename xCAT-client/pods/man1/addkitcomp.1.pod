@@ -52,7 +52,7 @@ The osimage name that the kit component is assigning to.
 
 Do not add kitcomponent's postbootscripts to osimage
 
-=item B<kitcompname_list>
+=item I<kitcompname_list>
 
 A comma-delimited list of valid full kit component names or kit component basenames that are to be added to the osimage.
 

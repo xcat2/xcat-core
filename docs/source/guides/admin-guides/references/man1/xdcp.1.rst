@@ -117,7 +117,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-f**\ |\ **--fanout**\  \ *fanout_value*\ 
+\ **-f | -**\ **-fanout**\  \ *fanout_value*\ 
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
@@ -126,7 +126,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-F**\ |\ **--File**\  \ *rsync input file*\ 
+\ **-F | -**\ **-File**\  \ *rsync input file*\ 
  
  Specifies the path to the file that will be used to  
  build the rsync command.
@@ -249,19 +249,19 @@ standard output or standard error is displayed.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Displays usage information.
  
 
 
-\ **-i**\ |\ **--rootimg**\  \ *install image*\ 
+\ **-i | -**\ **-rootimg**\  \ *install image*\ 
  
  Specifies  the path to the install image on the local Linux node.
  
 
 
-\ **-o**\ |\ **--node-options**\  \ *node_options*\ 
+\ **-o | -**\ **-node-options**\  \ *node_options*\ 
  
  Specifies options to pass to the remote shell  command  for
  node  targets.  The options must be specified within double
@@ -269,14 +269,14 @@ standard output or standard error is displayed.
  
 
 
-\ **-p**\ |\ **--preserve**\ 
+\ **-p | -**\ **-preserve**\ 
  
  Preserves  the  source  file characteristics as implemented by
  the configured remote copy command.
  
 
 
-\ **-P**\ |\ **--pull**\ 
+\ **-P | -**\ **-pull**\ 
  
  Pulls (copies) the files from the targets and places  them  in
  the  target_path  directory on the local host. The target_path
@@ -291,7 +291,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-q**\ |\ **--show-config**\ 
+\ **-q | -**\ **-show-config**\ 
  
  Displays the current environment settings for all DSH
  Utilities commands. This includes the values of all environment
@@ -301,14 +301,14 @@ standard output or standard error is displayed.
  
 
 
-\ **-r**\ |\ **--node-rcp**\  \ *node_remote_copy*\ 
+\ **-r | -**\ **-node-rcp**\  \ *node_remote_copy*\ 
  
  Specifies  the  full  path of the remote copy command used
  for remote command execution on node targets.
  
 
 
-\ **-R**\ |\ **--recursive**\  \ *recursive*\ 
+\ **-R | -**\ **-recursive**\  \ *recursive*\ 
  
  Recursively  copies files from a local directory to the remote
  targets, or when specified with the -P flag, recursively pulls
@@ -327,7 +327,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-t**\ |\ **--timeout**\  \ *timeout*\ 
+\ **-t | -**\ **-timeout**\  \ *timeout*\ 
  
  Specifies the time, in seconds, to wait for output from any
  currently executing remote targets. If no output is
@@ -341,14 +341,14 @@ standard output or standard error is displayed.
  
 
 
-\ **-T**\ |\ **--trace**\ 
+\ **-T | -**\ **-trace**\ 
  
  Enables trace mode. The \ **xdcp**\  command prints diagnostic
  messages to standard output during execution to each target.
  
 
 
-\ **-v**\ |\ **--verify**\ 
+\ **-v | -**\ **-verify**\ 
  
  Verifies each target before executing any  remote  commands
  on  the target. If a target is not responding, execution of
@@ -356,7 +356,7 @@ standard output or standard error is displayed.
  
 
 
-\ **-V**\ |\ **--version**\ 
+\ **-V | -**\ **-version**\ 
  
  Displays the \ **xdcp**\  command version information.
  

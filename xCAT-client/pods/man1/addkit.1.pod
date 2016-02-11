@@ -37,11 +37,11 @@ Command version.
 
 Show the summary of the given kits
 
-=item B<-p|--path <path>
+=item B<-p|--path> I<path>
 
 The destination directory to which the contents of the kit tarfiles and/or kit deploy directories will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
 
-=item B<kitlist>
+=item I<kitlist>
 
 A comma delimited list of kit_tarball_files or kit_deploy_directories to be added to the xCAT environment. Each entry can be an absolute or relative path.  See xCAT documentation for more information on building kits.
 
@@ -63,11 +63,11 @@ A comma delimited list of kit_tarball_files or kit_deploy_directories to be adde
 
  addkit kit-test1,kit-test2
 
-3. To add kits from tarball 'kit-test1.tar.bz2' to target path '/install/test':
+3. To add kits from tarball I<kit-test1.tar.bz2> to target path I</install/test>:
 
  addkit -p /install/test kit-test1.tar.bz2
 
-4. To see general information about kit 'kit-test1.tar.bz2' without adding the kit to xCAT:
+4. To see general information about kit I<kit-test1.tar.bz2> without adding the kit to xCAT:
 
  addkit -i kit-test1.tar.bz2
 

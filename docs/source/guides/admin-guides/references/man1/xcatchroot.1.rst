@@ -100,7 +100,7 @@ OPTIONS
  
 
 
-\ **-h |--help**\ 
+\ **-h |-**\ **-help**\ 
  
  Display usage message.
  
@@ -112,7 +112,7 @@ OPTIONS
  
 
 
-\ **-V |--verbose**\ 
+\ **-V |-**\ **-verbose**\ 
  
  Verbose mode.
  

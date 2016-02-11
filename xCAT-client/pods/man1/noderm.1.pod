@@ -4,21 +4,19 @@ B<noderm> -Removes the nodes in the noderange from all database table.
 
 =head1 SYNOPSIS
 
-I<noderm [-h| --help]>
+B<noderm [-h| --help]>
 
-
-
-I<noderm noderange>
+B<noderm noderange>
 
 
 =head1 DESCRIPTION
 
- The noderm command removes the nodes in the input node range.
+The noderm command removes the nodes in the input node range.
 
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
 
 
@@ -32,7 +30,7 @@ B<-h>          Display usage message.
 
 1. To remove the nodes in noderange node1-node4, enter:
 
-I<noderm node1-node4>
+ noderm node1-node4
 
 
 =head1 FILES

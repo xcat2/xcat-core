@@ -23,45 +23,43 @@ Common:
 =======
 
 
-\ **mkvm**\  [\ **-h**\ | \ **--help**\ ]
+\ **mkvm**\  [\ **-h**\ | \ **-**\ **-help**\ ]
 
-\ **mkvm**\  [\ **-v**\ | \ **--version**\ ]
+\ **mkvm**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
 
 For PPC (with HMC) specific:
 ============================
 
 
-\ **mkvm**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **-i**\  \ *id*\  \ **-l**\  \ *singlenode*\ 
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-i**\  \ *id*\  \ **-l**\  \ *singlenode*\ 
 
-\ **mkvm**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **-c**\  \ *destcec*\  \ **-p**\  \ *profile*\ 
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-c**\  \ *destcec*\  \ **-p**\  \ *profile*\ 
 
-\ **mkvm**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **--full**\ 
+\ **mkvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-**\ **-full**\ 
 
 
 For PPC (using Direct FSP Management) specific:
 ===============================================
 
 
-\ **mkvm**\  \ *noderange*\  [\ **--full**\ ]
+\ **mkvm**\  \ *noderange*\  [\ **-**\ **-full**\ ]
 
-\ **mkvm**\  \ *noderange*\  [\ **vmcpus=min/req/max**\ ] [\ **vmmemory=min/req/max**\ ]
-               [\ **vmphyslots=drc_index1,drc_index2...**\ ] [\ **vmothersetting=hugepage:N,bsr:N**\ ]
-               [\ **vmnics=vlan1[,vlan2..]]**\  [\ **vmstorage=<N|viosnode:slotid**\ >] [\ **--vios**\ ]
+\ **mkvm**\  \ *noderange*\  [\ **vmcpus=**\  \ *min/req/max*\ ] [\ **vmmemory=**\  \ *min/req/max*\ ] [\ **vmphyslots=**\  \ *drc_index1,drc_index2...*\ ] [\ **vmothersetting=**\  \ *hugepage:N,bsr:N*\ ] [\ **vmnics=**\  \ *vlan1[,vlan2..]*\ ] [\ **vmstorage=**\  \ *N|viosnode:slotid*\ ] [\ **-**\ **-vios**\ ]
 
 
 For KVM:
 ========
 
 
-\ **mkvm**\  \ *noderange*\  [\ **-m|--master**\  \ *mastername*\ ] [\ **-s|--size**\  \ *disksize*\ ] [\ **--mem**\  \ *memsize*\ ] [\ **--cpus**\  \ *cpucount*\ ] [\ **-f|--force**\ ]
+\ **mkvm**\  \ *noderange*\  [\ **-m|-**\ **-master**\  \ *mastername*\ ] [\ **-s|-**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ] [\ **-f|-**\ **-force**\ ]
 
 
 For Vmware:
 ===========
 
 
-\ **mkvm**\  \ *noderange*\  [\ **-s**\ |\ **--size**\  \ *disksize*\ ] [\ **--mem**\  \ *memsize*\ ] [\ **--cpus**\  \ *cpucount*\ ]
+\ **mkvm**\  \ *noderange*\  [\ **-s | -**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ]
 
 
 For zVM:
@@ -107,7 +105,7 @@ For KVM and Vmware:
 
 The mkvm command creates new virtual machine(s) with the \ *disksize*\  size of hard disk, \ *memsize*\  size of memory and \ *cpucount*\  number of cpu.
 
-For KVM: If \ **-f**\ |\ **--force**\  is specified, the storage will be destroyed first if it existed.
+For KVM: If \ **-f | -**\ **-force**\  is specified, the storage will be destroyed first if it existed.
 
 
 For zVM:
@@ -126,7 +124,7 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -138,19 +136,19 @@ OPTIONS
  
 
 
-\ **--cpus**\ 
+\ **-**\ **-cpus**\ 
  
  The cpu count which will be created for the kvm/vmware virtual machine.
  
 
 
-\ **--full**\ 
+\ **-**\ **-full**\ 
  
  Request to create a new full system partition for each CEC.
  
 
 
-\ **vmcpus=value**\  \ **vmmemory=value**\  \ **vmphyslots=value**\  \ **vmothersetting=value**\  \ **vmnics=value**\  \ **vmstorage=value**\  [\ **--vios**\ ]
+\ **vmcpus=**\  \ *value*\  \ **vmmemory=**\  \ *value*\  \ **vmphyslots=**\  \ *value*\  \ **vmothersetting=**\  \ *value*\  \ **vmnics=**\  \ *value*\  \ **vmstorage=**\  \ *value*\  [\ **-**\ **-vios**\ ]
  
  To specify the parameters which are used to create a partition. The \ *vmcpus*\ , \ *vmmemory*\  are necessay, and the value specified with this command have a more high priority. If the value of any of the three options is not specified, the corresponding value specified for the node object will be used. If any of the three attributes is neither specified with this command nor specified with the node object, error information will be returned. To reference to lsvm(1)|lsvm.1 for more information about 'drc_index' for \ *vmphyslots*\ .
  
@@ -158,9 +156,9 @@ OPTIONS
  
 
 
-\ **-f|--force**\ 
+\ **-f|-**\ **-force**\ 
  
- If \ **-f|--force**\  is specified, the storage will be destroyed first if it existed.
+ If \ **-f|-**\ **-force**\  is specified, the storage will be destroyed first if it existed.
  
 
 
@@ -176,7 +174,7 @@ OPTIONS
  
 
 
-\ **--mem**\ 
+\ **-**\ **-mem**\ 
  
  The memory size which will be used for the new created kvm/vmware virtual machine. Unit is Megabyte.
  
@@ -188,19 +186,19 @@ OPTIONS
  
 
 
-\ **-s|--size**\ 
+\ **-s|-**\ **-size**\ 
  
  The size of storage which will be created for the kvm/vmware virtual machine.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  

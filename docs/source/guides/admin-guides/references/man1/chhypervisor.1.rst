@@ -35,27 +35,27 @@ SYNOPSIS
 \ **zVM specific :**\ 
 
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--removevlan**\  \ *name*\  \ *owner*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-removevlan**\  \ *name*\  \ *owner*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--removevswitch**\  \ *name*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-removevswitch**\  \ *name*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--removezfcpfrompool**\  \ *pool*\  \ *lun*\  \ *wwpn*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-removezfcpfrompool**\  \ *pool*\  \ *lun*\  \ *wwpn*\ ]
 
-\ **chhypervisor**\  \ *noderange*\  [\ **--smcli**\  \ *function*\  \ *arguments*\ ]
+\ **chhypervisor**\  \ *noderange*\  [\ **-**\ **-smcli**\  \ *function*\  \ *arguments*\ ]
 
 
 ***********
@@ -167,7 +167,7 @@ zVM specific :
 
 
 
-\ **--adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ 
+\ **-**\ **-adddisk2pool**\  \ *function*\  \ *region*\  \ *volume*\  \ *group*\ 
  
  Add a disk to a disk pool defined in the EXTENT CONTROL. Function type can be 
  either: (4) Define region as full volume and add to group OR (5) Add existing 
@@ -177,25 +177,25 @@ zVM specific :
  
 
 
-\ **--addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\ 
+\ **-**\ **-addscsi**\  \ *device_number*\  \ *device_path*\  \ *option*\  \ *persist*\ 
  
  Dynamically add a SCSI disk to a running z/VM system.
  
 
 
-\ **--addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\ 
+\ **-**\ **-addvlan**\  \ *name*\  \ *owner*\  \ *type*\  \ *transport*\ 
  
  Create a virtual network LAN.
  
 
 
-\ **--addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\ 
+\ **-**\ **-addvswitch**\  \ *name*\  \ *osa_dev_addr*\  \ *osa_exp_adapter*\  \ *controller*\  \ *connect (0, 1, or 2)*\  \ *memory_queue*\  \ *router*\  \ *transport*\  \ *vlan_id*\  \ *port_type*\  \ *update*\  \ *gvrp*\  \ *native_vlan*\ 
  
  Create a virtual switch.
  
 
 
-\ **--addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\ 
+\ **-**\ **-addzfcp2pool**\  \ *pool*\  \ *status*\  \ *wwpn*\  \ *lun*\  \ *size*\  \ *owner*\ 
  
  Add a zFCP device to a device pool defined in xCAT. The device must have been 
  carved up in the storage controller and configured with a WWPN/LUN before it 
@@ -204,7 +204,7 @@ zVM specific :
  
 
 
-\ **--removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\ 
+\ **-**\ **-removediskfrompool**\  \ *function*\  \ *region*\  \ *group*\ 
  
  Remove a disk from a disk pool defined in the EXTENT CONTROL. Function type can 
  be either: (1) Remove region, (2) Remove region from group, (3) Remove region 
@@ -212,31 +212,31 @@ zVM specific :
  
 
 
-\ **--removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\ 
+\ **-**\ **-removescsi**\  \ *device_number*\  \ *persist (YES or NO)*\ 
  
  Delete a real SCSI disk.
  
 
 
-\ **--removevlan**\  \ *name*\  \ *owner*\ 
+\ **-**\ **-removevlan**\  \ *name*\  \ *owner*\ 
  
  Delete a virtual network LAN.
  
 
 
-\ **--removevswitch**\  \ *name*\ 
+\ **-**\ **-removevswitch**\  \ *name*\ 
  
  Delete a virtual switch.
  
 
 
-\ **--removezfcpfrompool**\  \ *pool*\  \ *lun*\ 
+\ **-**\ **-removezfcpfrompool**\  \ *pool*\  \ *lun*\ 
  
  Remove a zFCP device from a device pool defined in xCAT.
  
 
 
-\ **--smcli**\  \ *function*\  \ *arguments*\ 
+\ **-**\ **-smcli**\  \ *function*\  \ *arguments*\ 
  
  Execute a SMAPI function. A list of APIs supported can be found by using the 
  help flag, e.g. chhypervisor pokdev61 --smcli -h. Specific arguments associated 

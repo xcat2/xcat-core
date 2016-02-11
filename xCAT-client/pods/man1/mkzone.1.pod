@@ -4,7 +4,7 @@ B<mkzone> - Defines a new zone in the cluster.
 
 =head1 B<SYNOPSIS>
 
-B<mkzone> <zonename>  [B<--defaultzone>] [B<-k> I<full path to the ssh RSA private key>] [B<-a> I<noderange>] [B<-g>] [B<-f>] [B<-s> I<yes|no>] [-V] 
+B<mkzone> I<zonename>  [B<--defaultzone>] [B<-k> I<full path to the ssh RSA private key>] [B<-a> I<noderange>] [B<-g>] [B<-f>] [B<-s> I<{yes|no}>] [B<-V>] 
 
 B<mkzone> [B<-h> | B<-v>]
 
@@ -65,54 +65,50 @@ Verbose mode.
 
 =back
 
-=head1 B<Examples>
+=head1 B<EXAMPLES>
 
 =over 3
 
-=item *
+=item 1.
+To make a new zone1 using defaults, enter:
 
-To make a new zone1 using defaults , enter:
+ mkzone zone1
 
-B<mkzone> I<zone1>
+Note: with the first B<mkzone>, you will automatically get the xcatdefault zone created as the default zone.  This zone uses ssh keys from <roothome>/.ssh directory.  
 
-Note: with the first mkzone, you will automatically get the xcatdefault zone created as the default zone.  This zone uses ssh keys from
-      <roothome>/.ssh directory.  
-
-=item *
-
+=item 2.
 To make a new zone2 using defaults and make it the default zone enter:
 
-B<mkzone> I<zone2> --defaultzone -f
+ mkzone> zone2 --defaultzone -f
 
-=item *
+=item 3.
 
 To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
 
-B<mkzone> I<zone2A> -k /root/.ssh 
+ mkzone zone2A -k /root/.ssh 
 
-=item *
+=item 4.
 
 To make a new zone3 and assign the noderange compute3 to the zone  enter:
 
-B<mkzone> I<zone3>  -a compute3
+ mkzone zone3 -a compute3
 
-=item *
-
+=item 5.
 To make a new zone4 and assign the noderange compute4 to the zone and add zone4 as a group to each node  enter:
 
-B<mkzone> I<zone4>  -a compute4  -g
+ mkzone zone4 -a compute4 -g
 
-=item *
+=item 6.
 
 To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
 
-B<mkzone> I<zone5>  -a compute5  -g -s no
+ mkzone zone5 -a compute5 -g -s no
 
 =back
 
-B<Files>
+=head1 B<Files>
 
-B</opt/xcat/bin/mkzone/>
+/opt/xcat/bin/mkzone/
 
 Location of the mkzone command.
 

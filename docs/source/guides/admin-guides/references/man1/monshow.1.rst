@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *monshow [-h| --help]*\ 
+\ **monshow [-h| -**\ **-help]**\ 
 
-\ *monshow [-v| --version]*\ 
+\ **monshow [-v| -**\ **-version]**\ 
 
-\ *monshow name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator*\ val [-w attr<operator>val] ... ][-o {p|e}]>
+\ **monshow**\  \ *name*\  \ *[noderange]*\  [\ **-s**\ ] [\ **-t**\  \ *time*\ ] [\ **-a**\  \ *attributes*\ ] [\ **-w**\  \ *attr*\  < \ *operator*\  > \ *val*\  [\ **-w**\  \ *attr*\  < \ *operator*\  > \ *val*\ ] ... ][\ **-o {p|e}**\ ]
 
 
 ***********
@@ -35,7 +35,7 @@ This command displays the events that happened on the given nodes or the monitor
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -49,9 +49,9 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\       Command Version.
 
 \ **-s**\ 	shows the summary data.
 
@@ -61,16 +61,42 @@ OPTIONS
 
 \ **-w**\ 	specify one or multiple selection string that can be used to select events. The operators ==, !=, =,!,>,<,>=,<= are available.  Wildcards % and _ are supported in the pattern string. % allows you to match any string of any length(including zero length) and _ allows you to match on a single character. The valid attributes are eventtype, monitor, monnode, application, component, id, serverity, message, rawdata, comments. Valid severity are: Informational, Warning, Critical.
 
-Operator descriptions: 
-  ==        Select event where the attribute value is exactly this value.
-  !=        Select event where the attribute value is not this specific value.
-  =~        Select event where the attribute value matches this pattern string. Not work with severity.
-  !~        Select event where the attribute value does not match this pattern string. Not work with severity.
-  >         Select event where the severity is higher than this value. Only work with severity.
-  <         Select event where the severity is lower than this value. Only work with severity.
-  >=        Select event where the severity is higher than this value(include). Only work with severity.
-  <=        Select event where the severity is lower than this value(include). Only work with severity.
-            Note: if the "val" or "operator" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
+Operator descriptions:
+
+
+\ **==**\  Select event where the attribute value is exactly this value.
+
+
+
+\ **!=**\  Select event where the attribute value is not this specific value.
+
+
+
+\ **=~**\  Select event where the attribute value matches this pattern string. Not work with severity.
+
+
+
+\ **!~>**\  Select event where the attribute value does not match this pattern string. Not work with severity.
+
+
+
+\ **>**\  Select event where the severity is higher than this value. Only work with severity.
+
+
+
+\ **<**\  Select event where the severity is lower than this value. Only work with severity.
+
+
+
+\ **>=**\  Select event where the severity is higher than this value(include). Only work with severity.
+
+
+
+\ **<=**\  Select event where the severity is lower than this value(include). Only work with severity.
+
+
+
+Note: if the "val" or "operator" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
 \ **-o**\ 	specifies montype, it can be p or e. p means performance, e means events.
 

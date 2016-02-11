@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **restartxcatd**\  [[\ **-h**\ |\ **--help**\ ] | [\ **-v**\ |\ **--version**\ ] | [\ **-r**\ |\ **--reload**\ ]] [\ **-V**\ |\ **--verbose**\ ]
+\ **restartxcatd**\  [[\ **-h | -**\ **-help**\ ] | [\ **-v | -**\ **-version**\ ] | [\ **-r | -**\ **-reload**\ ]] [\ **-V | -**\ **-verbose**\ ]
 
 
 ***********

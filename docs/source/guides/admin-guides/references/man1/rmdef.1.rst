@@ -19,10 +19,10 @@ SYNOPSIS
 ********
 
 
-\ **rmdef**\  [\ **-h**\ |\ **--help**\ ] [\ **-t**\  \ *object-types*\ ]
+\ **rmdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ]
 
-\ **rmdef**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-a**\ |\ **--all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
-[\ **-f**\ |\ **--force**\ ] [\ *noderange*\ ]
+\ **rmdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-all**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
+[\ **-f | -**\ **-force**\ ] [\ *noderange*\ ]
 
 
 ***********
@@ -39,7 +39,7 @@ OPTIONS
 
 
 
-\ **-a|--all**\ 
+\ **-a|-**\ **-all**\ 
  
  Clear the whole xCAT database. A backup of the xCAT definitions should be saved before using this option.  Once all the data is removed the xCAT daemon will no longer work. Most xCAT commands will fail. 
  In order to use xCAT commands again, you have two options.  You can restore your database from your backup by switching to bypass mode, and running the restorexCATdb command. 
@@ -49,13 +49,13 @@ OPTIONS
  
 
 
-\ **-f|--force**\ 
+\ **-f|-**\ **-force**\ 
  
  Use this with the all option as an extra indicator that ALL definitions are to be removed.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display a usage message.
  
@@ -79,7 +79,7 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  

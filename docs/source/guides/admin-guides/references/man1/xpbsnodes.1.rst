@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xpbsnodes**\  [{\ **noderange**\ }] [{\ **offline**\ |\ **clear**\ |\ **stat**\ |\ **state**\ }]
+\ **xpbsnodes**\  [{\ **noderange**\ }] [{\ **offline | clear | stat | state**\ }]
 
-\ **xpbsnodes**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **xpbsnodes**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 
 ***********

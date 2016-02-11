@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **chkosimage [-h | --help ]**\ 
+\ **chkosimage [-h | -**\ **-help ]**\ 
 
-\ **chkosimage [-V] [-c|--clean] osimage_name**\ 
+\ **chkosimage [-V] [-c|-**\ **-clean]**\  \ *osimage_name*\ 
 
 
 ***********
@@ -68,26 +68,26 @@ OPTIONS
 
 
 
-\ **-c |--clean**\ 
+\ **-c |-**\ **-clean**\ 
  
  Remove any older versions of the rpms.  Keep the version with the latest
  timestamp.
  
 
 
-\ **-h |--help**\ 
+\ **-h |-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **osimage_name**\ 
+\ *osimage_name*\ 
  
  The name of the xCAT for AIX osimage definition.
  
 
 
-\ **-V |--verbose**\ 
+\ **-V |-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -100,16 +100,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -119,22 +115,26 @@ EXAMPLES
 
 
 
-1
+1. Check the XCAT osimage called "61image" to verify that the lpp_source 
+directories contain all the software that is specified in the
+"installp_bundle" and "otherpkgs" attributes.
  
- Check the XCAT osimage called "61image" to verify that the lpp_source 
- directories contain all the software that is specified in the
- "installp_bundle" and "otherpkgs" attributes.
  
- \ **chkosimage -V 61image**\ 
+ .. code-block:: perl
+ 
+   chkosimage -V 61image
+ 
  
 
 
-2
+2. Clean up the lpp_source directory for the osimage named "61img" by removing
+any older rpms with the same names but different versions.
  
- Clean up the lpp_source directory for the osimage named "61img" by removing
- any older rpms with the same names but different versions.
  
- \ **chkosimage -c 61img**\ 
+ .. code-block:: perl
+ 
+   chkosimage -c 61img
+ 
  
 
 

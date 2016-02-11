@@ -21,11 +21,11 @@ SYNOPSIS
 
 \ **nodech**\  \ *noderange*\  \ *table.column=value*\  [\ *...*\ ]
 
-\ **nodech**\  {\ **-d**\  | \ **--delete**\ } \ *noderange*\  \ *table*\  [\ *...*\ ]
+\ **nodech**\  {\ **-d**\  | \ **-**\ **-delete**\ } \ *noderange*\  \ *table*\  [\ *...*\ ]
 
-\ **nodech**\  {\ **-v**\  | \ **--version**\ }
+\ **nodech**\  {\ **-v**\  | \ **-**\ **-version**\ }
 
-\ **nodech**\  [\ **-?**\  | \ **-h**\  | \ **--help**\ ]
+\ **nodech**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -58,19 +58,19 @@ OPTIONS
 
 
 
-\ **-d|--delete**\ 
+\ **-d|-**\ **-delete**\ 
  
  Delete the nodes' row in the specified tables.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -83,16 +83,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -102,43 +98,53 @@ EXAMPLES
 
 
 
-\*
+1. To update nodes in noderange  node1-node4 to be in only group all:
  
- To update nodes in noderange  node1-node4 to be in only group all:
  
- \ **nodech**\  \ *node1-node4 groups=all*\ 
+ .. code-block:: perl
  
-
-
-\*
+   nodech node1-node4 groups=all
  
- To put all nodes with nodepos.rack value of 2 into a group called rack2:
- 
- \ **nodech**\  \ *all*\  nodepos.rack==2 groups,=rack2
  
 
 
-\*
+2. To put all nodes with nodepos.rack value of 2 into a group called rack2:
  
- To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
  
- \ **nodech**\  \ *node1-node4 groups=all,rhel5 nodetype.os=rhel5*\ 
+ .. code-block:: perl
  
-
-
-\*
+   nodech all nodepos.rack==2 groups,=rack2
  
- To add node1-node4 to group1 in addition to the groups they are already in:
- 
- \ **nodech**\  \ *node1-node4 groups,=group1*\ 
  
 
 
-\*
+3. To add nodes in noderange  node1-node4 to the nodetype table with os=rhel5:
  
- To put node1-node4 in group2, instead of group1:
  
- \ **nodech**\  \ *node1-node4 groups^=group1 groups,=group2*\ 
+ .. code-block:: perl
+ 
+   nodech node1-node4 groups=all,rhel5 nodetype.os=rhel5
+ 
+ 
+
+
+4. To add node1-node4 to group1 in addition to the groups they are already in:
+ 
+ 
+ .. code-block:: perl
+ 
+   nodech node1-node4 groups,=group1
+ 
+ 
+
+
+5. To put node1-node4 in group2, instead of group1:
+ 
+ 
+ .. code-block:: perl
+ 
+   nodech node1-node4 groups^=group1 groups,=group2
+ 
  
 
 

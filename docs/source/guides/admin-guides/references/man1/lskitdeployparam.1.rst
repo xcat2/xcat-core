@@ -19,12 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **lskitdeployparam**\  [\ **-V**\  | \ **--verbose**\ ] 
-      [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ]
-      [\ **-k**\  | \ **--kitname**\  \ *kit_names*\ ]
-      [\ **-c**\  | \ **--compname**\  \ *comp_names*\ ]
+\ **lskitdeployparam**\  [\ **-V**\  | \ **-**\ **-verbose**\ ] [\ **-x**\  | \ **-**\ **-xml**\  | \ **-**\ **-XML**\ ] [\ **-k**\  | \ **-**\ **-kitname**\  \ *kit_names*\ ] [\ **-c**\  | \ **-**\ **-compname**\  \ *comp_names*\ ]
 
-\ **lskitdeployparam**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **lskitdeployparam**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -47,50 +44,55 @@ OPTIONS
 
 
 
-\ **-k|--kitname**\  \ *kit_names*\ 
+\ **-k|-**\ **-kitname**\  \ *kit_names*\ 
  
  Where \ *kit_names*\  is a comma-delimited list of kit names. The \ **lskitdeployparam**\  command will only display the deployment parameters for the kits with the matching names.
  
 
 
-\ **-c|--compname**\  \ *comp_names*\ 
+\ **-c|-**\ **-compname**\  \ *comp_names*\ 
  
  Where \ *comp_names*\  is a comma-delimited list of kit component names. The \ **lskitdeployparam**\  command will only display the deployment parameters for the kit components with the matching names.
  
 
 
-\ **-x|--xml|--XML**\ 
+\ **-x|-**\ **-xml|-**\ **-XML**\ 
  
  Return the output with XML tags.  The data is returned as:
-   <data>
-     <kitdeployparam>
-       <name>KIT_KIT1_PARAM1</name>
-       <value>value11</value>
-     </kitdeployparam>
-   </data>
-   <data>
-     <kitdeployparam>
-       <name>KIT_KIT1_PARAM2</name>
-       <value>value12</value>
-     </kitdeployparam>
-   </data>
-   ...
+ 
+ 
+ .. code-block:: perl
+ 
+    <data>
+      <kitdeployparam>
+        <name>KIT_KIT1_PARAM1</name>
+        <value>value11</value>
+      </kitdeployparam>
+    </data>
+    <data>
+      <kitdeployparam>
+        <name>KIT_KIT1_PARAM2</name>
+        <value>value12</value>
+      </kitdeployparam>
+    </data>
+    ...
+ 
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Display additional progress and error messages.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -103,16 +105,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 

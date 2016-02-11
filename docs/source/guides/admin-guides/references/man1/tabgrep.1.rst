@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **tabgrep**\  \ *nodename*\ 
 
-\ **tabgrep**\  [\ *-?*\  | \ *-h*\  | \ *--help*\ ]
+\ **tabgrep**\  [\ *-?*\  | \ *-h*\  | \ *-**\ **-help*\ ]
 
 
 ***********
@@ -40,7 +40,7 @@ OPTIONS
 
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  

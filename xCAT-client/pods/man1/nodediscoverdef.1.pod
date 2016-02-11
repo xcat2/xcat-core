@@ -6,9 +6,9 @@ or clean up the discovery entries from the discoverydata table
 
 =head1 SYNOPSIS
 
-B<nodediscoverdef> B<-u uuid> B<-n node>
+B<nodediscoverdef> B<-u> I<uuid> B<-n> I<node>
 
-B<nodediscoverdef> B<-r> B<-u uuid>
+B<nodediscoverdef> B<-r> B<-u> I<uuid>
 
 B<nodediscoverdef> B<-r> B<-t> {B<seq>|B<profile>|B<switch>|B<blade>|B<manual>|B<undef>|B<all>}
 
@@ -41,36 +41,29 @@ Specify the nodes that have been discovered by the specified discovery method:
 =over 3
 
 =item *
-
 B<seq> - Sequential discovery (started via nodediscoverstart noderange=<noderange> ...).
 
 =item *
-
 B<profile> - Profile discovery (started via nodediscoverstart networkprofile=<network-profile> ...).
 
 =item *
-
 B<switch> - Switch-based discovery (used when the switch and switches tables are filled in).
 
 =item *
-
 B<blade> - Blade discovery (used for IBM Flex blades).
 
 =item *
-
 B<manual> - Manually discovery (used when defining node by nodediscoverdef command).
 
 =item *
-
 B<undef> - Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request.
 
 =item *
-
 B<all> - All discovered nodes.
 
 =back
 
-=item B<-n node>
+=item B<-n> I<node>
 
 The xCAT node that the discovery entry will be defined to.
 
@@ -78,7 +71,7 @@ The xCAT node that the discovery entry will be defined to.
 
 Remove the discovery entries from discoverydata table.
 
-=item B<-u uuid>
+=item B<-u> I<uuid>
 
 The uuid of the discovered entry.
 
@@ -102,27 +95,30 @@ Command version.
 
 =over 3
 
-=item 1
-
+=item 1.
 Define the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 to node node1
 
-B<nodediscoverdef> -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 -n node1
+ nodediscoverdef -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 -n node1
+
+Output is similar to:
 
  Defined [51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4] to node node1.
 
-=item 2
-
+=item 2.
 Remove the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 from the discoverydata table
 
-B<nodediscoverdef> -r -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4
+ nodediscoverdef -r -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4
+
+Output is similar to:
 
  Removing discovery entries finished.
 
-=item 3
-
+=item 3.
 Remove the discovery entries which discover type is B<seq> from the discoverydata table
 
-B<nodediscoverdef> -r -t seq
+ nodediscoverdef -r -t seq
+
+Output is similar to:
 
  Removing discovery entries finished.
 

@@ -19,41 +19,41 @@ Name
 ****************
 
 
-\ **rvitals**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rvitals**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 FSP/LPAR (with HMC) specific:
 =============================
 
 
-\ **rvitals**\  \ *noderange*\  {\ **temp**\ |\ **voltage**\ |\ **lcds**\ |\ **all**\ }
+\ **rvitals**\  \ *noderange*\  {\ **temp | voltage | lcds | all**\ }
 
 
 CEC/LPAR/Frame (using Direct FSP Management ) specific:
 =======================================================
 
 
-\ **rvitals**\  \ *noderange*\  {\ **rackenv**\ |\ **lcds**\ |\ **all**\ } [\ **-V**\ | \ **--verbose**\ ]
+\ **rvitals**\  \ *noderange*\  {\ **rackenv | lcds | all**\ } [\ **-V**\ | \ **-**\ **-verbose**\ ]
 
 
 MPA specific:
 =============
 
 
-\ **rvitals**\  \ *noderange*\  {\ **temp**\ |\ **voltage**\ |\ **wattage**\ |\ **fanspeed**\ |\ **power**\ |\ **leds**\ |\ **summary**\ |\ **all**\ }
+\ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | summary | all**\ }
 
 
 Blade specific:
 ===============
 
 
-\ **rvitals**\  \ *noderange*\  {\ **temp**\ |\ **wattage**\ |\ **fanspeed**\ |\ **leds**\ |\ **summary**\ |\ **all**\ }
+\ **rvitals**\  \ *noderange*\  {\ **temp | wattage | fanspeed | leds | summary | all**\ }
 
 
 BMC specific:
 =============
 
 
-\ **rvitals**\  \ *noderange*\  {\ **temp**\ |\ **voltage**\ |\ **wattage**\ |\ **fanspeed**\ |\ **power**\ |\ **leds**\ |\ **all**\ }
+\ **rvitals**\  \ *noderange*\  {\ **temp | voltage | wattage | fanspeed | power | leds | all**\ }
 
 
 
@@ -158,13 +158,13 @@ Processor for a single or range of nodes and groups.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

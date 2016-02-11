@@ -37,7 +37,7 @@ This command will automatically configure the cross-over ports if the given node
 
 For added security, the root guard and bpdu guard will be enabled for the ports in this vlan. However, the guards will not be disabled if the ports are removed from the vlan using chvlan or rmvlan commands. To disable them, you need to use the switch command line interface. Please refer to the switch command line interface manual to see how to disable the root guard and bpdu guard for a port. 
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<vlanid> is a unique vlan number. If it is omitted, xCAT will automatically generate the new vlan ID by querying all the switches involved and finding out the smallest common number that is not used by any existing vlans. Use B<lsvlan> to find out the existing vlan ids used by xCAT. 
 
@@ -109,7 +109,7 @@ To make a private vlan for node1, node2 and node3 on eth1,
 
 =item 3.
 
-TO make a private vlan for node1, node2 with given subnet and netmask.
+To make a private vlan for node1, node2 with given subnet and netmask.
 
   mkvlan -n node1,node2,node3 -t 10.3.2.0 -m 255.255.255.0
 

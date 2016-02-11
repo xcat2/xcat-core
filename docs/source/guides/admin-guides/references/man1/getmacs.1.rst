@@ -23,7 +23,7 @@ Common:
 =======
 
 
-\ **getmacs**\  [\ **-h**\ | \ **--help**\  | \ **-v**\ | \ **--version**\ ]
+\ **getmacs**\  [\ **-h**\ | \ **-**\ **-help**\  | \ **-v**\ | \ **-**\ **-version**\ ]
 
 
 PPC specific:
@@ -34,14 +34,14 @@ PPC specific:
 
 \ **getmacs**\  \ *noderange*\  [\ **-M**\ ]
 
-\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **--verbose**\ ] [\ **-f**\ ] [\ **-d**\ ] [\ **--arp**\ ] | [\ **-D**\  {[\ **-S**\  \ *server*\ ] [\ **-G**\  \ *gateway*\ ] [\ **-C**\  \ *client*\ ] [\ **-o**\ ] | [\ **--noping**\ ]}]
+\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **-**\ **-verbose**\ ] [\ **-f**\ ] [\ **-d**\ ] [\ **-**\ **-arp**\ ] | [\ **-D**\  {[\ **-S**\  \ *server*\ ] [\ **-G**\  \ *gateway*\ ] [\ **-C**\  \ *client*\ ] [\ **-o**\ ] | [\ **-**\ **-noping**\ ]}]
 
 
 blade specific:
 ===============
 
 
-\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **--verbose**\ ] [\ **-d**\ ] [\ **--arp**\ ] [\ **-i**\  \ *ethN*\ |\ *enN*\ ]
+\ **getmacs**\  \ *noderange*\  [\ **-V**\ | \ **-**\ **-verbose**\ ] [\ **-d**\ ] [\ **-**\ **-arp**\ ] [\ **-i**\  \ *ethN*\ |\ *enN*\ ]
 
 
 
@@ -72,7 +72,7 @@ OPTIONS
 *******
 
 
-\ **--arp**\ 
+\ **-**\ **-arp**\ 
 
 Read MAC address with ARP protocal.
 
@@ -108,7 +108,7 @@ Display usage message.
 
 Return multiple MAC addresses for the same adapter or port, if available from the hardware.  For some network adapters (e.g. HFI) the MAC can change when there are some recoverable internal errors.  In this case, the hardware can return several MACs that the adapter can potentially have, so that xCAT can put all of them in DHCP.  This allows successful booting, even after a MAC change, but on Linux at this time, it can also cause duplicate IP addresses, so it is currently not recommended on Linux.  By default (without this flag), only a single MAC address is returned for each adapter.
 
-\ **--noping**\ 
+\ **-**\ **-noping**\ 
 
 Only can be used with '-D' to display all the available adapters with mac address but do NOT run ping test.
 
@@ -138,13 +138,9 @@ RETURN VALUE
 ************
 
 
+0 The command completed successfully.
 
-.. code-block:: perl
-
-   0 The command completed successfully.
- 
-   1 An error has occurred.
-
+1 An error has occurred.
 
 
 ********

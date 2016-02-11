@@ -10,8 +10,7 @@ B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<
 
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
-[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
-      [B<-u> [I<provmethod>=<I<install>|I<netboot>|I<statelite>>] [I<profile>=<xxx>] [I<osvers>=I<value>] [I<osarch>=I<value>]]
+[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr=val> [I<attr=val...>]] [B<-u> [B<provmethod=> {B<install> | B<netboot> | B<statelite>}] [B<profile=>I<xxx>] [B<osvers>=I<value>] [B<osarch>=I<value>]]
 
 =head1 DESCRIPTION
 

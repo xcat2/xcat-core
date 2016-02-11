@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **addkitcomp**\  [\ **-?**\ |\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **addkitcomp**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **addkitcomp**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-a**\ |\ **--adddeps**\ ] [\ **-f**\ |\ **--force**\ ] [\ **-n**\ |\ **--noupgrade**\ ] [\ **--noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
+\ **addkitcomp**\  [\ **-V | -**\ **-verbose**\ ] [\ **-a | -**\ **-adddeps**\ ] [\ **-f | -**\ **-force**\ ] [\ **-n | -**\ **-noupgrade**\ ] [\ **-**\ **-noscripts**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
 
 
 ***********
@@ -40,31 +40,31 @@ OPTIONS
 
 
 
-\ **-a|--adddeps**\ 
+\ **-a|-**\ **-adddeps**\ 
  
  Assign kitcomponent dependencies to the osimage.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command version.
  
 
 
-\ **-f|--force**\ 
+\ **-f|-**\ **-force**\ 
  
  Add kit component to osimage even if there is a mismatch in OS, version, arch, serverrole, or kitcompdeps
  
@@ -76,7 +76,7 @@ OPTIONS
  
 
 
-\ **-n|--noupgrade**\ 
+\ **-n|-**\ **-noupgrade**\ 
  
  1. Allow multiple versions of kitcomponent to be installed into the osimage, instead of kitcomponent upgrade.
  
@@ -84,13 +84,13 @@ OPTIONS
  
 
 
-\ **--noscripts**\ 
+\ **-**\ **-noscripts**\ 
  
  Do not add kitcomponent's postbootscripts to osimage
  
 
 
-\ **kitcompname_list**\ 
+\ *kitcompname_list*\ 
  
  A comma-delimited list of valid full kit component names or kit component basenames that are to be added to the osimage.
  

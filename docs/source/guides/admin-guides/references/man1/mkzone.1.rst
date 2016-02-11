@@ -19,7 +19,7 @@ mkzone.1
 ****************
 
 
-\ **mkzone**\  <zonename>  [\ **--defaultzone**\ ] [\ **-k**\  \ *full path to the ssh RSA private key*\ ] [\ **-a**\  \ *noderange*\ ] [\ **-g**\ ] [\ **-f**\ ] [\ **-s**\  \ *yes|no*\ ] [-V]
+\ **mkzone**\  \ *zonename*\   [\ **-**\ **-defaultzone**\ ] [\ **-k**\  \ *full path to the ssh RSA private key*\ ] [\ **-a**\  \ *noderange*\ ] [\ **-g**\ ] [\ **-f**\ ] [\ **-s**\  \ *{yes|no}*\ ] [\ **-V**\ ]
 
 \ **mkzone**\  [\ **-h**\  | \ **-v**\ ]
 
@@ -41,26 +41,26 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
 
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Displays usage information.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Displays command version and build date.
  
 
 
-\ **-k | --sshkeypath**\  \ *full path to the ssh RSA private key*\ 
+\ **-k | -**\ **-sshkeypath**\  \ *full path to the ssh RSA private key*\ 
  
  This is the path to the id_rsa key that will be used to build root's ssh keys for the zone. If -k is used, it will generate the ssh public key from the input ssh RSA private key and store both in /etc/xcat/sshkeys/<zonename>/.ssh directory.
  If -f is not used,  then it will generate a set of root ssh keys for the zone and store them in /etc/xcat/sshkeys/<zonename>/.ssh.
  
 
 
-\ **--default**\ 
+\ **-**\ **-default**\ 
  
  if --defaultzone is input, then it will set the zone defaultzone attribute to yes; otherwise it will set to no.
  if --defaultzone is input and another zone is currently the default,
@@ -70,7 +70,7 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-\ **-a | --addnoderange**\  \ *noderange*\ 
+\ **-a | -**\ **-addnoderange**\  \ *noderange*\ 
  
  For each node in the noderange, it will set the zonename attribute for that node to the input zonename.
  If the -g flag is also on the command, then
@@ -78,26 +78,26 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
  
 
 
-\ **-s| --sshbetweennodes**\  \ **yes|no**\ 
+\ **-s| -**\ **-sshbetweennodes**\  \ **yes|no**\ 
  
  If -s entered, the zone sshbetweennodes attribute will be set to yes or no. It defaults to yes. When this is set to yes, then ssh will be setup
  to allow passwordless root access between nodes.  If no, then root will be prompted for a password when running ssh between the nodes in the zone.
  
 
 
-\ **-f | --force**\ 
+\ **-f | -**\ **-force**\ 
  
  Used with the (--defaultzone) flag to override the current default zone.
  
 
 
-\ **-g | --assigngroup**\ 
+\ **-g | -**\ **-assigngroup**\ 
  
  Used with the (-a) flag to create the group zonename for all nodes in the input noderange.
  
 
 
-\ **-V**\ |\ **--Verbose**\ 
+\ **-V | -**\ **-Verbose**\ 
  
  Verbose mode.
  
@@ -105,65 +105,86 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
 
 
 ****************
-\ **Examples**\ 
+\ **EXAMPLES**\ 
 ****************
 
 
 
-\*
+1. To make a new zone1 using defaults, enter:
  
- To make a new zone1 using defaults , enter:
  
- \ **mkzone**\  \ *zone1*\ 
+ .. code-block:: perl
  
- Note: with the first mkzone, you will automatically get the xcatdefault zone created as the default zone.  This zone uses ssh keys from
-       <roothome>/.ssh directory.
+   mkzone zone1
  
-
-
-\*
  
- To make a new zone2 using defaults and make it the default zone enter:
- 
- \ **mkzone**\  \ *zone2*\  --defaultzone -f
+ Note: with the first \ **mkzone**\ , you will automatically get the xcatdefault zone created as the default zone.  This zone uses ssh keys from <roothome>/.ssh directory.
  
 
 
-\*
+2. To make a new zone2 using defaults and make it the default zone enter:
+ 
+ 
+ .. code-block:: perl
+ 
+   mkzone> zone2 --defaultzone -f
+ 
+ 
+
+
+3.
  
  To make a new zone2A using the ssh id_rsa private key in /root/.ssh:
  
- \ **mkzone**\  \ *zone2A*\  -k /root/.ssh
+ 
+ .. code-block:: perl
+ 
+   mkzone zone2A -k /root/.ssh
+ 
  
 
 
-\*
+4.
  
  To make a new zone3 and assign the noderange compute3 to the zone  enter:
  
- \ **mkzone**\  \ *zone3*\   -a compute3
+ 
+ .. code-block:: perl
+ 
+   mkzone zone3 -a compute3
+ 
  
 
 
-\*
+5. To make a new zone4 and assign the noderange compute4 to the zone and add zone4 as a group to each node  enter:
  
- To make a new zone4 and assign the noderange compute4 to the zone and add zone4 as a group to each node  enter:
  
- \ **mkzone**\  \ *zone4*\   -a compute4  -g
+ .. code-block:: perl
+ 
+   mkzone zone4 -a compute4 -g
+ 
  
 
 
-\*
+6.
  
  To make a new zone5 and assign the noderange compute5 to the zone and add zone5 as a group to each node but not allow passwordless ssh between the nodes  enter:
  
- \ **mkzone**\  \ *zone5*\   -a compute5  -g -s no
+ 
+ .. code-block:: perl
+ 
+   mkzone zone5 -a compute5 -g -s no
+ 
  
 
 
-\ **Files**\ 
 
-\ **/opt/xcat/bin/mkzone/**\ 
+*************
+\ **Files**\ 
+*************
+
+
+/opt/xcat/bin/mkzone/
 
 Location of the mkzone command.
 

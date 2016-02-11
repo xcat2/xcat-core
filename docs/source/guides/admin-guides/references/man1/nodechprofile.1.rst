@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nodechprofile**\  [-h| --help | -v | --version]
+\ **nodechprofile**\  \ **[-h| -**\ **-help | -v | -**\ **-version]**\ 
 
-\ **nodechprofile**\  <noderange> [imageprofile=<image-profile>] [networkprofile=<network-profile>] [hardwareprofile=<hardware-profile>]
+\ **nodechprofile**\  \ *noderange*\  [\ **imageprofile=**\  \ *image-profile*\ ] [\ **networkprofile=**\  \ *network-profile*\ ] [\ **hardwareprofile=**\  \ *hardware-profile*\ ]
 
 
 ***********
@@ -47,27 +47,27 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ **noderange**\ 
+\ *noderange*\ 
 
 The nodes to be removed.
 
-\ **imageprofile=<image-profile**\ >
+\ **imageprofile=**\  \ *image-profile*\ 
 
 Sets the new image profile name used by the node, where <image-profile> is the new image profile.  An image profile defines the provisioning method, OS information, kit information, and provisioning parameters for a node. If the "__ImageProfile_imgprofile" group already exists in the nodehm table, then "imgprofile" is used as the image profile name.
 
-\ **networkprofile=<network-profile**\ >
+\ **networkprofile=**\  \ *network-profile*\ 
 
 Sets the new network profile name used by the node, where <network-profile> is the new network profile. A network profile defines the network, NIC, and routes for a node. If the "__NetworkProfile_netprofile" group already exists in the nodehm table, then "netprofile" is used as the network profile name.
 
-\ **hardwareprofile=<hardware-profile**\ >
+\ **hardwareprofile=**\  \ *hardware-profile*\ 
 
 Sets the new hardware profile name used by the node, where <hardware-profile> is the new hardware management profile used by the node. If a "__HardwareProfile_hwprofile" group exists, then "hwprofile" is the hardware profile name. A hardware profile defines hardware management related information for imported nodes, including: IPMI, HMC, CEC, CMM.
 
@@ -87,13 +87,17 @@ EXAMPLES
 ********
 
 
-To change the image profile to rhels6.3_packaged for compute nodes compute-000 and compute-001, use the following command:
 
-nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
 
-To change all of the profiles for compute node compute-000, enter the following command:
+.. code-block:: perl
 
-nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
+  nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
+
+
+
+.. code-block:: perl
+
+  nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
 
 
 ********

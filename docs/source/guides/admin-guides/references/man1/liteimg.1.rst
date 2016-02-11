@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *liteimg [-h| --help]*\ 
+\ **liteimg [-h| -**\ **-help]**\ 
 
-\ *liteimg  [-v| --version]*\ 
+\ **liteimg  [-v| -**\ **-version]**\ 
 
-\ *liteimg imagename*\ 
+\ **liteimg**\  \ *imagename*\ 
 
 
 ***********
@@ -59,7 +59,7 @@ Note: If you make any changes to your litefile table after running liteimg then 
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -71,9 +71,9 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
+\ **-h|-**\ **-help**\           Display usage message.
 
-\ **-v**\           Command Version.
+\ **-v|-**\ **-version**\           Command Version.
 
 
 ************
@@ -93,7 +93,11 @@ EXAMPLES
 
 1. To lite a RHEL 6.6 statelite image for a compute node architecture x86_64 enter:
 
-\ *liteimg rhels6.6-x86_64-statelite-compute*\ 
+
+.. code-block:: perl
+
+  liteimg rhels6.6-x86_64-statelite-compute
+
 
 
 *****
@@ -101,7 +105,7 @@ FILES
 *****
 
 
-/opt/xcat/bin/
+/opt/xcat/bin/liteimg
 
 
 *****

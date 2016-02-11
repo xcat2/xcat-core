@@ -6,7 +6,7 @@ B<imgimport> - Imports an xCAT image or configuration file into the xCAT tables 
 
 B<imgimport [-h|--help]>
 
-B<imgimport> bundle_file_name [-p|--postscripts nodelist] [-f|--profile new_profile] [-v|--verbose]>
+B<imgimport> I<bundle_file_name> [B<-p>|B<--postscripts> I<nodelist>] [B<-f>|B<--profile> I<new_profile>] [B<-v>|B<--verbose>]
 
 =head1 DESCRIPTION
 
@@ -86,21 +86,21 @@ B<-v|--verbose>                  Verbose output.
 
 =head1 EXAMPLES
 
-1. Simplest way to import an image.  If there is a bundle file named 'foo.gz', then run:
+1. Simplest way to import an image. If there is a bundle file named 'foo.gz', then run:
 
-I<imgimport foo.gz>
+ imgimport foo.gz
 
 
 2. Import the image with postscript names. 
 
-I<imgimport foo.gz -p node1,node2>
+ imgimport foo.gz -p node1,node2
 
 The I<postscripts> table will be updated with the name of the I<postscripts> and the I<postbootscripts> for node1 and node2.
 
 
 3. Import the image with a new profile name 
 
-I<imgimport foo.gz -f compute_test>
+ imgimport foo.gz -f compute_test
 
 
 =head1 FILES

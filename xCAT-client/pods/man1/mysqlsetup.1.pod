@@ -9,19 +9,22 @@ B<mysqlsetup> {B<-h>|B<--help>}
 
 B<mysqlsetup> {B<-v>|B<--version>}
 
-B<mysqlsetup> {B<-i>|B<--init>} [B<-f>|B<--hostfile>] [-o|--odbc] [-L|--LL] [B<-V>|B<--verbose>]
+B<mysqlsetup> {B<-i>|B<--init>} [B<-f>|B<--hostfile>] [B<-o>|B<--odbc>] [B<-L>|B<--LL>] [B<-V>|B<--verbose>]
 
-B<mysqlsetup> {B<-u>|B<--update>} [B<-f>|B<--hostfile>] [-o|--odbc] [-L|--LL]          [B<-V>|B<--verbose>]
+B<mysqlsetup> {B<-u>|B<--update>} [B<-f>|B<--hostfile>] [B<-o>|B<--odbc>] [B<-L>|B<--LL>] [B<-V>|B<--verbose>]
 
-B<mysqlsetup> {B<-o>|B<--odbc>} [-V|--verbose] 
+B<mysqlsetup> {B<-o>|B<--odbc>} [B<-V>|B<--verbose>] 
 
-B<mysqlsetup> {B<-L>|B<--LL>} [-V|--verbose] 
+B<mysqlsetup> {B<-L>|B<--LL>} [B<-V>|B<--verbose>] 
 
 =head1 DESCRIPTION
 
 B<mysqlsetup> - Sets up the MySQL or MariaDB database (linux only for MariaDB) for xCAT to use. The mysqlsetup script is run on the Management Node as root after the MySQL code or MariaDB code has been installed. Before running the init option, the MySQL server should be stopped, if it is running.  The xCAT daemon, xcatd, must be running, do not stop it. No xCAT commands should be run during the init process, because we will be migrating the xCAT database to MySQL or MariaDB and restarting the xcatd daemon as well as the MySQL daemon. For full information on all the steps that will be done, read the "Configure MySQL and Migrate xCAT Data to MySQL" sections in 
-Setting_Up_MySQL_as_the_xCAT_DB
+
+B<Setting_Up_MySQL_as_the_xCAT_DB>
+
 Two passwords must be supplied for the setup,  a password for the xcatadmin id and a password for the root id in the MySQL database.  These will be prompted for interactively, unless the environment variables XCATMYSQLADMIN_PW and  XCATMYSQLROOT_PW are set to the passwords for the xcatadmin id and root id in the database,resp. 
+
 Note below we refer to MySQL but it works the same for MariaDB.
 
 =head1 OPTIONS
@@ -72,11 +75,9 @@ Setting_Up_MySQL_as_the_xCAT_DB
 =over 2
 
 =item *
-
 B<XCATMYSQLADMIN_PW> - the password for the xcatadmin id that will be assigned in the MySQL database.
 
 =item *
-
 B<XCATMYSQLROOT_PW> - the password for the root id that will be assigned to the MySQL root id, if the script creates it.  The password to use to run MySQL command to the database as the MySQL root id.  This password may be different than the unix root password on the Management Node.  
 
 =back
@@ -85,17 +86,17 @@ B<XCATMYSQLROOT_PW> - the password for the root id that will be assigned to the 
 
 =over 2
 
-=item *
+=item 1.
 
 To setup MySQL for xCAT to run on the MySQL xcatdb database :
 
-B<mysqlsetup> I<-i>
+ mysqlsetup -i
 
-=item *
+=item 2.
 
 Add hosts from /tmp/xcat/hostlist that can access the xcatdb database in MySQL:
 
-B<mysqlsetup> I<-u> I<-f /tmp/xcat/hostlist>
+ mysqlsetup -u -f /tmp/xcat/hostlist
 
 Where the file contains a host per line, for example:
 
@@ -104,16 +105,16 @@ Where the file contains a host per line, for example:
          10.%.%.%
          nodex.cluster.net
 
-=item * 
+=item 3. 
 
 To setup the ODBC for MySQL xcatdb database access :
 
-B<mysqlsetup> I<-o>
+ mysqlsetup -o
 
-=item * 
+=item 4. 
 
 To setup MySQL for xCAT and add hosts from /tmp/xcat/hostlist and setup the ODBC in Verbose mode:
 
-B<mysqlsetup> I<-i> I<-f /tmp/xcat/hostlist> I<-o> I<-V>
+ mysqlsetup -i -f /tmp/xcat/hostlist -o -V
 
 =back

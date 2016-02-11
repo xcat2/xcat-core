@@ -59,11 +59,11 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\      Display usage message.
+\ **-h | -**\ **-help**\      Display usage message.
 
-\ **-V | --verbose**\   Verbose mode.
+\ **-V | -**\ **-verbose**\   Verbose mode.
 
-\ **--xcatdef**\        Remove the xCAT osimage definition
+\ **-**\ **-xcatdef**\        Remove the xCAT osimage definition
 
 
 ************

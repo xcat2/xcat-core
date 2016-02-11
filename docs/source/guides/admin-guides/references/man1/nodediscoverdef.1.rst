@@ -21,13 +21,13 @@ SYNOPSIS
 ********
 
 
-\ **nodediscoverdef**\  \ **-u uuid**\  \ **-n node**\ 
+\ **nodediscoverdef**\  \ **-u**\  \ *uuid*\  \ **-n**\  \ *node*\ 
 
-\ **nodediscoverdef**\  \ **-r**\  \ **-u uuid**\ 
+\ **nodediscoverdef**\  \ **-r**\  \ **-u**\  \ *uuid*\ 
 
-\ **nodediscoverdef**\  \ **-r**\  \ **-t**\  {\ **seq**\ |\ **profile**\ |\ **switch**\ |\ **blade**\ |\ **manual**\ |\ **undef**\ |\ **all**\ }
+\ **nodediscoverdef**\  \ **-r**\  \ **-t**\  {\ **seq | profile | switch | blade | manual | undef | all**\ }
 
-\ **nodediscoverdef**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **nodediscoverdef**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -61,51 +61,37 @@ OPTIONS
  Specify the nodes that have been discovered by the specified discovery method:
  
  
- \*
-  
-  \ **seq**\  - Sequential discovery (started via nodediscoverstart noderange=<noderange> ...).
-  
+ \* \ **seq**\  - Sequential discovery (started via nodediscoverstart noderange=<noderange> ...).
  
  
- \*
-  
-  \ **profile**\  - Profile discovery (started via nodediscoverstart networkprofile=<network-profile> ...).
-  
+ 
+ \* \ **profile**\  - Profile discovery (started via nodediscoverstart networkprofile=<network-profile> ...).
  
  
- \*
-  
-  \ **switch**\  - Switch-based discovery (used when the switch and switches tables are filled in).
-  
+ 
+ \* \ **switch**\  - Switch-based discovery (used when the switch and switches tables are filled in).
  
  
- \*
-  
-  \ **blade**\  - Blade discovery (used for IBM Flex blades).
-  
+ 
+ \* \ **blade**\  - Blade discovery (used for IBM Flex blades).
  
  
- \*
-  
-  \ **manual**\  - Manually discovery (used when defining node by nodediscoverdef command).
-  
+ 
+ \* \ **manual**\  - Manually discovery (used when defining node by nodediscoverdef command).
  
  
- \*
-  
-  \ **undef**\  - Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request.
-  
+ 
+ \* \ **undef**\  - Display the nodes that were in the discovery pool, but for which xCAT has not yet received a discovery request.
  
  
- \*
-  
-  \ **all**\  - All discovered nodes.
-  
+ 
+ \* \ **all**\  - All discovered nodes.
+ 
  
  
 
 
-\ **-n node**\ 
+\ **-n**\  \ *node*\ 
  
  The xCAT node that the discovery entry will be defined to.
  
@@ -117,19 +103,19 @@ OPTIONS
  
 
 
-\ **-u uuid**\ 
+\ **-u**\  \ *uuid*\ 
  
  The uuid of the discovered entry.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command version.
  
@@ -152,11 +138,15 @@ EXAMPLES
 
 
 
-1
+1. Define the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 to node node1
  
- Define the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 to node node1
  
- \ **nodediscoverdef**\  -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 -n node1
+ .. code-block:: perl
+ 
+   nodediscoverdef -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 -n node1
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -166,11 +156,15 @@ EXAMPLES
  
 
 
-2
+2. Remove the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 from the discoverydata table
  
- Remove the discovery entry which uuid is 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4 from the discoverydata table
  
- \ **nodediscoverdef**\  -r -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4
+ .. code-block:: perl
+ 
+   nodediscoverdef -r -u 51E5F2D7-0D59-11E2-A7BC-3440B5BEDBB4
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -180,11 +174,15 @@ EXAMPLES
  
 
 
-3
+3. Remove the discovery entries which discover type is \ **seq**\  from the discoverydata table
  
- Remove the discovery entries which discover type is \ **seq**\  from the discoverydata table
  
- \ **nodediscoverdef**\  -r -t seq
+ .. code-block:: perl
+ 
+   nodediscoverdef -r -t seq
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl

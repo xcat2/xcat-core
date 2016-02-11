@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nodechmac**\  [-h| --help | -v | --version]
+\ **nodechmac**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **nodechmac**\  <node-name> mac=<mac-address>
+\ **nodechmac**\  \ *node-name*\  \ **mac=**\ \ *mac-address*\ 
 
 
 ***********
@@ -39,19 +39,19 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ **node-name**\ 
+\ *node-name*\ 
 
 Specifies the name of the node you want to update, where <node-name> is the node that is updated.
 
-\ **mac=<mac-address**\ 
+\ **mac=**\ \ *mac-address*\ 
 
 Sets the new MAC address for the NIC used by the provisioning node, where <mac-address> is the NICs new MAC address.
 
@@ -72,7 +72,12 @@ EXAMPLES
 
 
 You can update the MAC address for a node, by using the following command:
-nodechmac compute-000 mac=2F:3C:88:98:7E:01
+
+
+.. code-block:: perl
+
+  nodechmac compute-000 mac=2F:3C:88:98:7E:01
+
 
 
 ********

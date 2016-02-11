@@ -55,7 +55,7 @@ OPTIONS
  
 
 
-\ **--range**\ 
+\ **-**\ **-range**\ 
  
  Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the switch discover may take a very long time to scan. So the range should be exactly specified.
  
@@ -129,7 +129,7 @@ EXAMPLES
  
  To discover the switches on some subnets:
  
- \ **switchdiscover**\  \ *--range 10.2.3.0/24,192.168.3.0/24,11.5.6.7*\ 
+ \ **switchdiscover**\  \ *-**\ **-range 10.2.3.0/24,192.168.3.0/24,11.5.6.7*\ 
  
 
 
@@ -137,7 +137,7 @@ EXAMPLES
  
  To do the switch discovery and save them to the xCAT database:
  
- \ **switchdiscover**\  \ *--range 10.2.3.4/24 -w*\ 
+ \ **switchdiscover**\  \ *-**\ **-range 10.2.3.4/24 -w*\ 
  
  It is recommended to run \ **makehosts**\  after the switches are saved in the DB.
  

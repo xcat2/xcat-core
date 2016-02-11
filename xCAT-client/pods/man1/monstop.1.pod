@@ -5,20 +5,20 @@ B<monstop> -  Stops a monitoring plug-in module to monitor the xCAT cluster.
 
 =head1 SYNOPSIS
 
-I<monstop [-h| --help]>
+B<monstop [-h| --help]>
 
-I<monstop [-v| --version]>
+B<monstop [-v| --version]>
 
-I<monstop name [noderange] [-r|--remote]>
+B<monstop> I<name> [I<noderange>] [B<-r|--remote>]
 
 
 =head1 DESCRIPTION
 
-This command is used to stop a 3rd party software, (for example stop the daemons), from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the I<-r> option is specified.
+This command is used to stop a 3rd party software, (for example stop the daemons), from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the B<-r> option is specified.
 
-=head1 Parameters
+=head1 PARAMETERS
 
-I<name> is the name of the monitoring plug-in module in the I<monitoring> table. Use I<monls> command to list all the monitoring plug-in modules that can be used.
+I<name> is the name of the monitoring plug-in module in the I<monitoring> table. Use B<monls> command to list all the monitoring plug-in modules that can be used.
 
 I<noderange> is the nodes to be stopped for monitoring. If omitted, all nodes will be stopped.
 
@@ -29,7 +29,7 @@ B<-h | -help>          Display usage message.
 
 B<-r | --remote>       Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be stopped.
 
-B<-v | -version >      Command Version.
+B<-v | -version>       Command Version.
 
 
 

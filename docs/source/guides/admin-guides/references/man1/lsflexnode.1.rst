@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **lsflexnode**\  [-h | --help]
+\ **lsflexnode**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
-\ **lsflexnode**\  [-v | --version]
+\ **lsflexnode**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
 \ **lsflexnode**\  \ *noderange*\ 
 
@@ -55,13 +55,13 @@ OPTIONS
 
 
 
-\ **-h | --help**\ 
+\ **-h | -**\ **-help**\ 
  
  Display the usage message.
  
 
 
-\ **-v | --version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the version information.
  
@@ -181,9 +181,7 @@ EXAMPLES
 
 
 
-1
- 
- Display all the \ **Complex**\ , \ **Partition**\  and \ **Blade slot node**\  which managed by a AMM.
+1 Display all the \ **Complex**\ , \ **Partition**\  and \ **Blade slot node**\  which managed by a AMM.
  
  
  .. code-block:: perl
@@ -220,9 +218,7 @@ EXAMPLES
  
 
 
-2
- 
- Display a flexible node.
+2 Display a flexible node.
  
  
  .. code-block:: perl

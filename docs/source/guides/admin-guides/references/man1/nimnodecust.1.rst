@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nimnodecust [-h|--help ]**\ 
+\ **nimnodecust [-h|-**\ **-help ]**\ 
 
-\ **nimnodecust [-V] -s lpp_source_name [-p packages] [-b installp_bundles] noderange [attr=val [attr=val ...]]**\ 
+\ **nimnodecust [-V] -s**\  \ *lpp_source_name*\  [\ **-p**\  \ *packages*\ ] [\ **-b**\  \ *installp_bundles*\ ] \ *noderange [attr=val [attr=val ...]]*\ 
 
 
 ***********
@@ -52,7 +52,10 @@ A bundle file contains a list of package names.  The RPMs must have a prefix of 
 To create a NIM installp_bundle definition you can use the "nim -o define" operation.  For example, to create a definition called "mypackages" for a bundle file located at "/install/nim/mypkgs.bnd" you could issue the following command.
 
 
-"nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages".
+.. code-block:: perl
+
+  nim -o define -t installp_bundle -a server=master -a location=/install/nim/mypkgs.bnd mypackages
+
 
 See the AIX documantation for more information on using installp_bundle files.
 
@@ -65,42 +68,38 @@ OPTIONS
 
 
 
-\ **attr=val [attr=val ...]**\ 
+\ *attr=val [attr=val ...]*\ 
  
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify
  additional values that can be passed to the underlying NIM commands, ("nim -o cust..."). See the NIM documentation for valid "nim" command line options.
  
 
 
-\ **-b installp_bundle_names**\ 
+\ **-b**\  \ *installp_bundle_names*\ 
  
- 
- .. code-block:: perl
- 
-  	A comma separated list of NIM installp_bundle names.
- 
+ A comma separated list of NIM installp_bundle names.
  
 
 
-\ **-h |--help**\ 
+\ **-h |-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-p package_names**\ 
+\ **-p**\  \ *package_names*\ 
  
  A comma-separated list of software packages to install.  Packages may be RPM or installp.
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
  
 
 
-\ **-V |--verbose**\ 
+\ **-V |-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -113,16 +112,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -134,12 +129,18 @@ EXAMPLES
 1) Install the installp package "openssh.base.server" on an xCAT node named "node01".  Assume that the package has been copied to the NIM lpp_source resource called "61lppsource".
 
 
-\ **nimnodecust -s 61lppsource -p openssh.base.server node01**\ 
+.. code-block:: perl
+
+  nimnodecust -s 61lppsource -p openssh.base.server node01
+
+
 
 2) Install the product software contained in the two bundles called "llbnd" and "pebnd" on all AIX nodes contained in the xCAT node group called "aixnodes".  Assume that all the software packages have been copied to the NIM lpp_source resource called "61lppsource".
 
 
-\ **nimnodecust -s 61lppsource -b llbnd,pebnd  aixnodes**\ 
+.. code-block:: perl
+
+  nimnodecust -s 61lppsource -b llbnd,pebnd  aixnodes
 
 
 *****

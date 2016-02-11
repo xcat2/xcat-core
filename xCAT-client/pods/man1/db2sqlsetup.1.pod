@@ -5,17 +5,17 @@ B<db2sqlsetup> - Sets up the IBM DB2 for xCAT to use.
 =head1 SYNOPSIS
 
 
-B<db2sqlsetup> {B<-h>|B<--help>}
+B<db2sqlsetup> [B<-h>|B<--help>}
 
-B<db2sqlsetup> {B<-v>|B<--version>}
+B<db2sqlsetup> [B<-v>|B<--version>}
 
-B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbose>]
+B<db2sqlsetup> [B<-i>|B<--init>] {B<-S> | B<-C>} [B<-o>|B<--setupODBC>] [B<-V>|B<--verbose>]
 
-B<db2sqlsetup> {B<-i>|B<--init>}{<-S>} [-N|--nostart]  [-o|--setupODBC]  [B<-V>|B<--verbose>]
+B<db2sqlsetup> [B<-i>|B<--init>] {B<-S>} [B<-N>|B<--nostart>] [B<-o>|B<--setupODBC>] [B<-V>|B<--verbose>]
 
-B<db2sqlsetup> {B<-o>|B<--setupODBC>} {<-S> | <-C>} [-V|--verbose] 
+B<db2sqlsetup> [B<-o>|B<--setupODBC>] {B<-S> | B<-C>} [B<-V>|B<--verbose>] 
 
-B<db2sqlsetup> {B<-p>|B<--passwd>} [<-S> | <-C>]
+B<db2sqlsetup> [B<-p>|B<--passwd>] [B<-S> | B<-C>]
 
 =head1 DESCRIPTION
 
@@ -81,15 +81,12 @@ This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .od
 =over 2
 
 =item *
-
 XCATDB2INSPATH  overrides the default install path for DB2 which is /opt/ibm/db2/V9.7 for Linux and /opt/IBM/db2/V9.7 for AIX.
 
 =item *
-
 DATABASELOC override the where to create the xcat DB2 database, which is /var/lib/db2 by default of taken from the site.databaseloc  attribute.
 
 =item *
-
 XCATDB2PW can be set to the password for the xcatdb DB2 instance id so that there will be no prompting for a password when the script is run.
 
 =back
@@ -98,40 +95,35 @@ XCATDB2PW can be set to the password for the xcatdb DB2 instance id so that ther
 
 =over 2
 
-=item *
-
+=item 1.
 To setup DB2 Server for  xCAT to run on the DB2 xcatdb database, on the MN:
 
-B<db2sqlsetup> I<-i> I<-S>
+ db2sqlsetup -i -S
 
-=item *
-
+=item 2.
 To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
 
-B<db2sqlsetup> I<-i> I<-C>
+ db2sqlsetup -i -C
 
-=item *
-
+=item 3.
 To setup the ODBC for  DB2 xcatdb database access, on the MN :
 
-B<db2sqlsetup> I<-o> I<-S>
+ db2sqlsetup -o -S
 
-=item *
-
+=item 4.
 To setup the ODBC for  DB2 xcatdb database access, on the SN :
 
-B<db2sqlsetup> I<-o> I<-C>
+ db2sqlsetup -o -C
 
-=item *
+=item 5.
 
 To setup the DB2 database but not start xcat running with it:
 
-B<db2sqlsetup> I<-i> I<-S> I<-N>
+ db2sqlsetup -i -S -N
 
-=item *
-
+=item 6.
 To change the DB2 xcatdb password on both the Management and Service Nodes:
 
-B<db2sqlsetup> I<-p>
+ db2sqlsetup -p
 
 =back

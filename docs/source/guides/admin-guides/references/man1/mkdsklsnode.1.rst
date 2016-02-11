@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **mkdsklsnode [-h|--help ]**\ 
+\ **mkdsklsnode [-h|-**\ **-help ]**\ 
 
-\ **mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-u|--updateSN] [-k|--skipsync] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]**\ 
+\ **mkdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-n|-**\ **-newname] [-i**\  \ *osimage_name*\ ] [\ **-l**\  \ *location*\ ] [\ **-u | -**\ **-updateSN**\ ] [\ **-k | -**\ **-skipsync**\ ] [\ **-p | -**\ **-primarySN**\ ] [\ **-b | -**\ **-backupSN**\ ] [\ **-S | -**\ **-setuphanfs**\ ] \ *noderange*\  [\ *attr=val [attr=val ...]*\ ]
 
 
 ***********
@@ -70,7 +70,7 @@ OPTIONS
 
 
 
-\ **attr=val [attr=val ...]**\ 
+\ *attr=val [attr=val ...]*\ 
  
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
  val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands.
@@ -123,73 +123,73 @@ OPTIONS
  
 
 
-\ **-b |--backupSN**\ 
+\ **-b |-**\ **-backupSN**\ 
  
  When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
  
 
 
-\ **-f |--force**\ 
+\ **-f |-**\ **-force**\ 
  
  Use the force option to reinitialize the NIM machines.
  
 
 
-\ **-h |--help**\ 
+\ **-h |-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-i image_name**\ 
+\ **-i**\  \ *image_name*\ 
  
  The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute. If the "-i" value is provided on the command line then that value will be used to set the "provmethod" attribute of the node definitions.
  
 
 
-\ **-k|--skipsync**\ 
+\ **-k|-**\ **-skipsync**\ 
  
  Use this option to have the mkdsklsnode command skip the NIM sync_roots operation.  This option should only be used if you are certain that the shared_root resource does not have to be updated from the SPOT.  Normally, when the SPOT is updated, you should do a sync_roots on the shared_root resource.
  
 
 
-\ **-l|--location**\ 
+\ **-l|-**\ **-location**\ 
  
  The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
  
 
 
-\ **-n|--newname**\ 
+\ **-n|-**\ **-newname**\ 
  
  Create a new NIM machine object name for the xCAT node. Use the naming convention "<xcat_node_name>_<image_name>" for the new NIM machine definition.
  
 
 
-\ **-p|--primarySN**\ 
+\ **-p|-**\ **-primarySN**\ 
  
  When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
  
 
 
-\ **-S|--setuphanfs**\ 
+\ **-S|-**\ **-setuphanfs**\ 
  
  Setup NFSv4 replication between the primary service nodes and backup service nodes to provide high availability NFS for the compute nodes. This option only exports the /install directory with NFSv4 replication settings, the data synchronization between the primary service nodes and backup service nodes needs to be taken care of through some mechanism.
  
 
 
-\ **-u|--updateSN**\ 
+\ **-u|-**\ **-updateSN**\ 
  
  Use this option if you wish to update the osimages but do not want to define or initialize the NIM client definitions. This option is only valid when the xCAT "site" definition attribute "sharedinstall" is set to either "sns" or "all".
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
  
 
 
-\ **-V |--verbose**\ 
+\ **-V |-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -202,16 +202,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -221,35 +217,45 @@ EXAMPLES
 
 
 
-1
+1. Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
  
- Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
  
- \ **mkdsklsnode -i 61spot node01**\ 
+ .. code-block:: perl
  
-
-
-2
+   mkdsklsnode -i 61spot node01
  
- Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
- 
- \ **mkdsklsnode aixnodes**\ 
  
 
 
-3
+2. Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
  
- Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Also set the paging size to be 128M and specify the paging file be an AIX sparse file.
  
- \ **mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes**\ 
+ .. code-block:: perl
+ 
+   mkdsklsnode aixnodes
+ 
  
 
 
-4
+3. Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Also set the paging size to be 128M and specify the paging file be an AIX sparse file.
+ 
+ 
+ .. code-block:: perl
+ 
+   mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes
+ 
+ 
+
+
+4.
  
  Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
  
- \ **mkdsklsnode -n -i 61spot node02**\ 
+ 
+ .. code-block:: perl
+ 
+   mkdsklsnode -n -i 61spot node02
+ 
  
 
 

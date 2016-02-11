@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **nodediscoverstop**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **nodediscoverstop**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -37,11 +37,11 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
@@ -61,7 +61,11 @@ EXAMPLES
 ********
 
 
-nodediscoverstop
+
+.. code-block:: perl
+
+  nodediscoverstop
+
 
 
 ********

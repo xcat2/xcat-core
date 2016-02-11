@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nimnodeset [-h|--help ]**\ 
+\ **nimnodeset [-h|-**\ **-help ]**\ 
 
-\ **nimnodeset [-V|--verbose] [-f|--force] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]**\ 
+\ **nimnodeset [-V|-**\ **-verbose] [-f|-**\ **-force] [-i**\  \ *osimage_name*\ ] [\ **-l**\  \ *location*\ ] [\ **-p|-**\ **-primarySN**\ ] [\ **-b | -**\ **-backupSN**\ ] \ *noderange [attr=val [attr=val ...]]*\ 
 
 
 ***********
@@ -48,7 +48,10 @@ The "nameservers" value can either be set to a specific IP address or the "<xcat
 You can set the "domain" and "nameservers" attributes by using the \ **chdef**\  command.  For example:
 
 
-chdef -t network -o clstr_net domain=cluster.com nameservers=<xcatmaster>
+.. code-block:: perl
+
+  chdef -t network -o clstr_net domain=cluster.com nameservers=<xcatmaster>
+
 
 If the "domain" and "nameservers" attributes are not set in either the nodes "network" definition or the "site" definition then no new NIM resolv_conf resource
 will be created.
@@ -70,57 +73,57 @@ OPTIONS
 
 
 
-\ **attr=val [attr=val ...]**\ 
+\ *attr=val [attr=val ...]*\ 
  
  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
  val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands, ("nim -o bos_inst ...").  See the NIM documentation for valid "nim" command line options. Note that you may specify multiple "script" and "installp_bundle" values by using a comma seperated list. (ex. "script=ascript,bscript").
  
 
 
-\ **-b|--backupSN**\ 
+\ **-b|-**\ **-backupSN**\ 
  
  When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes
  
 
 
-\ **-f |--force**\ 
+\ **-f |-**\ **-force**\ 
  
  Use the force option to reinitialize the NIM machines.
  
 
 
-\ **-h |--help**\ 
+\ **-h |-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-i image_name**\ 
+\ **-i**\  \ *image_name*\ 
  
  The name of an existing xCAT osimage definition.
  
 
 
-\ **-l|--location**\ 
+\ **-l|-**\ **-location**\ 
  
  The directory location to use when creating new NIM resolv_conf resources. The d
  efault location is /install/nim.
  
 
 
-\ **-p|--primarySN**\ 
+\ **-p|-**\ **-primarySN**\ 
  
  When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
  
 
 
-\ **-V |--verbose**\ 
+\ **-V |-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -133,16 +136,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -154,17 +153,26 @@ EXAMPLES
 1) Initialize an xCAT node named "node01".  Use the xCAT osimage named "61gold" to install the node.
 
 
-\ **nimnodeset -i 61gold node01**\ 
+.. code-block:: perl
+
+  nimnodeset -i 61gold node01
+
+
 
 2) Initialize all AIX nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
 
 
-\ **nimnodeset aixnodes**\ 
+.. code-block:: perl
+
+  nimnodeset aixnodes
+
 
 3) Initialize an xCAT node called "node02".  Include installp_bundle resources that are not included in the osimage definition. This assumes the NIM installp_bundle resources have already been created.
 
 
-\ **nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle**\ 
+.. code-block:: perl
+
+  nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle
 
 
 *****

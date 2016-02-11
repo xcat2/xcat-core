@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **chkkitcomp**\  [\ **-?**\ |\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **chkkitcomp**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **chkkitcomp**\  [\ **-V**\ |\ **--verbose**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
+\ **chkkitcomp**\  [\ **-V | -**\ **-verbose**\ ] \ **-i**\  \ *osimage*\   \ *kitcompname_list*\ 
 
 
 ***********
@@ -42,19 +42,19 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command version.
  
@@ -66,7 +66,7 @@ OPTIONS
  
 
 
-\ **kitcompname_list**\ 
+\ *kitcompname_list*\ 
  
  A comma-delimited list of valid full kit component names or kit component basenames that are to be checked against the osimage.
  
@@ -88,7 +88,7 @@ EXAMPLES
 ********
 
 
-1. To check if a kit component , \ *comp-test1-1.0-1-rhels-6.2-ppc64*\  can be added to osimage \ *rhels6.2-ppc64-netboot-compute*\ :
+1. To check if a kit component, \ *comp-test1-1.0-1-rhels-6.2-ppc64*\  can be added to osimage \ *rhels6.2-ppc64-netboot-compute*\ :
 
 
 .. code-block:: perl

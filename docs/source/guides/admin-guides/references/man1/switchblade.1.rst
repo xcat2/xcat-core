@@ -15,7 +15,7 @@ SYNOPSIS
 
 \ **switchblade**\  \ *node*\  {\ **media**\  | \ **mt**\  | \ **kvm**\  | \ **video**\  | \ **both**\ } [\ *slot_num*\ ]
 
-\ **switchblade**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **switchblade**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -35,19 +35,19 @@ OPTIONS
 
 
 
-\ **list**\ |\ **stat**\ 
+\ **list | stat**\ 
  
  Display which blade the media tray and KVM are currently assigned to.
  
 
 
-\ **media**\ |\ **mt**\ 
+\ **media | mt**\ 
  
  Assign the media tray to the specified blade.
  
 
 
-\ **kvm**\ |\ **video**\ 
+\ **kvm | video**\ 
  
  Assign the KVM (video display) to the specified blade.
  

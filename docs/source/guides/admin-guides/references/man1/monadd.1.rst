@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *monadd  [-h| --help]*\ 
+\ **monadd  [-h| -**\ **-help]**\ 
 
-\ *monadd  [-v| --version]*\ 
+\ **monadd  [-v| -**\ **-version]**\ 
 
-\ *monadd  name [-n|--nodestatmon] [-s|--settings settings]*\ 
+\ **monadd  name [-n|-**\ **-nodestatmon] [-s|-**\ **-settings**\  \ *settings]*\ 
 
 
 ***********
@@ -50,25 +50,25 @@ OPTIONS
 
 
 
-\ **-h | --help**\ 
+\ **-h | -**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-n | --nodestatmon**\ 
+\ **-n | -**\ **-nodestatmon**\ 
  
  Indicate that this monitoring plug-in will be used for feeding the node liveness status to the xCAT \ *nodelist*\  table.
  
 
 
-\ **-s | --settings**\ 
+\ **-s | -**\ **-settings**\ 
  
  Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. -s mon_interval=10 -s toggle=1.
  
 
 
-\ **-v | --version **\ 
+\ **-v | -**\ **-version**\ 
  
  Command Version.
  

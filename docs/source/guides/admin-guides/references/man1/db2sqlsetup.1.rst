@@ -19,17 +19,17 @@ SYNOPSIS
 ********
 
 
-\ **db2sqlsetup**\  {\ **-h**\ |\ **--help**\ }
+\ **db2sqlsetup**\  [\ **-h | -**\ **-help**\ }
 
-\ **db2sqlsetup**\  {\ **-v**\ |\ **--version**\ }
+\ **db2sqlsetup**\  [\ **-v | -**\ **-version**\ }
 
-\ **db2sqlsetup**\  {\ **-i**\ |\ **--init**\ }{<-S> | <-C>} [-o|--setupODBC]  [\ **-V**\ |\ **--verbose**\ ]
+\ **db2sqlsetup**\  [\ **-i | -**\ **-init**\ ] {\ **-S**\  | \ **-C**\ } [\ **-o | -**\ **-setupODBC**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **db2sqlsetup**\  {\ **-i**\ |\ **--init**\ }{<-S>} [-N|--nostart]  [-o|--setupODBC]  [\ **-V**\ |\ **--verbose**\ ]
+\ **db2sqlsetup**\  [\ **-i | -**\ **-init**\ ] {\ **-S**\ } [\ **-N | -**\ **-nostart**\ ] [\ **-o | -**\ **-setupODBC**\ ] [\ **-V | -**\ **-verbose**\ ]
 
-\ **db2sqlsetup**\  {\ **-o**\ |\ **--setupODBC**\ } {<-S> | <-C>} [-V|--verbose]
+\ **db2sqlsetup**\  [\ **-o | -**\ **-setupODBC**\ ] {\ **-S**\  | \ **-C**\ } [\ **-V | -**\ **-verbose**\ ]
 
-\ **db2sqlsetup**\  {\ **-p**\ |\ **--passwd**\ } [<-S> | <-C>]
+\ **db2sqlsetup**\  [\ **-p | -**\ **-passwd**\ ] [\ **-S**\  | \ **-C**\ ]
 
 
 ***********
@@ -61,31 +61,31 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Displays the usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Displays the release version of the code.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Displays verbose messages.
  
 
 
-\ **-i|--init**\ 
+\ **-i|-**\ **-init**\ 
  
  The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database.
  
 
 
-\ **-p|--passwd**\ 
+\ **-p|-**\ **-passwd**\ 
  
  The password change option is to change the database access password for the DB2 xcatdb database. If -S is input then it will only change the password on the DB2 Server (MN).  If -C is input it will only change on the DB2 clients (SN).  If neither -S or -C are input with this flag, then it will change both the DB2 Server and Clients. When changing the password the xcatd daemon will be stopped and restarted.  Any other tools accessing the database should also be stopped before changing and restarted after changing.
  
@@ -97,13 +97,13 @@ OPTIONS
  
 
 
-\ **-N|--nostart**\ 
+\ **-N|-**\ **-nostart**\ 
  
  This option with the -S flag will create the database, but will not backup and restore xCAT tables into the database. It will create the cfgloc file such that the next start of xcatd will try and contact the database.  This can be used to setup the xCAT DB2 database during or before install.
  
 
 
-\ **-o|--setupODBC**\ 
+\ **-o|-**\ **-setupODBC**\ 
  
  This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb DB2 database.
  
@@ -116,22 +116,16 @@ ENVIRONMENT VARIABLES
 
 
 
-\*
- 
- XCATDB2INSPATH  overrides the default install path for DB2 which is /opt/ibm/db2/V9.7 for Linux and /opt/IBM/db2/V9.7 for AIX.
- 
+\* XCATDB2INSPATH  overrides the default install path for DB2 which is /opt/ibm/db2/V9.7 for Linux and /opt/IBM/db2/V9.7 for AIX.
 
 
-\*
- 
- DATABASELOC override the where to create the xcat DB2 database, which is /var/lib/db2 by default of taken from the site.databaseloc  attribute.
- 
+
+\* DATABASELOC override the where to create the xcat DB2 database, which is /var/lib/db2 by default of taken from the site.databaseloc  attribute.
 
 
-\*
- 
- XCATDB2PW can be set to the password for the xcatdb DB2 instance id so that there will be no prompting for a password when the script is run.
- 
+
+\* XCATDB2PW can be set to the password for the xcatdb DB2 instance id so that there will be no prompting for a password when the script is run.
+
 
 
 
@@ -141,51 +135,65 @@ EXAMPLES
 
 
 
-\*
+1. To setup DB2 Server for  xCAT to run on the DB2 xcatdb database, on the MN:
  
- To setup DB2 Server for  xCAT to run on the DB2 xcatdb database, on the MN:
  
- \ **db2sqlsetup**\  \ *-i*\  \ *-S*\ 
+ .. code-block:: perl
  
-
-
-\*
+   db2sqlsetup -i -S
  
- To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
- 
- \ **db2sqlsetup**\  \ *-i*\  \ *-C*\ 
  
 
 
-\*
+2. To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
  
- To setup the ODBC for  DB2 xcatdb database access, on the MN :
  
- \ **db2sqlsetup**\  \ *-o*\  \ *-S*\ 
+ .. code-block:: perl
  
-
-
-\*
+   db2sqlsetup -i -C
  
- To setup the ODBC for  DB2 xcatdb database access, on the SN :
- 
- \ **db2sqlsetup**\  \ *-o*\  \ *-C*\ 
  
 
 
-\*
+3. To setup the ODBC for  DB2 xcatdb database access, on the MN :
+ 
+ 
+ .. code-block:: perl
+ 
+   db2sqlsetup -o -S
+ 
+ 
+
+
+4. To setup the ODBC for  DB2 xcatdb database access, on the SN :
+ 
+ 
+ .. code-block:: perl
+ 
+   db2sqlsetup -o -C
+ 
+ 
+
+
+5.
  
  To setup the DB2 database but not start xcat running with it:
  
- \ **db2sqlsetup**\  \ *-i*\  \ *-S*\  \ *-N*\ 
+ 
+ .. code-block:: perl
+ 
+   db2sqlsetup -i -S -N
+ 
  
 
 
-\*
+6. To change the DB2 xcatdb password on both the Management and Service Nodes:
  
- To change the DB2 xcatdb password on both the Management and Service Nodes:
  
- \ **db2sqlsetup**\  \ *-p*\ 
+ .. code-block:: perl
+ 
+   db2sqlsetup -p
+ 
  
 
 

@@ -2,17 +2,15 @@
 
 B<monls> - Lists monitoring plug-in modules that can be used to monitor the xCAT cluster.
 
-
-
 =head1 SYNOPSIS
 
-I<monls [-h| --help]>
+B<monls [-h| --help]>
 
-I<monls  [-v| --version]>
+B<monls  [-v| --version]>
 
-I<monls I<name> [-d|--description]>
+B<monls> I<name> B<[-d|--description]>
 
-I<monls [-a|--all] [-d|--description]>
+B<monls [-a|--all] [-d|--description]>
 
 
 =head1 DESCRIPTION
@@ -34,7 +32,7 @@ B<-d | --description>  Display the description of the plug-in modules. The descr
 
 B<-h | --help>         Display usage message.
 
-B<-v | --version >      Command Version.
+B<-v | --version>      Command Version.
 
 =head1 RETURN VALUE
 

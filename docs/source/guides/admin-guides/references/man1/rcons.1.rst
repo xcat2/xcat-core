@@ -21,7 +21,7 @@ Name
 
 \ **rcons**\  \ *singlenode*\  [\ *conserver-host*\ ] [\ **-f**\ ] [\ **-s**\ ]
 
-\ **rcons**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rcons**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -59,13 +59,13 @@ To exit the console session, enter:  <ctrl><shift>e c .
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

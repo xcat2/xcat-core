@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **nodels**\  [\ *noderange*\ ] [\ **-b**\  | \ **--blame**\ ] [\ **-H**\  | \ **--with-fieldname**\ ] [\ **-S**\ ] [\ *table.column*\  | \ *shortname*\ ] [\ *...*\ ]
+\ **nodels**\  [\ *noderange*\ ] [\ **-b**\  | \ **-**\ **-blame**\ ] [\ **-H**\  | \ **-**\ **-with-fieldname**\ ] [\ **-S**\ ] [\ *table.column*\  | \ *shortname*\ ] [\ *...*\ ]
 
-\ **nodels**\  [\ *noderange*\ ] [\ **-H**\  | \ **--with-fieldname**\ ] [\ *table*\ ]
+\ **nodels**\  [\ *noderange*\ ] [\ **-H**\  | \ **-**\ **-with-fieldname**\ ] [\ *table*\ ]
 
-\ **nodels**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **nodels**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -95,19 +95,19 @@ OPTIONS
 
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-H|--with-fieldname**\ 
+\ **-H|-**\ **-with-fieldname**\ 
  
  Force display of table name and column name context for each result
  
 
 
-\ **-b|--blame**\ 
+\ **-b|-**\ **-blame**\ 
  
  For values inherited from groups, display which groups provided the inheritence
  
@@ -119,7 +119,7 @@ OPTIONS
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  

@@ -19,9 +19,9 @@ Name
 ****************
 
 
-\ **nodestat**\  [\ *noderange*\ ] [\ *-m*\ |\ *--usemon*\ ] [\ *-p*\ |\ *--powerstat*\ ] [\ *-f*\ ] [\ *-u*\ |\ *--updatedb*\ ]
+\ **nodestat**\  [\ *noderange*\ ] [\ **-m | -**\ **-usemon**\ ] [\ **-p | -**\ **-powerstat**\ ] [\ **-f**\ ] [\ **-u | -**\ **-updatedb**\ ]
 
-\ **nodestat**\  [\ *-h*\ |\ *--help*\ |\ *-v*\ |\ *--version*\ ]
+\ **nodestat**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -92,31 +92,31 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
  
 
 
-\ **-m**\ |\ **--usemon**\ 
+\ **-m | -**\ **-usemon**\ 
  
  Uses the settings from the \ **monsetting**\  talbe to determine a list of applications that need to get status for.
  
 
 
-\ **-p**\ |\ **--powerstat**\ 
+\ **-p | -**\ **-powerstat**\ 
  
  Gets the power status for the nodes that are 'noping'.
  
 
 
-\ **-u**\ |\ **--updatedb**\ 
+\ **-u | -**\ **-updatedb**\ 
  
  Updates the status and appstatus columns of the nodelist table with the returned running status from the given nodes.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
@@ -128,42 +128,93 @@ For the command specified by 'dcmd', no input is needed, the output can be a str
 ****************
 
 
-1.  nodestat compute
+
+1.
+ 
+ 
+ .. code-block:: perl
+ 
+   nodestat compute
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node1   sshd
+   node2   sshd
+   node3   ping
+   node4   pbs
+   node5   noping
+ 
+ 
 
 
-.. code-block:: perl
+2.
+ 
+ 
+ .. code-block:: perl
+ 
+   nodestat compute -p
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node1   sshd
+   node2   sshd
+   node3   ping
+   node4   pbs
+   node5   noping(Shutting down)
+ 
+ 
 
-  node1   sshd
-  node2   sshd
-  node3   ping
-  node4   pbs
-  node5   noping
+
+3.
+ 
+ 
+ .. code-block:: perl
+ 
+   nodestat compute -u
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node1   sshd
+   node2   sshd
+   node3   ping
+   node4   netboot
+   node5   noping
+ 
+ 
 
 
-2.  nodestat compute -p
+4.
+ 
+ 
+ .. code-block:: perl
+ 
+   nodestat compute -m
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node1   ping,sshd,ll,gpfs=ok
+   node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
+   node3   netboot
+   node4   noping
+ 
+ 
 
-
-.. code-block:: perl
-
-  node1   sshd
-  node2   sshd
-  node3   ping
-  node4   pbs
-  node5   noping(Shutting down)
-
-
-3. nodestat compute -u
- node1   sshd
- node2   sshd
- node3   ping
- node4   netboot
- node5   noping
-
-4. nodestat compute -m
- node1   ping,sshd,ll,gpfs=ok
- node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
- node3   netboot
- node4   noping
 
 
 ************************

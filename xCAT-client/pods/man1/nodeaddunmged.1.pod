@@ -4,9 +4,9 @@ B<nodeaddunmged> - Create a unmanaged node.
 
 =head1 SYNOPSIS
 
-B<nodeaddunmged> [-h| --help | -v | --version]
+B<nodeaddunmged> [B<-h>| B<--help> | B<-v> | B<--version>]
 
-B<nodeaddunmged> hostname=<node-name> ip=<ip-address>
+B<nodeaddunmged hostname=>I<node-name> B<ip=>I<ip-address>
 
 =head1 DESCRIPTION
 
@@ -22,13 +22,13 @@ B<-v|--version>
 
 Command Version.
 
-B<hostname=<node-name>>
+B<hostname=>I<node-name>
 
 Sets the name of the new unmanaged node, where <node-name> is the name of the node.
 
-B<ip=<ip-address>>
+B<ip=>I<ip-address>
 
-Sets the IP address of the unmanaged node, where <ip-address> is the IP address of the new node in the form xxx.xxx.xxx.xxx
+Sets the IP address of the unmanaged node, where I<ip-address> is the IP address of the new node in the form xxx.xxx.xxx.xxx
 
 =head1 RETURN VALUE
 
@@ -39,7 +39,8 @@ Sets the IP address of the unmanaged node, where <ip-address> is the IP address 
 =head1 EXAMPLES
 
 To add an unmanaged node, use the following command:
-nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
+
+ nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
 
 =head1 SEE ALSO
 

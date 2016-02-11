@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ **rbeacon**\  \ *noderange*\  {\ **on**\ |\ **blink**\ |\ **off**\ |\ **stat**\ }
+\ **rbeacon**\  \ *noderange*\  {\ **on | blink | off | stat**\ }
 
-\ **rbeacon**\  [\ **-h**\ |\ **--help**\ ]
+\ **rbeacon**\  [\ **-h | -**\ **-help**\ ]
 
-\ **rbeacon**\  {\ **-v**\ |\ **--version**\ }
+\ **rbeacon**\  {\ **-v | -**\ **-version**\ }
 
 
 ***********

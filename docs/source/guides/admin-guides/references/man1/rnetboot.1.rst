@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rnetboot**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-s**\  \ *boot_device_order*\ ] [\ **-F**\ ] [\ **-f**\ ] \ *noderange*\  [\ **-m**\  \ *table.column*\ ==\ *expectedstatus*\  [\ **-m**\  \ *table.col-umn*\ =~\ *expectedstatus*\ ]] [\ **-t**\  \ *timeout*\ ] [\ **-r**\  \ *retrycount*\ ]
+\ **rnetboot**\  [\ **-V | -**\ **-verbose**\ ] [\ **-s**\  \ *boot_device_order*\ ] [\ **-F**\ ] [\ **-f**\ ] \ *noderange*\  [\ **-m**\  \ *table.column*\ ==\ *expectedstatus*\  [\ **-m**\  \ *table.col-umn*\ =~\ *expectedstatus*\ ]] [\ **-t**\  \ *timeout*\ ] [\ **-r**\  \ *retrycount*\ ]
 
-\ **rnetboot**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **rnetboot**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 zVM specific:
 =============

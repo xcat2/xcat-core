@@ -21,9 +21,9 @@ SYNOPSIS
 
 \ **rmvlan**\  \ *vlanid*\ 
 
-\ **rmvlan**\  [\ **-h**\ |\ **--help**\ ]
+\ **rmvlan**\  [\ **-h | -**\ **-help**\ ]
 
-\ **rmvlan**\  [\ **-v**\ |\ **--version**\ ]
+\ **rmvlan**\  [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -50,11 +50,11 @@ OPTIONS
 
 
 
-\ **-h|--help**\      Display usage message.
+\ **-h|-**\ **-help**\      Display usage message.
 
 
 
-\ **-v|--version**\   The Command Version.
+\ **-v|-**\ **-version**\   The Command Version.
 
 
 

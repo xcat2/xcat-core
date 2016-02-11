@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **restorexCATdb**\  [\ **-a**\ ] [\ **-V**\ ] [{\ **-p**\ |\ **--path**\ } \ *path*\ ]
+\ **restorexCATdb**\  [\ **-a**\ ] [\ **-V**\ ] [{\ **-p | -**\ **-path**\ } \ *path*\ ]
 
-\ **restorexCATdb**\  [\ **-b**\ ] [\ **-V**\ ] [{\ **-t**\ |\ **--timestamp**\ } \ *timestamp*\ ] [{\ **-p**\ |\ **--path**\ } \ *path*\ ]
+\ **restorexCATdb**\  [\ **-b**\ ] [\ **-V**\ ] [{\ **-t | -**\ **-timestamp**\ } \ *timestamp*\ ] [{\ **-p | -**\ **-path**\ } \ *path*\ ]
 
-\ **restorexCATdb**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **restorexCATdb**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 
 ***********

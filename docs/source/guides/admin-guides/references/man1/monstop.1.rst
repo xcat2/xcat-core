@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *monstop [-h| --help]*\ 
+\ **monstop [-h| -**\ **-help]**\ 
 
-\ *monstop [-v| --version]*\ 
+\ **monstop [-v| -**\ **-version]**\ 
 
-\ *monstop name [noderange] [-r|--remote]*\ 
+\ **monstop**\  \ *name*\  [\ *noderange*\ ] [\ **-r|-**\ **-remote**\ ]
 
 
 ***********
@@ -31,15 +31,15 @@ DESCRIPTION
 ***********
 
 
-This command is used to stop a 3rd party software, (for example stop the daemons), from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the \ *-r*\  option is specified.
+This command is used to stop a 3rd party software, (for example stop the daemons), from monitoring the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the \ **-r**\  option is specified.
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
-\ *name*\  is the name of the monitoring plug-in module in the \ *monitoring*\  table. Use \ *monls*\  command to list all the monitoring plug-in modules that can be used.
+\ *name*\  is the name of the monitoring plug-in module in the \ *monitoring*\  table. Use \ **monls**\  command to list all the monitoring plug-in modules that can be used.
 
 \ *noderange*\  is the nodes to be stopped for monitoring. If omitted, all nodes will be stopped.
 
@@ -51,9 +51,9 @@ OPTIONS
 
 \ **-h | -help**\           Display usage message.
 
-\ **-r | --remote**\        Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be stopped.
+\ **-r | -**\ **-remote**\        Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be stopped.
 
-\ **-v | -version **\       Command Version.
+\ **-v | -version**\        Command Version.
 
 
 ************

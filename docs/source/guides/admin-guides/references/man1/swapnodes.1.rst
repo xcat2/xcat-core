@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **swapnodes**\  [\ **-h**\ | \ **--help**\ ]
+\ **swapnodes**\  [\ **-h**\ | \ **-**\ **-help**\ ]
 
 \ **swapnodes**\  \ **-c**\  \ *current_node*\  \ **-f**\  \ *fip_node*\  [\ **-o**\ ]
 
@@ -55,7 +55,7 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  

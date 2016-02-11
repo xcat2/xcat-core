@@ -2,25 +2,23 @@
 
 B<monstart> - Starts a plug-in module to monitor the xCAT cluster.
 
-
-
 =head1 SYNOPSIS
 
-I<monstart [-h| --help]>
+B<monstart [-h| --help]>
 
-I<monstart [-v| --version]>
+B<monstart [-v| --version]>
 
-I<monstart name [noderange] [-r|--remote]>
+B<monstart> I<name> I<[noderange]> [B<-r|--remote>]
 
 
 =head1 DESCRIPTION
 
-This command is used to start a 3rd party software, (for example start the daemons), to monitor the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the I<-r> option is specified.
+This command is used to start a 3rd party software, (for example start the daemons), to monitor the xCAT cluster. The operation is performed on the management node and the service nodes of the given nodes.  The operation will also be performed on the nodes if the B<-r> option is specified.
 
 
-=head1 Parameters
+=head1 PARAMETERS
 
-I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use I<monls -a> command to list all the monitoring plug-in modules that can be used.
+I<name> is the name of the monitoring plug-in module. For example, if the the I<name> is called I<xxx>, then the actual file name that the xcatd looks for is I</opt/xcat/lib/perl/xCAT_monitoring/xxx.pm>. Use B<monls -a> command to list all the monitoring plug-in modules that can be used.
 
 I<noderange> is the nodes to be monitored. If omitted, all nodes will be monitored.
 
@@ -31,7 +29,7 @@ B<-h | --help>          Display usage message.
 
 B<-r | --remote>        Specifies that the operation will also be performed on the nodes. For example, the3rd party monitoring software daemons on the nodes will also be started.
 
-B<-v | --version >      Command Version.
+B<-v | --version>       Command Version.
 
 
 =head1 RETURN VALUE

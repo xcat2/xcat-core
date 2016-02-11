@@ -19,26 +19,26 @@ SYNOPSIS
 ********
 
 
-\ **mkhwconn**\  [\ **-h**\ | \ **--help**\ ]
+\ **mkhwconn**\  [\ **-h**\ | \ **-**\ **-help**\ ]
 
-\ **mkhwconn**\  [\ **-v**\ | \ **--version**\ ]
+\ **mkhwconn**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
 PPC (with HMC) specific:
 ========================
 
 
-\ **mkhwconn**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **-t**\  [\ **--port**\  \ *port_value*\ ]
+\ **mkhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-t**\  [\ **-**\ **-port**\  \ *port_value*\ ]
 
-\ **mkhwconn**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **-s**\  [\ *hmcnode*\  \ **--port**\  \ *port_value*\ ]
+\ **mkhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-s**\  [\ *hmcnode*\  \ **-**\ **-port**\  \ *port_value*\ ]
 
-\ **mkhwconn**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\  \ **-p**\  \ *hmc*\  [\ **-P**\  \ *passwd*\ ] [\ **--port**\  \ *port_value*\ ]
+\ **mkhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\  \ **-p**\  \ *hmc*\  [\ **-P**\  \ *passwd*\ ] [\ **-**\ **-port**\  \ *port_value*\ ]
 
 
 PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ **mkhwconn**\  \ *noderange*\  \ **-t**\  [\ **-T tooltype**\ ] [\ **--port**\  \ *port_value*\ ]
+\ **mkhwconn**\  \ *noderange*\  \ **-t**\  [\ **-T tooltype**\ ] [\ **-**\ **-port**\  \ *port_value*\ ]
 
 
 
@@ -68,7 +68,7 @@ For PPC (using Direct FSP Management) specific:
 
 It is used to set up connections for CEC and Frame node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table first. If fails, then read them from passwd table. Commonly , the username is \ **HMC**\ . If using the \ **ppcdirect**\  table,  each CEC/Frame and user/password should be  stored in \ **ppcdirect**\  table. If using the \ **passwd**\  table, the key should be "\ **cec**\ " or "\ **frame**\ ", and the related user/password are stored in \ **passwd**\  table.
 
-When \ **--port**\  is specified, this command will create the connections for CECs/Frames whose side in \ **vpd**\  table is equal to port value.
+When \ **-**\ **-port**\  is specified, this command will create the connections for CECs/Frames whose side in \ **vpd**\  table is equal to port value.
 
 
 *******
@@ -77,7 +77,7 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -108,7 +108,7 @@ OPTIONS
  
 
 
-\ **--port**\ 
+\ **-**\ **-port**\ 
  
  The port value specifies which special side will be used to create the connection to the CEC/Frame. The value could only be specified as "\ **0**\ " or "\ **1**\ " and the default value is "\ **0,1**\ ". If the user wants to use all ports to create the connection, he should not specify this value. If the port value is specified as "\ **0**\ ", in the vpd table, the side column should be \ **A-0**\  and \ **B-0**\ ; If the port value is specified as "\ **1**\ ", the side column should be \ **A-1**\  and \ **B-1**\ . When making hardware connection between CEC/Frame and HMC, the value is used to specify the fsp/bpa port of the cec/frame and will be organized in order of "\ **A-0,A-1,B-0,B-1**\ ". If any side does not exist, the side would simply be ignored. Generally, only one port of a fsp/bap can be connected while another port be used as backup.
  
@@ -120,7 +120,7 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  

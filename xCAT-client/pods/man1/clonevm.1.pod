@@ -4,7 +4,7 @@ B<clonevm> - Create masters from virtual machines and virtual machines from mast
 
 =head1 SYNOPSIS
 
-I<clonevm noderange [ -t <mastertobemade> | -b <master to base vms upon> ]  -d|--detached -f|--force>
+B<clonevm> I<noderange> [ B<-t> I<mastertobemade> | B<-b> I<master to base vms upon> ]  B<-d|--detached -f|--force>
 
 =head1 DESCRIPTION
 
@@ -50,11 +50,19 @@ Any other value: An error has occurred.
 
 =head1 EXAMPLES
 
-Creating a master named appserver from a node called vm1:
-I<clonevm vm1 -t appserver>
+=over 3
 
+=item 1.
+Creating a master named appserver from a node called vm1:
+
+ clonevm vm1 -t appserver
+
+=item 2.
 Cleating 30 VMs from a master named appserver:
-I<clonevm vm1-vm30 -b appserver>
+
+ clonevm vm1-vm30 -b appserver
+
+=back
 
 =head1 FILES
 

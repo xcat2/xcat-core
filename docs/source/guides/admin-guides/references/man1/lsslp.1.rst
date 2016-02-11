@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *lsslp [-h| --help]*\ 
+\ **lsslp [-h| -**\ **-help]**\ 
 
-\ *lsslp [-v| --version]*\ 
+\ **lsslp [-v| -**\ **-version]**\ 
 
-\ *lsslp [noderange] [-V] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC|CMM|IMM2|FSP][-t tries][-I][-C counts][-T timeout][--vpdtable]*\ 
+\ **lsslp**\  [\ *noderange*\ ] [\ **-V**\ ] [\ **-i**\  \ *ip[,ip..]*\ ] \ **[-w] [-r|-x|-z] [-n] [-s CEC|FRAME|MM|IVM|RSA|HMC|CMM|IMM2|FSP]**\  [\ **-t**\  \ *tries*\ ] [\ **-I**\ ] [\ **-C**\  \ *counts*\ ] [\ **-T**\  \ *timeout*\ ] [\ **-**\ **-vpdtable**\ ]
 
 
 ***********
@@ -41,14 +41,7 @@ OPTIONS
 *******
 
 
-\ **noderange**\    The nodes which the user want to discover.
-            If the user specify the noderange, lsslp will just return the nodes in 
-            the node range. Which means it will help to add the new nodes to the xCAT
-            database without modifying the existed definitions. But the nodes' name 
-            specified in noderange should be defined in database in advance. The specified
-            nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp
-            will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).
-            Please do not use noderange with the flag -s.
+\ **noderange**\    The nodes which the user want to discover.  If the user specify the noderange, lsslp will just return the nodes in the node range. Which means it will help to add the new nodes to the xCAT database without modifying the existed definitions. But the nodes' name specified in noderange should be defined in database in advance. The specified nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).  Please do not use noderange with the flag -s.
 
 \ **-i**\           IP(s) the command will send out (defaults to all available adapters).
 
@@ -56,20 +49,13 @@ OPTIONS
 
 \ **-n**\           Only display and write the newly discovered hardwares.
 
-\ **-u**\           Do unicast to a specified IP range. Must be used with -s and --range.
-            The -u flag is not supported on AIX.
+\ **-u**\           Do unicast to a specified IP range. Must be used with \ **-s**\  and \ **-**\ **-range**\ . The \ **-u**\  flag is not supported on AIX.
 
-\ **--range**\      Specify one or more IP ranges. Must be use in unicast mode. 
-            It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
-            If the range is huge, for example, 192.168.1.1/8, lsslp may take a very long time for node scan.
-            So the range should be exactly specified.
+\ **-**\ **-range**\      Specify one or more IP ranges. Must be use in unicast mode. It accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100. If the range is huge, for example, 192.168.1.1/8, lsslp may take a very long time for node scan. So the range should be exactly specified.
 
 \ **-r**\           Display Raw SLP response.
 
-\ **-C**\           The number of the expected responses specified by the user. 
-            When using this flag, lsslp will not return until the it has found all the nodes or time out.
-            The default max time is 3 secondes. The user can use -T flag the specify the time they want to use.
-            A short time will limite the time costing, while a long time will help to find all the nodes.
+\ **-C**\           The number of the expected responses specified by the user.  When using this flag, lsslp will not return until the it has found all the nodes or time out.  The default max time is 3 secondes. The user can use -T flag the specify the time they want to use.  A short time will limite the time costing, while a long time will help to find all the nodes.
 
 \ **-T**\           The number in seconds to limite the time costing of lsslp.
 
@@ -77,7 +63,7 @@ OPTIONS
 
 \ **-t**\           Number or service-request attempts.
 
-\ **--vpdtable**\   Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
+\ **-**\ **-vpdtable**\   Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
 
 \ **-v**\           Command Version.
 
@@ -89,8 +75,7 @@ OPTIONS
 
 \ **-z**\           Stanza formated output.
 
-\ **-I**\           Give the warning message for the nodes in database which have no SLP responses.
-            Please note that this flag noly can be used after the database migration finished successfully.
+\ **-I**\           Give the warning message for the nodes in database which have no SLP responses. Please note that this flag noly can be used after the database migration finished successfully.
 
 
 ************
@@ -179,64 +164,68 @@ Output is similar to:
 
 Output is similar to:
 
-c76v1hmc02:
-        objtype=node
-        hcp=c76v1hmc02
-        nodetype=hmc
-        mtm=7315CR2
-        serial=10407DA
-        ip=192.168.200.125
-        groups=hmc,all
-        mgt=hmc
-        mac=00:1a:64:fb:7d:50        
-        hidden=0
-192.168.200.244:
-        objtype=node
-        hcp=192.168.200.244
-        nodetype=fsp
-        mtm=9125-F2A
-        serial=0262662
-        side=A-0
-        otherinterfaces=192.168.200.244
-        groups=fsp,all
-        mgt=fsp
-        id=4
-        parent=Server-9125-F2A-SN0262662
-        mac=00:1a:64:fa:01:fe
-        hidden=1
-Server-8205-E6B-SN1074CDP:
-        objtype=node
-        hcp=Server-8205-E6B-SN1074CDP
-        nodetype=cec
-        mtm=8205-E6B
-        serial=1074CDP
-        groups=cec,all
-        mgt=fsp
-        id=0
-        hidden=0
-192.168.200.33:
-        objtype=node
-        hcp=192.168.200.33
-        nodetype=bpa
-        mtm=9458-100
-        serial=99201WM
-        side=B-0
-        otherinterfaces=192.168.200.33
-        groups=bpa,all
-        mgt=bpa
-        id=0
-        mac=00:09:6b:ad:19:90
-        hidden=1
-Server-9125-F2A-SN0262652:
-        objtype=node
-        hcp=Server-9125-F2A-SN0262652
-        nodetype=frame
-        mtm=9125-F2A
-        serial=0262652
-        groups=frame,all
-        mgt=fsp
-        id=5
-        hidden=0
+
+.. code-block:: perl
+
+  c76v1hmc02:
+         objtype=node
+         hcp=c76v1hmc02
+         nodetype=hmc
+         mtm=7315CR2
+         serial=10407DA
+         ip=192.168.200.125
+         groups=hmc,all
+         mgt=hmc
+         mac=00:1a:64:fb:7d:50        
+         hidden=0
+  192.168.200.244:
+         objtype=node
+         hcp=192.168.200.244
+         nodetype=fsp
+         mtm=9125-F2A
+         serial=0262662
+         side=A-0
+         otherinterfaces=192.168.200.244
+         groups=fsp,all
+         mgt=fsp
+         id=4
+         parent=Server-9125-F2A-SN0262662
+         mac=00:1a:64:fa:01:fe
+         hidden=1
+  Server-8205-E6B-SN1074CDP:
+         objtype=node
+         hcp=Server-8205-E6B-SN1074CDP
+         nodetype=cec
+         mtm=8205-E6B
+         serial=1074CDP
+         groups=cec,all
+         mgt=fsp
+         id=0
+         hidden=0
+  192.168.200.33:
+         objtype=node
+         hcp=192.168.200.33
+         nodetype=bpa
+         mtm=9458-100
+         serial=99201WM
+         side=B-0
+         otherinterfaces=192.168.200.33
+         groups=bpa,all
+         mgt=bpa
+         id=0
+         mac=00:09:6b:ad:19:90
+         hidden=1
+  Server-9125-F2A-SN0262652:
+         objtype=node
+         hcp=Server-9125-F2A-SN0262652
+         nodetype=frame
+         mtm=9125-F2A
+         serial=0262652
+         groups=frame,all
+         mgt=fsp
+         id=5
+         hidden=0
+
 
 5. To list all discovered service types in stanza format and display the IP address, enter:
 
@@ -281,13 +270,13 @@ Output is similar to:
 
 .. code-block:: perl
 
-  lsslp -s CEC
+  lsslp -s CEC 
+  
+  device  type-model  serial-number  side  ip-addresses  hostname
+  FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
+  FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139
+  CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 
-
-device  type-model  serial-number  side  ip-addresses  hostname
-FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
-FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139
-CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 
 7. To list all the nodes defined in database which have no SLP response.
 
@@ -299,11 +288,15 @@ CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 
 Output is similar to:
 
-These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
 
-device  type-model  serial-number  side  ip-addresses  hostname
-bpa     9458-100    BPCF017        A-0   40.17.0.1     f17c00bpca_a
-bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
+.. code-block:: perl
+
+  These nodes defined in database but can't be discovered: f17c00bpcb_b,f17c01bpcb_a,f17c01bpcb_b,f17c02bpcb_a,
+ 
+  device  type-model  serial-number  side  ip-addresses  hostname
+  bpa     9458-100    BPCF017        A-0   40.17.0.1     f17c00bpca_a
+  bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
+
 
 8. To find the nodes within the user specified. Please make sure the noderange input have been defined in xCAT database.
 
@@ -334,20 +327,29 @@ bpa     9458-100    BPCF017        B-0   40.17.0.2     f17c00bpcb_a
 9. To list all discovered CMM in stanza format, enter:
    lsslp -s CMM -m -z
 
-e114ngmm1:
-        objtype=node
-        mpa=e114ngmm1
-        nodetype=cmm
-        mtm=98939AX
-        serial=102537A
-        groups=cmm,all
-        mgt=blade
-        hidden=0
-        otherinterfaces=70.0.0.30
-        hwtype=cmm
+
+.. code-block:: perl
+
+  e114ngmm1:
+         objtype=node
+         mpa=e114ngmm1
+         nodetype=cmm
+         mtm=98939AX
+         serial=102537A
+         groups=cmm,all
+         mgt=blade
+         hidden=0
+         otherinterfaces=70.0.0.30
+         hwtype=cmm
+
 
 10. To use lsslp unicast, enter:
-    lsslp -u -s CEC --range 40-41.1-2.1-2.1-2
+
+
+.. code-block:: perl
+
+     lsslp -u -s CEC --range 40-41.1-2.1-2.1-2
+
 
 
 *****

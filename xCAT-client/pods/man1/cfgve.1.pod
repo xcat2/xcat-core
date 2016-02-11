@@ -4,17 +4,15 @@ B<cfgve> - Configure the elements for a virtual environment.
 
 =head1 SYNOPSIS
 
-B<cfgve> B<-t> dc B<-m> manager B<-o> object [B<-c> B<-k> nfs|localfs | B<-r>]
+B<cfgve> B<-t dc -m> I<manager> B<-o> I<object> [B<-c> B<-k nfs> | B<localfs> | B<-r>]
 
-B<cfgve> B<-t> cl B<-m> manager B<-o> object [B<-c> B<-p> cpu type| B<-r> B<-f>]
+B<cfgve> B<-t cl -m> I<manager> B<-o> I<object> [B<-c -p> I<cpu type> | B<-r -f>]
 
-B<cfgve> B<-t> sd B<-m> manager B<-o> object [B<-c> | B<-g> | B<-s> 
-| B<-a> | B<-b> | B<-r> B<-f>]
+B<cfgve> B<-t sd -m> I<manager> B<-o> I<object> [B<-c> | B<-g> | B<-s> | B<-a> | B<-b> | B<-r> B<-f>]
 
-B<cfgve> B<-t> nw B<-m> manager B<-o> object [B<-c> B<-d> data center B<-n> 
-vlan ID | B<-a> B<-l> cluster | B<-b> | B<-r>]
+B<cfgve> B<-t nw -m> I<manager> B<-o> I<object> [B<-c> B<-d> I<data center> B<-n> I<vlan ID> | B<-a> B<-l> I<cluster> | B<-b> | B<-r>]
 
-B<cfgve> B<-t> tpl B<-m> manager B<-o> object [B<-r>]
+B<cfgve> B<-t tpl -m> I<manager> B<-o> I<object> [B<-r>]
 
 
 =head1 DESCRIPTION
@@ -22,10 +20,10 @@ B<cfgve> B<-t> tpl B<-m> manager B<-o> object [B<-r>]
 The B<cfgve> command can be used to configure a virtual environment for 
 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter B<-m manager> is used to specify the address of the 
+The mandatory parameter B<-m> I<manager> is used to specify the address of the 
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter B<-t type> is used to specify the type of the target 
+The mandatory parameter B<-t> I<type> is used to specify the type of the target 
 object.
 
 Basically, B<cfgve> command supports five types of object: B<dc>, B<cl>, 
@@ -46,7 +44,7 @@ B<tpl> - The B<remove> operation is supported.
 
 =back
 
-The mandatory parameter B<-o object> is used to specify which object to configure.
+The mandatory parameter B<-o> I<object> is used to specify which object to configure.
 
 
 =head1 OPTIONS

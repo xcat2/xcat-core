@@ -21,7 +21,7 @@ Name
 
 \ **rspreset**\  \ *noderange*\ 
 
-\ **rspreset**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rspreset**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -41,13 +41,13 @@ the blade's on board service processor will be reset.
 
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

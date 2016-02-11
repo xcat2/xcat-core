@@ -6,10 +6,7 @@ B<mkdef> - Use this command to create xCAT data object definitions.
 
 B<mkdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
-[B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>]
-[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
-      [B<-u> B<provmethod>=<I<install>|I<netboot>|I<statelite>> B<profile>=<xxx> [I<osvers>=I<value>] [I<osarch>=I<value>]]
+B<mkdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-d>|B<--dynamic>] [B<-f>|B<--force>] [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]] [B<-u> B<provmethod>={B<install> | B<netboot> | B<statelite>} B<profile=> I<xxx> [B<osvers=> I<value>] [B<osarch=> I<value>]]
 
 
 =head1 DESCRIPTION

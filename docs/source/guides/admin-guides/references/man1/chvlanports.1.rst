@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **chvlanports**\  \ *vlanid*\  \ **-n**\ |\ **--nodes**\  \ *noderange*\  \ **-i**\ |\ **--interface**\  \ *nic*\ 
+\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\ 
 
-\ **chvlanports**\  \ *vlanid*\  \ **-n**\ |\ **--nodes**\  \ *noderange*\  \ **-i**\ |\ **--interface**\  \ *nic*\  \ **-d**\ |\ **--delete**\ 
+\ **chvlanports**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-i | -**\ **-interface**\  \ *nic*\  \ **-d | -**\ **-delete**\ 
 
-\ **chvlanports**\  [\ **-h**\ |\ **--help**\ ]
+\ **chvlanports**\  [\ **-h | -**\ **-help**\ ]
 
-\ **chvlanports**\  [\ **-v**\ |\ **--version**\ ]
+\ **chvlanports**\  [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -47,19 +47,19 @@ OPTIONS
 
 
 
-\ **-n|--nodes**\     The nodes or groups to be added or removed. It takes the noderange format. Please check the man page for noderange for details.
+\ **-n|-**\ **-nodes**\     The nodes or groups to be added or removed. It takes the noderange format. Please check the man page for noderange for details.
 
 
 
-\ **-i|--interface**\  The interface name where the vlan will be tagged on.
+\ **-i|-**\ **-interface**\  The interface name where the vlan will be tagged on.
 
 
 
-\ **-h|--help**\      Display usage message.
+\ **-h|-**\ **-help**\      Display usage message.
 
 
 
-\ **-v|--version**\   The Command Version.
+\ **-v|-**\ **-version**\   The Command Version.
 
 
 

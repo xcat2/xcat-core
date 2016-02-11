@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ *clonevm noderange [ -t <mastertobemade*\  | -b <master to base vms upon> ]  -d|--detached -f|--force>
+\ **clonevm**\  \ *noderange*\  [ \ **-t**\  \ *mastertobemade*\  | \ **-b**\  \ *master to base vms upon*\  ]  \ **-d|-**\ **-detached -f|-**\ **-force**\ 
 
 
 ***********
@@ -49,7 +49,7 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\        Display usage message.
+\ **-h|-**\ **-help**\        Display usage message.
 
 \ **-b**\               The master to base the clones upon
 
@@ -59,9 +59,9 @@ OPTIONS
 
 \ **-f**\               Force cloning of a powered on VM.  Implies -d if the VM is on.
 
-\ **-v|--version**\     Command Version.
+\ **-v|-**\ **-version**\     Command Version.
 
-\ **-V|--verbose**\     Verbose output.
+\ **-V|-**\ **-verbose**\     Verbose output.
 
 
 ************
@@ -79,11 +79,26 @@ EXAMPLES
 ********
 
 
-Creating a master named appserver from a node called vm1:
-\ *clonevm vm1 -t appserver*\ 
 
-Cleating 30 VMs from a master named appserver:
-\ *clonevm vm1-vm30 -b appserver*\ 
+1. Creating a master named appserver from a node called vm1:
+ 
+ 
+ .. code-block:: perl
+ 
+   clonevm vm1 -t appserver
+ 
+ 
+
+
+2. Cleating 30 VMs from a master named appserver:
+ 
+ 
+ .. code-block:: perl
+ 
+   clonevm vm1-vm30 -b appserver
+ 
+ 
+
 
 
 *****

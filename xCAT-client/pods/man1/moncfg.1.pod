@@ -6,11 +6,11 @@ B<moncfg> - Configures a 3rd party monitoring software to monitor the xCAT clust
 
 =head1 SYNOPSIS
 
-I<moncfg [-h| --help]>
+B<moncfg [-h| --help]>
 
-I<moncfg [-v| --version]>
+B<moncfg [-v| --version]>
 
-I<moncfg name [noderange] [-r|--remote]>
+B<moncfg> I<name> I<[noderange]> B<[-r|--remote]>
 
 
 =head1 DESCRIPTION
@@ -31,7 +31,7 @@ B<-h | --help>          Display usage message.
 
 B<-r | --remote>        Specifies that the operation will also be performed on the nodes.
 
-B<-v | --version >      Command Version.
+B<-v | --version>       Command Version.
 
 
 =head1 RETURN VALUE
@@ -47,7 +47,7 @@ B<-v | --version >      Command Version.
   moncfg gangliamon
 
 
-1. To configure the management node, nodes and their service nodes for ganglia monitoring, enter:
+2. To configure the management node, nodes and their service nodes for ganglia monitoring, enter:
 
   moncfg gangliamon -r
 

@@ -40,7 +40,7 @@ B<-p>          Path to the directory to create the nodegroup files (must exist).
 
 1. To create the nodegroup files in directory /tmp/nodegroupfiles, enter:
 
-B<groupfiles4dsh -p /tmp/nodegroupfiles>
+ groupfiles4dsh -p /tmp/nodegroupfiles
 
 To use with dsh:
 

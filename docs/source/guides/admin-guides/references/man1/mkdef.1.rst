@@ -19,12 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **mkdef**\  [\ **-h**\ |\ **--help**\ ] [\ **-t**\  \ *object-types*\ ]
+\ **mkdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ]
 
-\ **mkdef**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
-[\ **-z**\ |\ **--stanza**\ ] [\ **-d**\ |\ **--dynamic**\ ] [\ **-f**\ |\ **--force**\ ]
-[[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr*\ =\ *val*\  [\ *attr*\ =\ *val...*\ ]]
-      [\ **-u**\  \ **provmethod**\ =<\ *install*\ |\ *netboot*\ |\ *statelite*\ > \ **profile**\ =<xxx> [\ *osvers*\ =\ *value*\ ] [\ *osarch*\ =\ *value*\ ]]
+\ **mkdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-d | -**\ **-dynamic**\ ] [\ **-f | -**\ **-force**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr*\ =\ *val*\  [\ *attr*\ =\ *val...*\ ]] [\ **-u**\  \ **provmethod**\ ={\ **install**\  | \ **netboot**\  | \ **statelite**\ } \ **profile=**\  \ *xxx*\  [\ **osvers=**\  \ *value*\ ] [\ **osarch=**\  \ *value*\ ]]
 
 
 ***********
@@ -49,19 +46,19 @@ OPTIONS
  
 
 
-\ **-d|--dynamic**\ 
+\ **-d|-**\ **-dynamic**\ 
  
  Use the dynamic option to create dynamic node groups. This option must be used with -w option.
  
 
 
-\ **-f|--force**\ 
+\ **-f|-**\ **-force**\ 
  
  Use the force option to re-create object definitions. This option removes the old definition before creating the new one.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -85,7 +82,7 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -105,7 +102,7 @@ OPTIONS
  
 
 
-\ **-z|--stanza**\ 
+\ **-z|-**\ **-stanza**\ 
  
  Indicates that the file being piped to the command is in stanza format.  See the xcatstanzafile man page for details on using xCAT stanza files.
  

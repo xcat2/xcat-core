@@ -29,7 +29,7 @@ for stateless: B<packimage>
 
 for statelite: B<liteimg>
 
-Besides prompting for some paramter values, the B<genimage> command takes default guesses for the parameters not specified or not defined in the I<osimage> and I<linuximage> tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Please use --interactive flag if you want the yum/zypper command to prompt you for the answers.  
+Besides prompting for some paramter values, the B<genimage> command takes default guesses for the parameters not specified or not defined in the I<osimage> and I<linuximage> tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Please use B<--interactive> flag if you want the yum/zypper command to prompt you for the answers.  
 
 If B<--onlyinitrd> is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 

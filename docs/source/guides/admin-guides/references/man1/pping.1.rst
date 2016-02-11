@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ **pping**\  [\ **-i**\ |\ **--interface**\  \ *interfaces*\ ] [\ **-f**\ |\ **--use_fping**\ ] \ *noderange*\ 
+\ **pping**\  [\ **-i | -**\ **-interface**\  \ *interfaces*\ ] [\ **-f | -**\ **-use_fping**\ ] \ *noderange*\ 
 
-\ **pping**\  [\ **-h**\ |\ **--help**\ ]
+\ **pping**\  [\ **-h | -**\ **-help**\ ]
 
-\ **pping**\  {\ **-v**\ |\ **--version**\ }
+\ **pping**\  {\ **-v | -**\ **-version**\ }
 
 
 ***********
@@ -36,7 +36,7 @@ OPTIONS
 
 
 
-\ **-i**\ |\ **--interface**\  \ *interfaces*\ 
+\ **-i | -**\ **-interface**\  \ *interfaces*\ 
  
  A comma separated list of network interface names that should be pinged instead of the interface represented by the nodename/hostname.
  The following name resolution convention is assumed:  an interface is reachable by the hostname <nodename>-<interface>.  For example,
@@ -46,19 +46,19 @@ OPTIONS
  
 
 
-\ **-f**\ |\ **--use_fping**\ 
+\ **-f | -**\ **-use_fping**\ 
  
  Use fping instead of nmap
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Show usage information.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the installed version of xCAT.
  

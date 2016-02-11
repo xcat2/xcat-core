@@ -21,11 +21,11 @@ SYNOPSIS
 
 \ **configfpc**\  \ **-i**\  \ *interface*\ 
 
-\ **configfpc**\  \ **-i**\  \ *interface*\  \ **--ip**\  \ *default ip address*\ 
+\ **configfpc**\  \ **-i**\  \ *interface*\  \ **-**\ **-ip**\  \ *default ip address*\ 
 
-\ **configfpc**\  [\ **-V**\ |\ **--verbose**\ ]
+\ **configfpc**\  [\ **-V | -**\ **-verbose**\ ]
 
-\ **configfpc**\  [\ **-h**\ |\ **--help**\ |\ **-?**\ ]
+\ **configfpc**\  [\ **-h | -**\ **-help | -?**\ ]
 
 
 ***********
@@ -35,7 +35,7 @@ DESCRIPTION
 
 \ **configfpc**\  will discover and configure all FPCs that are set to the default IP address. If not supplied the default ip is 192.168.0.100.
 
-The \ **-i**\  \ **interface**\  is required to direct \ **configfpc**\  to the xCAT MN interface which is on the same VLAN as the FPCs.
+The \ **-i**\  \ *interface*\  is required to direct \ **configfpc**\  to the xCAT MN interface which is on the same VLAN as the FPCs.
 
 There are several bits of information that must be included in the xCAT database before running this command.
 
@@ -61,38 +61,42 @@ OPTIONS
  
 
 
-\ **--ip**\  \ *default ip address*\ 
+\ **-**\ **-ip**\  \ *default ip address*\ 
  
  Use this flag to override the default ip address of 192.168.0.100 with a new address.
  
 
 
-\ **-V**\ |\ **--verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Verbose mode
  
 
 
 
-*******
-Example
-*******
+********
+EXAMPLES
+********
 
 
 
-1
+1. To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface.
  
- To discover and configure all NeXtScale Fan Power Controllers (FPCs) connected on eth0 interface.
  
- \ **configfpc**\  \ **-i**\  \ *eth0*\ 
+ .. code-block:: perl
+ 
+   configfpc -i eth0
+ 
  
 
 
-2
+2. To override the default ip address and run in Verbose mode.
  
- To override the default ip address and run in Verbose mode.
  
- \ **configfpc**\  \ **-i**\  \ *eth0*\  \ **--ip**\  \ *196.68.0.100*\   \ **-V**\ 
+ .. code-block:: perl
+ 
+   configfpc -i eth0 --ip 196.68.0.100 -V
+ 
  
 
 

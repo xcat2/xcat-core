@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nodepurge**\  [-h| --help | -v | --version]
+\ **nodepurge [-h| -**\ **-help | -v | -**\ **-version]**\ 
 
-\ **nodepurge**\  <noderange>
+\ **nodepurge**\  \ *noderange*\ 
 
 
 ***********
@@ -39,15 +39,15 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version
 
-\ **noderange**\ 
+\ *noderange*\ 
 
 The nodes to be removed.
 
@@ -69,7 +69,11 @@ EXAMPLES
 
 To remove nodes compute-000 and compute-001, use the following command:
 
-nodepurge compute-000,compute-001
+
+.. code-block:: perl
+
+  nodepurge compute-000,compute-001
+
 
 
 ********

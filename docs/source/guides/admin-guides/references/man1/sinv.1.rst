@@ -19,7 +19,7 @@ sinv.1
 ****************
 
 
-\ **sinv**\   [\ **-o**\  \ *output*\ ] [\ **-p**\  \ *template path*\ ] [\ **-t**\  \ *template count*\ ] [\ **-s**\  \ *seed node*\ ] [\ **-i**\ ] [\ **-e**\ ] [\ **-r**\ ] [\ **-V**\ ] [\ **--devicetype**\  \ *type_of_device*\ ]  [\ **-l**\   \ *userID*\ ] [[\ **-f**\  \ *command file*\ ] | [\ **-c**\  \ *command*\ ]]
+\ **sinv**\   [\ **-o**\  \ *output*\ ] [\ **-p**\  \ *template path*\ ] [\ **-t**\  \ *template count*\ ] [\ **-s**\  \ *seed node*\ ] [\ **-i**\ ] [\ **-e**\ ] [\ **-r**\ ] [\ **-V**\ ] [\ **-**\ **-devicetype**\  \ *type_of_device*\ ]  [\ **-l**\   \ *userID*\ ] [[\ **-f**\  \ *command file*\ ] | [\ **-c**\  \ *command*\ ]]
 
 \ **sinv**\  [\ **-h**\  | \ **-v**\ ]
 
@@ -73,14 +73,14 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
 
 
 
-\ **-o**\ |\ **--output**\  \ *report output file*\ 
+\ **-o | -**\ **-output**\  \ *report output file*\ 
  
  Optional output file. This is the location of the file that will contain the report of the nodes that match, and do not match, the input templates.
  If the flag is not used, the output will go to stdout.
  
 
 
-\ **-p**\ |\ **--tp**\  \ *template path*\ 
+\ **-p | -**\ **-tp**\  \ *template path*\ 
  
  This is the path to the template file. The template contains the output
  of xdsh command, that has been run against a "seed" node, a node 
@@ -104,7 +104,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-t**\ |\ **--tc**\  \ *template count*\ 
+\ **-t | -**\ **-tc**\  \ *template count*\ 
  
  This count is the number of templates that the command will use
  to check for nodes matches.  If the template in the template path does not
@@ -122,7 +122,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-s**\ |\ **--seed**\  \ *seed node*\ 
+\ **-s | -**\ **-seed**\  \ *seed node*\ 
  
  This is the node that will be used to build the first template
  that is stored in template path.  You can use this parameter instead of running
@@ -134,7 +134,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-i**\ |\ **--ignorefirst**\ 
+\ **-i | -**\ **-ignorefirst**\ 
  
  This flag suppresses the reporting of the nodes matching the first
  template. In very large systems, you may not want to show the nodes that
@@ -144,7 +144,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-e**\ |\ **--exactmatch**\ 
+\ **-e | -**\ **-exactmatch**\ 
  
  This requires the check of node output against template to be an exact match.
  If this flag is not set, \ **sinv**\  checks to see if the return from the 
@@ -160,7 +160,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **--devicetype**\  \ *type_of_device*\ 
+\ **-**\ **-devicetype**\  \ *type_of_device*\ 
  
  Specify a user-defined device type that references the location
  of relevant device configuration file. The devicetype value must
@@ -178,13 +178,13 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-l**\ |\ **--user**\  \ *user_ID*\ 
+\ **-l | -**\ **-user**\  \ *user_ID*\ 
  
  Specifies a remote user name to use for remote command execution.
  
 
 
-\ **-c**\ |\ **--command**\ 
+\ **-c | -**\ **-command**\ 
  
  The xdsh or rinv command that will be run. The command should be enclosed in 
  double quotes to insure correct shell interpretation. This parameter must only contain, the node range or the image path (Linux) or spot name for AIX. It cannot be used to set additional input flags to xdsh or rinv (for example -s,-T,-e).  See examples below.
@@ -194,7 +194,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-f**\ |\ **--file**\ 
+\ **-f | -**\ **-file**\ 
  
  The file containing the xdsh or rinv command that will be run. 
  This should be the fully qualified name of the file.
@@ -204,7 +204,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-r**\ |\ **--remove**\ 
+\ **-r | -**\ **-remove**\ 
  
  This flag indicates that generated templates should be removed at the
  at the end of the \ **sinv**\  command execution.
@@ -218,19 +218,19 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Displays usage information.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Displays xCAT release version.
  
 
 
-\ **-V**\ |\ **--Verbose**\ 
+\ **-V | -**\ **-Verbose**\ 
  
  Verbose mode.
  
@@ -337,7 +337,7 @@ Command Protocol can be used. See man \ **xdsh**\  for more details.
  
  To execute \ **sinv**\  on the device mswitch2 and compare to mswitch1
  
- \ **sinv**\  \ *-c "xdsh mswitch  enable;show version"  -s mswitch1 -p /tmp/sinv/template --devicetype IBSwitch::Mellanox -l admin -t 2*\ 
+ \ **sinv**\  \ *-c "xdsh mswitch  enable;show version"  -s mswitch1 -p /tmp/sinv/template -**\ **-devicetype IBSwitch::Mellanox -l admin -t 2*\ 
  
 
 
