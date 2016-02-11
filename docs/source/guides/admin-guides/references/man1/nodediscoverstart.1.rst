@@ -19,12 +19,12 @@ SYNOPSIS
 ********
 
 
-\ **nodediscoverstart**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **nodediscoverstart**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 \ **Sequential Discovery Specific:**\ 
 
 
-\ **nodediscoverstart**\  \ **noderange=**\ \ *noderange*\  [\ **hostiprange=**\ \ *imageprofile*\ ] [\ **bmciprange=**\ \ *bmciprange*\ ] [\ **groups=**\ \ *groups*\ ] [\ **rack=**\ \ *rack*\ ] [\ **chassis=**\ \ *chassis*\ ] [\ **height=**\ \ *height*\ ] [\ **unit=**\ \ *unit*\ ] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [\ **-V|--verbose**\ ]
+\ **nodediscoverstart**\  \ **noderange=**\ \ *noderange*\  [\ **hostiprange=**\ \ *imageprofile*\ ] [\ **bmciprange=**\ \ *bmciprange*\ ] [\ **groups=**\ \ *groups*\ ] [\ **rack=**\ \ *rack*\ ] [\ **chassis=**\ \ *chassis*\ ] [\ **height=**\ \ *height*\ ] [\ **unit=**\ \ *unit*\ ] [\ **osimage=**\  \ *osimagename*\ >] [\ **-n | -**\ **-dns**\ ] [\ **-s | -**\ **-skipbmcsetup**\ ] [\ **-V|-**\ **-verbose**\ ]
 
 \ **Profile Discovery Specific:**\ 
 
@@ -157,32 +157,32 @@ OPTIONS
  
 
 
-\ **-n|--dns**\ 
+\ **-n|-**\ **-dns**\ 
  
  Specifies to run makedns <nodename> for any new discovered node. This is useful mainly for non-predefined configuration, before running the "nodediscoverstart -n", the user needs to run makedns -n to initialize the named setup on the management node.
  
 
 
-\ **-s|--skipbmcsetup**\ 
+\ **-s|-**\ **-skipbmcsetup**\ 
  
  Specifies to skip the bmcsetup during the sequential discovery process, if the bmciprange is specified with nodediscoverstart command, the BMC will be setup automatically during the discovery process, if the user does not want to run bmcsetup, could specify the "-s|--skipbmcsetup" with nodediscoverstart command to skip the bmcsetup.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Enumerates the free node names and host/bmc ips that are being specified in the ranges given.  Use this option
  with Sequential Discovery to ensure that you are specifying the ranges you intend.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
@@ -205,11 +205,15 @@ EXAMPLES
 
 
 
-1
+1. \ **Sequential Discovery**\ : To discover nodes with noderange and host/bmc ip range:
  
- \ **Sequential Discovery**\ : To discover nodes with noderange and host/bmc ip range:
  
- \ **nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V**\ 
+ .. code-block:: perl
+ 
+   nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -227,11 +231,13 @@ EXAMPLES
  
 
 
-2
+2. \ **Profile Discovery**\ : To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
  
- \ **Profile Discovery**\ : To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
  
- \ **nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN**\ 
+ .. code-block:: perl
+ 
+   nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
+ 
  
 
 

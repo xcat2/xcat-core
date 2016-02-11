@@ -19,14 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **chdef**\  [\ **-h**\ |\ **--help**\ ] [\ **-t**\  \ *object-types*\ ]
+\ **chdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ]
 
 \ **chdef**\  [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-n**\  \ *new-name*\ ] [\ *node*\ ]
 
-\ **chdef**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
-[\ **-d**\ |\ **--dynamic**\ ] [\ **-p**\ |\ **--plus**\ ] [\ **-m**\ |\ **--minus**\ ] [\ **-z**\ |\ **--stanza**\ ]
-[[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr*\ =\ *val*\  [\ *attr*\ =\ *val...*\ ]]
-      [\ **-u**\  [\ *provmethod*\ =<\ *install*\ |\ *netboot*\ |\ *statelite*\ >] [\ *profile*\ =<xxx>] [\ *osvers*\ =\ *value*\ ] [\ *osarch*\ =\ *value*\ ]]
+\ **chdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ]
+[\ **-d | -**\ **-dynamic**\ ] [\ **-p | -**\ **-plus**\ ] [\ **-m | -**\ **-minus**\ ] [\ **-z | -**\ **-stanza**\ ]
+[[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-u**\  [\ **provmethod=**\  {\ **install**\  | \ **netboot**\  | \ **statelite**\ }] [\ **profile=**\ \ *xxx*\ ] [\ **osvers**\ =\ *value*\ ] [\ **osarch**\ =\ *value*\ ]]
 
 
 ***********
@@ -51,19 +50,19 @@ OPTIONS
  
 
 
-\ **-d|--dynamic**\ 
+\ **-d|-**\ **-dynamic**\ 
  
  Use the dynamic option to change dynamic node groups definition. This option must be used with -w option.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-m|--minus**\ 
+\ **-m|-**\ **-minus**\ 
  
  If the value of the attribute is a list then this option may be used to remove one or more items from the list.
  
@@ -89,7 +88,7 @@ OPTIONS
  
 
 
-\ **-p|--plus**\ 
+\ **-p|-**\ **-plus**\ 
  
  This option will add the specified values to the existing value of the attribute.  It will create a comma-separated list of values.
  
@@ -101,7 +100,7 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -121,7 +120,7 @@ OPTIONS
  
 
 
-\ **-z|--stanza**\ 
+\ **-z|-**\ **-stanza**\ 
  
  Indicates that the file being piped to the command is in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files.
  

@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **lsve**\  [\ **-t**\  type] [\ **-m**\  manager] [\ **-o**\  object]
+\ **lsve**\  [\ **-t**\  \ *type*\ ] [\ **-m**\  \ *manager*\ ] [\ **-o**\  \ *object*\ ]
 
 
 ***********
@@ -30,10 +30,10 @@ DESCRIPTION
 The \ **lsve**\  command can be used to list a virtual environment for 
 'Data Center', 'Cluster', 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter \ **-m manager**\  is used to specify the address of the 
+The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the 
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter \ **-t type**\  is used to specify the type of the target 
+The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target 
 object.
 
 Basically, \ **lsve**\  command supports three types of object: \ **dc**\ , \ **cl**\ , \ **sd**\ , \ **nw**\  
@@ -98,7 +98,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   lsve -t B<dc> -m <FQDN of rhev manager> -o Default
+   lsve -t dc -m <FQDN of rhev manager> -o Default
  
  
  Output is similar to:
@@ -154,7 +154,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   lsve -t B<cl> -m <FQDN of rhev manager> -o Default
+   lsve -t cl -m <FQDN of rhev manager> -o Default
  
  
  Output is similar to:
@@ -175,21 +175,26 @@ EXAMPLES
  
  .. code-block:: perl
  
-   lsve -t B<sd> -m <FQDN of rhev manager> -o image
+   lsve -t sd -m <FQDN of rhev manager> -o image
  
  
  Output is similar to:
-   storagedomains: [image]
-     available: 55834574848
-     committed: 13958643712
-     ismaster: true
-     status:
-     storage_add: <Address of storage domain>
-     storage_format: v1
-     storage_path: /vfsimg
-     storage_type: nfs
-     type: data
-     used: 9663676416
+ 
+ 
+ .. code-block:: perl
+ 
+    storagedomains: [image]
+      available: 55834574848
+      committed: 13958643712
+      ismaster: true
+      status:
+      storage_add: <Address of storage domain>
+      storage_format: v1
+      storage_path: /vfsimg
+      storage_type: nfs
+      type: data
+      used: 9663676416
+ 
  
 
 
@@ -198,7 +203,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   lsve -t B<nw> -m <FQDN of rhev manager> -o rhevm
+   lsve -t nw -m <FQDN of rhev manager> -o rhevm
  
  
  Output is similar to:

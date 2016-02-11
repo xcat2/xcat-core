@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **lsxcatd**\  [\ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\  | \ **-d**\  | \ **--database**\  |\ **-t**\  | \ **--nodetype**\  | \ **-a**\  | \ **--all**\  ]
+\ **lsxcatd**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\  | \ **-d**\  | \ **-**\ **-database**\  | \ **-t**\  | \ **-**\ **-nodetype**\  | \ **-a**\  | \ **-**\ **-all**\  ]
 
 
 ***********
@@ -36,31 +36,31 @@ OPTIONS
 
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-d|--database**\ 
+\ **-d|-**\ **-database**\ 
  
  Displays information about the current database being used by xCAT.
  
 
 
-\ **-t|--nodetype**\ 
+\ **-t|-**\ **-nodetype**\ 
  
  Displays whether the node is a Management Node or a Service Node.
  
 
 
-\ **-a|--all**\ 
+\ **-a|-**\ **-all**\ 
  
  Displays all information about the daemon supported by the command.
  
@@ -119,13 +119,17 @@ EXAMPLES
  
  Output is similar to:
  
- Version 2.8.5 (git commit 0d4888af5a7a96ed521cb0e32e2c918a9d13d7cc, built Tue Jul 29 02:22:47 EDT 2014)
- This is a Management Node
- cfgloc=mysql:dbname=xcatdb;host=9.114.34.44|xcatadmin
- dbengine=mysql
- dbname=xcatdb
- dbhost=9.114.34.44
- dbadmin=xcatadmin
+ 
+ .. code-block:: perl
+ 
+   Version 2.8.5 (git commit 0d4888af5a7a96ed521cb0e32e2c918a9d13d7cc, built Tue Jul 29 02:22:47 EDT 2014)
+   This is a Management Node
+   cfgloc=mysql:dbname=xcatdb;host=9.114.34.44|xcatadmin
+   dbengine=mysql
+   dbname=xcatdb
+   dbhost=9.114.34.44
+   dbadmin=xcatadmin
+ 
  
 
 

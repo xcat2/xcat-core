@@ -10,7 +10,7 @@ B<Sequential Discovery Specific:>
 
 =over 2
 
-B<nodediscoverstart> B<noderange=>I<noderange> [B<hostiprange=>I<imageprofile>] [B<bmciprange=>I<bmciprange>] [B<groups=>I<groups>] [B<rack=>I<rack>] [B<chassis=>I<chassis>] [B<height=>I<height>] [B<unit=>I<unit>] [osimage=<osimagename>] [-n|--dns] [-s|--skipbmcsetup] [B<-V|--verbose>]
+B<nodediscoverstart> B<noderange=>I<noderange> [B<hostiprange=>I<imageprofile>] [B<bmciprange=>I<bmciprange>] [B<groups=>I<groups>] [B<rack=>I<rack>] [B<chassis=>I<chassis>] [B<height=>I<height>] [B<unit=>I<unit>] [B<osimage=> I<osimagename>>] [B<-n>|B<--dns>] [B<-s>|B<--skipbmcsetup>] [B<-V|--verbose>]
 
 =back
 
@@ -152,11 +152,12 @@ Command Version.
 
 =over 3
 
-=item 1
-
+=item 1.
 B<Sequential Discovery>: To discover nodes with noderange and host/bmc ip range:
 
-B<nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V>
+ nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' bmciprange='172.20.102.1-172.20.102.10' -V
+
+Output is similar to:
 
  Sequential Discovery: Started:
     Number of free node names: 10
@@ -168,11 +169,10 @@ B<nodediscoverstart noderange=n[1-10] hostiprange='172.20.101.1-172.20.101.10' b
  n02                 172.20.101.2        172.20.102.2
  ...                 ...                 ...
 
-=item 2
-
+=item 2.
 B<Profile Discovery>: To discover nodes using the default_cn network profile and the rhels6.3_packaged image profile, use the following command:
 
-B<nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN>
+ nodediscoverstart networkprofile=default_cn imageprofile=rhels6.3_packaged hostnameformat=compute#NNN
 
 =back
 

@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **replaycons**\  [\ *node*\ ] [\ *bps*\ ] [\ *tail_amount*\ ]
 
-\ **replaycons**\  [\ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **replaycons**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -55,13 +55,13 @@ OPTIONS
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  

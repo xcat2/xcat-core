@@ -14,10 +14,10 @@ SYNOPSIS
 \ **pcons**\  \ *noderange*\  \ *command*\ 
 
 \ **pcons**\ 
-[\ **-h**\ |\ **--help**\ ]
+[\ **-h | -**\ **-help**\ ]
 
 \ **pcons**\ 
-[\ **-v**\ |\ **--version**\ ]
+[\ **-v | -**\ **-version**\ ]
 
 
 ***********

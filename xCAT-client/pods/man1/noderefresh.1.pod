@@ -4,9 +4,9 @@ B<noderefresh> - Update nodes configurations by running associated kit plugins.
 
 =head1 SYNOPSIS
 
-B<noderefresh> [-h| --help | -v | --version]
+B<noderefresh [-h| --help | -v | --version]>
 
-B<noderefresh> <noderange>
+B<noderefresh> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -22,7 +22,7 @@ B<-v|--version>
 
 Command Version.
 
-B<noderange>
+I<noderange>
 
 The nodes to be updated.
 
@@ -34,7 +34,7 @@ The nodes to be updated.
 
 =head1 EXAMPLES
 
-noderefresh compute-000,compute-001
+ noderefresh compute-000,compute-001
 
 =head1 SEE ALSO
 

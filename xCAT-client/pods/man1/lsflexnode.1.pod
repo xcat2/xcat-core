@@ -5,9 +5,9 @@ B<lsflexnode> - Display the information of flexible node
 
 =head1 SYNOPSIS
 
-B<lsflexnode> [-h | --help]
+B<lsflexnode> [B<-h> | B<--help>]
 
-B<lsflexnode> [-v | --version]
+B<lsflexnode> [B<-v> | B<--version>]
 
 B<lsflexnode> I<noderange> 
 
@@ -130,7 +130,6 @@ The identifier of the partition this node belongs to.
 =over 3
 
 =item 1
-
 Display all the B<Complex>, B<Partition> and B<Blade slot node> which managed by a AMM.
 
  lsflexnode amm1
@@ -159,7 +158,6 @@ The output:
     amm1: ......Node role - unassigned
 
 =item 2
-
 Display a flexible node.
 
  lsflexnode blade1

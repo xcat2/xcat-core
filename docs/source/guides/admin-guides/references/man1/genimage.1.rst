@@ -21,9 +21,9 @@ SYNOPSIS
 
 \ **genimage**\ 
 
-\ **genimage**\  [\ **-o**\  \ *osver*\ ] [\ **-a**\  \ *arch*\ ] [\ **-p**\  \ *profile*\ ] [\ **-i**\  \ *nodebootif*\ ] [\ **-n**\  \ *nodenetdrivers*\ ] [\ **--onlyinitrd**\ ] [\ **-r**\  \ *otherifaces*\ ] [\ **-k**\  \ *kernelver*\ ] [\ **-g**\  \ *krpmver*\ ] [\ **-m**\  \ *statelite*\ ] [\ **-l**\  \ *rootlimitsize*\ ] [\ **--permission**\  \ *permission*\ ] [\ **--interactive**\ ] [\ **--dryrun**\ ] [\ **--ignorekernelchk**\ ] [\ **--noupdate**\ ] \ *imagename*\ 
+\ **genimage**\  [\ **-o**\  \ *osver*\ ] [\ **-a**\  \ *arch*\ ] [\ **-p**\  \ *profile*\ ] [\ **-i**\  \ *nodebootif*\ ] [\ **-n**\  \ *nodenetdrivers*\ ] [\ **-**\ **-onlyinitrd**\ ] [\ **-r**\  \ *otherifaces*\ ] [\ **-k**\  \ *kernelver*\ ] [\ **-g**\  \ *krpmver*\ ] [\ **-m**\  \ *statelite*\ ] [\ **-l**\  \ *rootlimitsize*\ ] [\ **-**\ **-permission**\  \ *permission*\ ] [\ **-**\ **-interactive**\ ] [\ **-**\ **-dryrun**\ ] [\ **-**\ **-ignorekernelchk**\ ] [\ **-**\ **-noupdate**\ ] \ *imagename*\ 
 
-\ **genimage**\  [\ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **genimage**\  [\ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -46,9 +46,9 @@ for stateless: \ **packimage**\
 
 for statelite: \ **liteimg**\ 
 
-Besides prompting for some paramter values, the \ **genimage**\  command takes default guesses for the parameters not specified or not defined in the \ *osimage*\  and \ *linuximage*\  tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Please use --interactive flag if you want the yum/zypper command to prompt you for the answers.
+Besides prompting for some paramter values, the \ **genimage**\  command takes default guesses for the parameters not specified or not defined in the \ *osimage*\  and \ *linuximage*\  tables. It also assumes default answers for questions from the yum/zypper command when installing rpms into the image. Please use \ **-**\ **-interactive**\  flag if you want the yum/zypper command to prompt you for the answers.
 
-If \ **--onlyinitrd**\  is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
+If \ **-**\ **-onlyinitrd**\  is specified, genimage only regenerates the initrd for a stateless image to be used for a diskless install.
 
 The \ **genimage**\  command must be run on a system that is the same architecture and same distro with same major release version as the nodes it will be
 used on.  If the management node is not the same architecture or same distro level, copy the contents of
@@ -117,18 +117,18 @@ OPTIONS
  
 
 
-\ **--onlyinitrd**\ 
+\ **-**\ **-onlyinitrd**\ 
  
  Regenerates the initrd for a stateless image to be used for a diskless install.
  
  Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/stateli
  te mode.
  
- The \ **genimage --onlyinitrd**\  command will generate two initial ramdisks, one is \ **initrd-statelite.gz**\  for \ **statelite**\  mode, the other one is \ **initrd-stateless.gz**\  for \ **stateless**\  mode.
+ The \ **genimage -**\ **-onlyinitrd**\  command will generate two initial ramdisks, one is \ **initrd-statelite.gz**\  for \ **statelite**\  mode, the other one is \ **initrd-stateless.gz**\  for \ **stateless**\  mode.
  
 
 
-\ **--permission**\  \ *permission*\ 
+\ **-**\ **-permission**\  \ *permission*\ 
  
  The mount permission of \ **/.statelite**\  directory for \ **statelite**\  mode, which is only used for \ **statelite**\  mode, and the default permission is 755.
  
@@ -159,13 +159,13 @@ OPTIONS
  
 
 
-\ **--interactive**\ 
+\ **-**\ **-interactive**\ 
  
  This flag allows the user to answer questions from yum/zypper command when installing rpms into the image. If it is not specified, '-y' will be passed to the yum command and '--non-interactive --no-gpg-checks' will be passed to the zypper command as default answers.
  
 
 
-\ **--dryrun**\ 
+\ **-**\ **-dryrun**\ 
  
  This flag shows the underlying call to the os specific genimage function. The user can copy and the paste the output to run the command on another machine that does not have xCAT installed.
  
@@ -177,25 +177,25 @@ OPTIONS
  
 
 
-\ **--ignorekernelchk**\ 
+\ **-**\ **-ignorekernelchk**\ 
  
  Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
  
 
 
-\ **--noupdate**\ 
+\ **-**\ **-noupdate**\ 
  
  This flag allows the user to bypass automatic package updating when installing other packages.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Display version.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  

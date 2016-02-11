@@ -4,7 +4,7 @@ B<mkdocker> - Create docker instance.
 
 =head1 SYNOPSIS
 
-B<mkdocker> I<noderange> [B<image>=B<image_name> [B<command>=B<command>]] [B<dockerflag>=B<flags_to_create_instance>]
+B<mkdocker> I<noderange> [B<image>=I<image_name> [B<command>=I<command>]] [B<dockerflag>=I<flags_to_create_instance>]
 
 B<mkdocker> [B<-h>|B<--help>]
 
@@ -13,7 +13,7 @@ B<mkdocker> {B<-v>|B<--version>}
 
 =head1 DESCRIPTION
 
-B<rmdocker> To create docker instances with the specified image, command and/or dockerflags.
+B<mkdocker> To create docker instances with the specified image, command and/or dockerflags.
 
 =head1 OPTIONS
 
@@ -80,16 +80,25 @@ A list of volume bindings for this docker instance, the form will be:
 1. To create a basic docker instance with stdin opened
 
     mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true}"
+
+Output is similar to:
+
     host01c01: success
 
 2. To create a docker instance with network disabled
 
     mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"NetworkDisabled\":ture}"
+
+Output is similar to:
+
     host01c01: success
 
 3. To create a docker instance which have dir "destdir" in docker instance bind from "srcdir" on dockerhost, and have "Tty" opened with which the docker instance can be attached after started to check the files under "destdir".
 
     mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true,\"HostConfig\":{\"Binds\":[\"/srcdir:/destdir\"]}}"
+
+Output is similar to:
+
     host01c01: success
 
 =head1 SEE ALSO

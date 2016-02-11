@@ -11,20 +11,20 @@ SYNOPSIS
 ********
 
 
-\ **rbootseq**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rbootseq**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 Blade specific:
 ===============
 
 
-\ **rbootseq**\  \ *noderange*\  {\ **hd0**\ |\ **hd1**\ |\ **hd2**\ |\ **hd3**\ |\ **net**\ |\ **iscsi**\ |\ **iscsicrit**\ |\ **cdrom**\ |\ **usbflash**\ |\ **floppy**\ |\ **none**\ |\ **list**\ |\ **stat**\ }\ **,**\ \ *...*\ 
+\ **rbootseq**\  \ *noderange*\  {\ **hd0 | hd1 | hd2 | hd3 | net | iscsi | iscsicrit | cdrom | usbflash | floppy | none | list | stat**\ }\ **,**\ \ *...*\ 
 
 
 HP Blade specific:
 ==================
 
 
-\ **rbootseq**\  \ *noderange*\  {\ **hd**\ |\ **net1**\ |\ **net2**\ |\ **net3**\ |\ **net4**\ |\ **cdrom**\ |\ **usbflash**\ |\ **floppy**\ |\ **none**\ }\ **,**\ \ *...*\ 
+\ **rbootseq**\  \ *noderange*\  {\ **hd | net1 | net2 | net3 | net4 | cdrom | usbflash | floppy | none**\ }\ **,**\ \ *...*\ 
 
 
 PPC (using Direct FSP Management) specific:
@@ -58,55 +58,55 @@ OPTIONS
 
 
 
-\ **hd0**\ |\ **harddisk0**\ |\ **hd**\ |\ **harddisk**\ 
+\ **hd0 | harddisk0 | hd | harddisk**\ 
  
  The first hard disk.
  
 
 
-\ **hd1**\ |\ **harddisk1**\ 
+\ **hd1 | harddisk1**\ 
  
  The second hard disk.
  
 
 
-\ **hd2**\ |\ **harddisk2**\ 
+\ **hd2 | harddisk2**\ 
  
  The third hard disk.
  
 
 
-\ **hd3**\ |\ **harddisk3**\ 
+\ **hd3 | harddisk3**\ 
  
  The fourth hard disk.
  
 
 
-\ **n**\ |\ **net**\ |\ **network**\ 
+\ **n | net | network**\ 
  
  Boot over the ethernet network, using a PXE or BOOTP broadcast.
  
 
 
-\ **n**\ |\ **net**\ |\ **network**\ |\ **net1**\ |\ **nic1**\  (HP Blade Only)
+\ **n | net | network | net1 | nic1**\  (HP Blade Only)
  
  Boot over the first ethernet network, using a PXE or BOOTP broadcast.
  
 
 
-\ **net2**\ |\ **nic2**\  (HP Blade Only)
+\ **net2 | nic2**\  (HP Blade Only)
  
  Boot over the second ethernet network, using a PXE or BOOTP broadcast.
  
 
 
-\ **net3**\ |\ **nic3**\  (HP Blade Only)
+\ **net3 | nic3**\  (HP Blade Only)
  
  Boot over the third ethernet network, using a PXE or BOOTP broadcast.
  
 
 
-\ **net3**\ |\ **nic3**\  (HP Blade Only)
+\ **net3 | nic3**\  (HP Blade Only)
  
  Boot over the fourth ethernet network, using a PXE or BOOTP broadcast.
  
@@ -130,13 +130,13 @@ OPTIONS
  
 
 
-\ **cd**\ |\ **cdrom**\ 
+\ **cd | cdrom**\ 
  
  The CD or DVD drive.
  
 
 
-\ **usbflash**\ |\ **usb**\ |\ **flash**\ 
+\ **usbflash | usb | flash**\ 
  
  A USB flash drive.
  
@@ -154,7 +154,7 @@ OPTIONS
  
 
 
-\ **list**\ |\ **stat**\ 
+\ **list | stat**\ 
  
  Display the current boot sequence.
  

@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **mkvlan**\  [\ *vlanid*\ ] \ **-n**\ |\ **--nodes**\  \ *noderange*\  [\ **-t**\ |\ **--net**\  \ *subnet*\ ] [\ **-m**\ |\ **--mask**\  \ *netmask*\ ] [\ **-p**\ |\ **--prefix**\  \ *hostname_prefix*\ ] [\ **-i**\ |\ **--interface**\  \ *nic*\ ]
+\ **mkvlan**\  [\ *vlanid*\ ] \ **-n | -**\ **-nodes**\  \ *noderange*\  [\ **-t | -**\ **-net**\  \ *subnet*\ ] [\ **-m | -**\ **-mask**\  \ *netmask*\ ] [\ **-p | -**\ **-prefix**\  \ *hostname_prefix*\ ] [\ **-i | -**\ **-interface**\  \ *nic*\ ]
 
-\ **mkvlan**\  [\ **-h**\ |\ **--help**\ ]
+\ **mkvlan**\  [\ **-h | -**\ **-help**\ ]
 
-\ **mkvlan**\  [\ **-v**\ |\ **--version**\ ]
+\ **mkvlan**\  [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -70,7 +70,7 @@ For added security, the root guard and bpdu guard will be enabled for the ports 
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -83,31 +83,31 @@ OPTIONS
 
 
 
-\ **-n|--nodes**\      The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Please check the man page for noderange for details.
+\ **-n|-**\ **-nodes**\      The nodes or groups to be included in the vlan. It can be stand alone nodes or KVM guests. It takes the noderange format. Please check the man page for noderange for details.
 
 
 
-\ **-t|--net**\        The subnet for the vlan.
+\ **-t|-**\ **-net**\        The subnet for the vlan.
 
 
 
-\ **-m|--mask**\       The netmask for the vlan
+\ **-m|-**\ **-mask**\       The netmask for the vlan
 
 
 
-\ **-p|--prefix**\     The prefix the the new hostnames for the nodes in the vlan.
+\ **-p|-**\ **-prefix**\     The prefix the the new hostnames for the nodes in the vlan.
 
 
 
-\ **-i|--interface**\  The interface name where the vlan will be tagged on. If omitted, the xCAT management network will be assumed. For FVM, this is the interface name on the host.
+\ **-i|-**\ **-interface**\  The interface name where the vlan will be tagged on. If omitted, the xCAT management network will be assumed. For FVM, this is the interface name on the host.
 
 
 
-\ **-h|--help**\       Display usage message.
+\ **-h|-**\ **-help**\       Display usage message.
 
 
 
-\ **-v|--version**\    The Command Version.
+\ **-v|-**\ **-version**\    The Command Version.
 
 
 
@@ -174,7 +174,7 @@ The following is an example of the switches table
 
 3.
  
- TO make a private vlan for node1, node2 with given subnet and netmask.
+ To make a private vlan for node1, node2 with given subnet and netmask.
  
  
  .. code-block:: perl

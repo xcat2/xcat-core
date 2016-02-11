@@ -16,18 +16,13 @@ B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
 =head2 PPC (using Direct FSP Management) specific:
 
-B<chvm> I<noderange> I<--p775> [B<-p> I<profile>]
+B<chvm> I<noderange> B<--p775> [B<-p> I<profile>]
 
-B<chvm> I<noderange> I<--p775> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
+B<chvm> I<noderange> B<--p775> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
 
-B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
+B<chvm> I<noderange> [B<lparname>={ * | I<name>}]
 
-B<chvm> I<noderange> [B<vmcpus=min/req/max>] [B<vmmemory=min/req/max>]
-               [B<vmothersetting=hugepage:N,bsr:N>]
-               [B<add_physlots=drc_index1,drc_index2...>]
-               [B<add_vmnics=vlan1[,vlan2..]]> [B<add_vmstorage=<N|viosnode:slotid>>] [B<--vios>]
-               [B<del_physlots=drc_index1,drc_index2...>]
-               [B<del_vadapter=slotid>]
+B<chvm> I<noderange> [B<vmcpus=> I<min/req/max>] [B<vmmemory=> I<min/req/max>] [B<vmothersetting=hugepage:N,bsr:N>] [B<add_physlots=> I<drc_index1,drc_index2...>] [B<add_vmnics=> I<vlan1[,vlan2..]]> [B<add_vmstorage=<N|viosnode:slotid>>] [B<--vios>] [B<del_physlots=> I<drc_index1,drc_index2...>] [B<del_vadapter=> I<slotid>]
 
 
 =head2 KVM specific:
@@ -535,6 +530,7 @@ Output is similar to:
 7. For Normal Power machine, to modify the resource assigned to a partition:
 
 Before modify, the resource assigned to node 'lpar1' can be shown with:
+
  lsvm lpar1
 
 The output is similar to:

@@ -2,15 +2,13 @@
 
 B<monshow> - Shows event data for monitoring.
 
-
-
 =head1 SYNOPSIS
 
-I<monshow [-h| --help]>
+B<monshow [-h| --help]>
 
-I<monshow [-v| --version]>
+B<monshow [-v| --version]>
 
-I<monshow name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator>val [-w attr<operator>val] ... ][-o {p|e}]>
+B<monshow> I<name> I<[noderange]> [B<-s>] [B<-t> I<time>] [B<-a> I<attributes>] [B<-w> I<attr> E<lt> I<operator> E<gt> I<val> [B<-w> I<attr> E<lt> I<operator> E<gt> I<val>] ... ][B<-o {p|e}>]
 
 
 
@@ -19,7 +17,7 @@ I<monshow name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator>val 
 This command displays the events that happened on the given nodes or the monitoring data that is collected from the given nodes for a monitoring plugin.
 
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<name> is the name of the monitoring plug-in module to be invoked. 
 
@@ -30,7 +28,7 @@ I<noderange> is a list of nodes to be showed for. If omitted, the data for all t
 
 B<-h | --help>          Display usage message.
 
-B<-v | --version >      Command Version.
+B<-v | --version>      Command Version.
 
 B<-s>	shows the summary data. 
 
@@ -41,15 +39,36 @@ B<-a>	specifies a comma-separated list of attributes or metrics names. The defau
 B<-w>	specify one or multiple selection string that can be used to select events. The operators ==, !=, =,!,>,<,>=,<= are available.  Wildcards % and _ are supported in the pattern string. % allows you to match any string of any length(including zero length) and _ allows you to match on a single character. The valid attributes are eventtype, monitor, monnode, application, component, id, serverity, message, rawdata, comments. Valid severity are: Informational, Warning, Critical.
 
 Operator descriptions: 
-  ==        Select event where the attribute value is exactly this value.
-  !=        Select event where the attribute value is not this specific value.
-  =~        Select event where the attribute value matches this pattern string. Not work with severity.
-  !~        Select event where the attribute value does not match this pattern string. Not work with severity.
-  >         Select event where the severity is higher than this value. Only work with severity.
-  <         Select event where the severity is lower than this value. Only work with severity.
-  >=        Select event where the severity is higher than this value(include). Only work with severity.
-  <=        Select event where the severity is lower than this value(include). Only work with severity.
-            Note: if the "val" or "operator" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
+
+=over 10
+
+=item B<==>
+Select event where the attribute value is exactly this value.
+
+=item B<!=>
+Select event where the attribute value is not this specific value.
+
+=item B<=~>
+Select event where the attribute value matches this pattern string. Not work with severity.
+
+=item B<!~E<gt>>
+Select event where the attribute value does not match this pattern string. Not work with severity.
+
+=item B<E<gt>>
+Select event where the severity is higher than this value. Only work with severity.
+
+=item B<E<lt>>
+Select event where the severity is lower than this value. Only work with severity.
+
+=item B<E<gt>=>
+Select event where the severity is higher than this value(include). Only work with severity.
+
+=item B<E<lt>=>
+Select event where the severity is lower than this value(include). Only work with severity.
+
+=back
+
+Note: if the "val" or "operator" fields includes spaces or any other characters that will be parsed by shell, the "attr<operator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
 B<-o>	specifies montype, it can be p or e. p means performance, e means events.
 

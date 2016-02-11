@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **rmhwconn**\  [\ **-h**\ | \ **--help**\ ]
+\ **rmhwconn**\  [\ **-h**\ | \ **-**\ **-help**\ ]
 
-\ **rmhwconn**\  [\ **-v**\ | \ **--version**\ ]
+\ **rmhwconn**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
 PPC (with HMC) specific:
 ========================
 
 
-\ **rmhwconn**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\ 
+\ **rmhwconn**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
 
 
 PPC (without HMC, using FSPAPI) specific:
@@ -71,13 +71,13 @@ OPTIONS
 
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  

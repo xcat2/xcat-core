@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **dumpxCATdb**\  [\ **-a**\ ] [\ **-V**\ ] [{\ **-p**\ |\ **--path**\ } \ *path*\ ]
+\ **dumpxCATdb**\  [\ **-a**\ ] [\ **-V**\ ] [{\ **-p | -**\ **-path**\ } \ *path*\ ]
 
-\ **dumpxCATdb**\  [\ **-b**\ ] [\ **-V**\ ] [{\ **-p**\ |\ **--path**\ } \ *path*\ ]
+\ **dumpxCATdb**\  [\ **-b**\ ] [\ **-V**\ ] [{\ **-p | -**\ **-path**\ } \ *path*\ ]
 
-\ **dumpxCATdb**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **dumpxCATdb**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -73,27 +73,47 @@ EXAMPLES
 
 1. To dump the xCAT database into the /tmp/db directory, enter:
 
-\ **dumpxCATdb -p /tmp/db**\ 
+
+.. code-block:: perl
+
+  dumpxCATdb -p /tmp/db
+
 
 2. To dump the xCAT database into the /tmp/db directory, including the auditlog and eventlog enter:
 
-\ **dumpxCATdb -a -p /tmp/db**\ 
+
+.. code-block:: perl
+
+  dumpxCATdb -a -p /tmp/db
+
 
 3. To have dumpxCATdb not backup the hosts or passwd table:
 
-\ **chtab key=skiptables site.value="hosts,passwd"**\ 
 
-\ **dumpxCATdb  -p /tmp/db**\ 
+.. code-block:: perl
+
+  chtab key=skiptables site.value="hosts,passwd"
+ 
+  dumpxCATdb  -p /tmp/db
+
 
 4. To have dumpxCATdb not backup the hosts or passwd table:
 
-\ **export XCAT_SKIPTABLES="hosts,passwd"**\ 
 
-\ **dumpxCATdb  -p /tmp/db**\ 
+.. code-block:: perl
+
+  export XCAT_SKIPTABLES="hosts,passwd"
+ 
+  dumpxCATdb  -p /tmp/db
+
 
 5. To have dumpxCATdb use DB2 utilities to backup the DB2 database:
 
-\ **dumpxCATdb -b -p /install/db2backup**\ 
+
+.. code-block:: perl
+
+  dumpxCATdb -b -p /install/db2backup
+
 
 
 *****

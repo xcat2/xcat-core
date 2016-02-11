@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ *monls [-h| --help]*\ 
+\ **monls [-h| -**\ **-help]**\ 
 
-\ *monls  [-v| --version]*\ 
+\ **monls  [-v| -**\ **-version]**\ 
 
-\ *monls \ \*name\*\  [-d|--description]*\ 
+\ **monls**\  \ *name*\  \ **[-d|-**\ **-description]**\ 
 
-\ *monls [-a|--all] [-d|--description]*\ 
+\ **monls [-a|-**\ **-all] [-d|-**\ **-description]**\ 
 
 
 ***********
@@ -49,13 +49,13 @@ OPTIONS
 *******
 
 
-\ **-a | --all**\           Searches the \ *XCATROOT/lib/perl/xCAT_monitoring*\  directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the \ *monitoring*\  tabel.
+\ **-a | -**\ **-all**\           Searches the \ *XCATROOT/lib/perl/xCAT_monitoring*\  directory and reports all the monitoring plug-in modules. If nothing is specified, the list is read from the \ *monitoring*\  tabel.
 
-\ **-d | --description**\   Display the description of the plug-in modules. The description ususally contains the possible settings.
+\ **-d | -**\ **-description**\   Display the description of the plug-in modules. The description ususally contains the possible settings.
 
-\ **-h | --help**\          Display usage message.
+\ **-h | -**\ **-help**\          Display usage message.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\       Command Version.
 
 
 ************

@@ -19,19 +19,19 @@ SYNOPSIS
 ********
 
 
-\ **lsvm**\  [\ **-h**\ | \ **--help]**\ 
+\ **lsvm**\  [\ **-h**\ | \ **-**\ **-help]**\ 
 
-\ **lsvm**\  [\ **-v**\ | \ **--version**\ ]
+\ **lsvm**\  [\ **-v**\ | \ **-**\ **-version**\ ]
 
-\ **lsvm**\  [\ **-V**\ | \ **--verbose**\ ] \ *noderange*\ 
+\ **lsvm**\  [\ **-V**\ | \ **-**\ **-verbose**\ ] \ *noderange*\ 
 
-\ **lsvm**\  [\ **-a**\ | \ **--all**\ ] \ *noderange*\ 
+\ **lsvm**\  [\ **-a**\ | \ **-**\ **-all**\ ] \ *noderange*\ 
 
 For PPC (using Direct FSP Management):
 ======================================
 
 
-\ **lsvm**\  [\ **-l**\ | \ **--long**\ ] \ **--p775**\  \ *noderange*\ 
+\ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\ 
 
 \ **lsvm**\  \ *noderange*\ 
 
@@ -110,13 +110,13 @@ Verbose output.
 
 List all the profiles for one partition
 
-\ **--p775**\ 
+\ **-**\ **-p775**\ 
 
 Specify the operation is for Power 775 machines.
 
 \ **-l**\ 
 
-Show lparnames for lpars. It shall work with option \ **--p775**\ .
+Show lparnames for lpars. It shall work with option \ **-**\ **-p775**\ .
 
 
 ************
@@ -158,7 +158,7 @@ Output is similar to:
   lsvm cec01
 
 
-g Output is similar to:
+Output is similar to:
 
 
 .. code-block:: perl
@@ -186,7 +186,7 @@ Output is similar to:
   1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
 
 
-To list the lparname of lpars, enter:
+4. To list the lparname of lpars, enter:
 
 
 .. code-block:: perl
@@ -195,11 +195,16 @@ To list the lparname of lpars, enter:
 
 
 Output is similar to:
- lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
- lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
- lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
 
-4. For Power 775, to list the I/O slot information and octant configuration of cec1, enter:
+
+.. code-block:: perl
+
+  lpar1: 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+  lpar1: 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+  lpar1: 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+
+
+5. For Power 775, to list the I/O slot information and octant configuration of cec1, enter:
 
 
 .. code-block:: perl
@@ -240,7 +245,7 @@ Output is similar to:
   OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
 
 
-To list the lparname of lpars, enter:
+6.To list the lparname of lpars, enter:
 
 
 .. code-block:: perl
@@ -293,7 +298,7 @@ Output is similar to:
   Requested huge page memory(in pages):     15
 
 
-5. To list the virtual machine's directory entry:
+7. To list the virtual machine's directory entry:
 
 
 .. code-block:: perl
@@ -311,7 +316,7 @@ Output is similar to:
   gpok3: COMMAND SET VSWITCH VSW2 GRANT LNX3
 
 
-6. For DFM-managed normal power machine, list out the detailed resource information:
+8. For DFM-managed normal power machine, list out the detailed resource information:
 
 
 .. code-block:: perl
@@ -350,7 +355,7 @@ Output is similar to:
 
 Note: The lines list in "All Physical I/O info" section represent all the physical I/O resource information. The format is like "owner_lparid,slot_id,physical resource name,drc_index,slot_class_code(class discription)". The 'drc index' is short for Dynamic Resource Configuration Index, it uniquely indicate a physical I/O resource in normal power machine.
 
-For DFM-managed partition on normal power machine, list out the detailed information:
+9.For DFM-managed partition on normal power machine, list out the detailed information:
 
 
 .. code-block:: perl

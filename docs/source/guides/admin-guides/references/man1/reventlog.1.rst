@@ -19,9 +19,9 @@ Name
 ****************
 
 
-\ **reventlog**\  \ *noderange*\  {\ *number-of-entries [-s]*\ |\ **all [-s]**\ |\ **clear**\ }
+\ **reventlog**\  \ *noderange*\  {\ *number-of-entries [-s]*\ |\ **all [-s] | clear**\ }
 
-\ **reventlog**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **reventlog**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -64,13 +64,13 @@ logs are stored on each servers service processor.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

@@ -39,13 +39,13 @@ OPTIONS
 *******
 
 
-\ **-h |--help**\             Display usage message.
+\ **-h |-**\ **-help**\             Display usage message.
 
-\ **-v |--version**\          Display xCAT version.
+\ **-v |-**\ **-version**\          Display xCAT version.
 
-\ **-n | --node**\            A remote host name or ip address that contains the install image to be updated.
+\ **-n | -**\ **-node**\            A remote host name or ip address that contains the install image to be updated.
 
-\ **-p |--path**\             Path to the install image.
+\ **-p |-**\ **-path**\             Path to the install image.
 
 
 ************

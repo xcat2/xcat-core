@@ -21,7 +21,7 @@ psh - parallel remote shell
 
 \ **psh**\  [\ **-i**\  \ *interface*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-l**\  \ *user*\ ] \ *noderange*\  \ *command*\ 
 
-\ **psh**\  {\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ }
+\ **psh**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
 
 *******************
@@ -71,7 +71,7 @@ management node to the compute node via a service node.
  
 
 
-\ **-n|--nonodecheck**\ 
+\ **-n|-**\ **-nonodecheck**\ 
  
  Do not send the noderange to xcatd to expand it into a list of nodes.  Instead, use the noderange exactly as it is specified.
  In this case, the noderange must be a simple list of comma-separated hostnames of the nodes.
@@ -94,7 +94,7 @@ management node to the compute node via a service node.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  

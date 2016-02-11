@@ -24,7 +24,7 @@ prsync - parallel rsync
 \ **prsync**\   [\ *-o rsync options*\ ] [\ **-f**\  \ *fanout*\ ] [\ *filename*\  \ *filename*\  \ *...*\ ] [\ *directory*\  \ *directory*\  \ *...*\ ]
 \ *noderange:destinationdirectory*\ 
 
-\ **prsync**\  {\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ }
+\ **prsync**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
 
 *******************
@@ -78,13 +78,13 @@ management node to the compute node via a service node
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

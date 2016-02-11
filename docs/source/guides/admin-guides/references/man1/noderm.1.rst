@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ *noderm [-h| --help]*\ 
+\ **noderm [-h| -**\ **-help]**\ 
 
-\ *noderm noderange*\ 
+\ **noderm noderange**\ 
 
 
 ***********
@@ -29,11 +29,7 @@ DESCRIPTION
 ***********
 
 
-
-.. code-block:: perl
-
-  The noderm command removes the nodes in the input node range.
-
+The noderm command removes the nodes in the input node range.
 
 
 *******
@@ -41,7 +37,7 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
+\ **-h|-**\ **-help**\           Display usage message.
 
 
 ************
@@ -61,7 +57,11 @@ EXAMPLES
 
 1. To remove the nodes in noderange node1-node4, enter:
 
-\ *noderm node1-node4*\ 
+
+.. code-block:: perl
+
+  noderm node1-node4
+
 
 
 *****

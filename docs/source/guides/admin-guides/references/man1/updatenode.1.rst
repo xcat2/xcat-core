@@ -19,17 +19,17 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ **noderange**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-F**\ |\ **--sync**\ ] [\ **-f**\ |\ **--snsync**\ ] [\ **-S**\ |\ **--sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P**\ |\ **--scripts**\  [\ **script1,script2...**\ ]] [\ **-s**\ |\ **--sn**\ ] [\ **-A**\ |\ **--updateallsw**\ ] [\ **-c**\ |\ **--cmdlineonly**\ ] [\ **-d alt_source_dir**\ ] [\ **--fanout**\ ] [\ **-t timeout**\ } [\ **attr=val**\  [\ **attr=val...**\ ]] [\ **-n**\ |\ **--noverify**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ **script1,script2...**\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d alt_source_dir**\ ] [\ **-**\ **-fanout**\ ] [\ **-t timeout**\ } [\ **attr=val**\  [\ **attr=val...**\ ]] [\ **-n | -**\ **-noverify**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-k**\ |\ **--security**\ ] [\ **-t timeout**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t timeout**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-g**\ |\ **--genmypost**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-g | -**\ **-genmypost**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-t timeout**\ ] [\ **script1,script2...**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t timeout**\ ] [\ **script1,script2...**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-f**\ |\ **--snsync**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-f | -**\ **-snsync**\ ]
 
-\ **updatenode**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **updatenode**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -365,16 +365,16 @@ OPTIONS
 
 
 
-\ **--fanout**\ =\ *fanout_value*\ 
+\ **-**\ **-fanout**\ =\ *fanout_value*\ 
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  If  \ **--fanout**\ 
+ can be specified by indicating a fanout value of \ **1**\ .  If  \ **-**\ **-fanout**\ 
  is not specified, a default fanout value of \ **64**\  is used.
  
 
 
-\ **-A|--updateallsw**\ 
+\ **-A|-**\ **-updateallsw**\ 
  
  Install or update all software contained in the source directory. (AIX only)
  
@@ -394,7 +394,7 @@ OPTIONS
  
 
 
-\ **-F|--sync**\ 
+\ **-F|-**\ **-sync**\ 
  
  Specifies that file synchronization should be
  performed on the nodes.  rsync and ssh must
@@ -406,7 +406,7 @@ OPTIONS
  
 
 
-\ **-f|--snsync**\ 
+\ **-f|-**\ **-snsync**\ 
  
  Specifies that file synchronization should be
  performed to the service nodes that service the
@@ -427,20 +427,20 @@ OPTIONS
  
 
 
-\ **-g|--genmypost**\ 
+\ **-g|-**\ **-genmypost**\ 
  
  Will generate a new mypostscript file for the
  nodes in the noderange, if site precreatemypostscripts is 1 or YES.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-k|--security**\ 
+\ **-k|-**\ **-security**\ 
  
  Update the ssh keys and host keys for the service nodes and compute nodes;
  Update the ca and credentials to the service nodes.  Never run this command to the Management Node, it will take down xcatd.
@@ -448,7 +448,7 @@ OPTIONS
  
 
 
-\ **-l**\ |\ **--user**\  \ *user_ID*\ 
+\ **-l | -**\ **-user**\  \ *user_ID*\ 
  
  Specifies a non-root user name to use for remote command execution. This option is only available when running postscripts (-P) for 
  AIX and Linux and updating software (-S) for Linux only. 
@@ -459,7 +459,7 @@ OPTIONS
  
 
 
-\ **-P|--scripts**\ 
+\ **-P|-**\ **-scripts**\ 
  
  Specifies that postscripts and postbootscripts should be run on the nodes. 
  updatenode -P syncfiles is not supported.  The syncfiles postscript can only
@@ -467,19 +467,19 @@ OPTIONS
  
 
 
-\ **-S|--sw**\ 
+\ **-S|-**\ **-sw**\ 
  
  Specifies that node software should be updated.  In Sysclone environment, specifies pushing the delta changes to target nodes.
  
 
 
-\ **-n|--noverify**\ 
+\ **-n|-**\ **-noverify**\ 
  
  Specifies that node network availability verification will be skipped.
  
 
 
-\ **-s|--sn**\ 
+\ **-s|-**\ **-sn**\ 
  
  Set the server information stored on the nodes in /opt/xcat/xcatinfo on Linux.
  
@@ -492,13 +492,13 @@ OPTIONS
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -644,7 +644,7 @@ EXAMPLES
  To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
  and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
  
- \ **updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps"**\ 
+ \ **updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i -**\ **-nodeps"**\ 
  
  Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
  

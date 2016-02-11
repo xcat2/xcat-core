@@ -19,9 +19,9 @@ renergy.1
 ****************
 
 
-\ **renergy**\  [-h | --help]
+\ **renergy**\  [-h | -**\ **-help]
 
-\ **renergy**\  [-v | --version]
+\ **renergy**\  [-v | -**\ **-version]
 
 \ **Power 6 server specific :**\ 
 
@@ -258,13 +258,13 @@ so no additional plugins are needed for BladeCenter.)
 
 
 
-\ **-h | --help**\ 
+\ **-h | -**\ **-help**\ 
  
  Display the usage message.
  
 
 
-\ **-v | --version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the version information.
  

@@ -19,9 +19,9 @@ wcons - windowed remote console
 ****************
 
 
-\ **wcons**\   [\ **-t**\ |\ **--tile**\ =\ *n*\ ] [\ *xterm-options*\ ] \ *noderange*\ 
+\ **wcons**\   [\ **-t | -**\ **-tile**\ =\ *n*\ ] [\ *xterm-options*\ ] \ *noderange*\ 
 
-\ **wcons**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **wcons**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -41,7 +41,7 @@ range or nodes or groups.
 
 
 
-\ **-t**\ |\ **--tile**\ =\ *n*\ 
+\ **-t | -**\ **-tile**\ =\ *n*\ 
  
  Tile \ **wcons**\  windows from top left to bottom right.  If \ *n*\  is spec-
  ified  then  tile  \ *n*\  across.  If \ *n*\  is not specified then tile to
@@ -50,13 +50,13 @@ range or nodes or groups.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  
@@ -90,7 +90,7 @@ method.
 
 \ **wcons**\  \ *node1-node5*\ 
 
-\ **wcons**\  \ **--tile**\  \ **--font**\ =\ *nil2*\  \ *all*\ 
+\ **wcons**\  \ **-**\ **-tile**\  \ **-**\ **-font**\ =\ *nil2*\  \ *all*\ 
 
 \ **wcons**\  \ **-t**\  \ *4*\  \ *node1-node16*\ 
 

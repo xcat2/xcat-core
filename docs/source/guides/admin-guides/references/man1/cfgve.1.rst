@@ -19,17 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **cfgve**\  \ **-t**\  dc \ **-m**\  manager \ **-o**\  object [\ **-c**\  \ **-k**\  nfs|localfs | \ **-r**\ ]
+\ **cfgve**\  \ **-t dc -m**\  \ *manager*\  \ **-o**\  \ *object*\  [\ **-c**\  \ **-k nfs**\  | \ **localfs**\  | \ **-r**\ ]
 
-\ **cfgve**\  \ **-t**\  cl \ **-m**\  manager \ **-o**\  object [\ **-c**\  \ **-p**\  cpu type| \ **-r**\  \ **-f**\ ]
+\ **cfgve**\  \ **-t cl -m**\  \ *manager*\  \ **-o**\  \ *object*\  [\ **-c -p**\  \ *cpu type*\  | \ **-r -f**\ ]
 
-\ **cfgve**\  \ **-t**\  sd \ **-m**\  manager \ **-o**\  object [\ **-c**\  | \ **-g**\  | \ **-s**\  
-| \ **-a**\  | \ **-b**\  | \ **-r**\  \ **-f**\ ]
+\ **cfgve**\  \ **-t sd -m**\  \ *manager*\  \ **-o**\  \ *object*\  [\ **-c**\  | \ **-g**\  | \ **-s**\  | \ **-a**\  | \ **-b**\  | \ **-r**\  \ **-f**\ ]
 
-\ **cfgve**\  \ **-t**\  nw \ **-m**\  manager \ **-o**\  object [\ **-c**\  \ **-d**\  data center \ **-n**\  
-vlan ID | \ **-a**\  \ **-l**\  cluster | \ **-b**\  | \ **-r**\ ]
+\ **cfgve**\  \ **-t nw -m**\  \ *manager*\  \ **-o**\  \ *object*\  [\ **-c**\  \ **-d**\  \ *data center*\  \ **-n**\  \ *vlan ID*\  | \ **-a**\  \ **-l**\  \ *cluster*\  | \ **-b**\  | \ **-r**\ ]
 
-\ **cfgve**\  \ **-t**\  tpl \ **-m**\  manager \ **-o**\  object [\ **-r**\ ]
+\ **cfgve**\  \ **-t tpl -m**\  \ *manager*\  \ **-o**\  \ *object*\  [\ **-r**\ ]
 
 
 ***********
@@ -40,10 +38,10 @@ DESCRIPTION
 The \ **cfgve**\  command can be used to configure a virtual environment for 
 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter \ **-m manager**\  is used to specify the address of the 
+The mandatory parameter \ **-m**\  \ *manager*\  is used to specify the address of the 
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter \ **-t type**\  is used to specify the type of the target 
+The mandatory parameter \ **-t**\  \ *type*\  is used to specify the type of the target 
 object.
 
 Basically, \ **cfgve**\  command supports five types of object: \ **dc**\ , \ **cl**\ , 
@@ -61,7 +59,7 @@ Basically, \ **cfgve**\  command supports five types of object: \ **dc**\ , \ **
 
 \ **tpl**\  - The \ **remove**\  operation is supported.
 
-The mandatory parameter \ **-o object**\  is used to specify which object to configure.
+The mandatory parameter \ **-o**\  \ *object*\  is used to specify which object to configure.
 
 
 *******

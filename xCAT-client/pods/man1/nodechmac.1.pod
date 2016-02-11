@@ -4,9 +4,9 @@ B<nodechmac> - Updates the MAC address for a node.
 
 =head1 SYNOPSIS
 
-B<nodechmac> [-h| --help | -v | --version]
+B<nodechmac> [B<-h> | B<--help> | B<-v> | B<--version>]
 
-B<nodechmac> <node-name> mac=<mac-address>
+B<nodechmac> I<node-name> B<mac=>I<mac-address>
 
 =head1 DESCRIPTION
 
@@ -24,11 +24,11 @@ B<-v|--version>
 
 Command Version.
 
-B<node-name>
+I<node-name>
 
 Specifies the name of the node you want to update, where <node-name> is the node that is updated.
 
-B<mac=<mac-address>
+B<mac=>I<mac-address>
 
 Sets the new MAC address for the NIC used by the provisioning node, where <mac-address> is the NICs new MAC address.
 
@@ -41,7 +41,8 @@ Sets the new MAC address for the NIC used by the provisioning node, where <mac-a
 =head1 EXAMPLES
 
 You can update the MAC address for a node, by using the following command:
-nodechmac compute-000 mac=2F:3C:88:98:7E:01
+
+ nodechmac compute-000 mac=2F:3C:88:98:7E:01
 
 =head1 SEE ALSO
 

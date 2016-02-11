@@ -21,7 +21,7 @@ Name
 
 \ **wkill**\  [\ *noderange*\ ]
 
-\ **wkill**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **wkill**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 *******************
@@ -45,13 +45,13 @@ wcons windows on your $DISPLAY will be killed.
 
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

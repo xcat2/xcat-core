@@ -4,17 +4,17 @@ B<lsve> - Lists detail attributes for a virtual environment.
 
 =head1 SYNOPSIS
 
-B<lsve> [B<-t> type] [B<-m> manager] [B<-o> object]
+B<lsve> [B<-t> I<type>] [B<-m> I<manager>] [B<-o> I<object>]
 
 =head1 DESCRIPTION
 
 The B<lsve> command can be used to list a virtual environment for 
 'Data Center', 'Cluster', 'Storage Domain', 'Network' and 'Template' objects.
 
-The mandatory parameter B<-m manager> is used to specify the address of the 
+The mandatory parameter B<-m> I<manager> is used to specify the address of the 
 manager of virtual environment. xCAT needs it to access the RHEV manager.
 
-The mandatory parameter B<-t type> is used to specify the type of the target 
+The mandatory parameter B<-t> I<type> is used to specify the type of the target 
 object.
 
 Basically, B<lsve> command supports three types of object: B<dc>, B<cl>, B<sd>, B<nw> 
@@ -65,7 +65,7 @@ Supported types:
 =item 1.
 To list the data center 'Default', enter:
 
- lsve -t B<dc> -m <FQDN of rhev manager> -o Default
+ lsve -t dc -m <FQDN of rhev manager> -o Default
 
 Output is similar to:
 
@@ -113,7 +113,7 @@ Output is similar to:
 =item 2.
 To list the cluster 'Default', enter:
 
- lsve -t B<cl> -m <FQDN of rhev manager> -o Default
+ lsve -t cl -m <FQDN of rhev manager> -o Default
 
 Output is similar to:
 
@@ -126,9 +126,10 @@ Output is similar to:
 =item 3.
 To list the Storage Domain 'image', enter:
 
- lsve -t B<sd> -m <FQDN of rhev manager> -o image
+ lsve -t sd -m <FQDN of rhev manager> -o image
 
 Output is similar to:
+
   storagedomains: [image]
     available: 55834574848
     committed: 13958643712
@@ -144,7 +145,7 @@ Output is similar to:
 =item 4.
 To list the network 'rhevm', enter:
 
- lsve -t B<nw> -m <FQDN of rhev manager> -o rhevm
+ lsve -t nw -m <FQDN of rhev manager> -o rhevm
 
 Output is similar to:
 

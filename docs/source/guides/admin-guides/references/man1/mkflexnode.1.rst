@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **mkflexnode**\  [-h | --help]
+\ **mkflexnode**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
-\ **mkflexnode**\  [-v | --version]
+\ **mkflexnode**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
 \ **mkflexnode**\  \ *noderange*\ 
 
@@ -48,13 +48,13 @@ OPTIONS
 
 
 
-\ **-h | --help**\ 
+\ **-h | -**\ **-help**\ 
  
  Display the usage message.
  
 
 
-\ **-v | --version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the version information.
  
@@ -67,9 +67,7 @@ EXAMPLES
 
 
 
-1
- 
- Create a flexible node base on the xCAT node blade1.
+1. Create a flexible node base on the xCAT node blade1.
  
  The blade1 should belong to a complex, the \ *id*\  attribute should be set correctly and all the slots should be in \ **power off**\  state.
  

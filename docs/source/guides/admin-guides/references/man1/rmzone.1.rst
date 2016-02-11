@@ -43,32 +43,32 @@ Note: if any zones in the zone table, there must be one and only one defaultzone
 
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Displays usage information.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Displays command version and build date.
  
 
 
-\ **-f | --force**\ 
+\ **-f | -**\ **-force**\ 
  
  Used to remove a zone that is defined as current default zone.  This should only be done if you are removing all zones, or you will
  adding a new zone or changing an existing zone to be the default zone.
  
 
 
-\ **-g | --assigngroup**\ 
+\ **-g | -**\ **-assigngroup**\ 
  
  Remove the assigned group named \ **zonename**\  from all nodes assigned to the zone being removed.
  
 
 
-\ **-V**\ |\ **--Verbose**\ 
+\ **-V | -**\ **-Verbose**\ 
  
  Verbose mode.
  

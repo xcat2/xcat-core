@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **groupfiles4dsh**\  [{\ **-p**\ |\ **--path**\ } \ *path*\ ]
+\ **groupfiles4dsh**\  [{\ **-p | -**\ **-path**\ } \ *path*\ ]
 
-\ **groupfiles4dsh**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **groupfiles4dsh**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -68,7 +68,11 @@ EXAMPLES
 
 1. To create the nodegroup files in directory /tmp/nodegroupfiles, enter:
 
-\ **groupfiles4dsh -p /tmp/nodegroupfiles**\ 
+
+.. code-block:: perl
+
+  groupfiles4dsh -p /tmp/nodegroupfiles
+
 
 To use with dsh:
 

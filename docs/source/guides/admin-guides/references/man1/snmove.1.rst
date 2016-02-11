@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **snmove**\  \ *noderange*\  [\ **-V**\ ] [\ **-l**\ |\ **--liteonly**\ ] [\ **-d**\ |\ **--dest**\  \ *sn2*\ ] [\ **-D**\ |\ **--destn**\  \ *sn2n*\ ] [\ **-i**\ |\ **--ignorenodes**\ ] [\ **-P**\ |\ **--postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
+\ **snmove**\  \ *noderange*\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
 
-\ **snmove**\  [\ **-V**\ ] [\ **-l**\ |\ **--liteonly**\ ] \ **-s**\ |\ **--source**\  \ *sn1*\  [\ **-S**\ |\ **--sourcen**\  \ *sn1n*\ ] [\ **-d**\ |\ **--dest**\  \ *sn2*\ ] [\ **-D**\ |\ **--destn**\  \ *sn2n*\ ] [\ **-i**\ |\ **--ignorenodes**\ ] [\ **-P**\ |\ **--postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
+\ **snmove**\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] \ **-s | -**\ **-source**\  \ *sn1*\  [\ **-S | -**\ **-sourcen**\  \ *sn1n*\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
 
-\ **snmove**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **snmove**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -88,63 +88,63 @@ OPTIONS
 
 
 
-\ **-d|--dest**\ 
+\ **-d|-**\ **-dest**\ 
  
  Specifies the hostname of the new destination service node as known by (facing) the management node.
  
 
 
-\ **-D|--destn**\ 
+\ **-D|-**\ **-destn**\ 
  
  Specifies the hostname of the destination service node as known by (facing) the nodes.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-i|--ignorenodes**\ 
+\ **-i|-**\ **-ignorenodes**\ 
  
  No modifications will be made on the nodes. If not specified, several xCAT postscripts will be run on the nodes to complete the switch to the new service node.
  
 
 
-\ **-l|--liteonly**\ 
+\ **-l|-**\ **-liteonly**\ 
  
  Use this option to ONLY synchronize any AIX statelite files from the primary server to the backup server for the nodes. It will not do the actual moving of thre nodes the the backup servers.
  
 
 
-\ **-P|--postscripts**\ 
+\ **-P|-**\ **-postscripts**\ 
  
  Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If 'all' is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
  
 
 
-\ **-s|--source**\ 
+\ **-s|-**\ **-source**\ 
  
  Specifies the hostname of the current (source) service node sa known by (facing)
   the management node.
  
 
 
-\ **-S|--sourcen**\ 
+\ **-S|-**\ **-sourcen**\ 
  
  Specifies the hostname of the current service node adapter as known by (facing)
  the nodes.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  

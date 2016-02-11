@@ -13,9 +13,9 @@ SYNOPSIS
 
 \ **rmdocker**\  \ *noderange*\ 
 
-\ **rmdocker**\  [\ **-h**\ |\ **--help**\ ]
+\ **rmdocker**\  [\ **-h | -**\ **-help**\ ]
 
-\ **rmdocker**\  {\ **-v**\ |\ **--version**\ }
+\ **rmdocker**\  {\ **-v | -**\ **-version**\ }
 
 
 ***********

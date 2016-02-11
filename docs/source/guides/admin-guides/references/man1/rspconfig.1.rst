@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **rspconfig**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rspconfig**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 BMC/MPA specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **alert**\ |\ **snmpdest**\ |\ **community**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **alert | snmpdest | community**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **alert**\ ={\ **on**\ |\ **enable**\ |\ **off**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **alert**\ ={\ **on | enable | off | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **snmpdest**\ =\ *snmpmanager-IP*\ 
 
@@ -38,7 +38,7 @@ BMC specific:
 =============
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **ip**\ |\ **netmask**\ |\ **gateway**\ |\ **backupgateway**\ |\ **garp**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **garp**\ ={\ *time*\ }
 
@@ -47,19 +47,19 @@ MPA specific:
 =============
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **sshcfg**\ |\ **snmpcfg**\ |\ **pd1**\ |\ **pd2**\ |\ **network**\ |\ **swnet**\ |\ **ntp**\ |\ **textid**\ |\ **frame**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **sshcfg | snmpcfg | pd1 | pd2 | network | swnet | ntp | textid | frame**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **USERID**\ ={\ **newpasswd**\ } \ **updateBMC**\ ={\ **y**\ |\ **n**\ }
+\ **rspconfig**\  \ *noderange*\  \ **USERID**\ ={\ **newpasswd**\ } \ **updateBMC**\ ={\ **y | n**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **snmpcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **snmpcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **solcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **solcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **pd1**\ ={\ **nonred**\ |\ **redwoperf**\ |\ **redwperf**\ }
+\ **rspconfig**\  \ *noderange*\  \ **pd1**\ ={\ **nonred | redwoperf | redwperf**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **pd2**\ ={\ **nonred**\ |\ **redwoperf**\ |\ **redwperf**\ }
+\ **rspconfig**\  \ *noderange*\  \ **pd2**\ ={\ **nonred | redwoperf | redwperf**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ]|\ **\\***\ }
 
@@ -80,15 +80,15 @@ FSP/CEC specific:
 =================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **autopower**\ |\ **iocap**\ |\ **dev**\ |\ **celogin1**\ |\ **decfg**\ |\ **memdecfg**\ |\ **procdecfg**\ |\ **time**\ |\ **date**\ |\ **spdump**\ |\ **sysdump**\ |\ **network**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **autopower | iocap | dev | celogin1 | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **autopower**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **autopower**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **iocap**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **iocap**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **time**\ ={\ **hh:mm:ss**\ }
 
@@ -118,31 +118,31 @@ FSP/CEC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\ **\\*|name**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **--resetnet**\ 
+\ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
 
 Flex system Specific:
 =====================
 
 
-\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **snmpcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **snmpcfg**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ]|\ **\\***\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **solcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **solcfg**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **textid**\ ={\ **\\*|textid**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **cec_off_policy**\ ={\ **poweroff**\ |\ **stayon**\ }
+\ **rspconfig**\  \ *noderange*\  \ **cec_off_policy**\ ={\ **poweroff | stayon**\ }
 
 
 BPA/Frame Specific:
 ===================
 
 
-\ **rspconfig**\  \ *noderange*\  {\ **network**\ |\ **dev**\ |\ **celogin1**\ }
+\ **rspconfig**\  \ *noderange*\  {\ **network | dev | celogin1**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,\\***\ }
 
@@ -150,9 +150,9 @@ BPA/Frame Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,0.0.0.0**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **dev**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
@@ -166,7 +166,7 @@ BPA/Frame Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\ **\\*|name**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **--resetnet**\ 
+\ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
 
 FSP/CEC (using Direct FSP Management) Specific:
@@ -183,15 +183,15 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\***\ |\ **name**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\* | name**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **pending_power_on_side**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **pending_power_on_side**\ ={\ **temp**\ |\ **perm**\ }
+\ **rspconfig**\  \ *noderange*\  \ **pending_power_on_side**\ ={\ **temp | perm**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **cec_off_policy**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **cec_off_policy**\ ={\ **poweroff**\ |\ **stayon**\ }
+\ **rspconfig**\  \ *noderange*\  \ **cec_off_policy**\ ={\ **poweroff | stayon**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **BSR**\ }
 
@@ -201,11 +201,11 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **setup_failover**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **setup_failover**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **setup_failover**\ ={\ **enable | disable**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **force_failover**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **--resetnet**\ 
+\ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
 
 BPA/Frame (using Direct FSP Management) Specific:
@@ -226,13 +226,13 @@ BPA/Frame (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\***\ |\ **name**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\* | name**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **pending_power_on_side**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **pending_power_on_side**\ ={\ **temp**\ |\ **perm**\ }
+\ **rspconfig**\  \ *noderange*\  \ **pending_power_on_side**\ ={\ **temp | perm**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **--resetnet**\ 
+\ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
 
 HMC Specific:
@@ -241,9 +241,9 @@ HMC Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **sshcfg**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable**\ |\ **disable**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sshcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **--resetnet**\ 
+\ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
 
 
@@ -255,7 +255,7 @@ DESCRIPTION
 \ **rspconfig**\  configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the \ **=**\ , it displays the current value.
 
-For options \ **autopower**\ |\ **iocap**\ |\ **dev**\ |\ **celogin1**\ |\ **decfg**\ |\ **memdecfg**\ |\ **procdecfg**\ |\ **time**\ |\ **date**\ |\ **spdump**\ |\ **sysdump**\ |\ **network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first. For options \ **dev**\ |\ **celogin1**\ , user also need to contact IBM service to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use \ *chdef -t site enableASMI=no*\  to disable ASMI.
+For options \ **autopower | iocap | dev | celogin1 | decfg | memdecfg | procdecfg | time | date | spdump | sysdump | network**\ , user need to use \ *chdef -t site enableASMI=yes*\  to enable ASMI first. For options \ **dev | celogin1**\ , user also need to contact IBM service to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use \ *chdef -t site enableASMI=no*\  to disable ASMI.
 
 
 *******
@@ -306,7 +306,7 @@ OPTIONS
  
 
 
-\ **cec_off_policy**\ ={\ **poweroff**\ |\ **stayon**\ }
+\ **cec_off_policy**\ ={\ **poweroff | stayon**\ }
  
  Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: \ **poweroff**\  and \ **stayon**\ . \ **poweroff**\  means Power off when last partition powers off. \ **stayon**\  means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.
  
@@ -473,13 +473,13 @@ OPTIONS
  
 
 
-\ **pd1**\ ={\ **nonred**\ |\ **redwoperf**\ |\ **redwperf**\ }
+\ **pd1**\ ={\ **nonred | redwoperf | redwperf**\ }
  
  Power Domain 1 - determines how an MPA responds to a loss of redundant power.
  
 
 
-\ **pd2**\ ={\ **nonred**\ |\ **redwoperf**\ |\ **redwperf**\ }
+\ **pd2**\ ={\ **nonred | redwoperf | redwperf**\ }
  
  Power Domain 2 - determines how an MPA responds to a loss of redundant power.
  
@@ -577,7 +577,7 @@ OPTIONS
  
 
 
-\ **--resetnet**\ 
+\ **-**\ **-resetnet**\ 
  
  Reset the network interfaces of the specified nodes.
  
@@ -589,13 +589,13 @@ OPTIONS
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Prints out a brief usage message.
  
 
 
-\ **-v**\ , \ **--version**\ 
+\ **-v**\ , \ **-**\ **-version**\ 
  
  Display the version number.
  
@@ -1107,7 +1107,7 @@ EXAMPLES
  
  To reset the network interface of the specified nodes:
  
- \ **rspconfig**\  \ *--resetnet*\ 
+ \ **rspconfig**\  \ *-**\ **-resetnet*\ 
  
  Output is similar to:
  

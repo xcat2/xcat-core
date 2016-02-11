@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **geninitrd**\  \ *imagename*\  [\ **--ignorekernelchk**\ ]
+\ **geninitrd**\  \ *imagename*\  [\ **-**\ **-ignorekernelchk**\ ]
 
-\ **geninitrd**\  [\ **-h**\  | \ **--help**\ ]
+\ **geninitrd**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -82,7 +82,7 @@ Parameters
 \ *imagename*\  specifies the name of an os image definition to be used. The specification for the image is storted in the \ *osimage*\  table and \ *linuximage*\  table.
 
 
-\ **--ignorekernelchk**\ 
+\ **-**\ **-ignorekernelchk**\ 
  
  Skip the kernel version checking when injecting drivers from osimage.driverupdatesrc. That means all drivers from osimage.driverupdatesrc will be injected to initrd for the specific target kernel.
  

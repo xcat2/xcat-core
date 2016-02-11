@@ -19,87 +19,87 @@ SYNOPSIS
 ********
 
 
-\ **rpower**\  \ *noderange*\  [\ **--nodeps**\ ] [\ **on**\ |\ **onstandby**\ |\ **off**\ |\ **suspend**\ |\ **stat**\ |\ **state**\ |\ **reset**\ |\ **boot**\ ] [\ **-m**\  \ *table.column*\ ==\ *expectedstatus*\  [\ **-m**\  \ *table.column*\ =~\ *expectedstatus*\ ]] [\ **-t**\  \ *timeout*\ ] [\ **-r**\  \ *retrycount*\ ]
+\ **rpower**\  \ *noderange*\  [\ **-**\ **-nodeps**\ ] [\ **on | onstandby | off | suspend | stat | state | reset | boot**\ ] [\ **-m**\  \ *table.column*\ ==\ *expectedstatus*\  [\ **-m**\  \ *table.column*\ =~\ *expectedstatus*\ ]] [\ **-t**\  \ *timeout*\ ] [\ **-r**\  \ *retrycount*\ ]
 
-\ **rpower**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rpower**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 BMC (using IPMI) specific:
 ==========================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **softoff**\ |\ **reset**\ |\ **boot**\ |\ **stat**\ |\ **state**\ |\ **status**\ |\ **wake**\ |\ **suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
+\ **rpower**\  \ *noderange*\  [\ **on | off | softoff | reset | boot | stat | state | status | wake | suspend**\  [\ **-w**\  \ *timeout*\ ] [\ **-o**\ ] [\ **-r**\ ]]
 
 
 PPC (with IVM or HMC) specific:
 ===============================
 
 
-\ **rpower**\  \ *noderange*\  [\ **--nodeps**\ ] {\ **of**\ }
+\ **rpower**\  \ *noderange*\  [\ **-**\ **-nodeps**\ ] {\ **of**\ }
 
 
 CEC (with HMC) specific:
 ========================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **reset**\ |\ **boot**\ |\ **onstandby**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | off | reset | boot | onstandby**\ ]
 
 
 LPAR (with HMC) specific:
 =========================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **stat**\ |\ **state**\ |\ **reset**\ |\ **boot**\ |\ **of**\ |\ **sms**\ |\ **softoff**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | off | stat | state | reset | boot | of | sms | softoff**\ ]
 
 
 CEC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ **rpower**\  \ *noderange*\  [\ **onstandby**\ |\ **stat**\ |\ **state**\ ] [\ **-T tooltype**\ ]
+\ **rpower**\  \ *noderange*\  [\ **onstandby | stat | state**\ ] [\ **-T tooltype**\ ]
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **resetsp**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | off | resetsp**\ ]
 
 
 Frame (using Direct FSP Management) specific:
 =============================================
 
 
-\ **rpower**\  \ *noderange*\  [\ **rackstandby**\ |\ **exit_rackstandby**\ |\ **stat**\ |\ **state**\ |\ **resetsp**\ ]
+\ **rpower**\  \ *noderange*\  [\ **rackstandby | exit_rackstandby | stat | state | resetsp**\ ]
 
 
 LPAR (using Direct FSP Management) specific:
 ============================================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **stat**\ |\ **state**\ |\ **reset**\ |\ **boot**\ |\ **of**\ |\ **sms**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | off | stat | state | reset | boot | of | sms**\ ]
 
 
 Blade (using Direct FSP Management) specific:
 =============================================
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **onstandby**\ |\ **off**\ |\ **stat**\ |\ **state**\ |\ **sms**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | onstandby | off | stat | state | sms**\ ]
 
 
 Blade specific:
 ===============
 
 
-\ **rpower**\  \ *noderange*\  [\ **cycle**\ |\ **softoff**\ ]
+\ **rpower**\  \ *noderange*\  [\ **cycle | softoff**\ ]
 
 
 zVM specific:
 =============
 
 
-\ **rpower**\  \ *noderange*\  [\ **on**\ |\ **off**\ |\ **reset**\ |\ **stat**\ |\ **softoff**\ ]
+\ **rpower**\  \ *noderange*\  [\ **on | off | reset | stat | softoff**\ ]
 
 
 docker specific:
 ================
 
 
-\ **rpower**\  \ *noderange*\  [\ **start**\ |\ **stop**\ |\ **restart**\ |\ **pause**\ |\ **unpause**\ |\ **state**\ ]
+\ **rpower**\  \ *noderange*\  [\ **start | stop | restart | pause | unpause | state**\ ]
 
 
 
@@ -228,7 +228,7 @@ OPTIONS
  
 
 
-\ **stat**\ |\ **state**\ 
+\ **stat | state**\ 
  
  Print the current power state/status.
  
@@ -274,7 +274,7 @@ OPTIONS
  
 
 
-\ **--nodeps**\ 
+\ **-**\ **-nodeps**\ 
  
  Do not use dependency table (default is to use dependency table). Valid only with \ **on|off|boot|reset|cycle**\  for blade power method and \ **on|off|reset|softoff**\  for hmc/fsp power method.
  
@@ -348,13 +348,13 @@ OPTIONS
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Prints out a brief usage message.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the version number.
  

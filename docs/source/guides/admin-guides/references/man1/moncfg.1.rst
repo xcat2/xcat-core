@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *moncfg [-h| --help]*\ 
+\ **moncfg [-h| -**\ **-help]**\ 
 
-\ *moncfg [-v| --version]*\ 
+\ **moncfg [-v| -**\ **-version]**\ 
 
-\ *moncfg name [noderange] [-r|--remote]*\ 
+\ **moncfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\ 
 
 
 ***********
@@ -49,11 +49,11 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-r | --remote**\         Specifies that the operation will also be performed on the nodes.
+\ **-r | -**\ **-remote**\         Specifies that the operation will also be performed on the nodes.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\        Command Version.
 
 
 ************
@@ -79,7 +79,7 @@ EXAMPLES
    moncfg gangliamon
 
 
-1. To configure the management node, nodes and their service nodes for ganglia monitoring, enter:
+2. To configure the management node, nodes and their service nodes for ganglia monitoring, enter:
 
 
 .. code-block:: perl

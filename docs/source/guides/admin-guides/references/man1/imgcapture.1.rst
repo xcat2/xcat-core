@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **imgcapture**\  node \ **-t**\ |\ **--type**\  {diskless|sysclone} \ **-o**\ |\ **--osimage**\  \ *osimage*\  [\ **-V**\ |\ **--verbose**\ ]
+\ **imgcapture**\  \ *node*\  \ **-t | -**\ **-type**\  {\ **diskless | sysclone**\ } \ **-o | -**\ **-osimage**\  \ *osimage*\  [\ **-V | -**\ **-verbose**\ ]
 
-\ **imgcapture**\  [\ **-h**\  | \ **--help**\ ] | [\ **-v**\  | \ **--version**\ ]
+\ **imgcapture**\  [\ **-h**\  | \ **-**\ **-help**\ ] | [\ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -37,7 +37,7 @@ The \ **imgcapture**\  command supports two image types: \ **diskless**\  and \ 
 
 The \ **diskless**\  type:
 
-The attributes of osimage will be used to capture and prepare the root image. The \ **osver**\ , \ **arch**\  and \ **profile**\  attributes for the stateless/statelite image to be created are duplicated from the \ **node**\ 's attribute. If the \ **-p|--profile**\  \ *profile*\  option is specified, the image will be created under "/<\ *installroot*\ >/netboot/<osver>/<arch>/<\ *profile*\ >/rootimg".
+The attributes of osimage will be used to capture and prepare the root image. The \ **osver**\ , \ **arch**\  and \ **profile**\  attributes for the stateless/statelite image to be created are duplicated from the \ **node**\ 's attribute. If the \ **-p|-**\ **-profile**\  \ *profile*\  option is specified, the image will be created under "/<\ *installroot*\ >/netboot/<osver>/<arch>/<\ *profile*\ >/rootimg".
 
 The default files/directories excluded in the image are specified by /opt/xcat/share/xcat/netboot/<os>/<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist; also, you can put your customized file (<\ *profile*\ >.<osver>.<arch>.imgcapture.exlist) to /install/custom/netboot/<osplatform>. The directories in the default \ *.imgcapture.exlist*\  file are necessary to capture image from the diskful Linux node managed by xCAT, please don't remove it.
 
@@ -58,19 +58,19 @@ OPTIONS
 
 
 
-\ **-t**\ |\ **--type**\ 
+\ **-t | -**\ **-type**\ 
  
  Specify the osimage type you want to capture, two types are supported: diskless and sysclone.
  
 
 
-\ **-p|--profile**\  \ *profile*\ 
+\ **-p|-**\ **-profile**\  \ *profile*\ 
  
  Assign \ *profile*\  as the profile of the image to be created.
  
 
 
-\ **-o|--osimage**\  \ *osimage*\ 
+\ **-o|-**\ **-osimage**\  \ *osimage*\ 
  
  The osimage name.
  
@@ -118,19 +118,19 @@ OPTIONS
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display the usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Display the version.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose output.
  
@@ -156,11 +156,19 @@ EXAMPLES
 
 1. There's one pre-defined \ *osimage*\ . In order to capture and prepare the diskless root image for \ *osimage*\ , run the command:
 
-imgcapture node1 -t diskless -o osimage
+
+.. code-block:: perl
+
+  imgcapture node1 -t diskless -o osimage
+
 
 2. In order to capture the diskful image from \ **node1**\  and create the \ *osimage*\  \ **img1**\ , run the command:
 
-imgcapture node1 -t sysclone -o img1
+
+.. code-block:: perl
+
+  imgcapture node1 -t sysclone -o img1
+
 
 
 *****

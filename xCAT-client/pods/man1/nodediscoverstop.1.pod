@@ -30,7 +30,7 @@ Command Version.
 
 =head1 EXAMPLES
 
-nodediscoverstop 
+ nodediscoverstop 
 
 =head1 SEE ALSO
 

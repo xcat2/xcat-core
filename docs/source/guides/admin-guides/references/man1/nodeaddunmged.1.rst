@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **nodeaddunmged**\  [-h| --help | -v | --version]
+\ **nodeaddunmged**\  [\ **-h**\ | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
-\ **nodeaddunmged**\  hostname=<node-name> ip=<ip-address>
+\ **nodeaddunmged hostname=**\ \ *node-name*\  \ **ip=**\ \ *ip-address*\ 
 
 
 ***********
@@ -37,21 +37,21 @@ OPTIONS
 *******
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
 
 Display usage message.
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
 
 Command Version.
 
-\ **hostname=<node-name**\ >
+\ **hostname=**\ \ *node-name*\ 
 
 Sets the name of the new unmanaged node, where <node-name> is the name of the node.
 
-\ **ip=<ip-address**\ >
+\ **ip=**\ \ *ip-address*\ 
 
-Sets the IP address of the unmanaged node, where <ip-address> is the IP address of the new node in the form xxx.xxx.xxx.xxx
+Sets the IP address of the unmanaged node, where \ *ip-address*\  is the IP address of the new node in the form xxx.xxx.xxx.xxx
 
 
 ************
@@ -70,7 +70,12 @@ EXAMPLES
 
 
 To add an unmanaged node, use the following command:
-nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
+
+
+.. code-block:: perl
+
+  nodeaddunmged hostname=unmanaged01 ip=192.168.1.100
+
 
 
 ********

@@ -6,18 +6,17 @@ B<makentp> - Setup NTP server on the management node and the service node.
 
 =head1 SYNOPSIS
 
-I<makentp [-h|--help]>
+B<makentp [-h|--help]>
 
-I<makentp [-v|--version]>
+B<makentp [-v|--version]>
 
-
-I<makentp [-a|--all] [-V|--verbose]>
+B<makentp [-a|--all] [-V|--verbose]>
 
 
 
 =head1 DESCRIPTION
 
-I<makentp> command sets up the NTP server on the xCAT management node and the service node.
+B<makentp> command sets up the NTP server on the xCAT management node and the service node.
 
 By default, it sets up the NTP server for xCAT management node. If -a flag is specified, the command will setup the ntp servers for management node as well as all the service nodes that have I<servicenode.ntpserver> set. It honors the site table attributes I<extntpservers> and I<ntpservers> described below:
 
@@ -67,17 +66,15 @@ Verbose output.
 
 =over 3
 
-=item *
-
+=item 1.
 To setup NTP server on the management node:
 
-B<makentp>
+ makentp
 
-=item *
-
+=item 2.
 To setup NTP servers on both management node and the service node:
 
-B<setupntp> I<-a>
+ setupntp -a
 
 
 =back

@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **bmcdiscover**\  [\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
+\ **bmcdiscover**\  [\ **-h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **--range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
 
-\ **bmcdiscover**\  \ **-i**\ |\ **--bmcip**\  \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\  \ *bmcusername*\ ] \ **-p**\ |\ **--bmcpwd**\  \ *bmcpassword*\  \ **-c**\ |\ **--check**\ 
+\ **bmcdiscover**\  \ **-i | -**\ **-bmcip**\  \ *bmc_ip*\  [\ **-u | -**\ **-bmcuser**\  \ *bmcusername*\ ] \ **-p | -**\ **-bmcpwd**\  \ *bmcpassword*\  \ **-c | -**\ **-check**\ 
 
-\ **bmcdiscover**\  \ **-i**\ |\ **--bmcip**\  \ *bmc_ip*\  [\ **-u**\ |\ **--bmcuser**\  \ *bmcusername*\ ] \ **-p**\ |\ **--bmcpwd**\  \ *bmcpassword*\  \ **--ipsource**\ 
+\ **bmcdiscover**\  \ **-i | -**\ **-bmcip**\  \ *bmc_ip*\  [\ **-u | -**\ **-bmcuser**\  \ *bmcusername*\ ] \ **-p | -**\ **-bmcpwd**\  \ *bmcpassword*\  \ **-**\ **-ipsource**\ 
 
 
 ***********
@@ -48,7 +48,7 @@ OPTIONS
 
 
 
-\ **--range**\ 
+\ **-**\ **-range**\ 
  
  Specify one or more IP ranges acceptable to nmap.  IP rance can be hostnames, IP addresses, networks, etc.  A single IP address (10.1.2.3) or an IP range (10.1.2.0/24) can be specified.  If the range is very large, the \ **bmcdiscover**\  command may take a long time to return.
  
@@ -78,43 +78,43 @@ OPTIONS
  
 
 
-\ **-i|--bmcip**\ 
+\ **-i|-**\ **-bmcip**\ 
  
  BMC IP
  
 
 
-\ **-u|--bmcuser**\ 
+\ **-u|-**\ **-bmcuser**\ 
  
  BMC user name.
  
 
 
-\ **-p|--bmcpwd**\ 
+\ **-p|-**\ **-bmcpwd**\ 
  
  BMC user password.
  
 
 
-\ **-c|--check**\ 
+\ **-c|-**\ **-check**\ 
  
  Check
  
 
 
-\ **--ipsource**\ 
+\ **-**\ **-ipsource**\ 
  
  BMC IP source
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Display version information
  

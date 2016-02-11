@@ -53,11 +53,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -67,13 +65,11 @@ An error has occurred.
 
 =over 2
 
-
-
-=item *
+=item 1.
 
 To declare all members of ipmi group to have nodehm.mgt be ipmi
 
-B<  nodegrpch> I<ipmi nodehm.mgt=ipmi>
+ nodegrpch ipmi nodehm.mgt=ipmi
 
 =back
 

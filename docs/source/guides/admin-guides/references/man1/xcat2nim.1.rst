@@ -63,31 +63,31 @@ OPTIONS
 *******
 
 
-\ **-a|--all**\              The list of objects will include all xCAT node, group and network objects.
+\ **-a|-**\ **-all**\              The list of objects will include all xCAT node, group and network objects.
 
 \ **attr=val [attr=val ...]**\   Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
 
-\ **-b|--backupSN**\        When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
+\ **-b|-**\ **-backupSN**\        When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
 
-\ **-f|--force**\    	 The force option will remove the existing NIM definition and create a new one.
+\ **-f|-**\ **-force**\    	 The force option will remove the existing NIM definition and create a new one.
 
-\ **-h|--help**\             Display the usage message.
+\ **-h|-**\ **-help**\             Display the usage message.
 
-\ **-l|--list**\ 		 List NIM definitions corresponding to xCAT definitions.
+\ **-l|-**\ **-list**\ 		 List NIM definitions corresponding to xCAT definitions.
 
 \ **-o object-names**\        A set of comma delimited xCAT object names. Objects must be of type node, group, or network.
 
-\ **-p|--primarySN**\         When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
+\ **-p|-**\ **-primarySN**\         When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
-\ **-r|--remove**\          Remove NIM definitions corresponding to xCAT definitions.
+\ **-r|-**\ **-remove**\          Remove NIM definitions corresponding to xCAT definitions.
 
 \ **-t object-types**\        A set of comma delimited xCAT object types. Supported types include: node, group, and network.
 
 Note: If the object type is "group", it means that the \ **xcat2nim**\  command will operate on a NIM machine group definition corresponding to the xCAT node group definition. Before creating a NIM machine group, all the NIM client nodes definition must have been created.
 
-\ **-u|--update**\         Update existing NIM definitions based on xCAT definitions.
+\ **-u|-**\ **-update**\         Update existing NIM definitions based on xCAT definitions.
 
-\ **-V|--verbose**\        Verbose mode.
+\ **-V|-**\ **-verbose**\        Verbose mode.
 
 
 ************

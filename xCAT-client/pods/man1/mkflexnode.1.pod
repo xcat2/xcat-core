@@ -5,9 +5,9 @@ B<mkflexnode> - Create a flexible node.
 
 =head1 SYNOPSIS
 
-B<mkflexnode> [-h | --help]
+B<mkflexnode> [B<-h> | B<--help>]
 
-B<mkflexnode> [-v | --version]
+B<mkflexnode> [B<-v> | B<--version>]
 
 B<mkflexnode> I<noderange>
 
@@ -43,8 +43,7 @@ Display the version information.
 
 =over 3
 
-=item 1
-
+=item 1.
 Create a flexible node base on the xCAT node blade1.
 
 The blade1 should belong to a complex, the I<id> attribute should be set correctly and all the slots should be in B<power off> state.

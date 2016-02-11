@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **chvlan**\  \ *vlanid*\  \ **-n**\ |\ **--nodes**\  \ *noderange*\  [\ **-i**\ |\ **--interface**\  \ *nic*\ ]
+\ **chvlan**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  [\ **-i | -**\ **-interface**\  \ *nic*\ ]
 
-\ **chvlan**\  \ *vlanid*\  \ **-n**\ |\ **--nodes**\  \ *noderange*\  \ **-d**\ |\ **--delete**\ 
+\ **chvlan**\  \ *vlanid*\  \ **-n | -**\ **-nodes**\  \ *noderange*\  \ **-d | -**\ **-delete**\ 
 
-\ **chvlan**\  [\ **-h**\ |\ **--help**\ ]
+\ **chvlan**\  [\ **-h | -**\ **-help**\ ]
 
-\ **chvlan**\  [\ **-v**\ |\ **--version**\ ]
+\ **chvlan**\  [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -52,19 +52,19 @@ OPTIONS
 
 
 
-\ **-n|--nodes**\     The nodes or groups to be added or removed. It can be stand alone nodes or KVM guests. It takes the noderange format. Please check the man page for noderange for details.
+\ **-n|-**\ **-nodes**\     The nodes or groups to be added or removed. It can be stand alone nodes or KVM guests. It takes the noderange format. Please check the man page for noderange for details.
 
 
 
-\ **-i|--interface**\  (For adding only). The interface name where the vlan will be tagged on. If omitted, the xCAT management network will be assumed. For KVM, it is the interface name on the host.
+\ **-i|-**\ **-interface**\  (For adding only). The interface name where the vlan will be tagged on. If omitted, the xCAT management network will be assumed. For KVM, it is the interface name on the host.
 
 
 
-\ **-h|--help**\      Display usage message.
+\ **-h|-**\ **-help**\      Display usage message.
 
 
 
-\ **-v|--version**\   The Command Version.
+\ **-v|-**\ **-version**\   The Command Version.
 
 
 

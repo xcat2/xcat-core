@@ -19,20 +19,20 @@ Name
 ****************
 
 
-\ **rinv**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rinv**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 BMC/MPA specific:
 =================
 
 
-\ **rinv**\  \ *noderange*\  {\ **pci**\ |\ **model**\ |\ **serial**\ |\ **asset**\ |\ **vpd**\ |\ **mprom**\ |\ **deviceid**\ |\ **guid**\ |\ **firm**\ |\ **diag**\ |\ **bios**\ |\ **mparom**\ |\ **mac**\ |\ **all**\ }
+\ **rinv**\  \ *noderange*\  {\ **pci | model | serial | asset | vpd | mprom | deviceid | guid | firm | diag | bios | mparom | mac | all**\ }
 
 
 PPC (with HMC) specific:
 ========================
 
 
-\ **rinv**\  \ *noderange*\  {\ **bus**\ |\ **config**\ |\ **serial**\ |\ **model**\ |\ **firm**\ |\ **all**\ }
+\ **rinv**\  \ *noderange*\  {\ **bus | config | serial | model | firm | all**\ }
 
 
 PPC (using Direct FSP Management) specific:
@@ -48,7 +48,7 @@ Blade specific:
 ===============
 
 
-\ **rinv**\  \ *noderange*\  {\ **mtm**\ |\ **serial**\ |\ **mac**\ |\ **bios**\ |\ **diag**\ |\ **mprom**\ |\ **mparom**\ |\ **firm**\ |\ **all**\ }
+\ **rinv**\  \ *noderange*\  {\ **mtm | serial | mac | bios | diag | mprom | mparom | firm | all**\ }
 
 
 VMware specific:
@@ -62,29 +62,29 @@ zVM specific:
 =============
 
 
-\ **rinv**\  \ *noderange*\  [\ **config**\ |\ **all**\ ]
+\ **rinv**\  \ *noderange*\  [\ **config | all**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--diskpoolspace**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-diskpoolspace**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--diskpool**\  \ *pool*\  \ *space*\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--fcpdevices**\  \ *state*\  \ *details*\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--diskpoolnames**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-diskpoolnames**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--networknames**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-networknames**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--network**\  \ *name*\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-network**\  \ *name*\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--ssi**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-ssi**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--smapilevel**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-smapilevel**\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--wwpns**\  \ *fcp_channel*\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-wwpns**\  \ *fcp_channel*\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--zfcppool**\  \ *pool*\  \ *space*\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ ]
 
-\ **rinv**\  \ *noderange*\  [\ **--zfcppoolnames**\ ]
+\ **rinv**\  \ *noderange*\  [\ **-**\ **-zfcppoolnames**\ ]
 
 
 
@@ -196,13 +196,13 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  
@@ -215,67 +215,67 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  \ **zVM specific :**\ 
  
  
- \ **--diskpoolspace**\ 
+ \ **-**\ **-diskpoolspace**\ 
   
   Calculates the total size of every known storage pool.
   
  
  
- \ **--diskpool**\  \ *pool*\  \ *space*\ 
+ \ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
   
   Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
   
  
  
- \ **--fcpdevices**\  \ *state*\  \ *details*\ 
+ \ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
   
   Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
   
  
  
- \ **--diskpoolnames**\ 
+ \ **-**\ **-diskpoolnames**\ 
   
   Lists the known disk pool names.
   
  
  
- \ **--networknames**\ 
+ \ **-**\ **-networknames**\ 
   
   Lists the known network names.
   
  
  
- \ **--network**\  \ *name*\ 
+ \ **-**\ **-network**\  \ *name*\ 
   
   Shows the configuration of a given network device.
   
  
  
- \ **--ssi**\ 
+ \ **-**\ **-ssi**\ 
   
   Obtain the SSI and system status.
   
  
  
- \ **--smapilevel**\ 
+ \ **-**\ **-smapilevel**\ 
   
   Obtain the SMAPI level installed on the z/VM system.
   
  
  
- \ **--wwpns**\  \ *fcp_channel*\ 
+ \ **-**\ **-wwpns**\  \ *fcp_channel*\ 
   
   Query a given FCP device channel on a z/VM system and return a list of WWPNs.
   
  
  
- \ **--zfcppool**\  \ *pool*\  \ *space*\ 
+ \ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
   
   List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
   
  
  
- \ **--zfcppoolnames**\ 
+ \ **-**\ **-zfcppoolnames**\ 
   
   List the known zFCP pool names.
   

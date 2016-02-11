@@ -11,9 +11,9 @@ SYNOPSIS
 ********
 
 
-\ **rsetboot**\  \ *noderange*\  {\ **hd**\ |\ **net**\ |\ **cd**\ |\ **default**\ |\ **stat**\ }
+\ **rsetboot**\  \ *noderange*\  {\ **hd | net | cd | default | stat**\ }
 
-\ **rsetboot**\  [\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ ]
+\ **rsetboot**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
 
 ***********
@@ -50,7 +50,7 @@ OPTIONS
  
 
 
-\ **def**\ |\ **default**\ 
+\ **def | default**\ 
  
  Boot using the default set in BIOS.
  

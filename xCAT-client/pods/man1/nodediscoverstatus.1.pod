@@ -31,7 +31,7 @@ Command Version.
 
 To determine if there are some nodes discovered and the discovered nodes' status, enter the following command:
 
-nodediscoverstatus 
+ nodediscoverstatus 
 
 =head1 SEE ALSO
 

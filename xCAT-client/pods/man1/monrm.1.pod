@@ -2,21 +2,20 @@
 
 B<monrm> -  Unregisters a monitoring plug-in module from the xCAT cluster.
 
-
 =head1 SYNOPSIS
 
-I<monrm [-h| --help]>
+B<monrm [-h| --help]>
 
-I<monrm [-v| --version]>
+B<monrm [-v| --version]>
 
-I<monrm name>
+B<monrm> I<name>
 
 
 =head1 DESCRIPTION
 
 This command is used to unregister a monitoring plug-in module from the I<monitoring> table. It also removes any configuration scripts associated with the monitoring plug-in from the I<postscripts> table.  A monitoring plug-in module acts as a bridge that connects a 3rd party monitoring software and the xCAT cluster. A configuration script is used to configure the 3rd party software. Once added to the I<postscripts> table, it will be invoked on the nodes during node deployment stage.
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<name> is the name of the monitoring plug-in module in the I<monitoring> table.  Use I<monls> command to list all the monitoring plug-in modules that can be used. 
 
@@ -25,7 +24,7 @@ I<name> is the name of the monitoring plug-in module in the I<monitoring> table.
 
 B<-h | --help>          Display usage message.
 
-B<-v | --version >      Command Version.
+B<-v | --version>       Command Version.
 
 
 =head1 RETURN VALUE
@@ -40,7 +39,7 @@ B<-v | --version >      Command Version.
 
   monrm gangliamon
 
-Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command I<monls>.
+Please note that gangliamon must have been registered in the xCAT I<monitoring> table. For a list of registered plug-in modules, use command B<monls>.
 
 
 

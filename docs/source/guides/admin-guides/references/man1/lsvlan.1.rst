@@ -23,9 +23,9 @@ SYNOPSIS
 
 \ **lsvlan**\  [\ *vlanid*\ ]
 
-\ **lsvlan**\  [\ **-h**\ |\ **--help**\ ]
+\ **lsvlan**\  [\ **-h | -**\ **-help**\ ]
 
-\ **lsvlan**\  [\ **-v**\ |\ **--version**\ ]
+\ **lsvlan**\  [\ **-v | -**\ **-version**\ ]
 
 
 ***********
@@ -37,7 +37,7 @@ The \ **lsvlan**\  command lists all the vlans for the cluster. If \ *vlanid*\  
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -50,11 +50,11 @@ OPTIONS
 
 
 
-\ **-h|--help**\   Display usage message.
+\ **-h|-**\ **-help**\   Display usage message.
 
 
 
-\ **-v|--version**\   Command Version.
+\ **-v|-**\ **-version**\   Command Version.
 
 
 
@@ -75,9 +75,7 @@ EXAMPLES
 
 
 
-1.
- 
- To list all the vlans in the cluster
+1. To list all the vlans in the cluster
  
  
  .. code-block:: perl
@@ -86,13 +84,14 @@ EXAMPLES
  
  
  Output is similar to:
-   vlan 3:
-       subnet 10.3.0.0
-       netmask 255.255.0.0
  
  
  .. code-block:: perl
  
+    vlan 3:
+        subnet 10.3.0.0
+        netmask 255.255.0.0
+  
     vlan 4:
         subnet 10.4.0.0
         netmask 255.255.0.0
@@ -100,9 +99,7 @@ EXAMPLES
  
 
 
-2.
- 
- TO list the details for vlan3
+2. To list the details for vlan3
  
  
  .. code-block:: perl
@@ -111,13 +108,14 @@ EXAMPLES
  
  
  Output is similar to:
-   vlan 3
-       subnet 10.3.0.0
-       netmask 255.255.0.0
  
  
  .. code-block:: perl
  
+    vlan 3
+        subnet 10.3.0.0
+        netmask 255.255.0.0
+  
         hostname    ip address      node            vm host
         v3n1        10.3.0.1        c68m4hsp06
         v3n2        10.3.0.2        x3455n01

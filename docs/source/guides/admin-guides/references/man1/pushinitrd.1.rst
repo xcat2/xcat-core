@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **pushinitrd**\  [\ **-v**\ |\ **--verbose**\ ]  [\ **-w**\  \ *waittime*\ ] [\ *noderange*\ ]
+\ **pushinitrd**\  [\ **-v | -**\ **-verbose**\ ]  [\ **-w**\  \ *waittime*\ ] [\ *noderange*\ ]
 
-\ **pushinitrd**\  [\ **-?**\  | \ **-h**\  | \ **--help**\ ]
+\ **pushinitrd**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -57,13 +57,13 @@ OPTIONS
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  

@@ -35,11 +35,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -48,25 +46,23 @@ An error has occurred.
 
 =over 2
 
-=item *
-
+=item 1.
 To display setting for B<master> (management node) in the site table:
 
-B<gettab -H> I<key=master site.value>
+ gettab -H key=master site.value
 
 The output would be similar to:
 
-     site.value: mgmtnode.cluster.com
+ site.value: mgmtnode.cluster.com
 
-=item *
-
+=item 2.
 To display the first node or group name that has B<mgt> set to B<blade> in the nodehm table:
 
-B<gettab> I<mgt=blade nodehm.node>
+ gettab mgt=blade nodehm.node
 
 The output would be similar to:
 
-     blades
+ blades
 
 =back
 

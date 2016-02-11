@@ -13,7 +13,7 @@ B<winstall> [B<-O>|B<--osimage>] [I<noderange>]
 B<winstall> is a convenience tool that will change attributes as requested for operating system version, profile, and architecture, call B<nodeset> to modify the network boot configuration, call B<rsetboot> net to set the next boot over network (only support nodes
 with "nodetype.mgt=ipmi", for other nodes, make sure the correct boot order has been set before B<winstall>), and B<rpower> to begin a boot cycle.
 
-If [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
+If [B<-O>|B<--osimage>] is specified or nodetype.provmethod=I<osimage> is set, provision the noderange with the osimage specified/configured, ignore the table change options if specified.
 
 It  will then run wcons on the nodes. 
 

@@ -19,14 +19,14 @@ xdsh.1
 ****************
 
 
-\ **xdsh**\  \ *noderange*\  [\ **-B**\  \ *bypass*\ ]  [\ **--devicetype**\  \ *type_of_device*\ ] [\ **-e**\ ] [\ **-E**\  \ *environment_file*\ ]  [\ **-f**\  \ *fanout*\ ]
+\ **xdsh**\  \ *noderange*\  [\ **-B**\  \ *bypass*\ ]  [\ **-**\ **-devicetype**\  \ *type_of_device*\ ] [\ **-e**\ ] [\ **-E**\  \ *environment_file*\ ]  [\ **-f**\  \ *fanout*\ ]
 [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ]   [\ **-m**\ ]   [\ **-o**\ 
-\ *node_options*\ ] [\ **-Q**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-s**\ ] [\ **-S**\  \ **csh**\ |\ **ksh**\ ] [\ **-t**\  \ *timeout*\ ]
-[\ **-T**\ ] [\ **-v**\ ] [\ **-X**\  \ *env_list*\ ] [\ **-z**\ ] [\ **--sudo**\ ] \ *command_list*\ 
+\ *node_options*\ ] [\ **-Q**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-s**\ ] [\ **-S**\  \ **csh | ksh**\ ] [\ **-t**\  \ *timeout*\ ]
+[\ **-T**\ ] [\ **-v**\ ] [\ **-X**\  \ *env_list*\ ] [\ **-z**\ ] [\ **-**\ **-sudo**\ ] \ *command_list*\ 
 
 \ **xdsh**\  \ *noderange*\   [\ **-K**\ ]
 
-\ **xdsh**\  \ *noderange*\   [\ **-K**\ ] [\ **-l**\   \ *userID*\ ] \ **--devicetype**\  \ *type_of_device*\ 
+\ **xdsh**\  \ *noderange*\   [\ **-K**\ ] [\ **-l**\   \ *userID*\ ] \ **-**\ **-devicetype**\  \ *type_of_device*\ 
 
 \ **xdsh**\  [\ **-i**\  \ *image path | nim image name*\ ] \ *command_list*\ 
 
@@ -196,7 +196,7 @@ running commands, are terminated (SIGTERM).
 
 
 
-\ **-c**\ |\ **--cleanup**\ 
+\ **-c | -**\ **-cleanup**\ 
  
  This flag will have xdsh remove all files from the subdirectories of the
  the directory on the servicenodes, where xdcp stages the copy to the 
@@ -208,7 +208,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-e**\ |\ **--execute**\ 
+\ **-e | -**\ **-execute**\ 
  
  Indicates  that \ *command_list*\  specifies a local script
  filename and arguments to be executed on  the  remote  targets.
@@ -219,7 +219,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-E**\ |\ **--environment**\  \ *environment_file*\ 
+\ **-E | -**\ **-environment**\  \ *environment_file*\ 
  
  Specifies that the  \ *environment_file*\   contains  environment
  variable definitions to export to the target before
@@ -227,7 +227,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **--devicetype**\  \ *type_of_device*\ 
+\ **-**\ **-devicetype**\  \ *type_of_device*\ 
  
  Specify a user-defined device type that references the location
  of relevant device configuration file. The devicetype value must
@@ -245,7 +245,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-f**\ |\ **--fanout**\  \ *fanout_value*\ 
+\ **-f | -**\ **-fanout**\  \ *fanout_value*\ 
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
@@ -254,13 +254,13 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Displays usage information.
  
 
 
-\ **-i**\ |\ **--rootimg**\  \ *install image*\ 
+\ **-i | -**\ **-rootimg**\  \ *install image*\ 
  
  For Linux, Specifies the path to the install image on the local node.
  For AIX, specifies the name of the osimage on the local node. Run lsnim 
@@ -272,11 +272,11 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-K**\ |\ **--ssh-setup**\ 
+\ **-K | -**\ **-ssh-setup**\ 
 
 
 
-\ **-K**\ |\ **--ssh-setup**\   \ **-l**\ |\ **--user**\  \ *user_ID*\  \ **--devicetype**\  \ *type_of_device*\ 
+\ **-K | -**\ **-ssh-setup**\   \ **-l | -**\ **-user**\  \ *user_ID*\  \ **-**\ **-devicetype**\  \ *type_of_device*\ 
  
  Set up the SSH keys for the user running the command to the specified node list.
  The userid must have the same uid, gid and password as the userid on the node
@@ -293,14 +293,14 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-l**\ |\ **--user**\  \ *user_ID*\ 
+\ **-l | -**\ **-user**\  \ *user_ID*\ 
  
  Specifies a remote user name to use for remote command exe-
  cution.
  
 
 
-\ **-L**\ |\ **--no-locale**\ 
+\ **-L | -**\ **-no-locale**\ 
  
  Specifies to not export the locale definitions of the local
  host to the remote targets. Local host  locale  definitions
@@ -308,14 +308,14 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-m**\ |\ **--monitor**\ 
+\ **-m | -**\ **-monitor**\ 
  
  Monitors  remote  shell execution by displaying status
  messages during execution on each target.
  
 
 
-\ **-o**\ |\ **--node-options**\  \ *node_options*\ 
+\ **-o | -**\ **-node-options**\  \ *node_options*\ 
  
  Specifies options to pass to the remote shell  command  for
  node  targets.  The options must be specified within double
@@ -323,7 +323,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-q**\ |\ **--show-config**\ 
+\ **-q | -**\ **-show-config**\ 
  
  Displays the current environment settings for all DSH
  Utilities commands. This includes the values of all environment
@@ -333,7 +333,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-Q**\ |\ **--silent**\ 
+\ **-Q | -**\ **-silent**\ 
  
  Specifies silent mode. No target output is written to stan-
  dard output or  standard  error.  Monitoring  messages  are
@@ -341,14 +341,14 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-r**\ |\ **--node-rsh**\  \ *node_remote_shell*\ 
+\ **-r | -**\ **-node-rsh**\  \ *node_remote_shell*\ 
  
  Specifies the path of the remote shell command used
  for remote command execution on node targets.
  
 
 
-\ **-s**\ |\ **--stream**\ 
+\ **-s | -**\ **-stream**\ 
  
  Specifies that output is returned as it  becomes  available
  from  each  target, instead of waiting for the \ *command_list*\ 
@@ -356,14 +356,14 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-S**\ |\ **--syntax**\  \ **csh**\ |\ **ksh**\ 
+\ **-S | -**\ **-syntax**\  \ **csh | ksh**\ 
  
  Specifies the shell syntax to be used on the remote target.
  If not specified, the \ **ksh**\  syntax is used.
  
 
 
-\ **--sudo**\ |\ **--sudo**\ 
+\ **-**\ **-sudo | -**\ **-sudo**\ 
  
  Adding the --sudo flag to the xdsh command will have xdsh run sudo before
  running the command.  This is particular useful when using the -e option.
@@ -379,7 +379,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-t**\ |\ **--timeout**\  \ *timeout*\ 
+\ **-t | -**\ **-timeout**\  \ *timeout*\ 
  
  Specifies the time, in seconds, to wait for output from any
  currently executing remote targets. If no output is
@@ -392,14 +392,14 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-T**\ |\ **--trace**\ 
+\ **-T | -**\ **-trace**\ 
  
  Enables trace mode. The \ **xdsh**\  command prints diagnostic
  messages to standard output during execution to each target.
  
 
 
-\ **-v**\ |\ **--verify**\ 
+\ **-v | -**\ **-verify**\ 
  
  Verifies each target before executing any  remote  commands
  on  the target. If a target is not responding, execution of
@@ -409,7 +409,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-V**\ |\ **--version**\ 
+\ **-V | -**\ **-version**\ 
  
  Displays the \ **xdsh**\  command version information.
  
@@ -428,7 +428,7 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-z**\ |\ **--exit-status**\ 
+\ **-z | -**\ **-exit-status**\ 
  
  Displays the exit status for  the  last  remotely  executed
  non-asynchronous  command  on  each  target. If the command
@@ -463,7 +463,7 @@ running commands, are terminated (SIGTERM).
 
 \ **DEVICETYPE**\ 
  
- Specify a user-defined device type.  See \ **--devicetype**\  flag.
+ Specify a user-defined device type.  See \ **-**\ **-devicetype**\  flag.
  
 
 
@@ -656,7 +656,7 @@ The dsh command exit code is 0 if the command executed without errors and all re
  
  \ **chdef**\  \ *-t node -o qswitch groups=all nodetype=switch*\ 
  
- \ **xdsh**\  \ *qswitch -K -l username --devicetype IBSwitch::Qlogic*\ 
+ \ **xdsh**\  \ *qswitch -K -l username -**\ **-devicetype IBSwitch::Qlogic*\ 
  
 
 
@@ -675,7 +675,7 @@ The dsh command exit code is 0 if the command executed without errors and all re
  
  \ **chdef**\  \ *-t node -o mswitch groups=all nodetype=switch*\ 
  
- \ **xdsh**\  \ *mswitch -l admin --devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'*\ 
+ \ **xdsh**\  \ *mswitch -l admin -**\ **-devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'*\ 
  
 
 
@@ -696,7 +696,7 @@ The dsh command exit code is 0 if the command executed without errors and all re
  
  To run xdsh with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
  
- \ **xdsh**\  \ *node1,node2 --sudo -l user1 "cat /etc/passwd"*\ 
+ \ **xdsh**\  \ *node1,node2 -**\ **-sudo -l user1 "cat /etc/passwd"*\ 
  
 
 

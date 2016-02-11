@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **imgimport [-h|--help]**\ 
+\ **imgimport [-h|-**\ **-help]**\ 
 
-\ **imgimport**\  bundle_file_name [-p|--postscripts nodelist] [-f|--profile new_profile] [-v|--verbose]>
+\ **imgimport**\  \ *bundle_file_name*\  [\ **-p | -**\ **-postscripts**\  \ *nodelist*\ ] [\ **-f | -**\ **-profile**\  \ *new_profile*\ ] [\ **-v | -**\ **-verbose**\ ]
 
 
 ***********
@@ -90,13 +90,13 @@ OPTIONS
 *******
 
 
-\ **-f|--profile**\  \ *new_prof*\       Import the image with a new profile name.
+\ **-f|-**\ **-profile**\  \ *new_prof*\       Import the image with a new profile name.
 
-\ **-h|--help**\                      Display usage message.
+\ **-h|-**\ **-help**\                      Display usage message.
 
-\ **-p|--postscripts**\  \ *nodelist*\   Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
+\ **-p|-**\ **-postscripts**\  \ *nodelist*\   Import the postscripts. The postscripts contained in the image will be set in the postscripts table for \ *nodelist*\ .
 
-\ **-v|--verbose**\                   Verbose output.
+\ **-v|-**\ **-verbose**\                   Verbose output.
 
 
 ************
@@ -114,19 +114,31 @@ EXAMPLES
 ********
 
 
-1. Simplest way to import an image.  If there is a bundle file named 'foo.gz', then run:
+1. Simplest way to import an image. If there is a bundle file named 'foo.gz', then run:
 
-\ *imgimport foo.gz*\ 
+
+.. code-block:: perl
+
+  imgimport foo.gz
+
 
 2. Import the image with postscript names.
 
-\ *imgimport foo.gz -p node1,node2*\ 
+
+.. code-block:: perl
+
+  imgimport foo.gz -p node1,node2
+
 
 The \ *postscripts*\  table will be updated with the name of the \ *postscripts*\  and the \ *postbootscripts*\  for node1 and node2.
 
 3. Import the image with a new profile name
 
-\ *imgimport foo.gz -f compute_test*\ 
+
+.. code-block:: perl
+
+  imgimport foo.gz -f compute_test
+
 
 
 *****

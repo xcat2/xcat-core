@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **mkdocker**\  \ *noderange*\  [\ **image**\ =\ **image_name**\  [\ **command**\ =\ **command**\ ]] [\ **dockerflag**\ =\ **flags_to_create_instance**\ ]
+\ **mkdocker**\  \ *noderange*\  [\ **image**\ =\ *image_name*\  [\ **command**\ =\ *command*\ ]] [\ **dockerflag**\ =\ *flags_to_create_instance*\ ]
 
-\ **mkdocker**\  [\ **-h**\ |\ **--help**\ ]
+\ **mkdocker**\  [\ **-h | -**\ **-help**\ ]
 
-\ **mkdocker**\  {\ **-v**\ |\ **--version**\ }
+\ **mkdocker**\  {\ **-v | -**\ **-version**\ }
 
 
 ***********
@@ -31,7 +31,7 @@ DESCRIPTION
 ***********
 
 
-\ **rmdocker**\  To create docker instances with the specified image, command and/or dockerflags.
+\ **mkdocker**\  To create docker instances with the specified image, command and/or dockerflags.
 
 
 *******
@@ -59,31 +59,31 @@ OPTIONS
  Some useful flags are:
  
  
- \ **AttachStdin**\ =\ **true**\ |\ **false**\ 
+ \ **AttachStdin**\ =\ **true | false**\ 
   
   Whether attaches to stdin.
   
  
  
- \ **AttachStdout**\ =\ **true**\ |\ **false**\ 
+ \ **AttachStdout**\ =\ **true | false**\ 
   
   Whether attaches to stdout.
   
  
  
- \ **AttachStderr**\ =\ **true**\ |\ **false**\ 
+ \ **AttachStderr**\ =\ **true | false**\ 
   
   Whether attaches to stderr.
   
  
  
- \ **OpenStdin**\ =\ **true**\ |\ **false**\ 
+ \ **OpenStdin**\ =\ **true | false**\ 
   
   Whether opens stdin.
   
  
  
- \ **Tty**\ =\ **true**\ |\ **false**\ 
+ \ **Tty**\ =\ **true | false**\ 
   
   Attach standard streams to a tty, including stdin if it is not closed.
   
@@ -133,6 +133,13 @@ EXAMPLES
 .. code-block:: perl
 
      mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true}"
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
      host01c01: success
 
 
@@ -142,6 +149,13 @@ EXAMPLES
 .. code-block:: perl
 
      mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"NetworkDisabled\":ture}"
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
      host01c01: success
 
 
@@ -151,6 +165,13 @@ EXAMPLES
 .. code-block:: perl
 
      mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true,\"HostConfig\":{\"Binds\":[\"/srcdir:/destdir\"]}}"
+
+
+Output is similar to:
+
+
+.. code-block:: perl
+
      host01c01: success
 
 

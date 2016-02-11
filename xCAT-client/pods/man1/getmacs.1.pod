@@ -103,9 +103,9 @@ Specify the interface whose mac address will be collected and written into mac t
 
 =head1 RETURN VALUE
 
-  0 The command completed successfully.
+0 The command completed successfully.
 
-  1 An error has occurred.
+1 An error has occurred.
 
 
 =head1 EXAMPLES

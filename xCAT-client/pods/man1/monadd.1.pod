@@ -4,11 +4,11 @@ B<monadd> - Registers a monitoring plug-in to the xCAT cluster.
 
 =head1 SYNOPSIS
 
-I<monadd  [-h| --help]>
+B<monadd  [-h| --help]>
 
-I<monadd  [-v| --version]>
+B<monadd  [-v| --version]>
 
-I<monadd  name [-n|--nodestatmon] [-s|--settings settings]>
+B<monadd  name [-n|--nodestatmon] [-s|--settings> I<settings]>
 
 
 =head1 DESCRIPTION
@@ -38,7 +38,7 @@ Indicate that this monitoring plug-in will be used for feeding the node liveness
 
 Specifies the plug-in specific settings. These settings will be used by the plug-in to customize certain entities for the plug-in or the third party monitoring software. e.g. -s mon_interval=10 -s toggle=1.
 
-=item B<-v | --version >
+=item B<-v | --version>
 
 Command Version.
 

@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ **ppping**\  [\ **-i**\ |\ **--interface**\  \ *interfaces*\ ] [\ **-d**\ |\ **--debug**\ ] [\ **-V**\ |\ **--verbose**\ ] [\ **-q**\ |\ **--quiet**\ ] [\ **-s**\ |\ **--serial**\ ] \ *noderange*\ 
+\ **ppping**\  [\ **-i | -**\ **-interface**\  \ *interfaces*\ ] [\ **-d | -**\ **-debug**\ ] [\ **-V | -**\ **-verbose**\ ] [\ **-q | -**\ **-quiet**\ ] [\ **-s | -**\ **-serial**\ ] \ *noderange*\ 
 
-\ **ppping**\  [\ **-h**\ |\ **--help**\ ]
+\ **ppping**\  [\ **-h | -**\ **-help**\ ]
 
-\ **pping**\  {\ **-v**\ |\ **--version**\ }
+\ **pping**\  {\ **-v | -**\ **-version**\ }
 
 
 ***********
@@ -41,7 +41,7 @@ OPTIONS
  
 
 
-\ **-i**\ |\ **--interface**\  \ *interfaces*\ 
+\ **-i | -**\ **-interface**\  \ *interfaces*\ 
  
  A comma separated list of network interface names that should be pinged instead of the interface represented by the nodename/hostname.
  The following name resolution convention is assumed:  an interface is reachable by the hostname <nodename>-<interface>.  For example,
@@ -51,33 +51,33 @@ OPTIONS
  
 
 
-\ **-V**\ |\ **--verbose**\ 
+\ **-V | -**\ **-verbose**\ 
  
  Display verbose output.  The result of every ping attempt from every node will be displayed.  Without this option, just a summary
  of the successful pings are displayed, along with all of the unsuccessful pings.
  
 
 
-\ **-q**\ |\ **--quiet**\ 
+\ **-q | -**\ **-quiet**\ 
  
  Display minimum output:  just the unsuccessful pings.  This option has the effect that if all pings are successful, nothing is displayed.
  But it also has the performance benefit that each node does not have to send successful ping info back to the management node.
  
 
 
-\ **-d**\ |\ **--debug**\ 
+\ **-d | -**\ **-debug**\ 
  
  Print debug information.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Show usage information.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Display the installed version of xCAT.
  

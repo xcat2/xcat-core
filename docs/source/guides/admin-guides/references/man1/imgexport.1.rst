@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **imgexport [-h| --help]**\ 
+\ **imgexport [-h| -**\ **-help]**\ 
 
-\ **imgexport image_name [destination] [[-e|--extra file:dir] ... ] [-p|--postscripts node_name] [-v|--verbose]**\ 
+\ **imgexport**\  \ *image_name*\  [\ *destination*\ ] [[\ **-e | -**\ **-extra**\  \ *file:dir*\ ] ... ] [\ **-p | -**\ **-postscripts**\  \ *node_name*\ ] [\ **-v | -**\ **-verbose**\ ]
 
 
 ***********
@@ -71,13 +71,13 @@ OPTIONS
 *******
 
 
-\ **-e|--extra**\  \ *srcfile:destdir*\     Pack up extra files. If \ *destdir*\  is omitted, the destination directory will be the same as the source directory.
+\ **-e|-**\ **-extra**\  \ *srcfile:destdir*\     Pack up extra files. If \ *destdir*\  is omitted, the destination directory will be the same as the source directory.
 
-\ **-h|--help**\                          Display usage message.
+\ **-h|-**\ **-help**\                          Display usage message.
 
-\ **-p|--postscripts**\  \ *node_name*\   Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
+\ **-p|-**\ **-postscripts**\  \ *node_name*\   Get the names of the postscripts and postbootscripts for the given node and pack them into the image.
 
-\ **-v|--verbose**\                       Verbose output.
+\ **-v|-**\ **-verbose**\                       Verbose output.
 
 \ *image_name*\                         The name of the image. Use \ *lsdef -t*\  osimage to find out all the image names.
 
@@ -101,19 +101,31 @@ EXAMPLES
 
 1. Simplest way to export an image.  If there is an image in the osimage table named 'foo', then run:
 
-\ **imgexport foo**\ 
+
+.. code-block:: perl
+
+  imgexport foo
+
 
 foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport if you have a big image to tar up.
 
 2. To include extra files with your image:
 
-\ **imgexport Default_Stateless_1265981465 foo.tgz -e /install/postscripts/myscript1  -e /tmp/mydir:/usr/mydir**\ 
+
+.. code-block:: perl
+
+  imgexport Default_Stateless_1265981465 foo.tgz -e /install/postscripts/myscript1 -e /tmp/mydir:/usr/mydir
+
 
 In addition to all the default files, this will export \ */install/postscripts/myscript1*\  and the whole directory \ */tmp/dir*\  into the file called foo.tgz.  And when imgimport is called  \ */install/postscripts/myscript1*\  will be copied into the same directory and \ */tmp/mydir*\  will be copied to \ */usr/mydir*\ .
 
 3. To include postscript with your image:
 
-\ **imgexport Default_Stateless_1265981465 foo.tgz -p node1 -e /install/postscripts/myscript1**\ 
+
+.. code-block:: perl
+
+  imgexport Default_Stateless_1265981465 foo.tgz -p node1 -e /install/postscripts/myscript1
+
 
 The \ *postscripts*\  and the \ *postbootscripts*\  names specified in the \ *postscripts*\  table for node1 will be exported into the image. The postscript \ *myscript1*\  will also be exported.
 

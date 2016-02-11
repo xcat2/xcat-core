@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **pasu**\  [\ **-V**\ ] [\ **-d**\ ] [\ **-n**\ ] [\ **-l**\  \ *user*\ ] [\ **-p**\  \ *passwd*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-i**\  \ *hostname-suffix*\ ] \ **-b**\  \ *batchfile*\  \ *noderange*\ 
 
-\ **pasu**\  [\ **-h**\  | \ **--help**\ ]
+\ **pasu**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -47,41 +47,41 @@ OPTIONS
 
 
 
-\ **-n|--nonodecheck**\ 
+\ **-n|-**\ **-nonodecheck**\ 
  
  Do not send the noderange to xcatd to expand it into a list of nodes.  Use the noderange exactly as it is specified
  to pasu.  In this case, the noderange must be a simple list of comma-separated hostnames of the IMMs.
  
 
 
-\ **-l|--loginname**\  \ *username*\ 
+\ **-l|-**\ **-loginname**\  \ *username*\ 
  
  The username to use to connect to the IMMs.  If not specified, the row in the xCAT \ **passwd**\  table with key "ipmi"
  will be used to get the username.
  
 
 
-\ **-p|--passwd**\  \ *passwd*\ 
+\ **-p|-**\ **-passwd**\  \ *passwd*\ 
  
  The password to use to connect to the IMMs.  If not specified, the row in the xCAT passwd table with key "ipmi"
  will be used to get the password.
  
 
 
-\ **-f|--fanout**\ 
+\ **-f|-**\ **-fanout**\ 
  
  How many processes to run in parallel simultaneously.  The default is 64.  You can also set the XCATPSHFANOUT
  environment variable.
  
 
 
-\ **-b|--batch**\  -\ *batchfile*\ 
+\ **-b|-**\ **-batch**\  -\ *batchfile*\ 
  
  A simple text file that contains multiple ASU commands, each on its own line.
  
 
 
-\ **-d|--donotfilter**\ 
+\ **-d|-**\ **-donotfilter**\ 
  
  By default, pasu filters out (i.e. does not display) the standard initial output from ASU:
  
@@ -98,19 +98,19 @@ OPTIONS
  
 
 
-\ **-i|--interface**\  \ *hostname-suffix*\ 
+\ **-i|-**\ **-interface**\  \ *hostname-suffix*\ 
  
  The hostname suffix to be appended to the node names.
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Display verbose messages.
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  

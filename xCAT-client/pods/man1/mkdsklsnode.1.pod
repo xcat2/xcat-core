@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-u|--updateSN] [-k|--skipsync] [-p|--primarySN] [-b|--backupSN] [-S|--setuphanfs] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i> I<osimage_name>] [B<-l> I<location>] [B<-u>|B<--updateSN>] [B<-k>|B<--skipsync>] [B<-p>|B<--primarySN>] [B<-b>|B<--backupSN>] [B<-S>|B<--setuphanfs>] I<noderange> [I<attr=val [attr=val ...]>]
 
 =head1 DESCRIPTION
 
@@ -52,7 +52,7 @@ You can supply your own scripts to be run on the management node  or on the serv
 
 =over 10
 
-=item B<attr=val [attr=val ...]>
+=item I<attr=val [attr=val ...]>
 
 Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
 val pairs must be specified last on the command line. These are used to specify additional values that can be passed to the underlying NIM commands.
@@ -106,7 +106,7 @@ Use the force option to reinitialize the NIM machines.
 
 Display usage message.
 
-=item B<-i image_name>
+=item B<-i> I<image_name>
 
 The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute. If the "-i" value is provided on the command line then that value will be used to set the "provmethod" attribute of the node definitions.
 
@@ -134,7 +134,7 @@ Setup NFSv4 replication between the primary service nodes and backup service nod
 
 Use this option if you wish to update the osimages but do not want to define or initialize the NIM client definitions. This option is only valid when the xCAT "site" definition attribute "sharedinstall" is set to either "sns" or "all".
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -149,11 +149,9 @@ Verbose mode.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -162,29 +160,26 @@ An error has occurred.
 
 =over 3
 
-=item 1
-
+=item 1.
 Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
 
-B<mkdsklsnode -i 61spot node01>
+ mkdsklsnode -i 61spot node01
 
-=item 2
-
+=item 2.
 Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
 
-B<mkdsklsnode aixnodes>
+ mkdsklsnode aixnodes
 
-=item 3
-
+=item 3.
 Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Also set the paging size to be 128M and specify the paging file be an AIX sparse file.
 
-B<mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes>
+ mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes
 
-=item 4
+=item 4.
 
 Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
 
-B<mkdsklsnode -n -i 61spot node02>
+ mkdsklsnode -n -i 61spot node02
 
 =back
 

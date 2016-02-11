@@ -19,14 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **lskitcomp**\  [\ **-V**\  | \ **--verbose**\ ] 
-      [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ]
-      [\ **-C**\  | \ **--compattr**\  \ *compattr_names*\ ]
-      [\ **-O**\  | \ **--osdistro**\  \ *os_distro*\ ]
-      [\ **-S**\  | \ **--serverrole**\  \ *server_role*\ ]
-      [kitcomp_names]
+\ **lskitcomp**\  [\ **-V**\  | \ **-**\ **-verbose**\ ] [\ **-x**\  | \ **-**\ **-xml**\  | \ **-**\ **-XML**\ ] [\ **-C**\  | \ **-**\ **-compattr**\  \ *compattr_names*\ ] [\ **-O**\  | \ **-**\ **-osdistro**\  \ *os_distro*\ ] [\ **-S**\  | \ **-**\ **-serverrole**\  \ *server_role*\ ] [\ *kitcomp_names*\ ]
 
-\ **lskitcomp**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
+\ **lskitcomp**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\  | \ **-v**\  | \ **-**\ **-version**\ ]
 
 
 ***********
@@ -49,19 +44,19 @@ OPTIONS
 
 
 
-\ **-C|--compattr**\  \ *compattr_names*\ 
+\ **-C|-**\ **-compattr**\  \ *compattr_names*\ 
  
  where \ *compattr_names*\  is a comma-delimited list of kit component attribute names. The names correspond to attribute names in the \ **kitcomponent**\  table.  The \ **lskitcomp**\  command will only display the specified kit component attributes.
  
 
 
-\ **-O|--osdistro**\  \ *os_distro*\ 
+\ **-O|-**\ **-osdistro**\  \ *os_distro*\ 
  
  where \ *os_distro*\  is the name of an osdistro in \ **osdistro**\  table. The \ **lskitcomp**\  command will only display the kit components matching the specified osdistro.
  
 
 
-\ **-S|--serverrole**\  \ *server_role*\ 
+\ **-S|-**\ **-serverrole**\  \ *server_role*\ 
  
  where \ *server_role*\  is the name of a server role. The typical server roles are: mgtnode, servicenode, computenode, loginnode, storagennode. The \ **lskitcomp**\  command will only display the kit components matching the specified server role.
  
@@ -73,35 +68,46 @@ OPTIONS
  
 
 
-\ **-x|--xml|--XML**\ 
+\ **-x|-**\ **-xml|-**\ **-XML**\ 
  
  Need XCATXMLTRACE=1 env when using -x|--xml|--XML.
  Return the output with XML tags.  The data is returned as:
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
-   ...
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
- 
- Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
-   The <kit> sub-tag contains the kit's name.
-   The <kitcomponent> sub-tags store info about the kit's components.
- 
- The data inside <kitinfo> is returned as:
-   <kitinfo>
-      <kit>
-        ...
-      </kit>
  
  
  .. code-block:: perl
  
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+    ...
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+ 
+ 
+ Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
+ 
+ 
+ .. code-block:: perl
+ 
+    The <kit> sub-tag contains the kit's name.
+    The <kitcomponent> sub-tags store info about the kit's components.
+ 
+ 
+ The data inside <kitinfo> is returned as:
+ 
+ 
+ .. code-block:: perl
+ 
+    <kitinfo>
+       <kit>
+         ...
+       </kit>
+  
        <kitcomponent>
          ...
        </kitcomponent>
@@ -111,19 +117,19 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Display additional progress and error messages.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -136,16 +142,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 

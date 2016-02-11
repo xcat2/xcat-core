@@ -4,7 +4,7 @@ B<imgcapture> - Captures an image from a Linux diskful node and create a diskles
 
 =head1 SYNOPSIS
 
-B<imgcapture> node B<-t>|B<--type> {diskless|sysclone} B<-o>|B<--osimage> I<osimage> [B<-V>|B<--verbose>]
+B<imgcapture> I<node> B<-t>|B<--type> {B<diskless>|B<sysclone>} B<-o>|B<--osimage> I<osimage> [B<-V>|B<--verbose>]
 
 B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
 
@@ -100,11 +100,11 @@ B<node1> is one diskful Linux node, which is managed by xCAT.
 
 1. There's one pre-defined I<osimage>. In order to capture and prepare the diskless root image for I<osimage>, run the command:
 
-imgcapture node1 -t diskless -o osimage
+ imgcapture node1 -t diskless -o osimage
 
 2. In order to capture the diskful image from B<node1> and create the I<osimage> B<img1>, run the command:
 
-imgcapture node1 -t sysclone -o img1
+ imgcapture node1 -t sysclone -o img1
 
 =head1 FILES
 

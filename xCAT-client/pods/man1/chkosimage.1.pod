@@ -6,7 +6,7 @@ B<chkosimage> - Use this xCAT command to check an xCAT osimage.
 
 B<chkosimage [-h | --help ]>
 
-B<chkosimage [-V] [-c|--clean] osimage_name> 
+B<chkosimage [-V] [-c|--clean]> I<osimage_name> 
 
 =head1 DESCRIPTION
 
@@ -55,7 +55,7 @@ timestamp.
 
 Display usage message.
 
-=item B<osimage_name>
+=item I<osimage_name>
 
 The name of the xCAT for AIX osimage definition. 
 
@@ -70,11 +70,9 @@ Verbose mode.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -83,20 +81,18 @@ An error has occurred.
 
 =over 3
 
-=item 1
-
+=item 1.
 Check the XCAT osimage called "61image" to verify that the lpp_source 
 directories contain all the software that is specified in the
 "installp_bundle" and "otherpkgs" attributes.
 
-B<chkosimage -V 61image>
+ chkosimage -V 61image
 
-=item 2
-
+=item 2.
 Clean up the lpp_source directory for the osimage named "61img" by removing
 any older rpms with the same names but different versions.
 
-B<chkosimage -c 61img>
+ chkosimage -c 61img
 
 =back
 

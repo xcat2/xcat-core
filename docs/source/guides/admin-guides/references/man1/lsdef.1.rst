@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ **lsdef**\  [\ **-h**\ |\ **--help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
+\ **lsdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-i**\  \ *attr-list*\ ]
 
-\ **lsdef**\  [\ **-V**\ |\ **--verbose**\ ] [\ **-l**\ |\ **--long**\ ] [\ **-s**\ |\ **--short**\ ] [\ **-a**\ |\ **--all**\ ] [\ **-S**\ ] 
-[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z**\ |\ **--stanza**\ ] [\ **-i**\  \ *attr-list*\ ]
-[\ **-c**\ |\ **--compress**\ ] [\ **--osimage**\ ] [\ **--nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
+\ **lsdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-l | -**\ **-long**\ ] [\ **-s | -**\ **-short**\ ] [\ **-a | -**\ **-all**\ ] [\ **-S**\ ] 
+[\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-i**\  \ *attr-list*\ ]
+[\ **-c | -**\ **-compress**\ ] [\ **-**\ **-osimage**\ ] [\ **-**\ **-nics**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ]
 [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ]
 
 
@@ -42,7 +42,7 @@ OPTIONS
 
 
 
-\ **-a|--all**\ 
+\ **-a|-**\ **-all**\ 
  
  Display all definitions.
  For performance consideration, the auditlog and eventlog objects will not be listed.
@@ -50,7 +50,7 @@ OPTIONS
  
 
 
-\ **-c|--compress**\ 
+\ **-c|-**\ **-compress**\ 
  
  Display information in compressed mode, each output line has format "<object name>: <data>".
  The output can be passed to command xcoll or xdshbak for formatted output. 
@@ -58,7 +58,7 @@ OPTIONS
  
 
 
-\ **-h|--help**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -70,13 +70,13 @@ OPTIONS
  
 
 
-\ **-l|--long**\ 
+\ **-l|-**\ **-long**\ 
  
  List the complete object definition.
  
 
 
-\ **-s|--short**\ 
+\ **-s|-**\ **-short**\ 
  
  Only list the object names.
  
@@ -101,13 +101,13 @@ OPTIONS
  
 
 
-\ **--osimage**\ 
+\ **-**\ **-osimage**\ 
  
  Show all the osimage information for the node.
  
 
 
-\ **--nics**\ 
+\ **-**\ **-nics**\ 
  
  Show the nics configuration information for the node.
  
@@ -119,7 +119,7 @@ OPTIONS
  
 
 
-\ **-V|--verbose**\ 
+\ **-V|-**\ **-verbose**\ 
  
  Verbose mode.
  
@@ -139,7 +139,7 @@ OPTIONS
  
 
 
-\ **-z|--stanza**\ 
+\ **-z|-**\ **-stanza**\ 
  
  Display output in stanza format. See the xcatstanzafile man page for details on using xCAT stanza files.
  

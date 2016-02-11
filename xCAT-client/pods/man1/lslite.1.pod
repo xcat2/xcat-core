@@ -4,9 +4,9 @@ B<lslite> - Display a summary of the statelite information.
 
 =head1 SYNOPSIS
 
-B<lslite> [-h | --help]
+B<lslite> [B<-h> | B<--help>]
 
-B<lslite> [-V | --verbose] [-i imagename] | [noderange]
+B<lslite> [B<-V> | B<--verbose>] [B<-i> I<imagename>] | [I<noderange>]
 
 =head1 DESCRIPTION
 
@@ -24,11 +24,11 @@ Display usage message.
 
 Verbose mode.
 
-=item B<-i imagename>
+=item B<-i> I<imagename>
 
 The name of an existing xCAT osimage definition.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -48,24 +48,24 @@ A set of comma delimited node names and/or group names. See the "noderange" man 
 
 To list the statelite information for an xCAT node named "node01".
 
-B<lslite node01>
+ lslite node01
 
 Output is similar to:
 
->>>Node: node01
+ >>>Node: node01
 
-Osimage: 61img
+ Osimage: 61img
 
-Persistent directory (statelite table):
+ Persistent directory (statelite table):
         xcatmn1:/statelite
 
-Litefiles (litefile table):
+ Litefiles (litefile table):
         tmpfs,rw      /etc/adjtime
         tmpfs,rw      /etc/lvm/.cache
         tmpfs,rw      /etc/mtab
         ........
 
-Litetree path (litetree table):
+ Litetree path (litetree table):
         1,MN:/etc
         2,server1:/etc
 
@@ -73,7 +73,7 @@ Litetree path (litetree table):
 
 To list the statelite information for an xCAT osimage named "osimage01".
 
-B<lslite -i osimage01>
+ lslite -i osimage01
 
 Output is similar to:
 

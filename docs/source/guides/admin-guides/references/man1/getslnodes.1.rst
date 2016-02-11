@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **getslnodes**\  [\ **-v**\ |\ **--verbose**\ ] [\ *hostname-match*\ ]
+\ **getslnodes**\  [\ **-v | -**\ **-verbose**\ ] [\ *hostname-match*\ ]
 
-\ **getslnodes**\  [\ **-?**\  | \ **-h**\  | \ **--help**\ ]
+\ **getslnodes**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -65,13 +65,13 @@ OPTIONS
 
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  

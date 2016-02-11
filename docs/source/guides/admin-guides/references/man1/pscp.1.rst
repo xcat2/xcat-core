@@ -21,7 +21,7 @@ Name
 
 \ **pscp**\  [-i \ *suffix*\ ] [\ *scp options*\  \ *...*\ ] [\ **-f**\  \ *fanout*\ ] \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
 
-\ **pscp**\  {\ **-h**\ |\ **--help**\ |\ **-v**\ |\ **--version**\ }
+\ **pscp**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
 
 *******************
@@ -77,13 +77,13 @@ management node to the compute node via a service node.
  
 
 
-\ **-h**\ |\ **--help**\ 
+\ **-h | -**\ **-help**\ 
  
  Print help.
  
 
 
-\ **-v**\ |\ **--version**\ 
+\ **-v | -**\ **-version**\ 
  
  Print version.
  

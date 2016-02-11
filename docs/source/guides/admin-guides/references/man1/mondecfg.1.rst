@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *moncfg [-h| --help]*\ 
+\ **mondecfg [-h| -**\ **-help]**\ 
 
-\ *moncfg [-v| --version]*\ 
+\ **mondecfg [-v| -**\ **-version]**\ 
 
-\ *moncfg name [noderange] [-r|--remote]*\ 
+\ **mondecfg**\  \ *name*\  \ *[noderange]*\  \ **[-r|-**\ **-remote]**\ 
 
 
 ***********
@@ -35,7 +35,7 @@ This command is used to deconfigure a 3rd party monitoring software from monitor
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -49,11 +49,11 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-r | --remote**\         Specifies that the operation will also be performed on the nodes.
+\ **-r | -**\ **-remote**\         Specifies that the operation will also be performed on the nodes.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\        Command Version.
 
 
 ************
@@ -79,7 +79,7 @@ EXAMPLES
    mondecfg gangliamon
 
 
-1. To deconfigure the management node, nodes and their service nodes from the ganglia monitoring, enter:
+2. To deconfigure the management node, nodes and their service nodes from the ganglia monitoring, enter:
 
 
 .. code-block:: perl

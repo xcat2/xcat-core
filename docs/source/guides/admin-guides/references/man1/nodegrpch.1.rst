@@ -21,9 +21,9 @@ SYNOPSIS
 
 \ **nodegrpch**\  \ *group1,group2,...*\  \ *table.column=value*\  [\ *...*\ ]
 
-\ **nodegrpch**\  {\ **-v**\  | \ **--version**\ }
+\ **nodegrpch**\  {\ **-v**\  | \ **-**\ **-version**\ }
 
-\ **nodegrpch**\  [\ **-?**\  | \ **-h**\  | \ **--help**\ ]
+\ **nodegrpch**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -55,13 +55,13 @@ OPTIONS
 
 
 
-\ **-v|--version**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
 
 
-\ **-?|-h|--help**\ 
+\ **-?|-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -74,16 +74,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -93,11 +89,15 @@ EXAMPLES
 
 
 
-\*
+1.
  
  To declare all members of ipmi group to have nodehm.mgt be ipmi
  
- \ **  nodegrpch**\  \ *ipmi nodehm.mgt=ipmi*\ 
+ 
+ .. code-block:: perl
+ 
+   nodegrpch ipmi nodehm.mgt=ipmi
+ 
  
 
 

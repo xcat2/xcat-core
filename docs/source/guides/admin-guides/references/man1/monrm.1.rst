@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *monrm [-h| --help]*\ 
+\ **monrm [-h| -**\ **-help]**\ 
 
-\ *monrm [-v| --version]*\ 
+\ **monrm [-v| -**\ **-version]**\ 
 
-\ *monrm name*\ 
+\ **monrm**\  \ *name*\ 
 
 
 ***********
@@ -35,7 +35,7 @@ This command is used to unregister a monitoring plug-in module from the \ *monit
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -47,9 +47,9 @@ OPTIONS
 *******
 
 
-\ **-h | --help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-v | --version **\       Command Version.
+\ **-v | -**\ **-version**\        Command Version.
 
 
 ************
@@ -75,7 +75,7 @@ EXAMPLES
    monrm gangliamon
 
 
-Please note that gangliamon must have been registered in the xCAT \ *monitoring*\  table. For a list of registered plug-in modules, use command \ *monls*\ .
+Please note that gangliamon must have been registered in the xCAT \ *monitoring*\  table. For a list of registered plug-in modules, use command \ **monls**\ .
 
 
 *****

@@ -4,9 +4,9 @@ B<nodepurge> - Removes nodes.
 
 =head1 SYNOPSIS
 
-B<nodepurge> [-h| --help | -v | --version]
+B<nodepurge [-h| --help | -v | --version]>
 
-B<nodepurge> <noderange>
+B<nodepurge> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -24,7 +24,7 @@ B<-v|--version>
 
 Command Version
 
-B<noderange>
+I<noderange>
 
 The nodes to be removed.
 
@@ -38,7 +38,7 @@ The nodes to be removed.
 
 To remove nodes compute-000 and compute-001, use the following command:
 
-nodepurge compute-000,compute-001
+ nodepurge compute-000,compute-001
 
 =head1 SEE ALSO
 
