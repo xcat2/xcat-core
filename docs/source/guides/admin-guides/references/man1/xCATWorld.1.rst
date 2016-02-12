@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ *xCATWorld {noderange}*\ 
+\ **xCATWorld**\  \ *noderange*\ 
 
 
 ***********
@@ -48,7 +48,11 @@ EXAMPLES
 
 1.To run , enter:
 
-\ *xCATWorld nodegrp1*\ 
+
+.. code-block:: perl
+
+  xCATWorld nodegrp1
+
 
 
 *****

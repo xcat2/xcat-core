@@ -4,7 +4,7 @@ B<pscp> - parallel remote copy
 
 =head1 B<Synopsis>
 
-B<pscp> [-i I<suffix>] [I<scp options> I<...>] [B<-f> I<fanout>] I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
+B<pscp> [B<-i> I<suffix>] [I<scp options> I<...>] [B<-f> I<fanout>] I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
 B<pscp> {B<-h>|B<--help>|B<-v>|B<--version>}
 
@@ -33,15 +33,15 @@ rently  executing  remote shell processes.
 
 Interfaces to be used.
 
-=item B<scp options>
+=item I<scp options>
 
 See B<scp(1)>
 
-=item B<filename>
+=item I<filename>
 
 A space delimited list of files to copy. If B<-r> is passed as an scp option, directories may be specified as well.
 
-=item B<noderange:destination>
+=item I<noderange:destination>
 
 A L<noderange(3)|noderange.3> and destination directory.  The : is required.
 
@@ -66,8 +66,17 @@ the B<-f> flag.  Default is 64.
 
 =head1 B<Examples>
 
-B<pscp> B<-r> I</usr/local> I<node1,node3:/usr/local>
-B<pscp> I<passwd> I<group> I<rack01:/etc>
+=over 2
+
+=item 1.
+
+ pscp -r /usr/local node1,node3:/usr/local
+
+=item 2.
+
+ pscp passwd group rack01:/etc
+
+=back
 
 =head1 B<See> B<Also>
 

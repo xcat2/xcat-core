@@ -49,11 +49,11 @@ Do not send the noderange to xcatd to expand it into a list of nodes.  Instead, 
 In this case, the noderange must be a simple list of comma-separated hostnames of the nodes.
 This allows you to run B<psh> even when xcatd is not running.
 
-=item B<noderange>
+=item I<noderange>
 
 See L<noderange(3)|noderange.3>.
 
-=item B<command>
+=item I<command>
 
 Command  to  be run in parallel.  If no command is give then B<psh>
 enters interactive mode.  In interactive mode a  ">"  prompt  is
@@ -81,27 +81,26 @@ the B<-f> flag.  Default is 64.
 
 =over 3
 
-=item *
-
+=item 1.
 Run uptime on 3 nodes:
 
-B<psh> I<node4-node6> I<uptime>
+ psh node4-node6 uptime
 
-node4: Sun Aug  5 17:42:06 MDT 2001
-node5: Sun Aug  5 17:42:06 MDT 2001
-node6: Sun Aug  5 17:42:06 MDT 2001
+Output is similar to:
 
-=item *
+ node4: Sun Aug  5 17:42:06 MDT 2001
+ node5: Sun Aug  5 17:42:06 MDT 2001
+ node6: Sun Aug  5 17:42:06 MDT 2001
 
+=item 2.
 Run a command on some BladeCenter management modules:
 
-B<psh> I<amm1-amm5> I<'info -T mm[1]'>
+ psh amm1-amm5 'info -T mm[1]'
 
-=item *
-
+=item 3.
 Remove the tmp files on the nodes in the 1st frame:
 
-B<psh> I<rack01> I<'rm -f /tmp/*'>
+ psh rack01 'rm -f /tmp/*'
 
 Notice the use of '' to forward shell expansion.  This is not necessary
 in interactive mode.

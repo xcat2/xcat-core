@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **rmflexnode**\  [-h | -**\ **-help]
+\ **rmflexnode**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
-\ **rmflexnode**\  [-v | -**\ **-version]
+\ **rmflexnode**\  [\ **-v**\  | \ **-**\ **-version**\ ]
 
 \ **rmflexnode**\  \ *noderange*\ 
 
@@ -67,9 +67,7 @@ EXAMPLES
 
 
 
-1
- 
- Delete a flexible node base on the xCAT node blade1.
+1 Delete a flexible node base on the xCAT node blade1.
  
  The blade1 should belong to a complex, the \ *id*\  attribute should be set correctly and all the slots should be in \ **power off**\  state.
  

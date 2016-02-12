@@ -106,7 +106,9 @@ Print version.
 
 =head1 B<Examples>
 
-B<rvitals> I<node5> I<all>
+ rvitals node5 all
+
+Output is similar to:
 
  node5: CPU 1 Temperature: + 29.00 C (+ 84.2 F)
  node5: CPU 2 Temperature: + 19.00 C (+ 66.2 F)

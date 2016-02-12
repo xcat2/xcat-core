@@ -74,12 +74,14 @@ is identical:
 
 
 
-\*
+1. To  display the results of a command issued on several nodes, in
+the format used in the Description, enter:
  
- To  display the results of a command issued on several nodes, in
- the format used in the Description, enter:
  
- \ **xdsh**\  \ *node1,node2,node3 cat /etc/passwd*\  | \ **xdshcoll**\ 
+ .. code-block:: perl
+ 
+   xdsh node1,node2,node3 cat /etc/passwd> | B<xdshcoll
+ 
  
 
 

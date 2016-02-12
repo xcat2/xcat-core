@@ -99,22 +99,20 @@ Quiet mode, do not display "." for each 1000 lines of output.
 
 =over 3
 
-=item *
-
+=item 1.
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
  xdsh node1,node2,node3 cat /etc/passwd | xdshbak
 
-=item *
+=item 2.
 
 To display the results of a command issued on several nodes with
 identical output displayed only once, enter:
 
  xdsh host1,host2,host3 pwd | xdshbak -c
 
-=item *
-
+=item 3.
 To display the results of a command issued on several nodes with
 compact output and be sorted alphabetically by host name, enter:
 

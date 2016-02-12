@@ -63,7 +63,11 @@ wcons windows on your $DISPLAY will be killed.
 ****************
 
 
-\ **wkill**\  \ *node1-node5*\ 
+
+.. code-block:: perl
+
+  wkill node1-node5
+
 
 
 ************************

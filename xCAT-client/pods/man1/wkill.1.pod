@@ -36,7 +36,7 @@ Print version.
 
 =head1 B<Examples>
 
-B<wkill> I<node1-node5>
+ wkill node1-node5
 
 
 =head1 B<See> B<Also>

@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **pscp**\  [-i \ *suffix*\ ] [\ *scp options*\  \ *...*\ ] [\ **-f**\  \ *fanout*\ ] \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
+\ **pscp**\  [\ **-i**\  \ *suffix*\ ] [\ *scp options*\  \ *...*\ ] [\ **-f**\  \ *fanout*\ ] \ *filename*\  [\ *filename*\  \ *...*\ ] \ *noderange:destinationdirectory*\ 
 
 \ **pscp**\  {\ **-h | -**\ **-help | -v | -**\ **-version**\ }
 
@@ -59,19 +59,19 @@ management node to the compute node via a service node.
  
 
 
-\ **scp options**\ 
+\ *scp options*\ 
  
  See \ **scp(1)**\ 
  
 
 
-\ **filename**\ 
+\ *filename*\ 
  
  A space delimited list of files to copy. If \ **-r**\  is passed as an scp option, directories may be specified as well.
  
 
 
-\ **noderange:destination**\ 
+\ *noderange:destination*\ 
  
  A noderange(3)|noderange.3 and destination directory.  The : is required.
  
@@ -103,8 +103,26 @@ management node to the compute node via a service node.
 ****************
 
 
-\ **pscp**\  \ **-r**\  \ */usr/local*\  \ *node1,node3:/usr/local*\ 
-\ **pscp**\  \ *passwd*\  \ *group*\  \ *rack01:/etc*\ 
+
+1.
+ 
+ 
+ .. code-block:: perl
+ 
+   pscp -r /usr/local node1,node3:/usr/local
+ 
+ 
+
+
+2.
+ 
+ 
+ .. code-block:: perl
+ 
+   pscp passwd group rack01:/etc
+ 
+ 
+
 
 
 ************************

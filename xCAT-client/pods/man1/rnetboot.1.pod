@@ -10,7 +10,7 @@ B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head2 zVM specific:
 
-B<rnetboot> noderange [B<ipl=> I<address>]
+B<rnetboot> I<noderange> [B<ipl=> I<address>]
 
 
 =head1 DESCRIPTION
@@ -47,15 +47,15 @@ B<-t>
 
 Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
-B<-V>          
+B<-V|--verbose>          
 
 Verbose output.
 
-B<-h>          
+B<-h|--help>          
 
 Display usage message.
 
-B<-v>          
+B<-v|--version>          
 
 Command Version.
 

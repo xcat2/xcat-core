@@ -52,7 +52,7 @@ This is used to determine the current host to migrate from.
 
 =head1 B<Examples>
 
-B<rmigrate> I<v1> I<n2>
+ rmigrate v1 n2
 
 =head2 zVM specific:
 

@@ -242,16 +242,22 @@ Display the version number.
 
 =over 3
 
-=item *
+=item 1.
+To display power status of nodes4 and note5
 
  rpower node4,node5 stat
+
+Output is similar to:
 
  node4: on
  node5: off
 
-=item *
+=item 2.
+To power on node5
 
  rpower node5 on
+
+Output is similar to:
 
  node5: on
 

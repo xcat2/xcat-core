@@ -582,121 +582,161 @@ The dsh command exit code is 0 if the command executed without errors and all re
 
 
 
-\*
+1. To set up the SSH keys for root on node1, run as root:
  
- To set up the SSH keys for root on node1, run as root:
  
- \ **xdsh**\  \ *node1 -K*\ 
+ .. code-block:: perl
  
-
-
-\*
+   xdsh node1 -K
  
- To run the \ **ps -ef **\  command on node targets \ **node1**\  and \ **node2**\ , enter:
- 
- \ **xdsh**\  \ *node1,node2 "ps -ef"*\ 
  
 
 
-\*
+2. To run the \ **ps -ef**\  command on node targets \ **node1**\  and \ **node2**\ , enter:
  
- To run the \ **ps**\  command on node targets \ **node1**\  and run the remote command with the -v and -t flag, enter:
  
- \ **xdsh**\  \ *node1,node2  -o"-v -t" ps*\ 
- =item \*
+ .. code-block:: perl
  
- To execute the commands contained in \ **myfile**\  in the \ **XCAT**\ 
- context on several node targets, with a fanout of \ **1**\ , enter:
+   xdsh node1,node2 "ps -ef"
  
- \ **xdsh**\  \ *node1,node2 -f 1 -e myfile*\ 
  
 
 
-\*
+3. To run the \ **ps**\  command on node targets \ **node1**\  and run the remote command with the -v and -t flag, enter:
  
- To run the ps command on node1 and ignore all the dsh
- environment variable except the DSH_NODE_OPTS, enter:
  
- \ **xdsh**\  \ *node1 -X \\`DSH_NODE_OPTS' ps*\ 
+ .. code-block:: perl
  
-
-
-\*
+   xdsh node1,node2  -o"-v -t" ps
  
- To run on Linux, the xdsh command "rpm -qa | grep xCAT" 
- on the service node fedora9 diskless image, enter:
- 
- \ **xdsh**\  \ *-i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT"*\ 
  
 
 
-\*
+4. To execute the commands contained in \ **myfile**\  in the \ **XCAT**\ 
+context on several node targets, with a fanout of \ **1**\ , enter:
  
- To run on AIX, the xdsh command "lslpp -l | grep bos"  
- on the NIM 611dskls spot, enter:
  
- \ **xdsh**\  \ *-i 611dskls "/usr/bin/lslpp -l | grep bos"*\ 
+ .. code-block:: perl
  
-
-
-\*
+   xdsh node1,node2 -f 1 -e myfile
  
- To cleanup the servicenode directory that stages the copy of files to the
- nodes, enter:
- 
- \ **xdsh**\  \ *servicenoderange -c *\ 
  
 
 
-\*
+5. To run the ps command on node1 and ignore all the dsh
+environment variable except the DSH_NODE_OPTS, enter:
+ 
+ 
+ .. code-block:: perl
+ 
+   xdsh node1 -X `DSH_NODE_OPTS' ps
+ 
+ 
+
+
+6. To run on Linux, the xdsh command "rpm -qa | grep xCAT" 
+on the service node fedora9 diskless image, enter:
+ 
+ 
+ .. code-block:: perl
+ 
+   xdsh -i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCAT"
+ 
+ 
+
+
+7. To run on AIX, the xdsh command "lslpp -l | grep bos" on the NIM 611dskls spot, enter:
+ 
+ 
+ .. code-block:: perl
+ 
+   xdsh -i 611dskls "/usr/bin/lslpp -l | grep bos"
+ 
+ 
+
+
+8. To cleanup the servicenode directory that stages the copy of files to the nodes, enter:
+ 
+ 
+ .. code-block:: perl
+ 
+   xdsh servicenoderange -c
+ 
+ 
+
+
+9.
  
  To define the QLogic IB switch as a node and to set up the SSH keys for IB switch 
  \ **qswitch**\  with device configuration file
  \ **/var/opt/xcat/IBSwitch/Qlogic/config**\  and user name \ **username**\ , Enter
  
- \ **chdef**\  \ *-t node -o qswitch groups=all nodetype=switch*\ 
  
- \ **xdsh**\  \ *qswitch -K -l username -**\ **-devicetype IBSwitch::Qlogic*\ 
+ .. code-block:: perl
  
-
-
-\*
+   chdef -t node -o qswitch groups=all nodetype=switch
+  
+   xdsh qswitch -K -l username --devicetype IBSwitch::Qlogic
  
- To define the Management Node  in the database so you can use xdsh, Enter
- 
- \ **xcatconfig -m**\ 
  
 
 
-\*
+10. To define the Management Node  in the database so you can use xdsh, Enter
  
- To define the Mellanox switch as a node and run a command to show the ssh keys. 
- \ **mswitch**\  with and user name \ **username**\ , Enter
  
- \ **chdef**\  \ *-t node -o mswitch groups=all nodetype=switch*\ 
+ .. code-block:: perl
  
- \ **xdsh**\  \ *mswitch -l admin -**\ **-devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'*\ 
+   xcatconfig -m
+ 
  
 
 
-\*
+11. To define the Mellanox switch as a node and run a command to show the ssh keys. 
+\ **mswitch**\  with and user name \ **username**\ , Enter
+ 
+ 
+ .. code-block:: perl
+ 
+   chdef -t node -o mswitch groups=all nodetype=switch
+  
+   xdsh mswitch -l admin --devicetype IBSwitch::Mellanox  'enable;configure terminal;show ssh server host-keys'
+ 
+ 
+
+
+12.
  
  To define a BNT Ethernet switch as a node and run a command to create a new vlan with vlan id 3 on the switch.
  
- \ **chdef**\  \ *myswitch groups=all*\ 
  
- \ **tabch**\  \ *switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd switches.protocol=[ssh|telnet]*\ 
-   where \ *admin*\  and \ *passw0rd*\  are the SSH user name and password for the switch. If it is for Telnet, add \ *tn:*\  in front of the user name: \ *tn:admin*\ .
+ .. code-block:: perl
  
- <xdsh> \ *myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'*\ 
+   chdef myswitch groups=all
+  
+   tabch switch=myswitch switches.sshusername=admin switches.sshpassword=passw0rd switches.protocol=[ssh|telnet]
+ 
+ 
+ where \ *admin*\  and \ *passw0rd*\  are the SSH user name and password for the switch.
+ 
+ If it is for Telnet, add \ *tn:*\  in front of the user name: \ *tn:admin*\ .
+ 
+ 
+ .. code-block:: perl
+ 
+   dsh myswitch --devicetype EthSwitch::BNT 'enable;configure terminal;vlan 3;end;show vlan'
+ 
  
 
 
-\*
+13.
  
  To run xdsh with the non-root userid "user1" that has been setup as an xCAT userid and with sudo on node1 and node2 to run as root, do the following, see xCAT doc on Granting_Users_xCAT_privileges:
  
- \ **xdsh**\  \ *node1,node2 -**\ **-sudo -l user1 "cat /etc/passwd"*\ 
+ 
+ .. code-block:: perl
+ 
+   xdsh node1,node2 --sudo -l user1 "cat /etc/passwd"
+ 
  
 
 

@@ -5,12 +5,11 @@ B<unregnotif> - unregister a Perl module or a command that was watching for the 
 
 =head1 SYNOPSIS
 
-I<unregnotif [-h| --help]>
+B<unregnotif [-h| --help]>
 
-I<unregnotif  [-v| --version]>
+B<unregnotif [-v| --version]>
 
-
-I<unregnotif  I<filename>>
+B<unregnotif> I<filename>
 
 
 =head1 DESCRIPTION
@@ -18,7 +17,7 @@ I<unregnotif  I<filename>>
 This command is used to unregistered a Perl module or a command that was watching for the changes of the desired xCAT database tables.
 
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<filename> is the path name of the Perl module or command to be registered.
 

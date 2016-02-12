@@ -92,7 +92,13 @@ EXAMPLES
 
 1.
  
- ppping all -q
+ 
+ .. code-block:: perl
+ 
+   ppping all -q
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -108,7 +114,13 @@ EXAMPLES
 
 2.
  
- ppping node1,node2 -i ib0,ib1,ib2,ib3
+ 
+ .. code-block:: perl
+ 
+   ppping node1,node2 -i ib0,ib1,ib2,ib3
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl

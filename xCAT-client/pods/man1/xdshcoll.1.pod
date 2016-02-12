@@ -49,12 +49,11 @@ is identical:
 
 =over 3
 
-=item *
-
+=item 1.
 To  display the results of a command issued on several nodes, in
 the format used in the Description, enter:
 
-B<xdsh> I<node1,node2,node3 cat /etc/passwd> | B<xdshcoll>
+ xdsh node1,node2,node3 cat /etc/passwd> | B<xdshcoll
 
 =back
 

@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *packimage [-h| --help]*\ 
+\ **packimage [-h| -**\ **-help]**\ 
 
-\ *packimage  [-v| --version]*\ 
+\ **packimage  [-v| -**\ **-version]**\ 
 
-\ *packimage imagename*\ 
+\ **packimage**\  \ *imagename*\ 
 
 
 ***********
@@ -40,7 +40,7 @@ This command will get all the necessary os image definition files from the \ *os
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -82,7 +82,11 @@ EXAMPLES
 
 1. To pack the osimage rhels7.1-x86_64-netboot-compute:
 
-\ *packimage rhels7.1-x86_64-netboot-compute*\ 
+
+.. code-block:: perl
+
+  packimage rhels7.1-x86_64-netboot-compute
+
 
 
 *****

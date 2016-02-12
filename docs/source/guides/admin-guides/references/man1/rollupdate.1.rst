@@ -79,16 +79,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -119,10 +115,15 @@ FILES
 
 
 /opt/xcat/bin/rollupdate
+
 /opt/xcat/share/xcat/rollupdate/rollupdate.input.sample
+
 /opt/xcat/share/xcat/rollupdate/ll.tmpl
+
 /opt/xcat/share/xcat/rollupdate/rollupdate_all.input.sample
+
 /opt/xcat/share/xcat/rollupdate/llall.tmpl
+
 /var/log/xcat/rollupdate.log
 
 

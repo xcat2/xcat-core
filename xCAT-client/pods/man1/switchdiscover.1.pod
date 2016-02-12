@@ -6,12 +6,11 @@ B<switchdiscover> - Discover all the switches on the subnets.
 
 =head1 SYNOPSIS
 
-I<switchdiscover [-h| --help]>
+B<switchdiscover [-h| --help]>
 
-I<switchdiscover [-v| --version]>
+B<switchdiscover [-v| --version]>
 
-
-I<switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-s scan_methods]>
+B<switchdiscover> [I<noderange> | B<--range> I<ip_ranges>] B<[-V] [-w][-r|-x|-z][-s> I<scan_methods>]
 
 
 
@@ -28,7 +27,7 @@ For lldp method, please make sure that lldpd package is installed and lldpd is r
 
 =over 10
 
-=item B<noderange>  
+=item I<noderange>  
 
 The switches which the user want to discover.
 If the user specify the noderange, switchdiscover will just
@@ -39,7 +38,7 @@ specified in noderange should be defined in database in advance.
 The ips of the switches will be defined in /etc/hosts file. 
 This command will fill the switch attributes for the switches defined. 
 
-=item B<-h>          
+=item B<-h|--help>          
 
 Display usage message.
 
@@ -60,7 +59,7 @@ Display Raw responses.
 It is a comma separated list of methods for switch discovery. 
 The possible switch scan methods are: lldp and nmap. The default is nmap.
 
-=item B<-v>  
+=item B<-v|--version>  
 
 Command Version.
 
@@ -92,25 +91,23 @@ Stanza formated output.
 
 =over 3
 
-=item *
-
+=item 1.
 To discover the switches on some subnets:
 
-B<switchdiscover> I<--range 10.2.3.0/24,192.168.3.0/24,11.5.6.7>
+ switchdiscover --range 10.2.3.0/24,192.168.3.0/24,11.5.6.7
 
-=item *
-
+=item 2.
 To do the switch discovery and save them to the xCAT database:
 
-B<switchdiscover> I<--range 10.2.3.4/24 -w>
+ switchdiscover --range 10.2.3.4/24 -w
 
 It is recommended to run B<makehosts> after the switches are saved in the DB.
 
-=item *
+=item 3.
 
 To use lldp mathod to discover the switches:
 
-B<switchdiscover> -s lldp
+ switchdiscover -s lldp
 
 
 =back
@@ -121,9 +118,3 @@ B<switchdiscover> -s lldp
 
 
 =head1 SEE ALSO
-
-
-
-
-
-

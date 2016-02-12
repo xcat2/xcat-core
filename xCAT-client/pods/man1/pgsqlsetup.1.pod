@@ -5,13 +5,13 @@ B<pgsqlsetup> - Sets up the PostgreSQL database for xCAT to use.
 =head1 SYNOPSIS
 
 
-B<pgsqlsetup> {B<-h>|B<--help>}
+B<pgsqlsetup> {B<-h> | B<--help>}
 
-B<pgsqlsetup> {B<-v>|B<--version>}
+B<pgsqlsetup> {B<-v> | B<--version>}
 
-B<pgsqlsetup> {B<-i>|B<--init>} [-N|nostart] [-P|--PCM] [-o|--setupODBC] [B<-V>|B<--verbose>]
+B<pgsqlsetup> {B<-i> | B<--init>} [B<-N> | B<--nostart>] [B<-P> | B<--PCM>] [B<-o> | B<--odbc>] [B<-V> | B<--verbose>]
 
-B<pgsqlsetup> {B<-o>|B<--setupODBC>} [-V|--verbose] 
+B<pgsqlsetup> {B<-o> | B<--setupODBC>} [B<-V> | B<--verbose>] 
 
 =head1 DESCRIPTION
 
@@ -71,16 +71,14 @@ The password to be used to setup the xCAT admin id for the database.
 
 =over 2
 
-=item *
-
+=item 1.
 To setup PostgreSQL for xCAT to run on the PostgreSQL xcatdb database :
 
-B<pgsqlsetup> I<-i>
+ pgsqlsetup -i
 
-=item * 
-
+=item 2. 
 To setup the ODBC for PostgreSQL xcatdb database access :
 
-B<pgsqlsetup> I<-o>
+ pgsqlsetup -o
 
 =back

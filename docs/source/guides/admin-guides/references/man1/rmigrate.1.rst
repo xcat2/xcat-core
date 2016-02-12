@@ -95,7 +95,11 @@ This is used to determine the current host to migrate from.
 ****************
 
 
-\ **rmigrate**\  \ *v1*\  \ *n2*\ 
+
+.. code-block:: perl
+
+  rmigrate v1 n2
+
 
 zVM specific:
 =============

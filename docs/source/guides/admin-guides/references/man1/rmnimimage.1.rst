@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **rmnimimage [-h|-**\ **-help]**\ 
 
-\ **rmnimimage [-V|-**\ **-verbose] [-f|-**\ **-force] [-d|-**\ **-delete] [-x|-**\ **-xcatdef] [-M|-**\ **-managementnode] [-s servicenoderange] osimage_name**\ 
+\ **rmnimimage [-V|-**\ **-verbose] [-f|-**\ **-force] [-d|-**\ **-delete] [-x|-**\ **-xcatdef] [-M|-**\ **-managementnode] [-s**\  \ *servicenoderange*\ ] \ *osimage_name*\ 
 
 
 ***********
@@ -82,13 +82,13 @@ OPTIONS
  
 
 
-\ **-s servicenoderange**\ 
+\ **-s**\  \ *servicenoderange*\ 
  
  Remove the NIM resources on these xCAT service nodes only.  Do not remove the NIM resources from the xCAT management node.
  
 
 
-\ **osimage_name**\ 
+\ *osimage_name*\ 
  
  The name of the xCAT osimage definition.
  
@@ -113,16 +113,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -133,27 +129,47 @@ EXAMPLES
 
 1) Remove all NIM resources specified in the xCAT "61image" definition.
 
-\ **rmnimimage 61image**\ 
+
+.. code-block:: perl
+
+  rmnimimage 61image
+
 
 The "nim -o remove" operation will be used to remove the NIM resource definitions on the management node as well as any service nodes where the resource has been replicated.   This NIM operation does not completely remove all files and directories associated with the NIM resources.
 
 2) Remove all the NIM resources specified by the xCAT "61rte" osimage definition.  Delete ALL files and directories associated with the NIM resources. This will also remove the lpp_source resource.
 
-\ **rmnimimage -d 61rte**\ 
+
+.. code-block:: perl
+
+  rmnimimage -d 61rte
+
 
 3) Remove all the NIM resources specified by the xCAT "614img" osimage definition and also remove the xCAT definition.
 
-\ **rmnimimage -x -d 614img**\ 
+
+.. code-block:: perl
+
+  rmnimimage -x -d 614img
+
 
 Note: When this command completes all definitions and files will be completely erased, so use with caution!
 
 4) Remove the NIM resources specified in the "614dskls" osimage definition on the xcatsn1 and xcatsn2 service nodes.  Delete all files or directories associated with the NIM resources.
 
-\ **rmnimimage -d -s xcatsn1,xcatsn2 614dskls**\ 
+
+.. code-block:: perl
+
+  rmnimimage -d -s xcatsn1,xcatsn2 614dskls
+
 
 5) Remove the NIM resources specified in the "614old" osimage definition on the xCAT management node only.
 
-\ **rmnimimage -M -d 614old**\ 
+
+.. code-block:: perl
+
+  rmnimimage -M -d 614old
+
 
 
 *****

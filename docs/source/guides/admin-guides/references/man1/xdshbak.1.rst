@@ -145,10 +145,8 @@ OPTIONS
 
 
 
-\*
- 
- To  display the results of a command issued on several nodes, in
- the format used in the Description, enter:
+1. To  display the results of a command issued on several nodes, in
+the format used in the Description, enter:
  
  
  .. code-block:: perl
@@ -158,7 +156,7 @@ OPTIONS
  
 
 
-\*
+2.
  
  To display the results of a command issued on several nodes with
  identical output displayed only once, enter:
@@ -171,10 +169,8 @@ OPTIONS
  
 
 
-\*
- 
- To display the results of a command issued on several nodes with
- compact output and be sorted alphabetically by host name, enter:
+3. To display the results of a command issued on several nodes with
+compact output and be sorted alphabetically by host name, enter:
  
  
  .. code-block:: perl

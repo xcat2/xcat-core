@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *updateSNimage [-h | --help ]*\ 
+\ **updateSNimage [-h | -**\ **-help ]**\ 
 
-\ *updateSNimage [-v | --version]*\ 
+\ **updateSNimage [-v | -**\ **-version]**\ 
 
-\ *updateSNimage {-n} [-p]*\ 
+\ **updateSNimage**\  [\ **-n**\  \ *node*\ ] [\ **-p**\  \ *path*\ ]
 
 
 ***********
@@ -43,7 +43,7 @@ OPTIONS
 
 \ **-v |-**\ **-version**\          Display xCAT version.
 
-\ **-n | -**\ **-node**\            A remote host name or ip address that contains the install image to be updated.
+\ **-n |-**\ **-node**\             A remote host name or ip address that contains the install image to be updated.
 
 \ **-p |-**\ **-path**\             Path to the install image.
 
@@ -65,9 +65,17 @@ EXAMPLES
 
 1. To update the image on the local host.
 
-\ *updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg*\ 
+
+.. code-block:: perl
+
+  updateSNimage -p /install/netboot/fedora8/x86_64/test/rootimg
+
 
 2. To update the image on a remote host.
 
-\ *updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg*\ 
+
+.. code-block:: perl
+
+  updateSNimage -n 9.112.45.6 -p /install/netboot/fedora8/x86_64/test/rootimg
+
 

@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **rmdsklsnode [-h | -**\ **-help ]**\ 
 
-\ **rmdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-r|-**\ **-remdef] [-i image_name] [-p|-**\ **-primarySN] [-b|-**\ **-backupSN] noderange**\ 
+\ **rmdsklsnode [-V|-**\ **-verbose] [-f|-**\ **-force] [-r|-**\ **-remdef] [-i**\  \ *image_name*\ ] \ **[-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *noderange*\ 
 
 
 ***********
@@ -71,13 +71,13 @@ OPTIONS
  
 
 
-\ **-i image_name**\ 
+\ **-i**\  \ *image_name*\ 
  
  The name of an xCAT image definition.
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
  
@@ -109,16 +109,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -129,22 +125,37 @@ EXAMPLES
 
 1) Remove the NIM client definition for the xCAT node named "node01". Give verbose output.
 
-\ **rmdsklsnode -V node01**\ 
 
-2) Remove the NIM client definitions for all the xCAT nodes in the group "aixnod
-es". Attempt to shut down the nodes if they are running.
+.. code-block:: perl
 
-\ **rmdsklsnode -f aixnodes**\ 
+  rmdsklsnode -V node01
+
+
+2) Remove the NIM client definitions for all the xCAT nodes in the group "aixnodes". Attempt to shut down the nodes if they are running.
+
+
+.. code-block:: perl
+
+  rmdsklsnode -f aixnodes
+
 
 3) Remove the NIM client machine definition for xCAT node "node02" that was created with the \ **mkdsklsnode -n**\  option and the image "AIXdskls". (i.e. NIM client machine name "node02_AIXdskls".)
 
-\ **rmdsklsnode -i AIXdskls node02**\ 
+
+.. code-block:: perl
+
+  rmdsklsnode -i AIXdskls node02
+
 
 This assume that node02 is not currently running.
 
 4) Remove the old alternate client definition "node27_olddskls".
 
-\ **rmdsklsnode -r -i olddskls node27**\ 
+
+.. code-block:: perl
+
+  rmdsklsnode -r -i olddskls node27
+
 
 Assuming the node was booted using an new alternate NIM client definition then this will leave the node running.
 

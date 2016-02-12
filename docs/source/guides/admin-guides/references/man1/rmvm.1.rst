@@ -19,24 +19,24 @@ SYNOPSIS
 ********
 
 
-\ *rmvm [-h| --help]*\ 
+\ **rmvm [-h| -**\ **-help]**\ 
 
-\ *rmvm [-v| --version]*\ 
+\ **rmvm [-v| -**\ **-version]**\ 
 
-\ *rmvm [-V| --verbose] noderange [-r] [--service]*\ 
+\ **rmvm [-V| -**\ **-verbose]**\  \ *noderange*\  \ **[-r] [-**\ **-service]**\ 
 
 For KVM and Vmware:
 ===================
 
 
-\ *rmvm [-p] [-f]*\ 
+\ **rmvm [-p] [-f]**\ 
 
 
 PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ *rmvm noderange*\ 
+\ **rmvm**\  \ *noderange*\ 
 
 
 
@@ -55,11 +55,11 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
+\ **-h|-**\ **-help**\           Display usage message.
 
-\ **-v**\           Command Version.
+\ **-v|-**\ **-version**\        Command Version.
 
-\ **-V**\           Verbose output.
+\ **-V|-**\ **-verbose**\        Verbose output.
 
 \ **-r**\           Retain the data object definitions of the nodes.
 
@@ -89,15 +89,27 @@ EXAMPLES
 
 1. To remove the HMC-managed partition lpar3, enter:
 
-\ *rmvm lpar3*\ 
+
+.. code-block:: perl
+
+  rmvm lpar3
+
 
 Output is similar to:
 
-lpar3: Success
+
+.. code-block:: perl
+
+  lpar3: Success
+
 
 2. To remove all the HMC-managed partitions associated with CEC cec01, enter:
 
-\ *rmvm cec01*\ 
+
+.. code-block:: perl
+
+  rmvm cec01
+
 
 Output is similar to:
 
@@ -111,7 +123,11 @@ Output is similar to:
 
 3. To remove the HMC-managed service partitions of the specified CEC cec01 and cec02, enter:
 
-\ *rmvm cec01,cec02 --service*\ 
+
+.. code-block:: perl
+
+  rmvm cec01,cec02 --service
+
 
 Output is similar to:
 
@@ -124,15 +140,27 @@ Output is similar to:
 
 4. To remove the HMC-managed partition lpar1, but retain its definition, enter:
 
-\ *rmvm lpar1 -r*\ 
+
+.. code-block:: perl
+
+  rmvm lpar1 -r
+
 
 Output is similar to:
 
-lpar1: Success
+
+.. code-block:: perl
+
+  lpar1: Success
+
 
 5. To remove a zVM virtual machine:
 
-\ *rmvm gpok4*\ 
+
+.. code-block:: perl
+
+  rmvm gpok4
+
 
 Output is similar to:
 
@@ -144,7 +172,11 @@ Output is similar to:
 
 6. To remove a DFM-managed partition on normal power machine:
 
-\ *rmvm lpar1*\ 
+
+.. code-block:: perl
+
+  rmvm lpar1
+
 
 Output is similar to:
 

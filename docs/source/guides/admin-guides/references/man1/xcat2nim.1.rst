@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ *xcat2nim [-h|--help ]*\ 
+\ **xcat2nim [-h|-**\ **-help]**\ 
 
-\ *xcat2nim [-V|--verbose] [-u|--update] [-l|--list] [-r|--remove] [-f|--force] [-t object-types] [-o object-names] [-a|--allobjects] [-p|--primarySN] [-b|--backupSN] [noderange] [attr=val [attr=val...]] *\ 
+\ **xcat2nim [-V|-**\ **-verbose] [-u|-**\ **-update] [-l|-**\ **-list] [-r|-**\ **-remove] [-f|-**\ **-force] [-t object-types] [-o**\  \ *object-names*\ ] \ **[-a|-**\ **-allobjects] [-p|-**\ **-primarySN] [-b|-**\ **-backupSN]**\  \ *[noderange] [attr=val [attr=val...]]*\ 
 
 
 ***********
@@ -65,7 +65,7 @@ OPTIONS
 
 \ **-a|-**\ **-all**\              The list of objects will include all xCAT node, group and network objects.
 
-\ **attr=val [attr=val ...]**\   Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
+\ *attr=val [attr=val ...]*\   Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
 
 \ **-b|-**\ **-backupSN**\        When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
 
@@ -75,13 +75,13 @@ OPTIONS
 
 \ **-l|-**\ **-list**\ 		 List NIM definitions corresponding to xCAT definitions.
 
-\ **-o object-names**\        A set of comma delimited xCAT object names. Objects must be of type node, group, or network.
+\ **-o**\  \ *object-names*\     A set of comma delimited xCAT object names. Objects must be of type node, group, or network.
 
 \ **-p|-**\ **-primarySN**\         When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
 \ **-r|-**\ **-remove**\          Remove NIM definitions corresponding to xCAT definitions.
 
-\ **-t object-types**\        A set of comma delimited xCAT object types. Supported types include: node, group, and network.
+\ **-t**\  \ *object-types*\        A set of comma delimited xCAT object types. Supported types include: node, group, and network.
 
 Note: If the object type is "group", it means that the \ **xcat2nim**\  command will operate on a NIM machine group definition corresponding to the xCAT node group definition. Before creating a NIM machine group, all the NIM client nodes definition must have been created.
 
@@ -107,39 +107,75 @@ EXAMPLES
 
 1. To create a NIM machine definition corresponding to the xCAT node "clstrn01".
 
-\ *xcat2nim -t node -o clstrn01*\ 
+
+.. code-block:: perl
+
+  xcat2nim -t node -o clstrn01
+
 
 2. To create NIM machine definitions for all xCAT node definitions.
 
-\ *xcat2nim -t node*\ 
+
+.. code-block:: perl
+
+  xcat2nim -t node
+
 
 3. Update all the NIM machine definitions for the nodes contained in the xCAT "compute" node group and specify attribute values that will be applied to each definition.
 
-\ *xcat2nim -u -t node -o compute netboot_kernel=mp cable_type="N/A"*\ 
+
+.. code-block:: perl
+
+  xcat2nim -u -t node -o compute netboot_kernel=mp cable_type="N/A"
+
 
 4. To create a NIM machine group definition corresponding to the xCAT group "compute".
 
-\ *xcat2nim -t group -o compute*\ 
+
+.. code-block:: perl
+
+  xcat2nim -t group -o compute
+
 
 5. To create NIM network definitions corresponding to the xCAT "clstr_net" an "publc_net" network definitions.  Also display verbose output.
 
-\ *xcat2nim -V -t network -o "clstr_net,publc_net"*\ 
+
+.. code-block:: perl
+
+  xcat2nim -V -t network -o "clstr_net,publc_net"
+
 
 6. To list the NIM definition for node clstrn02.
 
-\ *xcat2nim -l -t node clstrn02*\ 
+
+.. code-block:: perl
+
+  xcat2nim -l -t node clstrn02
+
 
 7. To re-create a NIM machine definiton and display verbose output.
 
-\ *xcat2nim -V -t node -f clstrn05*\ 
+
+.. code-block:: perl
+
+  xcat2nim -V -t node -f clstrn05
+
 
 8. To remove the NIM definition for the group "AIXnodes".
 
-\ *xcat2nim -t group -r -o AIXnodes*\ 
+
+.. code-block:: perl
+
+  xcat2nim -t group -r -o AIXnodes
+
 
 9. To list the NIM "clstr_net" definition.
 
-\ *xcat2nim -l -t network -o clstr_net*\ 
+
+.. code-block:: perl
+
+  xcat2nim -l -t network -o clstr_net
+
 
 
 *****

@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **xcatchroot -h **\ 
+\ **xcatchroot -h**\ 
 
-\ **xcatchroot [-V] -i osimage_name  cmd_string**\ 
+\ **xcatchroot [-V] -i**\  \ *osimage_name cmd_string*\ 
 
 
 ***********
@@ -33,19 +33,15 @@ For AIX diskless images this command will modify the AIX SPOT resource using
 the chroot command.  You must include the name of an xCAT osimage
 definition and the command that you wish to have run in the spot.
 
-WARNING:
+\ **WARNING:**\ 
 
 
+Be very careful when using this command!!!  Make sure you are
+very clear about exactly what you are changing so that you do
+not accidently corrupt the image.
 
-.. code-block:: perl
-
- 	Be very careful when using this command!!!  Make sure you are
- 	very clear about exactly what you are changing so that you do
- 	not accidently corrupt the image.
- 	
- 	As a precaution it is advisable to make a copy of the original
- 	spot in case your changes wind up corrupting the image.
-
+As a precaution it is advisable to make a copy of the original
+spot in case your changes wind up corrupting the image.
 
 When you are done updating a NIM spot resource you should always run the NIM
 check operation on the spot.
@@ -54,7 +50,7 @@ check operation on the spot.
 
 .. code-block:: perl
 
- 	nim -Fo check <spot_name>
+  nim -Fo check <spot_name>
 
 
 The xcatchroot command will take care of any of the required setup so that 
@@ -93,7 +89,7 @@ OPTIONS
 
 
 
-\ **cmd_string**\ 
+\ *cmd_string*\ 
  
  The command you wish to have run in the chroot environment.  (Use a quoted 
  string.)
@@ -106,7 +102,7 @@ OPTIONS
  
 
 
-\ **-i osimage_name**\ 
+\ **-i**\  \ *osimage_name*\ 
  
  The name of the xCAT osimage definition.
  
@@ -125,16 +121,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -146,19 +138,35 @@ EXAMPLES
 1) Set the root password to "cluster" in the spot so that when the diskless 
 node boots it will have a root password set.
 
-\ **xcatchroot -i 614spot "/usr/bin/echo root:cluster | /usr/bin/chpasswd -c"**\ 
+
+.. code-block:: perl
+
+  xcatchroot -i 614spot "/usr/bin/echo root:cluster | /usr/bin/chpasswd -c"
+
 
 2) Install the bash rpm package.
 
-\ **xcatchroot -i 614spot "/usr/bin/rpm -Uvh /lpp_source/RPMS/ppc bash-3.2-1.aix5.2.ppc.rpm"**\ 
+
+.. code-block:: perl
+
+  xcatchroot -i 614spot "/usr/bin/rpm -Uvh /lpp_source/RPMS/ppc bash-3.2-1.aix5.2.ppc.rpm"
+
 
 3) To enable system debug.
 
-\ **xcatchroot -i 614spot "bosdebug -D -M"**\ 
+
+.. code-block:: perl
+
+  xcatchroot -i 614spot "bosdebug -D -M"
+
 
 4) To set the "ipforwarding" system tunable.
 
-\ **xcatchroot -i 614spot "/usr/sbin/no -r -o ipforwarding=1"**\ 
+
+.. code-block:: perl
+
+  xcatchroot -i 614spot "/usr/sbin/no -r -o ipforwarding=1"
+
 
 
 *****

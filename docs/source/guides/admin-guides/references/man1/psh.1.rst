@@ -79,13 +79,13 @@ management node to the compute node via a service node.
  
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  See noderange(3)|noderange.3.
  
 
 
-\ **command**\ 
+\ *command*\ 
  
  Command  to  be run in parallel.  If no command is give then \ **psh**\ 
  enters interactive mode.  In interactive mode a  ">"  prompt  is
@@ -121,31 +121,43 @@ management node to the compute node via a service node.
 
 
 
-\*
+1. Run uptime on 3 nodes:
  
- Run uptime on 3 nodes:
  
- \ **psh**\  \ *node4-node6*\  \ *uptime*\ 
+ .. code-block:: perl
  
- node4: Sun Aug  5 17:42:06 MDT 2001
- node5: Sun Aug  5 17:42:06 MDT 2001
- node6: Sun Aug  5 17:42:06 MDT 2001
+   psh node4-node6 uptime
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node4: Sun Aug  5 17:42:06 MDT 2001
+   node5: Sun Aug  5 17:42:06 MDT 2001
+   node6: Sun Aug  5 17:42:06 MDT 2001
+ 
  
 
 
-\*
+2. Run a command on some BladeCenter management modules:
  
- Run a command on some BladeCenter management modules:
  
- \ **psh**\  \ *amm1-amm5*\  \ *'info -T mm[1]'*\ 
+ .. code-block:: perl
+ 
+   psh amm1-amm5 'info -T mm[1]'
+ 
  
 
 
-\*
+3. Remove the tmp files on the nodes in the 1st frame:
  
- Remove the tmp files on the nodes in the 1st frame:
  
- \ **psh**\  \ *rack01*\  \ *'rm -f /tmp/\\*'*\ 
+ .. code-block:: perl
+ 
+   psh rack01 'rm -f /tmp/*'
+ 
  
  Notice the use of '' to forward shell expansion.  This is not necessary
  in interactive mode.

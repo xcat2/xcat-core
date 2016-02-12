@@ -11,11 +11,11 @@ SYNOPSIS
 ********
 
 
-\ *switchdiscover [-h| --help]*\ 
+\ **switchdiscover [-h| -**\ **-help]**\ 
 
-\ *switchdiscover [-v| --version]*\ 
+\ **switchdiscover [-v| -**\ **-version]**\ 
 
-\ *switchdiscover [noderange|--range ip_ranges] [-V] [-w][-r|-x|-z][-s scan_methods]*\ 
+\ **switchdiscover**\  [\ *noderange*\  | \ **-**\ **-range**\  \ *ip_ranges*\ ] \ **[-V] [-w][-r|-x|-z][-s**\  \ *scan_methods*\ ]
 
 
 ***********
@@ -36,7 +36,7 @@ OPTIONS
 
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  The switches which the user want to discover.
  If the user specify the noderange, switchdiscover will just
@@ -49,7 +49,7 @@ OPTIONS
  
 
 
-\ **-h**\ 
+\ **-h|-**\ **-help**\ 
  
  Display usage message.
  
@@ -78,7 +78,7 @@ OPTIONS
  
 
 
-\ **-v**\ 
+\ **-v|-**\ **-version**\ 
  
  Command Version.
  
@@ -125,29 +125,41 @@ EXAMPLES
 
 
 
-\*
+1. To discover the switches on some subnets:
  
- To discover the switches on some subnets:
  
- \ **switchdiscover**\  \ *-**\ **-range 10.2.3.0/24,192.168.3.0/24,11.5.6.7*\ 
+ .. code-block:: perl
+ 
+   switchdiscover --range 10.2.3.0/24,192.168.3.0/24,11.5.6.7
+ 
  
 
 
-\*
+2. To do the switch discovery and save them to the xCAT database:
  
- To do the switch discovery and save them to the xCAT database:
  
+ .. code-block:: perl
+ 
+   switchdiscover --range 10.2.3.4/24 -w
+ 
+<<<<<<< HEAD
  \ **switchdiscover**\  \ *-**\ **-range 10.2.3.4/24 -w*\ 
+=======
+>>>>>>> man1 changes for commands p-z
  
  It is recommended to run \ **makehosts**\  after the switches are saved in the DB.
  
 
 
-\*
+3.
  
  To use lldp mathod to discover the switches:
  
- \ **switchdiscover**\  -s lldp
+ 
+ .. code-block:: perl
+ 
+   switchdiscover -s lldp
+ 
  
 
 
@@ -160,8 +172,9 @@ FILES
 /opt/xcat/bin/switchdiscover
 
 
-********
+*********
 SEE ALSO
-********
+
+*********
 
 
