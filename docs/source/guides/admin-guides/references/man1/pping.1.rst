@@ -73,7 +73,13 @@ EXAMPLES
 
 1.
  
- pping all
+ 
+ .. code-block:: perl
+ 
+   pping all
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -87,7 +93,13 @@ EXAMPLES
 
 2.
  
- pping all -i ib0,ib1
+ 
+ .. code-block:: perl
+ 
+   pping all -i ib0,ib1
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl

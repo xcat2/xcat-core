@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ **script1,script2...**\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d alt_source_dir**\ ] [\ **-**\ **-fanout**\ ] [\ **-t timeout**\ } [\ **attr=val**\  [\ **attr=val...**\ ]] [\ **-n | -**\ **-noverify**\ ]
+\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ ] [\ **-ti**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t timeout**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t**\  \ *timeout*\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-g | -**\ **-genmypost**\ ]
 
-\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t timeout**\ ] [\ **script1,script2...**\ ]
+\ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *timeout*\ ] [\ *script1,script2...*\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-V | -**\ **-verbose**\ ] [\ **-f | -**\ **-snsync**\ ]
 
@@ -41,46 +41,36 @@ The updatenode command is run on the xCAT management node and can be used
 to perform the following node updates:
 
 
-1
- 
- Distribute and synchronize files.
- 
+1. Distribute and synchronize files.
 
 
-2
- 
- Install or update software on diskful nodes.
- 
+
+2. Install or update software on diskful nodes.
 
 
-3
- 
- Run postscripts.
- 
+
+3. Run postscripts.
 
 
-4
- 
- Update the ssh keys and host keys for the service nodes and compute nodes;
- Update the ca and credentials for the service nodes.
- 
+
+4. Update the ssh keys and host keys for the service nodes and compute nodes;
+Update the ca and credentials for the service nodes.
+
 
 
 The default behavior when no options are input to updatenode will be to run  
-the following options "-S", "-P" and "-F" options in this order.
+the following options \ **-S**\ , \ **-P**\  and \ **-F**\  options in this order.
 If you wish to limit updatenode to specific 
-actions you can use combinations of the "-S", "-P", and "-F" flags.
+actions you can use combinations of the \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 For example, If you just want to synchronize configuration file you could
-specify the "-F" flag.   If you want to synchronize files and update 
-software you would specify the "-F" and "-S" flags. See the descriptions 
+specify the \ **-F**\  flag.   If you want to synchronize files and update 
+software you would specify the \ **-F**\  and \ **-S**\  flags. See the descriptions 
 of these flags and examples below.
 
-The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F"
-flags.
+The flag \ **-k**\  (\ **-**\ **-security**\ ) can NOT be used together with \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
-The flag "-f" (--snsync) can NOT be used together with "-S", "-P", and "-F"
-flags.
+The flag \ **-f**\  (\ **-**\ **-snsync**\ ) can NOT be used together with \ **-S**\ , \ **-P**\ , and \ **-F**\  flags.
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
 manner can quickly get out of hand, leaving the system administrator with 
@@ -95,29 +85,22 @@ To distribute and synchronize files
 The basic process for distributing and synchronizing nodes is:
 
 
-\*
- 
- Create a synclist file.
- 
+\* Create a synclist file.
 
 
-\*
- 
- Indicate the location of the synclist file.
- 
+
+\* Indicate the location of the synclist file.
 
 
-\*
- 
- Run the updatenode command to update the nodes.
- 
+
+\* Run the updatenode command to update the nodes.
+
 
 
 Files may be distributed and synchronized for both diskless and 
 diskful nodes.  Syncing files to NFS-based statelite nodes is not supported.
 
-More information on using the  synchronization file function is in  
- the following doc: Using_Updatenode.
+More information on using the  synchronization file function is in the following doc: Using_Updatenode.
 
 Create the synclist file
 ------------------------
@@ -260,31 +243,23 @@ Update security
 The basic functions of update security for nodes:
 
 
-\*
- 
- Setup the ssh keys for the target nodes. It enables the management
- node and service nodes to ssh to the target nodes without password.
- 
+\* Setup the ssh keys for the target nodes. It enables the management
+node and service nodes to ssh to the target nodes without password.
 
 
-\*
- 
- Redeliver the host keys to the target nodes.
- 
+
+\* Redeliver the host keys to the target nodes.
 
 
-\*
- 
- Redeliver the ca and certificates files to the service node.
- These files are used to authenticate the ssl connection between
- xcatd's of management node and service node.
- 
+
+\* Redeliver the ca and certificates files to the service node.
+These files are used to authenticate the ssl connection between
+xcatd's of management node and service node.
 
 
-\*
- 
- Remove the entries of target nodes from known_hosts file.
- 
+
+\* Remove the entries of target nodes from known_hosts file.
+
 
 
 \ *Set up the SSH keys*\ 
@@ -316,7 +291,12 @@ Since the certificates have the validity time, the ntp service is recommended
 to be set up between management node and service node.
 
 Simply running following command to update the security keys:
-	 \ **updatenode**\  \ *noderange*\  -k
+
+
+.. code-block:: perl
+
+  updatenode <noderange> -k
+
 
 
 
@@ -326,7 +306,7 @@ PARAMETERS
 
 
 
-\ **noderange**\ 
+\ *noderange*\ 
  
  A set of comma delimited xCAT node names
  and/or group names. See the xCAT "noderange"
@@ -335,7 +315,7 @@ PARAMETERS
  
 
 
-\ **script1,script2...**\ 
+\ *script1,script2...*\ 
  
  A comma-separated list of script names. 
  The scripts must be executable and copied 
@@ -344,11 +324,15 @@ PARAMETERS
  If parameters are spcified, the whole list needs to be quoted by double quotes. 
  For example:
  
- \ **"script1 p1 p2,script2"**\ 
+ 
+ .. code-block:: perl
+ 
+   "script1 p1 p2,script2"
+ 
  
 
 
-[\ **attr=val**\  [\ **attr=val...**\ ]]
+[\ *attr=val*\  [\ *attr=val...*\ ]]
  
  Specifies one or more "attribute equals value" pairs, separated by spaces.
  Attr=val pairs must be specified last on the command line.  The currently
@@ -388,7 +372,7 @@ OPTIONS
  
 
 
-\ **-d alt_source_dir**\ 
+\ **-d**\  \ *alt_source_dir*\ 
  
  Used to specify a source directory other than the standard lpp_source directory specified in the xCAT osimage definition.  (AIX only)
  
@@ -485,7 +469,7 @@ OPTIONS
  
 
 
-\ **-t timeout**\ 
+\ **-t**\  \ *timeout*\ 
  
  Specifies a timeout in seconds the command will wait for the remote targets to complete. If timeout is not specified
  it will wait indefinitely. updatenode -k is the exception that has a timeout of 10 seconds, unless overridden by this flag.
@@ -521,12 +505,13 @@ EXAMPLES
 
 
 
-1
+1. To perform all updatenode features for the Linux nodes in the group "compute":
  
- To perform all updatenode features for the Linux nodes in the group
- "compute":
  
- \ **updatenode compute**\ 
+ .. code-block:: perl
+ 
+   updatenode compute
+ 
  
  The command will: run any scripts listed in the nodes "postscripts and postbootscripts" 
  attribute, install or update any software indicated in the 
@@ -536,83 +521,103 @@ EXAMPLES
  
 
 
-2
+2. To run postscripts,postbootscripts and file synchronization only on the node "clstrn01":
  
- To run postscripts,postbootscripts and file synchronization only on the node
- "clstrn01":
  
- \ **updatenode clstrn01 -F -P**\ 
+ .. code-block:: perl
+ 
+   updatenode clstrn01 -F -P
+ 
  
 
 
-3
- 
- Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead.
+3. Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead.
  
  Do not run:
  
- \ **updatenode clstrno1 -P syncfiles**\ 
+ 
+ .. code-block:: perl
+ 
+   updatenode clstrno1 -P syncfiles
+ 
  
  Run:
  
- \ **updatenode clstrn01 -F**\ 
+ 
+ .. code-block:: perl
+ 
+   updatenode clstrn01 -F
+ 
  
 
 
-4
+4. To run the postscripts and postbootscripts  indicated in the postscripts and postbootscripts attributes on the node "clstrn01":
  
- To run the postscripts and postbootscripts  indicated in the postscripts and postbootscripts attributes on 
- the node "clstrn01":
  
- \ **updatenode clstrn01 -P**\ 
+ .. code-block:: perl
+ 
+   updatenode clstrn01 -P
+ 
  
 
 
-5
+5. To run the postscripts script1 and script2 on the node "clstrn01":
  
- To run the postscripts script1 and script2 on the node "clstrn01":
  
- \ **cp script1,script2 /install/postscripts**\ 
+ .. code-block:: perl
  
- \ **updatenode clstrn01 -P "script1 p1 p2,script2"**\ 
+   cp script1,script2 /install/postscripts
+  
+   updatenode clstrn01 -P "script1 p1 p2,script2"
+ 
  
  Since flag '-P' can be omitted when only script names are specified, 
  the following command is equivalent:
  
- \ **updatenode clstrn01 "script1 p1 p2,script2"**\ 
+ 
+ .. code-block:: perl
+ 
+   updatenode clstrn01 "script1 p1 p2,script2"
+ 
  
  p1 p2 are parameters for script1.
  
 
 
-6
+6. To synchronize the files on the node "clstrn01":  Prepare the synclist file. 
+For AIX, set the full path of synclist in the osimage table synclists 
+attribute. For Linux, put the synclist file into the location: 
+/install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
+Then:
  
- To synchronize the files on the node "clstrn01":  Prepare the synclist file. 
- For AIX, set the full path of synclist in the osimage table synclists 
- attribute. For Linux, put the synclist file into the location: 
- /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
- Then:
  
- \ **updatenode clstrn01 -F**\ 
+ .. code-block:: perl
  
-
-
-7
+   updatenode clstrn01 -F
  
- To perform the software update on the Linux node "clstrn01":  Copy the extra 
- rpm into the /install/post/otherpkgs/<os>/<arch>/\* and add the rpm names into 
- the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
- 
- \ **updatenode clstrn01 -S**\ 
  
 
 
-8
+7. To perform the software update on the Linux node "clstrn01":  Copy the extra 
+rpm into the /install/post/otherpkgs/<os>/<arch>/\* and add the rpm names into 
+the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
  
- To update the AIX node named "xcatn11" using the "installp_bundle" and/or
- "otherpkgs" attribute values stored in the xCAT database.  Use the default installp, rpm and emgr flags.
  
- \ **updatenode xcatn11 -V -S**\ 
+ .. code-block:: perl
+ 
+   updatenode clstrn01 -S
+ 
+ 
+
+
+8. To update the AIX node named "xcatn11" using the "installp_bundle" and/or
+"otherpkgs" attribute values stored in the xCAT database.  Use the default installp, rpm and emgr flags.
+ 
+ 
+ .. code-block:: perl
+ 
+   updatenode xcatn11 -V -S
+ 
  
  Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition 
  which contains the "installp_bundle" and "otherpkgs" attributes as well as
@@ -620,73 +625,93 @@ EXAMPLES
  
 
 
-9
+9. To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
+the "-agQXY" installp flags.  Also display the output of the installp command.
  
- To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
- the "-agQXY" installp flags.  Also display the output of the installp command.
  
- \ **updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-agQXY"**\ 
+ .. code-block:: perl
+ 
+   updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-agQXY"
+ 
  
  Note:  The 'I:' prefix is optional but recommended for installp packages.
  
 
 
-10
+10. To uninstall the "bos.cpr" fileset that was installed in the previous example.
  
- To uninstall the "bos.cpr" fileset that was installed in the previous example.
  
- \ **updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-u"**\ 
+ .. code-block:: perl
+ 
+   updatenode xcatn11 -V -S otherpkgs="I:bos.cpr" installp_flags="-u"
+ 
  
 
 
-11
+11. To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
+and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
  
- To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
- and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
  
+ .. code-block:: perl
+ 
+   updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps"
+ 
+<<<<<<< HEAD
  \ **updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i -**\ **-nodeps"**\ 
+=======
+>>>>>>> man1 changes for commands p-z
  
  Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
  
 
 
-12
+12. To uninstall the rsync rpm that was installed in the previous example.
  
- To uninstall the rsync rpm that was installed in the previous example.
  
- \ **updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e"**\ 
+ .. code-block:: perl
  
-
-
-13
+   updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e"
  
- Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
- 
- \ **updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY"**\ 
  
 
 
-14
+13. Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
  
- To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
  
- \ **updatenode node42 -V -S otherpkgs="I:rsct.base" installp_flags="-apXY"**\ 
+ .. code-block:: perl
  
-
-
-15
+   updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY"
  
- To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
- 
- \ **updatenode node09 -V -c -S rpm_flags="-qa"**\ 
  
 
 
-16
+14. To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
  
- To install all software updates contained in the /images directory.
  
- \ **updatenode node27 -V -S -A -d /images**\ 
+ .. code-block:: perl
+ 
+   updatenode node42 -V -S otherpkgs="I:rsct.base" installp_flags="-apXY"
+ 
+ 
+
+
+15. To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
+ 
+ 
+ .. code-block:: perl
+ 
+   updatenode node09 -V -c -S rpm_flags="-qa"
+ 
+ 
+
+
+16. To install all software updates contained in the /images directory.
+ 
+ 
+ .. code-block:: perl
+ 
+   updatenode node27 -V -S -A -d /images
+ 
  
  Note:  Make sure the directory is exportable and that the permissions are set
  correctly for all the files.  (Including the .toc file in the case of
@@ -694,52 +719,64 @@ EXAMPLES
  
 
 
-17
+17. Install the interim fix package located in the /efixes directory.
  
- Install the interim fix package located in the /efixes directory.
  
- \ **updatenode node29 -V -S -d /efixes otherpkgs=E:IZ38930TL0.120304.epkg.Z**\ 
+ .. code-block:: perl
  
-
-
-18
+   updatenode node29 -V -S -d /efixes otherpkgs=E:IZ38930TL0.120304.epkg.Z
  
- To uninstall the interim fix that was installed in the previous example.
- 
- \ **updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0"**\ 
  
 
 
-19
+18. To uninstall the interim fix that was installed in the previous example.
  
- To update the security keys for the node "node01"
  
- \ **updatenode node01 -k**\ 
+ .. code-block:: perl
  
-
-
-20
+   updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0"
  
- To update the service nodes with the files to be synchronized to node group compute:
- 
- \ **updatenode compute -f**\ 
  
 
 
-21
+19. To update the security keys for the node "node01"
  
- To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid  with sudo on node1  to run as root, do the following:
- See  Granting_Users_xCAT_privileges for required sudo setup.
  
- \ **updatenode node1 -l user1 -P syslog**\ 
+ .. code-block:: perl
+ 
+   updatenode node01 -k
+ 
  
 
 
-22
+20. To update the service nodes with the files to be synchronized to node group compute:
  
- In Sysclone environment, after capturing the delta changes from golden client to management node, to run updatenode to push these delta changes to target nodes.
  
- \ **updatenode target-node -S**\ 
+ .. code-block:: perl
+ 
+   updatenode compute -f
+ 
+ 
+
+
+21. To run updatenode with the non-root userid "user1" that has been setup as an xCAT userid  with sudo on node1  to run as root, do the following:
+See  Granting_Users_xCAT_privileges for required sudo setup.
+ 
+ 
+ .. code-block:: perl
+ 
+   updatenode node1 -l user1 -P syslog
+ 
+ 
+
+
+22. In Sysclone environment, after capturing the delta changes from golden client to management node, to run updatenode to push these delta changes to target nodes.
+ 
+ 
+ .. code-block:: perl
+ 
+   updatenode target-node -S
+ 
  
 
 

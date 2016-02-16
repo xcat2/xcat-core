@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **snmove**\  \ *noderange*\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
+\ **snmove**\  \ *noderange*\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\  | \ **all**\ ]
 
-\ **snmove**\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] \ **-s | -**\ **-source**\  \ *sn1*\  [\ **-S | -**\ **-sourcen**\  \ *sn1n*\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\ |\ *all*\ ]
+\ **snmove**\  [\ **-V**\ ] [\ **-l | -**\ **-liteonly**\ ] \ **-s | -**\ **-source**\  \ *sn1*\  [\ **-S | -**\ **-sourcen**\  \ *sn1n*\ ] [\ **-d | -**\ **-dest**\  \ *sn2*\ ] [\ **-D | -**\ **-destn**\  \ *sn2n*\ ] [\ **-i | -**\ **-ignorenodes**\ ] [\ **-P | -**\ **-postscripts**\  \ *script1,script2...*\  | \ **all**\ ]
 
 \ **snmove**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -68,7 +68,7 @@ service node.
 
 By default the command will modify the nodes so that they will be able to be managed by the backup service node.
 
-If the -i option is specified, the nodes themselves will not be modified.
+If the \ **-i**\  option is specified, the nodes themselves will not be modified.
 
 You can also have postscripts executed on the nodes by using the -P option if needed.
 
@@ -120,14 +120,13 @@ OPTIONS
 
 \ **-P|-**\ **-postscripts**\ 
  
- Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If 'all' is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
+ Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If \ **all**\  is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory.
  
 
 
 \ **-s|-**\ **-source**\ 
  
- Specifies the hostname of the current (source) service node sa known by (facing)
-  the management node.
+ Specifies the hostname of the current (source) service node sa known by (facing) the management node.
  
 
 
@@ -161,7 +160,11 @@ EXAMPLES
  
  Move the nodes contained in group "group1" to the service node named "xcatsn02".
  
- \ **snmove group1 -d xcatsn02 -D xcatsn02-eth1**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove group1 -d xcatsn02 -D xcatsn02-eth1
+ 
  
 
 
@@ -169,7 +172,11 @@ EXAMPLES
  
  Move all the nodes that use service node xcatsn01 to service node xcatsn02.
  
- \ **snmove -s xcatsn01 -S xcatsn01-eth1 -d xcatsn02 -D xcatsn02-eth1**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove -s xcatsn01 -S xcatsn01-eth1 -d xcatsn02 -D xcatsn02-eth1
+ 
  
 
 
@@ -177,7 +184,11 @@ EXAMPLES
  
  Move any nodes that have sn1 as their primary server to the backup service node set in the xCAT node definition.
  
- \ **snmove -s sn1**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove -s sn1
+ 
  
 
 
@@ -185,7 +196,11 @@ EXAMPLES
  
  Move all the nodes in the xCAT group named "nodegroup1" to their backup SNs.
  
- \ **snmove nodegroup1**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove nodegroup1
+ 
  
 
 
@@ -193,7 +208,11 @@ EXAMPLES
  
  Move all the nodes in xCAT group "sngroup1" to the service node named "xcatsn2".
  
- \ **snmove sngroup1 -d xcatsn2**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove sngroup1 -d xcatsn2
+ 
  
 
 
@@ -201,7 +220,11 @@ EXAMPLES
  
  Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2" and run extra postscripts.
  
- \ **snmove sngroup1 -d xcatsn2 -P test1**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove sngroup1 -d xcatsn2 -P test1
+ 
  
 
 
@@ -209,7 +232,11 @@ EXAMPLES
  
  Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2" and do not run anything on the nodes.
  
- \ **snmove sngroup1 -d xcatsn2 -i**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove sngroup1 -d xcatsn2 -i
+ 
  
 
 
@@ -217,7 +244,11 @@ EXAMPLES
  
  Synchronize any AIX statelite files from the primary server for compute03 to the backup server.  This will not actually move the node to it's backup service node.
  
- \ **snmove compute03 -l -V**\ 
+ 
+ .. code-block:: perl
+ 
+   snmove compute03 -l -V
+ 
  
 
 

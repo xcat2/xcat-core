@@ -138,6 +138,8 @@ Print version.
 
 Set the values in the vm table to what vCenter has for the indicated nodes.
 
+=back
+
 B<zVM specific :>
 
 =over 2
@@ -188,17 +190,16 @@ List the known zFCP pool names.
 
 =back
 
-=back
-
 =head1 B<Examples>
 
 =over 4
 
-=item *
-
+=item 1.
 To retrieve all information available from blade node4, enter:
 
  rinv node5 all
+
+Output is similar to:
 
  node5: Machine Type/Model 865431Z
  node5: Serial Number 23C5030
@@ -221,11 +222,12 @@ To retrieve all information available from blade node4, enter:
  node5: Total Memory:	  512 MB
  node5: Memory DIMM locations:  Slot(s)  3  4
 
-=item *
-
+=item 2.
 To output the raw information of deconfigured resources for CEC cec01, enter:
 
  rinv cec01 deconfig -x
+
+Output is similar to:
 
  cec01:
  <SYSTEM>
@@ -236,21 +238,26 @@ To output the raw information of deconfigured resources for CEC cec01, enter:
  </NODE>
  </SYSTEM>
 
-=item *
+=item 3.
 
 To retrieve 'config' information from the HMC-managed LPAR node3, enter:
 
  rinv node3 config
 
+Output is similar to:
+
  node5: Machine Configuration Info
  node5: Number of Processors: 1
  node5: Total Memory (MB): 1024
 
-=item *
+=item 4.
 
 To retrieve information about a VMware node vm1, enter:
 
  rinv vm1
+
+Output is similar to:
+
  vm1: UUID/GUID: 42198f65-d579-fb26-8de7-3ae49e1790a7
  vm1: CPUs: 1
  vm1: Memory: 1536 MB
@@ -260,7 +267,7 @@ To retrieve information about a VMware node vm1, enter:
 
 B<zVM specific :>
 
-=item * 
+=item 5. 
 
 To list the defined network names available for a given node:
 
@@ -277,7 +284,7 @@ Output is similar to:
  pokdev61: VSWITCH SYSTEM VSW2
  pokdev61: VSWITCH SYSTEM VSW3
 
-=item * 
+=item 6. 
 
 To list the configuration for a given network:
 
@@ -290,7 +297,7 @@ Output is similar to:
  pokdev61:   IPTimeout: 5                 MAC Protection: Unspecified
  pokdev61:   Isolation Status: OFF
 
-=item * 
+=item 7.
 
 To list the disk pool names available:
 
@@ -302,7 +309,7 @@ Output is similar to:
  pokdev61: POOL2
  pokdev61: POOL3
 
-=item * 
+=item 8.
 
 List the configuration for a given disk pool:
 
@@ -315,7 +322,7 @@ Output is similar to:
  pokdev61: EMC2C5 3390-09 0001 10016
 
 
-=item *
+=item 9.
 
 List the known zFCP pool names.
 
@@ -327,7 +334,7 @@ Output is similar to:
  pokdev61: zfcp2
  pokdev61: zfcp3
 
-=item *
+=item 10.
 
 List the SCSI/FCP devices contained in a given zFCP pool:
 

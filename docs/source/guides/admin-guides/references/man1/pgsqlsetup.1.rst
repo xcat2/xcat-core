@@ -19,13 +19,13 @@ SYNOPSIS
 ********
 
 
-\ **pgsqlsetup**\  {\ **-h | -**\ **-help**\ }
+\ **pgsqlsetup**\  {\ **-h**\  | \ **-**\ **-help**\ }
 
-\ **pgsqlsetup**\  {\ **-v | -**\ **-version**\ }
+\ **pgsqlsetup**\  {\ **-v**\  | \ **-**\ **-version**\ }
 
-\ **pgsqlsetup**\  {\ **-i | -**\ **-init**\ } [-N|nostart] [-P|-**\ **-PCM] [-o|-**\ **-setupODBC] [\ **-V | -**\ **-verbose**\ ]
+\ **pgsqlsetup**\  {\ **-i**\  | \ **-**\ **-init**\ } [\ **-N**\  | \ **-**\ **-nostart**\ ] [\ **-P**\  | \ **-**\ **-PCM**\ ] [\ **-o**\  | \ **-**\ **-odbc**\ ] [\ **-V**\  | \ **-**\ **-verbose**\ ]
 
-\ **pgsqlsetup**\  {\ **-o | -**\ **-setupODBC**\ } [-V|-**\ **-verbose]
+\ **pgsqlsetup**\  {\ **-o**\  | \ **-**\ **-setupODBC**\ } [\ **-V**\  | \ **-**\ **-verbose**\ ]
 
 
 ***********
@@ -109,19 +109,23 @@ EXAMPLES
 
 
 
-\*
+1. To setup PostgreSQL for xCAT to run on the PostgreSQL xcatdb database :
  
- To setup PostgreSQL for xCAT to run on the PostgreSQL xcatdb database :
  
- \ **pgsqlsetup**\  \ *-i*\ 
+ .. code-block:: perl
+ 
+   pgsqlsetup -i
+ 
  
 
 
-\*
+2.  To setup the ODBC for PostgreSQL xcatdb database access :
  
- To setup the ODBC for PostgreSQL xcatdb database access :
  
- \ **pgsqlsetup**\  \ *-o*\ 
+ .. code-block:: perl
+ 
+   pgsqlsetup -o
+ 
  
 
 

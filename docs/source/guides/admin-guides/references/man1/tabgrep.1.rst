@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **tabgrep**\  \ *nodename*\ 
 
-\ **tabgrep**\  [\ *-?*\  | \ *-h*\  | \ *-**\ **-help*\ ]
+\ **tabgrep**\  [\ **-?**\  | \ **-h**\  | \ **-**\ **-help**\ ]
 
 
 ***********
@@ -53,16 +53,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -72,11 +68,15 @@ EXAMPLES
 
 
 
-\*
+1.
  
  To display the tables that contain blade1:
  
- \ **tabgrep**\  \ *blade1*\ 
+ 
+ .. code-block:: perl
+ 
+   tabgrep blade1
+ 
  
  The output would be similar to:
  

@@ -6,7 +6,7 @@ B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine defini
 
 B<rmdsklsnode [-h | --help ]>
 
-B<rmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef] [-i image_name] [-p|--primarySN] [-b|--backupSN] noderange>
+B<rmdsklsnode [-V|--verbose] [-f|--force] [-r|--remdef] [-i> I<image_name>] B<[-p|--primarySN] [-b|--backupSN]> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -43,11 +43,11 @@ e both the primary and backup service nodes.
 
 Display usage message.
 
-=item B<-i image_name>
+=item B<-i> I<image_name>
 
 The name of an xCAT image definition.
 
-=item B<noderange>
+=item I<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
 
@@ -71,11 +71,9 @@ Verbose mode.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -84,22 +82,21 @@ An error has occurred.
 
 1) Remove the NIM client definition for the xCAT node named "node01". Give verbose output.
 
-B<rmdsklsnode -V node01>
+ rmdsklsnode -V node01
 
-2) Remove the NIM client definitions for all the xCAT nodes in the group "aixnod
-es". Attempt to shut down the nodes if they are running.
+2) Remove the NIM client definitions for all the xCAT nodes in the group "aixnodes". Attempt to shut down the nodes if they are running.
 
-B<rmdsklsnode -f aixnodes>
+ rmdsklsnode -f aixnodes
 
 3) Remove the NIM client machine definition for xCAT node "node02" that was created with the B<mkdsklsnode -n> option and the image "AIXdskls". (i.e. NIM client machine name "node02_AIXdskls".)
 
-B<rmdsklsnode -i AIXdskls node02>
+ rmdsklsnode -i AIXdskls node02
 
 This assume that node02 is not currently running.
 
 4) Remove the old alternate client definition "node27_olddskls".
 
-B<rmdsklsnode -r -i olddskls node27>
+ rmdsklsnode -r -i olddskls node27
 
 Assuming the node was booted using an new alternate NIM client definition then this will leave the node running.
 

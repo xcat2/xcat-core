@@ -212,74 +212,144 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
  Set the values in the vm table to what vCenter has for the indicated nodes.
  
- \ **zVM specific :**\ 
+
+
+\ **zVM specific :**\ 
+
+
+\ **-**\ **-diskpoolspace**\ 
  
+ Calculates the total size of every known storage pool.
  
- \ **-**\ **-diskpoolspace**\ 
-  
-  Calculates the total size of every known storage pool.
-  
- 
- 
+<<<<<<< HEAD
  \ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
   
   Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
   
+=======
+
+
+\ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
+>>>>>>> man1 changes for commands p-z
  
+ Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
  
+<<<<<<< HEAD
  \ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
   
   Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
   
+=======
+
+
+\ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
+>>>>>>> man1 changes for commands p-z
  
+ Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
  
+<<<<<<< HEAD
  \ **-**\ **-diskpoolnames**\ 
   
   Lists the known disk pool names.
   
+=======
+
+
+\ **-**\ **-diskpoolnames**\ 
+>>>>>>> man1 changes for commands p-z
  
+ Lists the known disk pool names.
  
+<<<<<<< HEAD
  \ **-**\ **-networknames**\ 
   
   Lists the known network names.
   
+=======
+
+
+\ **-**\ **-networknames**\ 
+>>>>>>> man1 changes for commands p-z
  
+ Lists the known network names.
  
+<<<<<<< HEAD
  \ **-**\ **-network**\  \ *name*\ 
   
   Shows the configuration of a given network device.
   
+=======
+
+
+\ **-**\ **-network**\  \ *name*\ 
+>>>>>>> man1 changes for commands p-z
  
+ Shows the configuration of a given network device.
  
+<<<<<<< HEAD
  \ **-**\ **-ssi**\ 
   
   Obtain the SSI and system status.
   
+=======
+
+
+\ **-**\ **-ssi**\ 
+>>>>>>> man1 changes for commands p-z
  
+ Obtain the SSI and system status.
  
+<<<<<<< HEAD
  \ **-**\ **-smapilevel**\ 
   
   Obtain the SMAPI level installed on the z/VM system.
   
+=======
+
+
+\ **-**\ **-smapilevel**\ 
+>>>>>>> man1 changes for commands p-z
  
+ Obtain the SMAPI level installed on the z/VM system.
  
+<<<<<<< HEAD
  \ **-**\ **-wwpns**\  \ *fcp_channel*\ 
   
   Query a given FCP device channel on a z/VM system and return a list of WWPNs.
   
+=======
+
+
+\ **-**\ **-wwpns**\  \ *fcp_channel*\ 
+>>>>>>> man1 changes for commands p-z
  
+ Query a given FCP device channel on a z/VM system and return a list of WWPNs.
  
+<<<<<<< HEAD
  \ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
   
   List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
   
+=======
+
+
+\ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
+>>>>>>> man1 changes for commands p-z
  
+ List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
  
+<<<<<<< HEAD
  \ **-**\ **-zfcppoolnames**\ 
   
   List the known zFCP pool names.
   
+=======
+
+
+\ **-**\ **-zfcppoolnames**\ 
+>>>>>>> man1 changes for commands p-z
  
+ List the known zFCP pool names.
  
 
 
@@ -290,15 +360,19 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
 
 
 
-\*
- 
- To retrieve all information available from blade node4, enter:
+1. To retrieve all information available from blade node4, enter:
  
  
  .. code-block:: perl
  
    rinv node5 all
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    node5: Machine Type/Model 865431Z
    node5: Serial Number 23C5030
    node5: Asset Tag 00:06:29:1F:01:1A
@@ -323,15 +397,19 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
- 
- To output the raw information of deconfigured resources for CEC cec01, enter:
+2. To output the raw information of deconfigured resources for CEC cec01, enter:
  
  
  .. code-block:: perl
  
    rinv cec01 deconfig -x
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    cec01:
    <SYSTEM>
    <System_type>IH</System_type>
@@ -344,7 +422,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+3.
  
  To retrieve 'config' information from the HMC-managed LPAR node3, enter:
  
@@ -352,7 +430,13 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  .. code-block:: perl
  
    rinv node3 config
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    node5: Machine Configuration Info
    node5: Number of Processors: 1
    node5: Total Memory (MB): 1024
@@ -360,7 +444,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+4.
  
  To retrieve information about a VMware node vm1, enter:
  
@@ -368,6 +452,13 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  .. code-block:: perl
  
    rinv vm1
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    vm1: UUID/GUID: 42198f65-d579-fb26-8de7-3ae49e1790a7
    vm1: CPUs: 1
    vm1: Memory: 1536 MB
@@ -380,7 +471,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+5.
  
  To list the defined network names available for a given node:
  
@@ -407,7 +498,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+6.
  
  To list the configuration for a given network:
  
@@ -430,7 +521,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+7.
  
  To list the disk pool names available:
  
@@ -452,7 +543,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+8.
  
  List the configuration for a given disk pool:
  
@@ -474,7 +565,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+9.
  
  List the known zFCP pool names.
  
@@ -496,7 +587,7 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
 
 
-\*
+10.
  
  List the SCSI/FCP devices contained in a given zFCP pool:
  

@@ -367,26 +367,38 @@ EXAMPLES
 
 
 
-\*
+1. To display power status of nodes4 and note5
  
  
  .. code-block:: perl
  
    rpower node4,node5 stat
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    node4: on
    node5: off
  
  
 
 
-\*
+2. To power on node5
  
  
  .. code-block:: perl
  
    rpower node5 on
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
    node5: on
  
  

@@ -4,10 +4,10 @@ B<rmimage> - Removes the Linux stateless or statelite image from the file system
 
 =head1 SYNOPSIS
 
-I<rmimage [-h | --help]>
+B<rmimage [-h | --help]>
 
 
-I<rmimage [-V | --verbose] imagename [--xcatdef]> 
+B<rmimage [-V | --verbose]> I<imagename> B<[--xcatdef]> 
 
 =head1 DESCRIPTION
 
@@ -19,7 +19,7 @@ to calculate the image root directory; otherwise, this command uses the operatin
 architecture and profile name to calculate the image root directory. 
 
 The osimage definition will not be removed from the xCAT tables by default,
-specifying the flag --xcatdef will remove the osimage definition,
+specifying the flag B<--xcatdef> will remove the osimage definition,
 or you can use rmdef -t osimage to remove the osimage definition. 
 
 The statelite image files on the diskful service nodes will not be removed,
@@ -51,11 +51,11 @@ B<--xcatdef>       Remove the xCAT osimage definition
 
 1. To remove a RHEL 7.1 stateless image for a compute node architecture x86_64, enter:
 
-I<rmimage rhels7.1-x86_64-netboot-compute>
+ rmimage rhels7.1-x86_64-netboot-compute
 
 2. To remove a rhels5.5 statelite image for a compute node architecture ppc64 and the osimage definition, enter:
 
-I<rmimage rhels5.5-ppc64-statelite-compute --xcatdef>
+ rmimage rhels5.5-ppc64-statelite-compute --xcatdef
 
 =head1 FILES
 

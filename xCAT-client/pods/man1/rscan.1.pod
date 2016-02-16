@@ -4,11 +4,11 @@ B<rscan> - Collects node information from one or more hardware control points.
 
 =head1 SYNOPSIS
 
-I<rscan [-h|--help]>
+B<rscan [-h|--help]>
 
-I<rscan [-v|--version]>
+B<rscan [-v|--version]>
 
-I<rscan [-V|--verbose] noderange [-u][-w][-x|-z]>
+B<rscan [-V|--verbose]> I<noderange>  B<[-u][-w][-x|-z]>
 
 
 =head1 DESCRIPTION
@@ -25,11 +25,11 @@ Note: The first line of the output always contains information about the hardwar
 
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
-B<-v>          Command Version.
+B<-v|--version>          Command Version.
 
-B<-V>          Verbose output.
+B<-V|--verbose>          Verbose output.
 
 B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.  
 
@@ -52,16 +52,15 @@ B<-z>          Stanza formated output.
 
 =head1 RETURN VALUE
 
-  0 The command completed successfully.
+0 The command completed successfully.
 
-  1 An error has occurred.
+1 An error has occurred.
 
 =head1 EXAMPLES
 
 1. To list all nodes managed by HMC hmc01 in tabular format, enter:
 
-I<rscan hmc01>
-
+ rscan hmc01
 
 Output is similar to:
 
@@ -77,7 +76,7 @@ Output is similar to:
 
 2. To list all nodes managed by IVM ivm02 in XML format and write the output to the xCAT database, enter:
 
-I<rscan ivm02 -x -w>
+ rscan ivm02 -x -w
 
 Output is similar to:
 
@@ -126,7 +125,7 @@ Output is similar to:
 
 3. To list all nodes managed by HMC hmc02 in stanza format and write the output to the xCAT database, enter:
 
-I<rscan hmc02 -z -w>
+ rscan hmc02 -z -w
 
 Output is similar to:
 
@@ -184,7 +183,7 @@ Output is similar to:
 
 4. To update definitions of nodes, which is managed by hmc03, enter:
 
-I<rscan hmc03 -u>
+ rscan hmc03 -u
 
 Output is similar to:
 
@@ -194,7 +193,7 @@ Output is similar to:
 
 5. To collects the node information from one or more hardware control points on zVM AND populate the database with details collected by rscan:
 
-I<rscan gpok2 -W>
+ rscan gpok2 -w
 
 Output is similar to:
 
@@ -211,7 +210,7 @@ Output is similar to:
 
 6. To scan the Flex system cluster:
 
-I<rscan cmm01>
+ rscan cmm01
 
 Output is similar to:
 
@@ -223,7 +222,7 @@ Output is similar to:
 
 7. To update the Flex system cluster:
 
-I<rscan cmm01 -u>
+ rscan cmm01 -u
 
 Output is similar to:
 
@@ -233,7 +232,7 @@ Output is similar to:
 
 8. To scan the KVM host "hyp01", list all the KVM guest information on the KVM host in stanza format and write the KVM guest information into xCAT database:
 
-I<rscan hyp01 -z -w>
+ rscan hyp01 -z -w
 
 Output is similar to:
 
@@ -260,7 +259,7 @@ Output is similar to:
 
 9. To update definitions of kvm guest, which is managed by hypervisor hyp01, enter:
 
-I<rscan hyp01 -u>
+ rscan hyp01 -u
 
 Output is similar to:
 

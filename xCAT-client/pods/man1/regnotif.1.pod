@@ -5,12 +5,11 @@ B<regnotif> - Registers a Perl module or a command that will get called when cha
 
 =head1 SYNOPSIS
 
-I<regnotif [-h| --help]>
+B<regnotif [-h| --help]>
 
-I<regnotif  [-v| --version]>
+B<regnotif  [-v| --version]>
 
-
-I<regnotif I<filename tablename>[,tablename]... [-o|--operation actions]>
+B<regnotif> I<filename tablename[,tablename]...> [B<-o>|B<--operation> I<actions>]
 
 
 =head1 DESCRIPTION
@@ -18,7 +17,7 @@ I<regnotif I<filename tablename>[,tablename]... [-o|--operation actions]>
 This command is used to register a Perl module or a command to the xCAT notification table. Once registered, the module or the command will get called when changes occur in the xCAT database tables indicated by tablename. The changes can be row addition, deletion and update which are specified by actions.
 
 
-=head1 Parameters
+=head1 PARAMETERS
 
 I<filename> is the path name of the Perl module or command to be registered.
 I<tablename> is the name of the table that the user is interested in.
@@ -26,13 +25,13 @@ I<tablename> is the name of the table that the user is interested in.
 =head1 OPTIONS
 
 
-B<-h | -help>          Display usage message.
+B<-h | --help>          Display usage message.
 
-B<-v | -version >      Command Version.
+B<-v | --version>       Command Version.
 
-B<-V | -verbose>       Verbose output.
+B<-V | --verbose>       Verbose output.
 
-B<-o | -operation>     specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update.
+B<-o | --operation>     specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update.
 
 =head1 RETURN VALUE
 
@@ -48,7 +47,7 @@ B<-o | -operation>     specifies the database table actions that the user is int
 
 2. To register a command that gets invoked when rows get updated in the switch table, enter:
 
-regnotif /usr/bin/mycmd switch  -o u
+ regnotif /usr/bin/mycmd switch  -o u
 
 =head1 FILES
 

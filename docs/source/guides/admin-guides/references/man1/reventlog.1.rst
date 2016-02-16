@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **reventlog**\  \ *noderange*\  {\ *number-of-entries [-s]*\ |\ **all [-s] | clear**\ }
+\ **reventlog**\  \ *noderange*\  {\ *number-of-entries*\  [\ **-s**\ ]|\ **all [-s] | clear**\ }
 
 \ **reventlog**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -82,30 +82,51 @@ logs are stored on each servers service processor.
 ****************
 
 
-\ **reventlog**\  \ *node4,node5*\  \ *5*\ 
+
+1.
+ 
+ 
+ .. code-block:: perl
+ 
+   reventlog node4,node5 5
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node4: SERVPROC I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
+   node4: SERVPROC I 09/06/00 15:23:32 System spn1 started a RS485 connection with us[00]
+   node4: SERVPROC I 09/06/00 15:22:35 RS485 connection to system spn1 has ended[00]
+   node4: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
+   node4: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
+   node5: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
+   node5: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
+   node5: SERVPROC I 09/06/00 15:21:34 RS485 connection to system spn1 has ended[00]
+   node5: SERVPROC I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
+   node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
+ 
+ 
 
 
-.. code-block:: perl
-
-  node4: SERVPROC  I 09/06/00 15:23:33 Remote Login Successful User ID = USERID[00]
-  node4: SERVPROC I 09/06/00 15:23:32 System spn1 started a RS485 connection with us[00]
-  node4: SERVPROC I 09/06/00 15:22:35 RS485 connection to system spn1 has ended[00]
-  node4: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
-  node4: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
-  node5: SERVPROC I 09/06/00 15:22:32 Remote Login Successful User  ID  = USERID[00]
-  node5: SERVPROC I 09/06/00 15:22:31 System spn1 started a RS485 connection with us[00]
-  node5: SERVPROC I 09/06/00 15:21:34 RS485 connection to system spn1 has ended[00]
-  node5:  SERVPROC  I 09/06/00 15:21:30 Remote Login Successful User ID = USERID[00]
-  node5: SERVPROC I 09/06/00 15:21:29 System spn1 started a RS485 connection with us[00]
-
-
-\ **reventlog**\  \ *node4,node5*\  \ *clear*\ 
-
-
-.. code-block:: perl
-
-  node4: clear
-  node5: clear
+2.
+ 
+ 
+ .. code-block:: perl
+ 
+   reventlog node4,node5 clear
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
+   node4: clear
+   node5: clear
+ 
+ 
 
 
 

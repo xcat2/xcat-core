@@ -24,8 +24,7 @@ The B<sinv> command is an xCAT Distributed Shell Utility.
 
 B<COMMAND> B<SPECIFICATION>:
 
-The xdsh or rinv command to execute on the remote targets is specified by the
- B<-c> flag, or by the B<-f> flag
+The xdsh or rinv command to execute on the remote targets is specified by the B<-c> flag, or by the B<-f> flag
 which is followed by the fully qualified path to a file containing the command.
 
 
@@ -200,86 +199,76 @@ Verbose mode.
 
 =over 3
 
-=item *
-
+=item 1.
 To setup sinv.template (name optional) for input to the B<sinv> command , enter:
 
-B<xdsh> I<node1,node2 "rpm -qa | grep ssh " | xdshcoll  E<gt> /tmp/sinv.template>
+ xdsh node1,node2 "rpm -qa | grep ssh " | xdshcoll  > /tmp/sinv.template
 
-Note: when setting up the template the output of xdsh must be piped
-	  to xdshcoll, sinv processing depends on it.
+Note: when setting up the template the output of xdsh must be piped to xdshcoll, sinv processing depends on it.
 
-=item *
-
+=item 2.
 To setup rinv.template for input to the B<sinv> command , enter:
 
-B<rinv> I<node1-node2 serial | xdshcoll  E<gt> /tmp/rinv.template>
+ rinv node1-node2 serial | xdshcoll  > /tmp/rinv.template
 
-Note: when setting up the template the output of rinv must be piped
-	  to xdshcoll, sinv processing depends on it.
+Note: when setting up the template the output of rinv must be piped to xdshcoll, sinv processing depends on it.
 
-=item *
-
+=item 3.
 To execute B<sinv> using the sinv.template generated above
 on the nodegroup, B<testnodes> ,possibly generating up to two
 new templates, and removing all generated templates in the end, and writing
 output report to /tmp/sinv.output, enter:
 
-B<sinv> I< -c "xdsh testnodes rpm -qa | grep ssh" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
+ sinv -c "xdsh testnodes rpm -qa | grep ssh" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output
 
-Note: do not add the pipe to xdshcoll on the -c flag, it is automatically
-added by the sinv routine.
+Note: do not add the pipe to xdshcoll on the -c flag, it is automatically added by the sinv routine.
 
-=item *
-
+=item 4.
 To execute B<sinv> on noderange, node1-node4, using the seed node, node8,
 to generate the first template, using the xdsh command (-c),
 possibly generating up to two additional
 templates and not removing any templates at the end, enter:
 
-B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output> 
+ sinv -c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node8 -p /tmp/sinv.template -t 2 -o /tmp/sinv.output
 
-=item *
-
+=item 5.
 To execute B<sinv> on noderange, node1-node4, using the seed node, node8,
 to generate the first template, using the rinv command (-c),
 possibly generating up to two additional
 templates and removing any generated templates at the end, enter:
 
-B<sinv> I<-c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output>
+ sinv -c "rinv node1-node4 serial" -s node8 -p /tmp/sinv.template -t 2 -r -o /tmp/rinv.output
  
-=item *
-
+=item 6.
 To execute B<sinv> on noderange, node1-node4, using node1 as
 the seed node, to generate the sinv.template from the xdsh command (-c),
 using the exact match option, generating no additional templates, enter:
 
-B<sinv> I<-c "xdsh node1-node4 lslpp -l | grep bos.adt"  -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output> 
+ sinv -c "xdsh node1-node4 lslpp -l | grep bos.adt" -s node1 -e -p /tmp/sinv.template  -o /tmp/sinv.output
 
 Note: the /tmp/sinv.template file must be empty, otherwise it will be used
 as an admin generated template.
 
-=item *
-
+=item 7.
 To execute B<sinv> on the Linux osimage defined for cn1.  First build a template from the /etc/hosts on the node. Then run sinv to compare. 
-B<xdsh> I<cn1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template" 
 
-B<sinv> I<-c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts"  -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
+ xdsh cn1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template"
 
-=item *
+ sinv -c "xdsh -i /install/netboot/rhels6/ppc64/test_ramdisk_statelite/rootimg cat /etc/hosts" -e -t1 -p /tmp/sinv.template -o /tmp/sinv.output
+
+=item 8.
 
 To execute B<sinv> on the AIX NIM 611dskls spot and compare /etc/hosts to compute1 node, run the following:
 
-B<xdsh> I<compute1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template" 
+ xdsh compute1 "cat /etc/hosts" | xdshcoll > /tmp/sinv2/template"
 
-B<sinv> I<-c "xdsh -i 611dskls  cat /etc/hosts" -e -t1 -p /tmp/sinv.template  -o /tmp/sinv.output> 
+ sinv -c "xdsh -i 611dskls cat /etc/hosts" -e -t1 -p /tmp/sinv.template -o /tmp/sinv.output
 
-=item *
+=item 9.
 
 To execute B<sinv> on the device mswitch2 and compare to mswitch1
 
-B<sinv> I<-c "xdsh mswitch  enable;show version"  -s mswitch1 -p /tmp/sinv/template --devicetype IBSwitch::Mellanox -l admin -t 2>
-
+ sinv -c "xdsh mswitch  enable;show version" -s mswitch1 -p /tmp/sinv/template --devicetype IBSwitch::Mellanox -l admin -t 2
 
 =back
 

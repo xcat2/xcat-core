@@ -31,7 +31,7 @@ BMC/MPA specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **snmpdest**\ =\ *snmpmanager-IP*\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **community**\ ={\ **public**\ |\ *string*\ }
+\ **rspconfig**\  \ *noderange*\  \ **community**\ ={\ **public**\  | \ *string*\ }
 
 
 BMC specific:
@@ -40,7 +40,7 @@ BMC specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **ip | netmask | gateway | backupgateway | garp**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **garp**\ ={\ *time*\ }
+\ **rspconfig**\  \ *noderange*\  \ **garp**\ =\ *time*\ 
 
 
 MPA specific:
@@ -61,15 +61,15 @@ MPA specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **pd2**\ ={\ **nonred | redwoperf | redwperf**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ]|\ **\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ *ip*\ ],[\ *host*\ ],[\ *gateway*\ ],[\ *netmask*\ ]|\*}
 
-\ **rspconfig**\  \ *noderange*\  \ **initnetwork**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ]|\ **\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **initnetwork**\ ={[\ *ip*\ ],[\ *host*\ ],[\ *gateway*\ ],[\ *netmask*\ ]|\*}
 
-\ **rspconfig**\  \ *noderange*\  \ **textid**\ ={\ **\\*|textid**\ }
+\ **rspconfig**\  \ *noderange*\  \ **textid**\ ={\* | \ *textid*\ }
 
-\ **rspconfig**\  \ *singlenode*\  \ **frame**\ ={\ **frame_number**\ }
+\ **rspconfig**\  \ *singlenode*\  \ **frame**\ ={\ *frame_number*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **frame**\ ={\ **\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **frame**\ ={\*}
 
 \ **rspconfig**\  \ *noderange*\  \ **swnet**\ ={[\ **ip**\ ],[\ **gateway**\ ],[\ **netmask**\ ]}
 
@@ -90,33 +90,33 @@ FSP/CEC specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **time**\ ={\ **hh:mm:ss**\ }
+\ **rspconfig**\  \ *noderange*\  \ **time**\ =\ *hh:mm:ss*\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **date**\ ={\ **mm:dd:yyyy**\ }
+\ **rspconfig**\  \ *noderange*\  \ **date**\ =\ *mm:dd:yyyy*\ 
 
-\ **rspconfig**\  \ *noderange*\  \ **decfg**\ ={\ **enable|disable**\ :\ **policyname,...**\ }
+\ **rspconfig**\  \ *noderange*\  \ **decfg**\ ={\ **enable|disable**\ :\ *policyname,...*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **procdecfg**\ ={\ **configure|deconfigure**\ :\ **processingunit**\ :\ **id,...**\ }
+\ **rspconfig**\  \ *noderange*\  \ **procdecfg**\ ={\ **configure|deconfigure**\ :\ *processingunit*\ :\ *id,...*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **memdecfg**\ ={\ **configure|deconfigure**\ :\ **processingunit**\ :\ **unit|bank**\ :\ **id,...**\ >}
+\ **rspconfig**\  \ *noderange*\  \ **memdecfg**\ ={\ **configure|deconfigure**\ :\ *processingunit*\ :\ **unit|bank**\ :\ *id,...*\ >}
 
-\ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,**\ \*}
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,[IP,][hostname,][gateway,][netmask]**\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,0.0.0.0**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **\\*_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
-\ **rspconfig**\  \ *noderange*\  {\ **hostname**\ }
+\ **rspconfig**\  \ *noderange*\  {\ *hostname*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\ **\\*|name**\ }
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\* | \ *name*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
@@ -129,11 +129,11 @@ Flex system Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **snmpcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ]|\ **\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **network**\ ={[\ **ip**\ ],[\ **host**\ ],[\ **gateway**\ ],[\ **netmask**\ ] | \*}
 
 \ **rspconfig**\  \ *noderange*\  \ **solcfg**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **textid**\ ={\ **\\*|textid**\ }
+\ **rspconfig**\  \ *noderange*\  \ **textid**\ ={\* | \ *textid*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **cec_off_policy**\ ={\ **poweroff | stayon**\ }
 
@@ -144,7 +144,7 @@ BPA/Frame Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **network | dev | celogin1**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,\\***\ }
+\ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,**\ \*}
 
 \ **rspconfig**\  \ *noderange*\  \ **network**\ ={\ **nic,[IP,][hostname,][gateway,][netmask]**\ }
 
@@ -154,17 +154,17 @@ BPA/Frame Specific:
 
 \ **rspconfig**\  \ *noderange*\  \ **celogin1**\ ={\ **enable | disable**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **\\*_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **hostname**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\ **\\*|name**\ }
+\ **rspconfig**\  \ *noderange*\  \ **hostname**\ ={\* | \ *name*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **-**\ **-resetnet**\ 
 
@@ -173,17 +173,17 @@ FSP/CEC (using Direct FSP Management) Specific:
 ===============================================
 
 
-\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **\\*_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\* | name**\ }
+\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\* | \ *name*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **pending_power_on_side**\ }
 
@@ -197,7 +197,7 @@ FSP/CEC (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **huge_page**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **huge_page**\ ={\ **NUM**\ }
+\ **rspconfig**\  \ *noderange*\  \ **huge_page**\ ={\ *NUM*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **setup_failover**\ }
 
@@ -212,21 +212,25 @@ BPA/Frame (using Direct FSP Management) Specific:
 =================================================
 
 
-\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
 
 \ **rspconfig**\  \ *noderange*\  \ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **\\*_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **rspconfig**\  \ *noderange*\  \*\ **_passwd**\ ={\ **currentpasswd,newpasswd**\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **frame**\ }
 
-\ **rspconfig**\  \ *noderange*\  \ **frame**\ ={\ **\\*|frame_number**\ }
+\ **rspconfig**\  \ *noderange*\  \ **frame**\ ={\* | \ *frame_number*\ }
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
+<<<<<<< HEAD
 \ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\* | name**\ }
+=======
+\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\* | \ *name*\ }
+>>>>>>> man1 changes for commands p-z
 
 \ **rspconfig**\  \ *noderange*\  {\ **pending_power_on_side**\ }
 
@@ -264,13 +268,13 @@ OPTIONS
 
 
 
-\ **alert**\ ={\ *on*\ |\ *enable*\ |\ *off*\ |\ *disable*\ }
+\ **alert={on | enable | off | disable}**\ 
  
  Turn on or off SNMP alerts.
  
 
 
-\ **autopower**\ ={\ *enable*\ |\ *disable*\ }
+\ **autopower**\ ={\ *enable*\  | \ *disable*\ }
  
  Select the policy for auto power restart. If enabled, the system will boot automatically once power is restored after a power disturbance.
  
@@ -282,25 +286,25 @@ OPTIONS
  
 
 
-\ **community**\ ={\ **public**\ |\ *string*\ }
+\ **community**\ ={\ **public**\  | \ *string*\ }
  
- Get or set the SNMP commmunity value. The default is \ *public*\ .
+ Get or set the SNMP commmunity value. The default is \ **public**\ .
  
 
 
-\ **date**\ ={\ *mm:dd:yyy*\ }
+\ **date**\ =\ *mm:dd:yyy*\ 
  
  Enter the current date.
  
 
 
-\ **decfg**\ ={\ *enable|disable*\ :\ *policyname,...*\ }
+\ **decfg**\ ={\ **enable | disable**\ :\ *policyname,...*\ }
  
  Enables or disables deconfiguration policies.
  
 
 
-\ **frame**\ ={\ **framenumber**\ |\ *\\**\ }
+\ **frame**\ ={\ *framenumber*\  | \*}
  
  Set or get frame number.  If no framenumber and \* specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only supports single node and the framenumber will be set for that frame.  If \* is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. Setting the frame number is a disruptive command which requires all CECs to be powered off prior to issuing the command.
  
@@ -312,25 +316,25 @@ OPTIONS
  
 
 
-\ **HMC_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **HMC_passwd**\ ={\ *currentpasswd,newpasswd*\ }
  
  Change the password of the userid \ **HMC**\  for CEC/Frame. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid \ **HMC**\  for the CEC/Frame.
  
 
 
-\ **admin_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **admin_passwd**\ ={\ *currentpasswd,newpasswd*\ }
  
  Change the password of the userid \ **admin**\  for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid \ **admin**\  for the CEC/Frame.
  
 
 
-\ **general_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\ **general_passwd**\ ={\ *currentpasswd,newpasswd*\ }
  
  Change the password of the userid \ **general**\  for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid \ **general**\  for the CEC/Frame.
  
 
 
-\ ** \\*_passwd**\ ={\ **currentpasswd,newpasswd**\ }
+\*\ **_passwd**\ ={\ *currentpasswd,newpasswd*\ }
  
  Change the passwords of the userids \ **HMC**\ , \ **admin**\  and \ **general**\  for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, if the current passwords of the userids \ **HMC**\ , \ **admin**\  and \ **general**\  for CEC/Frame are the same one, the currentpasswd should be specified to the current password, and then the password will be changed to the newpasswd. If the CEC/Frame is NOT the factory default, and the current passwords of the userids \ **HMC**\ , \ **admin**\  and \ **general**\  for CEC/Frame are NOT the same one, this option could NOT be used, and we should change the password one by one.
  
@@ -372,7 +376,7 @@ OPTIONS
  
 
 
-\ **setup_failover**\ ={\ *enable*\ |\ *disable*\ }
+\ **setup_failover**\ ={\ **enable**\  | \ **disable**\ }
  
  Enable or disable the service processor failover function of a CEC or display status of this function.
  
@@ -384,25 +388,25 @@ OPTIONS
  
 
 
-\ **hostname**\ ={\ *\\*|name*\ }
+\ **hostname**\ ={\* | \ *name*\ }
  
  Set CEC/BPA system names to the names in xCAT DB or the input name.
  
 
 
-\ **iocap**\ ={\ *enable*\ |\ *disable*\ }
+\ **iocap**\ ={\ **enable**\  | \ **disable**\ }
  
  Select the policy for I/O Adapter Enlarged Capacity. This option controls the size of PCI memory space allocated to each PCI slot.
  
 
 
-\ **dev**\ ={\ *enable*\ |\ *disable*\ }
+\ **dev**\ ={\ **enable**\  | \ **disable**\ }
  
  Enable or disable the CEC|Frame 'dev' account or display account status if no value specified.
  
 
 
-\ **celogin1**\ ={\ *enable*\ |\ *disable*\ }
+\ **celogin1**\ ={\ **enable**\  | \ **disable**\ }
  
  Enable or disable the CEC|Frame 'celogin1' account or display account status if no value specified.
  
@@ -414,7 +418,7 @@ OPTIONS
  
 
 
-\ **memdecfg**\ ={\ *configure|deconfigure*\ :\ *processingunit*\ :\ *unit|bank*\ :\ *id,...*\ }
+\ **memdecfg**\ ={\ **configure | deconfigure**\ :\ *processingunit*\ :\ *unit|bank*\ :\ *id,...*\ }
  
  Select whether each memory bank should be enabled or disabled. State changes take effect on the next platform boot.
  
@@ -485,7 +489,7 @@ OPTIONS
  
 
 
-\ **procdecfg**\ ={\ *configure|deconfigure*\ :\ *processingunit*\ :\ *id,...*\ }
+\ **procdecfg**\ ={\ **configure|deconfigure**\ :\ *processingunit*\ :\ *id,...*\ }
  
  Selects whether each processor should be enabled or disabled. State changes take effect on the next platform boot.
  
@@ -503,7 +507,7 @@ OPTIONS
  
 
 
-\ **snmpcfg**\ ={\ *enable*\ |\ *disable*\ }
+\ **snmpcfg**\ ={\ **enable | disable**\ }
  
  Enable or disable SNMP on MPA.
  
@@ -515,7 +519,7 @@ OPTIONS
  
 
 
-\ **solcfg**\ ={\ *enable*\ |\ *disable*\ }
+\ **solcfg**\ ={\ **enable | disable**\ }
  
  Enable or disable the sol on MPA (or CMM) and blade servers belongs to it.
  
@@ -527,7 +531,7 @@ OPTIONS
  
 
 
-\ **sshcfg**\ ={\ *enable*\ |\ *disable*\ }
+\ **sshcfg**\ ={\ **enable | disable**\ }
  
  Enable or disable SSH on MPA.
  
@@ -551,13 +555,13 @@ OPTIONS
  
 
 
-\ **pending_power_on_side**\ ={\ *temp|perm*\ }
+\ **pending_power_on_side**\ ={\ **temp|perm**\ }
  
  List or set pending power on side for CEC or Frame. If no pending_power_on_side value specified, the pending power on side for the CECs or frames will be displayed. If specified, the pending_power_on_side value will be set to CEC's FSPs or Frame's BPAs. The value 'temp' means T-side or temporary side. The value 'perm' means P-side or permanent side.
  
 
 
-\ **time**\ ={\ *hh:mm:ss*\ }
+\ **time**\ =\ *hh:mm:ss*\ 
  
  Enter the current time in UTC (Coordinated Universal Time) format.
  
@@ -569,11 +573,11 @@ OPTIONS
  
 
 
-\ **USERID**\ ={\ *newpasswd*\ } \ **updateBMC**\ ={\ *y|n*\ }
+\ **USERID**\ ={\ *newpasswd*\ } \ **updateBMC**\ ={\ **y|n**\ }
  
  Change the password of the userid \ **USERID**\  for CMM in Flex system cluster. The option \ *updateBMC*\  can be used to specify whether updating the password of BMCs that connected to the speified CMM. The value is 'y' by default which means whenever updating the password of CMM, the password of BMCs will be also updated. Note that there will be several seconds needed before this command complete.
  
- If value \ **\\***\  is specified for USERID and the object node is \ *Flex System X node*\ , the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid \ **USERID**\  of the CMM in the same cluster.
+ If value "\*" is specified for USERID and the object node is \ *Flex System X node*\ , the password used to access the BMC of the System X node through IPMI will be updated as the same password of the userid \ **USERID**\  of the CMM in the same cluster.
  
 
 
@@ -595,7 +599,11 @@ OPTIONS
  
 
 
+<<<<<<< HEAD
 \ **-v**\ , \ **-**\ **-version**\ 
+=======
+\ **-v**\  | \ **-**\ **-version**\ 
+>>>>>>> man1 changes for commands p-z
  
  Display the version number.
  
@@ -608,19 +616,25 @@ EXAMPLES
 
 
 
-\*
+1. To setup new ssh keys on the Management Module mm:
  
- To setup new ssh keys on the Management Module mm:
  
- \ **rspconfig**\  mm snmpcfg=enable sshcfg=enable
+ .. code-block:: perl
+ 
+   rspconfig mm snmpcfg=enable sshcfg=enable
+ 
  
 
 
-\*
+2. To turn on SNMP alerts for node5:
  
- To turn on SNMP alerts for node5:
  
- \ **rspconfig**\  \ *node5*\  \ **alert**\ =\ **on**\ 
+ .. code-block:: perl
+ 
+   rspconfig node5 alert=on
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -630,11 +644,15 @@ EXAMPLES
  
 
 
-\*
+3. To display the destination setting for SNMP alerts for node4:
  
- To display the destination setting for SNMP alerts for node4:
  
- \ **rspconfig**\  \ *node4 snmpdest*\ 
+ .. code-block:: perl
+ 
+   rspconfig node4 snmpdest
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -644,11 +662,17 @@ EXAMPLES
  
 
 
-\*
+4.
  
  To display the frame number for frame 9A00-10000001
  
- \ **rspconfig**\  \ *9A00-10000001 frame*\ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig> 9A00-10000001 frame
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -658,11 +682,15 @@ EXAMPLES
  
 
 
-\*
+5. To set the frame number for frame 9A00-10000001
  
- To set the frame number for frame 9A00-10000001
  
- \ **rspconfig**\  \ *9A00-10000001 frame=2*\ 
+ .. code-block:: perl
+ 
+   rspconfig 9A00-10000001 frame=2
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -672,11 +700,15 @@ EXAMPLES
  
 
 
-\*
+6. To set the frame numbers for frame 9A00-10000001 and 9A00-10000002
  
- To set the frame numbers for frame 9A00-10000001 and 9A00-10000002
  
- \ **rspconfig**\  \ *9A00-10000001,9A00-10000002 frame=\\**\ 
+ .. code-block:: perl
+ 
+   rspconfig 9A00-10000001,9A00-10000002 frame=*
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -687,11 +719,15 @@ EXAMPLES
  
 
 
-\*
+7. To display the MPA network parameters for mm01:
  
- To display the MPA network parameters for mm01:
  
- \ **rspconfig**\  \ *mm01 network*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 network
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -704,11 +740,15 @@ EXAMPLES
  
 
 
-\*
+8. To change the MPA network parameters with the values in the xCAT database for mm01:
  
- To change the MPA network parameters with the values in the xCAT database for mm01:
  
- \ **rspconfig**\  \ *mm01 network=\\**\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 network=*
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -721,11 +761,15 @@ EXAMPLES
  
 
 
-\*
+9. To change only the gateway parameter for the MPA network mm01:
  
- To change only the gateway parameter for the MPA network mm01:
  
- \ **rspconfig**\  \ *mm01 network=,,192.168.1.1,*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 network=,,192.168.1.1,
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -735,11 +779,15 @@ EXAMPLES
  
 
 
-\*
+10. To display the FSP network parameters for fsp01:
  
- To display the FSP network parameters for fsp01:
  
- \ **rspconfig**\  \ *fsp01 network*\ 
+ .. code-block:: perl
+ 
+   rspconfig> fsp01 network
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -762,11 +810,15 @@ EXAMPLES
  
 
 
-\*
+11. To change the FSP network parameters with the values in command line for eth0 on fsp01:
  
- To change the FSP network parameters with the values in command line for eth0 on fsp01:
  
- \ **rspconfig**\  \ *fsp01 network=eth0,192.168.1.200,fsp01,,255.255.255.0*\ 
+ .. code-block:: perl
+ 
+   rspconfig fsp01 network=eth0,192.168.1.200,fsp01,,255.255.255.0
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -776,11 +828,15 @@ EXAMPLES
  
 
 
-\*
+12. To change the FSP network parameters with the values in the xCAT database for eth0 on fsp01:
  
- To change the FSP network parameters with the values in the xCAT database for eth0 on fsp01:
  
- \ **rspconfig**\  \ *fsp01 network=eth0,\\**\ 
+ .. code-block:: perl
+ 
+   rspconfig fsp01 network=eth0,*
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -790,11 +846,15 @@ EXAMPLES
  
 
 
-\*
+13. To configure eth0 on fsp01 to get dynamic IP address from DHCP server:
  
- To configure eth0 on fsp01 to get dynamic IP address from DHCP server:
  
- \ **rspconfig**\  \ *fsp01 network=eth0,0.0.0.0*\ 
+ .. code-block:: perl
+ 
+   rspconfig fsp01 network=eth0,0.0.0.0
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -804,11 +864,15 @@ EXAMPLES
  
 
 
-\*
+14. To get the current power redundancy mode for power domain 1 on mm01:
  
- To get the current power redundancy mode for power domain 1 on mm01:
  
- \ **rspconfig**\  \ *mm01 pd1*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 pd1
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -818,11 +882,15 @@ EXAMPLES
  
 
 
-\*
+15. To change the current power redundancy mode for power domain 1 on mm01 to non-redundant:
  
- To change the current power redundancy mode for power domain 1 on mm01 to non-redundant:
  
- \ **rspconfig**\  \ *mm01 pd1=nonred*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 pd1=nonred
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -832,11 +900,15 @@ EXAMPLES
  
 
 
-\*
+16. To enable NTP with an NTP server address of 192.168.1.1, an update frequency of 90 minutes, and with v3 authentication enabled on mm01:
  
- To enable NTP with an NTP server address of 192.168.1.1, an update frequency of 90 minutes, and with v3 authentication enabled on mm01:
  
- \ **rspconfig**\  \ *mm01 ntp=enable,192.168.1.1,90,enable*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 ntp=enable,192.168.1.1,90,enable
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -849,11 +921,15 @@ EXAMPLES
  
 
 
-\*
+17. To disable NTP v3 authentication only on mm01:
  
- To disable NTP v3 authentication only on mm01:
  
- \ **rspconfig**\  \ *mm01 ntp=,,,disable*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 ntp=,,,disable
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -863,11 +939,15 @@ EXAMPLES
  
 
 
-\*
+18. To disable Predictive Failure and L2 Failure deconfiguration policies on mm01:
  
- To disable Predictive Failure and L2 Failure deconfiguration policies on mm01:
  
- \ **rspconfig**\  \ *mm01 decfg=disable:predictive,L3*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 decfg=disable:predictive,L3
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -877,11 +957,15 @@ EXAMPLES
  
 
 
-\*
+19. To deconfigure processors 4 and 5 of Processing Unit 0 on mm01:
  
- To deconfigure processors 4 and 5 of Processing Unit 0 on mm01:
  
- \ **rspconfig**\  \ *mm01 procedecfg=deconfigure:0:4,5*\ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 procedecfg=deconfigure:0:4,5
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -891,73 +975,57 @@ EXAMPLES
  
 
 
-\*
- 
- To check if CEC sysname set correct on mm01:
- 
- \ **rspconfig**\  \ *mm01 sysname*\ 
+20. To check if CEC sysname set correct on mm01:
  
  
  .. code-block:: perl
  
+   rspconfig mm01 sysname
+  
    mm01: mm01
- 
- 
- \ **rspconfig**\  \ *mm01 sysname=cec01*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rspconfig mm01 sysname=cec01
+  
    mm01: Success
- 
- 
- \ **rspconfig**\  \ *mm01 sysname*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rspconfig mm01 sysname
+  
    mm01: cec01
  
  
 
 
-\*
- 
- To check and change the pending_power_on_side value of cec01's fsps:
- 
- \ **rspconfig**\  \ *cec01 pending_power_on_side*\ 
+21. To check and change the pending_power_on_side value of cec01's fsps:
  
  
  .. code-block:: perl
  
+   rspconfig cec01 pending_power_on_side
+  
    cec01: Pending Power On Side Primary: temp
    cec01: Pending Power On Side Secondary: temp
- 
- 
- \ **rspconfig**\  \ *cec01 pending_power_on_side=perm*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rspconfig cec01 pending_power_on_side=perm
+  
    cec01: Success
- 
- 
- \ **rspconfig**\  \ *cec01 pending_power_on_side*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rspconfig cec01 pending_power_on_side
+  
    cec01: Pending Power On Side Primary: perm
    cec01: Pending Power On Side Secondary: perm
  
  
 
 
-\*
+22. To show the BSR allocation for cec01:
  
- To show the BSR allocation for cec01:
  
- \ **rspconfig**\  \ *cec01 BSR*\ 
+ .. code-block:: perl
+ 
+   rspconfig cec01 BSR
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -979,11 +1047,15 @@ EXAMPLES
  
 
 
-\*
+23. To query the huge page information for CEC1, enter:
  
- To query the huge page information for CEC1, enter:
  
- \ **rspconfig**\  \ *CEC1 huge_page*\ 
+ .. code-block:: perl
+ 
+   rspconfig CEC1 huge_page
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -1007,11 +1079,15 @@ EXAMPLES
  
 
 
-\*
+24. To request 10 huge pages for CEC1, enter:
  
- To request 10 huge pages for CEC1, enter:
  
- \ **rspconfig**\  \ *CEC1 huge_page=10*\ 
+ .. code-block:: perl
+ 
+   rspconfig CEC1 huge_page=10
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -1021,25 +1097,19 @@ EXAMPLES
  
 
 
-\*
- 
- To disable service processor failover for cec01, in order to complete this command, the user should power off cec01 first:
- 
- \ **rspconfig**\  \ *cec01 setup_failover*\ 
+25. To disable service processor failover for cec01, in order to complete this command, the user should power off cec01 first:
  
  
  .. code-block:: perl
  
+   rspconfig cec01 setup_failover
+  
    cec01: Failover status: Enabled
- 
- 
- \ **rpower**\  \ *cec01 off*\ 
- 
- \ **rspconfig**\  \ *cec01 setup_failover=disable*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rpower cec01 off
+  
+   rspconfig cec01 setup_failover=disable
+  
    cec01: Success
  
  
@@ -1053,34 +1123,24 @@ EXAMPLES
  
 
 
-\*
- 
- To force service processor failover for cec01:
- 
- \ **lshwconn**\  \ *cec01*\ 
+26. To force service processor failover for cec01:
  
  
  .. code-block:: perl
  
+   lshwconn cec01
+  
    cec01: 192.168.1.1: LINE DOWN
    cec01: 192.168.2.1: sp=primary,ipadd=192.168.2.1,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.1.2: sp=secondary,ipadd=192.168.1.2,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.2.2: LINE DOWN
- 
- 
- \ **rspconfig**\  \ *cec01 force_failover*\ 
- 
- 
- .. code-block:: perl
- 
+   
+   rspconfig cec01 force_failover
+  
    cec01: Success.
- 
- 
- \ **lshwconn**\  \ *cec01*\ 
- 
- 
- .. code-block:: perl
- 
+   
+   lshwconn> cec01                
+  
    cec01: 192.168.1.1: sp=secondary,ipadd=192.168.1.1,alt_ipadd=unavailable,state=LINE UP
    cec01: 192.168.2.1: LINE DOWN
    cec01: 192.168.1.2: LINE DOWN
@@ -1089,11 +1149,17 @@ EXAMPLES
  
 
 
-\*
+27.
  
  To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
  
- \ **rspconfig**\  \ *mm01 memdecfg=deconfigure:bank:0:9,10*\ 
+ 
+ .. code-block:: perl
+ 
+   rspconfig mm01 memdecfg=deconfigure:bank:0:9,10
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -1103,11 +1169,19 @@ EXAMPLES
  
 
 
-\*
+28.
  
  To reset the network interface of the specified nodes:
  
+<<<<<<< HEAD
  \ **rspconfig**\  \ *-**\ **-resetnet*\ 
+=======
+ 
+ .. code-block:: perl
+ 
+   rspconfig --resetnet
+ 
+>>>>>>> man1 changes for commands p-z
  
  Output is similar to:
  
@@ -1126,11 +1200,15 @@ EXAMPLES
  
 
 
-\*
+29. To update the existing admin password on fsp:
  
- To update the existing admin password on fsp:
  
- \ **rspconfig**\  \ *fsp admin_passwd=admin,abc123*\ 
+ .. code-block:: perl
+ 
+   rspconfig fsp admin_passwd=admin,abc123
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl
@@ -1140,11 +1218,15 @@ EXAMPLES
  
 
 
-\*
+30. To set the initial password for user HMC on fsp:
  
- To set the initial password for user HMC on fsp:
  
- \ **rspconfig**\  \ *fsp HMC_passwd=,abc123*\ 
+ .. code-block:: perl
+ 
+   rspconfig fsp HMC_passwd=,abc123
+ 
+ 
+ Output is similar to:
  
  
  .. code-block:: perl

@@ -53,13 +53,13 @@ OPTIONS
 *******
 
 
-\ **-h**\           Display usage message.
+\ **-h|-**\ **-help**\           Display usage message.
 
-\ **-v**\           Command Version.
+\ **-v|-**\ **-version**\        Command Version.
 
-\ **-r**\           On a Service Node, services will not be restarted.
+\ **-r|-**\ **-reload**\         On a Service Node, services will not be restarted.
 
-\ **-V**\           Display the verbose messages.
+\ **-V|-**\ **-verbose**\        Display the verbose messages.
 
 
 ************
@@ -79,7 +79,11 @@ EXAMPLES
 
 1. To restart the xCAT daemon, enter:
 
-\ **restartxcatd**\ 
+
+.. code-block:: perl
+
+  restartxcatd
+
 
 
 *****

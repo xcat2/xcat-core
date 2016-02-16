@@ -52,7 +52,9 @@ Display the installed version of xCAT.
 
 =item 1.
 
-pping all
+ pping all
+
+Output is similar to:
 
  node1: ping
  node2: ping
@@ -60,7 +62,9 @@ pping all
 
 =item 2.
 
-pping all -i ib0,ib1
+ pping all -i ib0,ib1
+
+Output is similar to:
 
  node1-ib0: ping
  node2-ib0: ping

@@ -38,13 +38,13 @@ If the xcatd subsystem was not created, B<restartxcatd> will create it automatic
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h|--help>          Display usage message.
 
-B<-v>          Command Version.
+B<-v|--version>       Command Version.
 
-B<-r>          On a Service Node, services will not be restarted.
+B<-r|--reload>        On a Service Node, services will not be restarted.
 
-B<-V>          Display the verbose messages.
+B<-V|--verbose>       Display the verbose messages.
 
 
 =head1 RETURN VALUE
@@ -57,7 +57,7 @@ B<-V>          Display the verbose messages.
 
 1. To restart the xCAT daemon, enter:
 
-B<restartxcatd>
+ restartxcatd
 
 
 

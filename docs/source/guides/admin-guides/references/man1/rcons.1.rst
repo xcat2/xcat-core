@@ -88,7 +88,11 @@ method.
 ****************
 
 
-\ **rcons**\  \ *node5*\ 
+
+.. code-block:: perl
+
+  rcons node5
+
 
 
 ************************

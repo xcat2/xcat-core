@@ -54,7 +54,7 @@ method.
 
 =head1 B<Examples>
 
-B<rcons> I<node5>
+ rcons node5
 
 =head1 B<See> B<Also>
 

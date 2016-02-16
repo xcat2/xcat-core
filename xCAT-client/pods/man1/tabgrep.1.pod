@@ -6,7 +6,7 @@ B<tabgrep> - list table names in which an entry for the given node appears.
 
 B<tabgrep> I<nodename>
 
-B<tabgrep> [I<-?> | I<-h> | I<--help>]
+B<tabgrep> [B<-?> | B<-h> | B<--help>]
 
 =head1 DESCRIPTION
 
@@ -29,11 +29,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back
@@ -42,11 +40,11 @@ An error has occurred.
 
 =over 2
 
-=item *
+=item 1.
 
 To display the tables that contain blade1:
 
-B<tabgrep> I<blade1>
+ tabgrep blade1
 
 The output would be similar to:
 

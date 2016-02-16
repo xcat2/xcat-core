@@ -19,11 +19,11 @@ SYNOPSIS
 ********
 
 
-\ *regnotif [-h| --help]*\ 
+\ **regnotif [-h| -**\ **-help]**\ 
 
-\ *regnotif  [-v| --version]*\ 
+\ **regnotif  [-v| -**\ **-version]**\ 
 
-\ *regnotif \ \*filename tablename\*\ [,tablename]... [-o|--operation actions]*\ 
+\ **regnotif**\  \ *filename tablename[,tablename]...*\  [\ **-o | -**\ **-operation**\  \ *actions*\ ]
 
 
 ***********
@@ -35,7 +35,7 @@ This command is used to register a Perl module or a command to the xCAT notifica
 
 
 **********
-Parameters
+PARAMETERS
 **********
 
 
@@ -48,13 +48,13 @@ OPTIONS
 *******
 
 
-\ **-h | -help**\           Display usage message.
+\ **-h | -**\ **-help**\           Display usage message.
 
-\ **-v | -version **\       Command Version.
+\ **-v | -**\ **-version**\        Command Version.
 
-\ **-V | -verbose**\        Verbose output.
+\ **-V | -**\ **-verbose**\        Verbose output.
 
-\ **-o | -operation**\      specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update.
+\ **-o | -**\ **-operation**\      specifies the database table actions that the user is interested in. It is a comma separated list. 'a' for row addition, 'd' for row deletion and 'u' for row update.
 
 
 ************
@@ -82,7 +82,11 @@ EXAMPLES
 
 2. To register a command that gets invoked when rows get updated in the switch table, enter:
 
-regnotif /usr/bin/mycmd switch  -o u
+
+.. code-block:: perl
+
+  regnotif /usr/bin/mycmd switch  -o u
+
 
 
 *****

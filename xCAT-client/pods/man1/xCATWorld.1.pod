@@ -4,7 +4,7 @@ B<xCATWorld> - Sample client program for xCAT.
  
 =head1 SYNOPSIS
  
-I<xCATWorld {noderange}>
+B<xCATWorld> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -21,9 +21,7 @@ For debugging purposes we have an Environment Variable XCATBYPASS.  If export XC
 
 1.To run , enter: 
 
-I<xCATWorld nodegrp1> 
-
-
+ xCATWorld nodegrp1
 
 =head1 FILES
  

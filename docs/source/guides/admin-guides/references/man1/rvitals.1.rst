@@ -176,7 +176,13 @@ Processor for a single or range of nodes and groups.
 ****************
 
 
-\ **rvitals**\  \ *node5*\  \ *all*\ 
+
+.. code-block:: perl
+
+  rvitals node5 all
+
+
+Output is similar to:
 
 
 .. code-block:: perl
