@@ -252,9 +252,9 @@ function sort_nics_device_order {
             for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
             do
                 temp_base_nic_type=`find_nic_type "$i"`
-                #all base ni devices types should be ethernet
-                #if one nic type is not ethernet, it is invalid
-                if [ x"$temp_base_nic_type" != "xethernet" ]; then
+                temp_base_nic_type_one=$temp_base_nic_type
+                #all base nic devices types should be the same
+                if [ x"$temp_base_nic_type" != x"$temp_base_nic_type_one" ]; then
                     break
                 fi
             done
