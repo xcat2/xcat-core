@@ -427,12 +427,11 @@ unless ($onlyinitrd) {
             $envlist = join(',', @{$pkg_hash{$pass}{ENVLIST}});
         }
         
-        fake_invoke_rc_d();
+        fake_policy_rc_d();
 
         print "$envlist $aptgetcmdby install $pkgnames\n";
         my $rc = system("$envlist $aptgetcmdby install --allow-unauthenticated $pkgnames");
         if ($rc) { 
-            restore_invoke_rc_d();
             xdie "Failed to install packages $pkgnames\n";
         }
     }
@@ -486,7 +485,6 @@ unless ($onlyinitrd) {
       foreach $pass (sort {$a <=> $b} (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
             if($_ eq "INCLUDEBAD")  {
-             restore_invoke_rc_d();
              xdie "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
             }
                 if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE") || ($_ eq "ENVLIST")) { next;} 
@@ -554,7 +552,6 @@ unless ($onlyinitrd) {
 	      print "$envlist $aptgetcmd\n"; 
 	      my $rc = system("$envlist $aptgetcmd");
 	      if ($rc) { 
-                  restore_invoke_rc_d();
 		  xdie "apt-get invocation failed\n";
 	      }
           } else {
@@ -587,8 +584,6 @@ unless ($onlyinitrd) {
    print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
 
-    #hack invoke.rc.d to prevent service start/stop/restart in chrooted environment
-    restore_invoke_rc_d();
 
    `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
    
@@ -1938,30 +1933,33 @@ sub unuse_hackuname {
 
 #service management in a chrooted environment make no sense
 #however, the postinstall script of package instllation depends 
-#on it, fake a invoke.rc.d to avoid errors during installation
-sub fake_invoke_rc_d {
+#on it, fake a policy-rc.d to avoid errors during installation
+sub fake_policy_rc_d {
+#POLICY-RC.D   Policy layer (/usr/sbin/policy-rc.d) interface:
+# =============================================================
+# 
+# Most Debian systems will not have this script as the need for a policy layer
+# is not very common. Most people using chroot jails just need an one-line
+# script which returns an exit status of 101 as the jailed
+# /usr/sbin/policy-rc.d script.
+# 
+# The /usr/sbin/policy-rc.d file *must* be managed through the alternatives
+# system (/usr/sbin/update-alternatives) by any packages providing it.
 
-    if (-e -x "$rootimg_dir/usr/sbin/invoke-rc.d") {
-        move("$rootimg_dir/usr/sbin/invoke-rc.d", "$rootimg_dir/tmp/usr.sbin.invoke-rc.d");
+    unless (-e "$rootimg_dir/usr/sbin/policy-rc.d") {
+        my $FAKEFILE;
+        open($FAKEFILE, ">$rootimg_dir/usr/sbin/policy-rc.d");
+        print $FAKEFILE "#!/bin/sh \n";
+        print $FAKEFILE "exit 101\n";
+        close($FAKEFILE);
+        chmod(0755, "$rootimg_dir/usr/sbin/policy-rc.d");
 
     }
 
-    open(FAKEFILE, ">$rootimg_dir/usr/sbin/invoke-rc.d");
-    print FAKEFILE "#!/bin/bash \n";
-    print FAKEFILE "( [ \"\$2\" = \"start\"  ] || [ \"\$2\" = \"stop\" ] || [ \"\$2\" = \"restart\" ] ) &&   exit 0; \n";
-    close(FAKEFILE);
-    chmod(0755, "$rootimg_dir/usr/sbin/invoke-rc.d");
 
 }
 
 
-#restore the invoke.rc.d
-sub restore_invoke_rc_d {
-    if (-e -x "$rootimg_dir/tmp/usr.sbin.invoke-rc.d") {
-        move("$rootimg_dir/tmp/usr.sbin.invoke-rc.d", "$rootimg_dir/usr/sbin/invoke-rc.d");
-    }
-
-}
 
 
 sub mount_chroot {
@@ -1981,7 +1979,7 @@ sub mount_chroot {
    if ($pkgdir) {
        if (-d $pkgdir) {
            mkdir("$rootimage_dir/mnt/pkgdir");
-           system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+           system("mount --rbind  $pkgdir $rootimage_dir/mnt/pkgdir; mount -o remount,ro,rbind $pkgdir $rootimage_dir/mnt/pkgdir");
        } else {
            print "The specified pkgdir $pkgdir does not exist!\n"
        }
@@ -1990,7 +1988,7 @@ sub mount_chroot {
    if ($kerneldir){
       if(-d $kerneldir){
          mkdir("$rootimage_dir/mnt/kerneldir");
-         system("mount --rbind $kerneldir $rootimage_dir/mnt/kerneldir");
+         system("mount --rbind $kerneldir $rootimage_dir/mnt/kerneldir; mount -o remount,ro,rbind $kerneldir $rootimage_dir/mnt/kerneldir");
       }else{
          print "The specified kerneldir $kerneldir does not exist!\n"
       }
@@ -1999,7 +1997,7 @@ sub mount_chroot {
    if ($otherpkgdir){
       mkdir("$rootimage_dir/mnt/otherpkgdir");
       if(-d $otherpkgdir){
-         system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
+         system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir; mount -o remount,ro,rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
       }else{
          print "The specified otherpkgdir $otherpkgdir does not exist!\n"
       }
