@@ -3064,25 +3064,25 @@ sub rscan {
         my $domain=$parser->parse_string($currxml);
         my ($uuid, $node, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
         my @uuidobj = $domain->findnodes("/domain/uuid");
-        if (@uuidobj and defined(@uuidobj->[0])) {
-            $uuid = @uuidobj->[0]->to_literal;
+        if (@uuidobj and defined($uuidobj[0])) {
+            $uuid = $uuidobj[0]->to_literal;
             $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
         }
         my $type = $domain->findnodes("/domain")->[0]->getAttribute("type");
         my @nodeobj = $domain->findnodes("/domain/name");
-        if (@nodeobj and defined(@nodeobj->[0])) {
-            $node = @nodeobj->[0]->to_literal;
+        if (@nodeobj and defined($nodeobj[0])) {
+            $node = $nodeobj[0]->to_literal;
         }
         my $hypervisor = $hyper;
         my $id = $domain->findnodes("/domain")->[0]->getAttribute("id");
         my @vmcpusobj = $domain->findnodes("/domain/vcpu");
-        if (@vmcpusobj and defined(@vmcpusobj->[0])) {
-            $vmcpus = @vmcpusobj->[0]->to_literal;
+        if (@vmcpusobj and defined($vmcpusobj[0])) {
+            $vmcpus = $vmcpusobj[0]->to_literal;
         }
         my @vmmemoryobj = $domain->findnodes("/domain/memory");
-        if (@vmmemoryobj and defined(@vmmemoryobj->[0])) {
-            my $mem = @vmmemoryobj->[0]->to_literal;
-            my $unit = @vmmemoryobj->[0]->getAttribute("unit");
+        if (@vmmemoryobj and defined($vmmemoryobj[0])) {
+            my $mem = $vmmemoryobj[0]->to_literal;
+            my $unit = $vmmemoryobj[0]->getAttribute("unit");
             if (($unit eq "KiB") or ($unit eq "k")) {
                 $vmmemory=($mem*1024)/(1024*1024);
             } elsif ($unit eq "KB") {
@@ -3107,15 +3107,15 @@ sub rscan {
         foreach my $vmstoragediskobj (@vmstoragediskobjs) {
             if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "file")) {
                 my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
-                if (@vmstorageobj and defined(@vmstorageobj->[0])) {
-                    $vmstorage = @vmstorageobj->[0]->getAttribute("file");
+                if (@vmstorageobj and defined($vmstorageobj[0])) {
+                    $vmstorage = $vmstorageobj[0]->getAttribute("file");
                     last;
                 }
             }
         }
         my @archobj = $domain->findnodes("/domain/os/type");
-        if (@archobj and defined(@archobj->[0])) {
-            $arch = @archobj->[0]->getAttribute("arch");
+        if (@archobj and defined($archobj[0])) {
+            $arch = $archobj[0]->getAttribute("arch");
         }
         my @interfaceobjs = $domain->findnodes("/domain/devices/interface");
         foreach my $interfaceobj (@interfaceobjs) {
@@ -3123,10 +3123,10 @@ sub rscan {
                 my @vmnicsobj = $interfaceobj->findnodes("./source");
                 my @macobj = $interfaceobj->findnodes("./mac");
                 my @vmnicnicmodelobj = $interfaceobj->findnodes("./model");
-                if ((@vmnicsobj and defined(@vmnicsobj->[0])) and (@macobj and defined(@macobj->[0])) and (@vmnicnicmodelobj and defined(@vmnicnicmodelobj->[0]))) {
-                    $vmnics = @vmnicsobj->[0]->getAttribute("bridge");
-                    $mac = @macobj->[0]->getAttribute("address");
-                    $vmnicnicmodel = @vmnicnicmodelobj->[0]->getAttribute("type");
+                if ((@vmnicsobj and defined($vmnicsobj[0])) and (@macobj and defined($macobj[0])) and (@vmnicnicmodelobj and defined($vmnicnicmodelobj[0]))) {
+                    $vmnics = $vmnicsobj[0]->getAttribute("bridge");
+                    $mac = $macobj[0]->getAttribute("address");
+                    $vmnicnicmodel = $vmnicnicmodelobj[0]->getAttribute("type");
                     last;
                 }
             }
