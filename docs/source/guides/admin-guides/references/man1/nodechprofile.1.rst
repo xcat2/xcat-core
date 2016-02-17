@@ -88,16 +88,25 @@ EXAMPLES
 
 
 
+1. To change the image profile to rhels6.3_packaged for compute nodes compute-000 and compute-001, use the following command:
+ 
+ 
+ .. code-block:: perl
+ 
+   nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
+ 
+ 
 
-.. code-block:: perl
 
-  nodechprofile compute-000,compute-001 imageprofile=rhels6.3_packaged
+2. To change all of the profiles for compute node compute-000, enter the following command:
+ 
+ 
+ .. code-block:: perl
+ 
+   nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
+ 
+ 
 
-
-
-.. code-block:: perl
-
-  nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
 
 
 ********

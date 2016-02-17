@@ -134,13 +134,13 @@ EXAMPLES
   nimnodecust -s 61lppsource -p openssh.base.server node01
 
 
-
 2) Install the product software contained in the two bundles called "llbnd" and "pebnd" on all AIX nodes contained in the xCAT node group called "aixnodes".  Assume that all the software packages have been copied to the NIM lpp_source resource called "61lppsource".
 
 
 .. code-block:: perl
 
   nimnodecust -s 61lppsource -b llbnd,pebnd  aixnodes
+
 
 
 *****

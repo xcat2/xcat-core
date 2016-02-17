@@ -33,17 +33,12 @@ This command is only for Power 775 using Direct FSP Management, and used in Powe
 
 The \ **swapnodes**\  command will keep the \ **current_node**\  name in the xCAT table, and use the \ *fip_node*\ 's hardware resource. Besides that, the IO adapters will be assigned to the new hardware resource if they are in the same CEC. So the swapnodes command will do 2 things:
 
+1. Swap the location info in the db between 2 nodes:
 
-1. swap the location info in the db between 2 nodes:
- 
- All the ppc table attributes (including hcp, id, parent, supernode and so on).
- All the nodepos table attributes(including rack, u, chassis, slot, room and so on).
- 
+All the ppc table attributes (including hcp, id, parent, supernode and so on).
+All the nodepos table attributes(including rack, u, chassis, slot, room and so on).
 
-
-2.  assign the I/O adapters from the defective node(the original current_node) to the available node(the original fip_node) if the nodes are in the same cec.
-
-
+2. Assign the I/O adapters from the defective node(the original current_node) to the available node(the original fip_node) if the nodes are in the same cec.
 
 The \ **swapnodes**\  command shouldn't make the decision of which 2 nodes are swapped. It will just received the 2 node names as cmd line parameters.
 

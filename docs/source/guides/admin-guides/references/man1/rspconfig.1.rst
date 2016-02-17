@@ -226,11 +226,7 @@ BPA/Frame (using Direct FSP Management) Specific:
 
 \ **rspconfig**\  \ *noderange*\  {\ **sysname**\ }
 
-<<<<<<< HEAD
-\ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\ **\\* | name**\ }
-=======
 \ **rspconfig**\  \ *noderange*\  \ **sysname**\ ={\* | \ *name*\ }
->>>>>>> man1 changes for commands p-z
 
 \ **rspconfig**\  \ *noderange*\  {\ **pending_power_on_side**\ }
 
@@ -599,11 +595,7 @@ OPTIONS
  
 
 
-<<<<<<< HEAD
-\ **-v**\ , \ **-**\ **-version**\ 
-=======
 \ **-v**\  | \ **-**\ **-version**\ 
->>>>>>> man1 changes for commands p-z
  
  Display the version number.
  
@@ -1173,15 +1165,11 @@ EXAMPLES
  
  To reset the network interface of the specified nodes:
  
-<<<<<<< HEAD
- \ **rspconfig**\  \ *-**\ **-resetnet*\ 
-=======
  
  .. code-block:: perl
  
    rspconfig --resetnet
  
->>>>>>> man1 changes for commands p-z
  
  Output is similar to:
  

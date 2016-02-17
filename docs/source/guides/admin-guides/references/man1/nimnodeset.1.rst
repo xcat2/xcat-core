@@ -158,7 +158,6 @@ EXAMPLES
   nimnodeset -i 61gold node01
 
 
-
 2) Initialize all AIX nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
 
 
@@ -173,6 +172,7 @@ EXAMPLES
 .. code-block:: perl
 
   nimnodeset -i 611image node02 installp_bundle=sshbundle,addswbundle
+
 
 
 *****

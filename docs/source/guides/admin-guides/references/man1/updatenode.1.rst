@@ -656,10 +656,6 @@ and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --no
  
    updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i --nodeps"
  
-<<<<<<< HEAD
- \ **updatenode xcatn11,xcatn12 -V -S otherpkgs="I:gpfs.base,R:rsync-2.6.2-1.aix5.1.ppc.rpm" installp_flags="-agQXY" rpm_flags="-i -**\ **-nodeps"**\ 
-=======
->>>>>>> man1 changes for commands p-z
  
  Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
  

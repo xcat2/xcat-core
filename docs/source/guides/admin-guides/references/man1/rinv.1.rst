@@ -221,133 +221,63 @@ Calling \ **rinv**\  for VMware will display the UUID/GUID, nuumber of CPUs, amo
  
  Calculates the total size of every known storage pool.
  
-<<<<<<< HEAD
- \ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
-  
-  Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
-  
-=======
 
 
 \ **-**\ **-diskpool**\  \ *pool*\  \ *space*\ 
->>>>>>> man1 changes for commands p-z
  
  Lists the storage devices (ECKD and FBA) contained in a disk pool. Space can be: all, free, or used.
  
-<<<<<<< HEAD
- \ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
-  
-  Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
-  
-=======
 
 
 \ **-**\ **-fcpdevices**\  \ *state*\  \ *details*\ 
->>>>>>> man1 changes for commands p-z
  
  Lists the FCP device channels that are active, free, or offline. State can be: active, free, or offline.
  
-<<<<<<< HEAD
- \ **-**\ **-diskpoolnames**\ 
-  
-  Lists the known disk pool names.
-  
-=======
 
 
 \ **-**\ **-diskpoolnames**\ 
->>>>>>> man1 changes for commands p-z
  
  Lists the known disk pool names.
  
-<<<<<<< HEAD
- \ **-**\ **-networknames**\ 
-  
-  Lists the known network names.
-  
-=======
 
 
 \ **-**\ **-networknames**\ 
->>>>>>> man1 changes for commands p-z
  
  Lists the known network names.
  
-<<<<<<< HEAD
- \ **-**\ **-network**\  \ *name*\ 
-  
-  Shows the configuration of a given network device.
-  
-=======
 
 
 \ **-**\ **-network**\  \ *name*\ 
->>>>>>> man1 changes for commands p-z
  
  Shows the configuration of a given network device.
  
-<<<<<<< HEAD
- \ **-**\ **-ssi**\ 
-  
-  Obtain the SSI and system status.
-  
-=======
 
 
 \ **-**\ **-ssi**\ 
->>>>>>> man1 changes for commands p-z
  
  Obtain the SSI and system status.
  
-<<<<<<< HEAD
- \ **-**\ **-smapilevel**\ 
-  
-  Obtain the SMAPI level installed on the z/VM system.
-  
-=======
 
 
 \ **-**\ **-smapilevel**\ 
->>>>>>> man1 changes for commands p-z
  
  Obtain the SMAPI level installed on the z/VM system.
  
-<<<<<<< HEAD
- \ **-**\ **-wwpns**\  \ *fcp_channel*\ 
-  
-  Query a given FCP device channel on a z/VM system and return a list of WWPNs.
-  
-=======
 
 
 \ **-**\ **-wwpns**\  \ *fcp_channel*\ 
->>>>>>> man1 changes for commands p-z
  
  Query a given FCP device channel on a z/VM system and return a list of WWPNs.
  
-<<<<<<< HEAD
- \ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
-  
-  List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
-  
-=======
 
 
 \ **-**\ **-zfcppool**\  \ *pool*\  \ *space*\ 
->>>>>>> man1 changes for commands p-z
  
  List the SCSI/FCP devices contained in a zFCP pool. Space can be: free or used.
  
-<<<<<<< HEAD
- \ **-**\ **-zfcppoolnames**\ 
-  
-  List the known zFCP pool names.
-  
-=======
 
 
 \ **-**\ **-zfcppoolnames**\ 
->>>>>>> man1 changes for commands p-z
  
  List the known zFCP pool names.
  
