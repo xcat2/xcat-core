@@ -51,6 +51,7 @@ d-i partman-md/device_remove_md boolean true
 
 #create the /tmp/partitionfile based on the uefi or legacy bios 
 d-i partman/early_command string \
+#INCLUDE_GET_FIRST_DISK_SCRIPT#  \
     debconf-set partman-auto/disk "$(cat /tmp/install_disk)"
 d-i partman-auto/expert_recipe_file string /tmp/partitionfile
 
