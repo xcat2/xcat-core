@@ -34,7 +34,7 @@ For zVM:
 *******************
 
 
-\ **rmigrate**\  requests that a guest VM be moved from the current entity hosting it to another.  It requests a live migration be done, if possible.  The directory used for storing disk images has to be mounted from shared storage on both vmhosts/hypervisors. 
+\ **rmigrate**\  requests that a guest VM to be moved from the current hypervisor to another.  It will request a live migration if possible.  The vmstorage directory should be shared between the source and destination hypervisors.
 
 For zVM:
 ========
@@ -95,29 +95,13 @@ This is used to determine the current host to migrate from.
 ****************
 
 
-1. To migrate kvm guest "kvm1" to hypervisor "hyp02", which is managed by hypervisor "hyp01", enter:
+1. To migrate kvm guest "kvm1" from hypervisor "hyp01" to hypervisor "hyp02", run:
 
 \ **rmigrate**\  \ *kvm1*\  \ *hyp02*\ 
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-   kvm1: migrated to hyp02
-
 
 2. To migrate kvm guest "kvm1" to hypervisor "hyp02", which is already on host "hyp02", enter:
 
 \ **rmigrate**\  \ *kvm1*\  \ *hyp02*\ 
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-   kvm1: Guest is already on host hyp02
-
 
 zVM specific:
 =============
