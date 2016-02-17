@@ -17,7 +17,7 @@ Set attributes in the ``site`` table
       chdef -t site master="xcat_master_ip"
       chdef -t site nameservers="nameserver1,nameserver2,etc"
 
-.. [#] The value of the ``master`` attribute in the site table can be set to either the Management Node IP or Service Node IP.
+.. [#] The value of the ``master`` attribute in the site table should be set as the IP address of the management node responsible for the compute node.
 
 Initialize DNS services
 -----------------------
