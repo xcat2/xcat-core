@@ -75,6 +75,8 @@ Output is similar to:
  node4: clear
  node5: clear
 
+=back 
+
 =head1 SEE ALSO
 
 L<rpower(1)|rpower.1>, L<monstart(1)|monstart.1>

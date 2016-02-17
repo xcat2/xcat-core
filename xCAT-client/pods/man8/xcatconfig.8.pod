@@ -107,5 +107,5 @@ To add the Management Node to the DB:
 
  xcatconfig -m 
 
-
 =back
+

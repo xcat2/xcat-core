@@ -142,10 +142,6 @@ EXAMPLES
  
    switchdiscover --range 10.2.3.4/24 -w
  
-<<<<<<< HEAD
- \ **switchdiscover**\  \ *-**\ **-range 10.2.3.4/24 -w*\ 
-=======
->>>>>>> man1 changes for commands p-z
  
  It is recommended to run \ **makehosts**\  after the switches are saved in the DB.
  

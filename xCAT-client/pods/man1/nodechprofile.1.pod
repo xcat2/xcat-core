@@ -56,6 +56,8 @@ Sets the new hardware profile name used by the node, where <hardware-profile> is
 
 =head1 EXAMPLES
 
+=over 2 
+
 =item 1.
 To change the image profile to rhels6.3_packaged for compute nodes compute-000 and compute-001, use the following command:
 
@@ -65,6 +67,8 @@ To change the image profile to rhels6.3_packaged for compute nodes compute-000 a
 To change all of the profiles for compute node compute-000, enter the following command:
 
  nodechprofile compute-000 imageprofile=rhels6.3_packaged networkprofile=default_cn hardwareprofile=default_ipmi
+
+=back 
 
 =head1 SEE ALSO
 
