@@ -4,7 +4,7 @@ B<rinstall> - Begin OS provision on a noderange
 
 =head1 B<Synopsis>
 
-B<rinstall> [B<-O>|B<--osimage>] [B<-c>|B<--console>] [B<noderange>]
+B<rinstall> [B<-O>|B<--osimage>] [B<-c>|B<--console>] [I<noderange>]
 
 =head1 B<Description>
 
@@ -42,7 +42,7 @@ Requests that rinstall runs rcons once the provision starts.  This will only wor
 =over 2
 
 =item 1.
-Provison nodes 1 through 20, using their current configuration.
+Provision nodes 1 through 20, using their current configuration.
 
  rinstall node1-node20
 
@@ -52,7 +52,7 @@ Provision nodes 1 through 20 with the osimage rhels6.4-ppc64-netboot-compute.
  rinstall node1-node20 -O rhels6.4-ppc64-netboot-compute
 
 =item 3.
-Provisoon node1 and start a console to monitor the process.
+Provision node1 and start a console to monitor the process.
 
  rinstall node1 -c
 

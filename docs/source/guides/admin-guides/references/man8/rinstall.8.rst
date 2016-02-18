@@ -19,7 +19,7 @@ Name
 ****************
 
 
-\ **rinstall**\  [\ **-O | -**\ **-osimage**\ ] [\ **-c | -**\ **-console**\ ] [\ **noderange**\ ]
+\ **rinstall**\  [\ **-O | -**\ **-osimage**\ ] [\ **-c | -**\ **-console**\ ] [\ *noderange*\ ]
 
 
 *******************

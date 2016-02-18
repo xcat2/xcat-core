@@ -81,14 +81,12 @@ def cleanup_db_man_pages_dir():
     shutil.rmtree("perl-xCAT/share")
 
 def fix_vertical_bar(rst_file):
-    print "Removing | from file %s, version %s" %(rst_file, man_ver)
     # Verical bar can not appear with spaces around it, otherwise
     # it gets displayed as a link in .html
     sed_cmd = "sed 's/\*\*\\\ |\\\ \*\*/ | /g' %s > %s.sed1" %(rst_file, rst_file)
     os.system(sed_cmd)
 
 def fix_double_dash(rst_file):
-    print "Fixing -- in file %s, version %s" %(rst_file, man_ver)
     # -- gets displayed in .html as a sinle long dash, need to insert
     # a non bold space between 2 dashes
     sed_cmd = "sed '/\*\*/s/--/-\*\*\\\ \*\*-/g' %s.sed1 > %s" %(rst_file, rst_file)

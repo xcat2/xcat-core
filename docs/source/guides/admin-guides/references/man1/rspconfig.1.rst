@@ -1103,13 +1103,9 @@ EXAMPLES
    rspconfig cec01 setup_failover=disable
   
    cec01: Success
- 
- 
- \ **rspconfig**\  \ *cec01 setup_failover*\ 
- 
- 
- .. code-block:: perl
- 
+  
+   rspconfig cec01 setup_failover
+  
    cec01: Failover status: Disabled
  
  
