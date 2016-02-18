@@ -149,7 +149,7 @@ EXAMPLES
 
 3.
  
- To use lldp mathod to discover the switches:
+ To use lldp method to discover the switches:
  
  
  .. code-block:: perl

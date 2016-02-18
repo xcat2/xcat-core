@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ ] [\ **-ti**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
+\ **updatenode**\  \ *noderange*\  [\ **-V | -**\ **-verbose**\ ] [\ **-F | -**\ **-sync**\ ] [\ **-f | -**\ **-snsync**\ ] [\ **-S | -**\ **-sw**\ ]  [\ **-l**\   \ *userID*\ ]  [\ **-P | -**\ **-scripts**\  [\ *script1,script2...*\ ]] [\ **-s | -**\ **-sn**\ ] [\ **-A | -**\ **-updateallsw**\ ] [\ **-c | -**\ **-cmdlineonly**\ ] [\ **-d**\  \ *alt_source_dir*\ ] [\ **-**\ **-fanout**\ =\ *fanout_value*\ ] [\ **-t**\  \ *timeout*\ } [\ *attr=val*\  [\ *attr=val...*\ ]] [\ **-n | -**\ **-noverify**\ ]
 
 \ **updatenode**\  \ **noderange**\  [\ **-k | -**\ **-security**\ ] [\ **-t**\  \ *timeout*\ ]
 
@@ -353,8 +353,7 @@ OPTIONS
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  If  \ **-**\ **-fanout**\ 
- is not specified, a default fanout value of \ **64**\  is used.
+ can be specified by indicating a fanout value of \ **1**\ .  If \ **-**\ **-fanout**\  is not specified, a default fanout value of \ **64**\  is used.
  
 
 

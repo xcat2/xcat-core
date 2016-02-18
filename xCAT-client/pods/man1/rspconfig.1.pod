@@ -740,7 +740,7 @@ To disable service processor failover for cec01, in order to complete this comma
 
  cec01: Success
 
-B<rspconfig> I<cec01 setup_failover>
+ rspconfig cec01 setup_failover
 
  cec01: Failover status: Disabled
 

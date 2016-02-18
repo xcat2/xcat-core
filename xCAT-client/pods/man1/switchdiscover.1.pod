@@ -105,7 +105,7 @@ It is recommended to run B<makehosts> after the switches are saved in the DB.
 
 =item 3.
 
-To use lldp mathod to discover the switches:
+To use lldp method to discover the switches:
 
  switchdiscover -s lldp
 
