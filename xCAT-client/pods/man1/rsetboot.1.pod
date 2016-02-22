@@ -5,7 +5,7 @@ B<rsetboot> - Sets the boot device to be used for BMC-based servers for the next
 
 =head1 SYNOPSIS
 
-B<rsetboot> I<noderange> {B<hd>|B<net>|B<cd>|B<default>|B<stat>} [B<-u>|B<-p>]
+B<rsetboot> I<noderange> {B<hd>|B<net>|B<cd>|B<default>|B<stat>} [B<-u>] [B<-p>]
 
 B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -40,7 +40,7 @@ Display the current boot setting.
 
 =item B<-u>
 
-To specify the next boot mode to be "UEFI Mode". From Lenovo NX360 M5, if "-u" is not specified, B<rsetboot> will force the next boot mode to be "Legacy Mode".
+To specify the next boot mode to be "UEFI Mode". 
 
 =item B<-p>
 
