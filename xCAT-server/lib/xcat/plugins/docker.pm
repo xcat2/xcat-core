@@ -505,6 +505,37 @@ sub single_state_engine {
 
 #-------------------------------------------------------
 
+=head3 deal_with_space_in_array_entry
+
+  The function to add '' for entries that have spaces
+  Input:
+        $array: The string array whose entires may have spaces
+  Return:
+        A string that join the entries in input $array with space, 
+        for entries have spaces, they will be put in "'"
+  Usage example:
+
+=cut  
+
+#-------------------------------------------------------
+
+sub deal_with_space_in_array_entry {
+    my $array = shift;
+    my @ret_array = ();
+    push @ret_array, shift @$array;
+    foreach (@$array) {
+        if (/\s/) {
+            push @ret_array, "'$_'";
+        }
+        else {
+            push @ret_array, $_;
+        }
+    }
+    return join(' ', @ret_array);
+}
+
+#-------------------------------------------------------
+
 =head3 parse_docker_list_info
 
   The function to parse the content returned by the lsdocker command
@@ -513,7 +544,7 @@ sub single_state_engine {
                            The variable is decoded from JSON string
         $flag: To show the info is get from dockerhost (1) or a speciifed docker (0)
   Return:
-        docker_info_string in the format: $id\t$image\t$command\t$created\t$status\t$names;
+        docker_info_string in the format: $id $image $command $created $status $names;
   Usage example:
 
 =cut  
@@ -526,13 +557,12 @@ sub parse_docker_list_info {
     my ($id,$image,$command,$created,$status,$names);
     $id = substr($docker_info_hash->{'Id'}, 0, 12);
     if ($flag) {
-        $image = substr($docker_info_hash->{'Image'}, 0, 20);
+        $image = $docker_info_hash->{'Image'};
         $command = $docker_info_hash->{'Command'};
         $created = $docker_info_hash->{'Created'};
         $status = $docker_info_hash->{'Status'};
 
-        $command = substr($command,0, 20);
-        $names = join(',',@{$docker_info_hash->{'Names'}});
+        $names = $docker_info_hash->{'Names'}->[0];
         my ($sec,$min,$hour,$day,$mon,$year) = localtime($created);
         $mon += 1;
         $year += 1900;
@@ -540,13 +570,18 @@ sub parse_docker_list_info {
     }
     else {
         $image = $docker_info_hash->{Config}->{'Image'};
-        $command = join(',', @{$docker_info_hash->{Config}->{'Cmd'}});
+        $command = deal_with_space_in_array_entry($docker_info_hash->{Config}->{'Cmd'});
+        if (defined($docker_info_hash->{Config}->{'Entrypoint'})) {
+            $command = deal_with_space_in_array_entry($docker_info_hash->{Config}->{'Entrypoint'});
+        }
         $names = $docker_info_hash->{'Name'};
         $created = $docker_info_hash->{'Created'};
         $status = $docker_info_hash->{'State'}->{'Status'};
         $created =~ s/\..*$//;
     }
-    return("$id\t$image\t$command\t$created\t$status\t$names");
+    my $cmd = sprintf("\"%.20s\"", $command);
+    my $string = sprintf("%-12s %-30.30s %-22s %-20s %-10s %s", $id, $image, $cmd, $created, $status, $names);
+    return($string);
 }
 
 #-------------------------------------------------------
@@ -1090,7 +1125,7 @@ sub genreq_for_mkdocker {
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
     $info_hash{Image} = "$dockerinfo->{image}";
-    $info_hash{Cmd} = "$dockerinfo->{cmd}";
+    @{$info_hash{Cmd}} = split/,/, $dockerinfo->{cmd};
     $info_hash{Memory} = $dockerinfo->{mem};
     $info_hash{MacAddress} = $dockerinfo->{mac};
     $info_hash{CpusetCpus} = $dockerinfo->{cpus};
