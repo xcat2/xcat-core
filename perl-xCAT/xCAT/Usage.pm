@@ -96,7 +96,7 @@ my %usage = (
     MIC specific:
        rinv noderange [system|ver|board|core|gddr|all]",
     "rsetboot" => 
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" => 
 "Usage: 
