@@ -252,10 +252,14 @@ function sort_nics_device_order {
             for i in `echo "$base_nic_dev" |sed 's/@/ /g'`
             do
                 temp_base_nic_type=`find_nic_type "$i"`
-                temp_base_nic_type_one=$temp_base_nic_type
-                #all base nic devices types should be the same
-                if [ x"$temp_base_nic_type" != x"$temp_base_nic_type_one" ]; then
-                    break
+                if [ x"$temp_base_nic_type_one" = x ]; then
+                    temp_base_nic_type_one=$temp_base_nic_type
+                else
+                    #all base nic devices types should be the same
+                    if [ x"$temp_base_nic_type" != x"$temp_base_nic_type_one" ]; then
+                        break
+                    fi
+                    temp_base_nic_type_one=$temp_base_nic_type
                 fi
             done
         else
