@@ -71,7 +71,7 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
 
 
 
-1. Provison nodes 1 through 20, using their current configuration.
+1. Provision nodes 1 through 20, using their current configuration.
  
  
  .. code-block:: perl
@@ -91,7 +91,7 @@ If -c is specified, it will then run rcons on the node. This is allowed only if 
  
 
 
-3. Provisoon node1 and start a console to monitor the process.
+3. Provision node1 and start a console to monitor the process.
  
  
  .. code-block:: perl
