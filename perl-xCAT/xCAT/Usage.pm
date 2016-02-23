@@ -17,7 +17,7 @@ use xCAT::Utils;
 
 my %usage = (
     "rnetboot" => 
-"Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
+"Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rnetboot [-h|--help|-v|--version]
      zVM specific:
        rnetboot <noderange> [ipl= address]",
@@ -94,7 +94,7 @@ my %usage = (
     MIC specific:
        rinv noderange [system|ver|board|core|gddr|all]",
     "rsetboot" => 
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" => 
 "Usage: 
