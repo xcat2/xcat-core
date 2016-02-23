@@ -473,7 +473,7 @@ sub mkinstall {
     
     # Check whether the default getinstdisk script exist, if so, copy it into /install/autoinst/
     if ( -r "$::XCATROOT/share/xcat/install/scripts/getinstdisk") {
-        copy("$::XCATROOT/share/xcat/install/scripts/getinstdisk", "$installroot/autoinst");
+        copy("$::XCATROOT/share/xcat/install/scripts/getinstdisk", "$installroot/autoinst/getinstdisk");
     }
 	
     my $node;
