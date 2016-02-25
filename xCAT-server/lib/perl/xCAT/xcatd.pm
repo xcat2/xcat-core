@@ -348,4 +348,68 @@ sub verifytoken {
     }
 }
 
+sub start_syslogd {
+    my $class=shift;
+    if (xCAT::Utils->isLinux()) {
+        my $init_file="/etc/init.d/syslog";
+        if ((-f "/etc/fedora-release") || (-f "/etc/redhat-release") || (-f "/etc/lsb-release")) {
+            $init_file="/etc/init.d/rsyslog";
+        }
+        if ( -x $init_file ) {
+            my $result=`$init_file status 2>&1`;
+            if ($result !~ /running/i) {
+                `$init_file start`;
+            }
+        }
+    } else {
+        my $result=`lssrc -s syslogd 2>&1`;
+        if ($result !~ /active/i) {
+            `startsrc -s syslogd`;
+        }
+    }
+}
+
+sub get_startup_db_connection {
+    my $class=shift;
+    my $table = shift;
+    my $retries = 0;
+    my $table_obj;
+    # The database initialization may take some time in the system boot scenario
+    # wait for a while for the database initialization
+    while (!($table_obj=xCAT::Table->new($table)) && $retries < 200)
+    {
+        print ("Can not open basic table for configuration, waiting the database to be initialized.\n");
+        sleep 1;
+        $retries++;
+    }
+    unless ($table_obj) {
+        xCAT::MsgUtils->message("S","ERROR: Unable to open basic site table for configuration");
+        die;
+    }
+    return $table_obj;
+}
+
+# create and update any xCAt tables
+# create the user defined external database tables if they do not exist.
+# update the tables if there are schema changes.
+# runsqlcmd runs sql scripts provided by the user in
+# /opt/xcat/lib/perl/xCAT_schema
+sub init_xcat_schema {
+    my $class=shift;
+    if (xCAT::Utils->isMN()) {
+        # update schema for xCAT tables
+        my @table;
+        push @table,xCAT::Table->getTableList();
+        foreach  my $tablename (@table) {
+            my $tablelisttab=xCAT::Table->new($tablename,-create=>1);
+            my $rc= $tablelisttab->updateschema();
+            $tablelisttab->close;
+        }
+        # update schema for user tables
+        xCAT::ExtTab->updateTables();
+        # run any sql commands
+        `$::XCATROOT/sbin/runsqlcmd`;
+    }
+}
+
 1;

@@ -16,6 +16,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 # do not put a use or require for  xCAT::Table here. Add to each new routine
 # needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call 
+use Error;
 use POSIX qw(ceil);
 use File::Path;
 use Socket;
@@ -4622,32 +4623,43 @@ sub lookupNetboot{
 
 #--------------------------------------------------------------------------------
 
-=head3  is_process_exists
-    Check whether a process is exist.
+=head3  is_pid_exists
+    Check whether a pid is exist.
     Arguments:
       process id
     Returns:
-      1 process is exist
-      0 process is not exist
+      1 pid is exist
+      0 pid is not exist
     Globals:
         none
     Error:
         none
     Example:
-        xCAT::Utils->is_process_exists($pid);
+        xCAT::Utils->is_pid_exists($pid);
     Comments:
         none
 =cut
 
 #--------------------------------------------------------------------------------
-sub is_process_exists{
+sub is_pid_exists {
     my $pid = shift;
-    my $cmd = "kill -0 $pid";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ( $::RUNCMD_RC == 0 ) {
-     return 1;
+    return 1 if $pid == 0;
+    my $ret = kill(0, $pid);
+    return 0 if ($!{ESRCH});
+    return 1 if ($!{EPERM});
+
+    if ($ret != 0 ) {
+        return 1;
     }
     return 0;
+}
+
+sub xexit {
+    use Thread qw(yield);
+    while (wait() > 0) {
+        yield;
+    }
+    exit @_;
 }
 
 1;

@@ -1246,7 +1246,7 @@ sub get_site_attribute
             xCAT::MsgUtils->message("E", " Could not read the site table\n");
 
         }
-        $sitetab->close;
+        $sitetab->close if $sitetab;
     }
     return $values;
 }
