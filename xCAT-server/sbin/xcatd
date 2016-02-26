@@ -377,6 +377,9 @@ sub do_installm_service {
         } else {
             ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET);
         }
+        unless ($client_name) {
+            xCAT::MsgUtils->message("S","xcatd unable to gethostbyaddr");
+        }
 
         $clients[0] = $client_name;
         if ($client_aliases) {
@@ -403,7 +406,11 @@ sub do_installm_service {
             if ($node) {  # Means the source isn't valid
                 $validclient=1;
                 last;
+            } else {
+                xCAT::MsgUtils->message("S","Invalid client $client, please check nodels and it's name resolution");
+
             }
+            
         }
 
         unless ($validclient) {
