@@ -4,7 +4,7 @@ B<xdcp> - Concurrently copies files to or from multiple nodes. In addition, prov
 
 =head1 B<SYNOPSIS>
 
-B<xdcp> I<noderange>  [[B<-f> I<fanout>] [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
+B<xdcp> I<noderange>  [[B<-B> | B<--bypass>] [B<-f> I<fanout>] [B<-L>]  [B<-l>  I<userID>] [B<-o> I<node_options>] [B<-p>] [B<-P>] [B<-r> I<node_remote_shell>] [B<-R>] [B<-t> I<timeout>] [B<-T>] [B<-v>] [B<-q>] [B<-X> I<env_list>] I<sourcefile.... targetpath>
 
 B<xdcp> I<noderange>  [B<-F> I<rsync input file>] 
 
@@ -20,15 +20,13 @@ B<xdcp> [B<-h> | B<-V> | B<-q>]
 =head1 B<DESCRIPTION>
 
 The B<xdcp> command concurrently copies files  to  or  from  remote  target
-nodes. The command issues a remote copy com-
-mand for each node or device specified. When files are  pulled  from  a
-target,  they  are  placed  into  the  target_path with the name of the
+nodes. The command issues a remote copy command for each node or device specified. When files are  pulled  from a target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
 /usr/bin/rcp command is the model for syntax and security. 
 If using hierarchy, then xdcp runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined. The -P flag will not automatically copy
 the files from the compute node to the Management node, hierarchically.  There
-is a two step process, see -P flag.  
-If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn. When the B<xdcp> command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (cp) command. 
+is a two step process, see B<-P> flag.  
+If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn. When the B<xdcp> command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (B<cp>) command. 
 
 B<REMOTE> B<USER>:
 
@@ -37,6 +35,7 @@ specification is identical for the xdcp and xdsh commands.  See  the  xdsh
 command for more information.
 
 B<REMOTE> B<COMMAND> B<COPY>:
+
 The  B<xdcp>  command  uses  a  configurable remote copy command to execute
 remote copies on remote targets. Support is explicitly  provided  for
 Remote  Shell  rcp  command,  the  OpenSSH  scp  command  and  the
@@ -50,24 +49,23 @@ ing order of precedence:
 
 2. The B</usr/bin/scp> command.
 
-B<COMMAND> B<EXECUTIONS>
+B<COMMAND> B<EXECUTIONS>:
+
 The  maximum  number  of  concurrent remote copy command processes (the
-fanout) can be specified with the -f flag or the DSH_FANOUT environment
+fanout) can be specified with the B<-f> flag or the DSH_FANOUT environment
 variable.  The  fanout is only restricted by the number of remote shell
 commands that can be run in  parallel.  You  can  experiment  with  the
 DSH_FANOUT  value on your management server to see if higher values are
 appropriate.
 
 A timeout value for remote copy command execution can be specified with
-the  -t  flag or DSH_TIMEOUT environment variable. If any remote target
+the B<-t> flag or DSH_TIMEOUT environment variable. If any remote target
 does not respond within the timeout value, the xdcp command displays  an
 error message and exits.
 
-The  -T flag provides diagnostic trace information for dcp command exe-
-cution. Default settings and the actual remote copy commands  that  are
-executed to the remote targets are displayed.
+The B<-T> flag provides diagnostic trace information for dcp command execution. Default settings and the actual remote copy commands that are executed to the remote targets are displayed.
 
-The  xdcp  command can be executed silently using the -Q flag; no target
+The B<xdcp> command can be executed silently using the B<-Q> flag; no target
 standard output or standard error is displayed.
 
 =head1 B<OPTIONS>
@@ -92,18 +90,21 @@ under target_path and  the  remote  target  name  is  appended
 to  the   copied source_file name in the target_path directory.
 Note: the targetpath directory must exist.
 
+=item B<-B>|B<--bypass>
+
+Runs in bypass mode, use if the xcatd daemon is hung.
 
 =item B<-f>|B<--fanout> I<fanout_value>
 
 Specifies a fanout value for the maximum number of  concur-
 rently  executing  remote shell processes. Serial execution
-can be specified by indicating a fanout value of B<1>.  If  B<-f>
-is not specified, a default fanout value of B<64> is used.
+can be specified by indicating a fanout value of B<1>.  
+If B<-f> is not specified, a default fanout value of B<64> is used.
 
 =item B<-F>|B<--File> I<rsync input file>
 
 Specifies the path to the file that will be used to  
-build the rsync command.
+build the B<rsync> command.
 The format of the input file is as follows, each line contains:
 
  <path to source file1> <path to source file2> ... ->  < path to destination file/directory>
@@ -117,7 +118,8 @@ or
  <path to source file> -> <path to destination directory ( must end in /)>
 
 For example:
-/etc/password /etc/hosts -> /etc
+
+  /etc/password /etc/hosts -> /etc
 
   /tmp/file2  ->  /tmp/file2
 
@@ -237,7 +239,7 @@ Pulls (copies) the files from the targets and places  them  in
 the  target_path  directory on the local host. The target_path
 must be a directory. Files pulled from  remote  machines  have
 ._target  appended  to  the  file  name to distinguish between
-them. When the -P flag is used with the -R flag,  ._target  is
+them. When the B<-P> flag is used with the B<-R> flag,  ._target  is
 appended to the directory. Only one file per invocation of the
 xdcp pull command can be pulled from the specified  targets.
 Hierarchy is not automatically support yet.   You must first pull
@@ -262,7 +264,7 @@ for remote command execution on node targets.
 =item B<-R>|B<--recursive> I<recursive>
 
 Recursively  copies files from a local directory to the remote
-targets, or when specified with the -P flag, recursively pulls
+targets, or when specified with the B<-P> flag, recursively pulls
 (copies)  files  from  a remote directory to the local host. A
 single source directory can be specified using the source_file
 parameter.
@@ -270,7 +272,7 @@ parameter.
 
 =item B<-s> I<synch service nodes>
 
-Will only sync the files listed in the synclist (-F), to the service
+Will only sync the files listed in the synclist (B<-F>), to the service
 nodes for the input compute node list. The files will be placed in the
 directory defined by the site.SNsyncfiledir attribute, or the default
 /var/xcat/syncfiles directory. 
@@ -279,8 +281,8 @@ directory defined by the site.SNsyncfiledir attribute, or the default
 
 Specifies the time, in seconds, to wait for output from any
 currently executing remote targets. If no output is
-available  from  any  target in the specified I<timeout>, B<xdsh>
-displays an error and terminates execution for the remote
+available  from  any  target in the specified I<timeout>, 
+B<xdsh> displays an error and terminates execution for the remote
 targets  that  failed to respond. If I<timeout> is not specified,
 B<xdsh> waits indefinitely to continue processing output  from
 all  remote  targets.  When specified with the B<-i> flag, the

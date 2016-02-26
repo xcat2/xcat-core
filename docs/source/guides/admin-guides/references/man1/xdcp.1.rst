@@ -19,7 +19,7 @@ xdcp.1
 ****************
 
 
-\ **xdcp**\  \ *noderange*\   [[\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-R**\ ] [\ **-t**\  \ *timeout*\ ] [\ **-T**\ ] [\ **-v**\ ] [\ **-q**\ ] [\ **-X**\  \ *env_list*\ ] \ *sourcefile.... targetpath*\ 
+\ **xdcp**\  \ *noderange*\   [[\ **-B**\  | \ **-**\ **-bypass**\ ] [\ **-f**\  \ *fanout*\ ] [\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-o**\  \ *node_options*\ ] [\ **-p**\ ] [\ **-P**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-R**\ ] [\ **-t**\  \ *timeout*\ ] [\ **-T**\ ] [\ **-v**\ ] [\ **-q**\ ] [\ **-X**\  \ *env_list*\ ] \ *sourcefile.... targetpath*\ 
 
 \ **xdcp**\  \ *noderange*\   [\ **-F**\  \ *rsync input file*\ ]
 
@@ -36,15 +36,13 @@ xdcp.1
 
 
 The \ **xdcp**\  command concurrently copies files  to  or  from  remote  target
-nodes. The command issues a remote copy com-
-mand for each node or device specified. When files are  pulled  from  a
-target,  they  are  placed  into  the  target_path with the name of the
+nodes. The command issues a remote copy command for each node or device specified. When files are  pulled  from a target,  they  are  placed  into  the  target_path with the name of the
 remote node or device appended to  the  copied  source_file  name.  The
 /usr/bin/rcp command is the model for syntax and security. 
 If using hierarchy, then xdcp runs on the service node that is servicing the compute node. The file will first be copied to the path defined in the site table, SNsyncfiledir attribute, or the default path /var/xcat/syncfiles on the service node, if the attribute is not defined. The -P flag will not automatically copy
 the files from the compute node to the Management node, hierarchically.  There
-is a two step process, see -P flag.  
-If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn. When the \ **xdcp**\  command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (cp) command.
+is a two step process, see \ **-P**\  flag.  
+If the Management Node is target node, it must be defined in the xCAT database with nodetype=mn. When the \ **xdcp**\  command runs the Management Node as the target, it does not use remote commands but uses the local OS copy (\ **cp**\ ) command.
 
 \ **REMOTE**\  \ **USER**\ :
 
@@ -53,6 +51,7 @@ specification is identical for the xdcp and xdsh commands.  See  the  xdsh
 command for more information.
 
 \ **REMOTE**\  \ **COMMAND**\  \ **COPY**\ :
+
 The  \ **xdcp**\   command  uses  a  configurable remote copy command to execute
 remote copies on remote targets. Support is explicitly  provided  for
 Remote  Shell  rcp  command,  the  OpenSSH  scp  command  and  the
@@ -65,24 +64,23 @@ ing order of precedence:
 
 2. The \ **/usr/bin/scp**\  command.
 
-\ **COMMAND**\  \ **EXECUTIONS**\ 
+\ **COMMAND**\  \ **EXECUTIONS**\ :
+
 The  maximum  number  of  concurrent remote copy command processes (the
-fanout) can be specified with the -f flag or the DSH_FANOUT environment
+fanout) can be specified with the \ **-f**\  flag or the DSH_FANOUT environment
 variable.  The  fanout is only restricted by the number of remote shell
 commands that can be run in  parallel.  You  can  experiment  with  the
 DSH_FANOUT  value on your management server to see if higher values are
 appropriate.
 
 A timeout value for remote copy command execution can be specified with
-the  -t  flag or DSH_TIMEOUT environment variable. If any remote target
+the \ **-t**\  flag or DSH_TIMEOUT environment variable. If any remote target
 does not respond within the timeout value, the xdcp command displays  an
 error message and exits.
 
-The  -T flag provides diagnostic trace information for dcp command exe-
-cution. Default settings and the actual remote copy commands  that  are
-executed to the remote targets are displayed.
+The \ **-T**\  flag provides diagnostic trace information for dcp command execution. Default settings and the actual remote copy commands that are executed to the remote targets are displayed.
 
-The  xdcp  command can be executed silently using the -Q flag; no target
+The \ **xdcp**\  command can be executed silently using the \ **-Q**\  flag; no target
 standard output or standard error is displayed.
 
 
@@ -114,19 +112,25 @@ standard output or standard error is displayed.
  
 
 
+\ **-B | -**\ **-bypass**\ 
+ 
+ Runs in bypass mode, use if the xcatd daemon is hung.
+ 
+
+
 \ **-f | -**\ **-fanout**\  \ *fanout_value*\ 
  
  Specifies a fanout value for the maximum number of  concur-
  rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  If  \ **-f**\ 
- is not specified, a default fanout value of \ **64**\  is used.
+ can be specified by indicating a fanout value of \ **1**\ .  
+ If \ **-f**\  is not specified, a default fanout value of \ **64**\  is used.
  
 
 
 \ **-F | -**\ **-File**\  \ *rsync input file*\ 
  
  Specifies the path to the file that will be used to  
- build the rsync command.
+ build the \ **rsync**\  command.
  The format of the input file is as follows, each line contains:
  
  
@@ -152,11 +156,12 @@ standard output or standard error is displayed.
  
  
  For example:
- /etc/password /etc/hosts -> /etc
  
  
  .. code-block:: perl
  
+    /etc/password /etc/hosts -> /etc
+  
     /tmp/file2  ->  /tmp/file2
   
     /tmp/file2  ->  /tmp/
@@ -289,7 +294,7 @@ standard output or standard error is displayed.
  the  target_path  directory on the local host. The target_path
  must be a directory. Files pulled from  remote  machines  have
  ._target  appended  to  the  file  name to distinguish between
- them. When the -P flag is used with the -R flag,  ._target  is
+ them. When the \ **-P**\  flag is used with the \ **-R**\  flag,  ._target  is
  appended to the directory. Only one file per invocation of the
  xdcp pull command can be pulled from the specified  targets.
  Hierarchy is not automatically support yet.   You must first pull
@@ -318,7 +323,7 @@ standard output or standard error is displayed.
 \ **-R | -**\ **-recursive**\  \ *recursive*\ 
  
  Recursively  copies files from a local directory to the remote
- targets, or when specified with the -P flag, recursively pulls
+ targets, or when specified with the \ **-P**\  flag, recursively pulls
  (copies)  files  from  a remote directory to the local host. A
  single source directory can be specified using the source_file
  parameter.
@@ -327,7 +332,7 @@ standard output or standard error is displayed.
 
 \ **-s**\  \ *synch service nodes*\ 
  
- Will only sync the files listed in the synclist (-F), to the service
+ Will only sync the files listed in the synclist (\ **-F**\ ), to the service
  nodes for the input compute node list. The files will be placed in the
  directory defined by the site.SNsyncfiledir attribute, or the default
  /var/xcat/syncfiles directory.
@@ -338,8 +343,8 @@ standard output or standard error is displayed.
  
  Specifies the time, in seconds, to wait for output from any
  currently executing remote targets. If no output is
- available  from  any  target in the specified \ *timeout*\ , \ **xdsh**\ 
- displays an error and terminates execution for the remote
+ available  from  any  target in the specified \ *timeout*\ , 
+ \ **xdsh**\  displays an error and terminates execution for the remote
  targets  that  failed to respond. If \ *timeout*\  is not specified,
  \ **xdsh**\  waits indefinitely to continue processing output  from
  all  remote  targets.  When specified with the \ **-i**\  flag, the
