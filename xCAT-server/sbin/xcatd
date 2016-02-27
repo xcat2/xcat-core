@@ -1057,7 +1057,7 @@ unless ($cmdlog_svrpid){
 
     $SIG{USR2} = sub {
         while($writing){sleep(0.01);}
-        if($cmdlogfile){close($cmdlogfile);umask($cmdlog_logfile_umask);}
+        if($cmdlogfile){close($cmdlogfile);}
         if($clientsock){close($clientsock);}
         if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
@@ -1067,7 +1067,7 @@ unless ($cmdlog_svrpid){
 
     $SIG{TERM} = $SIG{INT} = sub {
         while($writing){sleep(0.01);}
-        if($cmdlogfile){close($cmdlogfile);umask($cmdlog_logfile_umask);}
+        if($cmdlogfile){close($cmdlogfile);}
         if($clientsock){close($clientsock);}
         if( -e $cmdlogservicefile){ unlink("$cmdlogservicefile");}
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
@@ -1096,7 +1096,6 @@ unless ($cmdlog_svrpid){
         }
         if(!$trytime){
             xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
-            umask($cmdlog_logfile_umask);
             kill 'INT', $$;
         }else{
             xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
@@ -1141,10 +1140,12 @@ unless ($cmdlog_svrpid){
 
     $cmdlog_logfile_umask = umask(0077);
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
+        umask($cmdlog_logfile_umask);
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
         if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
         exit(0);
     }
+    umask($cmdlog_logfile_umask);
     select($cmdlogfile);
     $|=1;
     $cmdlogfileswitch=1;
@@ -1167,7 +1168,7 @@ unless ($cmdlog_svrpid){
         $writing=0;
     }
 
-    if($cmdlogfile){close($cmdlogfile);umask($cmdlog_logfile_umask);}
+    if($cmdlogfile){close($cmdlogfile);}
     if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
     xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ stop");
 }
