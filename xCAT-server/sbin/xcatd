@@ -1897,6 +1897,12 @@ sub plugin_command {
             $xcatresponses{xcatresponse}=[];
         }
     }
+    if ($check_fds->count > 0) {
+        my %resp_timeout = ('errorcode'=>[1],
+                            'data'=>["Warning: Process terminated due to IO timeout, the following output may not complete.\n"]);
+        push @{$xcatresponses{xcatresponse}},\%resp_timeout;
+        relay_fds($check_fds,$xcatresponses{xcatresponse});
+    }
     if (scalar(@{$xcatresponses{xcatresponse}})) {
         send_response(\%xcatresponses,$sock);
         $xcatresponses{xcatresponse}=[];
