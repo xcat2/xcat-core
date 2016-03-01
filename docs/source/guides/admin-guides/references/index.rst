@@ -26,7 +26,7 @@ The following tools are shipped with xCAT and have been contributed by various x
 
 
 .. toctree::
-   :maxdepth:1
+   :maxdepth: 1
 
    tools/detect_dhcpd.rst
    tools/mac2linklocal.rst

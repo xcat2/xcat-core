@@ -14,11 +14,12 @@ NAME
 \ **xcatdebug**\  - Enable or disable the trace facilities for xCAT. (Only supports Linux Operating System)
 
 
-****************************************************************************************************************************************************************************
+********
 SYNOPSIS
-\ **xcatdebug**\  { [\ **-f enable**\  | \ **disable**\  [\ **-c**\  {\ *configuration file*\  | \ *subroutine list*\ }]] | [ \ **-d enable**\  | \ **disable**\ ]}
-****************************************************************************************************************************************************************************
+********
 
+
+\ **xcatdebug**\  { [\ **-f enable**\  | \ **disable**\  [\ **-c**\  {\ *configuration file*\  | \ *subroutine list*\ }]] | [ \ **-d enable**\  | \ **disable**\ ]}
 
 
 ***********

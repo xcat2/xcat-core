@@ -168,9 +168,8 @@ FILES
 /opt/xcat/bin/switchdiscover
 
 
-*********
+********
 SEE ALSO
-
-*********
+********
 
 

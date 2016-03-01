@@ -111,13 +111,7 @@ DSH_PATH=$PATH
 The  \ **-E**\  flag exports a local environment definition file to each remote
 target. Environment variables specified in this file are defined in the
 remote shell environment before the \ *command_list*\  is executed.
-The definition file should contain entries like the following and be executable.  One environment variable per line.
-
-
-.. code-block:: perl
-
-  export NEWENVVARIABLE="yes"
-  export ANOTHERENVVARIABLE="yes"
+The file should be executable and contain one environment variable per line.
 
 
 \ **COMMAND**\  \ **EXECUTION**\ :
@@ -206,7 +200,8 @@ running commands, are terminated (SIGTERM).
  This flag will have xdsh remove all files from the subdirectories of the
  the directory on the servicenodes, where xdcp stages the copy to the 
  compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
- attribute, when the target is a service node. 
+ attribute, when the target is a service node.
+ 
  It can also be used to remove the nodesyncfiledir directory on the compute 
  nodes, which keeps the backup copies of files for the xdcp APPEND function
  support, if a compute node is the target.
@@ -283,6 +278,7 @@ running commands, are terminated (SIGTERM).
  Set up the SSH keys for the user running the command to the specified node list.
  The userid must have the same uid, gid and password as the userid on the node
  where the keys will be setup.
+ 
  If the current user is root,  roots public ssh keys will be put in the
  authorized_keys\* files under roots .ssh directory on the node(s).
  If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
