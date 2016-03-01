@@ -1,5 +1,5 @@
-Building the Kit Tarfile
--------------------------
+Build Tar File
+==============
 
 After the Kit package repositories are built, run the ``buildtar`` subcommand in the Kit directory to build the final kit tarfile.  ::
 
@@ -15,7 +15,8 @@ A partial kit will have "NEED_PRODUCT_PKGS" string in its name: ::
 
 
 Using Partial Kits with newer Software Versions
-````````````````````````````````````````````````
+------------------------------------------------
+
 If the product packages are for a newer version or release than what specified in the partial kit tar file name, user may still be able to build a complete kit with the packages, assuming that the partial kit is compatible with those packages.
 
 Note: Basically, the latest partial kit available online will work until there is a newer version available.
@@ -29,7 +30,8 @@ For example, if the partial kit was created for a product version of 1.3.0.2 but
 
 
 Completing a partial kit
-`````````````````````````
+------------------------
+
 Follow these steps to complete the kit build process for a partial kit.
 
   #. copy the partial kit to a working directory
@@ -41,7 +43,7 @@ Follow these steps to complete the kit build process for a partial kit.
 
     buildkit addpkgs <kit.NEED_PRODUCT_PKGS.tar.bz2> --pkgdir <product package directories>
 
-The Complete kit tar file will be created in the working directory
+The complete kit tar file will be created in the working directory
 
 
 

@@ -1,5 +1,5 @@
-Building the Kit Package Repositories
--------------------------------------
+Build Kit Repositories
+======================
 
 After the buildkit configuration file is validated, run the ``buildrepo`` subcommand to build the Kit Package Repositories.  The build server has to have same OS distributions, versions, or architectures with build kit repositories. User can copy the kit template directory to an appropriate server to build the repository then copy the results back the current system.
 
