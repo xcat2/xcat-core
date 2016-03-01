@@ -888,6 +888,8 @@ sub build_xmldesc {
     }
     if (defined($hypcpumodel) and $hypcpumodel eq 'ppc64') {
         $xtree{devices}->{emulator}->{content} = "/usr/bin/qemu-system-ppc64";
+    } else {
+        $xtree{devices}->{sound}->{model}='ac97';
     }
 
     $xtree{devices}->{console}->{type} = 'pty';
