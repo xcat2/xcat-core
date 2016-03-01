@@ -1,26 +1,22 @@
-Installing the xCAT-buildkit
------------------------------
+Requirements
+============
 
-The xCAT-buildkit RPM is required to build a kit.  It will be installed automatically as part of installing base xCAT. If the build server is not an xCAT management node, it can be
+The ``xCAT-buildkit`` rpm is required to create xCAT Software Kits.  This rpm should be installed along with the rest of xCAT.
 
-    #. Download the xCAT tar file and install the xCAT-buildkit RPM from the local repositroy
-    #. Install the RPM directly from the internet-hosted repository
+If the xCAT management node is not intended to be used to build the Software Kit, refer to the :doc:`Install Guide </guides/install-guides/index>` to configure the xCAT repository on the target node and install ``xCAT-buildkit`` using one of the following commands:
 
-Once the repositories are setup, install xCAT-buildkit and all its dependencies.
-
-**[RHEL]** ::
+* **[RHEL]** ::
 
    yum clean metadata
    yum install xCAT-buildkit
 
-**[SLES]** ::
+* **[SLES]** ::
 
-  zypper clean
-  zypper install xCAT-buildkit
+   zypper clean
+   zypper install xCAT-buildkit
 
+* **[UBUNTU]** ::
 
-**[UBUNTU]** ::
-
-  apt-get clean
-  apt-get install xcat-buildkit
+   apt-get clean
+   apt-get install xcat-buildkit
 
