@@ -1,5 +1,5 @@
 Building Kits
-===================
+=============
 
 .. toctree::
    :maxdepth: 2
@@ -9,5 +9,4 @@ Building Kits
    validatekit.rst
    kitrepo.rst
    kittarfile.rst
-
 
