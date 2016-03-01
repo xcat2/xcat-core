@@ -141,28 +141,27 @@ The **domain** and **nameservers** values must be set correctly in **/etc/resolv
 
    *  Add the TSIG to the named.conf of your external dns for makedns command to update external dns ::
 
-      tabdump -w key==omapi passwd
-      get the key like "omapi","xcat_key","MFRCeHJybnJxeVBNaE1YT1BFTFJzN2JuREFMeEMwU0U=",,,,
-      Add it to your named.conf
-      key xcat_key {
-           algorithm hmac-md5;
-           secret "MFRCeHJybnJxeVBNaE1YT1BFTFJzN2JuREFMeEMwU0U=";
-      };
+         tabdump -w key==omapi passwd
+         get the key like "omapi","xcat_key","MFRCeHJybnJxeVBNaE1YT1BFTFJzN2JuREFMeEMwU0U=",,,,
+         Add it to your named.conf
+         key xcat_key {
+              algorithm hmac-md5;
+              secret "MFRCeHJybnJxeVBNaE1YT1BFTFJzN2JuREFMeEMwU0U=";
+         };
 
-   * Then change each zone to make your zones to allow this key to update.
-      zone "1.168.192.IN-ADDR.ARPA." in {
-           type master;
-           allow-update {
-                   key xcat_key;
-           };
-           file "db.192.168.1";
-      };
+   * Then change each zone to make your zones to allow this key to update. ::
 
-    * To update the name resolution entries from /etc/hosts or hosts table of xCAT MN to external dns
+         zone "1.168.192.IN-ADDR.ARPA." in {
+              type master;
+              allow-update {
+                      key xcat_key;
+              };
+              file "db.192.168.1";
+         };
 
-    ``makedns -e``
+    * To update the name resolution entries from ``/etc/hosts`` or hosts table of xCAT MN to external DNS, run ``makedns -e`` 
 
-    Alternatively, you can set site.externaldns=1 and run ``makedns``
+      Alternatively, you can set site.externaldns=1 and run ``makedns``
 
 Option #3: Run DNS on Management Node and Service Nodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

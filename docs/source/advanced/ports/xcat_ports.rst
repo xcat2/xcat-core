@@ -101,112 +101,148 @@ xCAT Port Usage Table
 +--------------+-------------+-------------+------------+----------------------------------------+
 
 * xcatdport
-The port used by the xcatd daemon for client/server communication.
+
+  The port used by the xcatd daemon for client/server communication.
 
 * xcatiport
-The port used by xcatd to receive install status updates from nodes.
+
+  The port used by xcatd to receive install status updates from nodes.
 
 * xcatlport
-The port used by xcatd to record command log, you can customize it by edit site table, if you don't configure it, 3003 will be used by default. 
+
+  The port used by xcatd to record command log, you can customize it by edit site table, if you don't configure it, 3003 will be used by default. 
 
 * echo-udp
-Needed by RSCT Topology Services.
+
+  Needed by RSCT Topology Services.
 
 * ssh-udp
-Needed to use ssh. This service defines the protocol for upd. This is required when installing or running updatenode, xdsh,xdcp,psh,pcp through the firewall.
+
+  Needed to use ssh. This service defines the protocol for upd. This is required when installing or running updatenode, xdsh,xdcp,psh,pcp through the firewall.
 
 * rsync
-Need to use updatenode or xdcp to rsync files to the nodes or service nodes.
+
+  Need to use updatenode or xdcp to rsync files to the nodes or service nodes.
 
 * domain-tcp
-Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for tcp DNS traffic. 
+
+  Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for tcp DNS traffic. 
 
 * domain-udp 
-Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for udp DNS traffic.
+
+  Used when Domain Name Services (DNS) traffic from the Non-trusted nodes and the firewall node to a DNS server is explicitly handled by the firewall. Some firewall applications can be configured to explicitly handle all DNS traffic. This for udp DNS traffic.
 
 * bootps
-Bootp server port needed when installing an Non-trusted AIX or System p node through the firewall. This service is issued by the client to the Management Node , for an install request. It is not required to install the Non-trusted nodes through the firewall or to apply maintenance. This is the reason why the service is considered optional.
+
+  Bootp server port needed when installing an Non-trusted AIX or System p node through the firewall. This service is issued by the client to the Management Node , for an install request. It is not required to install the Non-trusted nodes through the firewall or to apply maintenance. This is the reason why the service is considered optional.
 
 * dhcp
-Needed to install Linux nodes through the firewall. This is the port for the dhcp server. This service defines the protocol for tcp.
+
+  Needed to install Linux nodes through the firewall. This is the port for the dhcp server. This service defines the protocol for tcp.
 
 * dhcpc
-Needed to install Linux through the firewall. This is the port for the dhcp client. This service defines the protocol for tcp.
+
+  Needed to install Linux through the firewall. This is the port for the dhcp client. This service defines the protocol for tcp.
 
 * bootpc
-Bootp client port needed when installing an Non-trusted AIX or System p node through the firewall. This service is issued by the Management Node back to the client, in response to an install request from the client. It is not required to install the Non-trusted nodes through the firewall or to apply maintenance. This is the reason why the service is considered optional.
+
+  Bootp client port needed when installing an Non-trusted AIX or System p node through the firewall. This service is issued by the Management Node back to the client, in response to an install request from the client. It is not required to install the Non-trusted nodes through the firewall or to apply maintenance. This is the reason why the service is considered optional.
 
 * tftp-tcp
-Needed to install Linux nodes. This service defines the protocol for tcp.
+
+  Needed to install Linux nodes. This service defines the protocol for tcp.
 
 * tftp-udp
-Needed to install Linux nodes. This service defines the protocol for udp.
+
+  Needed to install Linux nodes. This service defines the protocol for udp.
 
 * www-tcp
-Needed to use World Wide Web http.This service defines the protocol for tcp.
+
+  Needed to use World Wide Web http.This service defines the protocol for tcp.
 
 * www-udp
-Needed to use World Wide Web http. This service defines the protocol for udp.
+
+  Needed to use World Wide Web http. This service defines the protocol for udp.
 
 * kerberos
-Kerberos Version 5 KDC. Needed if running Kerberos Version 5 remote command authentication. This service defines the protocol for tcp.
+
+  Kerberos Version 5 KDC. Needed if running Kerberos Version 5 remote command authentication. This service defines the protocol for tcp.
 
 * kerberos
-Kerberos Version 5 KDC. Needed if running Kerberos Version 5 remote command authentication. This service defines the protocol for udp.
+
+  Kerberos Version 5 KDC. Needed if running Kerberos Version 5 remote command authentication. This service defines the protocol for udp.
 
 * sunrpc-udp
-The portmapper service. Needed when installing a Non-trusted node through the firewall. Specifically required mount request that takes place during node install. 
+
+  The portmapper service. Needed when installing a Non-trusted node through the firewall. Specifically required mount request that takes place during node install. 
 
 * shell 
-Used when rsh/rcp is enabled for Standard (std) authentication protocol. Needed for xdsh operations when using rsh for remote commands.
+
+  Used when rsh/rcp is enabled for Standard (std) authentication protocol. Needed for xdsh operations when using rsh for remote commands.
 
 * rsyslogd
-Used for system log monitoring. This is for tcp protocol.
+
+  Used for system log monitoring. This is for tcp protocol.
 
 * rsyslogd
-Used for system log monitoring. This is for udp protocol.
+
+  Used for system log monitoring. This is for udp protocol.
 
 * kshell
-Used rsh/rcp is enabled for Kerberos authentication. Not currently supported in xCAT. Network Installation Management client traffic generated by an Non-trusted node during node boot/shutdown. Required if using NIM. AIX only.
+
+  Used rsh/rcp is enabled for Kerberos authentication. Not currently supported in xCAT. Network Installation Management client traffic generated by an Non-trusted node during node boot/shutdown. Required if using NIM. AIX only.
 
 * rmc-tcp
-Resource Monitoring and Control (RMC) used for hardware monitoring, key exchange. This is for tcp protocol.
+
+  Resource Monitoring and Control (RMC) used for hardware monitoring, key exchange. This is for tcp protocol.
 
 * rmc-udp
-Resource Monitoring and Control (RMC) used for hardware monitoring, key exchange. This is for udp protocol.
+
+  Resource Monitoring and Control (RMC) used for hardware monitoring, key exchange. This is for udp protocol.
 
 * conserver
-Required on the xCAT management node and service nodes. This service defines the protocol for tcp.
+
+  Required on the xCAT management node and service nodes. This service defines the protocol for tcp.
 
 * nfsd-tcp
-Needed to use the AIX mount command. This service defines the protocol for tcp. Required when installing an Non-trusted node through the firewall. Needed when an installp is issued on an Non-trusted node and the resource exists on the Trusted side.
+
+  Needed to use the AIX mount command. This service defines the protocol for tcp. Required when installing an Non-trusted node through the firewall. Needed when an installp is issued on an Non-trusted node and the resource exists on the Trusted side.
 
 * nfsd-udp
-Needed to use the AIX mount command. This service defines the protocol for udp. Required when installing an Non-trusted node through the firewall.
+
+  Needed to use the AIX mount command. This service defines the protocol for udp. Required when installing an Non-trusted node through the firewall.
 
 * pxe
-Needed to install System x nodes through the firewall. This is the port for the PXE boot server. This service defines the protocol for tcp.
+
+  Needed to install System x nodes through the firewall. This is the port for the PXE boot server. This service defines the protocol for tcp.
 
 * rpc-mount
-Remote Procedure Call (RPM) used in conjunction with NFS mount request. See note 2. ssh-tcp Needed to use ssh. This service defines the protocol for tcp. This is required when installing or running updatenode through the firewall.
+
+  Remote Procedure Call (RPM) used in conjunction with NFS mount request. See note 2. ssh-tcp Needed to use ssh. This service defines the protocol for tcp. This is required when installing or running updatenode through the firewall.
  
 * mount-tcp
-Needed to use the AIX mount command. This service defines the protocol for tcp. Required when installing an Non-trusted node through the firewall. Needed when installp is issued on an Non-trusted node and the resource exists on the Trusted side. Needed to run updatenode command. See note 1.
+
+  Needed to use the AIX mount command. This service defines the protocol for tcp. Required when installing an Non-trusted node through the firewall. Needed when installp is issued on an Non-trusted node and the resource exists on the Trusted side. Needed to run updatenode command. See note 1.
 
 * mount-udp
-Needed to use the AIX mount command. This service defines the protocol for udp. Needed when installp is issued on an Non-trusted node and the resource exists on the Trusted side. Needed to run updatenode command. See note 1.
+
+  Needed to use the AIX mount command. This service defines the protocol for udp. Needed when installp is issued on an Non-trusted node and the resource exists on the Trusted side. Needed to run updatenode command. See note 1.
 
 * awk
-For awk communication during node discovery.
+
+  For awk communication during node discovery.
 
 * impi
-For ipmi traffic.
+
+  For ipmi traffic.
 
 * snmp
-For SNMP communication to blade chassis.
+
+  For SNMP communication to blade chassis.
 
 * snmptrap
-For SNMP communication to blade chassis.
+
+  For SNMP communication to blade chassis.
 
 Note 1 - AIX mount
 ``````````````````
