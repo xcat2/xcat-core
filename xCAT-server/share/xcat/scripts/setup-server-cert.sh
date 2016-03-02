@@ -23,7 +23,7 @@ fi
 mkdir -p $XCATDIR/cert
 cd $XCATDIR/cert
 openssl genrsa -out server-key.pem 2048
-export SAN=DNS:`hostname --long`,DNS:`hostname --short`
+export SAN="DNS:`hostname --long`,DNS:`hostname --short`"
 openssl req -config $XCATCADIR/openssl.cnf -new -key server-key.pem -out server-req.pem -extensions server -subj "/CN=$CNA"
 cp server-req.pem  $XCATDIR/ca/`hostname`.csr
 cd -
