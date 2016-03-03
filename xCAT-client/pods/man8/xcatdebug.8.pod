@@ -3,6 +3,7 @@
 B<xcatdebug> - Enable or disable the trace facilities for xCAT. (Only supports Linux Operating System)
 
 =head1 SYNOPSIS
+
 B<xcatdebug> { [B<-f enable> | B<disable> [B<-c> {I<configuration file> | I<subroutine list>}]] | [ B<-d enable> | B<disable>]}
 
 =head1 DESCRIPTION

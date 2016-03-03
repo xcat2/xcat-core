@@ -98,7 +98,7 @@ def fix_double_dash(rst_file):
 build_db_man_pages()
 
 # List the xCAT component directory which contain pod pages
-COMPONENTS = ['xCAT-SoftLayer', 'xCAT-test', 'xCAT-client', 'xCAT-vlan', 'perl-xCAT']
+COMPONENTS = ['xCAT-SoftLayer', 'xCAT-test', 'xCAT-client', 'xCAT-vlan', 'perl-xCAT', 'xCAT-buildkit']
 
 for component in COMPONENTS: 
     for root,dirs,files in os.walk("%s" %(component)):

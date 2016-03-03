@@ -8,18 +8,16 @@ Configuration for Diskless Installation
 	cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist \
 	   /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
 
-  b) Edit your ``/install/custom/netboot/<ostype>/<profile>.pkglist`` and add below line
-    ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#``
+  b) Edit ``/install/custom/netboot/<ostype>/<profile>.pkglist`` and add ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#``
 
-    Take RHEL 6.4 on x86_64 for example ::
+     For example, on RHEL 6.4 (x86_64): ::
 
         cp /opt/xcat/share/xcat/netboot/rh/compute.rhels6.x86_64.pkglist \
         /install/custom/netboot/rh/compute.rhels6.x86_64.pkglist
  
-    Edit the ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` and add below line   
-    ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#`` 
+     Edit ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` and add ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#`` 
   
-    Then ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` looks like below ::
+     Then ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` looks like below ::
 
         #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#
         bash 
