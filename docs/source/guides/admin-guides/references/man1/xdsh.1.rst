@@ -19,9 +19,8 @@ xdsh.1
 ****************
 
 
-\ **xdsh**\  \ *noderange*\  [\ **-B**\  \ *bypass*\ ]  [\ **-**\ **-devicetype**\  \ *type_of_device*\ ] [\ **-e**\ ] [\ **-E**\  \ *environment_file*\ ]  [\ **-f**\  \ *fanout*\ ]
-[\ **-L**\ ]  [\ **-l**\   \ *userID*\ ]   [\ **-m**\ ]   [\ **-o**\ 
-\ *node_options*\ ] [\ **-Q**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-s**\ ] [\ **-S**\  \ **csh | ksh**\ ] [\ **-t**\  \ *timeout*\ ]
+\ **xdsh**\  \ *noderange*\  [\ **-B**\  | \ **-**\ **-bypass**\ ]  [\ **-**\ **-devicetype**\  \ *type_of_device*\ ] [\ **-e**\ ] [\ **-E**\  \ *environment_file*\ ]  [\ **-f**\  \ *fanout*\ ]
+[\ **-L**\ ]  [\ **-l**\   \ *userID*\ ] [\ **-m**\ ] [\ **-o**\  \ *node_options*\ ] [\ **-Q**\ ] [\ **-r**\  \ *node_remote_shell*\ ] [\ **-s**\ ] [\ **-S**\  {\ **csh | ksh**\ }] [\ **-t**\  \ *timeout*\ ]
 [\ **-T**\ ] [\ **-v**\ ] [\ **-X**\  \ *env_list*\ ] [\ **-z**\ ] [\ **-**\ **-sudo**\ ] \ *command_list*\ 
 
 \ **xdsh**\  \ *noderange*\   [\ **-K**\ ]
@@ -49,9 +48,8 @@ The \ **xdsh**\  command is an xCAT Distributed Shell Utility.
 
 \ **COMMAND**\  \ **SPECIFICATION**\ :
 
-The commands to execute on the  targets  are  specified  by  the
-\ *command_list*\   \ **xdsh**\   parameter, or executing a local script using the \ **-e**\ 
-flag.
+The commands to execute on the  targets  are  specified by the
+\ *command_list*\   \ **xdsh**\   parameter, or executing a local script using the \ **-e**\  flag.
 
 The syntax for the \ *command_list*\  \ **xdsh**\  parameter is as follows:
 
@@ -61,14 +59,12 @@ where \ *command*\  is the command to run on the remote
 target. Quotation marks are required to ensure that all commands in the
 list are executed remotely, and that any special characters are interpreted
 correctly on the remote target. A script file on the local host can be
-executed on each of the remote targets by using the \ **-e**\ 
-flag. If \ **-e**\  is specified, \ *command_list*\  is the
+executed on each of the remote targets by using the \ **-e**\  flag. If \ **-e**\  is specified, \ *command_list*\  is the
 script name and arguments to the script. For example:
 
 xdsh hostname -e \ *script_filename*\  [\ *arguments*\ ]...
 
-The \ *script_filename*\  file is copied to a random  filename  in  the  \ **/tmp**\ 
-directory on each remote target and then executed on the targets.
+The \ *script_filename*\  file is copied to a random  filename  in  the  \ **/tmp**\  directory on each remote target and then executed on the targets.
 
 The \ **xdsh**\  command does not work with any interactive commands, including
 those that read from standard input.
@@ -102,8 +98,7 @@ dence:
 
 The shell environment used on the remote target defaults to  the  shell
 defined for the \ *user_ID*\  on the remote target.  The command
-syntax that \ **xdsh**\  uses to form the remote commands can be specified using the  \ **-S**\ 
-flag. If \ **-S**\  is not specified, the syntax defaults to \ **sh**\  syntax.
+syntax that \ **xdsh**\  uses to form the remote commands can be specified using the \ **-S**\  flag. If \ **-S**\  is not specified, the syntax defaults to \ **sh**\  syntax.
 
 When  commands  are  executed  on  the  remote target, the path used is
 determined by the \ **DSH_PATH**\  environment variable defined in the shell of
@@ -116,10 +111,14 @@ DSH_PATH=$PATH
 The  \ **-E**\  flag exports a local environment definition file to each remote
 target. Environment variables specified in this file are defined in the
 remote shell environment before the \ *command_list*\  is executed.
-The definition file should contain entries like the following
- and be executable.  One environment variable per line.
+The definition file should contain entries like the following and be executable.  One environment variable per line.
+
+
+.. code-block:: perl
+
   export NEWENVVARIABLE="yes"
   export ANOTHERENVVARIABLE="yes"
+
 
 \ **COMMAND**\  \ **EXECUTION**\ :
 
@@ -196,12 +195,18 @@ running commands, are terminated (SIGTERM).
 
 
 
+\ **-B | -**\ **-bypass**\ 
+ 
+ Runs in bypass mode, use if the xcatd daemon is hung.
+ 
+
+
 \ **-c | -**\ **-cleanup**\ 
  
  This flag will have xdsh remove all files from the subdirectories of the
  the directory on the servicenodes, where xdcp stages the copy to the 
  compute nodes as defined in the site table SNsyncfiledir and nodesyncfiledir
-  attribute, when the target is a service node. 
+ attribute, when the target is a service node. 
  It can also be used to remove the nodesyncfiledir directory on the compute 
  nodes, which keeps the backup copies of files for the xdcp APPEND function
  support, if a compute node is the target.
@@ -247,10 +252,7 @@ running commands, are terminated (SIGTERM).
 
 \ **-f | -**\ **-fanout**\  \ *fanout_value*\ 
  
- Specifies a fanout value for the maximum number of  concur-
- rently  executing  remote shell processes. Serial execution
- can be specified by indicating a fanout value of \ **1**\ .  If  \ **-f**\ 
- is not specified, a default fanout value of \ **64**\  is used.
+ Specifies a fanout value for the maximum number of  concurrently  executing  remote shell processes. Serial execution can be specified by indicating a fanout value of \ **1**\ . If  \ **-f**\  is not specified, a default fanout value of \ **64**\  is used.
  
 
 
@@ -280,7 +282,7 @@ running commands, are terminated (SIGTERM).
  
  Set up the SSH keys for the user running the command to the specified node list.
  The userid must have the same uid, gid and password as the userid on the node
-  where the keys will be setup.
+ where the keys will be setup.
  If the current user is root,  roots public ssh keys will be put in the
  authorized_keys\* files under roots .ssh directory on the node(s).
  If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
@@ -289,14 +291,13 @@ running commands, are terminated (SIGTERM).
  Other device types, such as IB switch, are also supported.  The
  device should be defined as a node and nodetype should be defined 
  as switch before connecting.
- The xdsh -K command must be run from the Management Node.
+ The \ **xdsh -K**\  command must be run from the Management Node.
  
 
 
 \ **-l | -**\ **-user**\  \ *user_ID*\ 
  
- Specifies a remote user name to use for remote command exe-
- cution.
+ Specifies a remote user name to use for remote command execution.
  
 
 
@@ -335,9 +336,7 @@ running commands, are terminated (SIGTERM).
 
 \ **-Q | -**\ **-silent**\ 
  
- Specifies silent mode. No target output is written to stan-
- dard output or  standard  error.  Monitoring  messages  are
- written to standard output.
+ Specifies silent mode. No target output is written to standard output or  standard  error.  Monitoring  messages are written to standard output.
  
 
 
@@ -356,18 +355,18 @@ running commands, are terminated (SIGTERM).
  
 
 
-\ **-S | -**\ **-syntax**\  \ **csh | ksh**\ 
+\ **-S | -**\ **-syntax**\  {\ **csh | ksh**\ }
  
  Specifies the shell syntax to be used on the remote target.
  If not specified, the \ **ksh**\  syntax is used.
  
 
 
-\ **-**\ **-sudo | -**\ **-sudo**\ 
+\ **-**\ **-sudo**\ 
  
- Adding the --sudo flag to the xdsh command will have xdsh run sudo before
- running the command.  This is particular useful when using the -e option.
- This is required when you input -l with a non-root user id and want that id
+ Adding the \ **-**\ **-sudo**\  flag to the xdsh command will have xdsh run sudo before
+ running the command.  This is particular useful when using the \ **-e**\  option.
+ This is required when you input \ **-l**\  with a non-root user id and want that id
  to be able to run as root on the node.  The non-root userid will must be 
  previously defined as an xCAT user, see process for defining non-root ids in
  xCAT and setting up for using xdsh.  The userid sudo setup will have 
@@ -545,13 +544,13 @@ running commands, are terminated (SIGTERM).
 
 
 To provide backward compatibility for scripts written using dsh in
-AIX and CSM, a tool has been provide \ **groupfiles4dsh**\ ,
+AIX and CSM, a tool has been provided \ **groupfiles4dsh**\ ,
 which will build node group files from the
-xCAT database that can be used by dsh. See man groupfiles4dsh.
+xCAT database that can be used by dsh. See \ **man groupfiles4dsh**\ .
 
 
 ****************
-\ **Security**\ 
+\ **SECURITY**\ 
 ****************
 
 
@@ -569,7 +568,7 @@ userdefined.
 
 
 *******************
-\ **Exit Status**\ 
+\ **EXIT STATUS**\ 
 *******************
 
 
@@ -577,7 +576,7 @@ The dsh command exit code is 0 if the command executed without errors and all re
 
 
 ****************
-\ **Examples**\ 
+\ **EXAMPLES**\ 
 ****************
 
 
@@ -607,7 +606,7 @@ The dsh command exit code is 0 if the command executed without errors and all re
  
  .. code-block:: perl
  
-   xdsh node1,node2  -o"-v -t" ps
+   xdsh node1,node2  -o "-v -t" ps
  
  
 
