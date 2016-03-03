@@ -11,8 +11,10 @@ For example, for osimage rhels7-x86_64-install-service ::
 
     mkdir -p /install/post/otherpkgs/**rhels7**/x86_64/xcat
     cd /install/post/otherpkgs/**rhels7**/x86_64/xcat
-    tar jxvf core-rpms-snap.tar.bz2
-    tar jxvf xcat-dep-*.tar.bz2
+    bunzip2 core-rpms-snap.tar.bz2
+    tar -xvf core-rpms-snap.tar
+    bunzip2 xcat-dep-*.tar.bz2
+    tar -xvf xcat-dep-*.tar
 
 Next, add rpm names into your own version of service.<osver>.<arch>.otherpkgs.pkglist file. In most cases, you can find an initial copy of this file under ``/opt/xcat/share/xcat/install/<platform>`` . Or copy one from another similar platform. :: 
 
