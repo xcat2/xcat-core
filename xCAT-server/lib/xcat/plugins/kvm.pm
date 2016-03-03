@@ -3875,7 +3875,7 @@ sub dohyp {
             return 1, "General error establishing libvirt communication";
         }
     }
-    if (($command eq 'mkvm' or $command eq 'chvm') and $hypconn) {
+    if (($command eq 'mkvm' or $command eq 'chvm' or $command eq 'rpower') and $hypconn) {
         my $nodeinfo = $hypconn->get_node_info();
         if (exists($nodeinfo->{model})) {
             $confdata->{$hyp}->{cpumodel} = $nodeinfo->{model};
