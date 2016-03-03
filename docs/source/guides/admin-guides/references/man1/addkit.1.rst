@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **addkit**\  - Install a kit on the xCAT management node
+\ **addkit**\  - Adds product software Kits to an xCAT cluster environmnet.
 
 
 ********
@@ -31,9 +31,10 @@ DESCRIPTION
 ***********
 
 
-The \ **addkit**\  command install a kit on the xCAT management node from a kit tarfile or directory, creating xCAT database definitions for kit, kitrepo, kitcomponent.
+The \ **addkit**\  command installs a kit on the xCAT management node from a kit tarfile or directory.
+It creates xCAT database definitions for the kit, kitrepo, and kitcomponent.
 
-Note: The xCAT support for Kits is only available for Linux operating systems.
+\ **Note:**\  xCAT Kit support is ONLY available for Linux operating systems.
 
 
 *******
@@ -66,15 +67,15 @@ OPTIONS
  
 
 
-\ **-p|--path <path**\ >
+\ **-p|--path**\  \ *path*\ 
  
- The destination directory to which the contents of the kit tarfiles and/or kit deploy dirs will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
+ The destination directory to which the contents of the kit tarfiles and/or kit deploy directories will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
  
 
 
-\ **kitlist**\ 
+\ *kitlist*\ 
  
- a comma delimited list of kit_tarball_files and kit_deploy_dirs that are to be added to the xCAT cluster.  Each entry can be an absolute or relative path.  For kit_tarball_files, these must be valid kits tarfiles added.  For kit_deploy_dirs, these must be fully populated directory structures that are identical to the contents of an expanded kit_tarball_file.
+ A comma delimited list of kit_tarball_files or kit_deploy_directories to be added to the xCAT environment. Each entry can be an absolute or relative path.  See xCAT documentation for more information on building kits.
  
 
 
@@ -94,40 +95,37 @@ EXAMPLES
 ********
 
 
-1. To add two kits from tarball files.
+1. To add kits from tarball files:
 
-addkit kit-test1.tar.bz2,kit-test2.tar.bz2
 
-Output is similar to:
+.. code-block:: perl
 
-Kit /kit/kit-test1.tar.bz2,/kit/kit-test2.tar.bz2 was successfully added.
+  addkit kit-test1.tar.bz2,kit-test2.tar.bz2
 
-2. To add two kits from directories.
 
-addkit kit-test1,kit-test2
+2. To add kits from directories:
 
-Output is similar to:
 
-Kit /kit/kit-test1,/kit/kit-test2 was successfully added.
+.. code-block:: perl
 
-3. To add a kit from tarball file to /install/test directory.
+  addkit kit-test1,kit-test2
 
-addkit -p /install/test kit-test1.tar.bz2
 
-Output is similar to:
+3. To add kits from tarball \ *kit-test1.tar.bz2*\  to target path \ */install/test*\ :
 
-Kit /kit/kit-test1.tar.bz2 was successfully added.
 
-4. To read the general infomration of the kit, without adding the kits to xCAT DB
+.. code-block:: perl
 
-addkit -i kit-test1.tar.bz2
+  addkit -p /install/test kit-test1.tar.bz2
 
-Output is similar to:
 
-kitname=xlc-12.1.0.0-Linux
-description=XLC12 for Linux
-version=12.1.0.0
-ostype=Linux
+4. To see general information about kit \ *kit-test1.tar.bz2*\  without adding the kit to xCAT:
+
+
+.. code-block:: perl
+
+  addkit -i kit-test1.tar.bz2
+
 
 
 ********

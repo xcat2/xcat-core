@@ -19,12 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **lskitcomp**\  [\ **-V**\  | \ **--verbose**\ ] 
-      [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ]
-      [\ **-C**\  | \ **--compattr**\  \ *compattr_names*\ ]
-      [\ **-O**\  | \ **--osdistro**\  \ *os_distro*\ ]
-      [\ **-S**\  | \ **--serverrole**\  \ *server_role*\ ]
-      [kitcomp_names]
+\ **lskitcomp**\  [\ **-V**\  | \ **--verbose**\ ] [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ] [\ **-C**\  | \ **--compattr**\  \ *compattr_names*\ ] [\ **-O**\  | \ **--osdistro**\  \ *os_distro*\ ] [\ **-S**\  | \ **--serverrole**\  \ *server_role*\ ] [\ *kitcomp_names*\ ]
 
 \ **lskitcomp**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
 
@@ -77,31 +72,42 @@ OPTIONS
  
  Need XCATXMLTRACE=1 env when using -x|--xml|--XML.
  Return the output with XML tags.  The data is returned as:
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
-   ...
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
- 
- Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
-   The <kit> sub-tag contains the kit's name.
-   The <kitcomponent> sub-tags store info about the kit's components.
- 
- The data inside <kitinfo> is returned as:
-   <kitinfo>
-      <kit>
-        ...
-      </kit>
  
  
  .. code-block:: perl
  
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+    ...
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+ 
+ 
+ Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
+ 
+ 
+ .. code-block:: perl
+ 
+    The <kit> sub-tag contains the kit's name.
+    The <kitcomponent> sub-tags store info about the kit's components.
+ 
+ 
+ The data inside <kitinfo> is returned as:
+ 
+ 
+ .. code-block:: perl
+ 
+    <kitinfo>
+       <kit>
+         ...
+       </kit>
+  
        <kitcomponent>
          ...
        </kitcomponent>
@@ -136,16 +142,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 

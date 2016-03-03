@@ -82,7 +82,7 @@ OPTIONS
  
 
 
-\ **kitcompname_list**\ 
+\ *kitcompname_list*\ 
  
  A comma-delimited list of valid full kit component names or kit component basenames that are to be removed from the osimage. If a basename is specified, all kitcomponents matching that basename will be removed from the osimage.
  
@@ -106,27 +106,51 @@ EXAMPLES
 
 1. To remove a kit component from osimage
 
-rmkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+.. code-block:: perl
+
+  rmkitcomp -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
+.. code-block:: perl
+
+  kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
 
 2. To remove a kit component even it is still used as a dependency of other kit component.
 
-rmkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+.. code-block:: perl
+
+  rmkitcomp -f -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
+.. code-block:: perl
+
+  kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
 
 3. To remove a kit component from osimage and also remove the kit component meta RPM and package RPM.  So in next genimage for statelss image and updatenode for stateful nodes, the kit component meta RPM and package RPM will be uninstalled.
 
-rmkitcomp -u -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
+.. code-block:: perl
+
+  rmkitcomp -u -i rhels6.2-ppc64-netboot-compute comp-test1-1.0-1-rhels-6.2-ppc64
+
 
 Output is similar to:
 
-kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
+.. code-block:: perl
+
+  kitcomponents comp-test1-1.0-1-rhels-6.2-ppc64 were removed from osimage rhels6.2-ppc64-netboot-compute successfully
+
 
 
 ********

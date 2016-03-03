@@ -19,15 +19,15 @@ SYNOPSIS
 ********
 
 
-\ **buildkit**\  [\ **-? | -h | -**\ **-help**\ ] [\ **-v | -**\ **-version**\ ]
+\ **buildkit**\  [\ **-?**\ |\ **-h**\ |\ **--help**\ ] [\ **-v**\ |\ **--version**\ ]
 
 To build a new Kit
 
-\ **buildkit**\  [\ **-V | -**\ **-verbose]**\  \ *subcommand*\  [\ *kit_name*\ ] [\ *repo_name*\ |\ **all**\ ] [\ **-l | -**\ **-kitloc**\  \ *kit_location*\ ]
+\ **buildkit**\  [\ **-V**\ |\ **--verbose]**\  \ *subcommand*\  [\ *kit_name*\ ] [\ *repo_name*\ |\ **all**\ ] [\ **-l**\ |\ **--kitloc**\  \ *kit_location*\ ]
 
 To add packages to an existing Kit.
 
-\ **buildkit**\  [\ **-V | -**\ **-verbose**\ ] \ *addpkgs*\  \ *kit_tarfile*\  [\ **-p | -**\ **-pkgdir**\  \ *package_directory_list*\ ] [\ **-k | -**\ **-kitversion**\  \ *version*\ ] [\ **-r | -**\ **-kitrelease**\  \ *release*\ ] [\ **-l | -**\ **-kitloc**\  \ *kit_location*\ ]
+\ **buildkit**\  [\ **-V**\ |\ **--verbose**\ ] \ *addpkgs*\  \ *kit_tarfile*\  [\ **-p**\ |\ **--pkgdir**\  \ *package_directory_list*\ ] [\ **-k**\ |\ **--kitversion**\  \ *version*\ ] [\ **-r**\ |\ **--kitrelease**\  \ *release*\ ] [\ **-l**\ |\ **--kitloc**\  \ *kit_location*\ ]
 
 
 ***********
@@ -41,7 +41,7 @@ Note: The xCAT support for Kits is only available for Linux operating systems.
 
 You will need to run the \ **buildkit**\  command several times with different subcommands to step through the process of building a kit:
 
-By default the \ **buildkit**\  subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "\ **-l | -**\ **-kitloc**\  \ *kit_location*\ " option.
+By default the \ **buildkit**\  subcommands will operate in the current working directory, (ie. look for files, create directories etc.).  You could specify a different location by using the "\ **-l | --kitloc**\  \ *kit_location*\ " option.
 
 The \ *kit_location*\  is the full path name of the directory that contains the kit files. You would use the same location value for all the buildkit subcommands.
 
@@ -154,43 +154,43 @@ OPTIONS
 
 
 
-\ **-h |-**\ **-help**\ 
+\ **-h |--help**\ 
  
  Display usage message.
  
 
 
-\ **-k|-**\ **-kitversion**\  \ *version*\ 
+\ **-k|--kitversion**\  \ *version*\ 
  
  Product version.
  
 
 
-\ **-l|-**\ **-kitloc**\  \ *kit_location*\ 
+\ **-l|--kitloc**\  \ *kit_location*\ 
  
  The directory location of the Kit files.
  
 
 
-\ **-p|-**\ **-pkgdir**\  \ *package_directory_list*\ 
+\ **-p|--pkgdir**\  \ *package_directory_list*\ 
  
  A comma-separated list of directory locations for product RPMs.
  
 
 
-\ **-r|-**\ **-kitrelease**\  \ *release*\ 
+\ **-r|--kitrelease**\  \ *release*\ 
  
  Product release.
  
 
 
-\ **-V |-**\ **-verbose**\ 
+\ **-V |--verbose**\ 
  
  Verbose mode.
  
 
 
-\ **-v|-**\ **-version**\ 
+\ **-v|--version**\ 
  
  Command version.
  
@@ -266,7 +266,7 @@ SUB-COMMANDS
 
 \ **addpkgs**\ 
  
- \ *kit_tarfile*\  {\ **-p**\  | \ **-**\ **-pkgdir**\  \ *package_directory_list*\ } [\ **-k**\  | \ **-**\ **-kitversion**\  \ *version*\ ] [\ **-r**\  | \ **-**\ **-kitrelease**\  \ *release*\ ]
+ \ *kit_tarfile*\  {\ **-p**\  | \ **--pkgdir**\  \ *package_directory_list*\ } [\ **-k**\  | \ **--kitversion**\  \ *version*\ ] [\ **-r**\  | \ **--kitrelease**\  \ *release*\ ]
  
  Add product package rpms to a previously built kit tar file.  This is used for partial product kits that are built and shipped separately from the product packages, and are identified with a \ *kit_tarfile*\  name of \ *kitname*\ .\ **NEED_PRODUCT_PKGS.tar.bz2**\ . Optionally, change the kit release and version values when building the new kit tarfile.  If kitcomponent version and/or release values are defaulted to the kit values, those will also be changed and new kitcomponent rpms will be built.  If kit or kitcomponent scripts, plugins, or other files specify name, release, or version substitution strings, these will all be replaced with the new values when built into the new complete kit tarfile \ *kit_location*\ /\ *new_kitname*\ .\ **tar.bz2**\ .
  
