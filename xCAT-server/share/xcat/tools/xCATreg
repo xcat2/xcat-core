@@ -39,7 +39,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 my $date;
-my $regrootdir="/autotest/xCATreg/";
+my $regrootdir="/home/autotest_code";
 my $mailtitle="PPC64LE Cluster";
 #my $regrootdir="/xCATreg";
 #my $mailtitle="X Cluster";
