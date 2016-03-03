@@ -19,13 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **lskit**\  [\ **-V**\  | \ **--verbose**\ ] 
-      [\ **-F**\  | \ **--framework**\  \ *kitattr_names*\ ]
-      [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ]
-      [\ **-K**\  | \ **--kitattr**\  \ *kitattr_names*\ ]
-      [\ **-R**\  | \ **--repoattr**\  \ *repoattr_names*\ ]
-      [\ **-C**\  | \ **--compattr**\  \ *compattr_names*\ ]
-      [kit_names]
+\ **lskit**\  [\ **-V**\  | \ **--verbose**\ ] [\ **-F**\  | \ **--framework**\  \ *kitattr_names*\ ] [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ] [\ **-K**\  | \ **--kitattr**\  \ *kitattr_names*\ ] [\ **-R**\  | \ **--repoattr**\  \ *repoattr_names*\ ] [\ **-C**\  | \ **--compattr**\  \ *compattr_names*\ ] [\ *kit_names*\ ]
 
 \ **lskit**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
 
@@ -86,32 +80,43 @@ OPTIONS
  
  Need XCATXMLTRACE=1 env when using -x|--xml|--XML, for example: XCATXMLTRACE=1  lskit -x testkit-1.0.0
  Return the output with XML tags.  The data is returned as:
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
-   ...
-   <data>
-     <kitinfo>
-        ...
-     </kitinfo>
-   </data>
- 
- Each <kitinfo> tag contains info for one kit.  The info inside <kitinfo> is structured as follows:
-   The <kit> sub-tag contains the kit's basic info.
-   The <kitrepo> sub-tags store info about the kit's repositories.
-   The <kitcomponent> sub-tags store info about the kit's components.
- 
- The data inside <kitinfo> is returned as:
-   <kitinfo>
-      <kit>
-        ...
-      </kit>
  
  
  .. code-block:: perl
  
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+    ...
+    <data>
+      <kitinfo>
+         ...
+      </kitinfo>
+    </data>
+ 
+ 
+ Each <kitinfo> tag contains info for one kit.  The info inside <kitinfo> is structured as follows:
+ 
+ 
+ .. code-block:: perl
+ 
+    The <kit> sub-tag contains the kit's basic info.
+    The <kitrepo> sub-tags store info about the kit's repositories.
+    The <kitcomponent> sub-tags store info about the kit's components.
+ 
+ 
+ The data inside <kitinfo> is returned as:
+ 
+ 
+ .. code-block:: perl
+ 
+    <kitinfo>
+       <kit>
+         ...
+       </kit>
+  
        <kitrepo>
          ...
        </kitrepo>
@@ -151,16 +156,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
@@ -170,9 +171,7 @@ EXAMPLES
 
 
 
-1.
- 
- To list all kits, enter:
+1. To list all kits, enter:
  
  
  .. code-block:: perl
@@ -182,9 +181,7 @@ EXAMPLES
  
 
 
-2.
- 
- To list the kit "kit-test1-1.0-Linux", enter:
+2. To list the kit "kit-test1-1.0-Linux", enter:
  
  
  .. code-block:: perl
@@ -194,9 +191,7 @@ EXAMPLES
  
 
 
-3.
- 
- To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
+3. To list the kit "kit-test1-1.0-Linux" for selected attributes, enter:
  
  
  .. code-block:: perl
@@ -206,15 +201,19 @@ EXAMPLES
  
 
 
-4.
- 
- To list the framework value of a Kit tarfile.
+4. To list the framework value of a Kit tarfile.
  
  
  .. code-block:: perl
  
     lskit -F /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2
-  
+ 
+ 
+ Output is similar to:
+ 
+ 
+ .. code-block:: perl
+ 
     Extracting the kit.conf file from /myhome/mykits/pperte-1.3.0.2-0-x86_64.tar.bz2. Please wait.
     
           kitframework=2
@@ -223,9 +222,7 @@ EXAMPLES
  
 
 
-5.
- 
- To list kit "testkit-1.0-1" with XML tags, enter:
+5. To list kit "testkit-1.0-1" with XML tags, enter:
  
  
  .. code-block:: perl

@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<addkit> - Install a kit on the xCAT management node
+B<addkit> - Adds product software Kits to an xCAT cluster environmnet.
 
 =head1 SYNOPSIS
 
@@ -12,9 +12,10 @@ B<addkit> [B<-V>|B<--verbose>] [B<-p>|B<--path> I<path>] I<kitlist>
 
 =head1 DESCRIPTION
 
-The B<addkit> command install a kit on the xCAT management node from a kit tarfile or directory, creating xCAT database definitions for kit, kitrepo, kitcomponent.
+The B<addkit> command installs a kit on the xCAT management node from a kit tarfile or directory.
+It creates xCAT database definitions for the kit, kitrepo, and kitcomponent.
 
-Note: The xCAT support for Kits is only available for Linux operating systems.
+B<Note:> xCAT Kit support is ONLY available for Linux operating systems.
 
 =head1 OPTIONS
 
@@ -36,13 +37,13 @@ Command version.
 
 Show the summary of the given kits
 
-=item B<-p|--path <path>>
+=item B<-p|--path> I<path>
 
-The destination directory to which the contents of the kit tarfiles and/or kit deploy dirs will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
+The destination directory to which the contents of the kit tarfiles and/or kit deploy directories will be copied.  When this option is not specified, the default destination directory will be formed from the installdir site attribute with ./kits subdirectory.
 
-=item B<kitlist>
+=item I<kitlist>
 
-a comma delimited list of kit_tarball_files and kit_deploy_dirs that are to be added to the xCAT cluster.  Each entry can be an absolute or relative path.  For kit_tarball_files, these must be valid kits tarfiles added.  For kit_deploy_dirs, these must be fully populated directory structures that are identical to the contents of an expanded kit_tarball_file.
+A comma delimited list of kit_tarball_files or kit_deploy_directories to be added to the xCAT environment. Each entry can be an absolute or relative path.  See xCAT documentation for more information on building kits.
 
 =back
 
@@ -54,40 +55,22 @@ a comma delimited list of kit_tarball_files and kit_deploy_dirs that are to be a
 
 =head1 EXAMPLES
 
-1. To add two kits from tarball files.
+1. To add kits from tarball files:
 
-addkit kit-test1.tar.bz2,kit-test2.tar.bz2
+ addkit kit-test1.tar.bz2,kit-test2.tar.bz2
 
-Output is similar to:
+2. To add kits from directories:
 
-Kit /kit/kit-test1.tar.bz2,/kit/kit-test2.tar.bz2 was successfully added.
+ addkit kit-test1,kit-test2
 
-2. To add two kits from directories.
+3. To add kits from tarball I<kit-test1.tar.bz2> to target path I</install/test>:
 
-addkit kit-test1,kit-test2
+ addkit -p /install/test kit-test1.tar.bz2
 
-Output is similar to:
+4. To see general information about kit I<kit-test1.tar.bz2> without adding the kit to xCAT:
 
-Kit /kit/kit-test1,/kit/kit-test2 was successfully added.
+ addkit -i kit-test1.tar.bz2
 
-3. To add a kit from tarball file to /install/test directory.
-
-addkit -p /install/test kit-test1.tar.bz2
-
-Output is similar to:
-
-Kit /kit/kit-test1.tar.bz2 was successfully added.
-
-4. To read the general infomration of the kit, without adding the kits to xCAT DB
-
-addkit -i kit-test1.tar.bz2
-
-Output is similar to:
-
-kitname=xlc-12.1.0.0-Linux
-description=XLC12 for Linux
-version=12.1.0.0
-ostype=Linux
 
 =head1 SEE ALSO
 

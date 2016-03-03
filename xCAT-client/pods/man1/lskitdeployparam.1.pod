@@ -5,10 +5,7 @@ B<lskitdeployparam> - Lists the deployment parameters for one or more Kits or Ki
 
 =head1 SYNOPSIS
 
-B<lskitdeployparam> [B<-V> | B<--verbose>] 
-      [B<-x> | B<--xml> | B<--XML>]
-      [B<-k> | B<--kitname> I<kit_names>]
-      [B<-c> | B<--compname> I<comp_names>]
+B<lskitdeployparam> [B<-V> | B<--verbose>] [B<-x> | B<--xml> | B<--XML>] [B<-k> | B<--kitname> I<kit_names>] [B<-c> | B<--compname> I<comp_names>]
 
 B<lskitdeployparam> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -38,6 +35,7 @@ Where I<comp_names> is a comma-delimited list of kit component names. The B<lski
 =item B<-x|--xml|--XML>
 
 Return the output with XML tags.  The data is returned as:
+
   <data>
     <kitdeployparam>
       <name>KIT_KIT1_PARAM1</name>
@@ -72,11 +70,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back

@@ -1,13 +1,13 @@
 Creating a New Kit
--------------------
+==================
 
-Use the **buildkit** command to create a kit template directory structure ::
+Use the :doc:`buildkit </guides/admin-guides/references/man1/buildkit.1>` command to create a kit template directory structure ::
 
-    buildkit create <kit_basename> [-l|--kitloc <kit location>]
+    buildkit create <kitbasename> [-l|--kitloc <kit location>]
 
 
-The Kit Directory 
-`````````````````
+Kit Directory 
+-------------
 
 The Kit directory location will be automatically  populated with additional subdirecotries and samples: 
 
@@ -39,10 +39,10 @@ The Kit directory location will be automatically  populated with additional subd
 **<kitname>** - The kit tar file, partial kit name or complete kit tar file name (ex. kitname.tar.bz2)
 
 
-The Kit Configuration File
-```````````````````````````
+Kit Configuration File
+----------------------
 
-The sample buildkit.conf file contains a description of all the supported attributes and an indication of whether or not they are required or optional.  The user need to modify this file for the product kit he/she is building. The file contains stanza format.
+The ``buildkit.conf`` file is a sample file that contains a description of all the supported attributes and indicates required or optional fields.  The user needs to modify this file for the software kit to be built. [#]_ 
 
 **kit** --- This stanza defines general information for the Kit.  There must be exactly one kit stanza in a kit build file.  ::
 
@@ -135,24 +135,17 @@ The sample buildkit.conf file contains a description of all the supported attrib
       kitrepoid=rhels6_x86_64,sles11_x86_64
 
 
-**Note**:  The latest version of the buildkit.conf file is located in the ``/opt/xcat/share/xcat/kits/kit_template`` directory.
+.. [#] The latest version of the ``buildkit.conf`` file is located in the ``/opt/xcat/share/xcat/kits/kit_template`` directory.
 
 
 Partial vs. Complete Kits
-`````````````````````````
-A **Complete** software kit includes all the product software.  A **Partial** kit is one that does not include the product packages. the "isexternalpkg=yes" needs to set in the "kitpackage" stanzas in the buildkit.conf file if user wants a parital kit.  ::
+-------------------------
+
+A **complete** software kits includes all the product software and is ready to be consumed as is.   A **partial** software kit is one that does not include all the product packages and requires the consumer to download the product software and complete the kit before it can be consumed.  
+
+To build partial kits, the ``isexternalpkg=yes`` needs to be set in the ``kitpackage`` stanza in the ``buildkit.conf`` file: ::
 
   kitpackage:
     filename=foobar_runtime-*.x86_64.rpm
     kitrepoid=rhels6_x86_64
     isexternalpkg=yes
-
-In this case, the user has to download both the kit tarfiles and the product packages in order to complete the kit before use it in an xCAT cluster.
-
-
-
-
-
-
-
-

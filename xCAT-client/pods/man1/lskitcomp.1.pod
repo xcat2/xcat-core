@@ -5,12 +5,7 @@ B<lskitcomp> - Used to list information for one or more kit components.
 
 =head1 SYNOPSIS
 
-B<lskitcomp> [B<-V> | B<--verbose>] 
-      [B<-x> | B<--xml> | B<--XML>]
-      [B<-C> | B<--compattr> I<compattr_names>]
-      [B<-O> | B<--osdistro> I<os_distro>]
-      [B<-S> | B<--serverrole> I<server_role>]
-      [kitcomp_names]
+B<lskitcomp> [B<-V> | B<--verbose>] [B<-x> | B<--xml> | B<--XML>] [B<-C> | B<--compattr> I<compattr_names>] [B<-O> | B<--osdistro> I<os_distro>] [B<-S> | B<--serverrole> I<server_role>] [I<kitcomp_names>]
 
 B<lskitcomp> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -49,6 +44,7 @@ is a comma-delimited list of kit component names. The B<lskitcomp> command will 
 
 Need XCATXMLTRACE=1 env when using -x|--xml|--XML.
 Return the output with XML tags.  The data is returned as:
+
   <data>
     <kitinfo>
        ...
@@ -62,10 +58,12 @@ Return the output with XML tags.  The data is returned as:
   </data>
 
 Each <kitinfo> tag contains info for a group of kit compoonents belonging to the same kit. The info inside <kitinfo> is structured as follows:
+
   The <kit> sub-tag contains the kit's name.
   The <kitcomponent> sub-tags store info about the kit's components.
 
 The data inside <kitinfo> is returned as:
+
   <kitinfo>
      <kit>
        ...
@@ -97,11 +95,9 @@ Display usage message.
 =over 3
 
 =item 0
-
 The command completed successfully.
 
 =item 1
-
 An error has occurred.
 
 =back

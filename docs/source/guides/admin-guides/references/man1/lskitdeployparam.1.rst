@@ -19,10 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **lskitdeployparam**\  [\ **-V**\  | \ **--verbose**\ ] 
-      [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ]
-      [\ **-k**\  | \ **--kitname**\  \ *kit_names*\ ]
-      [\ **-c**\  | \ **--compname**\  \ *comp_names*\ ]
+\ **lskitdeployparam**\  [\ **-V**\  | \ **--verbose**\ ] [\ **-x**\  | \ **--xml**\  | \ **--XML**\ ] [\ **-k**\  | \ **--kitname**\  \ *kit_names*\ ] [\ **-c**\  | \ **--compname**\  \ *comp_names*\ ]
 
 \ **lskitdeployparam**\  [\ **-?**\  | \ **-h**\  | \ **--help**\  | \ **-v**\  | \ **--version**\ ]
 
@@ -62,19 +59,24 @@ OPTIONS
 \ **-x|--xml|--XML**\ 
  
  Return the output with XML tags.  The data is returned as:
-   <data>
-     <kitdeployparam>
-       <name>KIT_KIT1_PARAM1</name>
-       <value>value11</value>
-     </kitdeployparam>
-   </data>
-   <data>
-     <kitdeployparam>
-       <name>KIT_KIT1_PARAM2</name>
-       <value>value12</value>
-     </kitdeployparam>
-   </data>
-   ...
+ 
+ 
+ .. code-block:: perl
+ 
+    <data>
+      <kitdeployparam>
+        <name>KIT_KIT1_PARAM1</name>
+        <value>value11</value>
+      </kitdeployparam>
+    </data>
+    <data>
+      <kitdeployparam>
+        <name>KIT_KIT1_PARAM2</name>
+        <value>value12</value>
+      </kitdeployparam>
+    </data>
+    ...
+ 
  
 
 
@@ -103,16 +105,12 @@ RETURN VALUE
 
 
 
-0
- 
- The command completed successfully.
- 
+0 The command completed successfully.
 
 
-1
- 
- An error has occurred.
- 
+
+1 An error has occurred.
+
 
 
 
