@@ -59,6 +59,7 @@ if($needshow){
 }
 
 my $resultdir = "$rootdir/result";
+my $stop_to_keep_env = 0;
 #Create result directory
 mkdir $resultdir unless -d $resultdir;
 
@@ -106,7 +107,11 @@ close(LOG_ERR);
 my $reportfile="$resultdir/performance.report.$timestamp";
 my $tmpreport="$resultdir/xcattest.log.$timestamp";
 &getreport($tmpreport,$reportfile);
-exit 0;
+if($stop_to_keep_env){
+    exit 1;
+}else{
+    exit 0;
+}
 
 # end main
 
@@ -584,6 +589,9 @@ sub loadcase
                     pop(@rightcase);
                     $skip = 1;
                 }
+            }elsif($line =~ /^stop\s*:\s*(\w[\w\,]+)/){
+                next if $skip;
+                $cases[$i]->{stop}=$1;
             }elsif($line =~ /^cmd\s*:\s*([\$\w].+)/){
                 next if $skip;
                 $j = $j + 1;
@@ -859,6 +867,10 @@ sub runcase
         if($failed){
             $failnum = $failnum + 1;
             log_error(@record);
+            if($$case{stop} =~ /^yes$/){
+                $stop_to_keep_env=1;
+                last;
+            }
         }
     }
     log_this("\n\n");
