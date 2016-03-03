@@ -1053,6 +1053,7 @@ unless ($cmdlog_svrpid){
     my $writing=0;
     my $cmdlogfileswitch=0;
     my $cmdlogservicefile="/var/run/xcat/cmdlogservice.pid";
+    my $cmdlog_logfile_umask;
 
     $SIG{USR2} = sub {
         while($writing){sleep(0.01);}
@@ -1095,7 +1096,7 @@ unless ($cmdlog_svrpid){
         }
         if(!$trytime){
             xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file failed, send TERM signal to kill itself");
-            kill 2, $$;
+            kill 'INT', $$;
         }else{
             xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ get HUP signal, reopen commands.log file");
         }
@@ -1111,7 +1112,7 @@ unless ($cmdlog_svrpid){
         xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
         my $pid = <$cmdlogpidfile>;
         if ($pid) {
-            kill 12, $pid;
+            kill 'USR2', $pid;
         }
         close($cmdlogpidfile);
     }
@@ -1129,22 +1130,23 @@ unless ($cmdlog_svrpid){
         exit(0);
     }
 
-    my $cmdlog_logfile_path=dirname($cmdlog_logfile);
-    mkpath("$cmdlog_logfile_path") unless(-d "$cmdlog_logfile_path");
-
-    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
-        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-        exit(0);
-    }
-    select($cmdlogfile);
-    $|=1;
-    $cmdlogfileswitch=1;
-
     open($cmdlogpidfile,">$cmdlogservicefile");
     print $cmdlogpidfile $$;
     close($cmdlogpidfile);
     xCAT::MsgUtils->trace(0,"I","xcatd: command log process $$ start");
+
+    my $cmdlog_logfile_path=dirname($cmdlog_logfile);
+    mkpath("$cmdlog_logfile_path") unless(-d "$cmdlog_logfile_path");
+
+    $cmdlog_logfile_umask = umask(0077);
+    unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
+        xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
+        exit(1);
+    }
+    umask($cmdlog_logfile_umask);
+    select($cmdlogfile);
+    $|=1;
+    $cmdlogfileswitch=1;
 
     while (1)
     {
