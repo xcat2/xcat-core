@@ -1112,7 +1112,7 @@ unless ($cmdlog_svrpid){
         xCAT::MsgUtils->message("S","INFO xcatd: 'Command log writer' process $$ is trying to get port $cmdlog_port");
         my $pid = <$cmdlogpidfile>;
         if ($pid) {
-            kill 'USR2',  $pid;
+            kill 'USR2', $pid;
         }
         close($cmdlogpidfile);
     }
@@ -1140,10 +1140,8 @@ unless ($cmdlog_svrpid){
 
     $cmdlog_logfile_umask = umask(0077);
     unless (open ($cmdlogfile, ">>$cmdlog_logfile")) {
-        umask($cmdlog_logfile_umask);
         xCAT::MsgUtils->trace(0,"E","xcatd: Can't open xcat command log file $cmdlog_logfile,command log process $$ stop.");
-        if($cmdlogsvrlistener){close($cmdlogsvrlistener);}
-        exit(0);
+        exit(1);
     }
     umask($cmdlog_logfile_umask);
     select($cmdlogfile);
