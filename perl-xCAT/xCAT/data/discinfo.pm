@@ -92,6 +92,7 @@ require Exporter;
 		 "1411733344.599861" => "rhelhpc6.6",#x86_64, RHEL ComputeNode
 		 "1435823078.264564" => "rhelhpc6.7",#x86_64, RHEL ComputeNode
 		 "1399449226.140088" => "rhelhpc7.0",#x86_64, RHEL ComputeNode
+		 "1424360759.772760" => "rhelhpc7.1",#x86_64, RHEL ComputeNode
                  "1194015916.783841" => "fedora8",
                  "1194015385.299901" => "fedora8",
                  "1210112435.291709" => "fedora9",
