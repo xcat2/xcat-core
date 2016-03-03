@@ -26,6 +26,7 @@ BEGIN {
         if($0 == "done")
             break
         if(loop > 10) 
+            print "flag update failed" | "logger -t xcat -p local4.info"
             break
     }
 

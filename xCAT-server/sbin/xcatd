@@ -378,7 +378,9 @@ sub do_installm_service {
             ($client_name,$client_aliases) = gethostbyaddr($conn->peeraddr,AF_INET);
         }
         unless ($client_name) {
-            xCAT::MsgUtils->message("S","xcatd unable to gethostbyaddr");
+            my $myaddr = inet_ntoa($conn->peeraddr);
+            xCAT::MsgUtils->message("S","xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored");
+            print "xcatd received a connection request from unknown host with ip address $myaddr, please check whether the reverse name resolution works correctly. The connection request will be ignored\n";
         }
 
         $clients[0] = $client_name;
@@ -407,8 +409,8 @@ sub do_installm_service {
                 $validclient=1;
                 last;
             } else {
-                xCAT::MsgUtils->message("S","Invalid client $client, please check nodels and it's name resolution");
-
+                xCAT::MsgUtils->message("S","xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored");
+                print "xcatd received a connection request from $client, which can not be found in xCAT nodelist table. The connection request will be ignored\n";
             }
             
         }
