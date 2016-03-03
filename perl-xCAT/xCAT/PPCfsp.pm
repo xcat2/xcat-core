@@ -5,7 +5,6 @@ use strict;
 use Getopt::Long;
 use LWP;
 use HTTP::Cookies;
-use HTML::Form;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Socket;
@@ -53,6 +52,11 @@ sub handler {
     my $request = shift;
     my $exp     = shift;
     my $flag    = shift;
+
+    eval { require HTML::Form };
+    if ( $@ ) {
+       return("FSP direct access has been deprecated.");
+    }
 
     #####################################
     # Convert command to correct format
