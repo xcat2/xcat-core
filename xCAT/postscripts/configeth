@@ -502,6 +502,9 @@ elif [ "$1" = "-s" ];then
 		parse_nic_extra_params "$str_extra_params"
 	fi 
 
+    # Bring the interface down before cofniguring the interface
+    ifdown $str_inst_nic
+
     if [ -f "/etc/debian_version" ];then
         str_conf_file="/etc/network/interfaces.d/${str_inst_nic}"
         echo "auto ${str_inst_nic}" > $str_conf_file
@@ -596,6 +599,7 @@ elif [ "$1" = "-s" ];then
             fi
         fi
     fi
+    ifup $str_inst_nic
     exit 0
 fi
 
