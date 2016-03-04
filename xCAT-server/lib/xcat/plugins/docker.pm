@@ -838,7 +838,10 @@ sub process_request {
     }
     $vmtab->close;
 
-    init_async(slots=>$max_concur_session_allow);
+    if (my $res = init_async(slots=>$max_concur_session_allow)) {
+        $callback->({error=>[$res], errorcode=>1});
+        return;
+    }
     my @nodeargs = keys(%node_hash_variable);
 
     while (1)  {
@@ -874,6 +877,9 @@ sub process_request {
 sub init_async {
     my %args = @_;
     eval {require HTTP::Async};
+    if ($@) {
+        return ("Can't find HTTP/Async.pm, please make sure the package have been installed");  
+    }
     my @user = getpwuid($>);
     my $homedir = $user[7];
     my $ssl_ca_file = $homedir . "/.xcat/ca.pem";
@@ -888,7 +894,7 @@ sub init_async {
             SSL_key_file => $key_file,
         },
     );
-    return;
+    return undef;
 }
 
 #-------------------------------------------------------
