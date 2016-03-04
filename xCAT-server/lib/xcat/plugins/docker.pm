@@ -28,7 +28,6 @@ use File::Copy;
 use File::Basename;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
-use HTTP::Async;
 use HTTP::Headers;
 use HTTP::Request;
 use xCAT::Utils;
@@ -874,6 +873,7 @@ sub process_request {
 
 sub init_async {
     my %args = @_;
+    eval {require HTTP::Async};
     my @user = getpwuid($>);
     my $homedir = $user[7];
     my $ssl_ca_file = $homedir . "/.xcat/ca.pem";
