@@ -2101,8 +2101,70 @@ sub getNodeNetworkCfg
  
     return ($ip, $node, $gateway, xCAT::NetworkUtils::formatNetmask($mask,0,0));
 }
+#-------------------------------------------------------------------------------
 
+=head3   getNodesNetworkCfg
+    Description:
+        Get network configuration (ip,netmask,gateway) for a group of nodes
 
+    Arguments:
+        nodes: the group of nodes
+    Returns:
+        If failed: (1, error_msg)
+        If success: (0, the hash variable store network configuration info for nodes that get matching network entry)
+    Error:
+        none
+    Example:
+        my ($ret, $hash) = xCAT::NetworkUtils::getNodesNetworkCfg($noderange);
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getNodesNetworkCfg 
+{
+    my $nodes = shift;
+    if ($nodes =~ /xCAT::NetworkUtils/) {
+        $nodes = shift;
+    }
+    my @nets = ();
+    my $nettab = xCAT::Table->new("networks");
+    if($nettab) {
+        my @error_net = ();
+        my @all_nets = $nettab->getAllAttribs('net','mask','gateway');
+        foreach my $net (@all_nets) {
+            my $gateway = $net->{gateway};
+            if (defined($gateway) and ($gateway eq '<xcatmaster>')) {
+                my @gatewayd = xCAT::NetworkUtils->my_ip_facing($net->{'net'});
+                unless ($gatewayd[0]) {
+                    $gateway = $gatewayd[1];
+                }
+            }
+            push @nets, {net=>$net->{net}, mask=>$net->{mask}, gateway=>$gateway};
+        }
+        $nettab->close;
+    }
+    else {
+        return (1, "Open \"networks\" table failed");
+    }
+    if (!scalar(@nets)) {
+        return (1, "No entry find in \"networks\" table");
+    }
+    my %rethash = ();
+    foreach my $node (@$nodes) {
+        my $ip = xCAT::NetworkUtils->getipaddr($node);
+        foreach my $net (@nets) {
+            if (xCAT::NetworkUtils::isInSameSubnet( $net->{'net'}, $ip, $net->{'mask'}, 0)) {
+                $rethash{$node}->{ip} = $ip;
+                $rethash{$node}->{mask} = $net->{'mask'};
+                $rethash{$node}->{gateway} = $net->{'gateway'};
+                last;
+            }
+        }
+    }
+    return (0, \%rethash);
+}
 
 #-------------------------------------------------------------------------------
 
