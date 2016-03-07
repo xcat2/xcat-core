@@ -736,7 +736,7 @@ sub do_test {
                 $batbundle="le_ubuntu_cmd.bundle" if($mn =~ /ubuntuEL/);
         }	
         if(($mn !~ /ubuntu/) && ($mn !~ /E/)){
-            for(my $loop=0; $loop<1; $loop++){
+            {
                 my $rc;
 
 		#diskfull installation in flat mode test
@@ -845,7 +845,7 @@ sub do_test {
                 $casestop=0;
         }		
     }else{
-         for(my $loop=0; $loop<1; $loop++){
+        {
                 my $rc=0;
 
 		#diskless installation in flat mode test		
