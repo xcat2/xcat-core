@@ -7,6 +7,11 @@
 <![CDATA[
 mkdir -p /mnt/var/log/xcat/
 {
+
+cat /tmp/pre-install.log >> /mnt/var/log/xcat/xcat.log
+
+echo "Running AutoYaST Chroot-Installation script..."
+
 #!/bin/sh
 
 AWK=`find / -name awk | head -1`

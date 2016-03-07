@@ -5,6 +5,9 @@
           <source>
 
 <![CDATA[
+{
+echo "Running AutoYaST Pre-Installation script..."
+
 #!/bin/sh
 
 AWK=`find / -name awk | tail -1`
@@ -160,6 +163,7 @@ fi
 export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
 sed -e 's!<software>!<add-on><add_on_products config:type="list">#INSTALL_SOURCES_IN_PRE#</add_on_products></add-on><software>!'  /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+} >>/tmp/pre-install.log 2>&1
 ]]>
 
           </source>
