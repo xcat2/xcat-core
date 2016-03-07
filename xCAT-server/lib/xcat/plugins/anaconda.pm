@@ -2180,7 +2180,16 @@ sub copycd
 
     unless ($distname)
     {
-        return;    #Do nothing, not ours..
+        if ($desc =~ /IBM_PowerKVM/)
+        {
+            # check for PowerKVM support
+            my @pkvm_version = split / /, $desc;
+            $distname = "pkvm" . $pkvm_version[1];
+        }
+        else
+        {
+            return;    #Do nothing, not ours..
+        }
     }
     if ($darch)
     {
