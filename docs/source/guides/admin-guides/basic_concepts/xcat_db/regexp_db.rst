@@ -45,14 +45,14 @@ Before you panic, let me explain each column:
 
 ``|\D+(\d+)\D+(\d+)\D+(\d+)\D+(\d+)|dir:///install/vms/vm($4+0)|``
 
-    This item is similar to the one above. This substituion pattern will produce the value for the 5th column (a list of storage files or devices to be used). Because this row was the match for "c01f02x03v04", the produced value is "dir:///install/vms/vm4".
+    This item is similar to the one above. This substitution pattern will produce the value for the 5th column (a list of storage files or devices to be used). Because this row was the match for "c01f02x03v04", the produced value is "dir:///install/vms/vm4".
 
 Just as the explained above, when the node definition "c01f02x03v04" is created  with ::
 
     # mkdef -t node -o c01f02x03v04 groups=kvms
     1 object definitions have been created or modified.
 
-The generated node deinition is ::
+The generated node definition is ::
 
     # lsdef c01f02x03v04
     Object name: c01f02x03v04
