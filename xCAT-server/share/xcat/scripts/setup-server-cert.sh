@@ -22,8 +22,8 @@ if [ -e $XCATDIR/cert ]; then
 fi
 mkdir -p $XCATDIR/cert
 cd $XCATDIR/cert
+sed -i "s/#XCATCASAN#/DNS.1 = `hostname --long`\nDNS.2 = `hostname --short`/g" $XCATCADIR/openssl.cnf
 openssl genrsa -out server-key.pem 2048
-export SAN="DNS:`hostname --long`,DNS:`hostname --short`"
 openssl req -config $XCATCADIR/openssl.cnf -new -key server-key.pem -out server-req.pem -extensions server -subj "/CN=$CNA"
 cp server-req.pem  $XCATDIR/ca/`hostname`.csr
 cd -
