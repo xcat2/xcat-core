@@ -2582,6 +2582,7 @@ my @nodeattrs = (
 # dockercpus  --> vm.cpus
 # dockermemory --> vm.memory
 # dockerflag --> vm.othersettings
+# dockernics --> vm.nics
                 {attr_name => 'dockerhost',
                  only_if => 'mgt=docker',
                  tabentry => 'vm.host',
@@ -2602,7 +2603,11 @@ my @nodeattrs = (
                  tabentry => 'vm.othersettings',
                  access_tabentry => 'vm.node=attr:node',
                 },
-
+                {attr_name => 'dockernics',
+                 only_if => 'mgt=docker',
+                 tabentry => 'vm.nics',
+                 access_tabentry => 'vm.node=attr:node',
+                },
 ######################
 #  hypervisor table      #
 ######################

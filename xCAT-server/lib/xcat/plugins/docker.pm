@@ -39,6 +39,7 @@ use JSON;
 
 my $verbose;
 my $global_callback;
+my $subreq;
 
 my $async;
 
@@ -64,6 +65,7 @@ my %http_session_variable = ();
          image=>$nodetype.provmethod,
          cmd=>$nodetype.provmethod,
          ip=>$host.ip,    
+         nics=>$vm.vmnics,
          mac=>$mac.mac,
          cpu=>$vm.cpus
          memory=>$vm.memory
@@ -419,6 +421,16 @@ sub single_state_engine {
             return;
         }
     }
+    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_START_DONE') {
+        if ($msg[0]->[0] eq 0 and $data->code ne '304') {
+            if (defined($node_hash->{ip})) {
+                my $ret = xCAT::Utils->runxcmd({ command => ["xdsh"], node => [$node_hash->{hostinfo}->{name}], arg =>['-e','/usr/bin/pipework',"$node_hash->{nics}","$node","$node_hash->{ip}/$node_hash->{netmask}\@$node_hash->{gateway}"]},$subreq, 0, 1);
+                if ($::RUNCMD_RC != 0) {
+                    $msg[0] = [1, $ret];
+                }
+            }
+        }
+    }
  
     foreach my $tmp (@msg) {
         if ($tmp->[0]) {
@@ -713,7 +725,7 @@ sub preprocess_request {
 sub process_request {
     my $req      = shift;
     my $callback = shift;
-
+    $subreq      = shift;
     my $noderange = $req->{node};
     my $command = $req->{command}->[0];
     my $args = $req->{arg};
@@ -779,17 +791,19 @@ sub process_request {
     # The dockerhost is mapped to vm.host, so open vm table here
     my $vmtab = xCAT::Table->new('vm');
     if ($vmtab) {
-        my $vmhashs = $vmtab->getNodesAttribs($noderange, ['host']);
+        my $vmhashs = $vmtab->getNodesAttribs($noderange, ['host','nics']);
         if ($vmhashs) {
             my @errornodes = ();
             foreach my $node (@$noderange) {
                 my $vmhash = $vmhashs->{$node}->[0];
                 if (!defined($vmhash) or !defined($vmhash->{host})) {
+                    delete $node_hash_variable{$node};
                     push @errornodes, $node;
                     next; 
                 }
                 my ($host, $port) = split /:/,$vmhash->{host};
                 if (!defined($host)) {
+                    delete $node_hash_variable{$node};
                     push @errornodes, $node;
                     next;
                 }
@@ -804,6 +818,11 @@ sub process_request {
                 $node_hash_variable{$node}->{node_app_state} = $init_state;
                 $node_hash_variable{$node}->{state_machine_engine} = $state_machine_engine;
                 $node_hash_variable{$node}->{genreq_ptr} = $genreq_ptr;
+                if (defined($vmhash->{nics})) {
+                    $node_hash_variable{$node}->{nics} = $vmhash->{nics};
+                } else {
+                    $node_hash_variable{$node}->{nics} = "mydocker0";
+                }
             }
             if (scalar(@errornodes)) {
                 $callback->({error=>["Docker host not set correct for @errornodes"], errorcode=>1});
@@ -815,6 +834,41 @@ sub process_request {
         $callback->({error=>["Open table 'vm' failed"], errorcode=>1});
         return;
     } 
+    
+    #parse ip for rpower docker start
+    if ($command eq 'rpower' and $args->[0] eq 'start') {
+        if (! -e "/usr/bin/pipework") {
+            $callback->({error=>["Cann't find tool \"pipework\", please make sure it have been downloaded and copied to the right place"], errorcode=>1});
+            return;
+        }
+        my ($ret, $hash) = xCAT::NetworkUtils->getNodesNetworkCfg($noderange);
+        if ($ret)  {
+            $callback->({error=>[$hash], errorcode=>1});
+            return;
+        }    
+        my @error_nodes = ();
+        foreach my $node (@$noderange)  {
+            if (!defined($hash->{$node})) {
+                delete $node_hash_variable{$node};
+                push @error_nodes, $node;
+            }
+            else {
+                if (!defined($hash->{$node}->{'gateway'})) {
+                    push @error_nodes, $node;
+                }
+                else {
+                    $node_hash_variable{$node}->{ip} = $hash->{$node}->{'ip'};
+                    $node_hash_variable{$node}->{netmask} = $hash->{$node}->{mask};
+                    $node_hash_variable{$node}->{gateway} = $hash->{$node}->{gateway};
+                }
+            }
+        }
+        if (scalar(@error_nodes)) {
+            $callback->({error=>["Can not get network information for :". join(',',@error_nodes)], errorcode=>1});
+        }
+        @$noderange = keys %node_hash_variable;
+    }
+
     #parse parameters for mkdocker
     if ($command eq 'mkdocker') {
         my ($imagearg, $cmdarg, $flagarg);
@@ -828,15 +882,10 @@ sub process_request {
             elsif (/dockerflag=(.*)$/) {
                 $flagarg = $1;
             }
-        }     
+        } 
         my $nodetypetab = xCAT::Table->new('nodetype');
         if (!defined($nodetypetab)) {
             $callback->({error=>["Open table 'nodetype' failed"], errorcode=>1});
-            return;
-        }
-        my $hosttab = xCAT::Table->new('hosts');
-        if (!defined($hosttab)) {
-            $callback->({error=>["Open table 'hosts' failed"], errorcode=>1});
             return;
         }
         my $mactab = xCAT::Table->new('mac');
@@ -845,7 +894,6 @@ sub process_request {
             return;
         } 
         my $nodetypehash = $nodetypetab->getNodesAttribs($noderange, ['provmethod']);
-        my $hosthash = $hosttab->getNodesAttribs($noderange, ['ip']);
         my $machash = $mactab->getNodesAttribs($noderange, ['mac']);
         my $vmhash = $vmtab->getNodesAttribs($noderange, ['cpus', 'memory', 'othersettings']);
         my @errornodes = ();
@@ -862,12 +910,14 @@ sub process_request {
             }
             else {
                 if (!defined($nodetypehash->{$node}->[0]->{provmethod})) {
+                    delete $node_hash_variable{$node};
                     push @errornodes, $node;
                     next;
                 }
                 else {
                     my ($tmp_img,$tmp_cmd) = split /!/, $nodetypehash->{$node}->[0]->{provmethod};
                     if (!defined($tmp_img)) {
+                        delete $node_hash_variable{$node};
                         push @errornodes, $node;
                         next;
                     }
@@ -879,9 +929,6 @@ sub process_request {
                 $node_hash_variable{$node}->{flag} = $flagarg;
                 $vmtab->setNodeAttribs($node,{othersettings=>$flagarg});
             }
-            if (defined($hosthash->{$node}->[0]->{ip})) {
-                $node_hash_variable{$node}->{ip} = $hosthash->{$node}->[0]->{ip};
-            }
             if (defined($machash->{$node}->[0]->{mac})) {
                 $node_hash_variable{$node}->{mac} = $machash->{$node}->[0]->{mac};
             }
@@ -892,19 +939,17 @@ sub process_request {
                 }
                 if (defined($vmnodehash->{memory})) {
                     $node_hash_variable{$node}->{memory} = $vmnodehash->{memory};
-                }       
+                }
                 if (!defined($flagarg) and defined($vmnodehash->{othersettings})) {
                     $node_hash_variable{$node}->{flag} = $vmnodehash->{othersettings};
-                }         
+                }
             }
         }
         $nodetypetab->close;
-        $hosttab->close;
         $mactab->close;
 
         if (scalar(@errornodes)) {
             $callback->({error=>["Docker image not set correct for @errornodes"], errorcode=>1});
-            return;
         }
     }
     $vmtab->close;
@@ -1039,6 +1084,7 @@ sub genreq_for_mkdocker {
     #$info_hash{name} = '/'.$node;
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
+    $info_hash{NetworkDisabled} = JSON::true;
     $info_hash{Image} = "$dockerinfo->{image}";
     @{$info_hash{Cmd}} = split/,/, $dockerinfo->{cmd};
     $info_hash{Memory} = $dockerinfo->{mem};
