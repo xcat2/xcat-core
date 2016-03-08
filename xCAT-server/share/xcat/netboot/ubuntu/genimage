@@ -299,7 +299,6 @@ unless ($onlyinitrd) {
    my $aptgetcmdby = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get $non_interactive ";
    my $aptcachecmd = "DEBIAN_FRONTEND=noninteractive chroot $rootimg_dir apt-get update && chroot $rootimg_dir apt-cache $non_interactive ";
    my $aptcmd1 = "debootstrap";
-   #my $aptcmd2 = "--arch $uarch $dist $rootimg_dir file://$installroot/$osver/$arch/";
    my $aptcmd2;
 
    # Check whether a local Ubuntu mirror is specified
@@ -427,6 +426,8 @@ unless ($onlyinitrd) {
         if(exists $pkg_hash{$pass}{ENVLIST}){
             $envlist = join(',', @{$pkg_hash{$pass}{ENVLIST}});
         }
+        
+        fake_policy_rc_d();
 
         print "$envlist $aptgetcmdby install $pkgnames\n";
         my $rc = system("$envlist $aptgetcmdby install --allow-unauthenticated $pkgnames");
@@ -450,10 +451,6 @@ unless ($onlyinitrd) {
     
     #add the other package directory to for apt-get install
     open ($aptconfig,">","$rootimg_dir/etc/apt/sources.list.d/genimage.apt.list");
-    #if ($otherpkgsdir_local){
-    #   # print $aptconfig "deb file://$otherpkgsdir_local ./\n";
-    #   print $aptconfig "deb file:///mnt/otherpkgdir/ ./\n";
-    #}
     if ($otherpkgsdir_internet){
         print $aptconfig $otherpkgsdir_internet;
     }
@@ -577,16 +574,8 @@ unless ($onlyinitrd) {
    if (!$noupdate) {
        # run apt-get upgrade to update any installed debs
        # needed when running genimage again after updating software in repositories
-       #my $aptgetcmd_update = $yumcmd_base . " upgrade  ";
        my $aptgetcmd_update = $aptgetcmd . "&&". $aptgetcmdby . " upgrade  ";
        $rc = system("$aptgetcmd_update");
-#       if ($kernelimage) {
-#           if ($kernelver) {
-#               $kernelimage = "linux-image-".$kernelver;
-#           }
-#           my $aptgetcmd_install = $aptgetcmd . "&&". $aptgetcmdby. " install --no-install-recommends ".$kernelimage;
-#           $rc = system("$aptgetcmd_install");
-#       }
        # ignore any return code
    }
    # Hack uname to get the corrent kernel ver, use the original uname binary
@@ -594,6 +583,7 @@ unless ($onlyinitrd) {
 
    print("Umount /proc, /dev, /sys, pkgdir and otherpkgdir to the rootimg.\n");
    umount_chroot($rootimg_dir);
+
 
    `rm -fr $rootimg_dir/etc/apt/sources.list.d/genimage1.apt.list`;
    
@@ -1623,8 +1613,6 @@ EOMS
         system("cp  $rootimg_dir/lib/modules/$kernelver/modules.order /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.order");
     }
 
-
-
     system("chroot /tmp/xcatinitrd.$$/ depmod $kernelver");
     # Copy udev and network scripts into initrd for s390x, which also works for other platforms
     # udev
@@ -1942,26 +1930,67 @@ sub unuse_hackuname {
     }
 }
 
+
+#service management in a chrooted environment make no sense
+#however, the postinstall script of package instllation depends 
+#on it, fake a policy-rc.d to avoid errors during installation
+sub fake_policy_rc_d {
+#POLICY-RC.D   Policy layer (/usr/sbin/policy-rc.d) interface:
+# =============================================================
+# 
+# Most Debian systems will not have this script as the need for a policy layer
+# is not very common. Most people using chroot jails just need an one-line
+# script which returns an exit status of 101 as the jailed
+# /usr/sbin/policy-rc.d script.
+# 
+# The /usr/sbin/policy-rc.d file *must* be managed through the alternatives
+# system (/usr/sbin/update-alternatives) by any packages providing it.
+
+    unless (-e "$rootimg_dir/usr/sbin/policy-rc.d") {
+        my $FAKEFILE;
+        open($FAKEFILE, ">$rootimg_dir/usr/sbin/policy-rc.d");
+        print $FAKEFILE "#!/bin/sh \n";
+        print $FAKEFILE "exit 101\n";
+        close($FAKEFILE);
+        chmod(0755, "$rootimg_dir/usr/sbin/policy-rc.d");
+
+    }
+
+
+}
+
+
+
+
 sub mount_chroot {
    my $rootimage_dir = shift;
    my $otherpkgdir = shift;
    my $pkgdir = shift;
    my $kerneldir = shift;
-   #system("mount -o bind /dev $rootimage_dir/dev");
-   system("mount -o bind /proc $rootimage_dir/proc");
-   #system("mount -o bind /sys $rootimage_dir/sys");
+
+   #postinstall script of package installation
+   #might access the /proc, /sys and /dev filesystem
+   #mount them from host read-only
+   system("mkdir -p $rootimage_dir/proc");
+   system("mount proc $rootimage_dir/proc -t proc -o ro");
+   system("mkdir -p $rootimage_dir/sys");
+   system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+   system("mkdir -p $rootimage_dir/dev");
+   system("mount sysfs $rootimage_dir/dev -t devfs -o ro");
+
    if ($pkgdir) {
        if (-d $pkgdir) {
            mkdir("$rootimage_dir/mnt/pkgdir");
-           system("mount -o bind $pkgdir $rootimage_dir/mnt/pkgdir");
+           system("mount --rbind  $pkgdir $rootimage_dir/mnt/pkgdir; mount -o remount,ro,rbind $pkgdir $rootimage_dir/mnt/pkgdir");
        } else {
            print "The specified pkgdir $pkgdir does not exist!\n"
        }
    }
+
    if ($kerneldir){
       if(-d $kerneldir){
          mkdir("$rootimage_dir/mnt/kerneldir");
-         system("mount --rbind $kerneldir $rootimage_dir/mnt/kerneldir");
+         system("mount --rbind $kerneldir $rootimage_dir/mnt/kerneldir; mount -o remount,ro,rbind $kerneldir $rootimage_dir/mnt/kerneldir");
       }else{
          print "The specified kerneldir $kerneldir does not exist!\n"
       }
@@ -1970,7 +1999,7 @@ sub mount_chroot {
    if ($otherpkgdir){
       mkdir("$rootimage_dir/mnt/otherpkgdir");
       if(-d $otherpkgdir){
-         system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
+         system("mount --rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir; mount -o remount,ro,rbind $otherpkgdir $rootimage_dir/mnt/otherpkgdir");
       }else{
          print "The specified otherpkgdir $otherpkgdir does not exist!\n"
       }
@@ -1979,18 +2008,20 @@ sub mount_chroot {
 
 sub umount_chroot {
    my $rootimage_dir = shift;
-   #system("umount $rootimage_dir/dev");
+
    system("umount $rootimage_dir/proc");
-   #system("umount $rootimage_dir/sys");
+   system("umount $rootimage_dir/sys");
+   system("umount $rootimage_dir/dev");
+
    system("umount $rootimage_dir/mnt/pkgdir");
    rmdir("$rootimage_dir/mnt/pkgdir");
-   #system("umount $rootimage_dir/mnt/otherpkgdir");
-   #system("grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r|xargs umount");
+
    my @data = `grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r`;
    foreach (@data) {
        `umount $_`;
    }
    rmdir("$rootimage_dir/mnt/otherpkgdir");
+
    if (-d "$rootimage_dir/mnt/kerneldir") {
        system("umount $rootimage_dir/mnt/kerneldir");
        rmdir("$rootimage_dir/mnt/kerneldir");
