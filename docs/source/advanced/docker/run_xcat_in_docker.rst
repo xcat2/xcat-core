@@ -125,7 +125,9 @@ Currently, since xCAT can only generate the diskless osimages of Linux distribut
 Save and Restore xCAT data 
 ----------------------------
 
-It is not recommended to save data in Docker image, if you need to save xCAT DB tables and osimage, you can specify a directory on the Docker host as a data volume for the "/install" directory inside container. xCAT will 
+It is not recommended to save data in Docker image. "/install" directory inside Docker container is the right place to backup xCAT DB tables, save osimage resource files and other user data. 
+
+You can specify a directory on the Docker host as a data volume for the "/install" directory inside container. xCAT will preserve several directories under "/install" for special use:
 
 * save the osimage resources under "/install"
 * save xCAT logs under "/install/.logs" directory 
