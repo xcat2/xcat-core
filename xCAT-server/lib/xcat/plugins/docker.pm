@@ -72,6 +72,7 @@ my %http_session_variable = ();
              name => $host,
              port => $port,
          },
+         genreq_ptr => \&genreq;
          http_req_method => $init_method,
          http_req_url => $node_init_url,
          node_app_state => $init_state,
@@ -84,11 +85,9 @@ my %http_session_variable = ();
 
 my %node_hash_variable = ();
 
-# The function point used for mkdocker to generate http request, for other cmd it will point to &genreq;
-my $genreq_ptr = \&genreq;
-
 # The num of HTTP requests that is progressing
 my $http_requests_in_progress = 0;
+
 
 #-------------------------------------------------------
 
@@ -164,10 +163,17 @@ my %command_states = (
     },
     mkdocker => {
         all => {
+            genreq_ptr => \&genreq_for_mkdocker,
             state_machine_engine => \&single_state_engine,
             init_method => "POST",
             init_url => "/containers/create?name=#NODE#",
             init_state => "INIT_TO_WAIT_FOR_CREATE_DONE"
+        },
+        pullimage => {
+            state_machine_engine => \&single_state_engine,
+            init_method => "POST",
+            init_url => "/images/create?fromImage=#DOCKER_IMAGE#",
+            init_state => "INIT_TO_WAIT_FOR_IMAGE_PULL_DONE",
         },
     },
     rmdocker => {
@@ -248,6 +254,42 @@ sub http_state_code_info {
 
 #-------------------------------------------------------
 
+=head3 change_node_state
+  To change node state to the state specified, and then send out the HTTP request.
+  Input:
+        $node: the node to change state
+        $to_state_hash: the hash which store the destination state info
+  Return:
+  Usage example:
+        change_node_state($node, $command_states{$command}{$option});
+=cut
+
+#-------------------------------------------------------
+
+sub change_node_state {
+    my $node = shift;
+    my $to_state_hash = shift;
+    my $node_hash = $node_hash_variable{$node};
+    $node_hash->{http_req_method} = $to_state_hash->{init_method};
+    $node_hash->{http_req_url} = $to_state_hash->{init_url};
+    $node_hash->{node_app_state} = $to_state_hash->{init_state};
+    $node_hash->{state_machine_engine} = $to_state_hash->{state_machine_engine};
+    $node_hash->{genreq_ptr} = $to_state_hash->{genreq_ptr};
+    if (!defined($node_hash->{genreq_ptr})) {
+        $node_hash->{genreq_ptr} = \&genreq;
+    }
+    if ($node_hash->{image} =~ /:/) {
+        $node_hash->{http_req_url} =~ s/#DOCKER_IMAGE#/$node_hash->{image}/;
+    } else {
+        $node_hash->{http_req_url} =~ s/#DOCKER_IMAGE#/$node_hash->{image}:latest/;
+    }
+    $node_hash->{http_req_url} =~ s/#NODE#/$node/;
+    sendreq($node, $node_hash);
+    return;
+}
+
+#-------------------------------------------------------
+
 =head3 single_state_engine
 
   The state_machine_engine to deal with http response
@@ -258,7 +300,7 @@ sub http_state_code_info {
         If there are any errors or msg, they will be outputed directly.
         Else, nothing returned.
   Usage example:
-        single_state_engine($sockfd, HTTP Response data);
+        single_state_engine($id, HTTP Response data);
 
 =cut  
 
@@ -295,7 +337,18 @@ sub single_state_engine {
     my $content_type = $data->header("content-type"); 
     my $content_hash = undef;
     if (defined($content_type) and $content_type =~ /json/i) {
-        $content_hash = decode_json $content;
+        if ($curr_state ne "INIT_TO_WAIT_FOR_IMAGE_PULL_DONE") {
+            $content_hash = decode_json $content;
+        }
+        else {
+            if ($content =~ /Status: Downloaded newer image/) {
+
+            }
+            elsif ($content =~ /\"error\":\"([^\"]*)\"/) {
+                @msg = ();
+                $msg[0] = [1, $1];
+            }
+        }
     }
     elsif (!defined($content_type)) {
         $content_type = "undefined";
@@ -348,6 +401,23 @@ sub single_state_engine {
         }
     }
     elsif ($curr_state eq 'INIT_TO_WAIT_FOR_CREATE_DONE') {
+        if ($data->code eq '404') {
+            # To avoid pulling image loop
+            if (defined($node_hash_variable{$node}->{have_pulled_image})) {
+                return;
+            }
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash_variable{$node}->{image} start"]}]});
+            change_node_state($node, $command_states{mkdocker}{pullimage});
+            return;
+        }
+    }
+    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_IMAGE_PULL_DONE') {
+        if ($data->is_success and !$msg[0]->[0]) {
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash_variable{$node}->{image} done"]}]});
+            $node_hash_variable{$node}->{have_pulled_image} = 1;
+            change_node_state($node, $command_states{mkdocker}{all});
+            return;
+        }
     }
  
     foreach my $tmp (@msg) {
@@ -503,6 +573,9 @@ sub parse_args {
     # No command-line arguments - use defaults
     #############################################
     if ( !defined( $args )) {
+        if ($cmd eq "rpower") {
+            return ([1, "No option specified for rpower"]);
+        }
         return(0);
     }
     #############################################
@@ -656,19 +729,12 @@ sub process_request {
     my $init_url = undef;
     my $init_state = undef;
     my $state_machine_engine = undef;
+    my $genreq_ptr = undef;
     my $mapping_hash = undef;
     my $max_concur_session_allow = 20; # A variable can be set by caculated in the future
     $mapping_hash = $command_states{$command}{$args->[0]};
     unless($mapping_hash) {
         $mapping_hash = $command_states{$command}{all};
-    }
-    unless ($mapping_hash) {
-        my $option = '';
-        if (defined($args->[0])) {
-            $option = $args->[0];
-        }
-        $callback->({error=>["Not support $command $option"], errorcode=>1});
-        return;
     }
     $init_method = $mapping_hash->{init_method};
     $init_url = $mapping_hash->{init_url};
@@ -676,6 +742,10 @@ sub process_request {
     $init_state = $mapping_hash->{init_state};
     if (!defined($init_state)) {
         $init_state = "INIT_TO_WAIT_FOR_RSP";
+    }
+    $genreq_ptr = $mapping_hash->{genreq_ptr};
+    if (!defined($genreq_ptr)) {
+        $genreq_ptr = \&genreq;
     }
     if ($command eq 'lsdocker') {
         my @new_noderange = ();
@@ -696,6 +766,7 @@ sub process_request {
                     $node_hash_variable{$node}->{http_req_url} = $node_init_url;
                     $node_hash_variable{$node}->{node_app_state} = $init_state;
                     $node_hash_variable{$node}->{state_machine_engine} = $state_machine_engine;
+                    $node_hash_variable{$node}->{genreq_ptr} = $genreq_ptr;
                 } 
                 else {
                     push @new_noderange, $node;
@@ -732,6 +803,7 @@ sub process_request {
                 $node_hash_variable{$node}->{http_req_url} = $node_init_url;
                 $node_hash_variable{$node}->{node_app_state} = $init_state;
                 $node_hash_variable{$node}->{state_machine_engine} = $state_machine_engine;
+                $node_hash_variable{$node}->{genreq_ptr} = $genreq_ptr;
             }
             if (scalar(@errornodes)) {
                 $callback->({error=>["Docker host not set correct for @errornodes"], errorcode=>1});
@@ -757,7 +829,6 @@ sub process_request {
                 $flagarg = $1;
             }
         }     
-        $genreq_ptr = \&genreq_for_mkdocker;
         my $nodetypetab = xCAT::Table->new('nodetype');
         if (!defined($nodetypetab)) {
             $callback->({error=>["Open table 'nodetype' failed"], errorcode=>1});
@@ -848,8 +919,7 @@ sub process_request {
         while ((scalar @nodeargs) and $http_requests_in_progress < $max_concur_session_allow) {
             deal_with_rsp();
             my $node = shift @nodeargs;
-            my $node_hash = $node_hash_variable{$node};
-            sendreq($node, $node_hash->{hostinfo}, $node_hash->{http_req_method}, $node_hash->{http_req_url});
+            sendreq($node, $node_hash_variable{$node});
         }
         if ($async->empty)  {
             last;
@@ -981,38 +1051,34 @@ sub genreq_for_mkdocker {
     my $content = encode_json \%info_hash;
     return genreq($node, $dockerhost, $method, $api, $content);
 }
-
 #-------------------------------------------------------
 
 =head3  sendreq
 
   Based on the method, url create a http request and send out on the given SSL connection
-  
-  Input: 
+
+  Input:
          $node: the docker container name
-         $dockerhost: hash, keys: name, port, user, pw, user, pw
-         $method: the http method to generate a http request
-         $url: the http url to generate a http request
+         $node_hash: the hash that store information for the $node
   return: 0-undefine If no error
           1-return generate http request failed;
           2-return http request error message;
   Usage example:
-          my $res = sendreq($node, \%dockerhost, 'GET', '/containers/$node/json');
+          my $res = sendreq($node, $node_hash);
 
 =cut
 
 #-------------------------------------------------------
 
 sub sendreq {
-    my ($node, $dockerhost, $init_method, $init_url) = @_;
-    my $http_req = $genreq_ptr->($node, $dockerhost, $init_method, $init_url);
+    my ($node, $node_hash) = @_;
+    my $http_req = $node_hash->{genreq_ptr}->($node, $node_hash->{hostinfo}, $node_hash->{http_req_method}, $node_hash->{http_req_url});
     # Need to Dumper to log file later
-    #print Dumper($http_req);
+    # print Dumper($http_req);
     my $http_session_id = $async->add_with_opts($http_req, {});
     $http_session_variable{$http_session_id} = $node;
     $http_requests_in_progress++;
     return undef;
 }
-
 1;
 
