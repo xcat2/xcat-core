@@ -1969,12 +1969,14 @@ sub mount_chroot {
    my $kerneldir = shift;
 
    #postinstall script of package installation
-   #might access the /proc, /sys filesystem
+   #might access the /proc, /sys and /dev filesystem
    #mount them from host read-only
    system("mkdir -p $rootimage_dir/proc");
    system("mount proc $rootimage_dir/proc -t proc -o ro");
    system("mkdir -p $rootimage_dir/sys");
    system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+   system("mkdir -p $rootimage_dir/dev");
+   system("mount sysfs $rootimage_dir/dev -t devfs -o ro");
 
    if ($pkgdir) {
        if (-d $pkgdir) {
@@ -2009,6 +2011,7 @@ sub umount_chroot {
 
    system("umount $rootimage_dir/proc");
    system("umount $rootimage_dir/sys");
+   system("umount $rootimage_dir/dev");
 
    system("umount $rootimage_dir/mnt/pkgdir");
    rmdir("$rootimage_dir/mnt/pkgdir");
