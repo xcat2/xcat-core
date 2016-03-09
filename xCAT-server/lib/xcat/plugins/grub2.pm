@@ -181,7 +181,7 @@ sub setstate {
     }
 
 
-    if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+    if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
        print $pcfg "set debug=all\n";
     }
 

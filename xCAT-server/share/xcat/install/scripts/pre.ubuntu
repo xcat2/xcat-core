@@ -1,5 +1,5 @@
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
-if [ "$XCATDEBUGMODE" = "1" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
 
@@ -95,11 +95,11 @@ fi
 read cmd arg remainder
 
 case "\$cmd" in
-#UNCOMMENONXCATDEBUGMODE#   "sh")                        #TODO: ENABLE IF DEBUG
-#UNCOMMENONXCATDEBUGMODE#       output=\$(eval \$arg \$remainder)
-#UNCOMMENONXCATDEBUGMODE#       echo "\$output"
-#UNCOMMENONXCATDEBUGMODE#       echo "EOO"
-#UNCOMMENONXCATDEBUGMODE#       ;;
+#UNCOMMENTOENABLEDEBUGPORT#   "sh")                        #TODO: ENABLE IF DEBUG
+#UNCOMMENTOENABLEDEBUGPORT#       output=\$(eval \$arg \$remainder)
+#UNCOMMENTOENABLEDEBUGPORT#       echo "\$output"
+#UNCOMMENTOENABLEDEBUGPORT#       echo "EOO"
+#UNCOMMENTOENABLEDEBUGPORT#       ;;
 
     "screendump")
         output=\$(eval chvt \$arg; cat /dev/vcs)
@@ -206,7 +206,7 @@ echo "    ." >> /tmp/partitionfile
 #XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#
 exit 0
 
-if [ "$XCATDEBUGMODE" = "1" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
 then
     set +x
 fi

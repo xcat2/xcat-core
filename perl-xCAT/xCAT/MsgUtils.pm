@@ -790,10 +790,10 @@ sub trace(){
     if(($level eq "W")||($level eq "w")){$prefix="WARNING";}
     if(($level eq "I")||($level eq "i")){$prefix="INFO";}
     if(($level eq "D")||($level eq "d")){$prefix="DEBUG";}
-    
+
     my @tmp = xCAT::TableUtils->get_site_attribute("xcatdebugmode");
     my $xcatdebugmode=$tmp[0];
-    
+
     if (($level eq "E") 
     ||($level eq "e")
     ||($level eq "I")
@@ -810,7 +810,7 @@ sub trace(){
     
     if (($level eq "D") 
     ||($level eq "d")){
-        if(($verbose == 1 )||($xcatdebugmode  eq "1")){
+        if(($verbose == 1 )||($xcatdebugmode  eq "1")||($xcatdebugmode  eq "2")){
             my $msg = $prefix." ".$logcontent;
             eval {
                 openlog("xcat", "nofatal,pid", "local4");

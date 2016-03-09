@@ -90,11 +90,11 @@ fi
 read cmd arg remainder
 
 case "\$cmd" in
-#UNCOMMENONXCATDEBUGMODE#   "sh")                        #TODO: ENABLE IF DEBUG
-#UNCOMMENONXCATDEBUGMODE#       output=\$(eval \$arg \$remainder)
-#UNCOMMENONXCATDEBUGMODE#       echo "\$output"
-#UNCOMMENONXCATDEBUGMODE#       echo "EOO"
-#UNCOMMENONXCATDEBUGMODE#       ;;
+#UNCOMMENTOENABLEDEBUGPORT#   "sh")                        #TODO: ENABLE IF DEBUG
+#UNCOMMENTOENABLEDEBUGPORT#       output=\$(eval \$arg \$remainder)
+#UNCOMMENTOENABLEDEBUGPORT#       echo "\$output"
+#UNCOMMENTOENABLEDEBUGPORT#       echo "EOO"
+#UNCOMMENTOENABLEDEBUGPORT#       ;;
 
     "screendump")
         output=\$(eval chvt \$arg; cat /dev/vcs)

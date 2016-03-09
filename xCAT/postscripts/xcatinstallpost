@@ -9,6 +9,7 @@
 if [ -f /xcatpost/mypostscript.post ]; then
     XCATDEBUGMODE=`grep 'XCATDEBUGMODE=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
     MASTER_IP=`grep '^MASTER_IP=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
+    OSVER=`grep '^OSVER=' /xcatpost/mypostscript.post |cut -d= -f2|sed s/\'//g`
 fi
 
 
@@ -85,12 +86,12 @@ if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" 
 echo "
 
 if [ \"\$return_value\" -eq \"0\" ]; then
-   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
       msgutil_r \"\$MASTER_IP\" \"info\" \"node booted, reporting status...\" \"/var/log/xcat/xcat.log\"
    fi
    updateflag.awk \$MASTER 3002 \"installstatus booted\"
 else
-   if [ \"\$XCATDEBUGMODE\" > \"0\" ]; then
+   if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
       msgutil_r \"\$MASTER_IP\" \"info\" \"node boot failed, reporting status...\" \"/var/log/xcat/xcat.log\"
    fi
    updateflag.awk \$MASTER 3002 \"installstatus failed\"

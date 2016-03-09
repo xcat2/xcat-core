@@ -1528,15 +1528,17 @@ sub mkinstall
                 }
            }
               
-           if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+           if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
                  unless($instserver eq '!myipfn!'){
                     my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($instserver);
                     $instserver=$ip;
                  } 
  
                  if (xCAT::Utils->version_cmp($kversion,"7.0") >= 0){
-                    #enable ssh access during installation
-                    $kcmdline .= " inst.sshd";  
+                    if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+                       #enable ssh access during installation
+                       $kcmdline .= " inst.sshd";  
+                    }
                            
                     #set minimum level of messages to be logged on the console
                     #to be "debug"
@@ -1545,7 +1547,9 @@ sub mkinstall
                     #all the logs during installation will be forwarded to xcatmster
                     $kcmdline .=" inst.syslog=$instserver";
                  }else{
-                    $kcmdline .= " sshd=1";
+                    if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+                       $kcmdline .= " sshd=1";
+                    }
                     $kcmdline .=" syslog=$instserver";
                  }
                      

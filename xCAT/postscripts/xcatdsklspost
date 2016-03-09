@@ -58,7 +58,7 @@ echolog()
       if [ "$VERBOSE" = "1"  ]; then
          echo "$msgstr"
       fi
-      if [ "$XCATDEBUGMODE" = "1" ]; then
+      if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
             msgutil_r  "$MASTER_IP" "$msgtype" "$msgstr" "/var/log/xcat/xcat.log"
       fi
    else
@@ -828,7 +828,7 @@ run_ps () {
  if [ -f \$1 ]; then 
   echo \"\`date\` Running postscript: \$*\" 
   msgutil_r \"\$MASTER_IP\" \"info\" "\"\`date\` Running postscript: \$*\"" \"\$logfile\"
-  if [ \"\$XCATDEBUGMODE\" = \"1\" ]; then
+  if [ \"\$XCATDEBUGMODE\" = \"1\" ] || [ \"\$XCATDEBUGMODE\" = \"2\" ]; then
      local compt=\$(file \$1)
      local reg=\"shell script\"
      if [[ \"\$compt\" =~ \$reg ]]; then
