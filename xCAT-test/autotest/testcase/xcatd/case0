@@ -39,7 +39,7 @@ check:cat /tmp/xcatd_processes.txt | grep "xcatd: Discovery worke" -c
 check:output==1
 check:cat /tmp/xcatd_processes.txt | grep "xcatd: Command log writer" -c
 check:output==1
-cmd:rm -rf /tmp//tmp/xcatd_processes.txt
+cmd:rm -rf /tmp/xcatd_processes.txt
 end
 
 start:xcatd_restart
