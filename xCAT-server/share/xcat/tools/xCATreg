@@ -690,6 +690,8 @@ sub install_xcat {
 sub do_test {
     my $mn = shift;
     my $os = $confkeys{$mn."os"};
+    my $casestop=1;
+
     send_msg(2, "[$mn->$confkeys{$mn}][do_test] starting to run regression test in $confkeys{$mn}");  
 	
 	my $regconf=$mn.".conf";
@@ -734,25 +736,32 @@ sub do_test {
                 $batbundle="le_ubuntu_cmd.bundle" if($mn =~ /ubuntuEL/);
         }	
         if(($mn !~ /ubuntu/) && ($mn !~ /E/)){
+            {
+                my $rc;
+
 		#diskfull installation in flat mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
+                last if($rc != 0);
 
 		#commands bundle in flat mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\" >/dev/null 2>&1");
+                $rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do all commands test in flat mode in $mn.....[done]");
+                last if($rc != 0);
 
 		#diskless installation in flat mode test		
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in flat mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in flat mode in $mn.....[done]");	
+                last if($rc != 0);
 	
 		#statelite installation in flat mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in flat mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_flat_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_flat_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in flat mode in $mn.....[done]");
+                last if($rc != 0);
 
 		#deploy SN
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] setting up mysql for installing SN in $mn.....");
@@ -813,40 +822,57 @@ sub do_test {
 		}
 		
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] installing SN.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $sn_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $sn_installation_hierarchy_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] install SN.....[done]");
+                last if($rc != 0);
 		
 		#diskfull installation in hierarchy mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in hierarchy mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_hierarchy_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in hierarchy mode in $mn.....[done]");
-		
+                last if($rc != 0);
+
 		#diskless installation in hierarchy mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in hierarchy mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_hierarchy_testcase\" >/dev/null 2>&1");
+		$rc=system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_hierarchy_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in hierarchy mode in $mn.....[done]");
+                last if($rc != 0);
 
 		#statelite installation in hierarchy mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in hierarchy mode in $mn.....");
 		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in hierarchy mode in $mn.....[done]");	
-		
+                $casestop=0;
+        }		
     }else{
+        {
+                my $rc=0;
+
 		#diskless installation in flat mode test		
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskless installation test in flat mode in $mn.....");
-		system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\"' >/dev/null 2>&1");
+		$rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_flat_testcase\"' >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in flat mode in $mn.....[done]");
+                last if($rc != 0);
 
                 #diskfull installation in flat mode test
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
-                system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\"' >/dev/null 2>&1");
+                $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\"' >/dev/null 2>&1");
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskfull installation test in flat mode in $mn.....[done]");
+                last if($rc != 0);
 
                 #commands bundle in flat mode test
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
-                system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\"' >/dev/null 2>&1");
+                $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\"' >/dev/null 2>&1");
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] do all commands test in flat mode in $mn.....[done]");
+                $casestop=0;
 	}
+    }
+
+    if($casestop){
+        send_msg(2, "[$mn->$confkeys{$mn}][do_test] the regression job in $mn was broken by one case.");
+    }else{
+        send_msg(2, "[$mn->$confkeys{$mn}][do_test] run the whole regression test in $mn finished");
+    }
 	
     send_msg(2, "[$mn->$confkeys{$mn}][install_xcat] run regression test in $mn finished");
 	
@@ -962,8 +988,14 @@ sub creat_report{
 
 			closedir(DIR);
 
+                        my $lastfile = `ls -lrt $todayregresultdir/$k|grep "xcattest.log"|tail -1|awk '{print \$9}'`;
+                        chomp($lastfile);
+                        my $lastline=`cat $todayregresultdir/$k/$lastfile |grep -- "------END::"|tail -1`;
+                        chomp($lastline);
+                        my $lastcase;
+                        $lastcase=$1 if($lastline =~ /------END::([a-zA-Z0-9_-]+)::([a-zA-Z0-9_-]+)::Time.+/);
 
-			$mailreport .= "\tTotalCase $totalcase TotalRun $totalcnt Failed $failcnt\n\tFailed cases: $faillist\n";
+                        $mailreport .= "\tTotalCase $totalcase TotalRun $totalcnt Failed $failcnt\n\tFailed cases: $faillist\n\tFinal environment stop at $lastcase\n";
 		}else{ # regression test out of time
 			$mailreport .= "\tTime consumption: Out of 9 hours!!!!!!\n";
 		}
