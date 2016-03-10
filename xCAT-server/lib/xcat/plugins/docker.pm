@@ -128,77 +128,132 @@ sub handled_commands {
 #-------------------------------------------------------
 
 my %command_states = (
+
+# For rpower start/stop/restart/pause/unpause/state
+#    return error_msg if failed or corresponding msg if success
     rpower => {
         start => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/#NODE#/start",
             init_state => "INIT_TO_WAIT_FOR_START_DONE",
         }, 
         stop => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/#NODE#/stop",
             init_state => "INIT_TO_WAIT_FOR_STOP_DONE",
         },        
         restart => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/#NODE#/restart",
         },        
         pause => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/#NODE#/pause",
         },
         unpause => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/#NODE#/unpause",
         },
         state => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "GET",
             init_url => "/containers/#NODE#/json",
             init_state => "INIT_TO_WAIT_FOR_QUERY_STATE_DONE",
         },
     },
+
+# The state changing graphic for mkdocker
+#                                                             error
+#    init-----------> INIT_TO_WAIT_FOR_CREATE_DONE -----------------> error_msg
+#              ^                   /         |
+#              |       404 and    /          |
+#           20x|  'No such image'/           |
+#              |                v         20x|                error
+#  CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE ------------------------------> error_msg
+#                                            |
+#                                            v                error
+#                          CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE-------> error_msg
+#                                            |
+#                                         20x|
+#                                            v                error
+#                          CREATE_TO_WAIT_FOR_CONNECT_NET_DONE------> error_msg
+#                                            |
+#                                         20x|
+#                                            v
+#                                      create done
+#
     mkdocker => {
-        all => {
+        default => {
             genreq_ptr => \&genreq_for_mkdocker,
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/containers/create?name=#NODE#",
             init_state => "INIT_TO_WAIT_FOR_CREATE_DONE"
         },
         pullimage => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "POST",
             init_url => "/images/create?fromImage=#DOCKER_IMAGE#",
-            init_state => "INIT_TO_WAIT_FOR_IMAGE_PULL_DONE",
+            init_state => "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE",
         },
+        connectnet => {
+            genreq_ptr => \&genreq_for_net_connect,
+            state_machine_engine => \&default_state_engine,
+            init_method => "POST",
+            init_url => "/networks/#NETNAME#/connect",
+            init_state => "CREATE_TO_WAIT_FOR_CONNECT_NET_DONE",
+        },
+        rmdefconn => {
+            genreq_ptr => \&genreq_for_net_disconnect,
+            state_machine_engine => \&default_state_engine,
+            init_method => "POST",
+            init_url => "/networks/bridge/disconnect",
+            init_state => "CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE",
+        }
     },
+
+# The state changing for rmdocker
+#
+#    INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE 
+#        If success or force to remove, to remove docker
+#        Else return error
+#    In remove docker round, return error_msg if failed or success if done
     rmdocker => {
         force => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "DELETE",
             init_url => "/containers/#NODE#?force=1",
         },
-        all => {
-            state_machine_engine => \&single_state_engine,
+        default => {
+            state_machine_engine => \&default_state_engine,
             init_method => "DELETE",
             init_url => "/containers/#NODE#",
         },
+        disconnect => {
+            genreq_ptr => \&genreq_for_net_disconnect,
+            state_machine_engine => \&default_state_engine,
+            init_method => "POST",
+            init_url => "/networks/#NETNAME#/disconnect",
+            init_state => "INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE",
+        },
     },
+
+# For lsdocker [-l|--logs]
+#    return error_msg if failed or corresponding msg if success
     lsdocker => {
-        all => {
-            state_machine_engine => \&single_state_engine,
+        default => {
+            state_machine_engine => \&default_state_engine,
             init_method => "GET",
             init_url => "/containers/#NODE#/json?",
             init_state => "INIT_TO_WAIT_FOR_QUERY_DOCKER_DONE",
         },
         log => {
-            state_machine_engine => \&single_state_engine,
+            state_machine_engine => \&default_state_engine,
             init_method => "GET",
             init_url => "/containers/#NODE#/logs?stderr=1&stdout=1",
             init_state => "INIT_TO_WAIT_FOR_QUERY_LOG_DONE",
@@ -253,22 +308,21 @@ sub http_state_code_info {
     }
     return [1, "unknown http status code $state_code"];
 }
-
 #-------------------------------------------------------
 
-=head3 change_node_state
-  To change node state to the state specified, and then send out the HTTP request.
+=head3 modify_node_state_hash
+  To change node state to the state specified.
   Input:
         $node: the node to change state
         $to_state_hash: the hash which store the destination state info
   Return:
   Usage example:
-        change_node_state($node, $command_states{$command}{$option});
+        modify_node_state_hash($node, $command_states{$command}{$option});
 =cut
 
 #-------------------------------------------------------
 
-sub change_node_state {
+sub modify_node_state_hash {
     my $node = shift;
     my $to_state_hash = shift;
     my $node_hash = $node_hash_variable{$node};
@@ -285,14 +339,35 @@ sub change_node_state {
     } else {
         $node_hash->{http_req_url} =~ s/#DOCKER_IMAGE#/$node_hash->{image}:latest/;
     }
+    $node_hash->{http_req_url} =~ s/#NETNAME#/$node_hash->{nics}/;
     $node_hash->{http_req_url} =~ s/#NODE#/$node/;
-    sendreq($node, $node_hash);
     return;
 }
 
 #-------------------------------------------------------
 
-=head3 single_state_engine
+=head3 change_node_state
+  To change node state to the state specified, and then send out the HTTP request.
+  Input:
+        $node: the node to change state
+        $to_state_hash: the hash which store the destination state info
+  Return:
+  Usage example:
+        change_node_state($node, $command_states{$command}{$option});
+=cut
+
+#-------------------------------------------------------
+
+sub change_node_state {
+    my ($node, $to_state_hash) = @_;
+    modify_node_state_hash(@_);
+    sendreq($node, $node_hash_variable{$node});
+    return;
+}
+
+#-------------------------------------------------------
+
+=head3 default_state_engine
 
   The state_machine_engine to deal with http response
   Input:
@@ -302,13 +377,13 @@ sub change_node_state {
         If there are any errors or msg, they will be outputed directly.
         Else, nothing returned.
   Usage example:
-        single_state_engine($id, HTTP Response data);
+        default_state_engine($id, HTTP Response data);
 
 =cut  
 
 #-------------------------------------------------------
 
-sub single_state_engine {
+sub default_state_engine {
     my $id = shift;
     my $data = shift;
     my $node = $http_session_variable{$id};
@@ -335,11 +410,10 @@ sub single_state_engine {
             $msg[0]->[1] = $data->message;
         }
     }
-
     my $content_type = $data->header("content-type"); 
     my $content_hash = undef;
     if (defined($content_type) and $content_type =~ /json/i) {
-        if ($curr_state ne "INIT_TO_WAIT_FOR_IMAGE_PULL_DONE") {
+        if ($curr_state ne "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE") {
             $content_hash = decode_json $content;
         }
         else {
@@ -403,32 +477,40 @@ sub single_state_engine {
         }
     }
     elsif ($curr_state eq 'INIT_TO_WAIT_FOR_CREATE_DONE') {
-        if ($data->code eq '404') {
+        if ($data->code eq '404' and $msg[0]->[1] =~ /image:/i) {
             # To avoid pulling image loop
-            if (defined($node_hash_variable{$node}->{have_pulled_image})) {
+            if (defined($node_hash->{have_pulled_image})) {
                 return;
             }
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash_variable{$node}->{image} start"]}]});
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} start"]}]});
             change_node_state($node, $command_states{mkdocker}{pullimage});
             return;
-        }
-    }
-    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_IMAGE_PULL_DONE') {
-        if ($data->is_success and !$msg[0]->[0]) {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash_variable{$node}->{image} done"]}]});
-            $node_hash_variable{$node}->{have_pulled_image} = 1;
-            change_node_state($node, $command_states{mkdocker}{all});
+        } elsif ($data->is_success) {
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Remove default network connection"]}]});
+            change_node_state($node, $command_states{mkdocker}{rmdefconn});
             return;
         }
     }
-    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_START_DONE') {
-        if ($msg[0]->[0] eq 0 and $data->code ne '304') {
-            if (defined($node_hash->{ip})) {
-                my $ret = xCAT::Utils->runxcmd({ command => ["xdsh"], node => [$node_hash->{hostinfo}->{name}], arg =>['-e','/usr/bin/pipework',"$node_hash->{nics}","$node","$node_hash->{ip}/$node_hash->{netmask}\@$node_hash->{gateway}"]},$subreq, 0, 1);
-                if ($::RUNCMD_RC != 0) {
-                    $msg[0] = [1, $ret];
-                }
-            }
+    elsif ($curr_state eq 'CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE') {
+        if ($data->is_success) {
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Connecting customzied network '$node_hash->{nics}'"]}]});
+            change_node_state($node, $command_states{mkdocker}{connectnet});
+            return;
+        }
+    }
+    elsif ($curr_state eq 'CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE') {
+        if ($data->is_success and !$msg[0]->[0]) {
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} done"]}]});
+            $node_hash->{have_pulled_image} = 1;
+            change_node_state($node, $command_states{mkdocker}{default});
+            return;
+        }
+    }
+    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE') {
+        if ($data->is_success or $node_hash_variable{$node}->{opt} eq 'force') {
+            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Disconnect customzied network '$node_hash->{nics}' done"]}]});
+            change_node_state($node, $command_states{rmdocker}{$node_hash->{opt}});
+            return;
         }
     }
  
@@ -621,7 +703,7 @@ sub parse_args {
             return ( [1, "The option $ARGV[0] not support for $cmd"]);
         }
         else {
-            @ARGV = ();
+            $request->{mapping_option} = $ARGV[0];
         }
     } 
     elsif ($cmd eq 'mkdocker') {
@@ -653,7 +735,7 @@ sub parse_args {
                 return ( [1, "Option $op is not supported for $cmd"]);
             }
         }
-        $request->{arg}->[0] = "force";
+        $request->{mapping_option} = "disconnect";
     }
     elsif ($cmd eq 'lsdocker') {
         foreach my $op (@ARGV) {
@@ -661,7 +743,7 @@ sub parse_args {
                 return ( [1, "Option $op is not supported for $cmd"]);
             }
         }
-        $request->{arg}->[0] = "log";
+        $request->{mapping_option} = "log";
     }
 
 
@@ -737,28 +819,18 @@ sub process_request {
     #    mac.mac 
     # For other command, get docker host is enough to do operation
 
-    my $init_method = undef;
-    my $init_url = undef;
-    my $init_state = undef;
-    my $state_machine_engine = undef;
-    my $genreq_ptr = undef;
     my $mapping_hash = undef;
+    if (defined($req->{mapping_option})) {
+        $mapping_hash = $command_states{$command}{$req->{mapping_option}};
+    }
+    else {
+        if ($command eq 'rmdocker') {
+            $mapping_hash = $command_states{$command}{disconnect};
+        } else {
+            $mapping_hash = $command_states{$command}{default};
+        }
+    }
     my $max_concur_session_allow = 20; # A variable can be set by caculated in the future
-    $mapping_hash = $command_states{$command}{$args->[0]};
-    unless($mapping_hash) {
-        $mapping_hash = $command_states{$command}{all};
-    }
-    $init_method = $mapping_hash->{init_method};
-    $init_url = $mapping_hash->{init_url};
-    $state_machine_engine = $mapping_hash->{state_machine_engine};
-    $init_state = $mapping_hash->{init_state};
-    if (!defined($init_state)) {
-        $init_state = "INIT_TO_WAIT_FOR_RSP";
-    }
-    $genreq_ptr = $mapping_hash->{genreq_ptr};
-    if (!defined($genreq_ptr)) {
-        $genreq_ptr = \&genreq;
-    }
     if ($command eq 'lsdocker') {
         my @new_noderange = ();
         my $nodehm = xCAT::Table->new('nodehm');
@@ -771,14 +843,9 @@ sub process_request {
                         $callback->({error=>[" $args->[0] is not support for $node"], errorcode=>1});
                         return;
                     }
-                    my $node_init_url = $init_url;
-                    $node_init_url =~ s/#NODE#\///;
                     ${$node_hash_variable{$node}}{hostinfo} = {name=>$node,port=>'2375'};
-                    $node_hash_variable{$node}->{http_req_method} = $init_method;
-                    $node_hash_variable{$node}->{http_req_url} = $node_init_url;
-                    $node_hash_variable{$node}->{node_app_state} = $init_state;
-                    $node_hash_variable{$node}->{state_machine_engine} = $state_machine_engine;
-                    $node_hash_variable{$node}->{genreq_ptr} = $genreq_ptr;
+                    $mapping_hash->{init_url} =~ s/#NODE#\///;
+                    modify_node_state_hash($node, $mapping_hash);
                 } 
                 else {
                     push @new_noderange, $node;
@@ -810,19 +877,21 @@ sub process_request {
                 if (!defined($port)) {
                     $port = 2375;
                 }
-                my $node_init_url = $init_url;
-                $node_init_url =~ s/#NODE#/$node/;
                 ${$node_hash_variable{$node}}{hostinfo} = {name=>$host,port=>$port};
-                $node_hash_variable{$node}->{http_req_method} = $init_method;
-                $node_hash_variable{$node}->{http_req_url} = $node_init_url;
-                $node_hash_variable{$node}->{node_app_state} = $init_state;
-                $node_hash_variable{$node}->{state_machine_engine} = $state_machine_engine;
-                $node_hash_variable{$node}->{genreq_ptr} = $genreq_ptr;
                 if (defined($vmhash->{nics})) {
                     $node_hash_variable{$node}->{nics} = $vmhash->{nics};
                 } else {
-                    $node_hash_variable{$node}->{nics} = "mydocker0";
+                    $node_hash_variable{$node}->{nics} = "mynet0";
                 }
+                if ($command eq 'rmdocker') {
+                    if (defined($args->[0])) {
+                        $node_hash_variable{$node}->{opt} = "force";
+                    } 
+                    else {
+                        $node_hash_variable{$node}->{opt} = "default";
+                    }
+                }
+                modify_node_state_hash($node, $mapping_hash);
             }
             if (scalar(@errornodes)) {
                 $callback->({error=>["Docker host not set correct for @errornodes"], errorcode=>1});
@@ -835,40 +904,6 @@ sub process_request {
         return;
     } 
     
-    #parse ip for rpower docker start
-    if ($command eq 'rpower' and $args->[0] eq 'start') {
-        if (! -e "/usr/bin/pipework") {
-            $callback->({error=>["Cann't find tool \"pipework\", please make sure it have been downloaded and copied to the right place"], errorcode=>1});
-            return;
-        }
-        my ($ret, $hash) = xCAT::NetworkUtils->getNodesNetworkCfg($noderange);
-        if ($ret)  {
-            $callback->({error=>[$hash], errorcode=>1});
-            return;
-        }    
-        my @error_nodes = ();
-        foreach my $node (@$noderange)  {
-            if (!defined($hash->{$node})) {
-                delete $node_hash_variable{$node};
-                push @error_nodes, $node;
-            }
-            else {
-                if (!defined($hash->{$node}->{'gateway'})) {
-                    push @error_nodes, $node;
-                }
-                else {
-                    $node_hash_variable{$node}->{ip} = $hash->{$node}->{'ip'};
-                    $node_hash_variable{$node}->{netmask} = $hash->{$node}->{mask};
-                    $node_hash_variable{$node}->{gateway} = $hash->{$node}->{gateway};
-                }
-            }
-        }
-        if (scalar(@error_nodes)) {
-            $callback->({error=>["Can not get network information for :". join(',',@error_nodes)], errorcode=>1});
-        }
-        @$noderange = keys %node_hash_variable;
-    }
-
     #parse parameters for mkdocker
     if ($command eq 'mkdocker') {
         my ($imagearg, $cmdarg, $flagarg);
@@ -892,11 +927,17 @@ sub process_request {
         if (!defined($mactab)) { 
             $callback->({error=>["Open table 'mac' failed"], errorcode=>1});
             return;
-        } 
+        }
+        my ($ret, $netcfg_hash) = xCAT::NetworkUtils->getNodesNetworkCfg($noderange);
+        if ($ret)  {
+            $callback->({error=>[$netcfg_hash], errorcode=>1});
+            return;
+        }
         my $nodetypehash = $nodetypetab->getNodesAttribs($noderange, ['provmethod']);
         my $machash = $mactab->getNodesAttribs($noderange, ['mac']);
         my $vmhash = $vmtab->getNodesAttribs($noderange, ['cpus', 'memory', 'othersettings']);
-        my @errornodes = ();
+ 
+        my %errornodes = ();
         foreach my $node (@$noderange)  {
             if ($imagearg) {
                 $node_hash_variable{$node}->{image} = $imagearg;
@@ -911,14 +952,14 @@ sub process_request {
             else {
                 if (!defined($nodetypehash->{$node}->[0]->{provmethod})) {
                     delete $node_hash_variable{$node};
-                    push @errornodes, $node;
+                    push @{$errornodes{Image}}, $node;
                     next;
                 }
                 else {
                     my ($tmp_img,$tmp_cmd) = split /!/, $nodetypehash->{$node}->[0]->{provmethod};
                     if (!defined($tmp_img)) {
                         delete $node_hash_variable{$node};
-                        push @errornodes, $node;
+                        push @{$errornodes{Image}}, $node;
                         next;
                     }
                     $node_hash_variable{$node}->{image} = $tmp_img;
@@ -944,12 +985,20 @@ sub process_request {
                     $node_hash_variable{$node}->{flag} = $vmnodehash->{othersettings};
                 }
             }
+            my $netcfg_info = $netcfg_hash->{$node};
+            if (!defined($netcfg_info) or !defined($netcfg_info->{'ip'})) {
+                delete $node_hash_variable{$node};
+                push @{$errornodes{Network}}, $node;
+                next;
+            }
+            else {
+                $node_hash_variable{$node}->{ip} = $netcfg_info->{ip};
+            }
         }
         $nodetypetab->close;
         $mactab->close;
-
-        if (scalar(@errornodes)) {
-            $callback->({error=>["Docker image not set correct for @errornodes"], errorcode=>1});
+        foreach (keys %errornodes) {
+            $callback->({error=>["$_ not set correct for @{$errornodes{$_}}"], errorcode=>1});
         }
     }
     $vmtab->close;
@@ -1068,8 +1117,8 @@ sub genreq {
          $method: the http method to generate the http request
          $api: the url to generate the http request
 
-  return: 1-No image defined;
-          2-http response error;
+  return: The http request;
+
   Usage example:
           my $res = genreq_for_mkdocker($node,\%dockerhost,'GET','/containers/$node/json');
 
@@ -1084,7 +1133,6 @@ sub genreq_for_mkdocker {
     #$info_hash{name} = '/'.$node;
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
-    $info_hash{NetworkDisabled} = JSON::true;
     $info_hash{Image} = "$dockerinfo->{image}";
     @{$info_hash{Cmd}} = split/,/, $dockerinfo->{cmd};
     $info_hash{Memory} = $dockerinfo->{mem};
@@ -1094,6 +1142,63 @@ sub genreq_for_mkdocker {
         my $flag_hash = decode_json($dockerinfo->{flag});
         %info_hash = (%info_hash, %$flag_hash);  
     }
+    my $content = encode_json \%info_hash;
+    return genreq($node, $dockerhost, $method, $api, $content);
+}
+
+#-------------------------------------------------------
+
+=head3  genreq_for_net_connect
+
+  Generate HTTP request for network operation for a docker
+
+  Input: $node: The docker container name
+         $dockerhost: hash, keys: name, port, user, pw, user, pw, user, pw
+         $method: the http method to generate the http request
+         $api: the url to generate the http request
+
+  return: The http request;
+  Usage example:
+          my $res = genreq_for_net_connect($node,\%dockerhost,'POST','/networks/$nic/connect');
+
+=cut
+
+#-------------------------------------------------------
+
+sub genreq_for_net_connect {
+    my ($node, $dockerhost, $method, $api) = @_; 
+    my $dockerinfo = $node_hash_variable{$node};
+    my %info_hash = ();
+    $info_hash{container} = $node;
+    $info_hash{EndpointConfig}->{IPAMConfig}->{IPv4Address} = $dockerinfo->{ip};
+    my $content = encode_json \%info_hash;
+    return genreq($node, $dockerhost, $method, $api, $content);
+}
+#-------------------------------------------------------
+
+=head3  genreq_for_net_disconnect
+
+  Generate HTTP request for network operation for a docker
+
+  Input: $node: The docker container name
+         $dockerhost: hash, keys: name, port, user, pw, user, pw, user, pw
+         $method: the http method to generate the http request
+         $api: the url to generate the http request
+
+  return: The http request;
+  Usage example:
+          my $res = genreq_for_net_disconnect($node,\%dockerhost,'POST','/networks/$nic/disconnect');
+
+=cut
+
+#-------------------------------------------------------
+
+sub genreq_for_net_disconnect {
+    my ($node, $dockerhost, $method, $api) = @_; 
+    my $dockerinfo = $node_hash_variable{$node};
+    my %info_hash = ();
+    $info_hash{Container} = $node;
+    $info_hash{Force} = JSON::false;
     my $content = encode_json \%info_hash;
     return genreq($node, $dockerhost, $method, $api, $content);
 }
@@ -1127,4 +1232,3 @@ sub sendreq {
     return undef;
 }
 1;
-
