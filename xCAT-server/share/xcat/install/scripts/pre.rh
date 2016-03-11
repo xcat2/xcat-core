@@ -1,3 +1,9 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    set -x
+fi
+
 if grep n8r /proc/cmdline > /dev/null 2>&1;
 then
   stty crtscts
@@ -266,4 +272,7 @@ NEXTSERVER=${NEXTSERVER%%:*}
 export nextserver=$NEXTSERVER
 #INSTALL_SOURCES_IN_PRE#
 
-
+if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
+then
+    set +x
+fi
