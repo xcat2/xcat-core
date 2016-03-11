@@ -1230,7 +1230,22 @@ sub updatenode
     my $notmpfiles=1;
     my $nofiles=0;
     #my $nofiles=1;
-    xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+    my @exclude_nodes = xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq,$notmpfiles,$nofiles);
+
+    # exclude_nodes list contains nodes which have some attributes missing from node definition, like arch or os.
+    # remove those nodes from the request node list so that updatenode will not be executes on those nodes
+    foreach my $exclude_node (@exclude_nodes) {
+       my $index = 0;
+       $index++ until @{$request->{node}}[$index] eq $exclude_node;
+       splice(@{$request->{node}}, $index, 1);
+    }
+    if (@exclude_nodes > 0) {
+       my $rsp = {};
+       $rsp->{error}->[0] =
+       "Following nodes will be ignored bacause they are missing some attribute definitions: @exclude_nodes";
+       $rsp->{errorcode}->[0] =1;
+       $callback->($rsp);
+    }
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
