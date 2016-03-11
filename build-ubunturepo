@@ -45,11 +45,16 @@ if [[ ! -f /etc/lsb-release ]]; then
 fi 
 . /etc/lsb-release
 
-REPREPRO=`which reprepro >> /dev/null 2>&1; echo $?`
-if [[ ${REPREPRO} != 0 ]]; then
-    echo "ERROR: Could not find reprepro, verify that reprepro is installed on this machine.  Cannot continue!"
-    exit 1
-fi
+# Check the necessary packages before starting the build
+declare -a packages=( "reprepro" "devscripts" "debhelper" "libsoap-lite-perl" "libdbi-perl" "quilt" )
+
+for package in ${packages[@]}; do
+    RC=`dpkg -l | grep $package >> /dev/null 2>&1; echo $?`
+    if [[ ${RC} != 0 ]]; then
+        echo "ERROR: Could not find $package, install using 'apt-get install $package' to continue"
+        exit 1
+    fi
+done
 
 # Process cmd line variable assignments, assigning each attr=val pair to a variable of same name
 for i in $*; do
