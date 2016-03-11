@@ -37,7 +37,7 @@ xCAT supports many switch types, such as **BNT** and **Cisco**. Here is an examp
     Switch(config)# snmp-server group xcatadmin v3 auth write v1default
     Switch(config)# snmp-server community public RO 10
     Switch(config)# snmp-server community private RW 10
-    Switch(config)# snmp-server enable traps license?
+    Switch(config)# snmp-server enable traps
 
 #. Configure the **snmp** user id (assuming a user/pw of xcat/passw0rd): ::
 
