@@ -1,9 +1,9 @@
 Configure passwords
 ===================
 
-#. Configure the system password for the ``root`` user on the compute nodes using one of the following method: 
+#. Configure the system password for the ``root`` user on the compute nodes.
 
-     * Set using the :doc:`chtab </guides/admin-guides/references/man8/chtab.8>` command: ::
+     * Set using the :doc:`chtab </guides/admin-guides/references/man8/chtab.8>` command: (**Recommended**) ::
 
           chtab key=system passwd.username=root passwd.password=abc123
 
@@ -14,11 +14,11 @@ Configure passwords
      * Directly edit the passwd table using the :doc:`tabedit </guides/admin-guides/references/man8/tabedit.8>` command. 
 
 
-#. Configure the passwords for various management methods
+#. Configure the passwords for Management modules of the compute nodes.
 
    * For IPMI/BMC managed systems: ::
 
-         chtab key=ipmi password.username=USERID passwd.password=PASSW0RD
+         chtab key=ipmi passwd.username=USERID passwd.password=PASSW0RD
 
    * For HMC managed systems: ::
 

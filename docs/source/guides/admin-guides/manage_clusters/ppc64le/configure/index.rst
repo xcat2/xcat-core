@@ -1,7 +1,7 @@
 Configure xCAT
 ==============
 
-After install of xCAT software on the management node, set some site specific configuration values before using xCAT.
+After installing xCAT onto the management node, configure some basic attributes for your cluster into xCAT.
  
 .. toctree::
    :maxdepth: 2

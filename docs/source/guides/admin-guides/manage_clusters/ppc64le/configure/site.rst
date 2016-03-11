@@ -8,7 +8,7 @@ Set attributes in the ``site`` table
     * master [#]_
     * nameservers
 
-   *For more information on the keywords, see the DHCP ATTRIBUTES in the :doc:`site </guides/admin-guides/references/man5/site.5>` table.*
+   For more information on the keywords, see the DHCP ATTRIBUTES in the :doc:`site </guides/admin-guides/references/man5/site.5>` table.
 
    If the fields are not set or need to be changed, use the xCAT ``chdef`` command: ::
 
