@@ -1,5 +1,35 @@
-start:xcatd_stop_then_start
-description:stop then start xcatd daemon, and check all the 6 processes status
+start:xcatd_start
+description:stop then start xcatd daemon, and check all the 6 processes are running
+os:linux
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:service xcatd stop
+check:rc==0
+cmd:sleep 3
+cmd:service xcatd start
+check:rc==0
+check:output=~Starting xcatd
+check:output=~[  OK  ]
+cmd:service xcatd status
+check:rc==0
+check:output=~xCAT service is running
+cmd:ps -ef | grep "xcatd: SSL listener" | grep -v grep | wc -l
+check:output==1
+cmd:ps -ef | grep "xcatd: DB Access" | grep -v grep | wc -l
+check:output==1
+cmd:ps -ef | grep "xcatd: UDP listener" | grep -v grep | wc -l
+check:output==1
+cmd:ps -ef | grep "xcatd: install monitor" | grep -v grep | wc -l
+check:output==1
+cmd:ps -ef | grep "xcatd: Discovery worke" | grep -v grep | wc -l
+check:output==1
+cmd:ps -ef | grep "xcatd: Command log writer" | grep -v grep | wc -l
+check:output==1
+end
+
+start:xcatd_stop
+description:stop xcatd daemon, then check all the 6 processes are stopped
 os:linux
 cmd:service xcatd status
 check:rc==0
@@ -12,34 +42,14 @@ cmd:sleep 3
 cmd:service xcatd status
 check:output=~xCAT service is not running
 cmd:ps -ef | grep xcatd
-check:output!~SSL listener
-check:output!~DB Access
-check:output!~UDP listener
-check:output!~install monitor
-check:output!~Discovery worker
-check:output!~Command log writer
+check:output!~"xcatd: SSL listener"
+check:output!~"xcatd: DB Access"
+check:output!~"xcatd: UDP listener"
+check:output!~"xcatd: install monitor"
+check:output!~"xcatd: Discovery worke"
+check:output!~"xcatd: Command log writer"
 cmd:service xcatd start
 check:rc==0
-check:output=~Starting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd status
-check:rc==0
-check:output=~xCAT service is running
-cmd:ps -ef | grep "xcatd:" > /tmp/xcatd_processes.txt
-check:rc==0
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: SSL listener" -c
-check:output==1
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: DB Access" -c
-check:output==1
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: UDP listener" -c
-check:output==1
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: install monitor" -c
-check:output==1
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: Discovery worke" -c
-check:output==1
-check:cat /tmp/xcatd_processes.txt | grep "xcatd: Command log writer" -c
-check:output==1
-cmd:rm -rf /tmp/xcatd_processes.txt
 end
 
 start:xcatd_restart
@@ -48,46 +58,8 @@ os:linux
 cmd:service xcatd status
 check:output=~xCAT service is running
 check:rc==0
-cmd:service xcatd restart
+cmd:times=10; while [ $times -gt 0 ]; do service xcatd restart; if [ "$?" -ne "0" ]; then break; fi; ((times--)); done; if [ $times -gt 0 ]; then $?=1; fi
 check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
-cmd:service xcatd restart
-check:rc==0
-check:output=~Restarting xcatd
-check:output=~[  OK  ]
 cmd:service xcatd status
 check:output=~xCAT service is running
 check:rc==0
