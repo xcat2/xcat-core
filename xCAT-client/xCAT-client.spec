@@ -27,7 +27,7 @@ Requires: perl-xCAT >= %{epoch}:%(cat Version)
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux
-Requires: nmap perl-XML-Simple perl-XML-Parser
+Requires: nmap perl-XML-Simple perl-XML-Parser perl-Sort-Versions
 %else
 Requires: expat 
 %endif

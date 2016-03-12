@@ -10,6 +10,9 @@ use xCAT::MsgUtils;
 use xCAT::DSHCLI;
 use locale;
 use Getopt::Std;
+
+eval "use Sort::Versions qw/versioncmp/; 1;" or  *versioncmp = sub ($$) { ($a,$b)= @_ ; return $a cmp $b };
+
 #####################################################################
 #                                                                   #
 # Module: xdshbak                                                   #
@@ -21,6 +24,7 @@ use Getopt::Std;
 #              output from multiple nodes preceded by the hostname  #
 #                                                                   #
 # Inputs:                                                           #
+#  -b : bare output, don't prepend hostname per line. only with -x  #
 #  -c : list distinct output only once                              #
 #  -h : usage                                                       #
 #  -x : omit extra header output for each node.                     #
@@ -50,7 +54,7 @@ $::dsh_command = 'xdshbak';
 #
 # Process the command line...
 #
-if (!getopts('cxhq'))
+if (!getopts('bcxhq'))
 {    # Gather options; if errors
     &d_syntax;
     exit(-1);
@@ -67,6 +71,11 @@ if ($::opt_c && $::opt_x)
     &d_syntax;
     exit(-1);
 }    # these 2 options are mutually exclusive
+
+if ($::opt_b && !($::opt_x)) {
+    &d_syntax;
+    exit(-1);
+}    # -b only makes sense with -x
 
 if ($::opt_c)
 {
@@ -110,8 +119,7 @@ while (<STDIN>)
     #
     $num_lines++;
     if (!($quiet)) {
-      if ($::opt_x) { $num_lines % 100 == 0 && print STDOUT "."; }
-      else { $num_lines % 1000 == 0 && print STDOUT "."; }
+        $num_lines % 1000 == 0 && print STDOUT ".";
     }
     if (/: /)
     {
@@ -170,7 +178,7 @@ while (<STDIN>)
 # The hostnames are sorted alphabetically
 #
 
-$num_lines > 999 && print STDOUT "\n";
+!($quiet) && $num_lines > 999 && print STDOUT "\n";
 if ($compress)
 {
     if ($long_ln eq $prev_ln)
@@ -199,14 +207,15 @@ else
 
 sub d_syntax
 {
-    my $usage1 = "Usage: xdshbak   [-c | -x | -h | -q] \n";
-    my $usage2 =
-      "-c : compresses the output by listing unique output only once.\n";
-    my $usage3 = "-h : help  \n";
-    my $usage4 =
-      "-x : omit extra header output for each node.  Can not be used with -c. \n";
-    my $usage5 = "-q : quiet mode.\n";
-    my $usage = $usage1 .= $usage2 .= $usage3 .= $usage4 .= $usage5;
+    # Duplicates POD - pod2usage ?
+    my @usage;
+    push @usage, "Usage: xdshbak   [-c | -x [-b] | -h | -q]";
+    push @usage, "    -b : bare output, don't prepend hostname per line. only with -x";
+    push @usage, "    -c : compresses the output by listing unique output only once.";
+    push @usage, "    -h : help";
+    push @usage, "    -x : omit extra header output for each node.  Can not be used with -c.";
+    push @usage, "    -q : quiet mode.";
+    my $usage = join "\n", @usage;
     xCAT::MsgUtils->message("I", $usage);
 
 }
@@ -232,17 +241,23 @@ sub print_list
 
     local (@lines, $numhosts, $hn_string, $l_string);
 
-    foreach $hostname (sort @hs)
+    foreach $hostname (sort { versioncmp($a, $b) } @hs)
     {
         if (!$::opt_x) { ($num_hosts >= 1) && print "\n"; }
         $num_hosts++;
 
-        if ($::opt_x) { print "$hostname: $ls{$hostname}"; }
-        else
-        {
+        if ($::opt_x) {
+            if ($::opt_b) {
+                # Bare output
+                print $ls{$hostname};
+            } else {
+                # No header. hostname prepended on every line
+                map { print "$hostname: $_\n" } split(/\n/, $ls{$hostname});
+            }
+        } else {
 
             #$hn_string = `$SPMSG DSH $MSGCAT  INFO510 'HOST: %1\$s\n' $hostname`;
-            xCAT::MsgUtils->message("I", "HOST:$hostname\n");
+            xCAT::MsgUtils->message("I", "HOST:$hostname");
 
             printf '%.' . (6 + length($hostname)) . "s\n",
               '---------------------------------------------------------------';
@@ -296,13 +311,12 @@ sub print_tree
         ($num_hosts >= 1) && print "\n";
         $num_hosts++;
         @wc = split(/:/, $hdr{$index});
-        @wc = sort(@wc);
+        @wc = sort { versioncmp($a, $b) } @wc;
 
         #system "$SPMSG DSH $MSGCAT  INFO511 'HOSTS '";
-        xCAT::MsgUtils->message("I", "HOSTS:");
-
-        print
-          "-------------------------------------------------------------------------\n";
+        xCAT::MsgUtils->message("I",
+          "HOSTS -------------------------------------------------------------------------"
+        );
         &display_wc;
         print
           "-------------------------------------------------------------------------------\n";
