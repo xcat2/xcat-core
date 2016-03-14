@@ -14,19 +14,20 @@ check:output=~[  OK  ]
 cmd:service xcatd status
 check:rc==0
 check:output=~xCAT service is running
-cmd:ps -ef | grep "xcatd: SSL listener" | grep -v grep | wc -l
-check:output==1
-cmd:ps -ef | grep "xcatd: DB Access" | grep -v grep | wc -l
-check:output==1
-cmd:ps -ef | grep "xcatd: UDP listener" | grep -v grep | wc -l
-check:output==1
-cmd:ps -ef | grep "xcatd: install monitor" | grep -v grep | wc -l
-check:output==1
-cmd:ps -ef | grep "xcatd: Discovery worke" | grep -v grep | wc -l
-check:output==1
-cmd:ps -ef | grep "xcatd: Command log writer" | grep -v grep | wc -l
-check:output==1
+cmd:result=`ps -ef | grep "xcatd: SSL listener" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
+cmd:result=`ps -ef | grep "xcatd: DB Access" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
+cmd:result=`ps -ef | grep "xcatd: UDP listener" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
+cmd:result=`ps -ef | grep "xcatd: install monitor" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
+cmd:result=`ps -ef | grep "xcatd: Discovery worke" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
+cmd:result=`ps -ef | grep "xcatd: Command log writer" | grep -v grep | wc -l`; if [ $result -eq 1 ]; then echo "only one process"; fi
+check:output=~only one process
 end
+
 
 start:xcatd_stop
 description:stop xcatd daemon, then check all the 6 processes are stopped
