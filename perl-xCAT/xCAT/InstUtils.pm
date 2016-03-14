@@ -759,7 +759,7 @@ sub get_server_nodes
         {
             #  get ip facing node
             my @servd= xCAT::NetworkUtils->my_ip_facing($node);
-            unless (@servd[0]) { $serv = $servd[1];}
+            unless ($servd[0]) { $serv = $servd[1];}
         }
 		chomp $serv;
 
