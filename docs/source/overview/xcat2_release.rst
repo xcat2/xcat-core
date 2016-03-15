@@ -47,7 +47,7 @@ xCAT 2.10.x
 |                                 |               |             |- site.xcatdebugmode              |
 |                                 |               |             |- validate netboot attribute      |
 |                                 |               |             |- buildcore on local server       |
-|                                 |               |             |- copycds genereates less osimage |
+|                                 |               |             |- copycds generates fewer osimage |
 |                                 |               |             |- nodeset only accecpt osimage=   |
 +---------------------------------+---------------+-------------+----------------------------------+
 
