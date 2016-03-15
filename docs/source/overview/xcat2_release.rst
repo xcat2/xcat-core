@@ -1,30 +1,31 @@
 xCAT2 Release Information
 =========================
 
-The following table is a summary of the New Operating System, New Hardware and New features that are supported in each xCAT release.
+The following table is a summary of the new operating system (OS), hardware, and features that are added to each xCAT release.   The OS and hardware listed in the table have been fully tested with xCAT.   For a more detailed list of new function, bug fixes, restrictions and known problems, refer to the individual release notes for a specific release. 
 
-The New OS and New Hardware which are listed in the table have been fully tested. The OS with the same source code or Hardware comes with the same CPU should also work, but you need to try it by yourself.
-
-For a complete list of new functions, bug fixes, restrictions, and known problems, refer to the individual release notes.
+* **RHEL** - Red Hat Enterprise Linux
+* **SLES** - Suse Linux Enterprise Server
+* **UBT** - Ubuntu
 
 xCAT 2.11.x
 -----------
+
 +---------------------------------+---------------+-------------+----------------------------------+
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
 || xCAT 2.11                      |- RHEL 7.2 LE  |- S822LC(GCA)|- NVIDIA GPU for OpenPOWER        |
 || 2015/12/11                     |- UBT 14.4.3 LE|- S822LC(GTA)|- Infiniband for OpenPOWER        |
-||                                |- UBT 15.10 LE |- S812LC     |- KIT support for OpenPOWER       |
+||                                |- UBT 15.10 LE |- S812LC     |- SW KIT support for OpenPOWER    |
 | `2.11 Release Notes <https://   |- PowerKVM 3.1 |- NeuCloud OP|- renergy command for OpenPOWER   |
-| github.com/xcat2/xcat-core/     |               |- ZoomNet RP |- rlash command for OpenPOWER     |
+| github.com/xcat2/xcat-core/     |               |- ZoomNet RP |- rflash command for OpenPower    |
 | wiki/XCAT_2.11_Release_Notes>`_ |               |             |- Add xCAT Troubleshooting Log    |
 |                                 |               |             |- xCAT Log Classification         |
 |                                 |               |             |- RAID Configuration              |
-|                                 |               |             |- Accelerate the genimage process |
+|                                 |               |             |- Accelerate genimage process     |
 |                                 |               |             |- Add bmcdiscover Command         |
-|                                 |               |             |- Enhance the xcatdebugmode       |
-|                                 |               |             |- new xCAT doc in RTD             |
+|                                 |               |             |- Enhance xcatdebugmode           |
+|                                 |               |             |- new xCAT doc in ReadTheDocs     |
 +---------------------------------+---------------+-------------+----------------------------------+
 
 
@@ -39,7 +40,7 @@ xCAT 2.10.x
 || 2015/07/31                     |- UBT 15.4 LE  |             |- Cuda install for Ubuntu 14.4.2  |
 ||                                |- SLES 12 LE   |             |- additional kernel parameters    |
 | `2.10 Release Notes <https://   |- RHEL 6.7     |             |- customized disk part (Ubuntu)   |
-| github.com/xcat2/xcat-core/wiki |- CentOS 7.1   |             |- Raid configure base iprconfig   |
+| github.com/xcat2/xcat-core/wiki |- CentOS 7.1   |             |- RAID configure base iprconfig   |
 | /XCAT_2.10_Release_Notes/>`_    |- SLES 11 SP4  |             |- New command: switchdiscover     |
 |                                 |               |             |- New command: makentp            |
 |                                 |               |             |- New command: bmcdiscovery       |
@@ -47,8 +48,8 @@ xCAT 2.10.x
 |                                 |               |             |- site.xcatdebugmode              |
 |                                 |               |             |- validate netboot attribute      |
 |                                 |               |             |- buildcore on local server       |
-|                                 |               |             |- copycds genereates less osimage |
-|                                 |               |             |- nodeset only accecpt osimage=   |
+|                                 |               |             |- copycds generates fewer osimage |
+|                                 |               |             |- nodeset only accepts osimage=   |
 +---------------------------------+---------------+-------------+----------------------------------+
 
 xCAT 2.9.x
@@ -65,14 +66,14 @@ xCAT 2.9.x
 | github.com/xcat2/xcat-core/     |               |             |                                  |
 | wiki/XCAT_2.9.2_Release_Notes>`_|               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
-|| xCAT 2.9.1                     |- RHEL 7.1     |             |- Nvidia GPU                      |
-|| 2015/03/20                     |- UBT 14.4.2   |             |- Ubuntu Local Mirror             |
-||                                |               |             |- Sles12 diskless                 |
-| `2.9.1 Release Notes <https://  |               |             |- Energy management for Power 8   |
-| sourceforge.net/p/xcat/wiki/    |               |             |- RHEL 7.1 LE -> BE mix cluster   |
+|| xCAT 2.9.1 [#]_                |- RHEL 7.1     |             |- Nvidia GPU                      |
+|| 2015/03/20                     |- UBT 14.04.2  |             |- Ubuntu Local Mirror             |
+||                                |- SLES 11 SP3  |             |- SLES12 diskless                 |
+| `2.9.1 Release Notes <https://  |  and later    |             |- Energy management for Power 8   |
+| sourceforge.net/p/xcat/wiki/    |  ONLY         |             |- RHEL 7.1 LE -> BE mix cluster   |
 | XCAT_2.9.1_Release_Notes/>`_    |               |             |- nics.nicextraparams             |
 |                                 |               |             |- xCAT in Docker Image            |
-|                                 |               |             |- Confluent replaces conserver    |
+|                                 |               |             |- confluent replaces conserver    |
 |                                 |               |             |- TLSv1 in xcatd                  |
 |                                 |               |             |- New GPG key for xCAT packages   |
 |                                 |               |             |- fast restart xcatd (systemd)    |
@@ -83,11 +84,13 @@ xCAT 2.9.x
 || 2014/12/12                     |- UBT 14.4.1 LE|             |- site.auditnosyslog              |
 ||                                |- UBT 14.10    |             |- site.nmapoptions                |
 | `2.9 Release Notes <https://    |- SLES 12      |             |- customize postscripts           |
-| sourceforge.net/p/xcat/wiki/    |- RHEL 6.6     |             |- Power 8 LE hw discovery         |
+| sourceforge.net/p/xcat/wiki/    |- RHEL 6.6     |             |- Power 8 LE hw discover          |
 | XCAT_2.9_Release_Notes/>`_      |- AIX 7.1.3.15 |             |- IB support for P8 LE            |
 |                                 |- PowerKVM     |             |                                  |
 |                                 |               |             |                                  |
 +---------------------------------+---------------+-------------+----------------------------------+
+
+.. [#] xCAT 2.9.1 onwards provides support for Kernel-based Virtual Machines (KVM) and requires an operating system that ships the ``perl-Sys-Virt`` package.  
 
 xCAT 2.8.x 
 ----------
