@@ -1,8 +1,6 @@
 start:reg_linux_statelite_installation_hierarchy_by_nfs
 os:Linux
 
-cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`;sed -i "s:nameserver .*:nameserver $MNIP:g" /etc/resolv.conf 
-
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
 cmd:chdef -t node $$SN groups=service,all
@@ -93,6 +91,9 @@ cmd:xdsh $$CN mount
 check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
+cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`; result=`xdsh $$CN "cat /etc/resolv.conf|grep $MNIP"`; if [ "$result" = "$$CN: nameserver $MNIP" ]; then echo "sync file works well"; fi;
+check:rc==0
+check:output=~sync file works well
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
 check:rc==0

@@ -944,7 +944,7 @@ sub creat_report{
                 $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/p_sles_cmd.bundle" if($k =~ /slesp/);
                 $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/x_sles_cmd.bundle" if($k =~ /slesx/);
                 $totalcase=`cat $batbundle|wc -l`;
-                $totalcase+=7;
+                $totalcase+=8;
                 }elsif($k =~ /ubuntux/){
                 $batbundle="/$xcatcoredir/xCAT-test/autotest/bundle/x_ubuntu_cmd.bundle";
                 $totalcase=`cat $batbundle|wc -l`;
