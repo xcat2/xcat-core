@@ -29,7 +29,8 @@ if (
               'e=s'      => \$::EMGR_FLAGS,     # emgr flags
               'n|nfsv4'  => \$::NFSV4,
               'd|altsrc' => \$::ALTSRC,
-              'a|all'    => \$::ALLSW
+              'a|all'    => \$::ALLSW,
+              'u|updateonly'    => \$::UPDATEONLY,
     )
   )
 {                                         # Gather options
@@ -96,6 +97,26 @@ if ($rc != 0)
     print
       "aixswupdate: Could not mount $mntdir source directory from $servnode.\n";
     exit 1;
+}
+
+
+if ($::ALLSW && $::UPDATEONLY) {
+    if (-f "/usr/sbin/install_all_updates") {
+        my $updatecmd = qq~/usr/sbin/install_all_updates -d $localsrc -cYr all~;
+        print "Running: \'$updatecmd\'\n";
+        $rc = &runcmd($updatecmd);
+        if ($rc != 0)
+        {
+            print "aixswupdate: Failed to perform the all updates.\n";
+            exit 1;
+        }
+
+    } else {
+        print "aixswupdate: Could not find the tool /usr/sbin/install_all_updates to perfrom the all updates.\n";
+        exit 1;
+    }
+
+    exit 0;
 }
 
 # if the software list file exists then try to install the software
