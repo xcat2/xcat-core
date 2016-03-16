@@ -1,3 +1,8 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ]; then
+    set -x
+fi
+
 #!/bin/sh
 
 if [ ! -c /dev/vcs ]; then
@@ -201,3 +206,7 @@ echo "    ." >> /tmp/partitionfile
 #XCA_PARTMAN_ADDITIONAL_CONFIG_SCRIPT#
 exit 0
 
+if [ "$XCATDEBUGMODE" = "1" ]; then
+then
+    set +x
+fi
