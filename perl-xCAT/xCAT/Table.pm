@@ -34,7 +34,6 @@
 #TODO: longer term, either figure out a way to properly implement it or 
 #      document it as a limitation for SQLite configurations
 package xCAT::Table;
-use xCAT::MsgUtils;
 use Sys::Syslog;
 use Storable qw/freeze thaw store_fd fd_retrieve/;
 use IO::Socket;
@@ -57,7 +56,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to full DB retrieval
 #TODO: dynamic tracking/adjustment, the point where cache is cost effective differs based on overall db size
-
+use xCAT::MsgUtils;
 use DBI;
 $DBI::dbi_debug=9; # increase the debug output
 
@@ -75,6 +74,8 @@ my $dbsockpath = "/var/run/xcat/dbworker.sock.".$$;
 my $exitdbthread;
 my $dbobjsforhandle;
 my $intendedpid;
+my $nextRecordAtEnd = qr/\+=NEXTRECORD$/;
+my $nextRecord = qr/\+=NEXTRECORD/;
 
 
 sub dbc_call {
@@ -2075,50 +2076,285 @@ sub setNodesAttribs {
 #--------------------------------------------------------------------------------
 sub getNodesAttribs {
     my $self = shift;
-    if ($dbworkerpid) {
-        return dbc_call($self,'getNodesAttribs',@_);
-    }
     my $nodelist = shift;
     unless ($nodelist) { $nodelist = []; } #common to be invoked with undef seemingly
     my %options=();
     my @attribs;
+    my %attribsToDo;
     if (ref $_[0]) {
         @attribs = @{shift()};
         %options = @_;
     } else {
         @attribs = @_;
     }
+    for(@attribs) {
+        $attribsToDo{$_} = 0
+    };
     my @realattribs = @attribs; #store off the requester attribute list, the cached columns may end up being a superset and we shouldn't return more than asked
 	#it should also be the case that cache will be used if it already is in play even if below cache threshold.  This would be desired behavior
-    if (scalar(@$nodelist) > $cachethreshold) {
-        $self->{_use_cache} = 0;
-        $self->{nodelist}->{_use_cache}=0;
-        if ($self->{tabname} eq 'nodelist') { #a sticky situation
-            my @locattribs=@attribs;
-            unless (grep(/^node$/,@locattribs)) {
-                push @locattribs,'node';
-            }
-            unless (grep(/^groups$/,@locattribs)) {
-                push @locattribs,'groups';
-            }
-            $self->_build_cache(\@locattribs);
-        } else {
-            $self->_build_cache(\@attribs);
-            $self->{nodelist}->_build_cache(['node','groups']);
-        }
-        $self->{_use_cache} = 1;
-        $self->{nodelist}->{_use_cache}=1;
-    }
+    use Data::Dumper;
+    my $nodekey = 'node';
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+
     my $rethash;
-    foreach (@$nodelist) {
-        my @nodeentries=$self->getNodeAttribs($_,\@realattribs,%options);
-        $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
+    my @tmp = @{ dclone(\@$nodelist) };
+    @tmp = map { $_ = '"' . $_ . '"'; } @tmp;
+    my $clause = "$nodekey in (" . join(",", @tmp) . ")";
+    
+    my @results = $self->getAllAttribsWhere($clause, $nodekey, @realattribs);
+    foreach my $result (@results) {
+    	foreach my $attrib (keys %attribsToDo) {
+    		if(defined($result) && defined($result->{$attrib}) && $result->{$attrib} !~ $nextRecordAtEnd) {
+    			delete $attribsToDo{$attrib};
+    		}
+    	}
     }
-    $self->{_use_cache} = 0;
-    if ($self->{tabname} ne 'nodelist') { 
-	    $self->{nodelist}->{_use_cache} = 0;
+    if((keys (%attribsToDo)) == 0) { #if all of the attributes are satisfied, don't look at the groups
+        return $self->_handle_redex_attrs(\@results, \@attribs, 1);
     }
-    return $rethash;
+    $clause = "node in (" . join(",", @tmp) . ")";
+    my @node_group_entries= $self->{nodelist}->getAllAttribsWhere($clause, 'node', 'groups');    
+    my @groups;
+    my %node_group_hash;
+    foreach my $node_group_entry (@node_group_entries) {    	
+    	my @temp_groups = split(/,/, $node_group_entry->{groups});
+    	foreach my $temp (@temp_groups) {
+    		if (!grep (/^$temp$/, @groups)) {
+    			push(@groups, $temp);
+    		} 
+    	}
+    	$node_group_hash{$node_group_entry->{node}} = \@temp_groups;
+    }
+    
+    my @temp_groups = map { $_ = '"' . $_ . '"'; } @groups;
+    $clause = "$nodekey in (" . join(",", @temp_groups) . ")";
+    
+    my @groupResults = $self->getAllAttribsWhere($clause, $nodekey, keys (%attribsToDo));
+    my %groupResultsHash;
+    foreach my $result (@groupResults) {
+      $groupResultsHash{$result->{node}} = $result;
+    }
+    
+  $self->_handle_groups_results(\%groupResultsHash, \@results, \%attribsToDo, \%node_group_hash, \%options);
+  for my $result (@results) {
+    for my $key (keys %$result) {
+      $result->{$key} =~ s/\+=NEXTRECORD//g;
+    }
+  }
+   
+  my $retval = $self->_handle_redex_attrs(\@results, \@attribs, 1);  
+  return $retval;
+}
+
+sub _handle_groups_results {
+	my $self    = shift;
+	my $groupResultsHash_ptr = shift;
+	my $results_ptr = shift;
+	my $attribsToDo_ptr = shift;
+	my $node_group_hash_ptr = shift;
+	my $options_ptr = shift;
+	my %groupResultsHash = %{$groupResultsHash_ptr};
+	my @results = @{$results_ptr};
+	my %attribsToDo = %{$attribsToDo_ptr};
+	my %node_group_hash = %{$node_group_hash_ptr};
+	my %options = %{$options_ptr};
+	
+	use Storable qw(dclone);
+    my @prevResCopy = @{dclone(\@results)};
+    my @expandedResults;
+    my $groupnode;
+    my $group;
+    my @groupResults;
+    my $groupResult;
+    my %attribsDone;
+    my $nodekey = 'node';
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+
+	while(($group, $groupResult) = each(%groupResultsHash)) {
+        my %toPush;
+        foreach my $result (@results) {
+            my $node = $result->{node};
+            my @node_group = @{$node_group_hash{$node}}; 
+            if (!grep (/^$group$/, @node_group)) {
+                next;
+            }
+            foreach my $attrib (keys %attribsToDo) {
+                if(defined($groupResult->{$attrib})){
+                    $attribsDone{$attrib} = 0;
+                }
+                if(defined($result)) {
+                if(defined($result->{$attrib})) {
+                  if($result->{$attrib} =~$nextRecordAtEnd){ #if the attribute value should be added
+                    $result->{$attrib} =~ s/$nextRecordAtEnd//; #pull out the existing next record string
+                    $result->{$attrib} .= $groupResult->{$attrib}; #add the group result onto the end of the existing value
+                    if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                      delete $attribsDone{$attrib};
+                    }
+                    if($options{withattribution} && $attrib ne $nodekey) {
+                      if(defined($result->{'!!xcatgroupattribution!!'})) {
+                        if(defined($result->{'!!xcatgroupattribution!!'}->{$attrib})) {
+                          $result->{'!!xcatgroupattribution!!'}->{$attrib} .= "," . $group;
+                        }
+                        else {
+                          $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                        }
+                      }
+                      else {
+                        $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                      }
+                    }
+                  }
+                }
+                else {
+                  $result->{$attrib} = $groupResult->{$attrib};
+                  if($options{withattribution} && $attrib ne $nodekey){
+                    $result->{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+                  }
+                  if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                    delete $attribsDone{$attrib};
+                  }
+                }
+              }
+              else {
+                $toPush{$attrib} = $groupResult->{$attrib};
+                if($options{withattribution} && $attrib ne $nodekey){
+                    $toPush{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+                }
+                if($groupResult->{$nodekey}) {
+                  $toPush{$nodekey} = $node;
+                }  
+                if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                  delete $attribsDone{$attrib};
+                }
+              }
+            }
+        }
+
+        if(keys(%toPush) > 0) {
+
+          if(!defined($results[0])) {
+            shift(@results);
+          }
+          push(@results,\%toPush);
+        }
+
+        push(@expandedResults, @results);
+
+        @results = @{dclone(\@prevResCopy)};
+      @results = @expandedResults;
+
+  }
+}
+
+sub _handle_redex_attrs {
+	my $self    = shift;
+	my $results_ptr = shift;
+	my $attribs_ptr = shift;
+	my @results = @{$results_ptr};
+	my @attribs = @{$attribs_ptr};
+	my $return_array = shift;
+	my $node_key = shift;
+	my %retval;
+	my $node = $node_key;
+	foreach my $datum (@results) {
+    if (!$datum) {
+        next;
+    }
+    if (!defined($node_key)) {
+    	$node = $datum->{node};
+    }    
+    foreach my $attrib (@attribs)
+    {
+        unless (defined $datum->{$attrib}) {
+            #skip undefined values, save time
+            next;
+        }
+        if ($datum->{$attrib} =~ /^\/[^\/]*\/[^\/]*\/$/)
+        {
+            my $exp = substr($datum->{$attrib}, 1);
+            chop $exp;
+            my @parts = split('/', $exp, 2);
+             my $retval = $node;
+            $retval =~ s/$parts[0]/$parts[1]/;
+            $datum->{$attrib} = $retval;
+        }
+        elsif ($datum->{$attrib} =~ /^\|.*\|$/)
+        {
+
+            #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
+            #Tricky part:  don't allow potentially dangerous code, only eval if
+            #to-be-evaled expression is only made up of ()\d+-/%$
+            #Futher paranoia?  use Safe module to make sure I'm good
+            my $exp = substr($datum->{$attrib}, 1);
+            chop $exp;
+            my @parts = split('\|', $exp, 2);
+            my $arraySize = @parts;
+            if ($arraySize < 2) { # easy regx, generate lhs from node
+              my $lhs;
+              my @numbers = $node =~ m/[\D0]*(\d+)/g;
+              $lhs = '[\D0]*(\d+)' x scalar(@numbers);
+              $lhs .= '.*$';
+              unshift(@parts,$lhs);
+            }
+            my $curr;
+            my $next;
+            my $prev;
+            my $retval = $parts[1];
+            ($curr, $next, $prev) =
+              extract_bracketed($retval, '()', qr/[^()]*/);
+
+            unless($curr) { #If there were no paramaters to save, treat this one like a plain regex
+               undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
+               $retval = $node;
+               $retval =~ s/$parts[0]/$parts[1]/;
+               $datum->{$attrib} = $retval;
+               if ($datum->{$attrib} =~ /^$/) {
+                  #If regex forces a blank, act like a normal blank does
+                  delete $datum->{$attrib};
+               }
+               next; #skip the redundancy that follows otherwise
+            }
+            while ($curr)
+            {
+
+                #my $next = $comps[0];
+                my $value = $node;
+                $value =~ s/$parts[0]/$curr/;
+                $value = $evalcpt->reval('use integer;'.$value);
+                $retval = $prev . $value . $next;
+                ($curr, $next, $prev) =
+                  extract_bracketed($retval, '()', qr/[^()]*/);
+            }
+            undef $@;
+            #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+            #must be applied in total
+            my $answval = $node;
+            $answval =~ s/$parts[0]/$retval/;
+            $datum->{$attrib} = $answval; #$retval;
+
+            #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
+            #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
+        }
+        if ($datum->{$attrib} =~ /^$/) {
+            #If regex forces a blank, act like a normal blank does
+            delete $datum->{$attrib};
+        }
+    }
+#    if (defined( $datum->{node})) {
+#    	delete $datum->{node};
+#    }
+    if ($return_array) {
+        my @temp_array = ($datum);
+        $retval{$node} = \@temp_array;
+    } else {
+        $retval{$node} = $datum
+    }
+    }
+    return \%retval;
 }
 
 sub _refresh_cache { #if cache exists, force a rebuild, leaving reference counts alone
@@ -2246,12 +2482,6 @@ $evalcpt->permit('require');
 sub getNodeAttribs
 {
     my $self    = shift;
-    if ($dbworkerpid) { #TODO: should this be moved outside of the DB worker entirely?  I'm thinking so, but I don't dare do so right now...
-                        #the benefit would be the potentially computationally intensive substitution logic would be moved out and less time inside limited
-                        #db worker scope
-        return dbc_call($self,'getNodeAttribs',@_);
-    }
-
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S","xcatd: DBI is missing, Please check the db access process.");
         return undef;
@@ -2268,31 +2498,9 @@ sub getNodeAttribs
     my $datum;
     my $oldusecache;
     my $nloldusecache;
-    if ($options{prefetchcache}) { #TODO: If this *were* split out of DB worker, this logic would have to move *into* returnany
-        if ($self->{tabname} eq 'nodelist') { #a sticky situation
-            my @locattribs=@attribs;
-            unless (grep(/^node$/,@locattribs)) {
-                push @locattribs,'node';
-            }
-            unless (grep(/^groups$/,@locattribs)) {
-                push @locattribs,'groups';
-            }
-            $self->_build_cache(\@locattribs,noincrementref=>1);
-        } else {
-            $self->_build_cache(\@attribs,noincrementref=>1);
-            $self->{nodelist}->_build_cache(['node','groups'],noincrementref=>1);
-        }
- 	$oldusecache=$self->{_use_cache};
- 	$nloldusecache=$self->{nodelist}->{_use_cache};
-	$self->{_use_cache}=1;
-	$self->{nodelist}->{_use_cache}=1;
-    }
+    
     my @data = $self->getNodeAttribs_nosub_returnany($node, \@attribs,%options);
-    if ($options{prefetchcache}) {
-	$self->{_use_cache}=$oldusecache;
-	$self->{nodelist}->{_use_cache}=$nloldusecache;
-	#in this case, we just let the cache live, even if it is to be ignored by most invocations
-    }
+   
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
     #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
@@ -2300,87 +2508,9 @@ sub getNodeAttribs
     unless (scalar keys %{$data[0]}) {
         return undef;
     }
-    my $attrib;
-    foreach $datum (@data) {
-    foreach $attrib (@attribs)
-    {
-        unless (defined $datum->{$attrib}) {
-            #skip undefined values, save time
-            next;
-        }
-        if ($datum->{$attrib} =~ /^\/[^\/]*\/[^\/]*\/$/)
-        {
-            my $exp = substr($datum->{$attrib}, 1);
-            chop $exp;
-            my @parts = split('/', $exp, 2);
-	         my $retval = $node;
-            $retval =~ s/$parts[0]/$parts[1]/;
-            $datum->{$attrib} = $retval;
-        }
-        elsif ($datum->{$attrib} =~ /^\|.*\|$/)
-        {
-
-            #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
-            #Tricky part:  don't allow potentially dangerous code, only eval if
-            #to-be-evaled expression is only made up of ()\d+-/%$
-            #Futher paranoia?  use Safe module to make sure I'm good
-            my $exp = substr($datum->{$attrib}, 1);
-            chop $exp;
-            my @parts = split('\|', $exp, 2);
-            my $arraySize = @parts;
-            if ($arraySize < 2) { # easy regx, generate lhs from node
-              my $lhs;
-              my @numbers = $node =~ m/[\D0]*(\d+)/g;
-              $lhs = '[\D0]*(\d+)' x scalar(@numbers);
-              $lhs .= '.*$';
-              unshift(@parts,$lhs);
-            }
-            my $curr;
-            my $next;
-            my $prev;
-            my $retval = $parts[1];
-            ($curr, $next, $prev) =
-              extract_bracketed($retval, '()', qr/[^()]*/);
-
-            unless($curr) { #If there were no paramaters to save, treat this one like a plain regex
-               undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
-               $retval = $node;
-               $retval =~ s/$parts[0]/$parts[1]/;
-               $datum->{$attrib} = $retval;
-               if ($datum->{$attrib} =~ /^$/) {
-                  #If regex forces a blank, act like a normal blank does
-                  delete $datum->{$attrib};
-               }
-               next; #skip the redundancy that follows otherwise
-            }
-            while ($curr)
-            {
-
-                #my $next = $comps[0];
-                my $value = $node;
-                $value =~ s/$parts[0]/$curr/;
-                $value = $evalcpt->reval('use integer;'.$value);
-                $retval = $prev . $value . $next;
-                ($curr, $next, $prev) =
-                  extract_bracketed($retval, '()', qr/[^()]*/);
-            }
-            undef $@;
-            #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
-            #must be applied in total
-            my $answval = $node;
-            $answval =~ s/$parts[0]/$retval/;
-            $datum->{$attrib} = $answval; #$retval;
-
-            #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
-            #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
-        }
-        if ($datum->{$attrib} =~ /^$/) {
-            #If regex forces a blank, act like a normal blank does
-            delete $datum->{$attrib};
-        }
-    }
-    }
-    return wantarray ? @data : $data[0];
+    my $retval = $self->_handle_redex_attrs(\@data, \@attribs, 1, $node);
+    my @temp_array = @{$retval->{$node}};
+    return  wantarray? @temp_array : $temp_array[0];
 }
 
 
@@ -2528,9 +2658,6 @@ sub getNodeAttribs_nosub_returnany_old
     return undef;    #Made it here, config has no good answer
 }
 
-my $nextRecordAtEnd = qr/\+=NEXTRECORD$/;
-my $nextRecord = qr/\+=NEXTRECORD/;
-
 #this evolved a bit and i intend to rewrite it into something a bit cleaner at some point - cjhardee
 #looks for all of the requested attributes, looking into the groups of the node if needed
 sub getNodeAttribs_nosub_returnany
@@ -2586,16 +2713,21 @@ sub getNodeAttribs_nosub_returnany
   my %attribsDone;
 #print "After node results, still missing ".Dumper(\%attribsToDo)."\n";
 #print "groups are ".Dumper(\@nodegroups);
-  foreach $group (@nodegroups) {
+  my @tmp = @{ dclone(\@nodegroups) };
+  @tmp = map { $_ = '"' . $_ . '"'; } @tmp;
+  my $clause = "$nodekey in (" . join(",", @tmp) . ")";
+  @groupResults = $self->getAllAttribsWhere($clause, $nodekey, keys (%attribsToDo));
+  
+  my %groupResultsHash;
+  foreach my $result (@groupResults) {
+      $groupResultsHash{$result->{node}} = $result;
+  }
+
     use Storable qw(dclone);
     my @prevResCopy = @{dclone(\@results)};
     my @expandedResults;
-    @groupResults = $self->getAttribs({$nodekey => $group}, keys (%attribsToDo));
-#print "group results for $group are ".Dumper(\@groupResults)."\n";
-    $data = $groupResults[0];
-    if (defined($data)) { #if some attributes came back from the query for this group
-      
-      foreach $groupResult (@groupResults) {
+    my $groupnode;
+    while(($group, $groupResult) = each(%groupResultsHash)) {
         my %toPush;
         foreach $attrib (keys %attribsToDo) { #check each unfinished attribute against the results for this group
 #print "looking for attrib $attrib\n";
@@ -2667,7 +2799,6 @@ sub getNodeAttribs_nosub_returnany
 #print "expandedResults= ".Dumper(\@expandedResults)."\n";
 #print "setting results to previous:\n".Dumper(\@prevResCopy)."\n\n\n";
         @results = @{dclone(\@prevResCopy)};
-      }
       @results = @expandedResults;
       foreach $attrib (keys %attribsDone) {
         if(defined($attribsToDo{$attrib})) {
@@ -2677,7 +2808,6 @@ sub getNodeAttribs_nosub_returnany
       if((keys (%attribsToDo)) == 0) { #all of the attributes are satisfied, so stop looking at the groups
         last;
       }
-    }
   }
     
 #print "results ".Dumper(\@results);
@@ -2816,10 +2946,7 @@ sub getAllAttribsWhere
 {
 
     #Takes a list of attributes, returns all records in the table.
-    my $self        = shift;
-    if ($dbworkerpid) {
-        return dbc_call($self,'getAllAttribsWhere',@_);
-    }
+    my $self        = shift; 
     my $clause = shift; 
     my $whereclause; 
     my @attribs     = @_;
@@ -2831,11 +2958,10 @@ sub getAllAttribsWhere
     } else {
       $whereclause = $clause;
     }
-
-
+    
     # delimit the disable column based on the DB 
     my $disable= &delimitcol("disable");	
-    $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";
+    $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";    
     $query = $self->{dbh}->prepare($query2);
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
@@ -2934,7 +3060,6 @@ sub getAllNodeAttribs
     $self->{nodelist}->{_use_cache}=1;
     while (my $data = $query->fetchrow_hashref())
     {
-
         unless ($data->{$nodekey} =~ /^$/ || !defined($data->{$nodekey}))
         {    #ignore records without node attrib, not possible?
 	    
@@ -3025,10 +3150,6 @@ sub getAllAttribs
 
     #Takes a list of attributes, returns all records in the table.
     my $self    = shift;
-    if ($dbworkerpid) {
-        return dbc_call($self,'getAllAttribs',@_);
-    }
-
     if (!defined($self->{dbh})) {
         xCAT::MsgUtils->message("S","xcatd: DBI is missing, Please check the db access process.");
         return undef;
@@ -3036,55 +3157,19 @@ sub getAllAttribs
     #print "Being asked to dump ".$self->{tabname}."for something\n";
     my @attribs = @_;
     my @results = ();
-    if ($self->{_use_cache}) {
-        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
-            $self->_refresh_cache();
-        }
-        my @results;
-        my $cacheline;
-        CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
-            my $attrib;
-            my %rethash;
-            foreach $attrib (@attribs)
-            {
-                unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
-                {    #To undef fields in rows that may still be returned
-                    $rethash{$attrib} = $cacheline->{$attrib};
-                }
-            }
-            if (keys %rethash)
-            {
-                push @results, \%rethash;
-            }
-        }
-        if (@results)
-        {
-          return @results; #return wantarray ? @results : $results[0];
-        }
-        return undef;
-    }
+
     # delimit the disable column based on the DB 
     my $disable= &delimitcol("disable");	
     my $query;
-    my $qstring =  "SELECT * FROM " . $self->{tabname} 
+    my $attribs_str = join(",", @attribs);
+    my $qstring =  "SELECT $attribs_str FROM " . $self->{tabname} 
         . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
          $query = $self->{dbh}->prepare($qstring);
     #print $query;
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
-        my %newrow = ();
-        foreach (@attribs)
-        {
-            unless ($data->{$_} =~ /^$/ || !defined($data->{$_}))
-            { #The reason we do this is to undef fields in rows that may still be returned..
-                $newrow{$_} = $data->{$_};
-            }
-        }
-        if (keys %newrow)
-        {
-            push(@results, \%newrow);
-        }
+        push @results, $data;
     }
     $query->finish();
     return @results;
@@ -3259,10 +3344,6 @@ sub getAttribs
     # (recurse argument intended only for internal use.)
     # Returns a hash reference with requested attributes defined.
     my $self = shift;
-    if ($dbworkerpid) {
-        return dbc_call($self,'getAttribs',@_);
-    }
-
     #my $key = shift;
     #my $keyval = shift;
     my %keypairs = %{shift()};
@@ -3273,61 +3354,9 @@ sub getAttribs
         @attribs  = @_;
     }
     my @return;
-    if ($self->{_use_cache}) {
-        if ($self->{_cachestamp} < (time()-5)) { #NEVER use a cache older than 5 seconds
-		$self->_refresh_cache();
-	}
-        my @results;
-        my $cacheline;
-        if (scalar(keys %keypairs) == 1 and $keypairs{node}) { #99.9% of queries look like this, optimized case
-            foreach $cacheline (@{$self->{_nodecache}->{$keypairs{node}}}) {
-                my $attrib;
-                my %rethash;
-                foreach $attrib (@attribs)
-               {
-                   unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
-                 {    #To undef fields in rows that may still be returned
-                     $rethash{$attrib} = $cacheline->{$attrib};
-                 }
-               }
-               if (keys %rethash)
-             {
-                 push @results, \%rethash;
-             }
-            }
-        } else { #SLOW WAY FOR GENERIC CASE
-            CACHELINE: foreach $cacheline (@{$self->{_tablecache}}) {
-                foreach (keys %keypairs) {
-                    if (not $keypairs{$_} and $keypairs{$_} ne 0 and $cacheline->{$_}) {
-                        next CACHELINE;
-                    }
-                    unless ($keypairs{$_} eq $cacheline->{$_}) {
-                        next CACHELINE;
-                    }
-                }
-                my $attrib;
-                my %rethash;
-                foreach $attrib (@attribs)
-               {
-                   unless ($cacheline->{$attrib} =~ /^$/ || !defined($cacheline->{$attrib}))
-                 {    #To undef fields in rows that may still be returned
-                     $rethash{$attrib} = $cacheline->{$attrib};
-                 }
-               }
-               if (keys %rethash)
-             {
-                 push @results, \%rethash;
-             }
-            }
-        }
-        if (@results)
-        {
-          return wantarray ? @results : $results[0];
-        }
-        return undef;
-    }
-    #print "Uncached access to ".$self->{tabname}."\n";
-    my $statement = 'SELECT * FROM ' . $self->{tabname} . ' WHERE ';
+    my $attribs_str = join(",", @attribs);
+
+    my $statement = 'SELECT '.$attribs_str.' FROM ' . $self->{tabname} . ' WHERE ';
     my @exeargs;
     foreach (keys %keypairs)
     {
@@ -3361,19 +3390,7 @@ sub getAttribs
     my $data;
     while ($data = $query->fetchrow_hashref())
     {
-        my $attrib;
-        my %rethash;
-        foreach $attrib (@attribs)
-        {
-            unless ($data->{$attrib} =~ /^$/ || !defined($data->{$attrib}))
-            {    #To undef fields in rows that may still be returned
-                $rethash{$attrib} = $data->{$attrib};
-            }
-        }
-        if (keys %rethash)
-        {
-            push @return, \%rethash;
-        }
+        push @return, $data;
     }
     $query->finish();
     if (@return)

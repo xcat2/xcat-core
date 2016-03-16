@@ -885,7 +885,7 @@ unless ($foreground) {
     daemonize;
 }
 
-$dbmaster=xCAT::Table::init_dbworker;
+#$dbmaster=xCAT::Table::init_dbworker;
 my $CHILDPID=0; # Global for reapers
 my %immediatechildren;
 sub generic_reaper {
