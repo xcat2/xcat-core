@@ -47,6 +47,8 @@ This program module file is a set of utilities to support xCAT post scripts.
 
      xCAT::Postage::create_mypostscript_or_not($request, $callback, $subreq);
 
+     Return: list of nodes that have some attributes missing from node definition
+
 
 =cut
 
@@ -102,7 +104,8 @@ sub create_mypostscript_or_not {
        } 
     }
 
-
+  # Return the list of nodes that had missing attributes
+  return @::exclude_nodes;
 }
 
 
@@ -270,10 +273,9 @@ sub makescript {
   #
   #
   #%::GLOBAL_TAB_HASH = ();
-  my $rc = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
-  if($rc == -1) {
-     #return;
-  }
+
+  # Collect all node attributes and save a list of nodes which have some missing node definition attributes
+  @::exclude_nodes = collect_all_attribs_for_tables_in_template(\%table, $nodes, $callback);
 
   #print Dumper(\%::GLOBAL_TAB_HASH);
 
@@ -1395,6 +1397,7 @@ sub  collect_all_attribs_for_tables_in_template
   my $nodes = shift;
   my $callback = shift;
   my $blankok;
+  my @exclude_nodes = ();
   if(defined($table) ) {
        foreach my $tabname (keys %$table) {
             my $key_hash = $table->{$tabname};
@@ -1445,7 +1448,9 @@ sub  collect_all_attribs_for_tables_in_template
                                             push @{$rsp->{data}},
                                                              "No os or arch setting in nodetype table for $node.\n";
                                             xCAT::MsgUtils->message("E", $rsp, $callback);
-                                            return -1;
+                                            # Save this node in the list of nodes that have missing attributes
+                                            push(@exclude_nodes, $node);
+                                            last; # Continue to the next node
                                        }
                                    }
 
@@ -1481,7 +1486,7 @@ sub  collect_all_attribs_for_tables_in_template
     }
    
   }
-
+  return @exclude_nodes;
 
 }
 
@@ -2130,7 +2135,5 @@ sub includetmpl
 
     return join(',', @text);
 }
-
-
 
 1;
