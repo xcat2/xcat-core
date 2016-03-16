@@ -22,10 +22,12 @@ Add the necessary apt-repositories to the management node ::
         add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports $(lsb_release -sc) universe"
         add-apt-repository "deb http://ports.ubuntu.com/ubuntu-ports $(lsb_release -sc)-updates universe"
 
-Install xCAT with the following command: ::
+Install xCAT [#]_ with the following command: ::
 
         apt-get clean all
         apt-get update
-        apt-get install xCAT
+        apt-get install xcat
+
+.. [#] Starting with Ubuntu 16.04, the package name 'xCAT' is required to be all lowercase
 
 
