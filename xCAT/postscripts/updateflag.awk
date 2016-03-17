@@ -16,6 +16,7 @@ BEGIN {
             print $0 | "logger -t xcat -p local4.info"
         else {
             print "Retrying flag update" | "logger -t xcat -p local4.info"
+            print "updateflag.awk: Retrying flag update" >> "/var/log/xcat/xcat.log"
             close(ns)
             system("sleep 10")
             loop = loop + 1
@@ -25,9 +26,11 @@ BEGIN {
             print flag |& ns
         if($0 == "done")
             break
-        if(loop > 10) 
+        if(loop > 10) {
             print "flag update failed" | "logger -t xcat -p local4.info"
+            print "updateflag.awk: flag update failed" >> "/var/log/xcat/xcat.log"
             break
+        }
     }
 
     close(ns)
