@@ -43,9 +43,11 @@ my %global_OID_model_metrix = (
     "enterprises.26543.1.7.4" => "(BNT)IBM Networking Operating System RackSwitch G8124",
     "enterprises.26543.1.7.6" => "(BNT)IBM Networking Operating System RackSwitch G8264",
     "enterprises.26543.1.7.7" => "(BNT)IBM Networking Operating System RackSwitch G8052",
+    "enterprises.26543" => "BNT",
     "enterprises.33049.1.1.1.6036" => "IBM Mellanox Switch SX6036",
     "enterprises.33049.1.1.1.6512" => "IBM Mellanox Switch SX6512",
-    "enterprises.33049.2.1" => "IBM Mellanox Switch IB6131"
+    "enterprises.33049.2.1" => "IBM Mellanox Switch IB6131",
+    "enterprises.33049" => "IBM Mellanox Switch"
 );
 
 
