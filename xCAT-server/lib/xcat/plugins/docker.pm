@@ -35,7 +35,6 @@ use xCAT::MsgUtils;
 use Cwd;
 use xCAT::Usage;
 use JSON;
-#use Data::Dumper;
 
 my $verbose;
 my $global_callback;
@@ -1003,7 +1002,7 @@ sub init_async {
     $async = HTTP::Async->new(
         slots => $args{slots},
         ssl_options => {
-            SSL_verify_mode => "SSL_VERIFY_PEER",
+            SSL_verify_mode => SSL_VERIFY_PEER,
             SSL_ca_file => $ssl_ca_file,
             SSL_cert_file => $ssl_cert_file,
             SSL_key_file => $key_file,

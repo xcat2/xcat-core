@@ -14,6 +14,7 @@ if ($^O =~ /^aix/i) {
 }
 use IO::Handle;
 use MIME::Base64 qw(decode_base64);
+use IO::Socket::SSL;
 
 my $inet6support;
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
