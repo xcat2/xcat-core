@@ -3343,16 +3343,12 @@ sub defls
                 #        $newhash{$_->{node}} = 1;
                 #    }
                 #}
-
-                foreach my $n (keys %defhash) {
-                    #if ($newhash{$n} eq 1) {
-                        my ($hidhash) = $listtab->getNodeAttribs($n ,['hidden']);
-                        if ($hidhash) {
-                            if ( $hidhash->{hidden} eq 1)  {
-                                delete $defhash{$n};
-                            }
-                        }
-                    #}
+                my @def_nodes = keys %defhash;
+                my $hidden_nodes = $listtab->getNodesAttribs(\@def_nodes, ['hidden']);
+                foreach my $n (keys %{$hidden_nodes}) {
+                    if (defined($hidden_nodes->{$n}->[0]->{'hidden'}) && $hidden_nodes->{$n}->[0]->{'hidden'} eq 1) {
+                        delete $defhash{$n};
+                    }
                 }
             }
         }
