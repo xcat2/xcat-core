@@ -2540,6 +2540,7 @@ my @nodeattrs = (
                  access_tabentry => 'vm.node=attr:node',
                 },
                 {attr_name => 'vmnics',
+                 only_if => 'mgt=kvm',
                  tabentry => 'vm.nics',
                  access_tabentry => 'vm.node=attr:node',
                 },
