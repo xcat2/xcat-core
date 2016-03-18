@@ -1550,16 +1550,41 @@ sub check_firmware_version {
         $sessdata->{$c_id} = $rsp->{data};
     }
 
+    sub _on_receive_component_name {
+        my $rsp = shift;
+        my $sessdata = shift;
+        shift @{$rsp->{data}};
+        my $c_id = $sessdata->{c_id};
+        # Convert ASCII to char
+        my $format_string = "";
+        my $ascii_data = $rsp->{data};
+        for my $i(@${ascii_data}) {
+            if ($i != 0) {
+                $format_string = $format_string.chr($i);
+            }
+        }
+        $sessdata->{$c_id} = $format_string; 
+    }
+
     my $sessdata = shift;
     my $firmware_version = shift;
+    my $component_string = shift;
     foreach my $c_id (@{$sessdata->{component_ids}}) {
         $sessdata->{c_id} = $c_id;
+        # Get component property 1 - Current firmware version
         $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x2f,
                                          data=>[0,$c_id/2,1],
                                          callback=>\&_on_receive_version,
                                          callback_args=>$sessdata);
         while (xCAT::IPMI->waitforrsp()) { yield };
         $firmware_version->{$c_id} = $sessdata->{$c_id};
+        # Get component property 2 - Component description string
+        $sessdata->{ipmisession}->subcmd(netfn=>0x2c, command=>0x2f, 
+                                         data=>[0,$c_id/2,2], 
+                                         callback=>\&_on_receive_component_name, 
+                                         callback_args=>$sessdata);
+        while (xCAT::IPMI->waitforrsp()) { yield };
+        $component_string->{$c_id} = $sessdata->{$c_id};
     }
 }
 
@@ -1729,21 +1754,22 @@ sub rflash {
         # Send firmware version information to clent.
         if ($sessdata->{subcommand} eq 'check') {
             my %firmware_version;
-            check_firmware_version($sessdata, \%firmware_version);
+            my %comp_string;
+            check_firmware_version($sessdata, \%firmware_version, \%comp_string);
             my $msg="";
             my $i;
             for ($i = 0; $i < scalar(@{$sessdata->{component_ids}}); $i++) {
                 my $c_id = ${$sessdata->{component_ids}}[$i];
                 my $version = $firmware_version{$c_id};
+                my $format_string = $comp_string{$c_id};
                 my $format_ver = sprintf("%3d.%02x %02X%02X%02X%02X",
                     $version->[0], $version->[1], $version->[2],
                     $version->[3], $version->[4], $version->[5]);
                 $msg = $msg.$sessdata->{node}.": ".
-                    "Node firmware version for component $c_id: $format_ver";
+                        "Node firmware version for $format_string component: $format_ver";
                 if ( $i != scalar(@{$sessdata->{component_ids}}) -1 ) {
-                    $msg = $msg."\n";
-                }
-
+                        $msg = $msg."\n";
+                    }
             }
             $callback->({data=>$msg});
             return;
@@ -7705,17 +7731,15 @@ sub hpm_action_version {
     my $version = $hpm_data_hash{1}{action_version};
     my $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
                        $version->[3], $version->[4], $version->[5]);
-    $callback->({data=>"HPM firmware version for component 1:$ver"});
-
+    $callback->({data=>"HPM firmware version for BOOT component:$ver"});
     $version = $hpm_data_hash{2}{action_version};
     $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
-                       $version->[3], $version->[4], $version->[5]);
-    $callback->({data=>"HPM firmware version for component 2:$ver"});
-
+                       $version->[3], $version->[4], $version->[5]); 
+    $callback->({data=>"HPM firmware version for APP  component:$ver"});
     $version = $hpm_data_hash{4}{action_version};
     $ver = sprintf("%3d.%02x %02X%02X%02X%02X", $version->[0], $version->[1], $version->[2],
                        $version->[3], $version->[4], $version->[5]);
-    $callback->({data=>"HPM firmware version for component 4:$ver"});
+    $callback->({data=>"HPM firmware version for BIOS component:$ver"});
 }
 
 
