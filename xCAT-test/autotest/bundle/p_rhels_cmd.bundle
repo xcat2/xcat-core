@@ -287,3 +287,9 @@ bmcdiscover_check_passwd_wrong
 bmcdiscover_get_ipsource
 bmcdiscover_range_w
 bmcdiscover_range_z
+xcatd_start
+xcatd_stop
+xcatd_restart
+run_command_with_XCATBYPASS
+disable_root_permission_in_policy_table
+assign_certain_command_permission
