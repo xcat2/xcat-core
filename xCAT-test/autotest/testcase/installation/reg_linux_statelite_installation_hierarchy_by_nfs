@@ -92,7 +92,6 @@ check:rc==0
 check:output=~/nodedata/$$CN on /.statelite/persistent
 check:output=~compute/rootimg on / type nfs
 cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`; result=`xdsh $$CN "cat /etc/resolv.conf|grep $MNIP"`; if [ "$result" = "$$CN: nameserver $MNIP" ]; then echo "sync file works well"; fi;
-check:rc==0
 check:output=~sync file works well
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
