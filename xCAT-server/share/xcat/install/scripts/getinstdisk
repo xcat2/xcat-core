@@ -186,7 +186,7 @@ if [ -z "$install_disk" ]; then
     done
 
     if [ "$install_file" ] && [ -s $install_file ]; then
-        install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -t : -k 2 -b | cut -d " " -f1 | head -n 1)
+        install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -k 2 -b | cut -d " " -f1 | head -n 1)
         echo "[get_install_disk]The install_disk is $install_disk by sorting $file_pre and DRIVER."
     fi    
     rm $tmpfile*;
