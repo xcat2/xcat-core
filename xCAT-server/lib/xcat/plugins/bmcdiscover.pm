@@ -110,11 +110,12 @@ sub process_request
 sub bmcdiscovery_usage {
     my $rsp;
     push @{ $rsp->{data} }, "\nbmcdiscover - Discover BMC (Baseboard Management Controller) using the specified scan method\n";
-    push @{ $rsp->{data} }, "Usage:\tbmcdiscover [-?|-h|--help]";
+    push @{ $rsp->{data} }, "Usage:";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] --range ip_range [-z] [-w] [-t]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-i|--bmcip] bmc_ip [-u|--bmcuser] bmcusername [-p|--bmcpwd] bmcpassword (-c | --check | --ipsource)";
-    push @{ $rsp->{data} }, "\nFor more details see bmcdiscover(1)";
+    push @{ $rsp->{data} }, "\tbmcdiscover {-i|--bmcip} bmc_ip {-u|--bmcuser} bmc_user {-p|--bmcpasswd} bmc_password --check";
+    push @{ $rsp->{data} }, "\tbmcdiscover {-i|--bmcip} bmc_ip {-u|--bmcuser} bmc_user {-p|--bmcpasswd} bmc_password --ipsource";
 
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -156,9 +157,9 @@ sub bmcdiscovery_processargs {
                               'bmcip|i=s' => \$::opt_I,
                               'z' => \$::opt_Z,
                               'w' => \$::opt_W,
-                              'check|c' => \$::opt_C,
+                              'check' => \$::opt_C,
                               'bmcuser|u=s' => \$::opt_U,
-                              'bmcpwd|p=s' => \$::opt_P,
+                              'bmcpasswd|p=s' => \$::opt_P,
                               'ipsource' => \$::opt_S,
                               'version|v' => \$::opt_v,
                               't' => \$::opt_T,
@@ -257,7 +258,7 @@ sub bmcdiscovery_processargs {
             if (!defined($::opt_I)) {
                 $msg = "The check option requires a BMC IP.  Specify the IP using the -i|--bmcip option.";
             } elsif (!defined($::opt_P)) {
-                $msg = "The check option requires a password.  Specify the password with the -p|--bmcpwd option.";
+                $msg = "The check option requires a password.  Specify the password with the -p|--bmcpasswd option.";
             } 
             my $rsp = {};
             push @{ $rsp->{data} }, "$msg";
@@ -280,7 +281,7 @@ sub bmcdiscovery_processargs {
             if (!defined($::opt_I)) {
                 $msg = "The ipsource option requires a BMC IP.  Specify the IP using the -i|--bmcip option.";
             } elsif (!defined($::opt_P)) {
-                $msg = "The ipsource option requires a password.  Specify the password with the -p|--bmcpwd option.";
+                $msg = "The ipsource option requires a password.  Specify the password with the -p|--bmcpasswd option.";
             } 
             my $rsp = {};
             push @{ $rsp->{data} }, "$msg";
