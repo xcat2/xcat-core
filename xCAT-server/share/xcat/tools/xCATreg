@@ -317,14 +317,13 @@ sub mn_install {
         send_msg(0, "[$mn->$confkeys{$mn}][mn_install] install $osimage for node $confkeys{$mn} failed");
         return 1;
 	}
-	
-	if($mn =~ /ubuntu/){
-	    system("updatenode $confkeys{$mn} -P \"confignics -s\" >/dev/null 2>&1");  
-	    system("xdsh $confkeys{$mn} \"iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\" >/dev/null 2>&1");   
-		system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -j ACCEPT\" >/dev/null 2>&1");     
-        system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT\" >/dev/null 2>&1");
-	}
-       if($os =~ /rhels7/ || $os =~ /rhels7.2/){
+#	if($mn =~ /ubuntu/){
+#	    system("updatenode $confkeys{$mn} -P \"confignics -s\" >/dev/null 2>&1");  
+#	    system("xdsh $confkeys{$mn} \"iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\" >/dev/null 2>&1");   
+#		system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -j ACCEPT\" >/dev/null 2>&1");     
+#       system("xdsh $confkeys{$mn} \"iptables -A FORWARD -i eth1 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT\" >/dev/null 2>&1");
+#	}
+       if($os =~ /rhels7/){
        system("xdsh $confkeys{$mn} \"yum -y install bzip2 > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
        system("xdsh $confkeys{$mn} \"yum -y install createrepo > /var/log/xcat/install_xcat.log 2>&1\" >/dev/null 2>&1");
        }
