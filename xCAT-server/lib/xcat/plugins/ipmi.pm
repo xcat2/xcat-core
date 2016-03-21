@@ -1605,6 +1605,8 @@ sub check_bmc_status_with_ipmitool {
     my $count = 0;
     my $bmc_response = 0;
     my $cmd = $pre_cmd." raw 0x3a 0x0a";
+    # BMC response of " c0" means BMC still running IPL
+    # BMC response of " 00" means ready to flash 
     while ($count < $retry) {
         $bmc_response = xCAT::Utils->runcmd($cmd, -1);
         if ($bmc_response =~ /00/) {
@@ -1675,7 +1677,7 @@ sub do_firmware_update {
             return -1;
     }
     #check reset status
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 12)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
         xCAT::SvrUtils::sendmsg ([1,"Timeout to check the bmc status"],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
@@ -1689,9 +1691,6 @@ sub do_firmware_update {
             return -1;
     }
     # step 4 upgrade firmware
-    # NOTE(chenglch) some firmware may not stable enough, it can handle the ipmi session
-    # request, but failed to upgrade, add sleep function as a work around here to avoid of
-    # error.
     $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
 

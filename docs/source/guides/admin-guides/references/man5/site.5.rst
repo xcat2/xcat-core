@@ -235,10 +235,6 @@ site Attributes:
    snmpc:  The snmp community string that xcat should use when communicating with the
            switches.
   
-   rflash_delay:  Only for rflash command to upgrade firmware on OpenPOWER servers.
-                  This attribute is delay time to wait for the firmware initialization
-                  after cold reset. Default value is 120 in seconds. If set to 0, no delay.
-  
    ---------------------------
   INSTALL/DEPLOYMENT ATTRIBUTES
    ---------------------------
