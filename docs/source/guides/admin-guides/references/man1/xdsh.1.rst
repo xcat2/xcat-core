@@ -113,7 +113,6 @@ target. Environment variables specified in this file are defined in the
 remote shell environment before the \ *command_list*\  is executed.
 The file should be executable and contain one environment variable per line.
 
-
 \ **COMMAND**\  \ **EXECUTION**\ :
 
 The  maximum  number  of concurrent remote shell command processes (the
