@@ -322,7 +322,7 @@ sub do_installm_service {
         my $pid = <$installpidfile>;
         if ($pid) {
             $retry=100; # grace period for old instance to get out of the way, 5 seconds
-            kill 12,$pid;
+            kill 'USR2',$pid;
             yield(); # let peer have a shot at closure
         }
         close($installpidfile);
@@ -661,7 +661,7 @@ sub do_udp_service { # This function opens up a UDP port
             $udpctl=0;
             xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
         }
-        kill(15,$discopid);
+        kill('TERM',$discopid);
     };
     if ($inet6support) {
         $socket = IO::Socket::INET6->new(LocalPort => $port,
@@ -676,7 +676,7 @@ sub do_udp_service { # This function opens up a UDP port
         my $pid = <$udppidfile>;
         if ($pid) {
             $retry=100; # grace period for old instance to get out of the way, 5 seconds
-            kill 12,$pid;
+            kill 'USR2',$pid;
             yield(); # let peer have a shot at closure
         }
         close($udppidfile);
@@ -953,31 +953,24 @@ $SIG{TERM} = $SIG{INT} = sub {
     #printf("Asked to quit...\n");
     $quit++;
     foreach (keys %dispatched_children) {
-        kill 2, $_;
+        kill 'INT', $_;
     }
     foreach (keys %plugin_children) {
-        kill 2, $_;
+        kill 'INT', $_;
     }
     if ($pid_UDP) {
-        kill 12, $pid_UDP;
+        kill 'USR2', $pid_UDP;
     }
     if ($pid_MON) {
-        kill 2, $pid_MON;
-        kill 12, $pid_MON;
+        kill 'INT', $pid_MON;
+        kill 'USR2', $pid_MON;
     }
     xCAT::Table::shut_dbworker;
-    if ($dbmaster) {
-        kill 2, $dbmaster;
-    }
-
     # ----used for command log start---------
     if ($cmdlog_svrpid){
-        kill 2, $cmdlog_svrpid;
+        kill 'INT', $cmdlog_svrpid;
     }
     # ----used for command log end---------
-
-    $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 5 second grace period"; };
-    alarm(2);
 };
 
 socketpair($sslctl, $udpctl,AF_UNIX,SOCK_STREAM,PF_UNSPEC);
@@ -1015,7 +1008,7 @@ unless ($pid_UDP) {
 
     $SIG{TERM} = $SIG{INT} = sub {
         if ($pid_disco) {
-            kill 2, $pid_disco;
+            kill 'INT', $pid_disco;
         }
         $SIG{ALRM} = sub { xexit 0; }; #die "Did not close out in time for 2 second grace period";
         alarm(2);
@@ -1247,7 +1240,7 @@ if (not $listener and open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
     my $pid = <$mainpidfile>;
     if ($pid) {
         $retry=100; # grace period for old instance to get out of the way, 5 seconds
-        kill 12,$pid;
+        kill 'USR2',$pid;
         yield(); # let peer have a shot at closure
     }
     close($mainpidfile);
@@ -1274,11 +1267,11 @@ my $udpwatcher = IO::Select->new($udpctl);
 my $bothwatcher = IO::Select->new($udpctl, $listener);
 
 unless ($listener) {
-    kill 2, $pid_UDP;
-    kill 2, $pid_MON;
+    kill 'INT', $pid_UDP;
+    kill 'INT', $pid_MON;
     xCAT::Table::shut_dbworker;
     if ($dbmaster) {
-        kill 2, $dbmaster;
+        kill 'INT', $dbmaster;
     }
     xCAT::MsgUtils->message("S","xCAT service unable to open SSL services on $port: $!");
     closelog();
@@ -1482,7 +1475,7 @@ while (keys %immediatechildren) {
 }
 xCAT::Table::shut_dbworker;
 if ($dbmaster) {
-    kill 2, $dbmaster;
+    kill 'INT', $dbmaster;
 }
 
 # stop the monitoring process
@@ -1680,7 +1673,7 @@ sub plugin_command {
     # make the request handler process to take care all the plugin children
     $SIG{TERM} = $SIG{INT} = sub {
         foreach (keys %plugin_children) {
-            kill 2, $_;
+            kill 'INT', $_;
         }
         $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
         alarm(1);
@@ -2060,7 +2053,7 @@ sub dispatch_request {
     $SIG{CHLD} = \&dispatch_reaper; #sub {my $cpid; while (($cpid =waitpid(-1, WNOHANG)) > 0) { if ($dispatched_children{$cpid}) { delete $dispatched_children{$cpid}; $dispatch_children--; } } };
     $SIG{TERM} = $SIG{INT} = sub {
         foreach (keys %dispatched_children) {
-            kill 2, $_;
+            kill 'INT', $_;
         }
         $SIG{ALRM} = sub { xexit 0; }; # wait 1s for grace exit
         alarm(1);
@@ -2766,8 +2759,8 @@ sub relay_fds { # Relays file descriptors from pipes to children to the SSL sock
             print "Aborting...";
             foreach (keys %plugin_children) {
                 print "Sending INT to $_\n";
-                kill 2, $_;
-                kill 15, $_;
+                kill 'INT', $_;
+                kill 'TERM', $_;
             }
             foreach my $cin ($fds->handles) {
                 print $cin "die\n";
