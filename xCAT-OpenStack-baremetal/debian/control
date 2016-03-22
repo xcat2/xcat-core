@@ -10,5 +10,5 @@ Homepage: http://xcat.org
 
 Package: xcat-openstack-baremetal
 Architecture: all
-Depends: xCAT-client
+Depends: xcat-client
 Description:  Executables and data of the xCAT baremetal driver for OpenStack
