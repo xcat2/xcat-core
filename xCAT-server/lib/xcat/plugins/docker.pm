@@ -592,10 +592,12 @@ sub parse_docker_list_info {
     }
     else {
         $image = $docker_info_hash->{Config}->{'Image'};
-        $command = deal_with_space_in_array_entry($docker_info_hash->{Config}->{'Cmd'});
-        if (defined($docker_info_hash->{Config}->{'Entrypoint'})) {
-            $command = deal_with_space_in_array_entry($docker_info_hash->{Config}->{'Entrypoint'});
+        my @cmd = ();
+        push @cmd, $docker_info_hash->{Path};
+        if (defined($docker_info_hash->{Args})) {
+            push @cmd, @{$docker_info_hash->{Args}};
         }
+        $command = deal_with_space_in_array_entry(\@cmd);
         $names = $docker_info_hash->{'Name'};
         $created = $docker_info_hash->{'Created'};
         $status = $docker_info_hash->{'State'}->{'Status'};
