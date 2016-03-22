@@ -28,6 +28,7 @@ my $start;
 ##########################################################################
 sub parse_args {
 
+    #print("xCAT::PPCcfg::parse_args\n");
     my $request = shift;
     my $command = $request->{command};
     my $args    = $request->{arg};
@@ -51,7 +52,8 @@ sub parse_args {
         "hostname",
         "resetnet",
         "dev",
-        "celogin1"
+        "celogin1",
+        "sslmode"
     );
     my @bpa = (
         "frame",
@@ -64,7 +66,8 @@ sub parse_args {
         "hostname",
         "resetnet",
         "dev",
-        "celogin1"
+        "celogin1",
+        "sslmode"
     );
     my @ppc = (
         "sshcfg"
@@ -327,6 +330,11 @@ sub parse_option {
            return( "Invalid argument '$value'" );
        }
        $request->{dev} = 1;
+    } elsif ( $command eq 'sslmode' ) {
+       if ($value !~ /^(default|enabled|disabled)$/i ) {
+           return( "Invalid argument '$value'. sslmode must be set to 'Disabled', 'Enabled', or 'Default'." );
+       }
+       $request->{sslmode} = 1;
     } else {
        $request->{other} = 1; 
     }
@@ -654,6 +662,9 @@ sub hostname {
 
     return( [@$result] );
 }
+
+
+
 ##########################################################################
 # Do resetnet public entry
 ##########################################################################
