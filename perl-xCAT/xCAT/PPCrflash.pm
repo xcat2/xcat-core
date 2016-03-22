@@ -224,7 +224,7 @@ sub parse_args {
         return(usage());
     }
    
-    $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting. "]});
+    $request->{callback}->({data =>[ "The rflash process may take considerable time to complete, depending on the number of systems being updated. In particular, power subsystem updates (Auto Code DownLoad, or ACDL) may take an hour or more if there are many attached managed systems.  The prompt will return once the BPCs have been updated, but ACDL will continue for some time beyond that. Please wait. "]});
 
     if( $request->{hwtype} =~ /^(fsp|bpa)$/ && $opt{activate} =~ /^disruptive$/ ) {
         $request->{callback}->({data =>[ "You can find the log files in the /var/log/xcatd/dfm/rflash/."]});
