@@ -9,5 +9,5 @@ Standards-Version: 3.9.2
 
 Package: xcat-vlan
 Architecture: all
-Depends: xCAT-client
+Depends: xcat-client
 Description: xCAT-vlan provides the xCAT vlan confiuration.
