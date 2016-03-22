@@ -108,16 +108,8 @@ Check firmware version of the node and the HPM file:  ::
 
 Update node firmware to the version of the HPM file
 
-**ATTENTION**
-
-* Currently rflash is not stable enough to select accurate time before
-  upgrading. A ``rflash_delay`` attribute can be set in site table to adjust the
-  wait time before upgrading. We suggest setting this value to 70 which means
-  wait 70 secondes after BMC reset cold.
-
 ::
 
-    chdef -t site clustersite rflash_delay=70
     rflash cn1 /firmware/8335_810.1543.20151021b_update.hpm
 
 Configures Nodes' Service Processors

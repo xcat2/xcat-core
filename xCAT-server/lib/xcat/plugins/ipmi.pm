@@ -1603,14 +1603,17 @@ sub check_bmc_status_with_ipmitool {
     my $interval = shift;
     my $retry = shift;
     my $count = 0;
-    my $cmd = $pre_cmd." power status";
+    my $bmc_response = 0;
+    my $cmd = $pre_cmd." raw 0x3a 0x0a";
+    # BMC response of " c0" means BMC still running IPL
+    # BMC response of " 00" means ready to flash 
     while ($count < $retry) {
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0) {
-            sleep($interval);
+        $bmc_response = xCAT::Utils->runcmd($cmd, -1);
+        if ($bmc_response =~ /00/) {
+            return 1;
         }
         else {
-            return 1;
+            sleep($interval);
         }
         $count++;
     }
@@ -1674,8 +1677,7 @@ sub do_firmware_update {
             return -1;
     }
     #check reset status
-    sleep(10);
-    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 12)) {
+    unless (check_bmc_status_with_ipmitool($pre_cmd, 5, 24)) {
         xCAT::SvrUtils::sendmsg ([1,"Timeout to check the bmc status"],
             $callback,$sessdata->{node},%allerrornodes);
             return -1;
@@ -1689,13 +1691,6 @@ sub do_firmware_update {
             return -1;
     }
     # step 4 upgrade firmware
-    # NOTE(chenglch) some firmware may not stable enough, it can handle the ipmi session
-    # request, but failed to upgrade, add sleep function as a work around here to avoid of
-    # error.
-    my $rflash_delay = 120;
-    my $delay_config = xCAT::TableUtils->get_site_attribute("rflash_delay");
-    $rflash_delay = $delay_config if defined($delay_config) and $delay_config =~ /^\d+$/;
-    sleep($rflash_delay) if $rflash_delay != 0;
     $cmd = $pre_cmd." -z 30000 hpm upgrade $hpm_file force";
     $output = xCAT::Utils->runcmd($cmd, -1);
 
