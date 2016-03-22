@@ -7,7 +7,6 @@ Advanced Topics
    chain/index.rst
    cluster_maintenance/index.rst
    confluent/index.rst
-   docker/index.rst
    gpu/index.rst
    hamn/index.rst
    hierarchy/index.rst
