@@ -1739,7 +1739,7 @@ sub service_connection {
       my $bytesread;
       do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
       if (length($line)==0) {
-	      if (not defined $bytesread and $! == EAGAIN) { next; } #
+	      if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does
 	      last;
       }
     	 $flags=fcntl($sock,F_GETFL,0);
@@ -1892,7 +1892,9 @@ sub send_pending_responses {
                                 $blocks += 1;
                         }
                         foreach (0..$blocks) {
+                               do {
                                 syswrite($sock,$resp,4096,$_*4096);
+                               } while (($! == EAGAIN) or ($! == ECHILD));
                         }
 	      	};
 }
