@@ -15,7 +15,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
-use strict;
+#use strict;
 use POSIX qw(WNOHANG nice);
 use POSIX qw(WNOHANG setsid :errno_h);
 use Errno;
