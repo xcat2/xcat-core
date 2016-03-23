@@ -422,6 +422,7 @@ sub setdestiny {
 	my $nodetype = xCAT::Table->new('nodetype');
 	#my $sitetab = xCAT::Table->new('site');
 	my $nodehm = xCAT::Table->new('nodehm');
+        my $mactab = xCAT::Table->new('mac');
 	my $hments = $nodehm->getNodesAttribs(\@nodes,['serialport','serialspeed','serialflow']);
 	#(my $portent) = $sitetab->getAttribs({key=>'xcatdport'},'value');
 	my @entries =  xCAT::TableUtils->get_site_attribute("xcatdport");
@@ -429,8 +430,9 @@ sub setdestiny {
 	#(my $mastent) = $sitetab->getAttribs({key=>'master'},'value');
 	my @entries =  xCAT::TableUtils->get_site_attribute("master");
 	my $master_entry = $entries[0];
-	my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
-	my $resents = $restab->getNodesAttribs(\@nodes,[qw(xcatmaster)]);
+        my $enthash = $nodetype->getNodesAttribs(\@nodes,[qw(arch)]);
+        my $machash = $mactab->getNodesAttribs(\@nodes, ['interface','mac']);
+        my $resents = $restab->getNodesAttribs(\@nodes,[qw(xcatmaster primarynic installnic)]);
 	foreach (@nodes) {
 	    my $ent = $enthash->{$_}->[0]; #$nodetype->getNodeAttribs($_,[qw(arch)]);
 	    unless ($ent and $ent->{arch}) {
@@ -438,10 +440,11 @@ sub setdestiny {
 		return;
 	    }
 	    my $arch = $ent->{arch};
-           if ($arch eq "ppc64le" or $arch eq "ppc64el") {
-               $arch = "ppc64";
-           }
+            if ($arch eq "ppc64le" or $arch eq "ppc64el") {
+                $arch = "ppc64";
+            }
 	    my $ent = $resents->{$_}->[0]; #$restab->getNodeAttribs($_,[qw(xcatmaster)]);
+            my $macent = $machash->{$_}->[0];
 	    my $master;
 	    my $kcmdline = "quiet ";
 	    if ( defined($master_entry) ) {
@@ -450,6 +453,14 @@ sub setdestiny {
 	    if ($ent and $ent->{xcatmaster}) {
 		$master = $ent->{xcatmaster};
 	    }
+            my $mac;
+            if ($macent->{mac}) {
+                $mac = xCAT::Utils->parseMacTabEntry($macent->{mac}, $_);
+            }
+            my $net_params = xCAT::NetworkUtils->gen_net_boot_params($ent->{installnic}, $ent->{primarynic}, $mac);
+            if (exists($net_params->{BOOTIF})) {
+                $kcmdline .= "$net_params->{BOOTIF} ";
+            }
 	    $ent = $hments->{$_}->[0]; #$nodehm->getNodeAttribs($_,['serialport','serialspeed','serialflow']);
 	    if ($ent and defined($ent->{serialport})) {
                 if ($arch eq "ppc64") {
@@ -466,7 +477,6 @@ sub setdestiny {
 		#$ent = $nodehm->getNodeAttribs($_,['serialflow']);
 		$kcmdline .= " ";
 	    }
-	    
 	    unless ($master) {
 		$callback->({error=>["No master in site table nor noderes table for $_"],errorcode=>[1]});
 		return;
