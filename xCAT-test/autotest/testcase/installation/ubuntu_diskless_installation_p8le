@@ -1,5 +1,7 @@
 start:Diskless_installation_flat_p8_le
 os:Linux
+stop=yes
+
 cmd:copycds $$ISO
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
