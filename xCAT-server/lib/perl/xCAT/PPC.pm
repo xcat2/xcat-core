@@ -2211,7 +2211,7 @@ sub process_request {
         $request->{fsp_api} = 1;
         #For using rspconfig to disable/enable dev/celogin1 through ASMI
         my $arg = $request->{arg};
-        if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1)/, @$arg)) {
+        if($request->{command} eq "rspconfig" and grep(/^(dev|celogin1|sslmode)/, @$arg)) {
            $request->{fsp_api} = 0;
         }
     } else {
