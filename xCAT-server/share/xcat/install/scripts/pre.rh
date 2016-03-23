@@ -184,45 +184,11 @@ fi
 #also, find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
 shopt -s nullglob
-for disk in /dev/vd*[^0-9];do
-	if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-	eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
-	if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
-		instdisk=$disk
-		break
-	fi
-done
 
-if [ -z "$instdisk" ]; then
-	for disk in /dev/sd*[^0-9]; do
-		eddname=$(/lib/udev/edd_id $disk 2> /dev/null)
-		if [ ! -z "$eddname" -a "$eddname" = "int13_dev80" ]; then
-			instdisk=$disk
-			break
-		fi
-		currdriver=`udevadm info --attribute-walk --name $disk |grep DRIVERS|grep -v '""'|grep -v '"sd"'|head -n 1|sed -e 's/[^"]*"//' -e 's/"//'`
-		case "$currdriver" in 
-		"ata_piix4"|"PMC MaxRAID"|"ahci"|"megaraid_sas") #certainly direct
-			if [ -z "$firstdirectdisk" ]; then firstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		"mptsas"|"mpt2sas"|"mpt3sas") #*PROBABLY* not SAN, but SAS SAN is possible
-			if [ -z "$probablyfirstdirectdisk" ]; then probablyfirstdirectdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		*)
-			if [ -z "$firstdisk" ]; then firstdisk=$disk; fi #remember first disk as a guess of medium resort
-			;;
-		esac
-	done
-fi
-
-if [ -z "$instdisk" ]; then
-	if [ ! -z "$firstdirectdisk" ]; then 
-		instdisk=$firstdirectdisk 
-	elif [ ! -z "$probablyfirstdirectdisk" ]; then
-		instdisk=$probablyfirstdirectdisk 
-	elif [ ! -z "$firstdisk" ]; then
-		instdisk=$firstdisk 
-	fi
+#The script getinstdisk is common for rh/sles/pkvm/ubuntu, it will write the install_disk into /tmp/install_disk file
+#INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
+if [ -e "/tmp/install_disk" ]; then
+    instdisk=`cat /tmp/install_disk`
 fi
 
 # Could not determine the install disk for whatever reason,
