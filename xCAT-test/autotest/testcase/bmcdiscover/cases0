@@ -5,36 +5,43 @@ cmd:bmcdiscover -h
 check:rc==0
 check:output=~Usage
 end
+
 start:bmcdiscover_nmap_range
 cmd:bmcdiscover -s nmap --range $$bmcrange
 check:rc==0
 check:output=~$$bmcrange
 end
+
 start:bmcdiscover_v
 cmd:bmcdiscover  -v
 check:rc==0
 checkout:output=~xCAT Version
 end
+
 start:bmcdiscover_check_paswd
-cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RD -c
+cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RD --check
 check:rc==0
 check:output=~Correct ADMINISTRATOR
 end
+
 start:bmcdiscover_check_passwd_wrong
-cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RDw -c
+cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RDw --check
 check:rc!=0
 check:output=~Error: Wrong bmc password
 end
+
 start:bmcdiscover_get_ipsource
 cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RD --ipsource
 check:rc==0
 check:output=~Static Address
 end
+
 start:bmcdiscover_range_w
 cmd:bmcdiscover --range  $$bmcrange -w
 check:rc==0
 check:output=~bmc=$$bmcrange
 end
+
 start:bmcdiscover_range_z
 cmd:bmcdiscover --range  $$bmcrange -z
 check:rc==0
