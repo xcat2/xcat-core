@@ -572,9 +572,9 @@ node Attributes:
   
                          x86, x86_64           ALL                          pxe, xnba 
   
-                         ppc64                 <=rhel6, <=sles11            yaboot
+                         ppc64                 <=rhel6, <=sles11.3          yaboot
   
-                         ppc64                 >=rhels7                     grub2,grub2-http,grub2-tftp
+                         ppc64                 >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
   
                    ppc64le NonVirtualize       ALL                          petitboot
   

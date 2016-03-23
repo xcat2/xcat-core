@@ -646,8 +646,8 @@ noderes => {
   netboot => 'The type of network booting to use for this node.  Valid values:
                        Arch                  OS                           valid netboot options 
                        x86, x86_64           ALL                          pxe, xnba 
-                       ppc64                 <=rhel6, <=sles11            yaboot
-                       ppc64                 >=rhels7                     grub2,grub2-http,grub2-tftp
+                       ppc64                 <=rhel6, <=sles11.3          yaboot
+                       ppc64                 >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
                  ppc64le NonVirtualize       ALL                          petitboot
                  ppc64le PowerKVM Guest      ALL                          grub2,grub2-http,grub2-tftp
                        
