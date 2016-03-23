@@ -1,9 +1,12 @@
 #!/bin/sh
 
-
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
 export MASTER_IP="#ENV:MASTER_IP#"
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/scriptlib#
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
 
 export MANAGEDADDRESSMODE=#MANAGEDADDRESSMODE#
 
@@ -63,3 +66,6 @@ if [ "$XCATDEBUGMODE" != "0" ]; then
 fi
 /sbin/portmap
 
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi
