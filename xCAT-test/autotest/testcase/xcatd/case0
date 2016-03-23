@@ -9,7 +9,7 @@ check:rc==0
 cmd:sleep 3
 cmd:service xcatd start
 check:rc==0
-check:output=~Starting xcatd
+check:output=~Starting xCATd
 check:output=~[  OK  ]
 cmd:service xcatd status
 check:rc==0
@@ -37,7 +37,7 @@ check:rc==0
 check:output=~xCAT service is running
 cmd:service xcatd stop
 check:rc==0
-check:output=~Stopping xcatd
+check:output=~Stopping xCATd
 check:output=~[  OK  ]
 cmd:sleep 3
 cmd:service xcatd status
