@@ -7,9 +7,9 @@ check:output=~xCAT service is running
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
-cmd:service x(cat|CAT)d start
+cmd:service xcatd start
 check:rc==0
-check:output=~Starting xCATd
+check:output=~Starting x(cat|CAT)d
 check:output=~[  OK  ]
 cmd:service xcatd status
 check:rc==0
@@ -37,7 +37,7 @@ check:rc==0
 check:output=~xCAT service is running
 cmd:service xcatd stop
 check:rc==0
-check:output=~Stopping x(xcat|CAT)d
+check:output=~Stopping x(cat|CAT)d
 check:output=~[  OK  ]
 cmd:sleep 3
 cmd:service xcatd status
@@ -76,7 +76,7 @@ cmd:XCATBYPASS=YES tabdump site
 check:rc==0
 cmd:service xcatd stop
 check:rc==0
-check:output=~Stopping xcatd
+check:output=~Stopping x(cat|CAT)d
 check:output=~[  OK  ]
 cmd:sleep 3
 cmd:service xcatd status
@@ -87,7 +87,7 @@ cmd:XCATBYPASS=YES tabdump site
 check:rc==0
 cmd:service xcatd start
 check:rc==0
-check:output=~Starting xcatd
+check:output=~Starting x(cat|CAT)d
 check:output=~[  OK  ]
 cmd:service xcatd status
 check:rc==0
