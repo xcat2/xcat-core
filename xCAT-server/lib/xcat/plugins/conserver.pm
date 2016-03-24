@@ -264,7 +264,7 @@ sub docfheaders {
 
   push @newheaders,"default * {\n";
   push @newheaders,"  logfile /var/log/consoles/&;\n";
-  push @newheaders,"  timestamp 1hab;\n";
+  push @newheaders,"  timestamp 1lab;\n";
   push @newheaders,"  rw *;\n";
   push @newheaders,"  master localhost;\n";
 
