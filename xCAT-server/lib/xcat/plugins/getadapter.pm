@@ -521,7 +521,7 @@ sub do_inspect {
     my $callback       = shift;
     my $subreq         = shift;
     my @nodes          = @{$nodesptr};
-    my %updates;
+    my $updates;
     my $msg;    # parse from xml
 
     my $parse_request_message_func = sub {
@@ -556,15 +556,11 @@ sub do_inspect {
     # 2. If we leverage the memcache or other cache database, we can make use of
     #    the feature of the CAS to provide the atomic operation.
     foreach my $node (@nodes) {
-        $updates{'command'} = "getadapter";
-        $updates{'state'}   = xCAT::State->WAIT_STATE;
-        $updates{'pid'}     = getppid();
-        if ($taskstate_table->setAttribs({ 'node' => $node }, \%updates) != 0) {
-            $callback->({ error => "Error to update taskstate table.",
-                    errorcode => 1 });
-            return -1;
-        }
+        $updates->{$node}->{'command'} = "getadapter";
+        $updates->{$node}->{'state'}   = xCAT::State->WAIT_STATE;
+        $updates->{$node}->{'pid'}     = getppid();
     }
+    $taskstate_table->setNodesAttribs($updates);
     $taskstate_table->close();
     @nodes = deploy_genesis(\@nodes, $nodes_desc_ptr, $callback, $subreq);
     my $total = scalar(@nodes);
@@ -651,25 +647,25 @@ sub inspect_adapter {
         my $callback       = shift;
         my $nodes_desc_ptr = shift;
         my @nodes          = @{$nodes_ptr};
-        my @tmp            = @{ dclone(\@nodes) };
-        @tmp = map { $_ = '"' . $_ . '"'; } @tmp;
-        my $clause = "node in (" . join(",", @tmp) . ")";
         my $nodehm_table = xCAT::Table->new('nodehm');
         unless ($nodehm_table) {
             xCAT::MsgUtils->message("S", "Unable to open nodehm table, denying");
             return -1;
         }
-        my @entries = $nodehm_table->getAllAttribsWhere($clause, 'node', 'mgt');
-        unless (@entries) {
-            xCAT::MsgUtils->message("S", "No records about " . join(",", @tmp) . " in nodehm table");
+        my $entries = $nodehm_table->getNodesAttribs($nodes_ptr, ['mgt']);
+        unless ($entries) {
+            xCAT::MsgUtils->message("S", "No records about " . join(",", @nodes) . " in nodehm table");
             return -1;
         }
-        foreach my $i (@entries) {
-            my %attr;
-            $attr{'mgt'} = $i->{mgt};
-            $nodes_desc_ptr->{ $i->{node} } = \%attr;
-        }
         $nodehm_table->close();
+        foreach my $node (@nodes) {
+            if(!defined($entries->{$node}) || !defined($entries->{$node}->[0]->{mgt})) {
+                $callback->({ error => "$node: mgt configuration can not be found.",
+                              errorcode => 1 });
+                next;
+            }
+            $nodes_desc_ptr->{$node}->{'mgt'} = $entries->{$node}->[0]->{mgt};
+        }
         return 0;
     };    # end of init_desc_func
 
@@ -682,23 +678,13 @@ sub inspect_adapter {
             xCAT::MsgUtils->message("S", "Unable to open nics table, denying");
             return -1;
         }
-        my @tmp = @{ dclone(\@{ $request->{node} }) };
-        @tmp = map { $_ = '"' . $_ . '"'; } @tmp;
-        my $clause = "node in (" . join(",", @tmp) . ") and nicsadapter != \'\'";
-
-        my @entries = $nics_table->getAllAttribsWhere($clause, 'node');
-        my @checked_nodes;
-        foreach my $checked (@entries) {
-            push(@checked_nodes, $checked->{'node'});
-        }
-
+        my $entries = $nics_table->getNodesAttribs($request->{node}, ['nicsadapter']);
         foreach my $node (@{ $request->{node} }) {
-            if (!grep (/^$node$/, @checked_nodes)) {
-                push(@nodes, $node);
-            }
-            else {
+            if($entries->{$node} && $entries->{$node}->[0]->{nicsadapter}) {
                 $callback->({ data => "$node: Adapter information exists, no need to inspect." });
+                next;
             }
+            push(@nodes, $node);
         }
     }
     if (scalar(@nodes) == 0) {
@@ -709,7 +695,6 @@ sub inspect_adapter {
     if (&$init_desc_func(\@nodes, $callback, \%nodes_desc)) {
         return -1;
     }
-
     return do_inspect(\@nodes, \%nodes_desc, $opts_ptr, $callback, $subreq);
 }
 
