@@ -1240,13 +1240,13 @@ sub get_site_attribute
             {
                 $values = $ref->{value};
             }
+            $sitetab->close;
         }
         else
         {
             xCAT::MsgUtils->message("E", " Could not read the site table\n");
 
         }
-        $sitetab->close;
     }
     return $values;
 }
