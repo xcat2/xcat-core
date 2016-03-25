@@ -10,7 +10,7 @@ Here is a summary of steps required for the xCAT management node .
   1.Check Site Table 
   2.Check Networks 
   3.Configure Password Table
-  3.Initialize DHCP 
+  4.Initialize DHCP 
 
 Check Site Table 
 ----------------

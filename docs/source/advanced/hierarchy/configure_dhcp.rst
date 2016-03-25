@@ -6,7 +6,7 @@ Add the relevant networks into the DHCP configuration, refer to: :ref:`Setup-dhc
 Add the defined nodes into the DHCP configuration, refer to:
 `XCAT_pLinux_Clusters/#configure-dhcp <http://localhost/fake_todo>`_
 
-In the large cluster, the size of dhcp lease file "/var/lib/dhcpd/dhcpd.leases" on the DHCP server will grow over time, when it increases to around 100MB, the DHCP server will take a long time to respond the DHCP requests from the clients, which will cause the DHCP timeout in the client's side: ::
+In the large cluster, the size of dhcp lease file "/var/lib/dhcpd/dhcpd.leases" on the DHCP server will grow over time. At around 100MB in size, the DHCP server will take a long time to respond to DHCP requests from clients and cause DHCP timeouts: ::
  
    ...
    Mar  2 01:59:10 c656ems2 dhcpd: DHCPDISCOVER from 00:0a:f7:73:7d:d0 via eth0
