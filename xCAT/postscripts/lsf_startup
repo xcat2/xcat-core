@@ -59,7 +59,14 @@ for lsfnode in $ALL_LSF_NODES
 do
     if [[ x${lsfnode} == x$NODE ]]
     then
-        echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+
+        if grep -q -i "release 7.2" /etc/redhat-release ; then 
+
+            echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+        else
+            #special case for redhat7.2
+            echo ". $LSF_TOP/conf/profile.lsf" >> ~/.bash_profile
+        fi
     fi
 done
 
