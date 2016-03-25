@@ -122,6 +122,7 @@ sub subvars {
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   my $res;
   if ($pkglistfile) {
+
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
             
@@ -141,44 +142,11 @@ sub subvars {
       # the additional lines are considered preseed directives and included as is
 
       if ($pkglistfile) {
-          # handle empty and non-empty $pkglistfile's
-          my $allpkglist;
-          foreach my $mypkglistfile (split(/,/, $pkglistfile)) {
-              my @tmp_array=();
-              if (open PKGLISTFILE, "<$mypkglistfile") {
-                  my $pkglist = '';
-                  # append preseed directive lines
-                  while (<PKGLISTFILE>) {
-                      chomp $_;
-                      s/\s+$//;   #remove trailing white spaces
-                      next if /^\s*$/; #-- skip empty lines
-                      next
-                      if (   /^\s*#/
-                          && !/^\s*#INCLUDE:[^#^\n]+#/
-                          && !/^\s*#NEW_INSTALL_LIST#/
-                          && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-                      push(@tmp_array,$_);
-                  }
-
-                  if ( @tmp_array > 0) {
-                      $pkglist=join(' ',@tmp_array);
-                      #handle the #INLCUDE# tag recursively
-                      my $idir = dirname($mypkglistfile);
-                      my $doneincludes=0;
-                      while (not $doneincludes) {
-                          $doneincludes=1;
-                          if ($pkglist =~ /#INCLUDE:[^#^\n]+#/) {
-                              $doneincludes=0;
-                              $pkglist =~ s/#INCLUDE:([^#^\n]+)#/debian_includefile($1,$idir)/eg;
-                          }
-                      }
-                  }
-
-                  $allpkglist.=" $pkglist ";
-                  close PKGLISTFILE;
-                  }
+          my $allpkglist=xCAT::Postage->get_pkglist_tex($pkglistfile);
+          if($allpkglist =~ /#INCLUDEBAD:(.*)#/){
+               return "$1";
           }
-          
+          $allpkglist =~ s/,/ /g;
           $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$allpkglist/g;
 
       } else {
@@ -1711,35 +1679,6 @@ sub getNM_GW()
     }
 
     return (undef, undef);
-}
-
-sub debian_includefile
-{
-   my $file = shift;
-   my $idir = shift;
-   my @text = ();
-   unless ($file =~ /^\//) {
-       $file = $idir."/".$file;
-   }
-
-   open(INCLUDE,$file) ||
-       return "#INCLUDEBAD:cannot open $file#";
-
-   while(<INCLUDE>) {
-       chomp($_);
-       s/\s+$//;  #remove trailing spaces
-       next if /^\s*$/; #-- skip empty lines
-       next
-          if (   /^\s*#/
-              && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/
-              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-       push(@text, $_);
-   }
-
-   close(INCLUDE);
-
-   return join(' ', @text);
 }
 
 
