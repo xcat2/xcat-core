@@ -1,7 +1,7 @@
 Hardware Discovery & Define Node
 ================================
 
-In order to manage machines using xCAT, the machines need to be defined as ``node`` objects in xCATs database. The :doc:`xCAT Objects </guides/admin-guides/basic_concepts/xcat_object/index>` documentation describes the process for manually creating ``node`` objects one by one using the xCAT ``mkdef`` command.  This is valid when managing a small sizes cluster but can be error prone and cumbersome when managing large sized clusters.
+In order to manage machines using xCAT, the machines need to be defined as xCAT ``node objects`` in the database. The :doc:`xCAT Objects </guides/admin-guides/basic_concepts/xcat_object/index>` documentation describes the process for manually creating ``node objects`` one by one using the xCAT ``mkdef`` command.  This is valid when managing a small sizes cluster but can be error prone and cumbersome when managing large sized clusters.
 
 xCAT provides several *automatic hardware discovery* methods to assist with hardware discovery by helping to simplify the process of detecting service processors (SP) and collecting various server information. The following are methods that xCAT supports:
 
