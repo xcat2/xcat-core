@@ -5,7 +5,7 @@ Use switchdiscover command to discover the switches that are attached to the nei
 
     switchdiscover [noderange|--range ip_ranges][-s scan_methods][-r|-x|-z][-w]
 
-where the scan_methods can be **nmap** . The default is **nmap**. (**nmap** comes from most os distribution.)
+where the scan_methods can be **nmap**, **snmp", or **lldp** . The default is **nmap**. (**nmap** comes from most os distribution.)
 
 To discover switches over the IP range 10.4.25.0/24 and 192.168.0.0/24, use the following command: ::
 

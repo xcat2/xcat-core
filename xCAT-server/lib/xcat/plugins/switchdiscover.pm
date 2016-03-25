@@ -30,24 +30,14 @@ my %global_scan_type = (
 
 my %global_switch_type = (
     Juniper => "Juniper",
+    juniper => "Juniper",
     Cisco => "Cisco",
     BNT => "BNT",
-    Mellanox => "Mellanox"
-);
-
-my %global_OID_model_metrix = (
-    "enterprises.2636.1.1.1.2.54" => "Juniper",
-    "enterprises.2636" => "Juniper",
-    "enterprises.20301.1.18.13" => "(BNT)IBM Flex System Fabric EN4093/EN2092 Scalable Switch",
-    "enterprises.26543.1.7.1" => "(BNT)IBM Networking Operating System RackSwitch G8000-RS",
-    "enterprises.26543.1.7.4" => "(BNT)IBM Networking Operating System RackSwitch G8124",
-    "enterprises.26543.1.7.6" => "(BNT)IBM Networking Operating System RackSwitch G8264",
-    "enterprises.26543.1.7.7" => "(BNT)IBM Networking Operating System RackSwitch G8052",
-    "enterprises.26543" => "BNT",
-    "enterprises.33049.1.1.1.6036" => "IBM Mellanox Switch SX6036",
-    "enterprises.33049.1.1.1.6512" => "IBM Mellanox Switch SX6512",
-    "enterprises.33049.2.1" => "IBM Mellanox Switch IB6131",
-    "enterprises.33049" => "IBM Mellanox Switch"
+    Mellanox => "Mellanox",
+    mellanox => "Mellanox",
+    MLNX => "Mellanox",
+    MELLAN => "Mellanox",
+    IBM  => "BNT",
 );
 
 
@@ -433,7 +423,7 @@ sub process_request {
 
     if (!$display_done) {
         #display header
-        $format = "%-12s\t%-18s\t%-20.20s\t%-12s";
+        $format = "%-12s\t%-15s\t%-40.50s\t%-12s";
         $header = sprintf $format, "ip", "name","vendor", "mac";
         send_msg(\%request, 0, $header);
         my $sep = "------------";
@@ -712,10 +702,6 @@ sub nmap_scan {
                             $counter++;
                         }
                         my $vendor = $addr->{vendor};
-                        # run snmpwalk command to find vendor
-                        if (!$vendor) {
-                            $vendor = get_vendorinfo($request, $ip);
-                        }
                         if ($vendor) {
                             my $search_string = join '|', keys(%global_switch_type);
                             if ($vendor =~ /($search_string)/) {
@@ -818,17 +804,98 @@ sub nmap_scan {
 #--------------------------------------------------------------------------------
 sub snmp_scan {
     my $request  = shift;
+    my $ccmd;
+    my $switches;
+    my $counter = 0;
+    my @iplists = ();
 
-    send_msg($request, 0, "Discovering switches using snmp is not supported yet.");
-    my $switches = {
-        "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
-        "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
-     };
-    return 1;
+
+    if (-x "/usr/bin/snmpwalk" ){
+        send_msg($request, 0, "Discovering switches using snmpwalk.....");
+    } else {
+        send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command first");
+        return 1;
+    }
+
+    #################################################
+    # If --range options, take iprange, if noderange is defined
+    # us the ip addresses of the nodes. If none is define, use the
+    # subnets for all the interfaces.
+    ##################################################
+    my $ranges = get_ip_ranges($request);
+
+    #push each ip to ip list (need better code?)
+    foreach my $ips (@$ranges) {
+         #process ip address 1.2.3.4-5 format
+         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\-(\d+)$/) {
+             my $startip = "$1.$2.$3.$4";
+             my $endip = "$1.$2.$3.$5";
+             my $iplist = xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1);
+             foreach (@$iplist) {
+                 push (@iplists, $_);
+             }
+         }
+         #process ip address 1.2.3-4.5 format
+         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\-(\d{1,3})\.(\d{1,3})$/) {
+             my $beginip = $3;
+             my $endip = $4;
+             while ( $beginip <= $endip ) {
+                 my $tip = "$1.$2.$beginip.$5";
+                 push (@iplists, $tip);
+                 $beginip++;
+             }
+         }
+         #process ip address 1.2-3.4.5 format
+         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\-(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) {
+             my $beginip = $2;
+             my $endip = $3;
+             while ( $beginip <= $endip ) {
+                 my $tip = "$1.$beginip.$4.$5";
+                 push (@iplists, $tip);
+                 $beginip++;
+             }
+         }
+         #process ip address 1.2.3.4/24 format
+         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/) {
+             my ($startip, $mask) = split '/', $ips;
+             $mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
+             my $endip = xCAT::NetworkUtils->getBroadcast($startip, $mask);
+             my $iplist = xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1);
+             foreach (@$iplist) {
+                 push (@iplists, $_);
+             }
+         }
+         #process single ip address 1.2.3.4
+         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) {
+             push (@iplists, $ips);
+         }
+    }
+
+    foreach my $ip (@iplists) {
+        my $vendor = get_snmpvendorinfo($request, $ip);
+        if ($vendor) {
+            my $hostname;
+            my $mac = get_snmpmac($request, $ip);
+            if (!$mac) {
+                $mac="nomac_nmap_$counter";
+                $counter++;
+            }
+            $hostname = get_snmphostname($hostname, $ip);
+            my $stype = get_switchtype($vendor);
+            $switches->{$mac}->{ip} = $ip;
+            $switches->{$mac}->{vendor} = $vendor;
+            $switches->{$mac}->{name} = $hostname;
+            if (exists($globalopt{verbose}))    {
+               send_msg($request, 0, "found switch: $hostname, $ip, $stype, $vendor");
+            }
+        }
+    }
+
+    return $switches;
 }
 
 #--------------------------------------------------------------------------------
-=head3  get_vendorinfo   
+=head3  get_snmpvendorinfo   
       return vendor info from snmpwalk command 
     Arguments:
       ip  :  IP address passed by the switch after scan
@@ -836,24 +903,13 @@ sub snmp_scan {
       vendor:  vendor info  of the switch
 =cut
 #--------------------------------------------------------------------------------
-sub get_vendorinfo {
+sub get_snmpvendorinfo {
     my $request = shift;
     my $ip  = shift;
     my $snmpwalk_vendor;
 
 
-    if (-x "/usr/bin/snmpwalk" ){
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "Discovering switch vendor using snmpwalk.....");
-        }
-    } else {
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command for better results");
-        }
-        return $snmpwalk_vendor;
-    }
-
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip system | grep enterprises";
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysDescr.0";
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -867,27 +923,90 @@ sub get_vendorinfo {
         return $snmpwalk_vendor;
     }
 
-    my ($desc,$oid) = split /: /, $result;
-    my $key;
+    my ($desc,$model) = split /: /, $result;
 
     if (exists($globalopt{verbose}))    {
-        send_msg($request, 0, "oid = $oid\n" );
-    }
-    my $search_string = join '|', keys(%global_OID_model_metrix);
-    if ($oid =~ /($search_string)/) {
-        $key = $1;
-        $snmpwalk_vendor = $global_OID_model_metrix{$key};
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "find vendor = $snmpwalk_vendor from snmpwalk command\n");
-        }
-    } else {
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 0, "Couldn't find vendor from snmpwalk command\n");
-        }
+        send_msg($request, 0, "switch model = $model\n" );
     }
 
-    return $snmpwalk_vendor;
+    return $model;
 }
+
+#--------------------------------------------------------------------------------
+=head3  get_snmpmac
+      return mac address from snmpwalk command
+    Arguments:
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      mac:  mac address  of the switch
+=cut
+#--------------------------------------------------------------------------------
+sub get_snmpmac {
+    my $request = shift;
+    my $ip = shift;
+    my $mac;
+
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip ipNetToMediaPhysAddress | grep $ip"; 
+    if (exists($globalopt{verbose}))    {
+       send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process this command: $ccmd" );
+        }
+        return $mac;
+    }
+
+    my ($desc,$mac) = split /: /, $result;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "switch mac = $mac\n" );
+    }
+
+    return $mac;
+}
+
+#--------------------------------------------------------------------------------
+=head3  get_snmphostname
+      return hostname from snmpwalk command
+    Arguments:
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      mac:  hostname of the switch
+=cut
+#--------------------------------------------------------------------------------
+sub get_snmphostname {
+    my $request = shift;
+    my $ip = shift;
+    my $hostname;
+
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysName";
+    if (exists($globalopt{verbose}))    {
+       send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process this command: $ccmd" );
+        }
+        return $hostname;
+    }
+
+    my ($desc,$hostname) = split /: /, $result;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "switch hostname = $hostname\n" );
+    }
+
+    return $hostname;
+
+}
+
 
 #--------------------------------------------------------------------------------
 =head3   get_hostname 
@@ -897,33 +1016,13 @@ sub get_vendorinfo {
       ip  :  IP address passed by the switch after scan
     Returns:
       host:  hostname of the switch
-      if host is empty, try to lookup use snmpwalk command or ip address, 
-      otherwise format hostname as switch and ip combination. ex: switch-9-114-5-6
+      if host is empty, try to lookup use ip address, otherwise format hostname 
+      as switch and ip combination. ex:  switch-9-114-5-6
 =cut
 #--------------------------------------------------------------------------------
 sub get_hostname {
     my $host = shift;
     my $ip = shift;
-
-    if ($host) {
-        return $host;
-    }
-
-    # run snmpwalk to get hostname
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip system | grep sysName";
-    if (exists($globalopt{verbose}))    {
-       send_msg($request, 0, "Process command: $ccmd\n");
-    }
-
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        if (exists($globalopt{verbose}))    {
-            send_msg($request, 1, "Could not process this command: $ccmd" );
-        }
-    }
-
-    my ($desc,$host) = split /: /, $result;
 
     if ( !$host ) {
         $host = gethostbyaddr( inet_aton($ip), AF_INET );

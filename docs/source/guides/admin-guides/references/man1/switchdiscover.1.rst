@@ -29,6 +29,8 @@ To view all the switches defined in the xCAT databasee use \ **lsdef -w "nodetyp
 
 For lldp method, please make sure that lldpd package is installed and lldpd is running on the xCAT management node. lldpd comes from xcat-dep packge or you can get it from http://vincentbernat.github.io/lldpd/installation.html.
 
+For snmp method, please make sure that snmpwalk command is installed and snmp is enabled for switches. To install snmpwalk, "yum install net-snmp-utils" for redhat and sles,  "apt-get install snmp" for Ubuntu.
+
 
 *******
 OPTIONS
@@ -60,6 +62,8 @@ OPTIONS
  Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the switch discover may take a very long time to scan. So the range should be exactly specified.
  
  For nmap scan method, it accepts multiple formats. For example, 192.168.1.1/24, 40-41.1-2.3-4.1-100.
+
+For snmp scan method, it accepts multiple formats.  For example: 192.168.1.1/24, 1.2-3.4.5, 1.2.3-4.5, 1.2.3.4-5
  
  If the range is not specified, the command scans all the subnets that the active network interfaces (eth0, eth1) are on where this command is issued.
  
@@ -74,7 +78,7 @@ OPTIONS
 \ **-s**\ 
  
  It is a comma separated list of methods for switch discovery. 
- The possible switch scan methods are: lldp and nmap. The default is nmap.
+ The possible switch scan methods are: lldp, nmap or snmp. The default is nmap.
  
 
 
