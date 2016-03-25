@@ -261,13 +261,13 @@ sub daemonize {
             print PFILE $pid;
             close (PFILE);
         } else {
-            xCAT::MsgUtils->message("S","xCATd starting as PID $pid");
+            xCAT::MsgUtils->message("S","xcatd starting as PID $pid");
         }
         my $result=<$startupchild>;
         chomp($result);
         unless ($result) { exit (1); }
         if ($result ne "SUCCESS") {
-            xCAT::MsgUtils->message("S","xCATd failed to start: $result");
+            xCAT::MsgUtils->message("S","xcatd failed to start: $result");
             exit(1);
         }
         exit;
@@ -874,7 +874,7 @@ if (defined $pid_init) {
 
 unless (xCAT::Utils->isLinux()) {	# messes up the output of the service cmd on linux
     eval {
-        xCAT::MsgUtils->message("S","xCATd: service starting");
+        xCAT::MsgUtils->message("S","xcatd: service starting");
     };
 }
 if ($@) {
@@ -1369,7 +1369,7 @@ until ($quit) {
     }
 
     unless (defined $child) {
-        xCAT::MsgUtils->message("S","xCATd cannot fork");
+        xCAT::MsgUtils->message("S","xcatd cannot fork");
         die;
     }
 
@@ -1454,7 +1454,7 @@ until ($quit) {
         my $debugmsg = "xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
         xCAT::MsgUtils->trace(0,"D","$debugmsg");
 
-        $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
+        $$progname="xcatd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
         service_connection($connection,$peername,$peerhost,$peerfqdn,$peerhostorg);
 
         $debugmsg = "xcatd: close connection with ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n";
@@ -2609,7 +2609,7 @@ sub service_connection {
                     $req->{'_xcat_clienthost'} = [$peerhost];
                     $req->{'_xcat_clientfqdn'} = [$peerfqdn];
                     $req->{'_xcat_clientport'}= [$peerport];
-                    $$progname="xCATd SSL: ".$req->{command}->[0];
+                    $$progname="xcatd SSL: ".$req->{command}->[0];
                     if ($req->{noderange} && defined($req->{noderange}->[0])) {
                         $$progname .= " to ".$req->{noderange}->[0];
                     }
