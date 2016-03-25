@@ -2,13 +2,19 @@
         <script>
           <filename>foo.sh</filename>
           <interpreter>shell</interpreter>
+          <debug config:type="boolean">false</debug>
           <source>
 
 <![CDATA[
+#!/bin/sh
+
 {
 echo "Running AutoYaST Pre-Installation script..."
 
-#!/bin/sh
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
 
 AWK=`find / -name awk | tail -1`
 #old awk /mounts/instsys/bin/awk -f
@@ -163,6 +169,10 @@ fi
 export nextserver=`cat /proc/cmdline | grep http | awk -F'autoyast=http://' {'print \$2'} | awk -F':' {'print \$1'}`
 cp /tmp/profile/modified.xml /tmp/profile/modified1.xml
 sed -e 's!<software>!<add-on><add_on_products config:type="list">#INSTALL_SOURCES_IN_PRE#</add_on_products></add-on><software>!'  /tmp/profile/modified1.xml > /tmp/profile/modified.xml
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi
 } >>/tmp/pre-install.log 2>&1
 ]]>
 

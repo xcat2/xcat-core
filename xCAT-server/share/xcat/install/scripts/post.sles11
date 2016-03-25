@@ -2,6 +2,7 @@
         <script>
           <filename>xcat.sh</filename>
           <interpreter>shell</interpreter>
+          <debug config:type="boolean">false</debug>
           <source>
 
 <![CDATA[
