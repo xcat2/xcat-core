@@ -13,6 +13,13 @@
 #           OSVER: possible values are sles10, fedora8, redhat5, aix etc.   
 #=cut
 #-------------------------------------------------------------------------------
+if [ "$SYSLOG" = "ignore" ]; then
+    echo "The value of syslog is '$SYSLOG'."
+    exit 0
+elif [ -n "$SYSLOG" ]; then
+    echo "Warning: The value of syslog '$SYSLOG' is not supported, but will still run syslog script."
+fi
+
 if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
    str_dir_name=`dirname $0`
    . $str_dir_name/xcatlib.sh
