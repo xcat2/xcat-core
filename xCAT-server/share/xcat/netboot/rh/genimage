@@ -69,7 +69,32 @@ my $noupdate;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
+   umount_chroot($rootimage_dir);
    die @_;
+}
+
+sub mount_chroot {
+    my $rootimage_dir = shift;
+
+    #postinstall script of package installation
+    #might access the /proc, /sys and /dev filesystem
+    #mount them from host read-only
+    system("mkdir -p $rootimage_dir/proc");
+    system("mount proc $rootimage_dir/proc -t proc -o ro");
+    system("mkdir -p $rootimage_dir/sys");
+    system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+    system("mkdir -p $rootimage_dir/dev");
+    system("mount devtmpfs $rootimage_dir/dev -t devtmpfs -o ro");
+}
+
+
+
+sub umount_chroot {
+    my $rootimage_dir = shift;
+
+    system("umount $rootimage_dir/proc");
+    system("umount $rootimage_dir/sys");
+    system("umount $rootimage_dir/dev");
 }
 
 #check whether a dir is NFS mounted
@@ -283,6 +308,8 @@ unless ($onlyinitrd) {
        exit 1;
    }
 
+   mount_chroot($rootimg_dir);
+
    my %pkg_hash=imgutils::get_package_names($pkglist);
 
    my $index=1;
@@ -292,6 +319,7 @@ unless ($onlyinitrd) {
         foreach (keys(%{$pkg_hash{$pass}})) {
             if($_ eq "INCLUDEBAD")  {
                print "Unable to open the following pkglist files:\n".join("\n",@{$pkg_hash{$pass}{INCLUDEBAD}});
+               umount_chroot($rootimg_dir);
                exit 1;
             }
 
@@ -320,6 +348,7 @@ unless ($onlyinitrd) {
                     }
                     if ($found eq 0) {
                         print "Cannot find the kernel with version $kernelver.\n";
+                        umount_chroot($rootimg_dir);
                         exit 1;
                     }
                     push @npa, $kernelname;
@@ -342,6 +371,7 @@ unless ($onlyinitrd) {
         my $rc = system("$envlist $yumcmd install $pkgnames");
         if ($rc) { 
             print "yum invocation failed\n";
+            umount_chroot($rootimg_dir);
             exit 1;
         }
     }
@@ -366,6 +396,7 @@ unless ($onlyinitrd) {
 
                 if($_ eq "INCLUDEBAD")  {
                     print "Unable to open the following pkglist files:\n".join("\n",@{$extra_hash{$pass}{INCLUDEBAD}});
+                    umount_chroot($rootimg_dir);
                     exit 1;
                 }
             
@@ -444,6 +475,7 @@ unless ($onlyinitrd) {
                     print "yum invocation failed\n";
                     # remove the hacked uname file
                     unuse_hackuname();
+                    umount_chroot($rootimg_dir);
                     exit 1;
                 }
             } else {
@@ -475,8 +507,9 @@ unless ($onlyinitrd) {
  
         # use the original uname binary
         unuse_hackuname();
-
     }
+
+    umount_chroot($rootimg_dir);
     # ignore any return code
     postscripts(); #run 'postscripts'
 }
