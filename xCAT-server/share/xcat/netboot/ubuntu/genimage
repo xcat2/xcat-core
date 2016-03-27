@@ -1976,7 +1976,7 @@ sub mount_chroot {
    system("mkdir -p $rootimage_dir/sys");
    system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
    system("mkdir -p $rootimage_dir/dev");
-   system("mount sysfs $rootimage_dir/dev -t devfs -o ro");
+   system("mount devfs $rootimage_dir/dev -t devfs -o ro");
 
    if ($pkgdir) {
        if (-d $pkgdir) {
