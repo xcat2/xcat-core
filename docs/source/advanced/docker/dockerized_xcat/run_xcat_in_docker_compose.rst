@@ -7,12 +7,8 @@ An example configuration in the documentation
 
 To demonstrate the steps to run xCAT in a Docker container, take a cluster with the following configuration as an example ::
 
-    Docker host: dockerhost1
     The network interface on the Docker host facing the compute nodes: eno1
     The IP address of eno1 on Docker host: 10.5.107.1/8
-    The customized docker bridge: br0
-    The name of the docker container running xCAT: xcatmn 
-    The hostname of container xcatmn: xcatmn
     The IP address of container xcatmn: 10.5.107.101
     The dns domain of the cluster: clusters.com 
 
