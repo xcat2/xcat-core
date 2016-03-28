@@ -5,7 +5,7 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
 
-**Note:** The document is based on **Docker Version 1.9.1** and **Docker API version 1.21.** And the Docker Host is based on **ubuntu14.04.3 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64** architecture from docker.org. You can search online to find them or build your own.
+**Note:** The document is based on **Docker Version 1.10.x** and **Docker API version 1.22.** And the Docker Host is based on **ubuntu14.04.3 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64** architecture from docker.org. You can search online to find them or build your own.
 
 Setting up Docker Host
 ----------------------
@@ -15,7 +15,6 @@ The **Docker Host** is the bare metal server or virtual machine where Docker con
 The *dockerhost* at a minimum must provide the following:
 
 * An Operating System for running docker daemon
-* A Bridge, which can be used by Docker Container to create virtual network adapter on
 * The certification related files to be used by Docker service for trusted connection.
 
 Preparing osimage for docker host
@@ -57,7 +56,7 @@ The osimage for dockerhost will be like this: ::
      osarch=x86_64
      osname=Linux
      osvers=ubuntu14.04.3
-     otherpkgdir=https://apt.dockerproject.org/repo ubuntu-trusty main
+     otherpkgdir=https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main
      otherpkglist=/install/custom/ubuntu1404/ubuntu1404_docker.pkglist
      pkgdir=/install/ubuntu14.04.3/x86_64
      pkglist=/install/custom/ubuntu1404/ubuntu1404.pkglist
@@ -65,42 +64,24 @@ The osimage for dockerhost will be like this: ::
      provmethod=install
      template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
 
-Preparing config bridge for dockerhost
-``````````````````````````````````````
-Currently, the script *xHRM* can be used to config bridge based on a network adapter. In can be replaced by *confignetworks* in the future. To have the dockerhost configure bridge during OS provisioning, use the command: ::
+Preparing setup trust connection for docker service and create docker network object
+````````````````````````````````````````````````````````````````````````````````````
+Currently, a customer defined network object is needed when create a docker container with static IP address, it can be done with the command: ::
 
- chdef host01 -p postbootscripts="xHRM bridgeprereq eth0:mydocker0"
+ chdef host01 -p postbootscripts="setupdockerhost <netobj_name>=<subnet>/<netmask>@<gateway>[:nicname]"
 
-The above command configures bridge *mydocker0* based on *eth0*. If needed, replace *eth0* with the network interface to be used for the docker bridge. **Don't modify bridge name "mydocker0"** since it will be used when setting up docker service on dockerhost.
+* netobj_name: the network object to be created, it will be used in *dockernics* when creating docker container 
+* subnet/netmask@gateway: the network which the IP address of docker container running on the docker host must be located in. If *nicname* is specified, the *subnet/netmask* must be the subnet of the nic *nicname* located in. And *gateway* shall be the IP address of the nic *nicname*.
+* nicname: the physical nic name which will be attached to the network object 
 
-Preparing setup trust connection for docker service
-```````````````````````````````````````````````````
+For example, a network object *mynet0* with subnet *10.0.0.0/16* and gateway *10.0.101.1* on nic *eth0* can be created with the command: ::
 
-::
-
- chdef host01 -p postbootscripts="setupdockerhost"
+ chdef host01 -p postbootscripts="setupdockerhost mynet0=10.0.0.0/16@10.0.101.1:eth0"
 
 Start OS provisioning for dockerhost
 ````````````````````````````````````
 
 Reference :ref:`Initialize the Compute for Deployment<deploy_os>` for how to finish an OS deployment.
-
-Setup docker instance network configuration tool on dockerhost(Optional)
-````````````````````````````````````````````````````````````````````````
-
-Currently, Docker doesn't provide native support for configuring specified ip address for a docker instance runing on the dockerhost. The `pipework <https://github.com/jpetazzo/pipework>`_ package can help. After dockerhost is up and running, do the following:
-
-First, download the "pipework" ::
-    
- git clone https://github.com/jpetazzo/pipework.git
- 
-Then copy the script "pipework" to "/usr/bin/pipework" ::
-   
- cp ./pipework/pipework /usr/bin/pipework 
-
-The *pipework* is depended on "arping", so the package "iputils-arping" needed to be installed ::
-
- apt-get install iputils-arping
 
 Docker instance management
 --------------------------
@@ -110,13 +91,17 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
  # lsdef host01c01
  Object name: host01c01
      dockerhost=host01:2375
+     dockernics=mynet0
      groups=docker,all
-     ip=<x.x.x.x>
+     ip=10.0.120.1
+     mac=02:42:0a:00:78:01
      mgt=docker
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
 
 The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node or change the node attributes. Specify any available unused ip address for *ip* attribute.
+
+After docker instance node is defined, use command `makehosts host01c01` to add node *host01c01* and its IP address *10.0.120.1* into /etc/hosts.
 
 Create docker instance
 ``````````````````````
@@ -127,13 +112,11 @@ Create docker instance
 * node - The node object which represents the docker instance
 * image - The image name that the docker instance will use
 * command - The command that the docker will run
-* dockerflag - A JSON string which will be used as parameters to create a docker. Reference `docker API v1.21 <https://docs.docker.com/engine/reference/api/docker_remote_api_v1.21/>`_ for more information about which parameters can be specified for "dockerflag".
+* dockerflag - A JSON string which will be used as parameters to create a docker. Reference `docker API v1.22 <https://docs.docker.com/engine/reference/api/docker_remote_api_v1.22/>`_ for more information about which parameters can be specified for "dockerflag".
 
 To create the docker instance *host01c01* with image *ubuntu* and command */bin/bash*, use: ::
  
  mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true}"
-
-**Note**: The *mkdocker* can not pull image automatically if the specified image does not exist on dockerhost. Pull the image manually with **docker pull <image_name>** in dockerhost before running **mkdocker**. Check available images with **docker images** 
 
 Remove docker instance
 ``````````````````````
@@ -190,28 +173,3 @@ Check docker instance status
 ::
 
  rpower <node> state
-
-Configure docker instance IP address(Optional)
-``````````````````````````````````````````````
-
-Currently, the IP address specified in *ip* attribute of the docker instance node definition can not be configured to the docker instance automatically. To configure it, the following steps are needed:
-
-* Create docker instance with network disabled
-
-::
-
- mkdocker host01c01 image=ubuntu command=/bin/bash dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"NetworkDisabled\":true}"
-
-* Start docker instance
-
-::
-
- rpower host01c01 start
-
-* Configure ip for docker instance
- 
- Reference section "Setup docker instance network configuration tool on dockerhost" above to setup "pipework" on dockerhost before running the following command: 
-
-::
- 
- pipework mydocker0 host01c01 <instance_ip>/<netmask>@<gateway_ip>

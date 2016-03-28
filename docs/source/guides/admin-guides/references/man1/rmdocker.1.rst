@@ -11,7 +11,7 @@ SYNOPSIS
 ********
 
 
-\ **rmdocker**\  \ *noderange*\ 
+\ **rmdocker**\  \ *noderange*\  [\ **-f | -**\ **-force**\ ]
 
 \ **rmdocker**\  [\ **-h | -**\ **-help**\ ]
 
@@ -23,7 +23,20 @@ DESCRIPTION
 ***********
 
 
-\ **rmdocker**\  To remove docker instances with the specified node name.
+\ **rmdocker**\  To remove docker instances with the specified node name
+
+
+*******
+OPTIONS
+*******
+
+
+
+\ **-f|-**\ **-force**\ 
+
+
+
+Force to removal of a running container or failed to disconnect customized network
 
 
 ********
@@ -35,6 +48,7 @@ EXAMPLES
 .. code-block:: perl
 
      rmdocker host01c01
+     host01c01: Disconnect customzied network 'mynet0' done
      host01c01: success
 
 
