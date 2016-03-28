@@ -11,7 +11,7 @@
 # Should-Start: mysql
 # Default-Start: 3 4 5
 # Default-stop: 0 1 2 6
-# Short-Description: xCATd
+# Short-Description: xcatd
 # Description: xCAT management service
 ### END INIT INFO
 
@@ -39,16 +39,16 @@ MStatus()
 {
   PID=`cat /var/run/xcatd.pid`
   if [ -z "$PID" ]; then
-    echo "xCAT service is not running"
+    echo "xcatd service is not running"
     return 3
   fi
   ps $PID|grep xcatd: > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     RVAL=0
-    echo "xCAT service is running"
+    echo "xcatd service is running"
   else
     RVAL=3
-    echo "xCAT service is not running"
+    echo "xcatd service is not running"
   fi
   return $RVAL
 }
@@ -75,14 +75,14 @@ fi
 
 case $1 in
 restart)
-  echo -n "Restarting xCATd "
+  echo -n "Restarting xcatd "
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 reload)
-  echo -n "Reloading xCATd "
+  echo -n "Reloading xcatd "
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
@@ -93,10 +93,10 @@ status)
   $STATUS
   ;;
 stop)
-  echo -n "Stopping xCATd "
+  echo -n "Stopping xcatd "
   $STATUS > /dev/null 2>&1
   if [ "$?" != "0" ]; then
-    echo -n "xCATd not running, not stopping "
+    echo -n "xcatd not running, not stopping "
     $LOG_WARNING
     echo
     exit 0
@@ -123,12 +123,12 @@ stop)
 start)
   $STATUS > /dev/null 2>&1
   if [ "$?" = "0" ]; then
-    echo -n "xCATd already running "
+    echo -n "xcatd already running "
     $LOG_WARNING
     echo
     exit
   fi
-  echo -n "Starting xCATd "
+  echo -n "Starting xcatd "
   #/var/run/ is a symlink on /run and that's just a tmpfs mount created on boot on ubuntu. 
   #if there is not this directory, create first 
   if [ ! -d /var/run/xcat ];then
