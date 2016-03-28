@@ -2,8 +2,8 @@ Run xCAT in Docker with Docker native commands
 ==============================================
 
 
-Pull the xCAT Docker image from DockerHub:
-------------------------------------------
+Pull the xCAT Docker image from DockerHub
+-----------------------------------------
 
 Now xCAT ships xCAT Docker images(x86_64 and ppc64le) on the `DockerHub <https://hub.docker.com/u/xcat/>`_:
 
