@@ -261,7 +261,7 @@ function sort_nics_device_order {
             done
         else
             temp_base_nic_dev=$base_nic_dev
-            temp_base_nic_type=`find_nic_type "temp_base_nic_dev"`
+            temp_base_nic_type=`find_nic_type "$temp_base_nic_dev"`
         fi
 
         base_nic_type=$temp_base_nic_type
