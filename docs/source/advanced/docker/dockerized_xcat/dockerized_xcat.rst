@@ -78,6 +78,7 @@ Once you attach or ssh to the container, you will find that xCAT is running and 
 
 Currently, since xCAT can only generate the diskless osimages of Linux distributions with the same OS version and architecture with xCAT MN. If you need to provision diskless osimages besides ubuntu x86_64 with xCAT running in the Docker, you can use ``imgexport`` and ``imgimport`` to import the diskless osimages generated before.
 
+If you start up the xCAT Docker container by following the steps described in sections above strictly, without specifying "--dns=IP_ADDRESS...", "--dns-search=DOMAIN...", or "--dns-opt=OPTION..." options, Docker uses the /etc/resolv.conf of the host machine (where the docker daemon runs). Any DNS problem inside container, please make sure the DNS server on the Docker host works well.
 
 Save and Restore xCAT data 
 ----------------------------
