@@ -59,7 +59,19 @@ for lsfnode in $ALL_LSF_NODES
 do
     if [[ x${lsfnode} == x$NODE ]]
     then
-        echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+        if [[ -f /root/.bash_profile ]] 
+        then
+            if ! grep -q -i "#Added by lsf_startup" /root/.bash_profile ; then 
+                echo "#Added by lsf_startup." >> /root/.bash_profile
+                echo ". $LSF_TOP/conf/profile.lsf" >> /root/.bash_profile
+            fi
+        else
+            if ! grep -q -i "#Added by lsf_startup" /root/.profile ; then
+                echo "#Added by lsf_startup." >> /root/.profile
+                echo ". $LSF_TOP/conf/profile.lsf" >> /root/.profile
+            fi
+            
+        fi
     fi
 done
 
