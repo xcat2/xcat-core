@@ -86,7 +86,7 @@ According to the policy of Docker, Docker image should only be the service deplo
 
 For dockerized xCAT, there are 3 volumes recommended to save and restore xCAT user data.
 
-* "/install":        save the osimage resources under
+* "/install":        save the osimage resources under "/install" directory 
 * "/var/log/xcat/":  save xCAT logs 
 * "/.dbbackup":      save and restore xCAT DB tables. You can save the xCAT DB tables with ``dumpxCATdb -p /.dbbackup/`` inside container and xCAT will restore the tables on the container start up.
 
