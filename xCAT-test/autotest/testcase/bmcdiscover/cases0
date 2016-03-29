@@ -27,7 +27,7 @@ end
 start:bmcdiscover_check_passwd_wrong
 cmd:bmcdiscover -i $$bmcrange -u USERID -p PASSW0RDw --check
 check:rc!=0
-check:output=~Error: Wrong bmc password
+check:output=~Error: Wrong BMC password
 end
 
 start:bmcdiscover_get_ipsource
