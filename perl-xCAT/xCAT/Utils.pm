@@ -16,7 +16,6 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 # do not put a use or require for  xCAT::Table here. Add to each new routine
 # needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call 
-use Error;
 use POSIX qw(ceil);
 use File::Path;
 use Socket;
@@ -4644,9 +4643,21 @@ sub lookupNetboot{
 sub is_process_exists{
     my $pid = shift;
     return 1 if $pid == 0;
+    # NOTE: Add eval and require to process dependency missing of perl-Error
+    # package before sles 12 system.
+    my $miss = undef;
+    eval {
+        require Error;
+    };
+    if ($@) {
+        $miss = 1;
+    }
     my $ret = kill(0, $pid);
-    return 0 if ($!{ESRCH});
-    return 1 if ($!{EPERM});
+
+    if (!$miss) {
+        return 0 if ($!{ESRCH});
+        return 1 if ($!{EPERM});
+    }
 
     if ($ret != 0 ) {
         return 1;
