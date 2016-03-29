@@ -1,5 +1,5 @@
-Run xCAT in Docker with Compose
-===============================
+Run xCAT in Docker with Compose (Recommended)
+=============================================
 
 
 An example configuration in the documentation
@@ -25,7 +25,7 @@ Compose v1.7.0 or above should be installed on Docker host: ::
 Customize docker-compose file 
 -----------------------------
 
-xCAT shippes a docker-compose template `docker-compose.yml <https://github.com/immarvin/xcat-docker/blob/master/docker-compose.yml>`_, which is a self-description file including all the configurations to run xCAT in container. You can make up your compose file based on it if you are familiar with `Compose file <https://docs.docker.com/compose/compose-file/>`_ , otherwise, you can simply customize it with the following steps: 
+xCAT ships a docker-compose template `docker-compose.yml <https://github.com/immarvin/xcat-docker/blob/master/docker-compose.yml>`_, which is a self-description file including all the configurations to run xCAT in container. You can make up your compose file based on it if you are familiar with `Compose file <https://docs.docker.com/compose/compose-file/>`_ , otherwise, you can simply customize it with the following steps: 
 ::
 
     image: [xCAT docker image name]:[tag]  
@@ -33,46 +33,46 @@ xCAT shippes a docker-compose template `docker-compose.yml <https://github.com/i
 specify the name and tag of xCAT Docker image, for example "xcat/xcat-ubuntu-x86_64:2.11" 
 :: 
     extra_hosts:
-       - "xcatmn.[cluster domain name] xcatmn:[Container's IP address in provision network]"
+       - "xcatmn.[cluster domain name] xcatmn:[Container's IP address in management network]"
 
 specify the cluster domain name, fox example "clusters.com", and the IP address of container running xCAT Docker image, such as "10.0.0.101" 
 ::
     networks:
 
-      hwmgtnet:
-        ipv4_address : [Container's IP address in hardware management network]
+      svcnet:
+        ipv4_address : [Container's IP address in service network]
 
-      provnet:
-        ipv4_address : [Container's IP address in provision network]  
+      mgtnet:
+        ipv4_address : [Container's IP address in management network]  
 
-specify the IP address of Docker container in hardware management network and provision network. Sometimes, the "hwmgtnet" is the same as "provnet", the "hwmgtnet" should be omitted by commented the 2 lines out
+specify the IP address of Docker container in service network and management network. If the "svcnet" is the same as "mgtnet", the 2 "svcnet" lines should be commented out.
 ::
 
     networks:
       
-      #provision network, attached to the network interface on Docker host 
+      #management network, attached to the network interface on Docker host 
       #facing the nodes to provision
-      provnet:
+      mgtnet:
         driver: "bridge"
         driver_opts: 
-          com.docker.network.bridge.name: "provbr" 
+          com.docker.network.bridge.name: "mgtbr" 
         ipam: 
           config: 
-            - subnet: [subnet of provbr in CIDR]
-              gateway:[IP address of provbr]
+            - subnet: [subnet of mgtbr in CIDR]
+              gateway:[IP address of mgtbr]
         
-      #hardware management network, attached to the network interface on
+      #service network, attached to the network interface on
       #Docker host facing the bmc network
-      hwmgtnet:
+      svcnet:
         driver: "bridge"
         driver_opts: 
-          com.docker.network.bridge.name: "hwmgtbr" 
+          com.docker.network.bridge.name: "svcbr" 
         ipam: 
           config: 
-            - subnet: [subnet of hwmgtbr in CIDR]
-              gateway: [IP address of hwmgtbr]
+            - subnet: [subnet of svcbr in CIDR]
+              gateway: [IP address of svcbr]
     
-specify the network configuration of bridge networks "provnet" and "hwmgtnet", the network configuration of the bridge networks should be same as the network interfaces attached to the bridges. 
+specify the network configuration of bridge networks "mgtnet" and "svcnet", the network configuration of the bridge networks should be same as the network interfaces attached to the bridges. The "mgtnet" and "svcnet" might the same network in some cluster, in this case, you can only create and connect to 1 network.  
 ::
     volumes:
       #the "/install" volume is used to keep user data in xCAT,
@@ -94,9 +94,9 @@ Start xCAT Docker container with Compose
 ----------------------------------------
 After the "docker-compose.yml" is ready, the xCAT Docker container can be started with [1]_ ::
   
-   docker-compose -f "docker-compose.yml" up -d; ifconfig eno1 0.0.0.0; brctl addif provbr eno1; ip link set provbr up;docker-compose logs -f
+   docker-compose -f "docker-compose.yml" up -d; ifconfig eno1 0.0.0.0; brctl addif mgtbr eno1; ip link set mgtbr up;docker-compose logs -f
 
-This command starts up the Docker container and attaches the network interface "eno1" of Docker host to the bridge network "provbr". It is a little complex due to a Compose bug `#1003 <https://github.com/docker/libnetwork/issues/1003>`_ . The commands should be run successively in one line to avoid breaking the network connection of the network interface of Docker host.
+This command starts up the Docker container and attaches the network interface "eno1" of Docker host to the bridge network "mgtbr". It is a little complex due to a Compose bug `#1003 <https://github.com/docker/libnetwork/issues/1003>`_ . The commands should be run successively in one line to avoid breaking the network connection of the network interface of Docker host.
 
 To remove the container, you can run ::
 
@@ -114,5 +114,5 @@ Known Issues
     
    "Couldn't connect to Docker daemon at http+unix://var/run/docker.sock - is it running?
    If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable."
-please do not worry and just ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_ 
+You can ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_ 
    

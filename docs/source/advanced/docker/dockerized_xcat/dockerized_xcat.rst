@@ -32,30 +32,32 @@ xCAT shippes 2 Docker images for Docker host with different architecture:
 Each of the xCAT Docker images above has 3 tags corresponding to different xCAT release inside Docker image:
 
 * "latest" : the latest xCAT release
-* the specified xCAT release: "2.11" is supported 
-* "dev": the latest xCAT development snapshot build
+* "2.11"   : xCAT 2.11 release
+* "dev"    : the latest xCAT development snapshot build
 
-A Docker image with the specified tag should be denoted in format "[docker image name]:[tag]", for example, "xcat/xcat-ubuntu-x86_64:2.11". The tag is "latest" by default if not specified.
+A Docker image with specified tag should be denoted in format "[docker image name]:[tag]", for example, "xcat/xcat-ubuntu-x86_64:2.11". If not specified, default tag is "latest".
 
 
 Run xCAT in Docker
 ------------------
 
-Each container with xCAT Docker image running inside is a xCAT management node, the container connect to the compute nodes and hardware control points in the cluster via "bridge" network on the Docker host. Generally, a xCAT container should connect to 2 types of networks:
+Each container with xCAT Docker image running inside is a xCAT management node, the container connects to the compute nodes and hardware control points in the cluster via "bridge" network on the Docker host. Generally, a xCAT container should connect to 2 types of networks( the 2 types of networks might be one network in some cluster):
 
-* "provnet":  provision network connecting to compute nodes, i.e, a bridge "provbr" attached to the network interface facing the compute nodes on Docker host
-* "hwmgtnet": hardware management network connecting to the hardware control points, i.e, a bridge "hwmgtbr" attached to the network interface facing the hardware control points 
+* "mgtnet": Management network, the network used by the Management Node to install operating systems and manage the nodes. The Management Node and in-band Network Interface Card (NIC) of the nodes are connected to this network. A bridge "mgtbr" will be created and attached to the network interface facing the compute nodes on Docker host
+* "svcnet": Service network, the network used by the Management Node to control the nodes using out-of-band management using the Service Processor. A bridge "svcbr" will be created and attached to the network interface facing the hardware control points 
 
-You are required to determine and specify some necessary information, so that xCAT is well configured and running when the container is started. These information includes:
+You are required to determine and specify some necessary information, so that xCAT is well configured and running when the container is started. This includes:
 
 * Docker container: xCAT Docker image with specified xCAT release; the data volumes with directories on Docker host including xCAT DB tables, the osimage resources and xCAT logs, which can be used to save and restore the data of xCAT service
 * network information: the network configuration of the xCAT container
 * cluster information: the domain of the cluster
 
-These information can be specified in 2 ways to run xCAT container: 
-* in options and arguments of docker commands such as "docker network create" or "docker run"
+The information can be specified in 2 ways to run xCAT container: 
+
+* in options and arguments of docker commands such as ``docker network create`` or ``docker run``
 * in the "docker-compose.yml", which contains all the configuration to start xCAT containers with Compose. This is the recommended way to start xCAT container.
-The 2 ways are described step-by-step in the following sections of this documentation.
+
+The 2 ways are described step-by-step in the following sections of this documentation. We recommend you start xCAT container with Compose.
 
 When xCAT Docker container is started, you can access it with ``sudo docker attach``, however, we recommend you to access it via "ssh".
 
@@ -65,14 +67,15 @@ When xCAT Docker container is started, you can access it with ``sudo docker atta
    :maxdepth: 2
 
    setup_docker_host.rst 
-   run_xcat_in_docker_native.rst
    run_xcat_in_docker_compose.rst
+   run_xcat_in_docker_native.rst
+
 
 
 Work with xCAT
 --------------
 
-Once xCAT Docker container is run, you can use xCAT with the shell inside the container. Since the ssh service has also been enabled on the Docker container startup, you can also connect to the container via ssh, the default password for the user "root" is "cluster".
+Once xCAT Docker container is running, you can use xCAT with the shell inside the container. Since the ssh service has been enabled on the Docker container startup, you can connect to the container via ssh. The default root password is "cluster".
 
 Once you attach or ssh to the container, you will find that xCAT is running and configured, you can play with xCAT and manage your cluster now. 
 
@@ -83,7 +86,7 @@ If you start up the xCAT Docker container by following the steps described in se
 Save and Restore xCAT data 
 ----------------------------
 
-According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker use "Data Volume" to save persisent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
+According to the policy of Docker, Docker image should only be the service deployment unit, it is not recommended to save data in Docker image. Docker uses "Data Volume" to save persisent data inside container, which can be simply taken as a shared directory between Docker host and Docker container. 
 
 For dockerized xCAT, there are 3 volumes recommended to save and restore xCAT user data.
 

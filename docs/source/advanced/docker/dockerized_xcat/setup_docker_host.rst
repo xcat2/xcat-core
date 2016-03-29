@@ -1,8 +1,8 @@
-setup Docker host
+Setup Docker host
 =================
 
-Install Dockerc Engine
-----------------------
+Install Docker Engine
+---------------------
 
 The Docker host to run xCAT Docker image should be a baremental or virtual server with Docker v1.10 or above installed. For the details on system requirements and Docker installation, please refer to `Docker Installation Docs <https://docs.docker.com/engine/installation/>`_. 
 
