@@ -807,9 +807,8 @@ sub snmp_scan {
     my $ccmd;
     my $switches;
     my $counter = 0;
-    my @iplists = ();
 
-
+    # snmpwalk command has to be available for snmp_scan
     if (-x "/usr/bin/snmpwalk" ){
         send_msg($request, 0, "Discovering switches using snmpwalk.....");
     } else {
@@ -824,63 +823,46 @@ sub snmp_scan {
     ##################################################
     my $ranges = get_ip_ranges($request);
 
-    #push each ip to ip list (need better code?)
-    foreach my $ips (@$ranges) {
-         #process ip address 1.2.3.4-5 format
-         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\-(\d+)$/) {
-             my $startip = "$1.$2.$3.$4";
-             my $endip = "$1.$2.$3.$5";
-             my $iplist = xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1);
-             foreach (@$iplist) {
-                 push (@iplists, $_);
-             }
-         }
-         #process ip address 1.2.3-4.5 format
-         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\-(\d{1,3})\.(\d{1,3})$/) {
-             my $beginip = $3;
-             my $endip = $4;
-             while ( $beginip <= $endip ) {
-                 my $tip = "$1.$2.$beginip.$5";
-                 push (@iplists, $tip);
-                 $beginip++;
-             }
-         }
-         #process ip address 1.2-3.4.5 format
-         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\-(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) {
-             my $beginip = $2;
-             my $endip = $3;
-             while ( $beginip <= $endip ) {
-                 my $tip = "$1.$beginip.$4.$5";
-                 push (@iplists, $tip);
-                 $beginip++;
-             }
-         }
-         #process ip address 1.2.3.4/24 format
-         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)$/) {
-             my ($startip, $mask) = split '/', $ips;
-             $mask = xCAT::NetworkUtils::formatNetmask($mask, 1, 0);
-             my $endip = xCAT::NetworkUtils->getBroadcast($startip, $mask);
-             my $iplist = xCAT::NetworkUtils->get_allips_in_range($startip, $endip, 1);
-             foreach (@$iplist) {
-                 push (@iplists, $_);
-             }
-         }
-         #process single ip address 1.2.3.4
-         if ($ips =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/) {
-             push (@iplists, $ips);
-         }
+    #use nmap to find if snmp port is enabled  
+    $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "Process command: $ccmd\n");
     }
 
-    foreach my $ip (@iplists) {
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        send_msg($request, 1, "Could not process this command: $ccmd" );
+        return 1;
+    }
+
+    #################################################
+    #display the raw output
+    #################################################
+    if (exists($globalopt{r})) {
+        send_msg($request, 0, "$result\n" );
+    } else {
+        if (exists($globalopt{verbose})) {
+            send_msg($request, 0, "$result\n" );
+        }
+    }
+    my @lines = split /\n/, $result;
+
+    # only open port will be scan
+    foreach my $line (@lines) {
+        my $ip = `echo "$line\n" |awk '{printf \$6}'`; 
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 0, "Run snmpwalk command to get information for $ip");
+        }
+
         my $vendor = get_snmpvendorinfo($request, $ip);
         if ($vendor) {
-            my $hostname;
             my $mac = get_snmpmac($request, $ip);
             if (!$mac) {
                 $mac="nomac_nmap_$counter";
                 $counter++;
             }
-            $hostname = get_snmphostname($hostname, $ip);
+            my $hostname = get_snmphostname($request, $ip);
             my $stype = get_switchtype($vendor);
             $switches->{$mac}->{ip} = $ip;
             $switches->{$mac}->{vendor} = $vendor;
@@ -1023,6 +1005,10 @@ sub get_snmphostname {
 sub get_hostname {
     my $host = shift;
     my $ip = shift;
+
+    if ($host) {
+        return $host;
+    }
 
     if ( !$host ) {
         $host = gethostbyaddr( inet_aton($ip), AF_INET );
