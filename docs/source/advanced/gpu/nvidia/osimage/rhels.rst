@@ -4,7 +4,7 @@ RHEL 7.2 LE
 xCAT provides a sample package list (pkglist) files for CUDA. You can find them: 
 
     * Diskful: ``/opt/xcat/share/xcat/install/rh/cuda*``
-    * Diskless: ``/opt/xcat/share/xcat/install/rh/cuda*``
+    * Diskless: ``/opt/xcat/share/xcat/netboot/rh/cuda*``
 
 Diskful images
 ---------------
