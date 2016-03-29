@@ -1,6 +1,1 @@
-#INCLUDE:compute.ubuntu14.04.3.ppc64el.pkglist#
-linux-headers-generic-lts-utopic
-
-build-essential
-zlib1g-dev
-dkms
+cudafull.ubuntu14.04.2.ppc64el.pkglist
