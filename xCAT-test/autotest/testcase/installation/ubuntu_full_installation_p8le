@@ -4,12 +4,13 @@ stop=yes
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:makedns -n
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;fi
 check:rc==0
-cmd:sleep 60
 cmd:makedhcp -n
 check:rc==0
 cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
 check:rc==0
 cmd:makeconservercf $$CN
 check:rc==0
