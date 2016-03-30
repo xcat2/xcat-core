@@ -241,3 +241,16 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
+rpower_stop
+rpower_start
+rpower_state
+rpower_restart
+rpower_pause
+rpower_unpause
+mkdocker_h
+mkdocker_command
+rmdocker_h
+rmdocker_command
+rmdocker_f_command
+lsdocker_h_command
+lsdocker_l_command

@@ -1,0 +1,264 @@
+start:rpower_stop
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN stop
+check:rc==0
+check:ouptut=~container already stoped
+cmd:rpower $$DOCKERCN restart
+check:ouptut=~success
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~running
+cmd:rpower $$DOCKERCN stop 
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~exited
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:rpower_start
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~created
+cmd:rpower $$DOCKERCN start
+check:rc==0
+check:output=~success
+cmd:rpower  $$DOCKERCN state
+check:rc==0
+check:output=~running 
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_state
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~created
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~running
+cmd:rpower $$DOCKERCN stop
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~exited
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_restart
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~created
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:sleep 6
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:sleep 6
+cmd:rpower $$DOCKERCN restart
+check:rc==0
+check:output=~success
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_pause
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:rc!=0
+check:output=~ Cannot pause container $$DOCKERCN
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:rc==0
+cmd:rpower $$DOCKERCN state
+check:output=~paused
+cmd:rpower $$DOCKERCN unpause
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+
+start:rpower_unpause
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rpower $$DOCKERCN pause
+check:ouptut=~paused
+cmd:rpower $$DOCKERCN unpause
+check:rc==0
+check:output=~success
+cmd:sleep 6
+cmd:rpower $$DOCKERCN state
+check:output=~running
+cmd:sleep 6
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:mkdocker_h
+cmd:mkdocker -h
+check:rc==0
+check:output=~Usage: mkdocker
+end
+start:mkdocker_command
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0 
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN 
+check:rc==0
+check:output=~$$DOCKERIMAGE
+check:output=~$$DOCKERCOMMAND
+cmd:rpower $$DOCKERCN state
+check:rc==0
+check:output=~$$DOCKERCN: created
+cmd:rpower $$DOCKERCN start
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:xdsh $$DOCKERHOST "docker ps -l"
+check:output=~$$DOCKERCN
+check:rc==0
+cmd:ping $$DOCKERCN -c 3
+check:output=~64 bytes from $$DOCKERCN
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f 
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:rmdocker_h
+cmd:rmdocker -h 
+check:rc==0
+check:output=~Usage: rmdocker <noderage>
+end
+start:rmdocker_command
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN
+check:rc==0
+cmd:lsdocker -l $$DOCKERCN
+check:rc!=0
+check:output=~ Error: No such container
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+end
+start:rmdocker_f_command
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:lsdocker $$DOCKERCN
+check:rc==0
+cmd:rpower $$DOCKERCN start
+check:rc==0
+cmd:rmdocker $$DOCKERCN
+chec:rc!=0
+check:output=~Stop the container before attempting removal or use -f
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+check:output=~$$DOCKERCN: success
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
+start:lsdocker_h_command
+cmd:lsdocker -h
+check:rc==0
+check:output=~Usage: lsdocker <noderange>
+end
+start:lsdocker_l_command
+cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
+check:rc==0
+cmd:makehosts $$DOCKERCN
+check:rc==0
+cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag="{\"AttachStdin\":true,\"AttachStdout\":true,\"AttachStderr\":true,\"OpenStdin\":true,\"Tty\":true}"
+check:rc==0
+cmd:lsdocker -l $$DOCKERCN
+check:rc==0
+check:output=~$$DOCKERCN
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
+cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
+end
