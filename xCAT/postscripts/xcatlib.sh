@@ -718,7 +718,7 @@ function msgutil_r {
    if [ -n "$logserver" ];then
       logger -n $logserver -t xcat -p local4.$msgtype "$msgstr" >/dev/null 2>&1
       if [ "$?" != "0" ];then
-         exec 3<>/dev/udp/$logserver/514 >/dev/null 2>&1;logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1
+         exec 3<>/dev/udp/$logserver/514 && logger -s -t xcat -p local4.$msgtype "$msgstr" 1>&3  2>&1 && exec 3>&-
          if [ "$?" != "0" ];then
             logger -s -t xcat -p local4.$msgtype "$msgstr" 2>&1|nc $logserver 514 >/dev/null 2>&1
             if [ "$?" != "0" ];then
