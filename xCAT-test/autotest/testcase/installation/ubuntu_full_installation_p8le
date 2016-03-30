@@ -28,4 +28,8 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
+cmd:umount /tmp/iso
+check:rc==0
+cmd:rmdir /tmp/iso
+check:rc==0
 end
