@@ -666,12 +666,8 @@ sub nmap_scan {
     #################################################
     #display the raw output
     #################################################
-    if (exists($globalopt{r})) {
+    if (defined($globalopt{r}) || defined($globalopt{verbose})) {
         send_msg($request, 0, "$result\n" );
-    } else {
-        if (exists($globalopt{verbose})) {
-            send_msg($request, 0, "$result\n" );
-        }
     }
 
     #################################################
@@ -839,18 +835,16 @@ sub snmp_scan {
     #################################################
     #display the raw output
     #################################################
-    if (exists($globalopt{r})) {
+    if (defined($globalopt{r}) || defined($globalopt{verbose})) {
         send_msg($request, 0, "$result\n" );
-    } else {
-        if (exists($globalopt{verbose})) {
-            send_msg($request, 0, "$result\n" );
-        }
     }
     my @lines = split /\n/, $result;
 
+    # each line like this: "Discovered open port 161/udp on 10.4.25.1"
     # only open port will be scan
     foreach my $line (@lines) {
-        my $ip = `echo "$line\n" |awk '{printf \$6}'`; 
+        my @array = split / /, $line;
+        my $ip = $array[5];
         if (exists($globalopt{verbose}))    {
             send_msg($request, 0, "Run snmpwalk command to get information for $ip");
         }
