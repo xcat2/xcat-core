@@ -37,6 +37,8 @@ DESCRIPTION
 
 The chtab command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
 
+The chtab is designed to work without passing xcatd, so it's out of control of policy mechanism.
+
 
 *******
 OPTIONS
