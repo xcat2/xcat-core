@@ -48,9 +48,7 @@ Display usage message.
 
 Specify one or more IP ranges. Each can be an ip address (10.1.2.3) or an ip range (10.1.2.0/24). If the range is huge, for example, 192.168.1.1/8, the switch discover may take a very long time to scan. So the range should be exactly specified.
 
-For nmap scan method, it accepts multiple formats. For example: 192.168.1.1/24, 40-41.1-2.3-4.1-100.
-
-For snmp scan method, it accepts multiple formats.  For example: 192.168.1.1/24, 1.2-3.4.5, 1.2.3-4.5, 1.2.3.4-5
+For nmap and snmp scan method, it accepts multiple formats. For example: 192.168.1.1/24, 40-41.1-2.3-4.1-100.
 
 If the range is not specified, the command scans all the subnets that the active network interfaces (eth0, eth1) are on where this command is issued. 
 
