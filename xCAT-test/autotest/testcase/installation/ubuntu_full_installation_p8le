@@ -4,7 +4,7 @@ stop=yes
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;fi
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -28,8 +28,4 @@ check:output=~booted
 cmd:xdsh $$CN date
 check:rc==0
 check:output=~\d\d:\d\d:\d\d
-cmd:umount /tmp/iso
-check:rc==0
-cmd:rmdir /tmp/iso
-check:rc==0
 end
