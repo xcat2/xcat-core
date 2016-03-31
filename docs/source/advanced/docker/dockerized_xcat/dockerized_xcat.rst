@@ -8,7 +8,7 @@ Overview
 `Docker <https://www.docker.com/>`_ is a popular containment environment making it easier to create, deploy, and run applications/services. With Docker, applications/services are shipped as **Docker images** and run in **Docker containers**. **Docker containers** include the application/services and all of its running environment, which have isolated namespace and network stack but share the kernel on the host operating system. The server on which  **Docker containers** run is called **Docker host**. **Docker image** can only run on **Docker host** with the same architecture.
 
 
-.. image:: ./imgs/xcatindocker.jpg
+.. image:: ./imgs/xcatindocker4.jpg
    :height: 500 px
    :width:  600 px
    :scale: 50 %

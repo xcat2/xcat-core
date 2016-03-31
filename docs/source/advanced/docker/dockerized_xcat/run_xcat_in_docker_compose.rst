@@ -94,13 +94,19 @@ Start xCAT Docker container with Compose
 ----------------------------------------
 After the "docker-compose.yml" is ready, the xCAT Docker container can be started with [1]_ ::
   
-   docker-compose -f "docker-compose.yml" up -d; ifconfig eno1 0.0.0.0; brctl addif mgtbr eno1; ip link set mgtbr up;docker-compose logs -f
+   docker-compose -f "docker-compose.yml" up -d; \
+   ifconfig eno1 0.0.0.0; \
+   brctl addif mgtbr eno1; \
+   ip link set mgtbr up; \
+   docker-compose logs -f
 
 This command starts up the Docker container and attaches the network interface "eno1" of Docker host to the bridge network "mgtbr". It is a little complex due to a Compose bug `#1003 <https://github.com/docker/libnetwork/issues/1003>`_ . The commands should be run successively in one line to avoid breaking the network connection of the network interface of Docker host.
 
 To remove the container, you can run ::
 
-  docker-compose -f "docker-compose.yml" down;ifdown eno1;ifup eno1
+  docker-compose -f "docker-compose.yml" down; \
+  ifdown eno1; \
+  ifup eno1
 
 To update the xCAT Docker image, you can run ::
   
@@ -111,8 +117,8 @@ Known Issues
 ------------
 
 .. [1] When you start up xCAT Docker container, you might see an error message at the end of the output like: ::
-    
-   "Couldn't connect to Docker daemon at http+unix://var/run/docker.sock - is it running?
-   If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable."
-You can ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_ 
+
+   "Couldn't connect to Docker daemon at http+unix://var/run/docker.sock - is it running? If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable."
+   
+   You can ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_ 
    
