@@ -1,4 +1,5 @@
 start:rpower_stop
+description:stop a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -25,6 +26,7 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 start:rpower_start
+description:start a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -49,6 +51,7 @@ check:rc==0
 end
 
 start:rpower_state
+description:get state of the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -80,6 +83,7 @@ check:rc==0
 end
 
 start:rpower_restart
+description:restart a created docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -109,6 +113,7 @@ check:rc==0
 end
 
 start:rpower_pause
+decription:pause all processes in the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -135,6 +140,7 @@ check:rc==0
 end
 
 start:rpower_unpause
+description:unpause all processes in the instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -160,11 +166,13 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 start:mkdocker_h
+description:output usage for mkdocker
 cmd:mkdocker -h
 check:rc==0
 check:output=~Usage: mkdocker
 end
 start:mkdocker_command
+description:create docker instance
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -195,11 +203,13 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 start:rmdocker_h
+description:output usage for rmdocker
 cmd:rmdocker -h 
 check:rc==0
 check:output=~Usage: rmdocker <noderage>
 end
 start:rmdocker_command
+description:remove docker instance 
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -218,6 +228,7 @@ cmd:makehosts -d $$DOCKERCN
 check:rc==0
 end
 start:rmdocker_f_command
+description:force to remove docker instance 
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -241,11 +252,13 @@ cmd:rmdef $$DOCKERCN
 check:rc==0
 end
 start:lsdocker_h_command
+description:output usage for lsdocker
 cmd:lsdocker -h
 check:rc==0
 check:output=~Usage: lsdocker <noderange>
 end
 start:lsdocker_l_command
+description:list docker instance info
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
