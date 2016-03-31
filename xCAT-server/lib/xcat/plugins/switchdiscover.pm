@@ -30,10 +30,16 @@ my %global_scan_type = (
 
 my %global_switch_type = (
     Juniper => "Juniper",
+    juniper => "Juniper",
     Cisco => "Cisco",
     BNT => "BNT",
-    Mellanox => "Mellanox"
+    Mellanox => "Mellanox",
+    mellanox => "Mellanox",
+    MLNX => "Mellanox",
+    MELLAN => "Mellanox",
+    IBM  => "BNT",
 );
+
 
 #-------------------------------------------------------------------------------
 =head1  xCAT_plugin:switchdiscover
@@ -417,7 +423,7 @@ sub process_request {
 
     if (!$display_done) {
         #display header
-        $format = "%-12s\t%-18s\t%-20.20s\t%-12s";
+        $format = "%-12s\t%-15s\t%-40.50s\t%-12s";
         $header = sprintf $format, "ip", "name","vendor", "mac";
         send_msg(\%request, 0, $header);
         my $sep = "------------";
@@ -660,12 +666,8 @@ sub nmap_scan {
     #################################################
     #display the raw output
     #################################################
-    if (exists($globalopt{r})) {
+    if (defined($globalopt{r}) || defined($globalopt{verbose})) {
         send_msg($request, 0, "$result\n" );
-    } else {
-        if (exists($globalopt{verbose})) {
-            send_msg($request, 0, "$result\n" );
-        }
     }
 
     #################################################
@@ -695,15 +697,16 @@ sub nmap_scan {
                             $mac="nomac_nmap_$counter";
                             $counter++;
                         }
-                        if ($addr->{vendor}) {
+                        my $vendor = $addr->{vendor};
+                        if ($vendor) {
                             my $search_string = join '|', keys(%global_switch_type);
-                            if ($addr->{vendor} =~ /($search_string)/) {
+                            if ($vendor =~ /($search_string)/) {
                                 $switches->{$mac}->{ip} = $ip;
-                                $switches->{$mac}->{vendor} = $addr->{vendor};
+                                $switches->{$mac}->{vendor} = $vendor;
                                 $switches->{$mac}->{name} = $host->{hostname};
                                 $found = 1;
                                 if (exists($globalopt{verbose}))    {
-                                    send_msg($request, 0, "FOUND Switch: ip=$ip, mac=$mac, vendor=$addr->{vendor}\n");
+                                    send_msg($request, 0, "FOUND Switch: ip=$ip, mac=$mac, vendor=$vendor\n");
                                 }
                             }
                         } 
@@ -782,7 +785,7 @@ sub nmap_scan {
 
 #--------------------------------------------------------------------------------
 =head3   snmp_scan
-      Use lldpd to scan the subnets to do switch discovery.
+      Use snmp to scan the subnets to do switch discovery.
     Arguments:
        request: request structure with callback pointer.
     Returns:
@@ -797,14 +800,189 @@ sub nmap_scan {
 #--------------------------------------------------------------------------------
 sub snmp_scan {
     my $request  = shift;
+    my $ccmd;
+    my $switches;
+    my $counter = 0;
 
-    send_msg($request, 0, "Discovering switches using snmp is not supported yet.");
-    my $switches = {
-        "AABBCCDDEEFA" =>{name=>"switch1", vendor=>"ibm", ip=>"10.1.2.3"},
-        "112233445566" =>{name=>"switch2", vendor=>"cisco", ip=>"11.4.5.6"}
-     };
-    return 1;
+    # snmpwalk command has to be available for snmp_scan
+    if (-x "/usr/bin/snmpwalk" ){
+        send_msg($request, 0, "Discovering switches using snmpwalk.....");
+    } else {
+        send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command first");
+        return 1;
+    }
+
+    #################################################
+    # If --range options, take iprange, if noderange is defined
+    # us the ip addresses of the nodes. If none is define, use the
+    # subnets for all the interfaces.
+    ##################################################
+    my $ranges = get_ip_ranges($request);
+
+    #use nmap to find if snmp port is enabled  
+    $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        send_msg($request, 1, "Could not process this command: $ccmd" );
+        return 1;
+    }
+
+    #################################################
+    #display the raw output
+    #################################################
+    if (defined($globalopt{r}) || defined($globalopt{verbose})) {
+        send_msg($request, 0, "$result\n" );
+    }
+    my @lines = split /\n/, $result;
+
+    # each line like this: "Discovered open port 161/udp on 10.4.25.1"
+    # only open port will be scan
+    foreach my $line (@lines) {
+        my @array = split / /, $line;
+        my $ip = $array[5];
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 0, "Run snmpwalk command to get information for $ip");
+        }
+
+        my $vendor = get_snmpvendorinfo($request, $ip);
+        if ($vendor) {
+            my $mac = get_snmpmac($request, $ip);
+            if (!$mac) {
+                $mac="nomac_nmap_$counter";
+                $counter++;
+            }
+            my $hostname = get_snmphostname($request, $ip);
+            my $stype = get_switchtype($vendor);
+            $switches->{$mac}->{ip} = $ip;
+            $switches->{$mac}->{vendor} = $vendor;
+            $switches->{$mac}->{name} = $hostname;
+            if (exists($globalopt{verbose}))    {
+               send_msg($request, 0, "found switch: $hostname, $ip, $stype, $vendor");
+            }
+        }
+    }
+
+    return $switches;
 }
+
+#--------------------------------------------------------------------------------
+=head3  get_snmpvendorinfo   
+      return vendor info from snmpwalk command 
+    Arguments:
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      vendor:  vendor info  of the switch
+=cut
+#--------------------------------------------------------------------------------
+sub get_snmpvendorinfo {
+    my $request = shift;
+    my $ip  = shift;
+    my $snmpwalk_vendor;
+
+
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysDescr.0";
+    if (exists($globalopt{verbose}))    {
+       send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process this command: $ccmd" );
+        }
+        return $snmpwalk_vendor;
+    }
+
+    my ($desc,$model) = split /: /, $result;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "switch model = $model\n" );
+    }
+
+    return $model;
+}
+
+#--------------------------------------------------------------------------------
+=head3  get_snmpmac
+      return mac address from snmpwalk command
+    Arguments:
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      mac:  mac address  of the switch
+=cut
+#--------------------------------------------------------------------------------
+sub get_snmpmac {
+    my $request = shift;
+    my $ip = shift;
+    my $mac;
+
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip ipNetToMediaPhysAddress | grep $ip"; 
+    if (exists($globalopt{verbose}))    {
+       send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process this command: $ccmd" );
+        }
+        return $mac;
+    }
+
+    my ($desc,$mac) = split /: /, $result;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "switch mac = $mac\n" );
+    }
+
+    return $mac;
+}
+
+#--------------------------------------------------------------------------------
+=head3  get_snmphostname
+      return hostname from snmpwalk command
+    Arguments:
+      ip  :  IP address passed by the switch after scan
+    Returns:
+      mac:  hostname of the switch
+=cut
+#--------------------------------------------------------------------------------
+sub get_snmphostname {
+    my $request = shift;
+    my $ip = shift;
+    my $hostname;
+
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysName";
+    if (exists($globalopt{verbose}))    {
+       send_msg($request, 0, "Process command: $ccmd\n");
+    }
+
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        if (exists($globalopt{verbose}))    {
+            send_msg($request, 1, "Could not process this command: $ccmd" );
+        }
+        return $hostname;
+    }
+
+    my ($desc,$hostname) = split /: /, $result;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "switch hostname = $hostname\n" );
+    }
+
+    return $hostname;
+
+}
+
 
 #--------------------------------------------------------------------------------
 =head3   get_hostname 
@@ -821,6 +999,10 @@ sub snmp_scan {
 sub get_hostname {
     my $host = shift;
     my $ip = shift;
+
+    if ($host) {
+        return $host;
+    }
 
     if ( !$host ) {
         $host = gethostbyaddr( inet_aton($ip), AF_INET );
@@ -897,10 +1079,10 @@ sub xCATdB {
         $ret = xCAT::Utils->runxcmd( { command => ['lsdef'], arg => ['-t','node','-o',$host] }, $sub_req, 0, 1);
         if ($::RUNCMD_RC == 0)
         {
-            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,"ip=$ip","mac=$mac",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
             $ret = xCAT::Utils->runxcmd({ command => ['chdef'], arg => ['-t','node','-o',$host,'-p','groups=switch'] }, $sub_req, 0, 1);
         } else {
-            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','node','-o',$host,'groups=switch',"ip=$ip",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
+            $ret = xCAT::Utils->runxcmd( { command => ['mkdef'], arg => ['-t','node','-o',$host,'groups=switch',"ip=$ip","mac=$mac",'nodetype=switch','mgt=switch',"switchtype=$stype","usercomment=$vendor"] }, $sub_req, 0, 1);
         }
         if ($::RUNCMD_RC != 0)
         {
