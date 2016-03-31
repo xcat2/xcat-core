@@ -1097,7 +1097,7 @@ sub my_if_netmap
 	1. If node can not be resolved, the return info will be like this:
 	[1, "The $node can not be resolved"].
 	2. If no IP found that matching the giving node, the return info will be:
-	[2, "No found matching IP for $node"].
+	[2, "The IP address of node $node is in an undefined subnet"].
 	3. If IP found:
 	[0,ip1,ip2,...] 
     Globals:
@@ -1151,7 +1151,7 @@ sub my_ip_facing
         push @rst, @ips;
     } else {
         $rst[0] = 2;
-        $rst[1] = "No found matching IP for $peer";
+        $rst[1] = "The IP address of node $peer is in an undefined subnet";
     }
     return @rst;
 }
@@ -1209,7 +1209,7 @@ sub my_ip_facing_aix
     else 
     {
         $rst[0] = 2;
-        $rst[1] = "No found matching IP for $peer";
+        $rst[1] = "The IP address of node $peer is in an undefined subnet";
     }
     return @rst;
 }
