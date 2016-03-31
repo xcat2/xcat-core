@@ -74,7 +74,7 @@ To start discovery process, just need to power on the host remotely with the fol
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
   chdef cn1 cons=ipmi
-  makeconsercf
+  makeconservercf
   rcons cn1
 
 .. include:: standard_cn_definition.rst

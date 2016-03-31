@@ -34,5 +34,5 @@ To start discovery process, just need to power on the PBMC node remotely with th
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
   chdef Server-8247-22L-SN10112CA cons=ipmi
-  makeconsercf
+  makeconservercf
   rcons Server-8247-22L-SN10112CA
