@@ -59,6 +59,13 @@ xCAT 2.9.x
 |xCAT                             |New OS         |New          |New Feature                       |
 |Version                          |               |Hardware     |                                  |
 +=================================+===============+=============+==================================+
+|| xCAT 2.9.3 for AIX             |- AIX 7.2.0    |             |- new format in synclist (node)   |
+|| 2016/03/11                     |- AIX 7.1.4.1  |             |                                  |
+||                                |               |             |                                  |
+| `2.9.3 Release Notes <https://  |               |             |                                  |
+| github.com/xcat2/xcat-core/     |               |             |                                  |
+| wiki/XCAT_2.9.3_Release_Notes>`_|               |             |                                  |
++---------------------------------+---------------+-------------+----------------------------------+
 || xCAT 2.9.2 for AIX             |- AIX 6.1.8.6  |- Power 8    |- ssl version control in xcatd    |
 || 2015/11/11                     |- AIX 6.1.9.5  |  for AIX    |                                  |
 ||                                |- AIX 7.1.3.5  |             |                                  |
