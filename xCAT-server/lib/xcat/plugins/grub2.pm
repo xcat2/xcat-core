@@ -119,7 +119,7 @@ sub setstate {
                         $::callback->(
                             {
                             error => [
-                            "$myname: Unable to determine the image server for $node on service node $sn"
+                            "$myname: $ipfnd[1] on service node $sn"
                             ],
                             errorcode => [1]
                             }
@@ -131,7 +131,7 @@ sub setstate {
                 $::callback->(
                             {
                             error => [
-                            "$myname: Unable to determine the image server for $node"
+                            "$myname: $ipfnd[1]"
                             ],
                             errorcode => [1]
                             }
