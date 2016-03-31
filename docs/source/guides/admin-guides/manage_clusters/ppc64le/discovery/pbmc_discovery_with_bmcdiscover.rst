@@ -38,5 +38,5 @@ To start discovery process, just need to power on the PBMC node remotely with th
 
 **[Optional]** If you'd like to monitor the discovery process, you can use::
 
-  makeconsercf node-8247-42l-10112ca
+  makeconservercf node-8247-42l-10112ca
   rcons node-8247-42l-10112ca
