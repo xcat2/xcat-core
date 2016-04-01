@@ -11,8 +11,8 @@ VNC client complains the credentials are not valid
    **Solution**: 
      Check whether the clocks on the hypervisor and headnode are synced
 
-rpower fails with "Error: internal error Process exited while reading console log qemu: could not open disk image /var/lib/xcat/pools/2e66895a-e09a-53d5-74d3-eccdd9746eb5/vmXYZ.sda.qcow2: Permission denied" 
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+rpower fails with "Error: internal error Process exited while reading console log qemu: Permission denied" 
+----------------------------------------------------------------------------------------------------------
 
    **Issue**: ::
 
@@ -30,8 +30,8 @@ rpower fails with "Error: internal error Process exited while reading console lo
    
      **Note**: For stateless hypervisor, please purge the VM by ``rmvm -p vm1``, reboot the hypervisor and then create the VM.
 
-rpower fails with "Error: internal error: process exited while connecting to monitor qemu: could not open disk image /var/lib/xcat/pools/c7953a80-89ca-53c7-64fb-2dcfc549bd45/vmXYZ.sda.qcow2: Permission denied"
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+rpower fails with "Error: internal error: process exited while connecting to monitor qemu: Permission denied"
+-------------------------------------------------------------------------------------------------------------
 
    **Issue**: ::
 
@@ -45,8 +45,8 @@ rpower fails with "Error: internal error: process exited while connecting to mon
 
      Then reboot the hypervisor...
 
-"Error: Cannot communicate via libvirt to kvmhost1"
----------------------------------------------------
+Error: Cannot communicate via libvirt to kvmhost1
+-------------------------------------------------
 
    **Issue**: 
      The kvm related commands complain "Error: Cannot communicate via libvirt to kvmhost1"
@@ -55,8 +55,8 @@ rpower fails with "Error: internal error: process exited while connecting to mon
      Usually caused by incorrect ssh configuration between xCAT management node and hypervisor. Please make sure it is possible to access the hypervisor from management node via ssh without password.
 
 
-Fail to ping the newly installed VM
-------------------------------------
+Fail to ping the installed VM
+-----------------------------
 
    **Issue**: 
      The newly installed stateful VM node is not pingable, the following message can be observed in the console during VM booting: ::
