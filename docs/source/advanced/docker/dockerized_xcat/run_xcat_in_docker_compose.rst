@@ -7,10 +7,22 @@ An example configuration in the documentation
 
 To demonstrate the steps to run xCAT in a Docker container, take a cluster with the following configuration as an example ::
 
-    The network interface on the Docker host facing the compute nodes: eno1
-    The IP address of eno1 on Docker host: 10.5.107.1/8
-    The IP address of container xcatmn: 10.5.107.101
+
+    The name of the docker container running xCAT: xcatmn 
+    The hostname of container xcatmn: xcatmn
     The dns domain of the cluster: clusters.com 
+
+    The management network object: mgtnet
+    The network bridge of management network on Docker host: mgtbr
+    The management network interface on the Docker host facing the compute nodes: eno1
+    The IP address of eno1 on Docker host: 10.5.107.1/8
+    The IP address of xCAT container in management network: 10.5.107.101
+
+    The service network object: svcnet
+    The network bridge of service network on Docker host: svcbr
+    The service network interface on the Docker host facing the hardware control points: eno2
+    The IP address of eno2 on Docker host: 192.168.0.1/8
+    The IP address of xCAT container in service network: 192.168.0.101
 
  
 Install Compose on Docker host
@@ -26,17 +38,28 @@ Customize docker-compose file
 -----------------------------
 
 xCAT ships a docker-compose template `docker-compose.yml <https://github.com/immarvin/xcat-docker/blob/master/docker-compose.yml>`_, which is a self-description file including all the configurations to run xCAT in container. You can make up your compose file based on it if you are familiar with `Compose file <https://docs.docker.com/compose/compose-file/>`_ , otherwise, you can simply customize it with the following steps: 
+
+1. Specify the xCAT Docker image
+
 ::
 
-    image: [xCAT docker image name]:[tag]  
+    image: [xCAT Docker image name]:[tag]  
  
 specify the name and tag of xCAT Docker image, for example "xcat/xcat-ubuntu-x86_64:2.11" 
+
+2. Specify the cluster domain name 
+
 :: 
+
     extra_hosts:
        - "xcatmn.[cluster domain name] xcatmn:[Container's IP address in management network]"
 
-specify the cluster domain name, fox example "clusters.com", and the IP address of container running xCAT Docker image, such as "10.0.0.101" 
+specify the cluster domain name,i.e, "site.domain" on xCAT Management Node, for example "clusters.com", and the IP address of xCAT Docker container in the management network, such as "10.5.107.101" 
+
+3. Specify the IP address of xCAT container in service network and management network
+
 ::
+
     networks:
 
       svcnet:
@@ -46,6 +69,9 @@ specify the cluster domain name, fox example "clusters.com", and the IP address 
         ipv4_address : [Container's IP address in management network]  
 
 specify the IP address of Docker container in service network and management network. If the "svcnet" is the same as "mgtnet", the 2 "svcnet" lines should be commented out.
+
+4. Specify the Docker network objects for management network and service network
+
 ::
 
     networks:
@@ -72,8 +98,12 @@ specify the IP address of Docker container in service network and management net
             - subnet: [subnet of svcbr in CIDR]
               gateway: [IP address of svcbr]
     
-specify the network configuration of bridge networks "mgtnet" and "svcnet", the network configuration of the bridge networks should be same as the network interfaces attached to the bridges. The "mgtnet" and "svcnet" might the same network in some cluster, in this case, you can only create and connect to 1 network.  
+specify the network configuration of bridge networks "mgtnet" and "svcnet", the network configuration of the bridge networks should be same as the network interfaces attached to the bridges. The "mgtnet" and "svcnet" might the same network in some cluster, in this case, you can ignore the lines for "svcnet".  
+
+5. Specify the Data Volumes for xCAT Docker container
+
 ::
+
     volumes:
       #the "/install" volume is used to keep user data in xCAT,
       #such as osimage resources
