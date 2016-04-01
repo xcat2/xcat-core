@@ -59,14 +59,14 @@ BEGIN {
 	while(1) {
 		ns |& getline
 
-#UNCOMMENONXCATDEBUGMODE#		if(\$1 == "sh") { #TODO: ENABLE IF DEBUG
-#UNCOMMENONXCATDEBUGMODE#			sub(/^sh +/,"",\$0)
-#UNCOMMENONXCATDEBUGMODE#			output = \$0
-#UNCOMMENONXCATDEBUGMODE#			while((output | getline) > 0)
-#UNCOMMENONXCATDEBUGMODE#				print \$0 |& ns
-#UNCOMMENONXCATDEBUGMODE#			print "EOO" |& ns
-#UNCOMMENONXCATDEBUGMODE#			close(output)
-#UNCOMMENONXCATDEBUGMODE#		}
+#UNCOMMENTOENABLEDEBUGPORT#		if(\$1 == "sh") { #TODO: ENABLE IF DEBUG
+#UNCOMMENTOENABLEDEBUGPORT#			sub(/^sh +/,"",\$0)
+#UNCOMMENTOENABLEDEBUGPORT#			output = \$0
+#UNCOMMENTOENABLEDEBUGPORT#			while((output | getline) > 0)
+#UNCOMMENTOENABLEDEBUGPORT#				print \$0 |& ns
+#UNCOMMENTOENABLEDEBUGPORT#			print "EOO" |& ns
+#UNCOMMENTOENABLEDEBUGPORT#			close(output)
+#UNCOMMENTOENABLEDEBUGPORT#		}
 
 		if(\$1 == "screendump") {
 			output = "chvt " \$2 ";cat /dev/vcs"

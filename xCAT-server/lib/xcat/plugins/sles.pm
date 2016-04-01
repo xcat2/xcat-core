@@ -1247,15 +1247,17 @@ sub mkinstall
            }            
 
            
-            if($::XCATSITEVALS{xcatdebugmode} eq "1"){
+            if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
 
                unless($netserver eq '!myipfn!'){
                   my($host,$ip)=xCAT::NetworkUtils->gethostnameandip($netserver);
                   $netserver=$ip;
                }
               
-              #enable ssh access during installation,the password is set to "cluster"
-              $kcmdline .=" UseSSH=1 SSHPassword=cluster";
+              if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+                 #enable ssh access during installation,the password is set to "cluster"
+                 $kcmdline .=" UseSSH=1 SSHPassword=cluster";
+              }
  
               $kcmdline .=" Loghost=$netserver";
             }

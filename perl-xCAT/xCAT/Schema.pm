@@ -1123,8 +1123,17 @@ use xCAT::ExtTab;
 "               'all' means that the management as well as the service nodes\n" .
 "               are all using a common shared filesystem. The default is 'no'.\n" .
 " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n" .
-" xcatdebugmode:  the value of xcat debug mode. Currently supported values: \n" .
-"                 0: off(default); 1: on \n\n" .
+" xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques\n".
+"                 to help user debug problems while using xCAT, especially on OS provision,\n".
+"                 such as collecting logs of the whole installation process and accessing\n".
+"                 the installing system via ssh, etc. These techniques will be enabled\n".
+"                 according to different xCAT debug levels specified by 'xcatdebugmode',\n".
+"                 currently supported values:\n".
+"                   '0':  disable debug mode\n".
+"                   '1':  enable basic debug mode\n".
+"                   '2':  enalbe expert debug mode\n".
+"                 For the details on 'basic debug mode' and 'expert debug mode',\n".
+"                 please refer to xCAT documentation.\n\n".
 " --------------------\n" .
 "REMOTESHELL ATTRIBUTES\n" .
 " --------------------\n" .

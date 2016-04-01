@@ -30,13 +30,13 @@ then
         IP=$(ip addr show dev $PRINIC | grep inet | grep -v inet6  | awk  '{print $2}' | head -n 1 | awk -F '/' '{print $1}')
 fi
 
-if [ "$XCATDEBUGMODE" = "1" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "debug" "PRINIC=$PRINIC,IP=$IP" "/var/log/xcat/xcat.log"
 fi
 
 
 
-if [ "$XCATDEBUGMODE" = "1" ]; then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
    msgutil_r "$MASTER_IP" "debug" "generating /etc/resolv.conf" "/var/log/xcat/xcat.log"
 fi
 
@@ -45,5 +45,3 @@ for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
 	echo "nameserver $i"
 done >>/etc/resolv.conf
-#change the soft link /bin/sh to /bin/bash
-ln -sf /bin/bash /bin/sh

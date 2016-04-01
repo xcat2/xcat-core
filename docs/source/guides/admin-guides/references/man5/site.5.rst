@@ -299,8 +299,17 @@ site Attributes:
                  are all using a common shared filesystem. The default is 'no'.
    xcatconfdir:  Where xCAT config data is (default /etc/xcat).
   
-   xcatdebugmode:  the value of xcat debug mode. Currently supported values: 
-                   0: off(default); 1: on 
+   xcatdebugmode:  the xCAT debug level. xCAT provides a batch of techniques
+                 to help user debug problems while using xCAT, especially on OS provision,
+                 such as collecting logs of the whole installation process and accessing
+                 the installing system via ssh, etc. These techniques will be enabled
+                 according to different xCAT debug levels specified by 'xcatdebugmode',
+                 currently supported values:
+                   '0':  disable debug mode
+                   '1':  enable basic debug mode
+                   '2':  enalbe expert debug mode
+                 For the details on 'basic debug mode' and 'expert debug mode',
+                 please refer to xCAT documentation.
   
    --------------------
   REMOTESHELL ATTRIBUTES

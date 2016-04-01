@@ -1,6 +1,5 @@
 export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
-if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
-then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
 
@@ -144,13 +143,13 @@ try:
 					line = "installing prep"
 				newSocket.send(line)
 				break
-#UNCOMMENONXCATDEBUGMODE#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
-#UNCOMMENONXCATDEBUGMODE#				newcommand = ""
-#UNCOMMENONXCATDEBUGMODE#				for i in command[1:]:
-#UNCOMMENONXCATDEBUGMODE#					newcommand = newcommand + i + " "
-#UNCOMMENONXCATDEBUGMODE#				output = os.popen(newcommand).read()
-#UNCOMMENONXCATDEBUGMODE#				newSocket.send(output)
-#UNCOMMENONXCATDEBUGMODE#				break
+#UNCOMMENTOENABLEDEBUGPORT#			if(command[0] == "sh"): #DEBUG purposes only, wide open root priv command here.
+#UNCOMMENTOENABLEDEBUGPORT#				newcommand = ""
+#UNCOMMENTOENABLEDEBUGPORT#				for i in command[1:]:
+#UNCOMMENTOENABLEDEBUGPORT#					newcommand = newcommand + i + " "
+#UNCOMMENTOENABLEDEBUGPORT#				output = os.popen(newcommand).read()
+#UNCOMMENTOENABLEDEBUGPORT#				newSocket.send(output)
+#UNCOMMENTOENABLEDEBUGPORT#				break
 			if(command[0] == "screendump"):
 				newcommand = "cat /dev/vcs"
 				for i in command[1:]:
@@ -238,7 +237,6 @@ NEXTSERVER=${NEXTSERVER%%:*}
 export nextserver=$NEXTSERVER
 #INSTALL_SOURCES_IN_PRE#
 
-if [ "$XCATDEBUGMODE" != "0" ] && [ "$XCATDEBUGMODE" != "" ]
-then
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set +x
 fi

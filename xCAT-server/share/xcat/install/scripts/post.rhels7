@@ -10,7 +10,7 @@ for i in $(find /etc/sysconfig/network-scripts/ifcfg-*|egrep -v ifcfg-lo )
 do 
   nicname=$(echo $i|awk -F 'ifcfg-' '{print $2}')
   if ethtool $nicname|grep -E -i "Link detected.*yes" >/dev/null 2>&1
-     if [ "$XCATDEBUGMODE" > "0" ]; then
+     if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
         msgutil_r "$MASTER_IP" "info" "set NIC $nicname to be activated on system boot" "/var/log/xcat/xcat.log"
      fi
      then sed -i 's/ONBOOT=no/ONBOOT=yes/' $i 

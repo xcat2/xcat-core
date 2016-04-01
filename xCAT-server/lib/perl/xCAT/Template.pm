@@ -351,8 +351,12 @@ sub subvars {
       $inc =~ s/#GETNODEDOMAIN:([^#]+)#/get_node_domain($1)/eg;
       $inc =~ s/#GETPRINICMAC:([^#]+)#/xCAT::Utils::parseMacTabEntry(tabdb("mac",$1,"mac"),$1)/eg;
    
-      if($::XCATSITEVALS{xcatdebugmode} eq "1"){
-           $inc =~ s/#UNCOMMENONXCATDEBUGMODE#/ /g;
+      if(($::XCATSITEVALS{xcatdebugmode} eq "1") or ($::XCATSITEVALS{xcatdebugmode} eq "2")){
+           $inc =~ s/#UNCOMMENTOENABLEDEBUGPORT#/ /g;
+      }
+
+      if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+           $inc =~ s/#UNCOMMENTOENABLESSH#/ /g;
       }
  
       my $nrtab = xCAT::Table->new("noderes");
@@ -1604,6 +1608,13 @@ sub tabdb
       }
       return "";
       #return "#TABLEBAD:$table:field $field not found#";
+    } else {
+        # check for site.xcatdebugmode
+        if (($table =~ /site/) and ($key =~ /xcatdebugmode/)) {
+            if ((($ent->{$field}) ne "0") and (($ent->{$field}) ne "1") and (($ent->{$field}) ne "2")) {
+                $tmplerr="Unable to recognise filed <$field> from table <$table>, with key <$key>. Please enter '0' '1' or '2'"
+            }
+        }
     }
     return $ent->{$field};
 

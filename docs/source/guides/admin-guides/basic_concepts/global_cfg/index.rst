@@ -79,7 +79,13 @@ Install/Deployment Attributes
   (``yes/1`` or ``no/0``). Default is ``no``. If yes, it will instruct xCAT at ``nodeset`` and ``updatenode`` time to query the db once for all of the nodes passed into the cmd and create the mypostscript file for each node, and put them in a directory of tftpdir(such as: /tftpboot). If no, it will not generate the mypostscript file in the ``tftpdir``.
 
 * xcatdebugmode:  
-  the value of xcat debug mode. Currently supported values: ``0: off(default); 1: on``
+  the xCAT debug level. xCAT provides a batch of techniques to help user debug problems while using xCAT, especially on OS provision, such as collecting logs of the whole installation process and accessing the installing system via ssh, etc. These techniques will be enabled according to different xCAT debug levels specified by 'xcatdebugmode', currently supported values: ::
+
+    '0':  disable debug mode
+    '1':  enable basic debug mode
+    '2':  enalbe expert debug mode
+
+  For the details on 'basic debug mode' and 'expert debug mode', please refer to xCAT documentation.
 
 
 Remoteshell Attributes
