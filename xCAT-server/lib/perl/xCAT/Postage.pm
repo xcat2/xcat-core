@@ -1588,6 +1588,10 @@ sub get_envlist
 sub get_pkglist_tex
 {
     my $allfiles_pkglist   = shift;
+    if($allfiles_pkglist =~ "xCAT::"){
+       $allfiles_pkglist   = shift;
+    }
+
     my $allfiles_pkgtext;
     foreach my $pkglist (split(/,/, $allfiles_pkglist))
     {
@@ -1657,7 +1661,7 @@ sub includefile
         $file = $idir . "/" . $file;
     }
 
-    open(INCLUDE, $file) || \return "#INCLUDEBAD:cannot open $file#";
+    open(INCLUDE, $file) || return "#INCLUDEBAD:cannot open pkglist file $file#";
 
     while (<INCLUDE>)
     {

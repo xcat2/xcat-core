@@ -122,6 +122,7 @@ sub subvars {
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
   my $res;
   if ($pkglistfile) {
+
       #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
       $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
             
@@ -134,51 +135,24 @@ sub subvars {
   }
 
   if (("ubuntu" eq $platform) || ("debian" eq $platform)) {
-    # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
-    # must be included via simple string replacement instead of using includefile()
+      # since debian/ubuntu uses a preseed file instead of a kickstart file, pkglist
+      # must be included via simple string replacement instead of using includefile()
 
-    # the first line of $pkglistfile is the space-delimited package list
-    # the additional lines are considered preseed directives and included as is
+      # the first line of $pkglistfile is the space-delimited package list
+      # the additional lines are considered preseed directives and included as is
 
-    if ($pkglistfile) {
-      # handle empty and non-empty $pkglistfile's
+      if ($pkglistfile) {
+          my $allpkglist=xCAT::Postage->get_pkglist_tex($pkglistfile);
+          if($allpkglist =~ /#INCLUDEBAD:(.*)#/){
+               return "$1";
+          }
+          $allpkglist =~ s/,/ /g;
+          $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$allpkglist/g;
 
-      my @tmp_array=();
-
-      if (open PKGLISTFILE, "<$pkglistfile") {
-        my $pkglist = '';
-        # append preseed directive lines
-        while (<PKGLISTFILE>) {
-          chomp $_;
-          s/\s+$//;   #remove trailing white spaces
-          next if /^\s*$/; #-- skip empty lines
-          next
-          if (   /^\s*#/
-              && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/
-              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-          push(@tmp_array,$_);
-        }
-        if ( @tmp_array > 0) {
-            $pkglist=join(' ',@tmp_array);
-            #handle the #INLCUDE# tag recursively
-            my $idir = dirname($pkglistfile);
-            my $doneincludes=0;
-            while (not $doneincludes) {
-                $doneincludes=1;
-                if ($pkglist =~ /#INCLUDE:[^#^\n]+#/) {
-                    $doneincludes=0;
-                    $pkglist =~ s/#INCLUDE:([^#^\n]+)#/debian_includefile($1,$idir)/eg;
-                }
-            }
-        }
-        $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#/$pkglist/g;
-        close PKGLISTFILE;
+      } else {
+          # handle no $pkglistfile
+          $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#//g;
       }
-    } else {
-      # handle no $pkglistfile
-      $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_PRESEED#//g;
-    }
   }
 
   #if user specify the partion file, replace the default partition strategy
@@ -1716,35 +1690,6 @@ sub getNM_GW()
     }
 
     return (undef, undef);
-}
-
-sub debian_includefile
-{
-   my $file = shift;
-   my $idir = shift;
-   my @text = ();
-   unless ($file =~ /^\//) {
-       $file = $idir."/".$file;
-   }
-
-   open(INCLUDE,$file) ||
-       return "#INCLUDEBAD:cannot open $file#";
-
-   while(<INCLUDE>) {
-       chomp($_);
-       s/\s+$//;  #remove trailing spaces
-       next if /^\s*$/; #-- skip empty lines
-       next
-          if (   /^\s*#/
-              && !/^\s*#INCLUDE:[^#^\n]+#/
-              && !/^\s*#NEW_INSTALL_LIST#/
-              && !/^\s*#ENV:[^#^\n]+#/);    #-- skip comments
-       push(@text, $_);
-   }
-
-   close(INCLUDE);
-
-   return join(' ', @text);
 }
 
 
