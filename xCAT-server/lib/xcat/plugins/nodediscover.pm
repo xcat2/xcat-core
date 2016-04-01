@@ -154,6 +154,19 @@ sub process_request {
         }
     }
 
+    # if there is no bmc ip in ipmi table, save bmc ip into ipmi table
+    if (defined($request->{bmc}) && $request->{bmc}->[0]) {
+        my $ipmitab = xCAT::Table->new("ipmi", -create=>1);
+        if ($ipmitab) {
+            my $ipmient = $ipmitab->getNodeAttribs($node,['bmc']);
+            unless ($ipmient->{'bmc'}) {
+                $ipmitab->setNodeAttribs($node, {bmc=>$request->{bmc}->[0]});
+            }
+        } else {
+                $callback->({error=> ["Open ipmi table failed."], errorcode=>["1"]});
+        }
+    }
+
     # save inventory info into the hwinv table
     if (defined($request->{cpucount}) or defined($request->{cputype}) or defined($request->{memory}) or defined($request->{disksize})) {
 	my $basicdata;
