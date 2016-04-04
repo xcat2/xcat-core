@@ -40,10 +40,19 @@ if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
 	duid=$duid'";'
 	echo $duid > /var/lib/dhclient/dhclient6.leases
 fi
+
 rpcbind
 rpc.statd
-ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
-ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
+
+# Try -A available on more current version of ssh-keygen to generate all keys
+ssh-keygen -A 2> /dev/null
+if [ $? -ne 0 ]; then
+	# -A option did not work, must be running on older version of
+	# ssh-keygen, try generating needed keys one at a time
+	ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
+	ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
+fi
+
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 mkdir -p /etc/xcat
@@ -58,7 +67,16 @@ echo "Done"
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
-/sbin/rsyslogd -4
+RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+# Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
+# Later, once xCAT MN is known, dhclient-script will change 
+# rsyslog.conf file to send log entries to xCAT MN
+if [ $RSYSLOGD_VERSION -ge 8 ]; then
+	# Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
+	/sbin/rsyslogd
+else
+	/sbin/rsyslogd -c4
+fi
 mkdir -p /var/lib/lldpad
 echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
 echo '{' >> /var/lib/lldpad/lldpad.conf
@@ -217,9 +235,13 @@ echo -n "Acquired IPv4 address on $bootnic: "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
 # rv 0 state does not work with the new ntp versions
-#(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
-(while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}' | sed s/-//`" -ge 1000 ]; do sleep 1; done; hwclock --systohc) &
+while [ "`ntpq -c \"rv 0 offset\" | grep \"offset=\" | awk -F \"=\" '{print $2}' | awk -F \".\" '{print $1}' | sed s/-//`" -ge 1000 ]; do 
+    sleep 1
+done
 
+if [ -e "/dev/rtc" ]; then
+    hwclock --systohc
+fi
 HOST_ARCH=`uname -m`
 if echo $HOST_ARCH | grep "ppc64"; then
     modprobe ipmi_powernv
