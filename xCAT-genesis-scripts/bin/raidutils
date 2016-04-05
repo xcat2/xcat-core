@@ -1142,14 +1142,14 @@ function compare_disknum_actualnum {
 #
 # Delete raid array
 #
-# input format : enforce=1 tryCnt=360 tryInt=60 -- arrays_name list
+# input format : enforce=1 tryCnt=2 tryInt=60 -- arrays_name list
 #
 ##########################################################################
 function delete_ipr_array {
     # default to NO if enforcely wait for rebuilding array
     local enforce=0
-    # default to wait 6 hours for array rebuilding to finish
-    local tryCnt=360
+    # default to wait 2 minutes for array rebuilding to finish
+    local tryCnt=2
     # monitor rebuilding status every 60 seconds
     local tryInt=60
 
