@@ -272,7 +272,7 @@ my %command_states = (
         A string to explain the http response code
   Usage example:
         http_state_code_info('304', "INIT_TO_WAIT_FOR_START_DONE") -> "Already started"
-        http_state_code_info('304', "INIT_TO_WAIT_FOR_STOP_DONE") -> "Already stoped"
+        http_state_code_info('304', "INIT_TO_WAIT_FOR_STOP_DONE") -> "Already stopped"
 =cut  
 
 #-------------------------------------------------------
@@ -289,7 +289,7 @@ sub http_state_code_info {
                 return [0, "container already started"];
             }
             else {
-                return [0, "container already stoped"];
+                return [0, "container already stopped"];
             }
         }
         else {

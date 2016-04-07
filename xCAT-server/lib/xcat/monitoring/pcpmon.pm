@@ -220,7 +220,7 @@ sub deconfig
       the daemons and does necessary cleanup process for the
       PCP monitoring.
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only.
                 2 means both monservers and nodes,

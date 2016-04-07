@@ -104,7 +104,7 @@ OPTIONS
 \ **-f|-**\ **-force**\ 
  
  The force option may  be used after the install to reinitialize the Management Node. This option will  regenerate keys, credential and reinititialize the site table. This option should be used, if keys or credentials become corrupt or lost. 
- Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stoped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 
+ Additional action must be taken after using the force options.  ssh keys must be redistributed to the nodes, site table attributes might need to be restored, makeconservercf needs to be rerun to pick up the new credentials and conserver stopped and started, rspconfig needs to be rerun to distribute the new keys to the MM and the HMCs. 
  A new set of common ssh host keys will have  been generated for the nodes. If you wish your nodes to be able to ssh to each other with out password intervention,  then you should redistribute these new keys to the nodes. If the nodes hostkeys are updated then you will need to remove their entries from the known_hosts files on the management node before using ssh, xdsh, xdcp. 
  Redistribute credentials and ssh keys to the service nodes and ssh keys to the nodes by using the updatenode -k command.
  
