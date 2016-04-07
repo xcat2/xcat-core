@@ -18,9 +18,9 @@ cmd:rpower $$DOCKERCN stop
 check:rc==0
 cmd:rpower $$DOCKERCN state
 check:output=~exited
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -42,9 +42,9 @@ check:output=~success
 cmd:rpower  $$DOCKERCN state
 check:rc==0
 check:output=~running 
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -74,9 +74,9 @@ cmd:rpower $$DOCKERCN start
 check:rc==0
 cmd:rpower $$DOCKERCN state
 check:output=~running
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -104,9 +104,9 @@ check:rc==0
 check:output=~success
 cmd:rpower $$DOCKERCN state
 check:output=~running
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -131,9 +131,9 @@ cmd:rpower $$DOCKERCN state
 check:output=~paused
 cmd:rpower $$DOCKERCN unpause
 check:rc==0
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -158,9 +158,9 @@ cmd:sleep 6
 cmd:rpower $$DOCKERCN state
 check:output=~running
 cmd:sleep 6
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -172,7 +172,7 @@ check:rc==0
 check:output=~Usage: mkdocker
 end
 start:mkdocker_command
-description:create docker instance
+description:create docker instance image should be ubuntu and command should be bash here 
 cmd:chdef $$DOCKERCN  dockerhost=$$DOCKERHOST:2375 dockercpus=1 ip=$$DOCKERCONIP dockermemory=4096 groups=docker,all mgt=docker
 check:rc==0
 cmd:makehosts $$DOCKERCN
@@ -195,9 +195,9 @@ check:output=~$$DOCKERCN
 check:rc==0
 cmd:ping $$DOCKERCN -c 3
 check:output=~64 bytes from $$DOCKERCN
-cmd:makehosts -d $$DOCKERCN
+cmd:rmdocker $$DOCKERCN -f
 check:rc==0
-cmd:rmdocker $$DOCKERCN -f 
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
@@ -226,6 +226,8 @@ check:rc!=0
 check:output=~ Error: No such container
 cmd:makehosts -d $$DOCKERCN
 check:rc==0
+cmd:rmdef $$DOCKERCN
+check:rc==0
 end
 start:rmdocker_f_command
 description:force to remove docker instance 
@@ -243,11 +245,11 @@ check:rc==0
 cmd:rmdocker $$DOCKERCN
 chec:rc!=0
 check:output=~Stop the container before attempting removal or use -f
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
 check:rc==0
 check:output=~$$DOCKERCN: success
+cmd:makehosts -d $$DOCKERCN
+check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
 end
@@ -268,9 +270,9 @@ check:rc==0
 cmd:lsdocker -l $$DOCKERCN
 check:rc==0
 check:output=~$$DOCKERCN
-cmd:makehosts -d $$DOCKERCN
-check:rc==0
 cmd:rmdocker $$DOCKERCN -f
+check:rc==0
+cmd:makehosts -d $$DOCKERCN
 check:rc==0
 cmd:rmdef $$DOCKERCN
 check:rc==0
