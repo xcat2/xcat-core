@@ -6,7 +6,7 @@ check:output=~runcmdinstaller <node> "<command>"
 end
 start:runcmdinstaller_command
 descriptiop:runcmdinstaller
-cmd:chtab key=xcatdebugmode site.value="1"
+cmd:chtab key=xcatdebugmode site.value="2"
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
