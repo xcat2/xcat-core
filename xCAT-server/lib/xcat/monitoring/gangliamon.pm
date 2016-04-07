@@ -755,7 +755,7 @@ sub deconfGmetad {
     Ganglia monitoring.
 
     Arguments:
-        p_nodes     -- A pointer to an arrays of nodes to be stoped for monitoring. null means all.
+        p_nodes     -- A pointer to an arrays of nodes to be stopped for monitoring. null means all.
         scope       -- The action scope, it indicates the node type the action will take place.
                         0 means localhost only.
                         2 means all nodes (except localhost),

@@ -494,7 +494,7 @@ sub monstart {
         name
         where
           name is the monitoring plug-in name. For example: rmcmon. 
-              The specified plug-in will be stoped for monitoring the xCAT cluster.
+              The specified plug-in will be stopped for monitoring the xCAT cluster.
           noderange a range of nodes. Default is all.
           -r|--remote indicates that both monservers and the nodes need to be called to stop
              the monitoring. The defaults is monservers only.

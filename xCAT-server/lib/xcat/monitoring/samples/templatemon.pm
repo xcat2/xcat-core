@@ -139,7 +139,7 @@ sub start {
       shoul only be applied on the local host. If it is 2, then it should be applied
       to the children that the local host is monitoring.
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to be stoped. null means all.
+       p_nodes -- a pointer to an arrays of nodes to be stopped. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both localhost and nodes, 
@@ -256,7 +256,7 @@ sub startNodeStatusMon {
     This function is called by the monitorctrl module when monstop command is issued.
     It stops feeding the node status info back to xCAT. 
     Arguments:
-       p_nodes -- a pointer to an arrays of nodes to stoped for monitoring. null means all.
+       p_nodes -- a pointer to an arrays of nodes to stopped for monitoring. null means all.
        scope -- the action scope, it indicates the node type the action will take place.
                 0 means localhost only. 
                 2 means both monservers and nodes, 
