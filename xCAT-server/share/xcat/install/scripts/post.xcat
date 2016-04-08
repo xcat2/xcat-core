@@ -286,7 +286,6 @@ fi
 #create the xcatinstallpost
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
-
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
 
 if [ -f /xcatpost/mypostscript.post ]; then
