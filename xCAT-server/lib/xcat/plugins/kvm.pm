@@ -3055,6 +3055,17 @@ sub rscan {
         $hash_vm2host{$vm_node_host->{node}} = $vm_node_host->{host};
     }
 
+    my @maxlength;
+    my @rscan_header = (
+        ["type",          "" ],
+        ["name",          "" ],
+        ["hypervisor",    "" ],
+        ["id",            "" ],
+        ["cpu",           "" ],
+        ["memory",        "" ],
+        ["nic",           "" ],
+        ["disk",          "" ]);
+
     #operate every domain in current hypervisor
     foreach $dom (@doms) {
         my $name=$dom->get_name();
@@ -3071,15 +3082,30 @@ sub rscan {
             $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
         }
         my $type = $domain->findnodes("/domain")->[0]->getAttribute("type");
+        if (length($type) > $maxlength[0]) {
+            $maxlength[0] = length($type);
+        }
         my @nodeobj = $domain->findnodes("/domain/name");
         if (@nodeobj and defined($nodeobj[0])) {
             $node = $nodeobj[0]->to_literal;
         }
+        if (length($node) > $maxlength[1]) {
+            $maxlength[1] = length($node);
+        }
         my $hypervisor = $hyper;
+        if (length($hypervisor) > $maxlength[2]) {
+            $maxlength[2] = length($hypervisor);
+        }
         my $id = $domain->findnodes("/domain")->[0]->getAttribute("id");
+        if (length($id) > $maxlength[3]) {
+            $maxlength[3] = length($id);
+        }
         my @vmcpusobj = $domain->findnodes("/domain/vcpu");
         if (@vmcpusobj and defined($vmcpusobj[0])) {
             $vmcpus = $vmcpusobj[0]->to_literal;
+        }
+        if (length($vmcpus) > $maxlength[4]) {
+            $maxlength[4] = length($vmcpus);
         }
         my @vmmemoryobj = $domain->findnodes("/domain/memory");
         if (@vmmemoryobj and defined($vmmemoryobj[0])) {
@@ -3105,6 +3131,9 @@ sub rscan {
                 $vmmemory=($mem*1024)/(1024*1024);
             }
         }
+        if (length($vmmemory) > $maxlength[5]) {
+            $maxlength[5] = length($vmmemory);
+        }
         my @vmstoragediskobjs = $domain->findnodes("/domain/devices/disk");
         foreach my $vmstoragediskobj (@vmstoragediskobjs) {
             if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "file")) {
@@ -3114,6 +3143,9 @@ sub rscan {
                     last;
                 }
             }
+        }
+        if (length($vmstorage) > $maxlength[7]) {
+            $maxlength[7] = length($vmstorage);
         }
         my @archobj = $domain->findnodes("/domain/os/type");
         if (@archobj and defined($archobj[0])) {
@@ -3132,6 +3164,9 @@ sub rscan {
                     last;
                 }
             }
+        }
+        if (length($vmnics) > $maxlength[6]) {
+            $maxlength[6] = length($vmnics);
         }
         push @{$host2kvm{$uuid}}, join( ",", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
         if ($write) {
@@ -3222,15 +3257,14 @@ sub rscan {
 
     if (!$stanza) {
         my $header;
-        my @rscan_header = (
-            ["type",          "%-8s" ],
-            ["name",          "%-9s" ],
-            ["hypervisor",    "%-15s"],
-            ["id",            "%-7s" ],
-            ["cpu",           "%-8s" ],
-            ["memory",        "%-11s"],
-            ["nic",           "%-8s" ],
-            ["disk",          "%-9s" ]);
+        $rscan_header[0][1] = sprintf "%%-%ds",($maxlength[0]+3);
+        $rscan_header[1][1] = sprintf "%%-%ds",($maxlength[1]+3);
+        $rscan_header[2][1] = sprintf "%%-%ds",($maxlength[2]+3);
+        $rscan_header[3][1] = sprintf "%%-%ds",($maxlength[3]+3);
+        $rscan_header[4][1] = sprintf "%%-%ds",($maxlength[4]+3);
+        $rscan_header[5][1] = sprintf "%%-%ds",($maxlength[5]+3);
+        $rscan_header[6][1] = sprintf "%%-%ds",($maxlength[6]+3);
+        $rscan_header[7][1] = sprintf "%%-%ds",($maxlength[7]+3);
         foreach (@rscan_header) {
             $header .= sprintf ( @$_[1], @$_[0] );
         }
