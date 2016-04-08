@@ -3154,21 +3154,31 @@ sub rscan {
         my @interfaceobjs = $domain->findnodes("/domain/devices/interface");
         foreach my $interfaceobj (@interfaceobjs) {
             if (($interfaceobj->getAttribute("type")) eq "bridge" ) {
+                my ($vmnics_obj, $mac_obj, $vmnicnicmodel_obj);
                 my @vmnicsobj = $interfaceobj->findnodes("./source");
                 my @macobj = $interfaceobj->findnodes("./mac");
                 my @vmnicnicmodelobj = $interfaceobj->findnodes("./model");
-                if ((@vmnicsobj and defined($vmnicsobj[0])) and (@macobj and defined($macobj[0])) and (@vmnicnicmodelobj and defined($vmnicnicmodelobj[0]))) {
-                    $vmnics = $vmnicsobj[0]->getAttribute("bridge");
-                    $mac = $macobj[0]->getAttribute("address");
-                    $vmnicnicmodel = $vmnicnicmodelobj[0]->getAttribute("type");
-                    last;
+                if (@vmnicsobj and defined($vmnicsobj[0])) {
+                    $vmnics_obj = $vmnicsobj[0]->getAttribute("bridge");
                 }
+                if (@macobj and defined($macobj[0])) {
+                    $mac_obj = $macobj[0]->getAttribute("address");
+                }
+                if (@vmnicnicmodelobj and defined($vmnicnicmodelobj[0])) {
+                    $vmnicnicmodel_obj = $vmnicnicmodelobj[0]->getAttribute("type");
+                }
+                $vmnics .= "$vmnics_obj,";
+                $mac .= "$mac_obj,";
+                $vmnicnicmodel .= "$vmnicnicmodel_obj,";
             }
         }
+        chop($vmnics);
+        chop($mac);
+        chop($vmnicnicmodel);
         if (length($vmnics) > $maxlength[6]) {
             $maxlength[6] = length($vmnics);
         }
-        push @{$host2kvm{$uuid}}, join( ",", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
+        push @{$host2kvm{$uuid}}, join( ":", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
         if ($write) {
             unless (exists $hash_vm2host{$node}) {
                 $updatetable->{vm}->{$node}->{host} = $hypervisor;
@@ -3276,7 +3286,7 @@ sub rscan {
             my @data;
             foreach (@{$host2kvm{$host}}) {
                 my $info = $_;
-                foreach (split(',', $info)) {
+                foreach (split(':', $info)) {
                     my $attr = $_;
                     push @data, "$attr";
                 }
