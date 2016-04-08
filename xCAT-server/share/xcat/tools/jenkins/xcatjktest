@@ -222,7 +222,7 @@ sub get_netboot_value{
     if($archv =~ /x86/i){
         $netbootv="xnba";
     }elsif($archv =~ /^ppc64$/i){
-        $osv =~  /(\D+)(\d+)\.?(\d?)/;
+        $osv =~  /(\D+)(.+)/;
         my $version=$2;
         if($1 =~ /rhel/i){
             if($version>6){
