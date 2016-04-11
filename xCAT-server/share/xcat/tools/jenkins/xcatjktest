@@ -308,20 +308,20 @@ sub read_conf{
 # usage for arguments
 #######################################
 sub usage{
-    print "Usage:$pro_name - Run xcat test cases with jinkens.\n
+    print "Usage:$pro_name - Run xcat test cases with jenkins.\n
   Explanation for the options:
-    -o: Requested, specify the test operating system and version\n
-    -m: Requested, specify the cluster where to run the test.\n
-    -c: Requested, specify the test case list. value \"all\" means running daily regression test\n
-    -j: Requested, specify the project name.\n
-    -id: Requested, specifys this is how many times does this project run.\n
-    -bc: Requested, a web address, specify where to download the xcat-core package\n 
-    -bd: Requested, a web address, specify where to download the xcat-dep package\n
-    -u: a mail address, sepcify who should receive the test result report\n
-    -q: don't output to screen, just keep output in log file. output to screen by default\n\n"; 
+    --os: Required, specify the test operating system and version\n
+    --cluster: Required, specify the cluster where to run the test.\n
+    --testcase: Required, specify the test case list. value \"all\" means running daily regression test\n
+    --project-name: Required, specify the project name.\n
+    --num: Required, specifys this is how many times does this project run.\n
+    --xcat-core: Required, a web address, specify where to download the xcat-core package\n 
+    --xcat-dep: Required, a web address, specify where to download the xcat-dep package\n
+    --email: a mail address, sepcify who should receive the test result report\n
+    --quiet: don't output to screen, just keep output in log file. output to screen by default\n\n"; 
 
     print "  $pro_name [-?|-h]\n";
-    print "  $pro_name -o <os> -m <clustername> -c <all|caselist> -j <projectname> -id <projectruntime> -bc <downloadaddr> -bd <downloadaddr> -u <mailaddr>\n";
+    print "  $pro_name --os <os> --cluster <clustername> --testcase <all|caselist> --project-name <projectname> --num <projectruntime> --xcat-core <downloadaddr> --xcat-dep <downloadaddr> --email <mailaddr>\n";
     print "\n";
     return;
 }
@@ -620,6 +620,14 @@ sub prepare_mn {
             return 1;
         }
         $config{object}{node}{$config{var}{SN}}{os}=$os;
+     
+        if($arch =~ /ppc64le/i || $arch =~ /ppc64el/i){
+            if($os =~ /ubuntu/i){
+                $config{object}{node}{$config{var}{SN}}{arch}="ppc64el";
+            }else{
+                $config{object}{node}{$config{var}{SN}}{arch}="ppc64le";
+            }
+        }
     }
 
     if(exists ($config{var}{CN})){
@@ -637,6 +645,14 @@ sub prepare_mn {
             return 1;
         }
         $config{object}{node}{$config{var}{CN}}{os}=$os;
+
+        if($arch =~ /ppc64le/i || $arch =~ /ppc64el/i){
+            if($os =~ /ubuntu/i){
+                $config{object}{node}{$config{var}{CN}}{arch}="ppc64el";
+            }else{
+                $config{object}{node}{$config{var}{CN}}{arch}="ppc64le";
+            }
+        }
     }
     if(exists ($config{var}{ISO})){
         $config{var}{ISO}="/$iso";
@@ -1098,7 +1114,7 @@ sub send_mail{
     my $attachfile="";
 
     if($err_record ne ""){ 
-         $subject = "[JK][$proid] $err_record";
+         $subject = "[JK][$proid][FAILED] $err_record";
     }else{
         my $output = `cat $mailfile |grep "Total"|grep "Failed"`;
         chomp($output);
@@ -1142,15 +1158,15 @@ sub send_mail{
 ###############################################################
 if (
     !GetOptions("--help|h|?" => \$needhelp,
-                "q" => \$quiet,
-                "o=s" => \$os,
-                "m=s" => \$cluster_name,
-                "c=s" => \$bucket,
-                "j=s" => \$proname,
-                "id=s" => \$proruntime,
-                "bc=s" => \$xcatcore_addr,
-                "bd=s" => \$xcatdep_addr,
-                "u=s" => \$mail_list)
+                "--quiet" => \$quiet,
+                "os=s" => \$os,
+                "cluster=s" => \$cluster_name,
+                "testcase=s" => \$bucket,
+                "project-name=s" => \$proname,
+                "num=s" => \$proruntime,
+                "xcat-core=s" => \$xcatcore_addr,
+                "xcat-dep=s" => \$xcatdep_addr,
+                "email=s" => \$mail_list)
 ){
     &usage;
     send_msg(0, "step 0, PARSE ARGUMENTS returns error, exit");
@@ -1266,7 +1282,7 @@ if ( !defined($pid) ) {
     send_msg(2, "[$$] Running do_test...............");
     $res = do_test();
     if ($res) {
-        syswrite MNWRITE,"[$$][$deployenvtime]:run regression test cases in $mn failed\n";
+        syswrite MNWRITE,"[$$][$deployenvtime]:do test error\n";
         exit 1;
     }
     send_msg(2, "[$$] Run do_test...............[OK]");
