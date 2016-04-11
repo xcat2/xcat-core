@@ -87,7 +87,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
             fi
         fi
     fi
-elif [ "$IPMIMFG" == 20301 ] ; then
+elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     if [ $IBMVPDV -eq 2 ]; then
