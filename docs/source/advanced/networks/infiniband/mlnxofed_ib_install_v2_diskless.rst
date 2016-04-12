@@ -1,128 +1,160 @@
 Configuration for Diskless Installation
 =======================================
 
-1. Specify dependence package **[required for RHEL and SLES]**
+1. Specify dependency package 
 
-  a) Copy a correct pkglist file **shipped by xCAT** according your environment to the ``/install/custom/netboot/<ostype>/`` directory ::
+  Some dependencies need to be installed before running Mellanox scripts. These dependencies are different between different scenario. xCAT configurates these dependency packages by using ``pkglist`` attribute of ``osimage`` definition. Please refer to :doc:`Add Additional Software Packages </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg>` for more information::
 
-	cp /opt/xcat/share/xcat/netboot/<ostype>/compute.<osver>.<arch>.pkglist \
-	   /install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist
+    # lsdef -t osimage  <osver>-<arch>-netboot-compute 
+    Object name:   <osver>-<arch>-netboot-compute
+    imagetype=linux
+    ....
+    pkgdir=/<os packages directory>
+    pkglist=/<os packages list directory>/compute.<os>.pkglist
+    ....
 
-  b) Edit ``/install/custom/netboot/<ostype>/<profile>.pkglist`` and add ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#``
+  You can append the ib dependency packages list in the end of ``/<os packages list directory>/compute.<os>.pkglist`` directly like below: ::
 
-     For example, on RHEL 6.4 (x86_64): ::
+    #cat /<os packages list directory>/compute.<os>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn
+    #ib part
+    createrepo
+    kernel-devel
+    kernel-source
+    ....
 
-        cp /opt/xcat/share/xcat/netboot/rh/compute.rhels6.x86_64.pkglist \
-        /install/custom/netboot/rh/compute.rhels6.x86_64.pkglist
- 
-     Edit ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` and add ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#`` 
-  
-     Then ``/install/custom/netboot/rh/compute.rhels6.x86_64.pkglist`` looks like below ::
 
-        #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#
-        bash 
-        nfs-utils
-        openssl
-        dhclient 
-        .....
+  Or if you want to isolate IB dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.pkglist`` like below way: ::
+
+    #cat /<os packages list directory>/compute.<os>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn
+    #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
+
+  xCAT ships some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+
+    #cat /<os packages list directory>/compute.<os>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn
+    #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<os>.<arch>.pkglist#
+
 
 2. Prepare postinstall scripts 
 
-  a) Specify a correct postinstall script **shipped by xCAT** ::
-  
-	mkdir -p /install/custom/netboot/<ostype>/
-	
-	cp /opt/xcat/share/xcat/netboot/<ostype>/<profile>.postinstall \
-	   /install/custom/netboot/<ostype>/
-	   
-	chmod +x /install/custom/netboot/<ostype>/<profile>.postinstall
+  Edit ``postinstall`` script to trigger IB drvices installation during ``genimage``. Using below command to find out where the ``postinstall`` script is saved. ::
+ 
+    # lsdef -t osimage <os>-<arch>-netboot-compute
+    Object name: <os>-<arch>-netboot-compute
+    ....
+    postinstall=/<postinstall script path/compute.<os>.<arch>.postinstall
+    ....
 
-    Take RHEL 6.4 on x86_64 for example ::
-	
-        mkdir -p /install/custom/netboot/rh/
-        cp /opt/xcat/share/xcat/netboot/rh/compute.rhels6.x86_64.postinstall \
-	       /install/custom/netboot/rh/
-        chmod +x /install/custom/netboot/rh/compute.rhels6.x86_64.postinstall
+
 		
-  b) Edit ``/install/custom/netboot/<ostype>/<profile>.postinstall`` and add below line in the end ::
+  Edit ``/<postinstall script path/compute.<os>.<arch>.postinstall`` and add below line in the end ::
 
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
 
-    **[Note]** If you want to customized kernel version (i.e the kernel version of the diskless image you want to generate is different with the kernel version of you management node), you need to pass ``--add-kernel-support`` attribute to Mellanox. the line added into ``<profile>.postinstall`` should like below ::
+  **[Note]** Mellanox OFED ISO was built on a certain kernal version, If your kernel version does not match with any of the Mellanox offered pre-built RPMs, you can pass ``--add-kernel-support`` attribute to Mellanox to rebuild these RPMs base on your kernel. The line added into ``<profile>.postinstall`` should like below ::
   
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support -end- -i $1 -n genimage
   
-    Below steps maybe helpful for you to do judgment if you belong to this situation.
-  
-    Get the kernel version of your management node ::
-  
-        uname -r
-  
-    Get the kernel version of target image. take generating a diskless image of rhels7.0 on x86_64 for example ::
-  
-        [root@server]# lsdef -t osimage rhels7.0-x86_64-install-compute  -i pkgdir
-        Object name: rhels7.0-x86_64-install-compute
-        pkgdir=/install/rhels7.0/x86_64
-
-        [root@server]#  ls -l /install/rhels7.0/x86_64/Packages/ |grep kernel*
-        .......
-        -r--r--r-- 1 root root 30264588 May  5  2014 kernel-3.10.0-123.el7.x86_64.rpm
-        .......
 		
-3. Set the related osimage using the customized pkglist and compute.postinsall
+  Take rhels7.2 on ppc64le for example:  ::
 
-* [RHEL/SLES] ::
+    # lsdef -t osimage rhels7.2-ppc64le-netboot-compute
+    Object name: rhels7.2-ppc64le-netboot-compute
+    exlist=/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.exlist
+    imagetype=linux
+    osarch=ppc64le
+    osdistroname=rhels7.2-ppc64le
+    osname=Linux
+    osvers=rhels7.2
+    otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
+    pkgdir=/install/rhels7.2/ppc64le
+    pkglist=/install/custom/install/rh/compute.rhels7.ib.pkglist
+    postinstall=/install/custom/install/rh/compute.rhels7.ppc64le.postinstall
+    profile=compute
+    provmethod=netboot
+    rootimgdir=/install/netboot/rhels7.2/ppc64le/compute
 
-	chdef  -t osimage -o <osver>-<arch>-netboot-compute \
-		pkglist=/install/custom/netboot/<ostype>/compute.<osver>.<arch>.pkglist \
-		postinstall=/install/custom/netboot/<ostype>/<profile>.postinstall
 
-* [Ubuntu] ::
+  **[Note]**: If the osimage definition was generated by xCAT command ``copycds``, default value ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist`` was assigned to ``pkglist`` attribute. ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist`` is the sample pkglist shipped by xCAT, recommend to make a copy of this sample and using the copy in real environment. In the above example, ``/install/custom/install/rh/compute.rhels7.ib.pkglist`` is a copy of ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist``. For the same reason, ``/install/custom/install/rh/compute.rhels7.ppc64le.postinstall`` is a copy of ``/opt/xcat/share/xcat/netboot/rh/compute.rhels7.ppc64le.postinstall``. ::
 
-    chdef  -t osimage -o <osver>-<arch>-netboot-compute \
-		postinstall=/install/custom/netboot/<ostype>/<profile>.postinstall
+    # cat /install/custom/install/rh/compute.rhels7.ib.pkglist
+    #Please make sure there is a space between @ and group name
+    wget
+    ntp
+    nfs-utils
+    net-snmp
+    rsync
+    yp-tools
+    openssh-server
+    util-linux
+    net-tools
+    #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels7.ppc64le.pkglist#
 
-4. Generate and package image for diskless installation ::
+
+    #cat /install/custom/install/rh/compute.rhels7.ppc64le.postinstall
+    #!/bin/sh
+    #-- Do not remove following line if you want to make use of CVS version tracking
+    ......
+    #  [ -r $workdir/$profile.$ext ] && cat $workdir/$profile.$ext | grep -E '^[[:space:]]*#.*[[:space:]]\$Id' >> $installroot/etc/IMGVERSION
+    #done
+    /install/postscripts/mlnxofed_ib_install -p /install/ofed/MLNX_OFED_LINUX-3.2-2.0.0.0-rhel7.2-ppc64le.iso -i $1 -n genimage   
+
+3. Generate and package image for diskless installation ::
 
 	genimage   <osver>-<arch>-netboot-compute 
 	packimage  <osver>-<arch>-netboot-compute
 
-5. Install node ::
+4. Install node ::
 
 	nodeset <nodename> osimage=<osver>-<arch>-netboot-compute 
 	rsetboot <nodename> net
 	rpower <nodename> reset
 
-  After installation, you can login target ndoe and issue ``ibstat`` command to verify if your IB driver works well. if everything is fine, you can get the IB apater information ::
-	
-    [root@server ~]# ibstat
-    CA 'mlx4_0'
-        CA type: MT4099
-        Number of ports: 2
-        Firmware version: 2.11.500
-        Hardware version: 0
-        Node GUID: 0x5cf3fc000004ec02
-        System image GUID: 0x5cf3fc000004ec05
-        Port 1:
-                State: Initializing
-                Physical state: LinkUp
-                Rate: 40 (FDR10)
-                Base lid: 0
-                LMC: 0
-                SM lid: 0
-                Capability mask: 0x02594868
-                Port GUID: 0x5cf3fc000004ec03
-                Link layer: InfiniBand
-        Port 2:
-                State: Down
-                Physical state: Disabled
-                Rate: 10
-                Base lid: 0
-                LMC: 0
-                SM lid: 0
-                Capability mask: 0x02594868
-                Port GUID: 0x5cf3fc000004ec04
-                Link layer: InfiniBand
+  After installation, you can login target ndoe and issue ``ibv_devinfo`` command to verify if your IB driver works well. if everything is fine, you can get the IB apater information ::
+
+    # ibv_devinfo
+    hca_id:	mlx5_0
+	transport:			InfiniBand (0)
+	fw_ver:				10.14.2036
+	node_guid:			f452:1403:0076:10e0
+	sys_image_guid:			f452:1403:0076:10e0
+	vendor_id:			0x02c9
+	vendor_part_id:			4113
+	hw_ver:				0x0
+	board_id:			IBM1210111019
+	phys_port_cnt:			2
+	Device ports:
+		port:	1
+			state:			PORT_INIT (2)
+			max_mtu:		4096 (5)
+			active_mtu:		4096 (5)
+			sm_lid:			0
+			port_lid:		65535
+			port_lmc:		0x00
+			link_layer:		InfiniBand
+
+		port:	2
+			state:			PORT_DOWN (1)
+			max_mtu:		4096 (5)
+			active_mtu:		4096 (5)
+			sm_lid:			0
+			port_lid:		65535
+			port_lmc:		0x00
+			link_layer:		InfiniBand	
