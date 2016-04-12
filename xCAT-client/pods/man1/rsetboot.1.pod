@@ -5,16 +5,14 @@ B<rsetboot> - Sets the boot device to be used for BMC-based servers for the next
 
 =head1 SYNOPSIS
 
-B<rsetboot> I<noderange> {B<hd>|B<net>|B<cd>|B<default>|B<stat>}
+B<rsetboot> I<noderange> {B<hd>|B<net>|B<cd>|B<default>|B<stat>} [B<-u>] [B<-p>]
 
 B<rsetboot> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 
 =head1 DESCRIPTION
 
-B<rsetboot> sets the boot media that should be used on the next boot of the specified nodes.  After the nodes are
-booted with the specified device (e.g. via L<rpower(1)|rpower.1>), the nodes will return to using the
-default boot device specified in the BIOS.  Currently this command is only supported for IPMI nodes.
+B<rsetboot> sets the boot media and boot mode that should be used on the next boot of the specified nodes.  After the nodes are booted with the specified device and boot mode (e.g. via L<rpower(1)|rpower.1>), the nodes will return to using the default boot device specified in the BIOS.  Currently this command is only supported for IPMI nodes.
 
 =head1 OPTIONS
 
@@ -39,6 +37,14 @@ Boot using the default set in BIOS.
 =item B<stat>
 
 Display the current boot setting.
+
+=item B<-u>
+
+To specify the next boot mode to be "UEFI Mode". 
+
+=item B<-p>
+
+To make the specified boot device and boot mode settings persistent.
 
 =back
 
