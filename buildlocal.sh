@@ -1,3 +1,4 @@
+#!/bin/sh
 #######################################################################
 #build script for local usage
 #used for Linux/AIX/Ubuntu
