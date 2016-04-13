@@ -188,6 +188,7 @@ else
             done
 
 	    echo -n "Acquiring network addresses.."
+            tries=0
             while [ -z "$bootnic" ]; do
 	        for tmp1 in $ALLUP_NICS; do
 	            if ip addr show dev $tmp1|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; then
@@ -199,6 +200,10 @@ else
                 fi
                 done
                 sleep 2
+                tries=$(($tries+1))
+                if [ $tries -ge 10 ]; then
+                    break
+                fi
 	    done
             if [ -z "$bootnic" ]; then
                 /bin/bash
