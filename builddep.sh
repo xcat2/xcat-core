@@ -1,5 +1,4 @@
 #!/bin/sh
-# The shell is commented out so that it will run in bash on linux and ksh on aix
 
 #
 # Package up all the xCAT open source dependencies

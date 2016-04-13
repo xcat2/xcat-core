@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# The shell is commented out so that it will run in bash on linux and ksh on aix
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 # Common script to make any one the xcat rpms.  To build locally, run in the top dir of local svn repository, for example:
