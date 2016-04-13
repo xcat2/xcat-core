@@ -1184,10 +1184,11 @@ unless(defined($os) && defined($proname) && defined($proruntime) && defined($buc
     exit 1;
 }
 
+&init;
+
 my $rst=0;
 my $progname=\$0;;
 $$progname="$pro_name ($proid): main";
-&init;
 
 send_msg(2,"........................");
 send_msg(2,"........................");
