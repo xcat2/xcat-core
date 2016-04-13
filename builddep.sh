@@ -1,5 +1,6 @@
+#!/bin/sh
 # The shell is commented out so that it will run in bash on linux and ksh on aix
-# !/bin/sh
+
 #
 # Package up all the xCAT open source dependencies
 # - creating the yum repos
