@@ -16,4 +16,4 @@ atk
 cairo
 gcc
 createrepo
-
+libnl
