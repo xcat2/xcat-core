@@ -418,7 +418,7 @@ sub getDescription {
     ping-interval:  the number of minutes between each nmap/fping operation. 
         The default value is 3.
     apps: a list of comma separated application names whose status will be queried. 
-        For how to get the status of each app, look for app name in the key filed 
+        For how to get the status of each app, look for app name in the key field 
         in a different row.
     port: the application daemon port number, if not specified, use internal list, 
         then /etc/services.

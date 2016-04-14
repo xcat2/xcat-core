@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **rmvm**\  - Removes HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
+\ **rmvm**\  - Removes HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed partitions or virtual machines.
 
 
 ********
@@ -25,18 +25,18 @@ SYNOPSIS
 
 \ **rmvm [-V| -**\ **-verbose]**\  \ *noderange*\  \ **[-r] [-**\ **-service]**\ 
 
-For KVM and Vmware:
+For KVM and VMware:
 ===================
 
 
-\ **rmvm [-p] [-f]**\ 
+\ **rmvm [-p] [-f]**\  \ *noderange*\ 
 
 
 PPC (using Direct FSP Management) specific:
 ===========================================
 
 
-\ **rmvm**\  \ *noderange*\ 
+\ **rmvm [-p]**\  \ *noderange*\ 
 
 
 
@@ -65,9 +65,7 @@ OPTIONS
 
 \ **-**\ **-service**\    Remove the service partitions of the specified CECs.
 
-\ **-p**\           Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.
-
-\ **-p|-**\ **-part**\    Remove the specified partiton on normal power machine.
+\ **-p**\           KVM: Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. PPC: Remove the specified partiton on normal power machine.
 
 \ **-f**\           Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested.
 
