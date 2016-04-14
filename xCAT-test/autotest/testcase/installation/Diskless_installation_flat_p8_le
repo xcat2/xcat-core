@@ -1,8 +1,11 @@
-start:Ubuntu_diskless_installation_flat_p8_le
+start:Diskless_installation_flat_p8_le
 os:Linux
+stop:yes
+
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 20G ; fi
+check:rc==0
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
