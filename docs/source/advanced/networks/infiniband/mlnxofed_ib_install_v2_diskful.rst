@@ -3,11 +3,11 @@ Configuration for Diskful Installation
 
 1. Set script ``mlnxofed_ib_install`` as ``postbootscripts`` or ``postscripts`` ::
 
-	chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>" 
+	chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<subpath>/<MLNX_OFED_LINUX.iso>" 
   
   Or ::
 
-        chdef <node> -p postscripts="mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>"
+        chdef <node> -p postscripts="mlnxofed_ib_install -p /install/<subpath>/<MLNX_OFED_LINUX.iso>"
 
   xCAT simulates completely the way Mellanox scripts work by using ``postbootscripts``. This way need to reboot after drive installation to make Mellanox drives work reliably just like Mellanox suggested. If you want to use the reboot after operating system installation to avoid reboot twice, you can using ``postscripts`` attribute to install Mellanox dreives. This way has been verified in limited scenarios. For more information please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. You can try this way in other else scenarios if you needed.  
 	
@@ -20,12 +20,12 @@ Configuration for Diskful Installation
     imagetype=linux
     ....
     pkgdir=/<os packages directory>
-    pkglist=/<os packages list directory>/compute.<os>.pkglist
+    pkglist=/<os packages list directory>/compute.<os>.<arch>.pkglist
     ....
 
-  You can append the ib dependency packages list in the end of ``/<os packages list directory>/compute.<os>.pkglist`` directly like below: ::
+  You can append the ib dependency packages list in the end of ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` directly like below: ::
 
-    #cat /<os packages list directory>/compute.<os>.pkglist
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base
     @x11
     openssl
@@ -38,9 +38,9 @@ Configuration for Diskful Installation
     ....
 
 
-  Or if you want to isolate IB dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.pkglist`` like below way: ::
+  Or if you want to isolate IB dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
 
-    #cat /<os packages list directory>/compute.<os>.pkglist
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base
     @x11
     openssl
@@ -50,7 +50,7 @@ Configuration for Diskful Installation
 
   xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
 
-    #cat /<os packages list directory>/compute.<os>.pkglist
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base
     @x11
     openssl
@@ -133,19 +133,37 @@ Configuration for Diskful Installation
 			port_lmc:		0x00
 			link_layer:		InfiniBand 
 
-  Using ``service openibd status`` to verify if openibd works well. Below is the output in SLES ::
+  Using ``service openibd status`` to verify if openibd works well. Below is the output in rhels7.2. ::
 
-    #service openibd status
-    openibd.service - openibd - configure Mellanox devices
-        Loaded: loaded (/usr/lib/systemd/system/openibd.service; enabled)
-        Active: active (exited) since Sun 2016-04-10 07:13:46 EDT; 3h 24min ago
-        Docs: file:/etc/infiniband/openib.conf
-        Main PID: 48133 (code=exited, status=0/SUCCESS)
-        CGroup: /system.slice/openibd.service
 
-        Apr 10 07:13:39 c910f05c33 openibd[48133]: [34B blob data]
-        Apr 10 07:13:46 c910f05c33 openibd[48133]: [49B blob data]
-        Apr 10 07:14:06 c910f05c33 logger[49644]: openibd: Set node_desc for mlx5_0:  HCA-1
-
+    # service openibd status
+      HCA driver loaded
+    
+    Configured IPoIB devices:
+    ib0 ib1
+    
+    Currently active IPoIB devices:
+    Configured Mellanox EN devices:
+    
+    Currently active Mellanox devices:
+    
+    The following OFED modules are loaded:
+    
+      rdma_ucm
+      rdma_cm
+      ib_addr
+      ib_ipoib
+      mlx4_core
+      mlx4_ib
+      mlx4_en
+      mlx5_core
+      mlx5_ib
+      ib_uverbs
+      ib_umad
+      ib_ucm
+      ib_sa
+      ib_cm
+      ib_mad
+      ib_core
 
 
