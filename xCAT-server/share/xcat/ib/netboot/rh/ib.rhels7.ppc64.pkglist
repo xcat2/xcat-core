@@ -11,3 +11,4 @@ python-devel
 lsof
 redhat-rpm-config
 rpm-build
+libnl
