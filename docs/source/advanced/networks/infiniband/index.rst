@@ -1,12 +1,12 @@
 Infiniband (Mellanox)
 =====================
 
-xCAT offers a certain degree support for Mellanox infiniband product, it help you to configurate Mellanox infiniband products easily.
+xCAT can help configure Mellanox InfiniBand switches/drivers in your cluster.
  
 .. toctree::
    :maxdepth: 2
 
-   driver_and_installation.rst
+   driver_v2/index.rst
    network_configuration.rst
    switch_configuration.rst
    ufm_configuration.rst

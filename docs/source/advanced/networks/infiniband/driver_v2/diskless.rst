@@ -1,5 +1,5 @@
-Configuration for Diskless Installation
-=======================================
+Diskless Installation
+=====================
 
 1. Specify dependence package **[required for RHEL and SLES]**
 
