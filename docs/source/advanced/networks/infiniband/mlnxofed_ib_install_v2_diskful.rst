@@ -38,7 +38,7 @@ Configuration for Diskful Installation
     ....
 
 
-  Or if you want to isolate IB dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
+  Or if you want to isolate InfiniBand dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base
@@ -99,9 +99,9 @@ Configuration for Diskful Installation
 	rpower <node> reset
 
 
-  After steps above, you can login target ndoe and find the Mellanox IB drives are located under ``/lib/modules/<kernel_version>/extra/``. 
+  After steps above, you can login target node and find the Mellanox InfiniBand drives are located under ``/lib/modules/<kernel_version>/extra/``. 
 
-  Issue ``ibv_devinfo`` command you can get the IB apater information ::
+  Issue ``ibv_devinfo`` command you can get the InfiniBand apater information ::
 
     # ibv_devinfo
     hca_id:	mlx5_0

@@ -3,7 +3,7 @@ Configuration for Diskless Installation
 
 1. Specify dependency package 
 
-  Some dependencies need to be installed before running Mellanox scripts. These dependencies are different between different scenario. xCAT configurates these dependency packages by using ``pkglist`` attribute of ``osimage`` definition. Please refer to :doc:`Add Additional Software Packages </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg>` for more information::
+  Some dependencies need to be installed before running Mellanox scripts. These dependencies are different among different scenarios. xCAT can help user to install these dependency packages by adding these package names to the file specified by the ``pkglist`` attribute of the ``osimage`` definition. Please refer to :doc:`Add Additional Software Packages </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg>` for more information::
 
     # lsdef -t osimage  <osver>-<arch>-netboot-compute 
     Object name:   <osver>-<arch>-netboot-compute
@@ -30,7 +30,7 @@ Configuration for Diskless Installation
     ....
 
 
-  Or if you want to isolate IB dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
+  Or if you want to isolate InfiniBand dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     bash
@@ -41,7 +41,7 @@ Configuration for Diskless Installation
     .....
     #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
 
-  xCAT ships some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+  xCAT ships some InfiniBand pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     bash
@@ -55,7 +55,7 @@ Configuration for Diskless Installation
 
 2. Prepare postinstall scripts 
 
-  Edit ``postinstall`` script to trigger IB drvices installation during ``genimage``. Using below command to find out where the ``postinstall`` script is saved. ::
+  Edit ``postinstall`` script to trigger InfniBand drvices installation during ``genimage``. Using below command to find out where the ``postinstall`` script is defined. ::
  
     # lsdef -t osimage <os>-<arch>-netboot-compute
     Object name: <os>-<arch>-netboot-compute
@@ -71,8 +71,8 @@ Configuration for Diskless Installation
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
 
-  **[Note]** Mellanox OFED ISO was built on a certain kernal version, If your kernel version does not match with any of the Mellanox offered pre-built RPMs, you can pass ``--add-kernel-support`` attribute to Mellanox to rebuild these RPMs base on your kernel. The line added into ``<profile>.postinstall`` should like below ::
-  
+ **[Note]** Mellanox OFED ISO was built against a series of certain kernael versions, If the version of linux kernel you are using does not match with any of the Mellanox offered pre-built kernel modules, you can pass ``--add-kernel-support`` command line argument to Mellanox OFED installation script to build these kernel modules base on the version of linux kernel you are using. The line added into ``<profile>.postinstall`` should like below :: 
+
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<subpath>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support -end- -i $1 -n genimage
   
@@ -136,7 +136,7 @@ Configuration for Diskless Installation
 	rsetboot <nodename> net
 	rpower <nodename> reset
 
-  After installation, you can login target ndoe and issue ``ibv_devinfo`` command to verify if your IB driver works well. if everything is fine, you can get the IB apater information ::
+  After installation, you can login target ndoe and issue ``ibv_devinfo`` command to verify if your InfiniBand driver works well. if everything is fine, you can get the InfiniBand apater information ::
 
     # ibv_devinfo
     hca_id:	mlx5_0
