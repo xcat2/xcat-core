@@ -4,11 +4,11 @@ B<nodeset> - set the boot state for a noderange
 
 =head1 B<Synopsis>
 
-B<nodeset> [I<noderange>] [B<boot> | B<stat> | B<iscsiboot> | B<offline> | B<runcmd=bmcsetup> | B<osimage>= I<imagename> | B<shell> | B<shutdown>]
+B<nodeset> I<noderange> [B<boot> | B<stat> | B<iscsiboot> | B<offline> | B<runcmd=bmcsetup> | B<osimage>[=I<imagename>] | B<shell> | B<shutdown>]
 
-B<nodeset> I<noderange> B<osimage=> I<imagename> [B<--noupdateinitrd>] [B<--ignorekernelchk>]
+B<nodeset> I<noderange> B<osimage>[=I<imagename>] [B<--noupdateinitrd>] [B<--ignorekernelchk>]
 
-B<nodeset> I<noderange> B<runimage=> I<task>
+B<nodeset> I<noderange> B<runimage=>I<task>
 
 B<nodeset> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -49,7 +49,7 @@ Instruct network boot loader to be skipped, generally meaning boot to hard disk
 
 Cleanup the current pxe/tftp boot configuration files for the nodes requested
 
-=item B<osimage>|B<osimage=<imagename>>
+=item B<osimage>|B<osimage=>I<imagename>
 
 Prepare server for installing a node using the specified os image. The os image is defined in the I<osimage> table and I<linuximage> table. If the <imagename> is omitted, the os image name will be obtained from I<nodetype.provmethod> for the node.  
 

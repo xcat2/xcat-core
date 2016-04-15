@@ -23,7 +23,7 @@ my $globaltftpdir = xCAT::TableUtils->getTftpDir();
 
 
 my %usage = (
-    "nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
+    "nodeset" => "Usage: nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline|shutdown|stat]",
 );
 sub handled_commands {
     # process noderes:netboot like "grub2-<transfer protocol>"
@@ -620,6 +620,31 @@ sub process_request {
                {
                  $validarch = $osimgent->{'osarch'};
                }
+            else
+               {
+                 # Can not determine arch from osimage definition. This is most likely
+                 # the case when nodeset is "shell" or "shutdown". Look at node definition, to
+                 # figure out arch to use.
+                 
+                 # get nodename from osimagenodehash hash
+                 my $node_name = $osimagenodehash{$osimage}[0];
+               
+                 # lookup node arch setting
+                 my $node_entry = $typetab->getNodeAttribs($node_name,['arch']);
+                 if ($node_entry and $node_entry->{'arch'})
+                     {
+                       # Extracted arch from node definition
+                       $validarch = $node_entry->{'arch'};
+                     }
+                 else
+                     {
+                       # At this point we can not determine architecture either
+                       # from osimage or node definition.
+                       my $rsp;
+                       push @{$rsp->{data}}, "Not able to determine architecture of node $node_name. Verify arch attribute setting.\n";
+                       xCAT::MsgUtils->message("E", $rsp, $callback);
+                     } 
+                }
             if ($validarch =~ /ppc64/i)
                {
                    $validarch="ppc"
