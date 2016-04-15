@@ -94,6 +94,7 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
      dockernics=mynet0
      groups=docker,all
      ip=10.0.120.1
+     mac=02:42:0a:00:78:01
      mgt=docker
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
