@@ -1,5 +1,5 @@
-Configuration for Diskful Installation
-=======================================
+Diskful Installation
+====================
 
 1. Set script ``mlnxofed_ib_install`` as postbootscript ::
 

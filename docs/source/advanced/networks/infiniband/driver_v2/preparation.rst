@@ -1,20 +1,25 @@
 Preparation
 ===========
 
-Obtain the Mellanox OFED ISO file from `Mellanox official site <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_ and put it into one place under ``/install`` directory depending on your need.
+#. Obtain the Mellanox OFED ISO [#]_ file from `Mellanox OpenFabrics Enterprise Distribution for Linux <http://www.mellanox.com/page/products_dyn?product_family=26&mtag=linux_sw_drivers>`_.  
 
-**[NOTE]** 
+   This example will put the ISO file for 3.2-2.0 into ``/install/ib_mlnxofed/3.2-2.0/``.
 
-* Mellanox provides OFED drivers in **tarball** and **iso** formats.  xCAT only supports the **iso** format at this time.
-* Mellanox provides different OFED ISOs depending on operating system and machine architecture, named like MLNX_OFED_LINUX-<packver1>-<packver2>-<osver>-<arch>.iso, you should download correct one according your environment.
 
-Copy **mlnxofed_ib_install.v2** into ``/install/postscripts`` and change name to **mlnxofed_ib_install** ::
+#. Copy ``mlnxofed_ib_install.v2`` to ``/install/postscripts`` and rename to ``mlnxofed_ib_install`` ::
 
-	cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
-	   /install/postscripts/mlnxofed_ib_install
+    cp /opt/xcat/share/xcat/ib/scripts/Mellanox/mlnxofed_ib_install.v2 \
+        /install/postscripts/mlnxofed_ib_install
 	   
-	chmod +x /install/postscripts/mlnxofed_ib_install
-	
+#. Use the following command to install using defaults: ::
+
+    mlnxofed_ib_install -p /install/ib_mlnxofed/3.2-2.0/MLNX_OFED_LINUX-3.2-2.0.0.0-<os>-<arch>.iso
+
+.. [#] Mellanox provides OFED drivers in *tgz* and *ISO* formats.  xCAT only supports the **ISO** format at this time. 
+
+Advanced Options 
+----------------
+
 ``mlnxofed_ib_install`` has some options, **'-p' is always needed**.
 Below are the details of these options:
 
@@ -31,3 +36,4 @@ If need to pass ``--without-32bit --without-fw-update --add-kernel-support --for
 
     mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso> \
 	-m --without-32bit --without-fw-update --add-kernel-support --force -end- 
+
