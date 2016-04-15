@@ -1078,6 +1078,10 @@ sub genreq_for_mkdocker {
     my ($node, $dockerhost, $method, $api) = @_; 
     my $dockerinfo = $node_hash_variable{$node};
     my %info_hash = ();
+    if (defined($dockerinfo->{flag})) {
+        my $flag_hash = decode_json($dockerinfo->{flag});
+        %info_hash = %$flag_hash;
+    }
     #$info_hash{name} = '/'.$node;
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
@@ -1089,11 +1093,6 @@ sub genreq_for_mkdocker {
     $info_hash{HostConfig}->{NetworkMode} = $dockerinfo->{nics};
     $info_hash{NetworkDisabled} = JSON::false;
     $info_hash{NetworkingConfig}->{EndpointsConfig}->{"$dockerinfo->{nics}"}->{IPAMConfig}->{IPv4Address} = $dockerinfo->{ip};
-    $info_hash{NetworkingConfig}->{EndpointsConfig}->{"$dockerinfo->{nics}"}->{MacAddress} = $dockerinfo->{mac};
-    if (defined($dockerinfo->{flag})) {
-        my $flag_hash = decode_json($dockerinfo->{flag});
-        %info_hash = (%info_hash, %$flag_hash);  
-    }
     my $content = encode_json \%info_hash;
     return genreq($node, $dockerhost, $method, $api, $content);
 }
