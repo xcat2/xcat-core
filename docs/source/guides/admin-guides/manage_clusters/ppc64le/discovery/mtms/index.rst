@@ -1,7 +1,7 @@
 MTMS-based Discovery
 ====================
 
-MTMS stands for  **M**\ achine  **T**\ ype/\ **M**\ odel and **S**\ erial which is a way to uniquely define each physical server.  
+MTMS stands for  **M**\ achine  **T**\ ype/\ **M**\ odel and **S**\ erial.  This is one way to uniquely identify each physical server.  
 
 MTMS-based hardware discovery assumes the administator has the model type and serial number information for the physical servers and a plan for mapping the servers to intended hostname/IP addresses.
 
@@ -24,4 +24,4 @@ MTMS-based hardware discovery assumes the administator has the model type and se
    :maxdepth: 2
 
    verification.rst
-   discovery.rst
+   discovery.rst 
