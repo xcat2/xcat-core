@@ -1,0 +1,42 @@
+start:ubuntu_diskless_installation_docker
+os:Linux
+stop:yes
+
+cmd:copycds $$ISO
+check:rc==0
+cmd: chdef -t node -o $$DOCKERXCATCN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$DOCKERXCATCN -f -p &&  mkvm $$DOCKERXCATCN -s 15G
+cmd:makedns -n
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$DOCKERXCATCN
+check:rc==0
+cmd:rm -rf /install/netboot/__GETNODEATTR($$DOCKERXCATCN,os)__/x86_64/compute
+check:rc==0
+cmd:genimage __GETNODEATTR($$DOCKERXCATCN,os)__-__GETNODEATTR($$DOCKERXCATCN,arch)__-netboot-compute
+check:rc==0
+cmd:packimage __GETNODEATTR($$DOCKERXCATCN,os)__-__GETNODEATTR($$DOCKERXCATCN,arch)__-netboot-compute
+check:rc==0
+cmd:nodeset $$DOCKERXCATCN osimage=__GETNODEATTR($$DOCKERXCATCN,os)__-__GETNODEATTR($$DOCKERXCATCN,arch)__-netboot-compute
+check:rc==0
+cmd:rpower $$DOCKERXCATCN boot
+check:rc==0
+cmd:sleep 200 
+cmd:lsdef -l $$DOCKERXCATCN | grep status
+check:output=~booted
+cmd:xdsh $$DOCKERXCATCN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:nodeset $$DOCKERXCATCN osimage
+check:rc==0
+cmd:rpower $$DOCKERXCATCN reset
+check:rc==0
+cmd:sleep 200
+cmd:lsdef -l $$DOCKERXCATCN | grep status
+check:output=~booted
+cmd:xdsh $$DOCKERXCATCN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end

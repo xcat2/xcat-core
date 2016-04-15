@@ -1,0 +1,30 @@
+start:ubuntu_full_installation_docker
+os:Linux
+stop:yes
+
+cmd:copycds $$ISO
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$DOCKERXCATCN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$DOCKERXCATCN
+check:output=~$$DOCKERXCATCN
+cmd:nodeset $$DOCKERXCATCN osimage=__GETNODEATTR($$DOCKERXCATCN,os)__-__GETNODEATTR($$DOCKERXCATCN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$DOCKERXCATCN boot
+check:rc==0
+cmd:sleep 3000
+cmd:ping $$DOCKERXCATCN -c 3
+check:output=~64 bytes from $$DOCKERXCATCN
+cmd:lsdef -l $$DOCKERXCATCN | grep status
+check:output=~booted
+cmd:xdsh $$DOCKERXCATCN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end
