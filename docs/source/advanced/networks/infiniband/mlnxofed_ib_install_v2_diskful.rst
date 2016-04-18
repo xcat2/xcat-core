@@ -9,7 +9,7 @@ Configuration for Diskful Installation
 
         chdef <node> -p postscripts="mlnxofed_ib_install -p /install/<subpath>/<MLNX_OFED_LINUX.iso>"
 
-  xCAT simulates completely the way Mellanox scripts work by using ``postbootscripts``. This way need to reboot after drive installation to make Mellanox drivers work reliably just like Mellanox suggested. If you want to use the reboot after operating system installation to avoid reboot twice, you can using ``postscripts`` attribute to install Mellanox drivers. This way has been verified in limited scenarios. For more information please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. You can try this way in other else scenarios if you needed.  
+  xCAT simulates completely the way Mellanox scripts work by using ``postbootscripts``. This way need to reboot after drive installation to make Mellanox drivers work reliably just like Mellanox suggested. If you want to use the reboot after operating system installation to avoid reboot twice, you can using ``postscripts`` attribute to install Mellanox drivers. This way has been verified in limited scenarios. For more information please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. You can try this way in other else scenarios if you needed.  
 	
 2. Specify dependency package
 
@@ -48,7 +48,7 @@ Configuration for Diskful Installation
     rsyn
     #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
 
-  xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+  xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base
