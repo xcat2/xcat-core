@@ -77,11 +77,11 @@ sub xdie {
 #helper subroutine to get the major release number 
 #of a osver
 sub majversion {
-    my $version=shift;
+    my $version = shift;
     my $majorrel;
 
-    if($osver =~ /$\D*(\d*)[.\d]*$/){
-        $majorrel=$1;
+    if($osver =~ /^\D*(\d*)[.\d]*$/){
+        $majorrel = $1;
     }
 
     return $majorrel;    
@@ -90,11 +90,10 @@ sub majversion {
 sub mount_chroot {
     my $rootimage_dir = shift;
 
+    #postinstall script of some packages might access the /proc, /sys and /dev filesystem
+    #For Redhat7 or above, mount these directories readonly from host to avoid error messages
+    #For Redhat6 or below, mount these directories might introduce error messages
     if(majversion($osver) > 6){
-       #postinstall script of package installation
-       #might access the /proc, /sys and /dev filesystem
-       #mount them from host read-only
-       #only available for rh7 or above
        system("mkdir -p $rootimage_dir/proc");
        system("mount proc $rootimage_dir/proc -t proc -o ro");
        system("mkdir -p $rootimage_dir/sys");
