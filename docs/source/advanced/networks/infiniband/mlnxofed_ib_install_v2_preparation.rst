@@ -16,7 +16,7 @@ Obtain the Mellanox OFED ISO file from `Mellanox official Download Page <http://
 Prepare Install Script
 ----------------------
 
-**mlnxofed_ib_install.v2** is a sample script, its framework can help you install Mellanox drives easily. But in specific scenario, some detail need to be modified to meet requirement, such like dependency package list. It has been verified in limited scenarios and can work as solution in these scenarios. For these scenarions information please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. 
+**mlnxofed_ib_install.v2** is a sample script, its framework can help you install Mellanox drives easily. But in specific scenario, some detail need to be modified to meet requirement, such like dependency package list. It has been verified in limited scenarios and can work as solution in these scenarios. For these scenarions information please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. 
 
 Copy **mlnxofed_ib_install.v2** into ``/install/postscripts`` and change name to **mlnxofed_ib_install** ::
 
@@ -37,7 +37,7 @@ In general you can use ``mlnxofed_ib_install`` like below ::
 
     mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>
 	
-If need to pass ``--without-32bit --without-fw-update --add-kernel-support --force`` to ``mlnxofedinstall``, refer to below command ::
+If need to pass ``--without-32bit --without-fw-update --add-kernel-support --force`` to ``mlnxofedinstall``, refer to below command. ::
 
     mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso> \
 	-m --without-32bit --without-fw-update --add-kernel-support --force -end- 

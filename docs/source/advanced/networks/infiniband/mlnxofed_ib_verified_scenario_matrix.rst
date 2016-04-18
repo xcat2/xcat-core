@@ -1,4 +1,4 @@
-The Scenarioes Have Been Verified
+The Scenarios Have Been Verified
 =================================
 
 
