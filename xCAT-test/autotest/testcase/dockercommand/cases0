@@ -8,7 +8,7 @@ cmd:mkdocker  $$DOCKERCN image=$$DOCKERIMAGE command=$$DOCKERCOMMAND dockerflag=
 check:rc==0
 cmd:rpower $$DOCKERCN stop
 check:rc==0
-check:ouptut=~container already stoped
+check:ouptut=~container already stopped
 cmd:rpower $$DOCKERCN restart
 check:ouptut=~success
 cmd:rpower $$DOCKERCN state
