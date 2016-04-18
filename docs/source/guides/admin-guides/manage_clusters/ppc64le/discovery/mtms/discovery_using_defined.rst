@@ -15,7 +15,7 @@ The following example outlines the MTMS based hardware discovery for a single IP
 | IP address                   | 10.1.2.1   |
 +------------------------------+------------+
 
-The BMC IP address is obtained by the open range dhcp server and the plan in this scenario is to change the IP address for the BMC to a static IP address in a different subnet than the open range addresses. 
+The BMC IP address is obtained by the open range dhcp server and the plan in this scenario is to change the IP address for the BMC to a static IP address in a different subnet than the open range addresses.  The static IP address in this example is in the same subnet as the open range to simplify the networking configuration on the xCAT management node.
 
 +------------------------------+------------+
 | BMC Information              | Value      |

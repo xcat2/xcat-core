@@ -96,18 +96,18 @@ The BMC IP address is obtained by the open range dhcp server and the plan is to 
 
 #. **[Optional]**  Monitor the node discovery process using rcons
 
-   Configure the conserver for the **discovered** node to watch the discovery process using ``rcons``::
+   Configure the conserver for the **predefined** node to watch the discovery process using ``rcons``::
 
-       makeconservercf node-8247-22l-10112ca
+       makeconservercf cn01
 
    In another terminal window, open the remote console: ::
 
-       rcons node-8247-22l-10112ca
+       rcons cn01
 
-#. Start the discovery process by booting the **discovered** node definition: ::
+#. Start the discovery process by booting the **predefined** node definition: ::
 
-       rsetboot node-8247-22l-10112ca net
-       rpower node-8247-22l-10112ca on
+       rsetboot cn01 net
+       rpower cn01 on
 
 #. The discovery process will network boot the machine into the diskless xCAT genesis kernel and perform the discovery process. When the discovery process is complete, doing ``lsdef`` on the compute nodes should show discovered attributes for the machine.  The important ``mac`` information should be discovered, which is necessary for xCAT to perform OS provisioning. 
 

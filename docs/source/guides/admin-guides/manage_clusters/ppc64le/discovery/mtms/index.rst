@@ -8,9 +8,9 @@ MTMS-based hardware discovery assumes the administator has the model type and se
 **Overview**
 
    #. Automatically search and collect MTMS information from the servers
-   #. Define the **discovered-node** to xCAT
-   #. Create a **predefined-node** to xCAT providing additional properties
-   #. Power on the **discovered-nodes** triggering xCAT's hardware discovery engine.
+   #. Write **discovered-bmc-nodes** to xCAT (recommened to set different BMC IP address)
+   #. Create **predefined-compute-nodes** to xCAT providing additional properties
+   #. Power on the nodes which triggers xCAT hardware discovery engine
 
 **Pros**
 
@@ -18,7 +18,7 @@ MTMS-based hardware discovery assumes the administator has the model type and se
 
 **Cons**
 
-   * When compared to switch-based discovery, the administrator needs to create the **predefined-node** for each of the **discovered-nodes** stanzas.  This could become difficult for a large number of servers.
+   * When compared to switch-based discovery, the administrator needs to create the **predefined-compute-nodes** for each of the **discovered-bmc-nodes**.  This could become difficult for a large number of servers.
 
 .. toctree::
    :maxdepth: 2
