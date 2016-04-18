@@ -73,18 +73,34 @@ sub xdie {
    die @_;
 }
 
+
+#helper subroutine to get the major release number 
+#of a osver
+sub majversion {
+    my $version = shift;
+    my $majorrel;
+
+    if($osver =~ /^\D*(\d*)[.\d]*$/){
+        $majorrel = $1;
+    }
+
+    return $majorrel;    
+}
+
 sub mount_chroot {
     my $rootimage_dir = shift;
 
-    #postinstall script of package installation
-    #might access the /proc, /sys and /dev filesystem
-    #mount them from host read-only
-    system("mkdir -p $rootimage_dir/proc");
-    system("mount proc $rootimage_dir/proc -t proc -o ro");
-    system("mkdir -p $rootimage_dir/sys");
-    system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
-    system("mkdir -p $rootimage_dir/dev");
-    system("mount devtmpfs $rootimage_dir/dev -t devtmpfs -o ro");
+    #postinstall script of some packages might access the /proc, /sys and /dev filesystem
+    #For Redhat7 or above, mount these directories readonly from host to avoid error messages
+    #For Redhat6 or below, mount these directories might introduce error messages
+    if(majversion($osver) > 6){
+       system("mkdir -p $rootimage_dir/proc");
+       system("mount proc $rootimage_dir/proc -t proc -o ro");
+       system("mkdir -p $rootimage_dir/sys");
+       system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+       system("mkdir -p $rootimage_dir/dev");
+       system("mount devtmpfs $rootimage_dir/dev -t devtmpfs -o ro");
+    }
 }
 
 
@@ -92,9 +108,11 @@ sub mount_chroot {
 sub umount_chroot {
     my $rootimage_dir = shift;
 
-    system("umount $rootimage_dir/proc");
-    system("umount $rootimage_dir/sys");
-    system("umount $rootimage_dir/dev");
+    if(majversion($osver) >6){
+        system("umount $rootimage_dir/proc");
+        system("umount $rootimage_dir/sys");
+        system("umount $rootimage_dir/dev");
+    }
 }
 
 #check whether a dir is NFS mounted
@@ -969,14 +987,19 @@ sub mkinitrd_dracut {
         $perm = (stat("$fullpath/$dracutdir/installkernel"))[2];
         chmod($perm&07777, "$dracutmpath/installkernel");
 
+        my $dracutmodulelist=" xcat nfs base network kernel-modules ";
+        if (-d glob($dracutmoduledir."[0-9]*fadump")){
+            $dracutmodulelist .=" fadump ";
+
+        }
+
+        if ($dracutver >= "033") {
+            $dracutmodulelist .= " syslog ";
+        }
+
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        if (-d glob($dracutmoduledir."[0-9]*fadump")){
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules fadump syslog"\n};
-        }
-        else{
-            print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules syslog"\n};
-        }
+        print $DRACUTCONF qq{dracutmodules+="$$dracutmodulelist"\n};
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
     } else {
