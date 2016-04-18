@@ -1,95 +1,169 @@
 Configuration for Diskful Installation
 =======================================
 
-1. Set script ``mlnxofed_ib_install`` as postbootscript ::
+1. Set script ``mlnxofed_ib_install`` as ``postbootscripts`` or ``postscripts`` ::
 
-	chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>" 
+	chdef <node> -p postbootscripts="mlnxofed_ib_install -p /install/<subpath>/<MLNX_OFED_LINUX.iso>" 
+  
+  Or ::
+
+        chdef <node> -p postscripts="mlnxofed_ib_install -p /install/<subpath>/<MLNX_OFED_LINUX.iso>"
+
+  xCAT simulates completely the way Mellanox scripts work by using ``postbootscripts``. This way need to reboot after drive installation to make Mellanox drivers work reliably just like Mellanox suggested. If you want to use the reboot after operating system installation to avoid reboot twice, you can using ``postscripts`` attribute to install Mellanox drivers. This way has been verified in limited scenarios. For more information please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>`. You can try this way in other else scenarios if you needed.  
 	
-2. Specify dependence package **[required for RHEL and SLES]**
+2. Specify dependency package
 
-  a) Copy a correct pkglist file **shipped by xCAT**  according your environment to the ``/install/custom/install/<ostype>/`` directory, these pkglist files are located under ``/opt/xcat/share/xcat/install/<ostype>/`` ::
+  Some dependencies need to be installed before running Mellanox scripts. These dependencies are different between different scenario. xCAT configurates these dependency packages by using ``pkglist`` attribute of ``osimage`` definition. Please refer to :doc:`Add Additional Software Packages </guides/admin-guides/manage_clusters/ppc64le/diskful/customize_image/additional_pkg>` for more information::
 
-	cp /opt/xcat/share/xcat/install/<ostype>/compute.<osver>.<arch>.pkglist \
-	   /install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
+    # lsdef -t osimage <os>-<arch>-install-compute
+    Object name: <os>-<arch>-install-compute
+    imagetype=linux
+    ....
+    pkgdir=/<os packages directory>
+    pkglist=/<os packages list directory>/compute.<os>.<arch>.pkglist
+    ....
 
-  b) Edit your ``/install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist`` and add one line 
-  
-   ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<osver>.<arch>.pkglist#``
-  
-   You can check directory ``/opt/xcat/share/xcat/ib/netboot/<ostype>/`` and choose one correct ``ib.<osver>.<arch>.pkglist`` according your environment.
- 
-	
-  c) Make the related osimage use the customized pkglist ::
+  You can append the ib dependency packages list in the end of ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` directly like below: ::
 
-	chdef -t osimage -o <osver>-<arch>-install-compute  \
-	    pkglist=/install/custom/install/<ostype>/compute.<osver>.<arch>.pkglist
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn 
+    #ib part
+    createrepo
+    kernel-devel
+    kernel-source
+    ....
+
+
+  Or if you want to isolate InfiniBand dependency packages list into a separate file, after you edit this file, you can append the file in ``/<os packages list directory>/compute.<os>.<arch>.pkglist`` like below way: ::
+
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn
+    #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
+
+  xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarioes Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+
+    #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
+    @base
+    @x11
+    openssl
+    ntp
+    rsyn
+    #INCLUDE:/opt/xcat/share/xcat/ib/netboot/<ostype>/ib.<os>.<arch>.pkglist#
+    
+  Take rhels7.2 on ppc64le for example:   ::
+
+     # lsdef  -t osimage rhels7.2-ppc64le-install-compute
+     Object name: rhels7.2-ppc64le-install-compute
+     imagetype=linux
+     osarch=ppc64le
+     osdistroname=rhels7.2-ppc64le
+     osname=Linux
+     osvers=rhels7.2
+     otherpkgdir=/install/post/otherpkgs/rhels7.2/ppc64le
+     pkgdir=/install/rhels7.2/ppc64le
+     pkglist=/install/custom/install/rh/compute.rhels7.ib.pkglist
+     profile=compute
+     provmethod=install
+     template=/opt/xcat/share/xcat/install/rh/compute.rhels7.tmpl
 		
-    Take RHEL 6.4 on x86_64 for example ::
 
-        cp /opt/xcat/share/xcat/install/rh/compute.rhels6.x86_64.pkglist \
-        /install/custom/install/rh/compute.rhels6.x86_64.pkglist
+  **[Note]**: If the osimage definition was generated by xCAT command ``copycds``, default value ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist`` was assigned to ``pkglist`` attribute. ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist`` is the sample pkglist shipped by xCAT, recommend to make a copy of this sample and using the copy in real environment. In the above example, ``/install/custom/install/rh/compute.rhels7.ib.pkglist`` is a copy of ``/opt/xcat/share/xcat/install/rh/compute.rhels7.pkglist``. ::
+
+    # cat /install/custom/install/rh/compute.rhels7.ib.pkglist
+    #Please make sure there is a space between @ and group name
+    wget
+    ntp
+    nfs-utils
+    net-snmp
+    rsync
+    yp-tools
+    openssh-server
+    util-linux
+    net-tools
+    #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels7.ppc64le.pkglist#
+
+
  
-    Edit the ``/install/custom/install/rh/compute.rhels6.x86_64.pkglist`` and add below line   
-    ``#INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#`` 
-  
-    Then ``/install/custom/install/rh/compute.rhels6.x86_64.pkglist`` looks like below ::
-  
-        #Please make sure there is a space between @ and group name
-        #INCLUDE:/opt/xcat/share/xcat/ib/netboot/rh/ib.rhels6.x86_64.pkglist#
-        ntp
-        nfs-utils
-        net-snmp
-        rsync
-        yp-tools
-        openssh-server
-        util-linux-ng
-
-    Then modify related osimage ::
-  
-        chdef -t osimage -o rhels6.4-x86_64-install-compute  \
-         pkglist=/install/custom/install/rh/compute.rhels6.x86_64.pkglist
-		
 3. Install node ::
 
 	nodeset <node> osimage=<osver>-<arch>-install-compute
 	rsetboot <node> net
 	rpower <node> reset
 
-  **[Note]**: 
 
-  * In RHEL7.x, after performing all steps above, ``openibd`` doesn't work well. you can resolve this problem depending on `Mellanox OFED Linux Release Notes <http://www.mellanox.com/related-docs/prod_software/Mellanox_OFED_Linux_Release_Notes_3_1-1_0_5.pdf>`_ by yourself. But reboot one more time can resolve all of these complex issues. so **we strongly recommend reboot machine again to avoid unexpected problem in RHEL7.x.**  
+  After steps above, you can login target node and find the Mellanox InfiniBand drives are located under ``/lib/modules/<kernel_version>/extra/``. 
 
-  * If you performed firmware updates, i.e. you didn't pass ``--without-fw-update`` to option ``-m`` of ``mlnxofed_ib_install``, **reboot machine for all distro**
+  Issue ``ibv_devinfo`` command you can get the InfiniBand apater information ::
 
-  After steps above, you can login target ndoe and find the Mellanox IB drives are located under ``/lib/modules/<kernel_version>/extra/``. 
+    # ibv_devinfo
+    hca_id:	mlx5_0
+	transport:			InfiniBand (0)
+	fw_ver:				10.14.2036
+	node_guid:			f452:1403:0076:10e0
+	sys_image_guid:			f452:1403:0076:10e0
+	vendor_id:			0x02c9
+	vendor_part_id:			4113
+	hw_ver:				0x0
+	board_id:			IBM1210111019
+	phys_port_cnt:			2
+	Device ports:
+		port:	1
+			state:			PORT_INIT (2)
+			max_mtu:		4096 (5)
+			active_mtu:		4096 (5)
+			sm_lid:			0
+			port_lid:		65535
+			port_lmc:		0x00
+			link_layer:		InfiniBand
 
-  Issue ``ibstat`` command you can get the IB apater information ::
+		port:	2
+			state:			PORT_DOWN (1)
+			max_mtu:		4096 (5)
+			active_mtu:		4096 (5)
+			sm_lid:			0
+			port_lid:		65535
+			port_lmc:		0x00
+			link_layer:		InfiniBand 
 
-    [root@server ~]# ibstat
-    CA 'mlx4_0'
-        CA type: MT4099
-        Number of ports: 2
-        Firmware version: 2.11.500
-        Hardware version: 0
-        Node GUID: 0x5cf3fc000004ec02
-        System image GUID: 0x5cf3fc000004ec05
-        Port 1:
-                State: Initializing
-                Physical state: LinkUp
-                Rate: 40 (FDR10)
-                Base lid: 0
-                LMC: 0
-                SM lid: 0
-                Capability mask: 0x02594868
-                Port GUID: 0x5cf3fc000004ec03
-                Link layer: InfiniBand
-        Port 2:
-                State: Down
-                Physical state: Disabled
-                Rate: 10
-                Base lid: 0
-                LMC: 0
-                SM lid: 0
-                Capability mask: 0x02594868
-                Port GUID: 0x5cf3fc000004ec04
-                Link layer: InfiniBand
+  Using ``service openibd status`` to verify if openibd works well. Below is the output in rhels7.2. ::
+
+
+    # service openibd status
+      HCA driver loaded
+    
+    Configured IPoIB devices:
+    ib0 ib1
+    
+    Currently active IPoIB devices:
+    Configured Mellanox EN devices:
+    
+    Currently active Mellanox devices:
+    
+    The following OFED modules are loaded:
+    
+      rdma_ucm
+      rdma_cm
+      ib_addr
+      ib_ipoib
+      mlx4_core
+      mlx4_ib
+      mlx4_en
+      mlx5_core
+      mlx5_ib
+      ib_uverbs
+      ib_umad
+      ib_ucm
+      ib_sa
+      ib_cm
+      ib_mad
+      ib_core
+
+
