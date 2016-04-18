@@ -37,7 +37,7 @@ In general you can use ``mlnxofed_ib_install`` like below ::
 
     mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso>
 	
-If need to pass ``--without-32bit --without-fw-update --add-kernel-support --force`` to ``mlnxofedinstall``, refer to below command ::
+If need to pass ``--without-32bit --without-fw-update --add-kernel-support --force`` to ``mlnxofedinstall``, refer to below command. ::
 
     mlnxofed_ib_install -p /install/<path>/<MLNX_OFED_LINUX.iso> \
 	-m --without-32bit --without-fw-update --add-kernel-support --force -end- 

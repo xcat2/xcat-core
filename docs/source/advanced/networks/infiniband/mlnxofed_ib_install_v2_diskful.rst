@@ -48,7 +48,7 @@ Configuration for Diskful Installation
     rsyn
     #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
 
-  xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+  xCAT has shipped some ib pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenario. Please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     @base

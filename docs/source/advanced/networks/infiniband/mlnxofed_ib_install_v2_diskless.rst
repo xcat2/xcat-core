@@ -41,7 +41,7 @@ Configuration for Diskless Installation
     .....
     #INCLUDE:/<ib pkglist path>/<you ib pkglist file>#
 
-  xCAT ships some InfiniBand pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenarion. Please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
+  xCAT ships some InfiniBand pkglist files under ``/opt/xcat/share/xcat/ib/netboot/<ostype>/``, these pkglist files have been verified in sepecific scenario. Please refer to :doc:`The Scenarios Have Been Verified </advanced/networks/infiniband/mlnxofed_ib_verified_scenario_matrix>` to judge if you can use it directly in your environment. If so, you can use it like below: ::
 
     #cat /<os packages list directory>/compute.<os>.<arch>.pkglist
     bash
@@ -65,13 +65,13 @@ Configuration for Diskless Installation
 
 
 		
-  Edit ``/<postinstall script path/compute.<os>.<arch>.postinstall`` and add below line in the end ::
+  Edit ``/<postinstall script path/compute.<os>.<arch>.postinstall`` and add below line in the end. ::
 
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<path>/<MLNX_OFED_LINUX.iso> -i $1 -n genimage
 
 
- **[Note]** Mellanox OFED ISO was built against a series of certain kernael versions, If the version of linux kernel you are using does not match with any of the Mellanox offered pre-built kernel modules, you can pass ``--add-kernel-support`` command line argument to Mellanox OFED installation script to build these kernel modules base on the version of linux kernel you are using. The line added into ``<profile>.postinstall`` should like below :: 
+ **[Note]** Mellanox OFED ISO was built against a series of certain kernael versions, If the version of linux kernel you are using does not match with any of the Mellanox offered pre-built kernel modules, you can pass ``--add-kernel-support`` command line argument to Mellanox OFED installation script to build these kernel modules base on the version of linux kernel you are using. The line added into ``<profile>.postinstall`` should like below. :: 
 
         /install/postscripts/mlnxofed_ib_install \
         -p /install/<subpath>/<MLNX_OFED_LINUX.iso> -m --add-kernel-support -end- -i $1 -n genimage
@@ -136,7 +136,7 @@ Configuration for Diskless Installation
 	rsetboot <nodename> net
 	rpower <nodename> reset
 
-  After installation, you can login target ndoe and issue ``ibv_devinfo`` command to verify if your InfiniBand driver works well. if everything is fine, you can get the InfiniBand apater information ::
+  After installation, you can login target ndoe and issue ``ibv_devinfo`` command to verify if your InfiniBand driver works well. if everything is fine, you can get the InfiniBand apater information. ::
 
     # ibv_devinfo
     hca_id:	mlx5_0
