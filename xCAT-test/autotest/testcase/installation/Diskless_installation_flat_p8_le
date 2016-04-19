@@ -27,6 +27,7 @@ check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
+check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 200 
