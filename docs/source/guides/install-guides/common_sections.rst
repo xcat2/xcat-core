@@ -3,6 +3,9 @@
 
 For the current list of operating systems supported and verified by the development team for the different releases of xCAT, see the :doc:`xCAT2 Release Notes </overview/xcat2_release>`. 
 
+**Disclaimer** These instructions are intended to only be guidelines and specific details may differ slightly based on the operating system version.  Always refer to the operating system documentation for the latest recommended procedures.
+
+
 .. END_see_release_notes
 
 .. BEGIN_install_os_mgmt_node
@@ -25,14 +28,6 @@ The system requirements for your xCAT management node largely depend on the size
 
 
 .. END_install_os_mgmt_node
-
-.. BEGIN_setup_mgmt_node_network
-
-The Management Node IP address should be set to a **static** IP address.  
-
-Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network-scripts`` and configure a static IP address.
-
-.. END_setup_mgmt_node_network
 
 .. BEGIN_install_xcat_introduction
 
