@@ -4,7 +4,7 @@ stop:yes
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" != "ppc64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 20G ; fi
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
 check:rc==0
 cmd:makedns -n
 check:rc==0
@@ -25,6 +25,8 @@ check:rc==0
 cmd:packimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
 check:rc==0
 cmd:rpower $$CN boot
 check:rc==0
