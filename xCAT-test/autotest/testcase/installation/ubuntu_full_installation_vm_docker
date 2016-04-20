@@ -2,7 +2,7 @@ start:Full_installation_flat_docker
 os:Linux
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$DOCKERHOST,arch)__" != "ppc64" ]];then chdef -t node -o $$DOCKERHOST vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$DOCKERHOST -f -p &&  mkvm $$DOCKERHOST -s 40G; fi
+cmd:if [[ "__GETNODEATTR($$DOCKERHOST,arch)__" != "ppc64" ]];then chdef -t node -o $$DOCKERHOST vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$DOCKERHOST -f  &&  mkvm $$DOCKERHOST ; fi
 check:rc==0
 cmd:makehosts $$DOCKERHOST
 check:rc==0
