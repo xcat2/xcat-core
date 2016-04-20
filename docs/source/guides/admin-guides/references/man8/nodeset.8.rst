@@ -19,11 +19,11 @@ Name
 ****************
 
 
-\ **nodeset**\  [\ *noderange*\ ] [\ **boot**\  | \ **stat**\  | \ **iscsiboot**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ = \ *imagename*\  | \ **shell**\  | \ **shutdown**\ ]
+\ **nodeset**\  \ *noderange*\  [\ **boot**\  | \ **stat**\  | \ **iscsiboot**\  | \ **offline**\  | \ **runcmd=bmcsetup**\  | \ **osimage**\ [=\ *imagename*\ ] | \ **shell**\  | \ **shutdown**\ ]
 
-\ **nodeset**\  \ *noderange*\  \ **osimage=**\  \ *imagename*\  [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
+\ **nodeset**\  \ *noderange*\  \ **osimage**\ [=\ *imagename*\ ] [\ **-**\ **-noupdateinitrd**\ ] [\ **-**\ **-ignorekernelchk**\ ]
 
-\ **nodeset**\  \ *noderange*\  \ **runimage=**\  \ *task*\ 
+\ **nodeset**\  \ *noderange*\  \ **runimage=**\ \ *task*\ 
 
 \ **nodeset**\  [\ **-h | -**\ **-help | -v | -**\ **-version**\ ]
 
@@ -74,7 +74,7 @@ A user can supply their own scripts to be run on the mn or on the service node (
  
 
 
-\ **osimage | osimage=<imagename**\ >
+\ **osimage | osimage=**\ \ *imagename*\ 
  
  Prepare server for installing a node using the specified os image. The os image is defined in the \ *osimage*\  table and \ *linuximage*\  table. If the <imagename> is omitted, the os image name will be obtained from \ *nodetype.provmethod*\  for the node.
  
