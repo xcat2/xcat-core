@@ -4,7 +4,7 @@ stop:yes
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 15G; fi
+cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
 cmd:makedns -n
 check:rc==0
 cmd:makedhcp -n
