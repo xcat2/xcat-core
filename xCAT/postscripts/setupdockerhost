@@ -17,8 +17,33 @@ if [ "$(uname -s|tr 'A-Z' 'a-z')" = "linux" ];then
 fi
 
 if [[ "$OSVER" != ubuntu* ]]; then 
-    echo "Sorry, only ubuntu have been verified at present"
+    echo "OS = $OSVER: Setup of Docker host is currently supported only on Ubuntu."
     exit 1
+fi
+
+if [[ "$ARCH" == "x86_64" ]]; then
+    # Check if docker-engine is installed
+    dpkg -l docker-engine
+    if [ $? -ne 0 ]; then
+        echo "Can not detect docker-engine installation."
+        exit 1
+    fi
+fi
+
+if [[ "$ARCH" == "ppc64el" ]]; then
+    # Check if docker.io is installed
+    dpkg -l docker.io
+    if [ $? -ne 0 ]; then
+        echo "Can not detect docker.io installation."
+        exit 1
+    fi
+fi
+
+# Docker is installed, check that it is running
+docker info
+if [ $? -ne 0 ]; then
+    echo "Docker is not running, Trying to restart."
+    service docker start
 fi
 
 DOCKER_VERSION=`docker info 2>/dev/null | grep "Server Version:" | awk -F: '{print $2}'`
@@ -42,7 +67,7 @@ mask=""
 gateway=""
 nicname=""
 
-if [ $# -ne 1]; then
+if [ $# -ne 1 ]; then
     echo "Usage error, must in the format '$0 netname=net/mask@gateway[:nicname]'"
     exit 1
 else 
@@ -120,7 +145,10 @@ else
 fi
 
 #Restart docker service
-service docker restart
+service docker stop
+sleep 2
+systemctl daemon-reload
+service docker start
 # It is found that sometimes the docker ps will failed if run immediately after restart docker daemon
 sleep 2
 docker ps

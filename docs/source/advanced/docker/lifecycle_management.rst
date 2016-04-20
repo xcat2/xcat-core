@@ -5,7 +5,7 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
 
-**Note:** The document is based on **Docker Version 1.10.x** and **Docker API version 1.22.** And the Docker Host is based on **ubuntu14.04.3 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64** architecture from docker.org. You can search online to find them or build your own.
+**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64** and **ubuntu16.04 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64el** architecture from docker.org. You can follow instructions at the end of this page on how to manually download and install it.
 
 Setting up Docker Host
 ----------------------
@@ -94,7 +94,6 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
      dockernics=mynet0
      groups=docker,all
      ip=10.0.120.1
-     mac=02:42:0a:00:78:01
      mgt=docker
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
@@ -107,7 +106,7 @@ Create docker instance
 ``````````````````````
 ::
 
- mkdocker <node> [image=<image_name>  [command=<command>] [dockerflag=<docker_flags>]]
+ mkdocker <node> image=<image_name>  [command=<command>] [dockerflag=<docker_flags>]]
 
 * node - The node object which represents the docker instance
 * image - The image name that the docker instance will use
@@ -173,3 +172,46 @@ Check docker instance status
 ::
 
  rpower <node> state
+
+Download and configure docker host on ppc64el
+--------------------------
+
+Download docker engine for ppc64el
+::
+
+ wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
+
+Follow instructions above for **x86_64** setup with the following exceptions:
+
+Docker host node definition **otherpkgdir** should be
+::
+
+ otherpkgdir=/install/docker_ppc64el
+
+Contents of **otherpkglist** file should be
+::
+
+ docker.io
+
+Troubleshooting
+--------------------------
+
+If things go wrong:
+
+* After dockerhost node boots, check contents of **/var/log/xcat/xcat.log** file on the dockerhost for errors.
+
+* Verify **nicname** specified in **Preparing setup trust connection for docker service and create docker network object** section exists on the docker host. Depending on the version of Ubuntu OS and host architecture, it could be **eth0**, or **em1**, or **eno1**, or **enp0s1**. Verify by running on the dockerhost
+::
+
+ ip addr show dev <nicname>
+
+* Run **ps -ef | grep docker** to verify docker engine is running with configured options. It should look something like
+::
+
+ root      3703     1  0 Apr15 ?        00:12:28 /usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://host01:2375 --tls --tlscacert=/root/.docker/ca-cert.pem --tlscert=/root/.docker/dockerhost-cert.pem --tlskey=/root/.docker/dockerhost-cert.pem --tlsverify=true --raw-logs
+
+If the output is missing some options, verify that file **/lib/systemd/system/docker.service** contains the following lines
+::
+
+  EnvironmentFile=-/etc/default/docker
+  ExecStart=/usr/bin/docker daemon $DOCKER_OPTS -H fd://
