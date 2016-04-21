@@ -999,7 +999,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        print $DRACUTCONF qq{dracutmodules+="$$dracutmodulelist"\n};
+        print $DRACUTCONF qq{dracutmodules+="$dracutmodulelist"\n};
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
     } else {
