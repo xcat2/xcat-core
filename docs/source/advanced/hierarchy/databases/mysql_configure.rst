@@ -29,7 +29,7 @@ Granting/Revoking access to the database for Service Node Clients
 
 * Log into the MySQL interactive program.  ::
 
-    /usr/bin/mysql -r root -p
+    /usr/bin/mysql -u root -p
 
 * Granting access to the xCAT database.  Service Nodes are required for xCAT hierarchical support.  Compute nodes may also need access that depends on which application is going to run. (xcat201 is xcatadmin's password for following examples) ::
 
