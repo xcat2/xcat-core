@@ -2554,16 +2554,25 @@ sub getNodeAttribs_nosub_returnany
     
   my $attrib;
   my $result;
-    
+  my @hierarchy_attrs;
+  my $hierarchy_field = xCAT::TableUtils->get_site_attribute("heirarchicalattrs");
+  if ($hierarchy_field) {
+      @hierarchy_attrs = split(/,/, $hierarchy_field);
+  }
+
   my $data = $results[0];
   if(defined{$data}) { #if there was some data for the node, loop through and check it 
     foreach $result (@results) {
       foreach $attrib (keys %attribsToDo) {
+        if (defined($result) && defined($result->{$attrib})
+            && @hierarchy_attrs && grep (/^$attrib$/, @hierarchy_attrs) ) {
+            $result->{$attrib} .= ',+=NEXTRECORD';
+        }
         #check each item in the results to see which attributes were satisfied
         if(defined($result) && defined($result->{$attrib}) && $result->{$attrib} !~ $nextRecordAtEnd) {
           delete $attribsToDo{$attrib};
-        } 
-      }   
+        }
+      }
     }
   }
 
@@ -2578,7 +2587,7 @@ sub getNodeAttribs_nosub_returnany
   unless (defined($nodeghash) && defined($nodeghash->{groups})) {
     return @results;
   }
-    
+
   my @nodegroups = split(/,/, $nodeghash->{groups});
   my $group;
   my @groupResults;
@@ -2601,8 +2610,10 @@ sub getNodeAttribs_nosub_returnany
 #print "looking for attrib $attrib\n";
           if(defined($groupResult->{$attrib})){
             $attribsDone{$attrib} = 0;
-#print "found attArib $attrib = $groupResult->{$attrib}\n";
-#print "and results look like this:  \n".Dumper(\@results)."\n\n\n";
+            # for hierarchy attribute, append attributes from all the node's group
+            if (@hierarchy_attrs && grep (/^$attrib$/, @hierarchy_attrs) ) {
+                $groupResult->{$attrib} .= ',+=NEXTRECORD';
+            }
             foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
               if(defined($result)) {
                 if(defined($result->{$attrib})) {
@@ -2639,7 +2650,6 @@ sub getNodeAttribs_nosub_returnany
                 }
               }
               else {#no results in the array so far
-#print "pushing for the first time.  attr=$attrib groupResults=$groupResult->{$attrib}\n";
                 $toPush{$attrib} = $groupResult->{$attrib};
                 if($options{withattribution} && $attrib ne $nodekey){
                     $toPush{'!!xcatgroupattribution!!'}->{$attrib} = $group;
@@ -2685,6 +2695,13 @@ sub getNodeAttribs_nosub_returnany
   for $result (@results) {
     for my $key (keys %$result) {
       $result->{$key} =~ s/\+=NEXTRECORD//g;
+      if (@hierarchy_attrs && grep (/^$key$/, @hierarchy_attrs) ) {
+          my @attribs = split(/,/, $result->{$key});
+          my %count;
+          # remove the repeat value
+          @attribs = grep { ++$count{ $_ } < 2; } @attribs;
+          $result->{$key} = join(',', @attribs);
+      }
     }
   }
 
