@@ -54,4 +54,8 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:sleep 120
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
 end
