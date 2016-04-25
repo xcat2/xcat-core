@@ -23,7 +23,7 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **-**\ **-range**\  \ *ip_ranges*\  [{\ **-u | -**\ **-bmcuser**\ } \ *bmc_username*\  {\ **-p | -**\ **-bmcpasswd**\ }] [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
 
 \ **bmcdiscover**\  {\ **-i | -**\ **-bmcip**\ } \ *bmc_ip*\  {\ **-u | -**\ **-bmcuser**\ } \ *bmc_username*\  {\ **-p | -**\ **-bmcpasswd**\ } \ *bmc_password*\  \ **-**\ **-check**\ 
 
