@@ -12,7 +12,7 @@ The paralell compression tool ``pigz`` can be enabled by installing ``pigz`` pac
 
 * **[RHEL]** 
 
-  The package ``pigz`` is shipped in Extra Packages for Enterprise Linux (or EPEL) instead of Redhat iso, this involves some complexity.
+  The package ``pigz`` is shipped in Extra Packages for Enterprise Linux (or EPEL) instead of RedHat iso, this involves some complexity.
   
   Extra Packages for Enterprise Linux (or EPEL) is a Fedora Special Interest Group that creates, maintains, and manages a high quality set of additional packages for Enterprise Linux, including, but not limited to, Red Hat Enterprise Linux (RHEL), CentOS and Scientific Linux (SL), Oracle Linux (OL).
   

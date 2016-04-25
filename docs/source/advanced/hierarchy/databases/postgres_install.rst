@@ -4,12 +4,12 @@ Install PostgreSQL
 PostgreSQL packages are shipped as part of most Linux Distributions.
 
 
-Redhat Enterprise Linux
------------------------
+Red Hat Enterprise Linux
+------------------------
 
 Using yum, install the following rpms: ::
 
-    yum install postgresql-libs-* postgresql-server-* postgresql-*
+    yum install postgresql-*
     yum install perl-DBD-Pg*
 
 
@@ -20,7 +20,7 @@ Suse Linux Enterprise Server
 
 Using zyppr, install the following rpms: ::
 
-    zyppr install postgresql-libs-* postgresql-server-* postgresql-*
+    zyppr install postgresql-*
     zyppr install perl-DBD-Pg*
 
 
