@@ -1577,7 +1577,7 @@ sub tabdb
          if ($rep) {
             return tabdb($rep->[0], $rep->[1], $rep->[2]);
          } else {
-            $tmplerr="Unable to find requested filed <$field> from table <$table>, with key <$key>"
+            $tmplerr="Unable to find requested field <$field> from table <$table>, with key <$key>"
          }
       }
       return "";
@@ -1586,7 +1586,7 @@ sub tabdb
         # check for site.xcatdebugmode
         if (($table =~ /site/) and ($key =~ /xcatdebugmode/)) {
             if ((($ent->{$field}) ne "0") and (($ent->{$field}) ne "1") and (($ent->{$field}) ne "2")) {
-                $tmplerr="Unable to recognise filed <$field> from table <$table>, with key <$key>. Please enter '0' '1' or '2'"
+                $tmplerr="Unable to recognise field <$field> from table <$table>, with key <$key>. Please enter '0' '1' or '2'"
             }
         }
     }

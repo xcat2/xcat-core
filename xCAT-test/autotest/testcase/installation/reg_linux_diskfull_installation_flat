@@ -1,12 +1,11 @@
 start:reg_linux_diskfull_installation_flat
 os:Linux
-stop=yes  
 
 cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f -p &&  mkvm $$CN -s 15G; fi
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then chdef -t node -o $$CN vmstorage=dir:///var/lib/libvirt/images/ && rmvm $$CN -f  &&  mkvm $$CN ; fi
 cmd:makedns -n
 check:rc==0
 cmd:makeconservercf 
@@ -14,7 +13,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
 cmd:sleep 20
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then getmacs -D $$CN; fi 
+cmd:if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ]; then getmacs -D $$CN; fi 
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
@@ -32,10 +31,12 @@ check:rc==0
 cmd:lsdef $$CN |grep provmethod
 check:rc==0
 check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then rpower $$CN boot; fi
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
 check:rc==0
 
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc" ]]; then sleep 1200;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then sleep 600;else sleep 180;fi
+cmd:if [[ "__GETNODEATTR($$CN,mgt)__" =~ "ipmi" ]]; then sleep 1800;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]];then sleep 1200;else sleep 600;fi
 
 cmd:lsdef -l $$CN | grep status
 
@@ -52,4 +53,8 @@ check:rc==0
 check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
+cmd:sleep 120
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
 end

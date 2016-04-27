@@ -97,7 +97,9 @@ if [ -z "$install_disk" ]; then
             fi
 
             # If there is kernel file, add partition's disk into disk_array
-            for i in $ker_dir/vmlinuz*; do
+            # It seems the kernel file in ubuntu and sles are named like vmlinux, but in RH it is called vmlinuz
+            # To check both vmlinux and vmlinuz, use regular expression "vmlinu*" to match them
+            for i in $ker_dir/vmlinu*; do
                 disk_part=${partition%%[0-9]*}
                 touch "$tmpfile$disk_part"
                 disk_array=$disk_array"$disk_part "

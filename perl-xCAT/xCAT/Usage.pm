@@ -96,7 +96,7 @@ my %usage = (
     MIC specific:
        rinv noderange [system|ver|board|core|gddr|all]",
     "rsetboot" => 
-"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
+"Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose] [-u] [-p]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" => 
 "Usage: 
@@ -459,7 +459,7 @@ Options:
 "Usage:
    Common:
       nodeset [-h|--help|-v|--version]
-      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline]",
+      nodeset <noderange> [shell|boot|runcmd=bmcsetup|iscsiboot|osimage[=<imagename>]|offline|shutdown|stat]",
   "rmflexnode" =>
 "Usage:
     rmflexnode [-h|--help|-v|--version]

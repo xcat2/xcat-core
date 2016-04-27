@@ -14,4 +14,6 @@ kernel-devel
 gtk2
 atk
 cairo
-
+gcc
+createrepo
+libnl

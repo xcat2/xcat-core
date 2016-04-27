@@ -1,0 +1,14 @@
+pciutils-libs
+pciutils
+tcl
+tk
+tcsh
+libgcc.ppc
+gcc-gfortran
+createrepo
+kernel-devel
+python-devel
+lsof
+redhat-rpm-config
+rpm-build
+libnl

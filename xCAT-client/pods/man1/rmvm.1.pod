@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rmvm> - Removes HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed partitions or virtual machines.
+B<rmvm> - Removes HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed partitions or virtual machines.
 
 =head1 SYNOPSIS
 
@@ -10,13 +10,13 @@ B<rmvm [-v| --version]>
 
 B<rmvm [-V| --verbose]> I<noderange> B<[-r] [--service]>
 
-=head2 For KVM and Vmware:
+=head2 For KVM and VMware:
 
-B<rmvm [-p] [-f]>
+B<rmvm [-p] [-f]> I<noderange>
 
 =head2 PPC (using Direct FSP Management) specific:
 
-B<rmvm> I<noderange>
+B<rmvm [-p]> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -37,9 +37,7 @@ B<-r>          Retain the data object definitions of the nodes.
 
 B<--service>   Remove the service partitions of the specified CECs.
 
-B<-p>          Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.  
-
-B<-p|--part>   Remove the specified partiton on normal power machine.
+B<-p>          KVM: Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration. PPC: Remove the specified partiton on normal power machine.
 
 B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested. 
 

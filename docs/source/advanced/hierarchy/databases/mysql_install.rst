@@ -77,7 +77,7 @@ Debian/Ubuntu
         mysql-server-5*
         mysql-server-core-5*
 
-* MariaDB - Using ``apt-get``, ensure that the following packages are installed on the management node: ::
+* MariaDB - Using ``apt-get``, ensure that the following packages are installed on the management node. ``apt-get install mariadb-server`` will pull in all required packages. For Ubuntu 16.04, it no longer required ``libmariadbclient18``. ::
 
         libmariadbclient18
         mariadb-client

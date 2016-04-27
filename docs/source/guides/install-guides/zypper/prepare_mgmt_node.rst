@@ -33,10 +33,25 @@ xCAT uses the zypper package manager on SLES Linux distributions to install and 
      gpgcheck=1
 
 
-Set up Network
---------------
+Configure the Management Node
+-----------------------------
 
-The Management Node IP address should be set to a **static** IP address.
+By setting properties on the Management Node before installing the xCAT software will allow xCAT to automatically configure key attributes in the xCAT ``site`` table during the install.
 
-Modify the ``ifcfg-<device>`` file in ``/etc/sysconfig/network/`` and configure a static IP address.
+#. Ensure a hostname is configured on the management node by issuing the ``hostname`` command.  [*It's recommended to use a fully qualified domain name (FQDN) when setting the hostname*]
 
+   #. To set the hostname of *xcatmn.cluster.com*: ::
+
+       hostname xcatmn.cluster.com 
+
+   #. Add the hostname to the ``/etc/hostname`` in order to persist the hostname on reboot.
+
+   
+   #. Reboot the server and verify the hostname by running the following commands: 
+
+        * ``hostname``
+        * ``hostname -d`` - should display the domain
+
+#. Reduce the risk of the Management Node IP address being lost by setting the IP to **STATIC** in the ``/etc/sysconfig/network/ifcfg-<dev>`` configuration files.
+
+#. Configure any domain search strings and nameservers to the ``/etc/resolv.conf`` file.

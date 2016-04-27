@@ -33,16 +33,24 @@ xCAT uses the apt package manager on Ubuntu Linux distributions to install and r
      gpgcheck=1
 
 
-Set up Network
---------------
+Configure the Management Node
+-----------------------------
 
-The Management Node IP address should be set to a **static** IP address.
+By setting properties on the Management Node before installing the xCAT software will allow xCAT to automatically configure key attributes in the xCAT ``site`` table during the install.
 
-Modify the ``interfaces`` file in ``/etc/network`` and configure a static IP address.	::
-    
-    # The primary network interface
-    auto eth0
-    iface eth0 inet static
-        address 10.3.31.11
-        netmask 255.0.0.0
+#. Ensure a hostname is configured on the management node by issuing the ``hostname`` command.  [*It's recommended to use a fully qualified domain name (FQDN) when setting the hostname*]
 
+   #. To set the hostname of *xcatmn.cluster.com*: ::
+
+       hostname xcatmn.cluster.com 
+
+   #. Add the hostname to the ``/etc/hostname`` and ``/etc/hosts`` to persist the hostname on reboot. 
+   
+   #. Reboot or run ``service hostname restart`` to allow the hostname to take effect and verify the hostname command returns correctly:
+
+        * ``hostname``
+        * ``hostname -d`` - should display the domain
+
+#. Reduce the risk of the Management Node IP address being lost by setting the interface IP to **STATIC** in the ``/etc/network/interfaces`` configuration file.
+
+#. Configure any domain search strings and nameservers using the ``resolvconf`` command. 

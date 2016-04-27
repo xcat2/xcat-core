@@ -172,15 +172,9 @@ my %command_states = (
 #              ^                   /         |
 #              |       404 and    /          |
 #           20x|  'No such image'/           |
-#              |                v         20x|                error
+#              |                v            |                error
 #  CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE ------------------------------> error_msg
 #                                            |
-#                                            v                error
-#                          CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE-------> error_msg
-#                                            |
-#                                         20x|
-#                                            v                error
-#                          CREATE_TO_WAIT_FOR_CONNECT_NET_DONE------> error_msg
 #                                            |
 #                                         20x|
 #                                            v
@@ -200,28 +194,10 @@ my %command_states = (
             init_url => "/images/create?fromImage=#DOCKER_IMAGE#",
             init_state => "CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE",
         },
-        connectnet => {
-            genreq_ptr => \&genreq_for_net_connect,
-            state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/networks/#NETNAME#/connect",
-            init_state => "CREATE_TO_WAIT_FOR_CONNECT_NET_DONE",
-        },
-        rmdefconn => {
-            genreq_ptr => \&genreq_for_net_disconnect,
-            state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/networks/bridge/disconnect",
-            init_state => "CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE",
-        }
     },
 
-# The state changing for rmdocker
-#
-#    INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE 
-#        If success or force to remove, to remove docker
-#        Else return error
-#    In remove docker round, return error_msg if failed or success if done
+# For rmdocker
+#    return error_msg if failed or success if done
     rmdocker => {
         force => {
             state_machine_engine => \&default_state_engine,
@@ -232,13 +208,6 @@ my %command_states = (
             state_machine_engine => \&default_state_engine,
             init_method => "DELETE",
             init_url => "/containers/#NODE#",
-        },
-        disconnect => {
-            genreq_ptr => \&genreq_for_net_disconnect,
-            state_machine_engine => \&default_state_engine,
-            init_method => "POST",
-            init_url => "/networks/#NETNAME#/disconnect",
-            init_state => "INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE",
         },
     },
 
@@ -484,17 +453,6 @@ sub default_state_engine {
             $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} start"]}]});
             change_node_state($node, $command_states{mkdocker}{pullimage});
             return;
-        } elsif ($data->is_success) {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Remove default network connection"]}]});
-            change_node_state($node, $command_states{mkdocker}{rmdefconn});
-            return;
-        }
-    }
-    elsif ($curr_state eq 'CREATE_TO_WAIT_FOR_RM_DEFCONN_DONE') {
-        if ($data->is_success) {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Connecting customzied network '$node_hash->{nics}'"]}]});
-            change_node_state($node, $command_states{mkdocker}{connectnet});
-            return;
         }
     }
     elsif ($curr_state eq 'CREATE_TO_WAIT_FOR_IMAGE_PULL_DONE') {
@@ -502,13 +460,6 @@ sub default_state_engine {
             $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Pull image $node_hash->{image} done"]}]});
             $node_hash->{have_pulled_image} = 1;
             change_node_state($node, $command_states{mkdocker}{default});
-            return;
-        }
-    }
-    elsif ($curr_state eq 'INIT_TO_WAIT_FOR_DISCONNECT_NET_DONE') {
-        if ($data->is_success or $node_hash_variable{$node}->{opt} eq 'force') {
-            $global_callback->({node=>[{name=>[$node],"$info_flag"=>["Disconnect customzied network '$node_hash->{nics}' done"]}]});
-            change_node_state($node, $command_states{rmdocker}{$node_hash->{opt}});
             return;
         }
     }
@@ -736,7 +687,7 @@ sub parse_args {
                 return ( [1, "Option $op is not supported for $cmd"]);
             }
         }
-        $request->{mapping_option} = "disconnect";
+        $request->{mapping_option} = "force";
     }
     elsif ($cmd eq 'lsdocker') {
         foreach my $op (@ARGV) {
@@ -825,11 +776,7 @@ sub process_request {
         $mapping_hash = $command_states{$command}{$req->{mapping_option}};
     }
     else {
-        if ($command eq 'rmdocker') {
-            $mapping_hash = $command_states{$command}{disconnect};
-        } else {
-            $mapping_hash = $command_states{$command}{default};
-        }
+        $mapping_hash = $command_states{$command}{default};
     }
     my $max_concur_session_allow = 20; # A variable can be set by caculated in the future
     if ($command eq 'lsdocker') {
@@ -1131,6 +1078,10 @@ sub genreq_for_mkdocker {
     my ($node, $dockerhost, $method, $api) = @_; 
     my $dockerinfo = $node_hash_variable{$node};
     my %info_hash = ();
+    if (defined($dockerinfo->{flag})) {
+        my $flag_hash = decode_json($dockerinfo->{flag});
+        %info_hash = %$flag_hash;
+    }
     #$info_hash{name} = '/'.$node;
     #$info_hash{Hostname} = '';
     #$info_hash{Domainname} = '';
@@ -1139,70 +1090,13 @@ sub genreq_for_mkdocker {
     $info_hash{Memory} = $dockerinfo->{mem};
     $info_hash{MacAddress} = $dockerinfo->{mac};
     $info_hash{CpusetCpus} = $dockerinfo->{cpus};
-    if (defined($dockerinfo->{flag})) {
-        my $flag_hash = decode_json($dockerinfo->{flag});
-        %info_hash = (%info_hash, %$flag_hash);  
-    }
+    $info_hash{HostConfig}->{NetworkMode} = $dockerinfo->{nics};
+    $info_hash{NetworkDisabled} = JSON::false;
+    $info_hash{NetworkingConfig}->{EndpointsConfig}->{"$dockerinfo->{nics}"}->{IPAMConfig}->{IPv4Address} = $dockerinfo->{ip};
     my $content = encode_json \%info_hash;
     return genreq($node, $dockerhost, $method, $api, $content);
 }
 
-#-------------------------------------------------------
-
-=head3  genreq_for_net_connect
-
-  Generate HTTP request for network operation for a docker
-
-  Input: $node: The docker container name
-         $dockerhost: hash, keys: name, port, user, pw, user, pw, user, pw
-         $method: the http method to generate the http request
-         $api: the url to generate the http request
-
-  return: The http request;
-  Usage example:
-          my $res = genreq_for_net_connect($node,\%dockerhost,'POST','/networks/$nic/connect');
-
-=cut
-
-#-------------------------------------------------------
-
-sub genreq_for_net_connect {
-    my ($node, $dockerhost, $method, $api) = @_; 
-    my $dockerinfo = $node_hash_variable{$node};
-    my %info_hash = ();
-    $info_hash{container} = $node;
-    $info_hash{EndpointConfig}->{IPAMConfig}->{IPv4Address} = $dockerinfo->{ip};
-    my $content = encode_json \%info_hash;
-    return genreq($node, $dockerhost, $method, $api, $content);
-}
-#-------------------------------------------------------
-
-=head3  genreq_for_net_disconnect
-
-  Generate HTTP request for network operation for a docker
-
-  Input: $node: The docker container name
-         $dockerhost: hash, keys: name, port, user, pw, user, pw, user, pw
-         $method: the http method to generate the http request
-         $api: the url to generate the http request
-
-  return: The http request;
-  Usage example:
-          my $res = genreq_for_net_disconnect($node,\%dockerhost,'POST','/networks/$nic/disconnect');
-
-=cut
-
-#-------------------------------------------------------
-
-sub genreq_for_net_disconnect {
-    my ($node, $dockerhost, $method, $api) = @_; 
-    my $dockerinfo = $node_hash_variable{$node};
-    my %info_hash = ();
-    $info_hash{Container} = $node;
-    $info_hash{Force} = JSON::false;
-    my $content = encode_json \%info_hash;
-    return genreq($node, $dockerhost, $method, $api, $content);
-}
 #-------------------------------------------------------
 
 =head3  sendreq

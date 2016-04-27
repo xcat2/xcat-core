@@ -1,5 +1,4 @@
-# The shell is commented out so that it will run in bash on linux and ksh on aix
-#  !/bin/bash
+#!/bin/bash
 
 # Build and upload the xcat-core code, on either linux or aix.
 

@@ -874,12 +874,20 @@ sub initmysqldb
     }    # end AIX only
 
     #on debian/ubuntu should comment the bind-adress line in my.cnf
+    #on Ubuntu16.04, the bind-address line is in the mariadb.conf.d/50-server.cnf
     if ( $::debianflag ){
-        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' /etc/mysql/my.cnf > /tmp/my.cnf; mv -f /tmp/my.cnf /etc/mysql/my.cnf;chmod 644 /etc/mysql/my.cnf";
+        my $bind_file;
+        if (-e "/etc/mysql/mariadb.conf.d/50-server.cnf")
+        {
+            $bind_file = "/etc/mysql/mariadb.conf.d/50-server.cnf";
+        } else {
+            $bind_file = "/etc/mysql/my.cnf";
+        }
+        $cmd = "sed 's/\\(^\\s*bind.*\\)/#\\1/' $bind_file > /tmp/my.cnf; mv -f /tmp/my.cnf $bind_file;chmod 644 $bind_file";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            xCAT::MsgUtils->message("E", " comment the bind-address line in /etc/mysql/my.cfg failed: $cmd.");
+            xCAT::MsgUtils->message("E", " comment the bind-address line in $bind_file failed: $cmd.");
             exit(1);
         }
     }

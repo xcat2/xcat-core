@@ -1,11 +1,20 @@
 Hardware Discovery & Define Node
 ================================
 
-Have the servers to be defined as **Node Object** in xCAT is the first step to do for a cluster management.
+In order to manage machines using xCAT, the machines need to be defined as xCAT ``node objects`` in the database. The :doc:`xCAT Objects </guides/admin-guides/basic_concepts/xcat_object/index>` documentation describes the process for manually creating ``node objects`` one by one using the xCAT ``mkdef`` command.  This is valid when managing a small sizes cluster but can be error prone and cumbersome when managing large sized clusters.
 
-In the chapter :doc:`xCAT Object <../../../basic_concepts/xcat_object/index>`, it describes how to create a **Node Object** through `mkdef` command. You can collect all the necessary information of target servers and define them to a **xCAT Node Object** by manually run `mkdef` command. This is doable when you have a small cluster which has less than 10 servers. But it's really error-prone and inefficiency to manually configure SP (like BMC) and collect information for a large number servers.
+xCAT provides several *automatic hardware discovery* methods to assist with hardware discovery by helping to simplify the process of detecting service processors (SP) and collecting various server information. The following are methods that xCAT supports:
 
-xCAT offers several powerful **Automatic Hardware Discovery** methods to simplify the procedure of SP configuration and server information collection. If your managed cluster has more than 10 servers, the automatic discovery is worth to take a try. If your cluster has more than 50 servers, the automatic discovery is recommended.
+
+.. toctree::
+   :maxdepth: 2
+
+   mtms/index.rst
+   switch_discovery.rst
+   seq_discovery.rst
+   manually_define.rst
+   manually_discovery.rst
+
 
 Following are the brief characteristics and adaptability of each method, you can select a proper one according to your cluster size and other consideration.
 
@@ -72,13 +81,4 @@ Following are the brief characteristics and adaptability of each method, you can
   * cons
 
     You have to strictly boot on the node in order if you want the node has the expected name. Generally you have to waiting for the discovery process finished before power on the next one.
-
-.. toctree::
-   :maxdepth: 2
-
-   manually_define.rst
-   mtms_discovery.rst
-   switch_discovery.rst
-   seq_discovery.rst
-   manually_discovery.rst
 

@@ -1,6 +1,5 @@
 start:reg_linux_diskless_installation_flat
 os:Linux
-stop=yes  
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0
@@ -63,6 +62,10 @@ check:output=~\d\d:\d\d:\d\d
 cmd:xdsh $$CN mount
 check:rc==0
 check:output=~on / type tmpfs
+cmd:sleep 120
+cmd:ping $$CN -c 3
+check:rc==0
+check:output=~64 bytes from $$CN
 
 cmd:rootimgdir=`lsdef -t osimage  __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-netboot-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir.regbak ]; then rm -rf $rootimgdir; mv $rootimgdir.regbak $rootimgdir; fi
 check:rc==0

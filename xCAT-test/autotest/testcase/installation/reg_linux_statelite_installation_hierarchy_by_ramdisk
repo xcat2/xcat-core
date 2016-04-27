@@ -1,6 +1,5 @@
 start:reg_linux_statelite_installation_hierarchy_by_ramdisk
 os:Linux
-stop=yes
 
 cmd:chdef -t node -o $$CN servicenode=$$SN monserver=$$SN nfsserver=$$SN tftpserver=$$SN  xcatmaster=$$SN
 check:rc==0
