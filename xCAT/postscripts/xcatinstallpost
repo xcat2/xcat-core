@@ -98,13 +98,6 @@ fi
 " >> /xcatpost/mypostscript.post
 fi
 
-stopservice NetworkManager
-stopservice NetworkManager-dispatcher
-stopservice NetworkManager-wait-online
-
-disableservice NetworkManager
-disableservice NetworkManager-dispatcher 
-disableservice NetworkManager-wait-online
 chmod +x /xcatpost/mypostscript.post
 if [ -x /xcatpost/mypostscript.post ];then
    msgutil_r "$MASTER_IP" "info" "running /xcatpost/mypostscript.post" "/var/log/xcat/xcat.log"

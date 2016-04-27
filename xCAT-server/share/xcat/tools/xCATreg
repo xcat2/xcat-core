@@ -667,7 +667,8 @@ sub do_test {
 	my $sn_installation_hierarchy_testcase="";
 	my $diskfull_installation_hierarchy_testcase="";
 	my $diskless_installation_hierarchy_testcase="";
-	my $statelite_installation_hierarchy_testcase="";
+        my $statelite_installation_hierarchy_by_ramdisk_testcase="";
+        my $statelite_installation_hierarchy_by_nfs_testcase="";
 	my $batbundle="";
 	if($mn =~ /sles/ || $mn =~ /rh/){
         $diskfull_installation_flat_testcase="reg_linux_diskfull_installation_flat";
@@ -676,7 +677,8 @@ sub do_test {
         $sn_installation_hierarchy_testcase="reg_linux_SN_installation_hierarchy";
         $diskfull_installation_hierarchy_testcase="reg_linux_diskfull_installation_hierarchy";
         $diskless_installation_hierarchy_testcase="reg_linux_diskless_installation_hierarchy";
-        $statelite_installation_hierarchy_testcase="reg_linux_statelite_installation_hierarchy";
+        $statelite_installation_hierarchy_by_ramdisk_testcase="reg_linux_statelite_installation_hierarchy_by_ramdisk";
+        $statelite_installation_hierarchy_by_nfs_testcase="reg_linux_statelite_installation_hierarchy_by_nfs";
 		$batbundle="p_rhels_cmd.bundle" if($mn =~ /rhp/);
 		$batbundle="x_rhels_cmd.bundle" if($mn =~ /rhx/);
 		$batbundle="p_sles_cmd.bundle" if($mn =~ /slesp/);
@@ -778,11 +780,14 @@ sub do_test {
 		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskless_installation_hierarchy_testcase\" >/dev/null 2>&1");
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do diskless installation test in hierarchy mode in $mn.....[done]");
 
-		#statelite installation in hierarchy mode test
-		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation test in hierarchy mode in $mn.....");
-		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_testcase\" >/dev/null 2>&1");
-		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation test in hierarchy mode in $mn.....[done]");	
-		
+        	#statelite installation by ramdisk in hierarchy mode test
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation by ramdisk test in hierarchy mode in $mn.....");
+		system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_by_ramdisk_testcase\" >/dev/null 2>&1");
+		send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation by ramdisk test in hierarchy mode in $mn.....[done]");	
+                #statelite installation by nfs in hierarchy mode test
+                send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing statelite installation by nfs test in hierarchy mode in $mn.....");
+                system("xdsh $confkeys{$mn} \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $statelite_installation_hierarchy_by_nfs_testcase\" >/dev/null 2>&1");
+                send_msg(2, "[$mn->$confkeys{$mn}][do_test] do statelite installation by nfs test in hierarchy mode in $mn.....[done]"); 
     }else{
 		#diskfull installation in flat mode test
 		send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing diskfull installation test in flat mode in $mn.....");
@@ -857,7 +862,7 @@ sub creat_report{
                 $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/p_sles_cmd.bundle" if($k =~ /slesp/);
                 $batbundle="$xcatcoredir/xCAT-test/autotest/bundle/x_sles_cmd.bundle" if($k =~ /slesx/);
                 $totalcase=`cat $batbundle|wc -l`;
-                $totalcase+=7;
+                $totalcase+=8;
                 }elsif($k =~ /ubuntux/){
                 $batbundle="/$xcatcoredir/xCAT-test/autotest/bundle/x_ubuntu_cmd.bundle";
                 $totalcase=`cat $batbundle|wc -l`;
