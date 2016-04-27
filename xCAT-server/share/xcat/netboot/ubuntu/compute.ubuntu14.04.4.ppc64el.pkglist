@@ -1,1 +1,15 @@
-compute.ubuntu14.04.3.ppc64el.pkglist
+bash
+nfs-common
+openssl
+isc-dhcp-client
+libc-bin
+linux-image-generic-lts-wily
+openssh-server
+openssh-client
+wget
+vim
+ntp
+rsync
+busybox-static
+gawk
+dnsutils
