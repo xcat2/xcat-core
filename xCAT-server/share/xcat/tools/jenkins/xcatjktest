@@ -37,7 +37,6 @@ my $totalcase=0;
 my $alltestpass=0;
 my $teststopflag=0;
 my $lastcase;
-#my $defaultmail="huweihua\@cn.ibm.com,litingt\@cn.ibm.com";
 my $defaultmail="huweihua\@cn.ibm.com";
 my $sub_process_rt=0;
 my $proid;
@@ -438,6 +437,17 @@ sub mn_install {
         return 1;
     }
     send_msg(2, "[mn_install] set netboot of $mn to $netboot..[done]");
+
+    &runcmd("lsdef $mn -i postscripts|grep setupntp");
+    if($?){
+        send_msg(2, "[mn_install] plan to set setupntp as $mn 's postscript......");
+        &runcmd("chdef $mn -p postscripts=setupntp");
+        if($?){
+            send_msg(0, "[mn_install] set setupntp as $mn 's postscript failed");
+            return 1;
+        }
+        send_msg(2, "[mn_install] set setupntp as $mn 's postscript...[done]");
+    }
    
     if($os =~ /ubuntu/i){
         if($arch =~ /le/i || $arch =~ /el/i){
@@ -482,7 +492,7 @@ sub mn_install {
 
     #sleep while for installation.
     &runcmd("sleep 360");
-    &runcmd("a=0;while ! `lsdef -l $mn|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");
+    &runcmd("a=0;while ! `lsdef -l $mn|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 400 ];then break;fi done");
 
     &runcmd("lsdef -l $mn|grep status|grep booted >/dev/null");
     if($?){
@@ -654,9 +664,16 @@ sub prepare_mn {
             }
         }
     }
+
     if(exists ($config{var}{ISO})){
         $config{var}{ISO}="/$iso";
     }
+    
+    if(exists ($config{var}{OS})){
+        if($os =~ /(\D+)\d.*/){
+            $config{var}{OS}="$1";
+        } 
+    }   
     &reset_cluster_conf; 
     
     send_msg(2, "prepare mn $mn .....[done]");
@@ -880,13 +897,13 @@ sub do_test {
                     $totalcase= $2+8;
                     &runcmd("echo $totalcase > /tmp/totalcase.$proid");
                 }
-    
+
                 #diskfull installation in flat mode test
                 send_msg(2, "[do_test] doing diskfull installation test [$diskfull_installation_flat_testcase] in flat mode in $mn.....");
                 $rc=system("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $diskfull_installation_flat_testcase\" >/dev/null 2>&1");
                 send_msg(2, "[do_test] do diskfull installation test in flat mode in $mn.....[done]");
                 last if($rc != 0);
-    
+ 
                 #commands bundle in flat mode test
                 send_msg(2, "[do_test] doing all commands test [$batbundle] in flat mode in $mn.....");
                 $rc=system("xdsh $mn \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -b $batbundle\" >/dev/null 2>&1");
@@ -1015,7 +1032,6 @@ sub do_test {
     
         if($casestop){
             send_msg(2, "[do_test] the regression job in $mn was broken for some reason.");
-            $teststopflag=1;
         }else{
             send_msg(2, "[do_test] run the whole regression test in $mn finished");
         }
@@ -1030,7 +1046,11 @@ sub do_test {
         #to do part
     }
 
-    return 0;
+    if($casestop){
+        return 2;
+    }else{
+        return 0;
+    }
 }
 
 #######################################
@@ -1101,6 +1121,13 @@ sub create_report{
     }else{
         $mailreport .= "\tTime consumption: Out of 8 hours!!!!!!\n";
     }
+
+    $mailreport .= "\n-------------------------------------------\nCluster Information:\n";
+    $mailreport .= "\t MN: $mn\n";    
+    &load_cluster_conf;
+    $mailreport .= "\t SN: $config{var}{SN}\n";
+    $mailreport .= "\t CN: $config{var}{CN}\n";
+    $mailreport .= "\t Test result are saved under $mn:/opt/xcat/share/xcat/tools/autotest/result/\n";
 
     &runcmd("touch $mailfile && echo \"$mailreport\" > $mailfile");
     send_msg(2, "[create_report] created test report.....[done]");
@@ -1283,7 +1310,11 @@ if ( !defined($pid) ) {
     send_msg(2, "[$$] Running do_test...............");
     $res = do_test();
     if ($res) {
-        syswrite MNWRITE,"[$$][$deployenvtime]:do test error\n";
+        if($res == 2){
+            syswrite MNWRITE,"[$$][$deployenvtime]:do test stopped for some case\n";
+        }else{
+            syswrite MNWRITE,"[$$][$deployenvtime]:do test error\n";
+        }
         exit 1;
     }
     send_msg(2, "[$$] Run do_test...............[OK]");
@@ -1327,6 +1358,7 @@ while(! $sub_process_rt) {
                     }
                     if($tmp =~ /\[(.+)\]\[(.+)\]:(.+)/){
                         $env_dply_time_consumption= $2 - $regstarttime;
+                        $teststopflag=1 if($3 =~ /do test stopped for some case/);
                     }
                     $sub_process_rt=1;
                 }
@@ -1365,6 +1397,10 @@ if($rst){
     send_mail();
     send_msg(2, "[[main]]: send test result........[done]");
 }
+
+#used to hold the stop environment for developer to debug
+#sleep(86400) if($teststopflag);
+
 if($alltestpass){
     exit_test 0;
 }else{
