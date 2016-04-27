@@ -1,6 +1,5 @@
 start:reg_linux_diskless_installation_flat
 os:Linux
-stop:yes  
 
 cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 check:rc==0

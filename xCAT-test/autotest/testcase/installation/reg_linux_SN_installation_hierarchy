@@ -1,6 +1,5 @@
 start:reg_linux_SN_installation_hierarchy
 os:Linux
-stop:yes
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
