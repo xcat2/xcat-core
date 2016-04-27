@@ -3396,10 +3396,15 @@ sub readcurrfrudevice {
         }
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
-            add_fruhash($sessdata);
-            my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
-            xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
-            return;
+            # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
+            if ($data[0] gt 0) {
+                $sessdata->{currfrudone}=1;
+            } else {
+                my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
+                xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
+                add_fruhash($sessdata);
+                return;
+            }
         }
         shift @data;
         push @{$sessdata->{currfrudata}},@data;
