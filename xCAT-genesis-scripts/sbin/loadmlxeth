@@ -1,0 +1,2 @@
+#!/bin/sh
+/sbin/modprobe mlx4_en
