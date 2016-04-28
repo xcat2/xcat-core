@@ -8,11 +8,11 @@ B<bmcdiscover> [B<-?>|B<-h>|B<--help>]
 
 B<bmcdiscover> [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<-s> I<scan_method>] B<--range> I<ip_ranges> [{B<-u>|B<--bmcuser>} I<bmc_username> {B<-p>|B<--bmcpasswd>}] [B<-z>] [B<-w>] [B<-t>]
+B<bmcdiscover> [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>] [B<-t>] B<--range> I<ip_ranges>
 
-B<bmcdiscover> {B<-i>|B<--bmcip>} I<bmc_ip> {B<-u>|B<--bmcuser>} I<bmc_username> {B<-p>|B<--bmcpasswd>} I<bmc_password> B<--check>
+B<bmcdiscover> B<-u> I<bmc_user> B<-p> I<bmc_passwd> B<-i> I<bmc_ip> B<--check>
 
-B<bmcdiscover> {B<-i>|B<--bmcip>} I<bmc_ip> {B<-u>|B<--bmcuser>} I<bmc_username> {B<-p>|B<--bmcpasswd>} I<bmc_password> B<--ipsource>
+B<bmcdiscover> [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] B<-i> I<bmc_ip> B<--ipsource> 
 
 
 =head1 DESCRIPTION
@@ -63,11 +63,11 @@ BMC user password.
 
 =item B<-c|--check>    
 
-Check
+Check BMC administrator User/Password.
 
 =item B<--ipsource>    
 
-BMC IP source
+Display the BMC IP configuration.
 
 =item B<-h|--help>
 
