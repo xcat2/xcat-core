@@ -55,8 +55,8 @@ my $regresultdir = "$regrootdir/regresult";
 my $todayregresultdir="";
 my $maildir="$regrootdir/mail";
 my $mailfile="";
-my $rootdir = "$::XCATROOT/share/xcat/tools/autotest";
-my %confkeys;
+my $rootdir = "$::XCATROOT/share/xcat/tools/autotest"; 
+my %confkeys; 
 my $mail_list = 0;
 my $needhelp  = 0;
 my $branch = "master";
@@ -524,7 +524,7 @@ sub copy_code {
             return 1;
         }
 		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] copy ISO $iso to $mn successfully");
-		system ("sed -i 's|ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");
+		system ("sed -i 's|^ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");
 	}
 	
 	if($mn =~ /sles/){
@@ -548,7 +548,7 @@ sub copy_code {
             return 1;
         }
 		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] copy ISO $iso to $mn successfully");	
-        system ("sed -i 's|ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");	
+        system ("sed -i 's|^ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");	
 
         if($os =~ /sles11/){
             $res = system("xdsh $confkeys{$mn}  \"mv /usr/lib/rpm/find-requires /usr/lib/rpm/find-requires.org\" && scp $osisodir/find-requires $confkeys{$mn}:/usr/lib/rpm/ > /dev/null");
@@ -581,7 +581,7 @@ sub copy_code {
             return 1;
         }
 		send_msg(2, "[$mn->$confkeys{$mn}][copy_code] copy ISO $iso to $mn successfully");	
-        system ("sed -i 's|ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");	
+        system ("sed -i 's|^ISO=/\\S*|ISO=/$iso|g' $configfiledir/$regconf");	
 	}
     return 0;
 }
