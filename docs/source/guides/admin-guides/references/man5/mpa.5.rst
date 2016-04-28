@@ -63,9 +63,9 @@ mpa Attributes:
 \ **slots**\ 
  
  The number of available slots in the chassis. For PCM, this attribute is used to store the number of slots in the following format:  <slot rows>,<slot columns>,<slot orientation>  Where:
-    <slot rows>  = number of rows of slots in chassis
-    <slot columns> = number of columns of slots in chassis
-    <slot orientation> = set to 0 if slots are vertical, and set to 1 if slots of horizontal
+                  <slot rows>  = number of rows of slots in chassis
+                  <slot columns> = number of columns of slots in chassis
+                  <slot orientation> = set to 0 if slots are vertical, and set to 1 if slots of horizontal
  
 
 
