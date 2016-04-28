@@ -202,38 +202,35 @@ sub bmcdiscovery_processargs {
     ######################################
     if ( defined($::opt_R) ) 
     {
-
-            ######################################
-            # check if there is nmap or not
-            ######################################
-            if ( -x '/usr/bin/nmap' )
-            {
-               $nmap_path="/usr/bin/nmap";
+        ######################################
+        # check if there is nmap or not
+        ######################################
+        if ( -x '/usr/bin/nmap' )
+        {
+            $nmap_path="/usr/bin/nmap";
+        }
+        elsif ( -x '/usr/local/bin/nmap' )
+        {
+            $nmap_path="/usr/local/bin/nmap";
+        }
+        else
+        {
+            my $rsp;
+            push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            return 1;
+        }
+        ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+        if ($::opt_P) {
+            $bmc_pass = $::opt_P;
+            if (!$::opt_U) {
+                $bmc_user = '';
+            } else {
+                $bmc_user = $::opt_U;
             }
-               elsif ( -x '/usr/local/bin/nmap' )
-            {
-               $nmap_path="/usr/local/bin/nmap";
-            }
-            else
-            {
-                my $rsp;
-                push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
-                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-                return 1;
-
-            }
-           ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
-           if ($::opt_P) {
-               $bmc_pass = $::opt_P;
-               if (!$::opt_U) {
-                   $bmc_user = '';
-               } else {
-                   $bmc_user = $::opt_U;
-               }
-           }
-           scan_process($::opt_M,$::opt_R,$::opt_Z,$::opt_W,$request_command);
-
-           return 0;
+        }
+        scan_process($::opt_M,$::opt_R,$::opt_Z,$::opt_W,$request_command);
+        return 0;
     }
 
     if ( defined($::opt_C) && defined($::opt_S) ) {
