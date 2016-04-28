@@ -46,7 +46,7 @@ check:rc==0
 cmd:xcatconfig -s
 check:rc==0
 check:output=~(Generating new node hostkeys)
-cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
 check:rc!=0
 cmd:rm -rf /etc/xcat/hostkeysbak
 end
@@ -63,9 +63,7 @@ check:output=~Created xCAT certificate
 check:output=~Signature ok
 check:output=~OK
 check:output!~Fail
-cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
-check:rc!=0
-cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
+cmd:diff /etc/xcat/hostkeys/ssh_host_rsa_key.pub /etc/xcat/hostkeysbak/ssh_host_rsa_key.pub
 check:rc!=0
 cmd:rm -rf /etc/xcat/hostkeysbak
 cmd:rm -rf /root/.xcatbak
