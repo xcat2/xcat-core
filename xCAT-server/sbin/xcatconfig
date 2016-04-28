@@ -1172,6 +1172,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
 
         if ($::osname eq 'AIX')
