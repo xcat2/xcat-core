@@ -5,7 +5,27 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
 
-**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64** and **ubuntu16.04 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64el** architecture from docker.org. You can follow instructions at the end of this page on how to manually download and install it.
+**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64** and **ubuntu16.04 x86_64**. At the time of this writing (February 2016), docker package is not available for **ppc64el** architecture from docker.org. You can follow instructions in the next section on how to manually download and install it.
+
+Download and configure docker host on ppc64el
+--------------------------
+
+Download docker engine for ppc64el
+::
+
+ wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
+
+Follow instructions below for **x86_64** setup with the following exceptions:
+
+Docker host node definition **otherpkgdir** should be
+::
+
+ otherpkgdir=/install/docker_ppc64el
+
+Contents of **otherpkglist** file should be
+::
+
+ docker.io
 
 Setting up Docker Host
 ----------------------
@@ -94,11 +114,12 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
      dockernics=mynet0
      groups=docker,all
      ip=10.0.120.1
+     mac=02:42:0a:00:78:01
      mgt=docker
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
 
-The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node or change the node attributes. Specify any available unused ip address for *ip* attribute.
+The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node definition or change the node attributes. Specify any available unused ip address for *ip* attribute. *mac* attribute is optional and if left unset, will be filled in by *mkdocker* command.
 
 After docker instance node is defined, use command `makehosts host01c01` to add node *host01c01* and its IP address *10.0.120.1* into /etc/hosts.
 
@@ -106,7 +127,7 @@ Create docker instance
 ``````````````````````
 ::
 
- mkdocker <node> image=<image_name>  [command=<command>] [dockerflag=<docker_flags>]]
+ mkdocker <node> [image=<image_name>  [command=<command>] [dockerflag=<docker_flags>]]
 
 * node - The node object which represents the docker instance
 * image - The image name that the docker instance will use
@@ -172,26 +193,6 @@ Check docker instance status
 ::
 
  rpower <node> state
-
-Download and configure docker host on ppc64el
---------------------------
-
-Download docker engine for ppc64el
-::
-
- wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
-
-Follow instructions above for **x86_64** setup with the following exceptions:
-
-Docker host node definition **otherpkgdir** should be
-::
-
- otherpkgdir=/install/docker_ppc64el
-
-Contents of **otherpkglist** file should be
-::
-
- docker.io
 
 Troubleshooting
 --------------------------
