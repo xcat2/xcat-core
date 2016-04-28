@@ -283,10 +283,11 @@ while :; do
 		destiny=''
 		dest=''
 	elif [ "$dest" = shell ]; then
-		echo "Dropping to debug shell, exit to check for further action"
+		echo "Dropping to debug shell, exit to run next destiny"
 		destiny=''
 		dest=''
 		/bin/bash
+		/bin/nextdestiny $XCATMASTER:$XCATPORT         
 	elif [ "$dest" = runcmd ]; then
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		dest=`echo $destiny|awk -F= '{print $1}'`
