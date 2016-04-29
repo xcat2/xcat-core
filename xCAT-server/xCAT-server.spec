@@ -413,12 +413,15 @@ fi
 ln -sf $RPM_INSTALL_PREFIX0/sbin/xcatd /usr/sbin/xcatd
 
 if [ "$1" = "1" ]; then #Only if installing for the first time..
- if [ -x /sbin/chkconfig ]; then
-   /sbin/chkconfig --add xcatd
- else
-   echo "Unable to register init scripts on this system"
- fi
+   if [ -x /sbin/chkconfig ]; then
+       /sbin/chkconfig --add xcatd
+   elif [ -x /usr/lib/lsb/install_initd ]; then
+       /usr/lib/lsb/install_initd /etc/init.d/xcatd
+   else
+     echo "Unable to register init scripts on this system"
+   fi
 fi
+
 if [ "$1" -gt "1" ]; then #only on upgrade...
   #migration issue for monitoring
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d
@@ -461,8 +464,11 @@ if [ $1 == 0 ]; then  #This means only on -e
 	if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
   		/etc/init.d/xcatd stop
   	fi
+
   if [ -x /sbin/chkconfig ]; then
-    /sbin/chkconfig --del xcatd
+      /sbin/chkconfig --del xcatd
+  elif [ -x /usr/lib/lsb/remove_initd ]; then
+      /usr/lib/lsb/remove_initd /etc/init.d/xcatd
   fi
   rm -f /usr/sbin/xcatd  #remove the symbolic
 
