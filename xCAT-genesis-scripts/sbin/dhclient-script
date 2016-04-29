@@ -1,0 +1,80 @@
+#!/bin/sh
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+if [ $reason = "PREINIT" -o $reason = "PREINIT6" ]; then
+	ip link set $interface up
+	tries=50
+	while ! (ip link show $interface|grep LOWER_UP > /dev/null 2>&1); do
+		sleep 0.1
+		if [ $tries = 0 ]; then
+			break
+		fi
+		tries=$((tries-1))
+	done
+elif [ $reason = "BOUND" ]; then
+	if [ ! -z "$old_ip_address" ]; then
+		ip addr del dev $interface $old_ip_address/$old_subnet_mask
+	fi
+        for oldip in `ip addr show dev $interface|grep 'inet '|awk '{print $2}'`; do
+		ip addr del dev $interface $oldip
+	done
+	if [ ! -z "$new_ip_address" -a ! -z "$new_subnet_mask" ]; then
+		ip addr add dev $interface $new_ip_address/$new_subnet_mask
+	fi
+	if [ ! -z "$new_host_name" ]; then
+		hostname $new_host_name
+		lldptool -T -i $interface -V 5 enableTx=yes  >& /dev/null
+	fi
+	if [ ! -z "$new_domain_name" ]; then
+		echo search $new_domain_name >> /etc/resolv.conf
+	fi
+	for ns in $new_domain_name_servers; do
+		echo nameserver $ns >> /etc/resolv.conf
+	done
+	for ntp in $new_ntp_servers; do
+		echo server $ntp iburst >> /etc/ntp.conf
+	done
+	for gw in $new_routers; do
+		ip route add default via $gw
+	done
+	# Up to this point we were logging to the local /var/log/xcat.genesis
+	# file. But now we know the xCAT MN, so replace logging to the local
+	# file with logging to the xCAT MN
+	if [ ! -z "$new_log_servers" ]; then
+		head -n -1 /etc/rsyslog.conf > /etc/rsyslog.conf.new
+		cp /etc/rsyslog.conf.new /etc/rsyslog.conf
+	fi
+        for ls in $new_log_servers; do
+		echo "*.* @$ls" >> /etc/rsyslog.conf
+	done
+	kill `cat /var/run/syslogd.pid`
+	sleep 3
+	RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+	if [ $RSYSLOGD_VERSION -ge 8 ]; then
+        	# Newer versions of rsyslogd do not support -c flag anymore
+		/sbin/rsyslogd
+	else
+		/sbin/rsyslogd -c4
+	fi
+
+
+	if [ ! -z "$new_tcode" -a -r "/usr/share/zoneinfo/posix/$new_tcode" ]; then
+		cp "/usr/share/zoneinfo/posix/$new_tcode" /etc/localtime
+		rm -rf /usr/share/zoneinfo #free up ramdisk
+	fi
+elif [ $reason = "BOUND6" ]; then
+	if [ ! -z "$old_ip6_address" ]; then
+		ip addr del dev $interface $old_ip6_address/$old_ip6_prefixlen
+	fi
+	if [ ! -z "$new_ip6_address" ]; then 
+		ip addr add dev $interface $new_ip6_address/$new_ip6_prefixlen
+	fi
+elif [ $reason = "RELEASE" ]; then
+	if [ ! -z "$old_ip_address" ]; then
+		ip addr del dev $interface $old_ip_address/$old_subnet_mask
+	fi
+elif [ $reason = "RELEASE6" ]; then
+	if [ ! -z "$old_ip6_address" ]; then
+		ip addr del dev $interface $old_ip6_address/$old_ip6_prefixlen
+	fi
+fi
+exit 0

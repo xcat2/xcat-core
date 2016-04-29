@@ -110,6 +110,8 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/debian/preinst
 %{rpminstallroot}/debian/prerm
 %{rpminstallroot}/debian/rules
+%{rpminstallroot}/etc/rsyslog.conf
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
+%{rpminstallroot}/sbin/dhclient-script
 %{rpminstallroot}/sbin/setupimmnic
