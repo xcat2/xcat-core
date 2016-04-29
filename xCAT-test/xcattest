@@ -882,7 +882,7 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
-    @$outref = `$cmd 2>&1`;
+    @$outref = `/bin/bash -lic '$cmd 2>&1'`;
     if ($?)
     {
         $rc = $? ;
