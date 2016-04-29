@@ -950,9 +950,9 @@ sub genSSHNodeHostKey
     #
     xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
     xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
-    $cmd =
+    my $cmd =
           "/usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''";
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
           xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
