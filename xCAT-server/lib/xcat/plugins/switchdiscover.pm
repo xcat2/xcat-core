@@ -805,7 +805,7 @@ sub snmp_scan {
     my $result;
     my $switches;
     my $counter = 0;
-    my $sles11_sp4=0;
+    my $nmap_version;
 
     # snmpwalk command has to be available for snmp_scan
     if (-x "/usr/bin/snmpwalk" ){
@@ -822,20 +822,21 @@ sub snmp_scan {
     ##################################################
     my $ranges = get_ip_ranges($request);
 
-    #sles11 SP4 has different output than other OS from nmap command
-    if (-e "/etc/os-release" ) {
-       $ccmd = "cat /etc/os-release | grep VERSION | grep 11.4"; 
-       $result = xCAT::Utils->runcmd($ccmd, 0);
-       if ($::RUNCMD_RC == 0) {
-           $sles11_sp4=1;
-       }
+    $ccmd = "nmap -V | grep version";
+    $result = xCAT::Utils->runcmd($ccmd, 0);
+    my @version_array = split / /, $result;
+    $nmap_version = $version_array[2];
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "version of nmap: $nmap_version\n");
     }
 
-    # for sles11.4, the line as :"Host 10.4.25.1 appears to be up ... good."
-    # other OS has line like this: "Discovered open port 161/udp on 10.4.25.1"
-    # only open port will be scan
     #use nmap to find if snmp port is enabled  
-    if ($sles11_sp4 == 1) {
+    # only open port will be scan
+    # currently, we know nmap version 4.75 has different output for snmp_scan
+    # command.
+    # for version 4.75, the line as :"Host 10.4.25.1 appears to be up ... good."
+    # other higher version has line like this: "Discovered open port 161/udp on 10.4.25.1"
+    if ($nmap_version <= 4.75) {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
     } else {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
@@ -862,7 +863,7 @@ sub snmp_scan {
     foreach my $line (@lines) {
         my @array = split / /, $line;
         my $ip;
-        if ($sles11_sp4 == 1) {
+        if ($nmap_version <= 4.75) {
             $ip = $array[1];
         } else {
             $ip = $array[5];
