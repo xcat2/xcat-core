@@ -2640,8 +2640,22 @@ sub got_backup_imm_builddate {
 	$fru->desc("Backup IMM Version");
 	$fru->value($sessdata->{backupimmversion}." (".$sessdata->{backupimmbuild}." ".$sessdata->{backupimmdate}.")");
 	$sessdata->{fru_hash}->{backupimm} = $fru;
-    }
+    	get_imm_property(property=>"/v2/ibmc/trusted_buildid",callback=>\&got_trusted_imm,sessdata=>$sessdata);
+    } else {
         initfru_with_mprom($sessdata);
+    }
+}
+sub got_trusted_imm {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+	my $fru = FRU->new();
+	$fru->rec_type("bios,uefi,firmware");
+	$fru->desc("Trusted IMM Build");
+	$fru->value($res{data});
+	$sessdata->{fru_hash}->{trustedimm} = $fru;
+    }
+    initfru_with_mprom($sessdata);
 }
 sub got_fpga_version {
    my %res = @_;
