@@ -252,6 +252,7 @@ exit 0
 /etc/logrotate.d/xcat
 /etc/rsyslog.d/xcat-cluster.conf
 /etc/rsyslog.d/xcat-compute.conf
+/etc/rsyslog.d/xcat-debug.conf
 /install/winpostscripts
 %endif
 %defattr(-,root,root)

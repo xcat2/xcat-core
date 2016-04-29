@@ -197,7 +197,7 @@ sub getConfig
             }
         }elsif ($type eq "Object") {
             ##OBJECT BLOCK##
-               if($line =~ /(\w+)\s*=\s*([:\w\.\-]+)/) {
+               if($line =~ /(\w+)\s*=\s*([:\w\.\-\/]+)/) {
                $attr = $1;
                $value = $2;
                if($attr eq "Name"){
@@ -592,7 +592,7 @@ sub loadcase
             }elsif($line =~ /^stop\s*:\s*(\w[\w\,]+)/){
                 next if $skip;
                 $cases[$i]->{stop}=$1;
-            }elsif($line =~ /^cmd\s*:\s*([\$\w].+)/){
+            }elsif($line =~ /^cmd\s*:\s*([\/\$\w].+)/){
                 next if $skip;
                 $j = $j + 1;
                 $z = 0;
@@ -740,7 +740,7 @@ sub runcase
         $j = 0;
         $total = $total + 1;
         my $now1=timelocal(localtime());
-        my $time1=gmtime $now1;
+        my $time1=scalar(localtime());
         log_this("------START:$$case{name}::Time:$time1------");
         push @record, "------START:$$case{name}::Time:$time1------";
         push @record, "FILENAME:$$case{filename}";
@@ -855,7 +855,7 @@ sub runcase
             $j = $j + 1;
         }
         my $now2=timelocal(localtime());
-        my $time2=gmtime $now2;
+        my $time2 = scalar(localtime());
         my $diff=$now2-$now1;
         if($failed){
             log_this("------END::$$case{name}::Failed::Time:$time2 ::Duration::$diff sec------");
@@ -882,7 +882,7 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
-    @$outref = `$cmd 2>&1`;
+    @$outref = `/bin/bash -lic '$cmd 2>&1'`;
     if ($?)
     {
         $rc = $? ;

@@ -120,14 +120,12 @@ sub process_request {
    chmod(0700,$tempdir."$sshdir");
    copy("/root/.ssh/id_rsa.pub","$tempdir$sshdir/authorized_keys");
    chmod(0600,"$tempdir$sshdir/authorized_keys");
-   if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_key") {
-    copy("/etc/xcat/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
+   if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
     copy("/etc/xcat/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
     copy("/etc/xcat/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
       chmod(0600,<$tempdir/etc/ssh_*>);
    }
-   unless ($invisibletouch or -r "$tempdir/etc/ssh_host_key") {
-      system("ssh-keygen -t rsa1 -f $tempdir/etc/ssh_host_key -C '' -N ''");
+   unless ($invisibletouch or -r "$tempdir/etc/ssh_host_rsa_key") {
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }

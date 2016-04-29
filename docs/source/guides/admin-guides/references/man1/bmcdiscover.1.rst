@@ -23,11 +23,11 @@ SYNOPSIS
 
 \ **bmcdiscover**\  [\ **-v | -**\ **-version**\ ]
 
-\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] \ **-**\ **-range**\  \ *ip_ranges*\  [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ]
+\ **bmcdiscover**\  [\ **-s**\  \ *scan_method*\ ] [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] [\ **-z**\ ] [\ **-w**\ ] [\ **-t**\ ] \ **-**\ **-range**\  \ *ip_ranges*\ 
 
-\ **bmcdiscover**\  {\ **-i | -**\ **-bmcip**\ } \ *bmc_ip*\  {\ **-u | -**\ **-bmcuser**\ } \ *bmc_username*\  {\ **-p | -**\ **-bmcpasswd**\ } \ *bmc_password*\  \ **-**\ **-check**\ 
+\ **bmcdiscover**\  \ **-u**\  \ *bmc_user*\  \ **-p**\  \ *bmc_passwd*\  \ **-i**\  \ *bmc_ip*\  \ **-**\ **-check**\ 
 
-\ **bmcdiscover**\  {\ **-i | -**\ **-bmcip**\ } \ *bmc_ip*\  {\ **-u | -**\ **-bmcuser**\ } \ *bmc_username*\  {\ **-p | -**\ **-bmcpasswd**\ } \ *bmc_password*\  \ **-**\ **-ipsource**\ 
+\ **bmcdiscover**\  [\ **-u**\  \ *bmc_user*\ ] [\ **-p**\  \ *bmc_passwd*\ ] \ **-i**\  \ *bmc_ip*\  \ **-**\ **-ipsource**\ 
 
 
 ***********
@@ -100,13 +100,13 @@ OPTIONS
 
 \ **-c|-**\ **-check**\ 
  
- Check
+ Check BMC administrator User/Password.
  
 
 
 \ **-**\ **-ipsource**\ 
  
- BMC IP source
+ Display the BMC IP configuration.
  
 
 

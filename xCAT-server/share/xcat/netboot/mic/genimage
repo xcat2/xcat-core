@@ -251,10 +251,8 @@ my @sysfilelist = (
   "/etc/nsswitch.conf",
   "/etc/ssh/ssh_host_rsa_key",
   "/etc/ssh/ssh_config",
-  "/etc/ssh/ssh_host_key",
   "/etc/ssh/sshd_config",
   "/etc/ssh/ssh_host_dsa_key",
-  "/etc/ssh/ssh_host_key.pub",
   "/root/.ssh/id_rsa",
   "/root/.ssh/id_rsa.pub",
   "/root/.ssh/authorized_keys",);

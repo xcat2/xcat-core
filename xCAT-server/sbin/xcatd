@@ -962,7 +962,6 @@ $SIG{TERM} = $SIG{INT} = sub {
         kill 'USR2', $pid_UDP;
     }
     if ($pid_MON) {
-        kill 'INT', $pid_MON;
         kill 'USR2', $pid_MON;
     }
     xCAT::Table::shut_dbworker;

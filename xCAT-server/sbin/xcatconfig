@@ -949,19 +949,10 @@ sub genSSHNodeHostKey
     # generate new hostkeys
     #
     xCAT::MsgUtils->message('I', "Generating new node hostkeys...");
-    xCAT::MsgUtils->message('I', "Generating SSH1 RSA Key...");
-    my $cmd =
-          "/usr/bin/ssh-keygen -t rsa1 -f /etc/xcat/hostkeys/ssh_host_key -C '' -N ''";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-            xCAT::MsgUtils->message('E', "Could not generate SSH1 RSA key.");
-    }
-
     xCAT::MsgUtils->message('I', "Generating SSH2 RSA Key...");
-    $cmd =
+    my $cmd =
           "/usr/bin/ssh-keygen -t rsa -f /etc/xcat/hostkeys/ssh_host_rsa_key -C '' -N ''";
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
           xCAT::MsgUtils->message('E', "Could not generate SSH2 RSA key.");
@@ -1172,6 +1163,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dhcplease site.value=43200;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditnosyslog site.value=0;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=xcatsslversion site.value=TLSv1;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=auditskipcmds site.value=ALL;";
         #$chtabcmds .= "$::XCATROOT/sbin/chtab key=useflowcontrol site.value=yes;"; # need to fix 4031
 
         if ($::osname eq 'AIX')
