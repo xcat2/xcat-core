@@ -19,9 +19,9 @@ SYNOPSIS
 ********
 
 
-\ **pasu**\  [\ **-V**\ ] [\ **-d**\ ] [\ **-n**\ ] [\ **-l**\  \ *user*\ ] [\ **-p**\  \ *passwd*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-i**\  \ *hostname-suffix*\ ] \ *noderange*\  \ *command*\ 
+\ **pasu**\  [\ **-V**\ ] [\ **-d**\ ] [\ **-l**\  \ *user*\ ] [\ **-p**\  \ *passwd*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-i**\  \ *hostname-suffix*\ ] \ *noderange*\  \ *command*\ 
 
-\ **pasu**\  [\ **-V**\ ] [\ **-d**\ ] [\ **-n**\ ] [\ **-l**\  \ *user*\ ] [\ **-p**\  \ *passwd*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-i**\  \ *hostname-suffix*\ ] \ **-b**\  \ *batchfile*\  \ *noderange*\ 
+\ **pasu**\  [\ **-V**\ ] [\ **-d**\ ] [\ **-l**\  \ *user*\ ] [\ **-p**\  \ *passwd*\ ] [\ **-f**\  \ *fanout*\ ] [\ **-i**\  \ *hostname-suffix*\ ] \ **-b**\  \ *batchfile*\  \ *noderange*\ 
 
 \ **pasu**\  [\ **-h**\  | \ **-**\ **-help**\ ]
 
@@ -45,13 +45,6 @@ to confirm that the IMMs are configured properly.
 OPTIONS
 *******
 
-
-
-\ **-n|-**\ **-nonodecheck**\ 
- 
- Do not send the noderange to xcatd to expand it into a list of nodes.  Use the noderange exactly as it is specified
- to pasu.  In this case, the noderange must be a simple list of comma-separated hostnames of the IMMs.
- 
 
 
 \ **-l|-**\ **-loginname**\  \ *username*\ 

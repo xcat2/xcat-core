@@ -4,9 +4,9 @@ B<pasu> - run the ASU to many nodes in parallel
 
 =head1 SYNOPSIS
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] I<noderange> I<command>
+B<pasu> [B<-V>] [B<-d>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] I<noderange> I<command>
 
-B<pasu> [B<-V>] [B<-d>] [B<-n>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] B<-b> I<batchfile> I<noderange>
+B<pasu> [B<-V>] [B<-d>] [B<-l> I<user>] [B<-p> I<passwd>] [B<-f> I<fanout>] [B<-i> I<hostname-suffix>] B<-b> I<batchfile> I<noderange>
 
 B<pasu> [B<-h> | B<--help>]
 
@@ -24,11 +24,6 @@ to confirm that the IMMs are configured properly.
 =head1 OPTIONS
 
 =over 10
-
-=item B<-n|--nonodecheck>
-
-Do not send the noderange to xcatd to expand it into a list of nodes.  Use the noderange exactly as it is specified
-to pasu.  In this case, the noderange must be a simple list of comma-separated hostnames of the IMMs.
 
 =item B<-l|--loginname> I<username>
 
