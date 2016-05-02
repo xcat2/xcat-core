@@ -2409,23 +2409,41 @@ sub get_request {
     my $sock = shift;
     my $encode = shift;
     my $request = shift;
+
     if ($encode eq "xml") {
-        my $line = $request;
+        my $readtry = 0;
         while ((!$request) || ($request !~ m/<\/xcatrequest>/)) {
+            if ($readtry > 10) {
+                # if retry too much, sleep for a while and try again
+                # otherwise it will use too much cpu
+                sleep 1;
+                $readtry = 0;
+            }
             my $flags=fcntl($sock,F_GETFL,0);
             $flags |= O_NONBLOCK; # we want sysread to bail on us, select seems to be evil to us still..
             fcntl($sock,F_SETFL,$flags);
             my $bytesread;
-            if (!($line) ) { $line = ''; }
+            my $line = '';
             do  { $bytesread=sysread($sock,$line,65536,length($line)) } while ($bytesread);
             if (length($line)==0) {
-                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) { next; } # ECHILD makes no sense, but some platform does it
+                if (not defined $bytesread and ($! == EAGAIN or $! == ECHILD)) {
+                    # retry when an error happens
+                    # ECHILD makes no sense, but some platform does it
+                    $readtry++;
+                    next;
+                }
                 return undef;
             }
             $flags=fcntl($sock,F_GETFL,0);
             $flags &= ~O_NONBLOCK; # now we want *print* to be blocking IO
             fcntl($sock,F_SETFL,$flags);
-            $request = $line;
+            $request .= $line;
+
+            # check the validity of the request message
+            if ($request and length($request) > 15 and ($request !~ m/<xcatrequest>/)) {
+                xCAT::MsgUtils->message("S", "xcatd: Close an invalid connection.");
+                return undef;
+            }
         }
         return eval { XMLin($request, SuppressEmpty=>undef,ForceArray=>1) };
     } elsif ($encode eq "storable") {
