@@ -111,4 +111,6 @@ touch /etc/xcat/genesis-scripts-updated
 %{rpminstallroot}/debian/rules
 %{rpminstallroot}/etc/init.d/functions
 %{rpminstallroot}/etc/udev/rules.d/99-imm.rules
+%{rpminstallroot}/etc/udev/rules.d/98-mlx.rules
 %{rpminstallroot}/sbin/setupimmnic
+%{rpminstallroot}/sbin/loadmlxeth 
