@@ -6,10 +6,9 @@ xCAT is a toolkit for the deployment and administration of clusters.
 Documentation
 -------------
 
-xCAT documentation is available at: http://xcat-docs.readthedocs.org/en/latest/
+xCAT documentation is available at: http://xcat-docs.readthedocs.io/en/latest/
 
-http://readthedocs.org/projects/xcat-docs/badge/?version=latest
-http://readthedocs.org/projects/xcat-docs/badge/?version=2.11
+https://readthedocs.org/projects/xcat-docs/badge/?version=latest
 
 Open Source License
 -------------------
