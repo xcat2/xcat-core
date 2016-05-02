@@ -146,9 +146,10 @@ To update the xCAT Docker image, you can run ::
 Known Issues
 ------------
 
-.. [1] When you start up xCAT Docker container, you might see an error message at the end of the output like: ::
+.. [1]
+When you start up xCAT Docker container, you might see an error message at the end of the output like: ::
 
-   "Couldn't connect to Docker daemon at http+unix://var/run/docker.sock - is it running? If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable."
+  Couldn't connect to Docker daemon at http+unix://var/run/docker.sock - is it running? If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable.`
    
-   You can ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_ 
+You can ignore it, the container has already been running. It is a Docker bug `#1214 <https://github.com/docker/compose/issues/1214>`_
    
