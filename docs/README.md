@@ -1,6 +1,6 @@
 # Welcome to the xCAT documentation
 
-https://readthedocs.org/projects/xcat-doc/badge/?version=latest
+.. image:: https://readthedocs.org/projects/xcat-doc/badge/?version=latest
 
 We are working on improving the documentation.  The latest docs are here: http://xcat-docs.readthedocs.io/en/latest/
 
