@@ -79,7 +79,6 @@ sub handled_commands {
         #rvitals => 'nodehm:mgt',
         #rinv => 'nodehm:mgt',
         getrvidparms  => 'nodehm:mgt',
-        #lsvm          => 'hypervisor:type',
         lsvm => 'nodehm:mgt=ipmi',
         rbeacon       => 'nodehm:mgt',
         revacuate     => 'hypervisor:type',
