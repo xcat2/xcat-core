@@ -3,8 +3,8 @@
 The latest docs are here: http://xcat-docs.readthedocs.io/en/latest/
 
 Status:   
-<img src="https://readthedocs.org/projects/xcat-docs/badge/?version=latest">  
-<img src="https://readthedocs.org/projects/xcat-docs/badge/?version=2.11">
+[![Documentation Status](http://readthedocs.org/projects/xcat-docs/badge/?version=latest)](http://xcat-docs.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](http://readthedocs.org/projects/xcat-docs/badge/?version=2.11)](http://xcat-docs.readthedocs.io/en/2.11/?badge=2.11)
 
 
 The documentation project is written in restructured text (.rst) using Sphinx and hosted on ReadTheDocs.
