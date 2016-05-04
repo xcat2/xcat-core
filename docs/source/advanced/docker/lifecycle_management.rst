@@ -5,27 +5,8 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
 
-**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64** and **ubuntu16.04 x86_64**. At the time of this writing (February 2016), docker package is not available for **ppc64el** architecture from docker.org. You can follow instructions in the next section on how to manually download and install it.
+**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64**, **ubuntu16.04 x86_64** and **ubuntu16.04 ppc64el**.
 
-Download and configure docker host on ppc64el
---------------------------
-
-Download docker engine for ppc64el
-::
-
- wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
-
-Follow instructions below for **x86_64** setup with the following exceptions:
-
-Docker host node definition **otherpkgdir** should be
-::
-
- otherpkgdir=/install/docker_ppc64el
-
-Contents of **otherpkglist** file should be
-::
-
- docker.io
 
 Setting up Docker Host
 ----------------------
@@ -43,17 +24,20 @@ The osimage represents the image of the Operating System which will be deployed 
 
 Copy files out from DVDs/ISOs and generate  
 """"""""""""""""""""""""""""""""""""""""""
-
-::  
+**[ubuntu x86_64]** ::  
    
-  copycds ubuntu-14.04.3-server-amd64.iso
+  copycds ubuntu-xxx-server-amd64.iso
+
+**[ubuntu16.04 ppc64el]** ::
+
+  copycds ubuntu-16.04-server-ppc64el.iso
 
 Create pkglist and otherpkglist of osimage for dockerhost
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 The pkglist file should contain the following: ::
 
- # cat /install/custom/ubuntu1404/ubuntu1404.pkglist
+ # cat /install/custom/ubuntu/ubuntu.pkglist
  openssh-server
  ntp
  gawk
@@ -61,14 +45,38 @@ The pkglist file should contain the following: ::
  snmpd
  bridge-utils
  
-The otherpkglist file should contain the following: ::
+The otherpkglist file should contain the following: 
 
- # cat /install/custom/ubuntu1404/ubuntu1404_docker.pkglist
+**[ubuntu x86_64]** ::  
+
+ # cat /install/custom/ubuntu/ubuntu_docker.pkglist
  docker-engine
+
+**[ubuntu16.04 ppc64el]** 
+ 
+At the time of this writing (February 2016), docker package is not available for **ppc64el** architecture from docker.org. You can follow instructions below on how to manually download and install it.
+
+* Download docker engine for ppc64el 
+::
+ 
+ wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
+
+* Configure **otherpkgdir** like this 
+::
+
+ otherpkgdir=/install/docker_ppc64el
+
+* The **otherpkglist** file should be 
+::
+
+ # cat /install/custom/ubuntu/ubuntu_docker.pkglist
+ docker.io
 
 Create the osimage for dockerhost
 """""""""""""""""""""""""""""""""
-The osimage for dockerhost will be like this: ::
+The osimage for dockerhost will be like this:
+
+**[ubuntu x86_64]** ::  
 
  # lsdef -t osimage ub14.04.03-x86_64-dockerhost
  Object name: ub14.04.03-x86_64-dockerhost
@@ -77,12 +85,28 @@ The osimage for dockerhost will be like this: ::
      osname=Linux
      osvers=ubuntu14.04.3
      otherpkgdir=https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main
-     otherpkglist=/install/custom/ubuntu1404/ubuntu1404_docker.pkglist
+     otherpkglist=/install/custom/ubuntu/ubuntu_docker.pkglist
      pkgdir=/install/ubuntu14.04.3/x86_64
-     pkglist=/install/custom/ubuntu1404/ubuntu1404.pkglist
+     pkglist=/install/custom/ubuntu/ubuntu.pkglist
      profile=compute
      provmethod=install
      template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
+
+**[ubuntu16.04 ppc64el]** ::
+
+ # lsdef -t osimage ub16.04-ppc64el-dockerhost
+ Object name: ub16.04-ppc64el-dockerhost
+    imagetype=linux
+    osarch=ppc64el
+    osname=Linux
+    osvers=ubuntu16.04
+    otherpkgdir=/install/docker_ppc64el
+    otherpkglist=/install/custom/ubuntu/ubuntu_docker.pkglist
+    pkgdir=/install/ubuntu16.04/ppc64el
+    pkglist=/install/custom/ubuntu/ubuntu.pkglist
+    profile=compute
+    provmethod=install
+    template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
 
 Preparing setup trust connection for docker service and create docker network object
 ````````````````````````````````````````````````````````````````````````````````````
@@ -119,7 +143,7 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
 
-The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node definition or change the node attributes. Specify any available unused ip address for *ip* attribute. *mac* attribute is optional and if left unset, will be filled in by *mkdocker* command.
+The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node or change the node attributes. Specify any available unused ip address for *ip* attribute. *mac* attribute is optional and if left unset, will be filled in by *mkdocker* command.
 
 After docker instance node is defined, use command `makehosts host01c01` to add node *host01c01* and its IP address *10.0.120.1* into /etc/hosts.
 

@@ -165,7 +165,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 if [ ! -z "$nicname" ]; then
-    brctl addif $netname $nicname
+    if [ -x /sbin/brctl ]; then
+        brctl addif $netname $nicname
+    fi
     default_info=`ip route | grep default | grep "dev $nicname" | grep via`
     if [ ! -z "$default_info" ]; then
         default_gw=`echo $default_info | awk '{print $3}'`
