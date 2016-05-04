@@ -94,6 +94,7 @@ if($ret != 0){
     goto EXIT;
 }
 #run case
+&reordercases;
 &runcase;
 
 EXIT:
@@ -925,4 +926,43 @@ close(FD);
 close(STDOUT);
 }
 
+
+sub reordercases{
+    my @caserange = ();
+    my $line;
+    if($bundle_list){
+        my @bundles = split /,/, $bundle_list;
+        foreach my $bundle (@bundles){
+            if(!open(FILE, "<$rootdir/bundle/$bundle")){
+                log_this("can't open $rootdir/bundle/$bundle");
+                return 1;
+            }
+            while($line=<FILE>){
+                $line = trim($line);
+                next if(length($line) == 0);
+                push(@caserange, $line);
+            }
+            close(FILE);
+        }
+    }
+    if($case_list){
+       @caserange = split /,/, $case_list;
+    }
+
+    my @tmpcases=();
+    foreach my $case (@caserange){
+        my $i=0;
+        my $hit=0;
+        foreach my $runcase (@cases){
+            if($runcase->{name} eq $case){
+                $hit=1;
+                last;
+             }
+             $i++;
+             next;
+       }
+        push(@tmpcases, $cases[$i]) if($hit);
+    }
+    @cases=@tmpcases;
+}
 
