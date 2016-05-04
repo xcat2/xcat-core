@@ -1735,7 +1735,7 @@ sub rmvm {
     if ($currstate eq 'on') {
         if ($force) {
             $currxml = $dom->get_xml_description();
-            $dom->destroy();
+            $dom->shutdown();
         } else {
             xCAT::SvrUtils::sendmsg([ 1, "Cannot rmvm active guest (use -f argument to force)" ], $callback, $node);
             return;
@@ -1753,6 +1753,8 @@ sub rmvm {
             my $file = $disk->getAttribute("file");
             my $vol  = $hypconn->get_storage_volume_by_path($file);
             if ($vol) {
+                # Need to call get_info() before deleting a volume, without that, delete() will fail. Issue #455
+                $vol->get_info();
                 $vol->delete();
             }
         }
