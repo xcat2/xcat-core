@@ -836,7 +836,7 @@ sub snmp_scan {
     # command.
     # for version 4.75, the line as :"Host 10.4.25.1 appears to be up ... good."
     # other higher version has line like this: "Discovered open port 161/udp on 10.4.25.1"
-    if ($nmap_version <= 4.75) {
+    if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
     } else {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
