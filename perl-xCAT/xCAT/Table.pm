@@ -2564,7 +2564,7 @@ sub getNodeAttribs_nosub_returnany
   if(defined{$data}) { #if there was some data for the node, loop through and check it 
     foreach $result (@results) {
       foreach $attrib (keys %attribsToDo) {
-        if (defined($result) && defined($result->{$attrib})
+        if (defined($result) && defined($result->{$attrib}) && $self->{tabname} ne 'nodelist'
             && @hierarchy_attrs && grep (/^$attrib$/, @hierarchy_attrs) ) {
             $result->{$attrib} .= ',+=NEXTRECORD';
         }
@@ -2578,6 +2578,16 @@ sub getNodeAttribs_nosub_returnany
 
   if((keys (%attribsToDo)) == 0) { #if all of the attributes are satisfied, don't look at the groups
     return @results;
+  }
+
+  if ($self->{tabname} eq 'nodelist') {
+      return @results;
+  }
+
+  # As self->nodelist is a weak reference, if error haddpens, log it.
+  if (!defined($self->{nodelist})) {
+      xCAT::MsgUtils->message("S","xcat Table: Unexpected error, nodelist object is undef.");
+      return undef;
   }
 
   #find the groups for this node
