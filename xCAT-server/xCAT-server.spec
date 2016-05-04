@@ -25,17 +25,15 @@ AutoReqProv: no
 # also need to fix Requires for AIX
 %ifos linux
 BuildArch: noarch
-Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https) perl-Net-HTTPS-NB perl-HTTP-Async
+Requires: perl-IO-Socket-SSL perl-XML-Simple perl-XML-Parser perl-Digest-SHA1 perl(LWP::Protocol::https)
 Obsoletes: atftp-xcat
 %endif
 
 # The aix rpm cmd forces us to do this outside of ifos type stmts
 %if %notpcm
 %ifos linux
-# ifarch/ifnarch does not work for noarch package
-#%ifnarch s390x
 # PCM does not use or ship grub2-xcat
-Requires: grub2-xcat
+Requires: grub2-xcat perl-Net-HTTPS-NB perl-HTTP-Async
 #%endif
 %endif
 %endif
