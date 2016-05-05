@@ -169,7 +169,7 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
 
 .. code-block:: perl
 
-     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
+     bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --check
 
 
 5. Get BMC IP Address source, DHCP Address or static Address
