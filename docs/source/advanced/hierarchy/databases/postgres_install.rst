@@ -20,8 +20,8 @@ Suse Linux Enterprise Server
 
 Using zyppr, install the following rpms: ::
 
-    zyppr install postgresql*
-    zyppr install perl-DBD-Pg
+    zypper install postgresql*
+    zypper install perl-DBD-Pg
 
 
 Debian/Ubuntu 
