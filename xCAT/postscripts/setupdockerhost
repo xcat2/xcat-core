@@ -25,7 +25,7 @@ if [[ "$ARCH" == "x86_64" ]]; then
     # Check if docker-engine is installed
     dpkg -l docker-engine
     if [ $? -ne 0 ]; then
-        echo "Can not detect docker-engine installation."
+        echo "Error: can not detect docker-engine installation."
         exit 1
     fi
 fi
@@ -34,7 +34,7 @@ if [[ "$ARCH" == "ppc64el" ]]; then
     # Check if docker.io is installed
     dpkg -l docker.io
     if [ $? -ne 0 ]; then
-        echo "Can not detect docker.io installation."
+        echo "Error: can not detect docker.io installation."
         exit 1
     fi
 fi
@@ -48,7 +48,7 @@ fi
 
 DOCKER_VERSION=`docker info 2>/dev/null | grep "Server Version:" | awk -F: '{print $2}'`
 if [ -z "$DOCKER_VERSION" ];then
-    echo "Failed to get docker server version"
+    echo "Error: failed to get docker server version"
     exit 1
 fi
 MAJOR_VERSION=`echo $DOCKER_VERSION | awk -F. '{print $1}'`
@@ -57,7 +57,7 @@ if [ -z "$MAJOR_VERSION" -o -z "$MINOR_VERSION" ]; then
     echo "The docker version $DOCKER_VERSION can not be recorgnized"
     exit 1
 elif [  $MAJOR_VERSION -le 1 -a $MINOR_VERSION -lt 10 ]; then
-    echo "Only docker version 1.10.x and abover is supported"
+    echo "Only docker version 1.10.x and above is supported"
     exit 1
 fi
 
@@ -68,7 +68,7 @@ gateway=""
 nicname=""
 
 if [ $# -ne 1 ]; then
-    echo "Usage error, must in the format '$0 netname=net/mask@gateway[:nicname]'"
+    echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
     exit 1
 else 
     NETINFO="$1"
@@ -79,7 +79,7 @@ else
     gateway=`echo $netinfo | awk -F'@' '{print $2}' | awk -F: '{print $1}'`
     nicname=`echo $netinfo | awk -F: '{print $2}'`
     if [ -z "$netname" -o -z "$net" -o -z "$mask" -o -z "$gateway" ]; then
-        echo "Usage error, must in the format '$0 netname=net/mask@gateway[:nicname]'"
+        echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
         exit 1
     fi
 fi
@@ -88,7 +88,7 @@ fi
 #Setup TLS 
 master=$MASTER
 if ! ping $master -c 1 > /dev/null 2>&1 ; then  
-    echo "Host $master is not reachable"
+    echo "Error: Host $master is not reachable"
     exit 1
 fi 
 
@@ -112,20 +112,20 @@ if [ $? -ne 0 ]; then
     cat /tmp/xcat_dockerhost_cert |  
     cat /tmp/xcat_dockerhost_cert | grep -E -v '</{0,1}errorcode>|/{0,1}data>|</{0,1}content>|</{0,1}desc>' >$HOST_CERT_PEM
 else 
-    echo "Can not get dockerhost certificate files"
+    echo "Error: can not get dockerhost certificate files"
     exit 1
 fi
 
 cp /xcatpost/ca/ca-cert.pem $HOST_CA_PEM
 
 if [ ! -e $HOST_CA_PEM -o ! -e $HOST_CERT_PEM ];then
-    echo "Can not get dockerhost certificate files"
+    echo "Error: can not get dockerhost certificate files"
     exit 1
 fi
 
 docker_conf_file="/etc/default/docker"
 if [ ! -f "$docker_conf_file" ]; then
-    echo "Error: file $docker_conf_file not exist"
+    echo "Error: file $docker_conf_file does not exist"
     exit 1
 fi
 if ! grep "^DOCKER_OPTS" $docker_conf_file > /dev/null 2>&1 ; then
@@ -153,7 +153,7 @@ service docker start
 sleep 2
 docker ps
 if [ $? -ne 0 ]; then
-    echo "Docker service starting failed"
+    echo "Error: Failed to start Docker service"
     exit 1
 fi
 
@@ -161,12 +161,15 @@ echo "Will create network based on: $net/$mask@$gateway===$nicname:$netname=====
 
 ret=`docker network create --gateway=$gateway --subnet=$net/$mask -o "com.docker.network.bridge.host_binding_ipv4"="$gateway" -o "com.docker.network.bridge.name"="$netname" $netname 2>&1`
 if [ $? -ne 0 ]; then
-    echo "Create network object \"$netname\" failed: $ret"
+    echo "Error: Creation of network object \"$netname\" failed: $ret"
     exit 1
 fi
 if [ ! -z "$nicname" ]; then
     if [ -x /sbin/brctl ]; then
         brctl addif $netname $nicname
+    else 
+        echo "Error: brctl command not found. Not able to configure $nicname"
+        exit 1;
     fi
     default_info=`ip route | grep default | grep "dev $nicname" | grep via`
     if [ ! -z "$default_info" ]; then
