@@ -3501,10 +3501,12 @@ sub close
     my $self = shift;
     #if ($self->{dbh}) { $self->{dbh}->disconnect(); }
     #undef $self->{dbh};
-    if ($self->{tabname} eq 'nodelist') {
-       undef $self->{nodelist};
-    } else {
-       $self->{nodelist}->close();
+    if ($0 ne "xcatd: DB Access") {
+        if ($self->{tabname} eq 'nodelist') {
+            undef $self->{nodelist};
+        } else {
+            $self->{nodelist}->close();
+        }
     }
 }
 
