@@ -863,7 +863,7 @@ sub snmp_scan {
     foreach my $line (@lines) {
         my @array = split / /, $line;
         my $ip;
-        if ($nmap_version <= 4.75) {
+        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
             $ip = $array[1];
         } else {
             $ip = $array[5];
