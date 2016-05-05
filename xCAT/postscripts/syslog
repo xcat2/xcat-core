@@ -85,8 +85,6 @@ config_Rsyslog_C3()
 
   if [ ! -f $2.XCATORIG ]; then
     cp -f $2 $2.XCATORIG
-  else
-    cat $2 > $2.XCATORIG
   fi
 
   grep "xCAT settings" $conf_file 2>&1 1> /dev/null
@@ -113,6 +111,8 @@ config_Rsyslog_C3()
       touch  /var/log/messages  
       if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
         chown syslog:adm /var/log/messages
+        sed -i 's/\$PrivDropToGroup syslog/\$PrivDropToGroup adm/' $2
+        chown syslog:adm /var/log/xcat
       fi
   else
       sed -i 's/^\(\*\..*\)/\#\1/; 
@@ -152,6 +152,10 @@ config_rsyslog_V8()
     fi
   fi
 
+  # backup rsyslog.conf
+  if [ ! -f $conf_file.XCATORIG ]; then
+    cp -f $conf_file $conf_file.XCATORIG
+  fi
 
   # check if already an entry by xCAT. If so, we need to replace it
   grep "xCAT settings" $conf_file 2>&1 1> /dev/null
@@ -170,10 +174,8 @@ config_rsyslog_V8()
     touch  /var/log/messages
     if ( pmatch $OSVER "ubuntu*" ) || ( is_lsb_ubuntu ) || ( pmatch $OSVER "debian*" ); then
       chown syslog:adm /var/log/messages
-    fi
-    # backup rsyslog.conf
-    if [ ! -f $conf_file.XCATORIG ]; then
-      cp -f $conf_file $conf_file.XCATORIG
+      sed -i 's/\$PrivDropToGroup syslog/\$PrivDropToGroup adm/' $conf_file
+      chown syslog:adm /var/log/xcat
     fi
 
     #comment out the rules which will write logs to /var/log/messages
