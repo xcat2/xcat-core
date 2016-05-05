@@ -9,8 +9,8 @@ Red Hat Enterprise Linux
 
 Using yum, install the following rpms: ::
 
-    yum install postgresql-*
-    yum install perl-DBD-Pg*
+    yum install postgresql*
+    yum install perl-DBD-Pg
 
 
 Suse Linux Enterprise Server
@@ -20,8 +20,8 @@ Suse Linux Enterprise Server
 
 Using zyppr, install the following rpms: ::
 
-    zyppr install postgresql-*
-    zyppr install perl-DBD-Pg*
+    zyppr install postgresql*
+    zyppr install perl-DBD-Pg
 
 
 Debian/Ubuntu 
