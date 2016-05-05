@@ -22,6 +22,12 @@ my $needshow = 0;
 my $restore = 0;
 my $ret = 0;
 my $string1 = undef;
+
+my $isubuntu=0;
+my $output=`cat /etc/lsb-release 2>&1 |grep -i Ubuntu| wc -l`;
+chomp($output);
+$isubuntu=1 if($output > 0);
+
 if (
     !GetOptions("h|?"  => \$needhelp,
                 "f=s" => \$configfile,
@@ -882,7 +888,14 @@ sub runcmd
     my $rc = 0;
     $::RUNCMD_RC = 0;
     my $outref = [];
-    @$outref = `/bin/bash -lic '$cmd 2>&1'`;
+
+    if($isubuntu){
+        $cmd=~s/(")/\\\1/g;
+        $cmd=~s/(`)/\\\1/g;
+        @$outref = `/bin/bash -lic "$cmd 2>&1"`;
+    }else{
+        @$outref = `$cmd 2>&1`;
+    }
     if ($?)
     {
         $rc = $? ;
