@@ -35,7 +35,7 @@ The rscan command lists hardware information for each node managed by the hardwa
 
 For the management module of blade, if the blade server is a Flex system P node, the fsp belongs to the blade server also will be scanned.
 
-For the KVM host, all the KVM guests on the specified KVM host will be scanned. Note: currently rscan can only get the information of the "disk" device on the kvm guest with the underlying source as a "file" on the KVM host.
+For the KVM host, all the KVM guests on the specified KVM host will be scanned.
 
 Note: The first line of the output always contains information about the hardware control point. When using the rscan command to generate output for HMC or IVM hardware control points, it provides the FSPs and BPAs as part of the output. The only exception is the rscan -u flag which provides updates made hardware control point in the xCAT database.
 
@@ -55,7 +55,7 @@ OPTIONS
 
 For the Flex system manager, both the blade server and fsp object of xCAT will be updated if the mpa and slot id are matched to the object which has been defined in the xCAT database.
 
-For the KVM host, the information of the KVM guests which have been defined in xCAT database will be updated.
+For KVM host, the information of the KVM guests which have been defined in xCAT database will be updated.
 
 Note: only the matched object will be updated.
 
@@ -68,6 +68,8 @@ For KVM host, updates the information of the KVM guests which have been defined 
 \ **-x**\           XML format.
 
 \ **-z**\           Stanza formated output.
+
+Note: For KVM host, -z is not a valid option for rscan.
 
 
 ************
@@ -311,39 +313,12 @@ Output is similar to:
    blade  [SN#YL10JH184079]      Matched To =>[cmm01node03]
 
 
-8. To scan the KVM host "hyp01", list all the KVM guest information on the KVM host in stanza format and write the KVM guest information into xCAT database:
+8. To scan the KVM host "hyp01", write the KVM guest information into xCAT database:
 
 
 .. code-block:: perl
 
-  rscan hyp01 -z -w
-
-
-Output is similar to:
-
-
-.. code-block:: perl
-
-   kvm1
-     arch=x86_64
-     mac=
-     mgt=kvm
-     vmcpus=1
-     vmhost=hyp01
-     vmmemory=1024
-     vmnicnicmodel=virtio
-     vmnics=virbr0
-     vmstorage=/install/vms/kvm1.hda.qcow2
-   kvm2
-     arch=x86_64
-     mac=
-     mgt=kvm
-     vmcpus=2
-     vmhost=hyp01
-     vmmemory=1024
-     vmnicnicmodel=virtio
-     vmnics=virbr0
-     vmstorage=/install/vms/kvm2.hda.qcow2
+  rscan hyp01 -w
 
 
 9. To update definitions of kvm guest, which is managed by hypervisor hyp01, enter:
