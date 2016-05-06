@@ -1,4 +1,5 @@
-reg_linux_diskfull_installation_flatmakehosts_h
+reg_linux_diskfull_installation_flat
+makehosts_h
 makehosts_help
 makehosts_n
 makehosts_n_noderange
@@ -9,8 +10,6 @@ chtab_null
 chtab_d
 chtab_modify_node
 chtab_modify_key
-chtab_err_symble
-chtab_err_table
 chtab_h
 chtab_v
 packimage_o_p_a_m
@@ -177,8 +176,6 @@ copycds_iso
 copycds_n
 copycds_a
 copycds_n_a
-copycds_a_err
-copycds_n_err
 xdsh_h
 xdsh_V
 xdsh_regular_command
@@ -200,12 +197,6 @@ switchdiscover_range_x
 switchdiscover_range_z
 switchdiscover_range_z_V
 nodeset_check_warninginfo
-xcatd_start
-xcatd_stop
-xcatd_restart
-run_command_with_XCATBYPASS
-disable_root_permission_in_policy_table
-assign_certain_command_permission
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat
 SN_setup_case
@@ -213,3 +204,4 @@ reg_linux_diskfull_installation_hierarchy
 reg_linux_diskless_installation_hierarchy
 reg_linux_statelite_installation_hierarchy_by_ramdisk
 reg_linux_statelite_installation_hierarchy_by_nfs
+
