@@ -26,7 +26,7 @@ has_awk=$(find /usr/* -name "awk")
 
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
-tmpfile=$tmpdir"/getinstalldisk_"
+tmpfile="$tmpdir/getinstalldisk_"
 
 if [ -z "$install_disk" ]; then
 
@@ -107,7 +107,7 @@ if [ -z "$install_disk" ]; then
                 break
             done
              
-            umount $mount_dir || echo "[get_install_disk]    $partition umount failed."
+            umount -l $mount_dir || echo "[get_install_disk]    $partition umount failed."
         else
             echo "[get_install_disk]    Partition $partition mount failed or the partition is swap."
         fi
@@ -122,8 +122,11 @@ if [ -z "$install_disk" ]; then
     fi
 
     rmdir $mount_dir;
-    rm $tmpfile*;
-
+    
+    for file in $tmpfile*; do
+        rm $file;
+    done
+    
     has_wwn=0
     has_path=0
     file_pre=""
@@ -194,8 +197,11 @@ if [ -z "$install_disk" ]; then
     if [ "$install_file" ] && [ -s $install_file ]; then
         install_disk=/dev/$(cat $install_file | grep -v "^$" | sort -k 2 -b | cut -d " " -f1 | head -n 1)
         echo "[get_install_disk]The install_disk is $install_disk by sorting $file_pre and DRIVER."
-    fi    
-    rm $tmpfile*;
+    fi
+    
+    for file in $tmpfile*; do
+        rm $file;
+    done
 fi
 rm -rf $tmpdir;
 
