@@ -3,7 +3,7 @@ os:Linux
 
 cmd:chtab key=nameservers site.value="<xcatmaster>"
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f  && chdef $$SN mac= && mkvm $$SN ; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then rmvm $$SN -f -p  && mkvm $$SN -s 40G; fi
 
 cmd:makedns -n
 check:rc==0
