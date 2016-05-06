@@ -8,7 +8,7 @@ my $orgclusterconffile="/opt/xcat/share/xcat/tools/autotest/default.conf";
 my $snnodename = `cat $orgclusterconffile |grep SN|grep =|awk -F'=' '{print \$2}'`;
 chomp($snnodename);
 `echo "SN=$snnodename" >> $log`;
-sleep 900;
+sleep 300;
 
 my $timecnt=0;
 while($timecnt < 200){
