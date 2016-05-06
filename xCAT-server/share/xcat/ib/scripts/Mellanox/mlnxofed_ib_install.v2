@@ -250,18 +250,27 @@ if [ "$OS" = "Linux" ]; then
                 echo "[Error] please make your $HOSTNAME has ability to access ports.ubuntu.com" >&2
                 exit 1
             fi
+            
+
+            echo "get distro name form /etc/lsb-release ......"
+            source /etc/lsb-release >/dev/null 2>&1 
+            if [ -z "$DISTRIB_CODENAME" ]; then
+                echo "[Error] can't get DISTRIB_CODENAME " >&2
+                exit 1
+            fi
+            echo "DISTRIB_CODENAME=$DISTRIB_CODENAME ...[OK]"
 
             cp /etc/apt/sources.list /etc/apt/sources.list.bak
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  /etc/apt/sources.list
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d"  /etc/apt/sources.list
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" /etc/apt/sources.list
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" /etc/apt/sources.list
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME main/d"  /etc/apt/sources.list
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME-updates main/d"  /etc/apt/sources.list
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME universe/d" /etc/apt/sources.list
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME-updates universe/d" /etc/apt/sources.list
 
             cat <<-EOF >>/etc/apt/sources.list
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME main
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME-updates main
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME universe
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME-updates universe
 EOF
 
             apt-get clean all
@@ -354,18 +363,25 @@ EOF
 
             sourceslist="$IMGROOTPATH/etc/apt/sources.list"
             cp "$sourceslist" "${sourceslist}.bak"
+            
+            echo "get distro name form $IMGROOTPATH/etc/lsb-release ......"
+            source $IMGROOTPATH/etc/lsb-release  >/dev/null 2>&1 
+            if [ -z "$DISTRIB_CODENAME" ]; then
+                echo "[Error] can't get DISTRIB_CODENAME " >&2
+                exit 1
+            fi
+            echo "DISTRIB_CODENAME=$DISTRIB_CODENAME ...[OK]"
 
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty main/d"  $sourceslist
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates main/d" $sourceslist
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty universe/d" $sourceslist
-            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ trusty-updates universe/d" $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME main/d"  $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME-updates main/d" $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME universe/d" $sourceslist
+            sed -i "/deb http:\\/\\/ports.ubuntu.com\\/ubuntu-ports\\/ $DISTRIB_CODENAME-updates universe/d" $sourceslist
 
             cat <<-EOF >>"$sourceslist"
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty main
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates main
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty universe
-deb http://ports.ubuntu.com/ubuntu-ports/ trusty-updates universe
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME main
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME-updates main
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME universe
+deb http://ports.ubuntu.com/ubuntu-ports/ $DISTRIB_CODENAME-updates universe
 EOF
 
             chroot "$IMGROOTPATH" apt-get clean all
