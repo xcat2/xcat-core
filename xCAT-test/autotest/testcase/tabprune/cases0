@@ -49,7 +49,7 @@ cmd:n1=`lsdef -t auditlog|sed -n 2p|awk '{print $1}'`;tabprune auditlog -i $n1;n
 check:rc=0
 check:output=~tabprune of auditlog complete
 check:output=~Could not get xCAT object definitions
-cmd:cmd:chtab key=auditskipcmds site.value=ALL
+cmd:chtab key=auditskipcmds site.value=ALL
 check:rc=0
 end
 
