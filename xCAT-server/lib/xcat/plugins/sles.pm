@@ -1070,6 +1070,11 @@ sub mkinstall
              and -r "$pkgdir/1/boot/ppc64le/linux"
              and -r "$pkgdir/1/boot/ppc64le/initrd"
             )
+            or (
+             $arch eq "ppc64"
+             and -r "$pkgdir/1/suseboot/linux64"
+             and -r "$pkgdir/1/suseboot/initrd64"
+            )
             or ($arch =~ /ppc/ and -r "$pkgdir/1/suseboot/inst64")
           )
         {
@@ -1118,6 +1123,16 @@ sub mkinstall
                         copy("$pkgdir/1/boot/$arch/initrd", "$tftppath");
                         @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/initrd", "$tftppath/linux", $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
                         xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd.img and linux to $tftppath");
+                    }
+                }
+                elsif($arch eq "ppc64"  
+                      and -r "$pkgdir/1/suseboot/linux64"
+                      and -r "$pkgdir/1/suseboot/initrd64"){
+                    unless ($noupdateinitrd) {
+                        copy("$pkgdir/1/suseboot/linux64", "$tftppath");
+                        copy("$pkgdir/1/suseboot/initrd64", "$tftppath");
+                        @dd_drivers = &insert_dd($callback, $os, $arch,"$tftppath/initrd64" ,"$tftppath/linux64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd64 and linux64 to $tftppath");
                     }
                 }
                 elsif ($arch =~ /ppc/)
@@ -1309,6 +1324,22 @@ sub mkinstall
             {
                 $kernelpath = "$rtftppath/linux";
                 $initrdpath = "$rtftppath/initrd";
+                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
+                $bptab->setNodeAttribs(
+                                        $node,
+                                        {
+                                         kernel   => $kernelpath,
+                                         initrd   => $initrdpath,
+                                         kcmdline => $kcmdline
+                                        }
+                                        );
+            } 
+            elsif ($arch eq "ppc64" 
+                   and -r "$tftppath/linux64"
+                   and -r "$tftppath/initrd64")
+            {
+                $kernelpath = "$rtftppath/linux64";
+                $initrdpath = "$rtftppath/initrd64";
                 xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
                 $bptab->setNodeAttribs(
                                         $node,
