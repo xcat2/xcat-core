@@ -98,7 +98,7 @@ OPTIONS
  
 
 
-\ **-c|-**\ **-check**\ 
+\ **-**\ **-check**\ 
  
  Check BMC administrator User/Password.
  

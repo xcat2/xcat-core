@@ -61,7 +61,7 @@ BMC user name.
 
 BMC user password.
 
-=item B<-c|--check>    
+=item B<--check>    
 
 Check BMC administrator User/Password.
 
