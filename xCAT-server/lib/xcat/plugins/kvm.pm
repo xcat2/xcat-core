@@ -1735,7 +1735,7 @@ sub rmvm {
     if ($currstate eq 'on') {
         if ($force) {
             $currxml = $dom->get_xml_description();
-            $dom->shutdown();
+            $dom->destroy();
         } else {
             xCAT::SvrUtils::sendmsg([ 1, "Cannot rmvm active guest (use -f argument to force)" ], $callback, $node);
             return;
