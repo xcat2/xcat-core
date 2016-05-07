@@ -888,10 +888,10 @@ sub bmcdiscovery_ipmi {
                 $node =~ s/(.*)/\L$1/g;
             }
         } elsif ($output =~ /error : unauthorized name/){
-            xCAT::MsgUtils->message("E", {data=>["BMC username is incorrect for $node"]}, $::CALLBACK);
+            xCAT::MsgUtils->message("E", {data=>["BMC username is incorrect for $ip"]}, $::CALLBACK);
             return 1;
         } elsif ($output =~ /RAKP \S* \S* is invalid/) {
-            xCAT::MsgUtils->message("E", {data=>["BMC password is incorrect for $node"]}, $::CALLBACK);
+            xCAT::MsgUtils->message("E", {data=>["BMC password is incorrect for $ip"]}, $::CALLBACK);
             return 1;
         } 
         if ( defined($opz) || defined($opw) )
