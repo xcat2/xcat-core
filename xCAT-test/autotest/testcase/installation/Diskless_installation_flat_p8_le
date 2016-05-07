@@ -3,7 +3,7 @@ os:Linux
 
 cmd:copycds $$ISO
 check:rc==0
-cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then rmvm $$CN -f && chdef $$CN mac= &&  mkvm $$CN ; fi
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi
 check:rc==0
 cmd:makedns -n
 check:rc==0
