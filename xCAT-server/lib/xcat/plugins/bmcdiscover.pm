@@ -206,11 +206,11 @@ sub bmcdiscovery_processargs {
     #
     ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
     # overwrite the default user/pass with what is passed in
+    if ($::opt_U) {
+        $bmc_user = $::opt_U;
+    }
     if ($::opt_P) {
         $bmc_pass = $::opt_P;
-        if ($::opt_U) {
-            $bmc_user = $::opt_U;
-        }
     }
 
     #########################################
