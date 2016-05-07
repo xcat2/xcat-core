@@ -1125,22 +1125,25 @@ sub mkinstall
                         xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd.img and linux to $tftppath");
                     }
                 }
-                elsif($arch eq "ppc64"  
-                      and -r "$pkgdir/1/suseboot/linux64"
-                      and -r "$pkgdir/1/suseboot/initrd64"){
+                elsif($arch eq "ppc64"){
                     unless ($noupdateinitrd) {
-                        copy("$pkgdir/1/suseboot/linux64", "$tftppath");
-                        copy("$pkgdir/1/suseboot/initrd64", "$tftppath");
-                        @dd_drivers = &insert_dd($callback, $os, $arch,"$tftppath/initrd64" ,"$tftppath/linux64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
-                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd64 and linux64 to $tftppath");
-                    }
-                }
-                elsif ($arch =~ /ppc/)
-                {
-                    unless ($noupdateinitrd) {
-                        copy("$pkgdir/1/suseboot/inst64", "$tftppath");
-                        @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
-                        xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy inst64 to $tftppath");
+                        if(-r "$pkgdir/1/suseboot/linux64" and -r "$pkgdir/1/suseboot/initrd64"){
+                            #from sles11.3, suseboot/linux64 and suseboot/initrd64 are used for diskful 
+                            #network installation
+                            #the previous suseboot/inst64 can not be run on Power8 BE
+                            copy("$pkgdir/1/suseboot/linux64", "$tftppath");
+                            copy("$pkgdir/1/suseboot/initrd64", "$tftppath");
+                            #TODO: need to verify whether initrd64 and linux64 can be inserted into initrd
+                            #@dd_drivers = &insert_dd($callback, $os, $arch,"$tftppath/initrd64" ,"$tftppath/linux64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                            xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy initrd64 and linux64 to $tftppath");
+                        }
+                        elsif(-r "$pkgdir/1/suseboot/inst64"){
+                            #suseboot/inst64 is used for network installation before sles11.3
+                            #suseboot/inst64 can not be run on Power8 BE
+                            copy("$pkgdir/1/suseboot/inst64", "$tftppath");
+                            @dd_drivers = &insert_dd($callback, $os, $arch, "$tftppath/inst64", undef, $driverupdatesrc, $netdrivers, $osupdir, $ignorekernelchk);
+                            xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: copy inst64 to $tftppath");
+                        }
                     }
                 }
             }
@@ -1334,36 +1337,39 @@ sub mkinstall
                                         }
                                         );
             } 
-            elsif ($arch eq "ppc64" 
-                   and -r "$tftppath/linux64"
-                   and -r "$tftppath/initrd64")
+            elsif ($arch eq "ppc64") 
             {
-                $kernelpath = "$rtftppath/linux64";
-                $initrdpath = "$rtftppath/initrd64";
-                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
-                $bptab->setNodeAttribs(
-                                        $node,
-                                        {
-                                         kernel   => $kernelpath,
-                                         initrd   => $initrdpath,
-                                         kcmdline => $kcmdline
-                                        }
-                                        );
+                if(-r "$tftppath/linux64" and -r "$tftppath/initrd64"){
+                    #from sles11.3, suseboot/linux64 and suseboot/initrd64 are used for diskful 
+                    #network installation
+                    #the previous suseboot/inst64 can not be run on Power8 BE
+                    $kernelpath = "$rtftppath/linux64";
+                    $initrdpath = "$rtftppath/initrd64";
+                    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=$initrdpath");
+                    $bptab->setNodeAttribs(
+                                            $node,
+                                            {
+                                             kernel   => $kernelpath,
+                                             initrd   => $initrdpath,
+                                             kcmdline => $kcmdline
+                                            }
+                                            );
+                }
+                elsif(-r "$tftppath/inst64"){
+                    #suseboot/inst64 is used for network installation before sles11.3
+                    #suseboot/inst64 can not be run on Power8 BE
+                    $kernelpath = "$rtftppath/inst64";
+                    xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=");
+                    $bptab->setNodeAttribs(
+                                            $node,
+                                            {
+                                             kernel   => $kernelpath,
+                                             initrd   => "",
+                                             kcmdline => $kcmdline
+                                            }
+                                            );
+                }
             }
-            elsif ($arch =~ /ppc/)
-            {
-                $kernelpath = "$rtftppath/inst64";
-                xCAT::MsgUtils->trace($verbose_on_off,"d","sles->mkinstall: kcmdline=$kcmdline kernal=$kernelpath initrd=");
-                $bptab->setNodeAttribs(
-                                        $node,
-                                        {
-                                         kernel   => $kernelpath,
-                                         initrd   => "",
-                                         kcmdline => $kcmdline
-                                        }
-                                        );
-            }
-
         }
         else
         {
