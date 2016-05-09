@@ -99,7 +99,9 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
             let idev=0
             IFS=','
             for p in $BMCPORT; do
+                unset IFS
                 ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+                IFS=','
                 # after this change, we need to watch and wait to see that it
                 # actually takes effect.  On port change, the service processor
                 # does not migrate the network configuration over
