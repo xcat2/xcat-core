@@ -1751,11 +1751,25 @@ sub rmvm {
             my $disktype = $disk->parentNode()->getAttribute("device");
             if ($disktype eq "cdrom") { next; }
             my $file = $disk->getAttribute("file");
-            my $vol  = $hypconn->get_storage_volume_by_path($file);
-            if ($vol) {
-                # Need to call get_info() before deleting a volume, without that, delete() will fail. Issue #455
-                $vol->get_info();
-                $vol->delete();
+
+            # try to check the existence first, if cannot find, do nothing.
+            # we do retry because we found sometimes the delete might fail
+            my $retry = 0;
+            my $vol;
+            while ($retry < 10) {
+                eval { $vol  = $hypconn->get_storage_volume_by_path($file); };
+                if ($@) {
+                    # Cannot find volumn, then stop delete
+                    xCAT::MsgUtils->trace(0, "e", "kvm: $@") if ($retry == 0);
+                    last;
+                }
+                if ($vol) {
+                    eval { $vol->delete(); };
+                    if ($@) {
+                        xCAT::MsgUtils->trace(0, "e", "kvm: $@");
+                    }
+                }
+                $retry++;
             }
         }
     }
