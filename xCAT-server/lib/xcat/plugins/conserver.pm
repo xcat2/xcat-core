@@ -191,7 +191,7 @@ sub docfheaders {
   my $idx = 0;
   my $skip = 0;
   my @meat = grep(!/^#/,@$content);
-  unless (grep(/^config \* {/,@meat)) {
+  unless (grep(/^config \* \{/,@meat)) {
     # do not add the ssl configurations 
     # if conserver is not compiled with ssl support
     my $cmd = "console -h 2>&1";
