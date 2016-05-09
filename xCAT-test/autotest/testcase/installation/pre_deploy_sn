@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+$ENV{TERM} = "xterm-256color";
+
 my $os=$ARGV[0];
 my $arch=$ARGV[1];
 my $log="/tmp/pre_deploy_sn.log";
@@ -13,20 +15,7 @@ sub runcmd{
     }
 }
 
-my $setupmysqlscript="#!/usr/bin/expect -f
-set timeout -1
-spawn mysqlsetup -i
-expect \"in the MySQL database:\"
-send \"12345\\r\"
-expect \"in the MySQL database:\"
-send \"12345\\r\"
-interact
-";
-
-my $cmd = "echo '$setupmysqlscript' > /tmp/setupmysqlscript && chmod +x /tmp/setupmysqlscript";
-runcmd("$cmd");
-
-$cmd="bash -lic \"/tmp/setupmysqlscript > /tmp/setupmysqlscript.rst\" ";
+$cmd="XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 /opt/xcat/bin/mysqlsetup -i -V";
 runcmd("$cmd");
 
 $cmd="echo \"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\" | mysql -u root -p12345";
