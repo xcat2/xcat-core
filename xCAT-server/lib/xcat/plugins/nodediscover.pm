@@ -358,8 +358,11 @@ sub process_request {
         $callback->({error=> ["The node [$node] should have a correct IP address which belongs to the management network."], errorcode=>["1"]});
         return;
     }
-    # Other arch such as IBM system x need also to go into this function.
-    xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+    if ($request->{arch}->[0] =~ /ppc/ and $request->{platform}->[0] =~ /PowerNV/) {
+        # This is a slow thing to do, and frequently breaks things thoroughly
+        xCAT::Utils->cleanup_for_powerLE_hardware_discovery($request, $doreq);
+    }
+
     
     my $restartstring = "restart";
     if (scalar @forcenics > 0) {
