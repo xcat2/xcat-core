@@ -24,6 +24,10 @@ The ssh access to the installer is enabled, the admin can login into the install
 
    Just as the message above suggests, the admin should run ``ssh -X root@<node>`` to access the installer and run ``yast.ssh`` to finish the installation.
 
+   **Note**: For sles12, during the second stage of an SSH installation YaST freezes. It is blocked by the SuSEFirewall service because the ``SYSTEMCTL_OPTIONS`` environment variable is not set properly. Workaround: When logged in for the second time to start the second stage of the SSH installation, call **yast.ssh** with the ``--ignore-dependencies`` as follows: ::
+
+    SYSTEMCTL_OPTIONS=--ignore-dependencies yast.ssh
+
 #. For UBT, the installation will halt on the following similar message in the console: ::
 
     ┌───────────┤ [!!] Continue installation remotely using SSH ├───────────┐
