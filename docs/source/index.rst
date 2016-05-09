@@ -35,4 +35,5 @@ Table of Contents
    troubleshooting/index.rst
    developers/index.rst
    help.rst
+   security/index.rst
 
