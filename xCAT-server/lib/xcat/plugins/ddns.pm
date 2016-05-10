@@ -1060,35 +1060,35 @@ sub update_namedconf {
                 my $skip=0;
                 do {
                     #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
-                    if ($ctx->{forwarders} and $line =~ /forwarders {/) {
+                    if ($ctx->{forwarders} and $line =~ /forwarders \{/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
                         foreach (@{$ctx->{forwarders}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";
-                    } elsif ($ctx->{slaves} and $line =~ /allow-transfer {/) {
+                    } elsif ($ctx->{slaves} and $line =~ /allow-transfer \{/) {
                         push @newnamed,"\tallow-transfer \{\n";
                         $skip=1;
                         foreach (@{$ctx->{slaves}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";
-                    } elsif ($ctx->{slaves} and $line =~ /also-notify {/) {
+                    } elsif ($ctx->{slaves} and $line =~ /also-notify \{/) {
                         push @newnamed,"\talso-notify \{\n";
                         $skip=1;
                         foreach (@{$ctx->{slaves}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";                    
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on {/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv4}) and $line =~ /listen-on \{/) {
                         push @newnamed,"\tlisten-on \{\n";
                         $skip=1;
                         foreach (@{$ctx->{dnslistenonifs}->{ipv4}}) {
                             push  @newnamed,"\t\t".$_.";\n";
                         }
                         push @newnamed,"\t};\n";                    
-                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 {/) {
+                    } elsif (defined($ctx->{dnslistenonifs}) and defined($ctx->{dnslistenonifs}->{ipv6}) and $line =~ /listen-on-v6 \{/) {
                         push @newnamed,"\tlisten-on-v6 \{\n";
                         $skip=1;
                         foreach (@{$ctx->{dnslistenonifs}->{ipv6}}) {
