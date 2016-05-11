@@ -421,6 +421,19 @@ updateflag.awk $MASTER 3002
 
 cd /
 
+# fix the issue#929@github, the "service network restart" in <sles post scripts>  
+# makes the 'network' service in start status, then it causes the
+# services YaST2-Second-Stage.service and xcatpostinit1 services to be run in parallel.
+# But the YaST2-Second-Stage.service calls the Yast2 which conflics with the zypper
+# which is called in xcatpostinit1->otherpkgs. 
+# The correct services start order is 'YaST2-Second-Stage.service'->'network'->'xcatpostinit1' in serial.
+# To skip the conflict, the network service should be stoped in the yast first stage. Then base on the service
+# dependency, the service start order will be 'YaST2-Second-Stage.service'->'network'->'xcatpostinit1' in serial.
+# Then the Yast2 will be stopped before running the zypper in otherpkgs.
+if [[ $OSVER != sles11* ]]; then
+    service network stop
+fi
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set +x
 fi
