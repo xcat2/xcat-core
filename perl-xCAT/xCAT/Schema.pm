@@ -1131,7 +1131,7 @@ use xCAT::ExtTab;
 "                 currently supported values:\n".
 "                   '0':  disable debug mode\n".
 "                   '1':  enable basic debug mode\n".
-"                   '2':  enalbe expert debug mode\n".
+"                   '2':  enable expert debug mode\n".
 "                 For the details on 'basic debug mode' and 'expert debug mode',\n".
 "                 please refer to xCAT documentation.\n\n".
 " --------------------\n" .
