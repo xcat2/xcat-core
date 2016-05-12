@@ -16,7 +16,7 @@ check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
 cmd:sleep 10
-cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN; fi
+cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
 cmd:makedhcp -n
 check:rc==0
