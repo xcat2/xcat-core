@@ -13,12 +13,13 @@
 #    type, select the first one.
 # 3. Select the default one: /dev/sda.   
 #
-# Output: /tmp/install_disk
+# Output: /tmp/xcat.install_disk
 #
 #-----------------------------------------------------------
 
 install_disk=""
-rm -f /tmp/install_disk
+install_disk_file="/tmp/xcat.install_disk"
+
 tmpdir="/tmp/xcat.getinstalldisk"
 mkdir -p $tmpdir
 
@@ -205,5 +206,5 @@ if [ -z "$install_disk" ]; then
     echo "[get_install_disk]The default install_disk is $install_disk."
 fi
 
-# Output the result to /tmp/install_disk file
-echo $install_disk > /tmp/install_disk
+# Output the result to $install_disk_file
+echo $install_disk > $install_disk_file
