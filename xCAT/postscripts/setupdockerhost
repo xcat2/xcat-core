@@ -78,6 +78,13 @@ else
     mask=`echo $netinfo | awk -F'@' '{print $1}' | awk -F/ '{print $2}'`
     gateway=`echo $netinfo | awk -F'@' '{print $2}' | awk -F: '{print $1}'`
     nicname=`echo $netinfo | awk -F: '{print $2}'`
+    if [ ! -z "$nicname" ]; then
+        if [ ! -x /sbin/brctl ]; then
+            echo "Error: /sbin/brctl command not found. Not able to configure $nicname"
+            exit 1;
+        fi
+    fi
+
     if [ -z "$netname" -o -z "$net" -o -z "$mask" -o -z "$gateway" ]; then
         echo "Error: must be in format '$0 netname=net/mask@gateway[:nicname]'"
         exit 1
@@ -165,12 +172,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 if [ ! -z "$nicname" ]; then
-    if [ -x /sbin/brctl ]; then
-        brctl addif $netname $nicname
-    else 
-        echo "Error: brctl command not found. Not able to configure $nicname"
-        exit 1;
-    fi
+    brctl addif $netname $nicname
     default_info=`ip route | grep default | grep "dev $nicname" | grep via`
     if [ ! -z "$default_info" ]; then
         default_gw=`echo $default_info | awk '{print $3}'`
