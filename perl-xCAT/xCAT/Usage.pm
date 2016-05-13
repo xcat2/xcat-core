@@ -215,7 +215,7 @@ my %usage = (
                       [vmphyslots=drc_index1,drc_index2...] [vmothersetting=hugepage:N,bsr:N]
                       [vmnics=vlan1,vlan2] [vmstorage=<N|viosnode:slotid>] [--vios]
     For KVM
-       mkvm noderange -m|--master mastername -s|--size disksize -f|--force
+       mkvm noderange [-s|--size disksize] [--mem memsize] [--cpus cpucount] [-f|--force]
     For zVM
        mkvm noderange directory_entry_file_path
        mkvm noderange source_virtual_machine pool=disk_pool pw=multi_password",

@@ -26,7 +26,7 @@ B<mkvm> I<noderange> [B<vmcpus=> I<min/req/max>] [B<vmmemory=> I<min/req/max>] [
 
 =head2 For KVM:
 
-B<mkvm> I<noderange> [B<-m|--master> I<mastername>] [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
+B<mkvm> I<noderange> [B<-s|--size> I<disksize>] [B<--mem> I<memsize>] [B<--cpus> I<cpucount>] [B<-f|--force>]
 
 =head2 For Vmware:
 
