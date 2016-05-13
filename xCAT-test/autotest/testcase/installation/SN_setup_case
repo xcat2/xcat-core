@@ -11,11 +11,11 @@ cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "x86_64" ]];then chdef -t node -o $$SN
 
 cmd:makedns -n
 check:rc==0
-cmd:makeconservercf 
+cmd:makeconservercf $$SN 
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$SN
 check:output=~$$SN
-cmd:sleep 10
+cmd:sleep 20
 cmd:if [[ "__GETNODEATTR($$SN,arch)__" =~ "ppc64" ]]; then getmacs -D $$SN -V; fi
 check:rc==0
 cmd:makedhcp -n
