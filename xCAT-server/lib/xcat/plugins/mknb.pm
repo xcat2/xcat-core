@@ -198,17 +198,13 @@ CREAT_CONF_FILE:
       chmod(0755,"$tftpdir/xcat/xnba/nets");
       mkpath("$tftpdir/pxelinux.cfg");
       chmod(0755,"$tftpdir/pxelinux.cfg");
-      if (! -r "$tftpdir/pxelinux.0") {
-         unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-            $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
-            return;
-         }
-         if (-r "/usr/lib/syslinux/pxelinux.0") {
-            copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-         } else {
-            copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-         }
-         chmod(0644,"$tftpdir/pxelinux.0");
+      if (-r "/usr/lib/syslinux/pxelinux.0") {
+          copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+      } elsif (-r "/usr/share/syslinux/pxelinux.0") {
+          copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+      }
+      if (-r "$tftpdir/pxelinux.0") {
+          chmod(0644,"$tftpdir/pxelinux.0");
       }
    } elsif ($arch =~ /ppc/) {
       mkpath("$tftpdir/pxelinux.cfg/p/");
