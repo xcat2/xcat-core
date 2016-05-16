@@ -83,7 +83,7 @@ For KVM and VMware
 ==================
 
 
-The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  only can be hypervisor.
+The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  can only be hypervisor.
 
 Note: Only the virtual machine which is in power on state can be listed by lsvm command.
 
