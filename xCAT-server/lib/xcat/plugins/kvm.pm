@@ -1764,7 +1764,11 @@ sub rmvm {
                     last;
                 }
                 if ($vol) {
-                    eval { $vol->delete(); };
+                    eval { 
+                        # Need to call get_info() before deleting a volume, without that, delete() will sometimes fail. Issue #455
+                        $vol->get_info(); 
+                        $vol->delete(); 
+                    };
                     if ($@) {
                         xCAT::MsgUtils->trace(0, "e", "kvm: $@");
                     }
