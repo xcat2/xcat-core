@@ -75,7 +75,13 @@ clearpart --all --initlabel
 # --useLilo
 # --md5pass <crypted MD5 password for GRUB>
 #
-#KICKSTARTBOOTLOADER#
+#The bootloader config here is commented out
+#For user customized partition file or partition script, 
+#the bootloader configuration should be specified in the user customized partition file/script
+#For the xCAT default partition scheme, the bootloader configuration is in /tmp/partitioning
+#which is generated in %pre section
+##KICKSTARTBOOTLOADER#
+
 #
 # install or upgrade
 #
