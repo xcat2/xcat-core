@@ -52,7 +52,7 @@ For KVM:
 ========
 
 
-\ **mkvm**\  \ *noderange*\  [\ **-m|-**\ **-master**\  \ *mastername*\ ] [\ **-s|-**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ] [\ **-f|-**\ **-force**\ ]
+\ **mkvm**\  \ *noderange*\  [\ **-s|-**\ **-size**\  \ *disksize*\ ] [\ **-**\ **-mem**\  \ *memsize*\ ] [\ **-**\ **-cpus**\  \ *cpucount*\ ] [\ **-f|-**\ **-force**\ ]
 
 
 For Vmware:

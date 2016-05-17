@@ -36,9 +36,9 @@ if [ -z "$install_disk" ]; then
 
     # Get all partitions and disks from /proc/partitions file
     if [ -z "$has_awk" ]; then
-        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h]d.*$")
+        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h|v]d.*$")
     else
-        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h]d.*$")
+        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h|v]d.*$")
     fi    
 
     # Classify entries by DEVTYPE

@@ -191,6 +191,18 @@ echo "part swap --recommended --ondisk $instdisk" >> /tmp/partitioning
 echo "part pv.01 --size 1 --grow --ondisk $instdisk" >> /tmp/partitioning
 echo "volgroup system pv.01" >> /tmp/partitioning
 echo "logvol / --vgname=system --name=root --size 1 --grow --fstype $FSTYPE" >> /tmp/partitioning
+
+#specify "bootloader" configuration in "/tmp/partitioning" if there is no user customized partition file
+BOOTLOADER="bootloader "
+
+#specify the kernel options which will be persistent after installation
+[ -n "#ENV:PERSKCMDLINE#" ] && BOOTLOADER=$BOOTLOADER" --append=#ENV:PERSKCMDLINE#"
+
+#Specifies which drive the boot loader should be written to
+#and therefore which drive the computer will boot from.
+[ -n "$instdisk" ] && BOOTLOADER=$BOOTLOADER" --boot-drive=$(basename $instdisk)"
+
+echo "$BOOTLOADER" >> /tmp/partitioning
 	
 #XCA_PARTITION_SCRIPT#
 
