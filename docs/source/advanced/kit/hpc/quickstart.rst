@@ -1,7 +1,7 @@
 Quick Start Guide
 =================
 
-This quick start is provided to guide users through the steps required to install the IBM High Performance Computing (HPC) software stack on a cluster managed by xCAT.  
+This quick start is provided to guide users through the steps required to install the IBM High Performance Computing (HPC) software stack on a cluster managed by xCAT. (*NOTE:* DO NOT copy and paste the following commands, xCAT built XLC and XLF partial kits, but all other HPC kits are built by HPC team, xCAT will not have any knowledges for their requirements and how to use them)  
 
 The following software kits will be used to install the IBM HPC software stack on to a RedHat Enterprise Linux 7.2 operating system running on ppc64le architecture. 
 
@@ -101,10 +101,11 @@ The following software kits will be used to install the IBM HPC software stack o
         addkitcomp -a -i rhels7.2-ppc64le-install-compute \
             essl-computenode-3264rtecuda-5.4.0-0-rhels-7.2-ppc64le
 
+      If the system doesn't have GPU and CUDA toolkit is not needed,  the adminstrator should not install ``essl-loginnode-5.4.0-0-rhels-7.2-ppc64le``, ``essl-computenode-3264rte-5.4.0-0-rhels-7.2-ppc64le`` and ``essl-computenode-3264rtecuda-5.4.0-0-rhels-7.2-ppc64le``.  since those kit components required CUDA packages. please check the ESSL installation guide: http://www.ibm.com/support/knowledgecenter/SSFHY8_5.4.0/com.ibm.cluster.essl.v5r4.essl300.doc/am5il_xcatinstall.htm 
 
     #. Add the **Parallel ESSL** kitcomponents to osimage.  
 
-       *Note:* ESSL kitcomponents are required for the PESSL.  ::
+       **Note:** ESSL kitcomponents are required for the PESSL.  ::
 
         addkitcomp -a -i rhels7.2-ppc64le-install-compute \
             pessl-loginnode-5.2.0-0-rhels-7.2-ppc64le
