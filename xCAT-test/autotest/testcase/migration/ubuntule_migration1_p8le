@@ -54,9 +54,9 @@ check:rc==0
 cmd:xdsh $$CN "rm -rf /oldxcat"
 cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_CORE"
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_CORE"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_DEP"
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_DEP"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
