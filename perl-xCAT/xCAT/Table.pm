@@ -2555,7 +2555,7 @@ sub getNodeAttribs_nosub_returnany
   my $attrib;
   my $result;
   my @hierarchy_attrs;
-  my $hierarchy_field = xCAT::TableUtils->get_site_attribute("heirarchicalattrs");
+  my $hierarchy_field = xCAT::TableUtils->get_site_attribute("hierarchicalattrs");
   if ($hierarchy_field) {
       @hierarchy_attrs = split(/,/, $hierarchy_field);
   }
