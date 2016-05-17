@@ -1443,6 +1443,18 @@ sub mknetboot
            $kcmdline .= " xcatdebugmode=1 ";
         }
 
+        if($::XCATSITEVALS{xcatdebugmode} eq "2"){
+
+           my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($xcatmaster);
+           if($ipaddr){
+              $kcmdline .=" LOGSERVER=$ipaddr ";
+           }else{
+              $kcmdline .=" LOGSERVER=$xcatmaster ";
+           }
+
+           $kcmdline .= " xcatdebugmode=2 ";
+        }
+
 
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
