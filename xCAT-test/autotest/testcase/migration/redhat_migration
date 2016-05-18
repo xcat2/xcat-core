@@ -1,5 +1,7 @@
 start:redhat_migration1
 os:Linux
+stop:yes
+
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
@@ -51,9 +53,9 @@ cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "yum -y install bzip2"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_DEP"
+cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_DEP"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_CORE"
+cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_CORE"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
@@ -69,7 +71,7 @@ cmd:xdsh $$CN "source /etc/profile.d/xcat.sh"
 check:rc==0
 cmd:xdsh $$CN "lsxcatd -v"
 check:rc==0
-check:output=~$$MIGRATION2_VERSION
+check:output=~$$MIGRATION1_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
@@ -157,9 +159,9 @@ cmd:xdsh $$CN "mkdir -p /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "yum -y install bzip2"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_DEP"
+cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_DEP"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION1_CORE"
+cmd:xdsh $$CN "cd /oldxcat;wget $$MIGRATION2_CORE"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
 check:rc==0
@@ -175,7 +177,7 @@ cmd:xdsh $$CN "source /etc/profile.d/xcat.sh"
 check:rc==0
 cmd:xdsh $$CN "lsxcatd -v"
 check:rc==0
-check:output=~$$MIGRATION1_VERSION
+check:output=~$$MIGRATION2_VERSION
 cmd:xdsh $$CN "service xcatd status"
 check:rc==0
 check:output=~running
