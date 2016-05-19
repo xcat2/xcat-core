@@ -18,7 +18,7 @@ Dependencies
     addkitcomp -a -i rhels7.2-ppc64le-install-compute \
         essl-computenode-3264rte-5.4.0-0-rhels-7.2-ppc64le
 
-ESSL reference
+Reference
 --------------
   Refer to ESSL installation guide for more information: http://www.ibm.com/support/knowledgecenter/SSFHY8_5.4.0/com.ibm.cluster.essl.v5r4.essl300.doc/am5il_xcatinstall.htm
 
