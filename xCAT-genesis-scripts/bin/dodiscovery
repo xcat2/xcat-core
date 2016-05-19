@@ -141,6 +141,11 @@ if [ "$IsStatic" ]; then
     fi
 fi
 
+# Check whether the hardware support in-band BMC configuration with the IPMI device
+if [ -r /dev/ipmi0 -o -r /dev/ipmi/0 -o -r /dev/ipmidev/0 ]; then
+    echo "<bmcinband>1</bmcinband>" >> /tmp/discopacket
+fi
+
 #so we have some cases where DMI table explictly records every function number, and some where only first function is enumerated
 #so for each onboard device, we record it.  If it is also the first function, we'll seek out other function numbers and append
 #if that other function number does not show up in its own dmi type 41 record
