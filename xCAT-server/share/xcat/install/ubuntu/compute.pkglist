@@ -1,5 +1,6 @@
 openssh-server
 ntp
+ntpdate
 gawk
 nfs-common
 snmpd
