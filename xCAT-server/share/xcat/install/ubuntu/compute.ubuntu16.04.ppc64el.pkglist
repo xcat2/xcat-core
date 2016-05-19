@@ -8,6 +8,7 @@ openssh-client
 wget
 vim
 ntp
+ntpdate
 rsync
 busybox-static
 gawk
