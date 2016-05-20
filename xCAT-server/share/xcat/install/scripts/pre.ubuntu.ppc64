@@ -1,3 +1,8 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
 #!/bin/sh
 
 if [ ! -c /dev/vcs ]; then
@@ -5,6 +10,24 @@ if [ ! -c /dev/vcs ]; then
 fi
 
 debconf-get open-iscsi/targets > /tmp/q
+
+cat >/tmp/syslogd.sh <<EOF
+#!/bin/sh
+
+#
+#  Start a new process to connect master using busybox syslogd.
+#
+
+sysloghost="#XCATVAR:XCATMASTER#"
+syslogport="514"
+syslogd -R "\$sysloghost":"\$syslogport"
+
+exit 0
+EOF
+
+chmod 755 /tmp/syslogd.sh
+
+/tmp/syslogd.sh &
 
 cat >/tmp/foo.sh <<EOF
 #!/bin/sh
@@ -222,3 +245,7 @@ echo "    ." >> /tmp/partitionfile
 
 exit 0
 
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+then
+    set +x
+fi

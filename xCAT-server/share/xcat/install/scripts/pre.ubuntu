@@ -11,6 +11,24 @@ fi
 
 debconf-get open-iscsi/targets > /tmp/q
 
+cat >/tmp/syslogd.sh <<EOF
+#!/bin/sh
+
+#
+#  Start a new process to connect master using busybox syslogd.
+#
+
+sysloghost="#XCATVAR:XCATMASTER#"
+syslogport="514"
+syslogd -R "\$sysloghost":"\$syslogport"
+
+exit 0
+EOF
+
+chmod 755 /tmp/syslogd.sh
+
+/tmp/syslogd.sh &
+
 cat >/tmp/foo.sh <<EOF
 #!/bin/sh
 
