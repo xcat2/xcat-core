@@ -195,6 +195,16 @@ config_rsyslog_V8()
                        s/#\$ModLoad imtcp.so/\$ModLoad imtcp.so/; 
                        s/#\$InputTCPServerRun <port>/\$InputTCPServerRun 514/' $remoteconf
     fi
+
+    #ubuntu16.04 ships rsyslog 8.16.0,which does not ship remote.conf
+    #the configuration for UDP and TCP syslog reception is in rsyslog.conf
+    if [ -f "$conf_file" ]; then
+        sed -i 's/#module(load="imudp")/module(load="imudp")/;
+                s/#input(type="imudp" port="514")/input(type="imudp" port="514")/;
+                s/#module(load="imtcp")/module(load="imtcp")/;
+                s/#input(type="imtcp" port="514")/input(type="imtcp" port="514")/' $conf_file
+    fi
+
   else
     # not logging local, forward logging
     # backup the existing remote.conf file from the install
