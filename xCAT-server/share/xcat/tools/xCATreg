@@ -297,6 +297,8 @@ sub mn_install {
 
         &runcmd("makedhcp -n");
         &runcmd("makedns -n");
+        &runcmd("chdef $confkeys{$mn} status=");
+        &runcmd("lsdef -l $confkeys{$mn}|grep status");
 
 	&runcmd("nodeset $confkeys{$mn} osimage=$osimage");
 	if( $arch =~ /x86_64/ || $arch =~ /ppc64le/ || $arch =~ /ppc64el/){
@@ -305,12 +307,15 @@ sub mn_install {
 	    &runcmd("rnetboot $confkeys{$mn}");
 	}
 	
-	if($mn !~ /ubuntu/){
-	    &runcmd("sleep 300");
-	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
-	else{
-	    &runcmd("sleep 1800");	
-	}
+         &runcmd("sleep 600");
+         &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 30;((a++));if [ \$a -gt 100 ];then break;fi done");
+
+#	if($mn !~ /ubuntu/){
+#	    &runcmd("sleep 300");
+#	    &runcmd("a=0;while ! `lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null`; do sleep 10;((a++));if [ \$a -gt 200 ];then break;fi done");}
+#	else{
+#	    &runcmd("sleep 1800");	
+#	}
 	
 	&runcmd("lsdef -l $confkeys{$mn}|grep status|grep booted >/dev/null");
 	if($?){
