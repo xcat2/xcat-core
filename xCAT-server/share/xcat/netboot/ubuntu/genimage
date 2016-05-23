@@ -1970,13 +1970,17 @@ sub mount_chroot {
 
    #postinstall script of package installation
    #might access the /proc, /sys and /dev filesystem
-   #mount them from host read-only
+   #mount /proc, /sys from host 
+   #create /dev based on /dev/ on host
    system("mkdir -p $rootimage_dir/proc");
-   system("mount proc $rootimage_dir/proc -t proc -o ro");
+   system("mount proc $rootimage_dir/proc -t proc");
    system("mkdir -p $rootimage_dir/sys");
-   system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+   system("mount sysfs $rootimage_dir/sys -t sysfs");
    system("mkdir -p $rootimage_dir/dev");
-   system("mount devfs $rootimage_dir/dev -t devfs -o ro");
+   #system("mount devtmpfs $rootimage_dir/dev -t devtmpfs");
+   system("cd /dev;find .|cpio -H newc -o >$rootimage_dir/dev/dev.archive;cd -");
+   system("cd $rootimage_dir/dev;cpio -idum<./dev.archive;rm -f ./dev.archive;cd -");
+
 
    if ($pkgdir) {
        if (-d $pkgdir) {
@@ -2009,21 +2013,22 @@ sub mount_chroot {
 sub umount_chroot {
    my $rootimage_dir = shift;
 
-   system("umount $rootimage_dir/proc");
-   system("umount $rootimage_dir/sys");
-   system("umount $rootimage_dir/dev");
+   system("umount -l $rootimage_dir/proc");
+   system("umount -l $rootimage_dir/sys");
+   #system("umount -l $rootimage_dir/dev");
+   system("rm -rf $rootimage_dir/dev/*");
 
-   system("umount $rootimage_dir/mnt/pkgdir");
+   system("umount -l $rootimage_dir/mnt/pkgdir");
    rmdir("$rootimage_dir/mnt/pkgdir");
 
    my @data = `grep /mnt/otherpkgdir /proc/mounts | cut -f2 -d' ' | sort -r`;
    foreach (@data) {
-       `umount $_`;
+       `umount -l $_`;
    }
    rmdir("$rootimage_dir/mnt/otherpkgdir");
 
    if (-d "$rootimage_dir/mnt/kerneldir") {
-       system("umount $rootimage_dir/mnt/kerneldir");
+       system("umount -l $rootimage_dir/mnt/kerneldir");
        rmdir("$rootimage_dir/mnt/kerneldir");
    }
 }

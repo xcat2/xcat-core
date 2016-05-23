@@ -8,7 +8,7 @@ Documentation
 
 xCAT documentation is available at: http://xcat-docs.readthedocs.io/en/latest/
 
-|docs_latest| |docs_211|
+|docs_latest| |docs_212| |docs_211|
 
 Open Source License
 -------------------
@@ -23,6 +23,11 @@ Developers and prospective contributors are encouraged to read the `Developers G
 In particular the `GitHub <http://xcat-docs.readthedocs.io/en/latest/developers/github/>`_ related subsection.
 
 
+.. |docs_212| image:: https://readthedocs.org/projects/xcat-docs/badge/?version=2.12
+    :alt: 2.12 documentation status
+    :scale: 100%
+    :target: http://xcat-docs.readthedocs.io/en/2.12/
+    
 .. |docs_211| image:: https://readthedocs.org/projects/xcat-docs/badge/?version=2.11
     :alt: 2.11 documentation status
     :scale: 100%

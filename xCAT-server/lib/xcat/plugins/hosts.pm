@@ -87,6 +87,7 @@ sub addnode
                     # we're processing the nics table and we found an
                     #   existing entry for this ip so just add this
                     # ode name as an alias for the existing entry
+                    chomp($hosts[$idx]);
                     my ($hip, $hnode, $hdom, $hother)= split(/ /, $hosts[$idx]);
                     
                     # at this point "othernames", if any is just a space

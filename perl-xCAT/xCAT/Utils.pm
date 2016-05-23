@@ -3896,30 +3896,55 @@ sub servicemap{
   my $path=undef;
   my $postfix="";
   my $retdefault=$svcname;
+  my $svcmgrcmd;
   if($svcmgrtype == 0){
+     #for sysvinit
      $path="/etc/init.d/";
+     $svcmgrcmd="service";
   }elsif ($svcmgrtype == 1){
-     $path="/usr/lib/systemd/system/";
+     #for systemd
+     #ubuntu 16.04 replace upstart with systemd, 
+     #all the service unit files are placed under /lib/systemd/system/ on ubuntu
+     #all the service unit files are placed under /usr/lib/systemd/system/ on redhat and sles
+     #$path delimited with space
+     $path="/usr/lib/systemd/system/ /lib/systemd/system/";
      $postfix=".service";
+     $svcmgrcmd="systemctl";
 #     $retdefault=$svcname.".service";
   }elsif ($svcmgrtype == 2){
      $path="/etc/init/";
      $postfix=".conf";
+     $svcmgrcmd="initctl";
+  }
+  
+  #check whether service management command is available
+  system "type $svcmgrcmd >/dev/null 2>&1";
+  if($? != 0){
+    return undef;
   }
 
-  
+  my @paths=split(" ",$path);
   my $ret=undef;
   if($svchash{$svcname}){
-    foreach my $file (@{$svchash{$svcname}}){
-       if(-e $path.$file.$postfix ){
-             $ret=$file;
-             last;
+      foreach my $file (@{$svchash{$svcname}}){
+          foreach my $ipath (@paths){
+              if(-e $ipath.$file.$postfix ){
+                  $ret=$file;
+                  last;
+              }
           }
-    }      
+ 
+          if(defined $ret){
+              last; 
+          }
+      }      
   }else{
-    if(-e $path.$retdefault.$postfix){
-        $ret=$retdefault;
-    } 
+      foreach my $ipath (@paths){
+          if(-e $ipath.$retdefault.$postfix){
+              $ret=$retdefault;
+              last;
+          } 
+      }
  }
  
  return $ret;  

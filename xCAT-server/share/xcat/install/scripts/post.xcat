@@ -430,7 +430,7 @@ cd /
 # To skip the conflict, the network service should be stoped in the yast first stage. Then base on the service
 # dependency, the service start order will be 'YaST2-Second-Stage.service'->'network'->'xcatpostinit1' in serial.
 # Then the Yast2 will be stopped before running the zypper in otherpkgs.
-if [[ $OSVER != sles11* ]]; then
+if [[ $OSVER =~ sles && $OSVER != sles11* ]]; then
     service network stop
 fi
 

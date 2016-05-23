@@ -5,7 +5,7 @@ my $arch=$ARGV[1];
 my $log="/tmp/pre_deploy_sn.log";
 
 my $orgclusterconffile="/opt/xcat/share/xcat/tools/autotest/default.conf";
-my $snnodename = `cat $orgclusterconffile |grep SN|grep =|awk -F'=' '{print \$2}'`;
+my $snnodename = `cat $orgclusterconffile |grep -E '^SN\s*='|awk -F'=' '{print \$2}'`;
 chomp($snnodename);
 `echo "SN=$snnodename" >> $log`;
 sleep 300;

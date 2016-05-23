@@ -3,12 +3,13 @@ nfs-common
 openssl
 isc-dhcp-client
 libc-bin
-linux-image-generic-lts-xenial
+linux-image-generic
 openssh-server
 openssh-client
 wget
 vim
 ntp
+ntpdate
 rsync
 busybox-static
 gawk

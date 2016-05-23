@@ -443,6 +443,7 @@ sub scan_process{
     my $callback = $::CALLBACK;
     my $children;    # The number of child process
     my %sp_children;    # Record the pid of child process
+    my $bcmd;
     my $sub_fds = new IO::Select;    # Record the parent fd for each child process
   
     if ( !defined($method) )
@@ -455,7 +456,18 @@ sub scan_process{
     # get live ip list
     ###########################################################
     if ( $method eq "nmap" ) {
-        my $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+        #check nmap version first
+        my $ccmd = "$nmap_path -V | grep version";
+        my $version_result = xCAT::Utils->runcmd($ccmd, 0);
+        my @version_array = split / /, $version_result;
+        my $nmap_version = $version_array[2];
+        # the output of nmap is different for version under 4.75
+        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+            $bcmd = join(" ",$nmap_path," -sP -n $range | grep Host |cut -d ' ' -f2 |tr -s '\n' ' ' ");
+        } else {
+            $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+        }
+
         $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp = {};
