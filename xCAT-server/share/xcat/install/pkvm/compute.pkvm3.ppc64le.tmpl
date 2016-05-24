@@ -36,22 +36,21 @@ rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
 
 %pre
 {
-set -x
-touch "/startpre"
+echo "Running Automated Network Pre-Installation script..."
 #add the code to determine the disk to partition here
 #default is /dev/sda
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.pkvm3#
-} >>/tmp/prelog 2>&1
+} >>/tmp/pre-install.log 2>&1
 %end
 
 %post
-touch "/startpost"
-
+mkdir -p /var/log/xcat/
+{
+cat >> /var/log/xcat/xcat.log << "EOF"
+%include /tmp/pre-install.log
+EOF
+echo "Running Automated Network Post-Installation script..."
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/post.xcat#
-touch "/inpost"
-
-#sleep 1000000
-
-
+} >>/var/log/xcat/xcat.log 2>&1
 %end
 

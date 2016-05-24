@@ -1,3 +1,8 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
 #find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
 
@@ -18,4 +23,6 @@ fi
 echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitioning
 echo "volgroup ibmpkvm_rootvg PV.01" >> /tmp/partitioning	
 
-
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set +x
+fi
