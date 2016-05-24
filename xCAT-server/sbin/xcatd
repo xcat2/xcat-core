@@ -585,13 +585,13 @@ sub do_discovery_process {
     populate_vpd_hash();
     populate_mp_hash();
     while (not $quit) {
+        my $msg = fd_retrieve($broker);
         if ((time()-$vintage)> 15) {
             populate_site_hash();
             populate_vpd_hash();
             populate_mp_hash();
             $vintage = time();
         } # site table reread every 15 second
-        my $msg = fd_retrieve($broker);
         my $data;
         my $client;
         my $clientn;
@@ -616,7 +616,7 @@ sub do_discovery_process {
             # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
             IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);
-            $data = $bigdata
+            $data = $bigdata;
         }
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
