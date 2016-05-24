@@ -298,7 +298,11 @@ sub mn_install {
         &runcmd("makedhcp -n");
         &runcmd("makedns -n");
         &runcmd("chdef $confkeys{$mn} status=");
-        &runcmd("lsdef -l $confkeys{$mn}|grep status");
+        if($?){
+            send_msg(0, "[$mn->$confkeys{$mn}][mn_install] Failed to change MN status in current control node");
+            return 1;
+        }
+
 
 	&runcmd("nodeset $confkeys{$mn} osimage=$osimage");
 	if( $arch =~ /x86_64/ || $arch =~ /ppc64le/ || $arch =~ /ppc64el/){
