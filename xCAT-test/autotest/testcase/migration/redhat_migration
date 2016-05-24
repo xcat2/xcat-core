@@ -63,7 +63,7 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`more /etc/*release|grep VERSION_ID|cut -c13`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
 check:rc==0
@@ -90,7 +90,7 @@ cmd:xdsh $$CN "cd /root/xcat-core;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
-cmd:xdsh $$CN "cd /root/xcat-dep/rh`more /etc/*release|grep VERSION_ID|cut -c13`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:xdsh $$CN "cd /root/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean metadata;yum -y update '*xCAT*'"
 check:rc==0
@@ -171,7 +171,7 @@ cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
 check:rc==0
 cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
 check:rc==0
-cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`more /etc/*release|grep VERSION_ID|cut -c13`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:xdsh $$CN "cd /oldxcat/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean all;yum -y install xCAT"
 check:rc==0
@@ -198,7 +198,7 @@ cmd:xdsh $$CN "cd /root/xcat-core;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "tar -jxvf /xcat-dep*.tar.bz2"
 check:rc==0
-cmd:xdsh $$CN "cd /root/xcat-dep/rh`more /etc/*release|grep VERSION_ID|cut -c13`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
+cmd:xdsh $$CN "cd /root/xcat-dep/rh`echo __GETNODEATTR($$CN,os)__ | cut -c6`/__GETNODEATTR($$CN,arch)__/;./mklocalrepo.sh"
 check:rc==0
 cmd:xdsh $$CN "yum clean metadata;yum -y update '*xCAT*'"
 check:rc==0
