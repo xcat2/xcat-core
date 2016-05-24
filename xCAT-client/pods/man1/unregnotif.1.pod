@@ -26,7 +26,7 @@ I<filename> is the path name of the Perl module or command to be registered.
 
 B<-h | -help>          Display usage message.
 
-B<-v | -version >      Command Version.
+B<-v | -version>      Command Version.
 
 B<-V | -verbose>       Verbose output.
 

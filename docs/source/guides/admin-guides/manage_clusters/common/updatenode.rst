@@ -94,7 +94,7 @@ If you need to, you can also pass arguments to your scripts: ::
 
 mypostscript template for ``updatenode``
 
-You can customize what attributes you want made available to the post*script, using the shipped mypostscript.tmpl file :ref:`Using-the-mypostscript-template`.
+You can customize what attributes you want made available to the postscript, using the shipped mypostscript.tmpl file :ref:`Using-the-mypostscript-template-label`.
 
 Synchronize new/updated configuration files
 -------------------------------------------

@@ -65,7 +65,7 @@ Enumerated List
 Hyperlinks -> Internal Links -> External Links
 ----------------------------------------------
 
-Add links to refer other web page  is a very common way in writting document, it's very helpful to reduce the doc duplication and make doc to be easy to understand. Following are several ways to add a link in the xCAT documentation.
+Add links to refer other web page  is a very common way in writting document, it's very helpful to reduce the doc duplication and make docs easy to understand. Following are several ways to add a link in the xCAT documentation.
 
 * **Add an Internal Link to ``Customized Link Target``**
 
@@ -85,7 +85,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
  Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`: ::
 
-    Link to the customized link target ``my_link_target`` :ref:`my link <my_link_target>`
+    :ref:`my link <my_link_target>`
 
 ..
 
@@ -95,7 +95,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to an internal section in current page: `Guidelines for xCAT Documentation`_: ::
 
-    Link to an internal section in current page: `Guidelines for xCAT Documentation`_
+    `Guidelines for xCAT Documentation`_
 
 ..
 
@@ -103,15 +103,15 @@ Add links to refer other web page  is a very common way in writting document, it
 
 * **Add an Internal Link to Other Page via File Path**
 
-  Link to page ``http://server/overview/suport_list.html`` with **absolute file path** :doc:`support list </overview/support_list>`: ::
+  Link to page `http://server/overview/suport_list.html` with **absolute file path** ::
 
-    Link to page ``http://server/overview/suport_list.html`` with **absolute file path** :doc:`support list </overview/support_list>`
+    :doc:`support list </overview/support_list>`
 
 ..
 
-  Link to page ``http://server/overview/suport_list.html`` with **relative file path** :doc:`support list <../overview/support_list>`: ::
+  Link to page `http://server/overview/suport_list.html` with **relative file path** ::
 
-    Link to page ``http://server/overview/suport_list.html`` with **relative file path** :doc:`support list <../overview/support_list>`
+    :doc:`support list <../overview/support_list>`
 
 .. 
 
@@ -121,7 +121,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to an external web page: `google <http://www.goole.com>`_: ::
 
-    Link to an external web page: `google <http://www.goole.com>`_
+    `google <http://www.goole.com>`_
 
 ..
 
@@ -133,7 +133,7 @@ Add links to refer other web page  is a very common way in writting document, it
 
   Link to http://www.google.com: ::
 
-    Link to http://www.google.com
+    http://www.google.com
 
 ..
 

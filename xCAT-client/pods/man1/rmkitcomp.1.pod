@@ -10,7 +10,7 @@ B<rmkitcomp> [B<-V>|B<--verbose>] [B<-u>|B<--uninstall>] [B<-f>|B<--force>] [B<-
 
 =head1 DESCRIPTION
 
-The B<rmkitcomp> command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by <-u|--uninstall> option.
+The B<rmkitcomp> command removes kit components from an xCAT osimage.  All the kit component attribute values that are contained in the osimage will be removed, and the kit comoponent meta rpm and package rpm could be uninstalled by B<-u|--uninstall> option.
 
 Note: The xCAT support for Kits is only available for Linux operating systems.
 

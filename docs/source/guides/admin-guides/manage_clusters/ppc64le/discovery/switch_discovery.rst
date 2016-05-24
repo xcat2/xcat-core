@@ -12,6 +12,8 @@ Switch info::
     Switch IP Address: 10.0.201.1
     Switch port for Compute Node: port0
 
+.. _Setup-dhcp:
+
 .. include:: config_environment.rst
 
 Predefined Nodes
@@ -19,8 +21,8 @@ Predefined Nodes
 
 In order to differentiate one node from another, the admin needs to predefine node in xCAT database based on the switches information. This consists of two parts:
 
-#. :ref:`predefined_switches_label`
-#. :ref:`predefined_server_nodes_label`
+#. :ref:`Predefine Switches <predefined_switches_label>`
+#. :ref:`Predefine Server Node <predefined_server_nodes_label>`
 
 
 .. _predefined_switches_label:

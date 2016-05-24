@@ -40,7 +40,7 @@ This document describes how to install and configure a template node (called gol
 Prepare the xCAT Management Node for Support Sysclone
 `````````````````````````````````````````````````````
 
-How to configure xCAT management node please refer to section :ref:`Install Guides <install_guides>`
+How to configure xCAT management node please refer to section :ref:`install_guides`
 
 For support Sysclone, we need to install some extra rpms on management node and the golden client.
 

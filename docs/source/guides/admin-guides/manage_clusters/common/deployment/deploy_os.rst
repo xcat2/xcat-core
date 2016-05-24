@@ -1,5 +1,3 @@
-.. _deploy_os:
-
 Initialize the Compute for Deployment
 =====================================
 
@@ -33,6 +31,4 @@ For **x86_64 servers**, those two operations need two independent commands.
     #. Reboot the xSeries server: :::
 
         rpower <node> reset
-
-	
 

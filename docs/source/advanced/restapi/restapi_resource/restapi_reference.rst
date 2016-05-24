@@ -1533,6 +1533,7 @@ Set the name attribute for policy 3. ::
 
 
     #curl -X PUT -k 'https://127.0.0.1/xcatws/policy/3?userName=root&userPW=cluster&pretty=1' -H Content-Type:application/json --data '{"name":"root"}'
+
 POST - Create the policy {policyname}. DataBody: {attr1:v1,att2:v2...}.
 ```````````````````````````````````````````````````````````````````````
 

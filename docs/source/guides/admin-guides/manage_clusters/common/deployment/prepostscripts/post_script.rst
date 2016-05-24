@@ -218,6 +218,8 @@ Example of mypostscript  ::
 
 The mypostscript file is generated according to the mypostscript.tmpl file.
 
+.. _Using-the-mypostscript-template-label:
+
 Using the mypostscript template
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

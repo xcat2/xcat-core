@@ -249,9 +249,9 @@ standard output or standard error is displayed.
   EXECUTEALWAYS:
   /tmp/myscript
   APPEND:
- /custom/mypasswd -> /etc/passwd
- /custom/mygroups -> /etc/group
- /custom/myshadow -> /etc/shadow
+  /custom/mypasswd -> /etc/passwd
+  /custom/mygroups -> /etc/group
+  /custom/myshadow -> /etc/shadow
  
  Note: no order can be assumed by the order that the EXECUTE,EXECUTEALWAYS and APPEND clause fall in the synclist file.
  

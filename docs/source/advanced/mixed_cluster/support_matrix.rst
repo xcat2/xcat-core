@@ -46,7 +46,7 @@ Notes:
 
 * The support statements refers to hardware control, operating system (os) provisioning, and general purpose system management where we do not see any obvious problems with the indicated combination.
 
-* For diskless mixed cluster support, the initial diskless image must be created on a node running the target operating system version and architecture. see :ref:`Building_a_Stateless_Image_of_a_Different_Architecture_or_OS` for more details.
+* For diskless mixed cluster support, the initial diskless image must be created on a node running the target operating system version and architecture. see :doc:`/advanced/mixed_cluster/building_stateless_images` for more details.
 
 .. rubric:: Footnotes
 
