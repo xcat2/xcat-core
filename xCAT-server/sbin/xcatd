@@ -886,6 +886,8 @@ unless ($foreground) {
 }
 
 $dbmaster=xCAT::Table::init_dbworker;
+# Make sure DB process is ready.
+wait_db_process();
 my $CHILDPID=0; # Global for reapers
 my %immediatechildren;
 sub generic_reaper {
@@ -1293,8 +1295,7 @@ my @pendingconnections;
 my $tconn;
 my $sslfudgefactor = 0;
 my $udpalive = 1;
-# Make sure DB process is ready.
-wait_db_process();
+
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
     while ($udpalive and $udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
@@ -2373,9 +2374,10 @@ sub wait_db_process {
         xCAT::MsgUtils->message("S","Error: xcat db process has not been started in 10 seconds.");
         return -1;
     }
-    # use create 1 to make sure nodelist and site object cached.
+    # use '-create=>1' to make sure nodelist and site object cached.
     my $tmptab = xCAT::Table->new('site',-create=>1);
     if(!$tmptab) {
+        xCAT::MsgUtils->message("S","Error: Failed to access site table when monitoring DB process.");
         return -1;
     }
     return 0;
