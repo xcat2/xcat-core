@@ -10,7 +10,7 @@ B<getadapter> [B<-h>|B<--help>|B<-v>|B<--version>|B<-V>]
 
 =head1 DESCRIPTION
 
-Traditionally, network interfaces in Linux are enumerated as eth[0123…], but these names do not necessarily correspond to actual labels on the chassis. B<getadapter> help customer to get predictable network device name and some other network adapter information before provision or network configuration.
+Traditionally, network interfaces in Linux are enumerated as eth[0123...], but these names do not necessarily correspond to actual labels on the chassis. B<getadapter> help customer to get predictable network device name and some other network adapter information before provision or network configuration.
 
 B<getadapter> use genesis to collect network adapters information, so that mean it need to restart the target node.
 

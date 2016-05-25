@@ -57,19 +57,19 @@ It  will then run wcons on the nodes.
 
 \ **-o | -**\ **-osver**\ 
  
- Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [\ *-O*\ |\ *--osimage*\ ] is specified or nodetype.provmethod=\ *osimage*\ .
+ Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [\ *-O*\  | \ *--osimage*\ ] is specified or nodetype.provmethod=\ *osimage*\ .
  
 
 
 \ **-p | -**\ **-profile**\ 
  
- Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [\ *-O*\ |\ *--osimage*\ ] is specified or nodetype.provmethod=\ *osimage*\ .
+ Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ *osimage*\ .
  
 
 
 \ **-a | -**\ **-arch**\ 
  
- Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [\ *-O*\ |\ *--osimage*\ ] is specified or nodetype.provmethod=\ *osimage*\ .
+ Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [\ **-O | -**\ **-osimage**\ ] is specified or nodetype.provmethod=\ *osimage*\ .
  
 
 

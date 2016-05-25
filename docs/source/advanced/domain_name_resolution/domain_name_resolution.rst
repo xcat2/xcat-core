@@ -193,7 +193,7 @@ Once **/etc/hosts** is populated with all of the nodes' hostnames and IP address
 
     makedns -n       
 
-When the **/etc/resolv.conf** files for the compute nodes are created the value of the **nameserver**  in /etc/resolv.conf is gotten from **site.nameservers** or **networks.nameservers** if it's specified. ::
+When the **/etc/resolv.conf** files for the compute nodes are created the value of the **nameserver**  in /etc/resolv.conf is gotten from **site.nameservers** or **networks.nameservers** if it's specified.
 
 For example: ::
 

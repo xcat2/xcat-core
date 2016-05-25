@@ -13,7 +13,7 @@ B<geninitrd> [B<-h> | B<--help>]
 
 Generate the initrd for the osimage: B<imagename> which is an xCAT object of I<osimage> type.
 
-B<Diskfull Osimage>
+B<Diskful Osimage>
 
 =over 2
 

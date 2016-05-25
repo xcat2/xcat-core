@@ -42,11 +42,10 @@ The target object to display.
 Specify the B<type> of the target object.
 
 Supported types:
- B<dc>  - Data Center (For type of 'dc', all the elements belongs to the data 
-   center will be listed.)
+
+ B<dc>  - Data Center (For type of 'dc', all the elements belongs to the data center will be listed.)
  B<cl>  - Cluster
- B<sd>  - Storage Domain (To get the status of Storage Doamin, show it from 
-   I<data center> it attached to.
+ B<sd>  - Storage Domain (To get the status of Storage Doamin, show it from I<data center> it attached to.
  B<nw>  - Network
  B<tpl> - Template
 

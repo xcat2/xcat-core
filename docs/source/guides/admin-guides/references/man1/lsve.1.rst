@@ -66,13 +66,16 @@ OPTIONS
 \ **-t**\  Specify the \ **type**\  of the target object.
  
  Supported types:
-  \ **dc**\   - Data Center (For type of 'dc', all the elements belongs to the data 
-    center will be listed.)
-  \ **cl**\   - Cluster
-  \ **sd**\   - Storage Domain (To get the status of Storage Doamin, show it from 
-    \ *data center*\  it attached to.
-  \ **nw**\   - Network
-  \ **tpl**\  - Template
+ 
+ 
+ .. code-block:: perl
+ 
+   B<dc>  - Data Center (For type of 'dc', all the elements belongs to the data center will be listed.)
+   B<cl>  - Cluster
+   B<sd>  - Storage Domain (To get the status of Storage Doamin, show it from I<data center> it attached to.
+   B<nw>  - Network
+   B<tpl> - Template
+ 
  
 
 

@@ -31,16 +31,16 @@ Display version.
 
 =item B<-o>|B<--osver>
 
-Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
+Specifies which os version to provision.  If unspecified, the current node os setting is used. Will be ignored if [I<-O> | I<--osimage>] is specified or nodetype.provmethod=I<osimage>. 
 
 =item B<-p>|B<--profile>
 
-Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
+Specifies what profile should be used of the operating system.  If not specified the current node profile setting is used. Will be ignored if [B<-O>|B<--osimage>] is specified or nodetype.provmethod=I<osimage>.
 
 
 =item B<-a>|B<--arch>
 
-Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [I<-O>|I<--osimage>] is specified or nodetype.provmethod=I<osimage>.
+Specifies what architecture of the OS to provision.  Typically this is unneeded, but if provisioning between x86_64 and x86 frequently, this may be a useful flag. Will be ignored if [B<-O>|B<--osimage>] is specified or nodetype.provmethod=I<osimage>.
 
 =item B<-O>|B<--osimage>
 

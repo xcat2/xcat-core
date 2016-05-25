@@ -29,7 +29,7 @@ DESCRIPTION
 ***********
 
 
-Traditionally, network interfaces in Linux are enumerated as eth[0123…], but these names do not necessarily correspond to actual labels on the chassis. \ **getadapter**\  help customer to get predictable network device name and some other network adapter information before provision or network configuration.
+Traditionally, network interfaces in Linux are enumerated as eth[0123...], but these names do not necessarily correspond to actual labels on the chassis. \ **getadapter**\  help customer to get predictable network device name and some other network adapter information before provision or network configuration.
 
 \ **getadapter**\  use genesis to collect network adapters information, so that mean it need to restart the target node.
 

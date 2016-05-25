@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **tabprune**\  [\ **eventlog | auditlog**\ ]  [\ **-V**\ ] [\ **-i**\  \ *recid*\  |\ **-n**\  \ *number of records*\  | \ **-p**\  \ *percentage*\  | \ **-d**\  \ *number of days*\  | \ **-a**\ ]
+\ **tabprune**\  [\ **eventlog | auditlog**\ ]  [\ **-V**\ ] [\ **-i**\  \ *recid*\  | \ **-n**\  \ *number of records*\  | \ **-p**\  \ *percentage*\  | \ **-d**\  \ *number of days*\  | \ **-a**\ ]
 
 \ **tabprune**\  \ *tablename*\  \ **-a**\ 
 

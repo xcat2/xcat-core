@@ -18,7 +18,7 @@ B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D
 
 =head2 blade specific:
 
-B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>] [B<-i> I<ethN>|I<enN>]
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>] [B<-i> I<ethN> | I<enN>]
 
 =head1 DESCRIPTION
 

@@ -20,7 +20,7 @@ The trace message includes: The name of the called subroutine; The arguments whi
 
 The flag B<-c> is used to specify the subroutine list for B<subroutine calling trace>, it can only work with B<-f>. The value of B<-c> can be a configuration file or a subroutine list.
   B<configuration file>: a file contains multiple lines of B<SUBROUTINE_DEFINITION>
-  B<subroutine list>:    B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION>|...
+  B<subroutine list>:    B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION|...>
 
 B<SUBROUTINE_DEFINITION>: is the element for the B<-c> to specify the subroutine list.
 
@@ -90,7 +90,7 @@ B<configuration file>: a file contains multiple lines of B<SUBROUTINE_DEFINITION
     xCAT_plugin::DBobjectdefs(defls,process_request)
     xCAT::DBobjUtils(getobjdefs)
 
-B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION>|...
+B<subroutine list>: a string like  B<SUBROUTINE_DEFINITION>|B<SUBROUTINE_DEFINITION|...>
   e.g.
     "(plugin_command)|xCAT_plugin::DBobjectdefs(defls,process_request)|xCAT::DBobjUtils(getobjdefs)"
 
@@ -111,26 +111,32 @@ Note: The xcatd will be restarted for the performing of B<-d>
 
 =item 1.
 Enable the B<subroutine calling trace> for all the subroutines in the xcatd and plugin modules.
+
  xcatdebug -f enable
 
 =item 2.
 Enable the B<subroutine calling trace> for the subroutines configured in the /opt/xcat/share/xcat/samples/tracelevel0
+
  xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0
 
 =item 3.
 Enable the B<subroutine calling trace> for the plugin_command in xcatd and defls,process_request in the xCAT_plugin::DBobjectdefs module.
+
  xcatdebug -f enable -c "xCAT_plugin::DBobjectdefs(defls,process_request)|(plugin_command)"
 
 =item 4.
 Disable the B<subroutine calling trace> for all the subroutines which have been enabled by B<xcatdebug -f enable>.
+
  xcatdebug -f disable
 
 =item 5.
 Enable the B<commented trace log>
+
  xcatdebug -d enable
 
 =item 6.
 Enable both the B<subroutine calling trace> and B<commented trace log>
+
   xcatdebug -f enable -c /opt/xcat/share/xcat/samples/tracelevel0 -d enable
 
 =back
