@@ -1,10 +1,12 @@
 #!/bin/bash
+log_label="xcat.genesis.dodiscovery"
+
 minixcatd.awk &
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 
-echo "Beginning node discovery process"
+logger -s -t $log_label -p local4.info "Beginning node discovery process..."
 for nic in `ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`; do
     ip link set $nic up
 done
@@ -14,12 +16,12 @@ while [ ! -z "$NICSTOBRINGUP" -a $waitforlink -gt 0 ]; do
 	waitforlink=$((waitforlink - 1))
 	sleep 0.1
 	if [ $waitforlink = 1 ]; then
-		echo "No link detected on $NICSTOBRINGUP"
+		logger -s -t $log_label -p local4.warning "No link detected on $NICSTOBRINGUP after 10 seconds"
 	fi
 done
 NICSGETTINGADDR=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep ,LOWER_UP|awk -F: '{print $2}'`
 timewaiting=0
-echo "Waiting for nics to get addresses"
+logger -s -t $log_label -p local4.info "Waiting for nics to get addresses"
 while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	NEWNICSGETTINGADDR=""
 	for nic in $NICSGETTINGADDR; do
@@ -33,14 +35,14 @@ while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	sleep 0.1
 	timewaiting=$((timewaiting+1))
 	if [ $timewaiting = 699 ]; then
-		echo "No DHCP answer for $nic, ignoring interface"
+		logger -s -t $log_label -p local4.warning "No DHCP answer for $nic, ignoring interface..."
 	fi
 	NICSGETTINGADDR=$NEWNICSGETTINGADDR
 done
 if [ $timewaiting != 700 -a $timewaiting -gt 450 ]; then
-	echo "Got an address, but it took inordinately long, you may want to check spanning tree configuration"
+	logger -s -t $log_label -p local4.warning "Obtained an IP address $NICSGETTINGADDR but it took $timewaiting cycles, you may want to check the spanning tree configuration in the switch."
 fi
-echo "Network configuration complete, commencing transmit of discovery packets"
+logger -s -t $log_label -p local4.info "Network configuration complete, commencing transmit of discovery packets"
 XCATPORT=3001
 export XCATPORT
 for parm in `cat /proc/cmdline`; do
@@ -109,6 +111,8 @@ DISKSIZE=`cat /proc/partitions |grep -e "sd.\>" |awk -F' ' '{printf "%s:%.0fGB\n
 #	echo $line > /tmp/cpumod
 #done
 #CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
+
+logger -t $log_label -p local4.info "Beginning echo infomation to discovery packet file..."
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
@@ -229,16 +233,20 @@ cat /tmp/discopacket |while read line; do
 	echo $line >> /tmp/discopacket.new
 done
 mv /tmp/discopacket.new /tmp/discopacket
-
+logger -t $log_label -p local4.info "Discovery packet file is ready."
 rm -f /tmp/discopacket.gz
 gzip -9 /tmp/discopacket
 	if [ ! -z "$XCATMASTER" ]; then
+		logger -t $log_label -p local4.info "Sending the discovery packet to xCAT ($XCATMASTER:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
+		logger -t $log_label -p local4.info "Sending the discovery packet to xCAT ($dhcps:$XCATPORT)..."
 		(cat /tmp/discopacket.gz | udpcat.awk $dhcps $XCATPORT ) &
 	done
 	#cat /tmp/discopacket
+	logger -t $log_label -p local4.info "Sleeping 5 seconds..."
 	sleep 5
 done
+logger -t $log_label -p local4.info "Restart..."
 /bin/restart
