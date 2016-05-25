@@ -296,10 +296,10 @@ sub mn_install {
 	send_msg(2, "[$mn->$confkeys{$mn}][mn_install] installing $osimage for node $confkeys{$mn}................");
         
         if( $arch =~ /x86_64/ || $arch =~ /ppc64le/ || $arch =~ /ppc64el/){
-        &runcmd("rmvm $confkeys{$mn} -f -p ");
-        &runcmd("chdef $confkeys{$mn} mac= ");
-        &runcmd("mkvm $confkeys{$mn} -s 40G");
-        }
+            &runcmd("rmvm $confkeys{$mn} -f -p ");
+            &runcmd("chdef $confkeys{$mn} mac= ");
+            &runcmd("mkvm $confkeys{$mn} -s 40G");
+            }
 
         &runcmd("makedhcp -n");
         &runcmd("makedns -n");
@@ -883,12 +883,12 @@ sub do_test {
                 last if($rc != 0);
                 
                 if($mn =~ /ubuntux/){
-                #set up dockerhosts
-                send_msg(2, "[$mn->$confkeys{$mn}][do_test] setupdockerhost $mn.....");
-                $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $setup_dockerhost_testcase\"' >/dev/null 2>&1");
-                send_msg(2, "[$mn->$confkeys{$mn}][do_test] setup dockerhosts $mn.....[done]");
-                last if($rc != 0);
-                }
+                    #set up dockerhosts
+                    send_msg(2, "[$mn->$confkeys{$mn}][do_test] setupdockerhost $mn.....");
+                    $rc=system("ssh -t $confkeys{$mn} 'exec bash -l -i -c \"xcattest -f /opt/xcat/share/xcat/tools/autotest/default.conf  -t $setup_dockerhost_testcase\"' >/dev/null 2>&1");
+                    send_msg(2, "[$mn->$confkeys{$mn}][do_test] setup dockerhosts $mn.....[done]");
+                    last if($rc != 0);
+                    }
 	
                 #commands bundle in flat mode test
                 send_msg(2, "[$mn->$confkeys{$mn}][do_test] doing all commands test in flat mode in $mn.....");
