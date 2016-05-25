@@ -124,6 +124,7 @@ end
 
 start:makedns
 description:makedns
+stop:yes
 cmd:chtab netname=testnetwork networks.net=100.100.100.0 networks.mask=255.255.255.0 networks.mgtifname=eth0 networks.gateway=100.100.100.254
 check:rc==0
 cmd:makedns -n
