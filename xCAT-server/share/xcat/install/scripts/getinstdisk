@@ -18,11 +18,11 @@
 #-----------------------------------------------------------
 
 install_disk=""
-rm /tmp/install_disk
+rm -f /tmp/install_disk
 tmpdir="/tmp/xcat.getinstalldisk"
 mkdir -p $tmpdir
 
-has_awk=$(find / -name "awk")
+has_awk=$(find /usr/* -name "awk")
 
 utolcmd="sed -e y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/"
 
@@ -36,9 +36,9 @@ if [ -z "$install_disk" ]; then
 
     # Get all partitions and disks from /proc/partitions file
     if [ -z "$has_awk" ]; then
-        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h]d.*$")
+        entries=$(cat /proc/partitions | sed 's/  */ /g' | cut -d " " -f5 | grep -v "name" | grep -e "[s|h|v]d.*$")
     else
-        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h]d.*$")
+        entries=$(awk -F ' '  '{print $4}' /proc/partitions | grep -v "name" | grep -e "[s|h|v]d.*$")
     fi    
 
     # Classify entries by DEVTYPE
@@ -133,10 +133,10 @@ if [ -z "$install_disk" ]; then
     for disk in $disks; do
         # Get disk's information: WWN, PATH and DRIVER
         disk_info=$(udevadm info --query=property --name=$disk)
-        output_for_wwn=$(echo $disk_info | grep '\<ID_WWN\>' | cut -d "=" -f2 | $utolcmd)
-        disk_wwn=$(IFS= ;echo $output_for_wwn)
-        output_for_path=$(echo $disk_info | grep DEVPATH | cut -d "=" -f2 | $utolcmd)
-        disk_path=$(IFS= ;echo $output_for_path)
+        output_for_wwn=$(IFS= ;echo $disk_info | grep '\<ID_WWN\>' | cut -d "=" -f2)
+        disk_wwn=$(echo $output_for_wwn | $utolcmd)
+        output_for_path=$(IFS= ;echo $disk_info | grep DEVPATH | cut -d "=" -f2)
+        disk_path=$(echo $output_for_path | $utolcmd)
         disk_driver=$(udevadm info --attribute-walk --name=$disk | grep DRIVERS| grep -v '""'| grep -v '"sd"'|
                     \head -n 1| sed -e 's/[^"]*"//' -e 's/"//' | $utolcmd)
 

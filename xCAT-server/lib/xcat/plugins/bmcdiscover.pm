@@ -113,9 +113,13 @@ sub bmcdiscovery_usage {
     push @{ $rsp->{data} }, "Usage:";
     push @{ $rsp->{data} }, "\tbmcdiscover [-?|-h|--help]";
     push @{ $rsp->{data} }, "\tbmcdiscover [-v|--version]";
-    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] --range ip_range [-z] [-w] [-t]";
-    push @{ $rsp->{data} }, "\tbmcdiscover {-i|--bmcip} bmc_ip {-u|--bmcuser} bmc_user {-p|--bmcpasswd} bmc_password --check";
-    push @{ $rsp->{data} }, "\tbmcdiscover {-i|--bmcip} bmc_ip {-u|--bmcuser} bmc_user {-p|--bmcpasswd} bmc_password --ipsource";
+    push @{ $rsp->{data} }, "\tbmcdiscover [-s scan_method] [-u bmc_user] [-p bmc_passwd] [-z] [-w] [-t] --range ip_range\n";
+
+    push @{ $rsp->{data} }, "\tCheck BMC administrator User/Password:\n";
+    push @{ $rsp->{data} }, "\t\tbmcdiscover -u bmc_user -p bmc_password -i bmc_ip --check\n";
+
+    push @{ $rsp->{data} }, "\tDisplay the BMC IP configuration:\n";
+    push @{ $rsp->{data} }, "\t\tbmcdiscover [-u bmc_user] [-p bmc_passwd] -i bmc_ip --ipsource";
 
     xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
     return 0;
@@ -197,43 +201,43 @@ sub bmcdiscovery_processargs {
         return 1;    
     }
 
+    #
+    # Get the default bmc account from passwd table
+    #
+    ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
+    # overwrite the default user/pass with what is passed in
+    if ($::opt_U) {
+        $bmc_user = $::opt_U;
+    }
+    if ($::opt_P) {
+        $bmc_pass = $::opt_P;
+    }
+
     #########################################
     # Option -s -r should be together
     ######################################
     if ( defined($::opt_R) ) 
     {
-
-            ######################################
-            # check if there is nmap or not
-            ######################################
-            if ( -x '/usr/bin/nmap' )
-            {
-               $nmap_path="/usr/bin/nmap";
-            }
-               elsif ( -x '/usr/local/bin/nmap' )
-            {
-               $nmap_path="/usr/local/bin/nmap";
-            }
-            else
-            {
-                my $rsp;
-                push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
-                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-                return 1;
-
-            }
-           ($bmc_user, $bmc_pass) = bmcaccount_from_passwd();
-           if ($::opt_P) {
-               $bmc_pass = $::opt_P;
-               if (!$::opt_U) {
-                   $bmc_user = '';
-               } else {
-                   $bmc_user = $::opt_U;
-               }
-           }
-           scan_process($::opt_M,$::opt_R,$::opt_Z,$::opt_W,$request_command);
-
-           return 0;
+        ######################################
+        # check if there is nmap or not
+        ######################################
+        if ( -x '/usr/bin/nmap' )
+        {
+            $nmap_path="/usr/bin/nmap";
+        }
+        elsif ( -x '/usr/local/bin/nmap' )
+        {
+            $nmap_path="/usr/local/bin/nmap";
+        }
+        else
+        {
+            my $rsp;
+            push @{ $rsp->{data} }, "\tThere is no nmap in /usr/bin/ or /usr/local/bin/. \n ";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            return 1;
+        }
+        scan_process($::opt_M,$::opt_R,$::opt_Z,$::opt_W,$request_command);
+        return 0;
     }
 
     if ( defined($::opt_C) && defined($::opt_S) ) {
@@ -244,19 +248,20 @@ sub bmcdiscovery_processargs {
         return 2;
     }
 
-    ####################################################
-    # --check option, requires -i and -p to be specified
-    ####################################################
+    #########################################################
+    # --check option, requires -i, -u, and -p to be specified
+    #########################################################
     if ( defined($::opt_C) ) {
-        if ( defined($::opt_P) && defined($::opt_I) ) {
-            my $option_u = defined $::opt_U ? $::opt_U : "none";
-            my $res=check_auth_process($::opt_I,$option_u,$::opt_P);
+        if ( defined($::opt_P) && defined($::opt_U) && defined($::opt_I) ) {
+            my $res=check_auth_process($::opt_I,$::opt_U,$::opt_P);
             return $res;
         }
         else {
             my $msg = "";
             if (!defined($::opt_I)) {
                 $msg = "The check option requires a BMC IP.  Specify the IP using the -i|--bmcip option.";
+            } elsif (!defined($::opt_U)) {
+                $msg = "The check option requires a user.  Specify the user with the -u|--bmcuser option.";
             } elsif (!defined($::opt_P)) {
                 $msg = "The check option requires a password.  Specify the password with the -p|--bmcpasswd option.";
             } 
@@ -271,9 +276,8 @@ sub bmcdiscovery_processargs {
     # --ipsource option, requires -i, -p to be specified
     ####################################################
     if ( defined($::opt_S) ) {
-        if ( defined($::opt_P) && defined($::opt_I) ) {
-            my $option_u = defined $::opt_U ? $::opt_U : "none";
-            my $res=get_bmc_ip_source($::opt_I,$option_u,$::opt_P);
+        if ( defined($bmc_user) && defined($bmc_pass) && defined($::opt_I) ) {
+            my $res=get_bmc_ip_source($::opt_I,$bmc_user,$bmc_pass);
             return $res;
         }
         else {
@@ -439,6 +443,7 @@ sub scan_process{
     my $callback = $::CALLBACK;
     my $children;    # The number of child process
     my %sp_children;    # Record the pid of child process
+    my $bcmd;
     my $sub_fds = new IO::Select;    # Record the parent fd for each child process
   
     if ( !defined($method) )
@@ -451,7 +456,18 @@ sub scan_process{
     # get live ip list
     ###########################################################
     if ( $method eq "nmap" ) {
-        my $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+        #check nmap version first
+        my $ccmd = "$nmap_path -V | grep version";
+        my $version_result = xCAT::Utils->runcmd($ccmd, 0);
+        my @version_array = split / /, $version_result;
+        my $nmap_version = $version_array[2];
+        # the output of nmap is different for version under 4.75
+        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+            $bcmd = join(" ",$nmap_path," -sP -n $range | grep Host |cut -d ' ' -f2 |tr -s '\n' ' ' ");
+        } else {
+            $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+        }
+
         $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
         if ($::RUNCMD_RC != 0) {
             my $rsp = {};
@@ -884,23 +900,25 @@ sub bmcdiscovery_ipmi {
                 $node =~ s/(.*)/\L$1/g;
             }
         } elsif ($output =~ /error : unauthorized name/){
-            xCAT::MsgUtils->message("I", {data=>["Warning: bmc username is incorrect for $node"]}, $::CALLBACK);
+            xCAT::MsgUtils->message("E", {data=>["BMC username is incorrect for $ip"]}, $::CALLBACK);
+            return 1;
         } elsif ($output =~ /RAKP \S* \S* is invalid/) {
-            xCAT::MsgUtils->message("I", {data=>["Warning: bmc password is incorrect for $node"]}, $::CALLBACK);
+            xCAT::MsgUtils->message("E", {data=>["BMC password is incorrect for $ip"]}, $::CALLBACK);
+            return 1;
         } 
-       if ( defined($opz) || defined($opw) )
-       {
-          format_stanza($node, $ip);
-          if (defined($opw))
-          {
-              write_to_xcatdb($node, $ip,$request_command);
-          }
-       }
-       else{
-          my $rsp = {};
-          push @{ $rsp->{data} }, "$ip";
-          xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-       }
+        if ( defined($opz) || defined($opw) )
+        {
+            format_stanza($node, $ip);
+            if (defined($opw))
+            {
+                write_to_xcatdb($node, $ip,$request_command);
+            }
+        }
+        else{
+            my $rsp = {};
+            push @{ $rsp->{data} }, "$ip";
+            xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        }
     }
 }
 

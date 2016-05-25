@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+
+my $os=$ARGV[0];
+my $arch=$ARGV[1];
+my $log="/tmp/pre_deploy_sn.log";
+
+my $orgclusterconffile="/opt/xcat/share/xcat/tools/autotest/default.conf";
+my $snnodename = `cat $orgclusterconffile |grep -E '^SN\s*='|awk -F'=' '{print \$2}'`;
+chomp($snnodename);
+`echo "SN=$snnodename" >> $log`;
+sleep 300;
+
+my $timecnt=0;
+while($timecnt < 200){
+    my $booted=system("lsdef -l $snnodename|grep status|grep booted > /dev/null 2>&1");
+    last if($booted==0);
+ 
+    if($os =~ /rhel/i && $arch =~ /^ppc64$/i){
+        my $booting=system("lsdef -l $snnodename|grep status|grep booting > /dev/null 2>&1");
+        system("xdsh $snnodename \"echo 1\"")  if($booting==0);
+        `echo "send signal to $snnodename for the $timecnt times" >> $log`;
+    }
+  
+    sleep 10;
+    $timecnt++;
+} 
+ 
+exit 0;

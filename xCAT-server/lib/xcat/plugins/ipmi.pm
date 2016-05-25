@@ -2666,8 +2666,22 @@ sub got_backup_imm_builddate {
 	$fru->desc("Backup IMM Version");
 	$fru->value($sessdata->{backupimmversion}." (".$sessdata->{backupimmbuild}." ".$sessdata->{backupimmdate}.")");
 	$sessdata->{fru_hash}->{backupimm} = $fru;
-    }
+    	get_imm_property(property=>"/v2/ibmc/trusted_buildid",callback=>\&got_trusted_imm,sessdata=>$sessdata);
+    } else {
         initfru_with_mprom($sessdata);
+    }
+}
+sub got_trusted_imm {
+    my %res = @_;
+    my $sessdata = $res{sessdata};
+    if ($res{data}) {
+	my $fru = FRU->new();
+	$fru->rec_type("bios,uefi,firmware");
+	$fru->desc("Trusted IMM Build");
+	$fru->value($res{data});
+	$sessdata->{fru_hash}->{trustedimm} = $fru;
+    }
+    initfru_with_mprom($sessdata);
 }
 sub got_fpga_version {
    my %res = @_;
@@ -3396,10 +3410,15 @@ sub readcurrfrudevice {
         }
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
-            add_fruhash($sessdata);
-            my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
-            xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
-            return;
+            # Fix FRU 43,48 and 49 for GRS server that they can not return as much data as shall return
+            if ($data[0] gt 0) {
+                $sessdata->{currfrudone}=1;
+            } else {
+                my $text = "Received incorrect data from BMC for FRU ID: " . $sessdata->{currfruid};
+                xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
+                add_fruhash($sessdata);
+                return;
+            }
         }
         shift @data;
         push @{$sessdata->{currfrudata}},@data;

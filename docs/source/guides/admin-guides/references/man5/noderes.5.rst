@@ -19,7 +19,7 @@ SYNOPSIS
 ********
 
 
-\ **noderes Attributes:**\   \ *node*\ , \ *servicenode*\ , \ *netboot*\ , \ *tftpserver*\ , \ *tftpdir*\ , \ *nfsserver*\ , \ *monserver*\ , \ *nfsdir*\ , \ *installnic*\ , \ *primarynic*\ , \ *discoverynics*\ , \ *cmdinterface*\ , \ *xcatmaster*\ , \ *current_osimage*\ , \ *next_osimage*\ , \ *nimserver*\ , \ *routenames*\ , \ *nameservers*\ , \ *proxydhcp*\ , \ *comments*\ , \ *disable*\ 
+\ **noderes Attributes:**\   \ *node*\ , \ *servicenode*\ , \ *netboot*\ , \ *tftpserver*\ , \ *tftpdir*\ , \ *nfsserver*\ , \ *monserver*\ , \ *nfsdir*\ , \ *installnic*\ , \ *primarynic*\ , \ *discoverynics*\ , \ *cmdinterface*\ , \ *xcatmaster*\ , \ *current_osimage*\ , \ *next_osimage*\ , \ *nimserver*\ , \ *routenames*\ , \ *nameservers*\ , \ *proxydhcp*\ , \ *syslog*\ , \ *comments*\ , \ *disable*\ 
 
 
 ***********
@@ -153,6 +153,12 @@ noderes Attributes:
 \ **proxydhcp**\ 
  
  To specify whether the node supports proxydhcp protocol. Valid values: yes or 1, no or 0. Default value is yes.
+ 
+
+
+\ **syslog**\ 
+ 
+ To configure how to configure syslog for compute node. Valid values:blank(not set), ignore. blank - run postscript syslog; ignore - do NOT run postscript syslog
  
 
 

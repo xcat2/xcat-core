@@ -585,13 +585,13 @@ sub do_discovery_process {
     populate_vpd_hash();
     populate_mp_hash();
     while (not $quit) {
+        my $msg = fd_retrieve($broker);
         if ((time()-$vintage)> 15) {
             populate_site_hash();
             populate_vpd_hash();
             populate_mp_hash();
             $vintage = time();
         } # site table reread every 15 second
-        my $msg = fd_retrieve($broker);
         my $data;
         my $client;
         my $clientn;
@@ -616,7 +616,7 @@ sub do_discovery_process {
             # xcatrequest xml, so go ahead and decompress it
             my $bigdata;
             IO::Uncompress::Gunzip::gunzip(\$data,\$bigdata);
-            $data = $bigdata
+            $data = $bigdata;
         }
         my $req = eval { XMLin($data, SuppressEmpty=>undef,ForceArray=>1) };
         if ($req and $req->{command} and ($req->{command}->[0] eq "findme" and $sport < 1000)) { # only consider priveleged port requests to start with
@@ -962,7 +962,6 @@ $SIG{TERM} = $SIG{INT} = sub {
         kill 'USR2', $pid_UDP;
     }
     if ($pid_MON) {
-        kill 'INT', $pid_MON;
         kill 'USR2', $pid_MON;
     }
     xCAT::Table::shut_dbworker;
@@ -1294,6 +1293,8 @@ my @pendingconnections;
 my $tconn;
 my $sslfudgefactor = 0;
 my $udpalive = 1;
+# Make sure DB process is ready.
+wait_db_process();
 until ($quit) {
     $SIG{CHLD} = \&ssl_reaper; # set here to ensure that signal handler is not corrupted during loop
     while ($udpalive and $udpwatcher->can_read(0)) {  # take an intermission to broker some state requests from udp traffic control
@@ -2353,6 +2354,33 @@ sub becomeuser {
     # If here, unable to validate given credential
     return undef;
 }
+
+# Wait for the db process
+sub wait_db_process {
+    my $retry = 100;
+    my $ready = 0;
+    # Make sure DB process is ready, so that no direct access
+    while($retry) {
+        if (!xCAT::Utils::is_process_exists($dbmaster)) {
+            sleep 0.1;
+        } else {
+            $ready = 1;
+            last;
+        }
+        $retry --;
+    }
+    if (!$ready) {
+        xCAT::MsgUtils->message("S","Error: xcat db process has not been started in 10 seconds.");
+        return -1;
+    }
+    # use create 1 to make sure nodelist and site object cached.
+    my $tmptab = xCAT::Table->new('site',-create=>1);
+    if(!$tmptab) {
+        return -1;
+    }
+    return 0;
+}
+
 sub populate_site_hash {
     %::XCATSITEVALS=();
     my $sitetab = xCAT::Table->new('site',-create=>0);

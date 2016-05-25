@@ -120,14 +120,12 @@ sub process_request {
    chmod(0700,$tempdir."$sshdir");
    copy("/root/.ssh/id_rsa.pub","$tempdir$sshdir/authorized_keys");
    chmod(0600,"$tempdir$sshdir/authorized_keys");
-   if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_key") {
-    copy("/etc/xcat/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
+   if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_rsa_key") {
     copy("/etc/xcat/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
     copy("/etc/xcat/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
       chmod(0600,<$tempdir/etc/ssh_*>);
    }
-   unless ($invisibletouch or -r "$tempdir/etc/ssh_host_key") {
-      system("ssh-keygen -t rsa1 -f $tempdir/etc/ssh_host_key -C '' -N ''");
+   unless ($invisibletouch or -r "$tempdir/etc/ssh_host_rsa_key") {
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
@@ -200,17 +198,13 @@ CREAT_CONF_FILE:
       chmod(0755,"$tftpdir/xcat/xnba/nets");
       mkpath("$tftpdir/pxelinux.cfg");
       chmod(0755,"$tftpdir/pxelinux.cfg");
-      if (! -r "$tftpdir/pxelinux.0") {
-         unless (-r "/usr/lib/syslinux/pxelinux.0" or -r "/usr/share/syslinux/pxelinux.0") {
-            $callback->({error=>["Unable to find pxelinux.0 "],errorcode=>[1]});
-            return;
-         }
-         if (-r "/usr/lib/syslinux/pxelinux.0") {
-            copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-         } else {
-            copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
-         }
-         chmod(0644,"$tftpdir/pxelinux.0");
+      if (-r "/usr/lib/syslinux/pxelinux.0") {
+          copy("/usr/lib/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+      } elsif (-r "/usr/share/syslinux/pxelinux.0") {
+          copy("/usr/share/syslinux/pxelinux.0","$tftpdir/pxelinux.0");
+      }
+      if (-r "$tftpdir/pxelinux.0") {
+          chmod(0644,"$tftpdir/pxelinux.0");
       }
    } elsif ($arch =~ /ppc/) {
       mkpath("$tftpdir/pxelinux.cfg/p/");

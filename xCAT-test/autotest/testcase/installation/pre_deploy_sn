@@ -1,0 +1,28 @@
+#!/usr/bin/env perl
+
+$ENV{TERM} = "xterm-256color";
+
+my $os=$ARGV[0];
+my $arch=$ARGV[1];
+my $log="/tmp/pre_deploy_sn.log";
+
+sub runcmd{
+    my $cmd=shift;
+    `$cmd >> $log 2>&1`;
+    if($?){
+        #print "run $cmd ....[error]\n";
+        exit 1;
+    }
+}
+
+$cmd="XCATMYSQLADMIN_PW=12345 XCATMYSQLROOT_PW=12345 /opt/xcat/bin/mysqlsetup -i -V";
+runcmd("$cmd");
+
+$cmd="echo \"GRANT ALL on xcatdb.* TO xcatadmin@\'%\'  IDENTIFIED BY \'12345\'\;\" | mysql -u root -p12345";
+runcmd("$cmd");
+
+my $xcatballpath = "/install/post/otherpkgs/$os/$arch/xcat";
+$cmd="mkdir -p $xcatballpath/xcat-core && cp -r /xcat-core/* $xcatballpath/xcat-core && cp -r /xcat-dep $xcatballpath";
+runcmd("$cmd");
+
+exit 0;

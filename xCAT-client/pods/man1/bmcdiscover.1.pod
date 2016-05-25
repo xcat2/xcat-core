@@ -8,11 +8,11 @@ B<bmcdiscover> [B<-?>|B<-h>|B<--help>]
 
 B<bmcdiscover> [B<-v>|B<--version>]
 
-B<bmcdiscover> [B<-s> I<scan_method>] B<--range> I<ip_ranges> [B<-z>] [B<-w>] [B<-t>]
+B<bmcdiscover> [B<-s> I<scan_method>] [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] [B<-z>] [B<-w>] [B<-t>] B<--range> I<ip_ranges>
 
-B<bmcdiscover> {B<-i>|B<--bmcip>} I<bmc_ip> {B<-u>|B<--bmcuser>} I<bmc_username> {B<-p>|B<--bmcpasswd>} I<bmc_password> B<--check>
+B<bmcdiscover> B<-u> I<bmc_user> B<-p> I<bmc_passwd> B<-i> I<bmc_ip> B<--check>
 
-B<bmcdiscover> {B<-i>|B<--bmcip>} I<bmc_ip> {B<-u>|B<--bmcuser>} I<bmc_username> {B<-p>|B<--bmcpasswd>} I<bmc_password> B<--ipsource>
+B<bmcdiscover> [B<-u> I<bmc_user>] [B<-p> I<bmc_passwd>] B<-i> I<bmc_ip> B<--ipsource> 
 
 
 =head1 DESCRIPTION
@@ -61,13 +61,13 @@ BMC user name.
 
 BMC user password.
 
-=item B<-c|--check>    
+=item B<--check>    
 
-Check
+Check BMC administrator User/Password.
 
 =item B<--ipsource>    
 
-BMC IP source
+Display the BMC IP configuration.
 
 =item B<-h|--help>
 
@@ -104,7 +104,7 @@ Note: Input for IP range can be in the form: scanme.nmap.org, microsoft.com/24, 
 
 4. To check if the username or password is correct against the BMC:
 
-    bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD -c
+    bmcdiscover -i 10.4.23.254 -u USERID -p PASSW0RD --check
 
 5. Get BMC IP Address source, DHCP Address or static Address
 

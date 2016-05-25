@@ -37,8 +37,9 @@ my %global_switch_type = (
     mellanox => "Mellanox",
     MLNX => "Mellanox",
     MELLAN => "Mellanox",
-    IBM  => "BNT",
+    IBM  => "BNT"
 );
+
 
 
 #-------------------------------------------------------------------------------
@@ -423,7 +424,7 @@ sub process_request {
 
     if (!$display_done) {
         #display header
-        $format = "%-12s\t%-15s\t%-40.50s\t%-12s";
+        $format = "%-12s\t%-20s\t%-50s\t%-12s";
         $header = sprintf $format, "ip", "name","vendor", "mac";
         send_msg(\%request, 0, $header);
         my $sep = "------------";
@@ -801,8 +802,10 @@ sub nmap_scan {
 sub snmp_scan {
     my $request  = shift;
     my $ccmd;
+    my $result;
     my $switches;
     my $counter = 0;
+    my $nmap_version;
 
     # snmpwalk command has to be available for snmp_scan
     if (-x "/usr/bin/snmpwalk" ){
@@ -819,13 +822,30 @@ sub snmp_scan {
     ##################################################
     my $ranges = get_ip_ranges($request);
 
+    $ccmd = "nmap -V | grep version";
+    $result = xCAT::Utils->runcmd($ccmd, 0);
+    my @version_array = split / /, $result;
+    $nmap_version = $version_array[2];
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "version of nmap: $nmap_version\n");
+    }
+
     #use nmap to find if snmp port is enabled  
-    $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
+    # only open port will be scan
+    # currently, we know nmap version 4.75 has different output for snmp_scan
+    # command.
+    # for version 4.75, the line as :"Host 10.4.25.1 appears to be up ... good."
+    # other higher version has line like this: "Discovered open port 161/udp on 10.4.25.1"
+    if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
+    } else {
+        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
+    }
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "Process command: $ccmd\n");
     }
 
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    $result = xCAT::Utils->runcmd($ccmd, 0);
     if ($::RUNCMD_RC != 0)
     {
         send_msg($request, 1, "Could not process this command: $ccmd" );
@@ -840,11 +860,14 @@ sub snmp_scan {
     }
     my @lines = split /\n/, $result;
 
-    # each line like this: "Discovered open port 161/udp on 10.4.25.1"
-    # only open port will be scan
     foreach my $line (@lines) {
         my @array = split / /, $line;
-        my $ip = $array[5];
+        my $ip;
+        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+            $ip = $array[1];
+        } else {
+            $ip = $array[5];
+        }
         if (exists($globalopt{verbose}))    {
             send_msg($request, 0, "Run snmpwalk command to get information for $ip");
         }
@@ -885,7 +908,9 @@ sub get_snmpvendorinfo {
     my $snmpwalk_vendor;
 
 
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysDescr.0";
+    #Ubuntu only takes OID
+    #my $ccmd = "snmpwalk -Os -v1 -c public $ip sysDescr.0";
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.1.1";
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -922,7 +947,10 @@ sub get_snmpmac {
     my $ip = shift;
     my $mac;
 
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip ipNetToMediaPhysAddress | grep $ip"; 
+    #Ubuntu only takes OID
+    #my $ccmd = "snmpwalk -Os -v1 -c public $ip ipNetToMediaPhysAddress | grep $ip"; 
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.4.22.1.2 | grep $ip"; 
+    
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -937,6 +965,10 @@ sub get_snmpmac {
     }
 
     my ($desc,$mac) = split /: /, $result;
+    #trim the white space at begin and end of mac
+    $mac =~ s/^\s+|\s+$//g;
+    #replace space to :
+    $mac =~ tr/ /:/;
 
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "switch mac = $mac\n" );
@@ -959,7 +991,9 @@ sub get_snmphostname {
     my $ip = shift;
     my $hostname;
 
-    my $ccmd = "snmpwalk -Os -v1 -c public $ip sysName";
+    #Ubuntu only takes OID
+    #my $ccmd = "snmpwalk -Os -v1 -c public $ip sysName";
+    my $ccmd = "snmpwalk -Os -v1 -c public $ip 1.3.6.1.2.1.1.5";
     if (exists($globalopt{verbose}))    {
        send_msg($request, 0, "Process command: $ccmd\n");
     }

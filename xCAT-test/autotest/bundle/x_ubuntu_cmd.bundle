@@ -254,3 +254,5 @@ rmdocker_command
 rmdocker_f_command
 lsdocker_h_command
 lsdocker_l_command
+ubuntux_migration1_vm
+ubuntux_migration2_vm

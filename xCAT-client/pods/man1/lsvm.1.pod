@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lsvm> - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+B<lsvm> - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 =head1 SYNOPSIS
 
@@ -15,6 +15,10 @@ B<lsvm> [B<-a>| B<--all>] I<noderange>
 =head2 For PPC (using Direct FSP Management):
 
 B<lsvm> [B<-l>| B<--long>] B<--p775> I<noderange>
+
+B<lsvm> I<noderange>
+
+=head2 For KVM and VMware
 
 B<lsvm> I<noderange>
 
@@ -44,9 +48,9 @@ The Memory Interleaving Mode has 3 valid options:
 More information about this part, refer to the section Using the *vm commands to define partitions in xCAT DFM  in the doc below. 
   XCAT_Power_775_Hardware_Management
 
-=head2 For KVM and Vmware
+=head2 For KVM and VMware
 
-The virtual machines that defined in the hypervisor I<noderange> will be displayed. I<noderange> only can be hypervisor. The type of the hypervisor should be set: hypervisor.type before running the lsvm.
+The virtual machines that defined in the hypervisor I<noderange> will be displayed. I<noderange> can only be hypervisor.
 
 Note: Only the virtual machine which is in power on state can be listed by lsvm command.
   

@@ -1,0 +1,52 @@
+2016-05-03 - OpenSSL Vulnerabilities (ANS.1 encoder)
+====================================================
+
+*May 3, 2016* OpenSSL announced the following security advisories:  https://www.openssl.org/news/secadv/20160503.txt
+
+Advisory CVEs
+-------------
+
+* CVE-2016-2108 - **Memory corruption in the ASN.1 encoder** (Severity:High)
+
+  This issue affects all OpenSSL version prior to April 2015
+  
+  OpenSSL 1.0.2 users should upgrade to 1.0.2c
+  OpenSSL 1.0.1 users should upgrade to 1.0.1o
+
+* CVE-2016-2107 - **Padding oracle in AES-NI CBC MAC check** (Severity: High)
+
+  This issue was introduced as part of the fix for Lucky 13 padding attack (CVE-2013-0169)
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2h
+  OpenSSL 1.0.1 users should upgrade to 1.0.1t
+
+* CVE-2016-2105 - **EVP_EncodeUpdate overflow** (Severity:Low)
+ 
+  OpenSSL 1.0.2 users should upgrade to 1.0.2h
+  OpenSSL 1.0.1 users should upgrade to 1.0.1t
+
+* CVE-2016-2106 - **EVP_EncryptUpdate overflow** (Severity:Low)
+ 
+  OpenSSL 1.0.2 users should upgrade to 1.0.2h
+  OpenSSL 1.0.1 users should upgrade to 1.0.1t
+
+
+* CVE-2016-2109 - **ASN.1 BIO excessive memory allocation** (Severity:Low)
+
+  OpenSSL 1.0.2 users should upgrade to 1.0.2h
+  OpenSSL 1.0.1 users should upgrade to 1.0.1t
+
+
+* CVE-2016-2176 - **EBCDIC overread** (Severity:Low)
+ 
+  OpenSSL 1.0.2 users should upgrade to 1.0.2h
+  OpenSSL 1.0.1 users should upgrade to 1.0.1t
+
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. 
+

@@ -5,7 +5,8 @@ The Docker linux container technology is currently very popular. xCAT can help m
 
 This document describes how to use xCAT for docker management, from Docker Host setup to docker container operationis. 
 
-**Note:** The document is based on **Docker Version 1.10.x** and **Docker API version 1.22.** And the Docker Host is based on **ubuntu14.04.3 x86_64**. At the time of this writing (February 2016), docker host images are not available for **ppc64** architecture from docker.org. You can search online to find them or build your own.
+**Note:** The document was verified with **Docker Version 1.10, 1.11** and **Docker API version 1.22.** The Docker Host was verified on **ubuntu14.04.3 x86_64**, **ubuntu15.10 x86_64**, **ubuntu16.04 x86_64** and **ubuntu16.04 ppc64el**.
+
 
 Setting up Docker Host
 ----------------------
@@ -23,17 +24,20 @@ The osimage represents the image of the Operating System which will be deployed 
 
 Copy files out from DVDs/ISOs and generate  
 """"""""""""""""""""""""""""""""""""""""""
-
-::  
+**[ubuntu x86_64]** ::  
    
-  copycds ubuntu-14.04.3-server-amd64.iso
+  copycds ubuntu-xxx-server-amd64.iso
+
+**[ubuntu16.04 ppc64el]** ::
+
+  copycds ubuntu-16.04-server-ppc64el.iso
 
 Create pkglist and otherpkglist of osimage for dockerhost
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 The pkglist file should contain the following: ::
 
- # cat /install/custom/ubuntu1404/ubuntu1404.pkglist
+ # cat /install/custom/ubuntu/ubuntu.pkglist
  openssh-server
  ntp
  gawk
@@ -41,14 +45,38 @@ The pkglist file should contain the following: ::
  snmpd
  bridge-utils
  
-The otherpkglist file should contain the following: ::
+The otherpkglist file should contain the following: 
 
- # cat /install/custom/ubuntu1404/ubuntu1404_docker.pkglist
+**[ubuntu x86_64]** ::  
+
+ # cat /install/custom/ubuntu/ubuntu_docker.pkglist
  docker-engine
+
+**[ubuntu16.04 ppc64el]** 
+ 
+At the time of this writing (February 2016), docker package is not available for **ppc64el** architecture from docker.org. You can follow instructions below on how to manually download and install it.
+
+* Download docker engine for ppc64el 
+::
+ 
+ wget http://launchpadlibrarian.net/251622081/docker.io_1.10.3-0ubuntu4_ppc64el.deb  -O /install/docker_ppc64el/docker.io_1.10.3-0ubuntu4_ppc64el.deb
+
+* Configure **otherpkgdir** like this 
+::
+
+ otherpkgdir=/install/docker_ppc64el
+
+* The **otherpkglist** file should be 
+::
+
+ # cat /install/custom/ubuntu/ubuntu_docker.pkglist
+ docker.io
 
 Create the osimage for dockerhost
 """""""""""""""""""""""""""""""""
-The osimage for dockerhost will be like this: ::
+The osimage for dockerhost will be like this:
+
+**[ubuntu x86_64]** ::  
 
  # lsdef -t osimage ub14.04.03-x86_64-dockerhost
  Object name: ub14.04.03-x86_64-dockerhost
@@ -57,12 +85,28 @@ The osimage for dockerhost will be like this: ::
      osname=Linux
      osvers=ubuntu14.04.3
      otherpkgdir=https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main
-     otherpkglist=/install/custom/ubuntu1404/ubuntu1404_docker.pkglist
+     otherpkglist=/install/custom/ubuntu/ubuntu_docker.pkglist
      pkgdir=/install/ubuntu14.04.3/x86_64
-     pkglist=/install/custom/ubuntu1404/ubuntu1404.pkglist
+     pkglist=/install/custom/ubuntu/ubuntu.pkglist
      profile=compute
      provmethod=install
      template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
+
+**[ubuntu16.04 ppc64el]** ::
+
+ # lsdef -t osimage ub16.04-ppc64el-dockerhost
+ Object name: ub16.04-ppc64el-dockerhost
+    imagetype=linux
+    osarch=ppc64el
+    osname=Linux
+    osvers=ubuntu16.04
+    otherpkgdir=/install/docker_ppc64el
+    otherpkglist=/install/custom/ubuntu/ubuntu_docker.pkglist
+    pkgdir=/install/ubuntu16.04/ppc64el
+    pkglist=/install/custom/ubuntu/ubuntu.pkglist
+    profile=compute
+    provmethod=install
+    template=/opt/xcat/share/xcat/install/ubuntu/compute.tmpl
 
 Preparing setup trust connection for docker service and create docker network object
 ````````````````````````````````````````````````````````````````````````````````````
@@ -99,7 +143,7 @@ After the dockerhost is ready, a docker instance can be managed through xCAT com
      postbootscripts=otherpkgs
      postscripts=syslog,remoteshell,syncfiles
 
-The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node or change the node attributes. Specify any available unused ip address for *ip* attribute.
+The command :doc:`mkdef </guides/admin-guides/references/man1/mkdef.1>` or :doc:`chdef </guides/admin-guides/references/man1/chdef.1>` can be used to create a new docker instance node or change the node attributes. Specify any available unused ip address for *ip* attribute. *mac* attribute is optional and if left unset, will be filled in by *mkdocker* command.
 
 After docker instance node is defined, use command `makehosts host01c01` to add node *host01c01* and its IP address *10.0.120.1* into /etc/hosts.
 
@@ -173,3 +217,26 @@ Check docker instance status
 ::
 
  rpower <node> state
+
+Troubleshooting
+--------------------------
+
+If things go wrong:
+
+* After dockerhost node boots, check contents of **/var/log/xcat/xcat.log** file on the dockerhost for errors.
+
+* Verify **nicname** specified in **Preparing setup trust connection for docker service and create docker network object** section exists on the docker host. Depending on the version of Ubuntu OS and host architecture, it could be **eth0**, or **em1**, or **eno1**, or **enp0s1**. Verify by running on the dockerhost
+::
+
+ ip addr show dev <nicname>
+
+* Run **ps -ef | grep docker** to verify docker engine is running with configured options. It should look something like
+::
+
+ root      3703     1  0 Apr15 ?        00:12:28 /usr/bin/docker daemon -H unix:///var/run/docker.sock -H tcp://host01:2375 --tls --tlscacert=/root/.docker/ca-cert.pem --tlscert=/root/.docker/dockerhost-cert.pem --tlskey=/root/.docker/dockerhost-cert.pem --tlsverify=true --raw-logs
+
+If the output is missing some options, verify that file **/lib/systemd/system/docker.service** contains the following lines
+::
+
+  EnvironmentFile=-/etc/default/docker
+  ExecStart=/usr/bin/docker daemon $DOCKER_OPTS -H fd://

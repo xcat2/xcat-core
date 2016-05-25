@@ -91,15 +91,18 @@ sub mount_chroot {
     my $rootimage_dir = shift;
 
     #postinstall script of some packages might access the /proc, /sys and /dev filesystem
-    #For Redhat7 or above, mount these directories readonly from host to avoid error messages
+    #For Redhat7 or above, mount /proc,/sys from host to avoid error messages
+    #For Redhat7 or above, create /dev according to /dev on the host to avoid error messages
     #For Redhat6 or below, mount these directories might introduce error messages
     if(majversion($osver) > 6){
        system("mkdir -p $rootimage_dir/proc");
-       system("mount proc $rootimage_dir/proc -t proc -o ro");
+       system("mount proc $rootimage_dir/proc -t proc");
        system("mkdir -p $rootimage_dir/sys");
-       system("mount sysfs $rootimage_dir/sys -t sysfs -o ro");
+       system("mount sysfs $rootimage_dir/sys -t sysfs");
        system("mkdir -p $rootimage_dir/dev");
-       system("mount devtmpfs $rootimage_dir/dev -t devtmpfs -o ro");
+       #system("mount devtmpfs $rootimage_dir/dev -t devtmpfs");
+       system("cd /dev;find .|cpio -H newc -o >$rootimage_dir/dev/dev.archive;cd -");
+       system("cd $rootimage_dir/dev;cpio -idum<./dev.archive;rm -f ./dev.archive;cd -");
     }
 }
 
@@ -109,9 +112,10 @@ sub umount_chroot {
     my $rootimage_dir = shift;
 
     if(majversion($osver) >6){
-        system("umount $rootimage_dir/proc");
-        system("umount $rootimage_dir/sys");
-        system("umount $rootimage_dir/dev");
+        system("umount -l $rootimage_dir/proc");
+        system("umount -l $rootimage_dir/sys");
+        #system("umount -l $rootimage_dir/dev");
+        system("rm -rf $rootimage_dir/dev/*");
     }
 }
 

@@ -17,3 +17,4 @@ Within the NVIDIA CUDA Toolkit, installing the ``cuda`` package will install bot
    deploy_cuda_node.rst
    verify_cuda_install.rst
    management.rst
+   update_nvidia_driver.rst

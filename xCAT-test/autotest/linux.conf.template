@@ -67,6 +67,19 @@ NETDRIVER=ibmveth     #network infterface card driver used by diskless installat
 NETBOOTDIR=/opt/xcat/share/xcat/netboot/rh       #path of netboot directory, used by diskless installation
 MaxLparID=32
 KITDATA=kitdata
+#For migration cases Begin
+UBUNTU_MIGRATION1_CORE=https://xcat.org/files/xcat/xcat-core/2.10.x_Ubuntu/xcat-core/xcat-core-2.10.tar.bz2
+UBUNTU_MIGRATION2_CORE=https://xcat.org/files/xcat/xcat-core/2.11.x_Ubuntu/xcat-core/xcat-core-2.11.1-ubuntu.tar.bz2
+UBUNTU_MIGRATION1_DEP=https://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-ubuntu-20151012.tar.bz
+UBUNTU_MIGRATION2_DEP=https://xcat.org/files/xcat/xcat-dep/2.x_Ubuntu/xcat-dep-ubuntu-2.11.1.tar.bz2
+MIGRATION1_CORE=http://xcat.org/files/xcat/xcat-core/2.10.x_Linux/xcat-core/xcat-core-2.10.tar.bz2
+MIGRATION2_CORE=http://xcat.org/files/xcat/xcat-core/2.11.x_Linux/xcat-core/xcat-core-2.11.1-linux.tar.bz2
+MIGRATION1_DEP=http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-2.10.tar.bz2
+MIGRATION2_DEP=http://xcat.org/files/xcat/xcat-dep/2.x_Linux/xcat-dep-2.11.1.tar.bz2
+MIGRATION1_VERSION=2.10
+MIGRATION2_VERSION=2.11.1
+LATEST_VERSION=2.12.1
+#For migration cass End
 [Custom]
 
 #commands run before test

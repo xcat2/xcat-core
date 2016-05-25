@@ -11,7 +11,7 @@ NAME
 ****
 
 
-\ **lsvm**\  - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, Vmware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
+\ **lsvm**\  - Lists partition profile information for HMC-, DFM-, IVM-, KVM-, VMware- and zVM-managed nodes. For Power 775, it lists the LPARs' I/O slots information and CEC configuration.
 
 
 ********
@@ -32,6 +32,13 @@ For PPC (using Direct FSP Management):
 
 
 \ **lsvm**\  [\ **-l**\ | \ **-**\ **-long**\ ] \ **-**\ **-p775**\  \ *noderange*\ 
+
+\ **lsvm**\  \ *noderange*\ 
+
+
+For KVM and VMware
+==================
+
 
 \ **lsvm**\  \ *noderange*\ 
 
@@ -72,11 +79,11 @@ More information about this part, refer to the section Using the \*vm commands t
   XCAT_Power_775_Hardware_Management
 
 
-For KVM and Vmware
+For KVM and VMware
 ==================
 
 
-The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  only can be hypervisor. The type of the hypervisor should be set: hypervisor.type before running the lsvm.
+The virtual machines that defined in the hypervisor \ *noderange*\  will be displayed. \ *noderange*\  can only be hypervisor.
 
 Note: Only the virtual machine which is in power on state can be listed by lsvm command.
 

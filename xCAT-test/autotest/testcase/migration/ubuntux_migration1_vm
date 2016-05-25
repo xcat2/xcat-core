@@ -1,0 +1,118 @@
+start:ubuntux_migration1_vm
+os:Linux
+cmd:copycds $$ISO
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:sleep 3000
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+cmd:xdsh $$CN "echo \"nameserver 9.0.2.1\" >> /etc/resolv.conf"
+check:rc==0
+cmd:xdsh $$CN "apt-get -y install software-properties-common"
+check:rc==0
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu $lsb_r main"' 
+check:rc==0
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates main"'
+check:rc==0
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r} universe"'
+check:rc==0
+cmd:xdsh $$CN 'lsb_r=`lsb_release -sc`;add-apt-repository "deb http://archive.ubuntu.com/ubuntu ${lsb_r}-updates universe"'
+check:rc==0
+cmd:xdsh $$CN "sed -i '/install/d' /etc/apt/sources.list"
+check:rc==0
+cmd:xdsh $$CN "sed -i '/security.ubuntu.com/d' /etc/apt/sources.list"
+check:rc==0
+cmd:xdsh $$CN "wget -O - http://sourceforge.net/projects/xcat/files/ubuntu/apt.key/download | apt-key add -"
+check:rc==0
+cmd:xdsh $$CN "apt-get clean all" 
+check:rc==0
+cmd:xdsh $$CN "apt-get update"
+check:rc==0
+cmd:xdsh $$CN "apt-get -y install build-essential dpkg-dev dh-make debhelper fakeroot gnupg lintian pbuilder quilt reprepro libsoap-lite-perl libdbi-perl"
+check:rc==0
+cmd:xdsh $$CN "rm -rf /oldxcat"
+cmd:xdsh $$CN "mkdir -p /oldxcat"
+check:rc==0
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_CORE"
+check:rc==0
+cmd:xdsh $$CN "cd /oldxcat;wget $$UBUNTU_MIGRATION1_DEP"
+check:rc==0
+cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-dep* -C /oldxcat"
+check:rc==0
+cmd:xdsh $$CN "tar -jxvf /oldxcat/xcat-core* -C /oldxcat"
+check:rc==0
+cmd:xdsh $$CN "/oldxcat/xcat-core/mklocalrepo.sh"
+check:rc==0
+cmd:xdsh $$CN "/oldxcat/xcat-dep/mklocalrepo.sh"
+check:rc==0
+cmd:xdsh $$CN "apt-get clean all"
+check:rc==0
+cmd:xdsh $$CN "apt-get update"
+check:rc==0
+cmd:xdsh $$CN "apt-get -y install xcat xCAT-test"
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /oldxcat/old_version"
+check:rc==0
+cmd:xdsh $$CN "cat /oldxcat/old_version|grep $$MIGRATION1_VERSION"
+check:rc==0
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;chdef -t node -o node0001  nodetype=osi groups=linux"
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
+check:output=~node0001
+cmd:xdsh $$CN "rm -rf /newxcat"
+cmd:xdsh $$CN "mkdir -p /newxcat"
+check:rc==0
+cmd:xdsh $$CN "scp -r $$MN:/core-debs-snap.tar.bz2 /newxcat/"
+check:rc==0
+cmd:xdsh $$CN "scp -r $$MN:/xcat-dep*.tar.bz2 /newxcat/"
+check:rc==0
+cmd:xdsh $$CN "tar -jxvf /newxcat/xcat-dep* -C /newxcat/"
+check:rc==0
+cmd:xdsh $$CN "tar -jxvf /newxcat/core-debs-snap.tar.bz2 -C /newxcat/"
+check:rc==0
+cmd:xdsh $$CN "/newxcat/xcat-core/mklocalrepo.sh"
+check:rc==0
+cmd:xdsh $$CN "/newxcat/xcat-dep/mklocalrepo.sh"
+check:rc==0
+cmd:xdsh $$CN "apt-get clean all"
+check:rc==0
+cmd:xdsh $$CN "apt-get update"
+check:rc==0
+cmd:xdsh $$CN "apt-get -y upgrade xcat xCAT-test"
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsxcatd -v > /newxcat/new_version"
+check:rc==0
+cmd:xdsh $$CN "cat /newxcat/new_version|grep $$LATEST_VERSION"
+check:rc==0
+cmd:xdsh $$CN "service xcatd status"
+check:rc==0
+check:output=~running
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;rmdef node0001"
+check:rc==0
+cmd:xdsh $$CN "source /etc/profile.d/xcat.sh;lsdef"
+check:output!~node0001
+cmd:xdsh $$CN "diff /oldxcat/old_version /newxcat/new_version"
+check:rc!=0
+end

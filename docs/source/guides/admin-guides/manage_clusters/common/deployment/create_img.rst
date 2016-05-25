@@ -43,11 +43,15 @@ For ubuntu ppc64le, the initrd.gz shipped with the ISO does not support network 
 
 * Download mini.iso from
 
-  [ubuntu 14.04.1]: http://ports.ubuntu.com/ubuntu-ports/dists/$(lsb_release-sc)/main/installer-ppc64el/current/images/netboot/
+  [ubuntu 14.04.1]: http://xcat.org/files/netboot/ubuntu14.04.1/ppc64el/mini.iso
 
-  [ubuntu 14.04.2]: http://ports.ubuntu.com/ubuntu-ports/dists/trusty-updates/main/installer-ppc64el/current/images/utopic-netboot/
+  [ubuntu 14.04.2]: http://xcat.org/files/netboot/ubuntu14.04.2/ppc64el/mini.iso
 
-  [ubuntu 14.04.3]: http://ports.ubuntu.com/ubuntu-ports/dists/trusty-updates/main/installer-ppc64el/current/images/vivid-netboot/
+  [ubuntu 14.04.3]: http://xcat.org/files/netboot/ubuntu14.04.3/ppc64el/mini.iso
+  
+  [ubuntu 14.04.4]: http://xcat.org/files/netboot/ubuntu14.04.4/ppc64el/mini.iso
+  
+  [ubuntu 16.04]: http://xcat.org/files/netboot/ubuntu16.04/ppc64el/mini.iso
 
 * Mount mini.iso ::
 

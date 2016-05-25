@@ -1,0 +1,28 @@
+2016-01-15 - OpenSSL Vulnerabilities (SLOTH)
+============================================
+
+A detailed description of this issue can be seen in the following blog posting: http://www.mitls.org/pages/attacks/SLOTH
+
+Advisory CVEs
+-------------
+
+`CVE-2015-7575 <https://access.redhat.com/security/cve/CVE-2015-7575>`_ - TLS 1.2 Transcipt Collision attacks against MD5 in key exchange protocol (SLOTH)
+
+Action
+------
+
+xCAT uses OpenSSL for client-server communication but **does not** ship it.  
+
+It is highly recommended to keep your OpenSSL levels up-to-date with the indicated versions in the security bulletins to prevent any potential security threats. Obtain the updated software packages from your Operating system distribution channels. 
+
+
+
+Disable MD5 authentication in the cipher list using the site table keyword ``xcatsslciphers``.
+
+1. Check if MD5 is already disabled: ``tabdump site | grep xcatssl``
+
+2. If nothing is set, add ``ALL:!MD5`` to the cipher list:  ``chtab key=xcatsslciphers site.value='ALL:!MD5'``
+
+3. Restart xcat:  ``service xcatd restart``
+
+
