@@ -461,11 +461,11 @@ sub scan_process{
         my $version_result = xCAT::Utils->runcmd($ccmd, 0);
         my @version_array = split / /, $version_result;
         my $nmap_version = $version_array[2];
-        # the output of nmap is different for version under 4.75
-        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
-            $bcmd = join(" ",$nmap_path," -sP -n $range | grep Host |cut -d ' ' -f2 |tr -s '\n' ' ' ");
+        # the output of nmap is different for version under 5.10 
+        if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
+            $bcmd = join(" ",$nmap_path," -sP -n $range | grep \"appears to be up\" |cut -d ' ' -f2 |tr -s '\n' ' ' ");
         } else {
-            $bcmd = join(" ",$nmap_path," -sn -n $range | grep for |cut -d ' ' -f5 |tr -s '\n' ' ' ");
+            $bcmd = join(" ",$nmap_path," -sn -n $range | grep \"Nmap scan report\" |cut -d ' ' -f5 |tr -s '\n' ' ' ");
         }
 
         $ip_list = xCAT::Utils->runcmd("$bcmd", -1);
