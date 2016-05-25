@@ -80,6 +80,16 @@ MIGRATION1_VERSION=2.10
 MIGRATION2_VERSION=2.11.1
 LATEST_VERSION=2.12.1
 #For migration cass End
+#For docker host setup
+DOCKERIMAGE=ubuntu
+DOCKERCOMMAND=/bin/bash
+DOCKERCONIP=10.4.27.100
+DOCKERHOSIP=10.4.27.10
+DOCKERMNXCAT=xcatmn
+MYNET0VALUE=10.0.0.0/8
+DOCKERCN=host05c08
+DOCKERHOST=c910f04x27v09
+#docker host setup end
 [Custom]
 
 #commands run before test
