@@ -1,5 +1,7 @@
 start:ubuntu_migration1_p8le
 os:Linux
+description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+
 cmd:copycds $$ISO
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi

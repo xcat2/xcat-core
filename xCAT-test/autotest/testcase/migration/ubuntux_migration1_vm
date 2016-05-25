@@ -1,5 +1,7 @@
 start:ubuntux_migration1_vm
 os:Linux
+description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+
 cmd:copycds $$ISO
 check:rc==0
 cmd:makedns -n
