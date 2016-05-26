@@ -42,8 +42,6 @@ FILES_PATH="files"
 FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
 #for pcm
-PCM_USER=root
-PCM_SERVER=9.21.55.36
 PCM_UPLOAD_PATH="/xcat_pcm_release/RPM"
 
 YUMDIR=$FRS
@@ -534,9 +532,8 @@ if [ "$EMBED" = "pcm" ]; then
     i=0
     tarnewname=`date +%Y%m%d%H%M`."PCM".$TARNAME
     cp $TARNAME $tarnewname
-    echo "Uploading $tarnewname to $PCM_USER@$PCM_SERVER:$PCM_UPLOAD_PATH"
-    echo "###############################################################"
-    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tarnewname $PCM_USER@$PCM_SERVER:$PCM_UPLOAD_PATH
+    echo "Uploading $tarnewname to $PCM_USER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH"
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tarnewname $PCM_USER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH
     do : ; done
     exit 0;
 fi

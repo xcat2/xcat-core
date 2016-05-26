@@ -35,7 +35,6 @@
 ############################
 
 #Begin pcm
-PCM_USER=root
 PCM_SERVER=9.21.55.37
 PCM_UPLOAD_PATH="/xcat_pcm_release/DEB"
 
@@ -435,8 +434,8 @@ __EOF__
         tar_new_name=`date +%Y%m%d%H%M`."PCM".$tar_name
         cp $tar_name $tar_new_name
         i=0
-        echo "Uploading $tar_new_name to $PCM_USER@$PCM_SERVER:$PCM_UPLOAD_PATH"
-        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_new_name $PCM_USER@$PCM_SERVER:$PCM_UPLOAD_PATH
+        echo "Uploading $tar_new_name to $UPLOADUSER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH"
+        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_new_name $UPLOADUSER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH
         do : ; done
         exit 0;
     fi
