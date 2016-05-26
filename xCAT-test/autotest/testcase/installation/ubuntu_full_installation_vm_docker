@@ -1,5 +1,15 @@
 start:Full_installation_flat_docker
 os:Linux
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [ "__GETNODEATTR($$CN,arch)__" != "ppc64"  -a  "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [[ "__GETNODEATTR($$CN,vmstorage)__" =~ "phy" ]]; then rmvm $$CN -f -p  &&  mkvm $$CN; else rmvm $$CN -f -p  &&  mkvm $$CN -s 20G; fi;fi
+check:rc=0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
 cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost -u profile=compute provmethod=install
 check:rc==0
 cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then  ver=`cat /etc/*-release |grep "VERSION_ID"|  awk -F '"'  '{print $2}'| awk -F"." '{printf "%s%s\n",$1,$2}'` ; chdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost  otherpkgdir="https://apt.dockerproject.org/repo ubuntu-trusty main,http://cz.archive.ubuntu.com/ubuntu trusty main" otherpkglist="/install/custom/ubuntu$ver/ubuntu"$ver"_docker.pkglist" osdistroname="__GETNODEATTR($$CN,os)__ ";fi
