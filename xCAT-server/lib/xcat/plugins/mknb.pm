@@ -254,7 +254,7 @@ CREAT_CONF_FILE:
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.elilo");
          print $cfg "default=\"xCAT Genesis\"\ndelay=5\n\n";
          print $cfg 'image=/tftpboot/xcat/genesis.kernel.'."$arch\n";
-	 print $cfg "   label=\"xCAT Genesis\"\n";
+	 print $cfg "   label=\"xCAT Genesis (".$normnets->{$_}.")\"\n";
 	if ($lzma_exit_value) {
 	 print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.gz\n";
 	} else {
@@ -271,7 +271,7 @@ CREAT_CONF_FILE:
       } elsif ($arch =~ /ppc/) {
          open($cfgfile,">", "$tftpdir/pxelinux.cfg/p/$net");
          print $cfgfile "default xCAT\n";
-         print $cfgfile "   label xCAT\n";
+         print $cfgfile "   label xCAT Genesis (".$normnets->{$_}.")\n";
          print $cfgfile "   kernel http://".$normnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
          print $cfgfile "   initrd http://".$normnets->{$_}.":80/$initrd_file\n";
          print $cfgfile '   append "quiet xcatd='.$normnets->{$_}.":$xcatdport $consolecmdline\"\n";
@@ -308,7 +308,7 @@ CREAT_CONF_FILE:
       } elsif ($arch =~ /ppc/) {
          open($cfgfile,">","$tftpdir/etc/".lc($_));
          print $cfgfile "default xCAT\n";
-         print $cfgfile "   label xCAT\n";
+         print $cfgfile "   label xCAT Genesis (".$normnets->{$_}.")\n";
          print $cfgfile "   kernel http://".$hexnets->{$_}.":80/$tftpdir/xcat/genesis.kernel.$arch\n";
          print $cfgfile "   initrd http://".$hexnets->{$_}.":80/$initrd_file\n";
          print $cfgfile '   append "quiet xcatd='.$hexnets->{$_}.":$xcatdport $consolecmdline\"\n";
