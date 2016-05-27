@@ -1,5 +1,7 @@
 start:sles_migration1
 os:Linux
+description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0
@@ -109,6 +111,8 @@ end
 
 start:sles_migration2
 os:Linux
+description:update xCAT from $$MIGRATION22VERSION to $$LATEST_VERSION, these two global parameter defined in config file
+
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
 #cmd:chdef -t node -o $$CN servicenode= monserver=$$MN nfsserver=$$MN tftpserver=$$MN  xcatmaster=$$MN
 #check:rc==0

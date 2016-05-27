@@ -1,5 +1,6 @@
 start:redhat_migration1
 os:Linux
+description:update xCAT from $$MIGRATION1_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 stop:yes
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
@@ -108,6 +109,7 @@ end
 
 start:redhat_migration2
 os:Linux
+description:update xCAT from $$MIGRATION2_VERSION to $$LATEST_VERSION, these two global parameter defined in config file
 stop:yes
 
 #cmd:if ping -c 1 $$SN > /dev/null;then rpower $$SN off > /dev/null;fi
