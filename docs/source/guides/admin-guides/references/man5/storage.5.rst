@@ -43,9 +43,14 @@ storage Attributes:
 \ **osvolume**\ 
  
  Specification of what storage to place the node OS image onto.  Examples include:
-                 localdisk (Install to first non-FC attached disk)
-                 usbdisk (Install to first USB mass storage device seen)
-                 wwn=0x50000393c813840c (Install to storage device with given WWN)
+ 
+ 
+ .. code-block:: perl
+ 
+                  localdisk (Install to first non-FC attached disk)
+                  usbdisk (Install to first USB mass storage device seen)
+                  wwn=0x50000393c813840c (Install to storage device with given WWN)
+ 
  
 
 
@@ -93,9 +98,9 @@ storage Attributes:
 
 \ **controller**\ 
  
- The management address to attach/detach new volumes.
-                        In the scenario involving multiple controllers, this data must be
-                        passed as argument rather than by table value
+ The management address to attach/detach new volumes. 
+ In the scenario involving multiple controllers, this data must be
+ passed as argument rather than by table value
  
 
 

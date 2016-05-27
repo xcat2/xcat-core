@@ -104,11 +104,7 @@ eventlog Attributes:
 
 \ **rawdata**\ 
  
- 
- .. code-block:: perl
- 
-   The data that associated with the event.
- 
+ The data that associated with the event.
  
 
 

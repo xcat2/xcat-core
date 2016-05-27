@@ -90,9 +90,7 @@ osimage Attributes:
 \ **dump**\  (linuximage.dump, nimimage.dump)
  
  The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.
- 
  or
- 
  The name of the NIM dump resource.
  
 
@@ -279,10 +277,8 @@ osimage Attributes:
 
 \ **partitionfile**\  (linuximage.partitionfile, winimage.partitionfile)
  
- The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/install_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma ","
- 
+ The path of the configuration file which will be used to partition the disk for the node. For stateful osimages,two types of files are supported: "<partition file absolute path>" which contains a partitioning definition that will be inserted directly into the generated autoinst configuration file and must be formatted for the corresponding OS installer (e.g. kickstart for RedHat, autoyast for SLES, pressed for Ubuntu).  "s:<partitioning script absolute path>" which specifies a shell script that will be run from the OS installer configuration file %pre section;  the script must write the correct partitioning definition into the file /tmp/partitionfile on the node which will be included into the configuration file during the install process. For statelite osimages, partitionfile should specify "<partition file absolute path>";  see the xCAT Statelite documentation for the xCAT defined format of this configuration file.For Ubuntu, besides  "<partition file absolute path>" or "s:<partitioning script absolute path>", the disk name(s) to partition must be specified in traditional, non-devfs format, delimited with space,  it can be specified in 2 forms: "d:<the absolute path of the disk name file>" which contains the disk name(s) to partition and "s:d:<the absolute path of the disk script>" which runs in pressed/early_command and writes the disk names into the "/tmp/install_disk" . To support other specific partition methods such as RAID or LVM in Ubuntu, some additional preseed values should be specified, these values can be specified with "c:<the absolute path of the additional pressed config file>" which contains the additional pressed entries in "d-i ..." form and "s:c:<the absolute path of the additional pressed config script>" which runs in pressed/early_command and set the preseed values with "debconf-set". The multiple values should be delimited with comma "," 
  or
- 
  The path of partition configuration file. Since the partition configuration for bios boot mode and uefi boot mode are different, this configuration file can include both configurations if you need to support both bios and uefi mode. Either way, you must specify the boot mode in the configuration. Example of partition configuration file: [BIOS]xxxxxxx[UEFI]yyyyyyy. To simplify the setting, you also can set installto in partitionfile with section like [INSTALLTO]0:1
  
 
@@ -398,9 +394,7 @@ osimage Attributes:
 \ **template**\  (linuximage.template, winimage.template)
  
  The fully qualified name of the template file that will be used to create the OS installer configuration file for stateful installations (e.g.  kickstart for RedHat, autoyast for SLES).
- 
  or
- 
  The fully qualified name of the template file that is used to create the windows unattend.xml file for diskful installation.
  
 
@@ -414,9 +408,7 @@ osimage Attributes:
 \ **usercomment**\  (linuximage.comments, nimimage.comments)
  
  Any user-written notes.
- 
  or
- 
  Any user-provided notes.
  
 
