@@ -304,6 +304,8 @@ my %usage = (
     "switchdiscover" =>
 "Usage: switchdiscover [-h|--help|-v|--version]
        switchdiscover [<noderange>|--range ipranges] [-s scan_methods] [-r|-x|-z] [-w] [-V|--verbose]",
+    "switchprobe" => 
+"Usage: switchprobe [<noderange>] [-V|--verbose | -c|--check]",
     "makentp" =>
 "Usage: makentp [-h|--help|-v|--version]
        makentp [-a|--all] [-V|--verbose]",
