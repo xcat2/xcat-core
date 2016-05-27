@@ -213,7 +213,8 @@ use xCAT::ExtTab;
             'nicmodel' => 'Model of NICs that will be provided to VMs (i.e. e1000, rtl8139, virtio, etc)',
             'bootorder' => 'Boot sequence (i.e. net,hd)',
             'clockoffset' => 'Whether to have guest RTC synced to "localtime" or "utc"  If not populated, xCAT will guess based on the nodetype.os contents.',
-            'virtflags' => 'General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+            'virtflags' => 'General flags used by the virtualization method.  
+          For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
             imageformat=[raw|fullraw|qcow2]
                 raw is a generic sparse file that allocates storage on demand
                 fullraw is a generic, non-sparse file that preallocates all space
@@ -275,10 +276,11 @@ use xCAT::ExtTab;
         table_descr  => 'Node storage resources',
         descriptions => {
             node       => 'The node name',
-            controller => 'The management address to attach/detach new volumes.
-                       In the scenario involving multiple controllers, this data must be
-                       passed as argument rather than by table value',
+            controller => 'The management address to attach/detach new volumes. 
+In the scenario involving multiple controllers, this data must be
+passed as argument rather than by table value',
             osvolume => "Specification of what storage to place the node OS image onto.  Examples include:
+
                 localdisk (Install to first non-FC attached disk)
                 usbdisk (Install to first USB mass storage device seen)
                 wwn=0x50000393c813840c (Install to storage device with given WWN)",
@@ -396,10 +398,7 @@ use xCAT::ExtTab;
         descriptions => {
             node => 'The node name or group name.',
             bmc  => 'The hostname of the BMC adapater.',
-            bmcport => ' In systems with selectable shared/dedicated ethernet ports,
-           this parameter can be used to specify the preferred port.  0
-           means use the shared port, 1 means dedicated, blank is to not
-           assign.
+            bmcport => 'In systems with selectable shared/dedicated ethernet ports, this parameter can be used to specify the preferred port. 0 means use the shared port, 1 means dedicated, blank is to not assign.
 
            The following special cases exist for IBM System x servers:
 
@@ -527,6 +526,7 @@ use xCAT::ExtTab;
             password => 'Password to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.',
             displayname => 'Alternative name for BladeCenter chassis. Only used by PCM.',
             slots => 'The number of available slots in the chassis. For PCM, this attribute is used to store the number of slots in the following format:  <slot rows>,<slot columns>,<slot orientation>  Where:
+
                  <slot rows>  = number of rows of slots in chassis
                  <slot columns> = number of columns of slots in chassis
                  <slot orientation> = set to 0 if slots are vertical, and set to 1 if slots of horizontal
@@ -647,12 +647,13 @@ use xCAT::ExtTab;
             node => 'The node name or group name.',
             servicenode => 'A comma separated list of node names (as known by the management node) that provides most services for this node. The first service node on the list that is accessible will be used.  The 2nd node on the list is generally considered to be the backup service node for this node when running commands like snmove.',
             netboot => 'The type of network booting to use for this node.  Valid values:
-                       Arch                  OS                           valid netboot options 
-                       x86, x86_64           ALL                          pxe, xnba 
-                       ppc64                 <=rhel6, <=sles11.3          yaboot
-                       ppc64                 >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
-                 ppc64le NonVirtualize       ALL                          petitboot
-                 ppc64le PowerKVM Guest      ALL                          grub2,grub2-http,grub2-tftp
+
+                       Arch                    OS                           valid netboot options 
+                       x86, x86_64             ALL                          pxe, xnba 
+                       ppc64                   <=rhel6, <=sles11.3          yaboot
+                       ppc64                   >=rhels7, >=sles11.4         grub2,grub2-http,grub2-tftp
+                       ppc64le NonVirtualize   ALL                          petitboot
+                       ppc64le PowerKVM Guest  ALL                          grub2,grub2-http,grub2-tftp
                        
 ',
             tftpserver => 'The TFTP server for this node (as known by this node). If not set, it defaults to networks.tftpserver.',
@@ -1341,7 +1342,7 @@ use xCAT::ExtTab;
             id => 'The location or the resource name where the event occurred.', #In RMC it's the resource name and attribute name
             severity => 'The severity of the event. Valid values are: informational, warning, critical.',
             message => 'The full description of the event.',
-            rawdata => ' The data that associated with the event. ', # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
+            rawdata => 'The data that associated with the event. ', # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
             comments => 'Any user-provided notes.',
             disable => "Do not use.  tabprune will not work if set to yes or 1",
         },
@@ -1355,7 +1356,7 @@ use xCAT::ExtTab;
         },
         compress     => 'YES',
         tablespace   => 'XCATTBS32K',
-        table_desc   => ' Audit Data log.',
+        table_desc   => 'Audit Data log.',
         descriptions => {
             recid      => 'The record id.',
             audittime  => 'The timestamp for the audit entry.',
@@ -1382,10 +1383,10 @@ use xCAT::ExtTab;
 # Do not put description text past column 88, so it displays well in a 100 char wide window.
 # ----------------------------------------------------------------------------------|
             begin =>
-"The scripts to be run at the beginning of the nodeset(Linux),\n" .
+"The scripts to be run at the beginning of the nodeset(Linux)," .
 " nimnodeset(AIX) or mkdsklsnode(AIX) command.\n" .
 " The format is:\n" .
-"   [action1:]s1,s2...[|action2:s3,s4,s5...]\n" .
+"   [action1:]s1,s2...[| action2:s3,s4,s5...]\n" .
 " where:\n" .
 "  - action1 and action2 for Linux are the nodeset actions specified in the command. \n" .
 "    For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'\n" .
@@ -1396,17 +1397,17 @@ use xCAT::ExtTab;
 " Examples:\n" .
 "   myscript1,myscript2  (all actions)\n" .
 "   diskless:myscript1,myscript2   (AIX)\n" .
-"   install:myscript1,myscript2|netboot:myscript3   (Linux)\n\n" .
+"   install:myscript1,myscript2|netboot:myscript3   (Linux)\n" .
 " All the scripts should be copied to /install/prescripts directory.\n" .
 " The following two environment variables will be passed to each script: \n" .
 "   NODES a coma separated list of node names that need to run the script for\n" .
-"   ACTION current nodeset action.\n\n" .
+"   ACTION current nodeset action.\n" .
 " If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script\n" .
 " will get invoked for each node in parallel, but no more than number of instances\n" .
 " will be invoked at at a time. If it is not specified, the script will be invoked\n" .
 " once for all the nodes.\n",
-            end => "The scripts to be run at the end of the nodeset(Linux),\n" .
-                " nimnodeset(AIX),or mkdsklsnode(AIX) command. \n" .
+            end => "The scripts to be run at the end of the nodeset(Linux)," .
+                " nimnodeset(AIX),or mkdsklsnode(AIX) command." .
                 " The format is the same as the 'begin' column.",
             comments => 'Any user-written notes.',
             disable  => "Set to 'yes' or '1' to comment out this row.",
@@ -1463,7 +1464,8 @@ use xCAT::ExtTab;
         table_desc   => 'Stores NIC details.',
         descriptions => {
             node => 'The node or group name.',
-            nicips => 'Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
+            nicips => 'Comma-separated list of IP addresses per NIC. 
+                To specify one ip address per NIC:
                     <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
                 To specify multiple ip addresses per NIC:
                     <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a. The xCAT object definition commands support to use nicips.<nicname> as the sub attributes.
@@ -1491,16 +1493,16 @@ use xCAT::ExtTab;
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<network1>|<network2>,<nic2>!<network1>|<network2>, for example, eth0!10_0_0_0-255_255_0_0|fd55:faaf:e1ab:336::/64,ib0!11_0_0_0-255_255_0_0|2001:db8:1:0::/64. The xCAT object definition commands support to use nicnetworks.<nicname> as the sub attributes.',
             nicaliases => 'Comma-separated list of hostname aliases for each NIC.
-            Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
-			For multiple aliases per nic use a space-separated list.
-            For example: eth0!moe larry curly,eth1!tom|jerry',
+                Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
+                    For multiple aliases per nic use a space-separated list. 
+                For example: eth0!moe larry curly,eth1!tom|jerry',
             nicextraparams => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
                 If only one ip address is associated with each NIC:
                     <nic1>!<param1=value1 param2=value2>,<nic2>!<param3=value3>, for example, eth0!MTU=1500,ib0!MTU=65520 CONNECTED_MODE=yes.
                 If multiple ip addresses are associated with each NIC:
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.
             The xCAT object definition commands support to use nicextraparams.<nicname> as the sub attributes.',
-            nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
+            nicdevices => 'Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.',
             nicsadapter => 'Comma-separated list of extra parameters that will be used for each NIC configuration.
                     <nic1>!<param1=value1 param2=value2>|<param3=value3>,<nic2>!<param4=value4 param5=value5>|<param6=value6>, for example, eth0!MTU=1500|MTU=1460,ib0!MTU=65520 CONNECTED_MODE=yes.',
             comments => 'Any user-written notes.',

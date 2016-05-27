@@ -130,7 +130,7 @@ for component in COMPONENTS:
                     cmd = "perl -I %s/share/perl5 %s/bin/%s " %(prefix_path, prefix_path, POD2RST)
 
                 cmd += " --infile=%s --outfile=%s --title=%s.%s" %(pod_input, rst_output, title, man_ver)
-                print cmd 
+                # print cmd 
                 os.system(cmd)
 		if man_ver == '1' or man_ver == '8':
                     fix_vertical_bar(rst_output)
