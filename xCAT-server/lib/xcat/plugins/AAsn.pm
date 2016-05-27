@@ -1411,31 +1411,38 @@ sub enable_TFTPhpa
 
 
     if (-x "/usr/sbin/in.tftpd") {
-	system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
-    if ($distro =~ /ubuntu.*/i){
-        sleep 1;
-        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
-        if (@checkproc){
-            system("stop tftpd-hpa");
+        system("killall in.tftpd"); #xinetd can leave behind blocking tftp servers even if it won't start new ones
+        if ($distro =~ /ubuntu.*/i || $distro =~ /debian.*/i){
+            sleep 1;
+            my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
+            if (@checkproc){
+                xCAT::Utils->stopservice("tftpd-hpa");
+            }
         }
-    }
 
-    if ($distro =~ /debian.*/i){
-        sleep 1;
-        my @checkproc=`ps axf|grep -v grep|grep in.tftpd`;
-        if (@checkproc){
-            #system("service tftpd-hpa stop");
-            xCAT::Utils->stopservice("tftpd-hpa");
+        my @tftpprocpids=`ps axf | grep -v 'awk /in.tftpd/' | awk '/in.tftpd/ {print \$1}'`;
+        if (@tftpprocpids) {
+            my %pids_map;
+            my $count = 0;
+            map { chomp; $pids_map{$_} = 1 } @tftpprocpids;
+            while (keys %pids_map) {
+                foreach my $pid (keys %pids_map) {
+                    if (xCAT::Utils->is_process_exists($pid)) {
+                        $count++;
+                        if($count >= 50) {
+                            xCAT::MsgUtils->message("S","Error: can not stop tftp process in 5 seconds.");
+                            return 1;
+                        }
+                        sleep 0.1;
+                    } else {
+                        delete $pids_map{$pid}
+                    }
+                }
+            }
         }
-    }
-    my @tftpprocs=`ps axf|grep -v grep|grep in.tftpd`;
-	while (@tftpprocs) {
-		sleep 0.1;
-	}
         system("$startcmd");
     }
-
-  return 0;
+    return 0;
 }
 
 # enable or disable proxydhcp service
