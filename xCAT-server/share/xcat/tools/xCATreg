@@ -666,10 +666,8 @@ sub install_xcat {
         system("xdsh $confkeys{$mn} 'apt-get clean all' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get update' >/dev/null 2>&1");
         system("xdsh $confkeys{$mn} 'apt-get -y install xcat xCAT-test  > /var/log/xcat/install_xcat.log 2>&1' >/dev/null 2>&1");
-
-        system("xdsh $confkeys{$mn} 'mkdir -p /install/ubuntu14.04.3/ppc64el/install/netboot '");
-        system("scp /install/ubuntu14.04.3/ppc64el/install/netboot/initrd.gz $confkeys{$mn}:/install/ubuntu14.04.3/ppc64el/install/netboot  ");
-        }
+        system("scp $osisodir/mini.iso  $confkeys{$mn}:/  ");        
+        }    
 
 	#check if MN is installed successful 
 	my $lsdefout = `ssh -t $confkeys{$mn} 'bash -l -i -c "lsdef -v"'`;
