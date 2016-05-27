@@ -286,7 +286,9 @@ group Attributes:
 \ **hcp**\  (ppc.hcp, zvm.hcp)
  
  The hardware control point for this node (HMC, IVM, Frame or CEC).  Do not need to set for BPAs and FSPs.
+ 
  or
+ 
  The hardware control point for this node.
  
 
@@ -330,11 +332,17 @@ group Attributes:
 \ **hwtype**\  (ppc.nodetype, zvm.nodetype, mp.nodetype, mic.nodetype)
  
  The hardware type of the node. Only can be one of fsp, bpa, cec, frame, ivm, hmc and lpar
+ 
  or
+ 
  The node type. Valid values: cec (Central Electronic Complex), lpar (logical partition), zvm (z/VM host operating system), and vm (virtual machine).
+ 
  or
+ 
  The hardware type for mp node. Valid values: mm,cmm, blade.
+ 
  or
+ 
  The hardware type of the mic node. Generally, it is mic.
  
 
@@ -342,7 +350,9 @@ group Attributes:
 \ **id**\  (ppc.id, mp.id)
  
  For LPARs: the LPAR numeric id; for CECs: the cage number; for Frames: the frame number.
+ 
  or
+ 
  The slot number of this blade in the BladeCenter chassis.
  
 
@@ -718,11 +728,17 @@ group Attributes:
 \ **password**\  (ppchcp.password, mpa.password, websrv.password, switches.sshpassword)
  
  Password of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is abc123 for HMCs and padmin for IVMs.
+ 
  or
+ 
  Password to use to access the management module.  If not specified, the key=blade row in the passwd table is used as the default.
+ 
  or
+ 
  Password to use to access the web service.
+ 
  or
+ 
  The remote login password. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
@@ -1115,11 +1131,17 @@ group Attributes:
 \ **username**\  (ppchcp.username, mpa.username, websrv.username, switches.sshusername)
  
  Userid of the HMC or IVM.  If not filled in, xCAT will look in the passwd table for key=hmc or key=ivm.  If not in the passwd table, the default used is hscroot for HMCs and padmin for IVMs.
+ 
  or
+ 
  Userid to use to access the management module.
+ 
  or
+ 
  Userid to use to access the web service.
+ 
  or
+ 
  The remote login user name. It can be for ssh or telnet. If it is for telnet, please set protocol to "telnet". If the sshusername is blank, the username, password and protocol will be retrieved from the passwd table with "switch" as the key.
  
 
