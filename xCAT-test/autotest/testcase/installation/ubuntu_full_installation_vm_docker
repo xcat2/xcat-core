@@ -28,7 +28,7 @@ cmd:rpower $$CN boot
 check:rc==0
 cmd:sleep 40
 cmd:lsdef -l $$CN | grep status
-cmd:sleep 3600
+cmd:sleep 2400
 check:rc==0
 cmd:ping $$CN -c 3
 check:output=~64 bytes from $$CN
@@ -43,5 +43,7 @@ check:rc==0
 cmd:xdsh $$CN "docker pull $$DOCKERIMAGE"
 check:rc==0
 cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
+check:rc==0
+cmd: chdef $$CN postbootscripts=
 check:rc==0
 end
