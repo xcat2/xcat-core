@@ -44,4 +44,6 @@ cmd:xdsh $$CN "docker pull $$DOCKERIMAGE"
 check:rc==0
 cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-dockerhost
 check:rc==0
+cmd: chdef $$CN postbootscripts=
+check:rc==0
 end
