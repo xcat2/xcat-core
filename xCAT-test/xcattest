@@ -868,7 +868,7 @@ sub runcase
         if($failed){
             $failnum = $failnum + 1;
             log_error(@record);
-            if($$case{stop} =~ /^yes$/){
+            if(defined ($$case{stop}) && ($$case{stop} =~ /^yes$/)){
                 $stop_to_keep_env=1;
                 last;
             }
