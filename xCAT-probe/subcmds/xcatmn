@@ -48,7 +48,6 @@ if (
     !GetOptions("--help|h" => \$help,
         "t"   => \$test,
         "V"   => \$verbose,
-        "f=s" => \$output,
         "n=s" => \$installnic))
 {
     probe_utils->send_msg("$output", "f", "Invalid parameter for $proname");
@@ -66,7 +65,7 @@ if ($help) {
 }
 
 if ($test) {
-    probe_utils->send_msg("$output", "o", "After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. Before using this command        , please install tftp, nslookup and wget commands ahead. The platform supported are redhat, sles and ubuntu.");
+    probe_utils->send_msg("$output", "o", "After xcat installation, use this command to check if xcat has been installed correctly and is ready for use. Before using this command, please install tftp, nslookup and wget commands ahead. The platform supported are redhat, sles and ubuntu.");
     exit 0;
 }
 
@@ -77,7 +76,7 @@ if (!defined($installnic)) {
 }
 
 my $msg = "NIC $installnic exists on current server";
-my $nics = `ip addr show 2>&1 | grep -E '^[1-9]' | cut -d: -f2 |grep $installnic`;
+my $nics = `ip addr show $installnic >/dev/null 2>&1`;
 if ($?) {
     probe_utils->send_msg("$output", "f", "$msg");
     probe_utils->send_msg("$output", "d", "Please use 'ip addr show' to check if there is NIC named $installnic on current server");
@@ -87,7 +86,7 @@ if ($?) {
 }
 
 $msg = "Get ip address of NIC $installnic";
-my $mnip = `ip addr show |grep -A2  $installnic: | awk -F" " '/inet/ {print \$2}'|awk -F"/" '{print \$1}'`;
+my $mnip = `ip addr show $installnic | awk -F" " '/inet / {print \$2}'|awk -F"/" '{print \$1}'`;
 chomp($mnip);
 if (!defined($mnip) || ($mnip eq "")) {
     probe_utils->send_msg("$output", "f", "$msg");
@@ -199,7 +198,7 @@ if (probe_utils->is_ip_addr("$masteripinsite")) {
 }
 
 if ($mnip) {
-    $msg = "The IP of $installnic equals the value of 'master' in 'site' table";
+    $msg = "The IP $mnip of $installnic equals the value of 'master' in 'site' table";
     if ($mnip eq $masteripinsite) {
         probe_utils->send_msg("$output", "o", "$msg");
     } else {
