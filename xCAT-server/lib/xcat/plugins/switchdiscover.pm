@@ -651,7 +651,7 @@ sub nmap_scan {
         }
     };
 
-    my $nmap_version = get_nmapversion($request);
+    my $nmap_version = xCAT::Utils->get_nmapversion();
     if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
         $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
     } else {
@@ -828,8 +828,8 @@ sub snmp_scan {
 
     #use nmap to find if snmp port is enabled  
     # only open port will be scan
-    my $nmap_version = get_nmapversion($request);
-    if (xCAT::Utils->version_cmp($nmap_version,"5.10") <= 0) {
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
     } else {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
@@ -856,7 +856,7 @@ sub snmp_scan {
     foreach my $line (@lines) {
         my @array = split / /, $line;
         my $ip;
-        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+        if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
             $ip = $array[1];
         } else {
             $ip = $array[5];
@@ -1250,31 +1250,6 @@ sub format_xml {
                      RootName => undef );
     }
     return ($xml);    
-}
-
-#--------------------------------------------------------------------------------
-=head3  get_nmapversion 
-      for nmap version 5.10 above, the sP option changed to sn.
-      the output of some commands also have differents.
-      example:  for snmp_scan option, 
-        version 4.75 has output "Host 10.4.25.1 appears to be up ... good."  but 
-        for version 6.40, it has output "Discovered open port 161/udp on 10.4.25.1"
-    Returns:
-      result: version of nmap on the system 
-=cut
-#--------------------------------------------------------------------------------
-
-sub get_nmapversion {
-    $request = shift;
-    my $nmap_version;
-    my $ccmd = "nmap -V | grep version";
-    my $result = xCAT::Utils->runcmd($ccmd, 0);
-    my @version_array = split / /, $result;
-    $nmap_version = $version_array[2];
-    if (exists($globalopt{verbose}))    {
-        send_msg($request, 0, "version of nmap: $nmap_version\n");
-    }
-    return $nmap_version;
 }
 
 1;
