@@ -16,10 +16,10 @@ use File::Copy;
     Arguments:
         output: where should output the message 
         num:  the number of <flag>
-              0: debug
-              1: warning
-              2: failed
-              3: ok
+              d: debug
+              w: warning
+              f: failed
+              o: ok
         msg:  the information need to output
      Returns:
         1 : Failed 
