@@ -70,15 +70,15 @@ To add contents of a document file inside another file, use ``.. include::``. Th
 
  .. include:: config_common.rst
 
-..
 
- ``Note:`` Do not put customized link targets, such as ``.. _my_link_taget:`` inside the file to be included. If you do, a warning for a duplicate label will be displayed during the documentation build process.
+``Note:`` Do not put customized link targets, such as ``.. _my_link_taget:`` inside the file to be included. If you do, a warning for a duplicate label will be displayed during the documentation build process.
 
 Index file
---------------------
+----------
+
 Index.rst files contain the ``.. toctree::`` tag. Files listed under that tag will have links to them displayed in the left side navigation area. If a documentation file does not wish to be accessbile from the navigation area, do not list it under the ``.. toctree::``.
 
- ``Note:`` If a file is not listed under the ``.. toctree::`` it might generate a warning during the documentation build ``WARNING: document isn't included in any toctree``. To eliminate such warning, add the file to the ``exclude_patterns`` list in the ``docs/source/conf.py`` file. However, do not add a file to the ``exclude_patterns`` list if it contains a customized link target, such as ``.. _my_link_taget:``. This link target will not be visible to other files and a ``WARNING: undefined label:`` will be displayed during the documentation build.
+``Note:`` If a file is not listed under the ``.. toctree::`` it might generate a warning during the documentation build ``WARNING: document isn't included in any toctree``. To eliminate such warning, add the file to the ``exclude_patterns`` list in the ``docs/source/conf.py`` file. However, do not add a file to the ``exclude_patterns`` list if it contains a customized link target, such as ``.. _my_link_taget:``. This link target will not be visible to other files and a ``WARNING: undefined label:`` will be displayed during the documentation build.
 
 Hyperlinks -> Internal Links -> External Links
 ----------------------------------------------
