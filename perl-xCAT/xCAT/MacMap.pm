@@ -303,7 +303,7 @@ sub dump_mac_info {
             xCAT::MsgUtils->message("S","xCAT Table error:".$entry->{node}."Has missing or invalid switch.switch and/or switch.port fields");
         }
     }
-    foreach my $switch (keys $self->{switchparmhash}) {
+    foreach my $switch (keys %{$self->{switchparmhash}}) {
         if ($dump_all_switches or defined($switches_to_dump{$switch})) {
             if ($self->{show_verbose_info}) {
                 xCAT::MsgUtils->message("I",{data=>["<INFO>$switch: Start to get information"]}, $self->{callback});
