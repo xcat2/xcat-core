@@ -867,7 +867,7 @@ sub snmp_scan {
 
         my $vendor = get_snmpvendorinfo($request, $ip);
         if ($vendor) {
-            my $mac = get_snmpmac($request, $ip);
+            my $mac = xCAT::Utils->get_macbyarp($ip);
             if (!$mac) {
                 $mac="nomac_nmap_$counter";
                 $counter++;

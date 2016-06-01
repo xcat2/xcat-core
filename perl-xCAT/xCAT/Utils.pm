@@ -4711,5 +4711,37 @@ sub get_nmapversion {
     return $nmap_version;
 }
 
+#--------------------------------------------------------------------------------
+=head3  get_macbyarp
+    Get Mac address by arp -n
+    Returns:
+       mac:  Mac address
+=cut
+#--------------------------------------------------------------------------------
+
+sub get_macbyarp {
+    my $arptable;
+    my $mac;
+    my $ip = shift;
+    if ($ip =~ /xCAT::Utils/)
+    {
+        $ip = shift;
+    }
+    if ( -x "/usr/sbin/arp") {
+        $arptable = `/usr/sbin/arp -n`;
+    }
+    else{
+        $arptable = `/sbin/arp -n`;
+    }
+    my @arpents = split /\n/,$arptable;
+    foreach  (@arpents) {
+        if (m/^($ip)\s+\S+\s+(\S+)\s/) {
+            $mac=$2;
+            last;
+        }
+    }
+
+    return $mac;
+}
 
 1;
