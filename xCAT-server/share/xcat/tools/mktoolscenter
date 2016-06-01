@@ -188,8 +188,6 @@ chomp($ARCH);
 my $WEIRDARCH = $ARCH;   
 $WEIRDARCH =~ s/_/-/;
 my $OSVER = "unknown";
-my $util = "ibm_utl_bomc*.bin";
-my $asu = "ibm_utl_asu_asut*$WEIRDARCH.tgz";
 
 if ( -e '/etc/SuSE-release' ) {     
     $OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
@@ -212,7 +210,7 @@ my $machines;
 if ($surrogate eq 0) {
    $instroot = `gettab key=installdir site.value`;
    my $nodes = `$nodels|tr '\n' ','`;
-   $machines = `$nodels $nodes vpd.mtm |cut -f2 -d:|sort -u|cut -b2-5`;
+   $machines = `$nodels $nodes vpd.mtm |cut -f2 -d:|sort -u|cut -b2-5 | uniq`;
 } else {
    $instroot = question("What is the installdir?","/install",'');
    $machines = question("What is the list of machine types?","7947",'');
@@ -308,8 +306,8 @@ while ( question("Would you like to add others?","no","yesno") eq "yes") {
    output("#Current list is now:", $machines);
 }
 
-my $srcdir = question("Where is the ibm_utl_bomc bin file?","/root/Desktop",'');
-my $asudir = question("Where is the ibm_utl_asu tgz file?","/root/Desktop",'');
+my $srcdir = question("Where is the BOMC bin file?","/root/Desktop",'');
+my $asudir = question("Where is the ASU tgz file?","/root/Desktop",'');
 my $ppath = "$instroot/netboot/toolscenter/$ARCH";
 my $path = "$ppath"."/".$profilename;
 my $reponame="repo";
@@ -328,7 +326,19 @@ my $sandbox = "$repo/sandbox";
 mkpath($path);
 mkpath($sandbox);
 
-if ( system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
+my $util = "_utl_bomc*.bin";
+my $asu = "_utl_asu_asut*$WEIRDARCH.tgz";
+
+my $utilfile = "ibm".$util;
+if (! -x $utilfile) {
+  $utilfile = "lnvgy".$util;
+}
+my $asufile = "ibm".$asu;
+if (! -x $asufile) {
+  $asufile = "lnvgy".$asu;
+}
+
+if ( system("cp $srcdir/$utilfile $repo") or system("cp $srcdir/$asufile $repo")) {
   output("Error copying input file");
   exit;
 }
@@ -344,8 +354,8 @@ if ($proxy{host} ne "") {
   }
 }
 
-if ( system("chmod +x $repo/$util") or system("cd $repo; tar -zxf $asu") or system("cd $repo; ./$util --tui -m $machines $optstr -l .")) {
-  output("Error executing $repo/$util");
+if ( system("chmod +x $repo/$utilfile") or system("cd $repo; tar -zxf $asufile") or system("cd $repo; ./$utilfile --tui -m $machines $optstr -l .")) {
+  output("Error executing $repo/$utilfile");
   exit;
 }
 
@@ -375,7 +385,7 @@ if ($do_asu eq "yes") {
   my $srcp = "$repo/cmos_settings/$sol/$hpc";
   foreach my $node (`$nodels`) {
     chomp($node);
-    my $machine_type = `$nodels $node vpd.mtm |cut -f2 -d: |cut -b2-5`;
+    my $machine_type = `$nodels $node vpd.mtm |cut -f2 -d: |cut -b2-5 | uniq`;
     chomp($machine_type);
     if ($machine_type ne '' and -e "$srcp/$machine_type") {
       `chtab node=$node firmware.cfgfile="$srcp/$machine_type"`;
@@ -547,8 +557,14 @@ if (system($editstr1)) {
   exit;
 }
 
-if ( system("cd $sandbox; cp $repo/asu* .; cp $repo/cdc_interface* .; cp $repo/$util .; cp -a $repo/uxspi .; cp $repo/ibm_utl_boot* .; echo y |./$util --tui --pxe=$path --no-acquire --latest --force -l .")) {
-  output("Error executing $path/$util for the second time");
+my $boot = "_utl_boot*";
+my $bootfile = "ibm".$boot;
+if (! -x "$repo/$bootfile") {
+  $bootfile = "lnvgy".$boot;
+}
+
+if ( system("cd $sandbox; cp $repo/asu* .; cp $repo/cdc_interface* .; cp $repo/$utilfile .; cp -a $repo/uxspi .; cp $repo/$bootfile .; echo y |./$utilfile --tui --pxe=$path --no-acquire --latest --force -l .")) {
+  output("Error executing $path/$utilfile for the second time");
   exit;
 }
 
