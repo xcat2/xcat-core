@@ -94,7 +94,7 @@ if($ret != 0){
     goto EXIT;
 }
 #run case
-&reordercases;
+&reordercases if(defined($bundle_list) || defined($case_list));
 &runcase;
 
 EXIT:
