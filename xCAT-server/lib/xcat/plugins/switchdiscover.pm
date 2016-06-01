@@ -651,8 +651,12 @@ sub nmap_scan {
         }
     };
 
-    
-    $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
+        $ccmd = "/usr/bin/nmap -sP -oX - @$ranges";
+    } else {
+        $ccmd = "/usr/bin/nmap -sn -oX - @$ranges";
+    }
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "Process command: $ccmd\n");
     }
@@ -805,7 +809,6 @@ sub snmp_scan {
     my $result;
     my $switches;
     my $counter = 0;
-    my $nmap_version;
 
     # snmpwalk command has to be available for snmp_scan
     if (-x "/usr/bin/snmpwalk" ){
@@ -822,21 +825,11 @@ sub snmp_scan {
     ##################################################
     my $ranges = get_ip_ranges($request);
 
-    $ccmd = "nmap -V | grep version";
-    $result = xCAT::Utils->runcmd($ccmd, 0);
-    my @version_array = split / /, $result;
-    $nmap_version = $version_array[2];
-    if (exists($globalopt{verbose}))    {
-        send_msg($request, 0, "version of nmap: $nmap_version\n");
-    }
 
     #use nmap to find if snmp port is enabled  
     # only open port will be scan
-    # currently, we know nmap version 4.75 has different output for snmp_scan
-    # command.
-    # for version 4.75, the line as :"Host 10.4.25.1 appears to be up ... good."
-    # other higher version has line like this: "Discovered open port 161/udp on 10.4.25.1"
-    if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
     } else {
         $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
@@ -863,7 +856,7 @@ sub snmp_scan {
     foreach my $line (@lines) {
         my @array = split / /, $line;
         my $ip;
-        if (xCAT::Utils->version_cmp($nmap_version,"4.75") <= 0) {
+        if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
             $ip = $array[1];
         } else {
             $ip = $array[5];

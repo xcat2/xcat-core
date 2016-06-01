@@ -4690,4 +4690,26 @@ sub is_process_exists{
     return 0;
 }
 
+#--------------------------------------------------------------------------------
+=head3  get_nmapversion
+      for nmap version 5.10 above, the sP option changed to sn.
+      the output of some commands also have differents.
+      example:  for snmp_scan option,
+        version 4.75 has output "Host 10.4.25.1 appears to be up ... good."  but
+        for version 6.40, it has output "Discovered open port 161/udp on 10.4.25.1"
+    Returns:
+      result: version of nmap on the system
+=cut
+#--------------------------------------------------------------------------------
+
+sub get_nmapversion {
+    my $nmap_version;
+    my $ccmd = "nmap -V | grep version";
+    my $result = xCAT::Utils->runcmd($ccmd, 0);
+    my @version_array = split / /, $result;
+    $nmap_version = $version_array[2];
+    return $nmap_version;
+}
+
+
 1;

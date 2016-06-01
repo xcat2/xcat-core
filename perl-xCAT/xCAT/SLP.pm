@@ -124,6 +124,11 @@ sub dodiscover {
             foreach my $line (split(/\n\n/,$nmapres)) {
                 my $server;
                 foreach my $sline (split(/\n/, $line)) {
+                    #output of nmap command for version under 5.10
+                    if ($sline =~ /Interesting ports on (\d+\.\d+\.\d+\.\d+)/) {
+                       $server = $1;
+                    }
+                    #output of nmap command for version 5.10 and above
                     if ($sline =~ /Nmap scan report for (\d+\.\d+\.\d+\.\d+)/) {
                        $server = $1;
                     }
