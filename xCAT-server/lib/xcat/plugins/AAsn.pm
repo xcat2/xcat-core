@@ -1429,11 +1429,11 @@ sub enable_TFTPhpa
                 foreach my $pid (keys %pids_map) {
                     if (xCAT::Utils->is_process_exists($pid)) {
                         $count++;
-                        if($count >= 50) {
-                            xCAT::MsgUtils->message("S","Error: can not stop tftp process in 5 seconds.");
+                        if($count > 5) {
+                            xCAT::MsgUtils->message("S","ERROR: Can not stop tftp process in 5 seconds.");
                             return 1;
                         }
-                        sleep 0.1;
+                        sleep 1;
                     } else {
                         delete $pids_map{$pid}
                     }
