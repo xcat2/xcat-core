@@ -20,7 +20,8 @@ check:rc==0
 
 cmd:copycds $$ISO
 check:rc==0
-
+cmd:mkdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
+check:rc==0
 cmd:xdsh $$SN df|grep /install;if [ $? -eq 0 ] ;then xdsh $$SN umount /install;fi
 check:rc==0
 cmd:xdsh $$SN 'cat /etc/exports|grep install; if [ "$?" -ne "0" ]; then echo "/install *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports; fi'
@@ -95,5 +96,7 @@ cmd:MNIP=`cat /etc/hosts|grep $$MN|awk '{print $1}'`; result=`xdsh $$CN "cat /et
 check:output=~sync file works well
 
 cmd:rootimgdir=`lsdef -t osimage __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute|grep rootimgdir|awk -F'=' '{print $2}'`; if [ -d $rootimgdir ]; then rm -rf $rootimgdir;fi
+check:rc==0
+cmd:rmdef -t osimage -o __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute
 check:rc==0
 end
