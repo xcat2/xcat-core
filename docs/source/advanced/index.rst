@@ -22,5 +22,4 @@ Advanced Topics
    softlayer/index.rst
    switches/index.rst
    sysclone/index.rst
-   webservices/index.rst
    zones/index.rst

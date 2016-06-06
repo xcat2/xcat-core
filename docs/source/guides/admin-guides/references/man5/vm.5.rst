@@ -128,7 +128,8 @@ vm Attributes:
 
 \ **virtflags**\ 
  
- General flags used by the virtualization method.  For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
+ General flags used by the virtualization method.  
+           For example, in Xen it could, among other things, specify paravirtualized setup, or direct kernel boot.  For a hypervisor/dom0 entry, it is the virtualization method (i.e. "xen").  For KVM, the following flag=value pairs are recognized:
              imageformat=[raw|fullraw|qcow2]
                  raw is a generic sparse file that allocates storage on demand
                  fullraw is a generic, non-sparse file that preallocates all space

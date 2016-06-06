@@ -44,7 +44,8 @@ nics Attributes:
 
 \ **nicips**\ 
  
- Comma-separated list of IP addresses per NIC. To specify one ip address per NIC:
+ Comma-separated list of IP addresses per NIC. 
+                 To specify one ip address per NIC:
                      <nic1>!<ip1>,<nic2>!<ip2>,..., for example, eth0!10.0.0.100,ib0!11.0.0.100
                  To specify multiple ip addresses per NIC:
                      <nic1>!<ip1>|<ip2>,<nic2>!<ip1>|<ip2>,..., for example, eth0!10.0.0.100|fd55::214:5eff:fe15:849b,ib0!11.0.0.100|2001::214:5eff:fe15:849a. The xCAT object definition commands support to use nicips.<nicname> as the sub attributes.
@@ -102,9 +103,9 @@ nics Attributes:
 \ **nicaliases**\ 
  
  Comma-separated list of hostname aliases for each NIC.
-             Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
- 			For multiple aliases per nic use a space-separated list.
-             For example: eth0!moe larry curly,eth1!tom|jerry
+                 Format: eth0!<alias list>,eth1!<alias1 list>|<alias2 list>
+                     For multiple aliases per nic use a space-separated list. 
+                 For example: eth0!moe larry curly,eth1!tom|jerry
  
 
 
@@ -121,7 +122,7 @@ nics Attributes:
 
 \ **nicdevices**\ 
  
- Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by |. <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.
+ Comma-separated list of NIC device per NIC, multiple ethernet devices can be bonded as bond device, these ethernet devices are separated by | . <nic1>!<dev1>|<dev3>,<nic2>!<dev2>, e.g. bond0!eth0|eth2,br0!bond0. The xCAT object definition commands support to use nicdevices.<nicname> as the sub attributes.
  
 
 

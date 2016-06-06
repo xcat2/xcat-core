@@ -416,8 +416,8 @@ parentheses, what tables each attribute is stored in.
 EOS2
 
 foreach my $a (sort keys %attrlist) {
-	my $d = join("\nor\n", @{$attrlist{$a}->{'descriptions'}});
-	$d =~ s/\n/\n\n/sg;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
+	my $d = join("\n\nor\n\n", @{$attrlist{$a}->{'descriptions'}});
+	#$d =~ s/\n/\n\n/sg;      # if there are newlines, double them so pod sees a blank line, otherwise pod will ignore them
 	my $t = '(' . join(', ',@{$attrlist{$a}->{'tables'}}) . ')';
 	#print FILE "\nB<$a> - $d\n";
 	print FILE "\n=item B<$a> $t\n\n$d\n";

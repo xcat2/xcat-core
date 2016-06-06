@@ -329,11 +329,7 @@ The tables are:
 
 auditlog(5)|auditlog.5
  
- 
- .. code-block:: perl
- 
-   Audit Data log.
- 
+ Audit Data log.
  
 
 
