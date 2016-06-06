@@ -1427,7 +1427,7 @@ sub enable_TFTPhpa
             map { chomp; $pids_map{$_} = 1 } @tftpprocpids;
             while (keys %pids_map) {
                 foreach my $pid (keys %pids_map) {
-                    if (xCAT::Utils->is_process_exists($pid)) {
+                    if (xCAT::Utils::is_process_exists($pid)) {
                         $count++;
                         if($count == 5) {
                             my $tftpinfo = `ps axf|grep -v grep|grep in.tftpd`;
