@@ -36,12 +36,12 @@ check:rc==0
 check:output=~xcatd.service
 check:output=~active \(running\)
 check:output=~/system.slice/xcatd.service
-check:output=~xcatd: SSL listener
-check:output=~xcatd: DB Access
-check:output=~xcatd: UDP listener
-check:output=~xcatd: install monitor
-check:output=~xcatd: Discovery worker
-check:output=~xcatd: Command log writer
+check:output=~xcatd: SSL
+check:output=~xcatd: DB
+check:output=~xcatd: UDP
+check:output=~xcatd: install
+check:output=~xcatd: Discovery
+check:output=~xcatd: Command log
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
@@ -102,12 +102,12 @@ check:rc==0
 check:output=~xcatd.service
 check:output=~active \(running\)
 check:output=~/system.slice/xcatd.service
-check:output=~xcatd: SSL listener
-check:output=~xcatd: DB Access
-check:output=~xcatd: UDP listener
-check:output=~xcatd: install monitor
-check:output=~xcatd: Discovery worker
-check:output=~xcatd: Command log writer
+check:output=~xcatd: SSL 
+check:output=~xcatd: DB 
+check:output=~xcatd: UDP 
+check:output=~xcatd: install 
+check:output=~xcatd: Discovery 
+check:output=~xcatd: Command log 
 cmd:service xcatd stop
 check:rc==0
 cmd:sleep 3
@@ -116,12 +116,12 @@ check:rc!=0
 check:output=~xcatd.service
 check:output=~inactive \(dead\)
 cmd:ps -ef | grep xcatd
-check:output!~"xcatd: SSL listener"
-check:output!~"xcatd: DB Access"
-check:output!~"xcatd: UDP listener"
-check:output!~"xcatd: install monitor"
-check:output!~"xcatd: Discovery worke"
-check:output!~"xcatd: Command log writer"
+check:output!~"xcatd: SSL"
+check:output!~"xcatd: DB"
+check:output!~"xcatd: UDP"
+check:output!~"xcatd: install"
+check:output!~"xcatd: Discovery"
+check:output!~"xcatd: Command log"
 cmd:service xcatd start
 check:rc==0
 end
@@ -210,12 +210,12 @@ check:rc==0
 check:output=~xcatd.service
 check:output=~active \(running\)
 check:output=~/system.slice/xcatd.service
-check:output=~xcatd: SSL listener
-check:output=~xcatd: DB Access
-check:output=~xcatd: UDP listener
-check:output=~xcatd: install monitor
-check:output=~xcatd: Discovery worker
-check:output=~xcatd: Command log writer
+check:output=~xcatd: SSL 
+check:output=~xcatd: DB 
+check:output=~xcatd: UDP 
+check:output=~xcatd: install 
+check:output=~xcatd: Discovery 
+check:output=~xcatd: Command log 
 end
 
 start:disable_root_permission_in_policy_table
