@@ -21,7 +21,7 @@ SYNOPSIS
 
 \ **mkdef**\  [\ **-h | -**\ **-help**\ ] [\ **-t**\  \ *object-types*\ ]
 
-\ **mkdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-d | -**\ **-dynamic**\ ] [\ **-f | -**\ **-force**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr*\ =\ *val*\  [\ *attr*\ =\ *val...*\ ]] [\ **-u**\  \ **provmethod**\ ={\ **install**\  | \ **netboot**\  | \ **statelite**\ } \ **profile=**\  \ *xxx*\  [\ **osvers=**\  \ *value*\ ] [\ **osarch=**\  \ *value*\ ]]
+\ **mkdef**\  [\ **-V | -**\ **-verbose**\ ] [\ **-t**\  \ *object-types*\ ] [\ **-**\ **-template**\  \ *template-object-name*\ ] [\ **-o**\  \ *object-names*\ ] [\ **-z | -**\ **-stanza**\ ] [\ **-d | -**\ **-dynamic**\ ] [\ **-f | -**\ **-force**\ ] [[\ **-w**\  \ *attr*\ ==\ *val*\ ] [\ **-w**\  \ *attr*\ =~\ *val*\ ] ...] [\ *noderange*\ ] [\ *attr*\ =\ *val*\  [\ *attr*\ =\ *val...*\ ]] [\ **-u**\  \ **provmethod**\ ={\ **install**\  | \ **netboot**\  | \ **statelite**\ } \ **profile=**\  \ *xxx*\  [\ **osvers=**\  \ *value*\ ] [\ **osarch=**\  \ *value*\ ]]
 
 
 ***********
@@ -79,6 +79,12 @@ OPTIONS
 \ **-t**\  \ *object-types*\ 
  
  A set of comma delimited object types.  Use the help option to get a list of valid object types.
+ 
+
+
+\ **-**\ **-template**\  \ *template-object-name*\ 
+ 
+ Name of the xCAT shipped object definition template or an existing object, from which the new object definition will be created from. The newly created object will inherit the attributes of the template definition unless the attribute is specified in the arguments of \ **mkdef**\  command. For the details of xCAT shipped object definition templates, please refer to the manpage of \ **-**\ **-template**\  option in lsdef(1)|lsdef.1.
  
 
 
@@ -276,6 +282,30 @@ EXAMPLES
  .. code-block:: perl
  
    mkdef redhat6img -u profile=compute provmethod=statelite
+ 
+ 
+
+
+13
+ 
+ To create a PowerLE kvm node definition with the xCAT shipped template "powerLEkvm".
+ 
+ 
+ .. code-block:: perl
+ 
+   mkdef -t node cn1 --template powerLEkvm ip=1.1.1.1 mac=42:3d:0a:05:27:0b vmhost=1.1.0.1 vmnics=br0
+ 
+ 
+
+
+14
+ 
+ To create a node definition from an existing node definition "cn1"
+ 
+ 
+ .. code-block:: perl
+ 
+   mkdef -t node cn2 --template cn1 ip=1.1.1.2 mac=42:3d:0a:05:27:0c
  
  
 

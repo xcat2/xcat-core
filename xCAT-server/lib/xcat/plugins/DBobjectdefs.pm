@@ -604,20 +604,42 @@ sub processArgs
         return 2;
     }
 
-   
+    #it is illegal to specify no object template for "mkdef --template", 
+    if($::command eq "mkdef" and defined $::opt_template and !$::opt_template){
+        my $rsp;
+        $rsp->{data}->[0] = "no object definition template specified for mkdef --template!";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;             
+    }
+
     if($::opt_template){
+        #for mkdef --template <object templates>, multiple template/nodes are illegal  
         if($::opt_template =~ /,/ and $::command eq "mkdef"){
             my $rsp;
-            $rsp->{data}->[0] = "mkdef: multiple templates specified!";
+            $rsp->{data}->[0] = "Only 1 template object definition should be specified for mkdef!";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 2;
+        }
+   
+        #when --template is specified, 
+        #the piped stdin, such as "cat xx.stanza|mkdef -z -t node --template ...." is not supported  
+        if($::filedata){
+            my $rsp;
+            $rsp->{data}->[0] = "The file input can not be used with --template option!";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
             return 2;
         }
     }
-
+   
 
     if (defined $::opt_template and ($::command eq "mkdef" or $::command eq "lsdef")){
+        #all the xCAT shipped object definition templates are installed 
+        #under directory /opt/xcat/share/xcat/templates/objects/<object-type>/ 
         my $objtmpldir="$::XCATROOT/share/xcat/templates/objects/";
-         
+        
+        #the path list to search the object definition templates 
+        #for specified object types,the path is like /opt/xcat/share/xcat/templates/objects/<object-type>/
+        #for "-a" option, the path is /opt/xcat/share/xcat/templates/objects/
         my @tmpldirlist;
         if($::command eq "lsdef"){
             if (!$::opt_a){
@@ -628,15 +650,24 @@ sub processArgs
                     }
                 }
             }else{
+                #if "-a" is specified, read all the object templates 
+                #under /opt/xcat/share/xcat/templates/objects/
                 push(@tmpldirlist,$objtmpldir);
             }
         }elsif($::command eq "mkdef"){
             if($::opt_t){
                 push(@tmpldirlist,$objtmpldir.$::opt_t);
             }else{
+                #if "-t" is not specified, take the object type as "node" 
                 push(@tmpldirlist,$objtmpldir."node");
             }
         }
+        
+        #walk through the path list and get all the object templates file content; 
+        #for "lsdef -a --template" read all the content of template files 
+        #under "/opt/xcat/share/xcat/templates/objects/";
+        #if "-a" is not specified, read the template files content 
+        #under "/opt/xcat/share/xcat/templates/objects/<object type>"
         my $objfiledata;
         find(\&wanted,@tmpldirlist);
         sub wanted{
@@ -649,7 +680,9 @@ sub processArgs
                 close(FH)
             }
         }
-
+         
+        #save the template definitions in global variable $::filedata 
+        #for the later parse 
         $::filedata=$objfiledata;
     }
 
@@ -804,11 +837,15 @@ sub processArgs
     }
 
     #
-    # process the input file - if provided
+    # process the input file or object definition template files - if provided
     #
     if ($::filedata)
     {
-
+           
+        #parse the $::filedata and initialize the following global variables
+        # %::FILEATTRS        : a global hash with the strcture <node>=>{<attributes>=><values>} 
+        # @::fileobjtypes     : a list of the object types in %::FILEATTRS
+        # @::fileobjnames     : a list of the object names in %::FILEATTRS
         my $rc = xCAT::DBobjUtils->readFileInput($::filedata);
 
         if ($rc)
@@ -816,10 +853,13 @@ sub processArgs
             my $rsp;
             $rsp->{data}->[0] = "Could not process file input data.";
             xCAT::MsgUtils->message("I", $rsp, $::callback);
-            return 1;
+            return 3;
         }
 
         if($::opt_template){
+            #some xCAT shipped object definition templates are specified
+            #like "lsdef/mkdef --template xxxx"
+            #filter out the keys(template name) which are not specified from %::FILEATTRS
             my %tmpfileattr;
             my @tmpfileobjtypes;
             my @tmpfileobjnames;
@@ -830,26 +870,29 @@ sub processArgs
                     push(@tmpfileobjnames,$key);
                     push(@tmpfileobjtypes,$tmpfileattr{$key}{objtype});
                 }else{
-                    delete $::FILEATTRS{$key};
-                    my $rsp;
-                    $rsp->{data}->[0] = "Could not find $key in xCAT templates, checking whether it is an existing object definition... ";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    if($::command eq "lsdef"){
+                        my $rsp;
+                        $rsp->{data}->[0] = "Could not find $key in xCAT templates.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        return 3;
+                    }
                 }
             }
             
             if(@tmpfileobjnames){
+                #flag: some template object definitions are parsed from $::filedata
                 %::FILEATTRS=%tmpfileattr;
                 @::fileobjtypes=@tmpfileobjtypes;
                 @::fileobjnames=@tmpfileobjnames;
                 $::objectsfrom_file = 1;
             }else{
+                #the specified template can not be found in the pared $::filedata
+                %::FILEATTRS=();
                 @::fileobjtypes=();
                 @::fileobjnames=(); 
             }    
         }else{
-            #   - %::FILEATTRS{fileobjname}{attr}=val
-            # set @::fileobjtypes, @::fileobjnames, %::FILEATTRS
-
+            #flag: some object definitions are parsed from $::filedata
             $::objectsfrom_file = 1;
         }
     }
@@ -1260,6 +1303,7 @@ sub processArgs
     if ($::opt_template && ($::command eq 'mkdef') )
     {
         unless($::objectsfrom_file){
+            #"mkdef --template" specifies an existing object as the template to create new object definition
             my @myobjlist = xCAT::DBobjUtils->getObjectsOfType($::clobjtypes[0]);
             unless (@myobjlist)
             {
@@ -1280,24 +1324,53 @@ sub processArgs
                 my $rsp;
                 $rsp->{data}->[0] = "The template node cannot be the same as the node to create.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
-                return 1;
+                return 3;
             }
-     
+             
             my %objtypehash;
             $objtypehash{$::opt_template} = $::clobjtypes[0];
             $::ATTRLIST="all";
+            #the template object is an existing object, get the object definition
             my %objattrhash = xCAT::DBobjUtils->getobjdefs(\%objtypehash);
+            #the object attributes specified in the arguments of "mkdef" has been saved in %::ATTRS
+            #inherit the attributes not specified in arguments of "mkdef" from the template object definition
             foreach my $key(keys %{$objattrhash{$::opt_template}}){
                 if($key ne "objtype" and not $::ATTRS{$key}){
                     $::ATTRS{$key}=$objattrhash{$::opt_template}{$key};
                 }
             }
         }else{
+            #the object attribute specified in the arguments of "mkdef" has been saved in %::ATTRS
+            #the specified object template definition shipped by xCAT is save in %::FILEATTRS
+            #inherit the attributes which are not specified in arguments of "mkdef" from template
+            #"objtype" is not an object attribite, it is a field in stanza file  
             foreach my $key(keys %{$::FILEATTRS{$::opt_template}}){
-                if($key ne "objtype" and not $::ATTRS{$key}){
-                    $::ATTRS{$key}=$::FILEATTRS{$::opt_template}{$key};
+                if($key ne "objtype"){
+                    my $temlattr=$::FILEATTRS{$::opt_template}{$key};
+                    if($temlattr =~ /^OPTIONAL:/){
+                        #the attributes with "(OPTIONAL)" in the template
+                        #can be specified on mkdef
+                        $temlattr ="";
+                    }
+                    elsif($temlattr =~ /^MANDATORY:/){
+                        unless($::ATTRS{$key}){
+                            #the attributes with "(MANDATORY)" in the template
+                            #must be specified on mkdef
+                            my $rsp;
+                            $rsp->{data}->[0] = "The attribute \"$key\" must be specified!";
+                            xCAT::MsgUtils->message("E", $rsp, $::callback);
+                            return 3;
+                        }
+                        $temlattr ="";
+                    }
+         
+                    unless($::ATTRS{$key}){
+                        $::ATTRS{$key}=$temlattr;
+                    }
                 }
             }
+
+            #delete the template definition from %::FILEATTRS
             delete $::FILEATTRS{$::opt_template};
             @::fileobjtypes=();
             @::fileobjnames=(); 
@@ -2996,19 +3069,15 @@ sub defls
     }
   
     if (defined $::opt_template){
-
         unless ($::opt_template){
+            #when the "--template" option is specified, but no object template is specified
             %myhash=%::FILEATTRS;    
         }else{
+            #some object template are specified
             my @templatelist=split(",",$::opt_template);
             foreach my $mytemplate (@templatelist){
                 if(exists $::FILEATTRS{$mytemplate}){
                     $myhash{$mytemplate}= \%{$::FILEATTRS{$mytemplate}};            
-                }else{
-                    my $rsp;
-                    $rsp->{data}->[0] = "Could not find the specified $::opt_t template $mytemplate.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
-                    return 1;
                 } 
             }
         }
@@ -3062,7 +3131,6 @@ sub defls
             # could be modified by type
             if ($::opt_t)
             {
-
                 # get all objects matching type list
                 # Get all object in this type list
                 foreach my $t (@::clobjtypes)
@@ -3112,7 +3180,9 @@ sub defls
             {
                 push(@::clobjtypes, $t);
             }
-        }elsif( defined $::opt_template){
+        }
+        else{
+            #push the unique object types from @::fileobjtypes to @::clobjtypes 
             push @::clobjtypes, keys { map { $_ => 1 } @::fileobjtypes }; 
         }
     } # end - if specify all
@@ -3139,7 +3209,6 @@ sub defls
             }
         }
     }
-
 
     my %nodeosimagehash = ();
     if ($getnodes)
@@ -4169,10 +4238,11 @@ sub defmk_usage
     my $rsp;
     $rsp->{data}->[0] = "\nUsage: mkdef - Create xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  mkdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] = "  mkdef [-V | --verbose] [-t object-types] [-o object-names] [-z|--stanza ]";
-    $rsp->{data}->[3] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
-    $rsp->{data}->[4] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
-    $rsp->{data}->[5] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[2] = "  mkdef [-V | --verbose] [-t object-types] [--template template-object-name]"; 
+    $rsp->{data}->[3] = "      [-o object-names] [-z|--stanza ]";
+    $rsp->{data}->[4] = "      [-d | --dynamic] [-w attr==val [-w attr=~val] ...]";
+    $rsp->{data}->[5] = "      [-f | --force] [noderange] [attr=val [attr=val...]]";
+    $rsp->{data}->[6] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
@@ -4250,10 +4320,12 @@ sub defls_usage
     my $rsp;
     $rsp->{data}->[0] = "\nUsage: lsdef - List xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  lsdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
-    $rsp->{data}->[3] = "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
-    $rsp->{data}->[4] = "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
-    $rsp->{data}->[5] = "\nThe following data object types are supported by xCAT.\n";
+    $rsp->{data}->[2] = "  lsdef [-l|--long] [-a|--all] [-t *object-types*] [-z|--stanza]"; 
+    $rsp->{data}->[3] = "        [-i attr-list] [--template [template-object-name]] \n"; 
+    $rsp->{data}->[4] = "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
+    $rsp->{data}->[5] = "        [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
+    $rsp->{data}->[6] = "        [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
+    $rsp->{data}->[7] = "\nThe following data object types are supported by xCAT.\n";
     my $n = 6;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
