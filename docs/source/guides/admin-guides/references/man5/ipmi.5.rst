@@ -44,7 +44,7 @@ ipmi Attributes:
 
 \ **bmc**\ 
  
- The hostname of the BMC adapater.
+ The hostname of the BMC adapter.
  
 
 
