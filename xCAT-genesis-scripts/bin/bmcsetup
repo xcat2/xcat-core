@@ -14,6 +14,58 @@
 #
 log_label="xcat.genesis.bmcsetup"
 
+# Cold reset the BMC for certain servers
+#    Product ID: 309   - x3755 M4 (8722)
+#    Product ID: 43707 - IBM Power S822LC and S812LC
+#
+# Otherwise the BMC will not respond to ping after running the ipmitool commands in this script
+#
+function cold_reset_bmc() { 
+    PROD=$1
+    if [ "$PROD" = "309" -o "$PROD" = "43707" ] ; then
+        if [ "$PROD" = "43707" ]; then
+            # OpenPower SPECIFIC, the OpenPower machines with AMI BMC should NOT need a 
+            # reset after applying ipmitool commands.  However, it seems there is a problem with 
+            # the BMC where after 15 seconds, it stops responding.  To work around, sleep 30
+            # seconds before issuing the reset of the BMC.
+            sleep 30
+        fi
+        logger -s -t $log_label -p local4.info "Resetting BMC ..."
+        echo "Resetting BMC ..."
+        ipmitool mc reset cold
+
+        logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
+        if [ "$PROD" = "43707" ]; then
+            # OpenPower SPECIFIC, check the BMC with the following raw command to
+            # make sure that the bmc is really in a "ready" state before continuing 
+            SLEEP_INTERVAL=3
+            MAX_ITERATION=100
+            tries=0
+            while [ $tries -lt ${MAX_ITERATION} ] ; do
+                sleep ${SLEEP_INTERVAL}
+                ret=`ipmitool raw 0x3a 0x0a 2> /dev/null`
+                if [ "$ret" == " 00" ]; then
+                    return
+                fi
+                tries=$(($tries+1))
+            done
+            TOTAL_SEC=$((${SLEEP_INTERVAL} * ${MAX_ITERATION}))
+            echo "ERROR, After waiting ${TOTAL_SEC} seconds, the BMC is not in a ready state."
+        else
+            # for Non OpenPower servers, just sleep for some set time.
+            sleep 15 
+        fi 
+
+        TRIES=0
+        # Get the LAN information
+        while ! ipmitool lan print $LANCHAN > /dev/null; do
+            sleep 3
+            let TRIES=TRIES+1
+            if [ $TRIES -gt $TIMEOUT ]; then break; fi
+        done
+    fi
+}
+
 allowcred.awk &
 CREDPID=$!
 sleep 5
@@ -44,17 +96,19 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
 done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
+logger -t $log_label -p local4.info "NUMBMCS=$NUMBMCS"
 #
 # Get the BMC Version and Manufacturer ID
 #
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
-logger -t $log_label -p local4.info "NUMBMCS is $NUMBMCS, IPMIVER is $IPMIVER, IPMIMFG is $IPMIMFG"
+logger -t $log_label -p local4.info "IPMIVER=$IPMIVER"
+logger -t $log_label -p local4.info "IPMIMFG=$IPMIMFG"
+# Get the BMC Product ID
+XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+logger -t $log_label -p local4.info "XPROD=$XPROD"
 
 if [ "$IPMIMFG" == 2 ]; then #IBM
-    # Get the BMC Product ID
-    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-    logger -t $log_label -p local4.info "XPROD is $XPROD"
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
@@ -104,7 +158,6 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         fi
     fi
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
-    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
     logger -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
     if [ $IBMVPDV -eq 2 ]; then
@@ -444,32 +497,8 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     fi
 fi
 
-#
-# Cold Reset the BMC for: 
-#    Product ID: 309   - x3755 M4 (8722)
-#    Product ID: 43707 - IBM Power S822LC and S812LC
-# Otherwise the BMC will not respond to ping after running bmcsetup 
-#
-XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
-    if [ "$XPROD" = "43707" ]; then
-        # The IBM Power S822LC and S812LC should NOT need a reset to apply changes
-        # to the BMC.  However, it seems there's a problem with the BMC where after
-        # 15 seconds, it stops responding.  To work around until the firmware is fixed,
-        # have a sleep here for 30 seconds, then issue the reset of the BMC 
-        sleep 30
-    fi
-    logger -s -t $log_label -p local4.info "Resetting BMC ..."
-    ipmitool mc reset cold
-    logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
-    sleep 15
-    TRIES=0
-    while ! ipmitool lan print $LANCHAN > /dev/null; do
-        sleep 3
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
-    done
-fi
+# Cold reset the BMC
+cold_reset_bmc ${XPROD}
 
 # update the node status to 'bmcready'
 for parm in `cat /proc/cmdline`; do
