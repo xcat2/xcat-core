@@ -3,16 +3,13 @@
 
 shopt -s nullglob
 
-#The script getinstdisk is common for rh/sles/pkvm/ubuntu, it will write the install_disk into /tmp/install_disk file
+#
+# The getinstdisk script is common for RHEL/SLES/PowerKVM/Ubuntu. 
+# It will attempt to select the install disk and write the selection to /tmp/xcat.install_disk
+#
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/getinstdisk#
-if [ -e "/tmp/install_disk" ]; then
-    instdisk=`cat /tmp/install_disk`
-fi
-
-# Could not determine the install disk for whatever reason,
-# try the default /dev/sda
-if [ -z "$instdisk" ]; then
-    instdisk="/dev/sda"
+if [ -e "/tmp/xcat.install_disk" ]; then
+    instdisk=`cat /tmp/xcat.install_disk`
 fi
 
 echo "part PV.01 --ondisk=$instdisk" >> /tmp/partitioning

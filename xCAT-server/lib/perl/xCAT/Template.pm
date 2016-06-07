@@ -426,7 +426,7 @@ sub subvars {
      
  
       if ($diskfile && $doneincludes) {
-          #the content of the specified file is the disknames to partition or a script which can write disk names into /tmp/install_disk
+          # The content of the specified file is the disknames to partition or a script which can write disk names into /tmp/xcat.install_disk
           # split the disk file out from the $inc
           ($inc, $diskcontent) = split(/FFFFFFFFFFFFPARTITIONDISKFILESTART\n/, $inc);
           ($diskcontent,$res) = split(/\nFFFFFFFFFFFFPARTITIONDISKFILEEND/, $diskcontent);
@@ -448,9 +448,8 @@ sub subvars {
                 $diskcontent .= "chmod 755 /tmp/diskscript\n";
                 $diskcontent .= "/tmp/diskscript\n";
              }else{
-                # Put the code to decode the preseed  disk file
-                #$diskcontent .= "python -c 'import base64; print base64.b64decode(open(\"/tmp/diskscript.enc\",\"rb\").read())' >/tmp/install_disk\n";
-                $diskcontent .= "base64decode</tmp/diskscript.enc >/tmp/install_disk\n";
+                # Put the code to decode the preseed disk file
+                $diskcontent .= "base64decode</tmp/diskscript.enc > /tmp/xcat.install_disk\n";
 
              }
              #replace the #XCA_PARTMAN_DISK_SCRIPT#
@@ -459,10 +458,10 @@ sub subvars {
       }
       elsif ("ubuntu" eq $platform) {
           my $default_script = "    wget http://`cat /tmp/xcatserver`".$ENV{INSTALLDIR}."/autoinst/getinstdisk; chmod u+x getinstdisk; ./getinstdisk;";
-          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/$default_script/;
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/$default_script/;
       }
       else {
-          $inc =~ s/#INCLUDE_GET_FIRST_DISK_SCRIPT#/    /;
+          $inc =~ s/#INCLUDE_GET_INSTALL_DISK_SCRIPT#/    /;
       }
 
  
