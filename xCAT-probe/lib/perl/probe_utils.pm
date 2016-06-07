@@ -12,7 +12,7 @@ use File::Copy;
     Description:
         Format output message depending on probe framework requirement
         Format is [<flag>] : <message>
-        The valid <flag> are debug, warning, failed and ok
+        The valid <flag> are debug, warning, failed, info and ok
     Arguments:
         output: where should output the message 
         num:  the number of <flag>
@@ -20,6 +20,7 @@ use File::Copy;
               w: warning
               f: failed
               o: ok
+              i: info
         msg:  the information need to output
      Returns:
         1 : Failed 
@@ -42,6 +43,8 @@ sub send_msg {
         $flag = "[failed] :";
     } elsif ($tag eq "o") {
         $flag = "[ok]     :";
+    } elsif ($tag eq "i") {
+        $flag = "[info]   :";
     }
 
     if ($output eq "stdout") {

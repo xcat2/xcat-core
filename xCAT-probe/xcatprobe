@@ -108,6 +108,8 @@ sub format_cmd_output {
             }
         } elsif ($flag =~ /debug/i) {
             print "       ";
+        } elsif ($flag =~ /info/i) {
+            print "[INFO] ";
         }
         print "$msg\n";
     } else {
