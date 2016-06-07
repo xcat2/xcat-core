@@ -531,10 +531,16 @@ while [ $idev -gt 0 ]; do
     fi
 
     logger -s -t $log_label -p local4.info "Lighting Identify Light"
-    while :
-        # Identify the server by turning on the LED light
-        do ipmitool -d $idev raw 0 4 10 > /dev/null
-        sleep 7
-    done &
+    if [ "$XPROD" = "43707" ]; then
+        # OpenPower BMC specific, turn on the LED beacon for 5 minutes 
+        ipmitool chassis identify 300
+    else
+        # All other BMCs
+        while :
+            # Identify the server by turning on the LED light
+            do ipmitool -d $idev raw 0 4 10 > /dev/null
+            sleep 7
+        done &
+    fi
 done
 
