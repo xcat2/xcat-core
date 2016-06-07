@@ -74,28 +74,43 @@ sub subvars {
     $inc.=$_;
   }
   close($inh);
+ 
+  #the logic to determine the $ENV{XCATMASTER} confirm to the following priority(from high to low):
+  #the "xcatmaster" attribute of the node
+  #the site.master
+  #the ip address of the mn facing the compute node
   my $master;
-  #my $sitetab = xCAT::Table->new('site');
+
+  #the "xcatmaster" attribute of the node
   my $noderestab = xCAT::Table->new('noderes');
-  #(my $et) = $sitetab->getAttribs({key=>"master"},'value');
-  my @masters = xCAT::TableUtils->get_site_attribute("master");
-  my $tmp = $masters[0];
-  if ( defined($tmp) ) {
-      $master = $tmp;
-  }
-  my $ipfn; 
-  my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
-  unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
-  if ($ipfn) {
-      $master = $ipfn;
-  }
   my $et = $noderestab->getNodeAttribs($node,['xcatmaster']);
   if ($et and $et->{'xcatmaster'}) { 
     $master = $et->{'xcatmaster'};
   }
+  
+  unless ($master){
+      #the site.master
+      my @masters = xCAT::TableUtils->get_site_attribute("master");
+      my $tmp = $masters[0];
+      if ( defined($tmp) ) {
+          $master = $tmp;
+      }
+  }
+ 
+  unless ($master){
+      #the ip address of the mn facing the compute node
+      my $ipfn; 
+      my @ipfnd = xCAT::NetworkUtils->my_ip_facing($node);
+      unless ($ipfnd[0]) { $ipfn = $ipfnd[1];}
+      if ($ipfn) {
+          $master = $ipfn;
+      }
+  }
+
   unless ($master) {
       die "Unable to identify master for $node";
   }
+
   $ENV{XCATMASTER}=$master;
 
   my ($host, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($master);
