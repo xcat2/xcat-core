@@ -24,7 +24,6 @@ cmd:if cat /etc/*release |grep SUSE >/dev/null;then cat /var/lib/dhcp/db/dhcpd.l
 check:output=~$$CN
 cmd:copycds $$ISO 
 check:rc==0
-cmd: mkdef __GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-statelite-compute  -u profile=compute provmethod=statelite osvers=__GETNODEATTR($$CN,os)__
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
 cmd:lsdef $$CN |grep provmethod
