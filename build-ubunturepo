@@ -20,6 +20,7 @@
 #                           being uploaded to http://xcat.org/files/xcat/repos/apt
 #                           (but the tarball file name will be like a released tarball, not a snap build).  
 #                           When you are ready to release this build, use PROMOTE=1 without PREGA
+#               EMBED=<embedded-environment> - the environment for which a minimal version of xcat should be built, e.g. pcm
 #               BUILDALL=1 - build all rpms, whether they changed or not.  Should be used for snap builds that are in 
 #                            prep for a release.
 #               UP=0 or UP=1 - override the default upload behavior
@@ -32,6 +33,52 @@
 #                             3. the built xcat-dep deb packages tarball can be found in "../../xcat-dep" 
 #                                related to the path of this script
 ############################
+
+#Begin pcm
+PCM_SERVER=9.21.55.37
+PCM_UPLOAD_PATH="/xcat_pcm_release/DEB"
+
+#For pcm replace and recover spec file
+new_spec_path="/CONTROL/"
+bak_spec_path="specbak"
+new_control_xcat="xCAT-control"
+new_control_xcat_server="xCAT-server-control"
+new_constrol_xcat_sn="xCATsn-control"
+old_control_name="control"
+old_control_xcat="xCAT/debian"
+old_control_xcat_server="xCAT-server/debian"
+old_constrol_xcat_sn="xCATsn/debian"
+
+replace_pcm_spec()
+{
+   echo "PCM begin to replace spec file[`pwd`]"   
+   rm -rf $bak_spec_path
+   mkdir -p $bak_spec_path
+   #backup
+   mv $old_control_xcat/$old_control_name        $bak_spec_path/$new_control_xcat
+   mv $old_control_xcat_server/$old_control_name $bak_spec_path/$new_control_xcat_server
+   mv $old_constrol_xcat_sn/$old_control_name    $bak_spec_path/$new_constrol_xcat_sn
+   #copy
+   cp $new_spec_path/$new_control_xcat           $old_control_xcat/$old_control_name
+   cp $new_spec_path/$new_control_xcat_server    $old_control_xcat_server/$old_control_name
+   cp $new_spec_path/$new_constrol_xcat_sn       $old_constrol_xcat_sn/$old_control_name
+}
+
+recover_pcm_spec()
+{
+   if [ ! -d $bak_spec_path ]; then
+       echo "PCM[`pwd`], $bak_spec_path is not exist"   
+       return
+   fi
+
+   echo "PCM begin to recover spec file[`pwd`]"   
+   mv $bak_spec_path/$new_control_xcat          $old_control_xcat/$old_control_name
+   mv $bak_spec_path/$new_control_xcat_server   $old_control_xcat_server/$old_control_name
+   mv $bak_spec_path/$new_constrol_xcat_sn      $old_constrol_xcat_sn/$old_control_name
+   rm -rf $bak_spec_path
+}
+#end pcm 
+
 printusage()
 {
     printf "Usage: %s {-c | -d} \n" $(basename $0) >&2
@@ -101,7 +148,10 @@ if [ "$c_flag" -a "$d_flag" ];then
     exit 2
 fi
 
-
+#For pcm
+if [ "$EMBED" = "pcm" ]; then
+    replace_pcm_spec
+fi
 
 uploader="litingt"
 USER="xcat"
@@ -364,11 +414,30 @@ __EOF__
         ln -s xcat-core core-snap
     fi
 
+    #For pcm
+    if [ "$EMBED" = "pcm" ]; then
+        lastPath=`pwd`
+        cd $old_pwd
+        recover_pcm_spec
+        cd $lastPath
+    fi
+
     # Decide whether to upload or not (default NOT to upload)
     if [ "$UP" != "1" ]; then 
         echo "Upload not specified, Done! (rerun with UP=1, to upload)"
         cd $old_pwd
         exit 0
+    fi
+
+    #for PCM,upload core package to PCM server
+    if [ "$EMBED" = "pcm" ]; then
+        tar_new_name=`date +%Y%m%d%H%M`."PCM".$tar_name
+        cp $tar_name $tar_new_name
+        i=0
+        echo "Uploading $tar_new_name to $UPLOADUSER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH"
+        while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tar_new_name $UPLOADUSER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH
+        do : ; done
+        exit 0;
     fi
 
     #upload the deb packages

@@ -41,6 +41,8 @@ SERVER=xcat.org
 FILES_PATH="files"
 FRS=/var/www/${SERVER}/${FILES_PATH}
 RELEASE=github.com/xcat2/xcat-core/releases
+#for pcm
+PCM_UPLOAD_PATH="/xcat_pcm_release/RPM"
 
 YUMDIR=$FRS
 YUMREPOURL="http://${SERVER}/${FILES_PATH}/xcat/repos/yum"
@@ -522,7 +524,19 @@ chmod g+w $TARNAME
 if [ -n "$UP" ] && [ "$UP" == 0 ]; then
     exit 0;
 fi
+
 #else we will continue
+
+#for PCM,upload core package to PCM server
+if [ "$EMBED" = "pcm" ]; then
+    i=0
+    tarnewname=`date +%Y%m%d%H%M`."PCM".$TARNAME
+    cp $TARNAME $tarnewname
+    echo "Uploading $tarnewname to $PCM_USER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH"
+    while [ $((i+=1)) -le 5 ] && ! rsync -v --force $tarnewname $PCM_USER@$SERVER:$RELEASE/$PCM_UPLOAD_PATH
+    do : ; done
+    exit 0;
+fi
 
 # Upload the individual RPMs to xcat.org 
 if [ "$OSNAME" = "AIX" ]; then
