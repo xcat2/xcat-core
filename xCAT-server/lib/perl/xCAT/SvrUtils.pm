@@ -1163,6 +1163,7 @@ sub  update_tables_with_diskless_image
         nodes: a reference to nodes array
         display: whether just display the result, if not 'yes', the result will
                  be written to the mac table.
+        nopping:  will not call pping subroutine if it set as "nopping"
     Returns:
         Return a hash with node name as key
     Globals:
@@ -1170,7 +1171,7 @@ sub  update_tables_with_diskless_image
     Error:
         none
     Example:
-        xCAT::Utils->get_mac_by_arp($nodes, $display);
+        xCAT::Utils->get_mac_by_arp($nodes, $display, $nopping);
     Comments:
 
 =cut
@@ -1178,26 +1179,28 @@ sub  update_tables_with_diskless_image
 #-------------------------------------------------------------------------------
 sub get_mac_by_arp ()
 {
-    my ($class, $nodes, $display) = @_;
+    my ($class, $nodes, $display, $nopping) = @_;
 
     my $node;
     my $data;
     my %ret = ();
     my $unreachable_nodes = "";
     my $noderange = join (',', @$nodes);
-    my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
-
-    foreach my $line (@output) {
-        my ($hostname, $result) = split ':', $line;
-        my ($token,    $status) = split ' ', $result;
-        chomp($token);
-        if ($token eq 'ping') {
-            $node->{$hostname}->{reachable} = 1;
+    
+    if ( $nopping ne "nopping" ) {
+        my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
+        foreach my $line (@output) {
+            my ($hostname, $result) = split ':', $line;
+            my ($token,    $status) = split ' ', $result;
+            chomp($token);
+            if ($token eq 'ping') {
+                $node->{$hostname}->{reachable} = 1;
+            }
         }
     }
 
     foreach my $n ( @$nodes ) {
-        if ( $node->{$n}->{reachable} ) {
+        if ( ( $node->{$n}->{reachable} ) || ( $nopping eq "nopping" ) ){
             my $output;
             my $IP = xCAT::NetworkUtils::toIP( $n );
             if ( xCAT::Utils->isAIX() ) {

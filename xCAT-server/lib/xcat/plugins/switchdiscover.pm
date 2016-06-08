@@ -13,6 +13,7 @@ use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::NetworkUtils;
 use xCAT::Utils;
+use xCAT::SvrUtils;
 use XML::Simple;
 no strict;
 use Data::Dumper;
@@ -826,13 +827,17 @@ sub snmp_scan {
     my $ranges = get_ip_ranges($request);
 
 
-    #use nmap to find if snmp port is enabled  
-    # only open port will be scan
+    ##########################################################
+    #use nmap to parse the ip range and possible output from the command:
+    # Nmap scan report for switch-10-5-22-1 (10.5.22.1) 161/udp open  snmp
+    # Nmap scan report for 10.5.23.1 161/udp open  snmp
+    # Nmap scan report for 10.5.24.1 161/udp closed snmp  
+    ##########################################################
     my $nmap_version = xCAT::Utils->get_nmapversion();
     if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
-        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep up | grep good ";    
+        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep -E 'appears to be up|^161' | perl -pe 's/\\n/ / if \$. % 2'";
     } else {
-        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep 'open port 161' ";    
+        $ccmd = "/usr/bin/nmap -P0 -v -sU -p 161 -oA snmp_scan @$ranges | grep -v 'host down' | grep -E 'Nmap scan report|^161' | perl -pe 's/\\n/ / if \$. % 2'";
     }
     if (exists($globalopt{verbose}))    {
         send_msg($request, 0, "Process command: $ccmd\n");
@@ -855,19 +860,35 @@ sub snmp_scan {
 
     foreach my $line (@lines) {
         my @array = split / /, $line;
-        my $ip;
-        if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
-            $ip = $array[1];
-        } else {
-            $ip = $array[5];
+        if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
+        {
+            $ip = $1;
         }
         if (exists($globalopt{verbose}))    {
             send_msg($request, 0, "Run snmpwalk command to get information for $ip");
         }
 
+        if ($line =~ /close/) {
+            send_msg($request, 0, "*** snmp port is disabled for $ip ***");
+            next;
+        }
+
         my $vendor = get_snmpvendorinfo($request, $ip);
         if ($vendor) {
-            my $mac = xCAT::Utils->get_macbyarp($ip);
+            my $display = "";
+            my $nopping = "nopping";
+            my $output = xCAT::SvrUtils->get_mac_by_arp([$ip], $display, $nopping);
+            my $mac;
+            foreach my $node (keys %{$output}) {
+              if ($node eq $ip) {
+                  my ($desc,$mac_arp) = split /: /, $output->{$node};
+                  $mac = $mac_arp;
+                  last;
+              }
+            }
+            if (exists($globalopt{verbose}))    {
+                send_msg($request, 0, "node: $ip, mac: $mac");
+            }
             if (!$mac) {
                 $mac="nomac_nmap_$counter";
                 $counter++;
