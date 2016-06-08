@@ -832,6 +832,8 @@ sub snmp_scan {
     # Nmap scan report for switch-10-5-22-1 (10.5.22.1) 161/udp open  snmp
     # Nmap scan report for 10.5.23.1 161/udp open  snmp
     # Nmap scan report for 10.5.24.1 161/udp closed snmp  
+    # Host 10.5.23.1 appears to be up ... good. 161/udp open|filtered snmp
+    # Host 10.5.24.1 appears to be up ... good. 161/udp closed snmp
     ##########################################################
     my $nmap_version = xCAT::Utils->get_nmapversion();
     if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
@@ -878,14 +880,7 @@ sub snmp_scan {
             my $display = "";
             my $nopping = "nopping";
             my $output = xCAT::SvrUtils->get_mac_by_arp([$ip], $display, $nopping);
-            my $mac;
-            foreach my $node (keys %{$output}) {
-              if ($node eq $ip) {
-                  my ($desc,$mac_arp) = split /: /, $output->{$node};
-                  $mac = $mac_arp;
-                  last;
-              }
-            }
+            my ($desc,$mac) = split /: /, $output->{$ip};
             if (exists($globalopt{verbose}))    {
                 send_msg($request, 0, "node: $ip, mac: $mac");
             }
