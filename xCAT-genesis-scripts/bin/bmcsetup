@@ -14,6 +14,11 @@
 #
 log_label="xcat.genesis.bmcsetup"
 
+TIMEOUT=15
+
+#
+# Function: cold_reset_bmc
+#
 # Cold reset the BMC for certain servers
 #    Product ID: 309   - x3755 M4 (8722)
 #    Product ID: 43707 - IBM Power S822LC and S812LC
@@ -21,9 +26,13 @@ log_label="xcat.genesis.bmcsetup"
 # Otherwise the BMC will not respond to ping after running the ipmitool commands in this script
 #
 function cold_reset_bmc() { 
-    PROD=$1
-    if [ "$PROD" = "309" -o "$PROD" = "43707" ] ; then
-        if [ "$PROD" = "43707" ]; then
+    if [ -z $XPROD ]; then 
+        echo "FATAL ERROR - XPROD must be set before calling cold_reset_bmc()"
+        exit 1
+    fi
+
+    if [ "$XPROD" = "309" -o "$XPROD" = "43707" ] ; then
+        if [ "$XPROD" = "43707" ]; then
             # OpenPower SPECIFIC, the OpenPower machines with AMI BMC should NOT need a 
             # reset after applying ipmitool commands.  However, it seems there is a problem with 
             # the BMC where after 15 seconds, it stops responding.  To work around, sleep 30
@@ -35,7 +44,7 @@ function cold_reset_bmc() {
         ipmitool mc reset cold
 
         logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
-        if [ "$PROD" = "43707" ]; then
+        if [ "$XPROD" = "43707" ]; then
             # OpenPower SPECIFIC, check the BMC with the following raw command to
             # make sure that the bmc is really in a "ready" state before continuing 
             SLEEP_INTERVAL=3
@@ -66,6 +75,26 @@ function cold_reset_bmc() {
     fi
 }
 
+#
+# Function snooze()
+#
+# The purpose of this is to work around the issue with OpenPower BMCs after 
+# making a change to network configuration, sleep 30 to be sure the changes apply.
+#
+function snooze() { 
+    if [ -z $XPROD ]; then 
+        echo "FATAL ERROR - XPROD must be set before calling snooze()"
+        exit 1
+    fi
+
+    if [ "$XPROD" = "43707" ]; then
+        # For OpenPower Machines 
+        sleep 30
+    else
+        sleep 1
+    fi
+}
+
 allowcred.awk &
 CREDPID=$!
 sleep 5
@@ -75,7 +104,6 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
     do
         logger -s -t $log_label -p local4.info "Retrying retrieval of IPMI settings from server"
     done
-    TIMEOUT=15
     BMCIP=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCVLAN=`grep taggedvlan /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     if [ -z "$BMCVLAN" ]; then 
@@ -193,12 +221,11 @@ elif [ "$IPMIMFG" == "47488" ]; then
     LOCKEDUSERS=1
 fi
 
-logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
 while [ -z "$LANCHAN" ]; do 
-    for TLANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    logger -s -t $log_label -p local4.info "Auto detecting LAN channel..."
+    for TLANCHAN in {1..16}; do
         # Try to get the channel information; then get the MAC which is used for the channel
-        if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; 
-        then 
+        if ipmitool channel info $TLANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $TLANCHAN 5 0 0 > /dev/null 2>&1; then
             LANCHAN=$TLANCHAN
             break; 
         fi; 
@@ -218,7 +245,7 @@ if [ $IPCFGMETHOD="static" ]; then
         TRIES=0
         # Set the channel to use STATIC IP address 
         while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
-            sleep 1
+            snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -230,7 +257,7 @@ if [ $IPCFGMETHOD="static" ]; then
         TRIES=0
         # Set the IP for the current channel
         while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
-            sleep 1
+            snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -243,7 +270,7 @@ if [ $IPCFGMETHOD="static" ]; then
         TRIES=0
         # Set the NETMASK for the current channel 
         while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
-            sleep 1
+            snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then
                 break;
@@ -251,14 +278,14 @@ if [ $IPCFGMETHOD="static" ]; then
         done
         let idev=idev+1
     done
-    TRIES=0
+
     if [ ! -z "$BMCGW" ]; then
         let idev=0
         for g in $BMCGW; do
             TRIES=0
             # Set the GATEWAY for the current channel 
             while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
-                sleep 1
+                snooze
                 let TRIES=TRIES+1
                 if [ $TRIES -gt $TIMEOUT ]; then
                     break;
@@ -266,7 +293,6 @@ if [ $IPCFGMETHOD="static" ]; then
             done
             let idev=idev+1
         done
-        TRIES=0
     fi
 else
     let idev=NUMBMCS
@@ -275,7 +301,7 @@ else
         TRIES=0
         # Set the method to get IP for the current channel, if required.
         while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
-            sleep 1
+            snooze
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then 
                 break;
@@ -289,7 +315,7 @@ for b in $BMCVLAN; do
     TRIES=0
     # Set VLAN for the current channel 
     while ! ipmitool -d $idev lan set $LANCHAN vlan id $b; do
-        sleep 1
+        snooze
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then 
             break;
@@ -299,8 +325,8 @@ for b in $BMCVLAN; do
 done
 
 let idev=NUMBMCS-1
-for bmcu in $BMCUS; do
-    if [ "$bmcu" = "" ]; then 
+for user in $BMCUS; do
+    if [ "$user" = "" ]; then 
         continue
     fi
     DISABLEUSERS="1 2 3 4"
@@ -328,14 +354,15 @@ for bmcu in $BMCUS; do
     DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
     logger -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
     for user in $DISABLEUSERS; do
+        TRIES=0
         # Disable the non-specified user 
         while ! ipmitool -d $idev user disable $user; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
         done
-        TRIES=0
     done
+
     TRIES=0
     # Enable the specified user
     while ! ipmitool -d $idev user enable $USERSLOT; do
@@ -343,6 +370,7 @@ for bmcu in $BMCUS; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+
     TRIES=0
     # Last param in ipmitool user priv is the channel to set it on.
     # Penguin boxes are all channel 2
@@ -359,6 +387,7 @@ for bmcu in $BMCUS; do
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
         done
     fi
+
     TRIES=0
     # Enable the channel link for the specified user
     while ! ipmitool -d $idev channel setaccess $LANCHAN $USERSLOT link=on; do
@@ -366,10 +395,11 @@ for bmcu in $BMCUS; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+
     TRIES=0
-    if [ "$CURRENTUSER" != "$bmcu" ]; then
+    if [ "$CURRENTUSER" != "$user" ]; then
         # Change the user name, if necessary
-        while ! ipmitool -d $idev user set name $USERSLOT $bmcu; do
+        while ! ipmitool -d $idev user set name $USERSLOT $user; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -381,6 +411,7 @@ done
 let idev=NUMBMCS-1
 for bmcp in $BMCPW; do
     if [ "$bmcp" = "" ]; then continue; fi
+
     TRIES=0
     # Set the password for the specified user 
     while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
@@ -388,8 +419,9 @@ for bmcp in $BMCPW; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    TRIES=0
+
     logger -s -t $log_label -p local4.info "Set up following user table: "
+    TRIES=0
     # Display the user list 
     ipmitool -d $idev user list $LANCHAN
     let idev=idev-1
@@ -501,9 +533,9 @@ while [ $idev -gt 0 ]; do
             logger -s -t $log_label -p local4.info "OK"
         fi
 
-        TRIES=0
         logger -s -t $log_label -p local4.info "Enabling SOL for $BMCUS:"
-        # Enable the SOL for the USER and set the payload 1
+        TRIES=0
+        # Enabl the SOL for the USER and set the payload 1
         while ! ipmitool -d $idev raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
             sleep 1
             let TRIES=TRIES+1
@@ -517,7 +549,7 @@ while [ $idev -gt 0 ]; do
     fi
 
     # Cold reset the BMC
-    cold_reset_bmc ${XPROD}
+    cold_reset_bmc
 
     # update the node status to 'bmcready'
     for parm in `cat /proc/cmdline`; do
