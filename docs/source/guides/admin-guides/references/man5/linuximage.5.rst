@@ -68,13 +68,13 @@ linuximage Attributes:
 
 \ **pkgdir**\ 
  
- The name of the directory where the distro packages are stored. It could be set multiple paths.The multiple paths must be seperated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.
+ The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.
  
 
 
 \ **otherpkglist**\ 
  
- The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set multiple paths.The multiple paths must be seperated by ",".
+ The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".
  
 
 
@@ -92,7 +92,7 @@ linuximage Attributes:
 
 \ **postinstall**\ 
  
- The fully qualified name of the script file that will be run at the end of the genimage command. It could be set multiple paths.The multiple paths must be seperated by ",". It is used for diskless image only.
+ The fully qualified name of the script file that will be run at the end of the genimage command. It could be set to multiple paths. The multiple paths must be separated by ",". It is used for diskless image only.
  
 
 

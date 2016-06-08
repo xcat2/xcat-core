@@ -62,7 +62,7 @@ vpd Attributes:
 
 \ **asset**\ 
  
- A field for administators to use to correlate inventory numbers they may have to accomodate
+ A field for administrators to use to correlate inventory numbers they may have to accommodate
  
 
 

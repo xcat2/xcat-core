@@ -261,7 +261,7 @@ osimage Attributes:
 
 \ **otherpkglist**\  (linuximage.otherpkglist)
  
- The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set multiple paths.The multiple paths must be seperated by ",".
+ The fully qualified name of the file that stores non-distro package lists that will be included in the image. It could be set to multiple paths. The multiple paths must be separated by ",".
  
 
 
@@ -295,7 +295,7 @@ osimage Attributes:
 
 \ **pkgdir**\  (linuximage.pkgdir)
  
- The name of the directory where the distro packages are stored. It could be set multiple paths.The multiple paths must be seperated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.
+ The name of the directory where the distro packages are stored. It could be set to multiple paths. The multiple paths must be separated by ",". The first path in the value of osimage.pkgdir must be the OS base pkg dir path, such as pkgdir=/install/rhels6.2/x86_64,/install/updates . In the os base pkg path, there are default repository data. And in the other pkg path(s), the users should make sure there are repository data. If not, use "createrepo" command to create them. For ubuntu, multiple mirrors can be specified in the pkgdir attribute, the mirrors must be prefixed by the protocol(http/ssh) and delimited with "," between each other.
  
 
 
@@ -313,13 +313,13 @@ osimage Attributes:
 
 \ **postinstall**\  (linuximage.postinstall)
  
- The fully qualified name of the script file that will be run at the end of the genimage command. It could be set multiple paths.The multiple paths must be seperated by ",". It is used for diskless image only.
+ The fully qualified name of the script file that will be run at the end of the genimage command. It could be set to multiple paths. The multiple paths must be separated by ",". It is used for diskless image only.
  
 
 
 \ **postscripts**\  (osimage.postscripts)
  
- Comma separated list of scripts that should be run on this image after diskful installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. See the site table runbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX.
+ Comma separated list of scripts that should be run on this image after diskful installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. See the site table runbootscripts attribute.
  
 
 

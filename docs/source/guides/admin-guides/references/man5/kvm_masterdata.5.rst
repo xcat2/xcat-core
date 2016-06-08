@@ -27,7 +27,7 @@ DESCRIPTION
 ***********
 
 
-Persistant store for KVM plugin for masters
+Persistent store for KVM plugin for masters
 
 
 **************************

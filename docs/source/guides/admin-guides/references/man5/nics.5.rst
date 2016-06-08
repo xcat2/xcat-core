@@ -58,7 +58,7 @@ nics Attributes:
  Comma-separated list of hostname suffixes per NIC. 
                          If only one ip address is associated with each NIC:
                              <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!-eth0,ib0!-ib0
-                         If multiple ip addresses are associcated with each NIC:
+                         If multiple ip addresses are associated with each NIC:
                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!-eth0|-eth0-ipv6,ib0!-ib0|-ib0-ipv6. 
                          The xCAT object definition commands support to use nichostnamesuffixes.<nicname> as the sub attributes. 
                          Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnamesuffixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
@@ -70,7 +70,7 @@ nics Attributes:
  Comma-separated list of hostname prefixes per NIC. 
                          If only one ip address is associated with each NIC:
                              <nic1>!<ext1>,<nic2>!<ext2>,..., for example, eth0!eth0-,ib0!ib-
-                         If multiple ip addresses are associcated with each NIC:
+                         If multiple ip addresses are associated with each NIC:
                              <nic1>!<ext1>|<ext2>,<nic2>!<ext1>|<ext2>,..., for example,  eth0!eth0-|eth0-ipv6i-,ib0!ib-|ib-ipv6-. 
                          The xCAT object definition commands support to use nichostnameprefixes.<nicname> as the sub attributes. 
                          Note:  According to DNS rules a hostname must be a text string up to 24 characters drawn from the alphabet (A-Z), digits (0-9), minus sign (-),and period (.). When you are specifying "nichostnameprefixes" or "nicaliases" make sure the resulting hostnames will conform to this naming convention
