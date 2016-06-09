@@ -235,6 +235,7 @@ sub get_storage_pool_by_url {
     if ($@) {
         my $error = $@;
         unless ($error =~ /vgcreate.*exit status 3/ or $error =~ /pvcreate.*exit status 5/) {
+            undef $hypconn;
             die $@;
         }
     }
@@ -250,7 +251,11 @@ sub get_multiple_paths_by_url {
     my $url     = $args{url};
     my $node    = $args{node};
     my $poolobj = get_storage_pool_by_url($url);
-    unless ($poolobj) { die "Cound not get storage pool for $url"; }
+    unless ($poolobj) { 
+        my $exit_message = "Could not get storage pool for $url";
+        xCAT::SvrUtils::sendmsg($exit_message, $callback);
+        exit 1;
+    }
     eval {   #refresh() can 'die' if cloning in progress, accept stale data then
         $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     };
@@ -295,7 +300,11 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     #print "url=$url, dev=$dev,create=$create, force=$force, format=$format\n";
     #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
     my $poolobj = get_storage_pool_by_url($url);
-    unless ($poolobj) { die "Could not get storage pool for $url"; }
+    unless ($poolobj) { 
+        my $exit_message = "Could not get storage pool for $url";
+        xCAT::SvrUtils::sendmsg($exit_message, $callback);
+        exit 1;
+    }
     eval { #make a refresh attempt non-fatal to fail, since cloning can block it
         $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     };
@@ -309,7 +318,9 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
                 if ($force) {    #must destroy the storage
                     $_->delete();
                 } else {
-                    die "Path already exists";
+                    my $exit_message = "Path $desiredname already exists";
+                    xCAT::SvrUtils::sendmsg($exit_message, $callback);
+                    exit 1;
                 }
             } else {
                 return $_->get_path();
@@ -533,7 +544,9 @@ sub build_diskstruct {
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/ or $disk_parts[0] =~ m/^dir:\/\/(.*)$/ or $disk_parts[0] =~ m/^lvm:\/\/(.*)$/) {
                 my %disks = %{ get_multiple_paths_by_url(url => $disk_parts[0], node => $node) };
                 unless (keys %disks) {
-                    die "Unable to find any persistent disks at " . $disk_parts[0];
+                    my $exit_message = "Unable to find any persistent disks at $disk_parts[0] for $node";
+                    xCAT::SvrUtils::sendmsg($exit_message, $callback);
+                    exit 1;
                 }
                 foreach (keys %disks) {
                     my $tdiskhash;
@@ -2026,21 +2039,30 @@ sub chvm {
             $url =~ s!([^/]+)\z!!;
             my $imagename = $1;
             my $poolobj   = get_storage_pool_by_url($url);
-            unless ($poolobj) { die "Cound not get storage pool for $url"; }
+            unless ($poolobj) {
+                    my $exit_message = "Could not get storage pool for $url";
+                    xCAT::SvrUtils::sendmsg($exit_message, $callback);
+                    exit 1;
+            }
             my $poolxml = $poolobj->get_xml_description(); #yes, I have to XML parse for even this...
             my $parsedpool = $parser->parse_string($poolxml);
             $cdpath = $parsedpool->findnodes("/pool/target/path/text()")->[0]->data;
             $cdpath .= "/" . $imagename;
         } else {
             if ($cdrom =~ m!^/dev/!) {
+                undef $hypconn;
                 die "TODO: device pass through if anyone cares";
             } elsif ($cdrom =~ m!^/!) {                    #full path... I guess
                 $cdpath = $cdrom;
             } else {
+                undef $hypconn;
                 die "TODO: relative paths, use client cwd as hint?";
             }
         }
-        unless ($cdpath) { die "unable to understand cd path specification"; }
+        unless ($cdpath) { 
+                undef $hypconn;
+                die "unable to understand cd path specification"; 
+        }
         $newcdxml = "<disk type='file' device='cdrom'><source file='$cdpath'/><target dev='hdc'/><readonly/></disk>";
     } elsif ($eject) {
         $newcdxml = "<disk type='file' device='cdrom'><target dev='hdc'/><readonly/></disk>";
@@ -2056,6 +2078,7 @@ sub chvm {
             my $domparsed = $parser->parse_string($vmxml);
             my $candidatenodes = $domparsed->findnodes("//disk[\@device='cdrom']");
             if (scalar(@$candidatenodes) != 1) {
+                undef $hypconn;
                 die "shouldn't be possible, should only have one cdrom";
             }
             my $newcd = $parser->parse_balanced_chunk($newcdxml);
@@ -2772,6 +2795,7 @@ sub clone_vm_from_master {
     my $url;
     if ($confdata->{vm}->{$node}->[0]->{storage}) {
         unless ($confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/) {
+            undef $hypconn;
             die "not implemented";
         }
         $url = $confdata->{vm}->{$node}->[0]->{storage};
