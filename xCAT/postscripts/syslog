@@ -29,6 +29,7 @@ isRsyslog=0
 isC3=0
 xCATSettingsSTART="xCAT settings START"
 xCATSettingsEND="xCAT settings END"
+xCATSettingsInfo="Entries between the START and END lines will be replaced on the next xCAT install or update"
 #systemdEnabled=0
 # pmatch determines if 1st argument string is matched by 2nd argument pattern
 
@@ -92,6 +93,7 @@ config_Rsyslog_C3()
 
   # Mark the start of xCAT section
   echo "# $xCATSettingsSTART" >> $2
+  echo "# $xCATSettingsInfo" >> $2
   #enable to receive remote logging
   if [ $isReceiving -eq 1 ]; then
       #listen on the udp and tcp port to receive the remote logs
@@ -180,6 +182,7 @@ config_rsyslog_V8()
 
     # Mark the start of xCAT section
     echo "# $xCATSettingsSTART" >> $conf_file
+    echo "# $xCATSettingsInfo" >> $conf_file
     echo "#*.debug   /var/log/messages"  >> $conf_file
     # Need to uncomment the lines $ModLoad imudp.so and $UDPServerRun 514,
     # to make the MN be able to receive syslog from remote hosts
@@ -214,6 +217,7 @@ config_rsyslog_V8()
 
     # add xCAT entries
     echo "# $xCATSettingsSTART" >> $remoteconf
+    echo "# $xCATSettingsInfo" >> $remoteconf
     echo "*.* @$master" >> $remoteconf
     echo "# $xCATSettingsEND" >> $remoteconf
  fi
