@@ -3,6 +3,21 @@
 #   - Added slash in front of "var" in the NICSTOBRINGUP dhclient section.
 #     Bug reported by Jeff Lang <jrlang@uwyo.edu>.  Thanks, Jeff!
 #
+log_label="xcat.genesis.doxcat"
+
+# Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
+# Later, once xCAT MN is known, dhclient-script will change 
+# rsyslog.conf file to send log entries to xCAT MN
+RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+if [ $RSYSLOGD_VERSION -ge 8 ]; then
+    /sbin/rsyslogd
+    # Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
+else
+    /sbin/rsyslogd -c4
+fi
+
+logger -t $log_label -p local4.info "Beginning doxcat process..."
+
 modprobe acpi_cpufreq 2>/dev/null		# on some machines this fails
 modprobe cpufreq_ondemand
 if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor &>/dev/null; then
@@ -12,14 +27,13 @@ if ls /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor &>/dev/null; then
 fi
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
-	echo -n "Waiting for device with address $BOOTIF to appear.."
+	logger -s -t $log_label -p local4.info "Waiting for device with address $BOOTIF to appear.."
 	gripeiter=6000
 	while [ -z "$bootnic" ]; do 
 		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
 		sleep 0.1
 		if [ $gripeiter = 0 ]; then
-			echo "ERROR"
-			echo "Unable to find boot device (maybe the nbroot is missing the driver for your nic?)"
+			logger -s -t $log_label -p local4.err "Unable to find boot device (maybe the nbroot is missing the driver for your nic?)"
 			while :; do sleep 365d; done
 		fi
 		gripeiter=$((gripeiter-1))
@@ -27,7 +41,7 @@ if [ ! -z "$BOOTIF" ]; then
 fi
 echo "Done"
 if [ -z "$bootnic" ]; then
-	echo "ERROR: BOOTIF missing, can't detect boot nic"
+	logger -s -t $log_label -p local4.err "BOOTIF missing, can't detect boot nic"
 fi
 
 if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
@@ -61,22 +75,14 @@ echo "[ req ]
 distinguished_name = nodedn
 
 [ nodedn ]" > /etc/pki/tls/openssl.cnf
-echo -n "Generating private key..."
+logger -s -t $log_label -p local4.info "Generating private key..."
 openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
-echo "Done"
+logger -s -t $log_label -p local4.info "Done"
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
-RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
-# Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
-# Later, once xCAT MN is known, dhclient-script will change 
-# rsyslog.conf file to send log entries to xCAT MN
-if [ $RSYSLOGD_VERSION -ge 8 ]; then
-	# Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
-	/sbin/rsyslogd
-else
-	/sbin/rsyslogd -c4
-fi
+
+logger -t $log_label -p local4.info "Creating /var/lib/lldpad file..."
 mkdir -p /var/lib/lldpad
 echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
 echo '{' >> /var/lib/lldpad/lldpad.conf
@@ -93,6 +99,7 @@ echo '};' >> /var/lib/lldpad/lldpad.conf
 done
 echo '};' >> /var/lib/lldpad/lldpad.conf
 lldpad -d
+logger -t $log_label -p local4.info "lldpad started."
 
 # Caclulate the broadcast address of a given IP address and mask.
 bcastcalc(){
@@ -126,7 +133,7 @@ mask2prefix() {
             192) let nbits+=2;;
             128) let nbits+=1;;
             0);;
-            *) echo "Error: $dec is not recognised"; exit 1
+            *) logger -s -t $log_label -p local4.err "$dec is not recognised"; exit 1
         esac
     done
     IFS=$old_ifs
@@ -152,23 +159,25 @@ done
 export XCATPORT
 export XCATMASTER
 
+logger -t $log_label -p local4.info "XCATMASTER is $XCATMASTER, XCATPORT is $XCATPORT"
+
 if [[ -n $hostip && -n $netmask && -n $gateway && -n $bootnic ]]; then
 	# doing static ip
 	# the device was determined above from the bootif mac, and put in bootnic
 	numbits=$(mask2prefix $netmask)
 	broadcast=$(bcastcalc $hostip $netmask)
-	echo "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway device=$bootnic BOOTIF=$BOOTIF ..."
+	logger -s -t $log_label -p local4.info "Setting static IP=$hostip/$numbits broadcast=$broadcast gateway=$gateway device=$bootnic BOOTIF=$BOOTIF ..."
 	ip addr add $hostip/$numbits broadcast $broadcast dev $bootnic scope global label $bootnic
 	ip link set $bootnic up
 	ip route replace to default via $gateway dev $bootnic
 	# in softlayer it takes up to 60 seconds for the nic to actually be able to communicate
-	echo -n Waiting to reach xCAT mgmt node $gateway.
+	logger -s -t $log_label -p local4.info "Waiting to reach xCAT mgmt node $gateway."
 	xcatretries=60
 	while [ $((xcati+=1)) -le $xcatretries ] && ! ping -c2 -w3 $gateway >/dev/null 2>&1; do echo -n .; done
 	if [ $xcati -le $xcatretries ]; then echo " success"; else echo " failed"; fi
 	sleep 3
 else
-	echo "Setting IP via DHCP..."
+	logger -s -t $log_label -p local4.info "Setting IP via DHCP..."
         # This section is for System P hardware discovery, which won't have a BOOTIF value set
         if [ -z "$bootnic" ]; then
             tries=0
@@ -187,13 +196,14 @@ else
                 tries=$(($tries+1))
             done
 
-	    echo -n "Acquiring network addresses.."
+            logger -s -t $log_label -p local4.info "Acquiring network addresses.."    
             tries=0
             while [ -z "$bootnic" ]; do
 	        for tmp1 in $ALLUP_NICS; do
 	            if ip addr show dev $tmp1|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; then
                         result=`ping -c1 -I $tmp1 $XCATMASTER 2>&1`
 	                if [ $? -eq 0 ]; then
+	                    logger -s -t $log_label -p local4.info "the nic $tmp1 can ping $XCATMASTER"
 	                    bootnic=$tmp1
 	                    break
 	                fi
@@ -207,6 +217,7 @@ else
 	    done
             if [ -z "$bootnic" ]; then
                 /bin/bash
+                logger -s -t $log_label -p local4.info "still can not get $bootnic, go into /bin/bash"
             fi
         else
 	    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
@@ -222,21 +233,36 @@ else
 	    done
 
             gripeiter=101
-            echo -n "Acquiring network addresses.."
+            logger -s -t $log_label -p local4.info "Acquiring network addresses.."
             while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; do
                 sleep 0.1
                 if [ $gripeiter = 1 ]; then
-                    echo
-                    echo "It seems to be taking a while to acquire an IPv4 address, you may want to check spanning tree..."
+                    logger -s -t $log_label -p local4.info "It seems to be taking a while to acquire an IPv4 address, you may want to check spanning tree..."
                 fi
                 gripeiter=$((gripeiter-1))
             done
         fi
 fi
 
+count_f=0
+while [ $count_f -le 8 ]; do
+    rsyslogd_ps=`ps -ef | grep 'rsyslogd' | grep -v 'grep'`
+    if [ "$rsyslogd_ps" ]; then
+        break
+    else
+        ((count_f++))
+        sleep 0.5
+    fi
+done
+
+if [ $count_f -gt 8 ]; then
+    echo "rsyslogd maybe off"
+fi
+
 openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
-echo -n "Acquired IPv4 address on $bootnic: "
+logger -s -t $log_label -p local4.info "Acquired IPv4 address on $bootnic"
+
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
 # rv 0 state does not work with the new ntp versions
@@ -265,70 +291,94 @@ DEVICE=$bootnic
 export DEVICE
 
 if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
+	logger -t $log_label -p local4.info "Run getcert $XCATMASTER:$XCATPORT..."
 	/bin/getcert $XCATMASTER:$XCATPORT
+	logger -t $log_label -p local4.info "Getcert done."
 fi
 while :; do
 
         grepconfigraid=`echo $destiny|grep "configraid"`
         if [ -z "$destiny" -o -n "$grepconfigraid" ]; then
+                logger -t $log_label -p local4.info "Run getdestiny $XCATMASTER:$XCATPORT..."
                 destiny=`getdestiny $XCATMASTER:$XCATPORT`
+                logger -t $log_label -p local4.info "Getdestiny done."
 	fi
         
-        destparameter=`echo $destiny|cut -d '=' -f 2-`
+	destparameter=`echo $destiny|cut -d '=' -f 2-`
+	logger -t $log_label -p local4.info "The destparameter is $destparameter"
+
 	destiny=`echo $destiny|awk -F= '{print $1}'`
-        dest=`echo $destiny|awk '{print $1}'` #could probably use bash but oh well
+	logger -t $log_label -p local4.info "The destiny is $destiny"
+
+	dest=`echo $destiny|awk '{print $1}'` #could probably use bash but oh well
+	logger -t $log_label -p local4.info "The dest is $dest"
+
 	if [ "$dest" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
+		logger -t $log_label -p local4.info "Run dodiscovery..."
 		/bin/dodiscovery
+		logger -t $log_label -p local4.info "Dodiscovery done."
+		logger -t $log_label -p local4.info "Run getcert $XCATMASTER:$XCATPORT..."
 		/bin/getcert $XCATMASTER:$XCATPORT
+		logger -t $log_label -p local4.info "Getcert done."
 		destiny=''
 		dest=''
 	elif [ "$dest" = shell ]; then
-		echo "Dropping to debug shell, exit to run next destiny"
+		logger -s -t $log_label -p local4.info "Dropping to debug shell(exit to run next destiny)..."
 		destiny=''
 		dest=''
 		/bin/bash
-		/bin/nextdestiny $XCATMASTER:$XCATPORT         
+		logger -t $log_label -p local4.info "Exit shell."
+		logger -t $log_label -p local4.info "Run nextdestiny $XCATMASTER:$XCATPORT..."
+		/bin/nextdestiny $XCATMASTER:$XCATPORT      
+		logger -t $log_label -p local4.info "Nextdestiny done."   
 	elif [ "$dest" = runcmd ]; then
+		logger -t $log_label -p local4.info "Run nextdestiny $XCATMASTER:$XCATPORT..."
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		dest=`echo $destiny|awk -F= '{print $1}'`
-                $destparameter
+		$destparameter
+		logger -t $log_label -p local4.info "Nextdestiny done."
 	elif [ "$dest" = runimage ]; then
+		logger -t $log_label -p local4.info "Run nextdestiny $XCATMASTER:$XCATPORT..."
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		dest=`echo $destiny|awk -F= '{print $1}'`
+		logger -t $log_label -p local4.info "Nextdestiny done."
 		mkdir /tmp/`basename $destparameter`
 		cd /tmp/`basename $destparameter`
 		eval destparameter=$destparameter
 		ERROR=`wget $destparameter 2>&1`
 		rc=$?
 		if [ $rc -ne 0 ]; then
-			echo "Failed to wget $destparameter"
-			echo $ERROR
+			logger -s -t $log_label -p local4.err "Failed to wget $destparameter, $ERROR"
 		fi
 		while [ $rc -ne 0 ] && echo $ERROR|grep -v 416; do
 			sleep 10
 			ERROR=`wget -c $destparameter 2>&1`
 			rc=$?
 			if [ $rc -ne 0 ]; then
-				echo "Failed to wget $destparameter"
-				echo $ERROR
+				logger -s -t $log_label -p local4.err "Failed to wget $destparameter, $ERROR"
 			fi
 		done
 		tar xvf `basename $destparameter`
 		./runme.sh
 		cd -
 	elif [ "$dest" = "reboot" -o "$dest" = "boot" ]; then
+		logger -t $log_label -p local4.info "Run nextdestiny $XCATMASTER:$XCATPORT..."
 		/bin/nextdestiny $XCATMASTER:$XCATPORT
-                if [ $IPMI_SUPPORT -ne 0 ]; then
+		logger -t $log_label -p local4.info "Nextdestiny done."
+		if [ $IPMI_SUPPORT -ne 0 ]; then
 		    ipmitool chassis bootdev pxe
-                fi
+		fi
 		reboot -f
 	elif [ "$dest" = "install" -o "$dest" = "netboot" ]; then
-                if [ $IPMI_SUPPORT -ne 0 ]; then
+		if [ $IPMI_SUPPORT -ne 0 ]; then
 		    ipmitool chassis bootdev pxe
-                fi
+		fi
+		logger -t $log_label -p local4.info "Reboot..."
 		reboot -f
 	elif [ "$dest" = sysclone ]; then
+                logger -t $log_label -p local4.info "Run dosysclone..."
                 /bin/dosysclone
+                logger -t $log_label -p local4.info "Dosysclone done."
                 destiny=''
                 dest='' 
 	elif [ "$dest" = standby ]; then
@@ -336,24 +386,27 @@ while :; do
 		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
-			echo -en "Received request to retry in a bit, will call xCAT back in $delay seconds  \r"
+			logger -s -t $log_label -p local4.info "Received request to retry in a bit, will call xCAT back in $delay seconds"
 			delay=$((delay-1))
 			sleep 1
 		done
 		echo "Retrying                                                                                   ";
 	elif [ "$dest" = shutdown ]; then
+		logger -t $log_label -p local4.info "Poweroff..."
 		poweroff -f
 	else 
-		echo "Unrecognized directive $dest"
+		logger -s -t $log_label -p local4.err "Unrecognized directive $dest"
 		destiny=''
 		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
-			echo -en "Will retry in $delay seconds  \r"
+			logger -s -t $log_label -p local4.info "Will retry in $delay seconds"
 			delay=$((delay-1))
 			sleep 1
 		done
 
 	fi
 done
+
+logger -t $log_label -p local4.info "doxcat is done"
 set +x
