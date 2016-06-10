@@ -431,7 +431,8 @@ let idev=NUMBMCS
 while [ $idev -gt 0 ]; do
     let idev=idev-1
 
-    logger -s -t $log_label -p local4.info "Enabling Channel $LANCHAN: "
+    MSG="Enabling the non-volatile channel access ($LANCHAN)"
+    logger -s -t $log_label -p local4.info "$MSG"
     TRIES=0
     # Set the non-volatile channel access: enable and privilege
     while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
@@ -439,7 +440,10 @@ while [ $idev -gt 0 ]; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
 
+    MSG="Enabling the volatile channel access ($LANCHAN)"
+    logger -s -t $log_label -p local4.info "$MSG"
     TRIES=0
     # Set the volatile channel access: enable and privilege
     while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
@@ -447,13 +451,10 @@ while [ $idev -gt 0 ]; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    if [ $TRIES -gt $TIMEOUT ]; then 
-        logger -s -t $log_label -p local4.err "ERROR - Setting the volatile channel access."
-    else 
-        logger -s -t $log_label -p local4.info "OK"
-    fi
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
 
-    logger -s -t $log_label -p local4.info "Enabling ARP responses: "
+    MSG="Enabling ARP responses"
+    logger -s -t $log_label -p local4.info "$MSG"
     TRIES=0
     # enable the ARP response on the channel
     while ! ipmitool -d $idev lan set $LANCHAN arp respond on > /dev/null; do
@@ -462,13 +463,10 @@ while [ $idev -gt 0 ]; do
         echo -n .
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    if [ $TRIES -gt $TIMEOUT ]; then 
-        logger -s -t $log_label -p local4.err "ERROR - Enabling ARP Responses."
-    else 
-        logger -s -t $log_label -p local4.info  "OK"
-    fi
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
     
-    logger -s -t $log_label -p local4.info "Enabling IPMI v 1.5 MD5 LAN access:"
+    MSG="Enabling IPMI v 1.5 MD5 LAN access"
+    logger -s -t $log_label -p local4.info "$MSG"
     TRIES=0
     # Set the auth level to md5 for the channel
     while ! ipmitool -d $idev lan set $LANCHAN auth admin md5 > /dev/null; do
@@ -476,14 +474,11 @@ while [ $idev -gt 0 ]; do
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
-    if [ $TRIES -gt $TIMEOUT ]; then 
-        logger -s -t $log_label -p local4.err "ERROR - Enabling MD5 for the channel."
-    else
-        logger -s -t $log_label -p local4.info "OK"
-    fi
+    if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
 
     if [ ! "$IPMIVER" == "1.5"  ]; then 
-        logger -s -t $log_label -p local4.info "Enabling IPMI v 2.0 LAN access: "
+        MSG="Enabling IPMI v 2.0 LAN access"
+        logger -s -t $log_label -p local4.info "$MSG"
         # the following goals:
         #   - disable cipher suite 0 (if present, avoid password bypass)
         #   - disable cipher suite 1 (if present, to avoid weaking Kg if used)
@@ -512,14 +507,18 @@ while [ $idev -gt 0 ]; do
             fi
             i=$((i+1))
         done
+
+        MSG="Set the cipher_privileges for the channel"
+        logger -s -t $log_label -p local4.info "$MSG"
         # Set the cipher_privileges for the channel
         if ipmitool lan set $LANCHAN cipher_privs $NEWACCESS > /dev/null; then
-            logger -s -t $log_label -p local4.info "OK"
+            logger -s -t $log_label -p local4.info "$MSG: OK"
         else
-            logger -s -t $log_label -p local4.info "ERROR - Setting cipher privileges for the channel."
+            logger -s -t $log_label -p local4.info "$MSG: ERROR"
         fi
 
-        logger -s -t $log_label -p local4.info "Enabling SOL for channel $LANCHAN:"
+        MSG="Enabling SOL for channel $LANCHAN"
+        logger -s -t $log_label -p local4.info "$MSG"
         TRIES=0
         # Enable the SOL for the channel 
         while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
@@ -527,25 +526,18 @@ while [ $idev -gt 0 ]; do
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
         done
-        if [ $TRIES -gt $TIMEOUT ]; then 
-            logger -s -t $log_label -p local4.info "ERROR - Enabling SOL for the channel: $LANCHAN"
-        else 
-            logger -s -t $log_label -p local4.info "OK"
-        fi
+        if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
 
-        logger -s -t $log_label -p local4.info "Enabling SOL for $BMCUS:"
+        MSG="Enabling SOL for $BMCUS"
+        logger -s -t $log_label -p local4.info "$MSG"
         TRIES=0
-        # Enabl the SOL for the USER and set the payload 1
+        # Enable the SOL for the USER and set the payload 1
         while ! ipmitool -d $idev raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
         done
-        if [ $TRIES -gt $TIMEOUT ]; then 
-            logger -s -t $log_label -p local4.info "ERROR - Enabling SOL for BMC User: $BMCUS"
-        else
-            echo "OK"
-        fi
+        if [ $TRIES -gt $TIMEOUT ]; then logger -s -t $log_label -p local4.err "$MSG: ERROR"; else logger -s -t $log_label -p local4.info "$MSG: OK"; fi
     fi
 
     # Cold reset the BMC
