@@ -35,8 +35,8 @@
 printusage()
 {
     printf "Usage: %s {-c | -d} \n" $(basename $0) >&2
-    echo "    -c : Build the xcat core packages and create the repo"
-    echo "    -d : Create the xcat dep repo. Building the xcat dep packages can refer \"build-debs-all\" from svn"
+    echo "    -c : Build the xcat-core packages and create the repo"
+    echo "    -d : Create the xcat-dep repo."
 }
 # For the purpose of getting the distribution name
 if [[ ! -f /etc/lsb-release ]]; then 
