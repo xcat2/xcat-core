@@ -33,7 +33,7 @@ if [ ! -z "$BOOTIF" ]; then
 		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
 		sleep 0.1
 		if [ $gripeiter = 0 ]; then
-			logger -s -t $log_label -p local4.err "Unable to find boot device (maybe the nbroot is missing the driver for your nic?)"
+			logger -s -t $log_label -p local4.err "Unable to find boot device (Maybe the xCAT genesis kernel is missing the driver for your NIC?)"
 			while :; do sleep 365d; done
 		fi
 		gripeiter=$((gripeiter-1))

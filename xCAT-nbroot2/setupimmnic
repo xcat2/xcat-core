@@ -1,4 +1,0 @@
-#!/bin/sh
-/sbin/ip link set usb0 up
-/sbin/ip addr add dev usb0 169.254.95.120/24
-/sbin/ip route add 169.254.95.0/24 dev usb0
