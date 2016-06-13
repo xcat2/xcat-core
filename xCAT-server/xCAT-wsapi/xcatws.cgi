@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # IBM(c) 2014 EPL license http://www.eclipse.org/legal/epl-v10.html
 use strict;
-use CGI qw/:standard/;      #todo: remove :standard when the code only uses object oriented interface
+use CGI::Fast; qw/:standard/;      #todo: remove :standard when the code only uses object oriented interface
 use Data::Dumper;
 
 #talk to the server
@@ -1263,32 +1263,53 @@ my $STATUS_CREATED = "201 Created";
 # print $q->end_html;       #todo: add the </body></html> tags
 # $q->url_param()      # gets url options, even when there is put/post data (unlike q->param)
 
+my $pathInfo;
+my $requestType;
+my $userAgent;
 
+my $pageContent;
+#my $request     = {clienttype => 'ws'};
+my $request;
+my $format = 'json';
+my $xmlinstalled;
+
+my $JSON;
+my $dbgdata;
+my $XCOLL;
+my $DEBUGGING;
+
+my $generalparams;
+my $paramhash;
+
+my $q;
+
+while (my $req = new CGI::Fast) {
+    process($req);
+}
 
 #### Main procedure to handle the REST request
-
+sub process {
 # To get the HTTP elements through perl CGI module
-my $q           = CGI->new;
-my $pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
-my $requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
-my $userAgent = $q->user_agent();        # the client program: curl, etc.
-my @path = split(/\//, $pathInfo);    # The uri path like /nodes/node1/...
+$q        = shift;
+$pathInfo    = $q->path_info;        # the resource specification, i.e. everything in the url after xcatws
+$requestType = $q->request_method();     # GET, PUT, POST, PATCH, DELETE
+$userAgent = $q->user_agent();        # the client program: curl, etc.
+#my @path = split(/\//, $pathInfo);    # The uri path like /nodes/node1/...
 
-# Define the golbal variables which will be used through the handling process
-my $pageContent = '';       # Global var containing the ouptut back to the rest client
-my $request     = {clienttype => 'ws'};     # Global var that holds the request to send to xcatd
-my $format = 'json';    # The output format for a request invoke
-my $xmlinstalled;    # Global var to speicfy whether the xml modules have been loaded
+$request     = {clienttype => 'ws'};
+$pageContent = "";
+$dbgdata = "";
+$DEBUGGING = "";
+$generalparams = "";
+$paramhash = "";
 
-# To easy the perl debug, this script can be run directly with 'perl -d'
-# This script also support to generate the rest api doc automatically.
 # Following part of code will not be run when this script is called by http server
-my $dbgdata;
+
 sub dbgusage { print "Usage:\n    $0 -h\n    $0 -g rst > ../../docs/source/advanced/restapi/restapi_resource/restapi_reference.rst (generate document)\n    $0 {GET|PUT|POST|DELETE} URI user:password \'{data}\'\n"; }
 
 if ($ARGV[0] eq "-h") {
     dbgusage();    
-    exit 0;
+    next;
 } elsif ($ARGV[0] eq "-g") {
     # generate the document
     require genrestapidoc;
@@ -1297,31 +1318,30 @@ if ($ARGV[0] eq "-h") {
     } else {
         genrestapidoc::gendoc(\%URIdef);
     }
-    exit 0;
+   next;
 } elsif ($ARGV[0] eq "-d") {
     displayUsage();
-    exit 0;
+    next;
 } elsif ($ARGV[0] =~ /(GET|PUT|POST|DELETE)/) {
     # parse the parameters when run this script locally
     $requestType = $ARGV[0];
     $pathInfo= $ARGV[1];
 
-    unless ($pathInfo) { dbgusage(); exit 1; }
+    unless ($pathInfo) { dbgusage(); next; }
     
     if ($ARGV[2] =~ /(.*):(.*)/) {
         $ENV{userName} = $1;
         $ENV{password} = $2;
     } else {
         dbgusage();    
-        exit 0;
+        next;
     }
     $dbgdata = $ARGV[3] if defined ($ARGV[3]);
 } elsif (defined ($ARGV[0])) {
     dbgusage();    
-    exit 1;
+    next;
 }
 
-my $JSON;       # global ptr to the json object.  Its set by loadJSON()
 # Since the json is the only supported format, load it at beginning
 # need to do this early, so we can fetch the PUT/POST params
 loadJSON();        
@@ -1331,15 +1351,15 @@ loadJSON();
 # Note: some of the values of the params in the hash can be arrays
 # $generalparams - the general parameters like 'debug=1', 'pretty=1'
 # $paramhash - all parameters that come from the url or put/post data except the ones that are put in $generalparams
-my ($generalparams, $paramhash) = fetchParameters();
+($generalparams, $paramhash) = fetchParameters();
 
-my $DEBUGGING = $generalparams->{debug};      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
+$DEBUGGING = $generalparams->{debug};      # turn on or off the debugging output by setting debug=1 (or 2) in the url string
 if ($DEBUGGING) {
     displaydebugmsg();
 }
 
 # The filter flag is used to group the nodes which have the same output 
-my $XCOLL = $generalparams->{xcoll}; 
+$XCOLL = $generalparams->{xcoll}; 
 
 # Process the format requested
 $format = $generalparams->{format} if (defined ($generalparams->{format}));
@@ -1475,7 +1495,6 @@ else {
 sub isGET { return uc($requestType) eq "GET"; }
 sub isPost { return uc($requestType) eq "POST"; }
 sub isPut { return uc($requestType) eq "PUT"; }
-sub isPost { return uc($requestType) eq "POST"; }
 sub isPatch { return uc($requestType) eq "PATCH"; }
 sub isDelete { return uc($requestType) eq "DELETE"; }
 
@@ -2951,7 +2970,7 @@ sub sendResponseMsg {
     print $q->header(-status => $code, -type => $tempFormat);
     if ($pageContent) { $pageContent .= "\n"; }     # if there is any content, append a newline
     print $pageContent;
-    exit(0);
+    next;
 }
 
 # Convert xcat request to xml for sending to xcatd
@@ -3212,4 +3231,4 @@ sub pushFlags {
     }
 }
 
-
+}
