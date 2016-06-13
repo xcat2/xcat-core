@@ -44,6 +44,15 @@ Create a node definition for the x86_64 compute node, here is a sample: ::
         serialport=0
         serialspeed=115200
 
+Verify the genesis packages:
+
+* **[RHEL/SLES]**: ``rpm -qa | grep -i genesis``
+
+* **[Ubuntu]**: ``dpkg -l | grep -i genesis``
+
+If missing, install the packages ``xCAT-genesis-base`` and ``xCAT-genesis-scripts`` from ``xcat-deps`` repository and run ``mknb <arch>`` to create the genesis network boot root image.
+
+
 Provision the node using the following commands: ::
 
     # The following prepares the boot files in /install and /tftpboot

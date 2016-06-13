@@ -270,3 +270,8 @@ If it exists, then use the return name and do the following:
 
       makeconservercf
 
+Update the genesis packages
+---------------------------
+
+Run ``mknb <arch>`` after changing the ip of MN.
+
