@@ -47,8 +47,21 @@ if [ ! -f /opt/xcat/xcatinfo ]; then
     mkdir -p /opt/xcat
     touch /opt/xcat/xcatinfo
 fi
-echo "XCATSERVER=$MASTER_IP" > /opt/xcat/xcatinfo
-echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+
+grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+    sed -i "s/XCATSERVER=.*/XCATSERVER=$MASTER_IP/" /opt/xcat/xcatinfo
+else
+    echo "XCATSERVER=$MASTER_IP" >> /opt/xcat/xcatinfo
+fi
+
+grep 'INSTALLDIR' /opt/xcat/xcatinfo 2>&1 > /dev/null
+if [ $? -eq 0 ]; then
+    sed -i "s/INSTALLDIR=.*/INSTALLDIR=$INSTALLDIR/" /opt/xcat/xcatinfo
+else
+    echo "INSTALLDIR=$INSTALLDIR" >> /opt/xcat/xcatinfo
+fi
+
 if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     msgutil_r "$MASTER_IP" "debug" "/opt/xcat/xcatinfo generated" "/var/log/xcat/xcat.log"
 fi

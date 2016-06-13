@@ -89,7 +89,12 @@ do
                 mkdir -p /opt/xcat
                 touch /opt/xcat/xcatinfo
             fi
-            echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+            grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+            if [ $? -eq 0 ]; then
+                sed -i "s/XCATSERVER=.*/XCATSERVER=$i/" /opt/xcat/xcatinfo
+            else
+                echo "XCATSERVER=$i" >> /opt/xcat/xcatinfo
+            fi
 	    break
 	fi
 	RAND=$(perl -e 'print int(rand(5)). "\n"')
