@@ -1704,7 +1704,7 @@ passed as argument rather than by table value',
         },
     },
     taskstate => {
-        cols         => [qw(node command state pid reserve)],
+        cols         => [qw(node command state pid reserve disable)],
         keys         => [qw(node)],
         table_desc   => 'The task state for the node.',
         descriptions => {
