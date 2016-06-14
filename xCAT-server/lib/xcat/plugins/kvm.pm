@@ -3987,7 +3987,7 @@ sub dohyp {
             }
             $text =~ s/^\s+//;
             $text =~ s/\s+$//;
-            $output{node}->[0]->{errorcode} = $rc;
+            $output{node}->[0]->{errorcode} = [$rc];
             $output{node}->[0]->{name}->[0] = $node;
             if ($rc == 0) {
                 $output{node}->[0]->{data}->[0]->{contents}->[0] = $text;
