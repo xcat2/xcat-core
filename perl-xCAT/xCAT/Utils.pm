@@ -4711,5 +4711,4 @@ sub get_nmapversion {
     return $nmap_version;
 }
 
-
 1;
