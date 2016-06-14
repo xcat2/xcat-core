@@ -3,6 +3,10 @@ if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
     set -x
 fi
 
+if [ "$XCATDEBUGMODE" = "2" ]; then
+    echo 'root:cluster' | chpasswd
+fi
+
 #find first available block device (sda or vda likely)
 #TODO: pick a likely non-SAN target if possible
 
