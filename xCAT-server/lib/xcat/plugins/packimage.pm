@@ -181,8 +181,12 @@ sub process_request {
     system("mkdir -p $rootimg_dir/xcatpost");
     system("cp -r $installroot/postscripts/* $rootimg_dir/xcatpost/");
 
-    #put the image name and timestamp into diskless image when it is packed.
+    #put the image name, uuid and timestamp into diskless image when it is packed.
     `echo IMAGENAME="'$imagename'" > $rootimg_dir/opt/xcat/xcatinfo`;
+
+    my $uuid = `uuidgen`;
+    chomp $uuid;
+    `echo IMAGEUUID="'$uuid'" >> $rootimg_dir/opt/xcat/xcatinfo`;
     
     my $timestamp = `date`;
     chomp $timestamp;
