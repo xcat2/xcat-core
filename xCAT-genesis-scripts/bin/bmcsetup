@@ -63,15 +63,15 @@ function cold_reset_bmc() {
         else
             # for Non OpenPower servers, just sleep for some set time.
             sleep 15 
-        fi 
 
-        TRIES=0
-        # Get the LAN information
-        while ! ipmitool lan print $LANCHAN > /dev/null; do
-            sleep 3
-            let TRIES=TRIES+1
-            if [ $TRIES -gt $TIMEOUT ]; then break; fi
-        done
+            TRIES=0
+            # Get the LAN information
+            while ! ipmitool lan print $LANCHAN > /dev/null; do
+                sleep 3
+                let TRIES=TRIES+1
+                if [ $TRIES -gt $TIMEOUT ]; then break; fi
+            done
+        fi 
     fi
 }
 
