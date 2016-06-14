@@ -124,8 +124,8 @@ sub connect {
              return( "Unable to redirect STDERR: $!" );
         }
     }
-    $IO::Socket::SSL::VERSION = undef;
-    eval { require Net::SSL };
+#    $IO::Socket::SSL::VERSION = undef;
+#    eval { require Net::SSL };
 
     ##################################
     # Turn on tracing

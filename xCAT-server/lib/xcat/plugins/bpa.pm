@@ -40,13 +40,13 @@ sub preprocess_request {
     # So we should invalidate  IO::Socket::SSL here and
     # load Net::SSL.
     #######################################################
-    $IO::Socket::SSL::VERSION = undef;
-    eval { require Net::SSL };
-    if ( $@ ) {
-        my $callback = $_[1];
-        $callback->( {errorcode=>1,data=>[$@]} );
-        return(1);
-    }
+    #$IO::Socket::SSL::VERSION = undef;
+    #eval { require Net::SSL };
+    #if ( $@ ) {
+    #    my $callback = $_[1];
+    #    $callback->( {errorcode=>1,data=>[$@]} );
+    #    return(1);
+    #}
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
 }
 
