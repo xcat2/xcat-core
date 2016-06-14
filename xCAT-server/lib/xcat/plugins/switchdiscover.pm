@@ -14,6 +14,7 @@ use xCAT::NodeRange;
 use xCAT::NetworkUtils;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::Table;
 use XML::Simple;
 no strict;
 use Data::Dumper;
@@ -33,12 +34,13 @@ my %global_switch_type = (
     Juniper => "Juniper",
     juniper => "Juniper",
     Cisco => "Cisco",
+    cisco => "Cisco",
     BNT => "BNT",
+    Blade => "BNT",
     Mellanox => "Mellanox",
     mellanox => "Mellanox",
     MLNX => "Mellanox",
-    MELLAN => "Mellanox",
-    IBM  => "BNT"
+    MELLAN => "Mellanox"
 );
 
 
@@ -683,6 +685,7 @@ sub nmap_scan {
     my $switches;
     my $found;
     my $counter=0;
+    my $osguess_ips=[];
     if ($result_ref) {
         if (exists($result_ref->{host})) {
             my $host_ref = $result_ref->{host};
@@ -716,67 +719,8 @@ sub nmap_scan {
                                 }
                             }
                         } 
-                        ##########################################################
-                        # If there is no vendor or other than %global_switch_type,
-                        # issue the nmap again to do more aggresively discovery
-                        # Choose best guess from osscan
-                        # only search port 22 and 23 for fast performance
-                        ###########################################################
                         if ( ($found == 0) && ($type eq "mac") ) {
-                            if (exists($globalopt{verbose}))    {
-                                send_msg($request, 0, "*********************************");
-                                send_msg($request, 0, "Couldn't find vendor info, use nmap osscan command to choose best guess");
-                            }
-                            $ccmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 -oX - $ip | grep osclass | grep -v embedded ";
-                            if (exists($globalopt{verbose})) {
-                                send_msg($request, 0, "Process command: $ccmd");
-                            }
-                            my $os_result = xCAT::Utils->runcmd($ccmd, 0);
-                            if ($::RUNCMD_RC == 0)
-                            {
-                                if (exists($globalopt{verbose})) {
-                                    send_msg($request, 0, "$os_result\n");
-                                }
-                                my $os_vendor;
-                                my @lines = split /\n/ => $os_result;
-                                foreach my $line (@lines) {
-                                    # pick the first one if found osclass type = switch
-                                    if ($line =~ /switch/) {
-                                        if ($line =~ /vendor=\"(\S*)\"/) {
-                                            $os_vendor = $1;
-                                            last;
-                                        }
-                                    }
-                                    # if didn't find switch type,  choose router as switch
-                                    if ($line =~ /router/) {
-                                        if ($line =~ /vendor=\"(\S*)\"/) {
-                                            if (!($os_vendor)) {
-                                                $os_vendor = $1;
-                                            }
-                                        }
-                                    }
-                                }
-                                if ($os_vendor) {
-                                    $switches->{$mac}->{ip} = $ip;
-                                    $switches->{$mac}->{vendor} = $os_vendor;
-                                    $switches->{$mac}->{name} = $host->{hostname};
-                                    $found = 1;
-                                    if (exists($globalopt{verbose}))    {
-                                        send_msg($request, 0, "Choose best guess: ip=$ip, mac=$mac, vendor=$os_vendor");
-                                        send_msg($request, 0, "*********************************\n");
-                                    }
-                                } else {
-                                    if (exists($globalopt{verbose}))    {
-                                        send_msg($request, 0, "ip=$ip, mac=$mac is not switch");
-                                        send_msg($request, 0, "*********************************\n");
-                                    }
-                                }
-                            } else {
-                                if (exists($globalopt{verbose}))    {
-                                    send_msg($request, 0, "ip=$ip, mac=$mac is not switch");
-                                    send_msg($request, 0, "*********************************\n");
-                                }
-                            }
+                            push(@$osguess_ips, $ip);
                         } # end nmap osscan command
                     } #end for each address
                 }
@@ -784,8 +728,105 @@ sub nmap_scan {
         }
     }
 
-    return $switches
+    my $guess_switches = nmap_osguess($request, $osguess_ips);
+    foreach my $guess_mac ( keys %$guess_switches ) {
+        $switches->{$guess_mac}->{ip} = $guess_switches->{$guess_mac}->{ip};;
+        $switches->{$guess_mac}->{vendor} = $guess_switches->{$guess_mac}->{vendor};
+    }
+
+    return $switches;
 }
+
+##########################################################
+# If there is no vendor or other than %global_switch_type,
+# issue the nmap again to do more aggresively discovery
+# Choose best guess from osscan
+# only search port 22 and 23 for fast performance
+###########################################################
+sub nmap_osguess {
+    my $request  = shift;
+    my $ranges = shift;
+    my $switches;
+    my $cmd;
+
+    if (exists($globalopt{verbose}))    {
+        send_msg($request, 0, "Couldn't find vendor info, use nmap osscan command to choose best guess");
+    }
+
+    my $nmap_version = xCAT::Utils->get_nmapversion();
+    if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
+        $cmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 @$ranges | grep -E 'Interesting ports on|MAC Addres|Device|Running|Aggressive OS guesses' ";
+    } else {
+        $cmd = "/usr/bin/nmap -O --osscan-guess -A -p 22,23 @$ranges | grep -E 'Nmap scan report|MAC Addres|Device|Running|Aggressive OS guesses' ";
+    }
+    if (exists($globalopt{verbose})) {
+        send_msg($request, 0, "Process command: $cmd");
+    }
+    my $result = xCAT::Utils->runcmd($cmd, 0);
+    if (defined($globalopt{r}) || defined($globalopt{verbose})) {
+        send_msg($request, 0, "$result\n" );
+    }
+    if ($::RUNCMD_RC == 0)
+    {
+        my @lines;
+        if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
+            @lines = split /Interesting ports /, $result;
+        } else {
+            @lines = split /Nmap scan /, $result;
+        }
+        foreach my $lines_per_ip (@lines) {
+            my @lines2 = split /\n/, $lines_per_ip;
+            my $isswitch=0;
+            my $ip;
+            my $mac;
+            my $vendor;
+            foreach my $line (@lines2) {
+                if ($line =~ /\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
+                {
+                    $ip = $1;
+                }
+
+                if ($line =~ /MAC Address/) {
+                    my @array  = split / /, $line;
+                    $mac = $array[2];
+                }
+                if ( $line =~ /Device type/ ) {
+                    if ( ( $line =~ /switch/) || ( $line =~ /router/) ) {
+                        $isswitch=1;
+                    } else {
+                        last;
+                    }  
+                }
+                my $search_string = join '|', keys(%global_switch_type);
+                if ($line =~ /Running/) {
+                    if ($line =~ /($search_string)/){
+                        $vendor = $1;
+                        last;
+                    }
+                }
+                if ($line =~ /Aggressive OS/) {
+                    if ($line =~ /($search_string)/){
+                        $vendor = $1;
+                        $isswitch=1;
+                    }
+                }
+                
+            }
+            if ($isswitch == 1) {
+                $switches->{$mac}->{ip} = $ip;
+                $switches->{$mac}->{vendor} = $vendor;
+                if (exists($globalopt{verbose})) {
+                    send_msg($request, 0, "FOUND switch from osscan-guess: $ip, $mac, $vendor");
+                }
+            }
+        }
+
+    }
+
+    return $switches; 
+   
+}
+
 
 
 
@@ -811,14 +852,6 @@ sub snmp_scan {
     my $switches;
     my $counter = 0;
 
-    # snmpwalk command has to be available for snmp_scan
-    if (-x "/usr/bin/snmpwalk" ){
-        send_msg($request, 0, "Discovering switches using snmpwalk.....");
-    } else {
-        send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command first");
-        return 1;
-    }
-
     #################################################
     # If --range options, take iprange, if noderange is defined
     # us the ip addresses of the nodes. If none is define, use the
@@ -826,14 +859,19 @@ sub snmp_scan {
     ##################################################
     my $ranges = get_ip_ranges($request);
 
+    # snmpwalk command has to be available for snmp_scan
+    if (-x "/usr/bin/snmpwalk" ){
+        send_msg($request, 0, "Discovering switches using snmpwalk for @$ranges .....");
+    } else {
+        send_msg($request, 0, "snmpwalk is not available, please install snmpwalk command first");
+        return 1;
+    }
 
     ##########################################################
     #use nmap to parse the ip range and possible output from the command:
     # Nmap scan report for switch-10-5-22-1 (10.5.22.1) 161/udp open  snmp
     # Nmap scan report for 10.5.23.1 161/udp open  snmp
     # Nmap scan report for 10.5.24.1 161/udp closed snmp  
-    # Host 10.5.23.1 appears to be up ... good. 161/udp open|filtered snmp
-    # Host 10.5.24.1 appears to be up ... good. 161/udp closed snmp
     ##########################################################
     my $nmap_version = xCAT::Utils->get_nmapversion();
     if (xCAT::Utils->version_cmp($nmap_version,"5.10") < 0) {
@@ -1164,12 +1202,41 @@ sub get_ip_ranges {
     }
 
     # for default, use the subnets for all the live nics on the mn
+    # my_nets will return all the networks defined in the networks 
+    # table, we need to exclude disable networks here.
     my $nets = xCAT::NetworkUtils->my_nets();
     my $ranges=[];
-    foreach my $net (keys %$nets) {
-        if ($net !~ /127\.0\.0\.0/) {
-            push(@$ranges, $net);
+    my $nettab = xCAT::Table->new('networks');
+    my $disable_nets=[];
+    if ($nettab) {
+        my $netents = $nettab->getAllEntries("all");
+        foreach (@$netents) {
+            if ($_->{disable} =~ /1|YES|Yes|yes|Y|n/) {
+                push(@$disable_nets, $_->{'net'});
+                if (exists($globalopt{verbose}))    {
+                    send_msg($request, 1, "network is disabled for  $_->{'net'}, $_->{'mask'}");
+                }
+            }
         }
+    }
+    foreach my $net (keys %$nets) {
+        my $netdisabled=0;
+        if ($net !~ /127\.0\.0\.0/) {
+            my ($nt, $nm) = split (/\//, $net);
+            foreach (@$disable_nets) {
+                if ( $nt == $_) {
+                    $netdisabled = 1;
+                }
+            }
+            if ($netdisabled != 1) {
+                push(@$ranges, $net);
+            }
+        }
+    }
+ 
+    if (!@$ranges) {
+        send_msg($request, 1, "ip range is empty, nothing to discover" );
+        exit 0;
     }
 
     return $ranges;
