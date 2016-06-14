@@ -27,7 +27,7 @@ TIMEOUT=15
 #
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
-        echo "FATAL ERROR - XPROD must be set before calling cold_reset_bmc()"
+        logger -s -t $log_label -p local4.crit "FATAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
 
@@ -40,7 +40,6 @@ function cold_reset_bmc() {
             sleep 30
         fi
         logger -s -t $log_label -p local4.info "Resetting BMC ..."
-        echo "Resetting BMC ..."
         ipmitool mc reset cold
 
         logger -s -t $log_label -p local4.info "Waiting for the BMC to appear ..."
@@ -59,7 +58,7 @@ function cold_reset_bmc() {
                 tries=$(($tries+1))
             done
             TOTAL_SEC=$((${SLEEP_INTERVAL} * ${MAX_ITERATION}))
-            echo "ERROR, After waiting ${TOTAL_SEC} seconds, the BMC is not in a ready state."
+            logger -s -t $log_label -p local4.error "ERROR, After waiting ${TOTAL_SEC} seconds, the BMC is not in a ready state."
         else
             # for Non OpenPower servers, just sleep for some set time.
             sleep 15 
@@ -83,7 +82,7 @@ function cold_reset_bmc() {
 #
 function snooze() { 
     if [ -z $XPROD ]; then 
-        echo "FATAL ERROR - XPROD must be set before calling snooze()"
+        logger -s -t $log_label -p local4.crit "FATAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
 
@@ -124,23 +123,28 @@ while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
 done
 kill $CREDPID
 NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
-logger -t $log_label -p local4.info "NUMBMCS=$NUMBMCS"
+logger -s -t $log_label -p local4.debug "BMC IP=$BMCIP, NETMASK=$BMCNM, GATEWAY=$BMCGW, VLAN=$BMCVLAN, USER=$BMCUS, PASSWORD=$BMCPW" 
+logger -s -t $log_label -p local4.info "NUMBMCS=$NUMBMCS"
 #
 # Get the BMC Version and Manufacturer ID
 #
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
-logger -t $log_label -p local4.info "IPMIVER=$IPMIVER"
-logger -t $log_label -p local4.info "IPMIMFG=$IPMIMFG"
+logger -s -t $log_label -p local4.info "IPMIVER=$IPMIVER, IPMIMFG=$IPMIMFG"
+
 # Get the BMC Product ID
 XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
-logger -t $log_label -p local4.info "XPROD=$XPROD"
+logger -s -t $log_label -p local4.info "XPROD=$XPROD"
 
+#
+# IPMIMFG=2 = IBM
+# IPMIMFG=0 = OpenPower 
+#
 if [ "$IPMIMFG" == 2 ]; then #IBM
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-        logger -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+        logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
         if [ ! -z "$BMCPORT" ]; then
             let idev=0
             IFS=','
@@ -150,7 +154,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                 # Set the PEF Configuration Parameters (Platform Event Filtering)
                 ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                logger -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
+                logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                 while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                     sleep 1
                     # Get the LAN Configuration Parameters (OEM)
@@ -165,7 +169,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     else
         # Get a ID for the server
         IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
-        logger -t $log_label -p local4.info "IBMFAM is $IBMFAM"
+        logger -s -t $log_label -p local4.info "IBMFAM is $IBMFAM"
         if [ "$IBMFAM" == "59554f4f" ]; then
             BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
@@ -174,7 +178,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
                 for p in $BMCPORT; do
                     ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                    logger -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
+                    logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                     while [ "$CURBMCPORT" -ne "$BMCPORT" ]; do
                         sleep 1
                         CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
@@ -187,13 +191,13 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     fi
 elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
     IBMVPDV=`ipmitool raw 0x3a 0xb 2 0 16 1`
-    logger -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
+    logger -s -t $log_label -p local4.info "XPROD is $XPROD, IBMVPDV is $IBMVPDV"
     if [ $IBMVPDV -eq 2 ]; then
         ISITE=1;
     fi
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-        logger -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+        logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
         if [ ! -z "$BMCPORT" ]; then
             let idev=0
             IFS=','
@@ -208,7 +212,7 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
                 # reverts to dhcp then static, which setting a static ip for is
                 # considered invalid
                 CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
-                logger -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
+                logger -s -t $log_label -p local4.info "CURBMCPORT is $CURBMCPORT"
                 while [ -z "$CURBMCPORT" -o 0"$CURBMCPORT" -ne "$BMCPORT" ]; do
                     sleep 1
                     CURBMCPORT=`ipmitool -d $idev raw 0xc 2 1 0xc0 0 0 | awk '{print $2}'`
@@ -352,7 +356,7 @@ for user in $BMCUS; do
     # Get the specified user
     CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
     DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
-    logger -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
+    logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
     for user in $DISABLEUSERS; do
         TRIES=0
         # Disable the non-specified user 
@@ -378,7 +382,7 @@ for user in $BMCUS; do
     # Get privilege for the specified user
     #
     CURRPRIV=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $6}'`
-    logger -t $log_label -p local4.info "CURRPRIV=$CURRPRIV"
+    logger -s -t $log_label -p local4.info "CURRPRIV=$CURRPRIV"
     if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
         # Set the ADMIN privilege for the specified user
         while ! ipmitool -d $idev user priv $USERSLOT 4 $LANCHAN; do
@@ -493,7 +497,7 @@ while [ $idev -gt 0 ]; do
         TWOIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^2$'|sed -e 's/:.*//')
         THREEIDX=$(ipmitool lan print $LANCHAN|grep ^RMCP+|cut -d: -f 2|sed -e 's/ //' -e 's/,/\n/g'|grep -n '^3$'|sed -e 's/:.*//')
         ACCESS=$(ipmitool lan print $LANCHAN|grep 'Cipher Suite Priv Max'|cut -d: -f 2|sed -e 's/ //g' -e 's/\(.\)/\1\n/g'|grep -v '^$')
-        logger -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
+        logger -s -t $log_label -p local4.info "ZEROIDX is $ZEROIDX, ONEIDX is $ONEIDX, TWOIDX is $TWOIDX, THREEIDX is $THREEIDX, ACCESS is $ACCESS"
         NEWACCESS=""
         i=1
         for elem in $ACCESS; do
