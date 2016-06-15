@@ -2890,7 +2890,7 @@ sub fixup_clone_network {
 }
 
 sub mkvm {
-    shift;    #Throuw away first argument
+    shift;    #Throw away first argument
     @ARGV = @_;
     my $disksize;
     my $mastername;
@@ -2905,6 +2905,12 @@ sub mkvm {
         "cpus=s"     => \$cpucount,
         'force|f'    => \$force
     );
+    if (defined $confdata->{vm}->{$node}->[0]->{othersettings}) {
+        my $vmothersettings = $confdata->{vm}->{$node}->[0]->{othersettings};
+        if ($vmothersettings =~ /nodefromrscan/) {
+            return 1, "this node was defined through rscan, 'mkvm' is not supported.";
+        }
+    }
     if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
         my $diskname = $confdata->{vm}->{$node}->[0]->{storage};
         if ($diskname =~ /^phy:/) {  #in this case, mkvm should have no argumens
@@ -3041,11 +3047,10 @@ sub power {
 sub rscan {
     my $hyper = shift;
     @ARGV=@_;
-    my ($write, $update, $stanza, $create);
+    my ($write, $update, $create);
     GetOptions(
         'w' => \$write,
         'u' => \$update,
-        'z' => \$stanza,
         'n' => \$create,
     );
     my @doms;
@@ -3058,9 +3063,6 @@ sub rscan {
     }
     my %host2kvm;
     my @displaymsg;
-    if ($stanza) {
-        push @displaymsg, "# <xCAT data object stanza file>\n";
-    }
     my $handle_vmtab;
     $handle_vmtab = xCAT::Table->new( "vm", -create=>1, -autocommit=>0 );
     if (!$handle_vmtab) {
@@ -3097,7 +3099,7 @@ sub rscan {
         my $domain=$parser->parse_string($currxml);
         my ($uuid, $node, $vmcpus, $vmmemory, $vmnics, $vmstorage, $arch, $mac, $vmnicnicmodel);
         my @uuidobj = $domain->findnodes("/domain/uuid");
-        if (@uuidobj and defined($uuidobj[0])) {
+        if (@uuidobj) {
             $uuid = $uuidobj[0]->to_literal;
             $uuid =~ s/^(..)(..)(..)(..)-(..)(..)-(..)(..)/$4$3$2$1-$6$5-$8$7/;
         }
@@ -3106,7 +3108,7 @@ sub rscan {
             $maxlength[0] = length($type);
         }
         my @nodeobj = $domain->findnodes("/domain/name");
-        if (@nodeobj and defined($nodeobj[0])) {
+        if (@nodeobj) {
             $node = $nodeobj[0]->to_literal;
         }
         if (length($node) > $maxlength[1]) {
@@ -3121,14 +3123,14 @@ sub rscan {
             $maxlength[3] = length($id);
         }
         my @vmcpusobj = $domain->findnodes("/domain/vcpu");
-        if (@vmcpusobj and defined($vmcpusobj[0])) {
+        if (@vmcpusobj) {
             $vmcpus = $vmcpusobj[0]->to_literal;
         }
         if (length($vmcpus) > $maxlength[4]) {
             $maxlength[4] = length($vmcpus);
         }
         my @vmmemoryobj = $domain->findnodes("/domain/memory");
-        if (@vmmemoryobj and defined($vmmemoryobj[0])) {
+        if (@vmmemoryobj) {
             my $mem = $vmmemoryobj[0]->to_literal;
             my $unit = $vmmemoryobj[0]->getAttribute("unit");
             if (($unit eq "KiB") or ($unit eq "k")) {
@@ -3156,39 +3158,58 @@ sub rscan {
         }
         my @vmstoragediskobjs = $domain->findnodes("/domain/devices/disk");
         foreach my $vmstoragediskobj (@vmstoragediskobjs) {
+            my ($vmstorage_file_obj, $vmstorage_block_obj);
             if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "file")) {
                 my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
-                if (@vmstorageobj and defined($vmstorageobj[0])) {
-                    $vmstorage = $vmstorageobj[0]->getAttribute("file");
-                    last;
+                if (@vmstorageobj) {
+                    $vmstorage_file_obj = $vmstorageobj[0]->getAttribute("file");
                 }
+                $vmstorage .= "$vmstorage_file_obj,";
+            }
+            if (($vmstoragediskobj->getAttribute("device") eq "disk") and ($vmstoragediskobj->getAttribute("type") eq "block")) {
+                my @vmstorageobj = $vmstoragediskobj->findnodes("./source");
+                if (@vmstorageobj) {
+                    $vmstorage_block_obj = $vmstorageobj[0]->getAttribute("dev");
+                }
+                $vmstorage .= "$vmstorage_block_obj,";
             }
         }
+        chop($vmstorage);
         if (length($vmstorage) > $maxlength[7]) {
             $maxlength[7] = length($vmstorage);
         }
         my @archobj = $domain->findnodes("/domain/os/type");
-        if (@archobj and defined($archobj[0])) {
+        if (@archobj) {
             $arch = $archobj[0]->getAttribute("arch");
         }
         my @interfaceobjs = $domain->findnodes("/domain/devices/interface");
         foreach my $interfaceobj (@interfaceobjs) {
             if (($interfaceobj->getAttribute("type")) eq "bridge" ) {
+                my ($vmnics_obj, $mac_obj, $vmnicnicmodel_obj);
                 my @vmnicsobj = $interfaceobj->findnodes("./source");
                 my @macobj = $interfaceobj->findnodes("./mac");
                 my @vmnicnicmodelobj = $interfaceobj->findnodes("./model");
-                if ((@vmnicsobj and defined($vmnicsobj[0])) and (@macobj and defined($macobj[0])) and (@vmnicnicmodelobj and defined($vmnicnicmodelobj[0]))) {
-                    $vmnics = $vmnicsobj[0]->getAttribute("bridge");
-                    $mac = $macobj[0]->getAttribute("address");
-                    $vmnicnicmodel = $vmnicnicmodelobj[0]->getAttribute("type");
-                    last;
+                if (@vmnicsobj) {
+                    $vmnics_obj = $vmnicsobj[0]->getAttribute("bridge");
                 }
+                if (@macobj) {
+                    $mac_obj = $macobj[0]->getAttribute("address");
+                }
+                if (@vmnicnicmodelobj) {
+                    $vmnicnicmodel_obj = $vmnicnicmodelobj[0]->getAttribute("type");
+                }
+                $vmnics .= "$vmnics_obj,";
+                $mac .= "$mac_obj,";
+                $vmnicnicmodel .= "$vmnicnicmodel_obj,";
             }
         }
+        chop($vmnics);
+        chop($mac);
+        chop($vmnicnicmodel);
         if (length($vmnics) > $maxlength[6]) {
             $maxlength[6] = length($vmnics);
         }
-        push @{$host2kvm{$uuid}}, join( ",", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
+        push @{$host2kvm{$uuid}}, join( ":", $type,$node,$hypervisor,$id,$vmcpus,$vmmemory,$vmnics,$vmstorage,$arch,$mac,$vmnicnicmodel );
         if ($write) {
             unless (exists $hash_vm2host{$node}) {
                 $updatetable->{vm}->{$node}->{host} = $hypervisor;
@@ -3197,15 +3218,20 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
                 $updatetable->{vm}->{$node}->{nics} = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
                 $updatetable->{mac}->{$node}->{mac} = $mac;
                 $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
                 $updatetable->{nodetype}->{$node}->{arch} = $arch;
                 $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{nodehm}->{$node}->{serialport} = "0";
+                $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
+                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
             }
             else {
                 if ($hash_vm2host{$node} eq $hypervisor) {
 
-                #mark this node to delete in 'vm' 'mac' vpd' 'nodetype' 'nodehm' tables
+                #mark this node to delete in 'vm' 'mac' vpd' 'nodelist' 'nodetype' 'nodehm' tables
                 $updatetable->{vm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
 
                 $updatetable->{vm}->{$node}->{host} = $hypervisor;
@@ -3214,14 +3240,21 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
                 $updatetable->{vm}->{$node}->{nics} = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
                 $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{mac}->{$node}->{mac} = $mac;
                 $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodelist}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
                 $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodetype}->{$node}->{arch} = $arch;
                 $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{nodehm}->{$node}->{serialport} = "0";
+                $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
+                $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
                 }
                 else {
                     $callback->({data=>"the name of KVM guest $node on $hypervisor conflicts with the existing node in xCAT table."});
@@ -3237,14 +3270,21 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
                 $updatetable->{vm}->{$node}->{nics} = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
                 $updatetable->{mac}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{mac}->{$node}->{mac} = $mac;
                 $updatetable->{vpd}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodelist}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
                 $updatetable->{nodetype}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodetype}->{$node}->{arch} = $arch;
                 $updatetable->{nodehm}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
                 $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{nodehm}->{$node}->{serialport} = "0";
+                $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
+                $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node} = $node;
+                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
             }
         }
         if ($create) {
@@ -3255,27 +3295,20 @@ sub rscan {
                 $updatetable->{vm}->{$node}->{cpus} = $vmcpus;
                 $updatetable->{vm}->{$node}->{nics} = $vmnics;
                 $updatetable->{vm}->{$node}->{nicmodel} = $vmnicnicmodel;
+                $updatetable->{vm}->{$node}->{othersettings} = "nodefromrscan";
                 $updatetable->{mac}->{$node}->{mac} = $mac;
                 $updatetable->{vpd}->{$node}->{uuid} = $uuid;
+                $updatetable->{nodelist}->{$node}->{groups} = "vm,all";
                 $updatetable->{nodetype}->{$node}->{arch} = $arch;
                 $updatetable->{nodehm}->{$node}->{mgt} = "kvm";
+                $updatetable->{nodehm}->{$node}->{serialport} = "0";
+                $updatetable->{nodehm}->{$node}->{serialspeed} = "115200";
+                $updatetable->{kvm_nodedata}->{$node}->{xml} = $currxml;
             }
-        }
-        if ($stanza) {
-            push @displaymsg, "$node";
-            push @displaymsg, "    arch=$arch";
-            push @displaymsg, "    mac=$mac";
-            push @displaymsg, "    mgt=$type";
-            push @displaymsg, "    vmcpus=$vmcpus";
-            push @displaymsg, "    vmhost=$hypervisor";
-            push @displaymsg, "    vmmemory=$vmmemory";
-            push @displaymsg, "    vmnicnicmodel=$vmnicnicmodel";
-            push @displaymsg, "    vmnics=$vmnics";
-            push @displaymsg, "    vmstorage=$vmstorage";
         }
     }
 
-    if (!$stanza) {
+    if ((!$write) and (!$update) and (!$create)) {
         my $header;
         $rscan_header[0][1] = sprintf "%%-%ds",($maxlength[0]+3);
         $rscan_header[1][1] = sprintf "%%-%ds",($maxlength[1]+3);
@@ -3296,7 +3329,7 @@ sub rscan {
             my @data;
             foreach (@{$host2kvm{$host}}) {
                 my $info = $_;
-                foreach (split(',', $info)) {
+                foreach (split(':', $info)) {
                     my $attr = $_;
                     push @data, "$attr";
                 }
