@@ -54,13 +54,13 @@ sub preprocess_request {
     # So we should invalidate  IO::Socket::SSL here and
     # load Net::SSL.
     #######################################################
-    $IO::Socket::SSL::VERSION = undef;
-    eval { require Net::SSL };
-    if ( $@ ) {
-        my $callback = $_[1];
-        $callback->( {errorcode=>1,data=>[$@]} );
-        return(1);
-    }
+#    $IO::Socket::SSL::VERSION = undef;
+#    eval { require Net::SSL };
+#    if ( $@ ) {
+#        my $callback = $_[1];
+#        $callback->( {errorcode=>1,data=>[$@]} );
+#        return(1);
+#    }
     my ($arg1, $arg2, $arg3) = @_;
     if ($arg1->{command}->[0] eq "getfspcon") { #Can handle it here and now
         my $node = $arg1->{noderange}->[0];
