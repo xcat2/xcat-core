@@ -362,10 +362,10 @@ for user in $BMCUS; do
     CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
     DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
     logger -s -t $log_label -p local4.info "CURRENTUSER=$CURRENTUSER, DISABLEUSERS=$DISABLEUSERS"
-    for user in $DISABLEUSERS; do
+    for userid in $DISABLEUSERS; do
         TRIES=0
         # Disable the non-specified user 
-        while ! ipmitool -d $idev user disable $user; do
+        while ! ipmitool -d $idev user disable $userid; do
             sleep 1
             let TRIES=TRIES+1
             if [ $TRIES -gt $TIMEOUT ]; then break; fi
