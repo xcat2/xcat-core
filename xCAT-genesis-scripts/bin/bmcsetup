@@ -27,7 +27,7 @@ TIMEOUT=15
 #
 function cold_reset_bmc() { 
     if [ -z $XPROD ]; then 
-        logger -s -t $log_label -p local4.crit "FATAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
 
@@ -82,14 +82,16 @@ function cold_reset_bmc() {
 #
 function snooze() { 
     if [ -z $XPROD ]; then 
-        logger -s -t $log_label -p local4.crit "FATAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
+        logger -s -t $log_label -p local4.crit "CRITICAL ERROR - XPROD must be set before calling ${FUNCNAME[0]}"
         exit 1
     fi
 
     if [ "$XPROD" = "43707" ]; then
         # For OpenPower Machines 
+        logger -s -t $log_label -p local4.debug "OpenPower, snooze for 30 seconds..."
         sleep 30
     else
+        logger -s -t $log_label -p local4.debug "snooze for 1 second..."
         sleep 1
     fi
 }
@@ -327,6 +329,9 @@ for b in $BMCVLAN; do
     done
     let idev=idev+1
 done
+
+# After network commands are issued, pause to allow the BMC to apply (OpenPower)
+snooze 
 
 let idev=NUMBMCS-1
 for user in $BMCUS; do
