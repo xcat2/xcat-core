@@ -1,4 +1,14 @@
+export XCATDEBUGMODE="#TABLEBLANKOKAY:site:key=xcatdebugmode:value#"
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    set -x
+fi
+
 #!/bin/sh
+
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+    killall syslogd
+    syslogd -R #XCATVAR:XCATMASTER#
+fi
 
 if [ ! -c /dev/vcs ]; then
     mknod /dev/vcs c 7 0
@@ -222,3 +232,7 @@ echo "    ." >> /tmp/partitionfile
 
 exit 0
 
+if [ "$XCATDEBUGMODE" = "1" ] || [ "$XCATDEBUGMODE" = "2" ]; then
+then
+    set +x
+fi
