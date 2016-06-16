@@ -2541,10 +2541,8 @@ sub collapsenicsattr()
             if ($1 && $2) {
                 # chdef <noderange> nicips.eth2= to remove the definition for eth2
                 # in this case, the $nodeattrhash->{'nicips.eth0'} is blank
-                if ($nodeattrhash->{$nodeattr}) {
-                    # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
-                    $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr};
-                }
+                # $nicattrs{nicips}{eth0} = "1.1.1.1|1.2.1.1"
+                $nicattrs{$1}{$2} = $nodeattrhash->{$nodeattr};
 
                 # remove nicips.eth0 from the %::FILEATTRS
                 delete $nodeattrhash->{$nodeattr};
@@ -2557,7 +2555,9 @@ sub collapsenicsattr()
         my @tmparray = ();
         foreach my $nicname (keys %{$nicattrs{$nicattr}}) {
             # eth0!1.1.1.1|1.2.1.1
-            push @tmparray, "$nicname!$nicattrs{$nicattr}{$nicname}";
+            if($nicattrs{$nicattr}{$nicname}){
+                push @tmparray, "$nicname!$nicattrs{$nicattr}{$nicname}";
+            }
         }
         # eth0!1.1.1.1|1.2.1.1,eth1!2.1.1.1|2.2.1.1
         $nodeattrhash->{$nicattr} = join(',', @tmparray);
