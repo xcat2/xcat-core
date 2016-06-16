@@ -89,7 +89,7 @@ do
                 mkdir -p /opt/xcat
                 touch /opt/xcat/xcatinfo
             fi
-            grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+            grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null 2>&1
             if [ $? -eq 0 ]; then
                 sed -i "s/XCATSERVER=.*/XCATSERVER=$i/" /opt/xcat/xcatinfo
             else

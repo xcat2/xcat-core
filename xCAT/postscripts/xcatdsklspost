@@ -322,7 +322,7 @@ if [ "$MODE" = "4" ]; then # for statelite mode
         if [ "$KEY" =  "XCAT" ]; then
             TMP=`echo $i | awk -F= '{print $2}'`
             XCATSERVER=`echo $TMP | cut -d: -f1`
-            grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+            grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
             if [ $? -eq 0 ]; then
                 sed -i "s/XCATSERVER=.*/XCATSERVER=$XCATSERVER/" /opt/xcat/xcatinfo
             else
@@ -365,7 +365,7 @@ else # for common mode  MODE=1,2,3,5 (updatenode,moncfg,node deployment)
             break
         fi
      done
-     grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+     grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
      if [ $? -eq 0 ]; then
         sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
      else
@@ -639,7 +639,7 @@ if [ -n "$new_ms" ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
     fi
-    grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/XCATSERVER=.*/XCATSERVER=$new_ms/" /opt/xcat/xcatinfo
     else
@@ -663,7 +663,7 @@ if [ -n "$useflowcontrol" ]; then
     else 
        new_fc="NO"
     fi
-    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo 2>&1 > /dev/null
+    grep 'USEFLOWCONTROL' /opt/xcat/xcatinfo > /dev/null  2>&1
     if [ $? -eq 0 ]; then
 	sed -i "s/USEFLOWCONTROL=.*/USEFLOWCONTROL=$new_fc/" /opt/xcat/xcatinfo
     else
@@ -687,7 +687,7 @@ if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
 	mkdir -p /opt/xcat
 	touch /opt/xcat/xcatinfo
   fi
-  grep 'NODE' /opt/xcat/xcatinfo 2>&1 > /dev/null
+  grep 'NODE' /opt/xcat/xcatinfo > /dev/null  2>&1
   if [ $? -eq 0 ]; then
 	sed -i "s/NODE=.*/NODE=$NODE/" /opt/xcat/xcatinfo
   else

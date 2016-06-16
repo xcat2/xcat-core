@@ -75,7 +75,7 @@ DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /xcatpost/mypostscript.post
 echo "$DHCP_TMP" > /xcatpost/mypostscript.post
 
 #mark that the first reboot after installation is finished
-grep 'REBOOT' /opt/xcat/xcatinfo 2>&1 > /dev/null
+grep 'REBOOT' /opt/xcat/xcatinfo > /dev/null 2>&1 
 if [ $? -eq 0 ]; then
     sed -i "s/REBOOT=.*/REBOOT=TRUE/" /opt/xcat/xcatinfo
 else

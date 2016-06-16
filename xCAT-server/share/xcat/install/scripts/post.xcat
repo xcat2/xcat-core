@@ -48,14 +48,14 @@ if [ ! -f /opt/xcat/xcatinfo ]; then
     touch /opt/xcat/xcatinfo
 fi
 
-grep 'XCATSERVER' /opt/xcat/xcatinfo 2>&1 > /dev/null
+grep 'XCATSERVER' /opt/xcat/xcatinfo > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sed -i "s/XCATSERVER=.*/XCATSERVER=$MASTER_IP/" /opt/xcat/xcatinfo
 else
     echo "XCATSERVER=$MASTER_IP" >> /opt/xcat/xcatinfo
 fi
 
-grep 'INSTALLDIR' /opt/xcat/xcatinfo 2>&1 > /dev/null
+grep 'INSTALLDIR' /opt/xcat/xcatinfo > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     sed -i "s/INSTALLDIR=.*/INSTALLDIR=$INSTALLDIR/" /opt/xcat/xcatinfo
 else
