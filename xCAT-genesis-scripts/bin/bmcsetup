@@ -229,11 +229,11 @@ elif [ "$IPMIMFG" == "674" ]; then # DELL
     BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
     if [ "$BMCPORT" == "0" ]; then # shared with all loms
-        ipmitool delloem lan set shared &>/dev/null
-        ipmitool delloem lan set shared with lom1 &>/dev/null
-        ipmitool delloem lan set shared with failover all loms &>dev/null
+        ipmitool delloem lan set shared >/dev/null 2>&1
+        ipmitool delloem lan set shared with lom1 >/dev/null 2>&1
+        ipmitool delloem lan set shared with failover all loms >dev/null 2>&1
     elif [ "$BMCPORT" == "1" ]; then # dedicated
-        ipmitool delloem lan set dedicated &>/dev/null
+        ipmitool delloem lan set dedicated >/dev/null 2>&1
     fi
 fi
 
