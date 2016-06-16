@@ -309,7 +309,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
                 if ($force) {    #must destroy the storage
                     $_->delete();
                 } else {
-                    die "Path already exists";
+                    die "Path $desiredname already exists";
                 }
             } else {
                 return $_->get_path();
@@ -533,7 +533,7 @@ sub build_diskstruct {
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/ or $disk_parts[0] =~ m/^dir:\/\/(.*)$/ or $disk_parts[0] =~ m/^lvm:\/\/(.*)$/) {
                 my %disks = %{ get_multiple_paths_by_url(url => $disk_parts[0], node => $node) };
                 unless (keys %disks) {
-                    die "Unable to find any persistent disks at " . $disk_parts[0];
+                    return(1,"Unable to find any persistent disks at $disk_parts[0] for $node");
                 }
                 foreach (keys %disks) {
                     my $tdiskhash;
@@ -856,7 +856,10 @@ sub build_xmldesc {
     $xtree{features}->{acpi}     = {};
     $xtree{features}->{apic}     = {};
     $xtree{features}->{content}  = "\n";
-    $xtree{devices}->{disk}      = build_diskstruct($cdloc);
+    ($xtree{devices}->{disk}, my $errstr) = build_diskstruct($cdloc);
+     if ($errstr) {
+        return (-1, $errstr);
+    }
     $xtree{devices}->{interface} = build_nicstruct($node);
 
     #use content to force xml simple to not make model the 'name' of video
@@ -1328,6 +1331,7 @@ sub makedom {
     my $cdloc = shift;
     my $xml   = shift;
     my $dom;
+    my $errstr;
     if (not $xml and $confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
 
         #we do this to trigger storage prereq fixup
@@ -1357,7 +1361,10 @@ sub makedom {
             $xml = $newxml;
         }
     } elsif (not $xml) {
-        $xml = build_xmldesc($node, cd => $cdloc);
+        ($xml, $errstr) = build_xmldesc($node, cd => $cdloc);
+        if ($errstr) {
+            return (1, $errstr);
+        }
     }
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
@@ -1368,7 +1375,6 @@ sub makedom {
     }
     $graphics->setAttribute("listen", '0.0.0.0');
     $xml = $parseddom->toString();
-    my $errstr;
     eval {
         if ($::XCATSITEVALS{persistkvmguests}) {
             $dom = $hypconn->define_domain($xml);
@@ -2040,7 +2046,9 @@ sub chvm {
                 die "TODO: relative paths, use client cwd as hint?";
             }
         }
-        unless ($cdpath) { die "unable to understand cd path specification"; }
+        unless ($cdpath) { 
+                die "unable to understand cd path specification"; 
+        }
         $newcdxml = "<disk type='file' device='cdrom'><source file='$cdpath'/><target dev='hdc'/><readonly/></disk>";
     } elsif ($eject) {
         $newcdxml = "<disk type='file' device='cdrom'><target dev='hdc'/><readonly/></disk>";
@@ -2898,6 +2906,7 @@ sub mkvm {
     require Getopt::Long;
     my $memory;
     my $cpucount;
+    my $errstr;
     GetOptions(
         'master|m=s' => \$mastername,
         'size|s=s'   => \$disksize,
@@ -2935,7 +2944,12 @@ sub mkvm {
 
             unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
                 my $xml;
-                $xml = build_xmldesc($node, cpus => $cpucount, memory => $memory);
+                ($xml, $errstr) = build_xmldesc($node, cpus => $cpucount, memory => $memory);
+                if ($errstr) {
+                    # The caller splits the error message on ":", prepend ":" so that if actual
+                    # error message contains ":" it will not be split in the middle
+                    return (1, ":" . $errstr);
+                }
                 $updatetable->{kvm_nodedata}->{$node}->{xml} = $xml;
             }
         }
@@ -2943,7 +2957,12 @@ sub mkvm {
         if ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
             $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
         } else { # ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
-            $xml = build_xmldesc($node, cpus => $cpucount, memory => $memory);
+            ($xml, $errstr) = build_xmldesc($node, cpus => $cpucount, memory => $memory);
+            if ($errstr) {
+                # The caller splits the error message on ":", prepend ":" so that if actual
+                # error message contains ":" it will not be split in the middle
+                return (1, ":" . $errstr);
+            }
             $updatetable->{kvm_nodedata}->{$node}->{xml} = $xml;
         }
         if ($::XCATSITEVALS{persistkvmguests}) {
