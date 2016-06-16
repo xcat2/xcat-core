@@ -2458,6 +2458,10 @@ sub expandnicsattr()
     # Value: eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
     my $nicval=$2;
 
+    #In the lsdef, remove the ^| and |$ before displaying
+    $nicval=~s/(^\||\|$)//g;
+        
+
     # $nicarr[0]: eth0!1.1.1.1|2.1.1.1
     # $nicarr[1]: eth1!3.1.1.1|4.1.1.1
     my @nicarr = split(/,/, $nicval);
