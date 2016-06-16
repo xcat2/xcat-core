@@ -37,14 +37,14 @@ Email report
 
 $report_setTo      "Alice"            alice@example.org
 
-$report_setFrom    "xCATjk Mail Bot"  root@localhost.localdomain
+$report_setFrom    "xCAT Jenkins Mail Bot"  root@localhost.localdomain
 
 DateTime="$(date -R)"
 
 MYSQL_COMMAND=("mysql" "-h" "${MYSQL_HOST}" -u "${MYSQL_USER}" -p"${MYSQL_PASS}" "${MYSQL_DB}")
 Subject="$("${MYSQL_COMMAND[@]}" <<<"SELECT CONCAT('Passed: ', SUM(Passed), ' Failed: ', SUM(Failed), ' No run: ', SUM(\`No run\`)) AS Summary FROM LatestDailyReport;" | tail -n 1)"
 
-$report_setSubject "[xCATjk] ${Subject}"
+$report_setSubject "[xCAT Jenkins] ${Subject}"
 
 $report_setHTML <<-EOF
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
