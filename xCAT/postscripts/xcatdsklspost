@@ -112,8 +112,12 @@ download_postscripts()
     retry=0
     rc=1  # this is a fail return 
     while [ 0 -eq 0 ]; do
-	
-       export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
+
+        if [ -e "\/$xcatpost" ]; then
+            rm -rf "\/$xcatpost"
+        fi
+
+        export LANG=C; wget -l inf -nH -N -r --waitretry=10 --random-wait -e robots=off -T 60 -nH --cut-dirs=2 --reject "index.html*" --no-parent http://$server$INSTALLDIR/postscripts/ -P /$xcatpost 2> /tmp/wget.log
          rc=$?
          if [ $rc -eq 0 ]; then   
            # return from wget was 0 but some OS do not return errors, so we
