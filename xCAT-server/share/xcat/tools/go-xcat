@@ -8,21 +8,22 @@ function usage()
 	local script="${0##*/}"
 
 	while read ; do echo "${REPLY}" ; done <<-EOF
-	Usage: ${script} [OPTION]...
+	Usage: ${script} [OPTION]... [ACTION]
 	Install xCAT automatically
 
 	Options:
 	  --help                        display this help and exit
-	  --install                     installs all the latest versions from the
-	                                repository
 	  --xcat-version=[VERSION]      specify the version of xCAT
 	  -y, --yes                     answer yes for all questions
 
+	Actions:
+	  install                       installs all the latest versions from the
+	                                repository
 	Examples:
 	  ${script}
-	  ${script} --install
-	  ${script} --install --yes
-	  ${script} --install --xcat-version=2.12 --yes
+	  ${script} install
+	  ${script} --yes install
+	  ${script} --xcat-version=2.12 --yes install
 	EOF
 }
 
@@ -256,8 +257,8 @@ function check_linux_distro()
 {
 	local distro="$(source /etc/os-release >/dev/null 2>&1 &&
 		echo "${ID}")"
-	[[ -z "${distro}" ]] && [[ -f /etc/redhat-release ]] && distro="rhel"
-	[[ -z "${distro}" ]] && [[ -f /etc/SuSE-release ]] && distro="sles"
+	[[ -z "${distro}" && -f /etc/redhat-release ]] && distro="rhel"
+	[[ -z "${distro}" && -f /etc/SuSE-release ]] && distro="sles"
 	echo "${distro}"
 }
 
@@ -265,9 +266,9 @@ function check_linux_version()
 {
 	local ver="$(source /etc/os-release >/dev/null 2>&1 &&
 		echo "${VERSION_ID}")"
-	[[ -z "${ver}" ]] && [[ -f /etc/redhat-release ]] &&
+	[[ -z "${ver}" && -f /etc/redhat-release ]] &&
 		ver="$(awk '{ print $(NF - 1) }' /etc/redhat-release)"
-	[[ -z "${ver}" ]] && [[ -f /etc/SuSE-release ]] &&
+	[[ -z "${ver}" && -f /etc/SuSE-release ]] &&
 		ver="$(awk '/VERSION/ { print $NF }' /etc/SuSE-release)"
 	echo "${ver}"
 }
@@ -292,7 +293,7 @@ function function_dispatch()
 # $@    package names
 function check_package_version_rpm()
 {
-	! type rpm >/dev/null 2>&1 && return 255
+	type rpm >/dev/null 2>&1 || return 255
 	local ver=""
 	while read ver
 	do
@@ -302,14 +303,14 @@ function check_package_version_rpm()
 		else
 			echo "${ver}"
 		fi
-	done < <(rpm -q --qf '%{version}-%{release}\n' "$@")
+	done < <(rpm -q --qf '%{version}-%{release}\n' "$@" 2>/dev/null)
 	return 0
 }
 
 # $@    package names
 function check_package_version_deb()
 {
-	! type dpkg-query >/dev/null 2>&1 && return 255
+	type dpkg-query >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
 	while read name ver
@@ -344,7 +345,7 @@ function check_package_version()
 # $@    package names
 function check_repo_version_yum()
 {
-	! type repoquery >/dev/null 2>&1 && return 255
+	type repoquery >/dev/null 2>&1 || return 255
 	local -a name=()
 	local -a ver=()
 	while read name ver
@@ -373,7 +374,7 @@ function check_repo_version_yum()
 # $@    package names
 function check_repo_version_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
+	type zypper >/dev/null 2>&1 || return 255
 	local -a name=()
 	local -a ver=()
 	while read name ver
@@ -403,7 +404,7 @@ function check_repo_version_zypper()
 # $@    package names
 function check_repo_version_apt()
 {
-	! type apt-cache >/dev/null 2>&1 && return 255
+	type apt-cache >/dev/null 2>&1 || return 255
 	local name=""
 	local ver=""
 	while read name ver
@@ -439,7 +440,7 @@ function check_repo_version()
 # $1    repo_id
 function get_package_list_yum()
 {
-	! type repoquery >/dev/null 2>&1 && return 255
+	type repoquery >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
@@ -448,7 +449,7 @@ function get_package_list_yum()
 # $1    repo_id
 function get_package_list_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
+	type zypper >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	zypper --no-gpg-checks -n search -r "${repo_id}" 2>/dev/null |
@@ -458,7 +459,7 @@ function get_package_list_zypper()
 # $1    repo_id
 function get_package_list_apt()
 {
-	[[ ! -d /var/lib/apt/lists ]] && return 255
+	[[ -d /var/lib/apt/lists ]] || return 255
 	local repo_id="$1"
 	[[ -z "${repo_id}" ]] && return 1
 	awk '/^Package: / { print $2 }' \
@@ -474,9 +475,9 @@ function get_package_list()
 
 function download_file()
 {
+	type wget >/dev/null 2>&1 || return 255
 	local url="$1"
 	local local_file="$2"
-	! type wget >/dev/null 2>&1 && return 255
 	wget -q "${url}" -O "${local_file}"
 }
 
@@ -484,7 +485,7 @@ function download_file()
 # $2    repo_id
 function add_repo_by_file_yum()
 {
-	! type yum-config-manager >/dev/null 2>&1 && return 255
+	type yum-config-manager >/dev/null 2>&1 || return 255
 	local repo_file="$1"
 	local repo_id="$2"
 	[[ -f "${repo_file}" ]]
@@ -508,7 +509,7 @@ function add_repo_by_file_yum()
 # $2    repo_id
 function add_repo_by_file_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
+	type zypper >/dev/null 2>&1 || return 255
 	local repo_file="$1"
 	local repo_id="$2"
 	[[ -f "${repo_file}" ]]
@@ -575,7 +576,8 @@ function add_repo_by_url_apt()
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
 	local base_url="$1"
 	local repo_id="$2"
-	local codename="$(source /etc/lsb-release && echo "${DISTRIB_CODENAME}")"
+	local codename="$(source /etc/lsb-release >/dev/null 2>&1 &&
+		echo "${DISTRIB_CODENAME}")"
 	[[ -n "${codename}" ]]
 	exit_if_bad "$?" "unknown debian/ubuntu codename"
 	local tmp_repo_file="${TMP_DIR}/tmp_repo_file"
@@ -600,7 +602,7 @@ function remove_repo_yum()
 
 function remove_repo_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
+	type zypper >/dev/null 2>&1 || return 255
 	local repo_id="$1"
 	zypper removerepo "${repo_id}"
 }
@@ -621,7 +623,8 @@ function remove_repo()
 #       can be "2.10", "2.11", "2.12" or "latest"
 function add_xcat_core_repo_yum_or_zypper()
 {
-	! type rpm >/dev/null 2>&1 && return 255
+	type yum-config-manager >/dev/null 2>&1 ||
+		type zypper >/dev/null 2>&1 || return 255
 	local ver="$1"
 	[[ -z "${ver}" ]] && ver="latest"
 	local online_repo_file="http://xcat.org/files/xcat/repos/yum/${ver}/xcat-core/xCAT-core.repo"
@@ -652,14 +655,10 @@ function add_xcat_core_repo()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-function remove_xcat_core_repo_yum()
-{
-	rm -f /etc/yum.repos.d/xCAT-core.repo
-}
-
 function add_xcat_dep_repo_yum_or_zypper()
 {
-	! type rpm >/dev/null 2>&1 && return 255
+	type yum-config-manager >/dev/null 2>&1 ||
+		type zypper >/dev/null 2>&1 || return 255
 	local distro="${GO_XCAT_LINUX_DISTRO}"
 	case "${distro}" in
 	"fedora") ;;
@@ -676,7 +675,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 
 function add_xcat_dep_repo_apt()
 {
-	! type dpkg >/dev/null 2>&1 && return 255
+	[[ -d "/etc/apt/sources.list.d" ]] || return 255
 	local online_repo_base_url="http://xcat.org/files/xcat/repos/apt/xcat-dep"
 	add_repo_by_url_apt "${online_repo_base_url}" "xcat-dep"
 }
@@ -688,19 +687,19 @@ function add_xcat_dep_repo()
 
 function update_repo_yum()
 {
-	! type yum >/dev/null 2>&1 && return 255
+	type yum >/dev/null 2>&1 || return 255
 	yum --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
 }
 
 function update_repo_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
+	type zypper >/dev/null 2>&1 || return 255
 	zypper --gpg-auto-import-keys refresh </dev/null >/dev/null 2>&1
 }
 
 function update_repo_apt()
 {
-	! type apt-get >/dev/null 2>&1 && return 255
+	type apt-get >/dev/null 2>&1 || return 255
 	apt-get update </dev/null >/dev/null 2>&1
 }
 
@@ -711,26 +710,26 @@ function update_repo()
 
 function install_packages_yum()
 {
-	! type yum >/dev/null 2>&1 && return 255
-	local -a yes=()
-	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	yum --nogpgcheck "${yes[@]}" install "$@"
+	type yum >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	yum --nogpgcheck "${args[@]}" install "$@"
 }
 
 function install_packages_zypper()
 {
-	! type zypper >/dev/null 2>&1 && return 255
-	local -a yes=()
-	[[ "$1" = "-y" ]] && yes=("-n") && shift
-	zypper --no-gpg-checks "${yes[@]}" install "$@"
+	type zypper >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-n") && shift
+	zypper --no-gpg-checks "${args[@]}" install "$@"
 }
 
 function install_packages_apt()
 {
-	! type apt-get >/dev/null 2>&1 && return 255
-	local -a yes=()
-	[[ "$1" = "-y" ]] && yes=("-y") && shift
-	apt-get install "${yes[@]}" "$@"
+	type apt-get >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	apt-get install "${args[@]}" "$@"
 }
 
 function install_packages()
@@ -757,6 +756,7 @@ function list_xcat_packages()
 	local -i cols="$(type tput >/dev/null 2>&1 && tput cols)"
 	[[ "${cols}" -lt 80 ]] && cols=80
 	[[ "${cols}" -gt 90 ]] && cols=90
+	[[ -t 1 ]] || cols=90
 	local -i first_col=27
 	local -i second_col=$(( ( cols - 30 ) / 2 ))
 	local -i third_col=${second_col}
@@ -807,26 +807,18 @@ function list_xcat_packages()
 # Check if xcatd is running
 function test_case_001_xcatd()
 {
-	local pid_file=""
-	local pid=""
+	local f=""
 	local -i ret=0
-	for pid_file in /var/run/xcat/{installservice.pid,mainservice.pid,udpservice.pid}
+	for f in /var/run/xcat/{main,install,udp}service.pid
 	do
-		[[ -f "${pid_file}" ]]
-		warn_if_bad "$?" "${pid_file} not found"
-		[[ "$?" -ne 0 ]] && (( ++ret ))
-		pid="$(<"${pid_file}")"
-		kill -0 "${pid}"
-		warn_if_bad "$?" "process ${pid} is not running"
-		[[ "$?" -ne 0 ]] && (( ++ret ))
+		kill -0 "$(<"${f}")"
+		(( ret += $? ))
 	done
-	for pid_file in /var/run/xcat/cmdlogservice.pid
+	for f in /var/run/xcat/cmdlogservice.pid
 	do
-		[[ -f "${pid_file}" ]] || continue
-		pid="$(<"${pid_file}")"
-		kill -0 "${pid}"
-		warn_if_bad "$?" "process ${pid} is not running"
-		[[ "$?" -ne 0 ]] && (( ++ret ))
+		[[ -f "${f}" ]] || continue
+		kill -0 "$(<"${f}")"
+		(( ret += $? ))
 	done
 	return "${ret}"
 }
@@ -860,18 +852,19 @@ function perform_smoke_test()
 			while read ; do echo "${REPLY}" ; done \
 				<"${TMP_DIR}/${test_case}.stderr"
 			echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-			(( ++ret ))
+			# skip all the remain test cases
+			return "${ret}"
 		fi >&2
 	done
-	[[ "${ret}" -eq "0" ]] && echo "It seems everything went well. :)"
-	return "${ret}"
+	echo "It seems everything went well. :)"
+	return 0
 }
 
 GO_XCAT_METERS=""
 
 function show_progress_meters()
 {
-	! tty -s 2>/dev/null && return 0
+	[[ -t 2 ]] || return 0
 	# Show the progress meters
 	(
 		declare -i length=0
@@ -897,7 +890,7 @@ function show_progress_meters()
 				echo -n "${msg}"
 
 				sleep 0.1 2>/dev/null || sleep 1
-				kill -0 "$$" &>/dev/null || break 2
+				kill -0 "$$" >/dev/null 2>&1 || break 2
 			done
 		done
 	) >&2 &
@@ -907,9 +900,11 @@ function show_progress_meters()
 
 function stop_progress_meters()
 {
-	! tty -s 2>/dev/null && echo -n "...... " && return 0
-	kill "${GO_XCAT_METERS}" >/dev/null 2>&1
-	echo -ne "\b\b\b\b\b\b\b" >&2
+	if [[ -t 2 ]]
+	then
+		kill "${GO_XCAT_METERS}" >/dev/null 2>&1
+		echo -ne "\b\b\b\b\b\b\b" >&2
+	fi
 	echo -n "...... "
 }
 
@@ -925,16 +920,9 @@ GO_XCAT_VERSION="latest"
 while [ "$#" -gt "0" ]
 do
 	case "$1" in
-	"--smoke-test")
-		perform_smoke_test
-		exit "$?"
-		;;
 	"--help")
 		usage
 		exit 0
-		;;
-	"--install")
-		GO_XCAT_ACTION="install"
 		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
@@ -944,10 +932,19 @@ do
 		;;
 	*)
 		[ "$1" == "--" ] && shift
+		GO_XCAT_ACTION="$1"
+		shift
 		;;
 	esac
 	shift
 done
+
+case "${GO_XCAT_ACTION}" in
+"smoke-test")
+	perform_smoke_test
+	exit "$?"
+	;;
+esac
 
 GO_XCAT_OS="$(check_os)"
 GO_XCAT_ARCH="$(check_arch)"
@@ -1114,6 +1111,6 @@ case "${GO_XCAT_ACTION}" in
 *)
 	list_xcat_packages
 	;;
-esac
+esac # case "${GO_XCAT_ACTION}" in
 
 exit 0
