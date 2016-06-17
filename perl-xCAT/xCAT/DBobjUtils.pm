@@ -2458,9 +2458,22 @@ sub expandnicsattr()
     # Value: eth0!1.1.1.1|2.1.1.1,eth1!3.1.1.1|4.1.1.1
     my $nicval=$2;
 
-    #In the lsdef, remove the ^| and |$ before displaying
-    $nicval=~s/(^\||\|$)//g;
-        
+    #if there is regrex in nicips
+    if (($nicval) && ($nicval =~ /^\|(.*?)\|$/)) {
+    
+        #$nicval Value: |node(d+)|eth0!192.1.1.($1+10)| or
+        #               |eth0!192.1.1.($1+10),bond0!10.28.41.($1+10)|
+        #In the lsdef, remove the ^| and |$ before displaying
+        $nicval=~s/(^\||\|$)//g;
+    
+        #$nicval Value: node(d+)|eth0!192.1.1.($1+10)
+        if (($nicval) && ($nicval =~ /\|/)) {
+            my ($str1,$str2)=split('\|', $nicval);
+    
+            #$nivval Value: eth0!192.1.1.($1+10)
+            $nicval=$str2;
+        }
+    }
 
     # $nicarr[0]: eth0!1.1.1.1|2.1.1.1
     # $nicarr[1]: eth1!3.1.1.1|4.1.1.1
