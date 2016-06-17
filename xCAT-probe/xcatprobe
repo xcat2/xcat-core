@@ -84,34 +84,54 @@ sub loadsubcmds {
 sub format_cmd_output {
     my $line    = shift;
     my $nocolor = shift;
-
     if ($line =~ /\[(\w+)\]\s*:\s*(.+)/) {
-        my $flag = $1;
-        my $msg  = $2;
-        if ($flag =~ /failed/i) {
-            if ($nocolor) {
-                print "[FAIL] ";
-            } else {
-                print BOLD RED "[FAIL] ";
+        my $flag     = $1;
+        my $msg      = $2;
+        my @tmpmsg   = split(" ", $msg);
+        my $maxlen   = 80;
+        my @finalmsg = ();
+        my $str      = "";
+        foreach my $word (@tmpmsg) {
+            $str .= $word . " ";
+            if (length($str) > $maxlen) {
+                push @finalmsg, $str;
+                $str = "";
             }
-        } elsif ($flag =~ /warning/i) {
-            if ($nocolor) {
-                print "[WARN] ";
-            } else {
-                print BOLD BLUE "[WARN] ";
-            }
-        } elsif ($flag =~ /ok/i) {
-            if ($nocolor) {
-                print "[ OK ] ";
-            } else {
-                print BOLD GREEN "[ OK ] ";
-            }
-        } elsif ($flag =~ /debug/i) {
-            print "       ";
-        } elsif ($flag =~ /info/i) {
-            print "[INFO] ";
         }
-        print "$msg\n";
+        push @finalmsg, $str if ($str ne "");
+
+        for (my $i = 0 ; $i < $#finalmsg + 1 ; $i++) {
+            if ($i ne $#finalmsg) {
+                print "$finalmsg[$i]\n";
+                next;
+            }
+            my $space = " " x ($maxlen - length($finalmsg[$i]) + 5);
+            print "$finalmsg[$i]$space";
+
+            if ($flag =~ /failed/i) {
+                if ($nocolor) {
+                    print "[FAIL]\n";
+                } else {
+                    print BOLD RED "[FAIL]\n";
+                }
+            } elsif ($flag =~ /warning/i) {
+                if ($nocolor) {
+                    print "[WARN]\n";
+                } else {
+                    print BOLD BLUE "[WARN]\n";
+                }
+            } elsif ($flag =~ /ok/i) {
+                if ($nocolor) {
+                    print "[ OK ]\n";
+                } else {
+                    print BOLD GREEN "[ OK ]\n";
+                }
+            } elsif ($flag =~ /debug/i) {
+                print "\n";
+            } elsif ($flag =~ /info/i) {
+                print "[INFO]\n";
+            }
+        }
     } else {
         print "$line\n";
     }
@@ -210,9 +230,10 @@ if ($ARGV[0] eq "-l") {
 }
 
 if (!defined($pluginname)) {
-    print "There isn't sub command input from command line\n";
+    print "There isn't sub command input from command line, please use '-l' to list all valid subcommand\n";
     exit 0;
 }
+
 
 for (my $i = 0 ; $i < $optnum + 1 ; $i++) {
     shift @tmpargv;
@@ -223,9 +244,29 @@ my $subcmd = "$plugin_dir/$pluginname $pluginattrs";
 print "\nsubcmd = $subcmd\n" if ($verbose);
 
 open(PIPE, "$subcmd |");
+
+my $terminal  = 0;
+my $subcmdpid = 0;
+my @tmpoutput = `ps axjf |grep -v grep|grep -v ps|grep -v bash|grep $$`;
+foreach (@tmpoutput) {
+    @psline = split(" ", $_); $subcmdpid = $psline[1] if (($psline[0] eq $$) && ($psline[1] ne $$) && ($psline[2] eq $$));
+}
+$SIG{TERM} = $SIG{INT} = sub {
+    $terminal = 1;
+};
+
 while (<PIPE>) {
     chomp;
     format_cmd_output($_, $nocolor);
+    if ($terminal && $subcmdpid) {
+        kill 'INT', $subcmdpid;
+        while (<PIPE>) {
+            chomp;
+            format_cmd_output($_, $nocolor);
+        }
+        close(PIPE);
+        exit $?;
+    }
 }
 close(PIPE);    # This will set the $? properly
 
