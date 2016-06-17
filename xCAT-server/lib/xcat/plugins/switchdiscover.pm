@@ -867,6 +867,16 @@ sub snmp_scan {
         return 1;
     }
 
+    # handle ctrl-c
+    $SIG{TERM} = $SIG{INT} = sub {
+        #clean up the nmap processes
+        my $nmap_pid = `ps -ef | grep /usr/bin/nmap | grep -v grep | grep -v "sh -c" |awk '{print \$2}'`;
+        if ($nmap_pid) {
+            system("kill -9 $nmap_pid >/dev/null 2>&1");
+            exit 0;
+        }
+    };
+
     ##########################################################
     #use nmap to parse the ip range and possible output from the command:
     # Nmap scan report for switch-10-5-22-1 (10.5.22.1) 161/udp open  snmp
@@ -1201,36 +1211,19 @@ sub get_ip_ranges {
         return \@ipranges;
     }
 
-    # for default, use the subnets for all the live nics on the mn
-    # my_nets will return all the networks defined in the networks 
-    # table, we need to exclude disable networks here.
-    my $nets = xCAT::NetworkUtils->my_nets();
+    # for default, use the subnets for all the enabled networks
+    # defined in the networks table.
     my $ranges=[];
     my $nettab = xCAT::Table->new('networks');
-    my $disable_nets=[];
     if ($nettab) {
-        my $netents = $nettab->getAllEntries("all");
+        my $netents = $nettab->getAllEntries();
         foreach (@$netents) {
-            if ($_->{disable} =~ /1|YES|Yes|yes|Y|n/) {
-                push(@$disable_nets, $_->{'net'});
-                if (exists($globalopt{verbose}))    {
-                    send_msg($request, 1, "network is disabled for  $_->{'net'}, $_->{'mask'}");
-                }
-            }
-        }
-    }
-    foreach my $net (keys %$nets) {
-        my $netdisabled=0;
-        if ($net !~ /127\.0\.0\.0/) {
-            my ($nt, $nm) = split (/\//, $net);
-            foreach (@$disable_nets) {
-                if ( $nt == $_) {
-                    $netdisabled = 1;
-                }
-            }
-            if ($netdisabled != 1) {
-                push(@$ranges, $net);
-            }
+            my $net = $_->{'net'};
+            my $nm = $_->{'mask'};
+            my $fnm = xCAT::NetworkUtils::formatNetmask($nm, 0 , 1);
+            $net .="/$fnm";
+            push(@$ranges, $net);
+
         }
     }
  
