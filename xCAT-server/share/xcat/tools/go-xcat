@@ -2,6 +2,15 @@
 #
 # go-xcat - Install xCAT automatically.
 #
+# Copyright (C) 2016 International Business Machines
+# Eclipse Public License, Version 1.0 (EPL-1.0)
+#     <http://www.eclipse.org/legal/epl-v10.html>
+#
+# 2016-06-16 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - created
+# 2016-06-20 GONG Jie <gongjie@linux.vnet.ibm.com>
+#     - released to the field
+#
 
 function usage()
 {
@@ -12,20 +21,56 @@ function usage()
 	Install xCAT automatically
 
 	Options:
-	  --help                        display this help and exit
-	  --xcat-version=[VERSION]      specify the version of xCAT
+	Mandatory arguments to long options are mandatory for short options too.
+	  -h, --help                    display this help and exit
+	  --xcat-core=[URL]             use a different URL or path for the xcat-core
+	                                repository
+	  --xcat-dep=[URL]              use a different URL or path for the xcat-dep
+	                                repository
+	  -x, --xcat-version=[VERSION]  specify the version of xCAT; cannot use with
+	                                --xcat-core
 	  -y, --yes                     answer yes for all questions
 
 	Actions:
-	  install                       installs all the latest versions from the
-	                                repository
+	  install                       installs all the latest versions of xcat-core
+	                                and xcat-dep packages from the repository
+
 	Examples:
 	  ${script}
 	  ${script} install
 	  ${script} --yes install
-	  ${script} --xcat-version=2.12 --yes install
+	  ${script} -x 2.12 -y install
+	  ${script} --xcat-version=devel install
+	  ${script} --xcat-core=/path/to/xcat-core.repo install
+	  ${script} --xcat-core=/path/to/xcat-core install
+	  ${script} --xcat-core=/path/to/xcat-core.tar install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.Z install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.gz install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.xz install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 install
+	  ${script} --xcat-core=/path/to/xcat-core.repo \\\\
+	          --xcat-dep=/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=/path/to/xcat-core \\\\
+	          --xcat-dep=/path/to/xcat-dep install
+	  ${script} --xcat-core=/path/to/xcat-core.tar.bz2 \\\\
+	          --xcat-dep=/path/to/xcat-dep.tar.bz2 install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.repo \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep.repo install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep install
+	  ${script} --xcat-core=http://xcat.org/path/to/xcat-core.tar.bz2 \\\\
+	          --xcat-dep=http://xcat.org/path/to/xcat-dep.tar.bz2 install
+
+	xCAT (Extreme Cloud/Cluster Administration Toolkit): <http://xcat.org/>
+	Full documentation at: <http://xcat-docs.readthedocs.io/en/stable/>
 	EOF
 }
+
+GO_XCAT_DEFAULT_BASE_URL="http://xcat.org/files/xcat/repos"
+GO_XCAT_DEFAULT_INSTALL_PATH="/install/xcat"
 
 # The package list of xcat-core
 GO_XCAT_CORE_PACKAGE_LIST=(perl-xCAT xCAT xCAT-SoftLayer xCAT-buildkit
@@ -290,7 +335,7 @@ function function_dispatch()
 	return "${ret}"
 }
 
-# $@    package names
+#       $@      package names
 function check_package_version_rpm()
 {
 	type rpm >/dev/null 2>&1 || return 255
@@ -307,7 +352,7 @@ function check_package_version_rpm()
 	return 0
 }
 
-# $@    package names
+#       $@      package names
 function check_package_version_deb()
 {
 	type dpkg-query >/dev/null 2>&1 || return 255
@@ -342,7 +387,7 @@ function check_package_version()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-# $@    package names
+#       $@      package names
 function check_repo_version_yum()
 {
 	type repoquery >/dev/null 2>&1 || return 255
@@ -371,7 +416,7 @@ function check_repo_version_yum()
 	return 0
 }
 
-# $@    package names
+#       $@      package names
 function check_repo_version_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
@@ -401,7 +446,7 @@ function check_repo_version_zypper()
 	return 0
 }
 
-# $@    package names
+#       $@      package names
 function check_repo_version_apt()
 {
 	type apt-cache >/dev/null 2>&1 || return 255
@@ -437,7 +482,7 @@ function check_repo_version()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-# $1    repo_id
+#       $1      repo id
 function get_package_list_yum()
 {
 	type repoquery >/dev/null 2>&1 || return 255
@@ -446,7 +491,7 @@ function get_package_list_yum()
 	repoquery -qa "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
 
-# $1    repo_id
+#       $1      repo id
 function get_package_list_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
@@ -456,7 +501,7 @@ function get_package_list_zypper()
 		awk -F ' *\\| *' '/ package$/ { print $2 }'
 }
 
-# $1    repo_id
+#       $1      repo id
 function get_package_list_apt()
 {
 	[[ -d /var/lib/apt/lists ]] || return 255
@@ -467,7 +512,7 @@ function get_package_list_apt()
 		2>/dev/null
 }
 
-# $1    repo_id
+#       $1      repo id
 function get_package_list()
 {
 	function_dispatch "${FUNCNAME}" "$@"
@@ -481,8 +526,8 @@ function download_file()
 	wget -q "${url}" -O "${local_file}"
 }
 
-# $1    repo file
-# $2    repo_id
+#       $1      repo file
+#       $2      repo id
 function add_repo_by_file_yum()
 {
 	type yum-config-manager >/dev/null 2>&1 || return 255
@@ -495,7 +540,7 @@ function add_repo_by_file_yum()
 	[[ -n "${repo_id}" ]]
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
-	exit_if_bad "$?" "${repo_id} illigal character in repo id"
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
 	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
 	{
 		echo "[${repo_id}]"
@@ -505,8 +550,8 @@ function add_repo_by_file_yum()
 	yum-config-manager "--add-repo=${tmp_repo_file}" >/dev/null 2>&1
 }
 
-# $1    repo file
-# $2    repo_id
+#       $1      repo file
+#       $2      repo id
 function add_repo_by_file_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
@@ -519,7 +564,7 @@ function add_repo_by_file_zypper()
 	[[ -n "${repo_id}" ]]
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
-	exit_if_bad "$?" "${repo_id} illigal character in repo id"
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
 	local tmp_repo_file="${TMP_DIR}/${repo_id}.repo"
 	{
 		echo "[${repo_id}]"
@@ -529,8 +574,8 @@ function add_repo_by_file_zypper()
 	zypper addrepo "${tmp_repo_file}" >/dev/null 2>&1
 }
 
-# $1    repo file
-# $2    repo_id
+#       $1      repo file
+#       $2      repo id
 function add_repo_by_file_apt()
 {
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
@@ -543,7 +588,7 @@ function add_repo_by_file_apt()
 	[[ -n "${repo_id}" ]]
 	exit_if_bad "$?" "empty repo id"
 	[[ "${repo_id}" =~ ^[a-zA-Z][0-9a-zA-Z-]*$ ]]
-	exit_if_bad "$?" "${repo_id} illigal character in repo id"
+	exit_if_bad "$?" "${repo_id} illegal character in repo id"
 	cp "${repo_file}" "/etc/apt/sources.list.d/${repo_id}.list"
 }
 
@@ -552,37 +597,202 @@ function add_repo_by_file()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-# $1    base url
-# $2    repo_id
-function add_repo_by_url_yum_or_zypper()
+#       $1      archive
+#       $2      repo id
+#       $3      install path
+function extract_archive()
 {
-	local base_url="$1"
+	local archive="$1"
 	local repo_id="$2"
-	local tmp_repo_file="${TMP_DIR}/tmp_repo_file"
-	while read ; do echo "${REPLY}" ; done >"${tmp_repo_file}" <<-EOF
-	[${repo_id}]
-	name=${repo_id}
-	baseurl=${base_url}
-	enabled=1
-	gpgcheck=0
-	EOF
-	add_repo_by_file "${tmp_repo_file}" "${repo_id}"
+	local install_path="$3"
+	[[ -f "${archive}" ]]
+	warn_if_bad "$?" "${archive}: archive file not found!" || return 1
+	mkdir -p "${install_path}" 2>/dev/null
+	warn_if_bad "$?" "create directory \`${install_path}\' failed" ||
+		return 1
+	case "${archive##*.}" in
+	"Z")
+		check_executes uncompress tar grep || return 1
+		uncompress -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad compressed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		uncompress -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tz"|"tgz"|"gz")
+		check_executes gzip tar grep || return 1
+		gzip -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		exit_if_bad "$?" "${archive}: bad gzipped tarball"
+		rm -rf "${install_path}/${repo_id}"
+		gzip -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tbz"|"tbz2"|"bz"|"bz2")
+		check_executes bzip2 tar grep || return 1
+		bzip2 -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad bzipped tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		bzip2 -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"txz"|"xz")
+		check_executes xz tar grep || return 1
+		xz -d -c "${archive}" | tar -t -f - | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 0 &&
+			"${PIPESTATUS[2]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad xzed tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		xz -d -c "${archive}" | ( cd "${install_path}" && tar -x -f - )
+		;;
+	"tar")
+		check_executes tar grep || return 1
+		tar -t -f "${archive}" | grep -v "^${repo_id}/"
+		[[ "${PIPESTATUS[0]}" -eq 0 && "${PIPESTATUS[1]}" -eq 1 ]]
+		warn_if_bad "$?" "${archive}: bad tarball" || return 1
+		rm -rf "${install_path}/${repo_id}"
+		( cd "${install_path}" && tar -x -f - ) <"${archive}"
+		;;
+	*)
+		warn_if_bad "1" "${archive}: unknown archive file"
+		return 1
+		;;
+	esac
+	[[ -d "${install_path}/${repo_id}" ]]
+	warn_if_bad "$?" "${install_path}/${repo_id}: no such directory"
 }
 
-# $1    base url
-# $2    repo_id
+#       $1      URL
+#       $2      repo id
+function add_repo_by_url_yum_or_zypper()
+{
+	local url="$1"
+	local repo_id="$2"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
+	case "${url%%://*}" in
+	"ftp"|"http"|"https")
+		case "${url##*.}" in
+		"repo"|"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online repo or tarball
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" \
+				"download ${repo_id} resource failed" ||
+				return 1
+			url="${tmp}"
+			;;
+		*) # assume it is the base url of the repo
+			tmp="${TMP_DIR}/tmp_repo.repo"
+			while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+			[${repo_id}]
+			name=${repo_id}
+			baseurl=${url}
+			enabled=1
+			gpgcheck=0
+			EOF
+			url="${tmp}"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		case "${url##*.}" in
+		"repo") # local repo file
+			add_repo_by_file "${url}" "${repo_id}"
+			return "$?"
+			;;
+		esac
+		extract_archive "${url}" "${repo_id}" "${install_path}"
+		warn_if_bad "$?" "extract ${repo_id} archive file failed" ||
+			return 1
+		url="${install_path}/${repo_id}"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		# directory
+		tmp="${TMP_DIR}/tmp_repo.repo"
+		while read ; do echo "${REPLY}" ; done >"${tmp}" <<-EOF
+		[${repo_id}]
+		name=${repo_id}
+		baseurl=file://${url}
+		enabled=1
+		gpgcheck=0
+		EOF
+		add_repo_by_file "${tmp}" "${repo_id}"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid ${repo_id} URL"
+}
+
+#       $1      URL
+#       $2      repo id
 function add_repo_by_url_apt()
 {
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
 	local base_url="$1"
 	local repo_id="$2"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local codename="$(source /etc/lsb-release >/dev/null 2>&1 &&
 		echo "${DISTRIB_CODENAME}")"
 	[[ -n "${codename}" ]]
-	exit_if_bad "$?" "unknown debian/ubuntu codename"
-	local tmp_repo_file="${TMP_DIR}/tmp_repo_file"
-	echo "deb ${base_url} ${codename} main" >"${tmp_repo_file}"
-	add_repo_by_file_apt "${tmp_repo_file}" "${repo_id}"
+	warn_if_bad "$?" "unknown debian/ubuntu codename" || return 1
+	case "${url%%://*}" in
+	"ftp"|"http"|"https"|"ssh")
+		case "${url##*.}" in
+		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online tarball
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" \
+				"download ${repo_id} resource failed" ||
+				return 1
+			url="${tmp}"
+			;;
+		*) # assume it is the base url of the repo
+			tmp="${TMP_DIR}/tmp_repo.list"
+			echo "deb ${base_url} ${codename} main" >"${tmp}"
+			url="${tmp}"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		case "${url##*.}" in
+		"list") # local repo file
+			add_repo_by_file_apt "${url}" "${repo_id}"
+			return "$?"
+			;;
+		esac
+		extract_archive "${url}" "${repo_id}" "${install_path}"
+		warn_if_bad "$?" "extract ${repo_id} archive file failed" ||
+			return 1
+		url="${install_path}/${repo_id}"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		# directory
+		tmp="${TMP_DIR}/tmp_repo.list"
+		echo "deb file://${url} ${codename} main" >"${tmp}"
+		add_repo_by_file_apt "${tmp}" "${repo_id}"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid ${repo_id} URL"
 }
 
 function add_repo_by_url()
@@ -590,7 +800,7 @@ function add_repo_by_url()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-# $1    repo_id
+#       $1      repo id
 function remove_repo_yum()
 {
 	[[ -d "/etc/yum.repos.d" ]] || return 255
@@ -600,6 +810,7 @@ function remove_repo_yum()
 		yum clean metadata >/dev/null 2>&1
 }
 
+#       $1      repo id
 function remove_repo_zypper()
 {
 	type zypper >/dev/null 2>&1 || return 255
@@ -607,6 +818,7 @@ function remove_repo_zypper()
 	zypper removerepo "${repo_id}"
 }
 
+#       $1      repo id
 function remove_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
@@ -619,35 +831,60 @@ function remove_repo()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
-# $1    version
-#       can be "2.10", "2.11", "2.12" or "latest"
+#       $1      URL
+#       $2      version
+#               can be "2.10", "2.11", "2.12", "latest" or "devel"
 function add_xcat_core_repo_yum_or_zypper()
 {
 	type yum-config-manager >/dev/null 2>&1 ||
 		type zypper >/dev/null 2>&1 || return 255
-	local ver="$1"
+	local url="$1"
+	local ver="$2"
+	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
-	local online_repo_file="http://xcat.org/files/xcat/repos/yum/${ver}/xcat-core/xCAT-core.repo"
-	local tmp_repo_file="${TMP_DIR}/tmp_repo_file"
-	download_file "${online_repo_file}" "${tmp_repo_file}"
-	exit_if_bad "$?" "download xcat-core repo file failed"
-	add_repo_by_file "${tmp_repo_file}" "xcat-core"
+	if [[ -z "${url}" ]]
+	then
+		case "${ver}" in
+		"devel")
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/devel/core-snap/xCAT-core.repo"
+			;;
+		*)
+			url="${GO_XCAT_DEFAULT_BASE_URL}/yum/${ver}/xcat-core/xCAT-core.repo"
+			;;
+		esac
+	fi
+	add_repo_by_url_yum_or_zypper "${url}" "xcat-core"
 }
 
-# $1    version
-#       can be "2.10", "2.11", "2.12" or "latest"
+#       $1      URL
+#       $2      version
+#               can be "2.10", "2.11", "2.12", "latest" or "devel"
 function add_xcat_core_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
-	local ver="$1"
+	local url="$1"
+	local ver="$2"
+	local tmp=""
 	[[ -z "${ver}" ]] && ver="latest"
-	local apt_key_url="http://xcat.org/files/xcat/repos/apt/apt.key" 
-	local apt_key_file="${TMP_DIR}/xcat.key"
-	download_file "${apt_key_url}" "${apt_key_file}"
-	exit_if_bad "$?" "download xcat apt key failed"
-	apt-key add "${apt_key_file}" >/dev/null 2>&1
-	local online_repo_base_url="http://xcat.org/files/xcat/repos/apt/${ver}/xcat-core"
-	add_repo_by_url_apt "${online_repo_base_url}" "xcat-core"
+	if [[ -z "${url}" ]]
+	then
+		# get the apt.key
+		local url="${GO_XCAT_DEFAULT_BASE_URL}/apt/apt.key"
+		local tmp="${TMP_DIR}/tmp_xcat.key"
+		download_file "${url}" "${tmp}"
+		warn_if_bad "$?" "download xcat apt key failed" || return 1
+		apt-key add "${tmp}" >/dev/null 2>&1
+		warn_if_bad "$?" "import xcat apt key failed" || return 1
+		case "${ver}" in
+		"devel")
+			url="${GO_XCAT_DEFAULT_BASE_URL}/apt/devel/core-snap"
+			;;
+		*)
+			url="${GO_XCAT_DEFAULT_BASE_URL}/apt/${ver}/xcat-core"
+			;;
+		esac
+	fi
+	add_repo_by_url_apt "${url}" "xcat-core"
 }
 
 function add_xcat_core_repo()
@@ -659,25 +896,71 @@ function add_xcat_dep_repo_yum_or_zypper()
 {
 	type yum-config-manager >/dev/null 2>&1 ||
 		type zypper >/dev/null 2>&1 || return 255
+	local url="$1"
+	local tmp=""
+	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
 	local distro="${GO_XCAT_LINUX_DISTRO}"
 	case "${distro}" in
 	"fedora") ;;
 	"rhel") distro="rh" ;;
 	"sles") ;;
-	*) exit_if_bad 1 "${distro}: unsupported Linux distro"
+	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
 	esac
-	local online_repo_file="http://xcat.org/files/xcat/repos/yum/xcat-dep/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
-	local tmp_repo_file="${TMP_DIR}/tmp_repo_file"
-	download_file "${online_repo_file}" "${tmp_repo_file}"
-	exit_if_bad "$?" "download xcat-dep repo file failed"
-	add_repo_by_file "${tmp_repo_file}" "xcat-dep"
+	[[ -z "${url}" ]] &&
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+	case "${url##*.}" in
+	"repo") # local repo file
+		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+		return "$?"
+		;;
+	esac
+	case "${url%%://*}" in
+	"ftp"|"http"|"https")
+		case "${url##*.}" in
+		"Z"|"bz"|"bz2"|"gz"|"tar"|"tbz"|"tbz2"|"tgz"|"tz"|"txz"|"xz")
+			# an online archive file
+			tmp="${TMP_DIR}/tmp_${url##*/}"
+			download_file "${url}" "${tmp}"
+			warn_if_bad "$?" "download xcat-dep archive file failed" \
+				|| return 1
+			url="${tmp}"
+			;;
+		*)
+			url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+			return "$?"
+			;;
+		esac
+		;;
+	"file")
+		url="${url#file://}"
+		;;
+	esac
+	if [[ -f "${url}" ]]
+	then
+		extract_archive "${url}" "xcat-dep" "${install_path}"
+		warn_if_bad "$?" "extract xcat-dep archive file failed" ||
+			return 1
+		url="${install_path}/xcat-dep"
+	fi
+	if [[ -d "${url}" ]]
+	then
+		# make sure it is an absolute pathname.
+		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
+		url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}"
+		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
+		return "$?"
+	fi
+	warn_if_bad "1" "invalid xcat-dep URL"
 }
 
 function add_xcat_dep_repo_apt()
 {
 	[[ -d "/etc/apt/sources.list.d" ]] || return 255
-	local online_repo_base_url="http://xcat.org/files/xcat/repos/apt/xcat-dep"
-	add_repo_by_url_apt "${online_repo_base_url}" "xcat-dep"
+	local url="$1"
+	[[ -z "${url}" ]] &&
+		url="${GO_XCAT_DEFAULT_BASE_URL}/apt/xcat-dep"
+	add_repo_by_url_apt "${url}" "xcat-dep"
 }
 
 function add_xcat_dep_repo()
@@ -912,20 +1195,34 @@ function stop_progress_meters()
 # |\/| _.o._   ._ .__  _ .__.._ _    _  _  _  _  |_  _ .__
 # |  |(_||| |  |_)|(_)(_||(_|| | |  (_|(_)(/__>  | |(/_|(/_ o
 #              |       _|            _|
+#
+# Main program goes here.
 
 declare -a GO_XCAT_YES=()
 GO_XCAT_ACTION=""
+GO_XCAT_CORE_URL=""
+GO_XCAT_DEP_URL=""
 GO_XCAT_VERSION="latest"
 
 while [ "$#" -gt "0" ]
 do
 	case "$1" in
-	"--help")
+	"-h"|"--help")
 		usage
 		exit 0
 		;;
+	"--xcat-core="*)
+		GO_XCAT_CORE_URL="${1##--xcat-core=}"
+		;;
+	"--xcat-dep="*)
+		GO_XCAT_DEP_URL="${1##--xcat-dep=}"
+		;;
 	"--xcat-version="*)
 		GO_XCAT_VERSION="${1##--xcat-version=}"
+		;;
+	"-x")
+		shift
+		GO_XCAT_VERSION="$1"
 		;;
 	"-y"|"--yes")
 		GO_XCAT_YES=("-y")
@@ -992,16 +1289,16 @@ echo
 echo -n "Reading repositories "
 show_progress_meters
 ERR_MSG="$({
-	add_xcat_core_repo "${GO_XCAT_VERSION}"
-	add_xcat_dep_repo
-	update_repo
-	RET="$?"
-	if [[ "${RET}" -ne "0" ]]
+	if add_xcat_core_repo "${GO_XCAT_CORE_URL}" "${GO_XCAT_VERSION}"
 	then
+		if add_xcat_dep_repo "${GO_XCAT_DEP_URL}"
+		then
+			update_repo && exit 0
+			remove_repo "xcat-dep"
+		fi
 		remove_repo "xcat-core"
-		remove_repo "xcat-dep"
 	fi
-	exit "${RET}"
+	exit 1
 } 2>&1)"
 RET="$?"
 stop_progress_meters
@@ -1114,3 +1411,9 @@ case "${GO_XCAT_ACTION}" in
 esac # case "${GO_XCAT_ACTION}" in
 
 exit 0
+
+# vim: set filetype=bash
+# vim: set noautoindent
+# vim: set tabstop=4 shiftwidth=4 softtabstop=4
+
+# End of file
