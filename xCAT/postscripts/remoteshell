@@ -460,15 +460,18 @@ logger -t xcat -p local4.info "start up sshd"
 
 if [[ $OSVER == ubuntu* || $OSVER == debian* ]]
 then
-    if [ ! -d /var/run/sshd ]
-    then
-	mkdir /var/run/sshd
-	chmod 0755 /var/run/sshd
-	/usr/sbin/sshd -f /etc/ssh/sshd_config
-    else
-	#service ssh restart
-        restartservice ssh
+    if [ ! -d /var/run/sshd ];then
+        #"/var/run/sshd":
+        #Contains the process ID of the sshd listening for connections 
+        #(if there are several daemons running concurrently for different ports, 
+        #this contains the process ID of the one started last). 
+        #The content of this file is not sensitive; it can be world-read-able.
+        #prepare the "/var/run/sshd" for ubuntu
+        mkdir /var/run/sshd
+        chmod 0755 /var/run/sshd
     fi
+    #service ssh restart
+    restartservice ssh
 else
     #service sshd restart
     # sshd is not enabled on SLES 12 by default
@@ -477,14 +480,12 @@ else
     restartservice sshd
 fi
 
-# check whether the sshd daemon has been started successfully
-# As we known that for rh7 the sshd cannot be started by systemctl in chroot mode
-ps aux | grep -v grep | grep sshd
-
-if [ $? -ne 0 ]; then
-    if [ -e "/usr/sbin/sshd" ]; then
-        /usr/sbin/sshd
-    fi
+#if the service restart with "service/systemctl" failed
+#try to kill the process and start
+if [ "$?" != "0" ];then
+   PIDLIST=`ps aux | grep -v grep | grep "/usr/sbin/sshd"|awk -F" " '{print $2}'|xargs` 
+   [ -n "$PIDLIST" ] && kill 9 $PIDLIST
+   /usr/sbin/sshd  
 fi
 
 kill -9 $CREDPID
