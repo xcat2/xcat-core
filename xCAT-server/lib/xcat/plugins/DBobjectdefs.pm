@@ -3818,6 +3818,7 @@ sub defrm
     #    the memberlist nodes must be updated.
 
     my $numobjects = 0;
+    my $numobjects_not_removed = 0;
     my %objTypeLists;
     foreach my $obj (keys %objhash)
     {
@@ -3831,6 +3832,7 @@ sub defrm
             my $rsp;
             $rsp->{data}->[0] = "Could not find an object named \'$obj\' of type \'$objtype\'.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
+            $numobjects_not_removed++;
             next;
         }
         $numobjects++;
@@ -3848,6 +3850,7 @@ sub defrm
                 my $rsp;
                 $rsp->{data}->[0] = "Could not get xCAT object definition for \'$obj\'.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
+                $numobjects_not_removed++;
                 next;
             }
 
@@ -3887,6 +3890,7 @@ sub defrm
                 my $m = join ',', @nodes;
                     $rsp->{data}->[0] = "Could not get xCAT object definition for \'$m\'.";
                     xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    $numobjects_not_removed++;
                     next;
                 }
 
@@ -3985,7 +3989,7 @@ sub defrm
             else
             {
                 my $rsp;
-                my $nodenum = scalar(keys %objhash);
+                my $nodenum = scalar(keys %objhash) - $numobjects_not_removed;
                 $rsp->{data}->[0] = "$nodenum object definitions have been removed.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
