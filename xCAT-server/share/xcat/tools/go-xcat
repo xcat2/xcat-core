@@ -1086,6 +1086,22 @@ function list_xcat_packages()
 		42< <(check_repo_version "${GO_XCAT_DEP_PACKAGE_LIST[@]}")
 }
 
+# Test case 000
+# Check if all the xcat-core packages are on the same version
+function test_case_000_version()
+{
+	local ver=""
+	local -i ret=0
+	while read
+	do
+		[[ "${REPLY}" = "(not installed)" ]] && continue
+		[[ -z "${ver}" ]] && ver="${REPLY%%-*}"
+		[[ "${ver}" = "${REPLY%%-*}" ]]
+		(( ret += $? ))
+	done < <(check_package_version "${GO_XCAT_CORE_PACKAGE_LIST[@]}")
+	return "${ret}"
+}
+
 # Test case 001
 # Check if xcatd is running
 function test_case_001_xcatd()
@@ -1113,7 +1129,7 @@ function test_case_002_lsdef()
 	(source /etc/profile.d/xcat.sh && lsdef)
 }
 
-# Preform basic test
+# Perform basic smoke test
 function perform_smoke_test()
 {
 	local test_case=""
