@@ -11,7 +11,7 @@ use Getopt::Long qw(:config no_ignore_case);
 use Data::Dumper;
 use warnings;
 
-my $proname = basename("$0");
+my $program_name = basename("$0");
 my $help;
 my $installnic;
 my $test;
@@ -20,16 +20,16 @@ my $verbose = 0;
 my $rst     = 0;
 
 $::USAGE = "Usage:
-    $proname -h
-    $proname -t
+    $program_name -h
+    $program_name -t
 
 Description:
     Use this command to check if compute nodes have the same images installed as defines in xCAT DB. 
     Use this command to check if all compute nodes have the same identical installed. 
 
 Options:
-    -h : Get usage information of $proname
-    -t : To verify if $proname can work, reserve option for probe framework
+    -h : Get usage information of $program_name
+    -t : To verify if $program_name can work, reserve option for probe framework
     -d : To verify compute nodes have the same images installed as defines in xCAT DB. 
     -c : To verify compute nodes have the identical images installed.
     -V : To print additional debug information.
@@ -55,7 +55,7 @@ if (
         "c"   => \$CONSISTENCY_CHECK,
         "d"   => \$DEFINITION_CHECK))
 {
-    probe_utils->send_msg("$output", "f", "Invalid parameter for $proname");
+    probe_utils->send_msg("$output", "f", "Invalid parameter for $program_name");
     probe_utils->send_msg("$output", "d", "$::USAGE");
     exit 1;
 }
@@ -75,7 +75,8 @@ if ($test) {
 }
 
 unless(defined($CONSISTENCY_CHECK) || defined($DEFINITION_CHECK)) {
-	print "At least one of -c or -d flags is required";
+	probe_utils->send_msg("$output", "f", "At least one of -c or -d flags is required");
+        probe_utils->send_msg("$output", "d", "$::USAGE");
 	exit 1;
 }
 
