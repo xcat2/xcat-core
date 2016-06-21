@@ -436,6 +436,13 @@ sub assign_to_osimage
                 }
 
                 if ( $osimagetable->{provmethod} =~ /install/ ) {
+                    # If the script is only for diskless node 
+                    my $cmd = "grep \"#FLAG FOR DISKLESS ONLY#\" $installdir/postscripts/$kitcompscript";
+                    my $res = xCAT::Utils->runcmd($cmd, -1);
+                    if ($res eq "#FLAG FOR DISKLESS ONLY#"){
+                        next;
+                    }
+
                     # for diskfull node
                     my $match = 0;
                     my @scripts = split ',', $osimagetable->{postbootscripts};
