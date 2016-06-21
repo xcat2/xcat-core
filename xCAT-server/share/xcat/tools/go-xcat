@@ -1246,7 +1246,6 @@ do
 	*)
 		[ "$1" == "--" ] && shift
 		GO_XCAT_ACTION="$1"
-		shift
 		;;
 	esac
 	shift
