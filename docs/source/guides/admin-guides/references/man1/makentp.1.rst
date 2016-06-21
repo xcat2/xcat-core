@@ -97,7 +97,7 @@ EXAMPLES
  
  .. code-block:: perl
  
-   setupntp -a
+   makentp -a
  
  
 
@@ -108,7 +108,7 @@ FILES
 *****
 
 
-/opt/xcat/bin/setupntp
+/opt/xcat/bin/makentp
 
 
 ********
