@@ -74,14 +74,14 @@ To setup NTP server on the management node:
 =item 2.
 To setup NTP servers on both management node and the service node:
 
- setupntp -a
+ makentp -a
 
 
 =back
 
 =head1 FILES
 
-/opt/xcat/bin/setupntp
+/opt/xcat/bin/makentp
 
 
 =head1 SEE ALSO
