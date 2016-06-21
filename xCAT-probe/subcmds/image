@@ -22,6 +22,7 @@ my $rst     = 0;
 $::USAGE = "Usage:
     $program_name -h
     $program_name -t
+    $program_name {-c|-d} [-V]
 
 Description:
     Use this command to check if compute nodes have the same images installed as defines in xCAT DB. 
@@ -34,16 +35,6 @@ Options:
     -c : To verify compute nodes have the identical images installed.
     -V : To print additional debug information.
 ";
-
-sub returncmdoutput {
-    my $rst = shift;
-    chomp($rst);
-    my @lines = split("[\n\r]", $rst);
-    foreach my $line (@lines) {
-        probe_utils->send_msg("$output", "d", "$line");
-    }
-}
-
 
 #-------------------------------------
 # main process
@@ -80,10 +71,7 @@ unless(defined($CONSISTENCY_CHECK) || defined($DEFINITION_CHECK)) {
 	exit 1;
 }
 
-my $lsdef_cmd = `lsdef`;
-chomp($lsdef_cmd);
-
-my @nodes = split('\(node\)', $lsdef_cmd);
+my @nodes = `nodels`;
 @nodes = grep(s/^[\s]+|[\s]*$//g, @nodes);
 
 my @pingable_nodes;
@@ -95,7 +83,7 @@ foreach (@nodes) {
         my $lsdef_provmethod = `lsdef $_ -i provmethod -c`;
 	if ($lsdef_provmethod =~ /netboot/) {
 		push(@diskless_nodes, $_);
-		print "$_ is diskless\n";
+                probe_utils->send_msg("$output", "d", "$_ is diskless");
 	}
 }
 # Next, check if all diskless nodes are pingable
@@ -119,16 +107,11 @@ my %node_running_image_name_hash;
 my %node_defined_image_name_hash;
 
 foreach (@pingable_nodes) {
-	print "---- Gathering information from node $_ ----\n";
+	probe_utils->send_msg("$output", "d", "---- Gathering information from node $_ ----");
         # Next, from all pingable nodes get the IMAGENAME and IMAGEUUID entries from xcatinfo file
-	my $xcatinfo_image_UUID = `xdsh $_ "cat /opt/xcat/xcatinfo | grep IMAGEUUID | cut -d '=' -f 2" | cut -d ':' -f 2`;
-	my $xcatinfo_image_name = `xdsh $_ "cat /opt/xcat/xcatinfo | grep IMAGENAME | cut -d '=' -f 2" | cut -d ':' -f 2`;
-	$xcatinfo_image_UUID =~ s/'//;
-	$xcatinfo_image_UUID =~ s/'//;
-	$xcatinfo_image_UUID =~ s/ //;
-	$xcatinfo_image_name =~ s/'//;
-	$xcatinfo_image_name =~ s/'//;
-	$xcatinfo_image_name =~ s/ //;
+        my $output = `xdsh $_ "cat /opt/xcat/xcatinfo"`;
+        my $xcatinfo_image_UUID = ` echo "$output" | awk -F"=" '/IMAGEUUID/ {gsub(/'"'"'/,"",\$2); print \$2}'`;
+        my $xcatinfo_image_name = ` echo "$output" | awk -F"=" '/IMAGENAME/ {gsub(/'"'"'/,"",\$2); print \$2}'`;
 	chomp($xcatinfo_image_UUID);
 	chomp($xcatinfo_image_name);
 	if (length($xcatinfo_image_UUID) <= 0) {
@@ -149,10 +132,8 @@ foreach (@pingable_nodes) {
         	$rootimagedir = `lsdef -t osimage $lsdef_provmethod -i rootimgdir -c | cut -d "=" -f 2`;
 		chomp($rootimagedir);
 		if (length($rootimagedir) > 0) {
-			$defined_UUID = `grep IMAGEUUID $rootimagedir/rootimg/opt/xcat/xcatinfo | cut -d "=" -f 2`;
+			$defined_UUID = `awk -F"'" '/IMAGEUUID/ {print \$2}' $rootimagedir/rootimg/opt/xcat/xcatinfo`;
 			chomp($defined_UUID);
-			$defined_UUID =~ s/'//;
-			$defined_UUID =~ s/'//;
 			if (length($defined_UUID) < 1) {
 				$defined_UUID = $na;
 			}
@@ -213,9 +194,8 @@ if ($CONSISTENCY_CHECK) {
 	# print Dumper(\%unique_image_hash);
 	# If there is more then one key in the hash, nodes have multiple images.
 	my $number_of_keys = keys %unique_image_hash;
-	my @image_names = keys %unique_image_hash;
-	my $node_image_table;
 	if ($number_of_keys == 1) {
+		my @image_names = keys %unique_image_hash;
 		if ($image_names[0] =~ /$na/) {
 			$msg = "Not able to determine image name or uuid of the image installed on any compute node.";
 			$status = "f";
@@ -226,8 +206,8 @@ if ($CONSISTENCY_CHECK) {
 		}
 	}
 	else {
+		my $node_image_table;
 		foreach $compute_node (keys %node_running_image_name_hash) {
-			# $node_image_table .= "$compute_node -- $node_running_image_name_hash{$compute_node}" . ":" . "$node_running_image_uuid_hash{$compute_node}\n"
 			$node_image_table .= sprintf("%-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
 		}
 		$msg = "Not all compute nodes are running the same os image.\n" . $node_image_table;
