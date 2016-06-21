@@ -1469,10 +1469,12 @@ if (open($mainpidfile,"<","/var/run/xcat/mainservice.pid")) {
 }
 if ($listener) { $listener->close; }
 my $lastpid;
-while (keys %immediatechildren) {
+while (keys %immediatechildren || $pid_UDP) {
     $lastpid=wait();
     if ($immediatechildren{$lastpid}) {
         delete $immediatechildren{$lastpid};
+    } elsif ($lastpid == $pid_UDP) {
+        $pid_UDP = 0;
     }
 }
 xCAT::Table::shut_dbworker;
