@@ -1446,7 +1446,7 @@ sub add_or_delete_records {
                         my $reply = $resolver->send($update);
                         if ($reply) {
                             if ($reply->header->rcode eq 'NOTAUTH' ) {
-                                continue;
+                                next;
                             }
                             if ($reply->header->rcode ne 'NOERROR') {
                                 xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
@@ -1467,7 +1467,7 @@ sub add_or_delete_records {
                     my $reply = $resolver->send($update);
                     if ($reply) {
                         if ($reply->header->rcode eq 'NOTAUTH' ) {
-                            continue;
+                            next;
                         }
                         if ($reply->header->rcode ne 'NOERROR') {
                             xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode.". See more details in system log."], $callback);
