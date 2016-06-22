@@ -33,11 +33,14 @@ function usage()
 
 	Actions:
 	  install                       installs all the latest versions of xcat-core
-	                                and xcat-dep packages from the repository
+	                                end xcat-dep packages from the repository
+	  update                        updates installed xcat-core packages to the
+	                                latest version from the repository
 
 	Examples:
 	  ${script}
 	  ${script} install
+	  ${script} update
 	  ${script} --yes install
 	  ${script} -x 2.12 -y install
 	  ${script} --xcat-version=devel install
@@ -84,13 +87,13 @@ GO_XCAT_CORE_PACKAGE_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 GO_XCAT_DEP_PACKAGE_LIST=()
 
 # The package list of all the packages should be installed
-GO_XCAT_CORE_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
+GO_XCAT_INSTALL_LIST=(perl-xCAT xCAT xCAT-buildkit xCAT-client
 	xCAT-genesis-scripts-ppc64 xCAT-genesis-scripts-x86_64 xCAT-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xCAT-genesis-base-ppc64 xCAT-genesis-base-x86_64 xnba-undi yaboot-xcat)
 # For Debian/Ubuntu, it will need a sight different package list
 type dpkg >/dev/null 2>&1 &&
-GO_XCAT_CORE_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
+GO_XCAT_INSTALL_LIST=(perl-xcat xcat xcat-buildkit xcat-client
 	xcat-genesis-scripts xcat-server
 	conserver-xcat elilo-xcat grub2-xcat ipmitool-xcat syslinux-xcat
 	xcat-genesis-base-amd64 xcat-genesis-base-ppc64 xnba-undi)
@@ -1020,9 +1023,31 @@ function install_packages()
 	function_dispatch "${FUNCNAME}" "$@"
 }
 
+#       $1      -y
 function install_xcat()
 {
-	install_packages "$@" "${GO_XCAT_CORE_INSTALL_LIST[@]}"
+	install_packages "$@" "${GO_XCAT_INSTALL_LIST[@]}"
+}
+
+#       $1      -y
+function update_xcat()
+{
+	local -i i=0
+	local ver=""
+	local -a install_list=($(
+	for p in "${GO_XCAT_INSTALL_LIST[@]}" \
+		$(get_package_list xcat-core)
+	do
+		echo "${p}"
+	done | sort -u
+	))
+	for i in "${!install_list[@]}"
+	do
+		read ver
+		[[ "${ver}" = "(not installed)" ]] &&
+			unset "install_list[${i}]"
+	done < <(check_package_version "${install_list[@]}")
+	install_packages "$@" "${install_list[@]}"
 }
 
 function list_xcat_packages()
@@ -1326,11 +1351,12 @@ fi
 echo "done"
 
 case "${GO_XCAT_ACTION}" in
-"install")
+"install"|"update")
+	GO_XCAT_INSTALLER="${GO_XCAT_ACTION}_xcat"
 	if [[ "${#GO_XCAT_YES[@]}" -eq "0" ]]
 	then
 		echo
-		echo "xCAT is going to be installed."
+		echo "xCAT is going to be ${GO_XCAT_ACTION/%e/}ed."
 		read -p "Continue? [y/n] "
 		case "${REPLY}" in
 		"Y"*|"y"*)
@@ -1341,24 +1367,24 @@ case "${GO_XCAT_ACTION}" in
 		esac
 	fi
 	(
-		install_xcat -y 2>&1 1>&42 |
-			tee "${TMP_DIR}/install_xcat.stderr" >&2
+		"${GO_XCAT_INSTALLER}" -y 2>&1 1>&42 |
+			tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" >&2
 		exit "${PIPESTATUS[0]}"
-	) 42>&1 | tee "${TMP_DIR}/install_xcat.stdout"
+	) 42>&1 | tee "${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
 	RET="${PIPESTATUS[0]}"
 	{
 		# Creating logs
 		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
-		echo "==== install_xcat exited with exit code ${RET} ===="
-		echo "-- 8< install_xcat stdout -- --"
+		echo "==== ${GO_XCAT_INSTALLER} exited with exit code ${RET} ===="
+		echo "-- 8< ${GO_XCAT_INSTALLER} stdout -- --"
 		while read ; do echo "${REPLY}" ; done \
-			<"${TMP_DIR}/install_xcat.stdout"
-		echo "-- 8< install_xcat stderr -- --"
+			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stdout"
+		echo "-- 8< ${GO_XCAT_INSTALLER} stderr -- --"
 		while read ; do echo "${REPLY}" ; done \
-			<"${TMP_DIR}/install_xcat.stderr"
+			<"${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr"
 		echo "-- 8< -- -- -- -- -- -- -- -- -- -- -- -- -- -- --"
 	} >"${TMP_DIR}/go-xcat.log.005"
-	if [[ "${RET}" -eq "0" && ! -s "${TMP_DIR}/install_xcat.stderr" ]]
+	if [[ "${RET}" -eq "0" && ! -s "${TMP_DIR}/${GO_XCAT_INSTALLER}.stderr" ]]
 	then
 		# xCAT has been installed and so far so good
 		perform_smoke_test >"${TMP_DIR}/perform_smoke_test.stdout" \
