@@ -28,9 +28,6 @@ cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
 check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
@@ -90,11 +87,6 @@ cmd:chtab key=xcatdebugmode site.value="1"
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:if [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64le" ]]; then rpower $$CN reset;elif [[ "__GETNODEATTR($$CN,arch)__" =~ "x86_64" ]];then mgt=`lsdef $$CN | grep mgt`; if [[ $mgt =~ "bmc" ]]; then rpower $$CN boot; elif [[ $mgt =~ "ipmi" ]]; then rsetboot $$CN net; rpower $$CN reset; fi; elif [[ "__GETNODEATTR($$CN,arch)__" =~ "ppc64" ]]; then rnetboot $$CN; fi
-check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
 check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
@@ -183,9 +175,6 @@ cmd:chtab key=xcatdebugmode site.value="2"
 check:rc==0
 cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 check:rc==0
-cmd:lsdef $$CN |grep provmethod
-check:rc==0
-check:output=~__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
 cmd:if [[ "__GETNODEATTR($$CN,mgt)__" = "ipmi" ]]; then rsetboot $$CN net; fi
 check:rc==0
 cmd:if [ "__GETNODEATTR($$CN,mgt)__" != "ipmi" ];then if [ "__GETNODEATTR($$CN,arch)__" = "ppc64" ];then rnetboot $$CN;else rpower $$CN boot;fi else rpower $$CN boot;fi
