@@ -1,0 +1,85 @@
+start:set_xcatdebugmode_off_ubuntule_diskful
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+cmd:chtab key=xcatdebugmode site.value="0"
+check:rc==0
+cmd:copycds $$ISO
+check:rc==0
+cmd:if [[ "__GETNODEATTR($$CN,os)__" =~ "ubuntu" ]];then mkdir /tmp/iso; mount -o loop $$MINIISO /tmp/iso ;  mkdir -p  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot; cp  /tmp/iso/install/initrd.gz  /install/__GETNODEATTR($$CN,os)__/__GETNODEATTR($$CN,arch)__/install/netboot;umount /tmp/iso; rmdir /tmp/iso; fi
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+check:output=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
+check:output=~Generating grub configuration file
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:output!~No such file or directory
+end
+
+
+start:set_xcatdebugmode_off_ubuntux_vm_diskful
+os:linux
+description:site.xcatdebugmode value is 0, the following logs will be shown and ssh is not supported.
+cmd:makedns -n
+check:rc==0
+cmd:sleep 60
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:makeconservercf $$CN
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:copycds $$ISO 
+check:rc==0
+cmd:nodeset $$CN osimage=__GETNODEATTR($$CN,os)__-__GETNODEATTR($$CN,arch)__-install-compute
+check:rc==0
+cmd:rpower $$CN boot
+check:rc==0
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep installing >/dev/null`; do sleep 20;((a++));if [ $a -gt 30 ];then break;fi done
+cmd:xdsh $$CN date
+check:output=~(Connection refused|No route to host)
+check:rc==1
+cmd:a=0;while ! `lsdef -l $$CN|grep status|grep booted >/dev/null`; do sleep 20;((a++));if [ $a -gt 90 ];then break;fi done
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding early\_command Installation script\""
+check:output=~Running preseeding early\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"\[get\_install\_disk\]Information from \/proc\/partitions\:\""
+check:output=~\[get\_install\_disk\]Information from \/proc\/partitions\:
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Running preseeding late\_command Installation script\""
+check:output=~Running preseeding late\_command Installation script
+cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
+check:output=~Generating grub configuration file
+cmd:xdsh $$CN "file \/var\/log\/installer"
+check:output!~No such file or directory
+end
+
+
+
+
