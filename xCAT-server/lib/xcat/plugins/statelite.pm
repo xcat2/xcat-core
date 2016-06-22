@@ -797,6 +797,18 @@ sub liteItem {
         # the /etc/mtab should be handled every time even the parent /etc/ has been handled.
         # if adding /etc/ to litefile, only tmpfs should be used. 
         if ($entry[1] eq "/etc/mtab") {
+            #
+            # In RHEL7 /etc/mtab is a symlink to /proc/self/mounts and not a regular file.
+            # If that's the case, then we skip forcing /etc/mtab into the .statelite path
+            # and symlink'ing /etc/mtab to that file.  Otherwise, since the OS isn't updating
+            # /etc/mtab commands like "df" will not be happy.
+            #
+            my $ret=`readlink $rootimg_dir/etc/mtab`;
+            chomp($ret);
+            if ($? == 0 and ($ret eq '/proc/self/mounts') ) {
+                $verbose && $callback->({info=>["skipping /etc/mtab (symlink to /proc/self/mounts)"]});
+                next;
+            }
             $isChild = 0;
         }
 
