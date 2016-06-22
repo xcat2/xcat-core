@@ -164,6 +164,15 @@ restrict 127.0.0.1" >>$conf_file
         else
             echo "SYNC_HWCLOCK=yes" >> /etc/sysconfig/ntpd
         fi
+    elif [ -f /etc/sysconfig/ntp ];then
+        grep -i "NTPD_FORCE_SYNC_ON_STARTUP" /etc/sysconfig/ntp
+        if [ $? -eq 0 ];then
+	    sed -i 's/NTPD_FORCE_SYNC_ON_STARTUP="no"/NTPD_FORCE_SYNC_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+        fi
+        grep -i "NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP" /etc/sysconfig/ntp
+        if [ $? -eq 0 ];then
+	    sed -i 's/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="no"/NTPD_FORCE_SYNC_HWCLOCK_ON_STARTUP="yes"/' /etc/sysconfig/ntp
+        fi
     else
         cron_file="/etc/cron.daily/xcatsethwclock"
         if [ ! -f "$cron_file" ];then
