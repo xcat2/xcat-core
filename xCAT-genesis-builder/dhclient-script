@@ -36,15 +36,26 @@ elif [ $reason = "BOUND" ]; then
 	for gw in $new_routers; do
 		ip route add default via $gw
 	done
-        if [ ! -z "$new_log_servers" ]; then
+	# Up to this point we were logging to the local /var/log/xcat.genesis
+	# file. But now we know the xCAT MN, so replace logging to the local
+	# file with logging to the xCAT MN
+	if [ ! -z "$new_log_servers" ]; then
 		head -n -1 /etc/rsyslog.conf > /etc/rsyslog.conf.new
 		cp /etc/rsyslog.conf.new /etc/rsyslog.conf
 	fi
         for ls in $new_log_servers; do
-		echo *.* @$ls >> /etc/rsyslog.conf
+		echo "*.* @$ls" >> /etc/rsyslog.conf
 	done
 	kill `cat /var/run/syslogd.pid`
-	( sleep 3;/sbin/rsyslogd -c4 ) &
+	sleep 3
+	RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+	if [ $RSYSLOGD_VERSION -ge 8 ]; then
+        	# Newer versions of rsyslogd do not support -c flag anymore
+		/sbin/rsyslogd
+	else
+		/sbin/rsyslogd -c4
+	fi
+
 
 	if [ ! -z "$new_tcode" -a -r "/usr/share/zoneinfo/posix/$new_tcode" ]; then
 		cp "/usr/share/zoneinfo/posix/$new_tcode" /etc/localtime
