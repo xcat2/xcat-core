@@ -4036,6 +4036,9 @@ sub defrm
             my $rsp;
             $rsp->{data}->[0] = "Could not find an object named \'$obj\' of type \'$objtype\'.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
+            # Remove the object we could not find from the hash, this way the count of the objects
+            # and the content of the hash (for the verbose option), can be used for printing results at the end
+            delete($objhash{$obj});
             next;
         }
         $numobjects++;
