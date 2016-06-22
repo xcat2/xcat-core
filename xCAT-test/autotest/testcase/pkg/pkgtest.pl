@@ -53,15 +53,15 @@ sub getimgattr
     my $pkglistvalue;
     print " output is @output \n";   
     if($?){
-       print "unkonw";
+        print "unkonw";
         return "Unknown";
        }
     if($? == 0){
         foreach my $output1 (@output){
-            if($output1 =~ /$ARGV[1]=(.*)/){
+             if($output1 =~ /$ARGV[1]=(.*)/){
              print "output1 is $output1 ,attrs is $ARGV[1] value is $1 \n";
-            $pkglistvalue = $1 ;
-            }
+             $pkglistvalue = $1 ;
+             }
     }    }
     return $pkglistvalue;
 }
@@ -71,15 +71,15 @@ sub setupenv
       my $int = shift;
       if ($ospkg){
       `mkdir -p $int`;
-      `cp -rf /xcat-core $int`;
+      `cp -rf /xcat-core/* $int`;
        }else{
-            `cp $int /tmp/pkgtest.bak`;
+            `cat "$int" >> /tmp/pkgtest.bak`;
             }
-      if (($ARGV[2] =~ /ubuntu/)&&($ospkg ==0)){
-         `echo "rpm" >>/tmp/pkgtest.bak `;
-          }else{
-          `echo "xCAT-test" >>/tmp/pkgtest.bak `; 
-          }
+       if (($ARGV[2] =~ /ubuntu/)&&($ospkg ==0)){
+           `echo "rpm" >>/tmp/pkgtest.bak `;
+           }else{
+           `echo "xCAT-test" >>/tmp/pkgtest.bak `; 
+           }
 }
 sub clearenv
 {
@@ -98,15 +98,15 @@ sub setupenvinclude
     my $int = shift;
     if ($ospkg){
     `mkdir -p $int`;
-     `cp -rf /xcat-core $int`;
-       }else{
-    `       cp $int /tmp/pkgtest.bak`;
-            }
+    `cp -rf /xcat-core/* $int`;
+     }else{
+         ` cat $int >> /tmp/pkgtest.bak`;
+          }
     if (($ARGV[2] =~ /ubuntu/)&&($ospkg ==0)){
-       `echo "rpm" >>/tmp/pkgtest.bak `;
-       }else{
-       `echo "xCAT-test" >> /tmp/pkgtest.includelist `;
-       }
+        `echo "rpm" >>/tmp/pkgtest.bak `;
+        }else{
+        `echo "xCAT-test" >> /tmp/pkgtest.includelist `;
+        }
     `echo "#INCLUDE:/tmp/pkgtest.includelist#">>/tmp/pkgtest.bak `;
 }
 sub removerpm
@@ -114,10 +114,10 @@ sub removerpm
     my $int = shift;
     if ($ospkg){
     `mkdir -p $int`;
-     `cp -rf /xcat-core $int`;
-       }else{
-    `       cp $int /tmp/pkgtest.bak`;
-            }
+    `cp -rf /xcat-core/* $int`;
+        }else{
+     `cat "$int" >> /tmp/pkgtest.bak`;
+          }
     if (($ARGV[2] =~ /ubuntu/)&&($ospkg ==0)){
     `echo "-rpm" >>/tmp/pkgtest.bak `;
     }elsif(($ARGV[2] =~ /ubuntu/)&&($ospkg !=0)){

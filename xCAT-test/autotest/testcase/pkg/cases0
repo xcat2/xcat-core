@@ -8,6 +8,8 @@ cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN 
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c $$osimage pkglist __GETNODEATTR($$CN,os)__
 check:rc==0
+cmd:copycds $$ISO
+check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r  $$osimage pkglist __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:updatenode $$CN -S
@@ -60,7 +62,7 @@ cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r xcat-test; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
@@ -76,9 +78,13 @@ cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -s -o $$osi
 check:rc==0
 cmd:updatenode $$CN -S
 check:rc==0
+cmd:sleep 10 
+check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
+check:rc==0
+cmd:copycds $$ISO
 check:rc==0
 cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -r -o $$osimage otherpkgdir  __GETNODEATTR($$CN,os)__
 check:rc==0
@@ -99,7 +105,7 @@ cmd:updatenode $$CN -S
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN dpkg -l |grep xcat ;else xdsh $$CN rpm -qa |grep xCAT-test; fi
 check:rc==0
-cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage  __GETNODEATTR($$CN,os)__
+cmd:perl /opt/xcat/share/xcat/tools/autotest/testcase/pkg/pkgtest.pl -c -o $$osimage  otherpkgdir __GETNODEATTR($$CN,os)__
 check:rc==0
 cmd:if echo "__GETNODEATTR($$CN,os)__" | grep ubuntu >/dev/null; then xdsh $$CN  dpkg -r xcat-test; else  xdsh $$CN rpm -e xCAT-test; fi
 check:rc==0
