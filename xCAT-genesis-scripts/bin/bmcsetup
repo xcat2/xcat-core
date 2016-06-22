@@ -225,6 +225,16 @@ elif [ "$IPMIMFG" == 20301 -o "$IPMIMFG" == 19046 ] ; then
         fi
 elif [ "$IPMIMFG" == "47488" ]; then
     LOCKEDUSERS=1
+elif [ "$IPMIMFG" == "674" ]; then # DELL
+    BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    logger -s -t $log_label -p local4.info "BMCPORT is $BMCPORT"
+    if [ "$BMCPORT" == "0" ]; then # dedicated
+        ipmitool delloem lan set dedicated &>/dev/null
+    elif [ "$BMCPORT" == "1" -o "$BMCPORT" == "2" -o "$BMCPORT" == "3" -o "$BMCPORT" == "4"]; then # shared
+        ipmitool delloem lan set shared &>/dev/null
+        ipmitool delloem lan set shared with lom$BMCPORT &>/dev/null
+        ipmitool delloem lan set shared with failover all loms &>dev/null
+    fi
 fi
 
 while [ -z "$LANCHAN" ]; do 
