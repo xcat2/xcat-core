@@ -8,12 +8,17 @@ log_label="xcat.genesis.doxcat"
 # Start rsyslogd and log into a local file specified in /etc/rsyslog.conf
 # Later, once xCAT MN is known, dhclient-script will change 
 # rsyslog.conf file to send log entries to xCAT MN
-RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
-if [ $RSYSLOGD_VERSION -ge 8 ]; then
-    /sbin/rsyslogd
-    # Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
-else
-    /sbin/rsyslogd -c4
+if [ ! -f  /var/run/syslogd.pid ]; then
+    #
+    # start rsyslog ONLY if not already started
+    #
+    RSYSLOGD_VERSION=`rsyslogd -v | grep "rsyslogd" | cut -d" " -f2 | cut -d"." -f1`
+    if [ $RSYSLOGD_VERSION -ge 8 ]; then
+        /sbin/rsyslogd
+        # Newer vers of rsyslogd (8 and higher) do not support -c flag anymore
+    else
+        /sbin/rsyslogd -c4
+    fi
 fi
 
 logger -t $log_label -p local4.info "Beginning doxcat process..."
@@ -39,7 +44,7 @@ if [ ! -z "$BOOTIF" ]; then
 		gripeiter=$((gripeiter-1))
 	done
 fi
-echo "Done"
+
 if [ -z "$bootnic" ]; then
 	logger -s -t $log_label -p local4.err "BOOTIF missing, can't detect boot nic"
 fi
@@ -82,22 +87,24 @@ PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBL
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 
-logger -t $log_label -p local4.info "Creating /var/lib/lldpad file..."
-mkdir -p /var/lib/lldpad
-echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
-echo '{' >> /var/lib/lldpad/lldpad.conf
+LLDP_DIR="/var/lib/lldpad"
+
+logger -t $log_label -p local4.info "Creating ${LLDP_DIR} directory and config files..."
+mkdir -p ${LLDP_DIR}
+echo 'lldp :' >> ${LLDP_DIR}/lldpad.conf
+echo '{' >> ${LLDP_DIR}/lldpad.conf
 for iface in `ip link |grep -v '^ '|awk '{print $2}'|sed -e 's/:$//'|grep -v lo`; do
-echo "$iface :" >> /var/lib/lldpad/lldpad.conf
-echo "{" >> /var/lib/lldpad/lldpad.conf
-	echo  "tlvid00000006 :" >> /var/lib/lldpad/lldpad.conf
-	echo "{" >> /var/lib/lldpad/lldpad.conf
-	echo info = '"'$PUBKEY'";' >> /var/lib/lldpad/lldpad.conf
-	echo 'enableTx = true;' >> /var/lib/lldpad/lldpad.conf
-	echo '};' >> /var/lib/lldpad/lldpad.conf
-	echo 'adminStatus = 3;' >> /var/lib/lldpad/lldpad.conf
-echo '};' >> /var/lib/lldpad/lldpad.conf
+    echo "$iface :" >> ${LLDP_DIR}/lldpad.conf
+    echo "{" >> ${LLDP_DIR}/lldpad.conf
+    echo  "tlvid00000006 :" >> ${LLDP_DIR}/lldpad.conf
+    echo "{" >> ${LLDP_DIR}/lldpad.conf
+    echo info = '"'$PUBKEY'";' >> ${LLDP_DIR}/lldpad.conf
+    echo 'enableTx = true;' >> ${LLDP_DIR}/lldpad.conf
+    echo '};' >> ${LLDP_DIR}/lldpad.conf
+    echo 'adminStatus = 3;' >> ${LLDP_DIR}/lldpad.conf
+    echo '};' >> ${LLDP_DIR}/lldpad.conf
 done
-echo '};' >> /var/lib/lldpad/lldpad.conf
+echo '};' >> ${LLDP_DIR}/lldpad.conf
 lldpad -d
 logger -t $log_label -p local4.info "lldpad started."
 
@@ -184,8 +191,12 @@ else
             while [ $tries -lt 100 ]; do
                 ALLUP_NICS=`ip link show | grep -v "^ " | grep "state UP" | awk '{print $2}' | sed -e 's/:$//'|grep -v lo | sort -n -r`
                 for tmp1 in $ALLUP_NICS; do
-                    dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$tmp1.pid $tmp1 &
-                    dhclient -6 -pf /var/run/dhclient6.$tmp1.pid $tmp1 -lf /var/lib/dhclient/dhclient6.leases &
+                    if [ ! -f /var/run/dhclient.$tmp1.pid ]; then 
+                        dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$tmp1.pid $tmp1 &
+                    fi
+                    if [ ! -f /var/run/dhclient6.$tmp1.pid $tmp1 ]; then
+                        dhclient -6 -pf /var/run/dhclient6.$tmp1.pid $tmp1 -lf /var/lib/dhclient/dhclient6.leases &
+                    fi
                     #bootnic=$tmp1
                     #break
                 done
@@ -274,7 +285,7 @@ if [ -e "/dev/rtc" ]; then
     hwclock --systohc
 fi
 HOST_ARCH=`uname -m`
-if echo $HOST_ARCH | grep "ppc64"; then
+if [ `echo $HOST_ARCH | grep "bac" > /dev/null; echo $?` == 0 ]; then
     modprobe ipmi_powernv
 else
     modprobe ipmi_si
@@ -290,20 +301,21 @@ fi
 DEVICE=$bootnic
 export DEVICE
 
+logger -t $log_label -p local4.info "IPMI SUPPORT=${IPMI_SUPPORT}, DEVICE=$bootnic"
+
 if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
-	logger -t $log_label -p local4.info "Run getcert $XCATMASTER:$XCATPORT..."
+	logger -t $log_label -p local4.info "Run /bin/getcert to xCAT Master ($XCATMASTER:$XCATPORT)..."
 	/bin/getcert $XCATMASTER:$XCATPORT
-	logger -t $log_label -p local4.info "Getcert done."
 fi
+
 while :; do
 
         grepconfigraid=`echo $destiny|grep "configraid"`
         if [ -z "$destiny" -o -n "$grepconfigraid" ]; then
-                logger -t $log_label -p local4.info "Run getdestiny $XCATMASTER:$XCATPORT..."
+                logger -t $log_label -p local4.info "Run getdestiny to xCAT Master ($XCATMASTER:$XCATPORT)..."
                 destiny=`getdestiny $XCATMASTER:$XCATPORT`
-                logger -t $log_label -p local4.info "Getdestiny done."
 	fi
-        
+
 	destparameter=`echo $destiny|cut -d '=' -f 2-`
 	logger -t $log_label -p local4.info "The destparameter is $destparameter"
 
@@ -311,15 +323,16 @@ while :; do
 	logger -t $log_label -p local4.info "The destiny is $destiny"
 
 	dest=`echo $destiny|awk '{print $1}'` #could probably use bash but oh well
-	logger -t $log_label -p local4.info "The dest is $dest"
+	logger -t $log_label -p local4.info "The destiny is $dest"
 
+
+        
 	if [ "$dest" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
-		logger -t $log_label -p local4.info "Run dodiscovery..."
+		logger -t $log_label -p local4.info "Run Discovery..."
 		/bin/dodiscovery
-		logger -t $log_label -p local4.info "Dodiscovery done."
-		logger -t $log_label -p local4.info "Run getcert $XCATMASTER:$XCATPORT..."
+		logger -t $log_label -p local4.info "... Discovery complete."
+		logger -t $log_label -p local4.info "Run /bin/getcert to xCAT Master ($XCATMASTER:$XCATPORT)..."
 		/bin/getcert $XCATMASTER:$XCATPORT
-		logger -t $log_label -p local4.info "Getcert done."
 		destiny=''
 		dest=''
 	elif [ "$dest" = shell ]; then
@@ -327,7 +340,7 @@ while :; do
 		destiny=''
 		dest=''
 		/bin/bash
-		logger -t $log_label -p local4.info "Exit shell."
+		logger -t $log_label -p local4.info "Exiting shell."
 		logger -t $log_label -p local4.info "Run nextdestiny $XCATMASTER:$XCATPORT..."
 		/bin/nextdestiny $XCATMASTER:$XCATPORT      
 		logger -t $log_label -p local4.info "Nextdestiny done."   
@@ -386,7 +399,9 @@ while :; do
 		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
-			logger -s -t $log_label -p local4.info "Received request to retry in a bit, will call xCAT back in $delay seconds"
+			if [ $((delay%10)) == 0 ]; then
+	  			logger -s -t $log_label -p local4.info "Received request to retry in a bit, will call xCAT back in $delay seconds"
+			fi
 			delay=$((delay-1))
 			sleep 1
 		done
@@ -400,7 +415,9 @@ while :; do
 		dest=''
 		delay=$((30+$RANDOM%270))
 		while [ $delay -gt 0 ]; do
-			logger -s -t $log_label -p local4.info "Will retry in $delay seconds"
+			if [ $((delay%10)) == 0 ]; then
+				logger -s -t $log_label -p local4.info "Will retry in $delay seconds"
+			fi
 			delay=$((delay-1))
 			sleep 1
 		done
