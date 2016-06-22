@@ -8,7 +8,7 @@ use probe_utils;
 use File::Basename;
 use Net::Ping;
 use Getopt::Long qw(:config no_ignore_case);
-use Data::Dumper;
+#use Data::Dumper;
 use warnings;
 
 my $program_name = basename("$0");
@@ -151,7 +151,7 @@ foreach (@pingable_nodes) {
 
 # Information gathering is done. Now do veification checking.
 
-# Probe verification step 1 - make sure all nodes are running the osimage name and imageUUID as defined on MN
+# Probe verification step 1 - make sure all nodes are installed with the osimage name and imageUUID as defined on MN
 if ($DEFINITION_CHECK) {
     foreach (@pingable_nodes) {
         my $msg;
@@ -159,17 +159,17 @@ if ($DEFINITION_CHECK) {
         if (($node_running_image_name_hash{$_} eq $node_defined_image_name_hash{$_}) &&
             ($node_running_image_uuid_hash{$_} eq $node_defined_image_uuid_hash{$_})) {
             if ($node_running_image_uuid_hash{$_} eq $na) {
-                $msg = "$_: Not able to determing running image name or uuid";
+                $msg = "$_: Not able to determine installed os image name or uuid";
                 $status = "f";
             }
             else {
-                $msg    = "$_: Matches running and defined image name and UUID";
+                $msg    = "OS image installed on compute node $_ matches the image defined for it on management node";
                 $status = "o";
             }
         }
         else {
-            $msg = "$_: Unmatched image name or image UUID.\n         Defined: name = $node_defined_image_name_hash{$_}" .
-" uuid = $node_defined_image_uuid_hash{$_}\n         Running: name = $node_running_image_name_hash{$_}" .
+            $msg = "$_: Unmatched os image name or image UUID.\n         Defined: name = $node_defined_image_name_hash{$_}" .
+" uuid = $node_defined_image_uuid_hash{$_}\n         Installed: name = $node_running_image_name_hash{$_}" .
               " uuid = $node_running_image_uuid_hash{$_}";
             $status = "f";
         }
@@ -177,7 +177,7 @@ if ($DEFINITION_CHECK) {
     }
 }
 
-# Probe verification step 2 - make sure all nodes are running the same osimage name and imageUUID
+# Probe verification step 2 - make sure all nodes are installed with the same osimage name and imageUUID
 if ($CONSISTENCY_CHECK) {
     my $msg    = "Undefined";
     my $status = "f";
@@ -199,11 +199,11 @@ if ($CONSISTENCY_CHECK) {
     if ($number_of_keys == 1) {
         my @image_names = keys %unique_image_hash;
         if ($image_names[0] =~ /$na/) {
-            $msg = "Not able to determine image name or uuid of the image installed on any compute node.";
+            $msg = "Not able to determine os image name or uuid of the image installed on any compute node.";
             $status = "f";
         }
         else {
-            $msg = "All compute nodes have the same image installed: @image_names.";
+            $msg = "All compute nodes have the same os image installed: @image_names.";
             $status = "o";
         }
     }
@@ -212,7 +212,7 @@ if ($CONSISTENCY_CHECK) {
         foreach $compute_node (keys %node_running_image_name_hash) {
             $node_image_table .= sprintf("%-15s %-30s : %-20s\n", $compute_node, $node_running_image_name_hash{$compute_node}, $node_running_image_uuid_hash{$compute_node});
         }
-        $msg = "Not all compute nodes are running the same os image.\n" . $node_image_table;
+        $msg = "Not all compute nodes are installed with the same os image.\n" . $node_image_table;
         $status = "f";
     }
 
