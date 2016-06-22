@@ -234,7 +234,10 @@ sub get_storage_pool_by_url {
     eval { $poolobj->build(); };
     if ($@) {
         my $error = $@;
-        unless ($error =~ /vgcreate.*exit status 3/ or $error =~ /pvcreate.*exit status 5/) {
+	# Some errors from building storage pool object are safe to ignore.
+	# For example, "File exists" is returned when a directory location for storage pool is already there. 
+	# The storage pool still gets built, and the next statement to create storage pool will work.
+        unless ($error =~ /vgcreate.*exit status 3/ or $error =~ /pvcreate.*exit status 5/ or $error =~ /File exists/) {
             die $@;
         }
     }
