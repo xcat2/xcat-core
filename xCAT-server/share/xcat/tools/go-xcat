@@ -33,7 +33,7 @@ function usage()
 
 	Actions:
 	  install                       installs all the latest versions of xcat-core
-	                                end xcat-dep packages from the repository
+	                                and xcat-dep packages from the repository
 	  update                        updates installed xcat-core packages to the
 	                                latest version from the repository
 
