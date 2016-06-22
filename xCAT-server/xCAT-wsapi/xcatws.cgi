@@ -2991,6 +2991,8 @@ sub sendRequest {
             SSL_key_file  => $keyfile,
             SSL_cert_file => $certfile,
             SSL_ca_file   => $cafile,
+            SSL_verify_mode => SSL_VERIFY_PEER,
+            SSL_verifycn_scheme => "none",
             SSL_use_cert  => 1,
             Timeout       => 15,);
     }

@@ -90,6 +90,7 @@ my $client = IO::Socket::SSL->new(
                 SSL_use_cert => 1,
 		%sslargs,
                 SSL_verify_mode => SSL_VERIFY_PEER,
+                SSL_verifycn_scheme => "none",
              );
 die "Connection failure: $!\n" unless ($client);
 my %cmdref = (command => 'noderange', noderange => $noderange);
