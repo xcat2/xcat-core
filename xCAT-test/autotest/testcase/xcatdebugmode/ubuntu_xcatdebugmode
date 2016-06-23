@@ -37,6 +37,7 @@ check:output=~Running preseeding late\_command Installation script
 cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
 check:output=~Generating grub configuration file
 cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
 check:output!~No such file or directory
 end
 
@@ -79,6 +80,7 @@ check:output=~Running preseeding late\_command Installation script
 cmd:xdsh $$CN "cat  /var/log/xcat/xcat.log | grep \"Generating grub configuration file\""
 check:output=~Generating grub configuration file
 cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
 check:output!~No such file or directory
 end
 
@@ -146,6 +148,7 @@ check:output=~/opt/xcat/xcatdsklspost generated
 cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
 check:output=~running mypostscript
 cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
 check:output!~No such file or directory
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
@@ -214,6 +217,7 @@ check:output=~/opt/xcat/xcatdsklspost generated
 cmd:cat /var/log/xcat/computes.log | grep "running mypostscript"
 check:output=~running mypostscript
 cmd:xdsh $$CN "file \/var\/log\/installer"
+check:rc==0
 check:output!~No such file or directory
 cmd:chtab key=xcatdebugmode site.value="0"
 check:rc==0
