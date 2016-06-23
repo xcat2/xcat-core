@@ -391,6 +391,35 @@ function check_package_version()
 }
 
 #       $@      package names
+function check_repo_version_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a name=()
+	local -a ver=()
+	while read name ver
+	do
+		name+=("${name}")
+		ver+=("${ver}")
+	done < <(dnf repoquery -q --qf '%{name} %{version}-%{release}' "$@" 2>/dev/null)
+	local -i i
+	while [[ -n "$1" ]]
+	do
+		for i in "${!name[@]}"
+		do
+			if [[ "$1" = "${name[i]}" ]]
+			then
+				echo "${ver[i]}"
+				unset "name[${i}]" "ver[${i}]"
+				shift && continue 2
+			fi
+		done
+		echo "(not found)"
+		shift
+	done
+	return 0
+}
+
+#       $@      package names
 function check_repo_version_yum()
 {
 	type repoquery >/dev/null 2>&1 || return 255
@@ -483,6 +512,15 @@ function check_repo_version_apt()
 function check_repo_version()
 {
 	function_dispatch "${FUNCNAME}" "$@"
+}
+
+#       $1      repo id
+function get_package_list_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local repo_id="$1"
+	[[ -z "${repo_id}" ]] && return 1
+	dnf repoquery -q "--repoid=${repo_id}" --qf "%{name}" 2>/dev/null
 }
 
 #       $1      repo id
@@ -900,15 +938,15 @@ function add_xcat_dep_repo_yum_or_zypper()
 	local url="$1"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
-	local distro="${GO_XCAT_LINUX_DISTRO}"
+	local distro="${GO_XCAT_LINUX_DISTRO}${GO_XCAT_LINUX_VERSION%%.*}"
 	case "${distro}" in
-	"fedora") ;;
-	"rhel") distro="rh" ;;
-	"sles") ;;
+	"fedora2"?) distro="rh7" ;;
+	"rhel"*)    distro="rh${distro#rhel}" ;;
+	"sles"*)    ;;
 	*) warn_if_bad 1 "${distro}: unsupported Linux distro" || return 1
 	esac
 	[[ -z "${url}" ]] &&
-		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+		url="${GO_XCAT_DEFAULT_BASE_URL}/yum/xcat-dep/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
 	case "${url##*.}" in
 	"repo") # local repo file
 		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
@@ -927,7 +965,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 			url="${tmp}"
 			;;
 		*)
-			url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}/xCAT-dep.repo"
+			url="${url}/${distro}/${GO_XCAT_ARCH}/xCAT-dep.repo"
 			add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
 			return "$?"
 			;;
@@ -948,7 +986,7 @@ function add_xcat_dep_repo_yum_or_zypper()
 	then
 		# make sure it is an absolute pathname.
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
-		url="${url}/${distro}${GO_XCAT_LINUX_VERSION%%.*}/${GO_XCAT_ARCH}"
+		url="${url}/${distro}/${GO_XCAT_ARCH}"
 		add_repo_by_url_yum_or_zypper "${url}" "xcat-dep"
 		return "$?"
 	fi
@@ -967,6 +1005,12 @@ function add_xcat_dep_repo_apt()
 function add_xcat_dep_repo()
 {
 	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function update_repo_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	dnf --nogpgcheck updateinfo </dev/null >/dev/null 2>&1
 }
 
 function update_repo_yum()
@@ -990,6 +1034,14 @@ function update_repo_apt()
 function update_repo()
 {
 	function_dispatch "${FUNCNAME}" "$@"
+}
+
+function install_packages_dnf()
+{
+	type dnf >/dev/null 2>&1 || return 255
+	local -a args=()
+	[[ "$1" = "-y" ]] && args=("-y") && shift
+	dnf --nogpgcheck "${args[@]}" install "$@"
 }
 
 function install_packages_yum()
@@ -1316,7 +1368,7 @@ Version:            ${GO_XCAT_LINUX_VERSION}
 EOF
 
 case "${GO_XCAT_LINUX_DISTRO}" in
-"rhel"|"sles"|"ubuntu")
+"fedora"|"rhel"|"sles"|"ubuntu")
 	;;
 *)
 	warn_if_bad 1 "${GO_XCAT_LINUX_DISTRO}: unsupported Linux distro"
