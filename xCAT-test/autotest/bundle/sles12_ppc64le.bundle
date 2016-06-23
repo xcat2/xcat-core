@@ -264,5 +264,7 @@ makentp_V
 makentp
 makentp_a
 nodeset_check_warninginfo
+set_xcatdebugmode_off_sles_diskful
+set_xcatdebugmode_value_one_sles_diskful
 reg_linux_diskless_installation_flat
 reg_linux_statelite_installation_flat

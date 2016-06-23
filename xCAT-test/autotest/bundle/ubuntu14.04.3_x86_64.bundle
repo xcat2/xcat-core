@@ -259,3 +259,6 @@ lsdocker_h_command
 lsdocker_l_command
 ubuntux_migration1_vm
 ubuntux_migration2_vm
+set_xcatdebugmode_off_ubuntux_vm_diskful
+set_xcatdebugmode_value_one_ubuntux_vm_diskful
+

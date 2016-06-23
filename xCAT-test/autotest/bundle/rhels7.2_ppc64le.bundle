@@ -194,4 +194,7 @@ switchdiscover_range_z
 switchdiscover_range_z_V
 redhat_migration1
 redhat_migration2
+set_xcatdebugmode_off_rhels_diskful
+set_xcatdebugmode_value_one_rhels_diskful
+set_xcatdebugmode_value_two_rhels_diskful
 clean_up_env

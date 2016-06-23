@@ -257,3 +257,5 @@ rmdocker_command
 rmdocker_f_command
 lsdocker_h_command
 lsdocker_l_command
+set_xcatdebugmode_off_ubuntux_vm_diskful
+set_xcatdebugmode_value_one_ubuntux_vm_diskful
