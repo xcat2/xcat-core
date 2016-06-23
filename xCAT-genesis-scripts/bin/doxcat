@@ -285,7 +285,7 @@ if [ -e "/dev/rtc" ]; then
     hwclock --systohc
 fi
 HOST_ARCH=`uname -m`
-if [ `echo $HOST_ARCH | grep "bac" > /dev/null; echo $?` == 0 ]; then
+if [ `echo $HOST_ARCH | grep "ppc64" > /dev/null; echo $?` == 0 ]; then
     modprobe ipmi_powernv
 else
     modprobe ipmi_si
