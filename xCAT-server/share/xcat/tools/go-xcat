@@ -33,7 +33,7 @@ function usage()
 
 	Actions:
 	  install                       installs all the latest versions of xcat-core
-	                                end xcat-dep packages from the repository
+	                                and xcat-dep packages from the repository
 	  update                        updates installed xcat-core packages to the
 	                                latest version from the repository
 
@@ -741,7 +741,7 @@ function add_repo_by_url_yum_or_zypper()
 function add_repo_by_url_apt()
 {
 	[[ -d /etc/apt/sources.list.d/ ]] || return 255
-	local base_url="$1"
+	local url="$1"
 	local repo_id="$2"
 	local tmp=""
 	local install_path="${GO_XCAT_DEFAULT_INSTALL_PATH}"
@@ -763,7 +763,7 @@ function add_repo_by_url_apt()
 			;;
 		*) # assume it is the base url of the repo
 			tmp="${TMP_DIR}/tmp_repo.list"
-			echo "deb ${base_url} ${codename} main" >"${tmp}"
+			echo "deb [arch=$(dpkg --print-architecture)] ${url} ${codename} main" >"${tmp}"
 			url="${tmp}"
 			;;
 		esac
@@ -791,7 +791,7 @@ function add_repo_by_url_apt()
 		[[ "${url:0:1}" = "/" ]] || url="${PWD}/${url}"
 		# directory
 		tmp="${TMP_DIR}/tmp_repo.list"
-		echo "deb file://${url} ${codename} main" >"${tmp}"
+		echo "deb [arch=$(dpkg --print-architechure)] file://${url} ${codename} main" >"${tmp}"
 		add_repo_by_file_apt "${tmp}" "${repo_id}"
 		return "$?"
 	fi
