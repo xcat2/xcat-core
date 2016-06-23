@@ -669,8 +669,7 @@ sub processArgs
         #if "-a" is not specified, read the template files content 
         #under "/opt/xcat/share/xcat/templates/objects/<object type>"
         my $objfiledata;
-        find(\&wanted,@tmpldirlist);
-        sub wanted{
+        my $wanted= sub {
             if (-f $_){
                 my $line;
                 open(FH,$_);
@@ -679,7 +678,9 @@ sub processArgs
                 }
                 close(FH)
             }
-        }
+        };
+        find($wanted,@tmpldirlist);
+
          
         #save the template definitions in global variable $::filedata 
         #for the later parse 
@@ -3183,7 +3184,8 @@ sub defls
         }
         else{
             #push the unique object types from @::fileobjtypes to @::clobjtypes 
-            push @::clobjtypes, keys { map { $_ => 1 } @::fileobjtypes }; 
+            my %objtypehash=map { $_ => 1 } @::fileobjtypes;
+            push @::clobjtypes, keys(%objtypehash); 
         }
     } # end - if specify all
 
